@@ -3644,13 +3644,65 @@ class PangenomeGraph():
         self.progress.new('Storing syn gene cluster nodes in pan-graph-db')
         self.progress.update('...')
 
+        pan_db = dbops.PanSuperclass(self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+        pan_db.init_gene_clusters()
+
         table_for_nodes = TableForNodes(self.pan_graph_db_path, run=self.run, progress=self.progress)
         for node in nodes:
-            node_entry = {'node_id': node,
-                          'node_type': nodes[node]['type'],
-                          'gene_cluster_id': nodes[node]['gene_cluster'],
-                          'gene_calls_json': json.dumps(nodes[node]['gene_calls']),
-                          'alignment_summary': ''}
+
+            node_alignment_summaries = {}
+            node_alignment_lengths = []
+            node_alignments = {}
+            for genome_name, gene_caller_id in nodes[node]['gene_calls'].items():
+                if self.gene_alignments_computed:
+                    genome_alignments = pan_db.gene_clusters_gene_alignments[genome_name]
+                    if gene_caller_id in genome_alignments:
+                        alignment_summary = genome_alignments[gene_caller_id]
+                        node_alignment_summaries[genome_name] = alignment_summary
+
+                        alignment_summary_list = alignment_summary.split('|')
+                        start = alignment_summary_list[0]
+                        summary_code = list(map(int, alignment_summary_list[1:]))
+
+                        if start == '-':
+                            sequence = sum(summary_code[1::2]) * 'N'
+                        else:
+                            sequence = sum(summary_code[0::2]) * 'N'
+
+                        alignment = utils.restore_alignment(sequence, alignment_summary)
+                        node_alignment_lengths += [len(alignment)]
+                    else:
+                        alignment_summary = ''
+                        node_alignment_summaries[genome_name] = alignment_summary
+                        
+                        sequence = ''
+                        alignment = ''
+                        node_alignment_lengths += [0]
+
+                    node_alignments[genome_name] = alignment
+
+            if len(set(node_alignment_lengths)) != 1:
+                raise ConfigError("Your alignments have a different length? Oh boy that's not something we like.")
+
+            cleaned_alignments = {genome_name: '' for genome_name in node_alignments.keys()}
+
+            remove_positions = []
+            for i in range(0, node_alignment_lengths[0]):
+                summary_code_list = [alignment[i] for genome_name, alignment in node_alignments.items()]
+                if not all(a == '-' for a in summary_code_list):
+                    for genome_name, alignment in node_alignments.items():
+                        cleaned_alignments[genome_name] += alignment[i]
+
+            summarized_alignment = {genome_name: utils.summarize_alignment(alignment) if alignment else '' for genome_name, alignment in cleaned_alignments.items()}
+
+            node_entry = {
+                'node_id': node,
+                'node_type': nodes[node]['type'],
+                'gene_cluster_id': nodes[node]['gene_cluster'],
+                'gene_calls_json': json.dumps(nodes[node]['gene_calls']),
+                'alignment_summary': json.dumps(summarized_alignment)
+            }
+
             table_for_nodes.add(node_entry)
 
         self.progress.end()
