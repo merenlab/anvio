@@ -1140,7 +1140,7 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
 
         while True:
             try:
-                genome_A, genome_B = genome_pairs_queue.get(True)
+                genome_A, genome_B = genome_pairs_queue.get(block=True)
                 db_A, db_B = self.databases[genome_A]['contigs_db_path'], self.databases[genome_B]['contigs_db_path']
                 pair_data_dicts, pair_failed_maps = self.one_pair_worker(db_A, db_B)
                 output_queue.put((genome_A, genome_B, pair_data_dicts, pair_failed_maps)) # we put the pair back in the queue after successful processing
