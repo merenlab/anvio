@@ -35,13 +35,13 @@ P = terminal.pluralize
 class ExchangePredictorArgs():
     def __init__(self, args, format_args_for_single_estimator=False, run=run_quiet):
         """A base class to assign arguments to attributes for ExchangePredictor classes.
-        
+
         PARAMETERS
         ==========
         format_args_for_single_estimator: bool
             This is a special case where an args instance is generated to be passed to the
-            'single' predictor subclass from within the 'multi' predictor subclass. Setting 
-            it to True ensures that any args specific to the multi subclass are removed to 
+            'single' predictor subclass from within the 'multi' predictor subclass. Setting
+            it to True ensures that any args specific to the multi subclass are removed to
             avoid sanity check issues.
         """
 
@@ -57,8 +57,8 @@ class ExchangePredictorArgs():
         self.add_reactions_to_output = A('add_reactions_to_output')
         self.no_pathway_walk = A('no_pathway_walk')
         self.pathway_walk_only = A('pathway_walk_only')
-        
-        # this class can either receive the exclude_pathway_maps attribute as a string (from the client program) 
+
+        # this class can either receive the exclude_pathway_maps attribute as a string (from the client program)
         # or as a set (when initializing it directly in Python, as is done in the MultiPredictor class)
         if A('exclude_pathway_maps') and type(A('exclude_pathway_maps')) is str:
             self.exclude_pathway_maps = set(A('exclude_pathway_maps').split(','))
@@ -126,7 +126,7 @@ class ExchangePredictorArgs():
 
     def append_output_from_dicts(self, output_dicts):
         """This function appends the output dictionaries to initialized AppendableFile objects in self.output_file_dict.
-        
+
         PARAMETERS
         ==========
         output_dicts : dictionary of dictionaries
@@ -141,14 +141,14 @@ class ExchangePredictorArgs():
                              [f"consumption_rxn_eqs_{self.genomes_to_compare[g]['name']}" for g in self.genomes_to_compare]
         exchange_header = deepcopy(output_header)
         if not self.no_pathway_walk:
-            exchange_header += ['max_reaction_chain_length', 
-                                'max_production_chain_length', 'production_overlap_length', 'production_overlap_proportion', 
+            exchange_header += ['max_reaction_chain_length',
+                                'max_production_chain_length', 'production_overlap_length', 'production_overlap_proportion',
                                 'production_chain_pathway_map',
-                                'max_consumption_chain_length', 'consumption_overlap_length', 'consumption_overlap_proportion', 
+                                'max_consumption_chain_length', 'consumption_overlap_length', 'consumption_overlap_proportion',
                                 'consumption_chain_pathway_map'
                                 ]
 
-        for mode, file_obj in self.output_file_dict.items():  
+        for mode, file_obj in self.output_file_dict.items():
             if mode not in output_dicts:
                 raise ConfigError(f"Uh oh. You've requested to generate output of type '{mode}' but we don't "
                                   f"have a data dictionary associated with that type.")
@@ -170,10 +170,10 @@ class ExchangePredictorArgs():
                 os.remove(output_path)
         self.run.warning("There was an error while processing (or the program was interrupted), so anvi'o "
                          "deleted the partially-complete output files to avoid you having to deal with that mess.")
-        
+
 class ExchangePredictorSingle(ExchangePredictorArgs):
     """Class for predicting exchanges between a single pair of genomes.
-    
+
     PARAMETERS
     ==========
     args: Namespace object
@@ -188,7 +188,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.contigs_db_1 = A('contigs_db_1')
         self.contigs_db_2 = A('contigs_db_2')
-        
+
         # INIT BASE CLASS to format common arguments
         ExchangePredictorArgs.__init__(self, self.args, run=self.run)
 
@@ -203,15 +203,15 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
 
     def predict_exchanges(self, output_files_dictionary=None, return_data_dicts=False):
         """This is the driver function to predict metabolic exchanges between two genomes.
-        
+
         PARAMETERS
         ==========
         output_files_dictionary : dictionary of output type (str), AppendableFile object pairs
             contains an initialized AppendableFile object to append output to for each output type
-            (used in multi-mode to direct all output from several estimators to the same files). 
+            (used in multi-mode to direct all output from several estimators to the same files).
             If provided, we don't setup the self.output_file_dict
         return_data_dicts : boolean
-            If True, this function will return the prediction result dictionaries (and the list of Pathway Maps with failed walks) instead of 
+            If True, this function will return the prediction result dictionaries (and the list of Pathway Maps with failed walks) instead of
             appending them to the output files. Note that we don't setup the self.output_file_dict in this case
         """
 
@@ -228,9 +228,9 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
             self.output_file_dict = output_files_dictionary
         else:
             self.output_file_dict = self.setup_output_for_appending()
-        
+
         self.load_reaction_networks()
-        
+
         # MERGE NETWORKS
         self.merged, db_names = self.genomes_to_compare['A']['network']._merge_two_genome_networks(self.genomes_to_compare['B']['network'])
         self.genomes_to_compare['A']['name'] = db_names[0]
@@ -254,11 +254,11 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
 
         if not self.no_pathway_walk:
             # STEP 1: PATHWAY MAP WALKS
-            # why do we need two similar functions for the different threading options here? 
+            # why do we need two similar functions for the different threading options here?
             # well, if the user asks to use just one thread, we don't want to spin up another Process besides our main thread
-            # (the main thread keeps running while any child processes are doing things) and therefore require two threads. 
-            # More concerningly, ExchangePredictorMulti will spin up multiple Processes each working with one ExchangePredictorSingle. 
-            # If we allow those child processes to spin up their own child processes, we start using way more threads than the user asked for. 
+            # (the main thread keeps running while any child processes are doing things) and therefore require two threads.
+            # More concerningly, ExchangePredictorMulti will spin up multiple Processes each working with one ExchangePredictorSingle.
+            # If we allow those child processes to spin up their own child processes, we start using way more threads than the user asked for.
             # Hence, we strictly control the number of threads in use by having two functions for doing essentially the same thing.
             # (BONUS: the single-threaded version has more precise terminal output since it knows exactly what is currently being processed)
             if self.num_threads == 1:
@@ -271,7 +271,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
             pot_exchanged_pw, uniq_pw, data_dicts['evidence'] = self.predict_from_pathway_walks()
             data_dicts['potentially-exchanged-compounds'].update(pot_exchanged_pw)
             data_dicts['unique-compounds'].update(uniq_pw)
-            
+
         else:
             compounds_not_in_maps = set(self.merged.metabolites.keys())
         self.run.info("Number of compounds from merged network not in Pathway Maps", len(compounds_not_in_maps))
@@ -298,7 +298,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
 
         self.run.warning(f"Identified {len(data_dicts['potentially-exchanged-compounds'])} potentially exchanged compounds and "
                          f"{len(data_dicts['unique-compounds'])} compounds unique to one genome.", header='OVERALL RESULTS', lc='green')
-        
+
         # STEP 4: OUTPUT or RETURN
         if return_data_dicts:
             return data_dicts, failed_maps
@@ -306,7 +306,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
             self.append_output_from_dicts(data_dicts)
             for typ, file_object in self.output_file_dict.items():
                 self.run.info(f"Output with {typ}", file_object.path)
-                file_object.close()       
+                file_object.close()
 
     def find_equivalent_amino_acids(self, print_to_file=True, output_file_name="equivalent_amino_acids.txt"):
         """Looks through the ModelSEED compound table to identify L-amino acids and their non-stereo-specific counterparts.
@@ -381,7 +381,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
             self.genomes_to_compare[g]['network'] = constructor.load_network(contigs_db=self.genomes_to_compare[g]['contigs_db_path'], quiet=True)
 
     def map_kegg_ids_to_modelseed_ids(self):
-        """Creates the self.kegg_id_to_modelseed_id dictionary. 
+        """Creates the self.kegg_id_to_modelseed_id dictionary.
         The keys are KEGG compound IDs and the values are ModelSEED IDs for all compounds in the provided network.
         """
 
@@ -389,7 +389,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         for mid, compound in self.merged.metabolites.items():
             for kid in compound.kegg_aliases:
                 self.kegg_id_to_modelseed_id[kid] = mid
-        
+
     def map_kegg_ids_to_compound_names(self):
         """Creates the self.id_to_name_dict dictionary.
         The keys are KEGG compound IDs and the values are compound names for all compounds in the provided network.
@@ -457,7 +457,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         for pm in self.all_pathway_maps:
             self.progress.update(f"{processed_count} / {num_pms_to_process} Pathway Maps (current Map: {pm})")
             try:
-                for g in self.genomes_to_compare: 
+                for g in self.genomes_to_compare:
                     wargs = self.get_args_for_pathway_walker(self.genomes_to_compare[g]['network'], pm, fate='produce', gaps=self.maximum_gaps)
                     walker = nw.KGMLNetworkWalker(wargs)
                     production_chains = walker.get_chains()
@@ -484,7 +484,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                             self.compound_to_pathway_walk_chains[modelseed_id][pm][g]['produce'] += production_chains[compound]
                             self.compound_to_pathway_walk_chains[modelseed_id][pm][g]['consume'] += consumption_chains[compound]
                         else:
-                            self.compound_to_pathway_walk_chains[modelseed_id][pm][g] = {'produce': production_chains[compound] if compound in production_chains else None, 
+                            self.compound_to_pathway_walk_chains[modelseed_id][pm][g] = {'produce': production_chains[compound] if compound in production_chains else None,
                                                                                 'consume': consumption_chains[compound] if compound in consumption_chains else None}
             except ConfigError as e:
                 self.progress.reset()
@@ -511,7 +511,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         return maps_with_errors
 
     def walk_all_pathway_maps_multithreaded(self):
-        """Driver function for walking over all KEGG Pathway Maps in the merged network with multiprocessing. 
+        """Driver function for walking over all KEGG Pathway Maps in the merged network with multiprocessing.
         Fills self.compound_to_pathway_walk_chains. Returns list of Pathway Maps that yielded errors during the walk.
         """
 
@@ -552,7 +552,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         self.merged.progress = saved_rn_progress
         self.genomes_to_compare['A']['network'].progress = saved_net1_progress
         self.genomes_to_compare['B']['network'].progress = saved_net2_progress
-        
+
         self.progress.new(f"Walking {num_pms_to_process} Pathway Maps in {self.num_threads} thread(s)", progress_total_items=num_total_walks)
         self.progress.update('...')
 
@@ -584,9 +584,9 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                         self.compound_to_pathway_walk_chains[modelseed_id][pm][g]['produce'] += production_chains[compound]
                         self.compound_to_pathway_walk_chains[modelseed_id][pm][g]['consume'] += consumption_chains[compound]
                     else:
-                        self.compound_to_pathway_walk_chains[modelseed_id][pm][g] = {'produce': production_chains[compound] if compound in production_chains else None, 
+                        self.compound_to_pathway_walk_chains[modelseed_id][pm][g] = {'produce': production_chains[compound] if compound in production_chains else None,
                                                                             'consume': consumption_chains[compound] if compound in consumption_chains else None}
-        
+
             except ConfigError as e:
                 self.progress.reset()
                 self.run.warning(f"Just FYI, attempting to do a pathway walk for Pathway Map {pm} resulted in an "
@@ -598,10 +598,10 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                 self.run.info_single("Received SIGINT, terminating all processes...", nl_before=2)
                 killed_partway_through = True
                 break
-            
+
             self.progress.increment(increment_to=num_walks_completed)
             self.progress.update(f"{num_walks_completed} / {num_total_walks} Walks")
-            
+
         for proc in pw_processes:
             proc.terminate()
         self.progress.end()
@@ -618,7 +618,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         """Given two genomes, decides which genome is the predicted producer/consumer of the current compound.
         If the compound is neither potentially-exchanged or unique to one genome, returns None so we can move on.
 
-        Note that having a 'primary' producer genome doesn't mean the other genome cannot produce the compound 
+        Note that having a 'primary' producer genome doesn't mean the other genome cannot produce the compound
         (and likewise for consumption), because we accept "2 producers, 1 consumer" or "1 producer, 2 consumers"
         as potential exchange scenarios. And in these cases, the genome that is alone in its role gets assigned
         as primary, and the other genome by default takes the other role even though there are technically 2 of them.
@@ -665,7 +665,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         return producer, consumer
 
     def predict_exchange_from_pathway_walk(self, chains_for_all_equivalent_compounds):
-        """Determines whether a compound is unique or potentially-exchanged, and if so returns the internal IDs of 
+        """Determines whether a compound is unique or potentially-exchanged, and if so returns the internal IDs of
         the producer/consumer genome (or None, otherwise). Only works for 2 genomes.
 
         PARAMETERS
@@ -698,7 +698,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
 
     def get_longest_chains(self, chain_list):
         """Loops over all chains in provided list, computes length, and returns the maximum length and longest chain.
-        
+
         PARAMETERS
         ==========
         chain_list : list of Chain objects (a class from kgmlnetworkops)
@@ -724,8 +724,8 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
 
     def get_max_overlap(self, reference_chains, comparison_chains):
         """Computes the longest reaction overlap between two lists of reaction chains.
-        Also returns the reference chain that exhibits the maximum overlap with the comparison chains. Note 
-        that if there are multiple solutions with the same max overlap, we only report the first 'longest' 
+        Also returns the reference chain that exhibits the maximum overlap with the comparison chains. Note
+        that if there are multiple solutions with the same max overlap, we only report the first 'longest'
         chain with that overlap value.
 
         PARAMETERS
@@ -738,10 +738,10 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         RETURNS
         =======
         max_overlap : int
-            Length of the longest overlap (highest number of shared reactions) between a reference chain 
+            Length of the longest overlap (highest number of shared reactions) between a reference chain
             and a comparison chain
         longest_with_max_overlap : Chain object
-            the first reference Chain (from the reference_chains list) that exhibits the maximum overlap with 
+            the first reference Chain (from the reference_chains list) that exhibits the maximum overlap with
             a comparison chain.
         """
 
@@ -765,10 +765,10 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
 
         return max_overlap, longest_with_max_overlap
 
-    def get_pathway_walk_evidence_for_compound_in_map(self, production_chains_in_producer, production_chains_in_consumer, 
+    def get_pathway_walk_evidence_for_compound_in_map(self, production_chains_in_producer, production_chains_in_consumer,
         consumption_chains_in_producer, consumption_chains_in_consumer):
         """Compares the pathway walk output to compute max reaction chain length, overlap, etc.
-        
+
         PARAMETERS
         ==========
         production_chains_in_producer : list of Chain objects (a class from kgmlnetworkops)
@@ -823,7 +823,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
 
     def get_pathway_walk_evidence(self, reaction_chains_for_compound, producer, consumer):
         """Loops over all equivalent compounds and all pathway walk output to obtain per-map evidence.
-        
+
         PARAMETERS
         ==========
         reaction_chains_for_compound : dict
@@ -846,7 +846,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                     raise ConfigError(f"While processing pathway walk compound {cid}, we noticed that the pathway map {pm} was already "
                                     f"processed, which means that an equivalent compound was also present in this pathway map. Not "
                                     f"how to handle this yet, so instead we say bye-bye :(")
-                all_evidence_for_compound[pm] = self.get_pathway_walk_evidence_for_compound_in_map(prod_chains_in_producer, 
+                all_evidence_for_compound[pm] = self.get_pathway_walk_evidence_for_compound_in_map(prod_chains_in_producer,
                                                             prod_chains_in_consumer, cons_chains_in_producer, cons_chains_in_consumer)
 
         return all_evidence_for_compound
@@ -856,7 +856,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
 
         RETURNS
         =======
-        3 dictionaries: 
+        3 dictionaries:
             potentially-exchanged compounds
             unique compounds
             evidence from Pathway Walk for potentially-exchanged compounds
@@ -870,7 +870,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         num_compounds_to_process = len(self.compound_to_pathway_walk_chains)
         processed_count = 0
         self.progress.new('Processing compounds in KEGG Pathway Maps', progress_total_items=num_compounds_to_process)
-        
+
         for compound_id in self.compound_to_pathway_walk_chains:
             if compound_id in self.processed_compound_ids:
                 continue
@@ -880,7 +880,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                 if eq_comp in self.compound_to_pathway_walk_chains:
                     compound_reaction_chains[eq_comp] = self.compound_to_pathway_walk_chains[eq_comp]
                 self.processed_compound_ids.add(eq_comp)
-            
+
             def add_reactions_to_dict_for_compound_pathway_walk(compound_dict):
                 """Modifies the compound dictionary in place to add production and consumption reaction output.
                 Walks through the Pathway Walk chains in the compound_reaction_chains dictionary to find the reaction(s)
@@ -907,12 +907,12 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                                             if compound_id in rxn_compounds:
                                                 idx = rxn_compounds.index(compound_id)
                                                 reaction_copy = deepcopy(rxn_object)
-                                                # we reverse the modelseed reaction if the direction doesn't match the walk type 
-                                                if (coeffs[idx] > 0 and walk_type == 'consume') or (coeffs[idx] < 0 and walk_type == 'produce'): 
+                                                # we reverse the modelseed reaction if the direction doesn't match the walk type
+                                                if (coeffs[idx] > 0 and walk_type == 'consume') or (coeffs[idx] < 0 and walk_type == 'produce'):
                                                     reaction_copy.coefficients = [c*-1 for c in coeffs]
                                                 type_rxn_list.append(f"{rxn_id} ({','.join(kegg_rxn_ids)})")
                                                 type_eq_list.append(self.get_reaction_equation(reaction_copy))
-                                            
+
                                 genome_name = self.genomes_to_compare[genome]['name']
                                 type_name = 'production' if walk_type == 'produce' else 'consumption'
                                 compound_dict[f"{type_name}_rxn_ids_{genome_name}"] = " / ".join(type_rxn_list) if len(type_rxn_list) else None
@@ -926,14 +926,14 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                         if id_key not in compound_dict:
                             compound_dict[id_key] = None
                             compound_dict[eq_key] = None
-                                
+
             producer,consumer = self.predict_exchange_from_pathway_walk(compound_reaction_chains)
             if producer or consumer:
                 compound_name = self.merged.metabolites[compound_id].modelseed_name
                 producer_name = self.genomes_to_compare[producer]['name'] if producer else None
                 consumer_name = self.genomes_to_compare[consumer]['name'] if consumer else None
                 if producer == consumer or (not producer) or (not consumer): # unique to one genome
-                    unique_compounds[compound_id] = {'compound_name': compound_name, 
+                    unique_compounds[compound_id] = {'compound_name': compound_name,
                                                     'genomes': ",".join([x for x in set([producer_name,consumer_name]) if x]),
                                                     'produced_by': producer_name,
                                                     'consumed_by': consumer_name,
@@ -984,14 +984,14 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                                                                         'longest_chain_compounds': ",".join(map_evidence["longest_chain_consumer_strings"]["compounds"]),
                                                                         'longest_chain_compound_names': ",".join([self.get_compound_name_from_kegg_id(c) for c in map_evidence["longest_chain_consumer_strings"]["compounds"]])}
                         pathway_walk_dict_key += 1
-                        
+
                         def update_reported_pathway_evidence_for_prior():
-                            """Updates variables like overall_max_prior with values from the current pathway map as the new 'best' 
+                            """Updates variables like overall_max_prior with values from the current pathway map as the new 'best'
                             evidence for an exchange."""
                             return map_evidence["max_production_length"], map_evidence["max_production_overlap"], \
                                 map_evidence["prop_production_overlap"], map_id
                         def update_reported_pathway_evidence_for_posterior():
-                            """Updates variables like overall_max_posterior with values from the current pathway map as the new 'best' 
+                            """Updates variables like overall_max_posterior with values from the current pathway map as the new 'best'
                             evidence for an exchange."""
                             return map_evidence["max_consumption_length"], map_evidence["max_consumption_overlap"], map_evidence["prop_consumption_overlap"], map_id
 
@@ -1046,7 +1046,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
 
         RETURNS
         =======
-        2 dictionaries: 
+        2 dictionaries:
             potentially-exchanged compounds
             unique compounds
         """
@@ -1113,13 +1113,13 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                     compound_dict[f"consumption_rxn_ids_{genome_name}"] = " / ".join(cons_rxn_ids) if len(cons_rxn_ids) else None
                     compound_dict[f"production_rxn_eqs_{genome_name}"] = " / ".join(prod_rxn_eqs) if len(prod_rxn_eqs) else None
                     compound_dict[f"consumption_rxn_eqs_{genome_name}"] = " / ".join(cons_rxn_eqs) if len(cons_rxn_eqs) else None
-            
+
             producer,consumer = self.producer_consumer_decision_tree(genomes_produce, genomes_consume)
             if producer or consumer:
                 producer_name = self.genomes_to_compare[producer]['name'] if producer else None
                 consumer_name = self.genomes_to_compare[consumer]['name'] if consumer else None
                 if producer == consumer or (not producer) or (not consumer): # unique to one genome
-                    unique_compounds[compound_id] = {'compound_name': compound_name, 
+                    unique_compounds[compound_id] = {'compound_name': compound_name,
                                                     'genomes': ",".join([x for x in set([producer_name,consumer_name])if x]),
                                                     'produced_by': producer_name,
                                                     'consumed_by': consumer_name,
@@ -1160,7 +1160,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
 
 class ExchangePredictorMulti(ExchangePredictorArgs):
     """Class for predicting exchanges between multiple pairs of genomes.
-    
+
     PARAMETERS
     ==========
     args: Namespace object
@@ -1176,7 +1176,7 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
         self.external_genomes_file = A('external_genomes')
         self.genome_pairs_txt = A('genome_pairs_txt')
         self.genome_pairs = []  # will be a list of tuples describing the pairs of genomes to compare
-        
+
         # INIT BASE CLASS to format common arguments
         ExchangePredictorArgs.__init__(self, self.args, run=self.run)
 
@@ -1184,7 +1184,7 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
         if args.contigs_db_1 or args.contigs_db_2:
             raise ConfigError("You appear to have provided both an input text file and a contigs database, and "
                               "now anvi'o is not quite sure which one to work on. Please choose only one. :) ")
-        
+
     def init_external_internal_genomes(self):
         """This function parses the input internal/external genomes file and adjusts class attributes as needed"""
 
@@ -1199,12 +1199,12 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
                               f"{P('is', len(bad_genomes), alt='are')} lacking a reaction network. "
                               f"This means you need to run `anvi-reaction-network` on the corresponding contigs "
                               f"databases. Here is the list of offenders: {', '.join(bad_genomes_txt)}.")
-        
+
         self.databases = deepcopy(g.genomes)
 
     def get_genome_pairs_from_txt(self, genome_pairs_file_path):
         """Reads genome names from the provided file and returns the list of pairs.
-        
+
         If the --genome-pairs-txt parameter ever becomes relevant to other parts of the anvi'o codebase, this function
         should be moved to the utils module to be with its more sophisticated contemporaries in the file-reading business.
         """
@@ -1255,10 +1255,10 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
 
     def get_all_vs_all_genome_pairs(self):
         """Returns a list of all-vs-all genome comparisons for all genomes in self.databases.
-        
+
         RETURNS
         =======
-        all_pairs : (str,str) 
+        all_pairs : (str,str)
             A list of tuples in which each tuple contains two genome names to compare
         """
 
@@ -1294,7 +1294,7 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
         It pulls genome pairs from the genome_pairs_queue and places the results on the output_queue. Results
         include both the data dictionaries of predictions and the list of Pathway Maps with failed walks (if any)
         """
-        
+
         while True:
             try:
                 genome_A, genome_B = genome_pairs_queue.get(block=True)
@@ -1309,7 +1309,7 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
 
     def predict_exchanges(self):
         """This is the driver function to predict metabolic exchanges between multiple pairs of genomes."""
-        
+
         self.run.info("External genomes file", self.external_genomes_file)
         self.init_external_internal_genomes()
         if self.genome_pairs_txt:
@@ -1320,7 +1320,7 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
                     missing.add(genome_1)
                 if genome_2 not in self.databases:
                     missing.add(genome_2)
-            
+
             if missing:
                 n = len(missing)
                 raise ConfigError(f"We found {P('genome', n)} in the provided genome-pairs-txt file ({self.genome_pairs_txt}) "
@@ -1338,7 +1338,7 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
         self.run.info("Number of genome pairs we will predict exchanges for", total_pairs)
         if anvio.DEBUG:
             pairs_strs = [f"{a} vs {b}" for (a,b) in self.genome_pairs]
-            self.run.warning(f"Here are all of the genome pairs: {'; '.join(pairs_strs)}", 
+            self.run.warning(f"Here are all of the genome pairs: {'; '.join(pairs_strs)}",
                                 header='DEBUG OUTPUT', lc='yellow', nl_after=2)
             self.run.warning("If you see code tracebacks related to `self.sanity_check()` in `kgmlnetworkops.py` "
                              "below, don't panic. It is happening because the KGML Pathway Walker is finding KEGG "
@@ -1360,7 +1360,7 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
                                 f"genome pairs to process, so we are setting the number of parallel processes to {len(self.genome_pairs)}.")
                 self.num_parallel_processes = len(self.genome_pairs)
             num_child_processes = self.num_parallel_processes
-        
+
         manager = multiprocessing.Manager()
         genome_pairs_queue = manager.Queue()
         output_queue = manager.Queue()
@@ -1368,33 +1368,33 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
         for genome_A, genome_B in self.genome_pairs:
             genome_pairs_queue.put((genome_A, genome_B))
 
-        # VERY DUMB! self.progress is not pickleable due to its self.LEN lambda function, and 
+        # VERY DUMB! self.progress is not pickleable due to its self.LEN lambda function, and
         # self.output_file_dict is not pickleable due to its file handles. This causes issues
-        # when passing self to the multiprocessing Process objects (since everything that is 
-        # passed has to be pickleable). So here we trick the Process objects by making the 
+        # when passing self to the multiprocessing Process objects (since everything that is
+        # passed has to be pickleable). So here we trick the Process objects by making the
         # problematic attributes null, and restoring them later.
-        # I am not sure why the same multiprocessing code works in `profiler.py` (which also 
+        # I am not sure why the same multiprocessing code works in `profiler.py` (which also
         # uses Progress object) and not here, but after days of debugging, I have given up
         # trying to understand. SO HERE IS THE UGLY WORKAROUND INSTEAD BYEEEEE
         saved_output_file_dict = self.output_file_dict
         saved_progress = self.progress
         self.output_file_dict = None
         self.progress = None
-        
+
         processes = []
         for i in range(0, num_child_processes):
             processes.append(multiprocessing.Process(target=ExchangePredictorMulti.metabolic_exchanges_process_worker, args=(self, genome_pairs_queue, output_queue)))
 
         for proc in processes:
             proc.start()
-        
+
         self.output_file_dict = saved_output_file_dict
         self.progress = saved_progress
-        
+
         received_pairs = 0
         self.progress.new(f"Predicting for genome pairs in {self.num_threads} thread(s) / {P('process', self.num_parallel_processes, sfp='es')}", progress_total_items=total_pairs)
         self.progress.update('...')
-        # memory tracking is done just as in the profiler class 
+        # memory tracking is done just as in the profiler class
         mem_tracker = terminal.TrackMemory(at_most_every=5)
         mem_usage, mem_diff = mem_tracker.start()
         killed_partway_through = False
@@ -1402,7 +1402,7 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
         while received_pairs < total_pairs:
             try:
                 pair = output_queue.get()
-                
+
                 if isinstance(pair, Exception):
                     # If thread returns an exception, we raise it and kill the main thread.
                     raise pair

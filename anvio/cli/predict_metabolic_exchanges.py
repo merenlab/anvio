@@ -12,7 +12,7 @@ __copyright__ = "Copyleft 2015-2025, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['ivagljiva']
-__requires__ = ['contigs-db', 'reaction-network', 'equivalent-compounds-txt', 'external-genomes', 'genome-pairs', 
+__requires__ = ['contigs-db', 'reaction-network', 'equivalent-compounds-txt', 'external-genomes', 'genome-pairs',
                 'reaction-ref-data', 'kegg-data']
 __provides__ = ['metabolite-exchange-predictions']
 __description__ = "Predicts metabolic exchanges between microbes based on the reaction network"
