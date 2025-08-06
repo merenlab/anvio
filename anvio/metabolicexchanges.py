@@ -162,8 +162,8 @@ class ExchangePredictorArgs():
         for typ, file_object in self.output_file_dict.items():
                 output_path = self.output_file_prefix + "-" + typ + ".txt"
                 os.remove(output_path)
-        self.run.warning("There was an error while processing one of the genome pairs, so anvi'o deleted the partially-complete "
-                         "output files to avoid you having to deal with that mess.")
+        self.run.warning("There was an error while processing (or the program was interrupted), so anvi'o "
+                         "deleted the partially-complete output files to avoid you having to deal with that mess.")
         
 class ExchangePredictorSingle(ExchangePredictorArgs):
     """Class for predicting exchanges between a single pair of genomes.
