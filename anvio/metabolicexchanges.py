@@ -1276,6 +1276,8 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
         args_single = ExchangePredictorArgs(self.args, format_args_for_single_estimator=True)
         args_single.contigs_db_1 = contigs_db_A
         args_single.contigs_db_2 = contigs_db_B
+        if anvio.DEBUG:
+            self.run.info_single(f"Child process is starting prediction with an ExchangePredictorSingle class using {args_single.num_threads} threads.")
         data_dicts_for_one_pair, failed_maps_list = ExchangePredictorSingle(args_single, progress=progress_quiet, run=run_quiet \
                                                             ).predict_exchanges(output_files_dictionary=self.output_file_dict,
                                                             return_data_dicts=True)
@@ -1288,7 +1290,7 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
         It pulls genome pairs from the genome_pairs_queue and places the results on the output_queue. Results
         include both the data dictionaries of predictions and the list of Pathway Maps with failed walks (if any)
         """
-
+        
         while True:
             try:
                 genome_A, genome_B = genome_pairs_queue.get(block=True)
@@ -1339,12 +1341,22 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
                              "Pathway Maps without an appropriate reaction-type (RN) KGML file, and when it fails "
                              "this sanity check, it is simply skipping those maps.", header='DEBUG OUTPUT', lc='yellow')
 
-        # ensure we don't have more threads than genome pairs
-        if self.num_threads > len(self.genome_pairs):
-            self.run.warning(f"You requested {self.num_threads} threads but there are only {len(self.genome_pairs)} "
-                             f"genome pairs to process, so we are setting the number of threads to {len(self.genome_pairs)}.")
-            self.num_threads = len(self.genome_pairs)
-
+        num_child_processes = None
+        if self.num_parallel_processes == 1: # we want to spawn --num-threads child processes and give each one thread
+            # ensure we don't have more threads than genome pairs
+            if self.num_threads > len(self.genome_pairs):
+                self.run.warning(f"You requested {self.num_threads} threads but there are only {len(self.genome_pairs)} "
+                                f"genome pairs to process, so we are setting the number of threads to {len(self.genome_pairs)}.")
+                self.num_threads = len(self.genome_pairs)
+            num_child_processes = self.num_threads
+        else: # we want to spawn --num-parallel-processes child processes and give each one --num-threads threads
+            # ensure we don't have more processes than genome pairs
+            if self.num_parallel_processes > len(self.genome_pairs):
+                self.run.warning(f"You requested {self.num_parallel_processes} parallel comparisons but there are only {len(self.genome_pairs)} "
+                                f"genome pairs to process, so we are setting the number of parallel processes to {len(self.genome_pairs)}.")
+                self.num_parallel_processes = len(self.genome_pairs)
+            num_child_processes = self.num_parallel_processes
+        
         manager = multiprocessing.Manager()
         genome_pairs_queue = manager.Queue()
         output_queue = manager.Queue()
@@ -1366,7 +1378,7 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
         self.progress = None
         
         processes = []
-        for i in range(0, self.num_threads):
+        for i in range(0, num_child_processes):
             processes.append(multiprocessing.Process(target=ExchangePredictorMulti.metabolic_exchanges_process_worker, args=(self, genome_pairs_queue, output_queue)))
 
         for proc in processes:
