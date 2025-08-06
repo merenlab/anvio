@@ -1392,7 +1392,7 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
         self.progress = saved_progress
         
         received_pairs = 0
-        self.progress.new(f"Predicting for genome pairs in {self.num_threads} thread(s)", progress_total_items=total_pairs)
+        self.progress.new(f"Predicting for genome pairs in {self.num_threads} thread(s) / {P('process', self.num_parallel_processes, sfp='es')}", progress_total_items=total_pairs)
         self.progress.update('...')
         # memory tracking is done just as in the profiler class 
         mem_tracker = terminal.TrackMemory(at_most_every=5)
