@@ -791,7 +791,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         num_compounds_to_process = len(self.compound_to_pathway_walk_chains)
         processed_count = 0
         self.progress.new('Processing compounds in KEGG Pathway Maps', progress_total_items=num_compounds_to_process)
-        # TODO multithread: split compounds between workers
+        
         for compound_id in self.compound_to_pathway_walk_chains:
             if compound_id in self.processed_compound_ids:
                 continue
