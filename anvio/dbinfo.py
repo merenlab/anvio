@@ -284,7 +284,7 @@ class DBInfo(ABC):
         """
         with DB(self.path, None, ignore_version=True) as database:
             return dict(database.get_table_as_list_of_tuples('self'))
-    
+
     def get_functional_annotation_sources(self):
         """Get the functional annotation sources of the database
 
