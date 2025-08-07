@@ -79,7 +79,8 @@ class DBClassFactory:
                            'contigs': ContigsDatabase,
                            'trnaseq': TRNASeqDatabase,
                            'pan': PanDatabase,
-                           'genes': GenesDatabase}
+                           'genes': GenesDatabase,
+                           'pan-graph': PanGraphDatabase}
 
     def get_db_class(self, db_path):
         db_type = utils.get_db_type(db_path)
@@ -5757,7 +5758,7 @@ def add_items_order_to_db(anvio_db_path, order_name, order_data, order_data_type
 def get_item_orders_from_db(anvio_db_path):
     anvio_db = DBClassFactory().get_db_object(anvio_db_path)
 
-    utils.is_pan_or_profile_db(anvio_db_path, genes_db_is_also_accepted=True)
+    utils.is_pan_or_profile_db(anvio_db_path, genes_db_is_also_accepted=True, pan_graph_db_is_also_accepted=True)
 
     if not anvio_db.meta['items_ordered']:
         return ([], {})
