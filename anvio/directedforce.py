@@ -160,43 +160,10 @@ class DirectedForce():
             return(changed_edges)
 
 
-    def get_edge(self, G, node_i, node_j, changed_edges, reverse = False):
-        if reverse == False:
-            G_edge_data = G.get_edge_data(node_i, node_j)
-            return(node_i, node_j, G_edge_data, changed_edges)
-        else:
-            if (node_i, node_j) in changed_edges:
-                G_edge_data = {y:z if y != 'direction' else 'R' for y,z in G.get_edge_data(node_i, node_j).items()}
-                changed_edges -= [(node_i, node_j)]
-                print('hi')
-            else:
-                G_edge_data = {y:z if y != 'direction' else 'L' for y,z in G.get_edge_data(node_i, node_j).items()}
-                changed_edges += [(node_i, node_j)]
-
-            return(node_j, node_i, G_edge_data, changed_edges)
-
-
     def mean_M_path_weight(self, M, source, target):
         path = nx.shortest_path(G=M, source=source, target=target, weight='weight')
         path_weight = nx.path_weight(G=M, path=path, weight='weight')
         return(path_weight)
-
-    # TODO double sided edges are not well implemented right now, change this.
-    def edge_check(self, M, node_i, node_j, data):
-
-        new_data = copy.deepcopy(data)
-        if M.has_edge(node_i, node_j):
-            old_data = M[node_i][node_j]
-            for attribute in old_data:
-                if isinstance(attribute, dict) or isinstance(attribute, set):
-                    new_data[attribute].update(old_data[attribute])
-                elif isinstance(attribute, list):
-                    new_data[attribute] += old_data[attribute]
-
-            new_data['weight'] += old_data['weight']
-            new_data['direction'] = 'B'
-
-        return(new_data)
 
 
     def get_leaves(self, current_branch_successor, edmonds_graph_successors):
@@ -233,7 +200,7 @@ class DirectedForce():
         nx.DiGraph()
         """
 
-        nx.set_edge_attributes(G, {(i, j): {'weight': d, 'direction': 'R'} for i, j, d in G.edges(data='weight')})
+        nx.set_edge_attributes(G, {(i, j): {'weight': d} for i, j, d in G.edges(data='weight')})
         nx.set_node_attributes(G, {k: {} for k in G.nodes()})
 
         edmonds = nx.algorithms.tree.branchings.Edmonds(G, seed=self.seed)
@@ -267,7 +234,7 @@ class DirectedForce():
         #     removed_nodes = []
         #     removed_edges = []
 
-        nx.set_edge_attributes(M, {(i, j): {'weight': d, 'direction': 'R'} for i, j, d in G.edges(data='weight') if (i, j) in M.edges()})
+        nx.set_edge_attributes(M, {(i, j): {'weight': d} for i, j, d in G.edges(data='weight') if (i, j) in M.edges()})
         nx.set_node_attributes(M, {k: {} for k in G.nodes() if k in M.nodes()})
 
         # return(G, M, removed_nodes, removed_edges)
@@ -279,14 +246,12 @@ class DirectedForce():
             if forward == True:
                 G.add_edge(
                     *(new, u),
-                    weight=weight,
-                    direction='R'
+                    weight=weight
                 )
             else:
                 G.add_edge(
                     *(u, new),
-                    weight=weight,
-                    direction='R'
+                    weight=weight
                 )
 
         return(G)
@@ -306,8 +271,6 @@ class DirectedForce():
         =======
         list
         """
-
-        changed_edges = []
 
         M_edges = set(M.edges())
         M_nodes = set(M.nodes())
@@ -398,28 +361,35 @@ class DirectedForce():
 
                     if connected == False:
                         if len(list(G.successors(current_node))) == 0:
-                            G_edge_data = {
-                                'weight': max_weight,
-                                'direction': 'R'
+                            data = {
+                                'weight': max_weight
                             }
 
-                            new_data = self.edge_check(M, current_node, 'STOP', G_edge_data)
-                            M.add_edge(current_node, 'STOP', **new_data)
+                            if M.has_edge(current_node, 'STOP'):
+                                M[current_node]['STOP']['weight'] += data['weight']
+                            else:
+                                M.add_edge(current_node, 'STOP', **data)
                             connected = True
 
                     if connected == True:
                         for current_forward in current_forward_connected:
-                            node_i, node_j, data, changed_edges = self.get_edge(G, current_node, current_forward, changed_edges, reverse = False)
+                            data = G.get_edge_data(current_node, current_forward)
 
-                            new_data = self.edge_check(M, node_i, node_j, data)
-                            M.add_edge(node_i, node_j, **new_data)
+                            if M.has_edge(current_node, current_forward):
+                                M[current_node][current_forward]['weight'] += data['weight']
+                            else:
+                                M.add_edge(current_node, current_forward, **data)
+
                             M_removed_edges.remove((current_node, current_forward))
 
                         for current_backward in current_backward_connected:
-                            node_i, node_j, data, changed_edges = self.get_edge(G, current_node, current_backward, changed_edges, reverse = True)
+                            data = G.get_edge_data(current_node, current_backward)
 
-                            new_data = self.edge_check(M, node_i, node_j, data)
-                            M.add_edge(node_i, node_j, **new_data)
+                            if M.has_edge(current_backward, current_node):
+                                M[current_backward][current_node]['weight'] += data['weight']
+                            else:
+                                M.add_edge(current_backward, current_node, **data)
+
                             M_removed_edges.remove((current_node, current_backward))
 
                         resolved_nodes.add(current_node)
@@ -441,11 +411,14 @@ class DirectedForce():
 
                                     current_node = next_node
 
-                                    node_i, node_j, data, changed_edges = self.get_edge(G, current_node, current_connector, changed_edges, reverse = True)
+                                    data = G.get_edge_data(current_node, current_connector)
+
                                     M.remove_edge(M_predecessors[current_node], current_node)
 
-                                    new_data = self.edge_check(M, node_i, node_j, data)
-                                    M.add_edge(node_i, node_j, **new_data)
+                                    if M.has_edge(current_connector, current_node):
+                                        M[current_connector][current_node]['weight'] += data['weight']
+                                    else:
+                                        M.add_edge(current_connector, current_node, **data)
 
                                     M_removed_edges.remove((current_node, current_connector))
                                     M_removed_edges.add((M_predecessors[current_node], current_node))
@@ -491,13 +464,14 @@ class DirectedForce():
 
         for stop in remaining_stops:
 
-            G_edge_data = {
-                'weight':max_weight,
-                'direction': 'R'
+            data = {
+                'weight': max_weight
             }
 
-            new_data = self.edge_check(M, stop, 'STOP', G_edge_data)
-            M.add_edge(stop, 'STOP', **new_data)
+            if M.has_edge(stop, 'STOP'):
+                M[stop]['STOP']['weight'] += data['weight']
+            else:
+                M.add_edge(stop, 'STOP', **data)
 
             M_successors[stop] += ['STOP']
 
@@ -538,5 +512,6 @@ class DirectedForce():
         self.run.info_single(f"{x} edges can be kept in the original direction.")
         self.run.info_single(f"{w} edges have to reversed to capture maximum force.")
         self.run.info_single(f"{v} edges seem to be double sided. Double sided edges are a sign for potential inversions.")
+        self.run.info_single(f"{y} problems.")
 
         return(changed_edges_new)
