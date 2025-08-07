@@ -907,7 +907,8 @@ class KeggSetup(KeggContext):
                     f"directory, which is used in pathway visualization: {map_image_data_dir}"
                 )
 
-        if not os.path.isfile(self.kegg_brite_pathways_file):
+        brite_json_file = os.path.join(path_to_kegg_in_archive, os.path.basename(self.kegg_brite_pathways_file))
+        if not os.path.isfile(brite_json_file):
             are_map_files_included = False
             if anvio.DEBUG and not self.skip_map_images:
                 self.run.warning(
