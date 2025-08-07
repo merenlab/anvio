@@ -972,9 +972,10 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                                                                         'longest_reaction_chain_length': map_evidence["max_production_length"],
                                                                         'maximum_overlap': map_evidence["max_production_overlap"],
                                                                         'proportion_overlap': map_evidence["prop_production_overlap"],
-                                                                        'longest_chain_reactions': ",".join(map_evidence["longest_chain_producer_strings"]["reactions"]),
-                                                                        'longest_chain_compounds': ",".join(map_evidence["longest_chain_producer_strings"]["compounds"]),
-                                                                        'longest_chain_compound_names': ",".join([self.get_compound_name_from_kegg_id(c) for c in map_evidence["longest_chain_producer_strings"]["compounds"]])}
+                                                                        'longest_chain_reactions': ",".join(map_evidence["longest_chain_producer_strings"]["reactions"]) if map_evidence["longest_chain_producer_strings"]["reactions"] else None,
+                                                                        'longest_chain_compounds': ",".join(map_evidence["longest_chain_producer_strings"]["compounds"]) if map_evidence["longest_chain_producer_strings"]["compounds"] else None,
+                                                                        'longest_chain_compound_names': ",".join([self.get_compound_name_from_kegg_id(c) for c in map_evidence["longest_chain_producer_strings"]["compounds"]]) if map_evidence["longest_chain_producer_strings"]["compounds"] else None,
+                                                                        }
                         pathway_walk_dict_key += 1
                         pathway_walk_evidence[pathway_walk_dict_key] = {'compound': compound_id,
                                                                         'compound_name': compound_name,
@@ -984,9 +985,10 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                                                                         'longest_reaction_chain_length': map_evidence["max_consumption_length"],
                                                                         'maximum_overlap': map_evidence["max_consumption_overlap"],
                                                                         'proportion_overlap': map_evidence["prop_consumption_overlap"],
-                                                                        'longest_chain_reactions': ",".join(map_evidence["longest_chain_consumer_strings"]["reactions"]),
-                                                                        'longest_chain_compounds': ",".join(map_evidence["longest_chain_consumer_strings"]["compounds"]),
-                                                                        'longest_chain_compound_names': ",".join([self.get_compound_name_from_kegg_id(c) for c in map_evidence["longest_chain_consumer_strings"]["compounds"]])}
+                                                                        'longest_chain_reactions': ",".join(map_evidence["longest_chain_consumer_strings"]["reactions"]) if map_evidence["longest_chain_consumer_strings"]["reactions"] else None,
+                                                                        'longest_chain_compounds': ",".join(map_evidence["longest_chain_consumer_strings"]["compounds"]) if map_evidence["longest_chain_consumer_strings"]["compounds"] else None,
+                                                                        'longest_chain_compound_names': ",".join([self.get_compound_name_from_kegg_id(c) for c in map_evidence["longest_chain_consumer_strings"]["compounds"]]) if map_evidence["longest_chain_consumer_strings"]["compounds"] else None,
+                                                                        }
                         pathway_walk_dict_key += 1
 
                         def get_smallest_real_number_between_two_values(val1, val2):
