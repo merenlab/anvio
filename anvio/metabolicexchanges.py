@@ -229,7 +229,11 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         else:
             self.output_file_dict = self.setup_output_for_appending()
 
-        self.load_reaction_networks()
+        try:
+            self.load_reaction_networks()
+        except Exception as e:
+            self.remove_partial_output_files()
+            raise(e)
 
         # MERGE NETWORKS
         self.merged, db_names = self.genomes_to_compare['A']['network']._merge_two_genome_networks(self.genomes_to_compare['B']['network'])
