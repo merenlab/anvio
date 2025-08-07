@@ -1333,7 +1333,6 @@ class PangenomeGraph():
         self.pan_db_path = A('pan_db')
         self.genomes_storage = A('genomes_storage')
         self.external_genomes_txt = A('external_genomes')
-        self.pan_graph_json = A('pan_graph_json')
         self.pan_graph_yaml = A('pan_graph_yaml')
         self.project_name = A('project_name')
 
@@ -1488,24 +1487,21 @@ class PangenomeGraph():
 
     def print_settings(self):
         """Print settings"""
-        if self.pan_graph_json:
-            pass
-        else:
-            self.run.warning(None, header="Loading settings to create anvi'o pangenome graph from scratch", lc="green")
-            self.run.info_single(f"Circularize genomes: {self.circularize}.")
-            self.run.info_single(f"Graph starting gene: {self.start_gene}.")
-            self.run.info_single(f"Functional annotation source for starting gene: {self.start_column}.")
-            self.run.info_single(f"Minimum number of synteny clusters in contig: {self.min_contig_chain}.")
-            self.run.info_single(f"Global context comparison window size: {self.n}.")
-            self.run.info_single(f"Global context comparison treshold value alpha: {self.alpha}.")
-            self.run.info_single(f"Local context comparison gap to gene value beta: {self.beta}.")
-            self.run.info_single(f"Local context comparison gap to gap value gamma: {self.gamma}.")
-            self.run.info_single(f"General context comparison max treshold dela: {self.delta}.")
-            self.run.info_single(f"Synteny gene cluster min k: {self.min_k}.")
-            self.run.info_single(f"Higher inversion awareness: {self.inversion_aware}.")
-            self.run.info_single(f"Priority genome: {self.priority_genome}.")
-            self.run.info_single("The remaining settings are not affecting the pangenome graph core creation.")
-            self.run.info_single("Done.")
+        self.run.warning(None, header="Loading settings to create anvi'o pangenome graph from scratch", lc="green")
+        self.run.info_single(f"Circularize genomes: {self.circularize}.")
+        self.run.info_single(f"Graph starting gene: {self.start_gene}.")
+        self.run.info_single(f"Functional annotation source for starting gene: {self.start_column}.")
+        self.run.info_single(f"Minimum number of synteny clusters in contig: {self.min_contig_chain}.")
+        self.run.info_single(f"Global context comparison window size: {self.n}.")
+        self.run.info_single(f"Global context comparison treshold value alpha: {self.alpha}.")
+        self.run.info_single(f"Local context comparison gap to gene value beta: {self.beta}.")
+        self.run.info_single(f"Local context comparison gap to gap value gamma: {self.gamma}.")
+        self.run.info_single(f"General context comparison max treshold dela: {self.delta}.")
+        self.run.info_single(f"Synteny gene cluster min k: {self.min_k}.")
+        self.run.info_single(f"Higher inversion awareness: {self.inversion_aware}.")
+        self.run.info_single(f"Priority genome: {self.priority_genome}.")
+        self.run.info_single("The remaining settings are not affecting the pangenome graph core creation.")
+        self.run.info_single("Done.")
 
 
     def get_pangenome_graph_from_scratch(self):
@@ -1549,10 +1545,7 @@ class PangenomeGraph():
 
         # figure out if we will get the pangenome graph from
         # a user-provided JSON file, or from sctratch
-        if self.pan_graph_json:
-            self.get_pangenome_graph_from_JSON()
-        else:
-            self.get_pangenome_graph_from_scratch()
+        self.get_pangenome_graph_from_scratch()
 
         # generate flat text file summaries for downstream
         # analyses
@@ -1717,63 +1710,14 @@ class PangenomeGraph():
         self.progress.new('Storing syn gene cluster nodes in pan-graph-db')
         self.progress.update('...')
 
-        pan_db = dbops.PanSuperclass(self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
-        pan_db.init_gene_clusters()
-
         table_for_nodes = TableForNodes(self.pan_graph_db_path, run=self.run, progress=self.progress)
         for node in nodes:
-
-            node_alignment_summaries = {}
-            node_alignment_lengths = []
-            node_alignments = {}
-            for genome_name, gene_caller_id in nodes[node]['gene_calls'].items():
-                if self.gene_alignments_computed:
-                    genome_alignments = pan_db.gene_clusters_gene_alignments[genome_name]
-                    if gene_caller_id in genome_alignments:
-                        alignment_summary = genome_alignments[gene_caller_id]
-                        node_alignment_summaries[genome_name] = alignment_summary
-
-                        alignment_summary_list = alignment_summary.split('|')
-                        start = alignment_summary_list[0]
-                        summary_code = list(map(int, alignment_summary_list[1:]))
-
-                        if start == '-':
-                            sequence = sum(summary_code[1::2]) * 'N'
-                        else:
-                            sequence = sum(summary_code[0::2]) * 'N'
-
-                        alignment = utils.restore_alignment(sequence, alignment_summary)
-                        node_alignment_lengths += [len(alignment)]
-                    else:
-                        alignment_summary = ''
-                        node_alignment_summaries[genome_name] = alignment_summary
-
-                        sequence = ''
-                        alignment = ''
-                        node_alignment_lengths += [0]
-
-                    node_alignments[genome_name] = alignment
-
-            if len(set(node_alignment_lengths)) != 1:
-                raise ConfigError("Your alignments have a different length? Oh boy that's not something we like.")
-
-            cleaned_alignments = {genome_name: '' for genome_name in node_alignments.keys()}
-
-            remove_positions = []
-            for i in range(0, node_alignment_lengths[0]):
-                summary_code_list = [alignment[i] for genome_name, alignment in node_alignments.items()]
-                if not all(a == '-' for a in summary_code_list):
-                    for genome_name, alignment in node_alignments.items():
-                        cleaned_alignments[genome_name] += alignment[i]
-
-            summarized_alignment = {genome_name: utils.summarize_alignment(alignment) if alignment else '' for genome_name, alignment in cleaned_alignments.items()}
-
             node_entry = {
                 'node_id': node,
                 'node_type': nodes[node]['type'],
                 'gene_cluster_id': nodes[node]['gene_cluster'],
                 'gene_calls_json': json.dumps(nodes[node]['gene_calls']),
-                'alignment_summary': json.dumps(summarized_alignment)
+                'alignment_summary': json.dumps(nodes[node]['alignment'])
             }
 
             table_for_nodes.add(node_entry)
@@ -1814,65 +1758,6 @@ class PangenomeGraph():
         pan_graph_db.disconnect()
 
 
-    def get_pangenome_graph_from_JSON(self):
-        """Populates `self.pangenome_graph from user-provided JSON file`"""
-
-        self.run.warning(None, header="Import pangenome graph from json file", lc="green")
-
-        filesnpaths.is_file_json_formatted(self.pan_graph_json)
-        jsondata = json.load(open(self.pan_graph_json))
-
-        self.meta = dict(jsondata["meta"])
-        self.states = dict(jsondata["states"])
-        self.bins = dict(jsondata["bins"])
-
-        self.project_name = self.meta['project_name']
-        self.priority_genome = self.meta['priority_genome']
-        self.genome_names = self.meta['genome_names']
-        self.functional_annotation_sources_available = self.meta['functions']
-        self.newick = self.meta['tree']
-        self.import_values = self.meta['layers']
-
-        if self.meta['version'] != self.version:
-            raise ConfigError("Versions do not match sorry.")
-
-        self.max_edge_length_filter = self.states[self.load_state]['maxlength'] if not self.max_edge_length_filter else self.max_edge_length_filter
-        self.states[self.load_state]['maxlength'] = self.max_edge_length_filter
-        self.states[self.load_state]['flexmaxlength'] = True if self.max_edge_length_filter != -1 else False
-
-        self.groupcompress = self.states[self.load_state]['groupcompress'] if not self.groupcompress else self.groupcompress
-        self.states[self.load_state]['groupcompress'] = self.groupcompress
-        self.states[self.load_state]['flexgroupcompress'] = True if self.groupcompress != -1 else False
-
-        self.gene_cluster_grouping_threshold = self.states[self.load_state]['condtr'] if not self.gene_cluster_grouping_threshold else self.gene_cluster_grouping_threshold
-        self.states[self.load_state]['condtr'] = self.gene_cluster_grouping_threshold
-        self.states[self.load_state]['flexcondtr'] = True if self.gene_cluster_grouping_threshold != -1 else False
-
-        for node in jsondata["nodes"]:
-            data = {
-                "gene_cluster": jsondata["nodes"][node]["gene_cluster"],
-                "position": tuple(jsondata["nodes"][node]["position"]),
-                "gene_calls": dict(jsondata["nodes"][node]["gene_calls"]),
-                "type": jsondata["nodes"][node]["type"],
-                "group": jsondata["nodes"][node]["group"],
-                "layer": jsondata["nodes"][node]["layer"],
-            }
-            self.pangenome_graph.graph.add_node(node, **data)
-
-        for edge in jsondata["edges"]:
-            edge_i = jsondata["edges"][edge]["source"]
-            edge_j = jsondata["edges"][edge]["target"]
-            data = {
-                "weight": jsondata["edges"][edge]["weight"],
-                "directions": dict(jsondata["edges"][edge]["directions"]),
-                "active": jsondata["edges"][edge]["active"],
-                "route": [tuple(r) for r in jsondata["edges"][edge]["route"]],
-                "length": jsondata["edges"][edge]["length"],
-            }
-            self.pangenome_graph.graph.add_edge(edge_i, edge_j, **data)
-        self.run.info_single("Done")
-
-
     def create_pangenome_graph(self):
         """
         Here the pangenome graph is created. The initial graph is a cyclic graph holding the
@@ -1889,6 +1774,9 @@ class PangenomeGraph():
         self.pangenome_graph: PangenomeGraphManager Object
         """
 
+        pan_db = dbops.PanSuperclass(self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+        pan_db.init_gene_clusters()
+        
         # 2. step: Fill self.pangenome_graph with nodes and edges based on the synteny data
         self.run.warning(None, header="Initalizing pangenome graph and filling with nodes and edges.", lc="green")
         factor = 0.00000001 / 2
@@ -2036,3 +1924,48 @@ class PangenomeGraph():
         if len(changed_edges) == 0:
             self.run.info_single("This does look weird good but maybe you have a perfect dataset without the need of any edge reversal.")
         self.run.info_single("Done.")
+
+        for node, data in self.pangenome_graph.graph.nodes(data=True):
+            node_alignment_summaries = {}
+            node_alignment_lengths = []
+            node_alignments = {}
+            for genome_name, gene_caller_id in data['gene_calls'].items():
+                if self.gene_alignments_computed:
+                    genome_alignments = pan_db.gene_clusters_gene_alignments[genome_name]
+                    if gene_caller_id in genome_alignments:
+                        alignment_summary = genome_alignments[gene_caller_id]
+                        node_alignment_summaries[genome_name] = alignment_summary
+
+                        alignment_summary_list = alignment_summary.split('|')
+                        start = alignment_summary_list[0]
+                        summary_code = list(map(int, alignment_summary_list[1:]))
+
+                        if start == '-':
+                            sequence = sum(summary_code[1::2]) * 'N'
+                        else:
+                            sequence = sum(summary_code[0::2]) * 'N'
+
+                        alignment = utils.restore_alignment(sequence, alignment_summary)
+                        node_alignment_lengths += [len(alignment)]
+                    else:
+                        alignment_summary = ''
+                        node_alignment_summaries[genome_name] = alignment_summary
+
+                        sequence = ''
+                        alignment = ''
+                        node_alignment_lengths += [0]
+
+                    node_alignments[genome_name] = alignment
+
+            if len(set(node_alignment_lengths)) != 1:
+                raise ConfigError("Your alignments have a different length? Oh boy that's not something we like.")
+
+            cleaned_alignments = {genome_name: '' for genome_name in node_alignments.keys()}
+
+            for i in range(0, node_alignment_lengths[0]):
+                summary_code_list = [alignment[i] for genome_name, alignment in node_alignments.items()]
+                if not all(a == '-' for a in summary_code_list):
+                    for genome_name, alignment in node_alignments.items():
+                        cleaned_alignments[genome_name] += alignment[i]
+
+            data['alignment'] = {genome_name: utils.summarize_alignment(alignment) if alignment else '' for genome_name, alignment in cleaned_alignments.items()}
