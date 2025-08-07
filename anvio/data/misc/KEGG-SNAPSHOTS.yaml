@@ -106,12 +106,6 @@ v2024-08-30:
     modules_db_version: 4
     no_stray_KOs: True
 
-v2024-09-08:
-    url: https://figshare.com/ndownloader/files/49080904
-    archive_name: KEGG_build_2024-09-08_5a9644d40061.tar.gz
-    hash: 5a9644d40061
-    modules_db_version: 4
-
 v2024-09-29:
     url: https://figshare.com/ndownloader/files/49500822
     archive_name: KEGG_build_2024-09-29_5a9644d40061.tar.gz
