@@ -83,7 +83,8 @@ class PangenomeGraphManager():
             'gene_calls': {},
             'type': '',
             'group': '',
-            'layer': {}
+            'layer': {},
+            'alignment': ''
         }
         self.edge_standard_attributes = {
             'weight': 0.0,
