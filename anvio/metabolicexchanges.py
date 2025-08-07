@@ -985,35 +985,62 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                                                                         'longest_chain_compound_names': ",".join([self.get_compound_name_from_kegg_id(c) for c in map_evidence["longest_chain_consumer_strings"]["compounds"]])}
                         pathway_walk_dict_key += 1
 
-                        def update_reported_pathway_evidence_for_prior():
+                        def get_smallest_real_number_between_two_values(val1, val2):
+                            """Compares two values and returns the smallest not-None value of the two.
+                            If both are None, returns None. If both are the same real number, returns that number."""
+
+                            if val1 is not None and val2 is None:
+                                return val1
+                            elif val2 is not None and val1 is None:
+                                return val2
+                            elif val1 is not None and val2 is not None:
+                                if val1 <= val2:
+                                    return val1
+                                else:
+                                    return val2
+                            else: # both are None and it doesn't matter which we return
+                                return val1
+
+                        def update_reported_pathway_evidence_for_chain(current_chain, comparison_chain):
                             """Updates variables like overall_max_prior with values from the current pathway map as the new 'best'
-                            evidence for an exchange."""
-                            return map_evidence["max_production_length"], map_evidence["max_production_overlap"], \
-                                map_evidence["prop_production_overlap"], map_id
-                        def update_reported_pathway_evidence_for_posterior():
-                            """Updates variables like overall_max_posterior with values from the current pathway map as the new 'best'
-                            evidence for an exchange."""
-                            return map_evidence["max_consumption_length"], map_evidence["max_consumption_overlap"], map_evidence["prop_consumption_overlap"], map_id
+                            evidence for an exchange. current_chain and comparison_chain store the length, overlap length, overlap proportion, and map id of 
+                            the current 'best' reaction chain and the comparison chain, respectively."""
+                            cur_max, cur_overlap, cur_prop, cur_map = current_chain
+                            comp_max, comp_overlap, comp_prop, comp_map = comparison_chain
+                            best_evidence = current_chain # by default we don't update anything
+                            
+                            if cur_max is not None:
+                                if comp_max is not None and comp_max >= cur_max: # look for the longest chain
+                                    if comp_max == cur_max: # if they have the same length, take the one that has smallest real number overlap proportion
+                                        smallest_real_prop = get_smallest_real_number_between_two_values(comp_prop, cur_prop)
+                                        if comp_prop == smallest_real_prop and cur_prop == smallest_real_prop:
+                                            # same overlap proportion, so we have to compare overlap lengths
+                                            smallest_real_overlap = get_smallest_real_number_between_two_values(comp_overlap, cur_overlap)
+                                            if comp_overlap == smallest_real_overlap and cur_overlap == smallest_real_overlap:
+                                                # exactly the same! we keep all maps that fit this scenario
+                                                all_prior_maps = cur_map.split(",")
+                                                all_prior_maps.append(comp_map)
+                                                all_prior_maps.sort()
+                                                all_maps_str = ",".join(all_prior_maps)
+                                                best_evidence = (cur_max, cur_overlap, cur_prop, all_maps_str)
+                                            elif comp_overlap == smallest_real_overlap:
+                                                best_evidence = comparison_chain
+                                            # else current chain has smallest real overlap length and is still the best
+                                        elif comp_prop == smallest_real_prop:
+                                            best_evidence = comparison_chain
+                                        #else current chain has smallest real overlap proportion and is still the best
+                                    else: # comparison chain is longer
+                                        best_evidence = comparison_chain
+                            elif comp_max is not None: # start with the first non-None length we can find
+                                best_evidence = comparison_chain
+
+                            return best_evidence
 
                         # we want to find the longest chain of production reactions + the longest chain of consumption reactions
-                        if (not overall_max_prior and map_evidence["max_production_length"]) or \
-                            (overall_max_prior and map_evidence["max_production_length"] and overall_max_prior < map_evidence["max_production_length"]):
-                            overall_max_prior, overall_overlap_prior, prop_overlap_prior, reported_map_prior = update_reported_pathway_evidence_for_prior()
-                        # if we found a production chain of the same max length, report the one with smaller (or not None) overlap proportion
-                        elif overall_max_prior and map_evidence["max_production_length"] and overall_max_prior == map_evidence["max_production_length"]:
-                            if overall_overlap_prior is None and map_evidence["max_production_overlap"] is not None or \
-                              prop_overlap_prior is None and map_evidence["prop_production_overlap"] is not None or \
-                             (prop_overlap_prior and map_evidence["prop_production_overlap"] and prop_overlap_prior > map_evidence["prop_production_overlap"]):
-                                overall_max_prior, overall_overlap_prior, prop_overlap_prior, reported_map_prior = update_reported_pathway_evidence_for_prior()
-                        if (not overall_max_posterior and map_evidence["max_consumption_length"]) or \
-                            (overall_max_posterior and map_evidence["max_consumption_length"] and overall_max_posterior < map_evidence["max_consumption_length"]):
-                            overall_max_posterior, overall_overlap_posterior, prop_overlap_posterior, reported_map_posterior = update_reported_pathway_evidence_for_posterior()
-                        # if we found a consumption chain of the same max length, report the one with smaller (or not None) overlap proportion
-                        elif overall_max_posterior and map_evidence["max_consumption_length"] and overall_max_posterior == map_evidence["max_consumption_length"]:
-                            if overall_overlap_posterior is None and map_evidence["max_consumption_overlap"] is not None or \
-                             prop_overlap_posterior is None and map_evidence["prop_consumption_overlap"] is not None or \
-                             (prop_overlap_posterior and map_evidence["prop_consumption_overlap"] and prop_overlap_posterior > map_evidence["prop_consumption_overlap"]):
-                                overall_max_posterior, overall_overlap_posterior, prop_overlap_posterior, reported_map_posterior = update_reported_pathway_evidence_for_posterior()
+                        overall_max_prior, overall_overlap_prior, prop_overlap_prior, reported_map_prior = update_reported_pathway_evidence_for_chain((overall_max_prior, overall_overlap_prior, prop_overlap_prior, reported_map_prior),
+                                                                                                                (map_evidence["max_production_length"], map_evidence["max_production_overlap"], map_evidence["prop_production_overlap"], map_id))
+                        overall_max_posterior, overall_overlap_posterior, prop_overlap_posterior, reported_map_posterior = update_reported_pathway_evidence_for_chain((overall_max_posterior, overall_overlap_posterior, prop_overlap_posterior, reported_map_posterior),
+                                                                                                                (map_evidence["max_consumption_length"], map_evidence["max_consumption_overlap"], map_evidence["prop_consumption_overlap"], map_id))
 
                     longest_overall_chain = None
                     if overall_max_prior and overall_max_posterior:
