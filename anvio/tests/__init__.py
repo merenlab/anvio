@@ -4,6 +4,7 @@ known_tests = {'mini'                  : ['run_component_tests_for_minimal_metag
                'interactive-interface' : ['run_component_tests_for_manual_interactive.sh'],
                'metabolism'            : ['run_component_tests_for_metabolism.sh'],
                'reaction-network'      : ['run_component_tests_for_reaction_network.sh'],
+               'metabolic-exchanges'   : ['run_component_tests_for_metabolic_exchanges.sh'],
                'kegg-mapping'          : ['run_component_tests_for_kegg_mapping.sh'],
                'display-functions'     : ['run_component_tests_for_display_functions.sh'],
                'trnaseq'               : ['run_component_tests_for_trnaseq.sh'],
