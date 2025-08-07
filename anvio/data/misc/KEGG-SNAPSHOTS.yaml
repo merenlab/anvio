@@ -119,6 +119,12 @@ v2025-02-04:
     modules_db_version: 4
     no_maps: True
 
+v2025-08-07:
+    url: https://figshare.com/ndownloader/files/57008792
+    archive_name: KEGG_build_2025-08-07_66e53d49e65a.tar.gz
+    hash: 66e53d49e65a
+    modules_db_version: 4
+
 
 # How to add a new KEGG snapshot to this file:
 # 1. download the latest data directly from KEGG by running
