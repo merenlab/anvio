@@ -1836,6 +1836,9 @@ class PanSuperclass(object):
         self.gc_tracker = {}
         self.gc_psgc_associations = {}
 
+        # initialized when using init_compare_pan()
+        self.compare_pan_dict = {}
+
         # the following two are initialized via `init_items_additional_data()` and use information
         # stored in item additional data tables in the pan database
         self.items_additional_data_dict = None
@@ -2702,6 +2705,193 @@ class PanSuperclass(object):
                     num_gene_clusters_missing_per_genome[genome_name] += 1
 
         return num_gene_clusters_missing_per_genome
+
+
+    def compare_pan_to(self, compared_pan):
+        """ Compare this pan to another on made with the same genomes.
+        Create a dict with the key corresponding to the name of the compared pan.
+
+        The compared pan are refered to as p1 (self) and p2 (compared pan).
+        """
+        # TODO: add init_gene_cluster_types and find_gene_cluster_type and self.gene_cluster_type
+        # for Core, SCG, Acces, or Singleton
+        # add to the comparison
+        # also add the num of GC combined for frag
+
+        # TODO: maybe move to panops as as class?
+
+        compared_pan_name = compared_pan.p_meta['project_name']
+
+        # check if compared pan was made from the same genome.db
+        if self.genomes_storage.get_storage_hash() != compared_pan.genomes_storage.get_storage_hash():
+            raise ConfigError("You are trying to compare to pan databases made from different genomes storage "
+                              "databases and that is a no no.")
+
+        # if the reciprocal comparison was already done, move on
+        if compared_pan_name in self.compare_pan_dict:
+            self.run.info_single("Looks like you already compared '%s' with '%s', anvi'o is happy and so are you" % (self.p_meta['project_name'], compared_pan_name))
+            return
+
+
+        def init_compare_pan(self, compared_pan, compared_pan_name):
+            '''Identify and report the unique gene clusters based on the gene call content when compared to another pan.
+            Initialized the self.compare_pan_dict'''
+
+            self.compare_pan_dict[compared_pan_name] = {}
+
+            # check if gene cluster are initialized
+            for p in [self, compared_pan]:
+                if not p.gene_clusters_initialized:
+                    p.init_gene_clusters()
+
+            # list of maching gene clusters
+            matches = []
+
+            # find a keep non-identical gene clusters
+            for i, v1 in self.gene_clusters.items():
+                for j, v2 in compared_pan.gene_clusters.items():
+                    if v1 == v2:
+                        matches.append(i)
+
+            # keep only the gene cluster that differ
+            for gene_cluster in self.gene_cluster_names:
+                if gene_cluster not in matches:
+                    self.compare_pan_dict[compared_pan_name][gene_cluster] = {}
+
+
+        def find_corresponding_gene_clusters(self, compared_pan, compared_pan_name):
+            '''For each unique gene cluster, identify the corresponding gene cluster(s) in the compared pan, based on the gene calls content
+               Also add info of gene_cluster type'''
+
+            for gene_cluster, gene_cluster_dict in self.compare_pan_dict[compared_pan_name].items():
+                gene_cluster_dict['GCs_in_compared_pan'] = []
+                #gene_cluster_dict['GCs_type_in_compared_pan'] = []
+
+                # the code loops through each gene call & genome, looks for the corresponding GC in the other pan
+                for genome, gene_callers_id in self.gene_clusters[gene_cluster].items():
+                    for gene in gene_callers_id:
+                        corresponding_gene_cluster = compared_pan.gene_callers_id_to_gene_cluster[genome][gene]
+                        if corresponding_gene_cluster not in gene_cluster_dict['GCs_in_compared_pan']:
+                            gene_cluster_dict['GCs_in_compared_pan'].append(corresponding_gene_cluster)
+                            #corresponding_gene_cluster_type = self.
+                            #gene_cluster_dict['GCs_type_in_compared_pan'].append(corresponding_gene_cluster)
+
+
+        def detect_fragmentation_combination(self, compared_pan, compared_pan_name):
+            '''Per gene cluster, check it is "fragmented" or "combined" in the other pan.
+               If combined, then report the other gene clusters from this pan that contributed to the combined cluster'''
+
+            # for a fragmentation, just check if the num of GC in other pan is greater than one, and move on.
+            for gene_cluster, gene_cluster_dict in self.compare_pan_dict[compared_pan_name].items():
+                if len(gene_cluster_dict['GCs_in_compared_pan']) > 1:
+                    gene_cluster_dict['status'] = 'fragmented'
+                    continue
+
+                # for combination, we need to check the extra gene calls in corresponding pan single GC,
+                # and report the associated GCs from our current pan.
+                corresponding_gene_cluster = gene_cluster_dict['GCs_in_compared_pan'][0]  # "There can only be one"
+                list_gene_clusters = [gene_cluster]
+                for genome, gene_callers_id in compared_pan.gene_clusters[corresponding_gene_cluster].items():
+                    for gene in gene_callers_id:
+                        gc_found = self.gene_callers_id_to_gene_cluster[genome][gene]
+                        if gc_found not in list_gene_clusters:
+                            list_gene_clusters.append(gc_found)
+
+                if len(list_gene_clusters) > 1:
+                    gene_cluster_dict['status'] = 'combined'
+                    gene_cluster_dict['related_GCs'] = list_gene_clusters
+                else:
+                    raise ConfigError("Anvi'o was comparing two pangenomes and something went quite wrong when parsing "
+                                      "the unique gene clusters. I know this message is not very helpful, but you should "
+                                      "never EVER see it ANYWAY.")
+
+
+        def add_function_summary_to_compare(self, compared_pan, compared_pan_name):
+            '''For each compared gene cluster, report the summarized function of the associated GC in compared pan,
+               or of the other GC that were combined in the other pan.
+
+               We also compute an heterogeneity value starting at 0 if the same annotation is found accros all GC,
+               then 1 if two annotations, etc.'''
+
+            # we can immediately init function summary, for the gene clusters of self
+            # for the compared pan, we will initiate the dict as we discover the GCs
+            self.init_gene_clusters_functions_summary_dict(gene_clusters_of_interest = self.compare_pan_dict[compared_pan_name].keys())
+
+            for gene_cluster, gene_cluster_dict in self.compare_pan_dict[compared_pan_name].items():
+                if gene_cluster_dict['status'] == 'fragmented':
+                    GC_source = 'GCs_in_compared_pan'
+                elif gene_cluster_dict['status'] == 'combined':
+                    GC_source = 'related_GCs'
+                else:
+                    raise ConfigError("SOMEONE added an illegal value to the 'status' entry in self.compare_pan_dict. "
+                                      "Very illegal. Here is the culprit value: '%s'" % gene_cluster_dict['status'])
+
+                function_summary = {}
+                for source in self.gene_clusters_function_sources:
+                    function_summary[source] = {'function': set([]), 'accession': set([]), 'heterogeneity': 0}
+                for gc in gene_cluster_dict[GC_source]:
+                    compared_pan.init_gene_clusters_functions_summary_dict(gene_clusters_of_interest = [gc])
+                    function = compared_pan.gene_clusters_functions_summary_dict[gc]
+                    for source, annotation in function.items():
+                        func = annotation['function']
+                        acc = annotation['accession']
+                        function_summary[source]['function'].add(func)
+                        function_summary[source]['accession'].add(acc)
+
+                # check for multiple annotation and report frequency, starting at 0 for one annotation
+                for source, annotation in function_summary.items():
+                    annotation['heterogeneity'] = max(0, len(annotation['function']) - 1)
+
+                # add the function summary to the main dict
+                gene_cluster_dict['function'] = function_summary
+
+
+        def add_comparison_to_items_additional_data(self, compared_pan_name):
+            items_additional_data_dict = {}
+            # TODO: list of keys is fixed right now and should include a check for annotations
+            items_additional_data_keys = [f"{compared_pan_name}_status"]
+            for source in self.gene_clusters_function_sources:
+                items_additional_data_keys.append(f"{compared_pan_name}_{source}")
+
+            for gene_cluster in self.gene_cluster_names:
+                summary = {}
+                gene_cluster_data = self.compare_pan_dict.get(compared_pan_name, {}).get(gene_cluster)
+
+                if gene_cluster_data is None:
+                    # Fill all keys with None or NA if GC is missing
+                    summary[f"{compared_pan_name}_status"] = None
+                    for source in self.gene_clusters_function_sources:
+                        summary[f"{compared_pan_name}_{source}"] = None
+                else:
+                    summary[f"{compared_pan_name}_status"] = gene_cluster_data.get("status")
+
+                    for source, func_info in gene_cluster_data.get("function", {}).items():
+                        summary[f"{compared_pan_name}_{source}"] = func_info.get("heterogeneity")
+
+                items_additional_data_dict[gene_cluster] = summary
+
+            # everything to the items additional table:
+            # TODO: find how to make them in their own group, wiht a shared color scheme
+            items_additional_data_table = TableForItemAdditionalData(self.args, r=terminal.Run(verbose=False))
+            items_additional_data_table.add(items_additional_data_dict, items_additional_data_keys, skip_check_names=True)
+
+
+        # init the dictionaries self.compare_pan_dict
+        init_compare_pan(self, compared_pan, compared_pan_name)
+
+        # find corresponding gene clusters in compared pan
+        find_corresponding_gene_clusters(self, compared_pan, compared_pan_name)
+
+        # report gene cluster status in compared pangenome: fragmented or combined?
+        detect_fragmentation_combination(self, compared_pan, compared_pan_name)
+
+        # add summary of function
+        add_function_summary_to_compare(self, compared_pan, compared_pan_name)
+
+        # add info to the items additional table
+        add_comparison_to_items_additional_data(self, compared_pan_name)
+
+        # TODO: report a text table. Make it complex.
 
 
     def filter_gene_clusters_from_gene_clusters_dict(self, gene_clusters_dict, min_num_genomes_gene_cluster_occurs=0,
