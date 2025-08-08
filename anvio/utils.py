@@ -1380,14 +1380,8 @@ def run_functional_enrichment_stats(functional_occurrence_stats_input_file_path,
                           f"An output file was created, but it was empty... We hope that this "
                           f"log file offers some clues: {log_file_path}")
 
-    # if everything went okay, we remove the log file
-    if anvio.DEBUG:
-        run.warning(f"Due to the `--debug` flag, anvi'o keeps the log file at '{log_file_path}'.", lc='green', header="JUST FYI")
-    else:
-        os.remove(log_file_path)
-
     enrichment_stats = get_TAB_delimited_file_as_dictionary(enrichment_output_file_path)
-
+    
     # here we will naively try to cast every column that matches `p_*` to float, and every
     # column that matches `N_*` to int.
     column_names = list(enrichment_stats.values())[0].keys()
@@ -1420,6 +1414,12 @@ def run_functional_enrichment_stats(functional_occurrence_stats_input_file_path,
                                   f"entry `{entry}` in your output file contained a value of `{enrichment_stats[entry][column_name]}`. "
                                   f"We have no idea how this happened, but it is not good :/ If you would like to mention this "
                                   f"to someone, please attach to your inquiry the following file: '{enrichment_output_file_path}'.")
+    
+    # if everything went okay, we remove the log file
+    if anvio.DEBUG or num_NA_qvals:
+        run.warning(f"Due to the `--debug` flag or the presence of 'NA' q-values, anvi'o keeps the log file at '{log_file_path}'.", lc='green', header="JUST FYI")
+    else:
+        os.remove(log_file_path)
 
     return enrichment_stats
 
