@@ -136,7 +136,8 @@ class ExchangePredictorArgs():
             Key is output type, and value is the data dictionary associated with that output type
         """
 
-        output_header = ['compound_id', 'compound_name', 'genomes', 'produced_by', 'consumed_by', 'prediction_method']
+        base_header = ['compound_id', 'compound_name', 'genomes', 'produced_by', 'consumed_by', 'prediction_method']
+        output_header = deepcopy(base_header)
         if self.add_reactions_to_output:
             output_header += [f"production_rxn_ids_{self.genomes_to_compare[g]['name']}" for g in self.genomes_to_compare] + \
                              [f"consumption_rxn_ids_{self.genomes_to_compare[g]['name']}" for g in self.genomes_to_compare] + \
@@ -161,6 +162,8 @@ class ExchangePredictorArgs():
             header_list = output_header
             if mode == 'potentially-exchanged-compounds':
                 header_list = exchange_header
+            if mode == 'compounds-with-no-prediction':
+                header_list = base_header
             
             if mode == 'evidence':
                 file_obj.append(output_dicts[mode], do_not_write_key_column=True, none_value="None")
