@@ -6,6 +6,7 @@
 from anvio.version import anvio_version, anvio_codename, major_python_version_required, minor_python_version_required, get_versions
 
 import sys
+import inspect
 import platform
 
 # make sure anvi'o runs in the right Python environment:
@@ -96,6 +97,59 @@ def P(d, dont_exit=False):
     print(json.dumps(d, indent=2))
 
     if not dont_exit:
+        sys.exit()
+
+
+def SHOW_CALLER(context="", and_exit=False, show_full_paths=False):
+    """Helper function to debug where a given line in the code was called from.
+
+    Simply include anvio.SHOW_CALLER() anywhere in the code, and follow the printed
+    debug information.
+
+    For instance, if I add the following line to the `__init__()` function in
+    `ContigsDatabase` class in `dbops.py`,
+
+    >>> anvio.SHOW_CALLER(context="contigs-db generation", and_exit=True, show_full_paths=True)
+
+    Then running `anvi-gen-contigs-db` on any FASTA file will print the
+    following debug output and exit (as per `and_exit=True`):
+
+        Reached 'contigs-db generation' from  '/Users/meren/github/anvio/anvio/cli/gen_contigs_database.py:31' that implements 'main()'
+
+    Since this function is using `print()` statements, neither Run or Progress
+    configurations, nor context reached through multi-threading can stop it :)
+    """
+
+    # Go up the stack: 0=get_caller_info, 1=Progress method, 2=actual caller
+    frame = inspect.currentframe()
+
+    if context:
+        context = f"Reached '{context}' from "
+    else:
+        context = "Reached here from "
+
+    try:
+        # skip our own frame and the Progress method frame
+        caller_frame = frame.f_back.f_back
+        if caller_frame:
+            filename = caller_frame.f_code.co_filename
+            line_number = caller_frame.f_lineno
+            function_name = caller_frame.f_code.co_name
+
+            if show_full_paths:
+                pass
+            else:
+                # get just the filename without full path for cleaner output
+                filename = os.path.basename(filename)
+
+            print(f"{context} '{filename}:{line_number}' that implements '{function_name}()'")
+        else:
+            print("{context} an unresolvable context :/")
+    finally:
+        # avoid reference cycles
+        del frame
+
+    if and_exit:
         sys.exit()
 
 
