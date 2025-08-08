@@ -67,7 +67,7 @@ do
                           --modelseed-dir $modelseed_dir
 done
 
-INFO "Single genome pair comparison with default parameters"
+INFO "Single genome pair comparison with default parameters (it's OK to see Pathway Map warnings in the output)"
 anvi-predict-metabolic-exchanges -c1 B_thetaiotamicron_VPI-5482.db \
                                  -c2 P_marinus_CCMP1375.db \
                                  --kegg-data-dir $kegg_data_dir \
@@ -77,28 +77,6 @@ anvi-predict-metabolic-exchanges -c1 B_thetaiotamicron_VPI-5482.db \
 SHOW_FILE B_vs_P-potentially-exchanged-compounds.txt
 SHOW_FILE B_vs_P-evidence.txt
 SHOW_FILE B_vs_P-unique-compounds.txt
-
-INFO "Single genome pair comparison with --no-pathway-walk"
-anvi-predict-metabolic-exchanges -c1 B_thetaiotamicron_VPI-5482.db \
-                                 -c2 P_marinus_CCMP1375.db \
-                                 --kegg-data-dir $kegg_data_dir \
-                                 --modelseed-data-dir $modelseed_dir \
-                                 $thread_controller \
-                                 -O B_vs_P \
-                                 --force-overwrite \
-                                 --no-pathway-walk
-SHOW_FILE B_vs_P-potentially-exchanged-compounds.txt
-
-INFO "Single genome pair comparison with --pathway-walk-only"
-anvi-predict-metabolic-exchanges -c1 B_thetaiotamicron_VPI-5482.db \
-                                 -c2 P_marinus_CCMP1375.db \
-                                 --kegg-data-dir $kegg_data_dir \
-                                 --modelseed-data-dir $modelseed_dir \
-                                 $thread_controller \
-                                 -O B_vs_P \
-                                 --force-overwrite \
-                                 --pathway-walk-only
-SHOW_FILE B_vs_P-potentially-exchanged-compounds.txt
 
 INFO "Single genome pair comparison with --exclude-pathway-maps"
 anvi-predict-metabolic-exchanges -c1 B_thetaiotamicron_VPI-5482.db \
@@ -111,6 +89,30 @@ anvi-predict-metabolic-exchanges -c1 B_thetaiotamicron_VPI-5482.db \
                                  --exclude-pathway-maps 00470,00195,00542,00190,00541,00543,00511
 SHOW_FILE B_vs_P-potentially-exchanged-compounds.txt
 
+INFO "Single genome pair comparison with --no-pathway-walk"
+anvi-predict-metabolic-exchanges -c1 B_thetaiotamicron_VPI-5482.db \
+                                 -c2 P_marinus_CCMP1375.db \
+                                 --kegg-data-dir $kegg_data_dir \
+                                 --modelseed-data-dir $modelseed_dir \
+                                 $thread_controller \
+                                 -O B_vs_P \
+                                 --force-overwrite \
+                                 --exclude-pathway-maps 00195,00542,00190,00541,00543,00511 \
+                                 --no-pathway-walk
+SHOW_FILE B_vs_P-potentially-exchanged-compounds.txt
+
+INFO "Single genome pair comparison with --pathway-walk-only"
+anvi-predict-metabolic-exchanges -c1 B_thetaiotamicron_VPI-5482.db \
+                                 -c2 P_marinus_CCMP1375.db \
+                                 --kegg-data-dir $kegg_data_dir \
+                                 --modelseed-data-dir $modelseed_dir \
+                                 $thread_controller \
+                                 -O B_vs_P \
+                                 --force-overwrite \
+                                 --exclude-pathway-maps 00195,00542,00190,00541,00543,00511 \
+                                 --pathway-walk-only
+SHOW_FILE B_vs_P-potentially-exchanged-compounds.txt
+
 INFO "Single genome pair comparison with --add-reactions-to-output"
 anvi-predict-metabolic-exchanges -c1 B_thetaiotamicron_VPI-5482.db \
                                  -c2 P_marinus_CCMP1375.db \
@@ -119,6 +121,7 @@ anvi-predict-metabolic-exchanges -c1 B_thetaiotamicron_VPI-5482.db \
                                  $thread_controller \
                                  -O B_vs_P \
                                  --force-overwrite \
+                                 --exclude-pathway-maps 00195,00542,00190,00541,00543,00511 \
                                  --add-reactions-to-output
 SHOW_FILE B_vs_P-potentially-exchanged-compounds.txt
 SHOW_FILE B_vs_P-unique-compounds.txt
@@ -131,6 +134,7 @@ anvi-predict-metabolic-exchanges -c1 B_thetaiotamicron_VPI-5482.db \
                                  $thread_controller \
                                  -O B_vs_P \
                                  --force-overwrite \
+                                 --exclude-pathway-maps 00195,00542,00190,00541,00543,00511 \
                                  --maximum-gaps 2
 SHOW_FILE B_vs_P-potentially-exchanged-compounds.txt
 
@@ -142,6 +146,7 @@ anvi-predict-metabolic-exchanges -c1 B_thetaiotamicron_VPI-5482.db \
                                  $thread_controller \
                                  -O B_vs_P \
                                  --force-overwrite \
+                                 --exclude-pathway-maps 00195,00542,00190,00541,00543,00511 \
                                  --use-equivalent-amino-acids
 SHOW_FILE B_vs_P-potentially-exchanged-compounds.txt
 
@@ -164,6 +169,7 @@ anvi-predict-metabolic-exchanges -e external-genomes.txt \
                                  --kegg-data-dir $kegg_data_dir \
                                  --modelseed-data-dir $modelseed_dir \
                                  $thread_controller \
+                                 --exclude-pathway-maps 00195,00542,00190,00541,00543,00511 \
                                  -O genome_pairs
 SHOW_FILE genome_pairs-potentially-exchanged-compounds.txt
 SHOW_FILE genome_pairs-evidence.txt
@@ -174,6 +180,7 @@ anvi-predict-metabolic-exchanges -e external-genomes.txt \
                                  --kegg-data-dir $kegg_data_dir \
                                  --modelseed-data-dir $modelseed_dir \
                                  $thread_controller \
+                                 --exclude-pathway-maps 00195,00542,00190,00541,00543,00511 \
                                  -O all_vs_all
 SHOW_FILE all_vs_all-potentially-exchanged-compounds.txt
 SHOW_FILE all_vs_all-evidence.txt
