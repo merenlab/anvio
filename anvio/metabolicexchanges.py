@@ -270,6 +270,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
             # If we allow those child processes to spin up their own child processes, we start using way more threads than the user asked for.
             # Hence, we strictly control the number of threads in use by having two functions for doing essentially the same thing.
             # (BONUS: the single-threaded version has more precise terminal output since it knows exactly what is currently being processed)
+            self.run.warning("", header="PATHWAY MAP WALK OUTPUT", lc='cyan')
             if self.num_threads == 1:
                 failed_maps = self.walk_all_pathway_maps_singlethread()
             else:
@@ -290,10 +291,11 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
 
         else:
             compounds_not_in_maps = set(self.merged.metabolites.keys())
-        self.run.info("Number of compounds from merged network not in Pathway Maps", len(compounds_not_in_maps))
 
         if not self.pathway_walk_only:
             # STEP 3: PREDICT EXCHANGES using reaction network
+            self.run.warning("", header="REACTION NETWORK SUBSET OUTPUT", lc='cyan')
+            self.run.info("Number of compounds will be processed by Reaction Network Subset", len(compounds_not_in_maps))
             pot_exchanged_rn, uniq_rn, no_prediction_rn = self.predict_from_reaction_network(compounds_not_in_maps)
             compounds_in_both_dicts = set(data_dicts['potentially-exchanged-compounds'].keys()).intersection(pot_exchanged_rn.keys())
             if compounds_in_both_dicts:
