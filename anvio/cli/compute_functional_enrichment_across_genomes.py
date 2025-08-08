@@ -2,6 +2,7 @@
 # -*- coding: utf-8
 """A program that computes function enrichment across genomees"""
 
+import os
 import sys
 
 import anvio
@@ -30,9 +31,12 @@ def main():
     progress = terminal.Progress()
 
     # make sure the output files is not going to overwrite anything
-    if filesnpaths.is_file_exists(args.output_file, dont_raise=True):
+    file_exists = filesnpaths.is_file_exists(args.output_file, dont_raise=True)
+    if file_exists and not anvio.FORCE_OVERWRITE:
         raise ConfigError(f"There is already a file at '{args.output_file}' :/ Anvi'o has a thing against overwriting existing files. "
-                          f"Please remove the exiting file first, or give a different output file name to this program.")
+                          f"Please remove the exiting file first, use the --force-overwrite flag, or give a different output file name to this program.")
+    if file_exists and anvio.FORCE_OVERWRITE:
+        os.remove(args.output_file)
 
     # make sure we can write to the output file
     filesnpaths.is_output_file_writable(args.output_file)
