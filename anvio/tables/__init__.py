@@ -50,8 +50,8 @@ pan_graph_nodes_table_structure      = ['node_id', 'node_type', 'gene_cluster_id
 pan_graph_nodes_table_types          = [  'str'  ,    'str'   ,       'str'      ,       'str'      ,        'str'       ]
 
 pan_graph_edges_table_name           = 'pan_graph_edges'
-pan_graph_edges_table_structure      = ['edge_id', 'source', 'target', 'weight' , 'directions', 'route']
-pan_graph_edges_table_types          = [  'str'  ,   'str' ,   'str' , 'numeric',     'str'   ,  'str' ]
+pan_graph_edges_table_structure      = ['edge_id', 'source', 'target', 'weight' , 'directions']
+pan_graph_edges_table_types          = [  'str'  ,   'str' ,   'str' , 'numeric',     'str'   ]
 
 ####################################################################################################
 #
