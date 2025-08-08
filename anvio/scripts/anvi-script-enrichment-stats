@@ -243,7 +243,7 @@ pi0_est <- try(qvalue::pi0est(pvalues_df$unadjusted_p_value,
                               lambda = lambdas, pi0.method="smoother")$pi0,
                silent=T)
 
-
+lambda_estimation_error = FALSE
 if ("try-error" %in% class(pi0_est)) {
 
   # Sometimes, especially when there are many of p-values near 0.5 and fewer near 1
@@ -257,16 +257,20 @@ if ("try-error" %in% class(pi0_est)) {
                  silent=T)
 
   if ("try-error" %in% class(pi0_est)) {
-
-    stop("Doh! We still can't estimate the proportion of features that are truly null. It's Amy's fault, so please let her know ASAP so she can fix it!")
-
+    lambda_estimation_error = TRUE
   }
-
 }
 
 # get the q-values, then format the data and save
+if (lambda_estimation_error){
+  warning("No can do q-values! We weren't able to estimate the proportion of features that are truly null, \
+             and therefore we can only report unadjusted p-values (no q-values) in the enrichment output.")
+
+  qvalues_df <- pvalues_df %>% mutate("adjusted_q_value" = NA)
+} else {
 qvalues_df <- pvalues_df %>%
   mutate("adjusted_q_value" = qvalue::qvalue(p=unadjusted_p_value, lambda=lambdas, pi0.method="smoother")$qvalues)
+}
 
 enrichment_output <- qvalues_df %>%
   select(names(df_in)[1],  # e.g. COG_FUNCTION
