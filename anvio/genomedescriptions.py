@@ -925,6 +925,7 @@ class AggregateFunctions:
         self.print_genome_names_and_quit = A('print_genome_names_and_quit') or False
         self.functional_occurrence_table_output_path = A('functional_occurrence_table_output')
         self.functional_enrichment_output_path = A('output_file')
+        self.qlambda = A('qlambda')
 
         # -----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----8<-----
         # these are some primary data structures this class reports
@@ -1389,6 +1390,7 @@ class AggregateFunctions:
         # run the enrichment analysis
         self.functional_enrichment_stats_dict = utils.run_functional_enrichment_stats(functional_occurrence_stats_input_file_path=self.functional_occurrence_table_output_path,
                                                                                       enrichment_output_file_path=self.functional_enrichment_output_path,
+                                                                                      qlambda=self.qlambda,
                                                                                       run=self.run,
                                                                                       progress=self.progress)
 

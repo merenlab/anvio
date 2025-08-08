@@ -1307,7 +1307,8 @@ def apply_and_concat(df, fields, func, column_names, func_args=tuple([])):
     return pd.concat((df, df2), axis=1, sort=True)
 
 
-def run_functional_enrichment_stats(functional_occurrence_stats_input_file_path, enrichment_output_file_path=None, run=run, progress=progress):
+def run_functional_enrichment_stats(functional_occurrence_stats_input_file_path, enrichment_output_file_path=None,
+                                    qlambda=None, run=run, progress=progress):
     """This function runs the enrichment analysis implemented by Amy Willis.
 
     Since the enrichment analysis is an R script, we interface with that program by
@@ -1322,6 +1323,8 @@ def run_functional_enrichment_stats(functional_occurrence_stats_input_file_path,
         script.
     enrichment_output_file_path, str file path
         An optional output file path for the enrichment analysis.
+    qlambda : float
+        An optional fraction that sets the maximum lambda for q-value
 
     Returns
     =======
@@ -1353,14 +1356,19 @@ def run_functional_enrichment_stats(functional_occurrence_stats_input_file_path,
     run.warning(None, header="AMY's ENRICHMENT ANALYSIS 🚀", lc="green")
     run.info("Functional occurrence stats input file path: ", functional_occurrence_stats_input_file_path)
     run.info("Functional enrichment output file path: ", enrichment_output_file_path)
+    if anvio.DEBUG:
+        run.info("User set max lambda for q-values: ", qlambda)
     run.info("Temporary log file (use `--debug` to keep): ", log_file_path, nl_after=2)
 
     # run enrichment script
     progress.new('Functional enrichment analysis')
     progress.update("Running Amy's enrichment")
-    run_command(['anvi-script-enrichment-stats',
+    enrichment_command = ['anvi-script-enrichment-stats',
                  '--input', f'{functional_occurrence_stats_input_file_path}',
-                 '--output', f'{enrichment_output_file_path}'], log_file_path)
+                 '--output', f'{enrichment_output_file_path}']
+    if qlambda:
+        enrichment_command += ['--qlambda', f'{qlambda}']
+    run_command(enrichment_command, log_file_path)
     progress.end()
 
     if not filesnpaths.is_file_exists(enrichment_output_file_path, dont_raise=True):
@@ -1372,20 +1380,30 @@ def run_functional_enrichment_stats(functional_occurrence_stats_input_file_path,
                           f"An output file was created, but it was empty... We hope that this "
                           f"log file offers some clues: {log_file_path}")
 
-    # if everything went okay, we remove the log file
-    if anvio.DEBUG:
-        run.warning(f"Due to the `--debug` flag, anvi'o keeps the log file at '{log_file_path}'.", lc='green', header="JUST FYI")
-    else:
-        os.remove(log_file_path)
-
     enrichment_stats = get_TAB_delimited_file_as_dictionary(enrichment_output_file_path)
-
+    
     # here we will naively try to cast every column that matches `p_*` to float, and every
     # column that matches `N_*` to int.
     column_names = list(enrichment_stats.values())[0].keys()
-    column_names_to_cast = [(c, float) for c in ['unadjusted_p_value', 'adjusted_q_value', 'enrichment_score']] + \
+    column_names_to_cast = [(c, float) for c in ['unadjusted_p_value', 'enrichment_score']] + \
                            [(c, float) for c in column_names if c.startswith('p_')] + \
                            [(c, int) for c in column_names if c.startswith('N_')]
+
+    # in case the enrichment script couldn't estimate q-values, we skip casting the q-value column and warn the user
+    # that things could break downstream
+    num_NA_qvals = 0
+    for entry, entry_vals in enrichment_stats.items():
+        if entry_vals['adjusted_q_value'] == 'NA':
+            num_NA_qvals += 1
+    if num_NA_qvals:
+        run.warning(f"POTENTIAL CODE-BREAKING ISSUES INCOMING! The functional enrichment output contains {num_NA_qvals} q-values "
+                    f"that are 'NA' values. This can happen if the enrichment script is unable to estimate q-values for your "
+                    f"input data (check the log file at '{log_file_path}' for warnings about the situation). At this time, "
+                    f"the 'NA' q-values are not causing issues, but they *might* break downstream code that is expecting to "
+                    f"find numbers instead. Please keep an eye out for errors, and remember this message when you see them.")
+    else:
+        column_names_to_cast += [('adjusted_q_value', float)]
+
     for entry in enrichment_stats:
         for column_name, to_cast in column_names_to_cast:
             try:
@@ -1396,6 +1414,12 @@ def run_functional_enrichment_stats(functional_occurrence_stats_input_file_path,
                                   f"entry `{entry}` in your output file contained a value of `{enrichment_stats[entry][column_name]}`. "
                                   f"We have no idea how this happened, but it is not good :/ If you would like to mention this "
                                   f"to someone, please attach to your inquiry the following file: '{enrichment_output_file_path}'.")
+    
+    # if everything went okay, we remove the log file
+    if anvio.DEBUG or num_NA_qvals:
+        run.warning(f"Due to the `--debug` flag or the presence of 'NA' q-values, anvi'o keeps the log file at '{log_file_path}'.", lc='green', header="JUST FYI")
+    else:
+        os.remove(log_file_path)
 
     return enrichment_stats
 

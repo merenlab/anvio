@@ -111,7 +111,9 @@ option_list <- list(
   make_option(c("--output"),
               help = "Output file name"),
   make_option(c("--input"),
-              help = "Input file name")
+              help = "Input file name"),
+  make_option(c("--qlambda"),
+              help = "Optional parameter. The maximum lambda for q-value estimation.")
 )
 parser <- OptionParser(option_list = option_list,
                        description = "Hypothesis testing for 'enrichment' claims. Fits a GLM and computes the Rao Test statistic as an enrichment score.")
@@ -219,7 +221,21 @@ pvalues_df <- df_unique %>%
 
 # find the maximum lambda for qvalue
 # reasons for this change documented at https://github.com/merenlab/anvio/issues/1383
-max_lambda <- min(0.95, max(pvalues_df$unadjusted_p_value, na.rm=T))
+if (length(opts$qlambda) > 0) {
+    max_lambda = opts$qlambda
+    sprintf("Using user-defined max lambda value of %s for q-value estimation", opts$qlambda)
+} else {
+    max_lambda <- min(0.95, max(pvalues_df$unadjusted_p_value, na.rm=T))
+}
+if (max_lambda < 0.05) {
+    stop(sprintf("Unfortunately, the maximum lambda for q-value estimation is < 0.05. This \
+         value is coming from the p-values in the enrichment test, so something in \
+         your data is making those p-values low. This sometimes happens when you \
+         have a very short input file (your input file has %s rows). Regardless, \
+         a possible solution is for you to pick your own max lambda that is >= 0.05, \
+         and provide it to the program calling this script by using the \
+         --qlambda parameter.", nrow(df_in)))
+}
 lambdas <- seq(0.05, max_lambda, 0.05)
 
 # obtain an estimate of the proportion of features that are truly null
@@ -227,7 +243,7 @@ pi0_est <- try(qvalue::pi0est(pvalues_df$unadjusted_p_value,
                               lambda = lambdas, pi0.method="smoother")$pi0,
                silent=T)
 
-
+lambda_estimation_error = FALSE
 if ("try-error" %in% class(pi0_est)) {
 
   # Sometimes, especially when there are many of p-values near 0.5 and fewer near 1
@@ -241,16 +257,20 @@ if ("try-error" %in% class(pi0_est)) {
                  silent=T)
 
   if ("try-error" %in% class(pi0_est)) {
-
-    stop("Doh! We still can't estimate the proportion of features that are truly null. It's Amy's fault, so please let her know ASAP so she can fix it!")
-
+    lambda_estimation_error = TRUE
   }
-
 }
 
 # get the q-values, then format the data and save
-qvalues_df <- pvalues_df %>%
-  mutate("adjusted_q_value" = qvalue::qvalue(p=unadjusted_p_value, lambda=lambdas, pi0.method="smoother")$qvalues)
+if (lambda_estimation_error){
+  warning("No can do q-values! We weren't able to estimate the proportion of features that are truly null, \
+             and therefore we can only report unadjusted p-values (no q-values) in the enrichment output.")
+
+  qvalues_df <- pvalues_df %>% mutate("adjusted_q_value" = NA)
+} else {
+  qvalues_df <- pvalues_df %>%
+    mutate("adjusted_q_value" = qvalue::qvalue(p=unadjusted_p_value, lambda=lambdas, pi0.method="smoother")$qvalues)
+}
 
 enrichment_output <- qvalues_df %>%
   select(names(df_in)[1],  # e.g. COG_FUNCTION
@@ -270,4 +290,4 @@ enrichment_output %<>%
   arrange(desc(enrichment_score))
 
 enrichment_output %>%
-  write_tsv(path = opts$output)
+  write_tsv(file = opts$output)
