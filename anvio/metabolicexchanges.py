@@ -280,9 +280,16 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
             compounds_not_in_maps = set(self.merged.metabolites.keys()).difference(set(self.compound_to_pathway_walk_chains.keys()))
 
             # STEP 2: PREDICT EXCHANGES using pathway walk evidence
-            pot_exchanged_pw, uniq_pw, data_dicts['evidence'] = self.predict_from_pathway_walks()
+            pot_exchanged_pw, uniq_pw, evidence_pw, no_prediction_pw = self.predict_from_pathway_walks()
             data_dicts['potentially-exchanged-compounds'].update(pot_exchanged_pw)
             data_dicts['unique-compounds'].update(uniq_pw)
+            data_dicts['evidence'].update(evidence_pw)
+            if self.report_compounds_with_no_prediction:
+                data_dicts['compounds-with-no-prediction'].update(no_prediction_pw)
+
+            # clean up to save on some memory
+            del pot_exchanged_pw, uniq_pw, evidence_pw, no_prediction_pw
+            self.run.info("Number of compounds from merged network not in Pathway Maps", len(compounds_not_in_maps))
 
         else:
             compounds_not_in_maps = set(self.merged.metabolites.keys())
@@ -290,7 +297,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
 
         if not self.pathway_walk_only:
             # STEP 3: PREDICT EXCHANGES using reaction network
-            pot_exchanged_rn, uniq_rn = self.predict_from_reaction_network(compounds_not_in_maps)
+            pot_exchanged_rn, uniq_rn, no_prediction_rn = self.predict_from_reaction_network(compounds_not_in_maps)
             compounds_in_both_dicts = set(data_dicts['potentially-exchanged-compounds'].keys()).intersection(pot_exchanged_rn.keys())
             if compounds_in_both_dicts:
                 raise ConfigError(f"We found the following compound IDs that were found to be potentially-exchanged "
@@ -307,6 +314,15 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                             f"we don't want to overwrite any of the Pathway Walk results, so we are stopping the show. Here "
                             f"are the affected compounds for debugging purposes: {compounds_in_both_dicts}")
             data_dicts['unique-compounds'].update(uniq_rn)
+
+            if self.report_compounds_with_no_prediction:
+                self.run.info("Number of compounds with no prediction from Reaction Network Subset", len(no_prediction_rn))
+                data_dicts['compounds-with-no-prediction'].update(no_prediction_rn)
+                self.run.warning(f"Identified {len(data_dicts['compounds-with-no-prediction'])} compounds with no prediction",
+                                 header='COMPOUNDS WITH NO PREDICTION', lc='green')
+            
+            # clean up to spare some memory
+            del pot_exchanged_rn, uniq_rn, no_prediction_rn
 
         self.run.warning(f"Identified {len(data_dicts['potentially-exchanged-compounds'])} potentially exchanged compounds and "
                          f"{len(data_dicts['unique-compounds'])} compounds unique to one genome.", header='OVERALL RESULTS', lc='green')
@@ -692,6 +708,10 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
             ID of the 'primary' producer. See producer_consumer_decision_tree().
         cons : str
             ID of the 'primary' consumer. See producer_consumer_decision_tree().
+        genomes_produce : set of str
+            IDs of all producers of the compound
+        genomes_consume : set of str
+            IDs of all consumers of the compound
         """
 
         genomes_produce = set()
@@ -706,7 +726,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
 
         prod, cons = self.producer_consumer_decision_tree(genomes_produce, genomes_consume)
 
-        return prod, cons
+        return prod, cons, genomes_produce, genomes_consume
 
     def get_longest_chains(self, chain_list):
         """Loops over all chains in provided list, computes length, and returns the maximum length and longest chain.
@@ -868,17 +888,19 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
 
         RETURNS
         =======
-        3 dictionaries:
+        4 dictionaries:
             potentially-exchanged compounds
             unique compounds
             evidence from Pathway Walk for potentially-exchanged compounds
+            compounds with no prediction
         """
 
         potentially_exchanged_compounds = {}
         unique_compounds = {}
+        no_prediction_compounds = {}
         pathway_walk_evidence = {}
         pathway_walk_dict_key = 0
-
+        
         num_compounds_to_process = len(self.compound_to_pathway_walk_chains)
         processed_count = 0
         self.progress.new('Processing compounds in KEGG Pathway Maps', progress_total_items=num_compounds_to_process)
@@ -940,9 +962,9 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                             compound_dict[id_key] = None
                             compound_dict[eq_key] = None
 
-            producer,consumer = self.predict_exchange_from_pathway_walk(compound_reaction_chains)
+            producer,consumer,all_prod,all_cons = self.predict_exchange_from_pathway_walk(compound_reaction_chains)
+            compound_name = self.merged.metabolites[compound_id].modelseed_name
             if producer or consumer:
-                compound_name = self.merged.metabolites[compound_id].modelseed_name
                 producer_name = self.genomes_to_compare[producer]['name'] if producer else None
                 consumer_name = self.genomes_to_compare[consumer]['name'] if consumer else None
                 if producer == consumer or (not producer) or (not consumer): # unique to one genome
@@ -1075,6 +1097,18 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                     potentially_exchanged_compounds[compound_id]['consumption_overlap_proportion'] = prop_overlap_posterior
                     potentially_exchanged_compounds[compound_id]['production_chain_pathway_map'] = reported_map_prior
                     potentially_exchanged_compounds[compound_id]['consumption_chain_pathway_map'] = reported_map_posterior
+            else: # no prediction for this compound
+                if self.report_compounds_with_no_prediction:
+                    producer_names = ",".join([self.genomes_to_compare[producer]['name'] for producer in all_prod])
+                    consumer_names = ",".join([self.genomes_to_compare[consumer]['name'] for consumer in all_cons])
+                    no_prediction_compounds[compound_id] = {'compound_name': compound_name,
+                                                            'genomes': ",".join([x for x in all_prod.union(all_cons) if x]),
+                                                            'produced_by': producer_names,
+                                                            'consumed_by': consumer_names,
+                                                            'equivalent_compound_id': eq_comp,
+                                                            }
+                    if anvio.DEBUG:
+                        self.run.info_single(f"No prediction for compound {compound_id} ({compound_name})")
             self.processed_compound_ids.add(compound_id)
             processed_count += 1
             self.progress.update(f"{processed_count} / {num_compounds_to_process} compounds processsed")
@@ -1082,21 +1116,24 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         self.progress.end()
         self.run.info("Number of exchanged compounds predicted from KEGG Pathway Map walks", len(potentially_exchanged_compounds))
         self.run.info("Number of unique compounds predicted from KEGG Pathway Map walks", len(unique_compounds))
+        self.run.info("Number of compounds with no prediction KEGG Pathway Map walks", len(no_prediction_compounds))
 
-        return potentially_exchanged_compounds, unique_compounds, pathway_walk_evidence
+        return potentially_exchanged_compounds, unique_compounds, pathway_walk_evidence, no_prediction_compounds
 
     def predict_from_reaction_network(self, compound_set):
         """For each compound in the provided set, predicts whether it is potentially-exchanged or unique from the reaction network.
 
         RETURNS
         =======
-        2 dictionaries:
+        3 dictionaries:
             potentially-exchanged compounds
             unique compounds
+            compounds with no prediction (will be empty unless self.report_compounds_with_no_prediction is True)
         """
 
         unique_compounds = {}
         potentially_exchanged_compounds = {}
+        no_prediction_compounds = {}
         num_compounds_to_process = len(compound_set)
         processed_count=0
         self.progress.new('Processing compounds in reaction network', progress_total_items=num_compounds_to_process)
@@ -1192,6 +1229,16 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                     potentially_exchanged_compounds[compound_id]['consumption_overlap_proportion'] = None
                     potentially_exchanged_compounds[compound_id]['production_chain_pathway_map'] = None
                     potentially_exchanged_compounds[compound_id]['consumption_chain_pathway_map'] = None
+            else: # no prediction for this compound. 
+                if self.report_compounds_with_no_prediction:
+                    producer_names = ",".join([self.genomes_to_compare[producer]['name'] for producer in genomes_produce])
+                    consumer_names = ",".join([self.genomes_to_compare[consumer]['name'] for consumer in genomes_consume])
+                    no_prediction_compounds[compound_id] = {'compound_name': compound_name,
+                                                        'genomes': ",".join([x for x in set([producer_name,consumer_name]) if x]),
+                                                        'produced_by': producer_names if producer_names else None,
+                                                        'consumed_by': consumer_names if consumer_names else None,
+                                                        'equivalent_compound_id': eq_comp,
+                                                        }
 
             self.processed_compound_ids.add(compound_id)
             processed_count += 1
@@ -1202,7 +1249,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         self.run.info("Number of exchanged compounds predicted from Reaction Network subset approach", len(potentially_exchanged_compounds))
         self.run.info("Number of unique compounds predicted from Reaction Network subset approach", len(unique_compounds))
 
-        return potentially_exchanged_compounds, unique_compounds
+        return potentially_exchanged_compounds, unique_compounds, no_prediction_compounds
 
 
 class ExchangePredictorMulti(ExchangePredictorArgs):
