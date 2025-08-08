@@ -268,8 +268,8 @@ if (lambda_estimation_error){
 
   qvalues_df <- pvalues_df %>% mutate("adjusted_q_value" = NA)
 } else {
-qvalues_df <- pvalues_df %>%
-  mutate("adjusted_q_value" = qvalue::qvalue(p=unadjusted_p_value, lambda=lambdas, pi0.method="smoother")$qvalues)
+  qvalues_df <- pvalues_df %>%
+    mutate("adjusted_q_value" = qvalue::qvalue(p=unadjusted_p_value, lambda=lambdas, pi0.method="smoother")$qvalues)
 }
 
 enrichment_output <- qvalues_df %>%
@@ -290,4 +290,4 @@ enrichment_output %<>%
   arrange(desc(enrichment_score))
 
 enrichment_output %>%
-  write_tsv(path = opts$output)
+  write_tsv(file = opts$output)
