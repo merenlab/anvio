@@ -118,7 +118,7 @@ class SyntenyGeneCluster():
         return(num_contigs, length)
 
 
-    def get_data_from_YAML(self, contextualize_paralogs=True):
+    def get_data_from_YAML(self, contextualize_paralogs=True, gene_length=400, intron_length=100):
         """Create a data tale form the YAML file"""
         i = 0
         pangenome_data_dict = {}
@@ -137,9 +137,9 @@ class SyntenyGeneCluster():
                         'contig': genome + '_' + str(contig_num),
                         'direction': direction,
                         'start': current_pos,
-                        'stop': current_pos + 400
+                        'stop': current_pos + gene_length
                     }
-                    current_pos += 500
+                    current_pos += gene_length + intron_length
                     i += 1
 
         pangenome_data_df = pd.DataFrame.from_dict(pangenome_data_dict, orient='index').set_index(["genome", "gene_caller_id"])
@@ -606,8 +606,7 @@ class SyntenyGeneCluster():
         self.run.info_single(f'{value_counts.get("accessory", 0)} remaining accessory synteny gene caller entries.')
         self.run.info_single(f'{value_counts.get("singleton", 0)} singleton synteny gene caller entries.')
         self.run.info_single(f'{len(pangenome_data_df["syn_cluster"].unique())} synteny gene cluster entries in total.')
-        self.run.info_single("Done.")
-
+        
         if len(pangenome_data_df["syn_cluster"].unique()) > 2 * len(pangenome_data_df["gene_cluster"].unique()):
             if self.just_do_it:
                 self.run.info_single("We wanted to inform you, that the number of gene to syn clusters doesn't really line up but you choosed just-do-it so either you hate us, yourself, or you are very sure about what you are doint. GOOD LUCK")
