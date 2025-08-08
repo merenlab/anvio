@@ -47,6 +47,14 @@ These columns summarize the 'best' evidence we could find that this compound is 
 
 If you are curious about the other Pathway Walk evidence for a given prediction, take a look at the 'Evidence' file (described in the next section).
 
+**Additional columns**
+
+Some columns can be added by using particular flags.
+
+- `equivalent_compound_id`: Shows the ModelSEED ID of any compound deemed equivalent to the reported `compound_id`. Added by running the program with either `--use-equivalent-amino-acids` or `--custom-equivalent-compounds-file`.
+- `production_rxn_ids_*` and `consumption_rxn_ids_*`: The ModelSEED ID of any production/consumption reactions the compound participates in, specific to the reaction network of a given genome. Added by using the `--add-reactions-to-output` flag.
+- `production_rxn_eqs_*` and `consumption_rxn_eqs_*`: The chemical reaction equation of any production/consumption reactions the compound participates in, specific to the reaction network of a given genome. Added by using the `--add-reactions-to-output` flag.
+
 ### Pathway Walk evidence for potentially-exchanged compounds
 
 Each line of this file describes the reaction chain evidence for a compound from _one KEGG Pathway Map_, in _one organism_. In each case, we report the _longest_ reaction chain that we could find (rather than reporting all of the many possible chains). If a compound is present in multiple Pathway Maps, each map gets its own line.
@@ -83,4 +91,4 @@ Each line of this file describes a metabolite that is found in only one of the o
 |cpd00003|NAD|B_cica|B_cica|B_cica|Pathway_Map_Walk|
 |cpd00005|NADPH|B_cica|B_cica|None|Pathway_Map_Walk|
 
-It uses the same standard columns as the output for potentially-exchanged compounds.
+It uses the same standard columns and additional columns as the output for potentially-exchanged compounds.
