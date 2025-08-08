@@ -25,8 +25,7 @@ from anvio.errors import ConfigError
 from anvio.tables.collections import TablesForCollections
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -351,6 +350,7 @@ class GetSplitNamesInBins:
         else:
             bins_that_do_not_exist_in_collection = [b for b in self.bins if b not in bins_in_collection]
             if len(bins_that_do_not_exist_in_collection):
+                progress.reset()
                 some_bins_that_exist_in_collection = bins_in_collection if len(bins_in_collection) < 30 else bins_in_collection[:30]
                 raise ConfigError('Some of the bins you requested do not appear to have been described in the collection '
                                    '"%s". Here is a list of bins that are missing: "%s". Here is a list of some bins in '

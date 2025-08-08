@@ -1,0 +1,55 @@
+---
+layout: program
+title: The anvi'o '{{ workflow.name }}' workflow
+{% if workflow.one_sentence_summary %}excerpt: {{ workflow.one_sentence_summary | striptags | get_first_sentence | slice:250 }}{% endif %}
+categories: [anvio]
+comments: false
+redirect_from: /{{ meta.version_short_identifier }}/{{ workflow.name }}
+image:
+  featurerelative: ../../../images/header.png
+  display: true
+---
+
+<i>{{ workflow.one_sentence_summary }}</i>
+
+{{ workflow.one_paragraph_summary }}
+
+🔙 **[To the main page](../../)** of anvi'o programs and artifacts.
+
+## Authors
+
+{{ workflow.authors | safe }}
+
+## Artifacts accepted
+
+The {{ workflow.name }} can typically be initiated with the following artifacts:
+
+<p style="text-align: left" markdown="1">{% for name, path in workflow.artifacts_accepted %}<span class="artifact-p">[{{name}}]({{path}}) <img src="../../images/icons/{{artifacts|lookup:name|lookup:"type"}}.png" class="artifact-icon-mini" />{% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</p>
+
+## Artifacts produced
+
+The {{ workflow.name }} typically produce the following anvi'o artifacts:
+
+<p style="text-align: left" markdown="1">{% for name, path in workflow.artifacts_produced %}<span class="artifact-p">[{{name}}]({{path}}) <img src="../../images/icons/{{artifacts|lookup:name|lookup:"type"}}.png" class="artifact-icon-mini" />{% if forloop.last %}</span>{% else %}</span> {% endif %}{% endfor %}</p>
+
+## Third party programs
+
+This is a list of programs that may be used by the {{ workflow.name }} workflow depending on the user settings in the <span class="artifact-p">[workflow-config](../../artifacts/workflow-config/) <img src="../../images/icons/{{artifacts|lookup:"workflow-config"|lookup:"type"}}.png" class="artifact-icon-mini" /></span>:
+
+<ul>
+{% for third_party_program in workflow.third_party_programs_used %}<li>{{ third_party_program | safe }}</li>{% endfor %}
+</ul>
+
+An anvi'o installation that follows the recommendations on the <a href="https://anvio.org/install/" target="_blank">installation page</a> will include all these programs. But please consider your settings, and cite these additional tools from your methods sections.
+
+## Workflow description and usage
+
+{% if workflow.description %}
+{{ workflow.description | safe }}
+
+{:.notice}
+Edit [this file](https://github.com/merenlab/anvio/tree/master/anvio/docs/workflows/{{workflow.name}}.md) to update this information.
+{% else %}
+{:.notice}
+**No one has described this workflow**. What a shame :/ If you would like to contribute, please get in touch with an anvi'o developer :)
+{% endif %}

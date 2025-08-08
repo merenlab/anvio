@@ -28,8 +28,7 @@ import anvio.filesnpaths as filesnpaths
 from anvio.errors import ConfigError
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -57,6 +56,7 @@ class GenomeDescriptions(object):
         self.just_do_it = A('just_do_it')
         self.functions_are_available = False
         self.function_annotation_sources = set([])
+        self.function_annotation_sources_some_genomes_miss = set([])
 
         self.input_file_for_internal_genomes = A('internal_genomes')
         self.input_file_for_external_genomes = A('external_genomes')
@@ -215,8 +215,8 @@ class GenomeDescriptions(object):
                             genomes_missing_any.add(genome_name)
 
                 raise ConfigError(f"Bad news. {P('An HMM source', len(hmm_sources_missing), alt='Some HMM sources')} "
-                                  f"you really need ({', '.join(hmm_sources_missing)}) {P('is', len(hmm_sources_missing), alt='are')} "
-                                  f"missing from some of your contigs databases :/ Here is the list: [{', '.join(genomes_missing_any)}].")
+                                  f"you requested ({', '.join(hmm_sources_missing)}) {P('is', len(hmm_sources_missing), alt='are')} "
+                                  f"missing from {'all' if len(genomes_missing_any) == len(self.genomes) else 'some'} of your contigs databases :/ Here is the list: {', '.join(genomes_missing_any)}")
 
 
         return hmm_sources_in_all_genomes
@@ -277,11 +277,12 @@ class GenomeDescriptions(object):
             self.run.warning("While processing internal and/or external genomes files you have provided, "
                              "anvi'o found genomes with identical hashes (which means they were practically "
                              "identical to each other). But since you have instructed anvi'o to ignore that "
-                             "it is now continuing with the flow (even %d hashes for your internal genomes and %d) "
-                             "hashes for your external gneomes appeared more than once). See below the genome names "
-                             "with identical hashes:" % (len(self.internal_genomes_with_identical_hashes),
-                                                         len(self.external_genomes_with_identical_hashes)),
-                                                         overwrite_verbose=True)
+                             "it is now continuing with the flow (even though %d hashes for your internal "
+                             "genomes and %d) hashes for your external genomes appeared more than once). "
+                             "See below the genome names with identical hashes:" \
+                                     % (len(self.internal_genomes_with_identical_hashes),
+                                        len(self.external_genomes_with_identical_hashes)),
+                                        overwrite_verbose=True)
 
             for _t, _d in [('Internal', self.internal_genomes_with_identical_hashes), ('External', self.external_genomes_with_identical_hashes)]:
                 all_genome_hashes = list(_d.keys())
@@ -308,6 +309,7 @@ class GenomeDescriptions(object):
             # init all the bulky stuff, we still can give them the contents of the meta tables.
             self.progress.new('Initializing meta information for genomes', progress_total_items=len(self.genomes))
             self.progress.update('...')
+
             for genome_name in self.genomes:
                 self.progress.update(f"Working on '{genome_name}' ...", increment=True)
                 g = self.genomes[genome_name]
@@ -428,7 +430,7 @@ class GenomeDescriptions(object):
                 else:
                     self.function_annotation_sources = self.function_annotation_sources.intersection(sources)
 
-            function_annotation_sources_some_genomes_miss = all_function_annotation_sources_observed.difference(self.function_annotation_sources)
+            self.function_annotation_sources_some_genomes_miss = all_function_annotation_sources_observed.difference(self.function_annotation_sources)
 
             if not len(self.function_annotation_sources):
                 # none of the functions are common
@@ -442,14 +444,14 @@ class GenomeDescriptions(object):
 
                 # good. here we know some functions are available, but let's get some further understanding, and report it to the user, you know,
                 # because we're nice:
-                if len(function_annotation_sources_some_genomes_miss):
+                if len(self.function_annotation_sources_some_genomes_miss):
                     # some functions were missing from some genomes
                     self.run.warning("Anvi'o has good news and bad news for you (very balanced, as usual). The good news is that there are some "
                                      "functional annotation sources that are common to all of your genomes, and they will be used whenever "
                                      "it will be appropriate. Here they are: '%s'. The bad news is you had more function annotation sources, "
                                      "but they were not common to all genomes. Here they are so you can say your goodbyes to them (because "
                                      "they will not be used): '%s'" % \
-                                            (', '.join(self.function_annotation_sources), ', '.join(function_annotation_sources_some_genomes_miss)))
+                                            (', '.join(self.function_annotation_sources), ', '.join(self.function_annotation_sources_some_genomes_miss)))
                 else:
                     # every function ever observed is common to all genomes.
                     self.run.warning("Good news! Anvi'o found all these functions that are common to all of your genomes and will use them for "
@@ -605,6 +607,10 @@ class GenomeDescriptions(object):
             raise ConfigError('Genes must have been called during the generation of contigs database for this workflow to work. However,\
                                 these external genomes do not have gene calls: %s' % (', '.join(genomes_missing_gene_calls)))
 
+        # make sure genome names are not funny (since they are going to end up being db variables soon)
+        self.progress.update("Checking genome names ..")
+        [utils.is_this_name_OK_for_database('genome name "%s"' % genome_name, genome_name) for genome_name in self.genomes]
+
         if not self.full_init:
             # if this is not full init, stop the sanity check here.
             self.progress.end()
@@ -634,9 +640,6 @@ class GenomeDescriptions(object):
                                  f"run `anvi-run-hmms` on your contigs databases to call your single-copy core genes. For the sake of brevity, here "
                                  f"is the list of genomes missing SCGs: {','.join(genomes_missing_hmms_for_scgs)}.", header="SCGs ARE NOT CALLED", lc="yellow")
 
-        # make sure genome names are not funny (since they are going to end up being db variables soon)
-        self.progress.update("Checking genome names ..")
-        [utils.is_this_name_OK_for_database('genome name "%s"' % genome_name, genome_name) for genome_name in self.genomes]
 
         # figure out whether there are genomes with gene calls that are NOT processed
         self.progress.update("Checking gene calls that are not processed ..")
@@ -1239,8 +1242,37 @@ class AggregateFunctions:
             return
 
         g = GenomeDescriptions(self.args, run=terminal.Run(verbose=False))
-        g.load_genomes_descriptions()
+        g.load_genomes_descriptions(skip_sanity_check=True)
+
+        ################################################################################
+        # make sure the requested function source is present across all external genomes
+        ################################################################################
+        genomes_missing_requested_function_annotation_source = set([])
+        for genome_name in g.genomes:
+            if not g.genomes[genome_name]['gene_function_sources'] or self.function_annotation_source not in g.genomes[genome_name]['gene_function_sources']:
+                genomes_missing_requested_function_annotation_source.add(genome_name)
+
+        if len(genomes_missing_requested_function_annotation_source):
+            if len(genomes_missing_requested_function_annotation_source) == len(g.genomes):
+                error_msg_prefix = f"None of the {len(g.genomes)} genomes"
+            else:
+                error_msg_prefix = f"{len(genomes_missing_requested_function_annotation_source)} of the {len(g.genomes)} genomes"
+
+            raise ConfigError(f"{error_msg_prefix} in your external-genomes-txt seem to have the function annotation source "
+                              f"'{self.function_annotation_source}' you have requested :/ You can double check what function "
+                              f"annotation sources available in a given contigs-db using the program `anvi-db-info`. Please "
+                              f"make sure every genome you are including in your analysis is annotated with the function "
+                              f"annotation source you are interested in surveying. For instance, here is one example that "
+                              f"represents this problematic situation: '{genomes_missing_requested_function_annotation_source.pop()}'")
+        ################################################################################
+        # /make sure the requested function source is present across all external genomes
+        ################################################################################
+
         g.init_functions()
+
+        self.run.warning("Just FYI, for any gene call with multiple functional annotations from the same source "
+                         "in a given genome, anvi'o only kept the annotation with the BEST e-value. Keep this in mind "
+                         "when interpreting the output of this program.")
 
         self.layer_names_from_internal_genomes = copy.deepcopy(g.internal_genome_names)
         self.layer_names_from_external_genomes = copy.deepcopy(g.external_genome_names)
@@ -1333,7 +1365,7 @@ class AggregateFunctions:
     def do_functional_enrichment_analysis(self):
         """Performs functional enrichment analysis if user defined layer groups.
 
-        This function fills in the the variable `self.functional_enrichment_stats_dict` so
+        This function fills in the variable `self.functional_enrichment_stats_dict` so
         the downstream analyses can use it to do fancy things.
         """
 
@@ -1363,7 +1395,7 @@ class AggregateFunctions:
                                                                                       progress=self.progress)
 
 
-    def report_functions_across_genomes(self, output_file_prefix, quiet=False):
+    def report_functions_across_genomes(self, output_file_prefix, quiet=False, with_function_accession_ids=False):
         """Reports text files for functions across genomes data"""
 
         output_file_path_for_frequency_view = f"{os.path.abspath(output_file_prefix)}-FREQUENCY.txt"
@@ -1374,28 +1406,39 @@ class AggregateFunctions:
 
         with open(output_file_path_for_frequency_view, 'w') as frequency_output, open(output_file_path_for_presence_absence_view, 'w') as presence_absence_output:
             layer_names = sorted(list(self.layer_names_considered))
-            frequency_output.write('\t'.join(['key'] + layer_names + [self.function_annotation_source]) + '\n')
-            presence_absence_output.write('\t'.join(['key'] + layer_names + [self.function_annotation_source]) + '\n')
+
+            if with_function_accession_ids:
+                columns_txt = '\t'.join(['key'] + layer_names + [self.function_annotation_source] + [f"{self.function_annotation_source}_accession"]) + '\n'
+            else:
+                columns_txt = '\t'.join(['key'] + layer_names + [self.function_annotation_source]) + '\n'
+
+            frequency_output.write(columns_txt)
+            presence_absence_output.write(columns_txt)
 
             for key in self.functions_across_layers_frequency:
                 function = self.hash_to_function_dict[key][self.function_annotation_source]
 
                 frequency_data = [f"{self.functions_across_layers_frequency[key][l] if l in self.functions_across_layers_frequency[key] else 0}" for l in layer_names]
-                frequency_output.write('\t'.join([key] + frequency_data + [function]) + '\n')
-
                 presence_absence_data = [f"{self.functions_across_layers_presence_absence[key][l] if l in self.functions_across_layers_presence_absence[key] else 0}" for l in layer_names]
-                presence_absence_output.write('\t'.join([key] + presence_absence_data + [function]) + '\n')
+
+                if with_function_accession_ids:
+                    function_accession = ','.join(self.function_to_accession_ids_dict[function][self.function_annotation_source])
+                    frequency_output.write('\t'.join([key] + frequency_data + [function, function_accession]) + '\n')
+                    presence_absence_output.write('\t'.join([key] + presence_absence_data + [function, function_accession]) + '\n')
+                else:
+                    frequency_output.write('\t'.join([key] + frequency_data + [function]) + '\n')
+                    presence_absence_output.write('\t'.join([key] + presence_absence_data + [function]) + '\n')
 
         if not quiet:
             self.run.info('Functions across genomes (frequency)', output_file_path_for_frequency_view)
             self.run.info('Functions across genomes (presence/absence)', output_file_path_for_presence_absence_view)
 
 
-    def report_functions_per_group_stats(self, output_file_path, quiet=False):
+    def report_functions_per_group_stats(self, output_file_path, skip_functions_in_all_groups=False, quiet=False):
         """A function to summarize functional occurrence for groups of genomes.
 
-        Please note that this function will not report functions that are associated
-        with ALL groups.
+        Please note that this function will report all functions. Using `skip_functions_in_all_groups` will NOT report
+        functions that are associated with ALL groups.
         """
 
         filesnpaths.is_output_file_writable(output_file_path)
@@ -1419,8 +1462,9 @@ class AggregateFunctions:
             # learn which groups are associated with this function
             associated_groups = [g for g in group_names if self.functions_across_groups_presence_absence[key_hash][g]]
 
-            # if the function is associated with all groups, simply skip that entry
-            if len(associated_groups) == num_groups:
+            # if the function is associated with all groups, and if the user for some reason asking for us to
+            # skip those functions associated with all groups, simply skip that entry
+            if skip_functions_in_all_groups and len(associated_groups) == num_groups:
                 num_skipped += 1
                 continue
 
@@ -1438,18 +1482,13 @@ class AggregateFunctions:
                 else:
                     d[key_hash][f"p_{group_name}"] = 0
 
-        self.run.info(f"Number of {self.function_annotation_source} {key_hash_represents}s associated with all groups and SKIPPED", num_skipped)
-        self.run.info(f"Number of {self.function_annotation_source} {key_hash_represents}s in final occurrence table", len(d))
-
-        if not len(d):
-            raise ConfigError("Something weird is happening here :( It seems every single function across your genomes "
-                              "is associated with all groups you have defined. There is nothing much anvi'o can work with "
-                              "here. If you think this is a mistake, please let us know.")
+        if skip_functions_in_all_groups:
+            self.run.info(f"Number of {self.function_annotation_source} {key_hash_represents}s associated with all groups and SKIPPED", num_skipped)
+        self.run.info(f"Number of {self.function_annotation_source} {key_hash_represents}s reported", len(d))
 
         if len(d) < 2:
-            raise ConfigError("Oh, dear. It seems only one function is differentially present across the genome "
-                              "groups you have defined. There is nothing much anvi'o can work with "
-                              "here. If you think this is a mistake, please let us know.")
+            raise ConfigError("Oh, dear. The number of functions in the function per-group stats dictionary is less than two :/ "
+                              "Something must have gone wrong somewhere. But anvi'o is Jon Snow and not oh I know.")
 
         static_column_names = ['key', 'function', 'accession', 'associated_groups']
         dynamic_column_names = []

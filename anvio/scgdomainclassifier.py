@@ -20,8 +20,7 @@ from anvio.errors import ConfigError
 with terminal.SuppressAllOutput():
     import anvio.data.hmm as hmm_data
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2019, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -170,7 +169,7 @@ class Train(SCGDomainClassifier):
                 self.run.warning("The number of contigs databases found for the domain '%s' is %d. You should consider "
                             "increasing the number of genomes you include for this domain. A robust classifier "
                             "will require similar number of genomes for each domain that capture the diversity "
-                            "of the domain they represent. Say, at least 20 gneomes per domain is a good start." \
+                            "of the domain they represent. Say, at least 20 genomes per domain is a good start." \
                                     % (domain, len(self.contigs_dbs[domain])))
 
             self.progress.update("Making sure contigs dbs are contigs dbs")

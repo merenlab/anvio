@@ -14,7 +14,7 @@ import termios
 import datetime
 import textwrap
 
-from colored import fore, back, style
+from colored import Fore, Back, Style
 from collections import OrderedDict
 
 import anvio
@@ -24,8 +24,7 @@ import anvio.constants as constants
 from anvio.errors import TerminalError
 from anvio.ttycolors import color_text as c
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __maintainer__ = "A. Murat Eren"
@@ -37,6 +36,12 @@ __status__ = "Development"
 ansi_escape = re.compile(r'\x1B\[[0-?]*[ -/]*[@-~]')
 non_ascii_escape = re.compile(r'[^\x00-\x7F]+')
 CLEAR = lambda line: ansi_escape.sub('', non_ascii_escape.sub('', line.strip()))
+
+
+mc_color_dict = {'Yes': 'green',
+                 'True': 'green',
+                 'No': 'red',
+                 'False': 'red'}
 
 
 class SuppressAllOutput(object):
@@ -73,10 +78,10 @@ def pluralize(word, number, sfp="s", sfs=None, pfs=None, alt=None):
 
     >>> f"You have {num_sequences_in_fasta_file} sequences in your FASTA file."
 
-    This will print "You have 1 seqeunces in your FASTA file" like an idiot when there is only
+    This will print "You have 1 sequences in your FASTA file" like an idiot when there is only
     one sequence. An alternative is to do something more elaborate:
 
-    >>> f"You have {num_sequences_in_fasta_file} {'sequence' if num_sequences_in_fasta_file == 1 else 'seqeunces'}"
+    >>> f"You have {num_sequences_in_fasta_file} {'sequence' if num_sequences_in_fasta_file == 1 else 'sequences'}"
 
     Even though this will work beautifully, it works at the expense of the readability of the code
     for a minor inconvenience.
@@ -133,14 +138,55 @@ def pluralize(word, number, sfp="s", sfs=None, pfs=None, alt=None):
                     return f"{number} {word}"
 
 
+def get_terminal_width():
+    try:
+        terminal_width = max(get_terminal_size()[0], 60)
+    except:
+        # Getting the terminal size failed. It could be for many reasons: they may not have a
+        # screen, they may be running TempleOS, etc. We respond by giving a generous terminal
+        # width so that if they can see it at all, it truncates only the longest update messages.
+        terminal_width = 120
+
+    return terminal_width
+
+
+def get_terminal_size():
+    """function was taken from http://stackoverflow.com/a/566752"""
+    def ioctl_GWINSZ(fd):
+        try:
+            cr = struct.unpack('hh', fcntl.ioctl(fd, termios.TIOCGWINSZ, '1234'))
+        except:
+            return None
+        return cr
+    cr = ioctl_GWINSZ(0) or ioctl_GWINSZ(1) or ioctl_GWINSZ(2)
+    if not cr:
+        try:
+            fd = os.open(os.ctermid(), os.O_RDONLY)
+            cr = ioctl_GWINSZ(fd)
+            os.close(fd)
+        except:
+            pass
+    if not cr:
+        try:
+            cr = (os.environ['LINES'], os.environ['COLUMNS'])
+        except:
+            cr = (25, 80)
+    return int(cr[1]), int(cr[0])
+
+
+def clear_progress_line():
+    null = '\r' + ' ' * (get_terminal_width())
+    sys.stderr.write(null)
+    sys.stderr.write('\r')
+    sys.stderr.flush()
+
+
 class Progress:
     def __init__(self, verbose=True):
         self.pid = None
         self.verbose = verbose
-        self.terminal_width = None
+        self.terminal_width = get_terminal_width()
         self.is_tty = sys.stdout.isatty()
-
-        self.get_terminal_width()
 
         self.msg = None
         self.current = None
@@ -151,18 +197,10 @@ class Progress:
 
         self.LEN = lambda s: len(s.encode('utf-16-le')) // 2
 
-        if anvio.NO_PROGRESS or anvio.QUIET:
+        # if --no-progress or --quiet parameters were passed, OR, if we are not attached
+        # to a real terminal, turn off progress outputs:
+        if anvio.NO_PROGRESS or anvio.QUIET or not self.is_tty:
             self.verbose = False
-
-
-    def get_terminal_width(self):
-        try:
-            self.terminal_width = max(get_terminal_size()[0], 60)
-        except:
-            # Getting the terminal size failed. It could be for many reasons: they may not have a
-            # screen, they may be running TempleOS, etc. We respond by giving a generous terminal
-            # width so that if they can see it at all, it truncates only the longest update messages.
-            self.terminal_width = 120
 
 
     def new(self, pid, discard_previous_if_exists=False, progress_total_items=None):
@@ -176,7 +214,7 @@ class Progress:
             return
 
         self.pid = '%s %s' % (get_date(), pid)
-        self.get_terminal_width()
+        self.terminal_width = get_terminal_width()
         self.current = None
         self.step = None
         self.progress_total_items = progress_total_items
@@ -221,20 +259,20 @@ class Progress:
 
                 # see a full list of color codes: https://gitlab.com/dslackw/colored
                 if p_length >= break_point:
-                    sys.stderr.write(back.CYAN + fore.BLACK + c[:break_point] + \
-                                     back.GREY_30 + fore.WHITE + c[break_point:end_point] + \
-                                     back.CYAN + fore.CYAN + c[end_point] + \
-                                     back.GREY_50 + fore.LIGHT_CYAN + c[end_point:] + \
-                                     style.RESET)
+                    sys.stderr.write(Back.CYAN + Fore.BLACK + c[:break_point] + \
+                                     Back.GREY_30 + Fore.WHITE + c[break_point:end_point] + \
+                                     Back.CYAN + Fore.CYAN + c[end_point] + \
+                                     Back.GREY_50 + Fore.LIGHT_CYAN + c[end_point:] + \
+                                     Style.RESET)
                 else:
-                    sys.stderr.write(back.CYAN + fore.BLACK + c[:break_point - p_length] + \
-                                     back.SALMON_1 + fore.BLACK + p_text + \
-                                     back.GREY_30 + fore.WHITE + c[break_point:end_point] + \
-                                     back.GREY_50 + fore.LIGHT_CYAN + c[end_point:] + \
-                                     style.RESET)
+                    sys.stderr.write(Back.CYAN + Fore.BLACK + c[:break_point - p_length] + \
+                                     Back.SALMON_1 + Fore.BLACK + p_text + \
+                                     Back.GREY_30 + Fore.WHITE + c[break_point:end_point] + \
+                                     Back.GREY_50 + Fore.LIGHT_CYAN + c[end_point:] + \
+                                     Style.RESET)
                 sys.stderr.flush()
             else:
-                sys.stderr.write(back.CYAN + fore.BLACK + c + style.RESET)
+                sys.stderr.write(Back.CYAN + Fore.BLACK + c + Style.RESET)
                 sys.stderr.flush()
 
 
@@ -246,10 +284,8 @@ class Progress:
         if not self.verbose:
             return
 
-        null = '\r' + ' ' * (self.terminal_width)
-        sys.stderr.write(null)
-        sys.stderr.write('\r')
-        sys.stderr.flush()
+        clear_progress_line()
+
         self.current = None
         self.step = None
 
@@ -333,6 +369,12 @@ class Run:
         self.verbose = verbose
         self.width = width
 
+        # when True, various output messages may be colored automatically
+        self.autocolor = False
+
+        # learn about the terminal
+        self.terminal_width = get_terminal_width()
+
         self.single_line_prefixes = {0: '',
                                      1: '* ',
                                      2: '    - ',
@@ -406,25 +448,35 @@ class Run:
         elif isinstance(value, int):
             value = pretty_print(value)
 
+        if self.autocolor and value in mc_color_dict:
+            mc = mc_color_dict[value]
+
         label = constants.get_pretty_name(key)
 
         info_line = "%s%s %s: %s\n%s" % ('\n' * nl_before, c(label, lc),
                                          '.' * (self.width - len(label)),
                                          c(str(value), mc), '\n' * nl_after)
         if align_long_values:
-            terminal_width = get_terminal_size()[0]
-            wrap_width = terminal_width - self.width - 3
-            wrapped_value_lines = textwrap.wrap(value, width=wrap_width, break_long_words=False, break_on_hyphens=False)
-            if len(wrapped_value_lines) == 0:
-                aligned_value_str = value
-            else:
-                aligned_value_str = wrapped_value_lines[0]
-                for line in wrapped_value_lines[1:]:
-                    aligned_value_str += "\n %s  %s" % (' ' * self.width, line)
+            wrap_width = self.terminal_width - self.width - 3
 
-            info_line = "%s%s %s: %s\n%s" % ('\n' * nl_before, c(label, lc),
-                                             '.' * (self.width - len(label)),
-                                             c(str(aligned_value_str), mc), '\n' * nl_after)
+            if wrap_width < 40:
+                # the info is way too long and the terminal is way too tiny
+                # to wrap anything. so we will give up here, and continue
+                # with the existing `info_line` even if we are asked to
+                # `align_long_values`
+                pass
+            else:
+                wrapped_value_lines = textwrap.wrap(value, width=wrap_width, break_long_words=False, break_on_hyphens=False)
+                if len(wrapped_value_lines) == 0:
+                    aligned_value_str = value
+                else:
+                    aligned_value_str = wrapped_value_lines[0]
+                    for line in wrapped_value_lines[1:]:
+                        aligned_value_str += "\n %s  %s" % (' ' * self.width, line)
+
+                info_line = "%s%s %s: %s\n%s" % ('\n' * nl_before, c(label, lc),
+                                                 '.' * (self.width - len(label)),
+                                                 c(str(aligned_value_str), mc), '\n' * nl_after)
 
         if progress:
             progress.reset()
@@ -432,18 +484,23 @@ class Run:
             if progress.msg and progress.pid:
                 progress.update(progress.msg)
         else:
+            clear_progress_line()
             self.write(info_line, quiet=quiet, overwrite_verbose=overwrite_verbose)
 
 
-    def info_single(self, message, overwrite_verbose=False, mc='yellow', nl_before=0, nl_after=0, cut_after=80, level=1, progress=None):
-        if isinstance(message, str):
+    def info_single(self, message, overwrite_verbose=False, mc='yellow', nl_before=0, nl_after=0, cut_after=80, level=1, pretty_indentation=True, progress=None):
+        if isinstance(message, str) and pretty_indentation:
             message = remove_spaces(message)
 
         if level not in self.single_line_prefixes:
             raise TerminalError("the `info_single` function does not know how to deal with a level of %d :/" % level)
 
         if cut_after:
-            message_line = c("%s%s\n" % (self.single_line_prefixes[level], textwrap.fill(str(message), cut_after)), mc)
+            if pretty_indentation:
+                subsequent_indent = ''.join([' '] * len(self.single_line_prefixes[level]))
+                message_line = c("%s%s\n" % (self.single_line_prefixes[level], textwrap.fill(str(message), cut_after, subsequent_indent=subsequent_indent)), mc)
+            else:
+                message_line = c("%s%s\n" % (self.single_line_prefixes[level], textwrap.fill(str(message), cut_after)), mc)
         else:
             message_line = c("%s%s\n" % (self.single_line_prefixes[level], str(message)), mc)
 
@@ -455,7 +512,8 @@ class Run:
             if progress.msg and progress.pid:
                 progress.update(progress.msg)
         else:
-            self.write(message_line, overwrite_verbose=False)
+            clear_progress_line()
+            self.write(message_line, overwrite_verbose=overwrite_verbose)
 
 
     def warning(self, message, header='WARNING', lc='red', raw=False, overwrite_verbose=False, nl_before=0, nl_after=0, progress=None):
@@ -476,6 +534,7 @@ class Run:
             if progress.msg and progress.pid:
                 progress.update(progress.msg)
         else:
+            clear_progress_line()
             self.write((header_line + message_line) if message else header_line, overwrite_verbose=overwrite_verbose)
 
 
@@ -867,7 +926,7 @@ def time_program(program_method):
     TimeCode_params = {
         'success_msg': '%s took ' % program_name,
         'failure_msg': '%s encountered an error after ' % program_name,
-        'suppress_first': 3, # avoid clutter when program finishes or fails within 3 seconds
+        'suppress_first': 1, # avoid clutter when program finishes or fails within 1 seconds
     }
 
     def wrapper(*args, **kwargs):
@@ -1018,31 +1077,6 @@ def tabulate(*args, **kwargs):
 
 def get_date():
     return time.strftime("%d %b %y %H:%M:%S", time.localtime())
-
-
-def get_terminal_size():
-    """function was taken from http://stackoverflow.com/a/566752"""
-    def ioctl_GWINSZ(fd):
-        try:
-            cr = struct.unpack('hh', fcntl.ioctl(fd, termios.TIOCGWINSZ,
-        '1234'))
-        except:
-            return None
-        return cr
-    cr = ioctl_GWINSZ(0) or ioctl_GWINSZ(1) or ioctl_GWINSZ(2)
-    if not cr:
-        try:
-            fd = os.open(os.ctermid(), os.O_RDONLY)
-            cr = ioctl_GWINSZ(fd)
-            os.close(fd)
-        except:
-            pass
-    if not cr:
-        try:
-            cr = (os.environ['LINES'], os.environ['COLUMNS'])
-        except:
-            cr = (25, 80)
-    return int(cr[1]), int(cr[0])
 
 
 class Logger:

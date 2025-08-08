@@ -1,11 +1,11 @@
 /**
  * Javascript library for anvi'o interactive interface
  *
- *  Author: Özcan Esen <ozcanesen@gmail.com>
- *  Credits: A. Murat Eren, Doğan Can Kilment
- *  Copyright 2015, The anvio Project
+ *  Authors: A. Murat Eren <a.murat.eren@gmail.com>
+ *           Ozcan Esen
+ *           Isaac Fink <iafink@uchicago.edu>
  *
- * This file is part of anvi'o (<https://github.com/meren/anvio>).
+ * Copyright 2015-2021, The anvi'o project (http://anvio.org)
  *
  * Anvi'o is a free software. You can redistribute this program
  * and/or modify it under the terms of the GNU General Public
@@ -80,6 +80,7 @@ var bbox;
 var a_display_is_drawn = false;
 var max_branch_support_value_seen = null;
 var min_branch_support_value_seen = null;
+var multiple_support_value_seen = false;
 
 var request_prefix = getParameterByName('request_prefix');
 //---------------------------------------------------------
@@ -124,16 +125,17 @@ $(document).ready(function() {
         "hideMethod": "fadeOut",
     }
 
+    // Dendrogram settings changes depending on drawing type
     $('#tree_type').change(function() {
         if ($('#tree_type').val()=='circlephylogram')
         {
-            $('.phylogram_settings').hide();
-            $('.circlephylogram_settings').show();
+            $('#tree_type_circlephylogram').show();
+            $('#tree_type_phylogram').hide();
         }
         else
         {
-            $('.phylogram_settings').show();
-            $('.circlephylogram_settings').hide();
+            $('#tree_type_circlephylogram').hide();
+            $('#tree_type_phylogram').show();
         }
     });
 
@@ -193,14 +195,26 @@ $(document).ready(function() {
         }
     });
 
-    if (!$.browser.chrome)
-    {
+
+    if (!(/Chrome/.test(navigator.userAgent))) {
         toastr.warning("We tested anvi'o only on Google Chrome, and it seems you are using a different browser.\
                         For the best performance, and to avoid unexpected issues, please consider using anvi'o with\
                         the lastest version of Chrome.", "", { 'timeOut': '0', 'extendedTimeOut': '0' });
     }
 
     initData();
+        // Sidebar Hide/Show button 
+        $(".sidebar-toggle").click(function() {
+            $(this).text(function(i, text) {
+                if(text === "Hide"){
+                    $('#inner-sidebar').hide();
+    
+                }else{
+                    $('#inner-sidebar').show();
+                }
+                return text === "Hide" ? "Show" : "Hide";
+            });
+        });
 });
 
 function initData() {
@@ -262,8 +276,18 @@ function initData() {
             var available_views = response.views[2];
             $('#views_container').append(getComboBoxContent(default_view, available_views));
 
-            $("#tbody_layers").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection();
-            $("#tbody_samples").sortable({helper: fixHelperModified, handle: '.drag-icon', items: "> tr"}).disableSelection();
+
+            sortable('#tbody_layers', {
+                forcePlaceholderSize: true,
+                handle: '.drag-icon',
+                items: 'tr'
+            });
+
+            sortable('#tbody_samples', {
+                forcePlaceholderSize: true,
+                handle: '.drag-icon',
+                items: 'tr'
+            });
 
             let merged = samplesMergeStackbarLayers(response.layers_information, response.layers_information_default_order);
 
@@ -275,9 +299,9 @@ function initData() {
 
             samples_groups.forEach(function (group_name) {
                 $('#sample_groups_container').append(`
-                    <div style="float: left; padding: 4px 4px;">
+                    <div class="mr-5 col-5">
                         <input type="checkbox" onclick="toggleSampleGroups();" id="group_${group_name}" value="${group_name}" ${group_name == 'default' ? 'checked="checked"' : ''}>
-                        <label style="margin-left: 2px;" onclick="toggleSampleGroups();" for="group_${group_name}">${group_name}</label>
+                        <label onclick="toggleSampleGroups();" for="group_${group_name}">${group_name}</label>
                     </div>`);
             });
 
@@ -315,6 +339,9 @@ function initData() {
 
             $('.loading-screen').hide();
 
+            // Scale bar on the sidebar
+            drawInlineScaleBar();
+
             bins = new Bins(response.bin_prefix, document.getElementById('tbody_bins'));
 
             // redoing intiial bin causes some weird behaviors
@@ -324,8 +351,6 @@ function initData() {
 
             if (response.autodraw)
             {
-                $('#btn_draw_tree').removeClass('glowing-button');
-
                 $.when()
                  .then(drawTree)
                  .then(function() {
@@ -347,7 +372,49 @@ function initData() {
     $('#support_value_params').hide()
     $('#support_color_range_param').hide()
     $('#show_symbol_options').hide()
-    $('#show_font_size').hide()
+    $('#show-text-option').hide()
+}
+
+
+function drawInlineScaleBar() {
+    var settings = serializeSettings();
+
+    try {
+        $.ajax({
+            type: 'POST',
+            cache: false,
+            url: '/data/get_scale_bar',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                'newick': clusteringData,
+            }),
+            success: function(data) {
+                var scale_bar_value = data['scale_bar_value'];
+                console.log("Max Branch Length:", scale_bar_value);
+
+                if ((settings['tree-type'] == 'circlephylogram' || settings['tree-type'] == 'phylogram')) {
+
+                    var scale_bar = document.getElementById('scale-bar-scope');
+                    if (!scale_bar) {
+                        console.error('Scale bar element with id scale-bar-scope not found');
+                        return;
+                    }
+                    var scaleValue = (scale_bar_value).toFixed(2);
+
+                    // Create a text node with the scale value
+                    var textNode = document.createTextNode(scaleValue);
+
+                    // Append the text node to the scale bar element
+                    scale_bar.appendChild(textNode);
+                }
+            },
+            error: function(error) {
+                console.error('Error:', error);
+            }
+        });
+    } catch (error) {
+        console.error('Error:', error);
+    }
 }
 
 function switchUserInterfaceMode(project, title) {
@@ -363,7 +430,7 @@ function switchUserInterfaceMode(project, title) {
     console.log("The running mode for the interface: " + mode);
 
     $('.' + mode + '-mode').show();
-    $('.nav-tabs').css('background-image', 'url(images/' + mode + '-bg.png)');
+    $('<b title="This info shows your anvio mode" class="title-mode">' + mode + ' mode' + '<b/>').appendTo('#title-panel');
 
     if (mode == 'pan') {
         $('#completion_title').attr('title', 'Gene Clusters').html('Gene Clusters');
@@ -404,7 +471,6 @@ function switchUserInterfaceMode(project, title) {
 
     if (server_mode) {
         $('.server-mode').show();
-        $('.nav-tabs').css('background-image', 'url(images/server-bg.png)');
         $('#multiUser').show();
         $('#multiUser > span').html('<b>' + title + '</b><br /><i>(by <a href="/' + project.username + '" target="_blank">' + project.fullname + '</a>)</i>');
         $('#multiUser > img').attr('src', project.user_avatar);
@@ -450,10 +516,6 @@ function setupDescriptionPanel(description) {
         ],
         'fullscreen': {'enable': false},
     });
-
-    if (description.length > 100) {
-        toggleRightPanel('#description-panel');
-    }
 }
 
 function onViewChange() {
@@ -691,21 +753,30 @@ function populateColorDicts() {
 }
 
 function buildLegendTables() {
-    if(typeof $('#legend_settings').data("ui-accordion") != "undefined"){
-        $('#legend_settings').accordion("destroy");
-        $('#legend_settings').empty();
-    }
-
+    // Clear existing legend tables first
+    $("#legend_settings").empty();
+    
     legends = [];
-    let toastr_warn_flag = false
-    for (let pindex in categorical_data_colors)
-    {
-        if(Object.keys(categorical_stats[pindex]).length > 20){
-            toastr_warn_flag = true
-            var names = false
+    let toastr_warn_flag = false;
+
+    // Add null checks for categorical data
+    for (let pindex in categorical_data_colors) {
+        // Skip if categorical_stats is undefined or doesn't have this pindex
+        if (!categorical_stats || !categorical_stats[pindex]) {
+            continue;
+        }
+
+        let names;
+        if (Object.keys(categorical_stats[pindex]).length > 20) {
+            toastr_warn_flag = true;
+            names = false;
         } else {
-            var names = Object.keys(categorical_stats[pindex]).sort(function(a,b){return categorical_stats[pindex][b]-categorical_stats[pindex][a]});
-            names.push(names.splice(names.indexOf('None'), 1)[0]); // move null and empty categorical items to end
+            names = Object.keys(categorical_stats[pindex]).sort(function(a,b) {
+                return categorical_stats[pindex][b] - categorical_stats[pindex][a];
+            });
+            if (names.indexOf('None') !== -1) {
+                names.push(names.splice(names.indexOf('None'), 1)[0]);
+            }
         }
 
         legends.push({
@@ -718,11 +789,15 @@ function buildLegendTables() {
         });
     }
 
-    for (pindex in stack_bar_colors)
-    {
-        var layer_name = getLayerName(pindex);
-        var names = (layer_name.indexOf('!') > -1) ? layer_name.split('!')[1].split(';') : layer_name.split(';');
-        var pretty_name = getLayerName(pindex);
+    // Add null checks for stack bar colors
+    for (let pindex in stack_bar_colors) {
+        if (!stack_bar_stats || !stack_bar_stats[pindex]) {
+            continue;
+        }
+
+        let layer_name = getLayerName(pindex);
+        let names = (layer_name.indexOf('!') > -1) ? layer_name.split('!')[1].split(';') : layer_name.split(';');
+        let pretty_name = getLayerName(pindex);
         pretty_name = (pretty_name.indexOf('!') > -1) ? pretty_name.split('!')[0] : pretty_name;
 
         legends.push({
@@ -735,10 +810,18 @@ function buildLegendTables() {
         });
     }
 
+    // Add null checks for samples categorical colors
     for (let group in samples_categorical_colors) {
-        for (let sample in samples_categorical_colors[group])
-        {
-            var names = Object.keys(samples_categorical_colors[group][sample]);
+        if (!samples_categorical_stats || !samples_categorical_stats[group]) {
+            continue;
+        }
+
+        for (let sample in samples_categorical_colors[group]) {
+            if (!samples_categorical_stats[group][sample]) {
+                continue;
+            }
+
+            let names = Object.keys(samples_categorical_colors[group][sample]);
 
             legends.push({
                 'name': group + ' :: ' + getPrettyName(sample),
@@ -752,11 +835,19 @@ function buildLegendTables() {
         }
     }
 
+    // Add null checks for samples stack bar colors
     for (let group in samples_stack_bar_colors) {
-        for (let sample in samples_stack_bar_colors[group])
-        {
-            var names = (sample.indexOf('!') > -1) ? sample.split('!')[1].split(';') : sample.split(';');
-            var pretty_name = (sample.indexOf('!') > -1) ? sample.split('!')[0] : sample;
+        if (!samples_stack_bar_stats || !samples_stack_bar_stats[group]) {
+            continue;
+        }
+
+        for (let sample in samples_stack_bar_colors[group]) {
+            if (!samples_stack_bar_stats[group][sample]) {
+                continue;
+            }
+
+            let names = (sample.indexOf('!') > -1) ? sample.split('!')[1].split(';') : sample.split(';');
+            let pretty_name = (sample.indexOf('!') > -1) ? sample.split('!')[0] : sample;
 
             legends.push({
                 'name': group + ' :: ' + getPrettyName(pretty_name),
@@ -769,41 +860,56 @@ function buildLegendTables() {
             });
         }
     }
-    if(toastr_warn_flag) toastr.warning("some of your layers have A LOT of categorical data - we've adjusted the legends tab accordingly to save you the headache!")
 
-    for (var i=0; i < legends.length; i++)
-    {
+    // Rest of the function remains the same...
+    if (toastr_warn_flag) {
+        toastr.warning("Some of your layers have A LOT of categorical data - we've adjusted the legends tab accordingly to save you the headache!");
+    }
+
+    // ... continue with existing code ...
+
+    if(legends.length == 0) {
+        $('#legend_settings').append('<div class="alert alert-danger" role="alert">There are no legends to edit in this display.</div>');
+        return;
+    }
+
+    // Build legend panels
+    for (var i = 0; i < legends.length; i++) {
         var legend = legends[i];
-        var template = '<span>';
+        var template = '<div class="shadow-box mb-3 p-3 rounded"><span class="header">';
 
         if (legends[i]['source'].indexOf('samples') > -1) {
-            template += '<span class="label label-default">Samples</span> '
+            template += '<span class="label label-default header mb-2">Layer</span> '
         } else {
-            template += '<span class="label label-default">Main</span> '
+            template += '<span class="label label-default header">Item</span> '
         }
-        template += legend['name'] + '</span><div>';
+        template += legend['name'] + '</span><div><div style="height:10px;"></div>';
 
         if (!legends[i]['item_names']){
+            const currentColors = categorical_data_colors[legend['key']] || {};
+            const defaultColor = Object.values(currentColors)[0] || '#FFFFFF';
+            
             template += `
                 <p style="background: #f3f3f3; border-radius: 3px; padding: 10px; font-style: italic;">
-                Use the table below to set colors for your categories in the layer <b>${legend['name']}</b>. Here you can (1) use the input box below to type in the name of a cateogry
+                Use the table below to set colors for your categories in the layer <b>${legend['name']}</b>. Here you can (1) use the input box below to type in the name of a category
                 and choose a color from the color picker to set a single color, (2) use the color picker in the second row to set each category to the same color, or (3) use the
                 button in the third row to randomly assign colors to each category.</p>
                 <div>
                     <table class="col-md-12 table-spacing table-striped" style="margin-bottom: 10px;">
                         <tr>
-                            <td class="col-md-auto" style="white-space: nowrap;">For <input type="text" placeholder="Item Name" id="${legend['name'].toLowerCase().replaceAll(' ','-')}-query-input"></td>
-                            <td class="col-md-10" style="text-align: center;">Color: <div id="${legend['name'].replaceAll(' ','-')}-colorpicker" class="colorpicker" color="#FFFFFF" style="vertical-align: middle; background-color: #FFFFFF; float: none; "></div> </td>
-                            <td class="col-md-10" style="text-align: center;"><button type="button" class="btn btn-default" id="${legend['name'].replaceAll(' ','-')}" onclick=queryLegends()>Set</button></td>
+                            <td class="col-8 d-flex mr-1" style="white-space: nowrap; width: 160px;"><span class="d-flex align-middle mr-1 mt-2">For</span><input class="form-control" type="text" placeholder="Item Name" id="${legend['name'].toLowerCase().replaceAll(' ','-')}-query-input"></td>
+                            <td class="col-2" style="text-align: center;">Color: <div id="${legend['name'].replaceAll(' ','-')}-colorpicker" class="colorpicker" color="${defaultColor}" style="vertical-align: middle; background-color: ${defaultColor}; float: none; "></div> </td>
+                            <td class="col-2 p-2" style="text-align: center;"><button type="button" class="btn btn-outline-secondary btn-sm" id="${legend['name'].replaceAll(' ','-')}" onclick=queryLegends()>Set</button></td>
                         </tr>
                         <tr>
                             <td class="col-md-auto">For all categories</td>
-                            <td class="col-md-10" style="text-align: center;">Color: <div id="${legend['name'].replaceAll(' ','-')}-batch-colorpicker" class="colorpicker" color="#FFFFFF" style="vertical-align: middle; background-color: #FFFFFF; float: none; "></div></td>
-                            <td class="col-md-10" style="text-align: center;"><button type="button" class="btn btn-default" id="${legend['name'].replaceAll(' ','-')}" onclick=queryLegends('batch')>Set</button></td>
+                            <td class="col-md-10" style="text-align: center;">Color: <div id="${legend['name'].replaceAll(' ','-')}-batch-colorpicker" class="colorpicker" color="${defaultColor}" style="vertical-align: middle; background-color: ${defaultColor}; float: none; "></div></td>
+                            <td class="col-md-10 p-2" style="text-align: center;"><button type="button" class="btn btn-outline-secondary btn-sm" id="${legend['name'].replaceAll(' ','-')}" onclick=queryLegends('batch')>Set</button></td>
                         </tr>
                         <tr>
-                            <td class="col-md-auto" colspan="2">For all categories</td>
-                            <td class="col-md-10"><button type="button" class="btn btn-default" id="${legend['name'].replaceAll(' ','-')}" onclick="queryLegends('random')">Randomize all</button></td>
+                            <td class="col-md-auto">For all categories</td>
+                            <td class="col-md-auto d-flex justify-content-center align-middle mt-2">Color: <div class="d-flex justify-content-center align-middle">Random</div></td>
+                            <td class="col-md-10 p-2" style="text-align: center;"><button type="button" class="btn btn-outline-secondary btn-sm" id="${legend['name'].replaceAll(' ','-')}" onclick="queryLegends('random')">Set</button></td>
                         </tr>
                     </table>
 
@@ -815,22 +921,22 @@ function buildLegendTables() {
                 </div>
             `
         } else {
-            template += `Sort: <div class="btn-group" role="group">
-                            <button type="button" class="btn btn-default" onClick="orderLegend(` + i + `, 'alphabetical');"><span class="glyphicon glyphicon-sort-by-alphabet"></span> Alphabetical</button>
-                            <button type="button" class="btn btn-default" onClick="orderLegend(` + i + `, 'count');"><span class="glyphicon glyphicon-sort-by-order-alt"></span> Count</button>
+            template += `<div class="btn-group" role="group">
+                            <button type="button" class="btn btn-outline-secondary btn-md" onClick="orderLegend(` + i + `, 'alphabetical');"><span class="bi bi-sort-alpha-down"></span> Alphabetical</button>
+                            <button type="button" class="btn btn-outline-secondary btn-md" onClick="orderLegend(` + i + `, 'count');"><span class="bi bi-sort-numeric-down-alt"></span> Count</button>
                         </div>
                         <div class="btn-group" role="group">
-                            <button type="button" class="btn btn-default" style="margin-left: 10px;" onClick="$('#batch_coloring_` + i + `').slideToggle();"><span class="glyphicon glyphicon-tint"></span> Batch coloring</button>
+                            <button type="button" class="btn btn-outline-secondary btn-md" style="margin-left: 10px;" onClick="$('#batch_coloring_` + i + `').slideToggle();"><span class="bi bi-droplet"></span> Batch coloring</button>
                         </div>
                         <div id="batch_coloring_` + i + `"  style="display: none; margin: 10px;">
                             <table class="col-md-12 table-spacing">
                                 <tr>
                                     <td class="col-md-2">Rule: </td>
                                     <td class="col-md-10">
-                                        <input type="radio" name="batch_rule_`+i+`" value="all" checked> All <br />
-                                        <input type="radio" name="batch_rule_`+i+`" value="name"> Name contains <input type="text" id="name_rule_`+i+`" size="8"><br />
+                                        <input class="mb-3" type="radio" name="batch_rule_`+i+`" value="all" checked> All <br />
+                                        <input class="mb-3" type="radio" name="batch_rule_`+i+`" value="name"> Name contains <input type="text" id="name_rule_`+i+`" size="8"><br />
                                         <input type="radio" name="batch_rule_`+i+`" value="count"> Count
-                                            <select id="count_rule_`+i+`">
+                                            <select style="margin-left: 48px;" id="count_rule_`+i+`">
                                                 <option selected>==</option>
                                                 <option>&lt;</option>
                                                 <option>&gt;</option>
@@ -844,28 +950,26 @@ function buildLegendTables() {
                                     <td class="col-md-10"><div id="batch_colorpicker_`+i+`" class="colorpicker" color="#FFFFFF" style="margin-right: 5px; background-color: #FFFFFF; float: none; "></div></td>
                                 </tr>
                                 <tr>
-                                    <td class="col-md-2"></td>
-                                    <td class="col-md-10"><input id="batch_randomcolor_`+i+`" type="checkbox" /> Assign random color</td>
+                                    <td class="col-md-2">Random Color:</td>
+                                    <td class="col-md-10"><input id="batch_randomcolor_`+i+`" type="checkbox" /></td>
                                 </tr>
                                 <tr>
                                     <td class="col-md-2"></td>
-                                    <td class="col-md-10"><button type="button" class="btn btn-default" onclick="batchColor(`+i+`);">Apply</button></td>
+                                    <td class="col-md-10"><button type="button" class="btn btn-outline-info btn-sm" onclick="batchColor(`+i+`);">Apply</button></td>
                                 </tr>
                             </table>
                         </div>
-                        <div style="clear: both; display:block;"></div>
-                        <hr style="margin-top: 4px; margin-bottom: 4px; "/>`;
+                        <div style="clear: both; display:block;"></div>`;
         }
 
         template += '<div id="legend_content_' + i + '"></div>';
         template = template + '<div style="clear: both; display:block;"></div>';
-        $('#legend_settings').append(template + '</div>');
+        $('#legend_settings').append(template + '</div></div>');
 
         createLegendColorPanel(i); // this fills legend_content_X
     }
 
-    $('#legend_settings, #search_tab_content').accordion({heightStyle: "content", collapsible: true});
-
+    // Initialize colorpickers
     $('.colorpicker').colpick({
         layout: 'hex',
         submit: 0,
@@ -873,6 +977,23 @@ function buildLegendTables() {
         onChange: function(hsb, hex, rgb, el, bySetColor) {
             $(el).css('background-color', '#' + hex);
             $(el).attr('color', '#' + hex);
+            
+            // Immediately update the corresponding color in the data structures
+            const legendId = el.id.split('-colorpicker')[0];
+            const legend = legends.find(l => l.name.replaceAll(' ', '-') === legendId);
+            if (legend) {
+                if (legend.source === 'categorical_data_colors') {
+                    categorical_data_colors[legend.key] = categorical_data_colors[legend.key] || {};
+                    categorical_data_colors[legend.key][el.getAttribute('data-category')] = '#' + hex;
+                } else if (legend.source === 'stack_bar_colors') {
+                    stack_bar_colors[legend.key] = stack_bar_colors[legend.key] || {};
+                    stack_bar_colors[legend.key][el.getAttribute('data-category')] = '#' + hex;
+                }
+            }
+            
+            if (!bySetColor && drawer) {
+                drawer.draw();
+            }
         }
     });
 }
@@ -1179,8 +1300,8 @@ function buildLayersTable(order, settings)
                 '<td>n/a</td>' +
                 '<td>n/a</td>' +
                 '<td>n/a</td>' +
-                '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
-                '<td class="column-margin"><input class="input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
+                '<td><input class="form-control form-control-sm input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
+                '<td class="column-margin"><input class="form-control form-control-sm input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
                 '<td>n/a</td>' +
                 '<td>n/a</td>' +
                 '<td><input type="checkbox" class="layer_selectors"></input></td>' +
@@ -1219,7 +1340,7 @@ function buildLayersTable(order, settings)
                 var norm = (mode == 'full') ? 'log' : 'none';
             }
 
-            var template = '<tr>' +
+            var template = '<tr class="sortable">' +
                 '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
                 '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
                 '<td>n/a</td>' +
@@ -1231,8 +1352,8 @@ function buildLayersTable(order, settings)
                 '        <option value="log"{option-log}>log</option>' +
                 '    </select>' +
                 '</td>' +
-                '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
-                '<td class="column-margin"><input class="input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
+                '<td><input class="form-control form-control-sm input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
+                '<td class="column-margin"><input class="form-control form-control-sm input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
                 '<td>n/a</td>' +
                 '<td>n/a</td>' +
                 '<td><input type="checkbox" class="layer_selectors"></input></td>' +
@@ -1294,7 +1415,6 @@ function buildLayersTable(order, settings)
                     // set default categorical layer type to 'text'
                     // if there are more than 11 unique values and leaf count is less than 300
                     // 301 because layerdata has one extra row for the titles
-                    console.log(layerdata.length);
                     var _unique_items = [];
                     for (var _pos = 1; _pos < layerdata.length; _pos++)
                     {
@@ -1317,16 +1437,16 @@ function buildLayersTable(order, settings)
                     '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
                     '<td><div id="picker_start{id}" class="colorpicker picker_start" color="{color-start}" style="background-color: {color-start}; {color-start-hide}"></div><div id="picker{id}" class="colorpicker picker_end" color="{color}" style="background-color: {color}; {color-hide}"></div></td>' +
                     '<td style="width: 50px;">' +
-                    '    <select id="type{id}" style="width: 50px;" class="type" onChange="togglePickerStart(this, true);">' +
+                    '    <select id="type{id}" style="width: 50px;" class="type type_multiple form-control form-control-sm col-12 select-sm" onChange="togglePickerStart(this, true);">' +
                     '        <option value="color"{option-type-color}>Color</option>' +
                     '        <option value="text"{option-type-text}>Text</option>' +
                     '    </select>' +
                     '</td>' +
-                    '<td>n/a</td>' +
-                    '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}" style="{height-hide}"></input></td>' +
-                    '<td class="column-margin"><input class="input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
-                    '<td>n/a</td>' +
-                    '<td>n/a</td>' +
+                    '<td style="width:55px;">n/a</td>' +
+                    '<td><input class="form-control form-control-sm input-height" type="text" size="3" id="height{id}" value="{height}" style="{height-hide}"></input></td>' +
+                    '<td class="column-margin"><input class="form-control form-control-sm input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
+                    '<td style="width:55px;">n/a</td>' +
+                    '<td style="width:55px;">n/a</td>' +
                     '<td><input type="checkbox" class="layer_selectors"></input></td>' +
                     '</tr>';
 
@@ -1396,23 +1516,23 @@ function buildLayersTable(order, settings)
                     '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
                     '<td><div id="picker_start{id}" class="colorpicker picker_start" color="{color-start}" style="background-color: {color-start}; {color-start-hide}"></div><div id="picker{id}" class="colorpicker" color="{color}" style="background-color: {color}"></div></td>' +
                     '<td style="width: 50px;">' +
-                    '    <select id="type{id}" style="width: 50px;" class="type" onChange="togglePickerStart(this);">' +
+                    '    <select id="type{id}" style="width: 50px;" class="form-control form-control-sm col-12 select-sm type" onChange="togglePickerStart(this);">' +
                     '        <option value="bar"{option-type-bar}>Bar</option>' +
                     '        <option value="intensity"{option-type-intensity}>Intensity</option>' +
                     '        <option value="line"{option-type-line}>Line</option>' +
                     '    </select>' +
                     '</td>' +
                     '<td>' +
-                    '    <select id="normalization{id}" onChange="clearMinMax(this);" class="normalization">' +
+                    '    <select id="normalization{id}" onChange="clearMinMax(this);" class="form-control form-control-sm col-12 select-sm normalization">' +
                     '        <option value="none"{option-none}>none</option>' +
                     '        <option value="sqrt"{option-sqrt}>sqrt</option>' +
                     '        <option value="log"{option-log}>log</option>' +
                     '    </select>' +
                     '</td>' +
-                    '<td><input class="input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
-                    '<td class="column-margin"><input class="input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
-                    '<td><input class="input-min" type="text" size="4" id="min{id}" value="{min}"{min-disabled}></input></td>' +
-                    '<td><input class="input-max" type="text" size="4" id="max{id}" value="{max}"{min-disabled}></input></td>' +
+                    '<td><input class="form-control form-control-sm input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
+                    '<td class="column-margin"><input class="form-control form-control-sm input-margin " type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
+                    '<td><input class="form-control form-control-sm input-min" type="text" size="4" id="min{id}" value="{min}"{min-disabled}></input></td>' +
+                    '<td><input class="form-control form-control-sm input-max" type="text" size="4" id="max{id}" value="{max}"{min-disabled}></input></td>' +
                     '<td><input type="checkbox" class="layer_selectors"></input></td>' +
                     '</tr>';
 
@@ -1465,14 +1585,7 @@ function buildLayersTable(order, settings)
             }
         });
 
-        if($('#custom_layer_margin').is(':checked'))
-        {
-            $('.column-margin').show();
-        }
-        else
-        {
-            $('.column-margin').hide();
-        }
+        $('.column-margin').show();
 
         $('#picker'+ layer_id + ', #picker_start' + layer_id).colpick({
             layout: 'hex',
@@ -1528,11 +1641,10 @@ function serializeSettings(use_layer_names) {
     state['tree-radius'] = $('#tree-radius').val();
     state['tree-height'] = $('#tree_height').val();
     state['tree-width'] = $('#tree_width').val();
-    state['layer-margin'] = $('#layer-margin').val();
+    state['layer-margin'] = $('#layer-margin').val() ? $('#layer-margin').val() : 15;
     state['outer-ring-height'] = $('#outer-ring-height').val();
     state['outer-ring-margin'] = $('#outer-ring-margin').val();
     state['edge-normalization'] = $('#edge_length_normalization').is(':checked');
-    state['custom-layer-margin'] = $('#custom_layer_margin').is(':checked');
     state['show-grid-for-bins'] = $('#show_grid_for_bins').is(':checked');
     state['show-shade-for-bins'] = $('#show_shade_for_bins').is(':checked');
     state['shade-fill-opacity'] = $('#shade_fill_opacity').val();
@@ -1563,9 +1675,22 @@ function serializeSettings(use_layer_names) {
     state['support-symbol-invert'] = $('#support_invert_symbol').is(':checked')
     state['support-display-number'] = $('#support_display_number').is(':checked')
     state['support-symbol-size'] = $('#support_symbol_size').val()
+    state['support-min-symbol-size'] = $('#support_min_symbol_size').val()
     state['support-symbol-color'] = $('#support_symbol_color').attr('color')
+    state['second-support-symbol-color'] = $('#second_support_symbol_color').attr('color')
+    state['support-font-color'] = $('#support_font_color').attr('color')
+    state['second-support-font-color'] = $('#second_support_font_color').attr('color')
     state['support-font-size'] = $('#support_font_size').val()
     state['support-text-rotation'] = $('#support_text_rotation').val()
+    state['support-threshold'] = $('#support_threshold').val()
+    state['support-symbol-data'] = $('#support_symbol_data').val()
+
+    state['support-show-operator'] = $('#support_show_operator').val()
+    state['support-bootstrap0-range-low'] = $('#support_bootstrap0_range_low').val()
+    state['support-bootstrap0-range-high'] = $('#support_bootstrap0_range_high').val()
+    state['support-bootstrap1-range-low'] = $('#support_bootstrap1_range_low').val()
+    state['support-bootstrap1-range-high'] = $('#support_bootstrap1_range_high').val()
+
 
     // sync views object and layers table
     syncViews();
@@ -1680,6 +1805,11 @@ function drawTree() {
     // clear existing diagram, if any
     document.getElementById('svg').innerHTML = "";
 
+    // Drawing time toasted to the user
+    if (!document.getElementById('draw_delta_time')) {
+        toastr.success("<span id='draw_delta_time'></span>");
+    }
+
     waitingDialog.show('Drawing ...',
         {
             dialogSize: 'sm',
@@ -1709,6 +1839,7 @@ function drawTree() {
 
                 $('#btn_draw_tree').prop('disabled', false);
                 $('#btn_redraw_samples').prop('disabled', false);
+                $('#btn_redraw_samples_layer').prop('disabled', false);
 
                 if (settings['tree-radius'] == 0)
                 {
@@ -1769,6 +1900,9 @@ function showGenSummaryWindow() {
 
             showCollectionDetails('');
             $('#modGenerateSummary').modal('show');
+            if(mode == 'pan'){
+                $('#init_gene_modal').css('visibility', 'hidden');
+            }
         }
     });
 }
@@ -2004,12 +2138,13 @@ function showRedundants(bin_id, updateOnly) {
     showDraggableDialog(output_title, output, updateOnly);
 }
 
-function exportSvg(dontDownload) {
+async function exportSvg(dontDownload) {
     if (!drawer)
         return;
 
     // draw bin and layer legend to output svg
     var settings = serializeSettings();
+    this.has_tree = (clusteringData.constructor !== Array);
 
     var bins_to_draw = new Array();
     $('#tbody_bins tr').each(
@@ -2022,11 +2157,16 @@ function exportSvg(dontDownload) {
             };
 
             if (mode == 'pan') {
-                _bin_info['gene_clusters'] = $('#completeness_' + bin_id).val();
-                _bin_info['gene-calls'] = $('#redundancy_' + bin_id).val();
+                var geneClustersElement = $(bin).find('.num-gene-clusters');        
+                if (geneClustersElement.length > 0) {
+                    _bin_info['gene_clusters'] = geneClustersElement.attr('data-value');
+                } else {
+                    console.log("geneClustersElement not found");
+                }
+                _bin_info['gene-calls'] = $(bin).find('.num-gene-calls input').val();
             } else {
-                _bin_info['contig-length'] = $('#contig_length_' + bin_id).html();
-                _bin_info['contig-count'] = $('#contig_count_' + bin_id).val();
+                _bin_info['contig-length'] = $(bin).find('.length-sum span').text();
+                _bin_info['contig-count'] = $(bin).find('.num-items input').val();
             }
 
             bins_to_draw.push(_bin_info);
@@ -2039,6 +2179,9 @@ function exportSvg(dontDownload) {
     if (bins_to_draw.length > 0) {
         drawBinLegend(bins_to_draw, top, left);
         top = top + 100 + (bins_to_draw.length + 2.5) * 20
+        if(this.has_tree && mode == 'manual'){
+            await drawScaleBar(settings, top, left);
+        }
     }
 
     // important,
@@ -2070,6 +2213,7 @@ function exportSvg(dontDownload) {
     $('#layer_legend').remove();
     $('#title_group').remove();
     $('#legend_group').remove();
+    $('#scale_bar').remove();
 }
 
 
@@ -2094,25 +2238,32 @@ function storeRefinedBins() {
     });
 }
 
-
 function generateSummary() {
     var collection = $('#summaryCollection_list').val();
+    var init_gene_coverages = $('#init-gene-checkbox').is(':checked');
 
     if (collection === null)
         return;
 
-    waitingDialog.show('Generating summary...', {dialogSize: 'sm'});
-
+    if (init_gene_coverages) {
+        waitingDialog.show('Generating a detailed summary please be patient...', {dialogSize: 'sm'});
+    }
+    else {
+        waitingDialog.show('Generating summary...', {dialogSize: 'sm'});  
+    }
     $.ajax({
-        type: 'GET',
+        type: 'POST',
         cache: false,
         url: '/summarize/' + collection,
+        data: {
+            'init_gene_coverages': JSON.stringify(init_gene_coverages)
+        },
         success: function(data) {
             if ('error' in data){
                 $('#modGenerateSummary').modal('hide');
                 waitingDialog.hide();
-                toastr.error(data['error'], "", { 'timeOut': '0', 'extendedTimeOut': '0' });
-            } else {
+                toastr.error(data['error'], "", { 'timeOut': '0', 'extendedTimeOut': '0' });                }
+            else{
                 $('#modGenerateSummary').modal('hide');
                 waitingDialog.hide();
 
@@ -2123,7 +2274,7 @@ function generateSummary() {
                 $('#modSummaryResult').modal('show');
             }
         }
-    });
+    });    
 }
 
 function showSaveStateWindow()
@@ -2675,10 +2826,6 @@ function processState(state_name, state) {
         $('#optimize_speed').prop('checked', state['optimize-speed']);
     }
 
-    if (state.hasOwnProperty('custom-layer-margin')){
-        $('#custom_layer_margin').prop('checked', state['custom-layer-margin']).trigger('change');
-    }
-
     if (state.hasOwnProperty('grid-color')) {
         $('#grid_color').attr('color', state['grid-color']);
         $('#grid_color').css('background-color', state['grid-color']);
@@ -2752,7 +2899,7 @@ function processState(state_name, state) {
     }
 
     // bootstrap values
-    if (state.hasOwnProperty('show-support-values')){
+    if (!(state.hasOwnProperty('show-support-values'))){
         $('#support_value_checkbox').prop('checked', state['show-support-values'])
         if ($('#support_value_checkbox').is(':checked')){
             $('#support_value_params').show()
@@ -2777,13 +2924,28 @@ function processState(state_name, state) {
         $('#support_symbol_color').attr('color', state['support-symbol-color'])
         $('#support_symbol_color').css('background-color', state['support-symbol-color'])
     }
+    if (state.hasOwnProperty('second-support-symbol-color')){
+        $('#second_support_symbol_color').attr('color', state['second-support-symbol-color'])
+        $('#second_support_symbol_color').css('background-color', state['second-support-symbol-color'])
+    }
+    if (state.hasOwnProperty('support-font-color')){
+        $('#support_font_color').attr('color', state['support-font-color'])
+        $('#support_font_color').css('background-color', state['support-font-color'])
+    }
+    if (state.hasOwnProperty('second-support-font-color')){
+        $('#second_support_font_color').attr('color', state['second-support-font-color'])
+        $('#second_support_font_color').css('background-color', state['second-support-font-color'])
+    }
     if (state.hasOwnProperty('support-symbol-size')){
         $('#support_symbol_size').val(state['support-symbol-size'])
+    }
+    if(state.hasOwnProperty('support-min-symbol-size')){
+        $('#support_min_symbol_size').val(state['support-min-symbol-size'])
     }
     if (state.hasOwnProperty('support-display-number')){
         $('#support_display_number').prop('checked', state['support-display-number'])
         if($('#support_display_number').is(':checked')){
-            $('#show_font_size').show()
+            $('#show-text-option').show()
         }
     }
     if (state.hasOwnProperty('support-font-size')){
@@ -2791,6 +2953,27 @@ function processState(state_name, state) {
     }
     if(state.hasOwnProperty('support-text-rotation')){
         $('#support_text_rotation').val(state['support-text-rotation'])
+    }
+    if(state.hasOwnProperty('support-threshold')){
+        $('#support_threshold').val(state['support-threshold'])
+    }
+    if(state.hasOwnProperty('support-symbol-data')){
+        $('#support_symbol_data').val(state['support-symbol-data'])
+    }
+    if(state.hasOwnProperty('support-show-operator')){
+        $('#support_show_operator').val(state['support-show-operator'])
+    }
+    if(state.hasOwnProperty('support-bootstrap0-range-low')){
+        $('#support_bootstrap0_range_low').val(state['support-bootstrap0-range-low'])
+    }
+    if(state.hasOwnProperty('support-bootstrap0-range-high')){
+        $('#support_bootstrap0_range_high').val(state['support-bootstrap0-range-high'])
+    }
+    if(state.hasOwnProperty('support-bootstrap1-range-low')){
+        $('#support_bootstrap1_range_low').val(state['support-bootstrap1-range-low'])
+    }
+    if(state.hasOwnProperty('support-bootstrap1-range-high')){
+        $('#support_bootstrap1_range_high').val(state['support-bootstrap1-range-high'])
     }
 
     // reload layers
@@ -2814,7 +2997,7 @@ function processState(state_name, state) {
 
     buildLayersTable(layer_order, views[current_view]);
 
-    if(state['samples-layer-order'] && state['samples-layers'] && state['samples-layers'] === serializedState['samples-layers']){
+    if(state['samples-layer-order'] && state['samples-layers']){
         buildSamplesTable(state['samples-layer-order'], state['samples-layers']);
     } else if (!state['samples-layers']){
         state['samples-layers'] = serializedState['samples-layers']
@@ -2845,11 +3028,52 @@ function processState(state_name, state) {
     }
 
     populateColorDicts();
+
+    // Update color dictionaries from state before building legend tables
+    if (state.hasOwnProperty('categorical-data-colors')) {
+        for (let key in state['categorical-data-colors']) {
+            categorical_data_colors[key] = state['categorical-data-colors'][key];
+        }
+    }
+    
+    if (state.hasOwnProperty('stack-bar-colors')) {
+        for (let key in state['stack-bar-colors']) {
+            stack_bar_colors[key] = state['stack-bar-colors'][key];
+        }
+    }
+
+    if (state.hasOwnProperty('samples-categorical-colors')) {
+        for (let group in state['samples-categorical-colors']) {
+            samples_categorical_colors[group] = samples_categorical_colors[group] || {};
+            for (let key in state['samples-categorical-colors'][group]) {
+                samples_categorical_colors[group][key] = state['samples-categorical-colors'][group][key];
+            }
+        }
+    }
+
+    if (state.hasOwnProperty('samples-stack-bar-colors')) {
+        for (let group in state['samples-stack-bar-colors']) {
+            samples_stack_bar_colors[group] = samples_stack_bar_colors[group] || {};
+            for (let key in state['samples-stack-bar-colors'][group]) {
+                samples_stack_bar_colors[group][key] = state['samples-stack-bar-colors'][group][key];
+            }
+        }
+    }
+
+    // Update stats if they exist in the state
+    if (state.hasOwnProperty('categorical-stats')) {
+        categorical_stats = state['categorical-stats'];
+    }
+    
+    if (state.hasOwnProperty('stack-bar-stats')) {
+        stack_bar_stats = state['stack-bar-stats'];
+    }
+
+    // Rebuild legend tables to reflect the new colors
     buildLegendTables();
 
     current_state_name = state_name;
     toastr.success("State '" + current_state_name + "' successfully loaded.");
-
 }
 
 
@@ -2942,7 +3166,7 @@ function showTaxonomy()
                 let d = response[bin_name];
 
                 content += `<tr>
-                    <td><a data-toggle="collapse" data-parent="#panel-${ bin_name }" href="#collapse-${ bin_name }"><i class="glyphicon glyphicon-chevron-right"></i>&nbsp;${ bin_name }</a></td>
+                    <td><a data-toggle="collapse" href="#collapse-${ bin_name }"><i class="glyphicon glyphicon-chevron-right"></i>&nbsp;${ bin_name }</a></td>
                     <td class="text-center">${ d['total_scgs'] }</td>
                     <td class="text-center">${ d['supporting_scgs'] }</td>`;
 
@@ -2960,7 +3184,7 @@ function showTaxonomy()
                 content += `</tr>`;
 
                 // Building an inner table for each individual SCG within a given bin.
-                let scg_table_content = `<tr id="collapse-${ bin_name }" class="panel-collapse fade collapse" style="background: #acaf3330;"><td colspan="10">
+                let scg_table_content = `<tr id="collapse-${ bin_name }" class="fade collapse" style="background: #acaf3330;"><td colspan="10">
 
                 <table class="table table-striped sortable" id="tblGrid_${ bin_name }">
 
@@ -3101,6 +3325,27 @@ function checkMaxSupportValueSeen() {
         // set the min/max values since we clearly know them by now.
         $('#support_range_low').val(min_branch_support_value_seen);
         $('#support_range_high').val(max_branch_support_value_seen);
+
+        // multiple thresholds option
+        if(!multiple_support_value_seen){
+            $('#show_multiple_range').css('display', 'none');
+            $('#show_threshold').css('display', 'flex');
+            $('#second_support_symbol_color').css('display', 'none');
+            $('#second_support_font_color').css('display', 'none');
+            $('#support_symbol_data').append($('<option>', {
+                value: 2,
+                text: 'bootstrap'
+            }));
+        }else{
+            $('#support_symbol_data').append($('<option>', {
+                value: 0,
+                text: 'bootstrap 0'
+            }));
+            $('#support_symbol_data').append($('<option>', {
+                value: 1,
+                text: 'bootstrap 1'
+            }));
+        }
     }
 }
 
@@ -3124,5 +3369,41 @@ function toggleTaxonomyEstimation() {
     */
     if (bins) {
         bins.UpdateBinsWindow();
+    }
+}
+
+function ShadowBoxSelection(type) {
+        var result = document.getElementById('result-box');
+        if (type == "search_contigs"){
+            result.classList.remove('border-primary');
+            result.classList.remove('border-warning');
+            result.style.boxShadow  = '0 14px 28px rgba(40,167,69,0.25), 0 10px 10px rgba(40,167,69,0.22)';
+            result.classList.add('border-success');
+        }
+        else if (type == "search_functions"){
+            result.classList.remove('border-success');
+            result.classList.remove('border-warning');
+            result.style.boxShadow  = '0 14px 28px rgba(0,123,255,0.25), 0 10px 10px rgba(0,123,255,0.22)';
+            result.classList.add('border-primary');
+        }
+        else {
+            result.classList.remove('border-primary');
+            result.classList.remove('border-success');
+            result.style.boxShadow  = '0 14px 28px rgba(255,193,7,0.25), 0 10px 10px rgba(255,193,7,0.22)';
+            result.classList.add('border-warning');
+        }
+}
+
+function toggleBranchSupportCheckboxes() {
+    if ($('#support_display_symbol').is(':checked')) {
+        $('#support_display_number').prop('disabled', true);
+    } else {
+        $('#support_display_number').prop('disabled', false);
+    }
+
+    if ($('#support_display_number').is(':checked')) {
+        $('#support_display_symbol').prop('disabled', true);
+    } else {
+        $('#support_display_symbol').prop('disabled', false);
     }
 }

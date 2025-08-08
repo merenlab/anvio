@@ -23,7 +23,7 @@
         "LOGS_DIR": "00_LOGS_references_mode",
         "SHORT_READ_FILTER_DIR": "01_SHORT_READ_FILTER_references_mode"
     },
-    "config_version": "2",
+    "config_version": "3",
     "anvi_gen_contigs_database": {
         "--project-name": "{group}"
     },
@@ -62,7 +62,7 @@
     },
     "megahit": {
         "--min-contig-len": 1000,
-        "--memory": 1e6,
+        "--memory": 1000000.0,
         "threads": 7
     },
     "idba_ud": {

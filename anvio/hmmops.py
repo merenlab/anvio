@@ -25,7 +25,7 @@ P = terminal.pluralize
 
 
 class SequencesForHMMHits:
-    def __init__(self, contigs_db_path, sources=set([]), split_names_of_interest=set([]), init=True, run=run, progress=progress, bin_name=None):
+    def __init__(self, contigs_db_path, sources=set([]), split_names_of_interest=set([]), init=True, run=run, progress=progress, bin_name=None, defline_format=None):
         self.run = run
         self.progress = progress
 
@@ -44,6 +44,28 @@ class SequencesForHMMHits:
         self.aa_sequences = {}
         self.genes_in_contigs = {}
         self.splits_in_contigs = {}
+
+        self.defline_data_dict = {'gene_name': None,
+                                  'gene_callers_id': None,
+                                  'contig_name': None,
+                                  'gene_unique_id': None,
+                                  'bin_name': None,
+                                  'source': None,
+                                  'e_value': None,
+                                  'start': None,
+                                  'stop': None,
+                                  'length': None} 
+
+
+        if defline_format:
+            self.defline_format = defline_format
+        else:
+            self.defline_format = ("{gene_name}___{gene_unique_id} bin_id:{bin_name}|source:{source}|"
+                                   "e_value:{e_value}|contig:{contig_name}|gene_callers_id:{gene_callers_id}|"
+                                   "start:{start}|stop:{stop}|length:{length}")
+
+        # an immediate check if the defline format is acceptable
+        utils.get_f_string_evaluated_by_dict(self.defline_format, self.defline_data_dict)
 
         if contigs_db_path:
             self.init_dicts(contigs_db_path, split_names_of_interest)
@@ -251,7 +273,21 @@ class SequencesForHMMHits:
         return hits_in_splits, split_name_to_bin_id
 
 
-    def get_gene_hit_counts_per_hmm_source(self, sources=None):
+    def get_gene_hit_counts_per_hmm_source(self, sources=None, dont_include_models_with_multiple_domain_hits=False):
+        """This function returns a 2-level dictionary mapping genes to their number of HMM hits.
+        
+        The outer dictionary is keyed by HMM source and the inner dictionary is keyed by gene name.
+
+        PARAMETERS
+        ==========
+        sources : list of str
+            A list of HMM sources to count hits for. If not provided, will use all possible sources in the HMM hits table
+        dont_include_models_with_multiple_domain_hits : Boolean
+            A flag variable to control whether we return counts for models that belong to multple HMM sources. This is 
+            relevant to the NumGenomesEstimator class, in which case we need to remove any genes that have hits from multiple 
+            single-copy core gene domains to avoid double-counting. See https://github.com/merenlab/anvio/issues/2231 for details
+        """
+
         if not sources:
             sources = [source for source in self.hmm_hits_info]
         else:
@@ -265,19 +301,70 @@ class SequencesForHMMHits:
                                   "in its databases, but some of the sources you requested do not seem to be found anywhere :/ "
                                   "Here is the list of those that failed you: '%s'." % (','.join(sources)))
 
+        hmm_hits = list(self.hmm_hits.values())
+        models_to_remove = {}
+        if dont_include_models_with_multiple_domain_hits:
+            observed_gcids_to_sources = {}
+            # first get list of HMM hits, HMM model names and sources for each gene callers id
+            for index, entry in enumerate(hmm_hits):
+                source = entry['source']
+                gcid = entry['gene_callers_id']
+                model = entry['gene_name']
+                if source in sources:
+                    if gcid in observed_gcids_to_sources:
+                        observed_gcids_to_sources[gcid]['hit_indices'].append(index)
+                        if source not in observed_gcids_to_sources[gcid]['hmm_models']:
+                            observed_gcids_to_sources[gcid]['hmm_models'][source] = set([])
+                        observed_gcids_to_sources[gcid]['hmm_models'][source].add(model)
+                    else:
+                        observed_gcids_to_sources[gcid] = {'hit_indices': [index],
+                                                           'hmm_models': {source: set([model])}}
+
+            # then we identify the models with multi-domain hits
+            for g, info in observed_gcids_to_sources.items():
+                s_list = info['hmm_models'].keys()
+                if len(s_list) > 1:
+                    for s, m_set in info['hmm_models'].items():
+                        if s in models_to_remove:
+                            models_to_remove[s].update(m_set)
+                        else:
+                            models_to_remove[s] = m_set
+            
+            # inform the user what is going on
+            num_models_affected = 0
+            num_model_strs = []
+            for s, m_set in models_to_remove.items():
+                num = len(m_set)
+                num_models_affected += num
+                num_model_strs.append(f"{num} from {s}")
+            if num_models_affected > 0:
+                self.run.warning(f"Hello there from the SequencesForHMMHits.get_gene_hit_counts_per_hmm_source() function. "
+                             f"Just so you know, someone asked for SCG HMMs that belong to multiple sources *not* to be "
+                             f"counted, and this will result in {num_models_affected} models "
+                             f"to be removed from our counts, more specifically: {', '.join(num_model_strs)}. You can "
+                             f"run this program with the `--debug` flag if you want to see a list of the models that we "
+                             f"will ignore from each HMM source.")
+        
         gene_hit_counts = {}
         for source in sources:
             gene_hit_counts[source] = {}
 
+            if anvio.DEBUG and source in models_to_remove:
+                self.run.info_single(f"Models to be ignored for source {source}: {', '.join(models_to_remove[source])}")
+
             for gene_name in self.hmm_hits_info[source]['genes'].split(','):
-                gene_hit_counts[source][gene_name.strip()] = 0
-
-        for entry in list(self.hmm_hits.values()):
+                name = gene_name.strip()
+                # avoid counting the problematic models
+                if (not dont_include_models_with_multiple_domain_hits) or (source not in models_to_remove) or (name not in models_to_remove[source]):
+                    gene_hit_counts[source][name] = 0
+        
+        for entry in hmm_hits:
             source    = entry['source']
-            gene_name = entry['gene_name']
+            gene_name = entry['gene_name'].strip()
 
-            if source in sources:
-                gene_hit_counts[source][gene_name.strip()] += 1
+            if source in sources and (not dont_include_models_with_multiple_domain_hits or (source not in models_to_remove) or \
+                                                    gene_name not in models_to_remove[source]):
+                gene_hit_counts[source][gene_name] += 1
 
         return gene_hit_counts
 
@@ -288,12 +375,12 @@ class SequencesForHMMHits:
         if not len(SCG_sources):
             return {}
 
-        gene_hit_counts_per_hmm_source = self.get_gene_hit_counts_per_hmm_source(SCG_sources)
+        gene_hit_counts_per_hmm_source = self.get_gene_hit_counts_per_hmm_source(SCG_sources, dont_include_models_with_multiple_domain_hits=True)
 
         num_genomes_per_SCG_source = {}
         for SCG_source in SCG_sources:
             l = list(gene_hit_counts_per_hmm_source[SCG_source].values())
-            num_genomes_per_SCG_source[SCG_source] = {'num_genomes': int(stats.mode(l).mode[0]),
+            num_genomes_per_SCG_source[SCG_source] = {'num_genomes': int(stats.mode(l)[0]),
                                                       'domain': self.hmm_hits_info[SCG_source]['domain']}
 
         return num_genomes_per_SCG_source
@@ -530,6 +617,61 @@ class SequencesForHMMHits:
         return num_genes_missing_per_bin
 
 
+    def filter_hmm_sequences_dict_for_genes_that_are_too_long(self, hmm_sequences_dict_for_splits, ignore_genes_longer_than=0):
+        """This takes in your `hmm_sequences_dict_for_splits`, and removes genes that are too long"""
+
+        if not isinstance(ignore_genes_longer_than, int):
+            raise ConfigError("The `--ignore-genes-longer-than` expects an integer argument :/")
+
+        # we will keep track of these bad bois
+        gene_calls_removed = set([])
+
+        # we identify entry ids that describe genes that are too long for removal
+        entry_ids_to_remove = set([])
+        for entry_id in hmm_sequences_dict_for_splits:
+            if hmm_sequences_dict_for_splits[entry_id]['length'] > ignore_genes_longer_than:
+                entry_ids_to_remove.add(entry_id)
+                gene_calls_removed.add(hmm_sequences_dict_for_splits[entry_id]['gene_callers_id'])
+
+        # we return early if there is nothing to be done
+        if not len(entry_ids_to_remove):
+            self.run.warning(f"You asked anvi'o to remove genes that are longer than {ignore_genes_longer_than} nts from your "
+                             f"HMM hits. But none of the gene calls were longer than that value, so you get to keep everything.",
+                             header="A MESSAGE FROM YOUR GENE LENGTH FILTER 📏")
+            return (hmm_sequences_dict_for_splits, set([]), set([]))
+
+        # if we are here, it means there are things to be gotten rid of. we will remove things
+        # while keeping the user informed.
+        self.run.warning(f"You asked anvi'o to remove genes that are longer than {ignore_genes_longer_than} nts from your "
+                         f"HMM hits. There were a total of {len(entry_ids_to_remove)} HMM hits that matched to gene calls "
+                         f"that were longer than {ignore_genes_longer_than}, and they are now removed from your analysis. "
+                         f"The following lines list all these gene calls, their length, and which model they belonged.",
+                         header="A MESSAGE FROM YOUR GENE LENGTH FILTER 📏", lc='yellow')
+
+        # before we actually start removing stuff, we first learn all bin names that are in the master dict
+        bin_names_in_original_dict = set([])
+        for entry in hmm_sequences_dict_for_splits.values():
+            bin_names_in_original_dict.add(entry['bin_id'])
+
+        # puts in business socks
+        for entry_id in entry_ids_to_remove:
+            e = hmm_sequences_dict_for_splits[entry_id]
+            self.run.info_single(f"Source: {e['source']} / Model: {e['gene_name']} /  Bin: {e['bin_id']} / "
+                                 f"Gene call: {e['gene_callers_id']} / Length: {e['length']}",
+                                 cut_after=None, level=2)
+            hmm_sequences_dict_for_splits.pop(entry_id)
+
+        # now we're done, and we will take another look at the dict to figure out remaining bins
+        bin_names_in_filtered_dict = set([])
+        for entry in hmm_sequences_dict_for_splits.values():
+            bin_names_in_filtered_dict.add(entry['bin_id'])
+
+        # bins we lost
+        bins_removed = bin_names_in_original_dict.difference(bin_names_in_filtered_dict)
+
+        return (hmm_sequences_dict_for_splits, gene_calls_removed, bins_removed)
+
+
     def filter_hmm_sequences_dict_from_genes_that_occur_in_less_than_N_bins(self, hmm_sequences_dict_for_splits, min_num_bins_gene_occurs=None):
         """This takes in your `hmm_sequences_dict_for_splits`, and removes genes that rarely occurs across bins.
 
@@ -580,6 +722,55 @@ class SequencesForHMMHits:
             return (hmm_sequences_dict_for_splits, set([]))
 
 
+    def filter_hmm_sequences_dict_for_to_only_include_specific_genes(self, hmm_sequences_dict_for_splits, gene_names=[]):
+        """This takes the dictionary for HMM hits, and removes all genes from it except the ones in `gene_names`.
+
+        It is critical to keep in mind that the removal of genes can leave behind no gene at all for some of the
+        genomes/bins. That's why this function tracks the genome names in the dictionary before and after to make
+        sure it can report the loss of genomes for the user to consider.
+        """
+
+        # gather all bin names
+        bin_names_in_original_dict = set([])
+        for entry in hmm_sequences_dict_for_splits.values():
+            bin_names_in_original_dict.add(entry['bin_id'])
+
+        # filter out every gene hit except those in `gene_names`
+        hmm_sequences_dict_for_splits = utils.get_filtered_dict(hmm_sequences_dict_for_splits, 'gene_name', set(gene_names))
+
+        # gather remaining bin names in the dict
+        bin_names_in_filtered_dict = set([])
+        for entry in hmm_sequences_dict_for_splits.values():
+            bin_names_in_filtered_dict.add(entry['bin_id'])
+
+        bins_that_are_lost = bin_names_in_original_dict.difference(bin_names_in_filtered_dict)
+
+        if not len(bins_that_are_lost):
+            # well, all bins are still in the data structure. we're good to return everything
+            return hmm_sequences_dict_for_splits, []
+
+        # if we are still here, it means some bins were gon buh-bye. we start by letting
+        # the user gently that stuff went south
+        self.run.info_single("Yo yo yo! The anvi'o function that helps you focus only on a specific list of gene names "
+                             "among your HMM hits is speaking (we are here most likely you used the --gene-names flag "
+                             "to get rid of all the other genes in a given HMM collection). What follows is a report of "
+                             "happened because ANVI'O ENDED UP LOSING SOME BINS/GENOMES FROM YOUR ANALYSIS AS THEY DID "
+                             "NOT HAVE *ANY* OF THE GENES YOU LISTED (sorry for the CAPS lock here, but we wanted to "
+                             "make sure you don't miss this, since this will certainly influence your downstream "
+                             "analyses). If you want to keep more bins in your analysis, you can include more genes "
+                             "in your `--gene-names` -- but of course it will not change the fact that some bins will "
+                             "still be missing some genes, and how does this patchiness will impact your downstream "
+                             "analyses (such as phylogenomics) is an important question that will require you to "
+                             "consider. Pro tip: you can always use the program `anvi-script-gen-function-matrix-across-genomes` "
+                             "to see the distribution of HMM hits across your bins/genomes.", nl_before=1, nl_after=1)
+
+        self.run.info('Num bins at the beginning of this filter', len(bin_names_in_original_dict), nl_after=1)
+        self.run.info(f'Num bins that lacked the {P("gene", len(gene_names))} in `--gene-names`', len(bins_that_are_lost), nl_after=1, mc='red')
+        self.run.info('Bins that are no more in the analysis', ', '.join(bins_that_are_lost), nl_after=1, mc='red')
+
+        return hmm_sequences_dict_for_splits, bins_that_are_lost
+
+
     def filter_hmm_sequences_dict_for_bins_that_lack_more_than_N_genes(self, hmm_sequences_dict_for_splits, gene_names, max_num_genes_missing=0):
         """This takes the output of `get_sequences_dict_for_hmm_hits_in_splits`, and goes through every bin\
            to identify bins or genomes that have lack more than `max_num_genes_missing` from a list of genes.
@@ -613,9 +804,22 @@ class SequencesForHMMHits:
 
 
     def get_FASTA_header_and_sequence_for_gene_unique_id(self, hmm_sequences_dict_for_splits, gene_unique_id):
-        entry = hmm_sequences_dict_for_splits[gene_unique_id]
-        header = '%s___%s ' % (entry['gene_name'], gene_unique_id) + '|'.join(['%s:%s' % (k, str(entry[k])) for k in ['bin_id', 'source', 'e_value', 'contig', 'gene_callers_id', 'start', 'stop', 'length']])
+        e = hmm_sequences_dict_for_splits[gene_unique_id]
+
+        self.defline_data_dict = {'gene_name': e['gene_name'],
+                                  'gene_callers_id': e['gene_callers_id'],
+                                  'contig_name': e['contig'],
+                                  'gene_unique_id': gene_unique_id,
+                                  'bin_name': e['bin_id'],
+                                  'source': e['source'],
+                                  'e_value': e['e_value'],
+                                  'start': e['start'],
+                                  'stop': e['stop'],
+                                  'length': e['length']}
+
+        header = utils.get_f_string_evaluated_by_dict(self.defline_format, self.defline_data_dict)
         sequence = hmm_sequences_dict_for_splits[gene_unique_id]['sequence']
+
         return (header, sequence)
 
 
@@ -705,7 +909,7 @@ class SequencesForHMMHits:
             genes_list = [(bin_name, genes_in_bins_dict[gene_name][bin_name]) \
                                                         for bin_name in genes_in_bins_dict[gene_name] \
                                                                            if bin_name in genes_in_bins_dict[gene_name]]
-            genes_in_bins_dict[gene_name] = aligner(run=terminal.Run(verbose=False)).run_stdin(genes_list)
+            genes_in_bins_dict[gene_name] = aligner(run=terminal.Run(verbose=False)).run_default(genes_list, debug=anvio.DEBUG)
             gene_lengths[gene_name] = len(list(genes_in_bins_dict[gene_name].values())[0])
         self.progress.end()
 
@@ -771,24 +975,21 @@ class SequencesForHMMHits:
 
             self.progress.new('Alignment')
             self.progress.update('Working on %d sequences ...' % (len(genes_list)))
-            genes_aligned = aligner(run=terminal.Run(verbose=False)).run_stdin(genes_list)
+            genes_aligned = aligner(run=terminal.Run(verbose=False)).run_default(genes_list, debug=anvio.DEBUG)
             self.progress.end()
 
             for gene_id in genes_aligned:
                 hmm_sequences_dict_for_splits[gene_id]['sequence'] = genes_aligned[gene_id]
 
-        f = open(output_file_path, 'w')
+        with open(output_file_path, 'w') as f:
+            for gene_unique_id in hmm_sequences_dict_for_splits:
+                header, sequence = self.get_FASTA_header_and_sequence_for_gene_unique_id(hmm_sequences_dict_for_splits, gene_unique_id)
 
-        for gene_unique_id in hmm_sequences_dict_for_splits:
-            header, sequence = self.get_FASTA_header_and_sequence_for_gene_unique_id(hmm_sequences_dict_for_splits, gene_unique_id)
+                if wrap:
+                    sequence = textwrap.fill(sequence, wrap, break_on_hyphens=False)
 
-            if wrap:
-                sequence = textwrap.fill(sequence, wrap, break_on_hyphens=False)
-
-            f.write('>%s\n' % header)
-            f.write('%s\n' % sequence)
-
-        f.close()
+                f.write('>%s\n' % header)
+                f.write('%s\n' % sequence)
 
 
     def store_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap=120, concatenate_genes=False, partition_file_path=None, separator=None, genes_order=None, align_with=None, just_do_it=False):

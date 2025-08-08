@@ -15,13 +15,13 @@ let ERROR_COUNT = 0
 
 const issueCategories = [
     {
-        'category' : 'Dependencies failed to load', 
-        'content' : `This can occur when git submodules that Anvi'o relies on fail to load. If you are tracking the main development branch of Anvi'o,
-        try running <b> git submodule update --init </b>`
+        'category' : 'Dependencies failed to load',
+        'content' : `This can occur when npm packages that Anvi'o relies on fail to load. 
+        Try running <b> npm install </b> in the <b>anvio/data/interactive</b> directory.`
     },
     {
-        'category' : 'ReferenceError - ___ is not defined', 
-        'content' : `This can occur when Anvi'o wants to utilize some variable which it cannot resolve. Until we get some better troubleshooting advice here, 
+        'category' : 'ReferenceError - ___ is not defined',
+        'content' : `This can occur when Anvi'o wants to utilize some variable which it cannot resolve. Until we get some better troubleshooting advice here,
         try running your interactive session with the <b>--debug</b> flag`
     },
 ]
@@ -30,13 +30,13 @@ function alertDependencyError(dependencyError, isFinalDependency){
     if(dependencyError){
         ERROR_COUNT += 1
     }
-    if(isFinalDependency && ERROR_COUNT){ // hacky way of 'iterating' all dependency calls before error messaging  
+    if(isFinalDependency && ERROR_COUNT){ // hacky way of 'iterating' all dependency calls before error messaging
         displayAlert('dependencies')
     }
 }
 
 function displayAlert(error){
-    let reason; 
+    let reason;
 
     if(error == 'dependencies'){
         reason = 'loading dependencies'
@@ -50,7 +50,7 @@ function displayAlert(error){
 
 function errorLandingContext(){ // onload function called by error-landing.html, generate help 'docs' from object above
     issueCategories.map((issue, idx) => {
-        document.querySelector('#content-div').innerHTML += 
+        document.querySelector('#content-div').innerHTML +=
         `
             <h1 class='dropdown-category closed'>${issue.category} <span class='icon'>∆</span></h1>
             <div class='dropdown-content'>

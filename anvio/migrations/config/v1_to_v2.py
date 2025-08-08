@@ -21,6 +21,7 @@ def migrate(config_path):
     if config_path is None:
         raise ConfigError("No config path is given.")
 
+    anvio.QUIET = True
     workflow_name, version = w.get_workflow_name_and_version_from_config(config_path, dont_raise=True)
 
     if not workflow_name:
@@ -50,6 +51,9 @@ def migrate(config_path):
     open(config_path, 'w').write(json.dumps(config, indent=4))
 
     progress.end()
+
+    anvio.QUIET = False
+
     run.info_single("The config file version is now %s. This upgrade removed --external-gene-calls from "
                     "the rule anvi_gen_contigs_database, if it existed at all. This was a redundant parameter, "
                     "since external gene calls are supplied to anvi-run-workflow as an external_gene_calls "

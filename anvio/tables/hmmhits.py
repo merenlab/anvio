@@ -2,9 +2,11 @@
 # pylint: disable=line-too-long
 
 import os
-import hashlib
+import sys
 import gzip
 import shutil
+import hashlib
+import pandas as pd
 
 import anvio
 import anvio.db as db
@@ -17,6 +19,7 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.drivers.hmmer import HMMer
 from anvio.tables.tableops import Table
+from anvio.dbops import ContigsDatabase
 from anvio.parsers import parser_modules
 from anvio.dbops import ContigsSuperclass
 from anvio.errors import ConfigError, StupidHMMError
@@ -24,8 +27,7 @@ from anvio.tables.genecalls import TablesForGeneCalls
 from anvio.tables.genefunctions import TableForGeneFunctions
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -96,13 +98,13 @@ class TablesForHMMHits(Table):
             sources_in_db = list(hmmops.SequencesForHMMHits(self.db_path).hmm_hits_info.keys())
 
             if 'Ribosomal_RNAs' in sources_in_db and len([s for s in sources if s.startswith('Ribosomal_RNA_')]):
-                raise ConfigError("Here is one more additional step we need to you take care of before we can go forward: Your contigs database "
-                                  "already contains HMMs from an older `Ribosomal_RNAs` model anvi'o no longer uses AND you are about to run "
-                                  "its newer models that do the same thing (but better). Since Ribosomal RNA models add new gene calls to the "
-                                  "database, running newer models without first cleaning up the old ones will result in duplication of gene calls "
-                                  "as examplified here: https://github.com/merenlab/anvio/issues/1598. Anvi'o could've removed the `Ribosomal_RNAs` "
-                                  "model for you automatically, but the wisdom tells us that the person who passes the sentence should swing the "
-                                  "sword. Here it is for your grace: \"anvi-delete-hmms -c CONTIGS.db --hmm-source Ribosomal_RNAs\".")
+                raise ConfigError(f"Here is one more additional step we need to you take care of before we can go forward: Your contigs database "
+                                  f"already contains HMMs from an older `Ribosomal_RNAs` model anvi'o no longer uses AND you are about to run "
+                                  f"its newer models that do the same thing (but better). Since Ribosomal RNA models add new gene calls to the "
+                                  f"database, running newer models without first cleaning up the old ones will result in duplication of gene calls "
+                                  f"as examplified here: https://github.com/merenlab/anvio/issues/1598. Anvi'o could've removed the `Ribosomal_RNAs` "
+                                  f"model for you automatically, but the wisdom tells us that the person who passes the sentence should swing the "
+                                  f"sword. Here it is for your grace: \"anvi-delete-hmms -c {self.db_path} --hmm-source Ribosomal_RNAs\".")
 
             sources_need_to_be_removed = set(sources.keys()).intersection(sources_in_db)
 
@@ -288,7 +290,7 @@ class TablesForHMMHits(Table):
                 search_results_dict = parser.get_search_results()
 
             if not len(search_results_dict):
-                run.info_single("The HMM source '%s' returned 0 hits. SAD (but it's stil OK)." % source, nl_before=1)
+                run.info_single("The HMM source '%s' returned 0 hits. SAD (but it's OK)." % source, nl_before=1)
 
             if context == 'CONTIG':
                 # we are in trouble here. because our search results dictionary contains no gene calls, but contig
@@ -541,3 +543,401 @@ class TablesForHMMHits(Table):
                         db_entries_for_splits.append(db_entry)
 
         return db_entries_for_splits
+
+
+class FilterHmmHitsTable(object):
+    """A class to filter hmm_hits from domtblout from hmmsearch."""
+    def __init__(self, args, quiet=False, run=terminal.Run(), progress=terminal.Progress()):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+
+        self.contigs_db_path=A("contigs_db")
+        self.domtblout=A("domain_hits_table")
+        self.hmm_source=A("hmm_source")
+        self.min_gene_coverage=A("min_gene_coverage")
+        self.min_model_coverage=A("min_model_coverage")
+        self.list_hmm_sources=A("list_hmm_sources")
+        self.hmm_profile_dir=A("hmm_profile_dir")
+        self.merge_partial_hits_within_X_nts = A('merge_partial_hits_within_X_nts')
+        self.filter_out_partial_gene_calls = A('filter_out_partial_gene_calls')
+
+        if self.list_hmm_sources:
+            ContigsDatabase(self.contigs_db_path).list_available_hmm_sources()
+            sys.exit()
+
+        if self.hmm_source not in anvio.data.hmm.sources and not self.hmm_profile_dir:
+            raise ConfigError("Hold up, if you are using a external HMM source, you need to provide the path to the HMM directory "
+                              "with the parameter --hmm-profile-dir")
+
+        # Grab HMM sources from internal or external HMMs
+        if args.hmm_profile_dir:
+            if not os.path.exists(args.hmm_profile_dir):
+                raise ConfigError('No such file or directory: "%s"' % args.hmm_profile_dir)
+        if self.hmm_profile_dir:
+            self.sources = utils.get_HMM_sources_dictionary([args.hmm_profile_dir])
+        else:
+            self.sources = anvio.data.hmm.sources
+
+        # hmmsearch results so the queries are the hmm models and the targets are the ORFs
+        self.dom_table_columns = [
+            ('gene_callers_id',  int),   #  0  target name
+            ('target_accession', str),   #  1  target accession
+            ('gene_length',      int),   #  2  tlen
+            ('hmm_name',         str),   #  3  query name
+            ('hmm_id',           str),   #  4  accession
+            ('hmm_length',       int),   #  5  qlen
+            ('evalue',           float), #  6  E-value (full sequence)
+            ('bitscore',         float), #  7  score (full sequence)
+            ('bias',             float), #  8  bias (full sequence)
+            ('match_num',        int),   #  9  # (this domain)
+            ('num_matches',      int),   # 10  of (this domain)
+            ('dom_c_evalue',     float), # 11  c-Evalue (this domain)
+            ('dom_i_evalue',     float), # 12  i-Evalue (this domain)
+            ('dom_bitscore',     str),   # 13  score (this domain)
+            ('dom_bias',         float), # 14  bias (this domain)
+            ('hmm_start',        int),   # 15  from (hmm coord)
+            ('hmm_stop',         int),   # 16  to (hmm coord)
+            ('gene_start',       int),   # 17  from (ali coord)
+            ('gene_stop',        int),   # 18  to (ali coord)
+            ('env_to',           str),   # 19  from (env coord)
+            ('env_from',         str),   # 10  to (env coord)
+            ('mean_post_prob',   float), # 21  acc
+            ('description',      str),   # 22  description of target
+        ]
+
+
+    def sanity_checks(self):
+        """Sanity checks for program inputs."""
+
+        filesnpaths.is_file_exists(self.contigs_db_path)
+        self.run.info("Database Path", self.contigs_db_path)
+
+        filesnpaths.is_file_exists(self.domtblout)
+        self.run.info("Domtblout Path", self.domtblout)
+
+        if not self.min_model_coverage and not self.min_gene_coverage:
+            raise ConfigError("You didn't provide anvi-script-filter-hmm-hits-table with either a "
+                              "--min-model-coverage or --min-gene-coverage. Please provide at least one "
+                              "so anvi'o can filter hmm_hits for you :)")
+
+        if self.min_model_coverage:
+            if self.min_model_coverage < 0:
+                raise ConfigError(f"--min-model-coverage must be a percentage between 0 and 1 "
+                                  f"and you put a negative number: {self.min_model_coverage}")
+            if self.min_model_coverage > 1:
+                raise ConfigError(f"--min-model-coverage must be a percentage between 0 and 1 "
+                                  f"and you put a a value larger than 100%: {self.min_model_coverage}")
+
+        if self.min_gene_coverage:
+            if self.min_gene_coverage < 0:
+                raise ConfigError(f"--min-gene-coverage must be a percentage between 0 and 1 "
+                                  f"and you put a negative number: {self.min_gene_coverage}")
+            if self.min_gene_coverage > 1:
+                raise ConfigError(f"--min-gene-coverage must be a percentage between 0 and 1 "
+                                  f"and you put a a value larger than 100%: {self.min_gene_coverage}")
+
+        if self.min_gene_coverage and self.min_model_coverage:
+            self.run.info("Minimum gene coverage", self.min_gene_coverage)
+            self.run.info("Minimum model coverage", self.min_model_coverage)
+        else:
+            if self.min_gene_coverage:
+                self.run.info("Minimum gene coverage", self.min_gene_coverage)
+            if self.min_model_coverage:
+                self.run.info("Minimum model coverage", self.min_model_coverage)
+
+        if not self.hmm_source:
+            raise ConfigError("Please provide a hmm-source :)")
+
+        info_table = hmmops.SequencesForHMMHits(self.contigs_db_path).hmm_hits_info
+
+        if self.hmm_source not in info_table:
+            raise ConfigError(f"Whoa there, the HMM source you provided, '{self.hmm_source}', is not in your contigsDB: "
+                              f"{self.contigs_db_path}. Maybe you misspelled it? Maybe you never added it to your contigsDB??"
+                              f"Please use --list-hmm-sources to see which HMM sources you have available. If you don't see the HMMs you "
+                              f"need then try re-running anvi-run-hmms and make sure to specify your HMM source of interest.")
+
+        target = self.sources[self.hmm_source]['target'].split(':')
+
+        if target[0] != 'AA':
+            raise ConfigError(f"The hmm-source {self.hmm_source} is not for amino acid sequences. "
+                              f"anvi-script-filter-hmm-hit-table currently can only work with hmm-sources "
+                              f"from protein sequences.")
+
+
+    def process(self):
+        """Method to run the functions of this program"""
+
+        self.sanity_checks()
+
+        self.import_domtblout()
+
+        # file_path_csv
+        filtered_domtblout_path = self.filter_domtblout()
+
+        search_results_dict = self.parse_domtblout(filtered_domtblout_path)
+
+        self.append_search_results_dict_to_hmm_tables(search_results_dict = search_results_dict)
+
+        # remove the tmp file
+        if anvio.DEBUG:
+            self.run.info("Filtered domtblout file", filtered_domtblout_path)
+        elif not anvio.DEBUG:
+            os.remove(filtered_domtblout_path)
+
+
+    def merge_partial_hits(self):
+        """Merge all partial hits in a DOM table for the same source HMM and target gene.
+
+        Parts of the same model can hit multiple distinct regions of the same gene, resulting
+        in independent entries in teh DOM table output file. This funtion merges those
+        independent hits into a single one if they are close enough to one another.
+        """
+
+        orig_file_path = self.domtblout + '.orig'
+        temp_file_path = self.domtblout + '.tmp'
+
+        self.run.warning(f"You requested anvi'o to merge partial hits for a given gene by the same "
+                         f"model if the distance between independent stretches of coverage is "
+                         f"less than {self.merge_partial_hits_within_X_nts} nucleotides. Before "
+                         f"moving forward, anvi'o will first create a copy of the original domtblout input table "
+                         f"and store an updated version of the input table with merged hits for "
+                         f"downstream analyses to use.",
+                         header="MERGING PARTIAL HITS FIRST", lc='green')
+
+        AVG = lambda x: str(sum([float(dom_table_entries[i][x]) for i in line_nums_to_be_merged]) / len(line_nums_to_be_merged))
+        MIN = lambda x: str(min([float(dom_table_entries[i][x]) for i in line_nums_to_be_merged]))
+        MAX = lambda x: str(max([float(dom_table_entries[i][x]) for i in line_nums_to_be_merged]))
+
+        unique_gene_model_pairs = {}
+        with open(self.domtblout) as dom_table:
+            dom_table_entries = [l.strip('\n').split(maxsplit=len(self.dom_table_columns) - 1) for l in dom_table.readlines()]
+
+            for i in range(0, len(dom_table_entries)):
+                entry = dom_table_entries[i]
+
+                # basically the concatenated gene callers id and model name
+                idx = f"{entry[0]}_{entry[3]}"
+
+                if idx not in unique_gene_model_pairs:
+                    unique_gene_model_pairs[idx] = []
+
+                unique_gene_model_pairs[idx].append(i)
+
+        with open(temp_file_path, 'w') as output:
+            for hits in unique_gene_model_pairs.values():
+                if len(hits) == 1:
+                    # if we are here, it means there is a single hit in the output file for
+                    # a given gene/model, thus, it will just go into the output file as is
+                    output.write('\t'.join(dom_table_entries[hits[0]]) + '\n')
+                else:
+                    # if we are here, it means there are more than oen hits in the output
+                    # file for a given gene/model. we will figure out whether we can merge them.
+
+                    # here we identify independent stretches of gene start / stop positions for
+                    # each hit
+                    gene_start_ind = [l[0] for l in self.dom_table_columns].index('gene_start')
+                    gene_stop_ind = [l[0] for l in self.dom_table_columns].index('gene_stop')
+                    stretches = [(int(dom_table_entries[hit][gene_start_ind]), int(dom_table_entries[hit][gene_stop_ind])) for hit in hits]
+
+                    # merge each strech of the gene covered by the model into longer segments if they are
+                    # closer to one another more than `self.merge_partial_hits_within_X_nts`
+                    merged_stretches = utils.merge_stretches(stretches, min_distance_between_independent_stretches=self.merge_partial_hits_within_X_nts)
+
+
+                    # now the challenge is to turn these stretches wit hstart-stop positions into actual
+                    # line numbers. first, we will figure out which line number in hits correspond to which
+                    # start position of the gene.
+                    start_position_to_line_number = []
+                    for i in range(0, len(stretches)):
+                        start_position_to_line_number.append((stretches[i][0], hits[i]),)
+
+                    # next, we will identify which line numbers should be merged, which will be
+                    # described by `m`, a list of lists.
+                    list_of_line_nums_to_be_merged = []
+                    start_position_of_merged_stretches = [m[0] for m in merged_stretches]
+                    for start_pos, line_number in start_position_to_line_number:
+                        if start_pos in start_position_of_merged_stretches:
+                            list_of_line_nums_to_be_merged.append([line_number])
+                        else:
+                            list_of_line_nums_to_be_merged[-1].append(line_number)
+
+                    if anvio.DEBUG:
+                        self.run.info('Hits', hits)
+                        self.run.info('Stretches', stretches)
+                        self.run.info('Merged stretches', merged_stretches)
+                        self.run.info('ST/STP pos to line num', start_position_to_line_number)
+                        self.run.info('Line numbers to merge', list_of_line_nums_to_be_merged, nl_after=2)
+
+                    # in the next few lines, we turn lines that look like the following:
+                    #
+                    # ['781', '-', '1270', 'RNAP-b_all', '-', '1139', '2e-113', '377.9', '2.1', '2', '5', '9.5e-24', '4.2e-20', '68.8', '0.0', '347', '513', '387', '542', '384', '546', '0.90', '-']
+                    # ['781', '-', '1270', 'RNAP-b_all', '-', '1139', '2e-113', '377.9', '2.1', '3', '5', '9.9e-10', '4.3e-06', '22.4', '0.0', '661', '711', '610', '660', '543', '663', '0.81', '-']
+                    # ['781', '-', '1270', 'RNAP-b_all', '-', '1139', '2e-113', '377.9', '2.1', '4', '5', '2.2e-19', '9.7e-16', '54.4', '0.0', '743', '846', '760', '861', '754', '871', '0.87', '-']
+                    #
+                    # into something like this, and write it into our output file (see the start / stop positions of colums
+                    # that matter):
+                    #
+                    # ['781', '-', '1270', 'RNAP-b_all', '-', '1139', '2e-113', '377.9', '2.1', '1', '1', '9.5e-24', '4.2e-20', '68.8', '0.0', '347', '846', '387', '861', '384', '871', '0.86', '-']
+                    #
+                    for line_nums_to_be_merged in list_of_line_nums_to_be_merged:
+                        FIRSTLINE = dom_table_entries[line_nums_to_be_merged[0]]
+                        LASTTLINE = dom_table_entries[line_nums_to_be_merged[-1]]
+                        NEW_LINE = FIRSTLINE[0:9] + ['1', '1'] + [MIN(11), MIN(12), MAX(13), AVG(14), FIRSTLINE[15], LASTTLINE[16], FIRSTLINE[17], LASTTLINE[18], FIRSTLINE[19], LASTTLINE[20], AVG(21), LASTTLINE[22]]
+
+                        output.write('\t'.join(NEW_LINE) + '\n')
+
+        utils.shutil.move(self.domtblout, orig_file_path)
+        utils.shutil.move(temp_file_path, self.domtblout)
+        self.run.info("Original input table is moved to", orig_file_path, mc="green")
+        self.run.info("Merged table is now at", self.domtblout, mc="green")
+        self.run.info_single('=' * self.run.width, level=0, nl_after=2, mc="green")
+
+
+    def import_domtblout(self):
+        """Import the domtblout file from hmmsearch then calculate model and gene coverage"""
+
+        if self.merge_partial_hits_within_X_nts:
+            self.merge_partial_hits()
+
+        colnames_coltypes_list = list(zip(*self.dom_table_columns))
+        colnames_coltypes_dict = dict(zip(colnames_coltypes_list[0], colnames_coltypes_list[1]))
+
+        try:
+
+            self.df=pd.read_csv(self.domtblout,
+                            delim_whitespace=True,
+                            comment='#',
+                            names=colnames_coltypes_list[0],
+                            dtype=colnames_coltypes_dict,
+                            header=None,
+                            index_col=False)
+        except Exception as e:
+            print(e)
+            raise ConfigError(f"Doesn't look like a --domtblout... anvi'o can't even... "
+                              f"Please look at this error message to find out what happened: "
+                              f"{e}")
+
+        self.df['min_model_coverage'] = ((self.df['hmm_stop'] - self.df['hmm_start'])/ self.df['hmm_length'])
+        self.df['min_gene_coverage'] = ((self.df['gene_stop'] - self.df['gene_start'])/ self.df['gene_length'])
+
+
+    def filter_domtblout(self):
+        """
+        Filter the hmm_hits table based on HMM model coverage, gene coverage, or open reading frame completeness.
+
+        Returns:
+            CSV: Filtered domtblout file from hmmsearch. 
+            str: The file path of the temporary file where the filtered DataFrame is saved.
+        """
+
+        # FIXME: Down below, we allow the user to filter ALL hits in the DOM table based on
+        # a single min model coveage value and/or a single min gene coverage value. But
+        # different models in a list of HMMs and different genes they target will have
+        # different min mode/gene coverage cutoff optimals. As an additional option,
+        # we could allow users to pass a YAML file where for each model name gene/model
+        # min coverage cutoffs are explicitly defined, which cuold look like this:
+        #
+        #    >>> MODEL_NAME_X:
+        #    >>>   min_model_coverage: 0.7
+        #    >>>   min_gene_coverage: 0.6
+        #    >>> MODEL_NAME_Y:
+        #    >>>   min_model_coverage: 0.9
+        #    >>>   min_gene_coverage: 0.9
+        #    >>> MODEL_NAME_Z:
+        #    >>>   min_model_coverage: 0.9
+        #    >>>   min_gene_coverage: 0.25
+        #    >>> (...)
+        #
+        # Whenever a model name matches to a model name mentioned in this file, the
+        # values defined under would take priority over the defaults. Such a solution
+        # would dramatically increase the utility of the approach and its suitability
+        # to more complex filtering tasks.
+
+        # Alignment coverage filtering conditions
+        if self.min_model_coverage and self.min_gene_coverage:
+            df_filtered = self.df[(self.df['min_model_coverage'] > float(self.min_model_coverage)) &
+                                (self.df['min_gene_coverage'] > float(self.min_gene_coverage))]
+        elif self.min_gene_coverage:
+            df_filtered = self.df[self.df['min_gene_coverage'] > float(self.min_gene_coverage)]
+        elif self.min_model_coverage:
+            df_filtered = self.df[self.df['min_model_coverage'] > float(self.min_model_coverage)]
+        else:
+            df_filtered = self.df.copy()
+
+        # Log filtering information
+        self.run.info("Num hmm-hits before alignment filtering", self.df.shape[0])
+        self.run.info("Num hmm-hits after alignment filtering", df_filtered.shape[0])
+        self.run.info("Num hmm-hits filtered from alignment coverage", self.df.shape[0] - df_filtered.shape[0])
+
+        # Reformat domtblout back to the original format by dropping 'min_model_coverage' and 'min_gene_coverage' columns
+        df_final = df_filtered.drop(columns=['min_model_coverage', 'min_gene_coverage'])
+
+        # Additional filtering for partial gene calls if required
+        if self.filter_out_partial_gene_calls:
+            # Load the genes_in_contigs table from a database
+            database = db.DB(self.contigs_db_path, None, ignore_version=True)
+            table_content = database.get_table_as_dataframe('genes_in_contigs')
+            database.disconnect()
+
+            # Filter the genes_in_contigs table to select only complete gene calls (partial == 0)
+            table = table_content.query('partial == 0')
+
+            # Apply the filtering on the final DataFrame using 'gene_callers_id' column
+            num_total_gene_calls = df_final.shape[0]
+            df_final = df_final[df_final['gene_callers_id'].isin(table['gene_callers_id'])]
+            num_complete_gene_calls = df_final.shape[0]
+
+            # Log the partial gene call filtering information
+            self.run.info("Number of hmm-hits", num_total_gene_calls)
+            self.run.info("Number of hmm-hits with complete gene-calls", num_complete_gene_calls)
+            self.run.info("Number of partial gene-calls filtered from hmm-hits", num_total_gene_calls - num_complete_gene_calls)
+
+        # Save the filtered DataFrame to a temporary file and return its file path
+        domtblout_tmp_out = filesnpaths.get_temp_file_path()
+        df_final.to_csv(domtblout_tmp_out, sep='\t', index=False)
+
+        return domtblout_tmp_out
+
+    def parse_domtblout(self, hmmsearch_tbl=None):
+        """Parse the new, filtered domtblout file"""
+
+        # Parse domtblout
+        alphabet= 'AA'
+        context= 'DOMAIN'
+        hmm_program = 'hmmsearch'
+
+        parser = parser_modules['search']['hmmer_table_output'](hmmsearch_tbl, alphabet=alphabet, context=context, program=hmm_program)
+        search_results_dict = parser.get_search_results()
+
+        return search_results_dict
+
+
+    def append_search_results_dict_to_hmm_tables(self, search_results_dict=None):
+        """Put in the new filtered hmm_hits table to the contigsDB"""
+
+        # Remove old hmm_hits contigs_db_path
+        hmm_tables = TablesForHMMHits(self.contigs_db_path)
+        hmm_tables.remove_source(self.hmm_source)
+
+        # Re-write hmm_hits table to contigsDB
+
+        internal_sources = list(anvio.data.hmm.sources.keys())
+        source = self.hmm_source
+
+        if self.sources not in internal_sources:
+            kind_of_search = self.sources[source]['kind']
+            domain = self.sources[source]['domain']
+            all_genes_searched_against = self.sources[source]['genes']
+            reference = self.sources[source]['ref']
+        else:
+            sources = anvio.data.hmm.sources
+            source = self.hmm_source
+            kind_of_search = sources[source]['kind']
+            domain = sources[source]['domain']
+            all_genes_searched_against = sources[source]['genes']
+            reference = self.sources[source]['ref']
+
+        hmm_tables.append_to_hmm_hits_table(source, reference, kind_of_search, domain, all_genes_searched_against, search_results_dict)

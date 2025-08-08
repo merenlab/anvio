@@ -10,9 +10,11 @@ import os
 import json
 import math
 import copy
+import numpy as np
 import pandas as pd
-from itertools import chain
 
+from itertools import chain
+from scipy.optimize import curve_fit
 # multiprocess is a fork of multiprocessing that uses the dill serializer instead of pickle
 # using the multiprocessing module directly results in a pickling error in Python 3.10 which
 # goes like this:
@@ -22,6 +24,7 @@ from itertools import chain
 import multiprocess as multiprocessing
 
 import anvio
+import anvio.tables as t
 import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
@@ -40,8 +43,7 @@ from anvio.genomestorage import GenomeStorage
 from anvio.tables.geneclusters import TableForGeneClusters
 from anvio.tables.views import TablesForViews
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -53,6 +55,216 @@ run = terminal.Run()
 progress = terminal.Progress()
 pp = terminal.pretty_print
 aligners = Aligners()
+
+additional_param_sets_for_sequence_search = {'diamond'   : '--masking 0',
+                                             'ncbi_blast': ''}
+
+
+class RarefactionAnalysis:
+    """Takes in a pangenome, calculates rarefaction curves and Heaps' Law fit to assess the openness of the pangenome.
+
+        >>> import argparse
+        >>> args = argparse.Namespace(pan_db="PATH/TO/PAN.db", iterations=100, output_file='rarefaction_curves.svg')
+        >>> rarefaction_curves = RarefactionAnalysis(args)
+        >>> k, alpha = rarefaction_curves.process()
+
+    A client of this class is the program `anvi-compute-rarefaction-curves`
+    """
+
+    def __init__(self, args, run=run, progress=progress):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.pan_db_path = A('pan_db')
+        self.iterations = A('iterations') or 100
+        self.output_file_prefix = A('output_file_prefix')
+        self.skip_output_files= A('skip_output_files')
+
+        # to be filled from the pan-db
+        self.gene_cluster_data = None
+        self.unique_genomes = None
+        self.num_genomes = None
+
+        # Load gene cluster data
+        self.load_data()
+
+
+    def load_data(self):
+        """Load gene cluster data from pan-db, setup essential variables, sanity check."""
+
+        utils.is_pan_db(self.pan_db_path)
+
+        # let's learn a few things form the pan-db.
+        pan_db = dbops.PanDatabase(self.pan_db_path)
+        self.gene_cluster_data = pan_db.db.get_some_columns_from_table(t.pan_gene_clusters_table_name, "gene_cluster_id, genome_name", as_data_frame=True)
+        self.unique_genomes = self.gene_cluster_data["genome_name"].unique()
+        self.num_genomes = len(self.unique_genomes)
+        self.pan_project_name = pan_db.meta['project_name']
+        pan_db.disconnect()
+
+        # here we will set the output file prefix (so we can define all the output file names already)
+        if self.skip_output_files:
+            self.run.info("Output files", "None will be generated as per user request", mc='red')
+        else:
+            if self.output_file_prefix:
+                self.run.info("Output file prefix", self.output_file_prefix, mc='green')
+            else:
+                self.run.info("Output file prefix", f"{self.pan_project_name} (automatically set by anvi'o)", mc="cyan")
+                self.output_file_prefix = self.pan_project_name
+
+        # output file paths -- whether they will be used or not
+        J = lambda x: None if self.skip_output_files else os.path.join(self.output_file_prefix.rstrip('/') + '-' + x)
+        self.rarefaction_curves_figure = J('rarefaction-curves.svg')
+        self.rarefaction_pangenome_txt = J('rarefaction-pangenome-averages.txt')
+        self.iterations_pangenome_txt = J('rarefaction-pangenome-iterations.txt')
+        self.rarefaction_core_txt = J('rarefaction-core-averages.txt')
+        self.iterations_core_txt = J('rarefaction-core-iterations.txt')
+
+        # if output files will be produced, let's make sure the user has the write
+        # permissions to these destinations
+        if not self.skip_output_files:
+            filesnpaths.is_output_file_writable(self.rarefaction_pangenome_txt)
+
+        # some insights into what's up on the terminal
+        self.run.info("Number of genomes found", self.num_genomes)
+        self.run.info("Number of iterations to run", self.iterations)
+
+
+    def calc_rarefaction_curve(self, target="all"):
+        """Calculates rarefaction curves for all gene clusters (target='all') or core gene clusters (target='core')."""
+
+        if target not in ['all', 'core']:
+            raise ConfigError("The target variable must either be set to 'all', or 'core'. It is not negotiable!")
+
+        results = []
+        iteration_results = []  # we store individual individual iteration values to be able to plot them later
+
+        for n in range(1, self.num_genomes + 1):
+            sampled_cluster_counts = []
+
+            for i in range(self.iterations):
+                self.progress.increment()
+                self.progress.update(f"Processing {target} gene clusters in {n} genomes of {self.num_genomes} total at teration {i + 1} of {self.iterations}")
+                sampled_genomes = np.random.choice(self.unique_genomes, n, replace=False)
+                sampled_data = self.gene_cluster_data[self.gene_cluster_data["genome_name"].isin(sampled_genomes)]
+
+                cluster_counts = sampled_data.groupby("gene_cluster_id")["genome_name"].nunique()
+
+                if target == "core":
+                    count = sum(cluster_counts == n)
+                else:
+                    count = cluster_counts.shape[0]
+
+                sampled_cluster_counts.append(count)
+                iteration_results.append([n, count])  # Store each iteration result
+
+            results.append([n, np.mean(sampled_cluster_counts), np.std(sampled_cluster_counts)])
+
+        df_summary = pd.DataFrame(results, columns=["num_genomes", "avg_num_gene_clusters", "standard_deviation"])
+        df_iterations = pd.DataFrame(iteration_results, columns=["num_genomes", "GeneClusters"])
+
+        return df_summary, df_iterations
+
+
+    def heap_law(self, x, k, alpha):
+        """Heaps' Law function: V(N) = K * N^alpha"""
+
+        return k * np.power(x, alpha)
+
+
+    def fit_heaps_law(self, rarefaction_data):
+        """Fits Heaps' Law parameters to rarefaction data."""
+
+        x_data = rarefaction_data["num_genomes"]
+        y_data = rarefaction_data["avg_num_gene_clusters"]
+
+        # Fit using non-linear least squares
+        popt, _ = curve_fit(self.heap_law, x_data, y_data, p0=[1, 0.5])
+        k, alpha = popt
+        self.run.info("Heaps' Law parameters estimated", f"K={k:.4f}, alpha={alpha:.4f}")
+
+        return k, alpha
+
+
+    def store_results_as_txt(self):
+        """Generate text files for GC gain averages per num genome and each iteration of sampling"""
+
+        self.rarefaction_pangenome.to_csv(self.rarefaction_pangenome_txt, sep ='\t', index=False)
+        self.iterations_pangenome.to_csv(self.iterations_pangenome_txt, sep ='\t', index=False)
+        self.rarefaction_core.to_csv(self.rarefaction_core_txt, sep ='\t', index=False)
+        self.iterations_core.to_csv(self.iterations_core_txt, sep ='\t', index=False)
+
+
+    def store_results_as_svg(self):
+        """Stores a nice visualization of the rarefaction curves"""
+
+        import seaborn as sns
+        import matplotlib.pyplot as plt
+
+        # Generate fitted values for plotting
+        x_fit = np.linspace(1, self.num_genomes, 100)
+        y_fit = self.heap_law(x_fit, self.k, self.alpha)
+
+        plt.figure(figsize=(10, 6))
+
+        # Plot individual iteration points with transparency
+        sns.scatterplot(x="num_genomes", y="GeneClusters", data=self.iterations_pangenome, color="blue", alpha=0.05)
+        sns.lineplot(x="num_genomes", y="avg_num_gene_clusters", data=self.rarefaction_pangenome, color="blue", label="All gene clusters")
+
+        sns.scatterplot(x="num_genomes", y="GeneClusters", data=self.iterations_core, color="red", alpha=0.05)
+        sns.lineplot(x="num_genomes", y="avg_num_gene_clusters", data=self.rarefaction_core, color="red", label="Core gene clusters")
+
+        # Overlay Heaps’ Law fit
+        plt.plot(x_fit, y_fit, color="green", linestyle="dashed", label=f"Heaps’ Law Fit (K={self.k:.2f}, α={self.alpha:.2f})")
+
+        plt.title(f"Rarefaction Curves with Heaps' Law Fit (with {self.iterations} iterations)")
+        plt.xlabel("Number of Genomes")
+        plt.ylabel("Number of Gene Clusters")
+        plt.legend()
+        plt.grid()
+        plt.savefig(self.rarefaction_curves_figure)
+        plt.close()
+
+
+    def store_output_files(self):
+        if self.skip_output_files:
+            # no output files for you
+            return
+
+        self.progress.new("Storing results")
+        self.progress.update('.. as text')
+        self.store_results_as_txt()
+        self.progress.update('.. as SVG')
+        self.store_results_as_svg()
+        self.progress.end()
+
+        self.run.warning(None, header="OUTPUT FILES", lc="cyan")
+        self.run.info("Rarefaction curves", self.rarefaction_curves_figure)
+        self.run.info("GC gain per genome for core (averages)", self.rarefaction_core_txt)
+        self.run.info("GC gain per genome for core (each iteration)", self.iterations_core_txt)
+        self.run.info("GC gain per genome for all (averages)", self.rarefaction_pangenome_txt)
+        self.run.info("GC gain per genome for all (each iteration)", self.iterations_pangenome_txt)
+
+
+    def process(self):
+        """Calculates rarefaction curves, plots the results into self.output_file, and returns K and alpha for Heaps' Law fit."""
+
+        # get all the data needed to calculate Heaps' Law fit and visualize things
+        self.progress.new("Calculating Rarefaction Curves", progress_total_items=(self.num_genomes * self.iterations * 2))
+        self.progress.update('...')
+        self.rarefaction_pangenome, self.iterations_pangenome = self.calc_rarefaction_curve(target="all")
+        self.rarefaction_core, self.iterations_core = self.calc_rarefaction_curve(target="core")
+        self.progress.end()
+
+        # Fit Heaps' Law
+        self.k, self.alpha = self.fit_heaps_law(self.rarefaction_pangenome)
+
+        # store output files
+        self.store_output_files()
+
+        return (self.k, self.alpha)
 
 
 class Pangenome(object):
@@ -70,6 +282,7 @@ class Pangenome(object):
         self.project_name = A('project_name')
         self.output_dir = A('output_dir')
         self.num_threads = A('num_threads')
+        self.user_defined_gene_clusters = A('gene_clusters_txt')
         self.skip_alignments = A('skip_alignments')
         self.skip_homogeneity = A('skip_homogeneity')
         self.quick_homogeneity = A('quick_homogeneity')
@@ -79,7 +292,6 @@ class Pangenome(object):
         self.min_percent_identity = A('min_percent_identity')
         self.gene_cluster_min_occurrence = A('min_occurrence')
         self.mcl_inflation = A('mcl_inflation')
-        self.sensitive = A('sensitive')
         self.minbit = A('minbit')
         self.use_ncbi_blast = A('use_ncbi_blast')
         self.exclude_partial_gene_calls = A('exclude_partial_gene_calls')
@@ -87,6 +299,9 @@ class Pangenome(object):
         self.skip_hierarchical_clustering = A('skip_hierarchical_clustering')
         self.enforce_hierarchical_clustering = A('enforce_hierarchical_clustering')
         self.enforce_the_analysis_of_excessive_number_of_genomes = anvio.USER_KNOWS_IT_IS_NOT_A_GOOD_IDEA
+
+        self.additional_params_for_seq_search = A('additional_params_for_seq_search')
+        self.additional_params_for_seq_search_processed = False
 
         if not self.project_name:
             raise ConfigError("Please set a project name using --project-name or -n.")
@@ -136,15 +351,21 @@ class Pangenome(object):
                        'min_percent_identity': self.min_percent_identity,
                        'gene_cluster_min_occurrence': self.gene_cluster_min_occurrence,
                        'mcl_inflation': self.mcl_inflation,
+                       'user_provided_gene_clusters_txt': True if self.user_defined_gene_clusters else False,
                        'default_view': 'gene_cluster_presence_absence',
                        'use_ncbi_blast': self.use_ncbi_blast,
-                       'diamond_sensitive': self.sensitive,
+                       'additional_params_for_seq_search': self.additional_params_for_seq_search,
                        'minbit': self.minbit,
                        'exclude_partial_gene_calls': self.exclude_partial_gene_calls,
                        'gene_alignments_computed': False if self.skip_alignments else True,
                        'genomes_storage_hash': self.genomes_storage.get_storage_hash(),
                        'project_name': self.project_name,
                        'items_ordered': False,
+                       'reaction_network_ko_annotations_hash': None,
+                       'reaction_network_kegg_database_release': None,
+                       'reaction_network_modelseed_database_sha': None,
+                       'reaction_network_consensus_threshold': None,
+                       'reaction_network_discard_ties': None,
                        'description': self.description if self.description else '_No description is provided_',
                       }
 
@@ -206,6 +427,9 @@ class Pangenome(object):
         filesnpaths.is_output_file_writable(self.log_file_path)
         os.remove(self.log_file_path) if os.path.exists(self.log_file_path) else None
 
+        if self.user_defined_gene_clusters:
+            filesnpaths.is_gene_clusters_txt(self.user_defined_gene_clusters)
+
         if not isinstance(self.minbit, float):
             raise ConfigError("minbit value must be of type float :(")
 
@@ -230,25 +454,56 @@ class Pangenome(object):
 
         if self.description_file_path:
             filesnpaths.is_file_plain_text(self.description_file_path)
-            self.description = open(os.path.abspath(self.description_file_path), 'rU').read()
+            self.description = open(os.path.abspath(self.description_file_path), 'r').read()
 
         self.pan_db_path = self.get_output_file_path(self.project_name + '-PAN.db')
 
 
+    def process_additional_params(self):
+        """Process user-requested additional params for sequence search with defaults
+
+        This is a bit complicated as there are those additional parameter sets used by
+        anvi'o (which are defined in `additional_param_sets_for_sequence_search`), and
+        there are those that may or may not be passed by the user. To reconcile all,
+        we first need to determine which algorithm they are using (i.e., diamond or
+        ncbi-blast, which are the only two options we offer at the time this function
+        was written), and then see if tey passed any 'additional additional' params to
+        this instance.
+        """
+
+        if self.additional_params_for_seq_search is not None:
+            # the user set something (or unset everything by passing ""): we obey
+            pass
+        else:
+            if self.use_ncbi_blast:
+                self.additional_params_for_seq_search = additional_param_sets_for_sequence_search['ncbi_blast']
+            else:
+                self.additional_params_for_seq_search = additional_param_sets_for_sequence_search['diamond']
+
+        self.additional_params_for_seq_search_processed = True
+
+
     def run_diamond(self, unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict):
+        # in case someone called this function directly without going through
+        # `self.process`:
+        self.process_additional_params()
+
         diamond = Diamond(unique_AA_sequences_fasta_path, run=self.run, progress=self.progress,
                           num_threads=self.num_threads, overwrite_output_destinations=self.overwrite_output_destinations)
 
         diamond.names_dict = unique_AA_sequences_names_dict
+        diamond.additional_params_for_blastp = self.additional_params_for_seq_search
         diamond.search_output_path = self.get_output_file_path('diamond-search-results')
         diamond.tabular_output_path = self.get_output_file_path('diamond-search-results.txt')
-
-        diamond.sensitive = self.sensitive
 
         return diamond.get_blast_results()
 
 
     def run_blast(self, unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict):
+        # in case someone called this function directly without going through
+        # `self.process`:
+        self.process_additional_params()
+
         self.run.warning("You elected to use NCBI's `blastp` for amino acid sequence search. Running blastp will "
                          "be significantly slower than DIAMOND, but in some cases, slightly more sensitive. "
                          "We are unsure about whether the slight increase in sensitivity may justify significant "
@@ -258,6 +513,7 @@ class Pangenome(object):
                           num_threads=self.num_threads, overwrite_output_destinations=self.overwrite_output_destinations)
 
         blast.names_dict = unique_AA_sequences_names_dict
+        blast.additional_params_for_blast = self.additional_params_for_seq_search
         blast.log_file_path = self.log_file_path
         blast.search_output_path = self.get_output_file_path('blast-search-results.txt')
 
@@ -613,7 +869,8 @@ class Pangenome(object):
                               without updating anything in the pan database...")
             return
 
-        miscdata.TableForItemAdditionalData(self.args, r=terminal.Run(verbose=False)).add(d, ['functional_homogeneity_index', 'geometric_homogeneity_index', 'combined_homogeneity_index'], skip_check_names=True)
+        keys = ['functional_homogeneity_index', 'geometric_homogeneity_index', 'combined_homogeneity_index', 'AAI_min', 'AAI_max', 'AAI_avg']
+        miscdata.TableForItemAdditionalData(self.args, r=terminal.Run(verbose=False)).add(d, keys, skip_check_names=True)
 
 
     def populate_layers_additional_data_and_orders(self):
@@ -757,7 +1014,7 @@ class Pangenome(object):
     def compute_alignments_for_gene_clusters(self, gene_clusters_dict):
         if self.skip_alignments:
             self.run.warning('Skipping gene alignments.')
-            return gene_clusters_dict
+            return gene_clusters_dict, set([])
 
         # we run "select aligner" to print the citation information (the actual selection is
         # done in the `alignment_worker` down below)
@@ -885,21 +1142,13 @@ class Pangenome(object):
             output_queue.put(output)
 
 
-    def process(self):
-        # load genomes from genomes storage
-        self.load_genomes()
-
-        # check sanity
-        self.sanity_check()
-
-        # gen pan_db
-        self.generate_pan_db()
+    def get_gene_clusters_de_novo(self):
+        """Function to compute gene clusters de novo"""
 
         # get all amino acid sequences:
         combined_aas_FASTA_path = self.get_output_file_path('combined-aas.fa')
         self.genomes_storage.gen_combined_aa_sequences_FASTA(combined_aas_FASTA_path,
                                                              exclude_partial_gene_calls=self.exclude_partial_gene_calls)
-
 
         # get unique amino acid sequences:
         self.progress.new('Uniquing the output FASTA file')
@@ -921,6 +1170,67 @@ class Pangenome(object):
         gene_clusters_dict = self.gen_gene_clusters_dict_from_mcl_clusters(mcl_clusters)
         del mcl_clusters
 
+        return gene_clusters_dict
+
+
+    def get_gene_clusters_from_gene_clusters_txt(self):
+        """Function to recover gene clusters from gene-clusters-txt"""
+
+        gene_clusters_dict = {}
+        gene_clusters_txt = utils.get_TAB_delimited_file_as_dictionary(self.user_defined_gene_clusters, indexing_field=-1)
+
+        genomes_in_gene_clusters_txt = set()
+
+        for v in gene_clusters_txt.values():
+            if v['gene_cluster_name'] not in gene_clusters_dict:
+                gene_clusters_dict[v['gene_cluster_name']] = []
+
+            gene_clusters_dict[v['gene_cluster_name']].append({'gene_caller_id': int(v['gene_caller_id']),
+                                                               'gene_cluster_id': v['gene_cluster_name'],
+                                                               'genome_name': v['genome_name'],
+                                                               'alignment_summary': ''})
+
+            genomes_in_gene_clusters_txt.add(v['genome_name'])
+
+        genomes_only_in_gene_clusters_txt = [g for g in genomes_in_gene_clusters_txt if g not in self.genomes]
+        genomes_only_in_genomes_storage = [g for g in self.genomes if g not in genomes_in_gene_clusters_txt]
+
+        if len(genomes_only_in_gene_clusters_txt):
+            raise ConfigError(f"Anvi'o run into an issue while processing your gene-clusters-txt file. It seems {len(genomes_only_in_gene_clusters_txt)} of "
+                              f"{len(genomes_in_gene_clusters_txt)} genomes in your gene-clusters-txt file is not in the genomes-storage-db you have "
+                              f"generated from your external- and/or internal-genomes with the program `anvi-gen-genomes-storage`. Here is the list of "
+                              f"genome names that cause this issue: {', '.join(genomes_only_in_gene_clusters_txt)}")
+
+        if len(genomes_only_in_genomes_storage):
+            self.run.warning("Anvi'o observed something while processing your gene-clusters-txt file. It seems {len(genomes_only_in_genomes_storage)} of "
+                             "{len(self.genomes)} genomes described in your genome-storage-db does not have any gene clusters described in the "
+                             "gene-clusters-txt file. This may not be the end of the world, but it is a weird situation, and may lead to some "
+                             "downstream issues. Anvi'o will continue working on your data, but if your computer sets itself on fire or something "
+                             "please consider that it may be because of this situation.")
+
+        return gene_clusters_dict
+
+
+    def process(self):
+        # start by processing the additional params user may have passed for the blast step
+        self.process_additional_params()
+
+        # load genomes from genomes storage
+        self.load_genomes()
+
+        # check sanity
+        self.sanity_check()
+
+        # gen pan_db
+        self.generate_pan_db()
+
+        # time to get the gene clusters. by default, we compute them de novo. but we also can
+        # get them from the user themselves through gene-clusters-txt
+        if self.user_defined_gene_clusters:
+            gene_clusters_dict = self.get_gene_clusters_from_gene_clusters_txt()
+        else:
+            gene_clusters_dict = self.get_gene_clusters_de_novo()
+
         # compute alignments for genes within each gene_cluster (or don't)
         gene_clusters_dict, unsuccessful_alignments = self.compute_alignments_for_gene_clusters(gene_clusters_dict)
 
@@ -939,7 +1249,7 @@ class Pangenome(object):
                                 f"(which will have the value of `-1` to help you parse them out later in your downstream analyses). Even "
                                 f"the gene clusters failed at the alignment step will show up in all your downstream analyses. But the fact "
                                 f"that some of your gene clusters will not have any alignments may affect your science downstream depending "
-                                f"on what you wish to do with them (if you are not sure, come to anvi'o slack, and tell us about what you "
+                                f"on what you wish to do with them (if you are not sure, come to anvi'o Discord, and tell us about what you "
                                 f"want to do with your pangenome so we can discuss more). Additionally, if you would like to see what is going "
                                 f"wrong with those gene clusters that are not aligned well, you can re-run the program with the `--debug` "
                                 f"flag, upon which anvi'o will anvi'o will store all the sequences in gene clusters that filed to align "
@@ -982,7 +1292,7 @@ class Pangenome(object):
                              f"are unable to work with the interactive interface and it is critical for you, you have multiple options, "
                              f"You can use the `--min-occurrence` flag to reduce the number of gene clusters, or use the program "
                              f"`anvi-dereplicate-genomes` in an attempt to reduce the number of redundant genomes in your analysis. "
-                             f"If you are unsure what would be the best game plan for you, you can consider coming to the anvi'o Slack "
+                             f"If you are unsure what would be the best game plan for you, you can consider coming to the anvi'o Discord "
                              f"channel and consult the opinion of the anvi'o community. Despite all these, it is still a good idea to run "
                              f"`anvi-display-pan` and see what it says first.", lc="cyan", header="FRIENDLY WARNING")
 

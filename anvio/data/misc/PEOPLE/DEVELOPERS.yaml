@@ -4,27 +4,37 @@
   web: http://merenlab.org
   avatar: meren.jpg
   email: a.murat.eren@gmail.com
+  git_records:
+    - a.murat.eren@gmail.com
   linkedin: meren
   orcid: 0000-0001-9013-4827
   skype: a.murat.eren
-  bio: "Computer scientist and microbial ecologist interested in undersatnding mechanisms by which microbes interact with their surroundings, evolve, disperse, and respond to environmental change."
+  bio: "Computer scientist and microbial ecologist interested in understanding mechanisms by which microbes interact with their surroundings, evolve, disperse, and respond to environmental change."
   affiliations:
+    - title: Professor
+      inst: Helmholtz Institute for Functional Marine Biodiversity at Oldenburg
+      inst_link: https://hifmb.de
+      current: true
+    - title: Professor
+      inst: Alfred Wegener Institute, Helmholtz Centre for Polar and Marine Research
+      inst_link: https://awi.de
+      current: true
+    - title: Professor
+      inst: Institute for Chemistry and Biology of the Marine Environment, University of Oldenburg
+      inst_link: https://uol.de/icbm
+      current: true
     - title: Fellow
       inst: Marine Biological Laboratory
-      inst_link: http://www.mbl.edu/research/mbl-fellows/a-murat-eren/
-      current: true
+      inst_link: http://www.mbl.edu/
     - title: Fellow
       inst: Alfred P. Sloan Fondation
       inst_link: https://sloan.org/grant-detail/9260
-      current: true
     - title: Assistant Professor
       inst: The Department of Medicine at the University of Chicago
       inst_link: http://medicine.uchicago.edu/
-      current: true
     - title: Committee on Microbiology
       inst: The Biomedical Sciences Cluster at the University of Chicago
       inst_link: https://biomedsciences.uchicago.edu/
-      current: true
     - title: Post-doctoral Scientist
       inst: Marine Biological Laboratory
       inst_link: https://mbl.edu
@@ -32,20 +42,40 @@
 - github: FlorianTrigodet
   name: Florian Trigodet
   email: trigodet.florian@gmail.com
+  git_records:
+    - trigodet.florian@gmail.com
+    - frigodet@MED42038.local
+    - patz5242@hpcl002.cm.cluster
   twitter: FlorianTrigodet
   orcid: 0000-0002-4933-2896
   linkedin: florian-trigodet-67b351b4
   avatar: FlorianTrigodet.jpg
   bio: "Microbiologist using advanced computational strategies to make sense of the microbial ecology of complex habitats."
   affiliations:
+    - title: Senior Scientist
+      inst: Alfred Wegener Institute for Polar and Marine Research
+      inst_link: https://awi.de
+      current: true
+    - title: Senior Scientist
+      inst: Helmholtz Institute for Functional Marine Biodiversity
+      inst_link: https://hifmb.de
+      current: true
+    - title: Post-doctoral Scientist
+      inst: Helmholtz Institute for Functional Marine Biodiversity
+      inst_link: https://hifmb.de
+      current: false
     - title: Post-doctoral Scientist
       inst: The Department of Medicine at the University of Chicago
       inst_link: http://medicine.uchicago.edu/
-      current: true
+      current: false
 
 - github: watsonar
   name: Andrea Watson
   email: andreawatson@uchicago.edu
+  git_records:
+    - andreawatson@uchicago.edu
+    - 31998264+watsonar@users.noreply.github.com
+    - watson.arr@gmail.com
   linkedin: andrea-rose-watson-82079a61
   orcid: 0000-0003-0128-6795
   twitter: awatsontxt
@@ -67,6 +97,10 @@
   linkedin: ekiefl
   orcid: 0000-0002-6473-0921
   email: kiefl.evan@gmail.com
+  git_records:
+    - kiefl.evan@gmail.com
+    - ekiefl@users.noreply.github.com
+    - evan@Evans-MacBook-Pro.local
   avatar: ekiefl.jpg
   bio: "Computational biologist and software developer. For my PhD I studied how selective pressures shape the evolution of proteins in naturally occurring microbial populations."
   intellectual-contributions:
@@ -76,10 +110,13 @@
     - contribution: "Made significant contributions to the storage, processing, and analysis strategies related to single nucleotide variants (SNVs), single codon variants (SCVs), single amino acid variants (SAAVs), and insertions/deletions (INDELs)"
     - contribution: "Made significant contributions to documentation, totaling >3,000 lines of codebase documentation and >20,000 words of blogs/tutorials/workflows"
   affiliations:
+    - title: Protein Bioinformatician
+      inst: Arcadia Science
+      inst_link: https://www.arcadiascience.com/
+      current: true
     - title: Bioinformatician
       inst: AbCellera
       inst_link: https://www.abcellera.com/
-      current: true
     - title: Graduate Student
       inst: The Biophysical Sciences Program at the University of Chicago
       inst_link: http://biophysics.uchicago.edu/
@@ -87,20 +124,31 @@
 - github: mschecht
   name: Matthew Schechter
   email: mschechter@uchicago.edu
+  git_records:
+    - mschechter@uchicago.edu
+    - mschechter.lb@gmail.com
+    - mschechter@midway2-login2.rcc.local
   avatar: mschecht.jpg
   linkedin: matthewschechter
   orcid: 0000-0002-8435-3203
   twitter: mschecht_bio
   bio: "Microbiologist interested in combining comparative genomics and environmental metagenomics to identify genetic determinants of fitness in microbial populations in the human gut and ocean microbiome."
   affiliations:
+    - title: Post-doctoral Researcher
+      inst: Department of Medicine, University of Chicago
+      inst_link: http://uchicago.edu/
+      current: true
     - title: Graduate Student
       inst: Committee on Microbiology at the University of Chicago
       inst_link: https://biomedsciences.uchicago.edu/page/microbiology
-      current: true
+      current: false
 
 - github: ivagljiva
   name: Iva Veseli
-  email: iveseli@uchicago.edu
+  email: iva.veseli@gmail.com
+  git_records:
+    - iva.veseli@gmail.com
+    - iveseli@uchicago.edu
   orcid: 0000-0003-2390-528
   twitter: ivaglj1va
   linkedin: iva-veseli
@@ -110,18 +158,25 @@
     - contribution: "Spearheaded the development of <a href=https://anvio.org/help/main/programs/anvi-estimate-metabolism/>anvi'o metabolism framework</a>"
     - contribution: "Spearheaded <a href=https://anvio.org/vocabulary>the 'omics vocabulary</a> effort"
   affiliations:
+    - title: Post-doctoral Scientist
+      inst: Helmholtz Institute for Functional Marine Biodiversity at Oldenburg
+      inst_link: https://hifmb.de
+      current: true
     - title: Graduate Student
       inst: The Biophysical Sciences Program at the University of Chicago
       inst_link: http://biophysics.uchicago.edu/
-      current: true
+      current: false
     - title: Fellow
       inst: NSF Graduate Research Fellowship Program
       inst_link: https://www.nsfgrfp.org/
-      current: true
+      current: false
 
 - github: moritzbuck
   name: Moritz Buck
   email: moritz.buck@slu.se
+  git_records:
+    - moritz.buck@slu.se
+    - mrtz.buck@gmail.com
   twitter: MetaMoritz
   affiliations:
     - title: Researcher
@@ -131,7 +186,9 @@
 
 - github: semiller10
   name: Samuel Miller
-  email: samuelmiller@uchicago.edu
+  email: samuelmiller10@gmail.com
+  git_records:
+    - samuelmiller10@gmail.com
   orcid: 0000-0002-2836-1401
   twitter: smiller_science
   web: https://semiller10.github.io
@@ -141,11 +198,37 @@
     - title: Post-doctoral Scientist
       inst: The Department of Medicine at the University of Chicago
       inst_link: http://medicine.uchicago.edu/
+      current: false
+    - title: Scientific Programmer
+      inst: Marine Biological Laboratory
+      inst_link: http://mbl.edu/
       current: true
+
+- github: ahenoch
+  name: Alexander Henoch
+  avatar: ahenoch.jpg
+  email: alexander.henoch@hifmb.de
+  git_records:
+    - alexander.henoch@hifmb.de
+    - ahenoch@outlook.de
+  orcid: 0000-0003-3808-576X
+  bio: "I am a biologist-turned-computer scientist interested in understanding the influence of the environmental change on the genetic composition of microbial populations."
+  affiliations:
+  - title: Graduate Student
+    inst: Helmholtz Institute for Functional Marine Biodiversity at Oldenburg
+    inst_link: https://hifmb.de
+    current: true
+  - title: Graduate Student
+    inst: Alfred Wegener Institute, Helmholtz Centre for Polar and Marine Research
+    inst_link: https://awi.de
+    current: true
 
 - github: isaacfink21
   name: Isaac Fink
   email: iafink@uchicago.edu
+  git_records:
+    - iafink@uchicago.edu
+    - 53839224+isaacfink21@users.noreply.github.com
   avatar: isaacfink21.png
   orcid: 0000-0003-3930-029X
   bio: "Computer scientist interested in enhancing the power and accessibility of computational strategies to study microbial life."
@@ -153,24 +236,30 @@
     - title: Undergraduate Student
       inst: Computer Science
       inst_link: http://collegecatalog.uchicago.edu/thecollege/computerscience/
-      current: true
+      current: false
 
 - github: matthewlawrenceklein
   name: Matthew Lawrence Klein
   web: http://matthewlawrencekle.in
   linkedin: matthew-lawrence-klein
   email: mtt.l.kln@gmail.com
+  git_records:
+    - mtt.l.kln@gmail.com
+    - 62408216+matthewlawrenceklein@users.noreply.github.com
   avatar: matthewlawrenceklein.jpg
   bio: "Software developer interested in the role of technology in supporting a more equitable future on planet earth."
   affiliations:
     - title: Programmer
       inst: The Department of Medicine at the University of Chicago
       inst_link: http://medicine.uchicago.edu/
-      current: true
+      current: false
 
 - github: blankenberg
   name: Daniel Blankenberg
   email: blanked2@ccf.org
+  git_records:
+    - blanked2@ccf.org
+    - dan.blankenberg@gmail.com
   affiliations:
     - title: Faculty Member
       inst: Genomic Medicine Institute at the Cleveland Clinic Lerner Research Institute
@@ -180,6 +269,9 @@
 - github: Jessica-Pan
   name: Jessica Pan
   email: jnpan@mit.edu
+  git_records:
+    - jnpan@mit.edu
+    - jessica4pan@gmail.com
   avatar: Jessica-Pan.png
   orcid: 0000-0002-6743-6146
   bio: "Computer scientist interested in computational methods to investigate microbial ecosystems and making those techniques more accessible to others."
@@ -197,6 +289,9 @@
 - github: ShaiberAlon
   name: Alon Shaiber
   email: alon.shaiber@gmail.com
+  git_records:
+    - alon.shaiber@gmail.com
+    - ShaiberAlon@users.noreply.github.com
   twitter: alon_shaiber
   orcid: 0000-0002-4806-9280
   linkedin: alon-shaiber
@@ -213,10 +308,13 @@
     - title: Graduate Student
       inst: The Biophysical Sciences Program at the University of Chicago
       inst_link: http://biophysics.uchicago.edu/
+      current: true
 
 - github: ozcan
   name: Özcan C. Esen
   email: ozcanesen@gmail.com
+  git_records:
+    - ozcanesen@gmail.com
   twitter: ozcanesen
   avatar: ozcan.jpg
   web: http://blog.ozcanesen.com/
@@ -233,6 +331,8 @@
   name: Mahmoud Yousef
   avatar: mahmoudyousef98.jpg
   email: mahmoudyousef@uchicago.edu
+  git_records:
+    - mahmoudyousef@uchicago.edu
   linkedin: mahmoud-yousef-314198128/
   bio: "Computer scientist and medical student interested in exploring the intersection of bioinformatics and medicine, and how bioinformatic techniques can be used to advance the quality of medicine."
   affiliations:
@@ -247,6 +347,8 @@
 - github: qclayssen
   name: Quentin Clayssen
   email: quentin.clayssen@gmail.com
+  git_records:
+    - quentin.clayssen@gmail.com
   linkedin: quentin-clayssen-398360139
   twitter: ClayssenQ
   avatar: qclayssen.jpg
@@ -265,6 +367,9 @@
 - github: srinidhi202
   name: Srinidhi Varadharajan
   email: srinidhi.varadharajan@bcm.edu
+  git_records:
+    - srinidhi.varadharajan@bcm.edu
+    - srinidhivaradharajan@gmail.com
   orcid: 0000-0002-2033-0758
   affiliations:
     - title: Programmer
@@ -276,6 +381,9 @@
   avatar: adw96.jpg
   name: Amy D. Willis
   email: adwillis@uw.edu
+  git_records:
+    - adwillis@uw.edu
+    - amy.willis7@gmail.com
   web: http://statisticaldiversitylab.com/team/amy-willis
   linkedin: none
   twitter: AmyDWillis
@@ -295,6 +403,8 @@
   avatar: mooreryan.jpeg
   name: Ryan Moore
   email: moorer@udel.edu
+  git_records:
+    - moorer@udel.edu
   linkedin: ryan-moore-444a21b5
   twitter: TenderIsTheByte
   affiliations:
@@ -306,37 +416,49 @@
 - github: efogarty11
   name: Emily Fogarty
   email: efogarty@uchicago.edu
+  git_records:
+    - efogarty@uchicago.edu
   orcid: 0000-0002-8957-9922
   avatar: efogarty11.jpg
   bio: "Microbiologist developing computational and wet lab strategies to study horizontal gene transfer in the human gut microbiome."
   affiliations:
+    - title: Clinical Affairs Associate
+      inst: Theralink Technologies, Inc.
+      inst_link: https://theralink.com/
+      current: true
     - title: Graduate Student
       inst: Committee on Microbiology at the University of Chicago
       inst_link: https://biomedsciences.uchicago.edu/page/microbiology
-      current: true
+      current: false
 
 - github: AstrobioMike
   name: Mike Lee
-  bio: "Bioinformatician who explores microbial ecology and evolution in a wide range of environments."
+  bio: "Bioinformatician exploring microbial ecology and evolution in a wide range of environments."
   avatar: AstrobioMike.jpg
   email: michael.lee0517@gmail.com
-  web: https://astrobiomike.github.io
+  git_records:
+    - michael.lee0517@gmail.com
+    - leemd@usc.edu
+  web: https://astrobiomike.github.io/research
   twitter: AstrobioMike
   linkedin: AstrobioMike
   affiliations:
-    - title: NASA Space Biology Fellow
+    - title: Principle Investigator, Bioinformatics
+      inst: National Biodefense Analysis and Countermeasures Center
+      current: true
+    - title: NASA GeneLab Bioinformatician
       inst: NASA Ames Research Center
       inst_link: https://www.nasa.gov/ames
-      current: true
-    - title: JCVI Research Fellow
-      inst: J. Craig Venter Institute
-      inst_link: https://www.jcvi.org/
+      current: false
 
 - github: nick-youngblut
   name: Nick Youngblut
   bio: "Microbiologist studying methanogens and host-microbiome coevolution"
   avatar: youngblut.jpg
   email: nyoungb2@gmail.com
+  git_records:
+    - nyoungb2@gmail.com
+    - nicholas.youngblut@tuebingen.mpg.de
   web: https://leylab.com/research/ecology-and-evolution-of-host-associated-methanogens-youngblut-group/
   twitter: nick_youngblut
   linkedin: nicholas-youngblut
@@ -347,4 +469,165 @@
     - title: Group Leader in the Department of Microbiome Science
       inst: Max Planck Institute for Biology
       inst_link: http://eb.tuebingen.mpg.de/
+      current: true
+
+- github: vinisalazar
+  name: Vini Salazar
+  twitter: vinisalazar_
+  email: vinicius.salazar@unimelb.edu.au
+  git_records:
+    - vinicius.salazar@unimelb.edu.au
+  avatar: vinisalazar.jpg
+  orcid: 0000-0002-8362-3195
+  bio: "Researcher, open-source developer and aspiring marine microbiologist."
+  web: https://scholar.google.com/citations?user=P6xo0BsAAAAJ
+  affiliations:
+    - title: PhD Student
+      inst: Melbourne Integrative Genomics - University of Melbourne
+      inst_link: https://sites.research.unimelb.edu.au/integrative-genomics/MIG-home
+      current: True
+
+- github: ctb
+  name: C. Titus Brown
+  bio: "Bioinformatics software developer and microbiome enthusiast."
+  email: ctbrown@ucdavis.edu
+  git_records:
+    - ctbrown@ucdavis.edu
+    - titus@idyll.org
+  avatar: ctitusbrown.jpg
+  web: https://ivory.idyll.org/lab/
+  twitter: ctitusbrown
+  linkedin: ctitusbrown
+  orcid: 0000-0001-6001-2677
+  intellectual-contributions:
+    - contribution: "Nothing but minor updates and corrections so far!"
+  affiliations:
+    - title: Professor
+      inst: University of California Davis
+      inst_link: http://www.ucdavis.edu/
+      current: true
+
+- github: ge0rges
+  name: Georges Kanaan
+  twitter: scientificgio
+  web: https://gkanaan.com
+  avatar: ge0rges.jpg
+  email: georges@gkanaan.com
+  git_records:
+    - georges@gkanaan.com
+    - Kekananen@gmail.com
+  linkedin: ge0rges
+  orcid: 0000-0002-5721-1138
+  bio: "Oceanographer & Astrobiologist in training. Computer scientist. Studying sea-ice bacteria."
+  intellectual-contributions:
+    - contribution: "Resolved a <a href=https://github.com/merenlab/anvio/issues/1738>long-standing dilemma</a> with the program anvi-setup-ncbi-cogs."
+  affiliations:
+    - title: Graduate Student
+      inst: University of Washington
+      inst_link: https://ocean.washington.edu
+      current: true
+
+- github: telatin
+  name: Andrea Telatin
+  twitter: telatin
+  web: https://telatin.github.io
+  orcid: 0000-0001-7619-281X
+  email: andrea.telatin@quadram.ac.uk
+  git_records:
+    - andrea.telatin@quadram.ac.uk
+    - 15690844+telatin@users.noreply.github.com
+  avatar: telatin.jpg
+  bio: "Senior Bioinformatician at the Quadram Institute Bioscience, Norwich, UK. Interested in metagenomics, microbial ecology, and open science."
+  intellectual-contributions:
+    - contribution: "Added a script to reformat BAM files after running anvi-script-reformat-fasta"
+  affiliations:
+    - title: Senior Bioinformatician
+      inst: Quadram Institute Bioscience
+      inst_link: https://quadram.ac.uk
+      current: true
+
+- github: Vlasovets
+  name: Oleg Vlasovets
+  twitter: ovlasovets
+  web: https://ovlasovets.netlify.app/
+  avatar: Vlasovets.jpg
+  email: otorrent@mail.ru
+  git_records:
+    - otorrent@mail.ru
+  linkedin: ovlasovets
+  orcid: 0000-0001-5259-9674
+  bio: "Data Scientist studying bacteria in human gut."
+  intellectual-contributions:
+    - contribution: "Working on high-dimensional statistcs methods for anvi'o"
+  affiliations:
+    - title: PhD Candidate
+      inst: Helmholtz Munich
+      inst_link: https://www.helmholtz-munich.de/en
+      current: true
+
+- github: metehaansever
+  name: Metehan Sever
+  twitter: metehaansever
+  avatar: metehaansever.jpg
+  email: metehaansever@gmail.com
+  git_records:
+    - metehaansever@gmail.com
+    - metehansever@10-18-94-205.ddhcp.uni-oldenburg.de
+  linkedin: metehaansever
+  orcid: 0000-0003-1043-4956
+  affiliations:
+    - title: Scientific Programmer
+      inst: HIFMB
+      inst_link: https://hifmb.de/
+      current: true
+
+- github: bcoltman
+  name: Benjamin Luke Coltman
+  avatar: bio_bcoltman.jpg
+  email: benjamin.coltman@univie.ac.at
+  git_records:
+    - benjamin.coltman@univie.ac.at
+  linkedin: bencoltman
+  orcid: 0000-0001-8573-0229
+  bio: "Bioinformatician working on simplifying microbiome complexity"
+  affiliations:
+    - title: Post-doctoral scientist
+      inst: The Centre for Microbiology and Environmental Systems Science at the University of Vienna
+      inst_link: https://cemess.univie.ac.at/
+      current: true
+
+- github: katysloz
+  name:  Kathryn Lambert-Slosarska (Katy)
+  avatar: bio-katy.jpg
+  email: klambert@mpi-bremen.de
+  git_records:
+    - klambertslosarska@gmail.com
+    - 98827122+katysloz@users.noreply.github.com
+  linkedin: katy-lambert-slosarksa-96030219b
+  orcid: 0000-0003-1612-6794
+  bio: "I am a marine (micro)biologist utilising computational approaches to understand the dynamism and impact of diversity-generating retroelements in microbial lifestyles within changing marine ecosystems."
+  affiliations:
+    - title: Graduate Student
+      inst: Helmholtz Institute for Functional Marine Biodiversity (HIFMB)
+      inst_link: https://hifmb.de
+      current: true
+      inst: Max Planck Institute for Marine Microbiology
+      inst_link: https://www.mpi-bremen.de/en/Home.html
+      current: true
+
+- github: mankeldy
+  name: Dylan Mankel
+  web: https://mankeldy.github.io/
+  avatar: mankeldy.jpg
+  email: mankeldy@bu.edu
+  git_records:
+    - dylanmankel@gmail.com
+    - 43360020+mankeldy@users.noreply.github.com
+  linkedin: dmankel
+  orcid: 0000-0002-5574-589X
+  bio: "Geomicrobiologist studying the activity and distribution of life in extreme environments."
+  affiliations:
+    - title: PhD Candidate
+      inst: Boston University
+      inst_link: https://www.bu.edu/biology/
       current: true

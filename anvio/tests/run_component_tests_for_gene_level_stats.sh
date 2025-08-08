@@ -2,7 +2,7 @@
 source 00.sh
 
 # Setup #############################
-SETUP_WITH_OUTPUT_DIR $1 $2
+SETUP_WITH_OUTPUT_DIR $1 $2 $3
 #####################################
 
 # Set INSEQ files path
@@ -13,7 +13,7 @@ cp $inseq_files/PROFILE.db $output_dir/PROFILE.db
 cp $inseq_files/AUXILIARY-DATA.db $output_dir/AUXILIARY-DATA.db
 
 INFO "Migrate all dbs"
-anvi-migrate $output_dir/*db --migrate-dbs-quickly
+anvi-migrate $output_dir/*db --migrate-quickly
 
 # Generate gene-level-stats database
 INFO "Computing gene level stats database"

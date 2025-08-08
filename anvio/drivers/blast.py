@@ -12,8 +12,7 @@ import anvio.terminal as terminal
 from anvio.errors import ConfigError
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -65,6 +64,7 @@ class BLAST:
         # the dictionary that connects the ids in the fasta file, to ids that were identical to it.
         self.names_dict = None
 
+        self.additional_params_for_blast = ""
 
     def get_blast_results(self):
         force_makedb, force_blast = False, False
@@ -126,6 +126,8 @@ class BLAST:
 
     def blast(self, outputfmt='6', word_size=None, strand=None):
         self.run.warning(None, header="NCBI BLAST SEARCH", lc="green")
+        self.run.info("Additional params for BLAST", self.additional_params_for_blast, mc='green')
+
         cmd_line = [self.search_program,
                     '-query', self.query_fasta,
                     '-db', self.target_fasta,
@@ -142,6 +144,9 @@ class BLAST:
 
         if strand:
             cmd_line += ['-strand', strand]
+
+        if self.additional_params_for_blast:
+            cmd_line.extend(self.additional_params_for_blast.split())
 
         self.run.info('NCBI %s cmd' % self.search_program, ' '.join([str(p) for p in cmd_line]), quiet=(not anvio.DEBUG))
 
@@ -162,6 +167,8 @@ class BLAST:
 
     def blast_stdin(self, multisequence):
         self.run.warning(None, header="NCBI BLAST SEARCH STDIN", lc="green")
+        self.run.info("Additional params for BLAST", self.additional_params_for_blast, mc='green')
+
         cmd_line = [self.search_program,
                     '-db', self.target_fasta,
                     '-evalue', self.evalue,
@@ -173,6 +180,9 @@ class BLAST:
 
         if self.min_pct_id:
             cmd_line += ['-perc_identity', self.min_pct_id]
+
+        if self.additional_params_for_blast:
+            cmd_line.extend(self.additional_params_for_blast.split())
 
         self.run.info('%s command line' % self.search_program, ' '.join([str(p) for p in cmd_line]), quiet=(not anvio.DEBUG))
 

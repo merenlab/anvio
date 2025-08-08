@@ -2,8 +2,23 @@
 source 00.sh
 
 # Setup #############################
-SETUP_WITH_OUTPUT_DIR $1 $2
+SETUP_WITH_OUTPUT_DIR $1 $2 $3
 #####################################
+
+# If you don't want to use the default KEGG data directory for testing, you should
+# run `export kegg_data_dir=/path/to/data/dir/you/want` in your terminal before starting the self-test
+
+if [ x"${kegg_data_dir}" == "x" ]; then
+ 	INFO "Checking for KEGG database in default location"
+    # Here we use Sam's clever function to check for default KEGG data dir
+    rn_python_script=`readlink -f run_component_tests_for_reaction_network`
+    ${rn_python_script} --check-default-kegg-database
+    source_dir=$(dirname -- "$( readlink -f -- "$0"; )";)
+    kegg_data_dir=${source_dir%/tests}/data/misc/KEGG
+    INFO "Using default KEGG data directory: $kegg_data_dir"
+else
+ 	INFO "Using manually-provided KEGG data directory: $kegg_data_dir"
+fi
 
 INFO "Setting up the metabolism test directory"
 mkdir $output_dir/metabolism_test
@@ -14,15 +29,29 @@ cp $files/data/input_files/*.txt                        $output_dir/metabolism_t
 cd $output_dir/metabolism_test
 
 INFO "Migrating all databases"
-anvi-migrate *db --migrate-dbs-quickly
+anvi-migrate *db --migrate-quickly
 
-# generate a temporary directory to store anvi-setup-kegg-kofams output,
-# and remove it immediately to make sure it doesn't exist:
-kegg_data_dir=`mktemp -d`
-rm -rf $kegg_data_dir
+INFO "Annotating all databases with KOfams"
+anvi-run-kegg-kofams  -c B_thetaiotamicron_VPI-5482.db \
+                      --kegg-data-dir $kegg_data_dir \
+                      $thread_controller \
+                      --just-do-it
 
-INFO "Setting up KEGG data"
-anvi-setup-kegg-kofams --kegg-data-dir $kegg_data_dir
+anvi-run-kegg-kofams  -c P_marinus_CCMP1375.db \
+                      --kegg-data-dir $kegg_data_dir \
+                      $thread_controller \
+                      --just-do-it
+
+anvi-run-kegg-kofams  -c S_islandicus_LS215.db \
+                      --kegg-data-dir $kegg_data_dir \
+                      $thread_controller \
+                      --just-do-it \
+                      --include-stray-KOs # we include stray KOs for just one of our databases so we can test related flags later
+
+anvi-run-kegg-kofams  -c CONTIGS.db \
+                      --kegg-data-dir $kegg_data_dir \
+                      $thread_controller \
+                      --just-do-it
 
 ## BASIC TESTS
 INFO "Estimating metabolism on a single contigs database"
@@ -199,8 +228,22 @@ SHOW_FILE matrix_format_multi-module_stepwise_presence-MATRIX.txt
 SHOW_FILE matrix_format_multi-step_completeness-MATRIX.txt
 SHOW_FILE matrix_format_multi-enzyme_hits-MATRIX.txt
 
-INFO "Generating JSON output (debug option)"
+INFO "Testing estimation with stray KOs"
 anvi-estimate-metabolism -c S_islandicus_LS215.db \
+                         --include-stray-KOs \
+                         -O with_stray_KOs \
+                         --no-progress \
+                         --kegg-data-dir $kegg_data_dir
+
+INFO "Testing estimation with --ignore-unknown-KOs"
+anvi-estimate-metabolism -c S_islandicus_LS215.db \
+                         --ignore-unknown-KOs \
+                         -O ignore_unknown_KOs \
+                         --no-progress \
+                         --kegg-data-dir $kegg_data_dir
+
+INFO "Generating JSON output (debug option)"
+anvi-estimate-metabolism -c P_marinus_CCMP1375.db \
                          --get-raw-data-as-json estimation_data \
                          --store-json-without-estimation \
                          --no-progress \
@@ -360,6 +403,3 @@ anvi-compute-metabolic-enrichment -M long_format_multi_modules.txt \
                                   -o enrichment_ungrouped.txt \
                                   --no-progress
 SHOW_FILE enrichment_ungrouped.txt
-
-# clean up
-rm -rf $kegg_data_dir

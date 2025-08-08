@@ -11,8 +11,7 @@ import anvio.terminal as terminal
 from anvio.errors import ConfigError
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -33,11 +32,17 @@ class AnvioAuthors:
 
         self.authors = {}
 
+        self.initialized = False
+
         if not skip_init:
             self.init_authors()
 
 
     def init_authors(self):
+        if self.initialized:
+            # so we are asked to re-initialize
+            self.authors = {}
+
         """Initializes the `self.authors` dictionary."""
 
         if not os.path.exists(self.authors_yaml_file_path):
@@ -63,6 +68,8 @@ class AnvioAuthors:
                                   f"keys: {', '.join(self.essential_author_info_keys)}. The entry shown "
                                   f"above misses some of them: {', '.join(missing_keys)}.")
 
+            # Usernames should be case insensitive
+            entry['github'] = entry['github'].lower()
             if entry['github'] in self.authors:
                 raise ConfigError(f"The GitHub username '{entry['github']}' is used for multiple authors in "
                                   f"the YAML file :/")
@@ -89,5 +96,5 @@ class AnvioAuthors:
         self.run.warning(f"Some authors in the YAML file didn't have any avatars defined for them, so anvi'o will "
                          f"assign a generic profile image for these people: {', '.join(authors_missing_avatars_in_yaml)}. "
                          f"You could make these people much prettier by adding an `avatar` key for them, and put the "
-                         f"corresponding file under the the '{self.author_avatars_directory}' directory. JUST SAYING.",
+                         f"corresponding file under the '{self.author_avatars_directory}' directory. JUST SAYING.",
                          header="MISSING AVATARS IN THE YAML FILE")

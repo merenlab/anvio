@@ -27,17 +27,16 @@ import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 import anvio.auxiliarydataops as auxiliarydataops
 
-from anvio.errors import ConfigError
 from anvio.panops import Pangenome
-from anvio.clusteringconfuguration import ClusteringConfiguration
+from anvio.errors import ConfigError
+from anvio.tables.views import TablesForViews
 from anvio.tables.kmers import KMerTablesForContigsAndSplits
 from anvio.tables.collections import TablesForCollections
 from anvio.tables.genefunctions import TableForGeneFunctions
-from anvio.tables.views import TablesForViews
+from anvio.clusteringconfuguration import ClusteringConfiguration
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -141,15 +140,28 @@ class ProfileSplitter:
 
         self.contigs_db_path = A('contigs_db')
         self.collection_name = A('collection_name')
+        self.list_collections = A('list_collections')
         self.bin_name = A('bin_id')
         self.output_directory = A('output_dir')
         self.skip_variability_tables = A('skip_variability_tables')
 
         self.collections = ccollections.Collections()
+        self.collections.populate_collections_dict(self.profile_db_path)
+
         self.summary = None
 
 
     def sanity_check(self):
+        if self.list_collections:
+            self.collections.list_collections()
+            sys.exit(0)
+
+        if not self.collection_name:
+            raise ConfigError("You must provide a collection name for this to work. If you want to know about "
+                              "all the collections in your pan database you can use the program "
+                              "`anvi-show-collections-and-bins` or run the same command with the flag "
+                              "`--list-collections`.")
+
         self.output_directory = filesnpaths.check_output_directory(self.output_directory, ok_if_exists=True)
 
         if not self.contigs_db_path:
@@ -171,13 +183,15 @@ class ProfileSplitter:
         # anvi-split runs to work on bins in the same collection in parallel:
         self.args.delete_output_directory_if_exists = False
 
-        self.summary = summarizer.ProfileSummarizer(self.args, r=self.run, p=self.progress)
-        self.summary.init()
+        if self.collection_name not in self.collections.collections_dict:
+            raise ConfigError(f"Your profile database does not know about a collection called "
+                              f"'{self.collection_name}' :/")
 
-        self.bin_names_of_interest = sorted(self.summary.bin_ids)
+        self.bin_names_of_interest = sorted([b.strip() for b in self.collections.collections_dict[self.collection_name]['bin_names'].split(',')])
         if self.bin_name:
             if self.bin_name not in self.bin_names_of_interest:
-                raise ConfigError("The bin name you wish to split from this profile database is not in the collection. Busted!")
+                raise ConfigError(f"The bin name you wish to split from this profile database, '{self.bin_name}', "
+                                  f"is not in the collection. Busted!")
             else:
                 self.bin_names_of_interest = [self.bin_name]
 
@@ -186,12 +200,13 @@ class ProfileSplitter:
         """This is the function that goes through each bin loaded in the class and proecesses them."""
         self.sanity_check()
 
-        filesnpaths.gen_output_directory(self.output_directory)
-
         self.run.warning("Anvi'o is about to start splitting your bins into individual, self-contained anvi'o profiles. As of "
                          "2021, we have tested this feature quite extensively and we trust that it will do well. But this is "
                          "still quite a tricky operation and you must double-check things once your split data is ready.",
                          header="ANVI'O TRICKY OPERATIONS DEPARTMENT", lc="green")
+
+        self.summary = summarizer.ProfileSummarizer(self.args, r=self.run, p=self.progress)
+        self.summary.init()
 
         if self.skip_variability_tables:
             self.run.warning("Since you asked so nicely, anvi'o will not migrate variability table data into split profiles.")
@@ -613,10 +628,15 @@ class BinSplitter(summarizer.Bin, XSplitter):
         bin_profile_db.db.update_meta_value('sample_id', self.bin_id)
 
         # setup the filtering rules for migrating data:
-        tables = {}
+        tables = {
+                    t.item_additional_data_table_name: ('item_name', self.split_names),
+                }
 
         # dealing with 'view' data tables
         for table_name in constants.essential_data_fields_for_anvio_profiles:
+            # ignore `variability_splits`` and `variability_contigs` view tables if SNVs have not been profiled
+            if table_name == 'variability' and self.summary.p_meta['SNVs_profiled'] == 0:
+                continue
             for target in ['splits', 'contigs']:
                 new_table_name = '_'.join([table_name, target])
                 new_table_structure = t.view_table_structure
@@ -702,6 +722,8 @@ class LocusSplitter:
         self.input_contigs_db_path = A('contigs_db')
         self.num_genes = A('num_genes')
         self.search_term = A('search_term')
+        self.case_sensitive = A('case_sensitive')
+        self.exact_match = A('exact_match')
         self.gene_caller_ids = A('gene_caller_ids')
         self.delimiter = A('delimiter')
         self.output_dir = A('output_dir') or os.path.abspath(os.path.curdir)
@@ -713,9 +735,6 @@ class LocusSplitter:
         self.reverse_complement_if_necessary = not A('never_reverse_complement')
         self.include_fasta_output = True
         self.is_in_flank_mode = bool(A('flank_mode'))
-
-        if self.annotation_sources:
-            self.annotation_sources = self.annotation_sources.split(self.delimiter)
 
         if A('list_hmm_sources'):
             dbops.ContigsDatabase(self.input_contigs_db_path).list_available_hmm_sources()
@@ -753,11 +772,12 @@ class LocusSplitter:
                                   "needs exactly 2." % num_genes)
 
         if self.search_term:
-            self.search_term = self.search_term.split(self.delimiter)
+            self.search_term = list(set([term.strip() for term in self.search_term.split(self.delimiter)]))
 
-        utils.is_contigs_db(self.input_contigs_db_path)
+        if self.annotation_sources:
+            self.annotation_sources = list(set([source.strip() for source in self.annotation_sources.split(self.delimiter)]))
 
-        if len(self.hmm_sources):
+        if self.hmm_sources:
             self.hmm_sources = set([s.strip() for s in self.hmm_sources.split(self.delimiter)])
 
         # If user is in default mode, they MUST provide --num-genes
@@ -779,7 +799,9 @@ class LocusSplitter:
             if self.delimiter in self.num_genes:
                 self.run.info('Genes to report', '%d genes before the matching gene, and %d that follow' % (self.num_genes_list[0], self.num_genes_list[1]))
             else:
-                self.run.info('Genes to report', 'Matching gene, and %d genes after it' % (self.num_genes_list[0]))
+                self.run.info('Genes to report', 'Matching gene, and %d genes after it' % (self.num_genes_list[1]))
+
+        utils.check_sample_id(self.output_file_prefix)
 
         self.run.warning(None, header="Input / Output", lc="cyan")
         self.run.info('Contigs DB', os.path.abspath(self.input_contigs_db_path))
@@ -826,11 +848,11 @@ class LocusSplitter:
             counter = 1
             for term in self.search_term:
                 self.run.info('Search term %d of %d' % (counter,len(self.search_term)), term, mc='green')
-                self.run.info('Function calls being used', ', '.join((contigs_db.gene_function_call_sources
+                self.run.info('Queried annotation sources', ', '.join((contigs_db.gene_function_call_sources
                                                                       if not self.annotation_sources
                                                                       else self.annotation_sources)))
 
-                foo, search_report = contigs_db.search_for_gene_functions([term], requested_sources=self.annotation_sources, verbose=True)
+                foo, search_report = contigs_db.search_for_gene_functions([term], requested_sources=self.annotation_sources, verbose=True, case_sensitive=self.case_sensitive, exact_match=self.exact_match)
                 # gene id's of genes with the searched function
                 genes_that_hit = [i[0] for i in search_report]
                 gene_caller_ids_of_interest.extend(genes_that_hit)
@@ -987,7 +1009,6 @@ class LocusSplitter:
             gene_caller_ids = list(gene_caller_ids_flank_pair)
             gene_callers_id = gene_caller_ids[0] # just for getting contig name from contigDB
 
-
         if os.path.isdir(output_path_prefix):
             raise ConfigError("Output path prefix can't be a directory name...")
 
@@ -1009,7 +1030,7 @@ class LocusSplitter:
                 raise ConfigError(f"Soooooo it turns out that the flanking genes you picked "
                                   f"are found on two separate contigs: {contig_name_1} and {contig_name_2}. That means we can't prepare "
                                   f"a smaller piece of DNA for you :/")
-            
+
         contig_name = self.contigs_db.genes_in_contigs_dict[gene_callers_id]['contig']
 
         # Sort by gene start position
@@ -1040,7 +1061,7 @@ class LocusSplitter:
                     anchor_gene_index_flank_pair.append(counter)
                 counter = counter + 1
             first_gene_of_the_block, last_gene_of_the_block = sorted(anchor_gene_index_flank_pair)
-            
+
         # Print out locus info for user
         self.run.info("Contig name", contig_name)
         self.run.info("Contig length", self.contigs_db.contigs_basic_info[contig_name]['length'])
@@ -1167,7 +1188,6 @@ class LocusSplitter:
                 new_gene_calls[g] = gene_call
             gene_calls = new_gene_calls
 
-
         # write the sequence as a temporary FASTA file since the design of ContigsDatabase::create
         # will work seamlessly with this approach:
         with open(locus_sequence_fasta, 'w') as f:
@@ -1183,9 +1203,9 @@ class LocusSplitter:
                                   project_name=os.path.basename(output_path_prefix),
                                   split_length=sys.maxsize,
                                   kmer_size=4,
-                                  external_gene_calls=locus_external_gene_calls)
-        #FIXME: it would be great if anvio could give a warning about internal stop codons
-        # rather than killing the whole export-locus interation
+                                  external_gene_calls=locus_external_gene_calls,
+                                  ignore_internal_stop_codons=True)
+
         dbops.ContigsDatabase(locus_output_db_path, run=self.run_object).create(args)
 
         # while we are at it, here we generate a blank profile, too. so visualization of the
@@ -1199,7 +1219,7 @@ class LocusSplitter:
 
         # while we are at it, let's add a default collection to the resulting blank profile
         TablesForCollections(os.path.join(profile_output_dir, 'PROFILE.db'), run=terminal.Run(verbose=False), progress=self.progress).add_default_collection_to_db(contigs_db_path=locus_output_db_path)
- 
+
 
         # so we have a contigs database! but there isn't much in it. the following where clause will
         # help us read from the tables of the original contigs database, and store it into the
@@ -1246,6 +1266,40 @@ class LocusSplitter:
         locus_db = db.DB(locus_output_db_path, None, ignore_version=True, skip_rowid_prepend=True)
         locus_db._exec("DELETE FROM %s" % t.gene_amino_acid_sequences_table_name)
         locus_db.insert_many(t.gene_amino_acid_sequences_table_name, entries=entries)
+
+        ############################################################################################
+        # DO HMM-hits
+        ###########################################################################################
+        # hmm_hits table
+        #---------------
+        hmm_hits_table_dict = R('hmm_hits')
+
+        for entry_id in hmm_hits_table_dict:
+            hmm_hits_table_dict[entry_id]['gene_callers_id'] = G(hmm_hits_table_dict[entry_id]['gene_callers_id'])
+
+        entries = [[k] + list(v.values()) for k, v in hmm_hits_table_dict.items()]
+        locus_db.insert_many(t.hmm_hits_table_name, entries=entries)
+
+        # hmm_hits_info table
+        #--------------------
+        sources = set([h['source'] for h in hmm_hits_table_dict.values()])
+        hmm_hits_info_table_name_dict = db.DB(self.input_contigs_db_path, None, ignore_version=True).get_table_as_dict(t.hmm_hits_info_table_name)
+
+        entries = [[i] + list(hmm_hits_info_table_name_dict[i].values()) for i in list(sources) if i in hmm_hits_info_table_name_dict]
+        locus_db.insert_many(t.hmm_hits_info_table_name, entries=entries)
+
+        # hmm-hits-in-splits table
+        #-------------------------
+        genes_in_splits_table_name_locus_df = locus_db.get_table_as_dataframe(t.genes_in_splits_table_name)
+        genes_in_splits_table_name_locus_dict = genes_in_splits_table_name_locus_df.set_index('gene_callers_id').to_dict(orient='index')
+
+        entries = []
+        for k, v in hmm_hits_table_dict.items():
+            if v['gene_callers_id'] in genes_in_splits_table_name_locus_dict.keys():
+                entry = [k, genes_in_splits_table_name_locus_dict[v['gene_callers_id']]['split'], genes_in_splits_table_name_locus_dict[v['gene_callers_id']]['percentage_in_split'], v['source']]
+                entries.append(entry)
+
+        locus_db.insert_many(t.hmm_hits_splits_table_name, entries)
         locus_db.disconnect()
 
         ############################################################################################

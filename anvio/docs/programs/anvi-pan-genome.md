@@ -1,70 +1,66 @@
-This program **finds, clusters, and organizes the genes** within a %(genomes-storage-db)s to create a %(pan-db)s. 
+This program implements pangenomics, and organizes genes found within a %(genomes-storage-db)s to create a %(pan-db)s.
 
-This is the program that does the brunt of the work when running a pangenomic workflow. Check out [the pangenomic tutorial](http://merenlab.org/2016/11/08/pangenomics-v2) for a more in-depth overview of the contents of this page and the capabilities of a %(pan-db)s. 
+Please first read [the pangenomics tutorial](http://merenlab.org/2016/11/08/pangenomics-v2) to have a better understanding of the steps that lead to the generation of a %(pan-db)s.
 
-### Before running this program
+### Making sure your installation can do pangenomics
 
-Before running this program, you'll want to make sure your dependencies are all set, since this program requires some aditional dependencies than base anvi'o. If the following command runs without errors, then you're all good. 
+You can always test if your computer has all the dependencies for a successful pangenomics analysis by running,
 
 {{ codestart }}
 anvi-self-test --suite pangenomics
 {{ codestop }}
 
-If that command doesn't run smoothly, check out [this page](http://merenlab.org/2016/11/08/pangenomics-v2/#dependencies).
+If it runs without errors, you're golden. If not, please consult with the most up-to-date installation instructions for anvi'o and get in touch with the anvi'o community for guidance.
 
-### What this program does
+### A brief summary
 
-This program finds and organizes your gene clusters to give you all of the data that is displayed when you run %(anvi-pan-genome)s. Almost all of the work described in [this gif that explains the common steps involved in pangenomics](http://merenlab.org/momics/#pangenomics) is done by this program. 
+The program %(anvi-pan-genome)s performs three major things for its user:
 
-In a little more detail, this program will do three major things for you:
+1. Calculates the similarity between the all gene amino acid seqeunces found in genomes described in your %(genomes-storage-db)s using [DIAMOND](https://www.wsi.uni-tuebingen.de/lehrstuehle/algorithms-in-bioinformatics/software/diamond/). You have some options. Although, (1) you can use the NCBI's BLAST program [`blastp`](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE=Proteins) instead of DIAMOND using the `--use-ncbi-blast` flag, (2) instead of analyzing all genomes you can focus a subset using the `--genome-names` parameter, and (3) exclude genes that are partial from your analysis using the flag `--exclude-partial-gene-calls` if you think you must.
 
-* Calculate the similarity between the all of the gene calls in all of the genomes in your %(genomes-storage-db)s. By default this uses [DIAMOND](https://www.wsi.uni-tuebingen.de/lehrstuehle/algorithms-in-bioinformatics/software/diamond/) to do this, but Meren strongly recommends that you use the `--use-ncbi-blast` flag to use [`blastp`](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE=Proteins) instead.  
+2. Resolves gene clusters using the BLAST results via the [MCL](http://micans.org/mcl/) algorithm after discarding weak hits from the search results using the `--minbit` heuristic (inspired by the workflow implemented by ITEP ([Benedict et al., 2014](https://bmcgenomics.biomedcentral.com/articles/10.1186/1471-2164-15-8)).
 
-    *   When doing this, this will look at every genome in your %(genomes-storage-db)s (unless you use `--genome-names`) and will use every gene call, whether or not they are complete (unless you used `--exclude-partial-gene-calls`).   
-    
-    *   After doing this, it will use the minbit heuristic (originally from ITEP ([Benedict et al., 2014](https://bmcgenomics.biomedcentral.com/articles/10.1186/1471-2164-15-8)) to throw out weak matches. This removes a lot of noise before clustering. 
-    
-* Use the [MCL](http://micans.org/mcl/) algorithm to identify clusters in your search results.  
+3. Performs additional analyses of gene clusters for downstream analyses and visualization tasks. These analyses include,
 
-* Organize your gene clusters and genomes using their `euclidean` distance and `ward` linkage. 
+    * Multiple sequnce alignment of amino acid sequences in each gene cluster,
+    * Computation of [functional and geometric homogeneity indices](https://merenlab.org/2016/11/08/pangenomics-v2/#functional-and-geometric-homogeneity-estimates-in-anvio),
+    * Computation of average amino-acid identity (AAI) within each gene cluster,
+    * Hierarchical clustering analysis of gene clusters based on their distribution across genomes, and genomes based on their sharing of the gene pool.
 
-This program is very smart, and if you're already run it, it will try to use the data that it's already calculated. This way you can change smaller parameters without all of the run time. However, this also means you need to tell it to rerun the process (if that's what you want) with the flag `--overwrite-output-destinations`. 
-
-### Cool. How about some examples and specific parameters?
-
-Who doesn't love a good example? The simplest way to run this is as follows:
+The basic command line to run a pangenomic analysis that will do all the step above will look like the following:
 
 {{ codestart }}
-anvi-pan-genome -g %(genomes-storage-db)s
+anvi-pan-genome --genomes-storage %(genomes-storage-db)s \
+                --project-name PROJECT_NAME
 {{ codestop }}
 
-But there are many parameters you can alter to your liking. For example, here's a run that specifies that it wants to use NCBI's blastp to find sequence similarities and muscle to align genes and defines its output 
+But it is also possible for power users to initiate the anvi'o pangenomcs workflow with user defined gene clusters, which means it would be possible to visualize the pangenomic analyses performed by other tools in anvi'o. In this case, only the third step is performed with already established gene clusters:
 
 {{ codestart }}
-anvi-pan-genomes -g %(genomes-storage-db)s \
-                 --align-with muscle \
-                 --use-ncbi-blast \ 
-                 -n MY_PROJECT_NAME \
-                 --description description.txt \
-                 -o PATH/TO/%(pan-db)s 
+anvi-pan-genome --genomes-storage %(genomes-storage-db)s \
+                --project-name PROJECT_NAME \
+                --gene-clusters-txt %(gene-clusters-txt)s
 {{ codestop }}
 
-Here's another example that only looks at the complete gene calls within a subset of the genomes, eliminates gene clusters that only have hits in a single genome, and uses DIAMOND but with the sensitive setting enabled:
+
+### The 'additional parameters' mechanism for power users
+
+At the core of the pangenomics workflow lies the reciprocal BLAST search that identifies sequence similarities within a pool of gene sequences. For this, anvi'o uses DIAMOND by default, but the user can change the search algorithm. Based on the algorithm used for this step, the matching anvi'o driver sets some default parameters for a successful run. Such as the proper parameter to explicitly define where the output files generated by DIAMOND should go, and so on. Apart from those mandatory parameters that are critical for a successful run, anvi'o allows the user to define a set of additional parameters to pass to the search algorithm.
+
+This is done via the flag `--additional-params-for-seq-search`. For instance, the user could take a look at the parameters diamond offers by typing `diamond help` on their terminal, and may decide to use the `--sensitive` implemented by DIAMOND to enable a slower but more sensitive search, and use the parameter `--id 98` to ask DIAMOND to not report any hits across genes that is lower than 98%% sequence identity to limit gene clusters only those sequences that are extremely closely related while pushing everything else to be singletons (which can also be removed from the analysis with a separate `--min-occurrence 2` flag %(anvi-pan-genome)s accepts). They can pass these parameters to DIAMOND by running their analysis the following way:
 
 {{ codestart }}
-anvi-pan-genomes -g %(genomes-storage-db)s \
-                 -n MY_PROJECT_NAME \
-                 --genome-names GENOME_1,GENOME_2,GENOME_3 \
-                 --exclude-partial-gene-calls \ 
-                 --min-occurance 2 \
-                 --sensitive \
-                 -o PATH/TO/%(pan-db)s 
+anvi-pan-genome --genomes-storage %(genomes-storage-db)s \
+                --project-name PROJECT_NAME \
+                --additional-params-for-seq-search "--masking 0 --sensitive --id 98"
 {{ codestop }}
 
-Some other parameters available to you allow you to  
+{:.notice}
+The additional parameters used for the search will be stored in the resulting %(pan-db)s and can be viewed anytime using the program %(anvi-display-pan)s.
 
-- Change the minimum minbit value to elimate weak matches. The default value is 0.5.
-- Change the MCL inflation parameter. The default value is 2. 
-- Specify a minimum percent identity between two sequences to give that link an edge in MCL clustering. 
-- Skip or speed up the calculation of homogeneity values for your clusters
-- Enable multithreading with `-T`
+{:.notice}
+For DIAMOND, if no additional parameters is declared, anvi'o will include `--masking 0` by default since we recently learned that not using that flag leads to the elmination of genes with many repeated elements (see [#1955](https://github.com/merenlab/anvio/issues/1955)).
+
+With the freedom of additional parameters for sequnce search, it is possible to make significant mistakes since anvi'o will have no opportunity to sanity-check user-defined additional parameters. If you are doing something experimental, please keep an eye on the output messages and error logs.
+
+If the user choses to use NCBI's BLAST program, in that case anvi'o will pass the value of the parameter `--additional-params-for-seq-search` to NCBI's `blastp`.

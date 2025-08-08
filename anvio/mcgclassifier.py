@@ -26,8 +26,7 @@ from anvio.errors import ConfigError, FilesNPathsError
 from matplotlib.backends.backend_pdf import PdfPages
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -92,7 +91,7 @@ class MetagenomeCentricGeneClassifier:
         if self.exclude_samples:
             # check that there is a file like this
             filesnpaths.is_file_exists(self.exclude_samples)
-            self.samples_to_exclude = set([l.split('\t')[0].strip() for l in open(self.exclude_samples, 'rU').readlines()])
+            self.samples_to_exclude = set([l.split('\t')[0].strip() for l in open(self.exclude_samples, 'r').readlines()])
 
             if not self.samples_to_exclude:
                 raise ConfigError("You asked to exclude samples, but provided an empty list.")
@@ -102,7 +101,7 @@ class MetagenomeCentricGeneClassifier:
         if self.include_samples:
             # check that there is a file like this
             filesnpaths.is_file_exists(self.include_samples)
-            self.samples_to_include = set([l.split('\t')[0].strip() for l in open(self.include_samples, 'rU').readlines()])
+            self.samples_to_include = set([l.split('\t')[0].strip() for l in open(self.include_samples, 'r').readlines()])
 
             if not self.samples_to_include:
                 raise ConfigError("You provided an empty list of samples to include.")
@@ -462,7 +461,7 @@ class MetagenomeCentricGeneClassifier:
         """
 
         if gene_specificity:
-            # return True if the the gene occurs in all positive samples.
+            # return True if the gene occurs in all positive samples.
             return self.gene_class_df.loc[gene_id, 'occurence_in_positive_samples'] == len(self.positive_samples)
         else:
             # return True if the gene occurs in all positive AND all negative samples

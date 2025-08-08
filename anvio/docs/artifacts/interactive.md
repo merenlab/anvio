@@ -47,33 +47,34 @@ However, there are more interfaces available in anvi'o than just that one, so le
 
 ## An overview of the display
 
-The interactive interface has three major areas of interaction:
+The interactive interface has two major areas of interaction:
 
 * The space for visualization in the middle area,
 * The Settings panel on the left of the screen,
-* And three additional panels for 'News', 'Description', and 'Mouse' on the right.
 
-Each panel is important, but the most important and functionally rich one is the 'Settings' panel.
+We will spend most of our time in the `Settings` panel.
 
 ### Settings panel
 
-If closed, the settings panel can be opened by clicking on the little button on the left-middle part of your browser. When opened, you will see multiple tabs:
+<img align="left" height="350px" src="../../images/interactive_interface/interactive_interface_tabs.png" style="margin-right: 20px;">
 
-![an anvi'o settings panel](../../images/interactive_interface/interactive-settings-panel-tabs.png){:.center-img}
+If closed, the settings panel can be opened by clicking on the little button on the left-middle part of your browser. When opened, you will see multiple tabs:
 
 But before we start talking about these tabs, it is worthwhile to mention that at the bottom of the settings panel you will find a section with tiny controls that are available in all tabs:
 
-![settings panel bottom controls](../../images/interactive_interface/interactive-settings-bottom.png){:.center-img}
-
 Through these controls you can,
 
-* __Create or refresh__ the display when necessary using the draw button (some changes require you to do that),
+* __Create or refresh__ the display when necessary using the Draw button (or just press ***D***),
 
-* __Zoom in, zoom out, and center__ the display.
+* __Load or Save__ the current state of the display using the buttons below the State section,
 
-* __Download your display as an SVG file.__
+* __Download your display as an SVG file__ (or just press ***E***),
 
-Finally, at the top-right of the Settings panel header you will find a dropdown menu (hamburger menu) which provides links to external information, resources, and issue-reporting related to anvi'o.
+* __Center__ the display.
+
+💡  Before talking about Tabs, here's a  *useful tip*: you can conveniently switch between tabs using your keypad. For instance, pressing `1` will navigate you to the Main tab, `2` to the Options tab, and so forth.
+
+For more tips you can check out the [Tips + Tricks](#interactive-interface-tips--tricks) section at the end of this page.
 
 OK. Let's talk about each tab you will find in the settings panel.
 
@@ -82,49 +83,47 @@ OK. Let's talk about each tab you will find in the settings panel.
 
 This is one of the most frequently used tabs in the interface, and there are multiple sections in it (keeps growing over time, so things may be missing here).
 
-![an anvi'o main tab](../../images/interactive_interface/interactive-settings-display-additional-settings.png){:.center-img}
+![an anvi'o main tab](../../images/interactive_interface/interactive-settings-panel-main.png){:.center-img}
 
-* **Display subsection**. Provides high level options for adjusting _items order_, _view_, and _drawing type_.
+- #### Items subsection
+  - Provides high level options for adjusting _drawing type_, _items order_ and _data type_.
+  - Display part of the interface is where you can adjust individual layer attributes like _color_, display _type_, _height_  and _min/max_ values. Click + drag each layer to rearrange how layers are ordered. Or _edit attributes for multiple lpngayers_ as well.
 
-Clicking the _Show Additional Settings_ button provides access to myriad additional, more-granular adjustments, including,
+- #### Layers subsection
+  - __Change general settings for the tree__ (i.e., switching between circle or rectengular displays, changing tree radius or width), __and layers__ (i.e., editing layer margins, or activating custom layer margins).
+  - __Load or save states__ to store all visual settings, or load a previously saved state.
+  - Display usage is same as Items subsection.
+  - Change the order of layers using automatically-generated or user-provided orders of layers using the Sample order combo box.
+  - Customize individual samples information entries. Changes in this tab can be reflected to the current display without re-drawing the entire tree unless the sample order is changed.
 
+- #### Legends subsection
+  - This subsection enables users to easily change individual or batch legend colors for any of their additional data items.d
+
+### Options tab
+
+In the Options tab, just like in the Main tab, we have two sections: Items and Layers, providing a separation for these components.,
+
+![an anvi'o options items](../../images/interactive_interface/interactive-settings-options-items.png){:.center-img}
+
+* **Bins Selection subsection**. Allows us to customize the bins.
+* **Cosmetics subsection**. _Margin and Background Opacity_ adjustments on the chart.
 * **Dendrogram subsection**. _Radius_ and _Angle_ , and _Edge length normalization_ adjustments for the dendrogram.
 * **Branch support subsection**. Settings for displaying _bootstrap values_ on the dendrogram.
 * **Selections subsection**. To adjust _height_, _grid_ and/or _shade_ display, as well as selection _name_ settings.
-* **Layers subsection**. Display and label settings.
 * **Performance subsection**. Whether the SVG output is optimized for performance or granularity (very advanced stuff).
-* **Layers subsection**. This is arguably the most important subsection in the Main tab that enables you to make very precise adjustments to how things should look like on your screen. You can adjust individual layer attributes like _color_, display _type_, _height_  and _min/max_ values. Click + drag each layer to rearrange how layers are ordered. Or _edit attributes for multiple layers_ as well.
 
-![an anvi'o settings layers](../../images/interactive_interface/interactive-settings-layers.png){:.center-img}
+![an anvi'o options items](../../images/interactive_interface/interactive-settings-options-layers.png){:.center-img}
 
-Mastering these in the Main Tab will minimize the post-processing of your anvi'o figures for high-quality and good-looking publication ready images.
+* **Tree/Dendogram subsection**. _Height and Edge length normalization_ adjustments on the Tree.
+* **Label subsection**. Settings for maximum font size on the Layer.
 
-### Layers tab
-
-Through the layers tab you can,
-
-- __Change general settings for the tree__ (i.e., switching between circle or rectengular displays, changing tree radius or width), __and layers__ (i.e., editing layer margins, or activating custom layer margins).
-
-- __Load or save states__ to store all visual settings, or load a previously saved state.
-
-- __Customize individual__ layers by switching between different __display modes__ depending on the layer type (i.e., ‘text’ or ‘color’ mode for categorical layers, or ‘bar’ or ‘intensity’ mode for numerical layers), __set normalization__ (i.e., ‘square-root’, or ‘log’ normalization), __minimum, and maximum cutoff__ values for numerical layers, or set __layer height__, and __layer margin__ (i.e., its distance from the previous layer).
-
-- Use the __multi-selector__ at the bottom to change settings for multiple layers at once.
-
-![an anvi'o layers tab](../../images/interactive_interface/interactive-settings-layers-tab.png){:.center-img}
-
-
-### Samples tab
-
-Samples tab is for the additional data you provide the interface through a samples database (see samples order and samples information sections above). Through this layer you can,
-
-- __Change the order__ of layers using automatically-generated or user-provided orders of layers using the Sample order combo box,
-
-- __Customize individual samples information entries.__ Changes in this tab can be reflected to the current display without re-drawing the entire tree unless the sample order is changed.
+Mastering these in the Options Tab will minimize the post-processing of your anvi'o figures for high-quality and good-looking publication ready images.
 
 ### Bins tab
 
 Anvi’o allows you to create selections of items shown in the display (whether they are contigs, gene clusters, or any other type of data shown in the display). Bins tab allow you to maintain these selections. Any selection on the tree will be added to active bin in this tab (the state radio button next to a bin defines its activity). Through this tab you can,
+
+![an anvi'o options items](../../images/interactive_interface/interactive-settings-bins-tabs.png){:.center-img}
 
 - __Create or delete bins, set bin names, change the color of a given bin__, or sort bins based on their name, the number of units they carry, or completion and contamination estimates (completion / contamination estimates are only computed for genomic or metagenomic analyses).
 
@@ -132,14 +131,11 @@ Anvi’o allows you to create selections of items shown in the display (whether 
 
 - __Store a collection of bins__, or __load a previously stored collection.__
 
-![an anvi'o bins tab](../../images/interactive_interface/interactive-settings-bins-tab.png){:.center-img}
+### Data tab
 
-### Legends tab
+The data tab displays the value of items underneath the mouse pointer while the user browse the tree.
 
-The legends tab enables users to easily change individual or batch legend colors for any of their additional data items
-<!-- grab legend example from infant gut w/ additional data layer -->
-
-![an anvi'o legends tab](../../images/interactive_interface/interactive-settings-legends-tab.png){:.center-img}
+Displaying the numerical or categorical value of an item shown on the tree is not an easy task. We originally thought that displaying pop-up windows would solve it, but besides the great overhead, it often became a nuisance while browsing parts of the tree. We could show those pop-up displays only when use clicks on the tree, however click-behavior is much more appropriate to add or remove individual items from a bin, hence, it wasn’t the best solution either. So we came up with the ‘data tab’. You have a better idea? I am not surprised! We would love to try improve your experience: please enter an issue, and let’s discuss.
 
 ### Search tab
 
@@ -149,22 +145,17 @@ It does what the name suggests. Using this tab you can,
 
 - __Highlight matches__, and __append__ them to, or __remove__ them from the __selected bin__ in the Bins tab.
 
+### News tab
 
-
-### Mouse panel
-
-The mouse panel displays the value of items underneath the mouse pointer while the user browse the tree.
-
-Displaying the numerical or categorical value of an item shown on the tree is not an easy task. We originally thought that displaying pop-up windows would solve it, but besides the great overhead, it often became a nuisance while browsing parts of the tree. We could show those pop-up displays only when use clicks on the tree, however click-behavior is much more appropriate to add or remove individual items from a bin, hence, it wasn’t the best solution either. So we came up with the ‘mouse panel’. You have a better idea? I am not surprised! We would love to try improve your experience: please enter an issue, and let’s discuss.
-
-### News panel
 The news panel provides information and external links tracking major Anvi'o releases and development updates.
 
-### Description panel
+### Notes tab
 
-- The description panel is a flexible, multipurpose space where users can,
+- The notes tab is a flexible, multipurpose space where users can,
 - Store notes, comments, and any other stray items related to their project, in a feature-rich markdown environment.
 - Display context, references, reproducibility instructions, and any other salient details for published figures.
+- This section moved under Settings panel. `Settings > Notes`
+
 ![The Description panel in action](../../images/interactive_interface/interactive-settings-description-panel.png){:.center-img}
 
 ## Interactive interface tips + tricks
@@ -179,19 +170,16 @@ Here are some small conveniences that may help the interface serve you better (w
 
 * Tired of selecting items for binning one by one? __right-click__ on an item and select __Mark item as 'range start'__ to set an 'in point', then __right-click__ on another item and select __Add items in range to active bin__ or __Remove items in range from any bin__ to manipulate many items with few clicks. Nice!
 
-* By pressing `1`,`2`,`3`,`4`, and`5`, you can go between Layers, Bins, Samples, Mouse, and Search tabs!
+* By pressing `1`,`2`,`3`,`4`,`5`,`6`,`7` and `8` you can go between Main, Options, Bins, Data, Notes, Search, News and Anvi'o tabs!
 
 ## Keyboard shortcuts
 
 The interactive interface recognizes a handful of keyboard shortcuts to help speed up your workflow
 
 - The `S` key toggles the Settings panel
-- The `M` key toggles the Mouse panel
-- The `N` key toggles the Description panel
-- The `W` key toggles the News panel
 - The `D` key triggers a redraw of your visualization
 - The `T` key toggles showing the Title panel
-- Keys `1` through `5` will toggle between tabs within the Settings panel, granted the Settings panel is currently shown.
+- Keys `1` through `8` will toggle between tabs within the Settings panel, granted the Settings panel is currently shown.
 - `CTRL`+`Z` and `CTRL`+`SHIFT`+`Z` will undo or redo bin actions, respectively.
 
 

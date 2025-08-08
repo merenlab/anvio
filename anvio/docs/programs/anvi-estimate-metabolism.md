@@ -4,15 +4,15 @@ The metabolic pathways that this program considers (by default) are those define
 
 Alternatively or additionally, you can define your own set of metabolic modules and estimate their completeness with this program. Detailed instructions for doing this can be found by looking at the %(user-modules-data)s and  %(anvi-setup-user-modules)s pages.
 
-Given a properly annotated %(contigs-db)s, this program determines which enzymes are present and uses these functions to compute the completeness of each metabolic module. There are currently two strategies for estimating module completeness - pathwise and stepwise - which are discussed in the technical details section on this page. The output of this program is one or more tabular text files - see %(kegg-metabolism)s for the output description and examples.
+Given a properly annotated %(contigs-db)s or %(pan-db)s, this program determines which enzymes are present and uses these functions to compute the completeness of each metabolic module. There are currently two strategies for estimating module completeness - pathwise and stepwise - which are discussed in the technical details section on this page. The output of this program is one or more tabular text files - see %(kegg-metabolism)s for the output description and examples.
 
-For a practical tutorial on how to use this program, visit [this link](https://merenlab.org/tutorials/infant-gut/#chapter-v-metabolism-prediction). A more abstract discussion of available parameters, as well as technical details about how the metabolism estimation is done, can be found below.
+For a practical tutorial on how to use this program, visit [this link](https://anvio.org/tutorials/fmt-mag-metabolism/). A more abstract discussion of available parameters, as well as technical details about how the metabolism estimation is done, can be found below.
 
 ## What metabolism data can I use?
 
 You have three options when it comes to estimating metabolism.
 
-1. KEGG only (this is the default). In this case, estimation will be run on modules from the KEGG MODULES database, which you must set up on your computer using %(anvi-setup-kegg-kofams)s. If you have a default setup of KEGG, you need not provide any parameters to choose this option. However, if you have your KEGG data in a non-default location on your computer, you will have to use the `--kegg-data-dir` parameter to point out its location.
+1. KEGG only (this is the default). In this case, estimation will be run on modules from the KEGG MODULES database, which you must set up on your computer using %(anvi-setup-kegg-data)s. If you have a default setup of KEGG, you need not provide any parameters to choose this option. However, if you have your KEGG data in a non-default location on your computer, you will have to use the `--kegg-data-dir` parameter to point out its location.
 2. KEGG + USER data. In this case, we estimate on KEGG modules as in (1), but _also_ on user-defined metabolic modules that you set up with %(anvi-setup-user-modules)s and provide to this program with the `--user-modules` parameter.
 3. USER data only. You can elect to skip estimation on KEGG modules and _only_ run on your own data by providing both the `--user-modules` and `--only-user-modules` parameters.
 
@@ -20,15 +20,15 @@ You have three options when it comes to estimating metabolism.
 
 Metabolism estimation relies on gene annotations from the functional annotation source 'KOfam', also referred to as %(kegg-functions)s. Therefore, for this to work, you need to have annotated your %(contigs-db)s with hits to the KEGG KOfam database by running %(anvi-run-kegg-kofams)s prior to using this program, unless you are using the `--only-user-modules` option to ONLY estimate on user-defined metabolic modules.
 
-Both %(anvi-run-kegg-kofams)s and %(anvi-estimate-metabolism)s rely on the %(kegg-data)s provided by %(anvi-setup-kegg-kofams)s, so if you do not already have that data on your computer, %(anvi-setup-kegg-kofams)s needs to be run first. To summarize, these are the steps that need to be done before you can use %(anvi-estimate-metabolism)s:
+Both %(anvi-run-kegg-kofams)s and %(anvi-estimate-metabolism)s rely on the %(kegg-data)s provided by %(anvi-setup-kegg-data)s, so if you do not already have that data on your computer, %(anvi-setup-kegg-data)s needs to be run first. To summarize, these are the steps that need to be done before you can use %(anvi-estimate-metabolism)s:
 
-1. Run %(anvi-setup-kegg-kofams)s to get data from KEGG onto your computer. This step only needs to be done once.
+1. Run %(anvi-setup-kegg-data)s to get data from KEGG onto your computer. This step only needs to be done once.
 2. [If not using `--only-user-modules`] Run %(anvi-run-kegg-kofams)s to annotate your %(contigs-db)s with %(kegg-functions)s. This program must be run on each contigs database that you want to estimate metabolism for.
 
 If you want to estimate for your own metabolism data, then you have a couple of extra steps to go through:
 
 3. Define your own metabolic modules by following the formatting guidelines described [here](https://merenlab.org/software/anvio/help/main/programs/anvi-setup-user-modules/#how-do-i-format-the-module-files) and [here](https://merenlab.org/software/anvio/help/main/artifacts/user-modules-data/#a-step-by-step-guide-to-creating), and then run %(anvi-setup-user-modules)s to parse them into a %(modules-db)s,
-4. Annotate your %(contigs-db)s with the functional annotation sources that are required for your module definitions. This may require running a few different programs. For instance, if your modules are defined in terms of NCBI COGS (ie, the `COG20_FUNCTION` annotation source), you will need to run %(anvi-run-ncbi-cogs)s. If you are using a set of custom HMMs, you will need to run %(anvi-run-hmms)s on that set using the `--add-to-functions-table` parameter. If you already have annotations from one or more of these sources, you could also import them into the contigs database using the program %(anvi-import-functions)s.
+4. Annotate your %(contigs-db)s with the functional annotation sources that are required for your module definitions. This may require running a few different programs. For instance, if your modules are defined in terms of NCBI COGS (ie, the `COG20_FUNCTION` annotation source), you will need to run %(anvi-run-ncbi-cogs)s. If you are using a set of custom HMMs, you will need to run %(anvi-run-hmms)s on that set using the `--add-to-functions-table` parameter. If you already have annotations from one or more of these sources, you could also import them into the contigs database using the program %(anvi-import-functions)s. Note that if you want to estimate metabolism on a pangenome, this annotation step needs to be run before you create the %(genomes-storage-db)s and %(pan-db)s.
 
 ## Running metabolism estimation
 
@@ -37,8 +37,9 @@ You can run metabolism estimation on any set of annotated sequences, but these s
 - Single genomes, also referred to as %(external-genomes)s. These can be isolate genomes or metagenome-assembled genomes, for example. Each one is described in its own individual %(contigs-db)s.
 - Bins, also referred to as %(internal-genomes)s. These often represent metagenome-assembled genomes, but generally can be any subset of sequences within a database. A single %(contigs-db)s can contain multiple bins.
 - Assembled, unbinned metagenomes. There is no distinction between sequences that belong to different microbial populations in the %(contigs-db)s for an unbinned metagenome.
+- Pangenomes in which you have binned gene clusters. Each pangenome is described in a %(pan-db)s, and must include a %(collection)s of your gene cluster bins of interest.
 
-As you can see, %(anvi-estimate-metabolism)s takes one or more contigs database(s) as input, but the information that is taken from those databases depends on the context (ie, genome, metagenome, bin). In the case of internal genomes (or bins), is possible to have multiple inputs but only one input contigs db. So for clarity's sake, we sometimes refer to the inputs as 'samples' in the descriptions below. If you are getting confused, just try to remember that a 'sample' can be a genome, a metagenome, or a bin.
+As you can see, %(anvi-estimate-metabolism)s can take one or more contigs database(s) as input, but the information that is taken from those databases depends on the context (ie, genome, metagenome, bin). In the case of internal genomes (or bins), is possible to have multiple inputs but only one input contigs db. So for clarity's sake, we sometimes refer to the inputs as 'samples' in the descriptions below. If you are getting confused, just try to remember that a 'sample' can be a genome, a metagenome, or a bin.
 
 If you don't have any sequences, there is an additional input option for you:
 - A list of enzymes, as described in an %(enzymes-txt)s file. For the purposes of metabolism estimation, the enzymes in this file will be interpreted as all coming from the same 'genome'.
@@ -46,13 +47,15 @@ If you don't have any sequences, there is an additional input option for you:
 Different input contexts can require different parameters or additional inputs. The following sections describe what is necessary for each input type.
 
 
-### Estimation for a single genome
+### Estimation for a single genome or unbinned metagenome assembly
 
 The most basic use-case for this program is when you have one contigs database describing a single genome. Since all of the sequences in this database belong to the same genome, all of the gene annotations will be used for metabolism estimation.
 
 {{ codestart }}
 anvi-estimate-metabolism -c %(contigs-db)s
 {{ codestop }}
+
+In some cases -- for instance, to compute community-level pathway copy numbers -- it is also appropriate to do this for unbinned metagenome assemblies.
 
 ### Estimation for bins in a metagenome
 
@@ -86,7 +89,7 @@ bin_3
 bin_5
 ```
 
-### Estimation for a metagenome
+### Estimation for contigs in a metagenome assembly
 
 If you have an unbinned metagenome assembly, you can estimate metabolism for it using `--metagenome-mode`. In this case, since there is no way to determine which contigs belong to which microbial populations in the sample, estimation will be done on a per-contig basis; that is, for each contig, only the genes present on that contig will be used to determine pathway completeness within the contig.
 
@@ -94,8 +97,21 @@ If you have an unbinned metagenome assembly, you can estimate metabolism for it 
 anvi-estimate-metabolism -c %(contigs-db)s --metagenome-mode
 {{ codestop }}
 
-{: .notice}
+{:.notice}
 In metagenome mode, this program will estimate metabolism for each contig in the metagenome separately. This will tend to underestimate module completeness because it is likely that many modules will be broken up across multiple contigs belonging to the same population. If you prefer to instead treat all enzyme annotations in the metagenome as belonging to one collective genome, you can do so by simply leaving out the `--metagenome-mode` flag (to effectively pretend that you are doing estimation for a single genome, although in your heart you will know that your contigs database really contains a metagenome). Please note that this will result in the opposite tendency to overestimate module completeness (as the enzymes will in reality be coming from multiple different populations), and there will be a lot of redundancy. We are working on improving our estimation algorithm for metagenome mode. In the meantime, if you are worried about the misleading results from either of these situations, we suggest binning your metagenomes first and running estimation for the bins as described below.
+
+
+### Estimation for gene cluster bins in a pangenome
+
+You can estimate the metabolisms collectively encoded by a set of gene clusters in a pangenome by providing this program with a pangenome database, its associated genomes storage database, and the name of the collection describing your gene cluster bins:
+
+{{ codestart }}
+anvi-estimate-metabolism --pan-db %(pan-db)s -g %(genomes-storage-db)s -C COLLECTION_NAME
+{{ codestop }}
+
+In this case, the program will estimate metabolism for each bin of gene clusters independently, by considering the set of enzyme annotations encoded within the set of gene clusters in the bin. Each gene cluster typically includes more than one gene from different genomes, and can therefore have multiple functions associated with it. To select which annotation is most relevant for estimation purposes, we pick the dominant function from each annotation source -- for instance, the KOfam with the highest number of annotations within the cluster and the COG with the highest number of annotations. Please note that this means that a gene cluster can still have multple annotations associated with it (a maximum of one per annotation source), so we don't allow calculation of copy numbers for pangenomes (i.e., you can't use the `--add-copy-number` flag for this input type).
+
+Want to run the estimation on all the gene clusters in the pangenome? You should add a default collection first using %(anvi-script-add-default-collection)s.
 
 ### Estimation for a set of enzymes
 
@@ -180,6 +196,20 @@ If you wish to only estimate for your own metabolic modules, you can skip estima
 
 {{ codestart }}
 anvi-estimate-metabolism -c %(contigs-db)s --user-modules /path/to/USER/directory --only-user-modules
+{{ codestop }}
+
+### Including (or not including) annotations from 'Stray KOs'
+
+"Stray KOs" is our made-up term for KOfam models that don't have a bit score threshold defined by KEGG. You can find more information about these KOs and what anvi'o can do with them [at this link](https://anvio.org/help/main/programs/anvi-setup-kegg-data/#what-are-stray-kos-and-what-happens-when-i-include-them). These gene families are usually not annotated in your data, unless you explicitly request it by running %(anvi-run-kegg-kofams)s with the `--include-stray-KOs` flag. If you have done that, and you now want to include those annotations in your metabolic pathway predictions, then you can do so by using the same flag for %(anvi-estimate-metabolism)s:
+
+{{ codestart }}
+anvi-estimate-metabolism -c %(contigs-db)s --include-stray-KOs
+{{ codestop }}
+
+If your input database includes annotations to stray KOs and you _don't_ want to use them for computing pathway completeness and copy number, then simply leave out this flag. However, you may get an error once anvi'o stumbles upon a KO that it doesn't recognize. In that case, you should explicitly request to ignore these annotations by adding the flag `--ignore-unknown-KOs`, as suggested in the error message:
+
+{{ codestart }}
+anvi-estimate-metabolism -c %(contigs-db)s --ignore-unknown-KOs
 {{ codestop }}
 
 ### Including KEGG Orthologs not in KOfam
@@ -294,7 +324,7 @@ anvi-estimate-metabolism -c %(contigs-db)s --include-zeros
 You can ask this program to count the number of copies of each module in your input samples by providing the `--add-copy-number` flag:
 
 {{ codestart }}
-anvi-estimate-metabolism -c %(contigs-db)s --output-modes modules,module_paths,module_steps --add-coverage
+anvi-estimate-metabolism -c %(contigs-db)s --output-modes modules,module_paths,module_steps --add-copy-number
 {{ codestop }}
 
 Just like module completeness, copy number can be calculated using two different strategies. You can find information about the calculations in the technical details section below, and information about what copy number output looks like in %(kegg-metabolism)s.
@@ -450,7 +480,7 @@ anvi-estimate-metabolism -c %(contigs-db)s -O my-cool-prefix
 
 **Including only complete modules in the output**
 
-Remember that module completion threshold? Well, you can use that to control which modules make it into your output files. If you provide the `--only-complete` flag, then any module-related output files will only include modules that have a completeness score at or above the module completion threshold. (This doesn't affect enzyme-related outputs, for obvious reasons.)
+Remember that module completion threshold? Well, you can use that to control which modules make it into your output files. If you provide the `--only-complete` flag, then any module-related output files will only include modules that have a completeness score (either pathwise or stepwise) at or above the module completion threshold. (This doesn't affect enzyme-related outputs, for obvious reasons.)
 
 Here is an example of using this flag with long-format output (which is the default, as described above, but we are asking for it explicitly here just to be clear):
 
@@ -458,7 +488,7 @@ Here is an example of using this flag with long-format output (which is the defa
 anvi-estimate-metabolism -c %(contigs-db)s --output-modes modules --only-complete
 {{ codestop }}
 
-And here is an example of using this flag with matrix output. In this case, we are working with multiple input samples, and the behavior of this flag is slightly different: a module will be included in the matrix if it is at or above the module completion threshold in **at least one sample**. If there are any samples in which that module's completeness is below the threshold, its completeness in that sample will be **represented by a 0.0** in the matrix, regardless of its actual completeness score.
+And here is an example of using this flag with matrix output. In this case, we are working with multiple input samples, and the behavior of this flag is slightly different: a module will be included in the matrix if it is at or above the module completion threshold in **at least one sample, for either pathwise or stepwise completeness**. That means you may see numbers lower than the threshold in the completeness matrices.
 
 {{ codestart }}
 anvi-estimate-metabolism -i internal-genomes.txt --matrix-format --only-complete
@@ -480,13 +510,37 @@ If you have gotten an error that looks something like this:
 Config Error: The contigs DB that you are working with has been annotated with a different version of the MODULES.db than you are working with now.
 ```
 
-This means that the %(modules-db)s used by %(anvi-run-kegg-kofams)s has different contents (different KOs and/or different modules) than the one you are currently using to estimate metabolism, which would lead to mismatches if metabolism estimation were to continue. There are a few ways this can happen, which of course have different solutions:
+This means that the %(modules-db)s used by %(anvi-run-kegg-kofams)s has different contents (different KOs and/or different modules) than the one you are currently using to estimate metabolism, which would lead to mismatches if metabolism estimation were to continue. There are a few ways this can happen:
 
-1. You annotated your %(contigs-db)s with a former version of %(kegg-data)s, and subsequently set up a new %(anvi-setup-kegg-kofams)s (possibly with the `--kegg-archive` or `--download-from-kegg` options, which get you a non-default version of KEGG data). Then you tried to run %(anvi-estimate-metabolism)s with the new %(kegg-data)s version. If this is you, and you have saved your former version of %(kegg-data)s somewhere, then you are in luck - you can simply direct %(anvi-estimate-metabolism)s to use the old version of KEGG with `--kegg-data-dir`. If you didn't save it, then unfortunately you will most likely have to re-run %(anvi-run-kegg-kofams)s on your %(contigs-db)s to re-annotate it with the new version before continuing with metabolism estimation.
-2. You have multiple versions of %(kegg-data)s on your computer in different locations, and you used different ones for %(anvi-run-kegg-kofams)s and %(anvi-estimate-metabolism)s. If this is what you did, then there is an easy fix - simply find the KEGG data directory containing the MODULES.db with the same content hash (you can use %(anvi-db-info)s on the MODULES.db to find the hash value) as the one used by %(anvi-run-kegg-kofams)s and submit that location with `--kegg-data-dir` to this program.
-3. Your collaborator gave you some databases that they annotated with a different version of %(kegg-data)s than you have on your computer. In this case, either you or they (or both) have probably been using a non-default (or outdated) version of %(kegg-data)s. If they have the current default snapshot of KEGG data but you do not, then you'll need to get that version onto your computer using the default usage of %(anvi-setup-kegg-kofams)s. Otherwise, your collaborator will need to somehow share all or part of their KEGG data directory with you before you can work on their databases. See %(anvi-setup-kegg-kofams)s for details on how to share non-default setups of %(kegg-data)s.
+1. You upgraded to a new anvi'o version and downloaded the default %(kegg-data)s associated with that release, but are working with a %(contigs-db)s that was annotated with a previous anvi'o version (and therefore a different instance of %(kegg-data)s).
+2. Without changing anvi'o versions, you annotated your %(contigs-db)s with default %(kegg-data)s, and subsequently replaced that data with a different instance by running %(anvi-setup-kegg-data)s again with the `--reset` flag (and likely also with the `--kegg-archive`, `--kegg-snapshot`, or `--download-from-kegg` options, all of which get you a non-default version of KEGG data). Then you tried to run %(anvi-estimate-metabolism)s with the new data.
+3. You have multiple instances of %(kegg-data)s on your computer in different locations, and you used different ones for %(anvi-run-kegg-kofams)s and %(anvi-estimate-metabolism)s. 
+4. Your collaborator gave you some databases that they annotated with a different version of %(kegg-data)s than you have on your computer.
 
-Note that you can also get this sort of error with user-defined metabolic modules, but only if you are estimating from JSON data (in which case the JSON file was generated using a different user-defined %(modules-db)s).
+There are two main solutions for most of these situations, which differ according to which set of annotations you would prefer to use.
+
+**First option**: you want to update your %(contigs-db)s to have new annotations that match to the current %(modules-db)s. In this case, you have to rerun %(anvi-run-kegg-kofams)s on the %(contigs-db)s. Make sure you provide the same `--kegg-data-dir` value (if any) that you put in the `anvi-estimate-metabolism` command that gave you this error. 
+
+**Second option**: you want to continue working with the existing set of annotations in the %(contigs-db)s. This means you need to change which %(modules-db)s you are using for %(anvi-estimate-metabolism)s. The error message should tell you the hash of the %(modules-db)s used for annotation. You can use that hash to identify the matching database so that you can either re-download that database, or (if you already have it) find it on your computer. 
+
+If you have multiple instances of %(kegg-data)s on your computer, you can run `anvi-db-info` on the %(modules-db)s in each of those directories until you find the one with the hash you are looking for. Then provide the path to that directory using the `kegg-data-dir` parameter of `anvi-estimate-metabolism`.
+
+{:.notice}
+If you've recently upgraded your anvi'o version (i.e., situation 1 from above) and you kept your previous installation of anvi'o, the database you want should still be available as part of that environment. You can find its location by activating the environment and running the following code in your terminal: `export ANVIO_MODULES_DB=`python -c "import anvio; import os; print(os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG/MODULES.db'))"``. Use `echo $ANVIO_MODULES_DB` to print the path in your terminal, and `anvi-db-info $ANVIO_MODULES_DB` to verify that its hash matches to the one in your contigs database.
+
+If you don't have any matching instances of %(kegg-data)s on your computer, you will need to download it. First, check if the version you want is one of the KEGG snapshots that anvi'o provides by looking at the `KEGG-SNAPSHOTS.yaml` file in the anvi'o codebase. For instance, you can get the location of that file and print it to your terminal by running the following: 
+
+```
+export ANVIO_KEGG_SNAPSHOTS=$(python -c "import anvio; import os; print(os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG-SNAPSHOTS.yaml'))")
+cat $ANVIO_KEGG_SNAPSHOTS
+```
+
+Take a look through the different versions. If you see one with a hash matching to the one used to annotate your %(contigs-db)s, then you can download that version by following [the directions for setting up a KEGG snapshot](https://anvio.org/help/main/programs/anvi-setup-kegg-data/#setting-up-an-earlier-kegg-snapshot). Provide the snapshot version name to the `--kegg-snapshot` parameter of %(anvi-setup-kegg-data)s.
+
+**I can't find KEGG data with a matching hash!**
+If you don't have a matching metabolism database on your computer, and none of the snapshots in the `KEGG-SNAPSHOTS.yaml` file have the hash that you need, your %(contigs-db)s was probably annotated with KO and module data [downloaded directly from KEGG](https://anvio.org/help/main/programs/anvi-setup-kegg-data/#getting-the-most-up-to-date-kegg-data-downloading-directly-from-kegg). If you have obtained the %(contigs-db)s from a collaborator (i.e., situation 4 from above), ask them to also share their %(kegg-data)s with you, following [these steps](https://anvio.org/help/main/programs/anvi-setup-kegg-data/#how-do-i-share-this-data). Otherwise, anvi'o cannot really help you get this data back, and you may have to resort to option 1 described above. 
+
+If none of these solutions help you to get rid of the version incompatibility error, please feel free to reach out to the anvi'o developers for help.
 
 
 ## What to do if estimation is not working as expected for user-defined metabolic modules?
@@ -502,9 +556,9 @@ If these things are correct but you are still not finding an annotation for one 
 Regardless of which input type is provided to this program, the basic requirements for metabolism estimation are 1) a set of metabolic pathway definitions, and 2) a 'pool' of gene annotations.
 
 #### Module Definitions
-One set of metabolic pathway definitions that is always used by this program is the [KEGG MODULE resource](https://www.genome.jp/kegg/module.html). You can also define your own set of metabolic modules, but the definition format and estimation strategy will be the same. So for brevity's sake, the following discussion will cover the KEGG data case.
+One set of metabolic pathway definitions that can be used by this program is the [KEGG MODULE resource](https://www.genome.jp/kegg/module.html). You can also define your own set of metabolic modules, but the definition format and estimation strategy will be the same. So for brevity's sake, the following discussion will cover the KEGG data case.
 
-The program %(anvi-setup-kegg-kofams)s acquires the definitions of these modules using the KEGG API and puts them into the %(modules-db)s. The definitions are strings of KEGG Ortholog (KO) identifiers, representing the functions necessary to carry out each step of the metabolic pathway. Let's use module [M00018](https://www.genome.jp/kegg-bin/show_module?M00018), Threonine Biosynthesis, as an example. Here is the module definition, in picture form:
+The program %(anvi-setup-kegg-data)s acquires the definitions of these modules using the KEGG API and puts them into the %(modules-db)s. The definitions are strings of KEGG Ortholog (KO) identifiers, representing the functions necessary to carry out each step of the metabolic pathway. Let's use module [M00018](https://www.genome.jp/kegg-bin/show_module?M00018), Threonine Biosynthesis, as an example. Here is the module definition, in picture form:
 
 ![Module M00018 Definition](../../images/M00018.png){:.center-img .width-50}
 
@@ -547,9 +601,11 @@ User-defined metabolic modules must specify the annotation source(s) needed to f
 
 We currently have two ways of estimating the completeness of a module, which differ in how we decompose the module DEFINITION string into smaller parts.
 
+![A comparison of the pathwise and stepwise strategies](../../images/pathwise_vs_stepwise.png)
+
 For the 'pathwise' strategy, we consider all possible 'paths' through the module - each alternative set of enzymes that could be used together to catalyze every reaction in the metabolic pathway. After calculating the percent completeness in all possible paths, we take the maximum completeness to be the pathwise completeness score of the module as a whole. This is the most granular way of estimating module completeness because we consider all the possible alternatives.
 
-For the 'stepwise' strategy, we break down the module DEFINITION into its major, or 'top-level', steps. Each "top-level" step usually represents one metabolic reaction in the pathway, and is defined by one or more enzymes that either work together or serve as alternatives to each other to catalyze this reaction. We use the available enzyme annotations to determine whether each step can be catalyzed or not - just a binary value representing whether the step is present or not. Then we compute the stepwise module completeness as the percent of present top-level steps. This is the least granular way of estimating module completeness because we do not distinguish between enzyme alternatives - these are all considered as one step which is either entirely present or entirely absent.
+For the 'stepwise' strategy, we break down the module DEFINITION into its major, or 'top-level', steps. Each "top-level" step usually represents either one metabolic reaction or a branch point in the pathway, and is defined by one or more enzymes that either work together or serve as alternatives to each other to catalyze this reaction or set of reactions. We use the available enzyme annotations to determine whether each step can be catalyzed or not - just a binary value representing whether the step is present or not. Then we compute the stepwise module completeness as the percent of present top-level steps. This is the least granular way of estimating module completeness because we do not distinguish between enzyme alternatives - these are all considered as one step which is either entirely present or entirely absent.
 
 The pathwise and stepwise strategies also apply to copy number calculations, in which enzyme annotations are allocated to create different copies of a path, step, or module. Path copy number is computed as the number of complete copies of a path through a module, and a module's pathwise copy number is then calculated as the maximum copy number of any of its paths that have the highest completeness score. Step copy number is the number of complete copies of a top-level step, and a module's stepwise copy number is the minimum copy number of all of its top--level steps.
 
@@ -672,7 +728,7 @@ Once we have the completeness scores and copy numbers of all possible paths thro
 So if the module does not have any complete paths, then its copy number is 0. If it has one complete path, then its copy number is the copy number of that path. If there are multiple paths with highest completeness score, then its copy number is the maximum of the copy numbers of those paths - for example, let's say we have two paths, both of which are 90%% complete. One of those paths has a copy number of 1 and the other has a copy number of 3. The module copy number would be 3 in this case.
 
 {:.notice}
-We're making assumptions here again, just like we were when computing module completeness. Any of those paths (or none of them) could be the one that is used in the cell, and we don't know which one. But the idea here is that if a sample has the most copies of path X, there is probably a good reason that is has that many copies because microbial cells like to streamline their genomes whenever possible.
+We're making assumptions here again, just like we were when computing module completeness. Any of those paths (or none of them) could be the one that is used in the cell, and we don't know which one. But the idea here is that if a sample has the most copies of path X, there is probably a good reason that it has that many copies because microbial cells like to streamline their genomes whenever possible.
 
 One last note - if a module does not have any paths of highest completeness, we cannot compute the copy number. In this case, the copy number of the module will be reported as 'NA' in the output file(s).
 

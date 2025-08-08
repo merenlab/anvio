@@ -4,7 +4,7 @@
 
 The module includes to major classes: DBInfo, and FindAnvioDBs.
 
-DBInfo class enables seamless access to databae properties for any given
+The DBInfo class enables seamless access to database properties for any given
 database file. FindAnvioDBs finds databases that are linked to each
 other to initiate interactive jobs automatically, even when no db
 parameters are provided by the user.
@@ -20,11 +20,10 @@ import anvio
 from anvio.db import DB
 from anvio.errors import ConfigError
 from anvio.terminal import Run, Progress
-from anvio.tables import versions_for_db_types
+from anvio.version import versions_for_db_types
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2021, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -88,6 +87,7 @@ class DBInfo(ABC):
 
     db_type = None
     hash_name = None
+    functional_annotation_sources_name = None
 
     def __new__(cls, path, dont_raise=False, expecting=None):
         if not cls.is_db(path, dont_raise=dont_raise):
@@ -146,6 +146,30 @@ class DBInfo(ABC):
 
     @staticmethod
     def is_db(path, dont_raise=False):
+        """Check if a file is an anvi'o database
+
+        A low-level function to check if a file is an anvi'o database.
+        This function is used by the `DBInfo` class to determine if a file is a database or not.
+
+        Parameters
+        ==========
+        path : str
+            The path to the file to check.
+        dont_raise :bool
+            If `True`, the function will return `False` if the file is not a database.
+            If `False`, the function will raise a `ConfigError` if the file is not a database.
+
+        Returns
+        =======
+        is_db : bool
+            `True` if the file is an anvi'o database, `False` otherwise.
+
+        Raises
+        ======
+        ConfigError
+            If the path does not exist or is a directory.
+            If the file is not an anvi'o database and `dont_raise` is `False`.
+        """
         if not path:
             raise ConfigError("A low-level function was expecting a database path, but got `None`. A programmer "
                               "needs to look into this :/ Meanwhile, please check your command line parameters. "
@@ -157,7 +181,7 @@ class DBInfo(ABC):
             raise ConfigError(f"There is nothing at '{path}' :/")
 
         if os.path.isdir(path):
-            raise ConfigError(f"But this is no file?! This is ah directory! :(")
+            raise ConfigError("But this is no file?! This is ah directory! :(")
 
         try:
             with DB(path, None, ignore_version=True) as database:
@@ -174,50 +198,120 @@ class DBInfo(ABC):
 
     @staticmethod
     def get_type(path):
+        """Get the type of an anvi'o database
+
+        A low-level function to get the type of an anvi'o database.
+        This function is used by the `DBInfo` class to determine the type of a database.
+
+        Returns
+        =======
+        db_type : str
+            The type of the database.
+        """
         with DB(path, None, ignore_version=True) as database:
             return database.get_meta_value('db_type', return_none_if_not_in_table=True)
 
 
     @property
     def variant(self):
+        """Get the variant of the database
+
+        Returns
+        =======
+        variant : str
+            The variant of the database
+        """
         with self.load_db() as database:
             return database.get_meta_value('db_variant', return_none_if_not_in_table=True)
 
     @property
     def hash(self):
+        """Get the hash of the database
+
+        Returns
+        =======
+        hash : str
+            The hash of the database
+        """
         with self.load_db() as database:
             return database.get_meta_value(self.hash_name, return_none_if_not_in_table=True)
 
 
     @property
     def version(self):
+        """Get the version of the database
+
+        Returns
+        =======
+        version : str
+            The version of the database
+        """
         with self.load_db() as database:
             return database.get_meta_value('version', return_none_if_not_in_table=True)
 
 
     @property
     def project_name(self):
+        """Get the project name of the database
+
+        Returns
+        =======
+        project_name : str
+            The project name of the database
+        """
         with self.load_db() as database:
             return database.get_meta_value('project_name', return_none_if_not_in_table=True)
 
 
     def load_db(self):
+        """Load the database
+
+        Returns
+        =======
+        database : DB
+            The database
+        """
         return DB(self.path, None, ignore_version=True)
 
 
     def get_self_table(self):
+        """Get the 'self' table of the database
+
+        Returns
+        =======
+        self_table : dict
+            The 'self' table of the database
+        """
         with DB(self.path, None, ignore_version=True) as database:
             return dict(database.get_table_as_list_of_tuples('self'))
+    
+    def get_functional_annotation_sources(self):
+        """Get the functional annotation sources of the database
+
+        Returns
+        =======
+        functional_annotation_sources : list
+            The functional annotation sources of the database
+            None if the sources are not defined in the database
+        """
+        if self.functional_annotation_sources_name:
+            with self.load_db() as database:
+                return database.get_meta_value(self.functional_annotation_sources_name, return_none_if_not_in_table=True).split(',')
+        else:
+            return None
 
 
 class ContigsDBInfo(DBInfo):
+    """A class to keep track of contigs databases"""
     db_type = 'contigs'
     hash_name = 'contigs_db_hash'
+    functional_annotation_sources_name = 'gene_function_sources'
     def __init__(self, path, *args, **kwargs):
         DBInfo.__init__(self, path)
 
 
 class ProfileDBInfo(DBInfo):
+    """A class to keep track of profile databases"""
     db_type = 'profile'
     hash_name = 'contigs_db_hash'
     def __init__(self, path, *args, **kwargs):
@@ -226,17 +320,20 @@ class ProfileDBInfo(DBInfo):
 
     @property
     def blank(self):
+        """Check if the database is blank"""
         with self.load_db() as database:
             return True if database.get_meta_value('blank') == 1 else False
 
 
     @property
     def merged(self):
+        """Check if the database is merged"""
         with self.load_db() as database:
             return True if database.get_meta_value('merged') == 1 else False
 
 
 class GenesDBInfo(DBInfo):
+    """A class to keep track of genes databases"""
     db_type = 'genes'
     hash_name = 'contigs_db_hash'
     def __init__(self, path, *args, **kwargs):
@@ -244,6 +341,7 @@ class GenesDBInfo(DBInfo):
 
 
 class AuxiliaryDBInfo(DBInfo):
+    """A class to keep track of auxiliary databases"""
     db_type = 'auxiliary data for coverages'
     hash_name = 'contigs_db_hash'
     def __init__(self, path, *args, **kwargs):
@@ -251,6 +349,7 @@ class AuxiliaryDBInfo(DBInfo):
 
 
 class StructureDBInfo(DBInfo):
+    """A class to keep track of structure databases"""
     db_type = 'structure'
     hash_name = 'contigs_db_hash'
     def __init__(self, path, *args, **kwargs):
@@ -258,13 +357,16 @@ class StructureDBInfo(DBInfo):
 
 
 class GenomeStorageDBInfo(DBInfo):
+    """A class to keep track of genome storage databases"""
     db_type = 'genomestorage'
     hash_name = 'hash'
+    functional_annotation_sources_name = 'gene_function_sources'
     def __init__(self, path, *args, **kwargs):
         DBInfo.__init__(self, path)
 
 
 class PanDBInfo(DBInfo):
+    """A class to keep track of pan databases"""
     db_type = 'pan'
     hash_name = 'genomes_storage_hash'
     def __init__(self, path, *args, **kwargs):
@@ -272,6 +374,7 @@ class PanDBInfo(DBInfo):
 
 
 class TRNADBInfo(DBInfo):
+    """A class to keep track of trnaseq databases"""
     db_type = 'trnaseq'
     hash_name = 'trnaseq_db_hash'
     def __init__(self, path, *args, **kwargs):
@@ -279,8 +382,10 @@ class TRNADBInfo(DBInfo):
 
 
 class ModulesDBInfo(DBInfo):
+    """A class to keep track of modules databases"""
     db_type = 'modules'
     hash_name = 'hash'
+    functional_annotation_sources_name = 'annotation_sources'
     def __init__(self, path, *args, **kwargs):
         DBInfo.__init__(self, path)
 
@@ -292,17 +397,27 @@ class FindAnvioDBs(object):
     upon creating an instance from it.
 
     As of 2021, the primary sole client of this class is `PopulateAnvioDBArgs` in the
-    anvio.argsparse module to fill in missing databases into the args object.
+    anvio.argparse module to fill in missing databases into the args object.
 
     Parameters
     ==========
-    search_path : str
+    search_path : str, default "."
         The beginning of the search. The search will be limited to this directory
         and files and directories underneath it.
 
     max_files_and_dirs_to_process : int, default 50000
         Stop processing if the number of files and directories processed exceeds
         this.
+
+    depth : int, default 3
+        The maximum depth of directories to search for anvi'o databases.
+        The search will be limited to this depth and files and directories underneath it.
+
+    run : Run, default A new Run object
+        The Run object to use for tracking the progress of the search.
+
+    progress : Progress, default A new Progress object
+        The Progress object to use for displaying the progress of the search.
     """
 
     def __init__(self, search_path='.', max_files_and_dirs_to_process=50000, depth=3, run=Run(), progress=Progress()):
@@ -334,11 +449,31 @@ class FindAnvioDBs(object):
 
 
     def listdir(self, path):
+        """Yield the full path of each file in the specified directory.
+
+        Parameters
+        ==========
+        path : str
+            The path of the directory to list files from.
+
+        Yields
+        ======
+        filename : str
+            The full path of each file in the directory.
+        """
+
         for filename in os.listdir(path):
             yield os.path.join(path, filename)
 
 
     def walk(self):
+        """Walk through the directory to find anvi'o databases.
+
+        Yields
+        ======
+        tuple : (file_path, level)
+            The file path of an anvi'o database and its level in the directory hierarchy.
+        """
         self.progress.new('Searching files and directories')
 
         total_file_and_directory_names = 0

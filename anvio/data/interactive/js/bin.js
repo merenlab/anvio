@@ -1,11 +1,10 @@
 /**
  * Draw bins, bin labels stuff.
  *
- *  Author: Özcan Esen <ozcanesen@gmail.com>
- *  Credits: A. Murat Eren
- *  Copyright 2017, The anvio Project
+ *  Authors: Özcan Esen <ozcanesen@gmail.com>
+ *           A. Murat Eren <a. murat.eren@gmail.com>
  *
- * This file is part of anvi'o (<https://github.com/meren/anvio>).
+ *  Copyright 2015-2021, The anvi'o project (http://anvio.org)
  *
  * Anvi'o is a free software. You can redistribute this program
  * and/or modify it under the terms of the GNU General Public
@@ -92,15 +91,14 @@ Bins.prototype.NewBin = function(id, binState) {
                             <td data-value="${completeness}" class="completeness"><input type="button" value="${completeness}" title="Click for completeness table" onClick="showCompleteness(${id});"></td>
                             <td data-value="${redundancy}" class="redundancy"><input type="button" value="${redundancy}" title="Click for redundant hits" onClick="showRedundants(${id}); "></td>
                        `}
-                       <td><center><span class="glyphicon glyphicon-trash" aria-hidden="true" alt="Delete this bin" title="Delete this bin" onClick="bins.DeleteBin(${id});"></span></center></td>
+                       <td><center><span class="default-bin-icon bi bi-trash-fill fa-lg" aria-hidden="true" alt="Delete this bin" title="Delete this bin" onClick="bins.DeleteBin(${id});"></span></center></td>
                     </tr>
-                    <tr style="${ $('#estimate_taxonomy').is(':checked') ? `` : `display: none;`}" data-parent="${id}">
-                            <td style="border-top: 0px;">&nbsp;</td>
-                            <td style="border-top: 0px;">&nbsp;</td>
-                            <td colspan="6" style="border-top: 0px; padding-top: 0px;">
-                                <span bin-id="${id}" class="taxonomy-name-label">N/A</span>
-                            </td>
-                    </tr>`;
+                    ${ mode === 'full' || mode === 'refine' || mode === 'manual' || mode === 'pan' ? `<tr style="${ $('#estimate_taxonomy').is(':checked') ? `` : `display: none;`}" data-parent="${id}">
+                    <td style="border-top: 0px;">&nbsp;</td>
+                    <td style="border-top: 0px;">&nbsp;</td>
+                    <td colspan="6" style="border-top: 0px; padding-top: 0px;">
+                        <span bin-id="${id}" class="taxonomy-name-label">N/A</span>
+                    </td></tr>` : ``}`;
 
     this.container.insertAdjacentHTML('beforeend', template);
     this.SelectLastRadio();
@@ -200,7 +198,11 @@ Bins.prototype.DeleteBin = function(bin_id, show_confirm=true) {
 
     let bin_row = this.container.querySelector(`tr[bin-id='${bin_id}']`);
 
-    bin_row.nextElementSibling.remove(); // remove taxonomy row too.
+    if (bin_row.nextElementSibling) {
+        bin_row.nextElementSibling.remove(); // remove taxonomy row too.
+    } else {
+        console.error('Next sibling element not found for bin_row.');
+    }
     bin_row.remove();
 
     if (!this.container.querySelectorAll('*').length) {
@@ -894,15 +896,17 @@ Bins.prototype.RedrawBins = function() {
 
     for (let bin_id in this.selections) {
         for (let node of this.selections[bin_id].values()) {
-            if (node === null) return;
-            if (typeof node === 'undefined')
-            {
+            // Check if node is valid and not collapsed - issue #2042
+            if (node === null || typeof node === 'undefined') {
                 this.selections[bin_id].delete(node);
                 continue;
             }
 
+            // Only process leaf nodes that are not collapsed
             if (node.IsLeaf() && !node.collapsed) {
                 leaf_list[node.order] = bin_id;
+                // Ensure the color is set for the leaf node
+                node.SetColor(this.GetBinColor(bin_id));
             }
         }
     }
@@ -925,9 +929,14 @@ Bins.prototype.RedrawBins = function() {
     }
 
     var bin = document.getElementById('bin');
-    while (bin.hasChildNodes()) {
-        bin.removeChild(bin.lastChild);
+    if (bin !== null) {
+        while (bin.hasChildNodes()) {
+            bin.removeChild(bin.lastChild);
+        }
+    } else {
+        console.error("bin DOM doesnt exit or null.");
     }
+    
 
     // draw new bins
     var show_grid = $('#show_grid_for_bins')[0].checked;
@@ -937,7 +946,7 @@ Bins.prototype.RedrawBins = function() {
     var grid_color = document.getElementById('grid_color').getAttribute('color');
     var grid_width = $('#grid_width').val();
     var show_bin_labels = $('#show_bin_labels')[0].checked;
-    var bin_labels_font_size = parseFloat($('#bin_labels_font_size').val());
+    var bin_labels_font_size = (parseFloat($('#bin_labels_font_size').val())) ? parseFloat($('#bin_labels_font_size').val()) : 32;
     var autorotate_bin_labels = $('#autorotate_bin_labels')[0].checked;
     var bin_labels_angle = $('#bin_labels_angle').val();
     var background_starts_from_branch = $('#begins_from_branch').is(':checked');
@@ -962,8 +971,13 @@ Bins.prototype.RedrawBins = function() {
             }
         }
 
-        var color = document.getElementById('bin_color_' + bins_to_draw[i][2]).getAttribute('color');
-
+        var element = document.getElementById('bin_color_' + bins_to_draw[i][2]);
+        if (element) {
+            var color = element.getAttribute('color');
+        } else {
+            console.error('Element with ID bin_color_' + bins_to_draw[i][2] + ' not found.');
+        }
+        
         if (tree_type == 'circlephylogram')
         {
             drawPie('bin',

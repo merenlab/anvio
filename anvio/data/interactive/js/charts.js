@@ -1,11 +1,14 @@
 /**
  * Javascript library to visualize anvi'o charts
  *
- *  Author: A. Murat Eren <a.murat.eren@gmail.com>
- *  Credits: Özcan Esen, Gökmen Göksel, Tobias Paczian.
- *  Copyright 2015, The anvio Project
+ *  Authors: A. Murat Eren <a.murat.eren@gmail.com>
+ *           Ozcan Esen
+ *           Isaac Fink <iafink@uchicago.edu>
+ *           Matthew Klein <mtt.l.kln@gmail.com>
+ *           Gökmen Göksel
+ *           Tobias Paczian
  *
- * This file is part of anvi'o (<https://github.com/meren/anvio>).
+ *  Copyright 2015-2021, The anvi'o project (http://anvio.org)
  *
  * Anvi'o is a free software. You can redistribute this program
  * and/or modify it under the terms of the GNU General Public
@@ -51,10 +54,8 @@ var gene_offset_y = 0;
 var select_boxes = {};
 var curr_height;
 var show_cags_in_split = true;
-
-var mcags;
-
-var cog_annotated = false, kegg_annotated = false;
+var thresh_count_gene_colors = 1;
+var order_gene_colors_by_count = true;
 
 function loadAll() {
     info("Initiated");
@@ -84,39 +85,41 @@ function loadAll() {
     });
 
     contig_id = getParameterByName('id');
-    highlight_gene = getParameterByName('highlight_gene') == 'true';
-    gene_mode = getParameterByName('gene_mode') == 'true';
+    highlight_gene = getParameterByName('highlight_gene') === 'true';
+    gene_mode = getParameterByName('gene_mode') === 'true';
 
-    if (typeof localStorage.state === 'undefined')
-    {
-        state = {}
-    }
-    else
-    {
+    if (typeof localStorage.state === 'undefined') {
+        state = {
+            snvs_enabled: false,
+            show_highlights: true
+        };
+    } else {
         state = JSON.parse(localStorage.state);
     }
 
-    if(state['snvs_enabled'] == null) {
-        state['snvs_enabled'] = getParameterByName('show_snvs') == 'true';
+    // Ensure state properties are defined
+    if (state['snvs_enabled'] == null) {
+        state['snvs_enabled'] = getParameterByName('show_snvs') === 'true';
+    }
+    if (state['show_highlights'] == null) {
+        state['show_highlights'] = true;
     }
 
-    if(state['show_highlights'] == null) state['show_highlights'] = true;
-
-    var endpoint = (gene_mode ? 'charts_for_single_gene' : 'charts');
+    const endpoint = gene_mode ? 'charts_for_single_gene' : 'charts';
 
     info("Sending ajax request to gather split data");
     $.ajax({
             type: 'POST',
             cache: false,
-            url: '/data/' + endpoint + '/' + state['order-by'] + '/' + contig_id,
+            url: '/data/' + endpoint + '/' + encodeURIComponent(state['order-by']) + '/' + encodeURIComponent(contig_id),
             data: {'state': JSON.stringify(state)},
-            success: function(contig_data) {
+            success: function(response) {
                 info("Received split data from the server");
-                state = contig_data['state'];
-                page_header = contig_data.title;
-                layers = contig_data.layers;
-                coverage = contig_data.coverage;
-                sequence = contig_data.sequence;
+                state = response['state'];
+                page_header = response.title;
+                layers = response.layers;
+                coverage = response.coverage;
+                sequence = response.sequence;
                 variability = [];
                 indels = [];
 
@@ -126,10 +129,10 @@ function loadAll() {
                     for (var l=0; l<4; l++) {
                         variability[i][l] = [];
                         for (var h=0; h<coverage[i].length; h++) {
-                            if (contig_data.variability[i][l].hasOwnProperty(h)) {
-                                variability[i][l].push(contig_data.variability[i][l][h]);
-                                if (state['snvs_enabled'] && contig_data.variability[i][l][h] > maxVariability) {
-                                    maxVariability = contig_data.variability[i][l][h];
+                            if (response.variability[i][l].hasOwnProperty(h)) {
+                                variability[i][l].push(response.variability[i][l][h]);
+                                if (state['snvs_enabled'] && response.variability[i][l][h] > maxVariability) {
+                                    maxVariability = response.variability[i][l][h];
                                 }
                             } else {
                                 variability[i][l].push(0);
@@ -137,9 +140,10 @@ function loadAll() {
                         }
                     }
                 }
+                state['snvs_enabled'] = state['snvs_enabled'] ?? getParameterByName('show_snvs') === 'true';
 
-                competing_nucleotides = contig_data.competing_nucleotides;
-                indels = contig_data.indels;
+                competing_nucleotides = response.competing_nucleotides;
+                indels = response.indels;
 
                 info("Building indels table");
                 for(var i=0; i<indels.length; i++) {
@@ -155,11 +159,11 @@ function loadAll() {
                   }
                 }
 
-                previous_contig_name = contig_data.previous_contig_name;
-                next_contig_name = contig_data.next_contig_name;
-                index = contig_data.index;
-                total = contig_data.total;
-                genes = contig_data.genes;
+                previous_contig_name = response.previous_contig_name;
+                next_contig_name = response.next_contig_name;
+                index = response.index;
+                total = response.total;
+                genes = response.genes;
 
                 // if the gene is in reverse direction, we here we will add
                 // a reversed copy of the amino acid sequence so we can show
@@ -211,28 +215,13 @@ function loadAll() {
 
                 $('#range-box').append(`<div style="display: inline-block; margin-bottom:10px;" class="form-inline"> \
                                         Selection range from
-                                            <input class="form-control input-sm" id="brush_start" type="text" value="0" size="5">
+                                            <input class="form-control input-xs col-4" id="brush_start" type="text" value="0" size="3">
                                         to
-                                            <input class="form-control input-sm" id="brush_end" type="text" value="${sequence.length}" size="5">\
+                                            <input class="form-control input-xs col-4" id="brush_end" type="text" value="${sequence ? sequence.length : 0}" size="3">\
                                     </div>`);
 
                 info("Checking for gene functional annotations");
                 geneParser = new GeneParser(genes);
-                geneParser["data"].forEach(function(gene) {
-                  if(gene.functions != null) {
-                    if(gene.functions.hasOwnProperty("COG20_CATEGORY")) {
-                      gene.functions["COG_CATEGORY"] = gene.functions["COG20_CATEGORY"];
-                      gene.functions["COG_FUNCTION"] = gene.functions["COG20_FUNCTION"];
-                    } else if(gene.functions.hasOwnProperty("COG14_CATEGORY")) {
-                      gene.functions["COG_CATEGORY"] = gene.functions["COG14_CATEGORY"];
-                      gene.functions["COG_FUNCTION"] = gene.functions["COG14_FUNCTION"];
-                    }
-
-                    if(gene.functions.hasOwnProperty("COG_CATEGORY")) cog_annotated = true;
-                    if(gene.functions.hasOwnProperty("KEGG_Class")) kegg_annotated = true;
-                    if(cog_annotated && kegg_annotated) return;
-                  }
-                });
 
                 if(!state['highlight-genes']) state['highlight-genes'] = {};
                 state['large-indel'] = 10;
@@ -249,25 +238,13 @@ function loadAll() {
                 if(state['fixed-y-scale'] == null) state['fixed-y-scale'] = false;
 
                 // adjust menu options
-                if(!indels_enabled && (!state['snvs_enabled'] || maxVariability==0)) {
-                  $('#toggleSNVIndelTable').hide();
-                  $("#indels").hide();
-                  $('#settings-section-info-SNV-warning').append("Note: SNVs and indels are disabled for this split.");
-                  $('#settings-section-info-SNV-warning').show();
+                manageSNVsState(state, maxVariability);
+
+                if (!indels_enabled && (!state['snvs_enabled'] || maxVariability == 0)) {
+                    console.log("Hiding SNVs and indels due to the condition being met.");
+                    // Code to hide SNVs and indels
                 } else {
-                  if(!indels_enabled) {
-                    $('#indels').hide();
-                    $('#indels_picker').hide();
-                    $('#settings-section-info-SNV-warning').append("Note: indels are disabled for this split.");
-                    $('#settings-section-info-SNV-warning').show();
-                  }
-                  if(!state['snvs_enabled'] || maxVariability==0) {
-                    $('#snv_picker').hide();
-                    state['snv_scale_bottom'] = state['snv_scale_dir_up'] = false;
-                    $('#snv_scale_box, #scale_dir_box').attr("checked", "unchecked");
-                    $('#settings-section-info-SNV-warning').append("Note: SNVs are disabled for this split.");
-                    $('#settings-section-info-SNV-warning').show();
-                  }
+                    console.log("SNVs and indels should be visible.");
                 }
 
                 // create function color menu and table; set default color states
@@ -279,25 +256,14 @@ function loadAll() {
                   state['source-colors'] = default_source_colors;
                 }
                 generateFunctionColorTable(state['source-colors'], "Source", highlight_genes=state['highlight-genes'], show_cags_in_split);
-                mcags = Object.keys(default_source_colors);
-                if(cog_annotated) {
+                for(fn of getFunctionalAnnotations()) {
                   $('#gene_color_order').append($('<option>', {
-                    value: 'COG',
-                    text: 'COG'
+                    value: fn,
+                    text: fn
                   }));
-
-                  if(!state.hasOwnProperty('cog-colors')) {
-                    state['cog-colors'] = default_COG_colors
-                  }
-                }
-                if(kegg_annotated) {
-                  $('#gene_color_order').append($('<option>', {
-                    value: 'KEGG',
-                    text: 'KEGG'
-                  }));
-
-                  if(!state.hasOwnProperty('kegg-colors')) {
-                    state['kegg-colors'] = default_KEGG_colors
+                  let prop = fn.toLowerCase() + '-colors';
+                  if(!state.hasOwnProperty(prop)) {
+                    state[prop] = getCustomColorDict(fn);
                   }
                 }
 
@@ -357,38 +323,42 @@ function loadAll() {
 
                 // on initial load from main interface
                 if(state['state-name'] != current_state_name) {
-                  $.ajax({
-                          type: 'GET',
-                          cache: false,
-                          url: '/state/get/' + state['state-name'],
-                          success: function(response) {
-                              try {
-                                  if(!response){
-                                      // FIXME: This means we are likely in stand-alone mode where the inspection page
-                                      // is called via `anvi-inspect` and without going through the main interface.
-                                      // In this case there is no state, and no other data to be read from, and we
-                                      // fail to show SNVs and INDELs even when they are there, which is not the best
-                                      // behavior here. leaving this here so we remember:
-                                      toastr.error("You probably are here via `anvi-inspect`, and due to some technical issues, "
-                                                   + "the interface is being initialized without any SNV or INDEL data :/ Anvi'o "
-                                                   + "developers apologize for this shortcoming.");
-                                  } else {
-                                      clusteringData = response[1]['data'];
-                                      info("Loading ordering data");
-                                      loadOrderingAdditionalData(response[1]);
+                    $.ajax({
+                        type: 'GET',
+                        cache: false,
+                        url: '/state/get/' + state['state-name'],
+                        success: function(response) {
+                            try {
+                                // FIXME: This means we are likely in stand-alone mode where the inspection page
+                                // is called via `anvi-inspect` and without going through the main interface.
+                                // In this case there is no state, and no other data to be read from, and we
+                                // fail to show SNVs and INDELs even when they are there, which is not the best
+                                // behavior here. leaving this here so we remember:
+                                
+                                if (!response || response.length < 2) {
+                                    toastr.error("Invalid response received from the server.");
+                                    return;
+                                }
 
-                                      info("Processing state data from the server");
-                                      processState(state['state-name'], response[0]);
-                                  }
-                              } catch(e) {
-                                  console.error("Exception thrown", e.stack);
-                                  toastr.error('Failed to parse state data, ' + e);
-                                  defer.reject();
-                                  return;
-                              }
-                              waitingDialog.hide();
-                          }
-                  });
+                                clusteringData = response[1]['data'];
+                                info("Loading ordering data");
+                                loadOrderingAdditionalData(response[1]);
+
+                                info("Processing state data from the server");
+                                processState(state['state-name'], response[0]);
+                            } catch (e) {
+                                console.error("Exception thrown", e.stack);
+                                toastr.error('Failed to parse state data, ' + e);
+                            } finally {
+                                waitingDialog.hide();
+                            }
+                        },
+                        error: function(jqXHR, textStatus, errorThrown) {
+                            console.error("AJAX error: ", textStatus, errorThrown);
+                            toastr.error('Failed to load state data from the server. Please try again later.');
+                            waitingDialog.hide();
+                        }
+                    });
                 }
 
                 info("Setting event listeners");
@@ -450,26 +420,18 @@ function loadAll() {
                     }
                 });
 
-                $('#gene_color_order').on('focus', function() {
-                    Object.keys(state['highlight-genes']).forEach(gene_id => {
-                      state['highlight-genes'][gene_id] = $('#picker_' + gene_id).attr('color');
-                    });
-
-                }).change(function() {
+                $('#gene_color_order').change(function() {
                     state['gene-fn-db'] = $(this).val();
-                    switch($(this).val()) {
-                      case "COG":
-                        mcags = Object.keys(COG_categories);
-                        break;
-                      case "KEGG":
-                        mcags = Object.keys(KEGG_categories);
-                        break;
-                      case "Source":
-                        mcags = Object.keys(default_source_colors);
-                    }
                     resetFunctionColors(state[$(this).val().toLowerCase() + '-colors']);
                     redrawArrows();
                     $(this).blur();
+                });
+
+                $('#thresh_count').on('keydown', function(e) {
+                  if (e.keyCode == 13) { // 13 = enter key
+                    filterColorTable($(this).val());
+                    $(this).blur();
+                  }
                 });
 
                 $('#largeIndelInput').on('keydown', function(e) {
@@ -556,6 +518,33 @@ function loadAll() {
         });
 }
 
+function manageSNVsState(state, maxVariability) {
+    // Hide or show elements based on SNVs and indels state
+    if (!indels_enabled && (!state.snvs_enabled || (maxVariability === 0 && !state.snvs_enabled))) {
+        $('#toggleSNVIndelTable').hide();
+        $("#indels").hide();
+        $('#settings-section-info-SNV-warning').append("Note: SNVs and indels are disabled for this split.");
+        $('#settings-section-info-SNV-warning').show();
+    } else {
+        if (!indels_enabled) {
+            $('#indels').hide();
+            $('#indels_picker').hide();
+            $('#snv_picker').show();
+            $('#toggleSNVIndelTable').show();
+            $('#settings-section-info-SNV-warning').append("Note: indels are disabled for this split.");
+            $('#settings-section-info-SNV-warning').show();
+        }
+        else if (!state.snvs_enabled || maxVariability === 0) {
+            $('#snv_picker').hide();
+            $('#toggleSNVIndelTable').show();
+            state['snv_scale_bottom'] = state['snv_scale_dir_up'] = false;
+            $('#snv_scale_box, #scale_dir_box').attr("checked", "unchecked");
+            $('#settings-section-info-SNV-warning').append("Note: SNVs are disabled for this split.");
+            $('#settings-section-info-SNV-warning').show();
+        }
+    }
+}
+
 function drawHighlightBoxes() {
   info("Drawing vertical highlight boxes");
   var nucl_shown = $("#DNA_sequence").length > 0;
@@ -611,61 +600,74 @@ function get_box_id_for_AA(aa, id_start) {
   return id;
 }
 
-/*
- *  Generates KEGG color table html given a color palette.
- *
- *  Params:
- *   - fn_colors:         a dictionary matching each category to a hex color code
- *   - fn_type:           a string indicating function category type: one of "COG", "KEGG", "Source"
- *   - highlight_genes:   a dictionary matching specific gene caller IDs to hex colors to override other coloring
- *   - filter_to_split: if true, filters categories to only those shown in the split
- */
-function generateFunctionColorTable(fn_colors, fn_type, highlight_genes={}, filter_to_split) {
+
+ /*
+  *  Generates functional annotation color table for a given color palette.
+  *
+  *  @param fn_colors :       dict matching each category to a hex color code to override defaults
+  *  @param fn_type :         string indicating function category type
+  *  @param highlight_genes : a dictionary matching specific gene caller IDs to hex colors to override other coloring
+  *  @param filter_to_split : if true, filters categories to only those shown in the split
+  *  @param sort_by_count   : if true, sort annotations by # occurrences, otherwise sort alphabetically
+  *  @param thresh_count    : int indicating min # occurences required for a given category to be included in the table
+  */
+function generateFunctionColorTable(fn_colors, fn_type, highlight_genes=null, filter_to_split=true, sort_by_count=order_gene_colors_by_count, thresh_count=thresh_count_gene_colors) {
   info("Generating gene functional annotation color table");
-  var db = (function(type){
-    switch(type) {
-      case "COG":
-        return COG_categories;
-      case "KEGG":
-        return KEGG_categories;
-      case "Source":
-        return default_source_colors;
-      default:
-        console.log("Warning: Invalid type for function color table");
-        return null;
-    }
-  })(fn_type);
-  if(db == null) return;
 
-  $('#tbody_function_colors').empty();
+  let db, counts;
+  if(fn_type == 'Source') {
+    db = default_source_colors;
+  } else {
+    counts = [];
 
-  if(fn_type != "Source" && filter_to_split) {
-    var new_colors = {};
+    // Traverse categories
     for(gene of genes) {
-      if(gene.functions && gene.functions[fn_type + "_CATEGORY"]) {
-        new_colors[gene.functions[fn_type + "_CATEGORY"][0][0]] = fn_colors[gene.functions[fn_type + "_CATEGORY"][0][0]]
-      }
+      let cag = getCagForType(gene.functions, fn_type);
+      counts.push(cag ? cag : "None");
     }
-    if(Object.keys(new_colors).length > 0) fn_colors = new_colors;
+
+    // Get counts for each category
+    counts = counts.reduce((counts, val) => {
+      counts[val] = counts[val] ? counts[val]+1 : 1;
+      return counts;
+    }, {});
+
+    // Filter by count
+    let count_removed = 0;
+    counts = Object.fromEntries(
+      Object.entries(counts).filter(([cag,count]) => {
+        if(count < thresh_count) count_removed += count;
+        return count >= thresh_count || cag == "None";
+      })
+    );
+
+    // Save pre-sort order
+    let order = {};
+    for(let i = 0; i < Object.keys(counts).length; i++) {
+      order[Object.keys(counts)[i]] = i;
+    }
+
+    // Sort categories
+    counts = Object.fromEntries(
+      Object.entries(counts).sort(function(first, second) {
+        return sort_by_count ? second[1] - first[1] : first[0].localeCompare(second[0]);
+      })
+    );
+    if(count_removed > 0) counts["Other"] = count_removed;
+
+    // Create custom color dict from categories
+    db = getCustomColorDict(fn_type, cags=Object.keys(counts), order=order);
   }
 
-  Object.keys(db).forEach(function(category){
-    if(!(category in fn_colors)) {
-      return;
-    }
-    var category_name = (fn_type == "Source" ? category : db[category]);
+  // Override default values with any values supplied to fn_colors
+  if(fn_colors) {
+    Object.keys(db).forEach(cag => { if(Object.keys(fn_colors).includes(cag)) db[cag] = fn_colors[cag] });
+  }
 
-    var tbody_content =
-     '<tr id="picker_row_' + category + '"> \
-        <td></td> \
-        <td> \
-          <div id="picker_' + category + '" class="colorpicker" color="' + fn_colors[category] + '" background-color="' + fn_colors[category] + '" style="background-color: ' + fn_colors[category] + '; margin-right:16px; margin-left:16px"></div> \
-        </td> \
-        <td>' + category_name + '</td> \
-      </tr>';
-
-    $('#tbody_function_colors').append(tbody_content);
-  });
+  $('#tbody_function_colors').empty();
+  Object.keys(db).forEach(category =>
+    appendColorRow(fn_type == 'Source' ? category : category + " (" + counts[category] + ")", category, db[category])
+  );
 
   $('.colorpicker').colpick({
       layout: 'hex',
@@ -674,47 +676,33 @@ function generateFunctionColorTable(fn_colors, fn_type, highlight_genes={}, filt
       onChange: function(hsb, hex, rgb, el, bySetColor) {
           $(el).css('background-color', '#' + hex);
           $(el).attr('color', '#' + hex);
-
-          state[$('#gene_color_order').val().toLowerCase() + '-colors'][el.id.substring(7)] = '#' + hex;
+          let category = el.id.substring(7).replaceAll('_', ' ');
+          state[$('#gene_color_order').val().toLowerCase() + '-colors'][category] = '#' + hex;
           if (!bySetColor) $(el).val(hex);
       }
   }).keyup(function() {
       $(this).colpickSetColor(this.value);
   });
 
-  if(!isEmpty(highlight_genes)) {
-
+  if(highlight_genes) {
     for(gene of genes) {
-      var gene_callers_id = "" + gene.gene_callers_id;
-      if(Object.keys(highlight_genes).includes(gene_callers_id)) {
-        var tbody_content =
-         '<tr id="picker_row_' + gene_callers_id + '"> \
-            <td></td> \
-            <td> \
-              <div id="picker_' + gene_callers_id + '" class="colorpicker" color="' + highlight_genes[gene_callers_id] + '" background-color="' + highlight_genes[gene_callers_id] + '" style="background-color: ' + highlight_genes[gene_callers_id] + '; margin-right:16px; margin-left:16px"></div> \
-            </td> \
-            <td>Gene ID: ' + gene_callers_id + '</td> \
-          </tr>';
-
-        $('#tbody_function_colors').prepend(tbody_content);
-
-        $('#picker_' + gene_callers_id).colpick({
-            layout: 'hex',
-            submit: 0,
-            colorScheme: 'light',
-            onChange: function(hsb, hex, rgb, el, bySetColor) {
-                $(el).css('background-color', '#' + hex);
-                $(el).attr('color', '#' + hex);
-
-                state['highlight-genes'][el.id.substring(7)] = '#' + hex;
-                if (!bySetColor) $(el).val(hex);
-            }
-        }).keyup(function() {
-            $(this).colpickSetColor(this.value);
-        });
-      }
+      let gene_id = "" + gene.gene_callers_id;
+      if(Object.keys(highlight_genes).includes(gene_id)) appendColorRow("Gene ID: " + gene_id, gene_id, highlight_genes[gene_id], prepend=true);
     }
-
+    $('.colorpicker').colpick({
+        layout: 'hex',
+        submit: 0,
+        colorScheme: 'light',
+        onChange: function(hsb, hex, rgb, el, bySetColor) {
+            $(el).css('background-color', '#' + hex);
+            $(el).attr('color', '#' + hex);
+            let category = el.id.substring(7).replaceAll('_', ' ');
+            state['highlight-genes'][category] = '#' + hex;
+            if (!bySetColor) $(el).val(hex);
+        }
+    }).keyup(function() {
+        $(this).colpickSetColor(this.value);
+    });
   }
 }
 
@@ -769,26 +757,17 @@ function toggleGeneIDColor(gene_id, color="#FF0000") {
 
 function addGeneIDColor(gene_id, color="#FF0000") {
   state['highlight-genes'][gene_id] = color;
-  var tbody_content =
-   '<tr id="picker_row_' + gene_id + '"> \
-      <td></td> \
-      <td> \
-        <div id="picker_' + gene_id + '" class="colorpicker" color="' + color + '" background-color="' + color + '" style="background-color: ' + color + '; margin-right:16px; margin-left:16px"></div> \
-      </td> \
-      <td>Gene ID: ' + gene_id + '</td> \
-    </tr>';
+  appendColorRow("Gene ID: " + gene_id, gene_id, color, prepend=true);
 
-  $('#tbody_function_colors').prepend(tbody_content);
-
-  $('#picker_' + gene_id).colpick({
+  $('.colorpicker').colpick({
       layout: 'hex',
       submit: 0,
       colorScheme: 'light',
       onChange: function(hsb, hex, rgb, el, bySetColor) {
           $(el).css('background-color', '#' + hex);
           $(el).attr('color', '#' + hex);
-
-          state['highlight-genes'][el.id.substring(7)] = '#' + hex;
+          let category = el.id.substring(7).replaceAll('_', ' ');
+          state['highlight-genes'][category] = '#' + hex;
           if (!bySetColor) $(el).val(hex);
       }
   }).keyup(function() {
@@ -807,7 +786,7 @@ function addGeneIDColor(gene_id, color="#FF0000") {
       .attr('viewBox', '-5 -5 10 10')
       .append('svg:path')
         .attr('d', 'M 0,0 m -5,-5 L 5,0 L -5,5 Z')
-        .attr('fill', $('#picker_' + gene_id).attr('color'));
+        .attr('fill', state['highlight-genes'][gene_id]);
 
   redrawArrows();
 }
@@ -826,14 +805,23 @@ function redrawArrows() {
   drawArrows(parseInt($('#brush_start').val()), parseInt($('#brush_end').val()), $('#gene_color_order').val(), gene_offset_y, Object.keys(state['highlight-genes']));
 }
 
-function resetArrowMarkers() {
-  info("Resetting arrow markers");
-  $('#contextSvgDefs').empty();
-
-  ["none"].concat(mcags).concat(Object.keys(state['highlight-genes'])).forEach(function(category){
-    contextSvg.select('#contextSvgDefs')
-        .append('svg:marker')
-        .attr('id', 'arrow_' + category)
+function defineArrowMarkers(fn_type, cags=null, noneMarker=true) {
+  if(!cags) cags = Object.keys(getCustomColorDict(fn_type));
+  if(noneMarker) cags = ["None"].concat(cags);
+  cags.forEach(category => {
+    if(category.indexOf(',') != -1) category = category.substr(0,category.indexOf(','));
+    if(category.indexOf(';') != -1) category = category.substr(0,category.indexOf(';'));
+    if(category.indexOf('!!!') != -1) category = category.substr(0,category.indexOf('!!!'));
+    let color;
+    if(fn_type) {
+      let prop = fn_type.toLowerCase() + '-colors';
+      color = state[prop][category] ? state[prop][category] : "#808080";
+    } else {
+      // highlighted gene id
+      color = state['highlight-genes'][category];
+    }
+    contextSvg.select('#contextSvgDefs').append('svg:marker')
+        .attr('id', 'arrow_' + getCleanCagCode(category) )
         .attr('markerHeight', 2)
         .attr('markerWidth', 2)
         .attr('orient', 'auto')
@@ -842,8 +830,16 @@ function resetArrowMarkers() {
         .attr('viewBox', '-5 -5 10 10')
         .append('svg:path')
           .attr('d', 'M 0,0 m -5,-5 L 5,0 L -5,5 Z')
-          .attr('fill', category != "none" ? $('#picker_' + category).attr('color') : "gray");
+          .attr('fill', color);
   });
+}
+
+function resetArrowMarkers() {
+  info("Resetting arrow markers");
+  $('#contextSvgDefs').empty();
+
+  defineArrowMarkers($('#gene_color_order').val());
+  defineArrowMarkers(null, cags=Object.keys(state['highlight-genes']), noneMarker=false);
 }
 
 /*
@@ -855,20 +851,10 @@ function resetArrowMarkers() {
 function resetFunctionColors(fn_colors=null) {
   info("Resetting functional annotation colors");
   if($('#gene_color_order') == null) return;
+  let prop = $('#gene_color_order').val().toLowerCase() + '-colors';
+  Object.assign(state[prop], fn_colors ? fn_colors : getCustomColorDict($('#gene_color_order')));
 
-  switch($('#gene_color_order').val()) {
-    case 'Source':
-      Object.assign(state['source-colors'], fn_colors ? fn_colors : default_source_colors);
-      break;
-    case 'COG':
-      Object.assign(state['cog-colors'], fn_colors ? fn_colors : default_COG_colors);
-      break;
-    case 'KEGG':
-      Object.assign(state['kegg-colors'], fn_colors ? fn_colors : default_KEGG_colors);
-      break;
-  }
-
-  generateFunctionColorTable(state[$('#gene_color_order').val().toLowerCase() + '-colors'],
+  generateFunctionColorTable(state[prop],
                              $('#gene_color_order').val(),
                              state['highlight-genes'],
                              show_cags_in_split);
@@ -1208,7 +1194,7 @@ function showSetMaxValuesDialog() {
                 <td style="text-align: center;"><div class="input-group">\
                     <input class="form-control input-sm" id="max_multiple" type="text" size="5" value="0"/> \
                         <span class="input-group-btn"> \
-                            <button type="button" class="btn btn-default btn-sm" onclick="$(\'.max-coverage-input\').val($(\'#max_multiple\').val());">Set</button> \
+                            <button type="button" class="btn btn-outline-primary btn-sm" onclick="$(\'.max-coverage-input\').val($(\'#max_multiple\').val());">Set</button> \
                         </span> \
                     </div> \
                 </td> \
@@ -1499,8 +1485,10 @@ function saveState()
 function processState(state_name, state) {
     // set color defaults
     if(!state['source-colors']) state['source-colors'] = default_source_colors;
-    if(!state['cog-colors']) state['cog-colors'] = default_COG_colors;
-    if(!state['kegg-colors']) state['kegg-colors'] = default_KEGG_colors;
+    for(fn of getFunctionalAnnotations()) {
+      let prop = fn.toLowerCase() + '-colors';
+      if(!state[prop]) state[prop] = getCustomColorDict(fn);
+    }
 
     if(JSON.parse(localStorage.state) && JSON.parse(localStorage.state)['gene-fn-db']) {
       state['gene-fn-db'] = JSON.parse(localStorage.state)['gene-fn-db'];
@@ -1510,7 +1498,6 @@ function processState(state_name, state) {
     $('#gene_color_order').val(state['gene-fn-db']);
 
     generateFunctionColorTable(state[state['gene-fn-db'].toLowerCase() + '-colors'], state['gene-fn-db'], highlight_genes=state['highlight-genes'], show_cags_in_split);
-    mcags = Object.keys(state[state['gene-fn-db'].toLowerCase() + '-colors']);
     this.state = state;
 
     if(!state['highlight-genes']) {
@@ -1519,20 +1506,7 @@ function processState(state_name, state) {
     if(!state['show_highlights']) state['show_highlights'] = true;
 
     // define arrow markers for highlighted gene ids
-    Object.keys(state['highlight-genes']).forEach(function(gene_id){
-      contextSvg.select('#contextSvgDefs')
-          .append('svg:marker')
-          .attr('id', 'arrow_' + gene_id)
-          .attr('markerHeight', 2)
-          .attr('markerWidth', 2)
-          .attr('orient', 'auto')
-          .attr('refX', 0)
-          .attr('refY', 0)
-          .attr('viewBox', '-5 -5 10 10')
-          .append('svg:path')
-            .attr('d', 'M 0,0 m -5,-5 L 5,0 L -5,5 Z')
-            .attr('fill', $('#picker_' + gene_id).attr('color'));
-    });
+    defineArrowMarkers(null, cags=Object.keys(state['highlight-genes']), noneMarker=false);
     redrawArrows();
 
     if(state['show_indels']) {
@@ -1600,8 +1574,18 @@ function createCharts(state){
         layers_ordered = layers;
         state['layers'][layers[0]] = state['layers']['length'];
     } else {
-        // this is the usual path for merged profiles:
-        layers_ordered = state['layer-order'].filter(function (value) { if (layers.indexOf(value)>-1) return true; return false; });
+        if (state && Array.isArray(state['layer-order'])) {
+            layers_ordered = state['layer-order'].filter(function (value) {
+                return layers.indexOf(value) > -1;
+            });
+        } else {
+            layers_ordered = [];
+        }
+    }
+
+    if (state && state['layers']) {
+    } else {
+        return;
     }
 
     visible_layers = 0;
@@ -1735,56 +1719,26 @@ function createCharts(state){
        .attr("fill-opacity", "0.2")
        .attr('transform', 'translate(50, 10)');
 
-    // Define arrow markers
-    if(cog_annotated) {
-      ["none"].concat(Object.keys(COG_categories)).forEach(function(category){
-        defs.append('svg:marker')
-            .attr('id', 'arrow_' + category )
-            .attr('markerHeight', 2)
-            .attr('markerWidth', 2)
-            .attr('orient', 'auto')
-            .attr('refX', 0)
-            .attr('refY', 0)
-            .attr('viewBox', '-5 -5 10 10')
-            .append('svg:path')
-              .attr('d', 'M 0,0 m -5,-5 L 5,0 L -5,5 Z')
-              .attr('fill', category != "none" ? $('#picker_' + category).attr('background-color') : "gray");
-      });
+
+    for(fn of getFunctionalAnnotations()) {
+      defineArrowMarkers(fn);
     }
-    if(kegg_annotated) {
-      ["none"].concat(Object.keys(KEGG_categories)).forEach(function(category){
-        defs.append('svg:marker')
-            .attr('id', 'arrow_' + category )
-            .attr('markerHeight', 2)
-            .attr('markerWidth', 2)
-            .attr('orient', 'auto')
-            .attr('refX', 0)
-            .attr('refY', 0)
-            .attr('viewBox', '-5 -5 10 10')
-            .append('svg:path')
-              .attr('d', 'M 0,0 m -5,-5 L 5,0 L -5,5 Z')
-              .attr('fill', category != "none" ? $('#picker_' + category).attr('background-color') : "gray");
-      });
-    }
-    ["none"].concat(Object.keys(default_source_colors)).concat(Object.keys(state['highlight-genes'])).forEach(function(category){
-      defs.append('svg:marker')
-          .attr('id', 'arrow_' + category )
-          .attr('markerHeight', 2)
-          .attr('markerWidth', 2)
-          .attr('orient', 'auto')
-          .attr('refX', 0)
-          .attr('refY', 0)
-          .attr('viewBox', '-5 -5 10 10')
-          .append('svg:path')
-            .attr('d', 'M 0,0 m -5,-5 L 5,0 L -5,5 Z')
-            .attr('fill', category != "none" ? $('#picker_' + category).attr('color') : "gray");
-    });
+    defineArrowMarkers("Source");
+    defineArrowMarkers(null, cags=Object.keys(state['highlight-genes']), noneMarker=false);
 
     $('#context-container').css("width", (width + 150) + "px");
 
     /* Context down below */
-    var contextXScale = d3.scale.linear().range([0, contextWidth]).domain(charts[0].xScale.domain());
-
+    try {
+      var contextXScale = d3.scale.linear().range([0, contextWidth]).domain(charts[0].xScale.domain());
+    } catch (e) {
+      if (e instanceof TypeError) {
+        toastr.error("The height of all your read recruitment items are zero - anvio cant draw a split with this! Please add some height to one of your read recruitment item!", "",
+        { 'timeOut': '0', 'extendedTimeOut': '0' });
+      } else {
+        throw e;
+      }
+    }
     var contextAxis = d3.svg.axis()
                 .scale(contextXScale)
                 .tickSize(contextHeight);
@@ -1883,6 +1837,44 @@ function Chart(options){
     var localName = this.name;
     var num_data_points = this.variability_a.length;
 
+    var left_redirect = '<a class="split-page-icon" onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link({'type': inspect_mode, 'item_name': previous_contig_name, 'show_snvs': state['snvs_enabled']}) + "#" + this.name.toLowerCase() + '"> << </a>';
+    var right_redirect = '<a class="split-page-icon" onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link({'type': inspect_mode, 'item_name': next_contig_name, 'show_snvs': state['snvs_enabled']}) + "#" + this.name.toLowerCase() +'"> >> </a>';
+
+    $(document).ready(function() {
+      scrollToTargetWithDelay();
+    });
+
+    // Function to scroll to the target element specified in the URL hash with a delay
+    function scrollToTargetWithDelay() {
+      // Delay for 500ms to ensure the DOM is fully loaded
+      setTimeout(scrollToTarget, 500);
+    }
+
+    // Function to scroll to the target element specified in the URL hash
+    function scrollToTarget() {
+      var targetId = window.location.hash.substring(1);
+      var targetElement = document.getElementById(targetId);
+      if (targetElement) {
+        $('html, body').animate({ scrollTop: $(targetElement).offset().top }, 'slow');
+      } else {
+        // Use MutationObserver to observe changes in the DOM
+        var observer = new MutationObserver(function(mutations) {
+          mutations.forEach(function(mutation) {
+            if (mutation.type === 'childList') {
+              var newTargetElement = document.getElementById(targetId);
+              if (newTargetElement) {
+                $('html, body').animate({ scrollTop: $(newTargetElement).offset().top }, 500);
+                observer.disconnect(); // Stop observing once the target element is found
+              }
+            }
+          });
+        });
+
+        // Start observing the body for changes
+        observer.observe(document.body, { childList: true, subtree: true });
+      }
+    }
+
     this.xScale = d3.scale.linear()
                             .range([0, this.width])
                             .domain([0, this.coverage.length]);
@@ -1972,6 +1964,8 @@ function Chart(options){
 
     this.sampleTextContainer = this.samples_svg.append("g")
                               .attr('class',this.name.toLowerCase())
+                              .attr('id', this.name.toLowerCase())
+                              .attr("xmlns", "http://www.w3.org/2000/svg")
                               .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
 
     this.gcContainer   = this.svg.append("g")
@@ -2223,8 +2217,7 @@ function Chart(options){
     this.sampleTextContainer.append("text")
                    .attr("class","sample-title")
                    .attr("transform", "translate(0,20)")
-                   .text(this.name);
-
+                   .html(left_redirect + this.name + right_redirect);
 }
 
 Chart.prototype.showOnly = function(b){

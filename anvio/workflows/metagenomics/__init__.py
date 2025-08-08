@@ -18,8 +18,7 @@ from anvio.workflows.contigs import ContigsDBWorkflow
 from anvio.errors import ConfigError
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -103,7 +102,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                                         "--skip-SNV-profiling", "--profile-SCVs", "--description",
                                                         "--skip-hierarchical-clustering", "--distance", "--linkage", "--min-contig-length",
                                                         "--min-mean-coverage", "--min-coverage-for-variability", "--cluster-contigs",
-                                                        "--contigs-of-interest", "--queue-size", "--write-buffer-size-per-thread", "--max-contig-length"]
+                                                        "--contigs-of-interest", "--queue-size", "--write-buffer-size-per-thread",
+                                                        "--fetch-filter", "--min-percent-identity", "--max-contig-length"]
         rule_acceptable_params_dict['merge_fastas_for_co_assembly'] = []
         rule_acceptable_params_dict['merge_fastqs_for_co_assembly'] = []
         rule_acceptable_params_dict['anvi_merge'] = ["--sample-name", "--description", "--skip-hierarchical-clustering",
@@ -274,8 +274,12 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
 
     def init_refereces_txt(self):
-        if self.references_mode and not filesnpaths.is_file_exists(self.fasta_txt_file, dont_raise=True):
-            raise ConfigError('In references mode you must supply a fasta_txt file.')
+        if self.references_mode:
+            if not self.fasta_txt_file:
+                raise ConfigError("In refrences mode, you need to also fill in the `fasta_txt` value in your config file.")
+
+            if not filesnpaths.is_file_exists(self.fasta_txt_file, dont_raise=True):
+                raise ConfigError('You know the path you have for `fasta_txt` in your config file? There is no such file on your disk :(')
 
         if not self.references_mode:
             # if it is reference mode then the group names have been assigned in the contigs Snakefile
@@ -344,9 +348,9 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
             # the megahit output is temporary, and if we dont run
             # reformat_fasta we will delete the output of meghit at the
             # end of the workflow without saving a copy.
-            raise ConfigError('You seem to be interested in running the metagenomics workflow in reference mode. '
-                              'in this mode you can\'t skip `anvi_script_reformat_fasta` rule, which means you need '
-                              'to add this rule to your config file with `"run": true` directive.')
+            raise ConfigError('You seem to be interested in running the metagenomics workflow in assembly mode. '
+                              'In this mode you can\'t skip `anvi_script_reformat_fasta` rule, which means you need '
+                              'to add this rule to your config file with `"run": true` directive for this to work.')
 
 
     def init_samples_txt(self):

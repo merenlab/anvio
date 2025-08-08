@@ -53,8 +53,7 @@ settings.configure(**local_settings)
 django.setup()
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -76,7 +75,7 @@ class SummaryHTMLOutput:
 
         self.summary_type = self.summary_dict['meta']['summary_type']
 
-        if self.summary_type not in ['profile', 'pan', 'saav', 'vignette', 'artifact', 'program', 'programs_and_artifacts_index']:
+        if self.summary_type not in ['profile', 'pan', 'saav', 'vignette', 'artifact', 'program', 'workflow', 'programs_and_artifacts_index', 'inversions']:
             raise ConfigError("Unknown summary type '%s'" % self.summary_type)
 
 
@@ -121,8 +120,12 @@ class SummaryHTMLOutput:
             rendered = render_to_string('artifact.tmpl', self.summary_dict)
         elif self.summary_type == 'program':
             rendered = render_to_string('program.tmpl', self.summary_dict)
+        elif self.summary_type == 'workflow':
+            rendered = render_to_string('workflow.tmpl', self.summary_dict)
         elif self.summary_type == 'programs_and_artifacts_index':
             rendered = render_to_string('programs_and_artifacts_index.tmpl', self.summary_dict)
+        elif self.summary_type == 'inversions':
+            rendered = render_to_string('inversions.tmpl', self.summary_dict)
         else:
             raise ConfigError("You cray...")
 
@@ -133,7 +136,7 @@ def get_first_line(string):
     return string.split('\n')[0]
 
 @register.filter(name='get_first_sentence')
-def get_first_line(string):
+def get_first_sentence(string):
     return string.split('.')[0]
 
 @register.filter(name='lookup')
@@ -146,9 +149,17 @@ def lookup(d, index):
 def humanize(s):
     return s.replace('_', ' ')
 
+@register.filter(name='monospace')
+def monospace(s):
+    return f'<span style="font-family: monospace;">{s}</span>'
+
 @register.filter(name='sumvals')
 def sumvals(d):
     return sum(d.values())
+
+@register.filter(name='even_odd')
+def even_odd(d):
+    return int(d) % 2
 
 @register.filter(name='humanize_f')
 def humanize_f(n):
@@ -188,4 +199,14 @@ def base64_encode(data):
 @register.filter(name='zlib_encode')
 def zlib_encode(data):
     return zlib.compress(data.encode("utf-8"))
+
+@register.filter(name='pretty_join')
+def pretty_join(data, and_or="and"):
+    d = [str(item) for item in data]
+
+    if len(d) == 1:
+        return d[0]
+    else:
+        all_but_last = ", ".join(d[:-1])
+        return f"{all_but_last}, {and_or} {d[-1]}"
 

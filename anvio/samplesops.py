@@ -11,8 +11,7 @@ import anvio.filesnpaths as filesnpaths
 from anvio.errors import SamplesError
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __maintainer__ = "A. Murat Eren"
@@ -50,7 +49,7 @@ class SamplesInformation:
         self.sample_names_in_samples_information_file = filesnpaths.is_proper_samples_information_file(samples_information_path)
 
         self.samples_information_dict, self.aliases_to_attributes_dict = self.convert_samples_information_dict(utils.get_TAB_delimited_file_as_dictionary(samples_information_path))
-        self.samples_information_default_layer_order = open(samples_information_path, 'rU').readline().strip().split('\t')[1:]
+        self.samples_information_default_layer_order = open(samples_information_path, 'r').readline().strip().split('\t')[1:]
 
         self.run.info('Samples information', 'Loaded for %d samples' % len(self.samples_information_dict), quiet=self.quiet)
 
@@ -122,7 +121,7 @@ class SamplesInformation:
 
         filesnpaths.is_file_plain_text(single_order_path)
 
-        single_order_file_content = [l.strip('\n') for l in open(single_order_path, 'rU').readlines()]
+        single_order_file_content = [l.strip('\n') for l in open(single_order_path, 'r').readlines()]
 
         if len(single_order_file_content) != 1:
             raise SamplesError("The single order file should contain a single line of information. It can't have nothing,\

@@ -1,0 +1,289 @@
+#!/usr/bin/env Rscript
+
+## A script to perform enrichment analysis on multiple types of
+## per-group inputs (ie, functions, modules, etc)
+
+## Original Author: Amy Willis, March 2020
+## Generalized by: Iva Veseli, Sept 2020
+## Last updated: Amy Willis, November 2021
+
+## Usage:
+#         anvi-script-enrichment-stats --input=input.txt --output=output.txt
+#
+
+# The input file format is expected to be tab-delimited, with the following columns:
+## Column 1
+#### Header: does not matter (examples: COG_FUNCTION, KEGG_MODULE) as long as it is the first column
+#### Content: A string which is the annotation or name of the entity (function, module, etc) in this row
+## Column 2
+#### Header: 'accession'
+#### Content: A string which is the unique key (or ID) of the entity in this row
+## Column 3
+#### Header: does not matter (examples: gene_clusters_ids, sample_ids) as long as it is the third column
+#### Content: This column doesn't matter for the enrichment analysis and could hold anything you want, even NAs.
+####          Historically it has been used for: A comma-separated list of strings describing which gene clusters
+####          (in a pangenome) the row's function belongs to, or a comma-separated list of strings describing Which
+####          (metagenome) samples a KEGG module was found in.
+## Column 4
+#### Header: 'associated_groups'
+#### Content: a comma-separated list of strings describing in which groups the row entity was found to be present
+####          more than expected. See Alon's note [here](http://merenlab.org/2016/11/08/pangenomics-v2/#making-sense-of-functions-in-your-pangenome)
+####          for a description on how these associated groups are calculated. Anvi'o utils.py has get_enriched_groups()
+####          function to use when calculating these groups programatically.
+## Subsequent x columns, where x is the number of groups
+#### Headers: 'p_[group]', where [group] is replaced with the name/acronym for the group
+#### Content: A number (float or double) between 0 and 1 which is the proportion of genomes/samples in the group
+####          that the row entity was found in.
+## Subsequent x columns, where x is the number of groups
+#### Headers: 'N_[group]', where [group] is replaced with the name/acronym for the group
+#### Content: A number (integer) which is the total number of genomes/samples in the group
+# NOTE: in practice, it does not matter if the 'p_' and 'N_' columns are out of order/intermixed, as long as there is one pair of them per group
+#
+# Here is an example input file (with NCBI COG functions):
+#
+#     ╒═══════════════════╤═════════════════════════════════════════════════════════════════════════════════╤═════════════╤═════════════════════╤═════════════╤═════════════╤═════════════╤═════════════╕
+#     │ key               │ function                                                                        │ accession   │ associated_groups   │   p_faecali │   N_faecali │   p_faecium │   N_faecium │
+#     ╞═══════════════════╪═════════════════════════════════════════════════════════════════════════════════╪═════════════╪═════════════════════╪═════════════╪═════════════╪═════════════╪═════════════╡
+#     │ func_0021d388001e │ Glutathione S-transferase                                                       │ COG0625     │ faecali             │    0.166667 │           6 │           0 │           5 │
+#     ├───────────────────┼─────────────────────────────────────────────────────────────────────────────────┼─────────────┼─────────────────────┼─────────────┼─────────────┼─────────────┼─────────────┤
+#     │ func_0380ae2d04a8 │ Calcineurin-like phosphoesterase superfamily protein                            │ COG4186     │ faecium             │           0 │           6 │           1 │           5 │
+#     ├───────────────────┼─────────────────────────────────────────────────────────────────────────────────┼─────────────┼─────────────────────┼─────────────┼─────────────┼─────────────┼─────────────┤
+#     │ func_0391d94c7164 │ GrpB domain, predicted nucleotidyltransferase, UPF0157 family                   │ COG2320     │ faecali             │           1 │           6 │           0 │           5 │
+#     ├───────────────────┼─────────────────────────────────────────────────────────────────────────────────┼─────────────┼─────────────────────┼─────────────┼─────────────┼─────────────┼─────────────┤
+#     │ func_03e322ca8b53 │ Outer membrane protein OmpA and related peptidoglycan-associated (lipo)proteins │ COG2885     │ faecali             │    0.666667 │           6 │           0 │           5 │
+#     ├───────────────────┼─────────────────────────────────────────────────────────────────────────────────┼─────────────┼─────────────────────┼─────────────┼─────────────┼─────────────┼─────────────┤
+#     │ func_04d902ad9c24 │ Histone deacetylase complex, regulatory component SIN3                          │ COG5602     │ faecali             │    0.166667 │           6 │           0 │           5 │
+#     ├───────────────────┼─────────────────────────────────────────────────────────────────────────────────┼─────────────┼─────────────────────┼─────────────┼─────────────┼─────────────┼─────────────┤
+#     │ func_05c0153d23cf │ CRISPR/Cas system-associated protein Cas2, endoribonuclease                     │ COG3512     │ faecali             │    0.333333 │           6 │           0 │           5 │
+#     ├───────────────────┼─────────────────────────────────────────────────────────────────────────────────┼─────────────┼─────────────────────┼─────────────┼─────────────┼─────────────┼─────────────┤
+#     │ func_0639ac7f4d05 │ Butyrate kinase                                                                 │ COG3426     │ faecali             │           1 │           6 │           0 │           5 │
+#     ├───────────────────┼─────────────────────────────────────────────────────────────────────────────────┼─────────────┼─────────────────────┼─────────────┼─────────────┼─────────────┼─────────────┤
+#     │ func_076885ed1d62 │ Muramoyltetrapeptide carboxypeptidase LdcA (peptidoglycan recycling)            │ COG1619     │ faecium             │           0 │           6 │           1 │           5 │
+#     ├───────────────────┼─────────────────────────────────────────────────────────────────────────────────┼─────────────┼─────────────────────┼─────────────┼─────────────┼─────────────┼─────────────┤
+#     │ func_087ea15ffaa7 │ Uncharacterized protein YktB, UPF0637 family                                    │ COG4493     │ faecali             │           1 │           6 │           0 │           5 │
+#     ├───────────────────┼─────────────────────────────────────────────────────────────────────────────────┼─────────────┼─────────────────────┼─────────────┼─────────────┼─────────────┼─────────────┤
+#     │ (...)             │ (...)                                                                           │ (...)       │ (...)               │       (...) │       (...) │       (...) │        (...)│
+#     ╘═══════════════════╧═════════════════════════════════════════════════════════════════════════════════╧═════════════╧═════════════════════╧═════════════╧═════════════╧═════════════╧═════════════╛
+
+# Running this script on this file will add the following columns into it: enrichment_score, unadjusted_p_value, adjusted_q_value
+#
+
+
+## Load required packages
+suppressPackageStartupMessages(library(optparse))
+suppressPackageStartupMessages(library(tidyverse))
+suppressPackageStartupMessages(library(magrittr))
+
+## If we got here, that means tidyverse was loaded, which means it
+## must be installed.  This means tidyr must also be installed.  This
+## is a sanity check for that.
+if (isFALSE("tidyr" %in% rownames(installed.packages())) ||
+    isFALSE("tidyr" %in% (.packages()))) {
+  print("Error: tidyr not loaded.  Something went wrong")
+  quit(save = "no", status = 1, runLast = FALSE)
+}
+
+## Figure out which version of tidyr is installed.
+tidyr_version <- installed.packages()[(.packages()), ]["tidyr", "Version"]
+
+## tidyr uses semantic versioning ie 1.0.0 and then possibly some
+## stuff after.
+matches <- regmatches(tidyr_version,
+                      regexec("([0-9]+)\\.([0-9]+)\\.([0-9]+).*",
+                              tidyr_version,
+                              perl = TRUE))
+
+## See if there were matches.
+if (length(matches[[1]]) == 0) {
+  warning("Could not determine tidyr version number accurately")
+} else {
+  ## Major version is the first matching group.
+  ver_major <- matches[[1]][[2]]
+
+  if (strtoi(ver_major) >= 1) {
+    ## Need to use nest_legacy if using tidyr version >= 1.
+    nest <- nest_legacy
+  }
+}
+
+# command line options
+option_list <- list(
+  make_option(c("--output"),
+              help = "Output file name"),
+  make_option(c("--input"),
+              help = "Input file name"),
+  make_option(c("--qlambda"),
+              help = "Optional parameter. The maximum lambda for q-value estimation.")
+)
+parser <- OptionParser(option_list = option_list,
+                       description = "Hypothesis testing for 'enrichment' claims. Fits a GLM and computes the Rao Test statistic as an enrichment score.")
+arguments <- parse_args(parser,
+                        positional_arguments = TRUE)
+opts <- arguments$options
+
+# check if the input file is accessible
+if (file.access(opts$input) == -1) {
+  stop(sprintf("Specified input file '%s' does not exist", opts$input))
+}
+
+# read in data
+df_in <- readr::read_tsv(file = opts$input, col_types = cols())
+
+if (nrow(df_in) < 2) {
+  stop(sprintf("Your input file contains less than two lines :/ Not OK."))
+}
+
+# Find number of groups
+# Be smart about finding number of header rows
+n_columns_before_data <- (names(df_in) %>% startsWith("p_") %>% which %>% min) - 1
+num_groups <- (ncol(df_in) - n_columns_before_data) / 2
+
+# check if the input file makes sense
+if (num_groups %% 1 != 0) {
+  stop(sprintf("The input file '%s' does not contain an even number of 'p_' and 'N_' columns.", opts$input))
+}
+
+# make sure the input file contains expected columns
+for (column_name in c("accession", "associated_groups")) {
+  if (not (column_name %in% colnames(df_in)))
+    stop(sprintf("The input file '%s' does not contain an essential column ('%s').", opts$input, column_name))
+}
+
+# make sure associated_groups column includes group names.
+if (nrow(drop_na(distinct(df_in, associated_groups))) == 0) {
+  stop(sprintf("You have no group associations in your data. Which means, nothing is differentially occurring across your groups :/"))
+}
+
+# Set up functions to run
+run_test_no_spread <- function(df) {
+  df %>%
+    glm(cbind(x, N - x) ~ group, .,
+        family = binomial(link = "logit")) %>%
+    anova(test="Rao")
+}
+
+get_enrichment_score <- function(anova_output) {
+  anova_output$Rao[2]
+}
+
+get_unadjusted_p_value <- function(anova_output) {
+  ifelse(!is.na(anova_output$`Pr(>Chi)`[2]),
+         anova_output$`Pr(>Chi)`[2],
+         ifelse(anova_output$Rao[2] < 1e-3,
+                1,
+                stop("glm gave you a not-small test statistic but a missing p-value. This shouldn't happen! But it has, please submit an issue on our GitHub and tag @adw96 :)")))
+}
+
+# multiple functions have the same data, so get only unique data rows
+df_unique <- df_in %>%
+  select(names(df_in)[n_columns_before_data + (1 : (num_groups * 2))]) %>%
+  distinct %>%
+  add_column("data_structure_index" = 1:nrow(.), .before=1)
+
+# fit the GLMs in a nifty way using nest()
+w_models_unique <- df_unique %>%
+  pivot_longer(cols = -1, names_to="type", values_to="value") %>%
+  separate(type, into = c("type", "group"), sep = "_", extra = "merge") %>%
+  pivot_wider(names_from="type", values_from="value") %>%
+  mutate(x = round(N * p)) %>%
+  select(-p) %>%
+  group_by(data_structure_index) %>%
+  nest %>%
+  mutate(model = map(data, run_test_no_spread))
+
+# get the p-values & enrichment_scores
+pvalues_df_unique <- w_models_unique %>%
+  transmute(data_structure_index,
+            "unadjusted_p_value" = map_dbl(model, get_unadjusted_p_value),
+            "enrichment_score" = map_dbl(model, get_enrichment_score))
+
+# Rao test statistic should always be positive. However,
+# it happens that Rao test statistics are numerically negative
+# but close to zero. If they are large and negative (say, smaller than
+# 0.00001), we should throw an error:
+if (min(pvalues_df_unique$enrichment_score) < -1e-5) {
+  message("A Rao test statistic is large and negative, oh my!")
+  message("Here are the rows where the test statistic was negative:")
+
+  pvalues_df_unique %>%
+    filter(enrichment_score < -1e-5) %>%
+    arrange(desc(enrichment_score)) %>%
+    print(n = Inf)
+
+  stop("Something has gone terribly wrong, and it's Amy's fault. Please let her know ASAP so she can fix it!")
+}
+
+pvalues_df <- df_unique %>%
+  inner_join(pvalues_df_unique, by = "data_structure_index") %>%
+  select(-data_structure_index) %>%
+  inner_join(df_in, .,
+             by = names(df_in)[n_columns_before_data + (1 : (num_groups * 2))])
+
+# find the maximum lambda for qvalue
+# reasons for this change documented at https://github.com/merenlab/anvio/issues/1383
+if (length(opts$qlambda) > 0) {
+    max_lambda = opts$qlambda
+    sprintf("Using user-defined max lambda value of %s for q-value estimation", opts$qlambda)
+} else {
+    max_lambda <- min(0.95, max(pvalues_df$unadjusted_p_value, na.rm=T))
+}
+if (max_lambda < 0.05) {
+    stop(sprintf("Unfortunately, the maximum lambda for q-value estimation is < 0.05. This \
+         value is coming from the p-values in the enrichment test, so something in \
+         your data is making those p-values low. This sometimes happens when you \
+         have a very short input file (your input file has %s rows). Regardless, \
+         a possible solution is for you to pick your own max lambda that is >= 0.05, \
+         and provide it to the program calling this script by using the \
+         --qlambda parameter.", nrow(df_in)))
+}
+lambdas <- seq(0.05, max_lambda, 0.05)
+
+# obtain an estimate of the proportion of features that are truly null
+pi0_est <- try(qvalue::pi0est(pvalues_df$unadjusted_p_value,
+                              lambda = lambdas, pi0.method="smoother")$pi0,
+               silent=T)
+
+
+if ("try-error" %in% class(pi0_est)) {
+
+  # Sometimes, especially when there are many of p-values near 0.5 and fewer near 1
+  # (documented at https://github.com/merenlab/anvio/issues/1828),
+  # we can't reliably do the extrapolation we want. Let's instead just say
+  # that features with p-values above 0.2 are likely null, and use that to estimate
+  # the proportion of features that are truly null.
+  lambdas <- 0.2
+  pi0_est <- try(qvalue::pi0est(pvalues_df$unadjusted_p_value,
+                                lambda = lambdas, pi0.method="smoother")$pi0,
+                 silent=T)
+
+  if ("try-error" %in% class(pi0_est)) {
+
+    stop("Doh! We still can't estimate the proportion of features that are truly null. It's Amy's fault, so please let her know ASAP so she can fix it!")
+
+  }
+
+}
+
+# get the q-values, then format the data and save
+qvalues_df <- pvalues_df %>%
+  mutate("adjusted_q_value" = qvalue::qvalue(p=unadjusted_p_value, lambda=lambdas, pi0.method="smoother")$qvalues)
+
+enrichment_output <- qvalues_df %>%
+  select(names(df_in)[1],  # e.g. COG_FUNCTION
+         enrichment_score,
+         unadjusted_p_value,
+         adjusted_q_value,
+         associated_groups,
+         accession,
+         names(df_in)[2],
+         names(df_in)[3],
+         names(df_in)[n_columns_before_data + (1 : (num_groups * 2))])
+
+# If they are small and negative (checked earlier), just set them to zero. Then,
+# order the columns from largest to smallest enrichment score:
+enrichment_output %<>%
+  mutate("enrichment_score" = pmax(0, enrichment_score)) %>%
+  arrange(desc(enrichment_score))
+
+enrichment_output %>%
+  write_tsv(path = opts$output)

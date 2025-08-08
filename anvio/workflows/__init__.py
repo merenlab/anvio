@@ -15,10 +15,10 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
+from anvio.version import versions_for_db_types
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -31,7 +31,7 @@ run = terminal.Run()
 progress = terminal.Progress()
 r = errors.remove_spaces
 
-workflow_config_version = anvio.tables.versions_for_db_types['config']
+workflow_config_version = versions_for_db_types['config']
 
 class WorkflowSuperClass:
     def __init__(self):
@@ -87,7 +87,7 @@ class WorkflowSuperClass:
                 raise ConfigError(f"Anvi'o couldn't get things moving because the version of your config file is out "
                                   f"of date (your version: {self.config['config_version']}; up-to-date version: "
                                   f"{workflow_config_version}). Not a problem though, simply run `anvi-migrate {self.config_file} "
-                                  f"--migrate-dbs-safely` and it will be updated. Then re-run the command producing "
+                                  f"--migrate-safely` and it will be updated. Then re-run the command producing "
                                   f"this error message.")
 
         self.rules = []
@@ -333,7 +333,7 @@ class WorkflowSuperClass:
         # we are (it still may be better to do it elsewhere more appropriate .. so
         # we can look more decent or whatever):
         if self.save_workflow_graph:
-            lines = open(log_file_path, 'rU').readlines()
+            lines = open(log_file_path, 'r').readlines()
 
             try:
                 line_of_interest = [line_no for line_no in range(0, len(lines)) if lines[line_no].startswith('digraph')][0]
@@ -776,13 +776,15 @@ def get_workflow_module_dict():
     from anvio.workflows.phylogenomics import PhylogenomicsWorkflow
     from anvio.workflows.trnaseq import TRNASeqWorkflow
     from anvio.workflows.ecophylo import EcoPhyloWorkflow
+    from anvio.workflows.sra_download import SRADownloadWorkflow
 
     workflows_dict = {'contigs': ContigsDBWorkflow,
                       'metagenomics': MetagenomicsWorkflow,
                       'pangenomics': PangenomicsWorkflow,
                       'phylogenomics': PhylogenomicsWorkflow,
                       'trnaseq': TRNASeqWorkflow,
-                      'ecophylo': EcoPhyloWorkflow}
+                      'ecophylo': EcoPhyloWorkflow,
+                      'sra_download': SRADownloadWorkflow}
 
     return workflows_dict
 

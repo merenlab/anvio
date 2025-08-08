@@ -1,5 +1,22 @@
+/**
+ * Search functions for the interactive interface.
+ *
+ *  Authors: Ozcan Esen
+ *
+ * Copyright 2015-2021, The anvi'o project (http://anvio.org)
+ *
+ * Anvi'o is a free software. You can redistribute this program
+ * and/or modify it under the terms of the GNU General Public
+ * License as published by the Free Software Foundation, either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with anvi'o. If not, see <http://opensource.org/licenses/GPL-3.0>.
+ *
+ * @license GPL-3.0+ <http://opensource.org/licenses/GPL-3.0>
+ */
 
-function searchContigs() 
+function searchContigs()
 {
     var svalue = $('#searchValue').val();
 
@@ -11,22 +28,6 @@ function searchContigs()
     var column = $('#searchLayerList').val();
     search_column = (column == 0) ? 'Item Name' : layerdata[0][column];
     var operator = $('#searchOperator').val();
-    
-    if (operator < 6)
-    {
-        var operator_text = $('#searchOperator option:selected').text();
-
-        // logical operator
-        var _pre = "layerdata[";
-        var _post = "][" + column + "] " + operator_text + " \"" + svalue.trim() + "\"";
-
-    }
-    else if (operator == 6)
-    {
-        // contains
-        var _pre = "layerdata[";
-        var _post = "][" + column + "].toString().toLowerCase().indexOf(\"" + svalue + "\".toLowerCase()) != -1";
-    }
 
     var _len = layerdata.length;
     var _counter = 0;
@@ -39,12 +40,49 @@ function searchContigs()
         if (layerdata[row][column]==null)
             continue;
 
-        if (eval(_pre + row + _post)){
-            search_results.push({'split': layerdata[row][0], 'value': layerdata[row][column]});
+        var cellValue = layerdata[row][column];
+        var matchFound = false;
+
+        var numericCellValue = parseFloat(cellValue);
+        var numericSValue = parseFloat(svalue);
+
+        switch (operator) {
+            case '0': // exact match
+                matchFound = (cellValue == svalue.trim());
+                break;
+            case '1': // not equal
+                matchFound = (cellValue != svalue.trim());
+                break;
+            case '2': // greater than
+                matchFound = (numericCellValue > numericSValue);
+                break;
+            case '3': // less than
+                matchFound = (numericCellValue < numericSValue);
+                break;
+            case '4': // greater than or equal
+                matchFound = (numericCellValue >= numericSValue);
+                break;
+            case '5': // less than or equal
+                matchFound = (numericCellValue <= numericSValue);
+                break;
+            case '6': // contains
+                matchFound = cellValue.toString().toLowerCase().indexOf(svalue.toLowerCase()) !== -1;
+                break;
+            default:
+                break;
+        }
+
+        if (matchFound) {
+            search_results.push({'split': layerdata[row][0], 'value': cellValue});
             _counter++;
         }
     }
     $('#search_result_message').html(_counter + " result(s) found.");
+
+    // Highlighting Result section if there are results.
+    if (_counter > 0){
+        ShadowBoxSelection('search_contigs');
+    }
 }
 
 function searchFunctions() {
@@ -81,7 +119,7 @@ function searchFunctions() {
                         var _accession      = data['results'][i][3];
                         var _annotation     = data['results'][i][4];
                         var _search_term    = data['results'][i][5];
-                        var _split_name     = data['results'][i][6];                        
+                        var _split_name     = data['results'][i][6];
                     }
                     else
                     {
@@ -94,10 +132,10 @@ function searchFunctions() {
                     }
 
                     var _beginning = _annotation.toLowerCase().indexOf(_search_term.toLowerCase());
-                    _annotation = [_annotation.slice(0, _beginning), 
-                                   '<mark>', 
-                                   _annotation.slice(_beginning, _beginning + _search_term.length), 
-                                   '</mark>', 
+                    _annotation = [_annotation.slice(0, _beginning),
+                                   '<mark>',
+                                   _annotation.slice(_beginning, _beginning + _search_term.length),
+                                   '</mark>',
                                    _annotation.slice(_beginning + _search_term.length, _annotation.length)
                                    ].join("");
 
@@ -118,6 +156,11 @@ function searchFunctions() {
             }
 
             $('#search_functions_button').prop( "disabled", false );
+
+            // Highlighting Result section if there are results.
+            if (data['results'].length > 0){
+                ShadowBoxSelection('search_functions');
+            }
         },
         done: function() {
         }
@@ -162,13 +205,17 @@ function filterGeneClusters() {
                 $('.pan-filter-error').html(data['message']);
                 $('#search_result_message_pan_filter').html('');
             };
+
+            if (data['gene_clusters_list'].length > 0){
+                ShadowBoxSelection('search_pan_filter');
+            }
         }
     });
 }
 
 function showSearchResult() {
-    var clear_link = '<a href="#" onclick="$(\'.search-results-display, #search-results-table-search-item, #search-results-table-search-name, #search-results-table-header\').html(\'\');">(clear)</a>';
-    $("#search-results-table-header").html('<h4>Search results ' + clear_link + '</h4>');
+    var clear_link = '<button class="btn btn-sm btn-outline-danger mb-3 align-items-center justify-content-center" href="#" onclick="$(\'.search-results-display, #search-results-table-search-item, #search-results-table-search-name, #search-results-table-header\').html(\'\');">Clean Search Results</button>';
+    $("#search-results-table-header").html(clear_link);
     $("#search-results-table-search-name").html('Item Name');
     $("#search-results-table-search-item").html(search_column);
 
@@ -196,11 +243,11 @@ function highlightResult() {
         highlighted_splits.push(search_results[i]['split']);
     }
 
-    bins.HighlightItems(highlighted_splits); 
+    bins.HighlightItems(highlighted_splits);
 }
 
 function highlightSplit(name) {
-    bins.HighlightItems(name); 
+    bins.HighlightItems(name);
 }
 
 function appendResult() {

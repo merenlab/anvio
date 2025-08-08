@@ -10,8 +10,7 @@ import traceback
 import anvio
 from anvio.ttycolors import color_text
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __maintainer__ = "A. Murat Eren"
@@ -38,8 +37,8 @@ class AnvioError(Exception, object):
         return
 
     def __str__(self):
-        max_len = max([len(l) for l in textwrap.fill(self.e, 80).split('\n')])
-        error_lines = ['%s%s' % (l, ' ' * (max_len - len(l))) for l in textwrap.fill(self.e, 80).split('\n')]
+        max_len = max([len(l) for l in textwrap.fill(textwrap.dedent(self.e), 80).split('\n')])
+        error_lines = ['%s%s' % (l, ' ' * (max_len - len(l))) for l in textwrap.fill(textwrap.dedent(self.e), 80).split('\n')]
 
         error_message = ['%s: %s' % (color_text(self.error_type, 'red'), error_lines[0])]
         for error_line in error_lines[1:]:

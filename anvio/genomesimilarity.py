@@ -23,8 +23,7 @@ from anvio.drivers import pyani, sourmash, fastani
 from anvio.tables.miscdata import TableForLayerAdditionalData
 from anvio.tables.miscdata import TableForLayerOrders
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2019, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -546,7 +545,7 @@ class Dereplicate:
             return None
 
         if len(cluster) == 1:
-            return cluster[0]
+            return list(cluster)[0]
 
         # get all substantive completion and lenght values for genomes within the cluster
         substantive_completion_and_length_values = [(g, self.genomes_info_dict[g]['percent_completion'] - self.genomes_info_dict[g]['percent_redundancy'], self.genomes_info_dict[g]['total_length']) for g in cluster]

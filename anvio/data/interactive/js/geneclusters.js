@@ -1,11 +1,11 @@
 /**
  * Javascript library to visualize anvi'o gene clusterss
  *
- *  Author: A. Murat Eren <a.murat.eren@gmail.com>
- *  Credits: Özcan Esen
- *  Copyright 2016, The anvio Project
+ *  Authors: A. Murat Eren <a.murat.eren@gmail.com>
+ *           Özcan Esen
+ *           Mahmoud Yousef
  *
- * This file is part of anvi'o (<https://github.com/meren/anvio>).
+ * Copyright 2016-2021, The anvi'o project (http://anvio.org)
  *
  * Anvi'o is a free software. You can redistribute this program
  * and/or modify it under the terms of the GNU General Public
@@ -95,15 +95,50 @@ function loadAll() {
             else
             {
                 initializeCheckBoxes();
-                createDisplay();
+                createDisplay(true);
                 $('.loading-screen').hide();
             }
         }
     });
+}
+async function loadGCAdditionalData(gc_id, gc_key, gc_key_short) {
+    try {
+        const response = await $.ajax({
+            type: 'POST',
+            cache: false,
+            url: '/data/get_additional_gc_data/' + gc_id + '/' + gc_key
+        });
+        if (response['status'] === 0) {
+            var newThHeader = $('<th>').text(gc_key_short);
+            var newThData = $('<th>').text((response.gene_cluster_data).toFixed(2));
 
+            var gc_title_list = {
+                combined_homogeneity_index: "Combined Homogeneity Index",
+                functional_homogeneity_index : "Functional Homogeneity Index",
+                geometric_homogeneity_index : "Geometric Homogeneity Index",
+                num_genes_in_gene_cluster : "Number of [g]enes in Gene Cluster",
+                num_genomes_gene_cluster_has_hits : "Number of [G]enomes in Gene Cluster",
+                max_num_paralogs : "Maximum Number of Paralogs",
+                AAI_avg : "Amino Acid Identity Average",
+                AAI_max : "Amino Acid Identity Maximum",
+                AAI_min : "Amino Acid Identity Minimum",
+                SCG : "Single-copy Core Gene"
+            };
+
+            $('#gc-acc-table-header').parent().append(newThHeader);
+            $('#gc-acc-table-data').parent().append(newThData);
+
+            newThHeader.prop('title', gc_title_list[gc_key]);
+            $('#gc-acc-table').show();
+        } else {
+            console.log('Error:', response.message);
+        }
+    } catch (error) {
+        console.error('AJAX Error:', error);
+    }
 }
 
-function createDisplay(){
+async function createDisplay(display_table){
     var sequence_wrap_val = parseInt($('#wrap_length').val());
     var sequence_font_size_val = parseInt($('#font_size').val());
 
@@ -111,6 +146,7 @@ function createDisplay(){
     var sequence_font_size = (isNumber(sequence_font_size_val) && sequence_font_size_val > 0) ? sequence_font_size_val : 12;
 
     var svg = document.getElementById('svg');
+    var table = document.getElementById('gc-acc-main');
 
     // clear content
     while (svg.firstChild) {
@@ -123,9 +159,26 @@ function createDisplay(){
     var acid_sequences = [];
     var order = {};
     var count = 0;
+    var layer_id_list = {
+        combined_homogeneity_index: "CHI",
+        functional_homogeneity_index : "FHI",
+        geometric_homogeneity_index : "GHI",
+        num_genes_in_gene_cluster : "NgGC",
+        num_genomes_gene_cluster_has_hits : "NGGC",
+        max_num_paralogs : "MNP",
+        AAI_avg : "AAI_avg",
+        AAI_max : "AAI_max",
+        AAI_min : "AAI_min",
+        SCG : "SCG"
+    };
+
     for (var layer_id = 0; layer_id < state['layer-order'].length; layer_id++)
     {
         var layer = state['layer-order'][layer_id];
+
+        if (layer_id_list.hasOwnProperty(layer) && display_table) {
+            await loadGCAdditionalData(gene_cluster_data.gene_cluster_name, layer,  layer_id_list[layer]);
+        }
 
         if (gene_cluster_data.genomes.indexOf(layer) === -1)
             continue;
@@ -162,7 +215,7 @@ function createDisplay(){
 
             if (gene_cluster_data.genomes.indexOf(layer) === -1)
                 continue;
-            
+
             var rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
             rect.setAttribute('x', 0);
             rect.setAttribute('y', y_cord);
@@ -177,9 +230,6 @@ function createDisplay(){
             var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
             text.setAttribute('x', 0);
             text.setAttribute('y', parseFloat(rect.getAttribute('y')) + parseFloat(rect.getAttribute('height')) / 2);
-            text.setAttribute('font-size', "24px");
-            text.setAttribute('font-family', "Lato, Arial");
-            text.setAttribute('font-weight', '300');
             text.setAttribute('style', 'alignment-baseline:central');
             text.setAttribute('class', 'genomeTitle');
             text.appendChild(document.createTextNode(layer));
@@ -187,13 +237,11 @@ function createDisplay(){
 
             sub_y_cord = y_cord + 5;
 	         gene_cluster_data.gene_caller_ids_in_genomes[layer].forEach(function (caller_id) {
-                sequence = gene_cluster_data.aa_sequences_in_gene_cluster[layer][caller_id]; 
+                sequence = gene_cluster_data.aa_sequences_in_gene_cluster[layer][caller_id];
                 var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                 text.setAttribute('x', 0);
                 text.setAttribute('y', sub_y_cord);
                 text.setAttribute('font-size', sequence_font_size);
-                text.setAttribute('font-family', "Lato, Arial");
-                text.setAttribute('font-weight', '300');
                 text.setAttribute('style', 'alignment-baseline:text-before-edge; cursor: pointer;');
                 text.setAttribute('class', 'callerTitle');
                 text.setAttribute('gene-callers-id', caller_id);
@@ -215,7 +263,7 @@ function createDisplay(){
                 text.setAttribute('x', 0);
                 text.setAttribute('y', sub_y_cord);
                 text.setAttribute('font-size', sequence_font_size);
-                text.setAttribute('font-family', "monospace");
+                text.setAttribute('font-family',"monospace");
                 text.setAttribute('font-weight', '100');
                 text.setAttribute('style', 'alignment-baseline:text-before-edge');
                 text.setAttribute('class', 'sequence');
@@ -232,7 +280,7 @@ function createDisplay(){
                     tspan.appendChild(document.createTextNode(acid));
 		            tspan.setAttribute('style', 'alignment-baseline:text-before-edge');
                     text.appendChild(tspan);
-                } 
+                }
 
                 fragment.appendChild(text);
 
@@ -257,17 +305,11 @@ function createDisplay(){
 
     calculateLayout();
 
-    $('[data-toggle="popover"]').popover({"html": true, "trigger": "click", "container": "body", "viewport": "body", "placement": "top"});
-
-    // workaround for known popover bug
-    // source: https://stackoverflow.com/questions/32581987/need-click-twice-after-hide-a-shown-bootstrap-popover
-    $('body').on('hidden.bs.popover', function (e) {
-      $(e.target).data("bs.popover").inState.click = false;
-    });
+    $('[data-toggle="popover"]').popover({"html": true, sanitize: false,"trigger": "click", "container": "body", "viewport": "body", "placement": "top"});
 
     $('[data-toggle="popover"]').on('shown.bs.popover', function (e) {
-      var popover = $(e.target).data("bs.popover").$tip;
-      
+      var popover = $(e.target).data("bs.popover").tip;
+
       if ($(popover).css('top').charAt(0) === '-') {
         $(popover).css('top', '0px');
       }
@@ -324,4 +366,18 @@ function removeGeneChart() {
   if (node && node.parentNode) {
     node.parentNode.removeChild(node);
   }
+}
+
+function scrollTableLeft() {
+    document.querySelector('.gc-acc-main').scrollBy({
+        left: -100,
+        behavior: 'smooth'
+    });
+}
+
+function scrollTableRight() {
+    document.querySelector('.gc-acc-main').scrollBy({
+        left: 100,
+        behavior: 'smooth'
+    });
 }

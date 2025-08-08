@@ -74,7 +74,7 @@ Why must we format the module files this way, you ask? Well, to be honest, KEGG 
 
 ### Specifying KEGG data to be used for sanity checking
 
-If you haven't yet run %(anvi-setup-kegg-kofams)s on your computer, you will get an error when you try to run this program. This is because KEGG data is always used in addition to user-defined modules, and we need to be aware of which KEGG modules exist so we can make sure none of the user-defined modules have the same identifiers as these.
+If you haven't yet run %(anvi-setup-kegg-data)s on your computer, you will get an error when you try to run this program. This is because KEGG data can be used in addition to user-defined modules, and we need to be aware of which KEGG modules exist so we can make sure none of the user-defined modules have the same identifiers as these.
 
 By default, this program looks for the KEGG data in the default location, so if you have set up KEGG data in a non-default directory, you should specify the path to that directory using the `--kegg-data-dir` parameter:
 
@@ -82,4 +82,4 @@ By default, this program looks for the KEGG data in the default location, so if 
 anvi-setup-user-modules --user-modules /path/to/user/data/directory --kegg-data-dir /path/to/KEGG/data/directory
 {{ codestop }}
 
-If you have multiple KEGG data directories on your computer, you should specify the one that you intend to use (along with this user-defined data) for %(anvi-estimate-metabolism)s downstream. It will not make a difference if all of your modules have identifiers unique from KEGG ones, but just in case they overlap, it is better to catch this during setup rather than later during metabolism estimation. :)
+If you have multiple KEGG data directories on your computer, you should specify the one that you intend to use (along with this user-defined data) for %(anvi-estimate-metabolism)s downstream. It is better to catch and eliminate any overlap during the setup process rather than later during metabolism estimation. :)

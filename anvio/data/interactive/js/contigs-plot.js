@@ -1,3 +1,21 @@
+/**
+ * Contigs db stats visualization
+ *
+ *  Authors: Ozcan Esen
+ *
+ * Copyright 2015-2021, The anvi'o project (http://anvio.org)
+ *
+ * Anvi'o is a free software. You can redistribute this program
+ * and/or modify it under the terms of the GNU General Public
+ * License as published by the Free Software Foundation, either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with anvi'o. If not, see <http://opensource.org/licenses/GPL-3.0>.
+ *
+ * @license GPL-3.0+ <http://opensource.org/licenses/GPL-3.0>
+ */
+
 function draw_n_values_plot(container, stats) {
     var svg = d3.select(container)
         .append('svg')
@@ -45,12 +63,12 @@ function draw_n_values_plot(container, stats) {
                                     .attr('height', tooltip_pos.height)
                                     .attr('fill-opacity', '0.7')
                                     .attr('width', tooltip_pos.width);
-                                   
+
                             var tooltip_text = tooltip.append('text')
                                                 .attr('x', '10')
                                                 .attr('y', '15')
                                                 .attr('fill', '#FFFFFF')
-                                                .attr('font-family', 'Helvetica')
+                                                .attr('font-family', 'Roboto','Helvetica', 'Arial')
                                                 .attr('font-size', '12px');
 
                             tooltip_text.append('tspan')
@@ -162,12 +180,12 @@ function draw_gene_counts_chart(container, gene_counts) {
                                         .attr('height', tooltip_pos.height)
                                         .attr('fill-opacity', '0.7')
                                         .attr('width', tooltip_pos.width);
-                                       
+
                                 var tooltip_text = tooltip.append('text')
                                                     .attr('x', '10')
                                                     .attr('y', '15')
                                                     .attr('fill', '#FFFFFF')
-                                                    .attr('font-family', 'Helvetica')
+                                                    .attr('font-family', 'Roboto','Helvetica', 'Arial')
                                                     .attr('font-size', '12px');
 
                                 tooltip_text.append('tspan')

@@ -19,8 +19,7 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -36,15 +35,45 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 
 
 def get_list_in_chunks(input_list, num_items_in_each_chunk=5000):
-    """Yield smaller bits of a list"""
+    """Yield smaller bits of a list.
+
+    This function takes an input list and breaks it into smaller chunks, yielding each chunk one at a time.
+    The size of the chunks can be controlled by the `num_items_in_each_chunk` parameter.
+
+    Args:
+        input_list: The input list to be divided into smaller chunks.
+        num_items_in_each_chunk (optional): The number of items in each chunk. Defaults to 5000.
+
+    Yields:
+        A chunk of the input list with size `num_items_in_each_chunk`.
+    """
 
     for index in range(0, len(input_list), num_items_in_each_chunk):
         yield input_list[index:index + num_items_in_each_chunk]
 
 
 class DB:
+    """Anvi'o SQLite3 database management class.
+
+    This class provides an interface for working with anvi'o SQLite3 databases. It allows for
+    creating and managing tables, running queries, and interacting with the data in the database.
+    """
+
     def __init__(self, db_path, client_version, new_database=False, ignore_version=False, read_only=False, skip_rowid_prepend=False,
                  run=terminal.Run(), progress=terminal.Progress()):
+        """Initialize the DB instance.
+
+        Args:
+            db_path: The path to the SQLite3 database file.
+            client_version: The anvi'o client version associated with the database.
+            new_database (optional): Whether to create a new database. Defaults to False.
+            ignore_version (optional): Whether to ignore version checking. Defaults to False.
+            read_only (optional): Whether the database should be opened in read-only mode. Defaults to False.
+            skip_rowid_prepend (optional): Whether to skip prepending ROWID to rows in some tables. Defaults to False.
+            run (optional): A terminal.Run() instance. Defaults to a new terminal.Run() instance.
+            progress (optional): A terminal.Progress() instance. Defaults to a new terminal.Progress() instance.
+        """
+
         self.db_path = db_path
         self.read_only = read_only
         self.version = None
@@ -61,6 +90,14 @@ class DB:
         self.ROWID_PREPENDS_ROW_DATA = lambda table_name: False if skip_rowid_prepend else tables.is_table_requires_unique_entry_id(table_name)
         self.PROPER_SELECT_STATEMENT = lambda table_name: 'ROWID as "entry_id", *' if self.ROWID_PREPENDS_ROW_DATA(table_name) else '*'
 
+        # if a database is locked, which happens occasionally when we are working on HPCs and multiple parallel
+        # processes are trying to write to the same database, this class will try to catch 'database locked'
+        # errors and wait a little (as in 'self.retry_delay' seconds) before trying to do its job again. If
+        # the same thing happens way too many times (as in more than 'self.max_retries' times), it will
+        # give up and raise a 'max tries reached error'
+        self.max_retries = 100 # times
+        self.retry_delay = 15 # seconds
+
         if new_database:
             filesnpaths.is_output_file_writable(db_path)
         else:
@@ -72,8 +109,9 @@ class DB:
         if self.read_only and new_database:
             raise ConfigError("One cannot create a new database that is read-only.")
 
-        if not self.read_only:
-            self.check_if_db_writable()
+        if self.max_retries < 1 or self.retry_delay < 1:
+            raise ConfigError("Neither self.max_retries nor self.retry_delay can be set to a value smaller than 1. "
+                              "This instance is poorly configured :(")
 
         try:
             self.conn = sqlite3.connect(self.db_path)
@@ -103,7 +141,7 @@ class DB:
                     progress.reset()
                     raise ConfigError(f"The database at '{self.db_path}' is outdated (this database is v{self.version} and your anvi'o installation "
                                       f"wants to work with v{client_version}). You can migrate your database without losing any data using the "
-                                      f"program `anvi-migrate` with either of the flags `--migrate-dbs-safely` or `--migrate-dbs-quickly`.")
+                                      f"program `anvi-migrate` with either of the flags `--migrate-safely` or `--migrate-quickly`.")
 
             bad_tables = [table_name for table_name in self.table_names_in_db if not tables.is_known_table(table_name)]
             if len(bad_tables):
@@ -115,14 +153,31 @@ class DB:
 
 
     def __enter__(self):
+        """Allow the DB instance to be used in a 'with' statement."""
         return self
 
 
     def __exit__(self, *args):
+        """Clean up the DB instance upon exiting a 'with' statement."""
         self.disconnect()
 
 
     def _display_db_calls(func):
+        """A decorator to ensure that a database function can only be called when the DB instance is not read-only.
+
+        This decorator wraps a given function and checks whether the DB instance is read-only before allowing the
+        function to be called. If the DB instance is read-only, a ConfigError is raised with a message
+        indicating that the specific function cannot be called on a read-only instance.
+
+        Args:
+            func: The function to be wrapped by the decorator.
+
+        Returns:
+            The wrapped function that checks for read-only instances before executing.
+
+        Raises:
+            ConfigError: If the DB instance is read-only and the wrapped function is called.
+        """
         def inner(self, *args, **kwargs):
             if self.read_only:
                 raise ConfigError(f"Cannot call `DB.{func.__name__}` in read-only instance")
@@ -132,6 +187,20 @@ class DB:
 
 
     def _not_if_read_only(func):
+        """A decorator to ensure that a database function can only be called when the DB instance is not read-only.
+
+        This decorator is an alternative to _display_db_calls with the same functionality.
+
+        Args:
+            func: The function to be wrapped by the decorator.
+
+        Returns:
+            The wrapped function that checks for read-only instances before executing.
+
+        Raises:
+            ConfigError: If the DB instance is read-only and the wrapped function is called.
+        """
+
         def inner(self, *args, **kwargs):
             if self.read_only:
                 raise ConfigError(f"Cannot call `DB.{func.__name__}` in read-only instance")
@@ -141,49 +210,54 @@ class DB:
 
 
     def get_version(self):
+        """Get the anvi'o version associated with the database.
+
+        Returns:
+            The version of the anvi'o client that created the database.
+
+        Raises:
+            ConfigError: If the database doesn't appear to be generated by anvi'o.
+        """
+
         try:
             return self.get_meta_value('version')
         except:
             raise ConfigError("%s does not seem to be a database generated by anvi'o :/" % self.db_path)
 
 
-    def check_if_db_writable(self):
-        check_counter = 0
-        check_interval = 1 # in seconds
-        check_limit = 300 # 5 minutes, in seconds
-
-        journal_path = self.db_path + '-journal'
-
-        while(check_counter < check_limit and filesnpaths.is_file_exists(journal_path, dont_raise=True)):
-            if check_counter == 0:
-                # print only once
-                self.run.info_single("It seems the database at '%s' currently used by another process "
-                              "for writing operations. Anvi'o refuses to work with this database to avoid corrupting it. "
-                              "If you think this is a mistake, you may stop this process and delete the lock file at '%s' after making sure "
-                              "no other active process is using it for writing. In case this program is run by an automatic workflow manager like snakemake "
-                              "Anvi'o will periodically check if the journal file still exists for total of %d minutes. If the database is still not writable "
-                              "after that time, Anvi'o will stop running. " % (os.path.abspath(self.db_path), os.path.abspath(journal_path), int(check_limit/60)))
-
-            time.sleep(check_interval)
-            check_counter += check_interval
-
-        if not check_counter < check_limit:
-            raise ConfigError("Database is not writable.")
-
-
     @_not_if_read_only
     def create_self(self):
+        """Create the 'self' table in the database.
+
+        The 'self' table is a meta table used to store key-value pairs related to the database.
+        """
         self._exec('''CREATE TABLE self (key text, value text)''')
 
 
     @_not_if_read_only
     def drop_table(self, table_name):
-        """Delete a table in the database if it exists"""
+        """Delete a table in the database if it exists.
+
+        Args:
+            table_name: The name of the table to be dropped.
+        """
+
         self._exec('''DROP TABLE IF EXISTS %s;''' % table_name)
 
 
     @_not_if_read_only
     def create_table(self, table_name, fields, types):
+        """Create a new table in the database with the specified fields and types.
+
+        Args:
+            table_name: The name of the new table to be created.
+            fields: A list of field names for the new table.
+            types: A list of data types corresponding to the field names.
+
+        Raises:
+            ConfigError: If the number of fields and types do not match.
+        """
+
         if len(fields) != len(types):
             raise ConfigError("create_table: The number of fields and types has to match.")
 
@@ -195,12 +269,28 @@ class DB:
 
     @_not_if_read_only
     def set_version(self, version):
+        """Set the anvi'o version associated with the database.
+
+        Args:
+            version: The version of the anvi'o client to be associated with the database.
+        """
+
         self.set_meta_value('version', version)
         self.commit()
 
 
     @_not_if_read_only
     def set_meta_value(self, key, value):
+        """Set a meta key-value pair in the 'self' table.
+
+        If the key already exists in the table, the existing key-value pair will be removed
+        before the new one is added.
+
+        Args:
+            key: The meta key to be set.
+            value: The meta value associated with the key.
+        """
+
         self.remove_meta_key_value_pair(key)
         self._exec('''INSERT INTO self VALUES(?,?)''', (key, value,))
         self.commit()
@@ -208,24 +298,40 @@ class DB:
 
     @_not_if_read_only
     def remove_meta_key_value_pair(self, key):
+        """Remove a meta key-value pair from the 'self' table.
+
+        Args:
+            key: The meta key to be removed.
+        """
+
         self._exec('''DELETE FROM self WHERE key="%s"''' % key)
         self.commit()
 
 
     @_not_if_read_only
     def update_meta_value(self, key, value):
+        """Update a meta key-value pair in the 'self' table.
+
+        This function first removes the existing key-value pair (if any) and then sets the new
+        key-value pair.
+
+        Args:
+            key: The meta key to be updated.
+            value: The new meta value associated with the key.
+        """
+
         self.remove_meta_key_value_pair(key)
         self.set_meta_value(key, value)
 
 
     @_not_if_read_only
     def copy_paste(self, table_name, source_db_path, append=False):
-        """Copy `table_name` data from another database (`source_db_path`) into yourself
+        """Copy data from a table in another database into the current database.
 
-        Arguments
-        =========
-        append : bool, False
-            If True, the table is appened to the source DB, rather than replaced.
+        Args:
+            table_name: The name of the table to copy data from.
+            source_db_path: The path of the source database.
+            append: If True, the table is appended to the source DB, rather than replaced. (default: False)
         """
 
         source_db = DB(source_db_path, None, ignore_version=True)
@@ -247,7 +353,15 @@ class DB:
 
 
     def _fetchall(self, response, table_name):
-        """Wrapper for fetchall"""
+        """Wrapper for fetchall method on a response object from a database query.
+
+        Args:
+            response: A response object from a database query.
+            table_name: The name of the table being queried.
+
+        Returns:
+            A list of tuples with the fetched data.
+        """
 
         DISPLAY_DB_CALLS = False if table_name in self.tables_to_exclude_from_db_call_reports else anvio.DISPLAY_DB_CALLS
 
@@ -263,12 +377,16 @@ class DB:
 
 
     def get_max_value_in_column(self, table_name, column_name, value_if_empty=None, return_min_instead=False):
-        """Get the maximum OR minimum column value in a table
+        """Get the maximum or minimum value in a specified column of a table.
 
-        Parameters
-        ==========
-        value_if_empty : object, None
-            If not None and table has no entries, value returned is value_if_empty.
+        Args:
+            table_name: The name of the table to query.
+            column_name: The name of the column to find the maximum or minimum value.
+            value_if_empty: If not None and table has no entries, the value returned is value_if_empty. (default: None)
+            return_min_instead: If True, returns the minimum value instead of the maximum value. (default: False)
+
+        Returns:
+            The maximum or minimum value in the specified column, or value_if_empty if the table is empty.
         """
 
         response = self._exec("""SELECT %s(%s) FROM %s""" % ('MIN' if return_min_instead else 'MAX', column_name, table_name))
@@ -289,7 +407,16 @@ class DB:
 
 
     def get_meta_value(self, key, try_as_type_int=True, return_none_if_not_in_table=False):
-        """if try_as_type_int, value is attempted to be converted to integer. If it fails, no harm no foul."""
+        """Get the value associated with a key from the 'self' table.
+
+        Args:
+            key: The meta key to search for.
+            try_as_type_int: If True, attempts to convert the value to an integer. If it fails, returns the original value. (default: True)
+            return_none_if_not_in_table: If True, returns None if the key is not found in the table. (default: False)
+
+        Returns:
+            The value associated with the key, or None if the key is not found and return_none_if_not_in_table is True.
+        """
 
         response = self._exec("""SELECT value FROM self WHERE key='%s'""" % key)
 
@@ -315,27 +442,60 @@ class DB:
 
 
     def commit(self):
-        self.conn.commit()
+        """Commit any pending transactions to the database."""
+
+        self.execute_safely(self.conn.commit)
 
 
     def disconnect(self):
+        """Disconnect from the database, committing any pending transactions and closing the connection."""
         if self.db_connected:
-            self.conn.commit()
-            self.conn.close()
+            self.commit()
+            self.execute_safely(self.conn.close)
             self.db_connected = False
         else:
             # it is already disconnected
             pass
 
 
-    def _exec(self, sql_query, value=None):
-        """Execute an arbitrary sql statement
+    def execute_safely(self, func, *args):
+        """Execute an SQLite instruction safely and by handlng database locked errors gracefully
 
-        Notes
-        =====
-        - This is a private method, and so it is presumed whoever uses it knows what they are doing.
-          For this reason, it is not decorated with _not_if_read_only. It is therefore possible to write
-          to the DB using this method, even with self.read_only = True
+        See https://github.com/merenlab/anvio/pull/2414 for details and example code to test this
+        functionality.
+        """
+
+        retries = 0
+        while retries <= self.max_retries:
+            try:
+                ret_val = func(*args)
+                return ret_val
+            except sqlite3.OperationalError as e:
+                if "database is locked" in str(e):
+                    retries += 1
+                    self.run.info_single(f"The database at {self.db_path} is locked :/ Retrying the function `{func.__name__}` "
+                                         f"again in {self.retry_delay} seconds (attempt {retries} of {self.max_retries})...",
+                                         cut_after=None, level=0, mc='red')
+                    time.sleep(self.retry_delay)
+                else:
+                    raise ConfigError(f"Someone is very upset with your database: {e}")
+
+        raise ConfigError("Database has been locked for too long, and max retries exceeded :(")
+
+
+    def _exec(self, sql_query, value=None):
+        """Execute an arbitrary SQL statement.
+
+        Note: This is a private method and it is assumed that whoever uses it knows what they are doing.
+        It is not decorated with _not_if_read_only, so it is possible to write to the DB using this method,
+        even with self.read_only = True.
+
+        Args:
+            sql_query: The SQL query to execute.
+            value: A single parameter to use in the SQL query (optional).
+
+        Returns:
+            The result of the executed SQL query.
         """
 
         # this is an ugly workaround to not display DB calls if they involve talbes
@@ -357,25 +517,31 @@ class DB:
             sql_exec_timer = terminal.Timer()
 
         if value:
-            ret_val = self.cursor.execute(sql_query, value)
+            ret_val = self.execute_safely(self.cursor.execute, sql_query, value)
         else:
-            ret_val = self.cursor.execute(sql_query)
+            ret_val = self.execute_safely(self.cursor.execute, sql_query)
 
         if DISPLAY_DB_CALLS:
             self.run.info("exec", f"{sql_exec_timer.time_elapsed()}", mc='yellow')
 
         self.commit()
+
         return ret_val
 
 
     def _exec_many(self, sql_query, values):
-        """Execute many sql statements
+        """Execute many SQL statements.
 
-        Notes
-        =====
-        - This is a private method, and so it is presumed whoever uses it knows what they are doing.
-          For this reason, it is not decorated with _not_if_read_only. It is therefore possible to write
-          to the DB using this method, even with self.read_only = True
+        Note: This is a private method and it is assumed that whoever uses it knows what they are doing.
+        It is not decorated with _not_if_read_only, so it is possible to write to the DB using this method,
+        even with self.read_only = True.
+
+        Args:
+            sql_query: The SQL query to execute.
+            values: A list of values to be used as parameters in the SQL query.
+
+        Returns:
+            True if all SQL statements were executed successfully.
         """
 
         chunk_counter = 0
@@ -386,12 +552,14 @@ class DB:
                 self.run.info_single(f"{sql_query}", nl_after=1, cut_after=None, level=0, mc='yellow')
                 sql_exec_timer = terminal.Timer()
 
-            self.cursor.executemany(sql_query, chunk)
+            self.execute_safely(self.cursor.executemany, sql_query, chunk)
 
             if anvio.DISPLAY_DB_CALLS:
                 self.run.info("exec", f"{sql_exec_timer.time_elapsed()}", mc='yellow')
 
             chunk_counter += 1
+
+        self.commit()
 
         return True
 
@@ -543,7 +711,7 @@ class DB:
         return [t[0] for t in results]
 
 
-    def get_some_columns_from_table(self, table_name, comma_separated_column_names, unique=False, where_clause=None):
+    def get_some_columns_from_table(self, table_name, comma_separated_column_names, unique=False, where_clause=None, as_data_frame=False):
         self.is_table_exists(table_name)
 
         if where_clause:
@@ -553,6 +721,9 @@ class DB:
             response = self._exec('''SELECT %s %s FROM %s''' % ('DISTINCT' if unique else '', comma_separated_column_names, table_name))
 
         results = self._fetchall(response, table_name)
+
+        if as_data_frame:
+            results = pd.DataFrame(results, columns=[c.strip() for c in comma_separated_column_names.split(',')])
 
         return results
 

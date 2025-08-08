@@ -1,3 +1,23 @@
+/**
+ * Constants used from various interface functions
+ *
+ *  Authors: A. Murat Eren <a.murat.eren@gmail.com>
+ *           Isaac Fink <iafink@uchicago.edu>
+ *           Ozcan Esen
+ *
+ * Copyright 2015-2021, The anvi'o project (http://anvio.org)
+ *
+ * Anvi'o is a free software. You can redistribute this program
+ * and/or modify it under the terms of the GNU General Public
+ * License as published by the Free Software Foundation, either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with anvi'o. If not, see <http://opensource.org/licenses/GPL-3.0>.
+ *
+ * @license GPL-3.0+ <http://opensource.org/licenses/GPL-3.0>
+ */
+
 var COG_categories = {
     'A': '[A] RNA processing and modification',
     'B': '[B] Chromatin Structure and dynamics',
@@ -86,6 +106,9 @@ var default_source_colors = {
   'tRNA': '#226ab2',
   'rRNA': '#b22222'
 }
+
+// default colors for user-supplied functional annotations
+var custom_cag_colors = Object.values(default_COG_colors).concat(Object.values(default_KEGG_colors));
 
 var named_functional_sources = {
     'EGGNOG_BACT': {
@@ -353,7 +376,35 @@ var named_layers = {
         'min': 0,
         'max': 1,
         'type': 'bar',
+        'margin': 90,
         'pretty_name': 'Comb. Homogeneity Ind.',
+    },
+    'AAI_min': {
+        'height': 180,
+        'color': '#9e009e',
+        'norm': 'none',
+        'min': 0,
+        'max': 1,
+        'type': 'bar',
+        'pretty_name': 'Min AAI',
+    },
+    'AAI_max': {
+        'height': 180,
+        'color': '#9e009e',
+        'norm': 'none',
+        'min': 0,
+        'max': 1,
+        'type': 'bar',
+        'pretty_name': 'Max AAI',
+    },
+    'AAI_avg': {
+        'height': 180,
+        'color': '#590059',
+        'norm': 'none',
+        'min': 0,
+        'max': 1,
+        'type': 'bar',
+        'pretty_name': 'Avg AAI',
     },
     'Gene_cluster_type_LLR': {
         'height': 180,
@@ -373,12 +424,14 @@ var named_layers = {
         'color': '#002e4f',
         'norm': 'none',
         'min': 1,
+        'margin': 90,
         'pretty_name': 'Max num paralogs',
     },
     'SCG': {
         'height': 180,
         'color': '#4f1111',
         'norm': 'none',
+        'margin': 90,
         'pretty_name': 'SCG Clusters',
     },
     'total_length': {

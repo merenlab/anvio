@@ -6,12 +6,12 @@ import os
 import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
+import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -35,10 +35,13 @@ class MCL:
 
         utils.is_program_exists('mcl')
 
-        self.clusters_file_path = 'mcl-clusters.txt'
+        # if the programmer wishes to store the clusters output file in a particular
+        # location, they will have to explicitly set the path after gettinga an
+        # instance of this class
+        self.clusters_file_path = filesnpaths.get_temp_file_path()
 
         if not self.run.log_file_path:
-            self.run.log_file_path = 'mcl-log-file.txt'
+            self.run.log_file_path = filesnpaths.get_temp_file_path()
 
 
     def check_output(self, expected_output, process='diamond'):
@@ -48,14 +51,15 @@ class MCL:
                                "Please check the log file here: '%s." % (process, self.run.log_file_path))
 
 
-    def get_clusters_dict(self):
+    def get_clusters_dict(self, name_prefix='GC'):
         self.cluster()
 
         clusters_dict = {}
 
         line_no = 1
         for line in open(self.clusters_file_path).readlines():
-            clusters_dict['GC_%08d' % line_no] = line.strip().split('\t')
+            cluster_name = f"{name_prefix}_{line_no:08d}"
+            clusters_dict[cluster_name] = line.strip().split('\t')
 
             line_no += 1
 

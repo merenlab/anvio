@@ -1,3 +1,21 @@
+/**
+ * Functions for panel animations.
+ *
+ *  Authors: Özcan Esen <ozcanesen@gmail.com>
+ *
+ *  Copyright 2015-2021, The anvi'o project (http://anvio.org)
+ *
+ * Anvi'o is a free software. You can redistribute this program
+ * and/or modify it under the terms of the GNU General Public
+ * License as published by the Free Software Foundation, either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with anvi'o. If not, see <http://opensource.org/licenses/GPL-3.0>.
+ *
+ * @license GPL-3.0+ <http://opensource.org/licenses/GPL-3.0>
+ */
+
 var ANIMATIONS_ENABLED = true;
 var SLIDE_INTERVAL = 4;
 var SLIDE_STEP_SIZE = 15;
@@ -11,7 +29,7 @@ function toggleLeftPanel() {
     is_left_panel_sliding = true;
 
     if ($('#panel-left').is(':visible')) {
-        var animation_frame = function(){ 
+        var animation_frame = function(){
             if (ANIMATIONS_ENABLED && $('#panel-left')[0].getBoundingClientRect().right > 0) {
                 $('#panel-left').css('left', parseInt($('#panel-left').css('left')) - SLIDE_STEP_SIZE);
                 $('#toggle-panel-left').css('left', $('#sidebar')[0].getBoundingClientRect().right + 'px');
@@ -28,7 +46,7 @@ function toggleLeftPanel() {
         animation_frame();
     } else {
         $('#panel-left').show();
-        var animation_frame = function(){ 
+        var animation_frame = function(){
             if (ANIMATIONS_ENABLED && $('#panel-left')[0].getBoundingClientRect().left < 0) {
                 $('#panel-left').css('left', parseInt($('#panel-left').css('left')) + SLIDE_STEP_SIZE);
                 $('#toggle-panel-left').css('left', $('#sidebar')[0].getBoundingClientRect().right + 'px');
@@ -46,11 +64,31 @@ function toggleLeftPanel() {
     }
 }
 
+function switchNavigationTabs(tab_number) {
+    if ($('#panel-left').is(':visible')) {
+        $('a').each(function(){
+            if (tab_number){
+                $(tab_number).addClass('active');
+                $(tab_number).tab('show');
+            }
+            if ($(this).prop('href') == window.location.href) {
+                $(this).addClass('active'); 
+                $(this).parents('li').addClass('active');
+            } else 
+            { 
+              $(this).removeClass('active');
+              $(this).parents('li').removeClass('active');
+            }
+        });
+    }
+}
+
+// Outdated with new UI but lets keep it for future development
 function toggleRightPanel(name) {
     ['#mouse_hover_panel', '#description-panel', '#news-panel'].forEach(function(right_panel) {
         if (right_panel == name)
             return;
-        
+
         $(right_panel).hide();
     });
 

@@ -6,48 +6,140 @@ v2020-04-27:
     archive_name: KEGG_build_2020-04-27_b893b7b915cb.tar.gz
     hash: b893b7b915cb
     modules_db_version: 1
+    no_modeling_data: True
+    no_stray_KOs: True
+    no_binary_relations: True
+    no_maps: True
 
 v2020-06-23:
     url: https://ndownloader.figshare.com/files/23701919
     archive_name: KEGG_build_2020-06-23_4a75508b48aa.tar.gz
     hash: 4a75508b48aa
     modules_db_version: 2
+    no_modeling_data: True
+    no_stray_KOs: True
+    no_binary_relations: True
+    no_maps: True
 
 v2020-08-06:
     url: https://ndownloader.figshare.com/files/25464530
     archive_name: KEGG_build_2020-08-06_8f88ef165f4c.tar.gz
     hash: 8f88ef165f4c
     modules_db_version: 2
+    no_modeling_data: True
+    no_stray_KOs: True
+    no_binary_relations: True
+    no_maps: True
 
 v2020-12-23:
     url: https://ndownloader.figshare.com/files/25878342
     archive_name: KEGG_build_2020-12-23_45b7cc2e4fdc.tar.gz
     hash: 45b7cc2e4fdc
     modules_db_version: 2
+    no_modeling_data: True
+    no_stray_KOs: True
+    no_binary_relations: True
+    no_maps: True
 
 v2021-12-18:
     url: https://figshare.com/ndownloader/files/31959416
     archive_name: KEGG_build_2021-12-18_58937b64c44c.tar.gz
     hash: 58937b64c44c
     modules_db_version: 3
+    no_modeling_data: True
+    no_stray_KOs: True
+    no_binary_relations: True
+    no_maps: True
 
 v2022-04-14:
     url: https://figshare.com/ndownloader/files/34817812
     archive_name: KEGG_build_2022-04-14_666feeac5de2.tar.gz
     hash: 666feeac5de2
     modules_db_version: 4
+    no_modeling_data: True
+    no_stray_KOs: True
+    no_binary_relations: True
+    no_maps: True
+
+v2023-01-10:
+    url: https://figshare.com/ndownloader/files/38799687
+    archive_name: KEGG_build_2023-01-10_d20a0dcd2128.tar.gz
+    hash: d20a0dcd2128
+    modules_db_version: 4
+    no_modeling_data: True
+    no_stray_KOs: True
+    no_binary_relations: True
+    no_maps: True
+
+v2023-09-18:
+    url: https://figshare.com/ndownloader/files/42381873
+    archive_name: KEGG_build_2023-09-18_a2b5bde358bb.tar.gz
+    hash: a2b5bde358bb
+    modules_db_version: 4
+    no_modeling_data: True
+    no_stray_KOs: True
+    no_binary_relations: True
+    no_maps: True
+
+v2023-09-22:
+    url: https://figshare.com/ndownloader/files/42428115
+    archive_name: KEGG_build_2023-09-22_a2b5bde358bb.tar.gz
+    hash: a2b5bde358bb
+    modules_db_version: 4
+    no_stray_KOs: True
+    no_binary_relations: True
+    no_maps: True
+
+v2024-03-09:
+    url: https://figshare.com/ndownloader/files/44953354
+    archive_name: KEGG_build_2024-03-09_23910d68b4f2.tar.gz
+    hash: 23910d68b4f2
+    modules_db_version: 4
+    no_modeling_data: True
+    no_binary_relations: True
+    no_maps: True
+
+v2024-08-30:
+    url: https://figshare.com/ndownloader/files/48903154
+    archive_name: KEGG_build_2024-08-30_6b658b5c4379.tar.gz
+    hash: 6b658b5c4379
+    modules_db_version: 4
+    no_stray_KOs: True
+
+v2024-09-29:
+    url: https://figshare.com/ndownloader/files/49500822
+    archive_name: KEGG_build_2024-09-29_5a9644d40061.tar.gz
+    hash: 5a9644d40061
+    modules_db_version: 4
+
+v2025-02-04:
+    url: https://figshare.com/ndownloader/files/52133138
+    archive_name: KEGG_build_2025-02-04_4039c79d9c82.tar.gz
+    hash: 4039c79d9c82
+    modules_db_version: 4
+    no_maps: True
+
+v2025-08-07:
+    url: https://figshare.com/ndownloader/files/57008792
+    archive_name: KEGG_build_2025-08-07_66e53d49e65a.tar.gz
+    hash: 66e53d49e65a
+    modules_db_version: 4
+
 
 # How to add a new KEGG snapshot to this file:
 # 1. download the latest data directly from KEGG by running
-#    `anvi-setup-kegg-kofams -D --kegg-data-dir ./KEGG`
+#    `anvi-setup-kegg-data -D --kegg-data-dir ./KEGG -T 5 --include-stray-KOs`
 # 2. get the hash value and version info from the MODULES.db:
 #    `anvi-db-info ./KEGG/MODULES.db`
 # 3. archive that directory:
 #   `tar -czvf KEGG_build_YYYY-MM-DD_HASH.tar.gz ./KEGG`
-#   Please remember to replace YYYY-MM-DD with the current date and replace HASH with the MODULES.db hash value obtained in step 2
+#   Please remember to replace YYYY-MM-DD with the current date and replace HASH with the 
+#   MODULES.db hash value obtained in step 2
 # 4. Test that setup works with this archive by running
-#    `anvi-setup-kegg-kofams --kegg-archive KEGG_build_YYYY-MM-DD_HASH.tar.gz --kegg-data-dir TEST_NEW_KEGG_ARCHIVE`
+#    `anvi-setup-kegg-data --kegg-archive KEGG_build_YYYY-MM-DD_HASH.tar.gz --kegg-data-dir TEST_NEW_KEGG_ARCHIVE`
 # 5. Upload the .tar.gz archive to figshare and get the download url
-# 6. Finally, add an entry to the bottom of this file with the url, archive name, and MODULES.db hash and version. You should also update the
-# default self.target_snapshot variable in kegg.py to point to this latest version that you have added.
-# 7. Test it by running `anvi-setup-kegg-kofams --kegg-data-dir TEST_NEW_KEGG`, and if it works you are done :)
+# 6. Finally, add an entry to the bottom of this file with the url, archive name, and MODULES.db hash and version. 
+#    You should also update the default self.target_snapshot variable in kegg.py to point to this 
+#    latest version that you have added.
+# 7. Test it by running `anvi-setup-kegg-data --kegg-data-dir TEST_NEW_KEGG` (you don't need to run the full thing, 
+#    just long enough to see that the correct snapshot is being downloaded), and if it works you are done :)

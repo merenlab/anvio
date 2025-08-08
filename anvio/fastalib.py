@@ -6,13 +6,11 @@
 import io
 import sys
 import gzip
-import numpy
 import hashlib
 
 import anvio
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -27,7 +25,7 @@ class FastaOutput:
         self.compressed = True if self.output_file_path.endswith('.gz') else False
 
         if self.compressed:
-            self.output_file_obj = gzip.open(output_file_path, 'w')
+            self.output_file_obj = gzip.open(output_file_path, 'wt')
         else:
             self.output_file_obj = open(output_file_path, 'w')
 
@@ -95,9 +93,9 @@ class SequenceSource():
         self.unique_next_hash = 0
 
         if self.compressed:
-            self.file_pointer = gzip.open(self.fasta_file_path)
+            self.file_pointer = gzip.open(self.fasta_file_path, mode="rt")
         else:
-            self.file_pointer = io.open(self.fasta_file_path, 'rU', newline='')
+            self.file_pointer = io.open(self.fasta_file_path, 'r', newline='')
 
         if not self.file_pointer.read(1) == '>':
             self.file_pointer.close()

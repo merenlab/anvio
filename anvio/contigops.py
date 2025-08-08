@@ -25,8 +25,7 @@ from anvio.errors import ConfigError
 from anvio.variability import VariablityTestFactory, ProcessNucleotideCounts, ProcessCodonCounts, ProcessIndelCounts
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = ["Mike Lee", "Faruk Uzun"]
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -177,7 +176,8 @@ class Split:
 
 class Auxiliary:
     def __init__(self, split, min_coverage_for_variability=10, report_variability_full=False,
-                 profile_SCVs=False, skip_INDEL_profiling=False, skip_SNV_profiling=False, min_percent_identity=None):
+                 profile_SCVs=False, skip_INDEL_profiling=False, skip_SNV_profiling=False,
+                 min_percent_identity=None, skip_edges=0):
 
         if anvio.DEBUG:
             self.run = terminal.Run()
@@ -190,6 +190,7 @@ class Auxiliary:
         self.profile_SCVs = profile_SCVs
         self.skip_INDEL_profiling = skip_INDEL_profiling
         self.report_variability_full = report_variability_full
+        self.skip_edges = skip_edges
 
         # used during array processing
         self.nt_to_array_index = {nt: i for i, nt in enumerate(constants.nucleotides)}
@@ -482,6 +483,14 @@ class Auxiliary:
         read_count = 0
         for read in read_iterator(self.split.parent, self.split.start, self.split.end, **kwargs):
             aligned_sequence_as_ord, reference_positions = read.get_aligned_sequence_and_reference_positions()
+
+            # if the user is asking some nucleotides to be excluded from the calculation of
+            # single-nucleotide variants due to DNA damage or other reasons, don't take them
+            # into consideration:
+            if self.skip_edges > 0:
+                aligned_sequence_as_ord = aligned_sequence_as_ord[self.skip_edges:-self.skip_edges]
+                reference_positions = reference_positions[self.skip_edges:-self.skip_edges]
+
             aligned_sequence_as_index = utils.nt_seq_to_nt_num_array(aligned_sequence_as_ord, is_ord=True)
             reference_positions_in_split = reference_positions - self.split.start
 
@@ -524,7 +533,8 @@ class Auxiliary:
 
             read_count += 1
 
-        if anvio.DEBUG: self.run.info_single('Done SNVs for %s (%d reads processed)' % (self.split.name, read_count), nl_before=0, nl_after=0)
+        if anvio.DEBUG:
+            self.run.info_single('Done SNVs for %s (%d reads processed)' % (self.split.name, read_count), nl_before=0, nl_after=0)
 
         split_as_index = utils.nt_seq_to_nt_num_array(self.split.sequence)
         nt_profile = ProcessNucleotideCounts(
@@ -553,8 +563,9 @@ class Auxiliary:
         self.split.num_INDEL_entries = len(self.split.INDEL_profiles)
         self.variation_density = self.split.num_SNV_entries * 1000.0 / self.split.length
 
-        if anvio.DEBUG: self.run.info_single('%d SNVs to report' % (self.split.num_SNV_entries), nl_before=0, nl_after=0, level=2)
-        if anvio.DEBUG: self.run.info_single('%d INDELs to report' % (self.split.num_INDEL_entries), nl_before=0, nl_after=0, level=2)
+        if anvio.DEBUG:
+            self.run.info_single('%d SNVs to report' % (self.split.num_SNV_entries), nl_before=0, nl_after=0, level=2)
+            self.run.info_single('%d INDELs to report' % (self.split.num_INDEL_entries), nl_before=0, nl_after=0, level=2)
 
 
 class GenbankToAnvioWrapper:
@@ -664,6 +675,7 @@ class GenbankToAnvio:
         self.source = A('annotation_source') or 'NCBI_PGAP'
         self.version = A('annotation_version') or 'v4.6'
         self.omit_aa_sequences_column = A('omit_aa_sequences_column') or False
+        self.include_locus_tags_as_functions = A('include_locus_tags_as_functions')
 
         # gene callers id start from 0. you can change your instance
         # prior to processing the genbank file to start from another
@@ -728,7 +740,7 @@ class GenbankToAnvio:
 
         output_fasta = {}
         output_gene_calls = {}
-        output_functions = {}
+        output_functions = []
         num_genbank_records_processed = 0
         num_genes_found = 0
         num_genes_reported = 0
@@ -762,8 +774,12 @@ class GenbankToAnvio:
 
         # The main loop to go through all records forreals.
         for genbank_record in self.get_genbank_file_object():
-            num_genbank_records_processed += 1
-            output_fasta[genbank_record.name] = str(genbank_record.seq)
+            if genbank_record.name in output_fasta:
+                raise ConfigError("Anvi'o is not able to convert this GenBank file because it contains sequences with identical "
+                                   "locus names :/. An example is locus '%s'." % genbank_record.name)
+            else:
+                num_genbank_records_processed += 1
+                output_fasta[genbank_record.name] = str(genbank_record.seq)
 
             genes = [gene for gene in genbank_record.features if gene.type =="CDS"] # focusing on features annotated as "CDS" by NCBI's PGAP
 
@@ -816,7 +832,7 @@ class GenbankToAnvio:
                 else:
                     direction="r"
 
-                # for accession, storing protein id if it has one, else the the locus tag, else "None"
+                # for accession, storing protein id if it has one, else the locus tag, else "None"
                 if "protein_id" in gene.qualifiers:
                     accession = gene.qualifiers["protein_id"][0]
                 elif "locus_tag" in gene.qualifiers:
@@ -827,15 +843,18 @@ class GenbankToAnvio:
                 # storing gene product annotation if present
                 if "product" in gene.qualifiers:
                     function = gene.qualifiers["product"][0]
-                    # trying to capture all different ways proteins are listed as hypothetical and setting to same thing so can prevent from adding to output functions table below
-                    if function in ["hypothetical", "hypothetical protein", "conserved hypothetical", "conserved hypotheticals", "Conserved hypothetical protein"]:
-                        function = "hypothetical protein"
+                    # trying to capture all different ways proteins are listed as hypothetical and
+                    # setting to same thing so can prevent from adding to output functions table below
+                    if function in ["hypothetical", "hypothetical protein", "conserved hypothetical",
+                                    "conserved hypotheticals", "Conserved hypothetical protein"]:
+                        function = None
                 else:
-                    function = "hypothetical protein"
+                    function = None
 
-                # if present, adding gene name to product annotation (so long as not a hypothetical, sometimes these names are useful, sometimes they are not):
+                # if present, adding gene name to product annotation (so long as not a hypothetical,
+                # sometimes these names are useful, sometimes they are not):
                 if "gene" in gene.qualifiers:
-                    if function not in "hypothetical protein":
+                    if function:
                         gene_name=str(gene.qualifiers["gene"][0])
                         function = function + " (" + gene_name + ")"
 
@@ -859,14 +878,23 @@ class GenbankToAnvio:
                 num_genes_reported += 1
 
                 # not writing gene out to functions table if no annotation
-                if "hypothetical protein" not in function:
-                    output_functions[self.gene_callers_id] = {'source': self.source,
-                                                              'accession': accession,
-                                                              'function': function,
-                                                              'e_value': 0}
+                if function:
+                    output_functions.append({'gene_callers_id': self.gene_callers_id,
+                                             'source': self.source,
+                                             'accession': accession,
+                                             'function': function,
+                                             'e_value': 0})
                     num_genes_with_functions += 1
 
-                # increment the gene callers id fo rthe next
+                if self.include_locus_tags_as_functions and "locus_tag" in gene.qualifiers:
+                    locus_tag = gene.qualifiers["locus_tag"][0]
+                    output_functions.append({'gene_callers_id': self.gene_callers_id,
+                                             'source': 'GENBANK_LOCUS_TAG',
+                                             'accession': locus_tag,
+                                             'function': locus_tag,
+                                             'e_value': 0})
+
+                # increment the gene callers id for the next
                 self.gene_callers_id += 1
 
         if num_genbank_records_processed == 0:
@@ -879,6 +907,7 @@ class GenbankToAnvio:
         self.run.info('Num genes reported', num_genes_reported, mc='green')
         self.run.info('Num genes with AA sequences', num_genes_with_AA_sequences, mc='green')
         self.run.info('Num genes with functions', num_genes_with_functions, mc='green')
+        self.run.info('Locus tags included in functions output?', "Yes" if self.include_locus_tags_as_functions else "No", mc='green')
         self.run.info('Num partial genes', num_partial_genes, mc='cyan')
         self.run.info('Num genes excluded', num_genes_excluded, mc='red', nl_after=1)
 
@@ -928,9 +957,12 @@ class GenbankToAnvio:
                                                    self.output_gene_calls_path,
                                                    headers=header_for_external_gene_calls)
 
-            utils.store_dict_as_TAB_delimited_file(output_functions,
-                                                   self.output_functions_path,
-                                                   headers=header_for_functions)
+            with open(self.output_functions_path, 'w') as output_functions_file:
+                header_text = '\t'.join(header_for_functions)
+                output_functions_file.write(f"{header_text}\n")
+                for entry in output_functions:
+                    entry_text = '\t'.join([f"{entry[k]}" for k in header_for_functions])
+                    output_functions_file.write(f"{entry_text}\n")
 
             self.run.info('External gene calls file', self.output_gene_calls_path)
             self.run.info('TAB-delimited functions', self.output_functions_path)

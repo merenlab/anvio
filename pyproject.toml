@@ -1,0 +1,308 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "anvio"
+description = "An interactive analysis and visualization platform for 'omics data"
+readme = "README.md"
+license = "GPL-3.0-or-later"
+authors = [
+    {name = "The Anvi'o Development Team (https://anvio.org/people)"}
+]
+maintainers = [
+    {name = "A. Murat Eren", email = "a.murat.eren@gmail.com"},
+    {name = "Iva Veseli", email = "iva.veseli@gmail.com"},
+    {name = "Sam Miller", email = "samuelmiller10@gmail.com"},
+    {name = "Florian Trigodet", email = "trigodet.florian@gmail.com"}
+]
+keywords = [
+    "genomics",
+    "metagenomics",
+    "metatranscriptomics",
+    "pangenomics",
+    "phylogenomics",
+    "population genetics",
+    "science",
+    "microbiology",
+    "microbial ecology",
+    "multi-omics",
+    "integrated omics",
+    "visualization"
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Console",
+    "Environment :: Web Environment",
+    "Intended Audience :: Science/Research",
+    "Natural Language :: English",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Topic :: Scientific/Engineering :: Bio-Informatics"
+]
+requires-python = "==3.10.*"
+dynamic = ["version"]
+
+dependencies = [
+    "numpy==1.24.1",
+    "scipy",
+    "bottle",
+    "pysam",
+    "ete3",
+    "scikit-learn==1.2.2",
+    "django",
+    "requests",
+    "mistune",
+    "six",
+    "matplotlib==3.5.1",
+    "statsmodels",
+    "colored",
+    "illumina-utils",
+    "tabulate",
+    "rich-argparse",
+    "numba",
+    "paste",
+    "pyani",
+    "psutil",
+    "pandas==1.4.4",
+    "snakemake",
+    "multiprocess",
+    "plotext",
+    "networkx==3.1",
+    "pyrodigal_gv",
+    "pulp==2.7.0",
+    "biopython",
+    "reportlab",
+    "pymupdf"
+]
+
+[project.urls]
+Homepage = "https://anvio.org"
+Documentation = "https://anvio.org/help"
+Repository = "https://github.com/merenlab/anvio"
+"Bug Tracker" = "https://github.com/merenlab/anvio/issues"
+"Discord Channel" = "https://discord.gg/C6He6mSNY4"
+"Development Team" = "https://anvio.org/people"
+Contact = "https://anvio.org/people"
+
+[project.scripts]
+# Anvi'o main programs (followed by anvi'o scripts below). There is no clear boundary between
+# what is a 'script' and what is a 'program'. But a right-hand rule is the following: anvi'o
+# programs typically (1) produce or modify key anvi'o artifacts and (2) their functionality
+# is well capture by classes in the codebase. Scripts, on the other hand, address relatively
+# ad hoc needs, and their routines are implemented within the file itself. for instance, you
+# can compare anvi-profile and anvi-script-gen-short-reads to have a sense of the difference.
+# but it is true that not all programs look like prograsm, and not all scripts will look like
+# scripts based on this differnce. See anvi-cluster-contigs for a bad example of a program
+# (because it is so poorly organized), and  and see anvi-script-process-genbank as a bad
+# example of a script (because it is so well written). At the end, this is a suggestive
+# boundary, and at the discretion of the developer
+"anvi-analyze-synteny"                              = "anvio.cli.analyze_synteny:main"
+"anvi-cluster-contigs"                              = "anvio.cli.cluster_contigs:main"
+"anvi-compute-ani"                                  = "anvio.cli.compute_ani:main"
+"anvi-compute-completeness"                         = "anvio.cli.compute_completeness:main"
+"anvi-compute-functional-enrichment"                = "anvio.cli.compute_functional_enrichment:main"
+"anvi-compute-functional-enrichment-across-genomes" = "anvio.cli.compute_functional_enrichment_across_genomes:main"
+"anvi-compute-functional-enrichment-in-pan"         = "anvio.cli.compute_functional_enrichment_in_pan:main"
+"anvi-compute-gene-cluster-homogeneity"             = "anvio.cli.compute_gene_cluster_homogeneity:main"
+"anvi-compute-genome-similarity"                    = "anvio.cli.compute_genome_similarity:main"
+"anvi-compute-metabolic-enrichment"                 = "anvio.cli.compute_metabolic_enrichment:main"
+"anvi-compute-rarefaction-curves"                   = "anvio.cli.compute_rarefaction_curves:main"
+"anvi-db-info"                                      = "anvio.cli.db_info:main"
+"anvi-delete-collection"                            = "anvio.cli.delete_collection:main"
+"anvi-delete-functions"                             = "anvio.cli.delete_functions:main"
+"anvi-delete-hmms"                                  = "anvio.cli.delete_hmms:main"
+"anvi-delete-misc-data"                             = "anvio.cli.delete_misc_data:main"
+"anvi-delete-state"                                 = "anvio.cli.delete_state:main"
+"anvi-dereplicate-genomes"                          = "anvio.cli.dereplicate_genomes:main"
+"anvi-display-contigs-stats"                        = "anvio.cli.display_contigs_stats:main"
+"anvi-display-functions"                            = "anvio.cli.display_functions:main"
+"anvi-display-metabolism"                           = "anvio.cli.display_metabolism:main"
+"anvi-display-pan"                                  = "anvio.cli.display_pan:main"
+"anvi-display-structure"                            = "anvio.cli.display_structure:main"
+"anvi-draw-kegg-pathways"                           = "anvio.cli.draw_kegg_pathways:main"
+"anvi-estimate-genome-completeness"                 = "anvio.cli.estimate_genome_completeness:main"
+"anvi-estimate-genome-taxonomy"                     = "anvio.cli.estimate_genome_taxonomy:main"
+"anvi-estimate-metabolism"                          = "anvio.cli.estimate_metabolism:main"
+"anvi-estimate-scg-taxonomy"                        = "anvio.cli.estimate_scg_taxonomy:main"
+"anvi-estimate-trna-taxonomy"                       = "anvio.cli.estimate_trna_taxonomy:main"
+"anvi-experimental-organization"                    = "anvio.cli.experimental_organization:main"
+"anvi-export-collection"                            = "anvio.cli.export_collection:main"
+"anvi-export-contigs"                               = "anvio.cli.export_contigs:main"
+"anvi-export-functions"                             = "anvio.cli.export_functions:main"
+"anvi-export-gene-calls"                            = "anvio.cli.export_gene_calls:main"
+"anvi-export-gene-clusters"                         = "anvio.cli.export_gene_clusters:main"
+"anvi-export-gene-coverage-and-detection"           = "anvio.cli.export_gene_coverage_and_detection:main"
+"anvi-export-items-order"                           = "anvio.cli.export_items_order:main"
+"anvi-export-locus"                                 = "anvio.cli.export_locus:main"
+"anvi-export-misc-data"                             = "anvio.cli.export_misc_data:main"
+"anvi-export-splits-and-coverages"                  = "anvio.cli.export_splits_and_coverages:main"
+"anvi-export-splits-taxonomy"                       = "anvio.cli.export_splits_taxonomy:main"
+"anvi-export-state"                                 = "anvio.cli.export_state:main"
+"anvi-export-structures"                            = "anvio.cli.export_structures:main"
+"anvi-export-table"                                 = "anvio.cli.export_table:main"
+"anvi-gen-contigs-database"                         = "anvio.cli.gen_contigs_database:main"
+"anvi-gen-fixation-index-matrix"                    = "anvio.cli.gen_fixation_index_matrix:main"
+"anvi-gen-gene-consensus-sequences"                 = "anvio.cli.gen_gene_consensus_sequences:main"
+"anvi-gen-gene-level-stats-databases"               = "anvio.cli.gen_gene_level_stats_databases:main"
+"anvi-gen-genomes-storage"                          = "anvio.cli.gen_genomes_storage:main"
+"anvi-gen-network"                                  = "anvio.cli.gen_network:main"
+"anvi-gen-phylogenomic-tree"                        = "anvio.cli.gen_phylogenomic_tree:main"
+"anvi-gen-structure-database"                       = "anvio.cli.gen_structure_database:main"
+"anvi-gen-variability-network"                      = "anvio.cli.gen_variability_network:main"
+"anvi-gen-variability-profile"                      = "anvio.cli.gen_variability_profile:main"
+"anvi-get-aa-counts"                                = "anvio.cli.get_aa_counts:main"
+"anvi-get-codon-frequencies"                        = "anvio.cli.get_codon_frequencies:main"
+"anvi-get-codon-usage-bias"                         = "anvio.cli.get_codon_usage_bias:main"
+"anvi-get-metabolic-model-file"                     = "anvio.cli.get_metabolic_model_file:main"
+"anvi-get-pn-ps-ratio"                              = "anvio.cli.get_pn_ps_ratio:main"
+"anvi-get-sequences-for-gene-calls"                 = "anvio.cli.get_sequences_for_gene_calls:main"
+"anvi-get-sequences-for-gene-clusters"              = "anvio.cli.get_sequences_for_gene_clusters:main"
+"anvi-get-sequences-for-hmm-hits"                   = "anvio.cli.get_sequences_for_hmm_hits:main"
+"anvi-get-short-reads-from-bam"                     = "anvio.cli.get_short_reads_from_bam:main"
+"anvi-get-short-reads-mapping-to-a-gene"            = "anvio.cli.get_short_reads_mapping_to_a_gene:main"
+"anvi-get-split-coverages"                          = "anvio.cli.get_split_coverages:main"
+"anvi-get-tlen-dist-from-bam"                       = "anvio.cli.get_tlen_dist_from_bam:main"
+"anvi-help"                                         = "anvio.cli.help:main"
+"anvi-import-collection"                            = "anvio.cli.import_collection:main"
+"anvi-import-functions"                             = "anvio.cli.import_functions:main"
+"anvi-import-items-order"                           = "anvio.cli.import_items_order:main"
+"anvi-import-metabolite-profile"                    = "anvio.cli.import_metabolite_profile:main"
+"anvi-import-misc-data"                             = "anvio.cli.import_misc_data:main"
+"anvi-import-protein-profile"                       = "anvio.cli.import_protein_profile:main"
+"anvi-import-state"                                 = "anvio.cli.import_state:main"
+"anvi-import-taxonomy-for-genes"                    = "anvio.cli.import_taxonomy_for_genes:main"
+"anvi-import-taxonomy-for-layers"                   = "anvio.cli.import_taxonomy_for_layers:main"
+"anvi-init-bam"                                     = "anvio.cli.init_bam:main"
+"anvi-inspect"                                      = "anvio.cli.inspect:main"
+"anvi-interactive"                                  = "anvio.cli.interactive:main"
+"anvi-matrix-to-newick"                             = "anvio.cli.matrix_to_newick:main"
+"anvi-mcg-classifier"                               = "anvio.cli.mcg_classifier:main"
+"anvi-merge"                                        = "anvio.cli.merge:main"
+"anvi-merge-bins"                                   = "anvio.cli.merge_bins:main"
+"anvi-merge-trnaseq"                                = "anvio.cli.merge_trnaseq:main"
+"anvi-meta-pan-genome"                              = "anvio.cli.meta_pan_genome:main"
+"anvi-migrate"                                      = "anvio.cli.migrate:main"
+"anvi-oligotype-linkmers"                           = "anvio.cli.oligotype_linkmers:main"
+"anvi-pan-genome"                                   = "anvio.cli.pan_genome:main"
+"anvi-plot-trnaseq"                                 = "anvio.cli.plot_trnaseq:main"
+"anvi-profile"                                      = "anvio.cli.profile:main"
+"anvi-profile-blitz"                                = "anvio.cli.profile_blitz:main"
+"anvi-push"                                         = "anvio.cli.push:main"
+"anvi-reaction-network"                             = "anvio.cli.reaction_network:main"
+"anvi-refine"                                       = "anvio.cli.refine:main"
+"anvi-rename-bins"                                  = "anvio.cli.rename_bins:main"
+"anvi-report-inversions"                            = "anvio.cli.report_inversions:main"
+"anvi-report-linkmers"                              = "anvio.cli.report_linkmers:main"
+"anvi-run-cazymes"                                  = "anvio.cli.run_cazymes:main"
+"anvi-run-hmms"                                     = "anvio.cli.run_hmms:main"
+"anvi-run-interacdome"                              = "anvio.cli.run_interacdome:main"
+"anvi-run-kegg-kofams"                              = "anvio.cli.run_kegg_kofams:main"
+"anvi-run-ncbi-cogs"                                = "anvio.cli.run_ncbi_cogs:main"
+"anvi-run-pfams"                                    = "anvio.cli.run_pfams:main"
+"anvi-run-scg-taxonomy"                             = "anvio.cli.run_scg_taxonomy:main"
+"anvi-run-trna-taxonomy"                            = "anvio.cli.run_trna_taxonomy:main"
+"anvi-run-workflow"                                 = "anvio.cli.run_workflow:main"
+"anvi-scan-trnas"                                   = "anvio.cli.scan_trnas:main"
+"anvi-search-functions"                             = "anvio.cli.search_functions:main"
+"anvi-search-palindromes"                           = "anvio.cli.search_palindromes:main"
+"anvi-search-primers"                               = "anvio.cli.search_primers:main"
+"anvi-search-sequence-motifs"                       = "anvio.cli.search_sequence_motifs:main"
+"anvi-self-test"                                    = "anvio.cli.self_test:main"
+"anvi-setup-cazymes"                                = "anvio.cli.setup_cazymes:main"
+"anvi-setup-interacdome"                            = "anvio.cli.setup_interacdome:main"
+"anvi-setup-kegg-data"                              = "anvio.cli.setup_kegg_data:main"
+"anvi-setup-modelseed-database"                     = "anvio.cli.setup_modelseed_database:main"
+"anvi-setup-ncbi-cogs"                              = "anvio.cli.setup_ncbi_cogs:main"
+"anvi-setup-pdb-database"                           = "anvio.cli.setup_pdb_database:main"
+"anvi-setup-pfams"                                  = "anvio.cli.setup_pfams:main"
+"anvi-setup-scg-taxonomy"                           = "anvio.cli.setup_scg_taxonomy:main"
+"anvi-setup-trna-taxonomy"                          = "anvio.cli.setup_trna_taxonomy:main"
+"anvi-setup-user-modules"                           = "anvio.cli.setup_user_modules:main"
+"anvi-show-collections-and-bins"                    = "anvio.cli.show_collections_and_bins:main"
+"anvi-show-misc-data"                               = "anvio.cli.show_misc_data:main"
+"anvi-split"                                        = "anvio.cli.split:main"
+"anvi-summarize"                                    = "anvio.cli.summarize:main"
+"anvi-summarize-blitz"                              = "anvio.cli.summarize_blitz:main"
+"anvi-tabulate-trnaseq"                             = "anvio.cli.tabulate_trnaseq:main"
+"anvi-trnaseq"                                      = "anvio.cli.trnaseq:main"
+"anvi-update-db-description"                        = "anvio.cli.update_db_description:main"
+"anvi-update-structure-database"                    = "anvio.cli.update_structure_database:main"
+# Anvi'o scripts
+"anvi-script-add-default-collection"                     = "anvio.cli.add_default_collection:main"
+"anvi-script-as-markdown"                                = "anvio.cli.as_markdown:main"
+"anvi-script-augustus-output-to-external-gene-calls"     = "anvio.cli.augustus_output_to_external_gene_calls:main"
+"anvi-script-checkm-tree-to-interactive"                 = "anvio.cli.checkm_tree_to_interactive:main"
+"anvi-script-compute-ani-for-fasta"                      = "anvio.cli.compute_ani_for_fasta:main"
+"anvi-script-compute-bayesian-pan-core"                  = "anvio.cli.compute_bayesian_pan_core:main"
+"anvi-script-estimate-genome-size"                       = "anvio.cli.estimate_genome_size:main"
+"anvi-script-estimate-metabolic-independence"            = "anvio.cli.estimate_metabolic_independence:main"
+"anvi-script-filter-fasta-by-blast"                      = "anvio.cli.filter_fasta_by_blast:main"
+"anvi-script-filter-hmm-hits-table"                      = "anvio.cli.filter_hmm_hits_table:main"
+"anvi-script-find-misassemblies"                         = "anvio.cli.find_misassemblies:main"
+"anvi-script-fix-homopolymer-indels"                     = "anvio.cli.fix_homopolymer_indels:main"
+"anvi-script-gen-CPR-classifier"                         = "anvio.cli.gen_CPR_classifier:main"
+"anvi-script-gen-defense-finder-models-to-hmm-directory" = "anvio.cli.gen_defense_finder_models_to_hmm_directory:main"
+"anvi-script-gen-distribution-of-genes-in-a-bin"         = "anvio.cli.gen_distribution_of_genes_in_a_bin:main"
+"anvi-script-gen-function-matrix-across-genomes"         = "anvio.cli.gen_function_matrix_across_genomes:main"
+"anvi-script-gen-functions-per-group-stats-output"       = "anvio.cli.gen_functions_per_group_stats_output:main"
+"anvi-script-gen-genomes-file"                           = "anvio.cli.gen_genomes_file:main"
+"anvi-script-gen-help-pages"                             = "anvio.cli.gen_help_pages:main"
+"anvi-script-gen-hmm-hits-matrix-across-genomes"         = "anvio.cli.gen_hmm_hits_matrix_across_genomes:main"
+"anvi-script-gen-programs-network"                       = "anvio.cli.gen_programs_network:main"
+"anvi-script-gen-programs-vignette"                      = "anvio.cli.gen_programs_vignette:main"
+"anvi-script-gen-pseudo-paired-reads-from-fastq"         = "anvio.cli.gen_pseudo_paired_reads_from_fastq:main"
+"anvi-script-gen-scg-domain-classifier"                  = "anvio.cli.gen_scg_domain_classifier:main"
+"anvi-script-gen-short-reads"                            = "anvio.cli.gen_short_reads:main"
+"anvi-script-gen-user-module-file"                       = "anvio.cli.gen_user_module_file:main"
+"anvi-script-get-collection-info"                        = "anvio.cli.get_collection_info:main"
+"anvi-script-get-coverage-from-bam"                      = "anvio.cli.get_coverage_from_bam:main"
+"anvi-script-get-hmm-hits-per-gene-call"                 = "anvio.cli.get_hmm_hits_per_gene_call:main"
+"anvi-script-hmm-to-hmm-directory"                       = "anvio.cli.hmm_to_hmm_directory:main"
+"anvi-script-merge-collections"                          = "anvio.cli.merge_collections:main"
+"anvi-script-permute-trnaseq-seeds"                      = "anvio.cli.permute_trnaseq_seeds:main"
+"anvi-script-pfam-accessions-to-hmms-directory"          = "anvio.cli.pfam_accessions_to_hmms_directory:main"
+"anvi-script-predict-CPR-genomes"                        = "anvio.cli.predict_CPR_genomes:main"
+"anvi-script-process-genbank"                            = "anvio.cli.process_genbank:main"
+"anvi-script-process-genbank-metadata"                   = "anvio.cli.process_genbank_metadata:main"
+"anvi-script-reformat-bam"                               = "anvio.cli.reformat_bam:main"
+"anvi-script-reformat-fasta"                             = "anvio.cli.reformat_fasta:main"
+"anvi-script-run-eggnog-mapper"                          = "anvio.cli.run_eggnog_mapper:main"
+"anvi-script-snvs-to-interactive"                        = "anvio.cli.snvs_to_interactive:main"
+"anvi-script-tabulate"                                   = "anvio.cli.tabulate:main"
+"anvi-script-transpose-matrix"                           = "anvio.cli.transpose_matrix:main"
+"anvi-script-variability-to-vcf"                         = "anvio.cli.variability_to_vcf:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["anvio*"]
+exclude = ["anvio.tests.test-output*"]
+
+[tool.setuptools]
+include-package-data = true
+
+# Non-python programs in anvi'o
+script-files = [
+    "anvio/scripts/anvi-script-visualize-split-coverages",
+    "anvio/scripts/anvi-script-enrichment-stats",
+]
+
+[tool.setuptools.package-data]
+anvio = [
+    "cli/**/*",
+    "data/**/*",
+    "docs/**/*",
+    "drivers/**/*",
+    "migrations/**/*",
+    "parsers/**/*",
+    "scripts/**/*",
+    "tables/**/*",
+    "taxonomyops/**/*",
+    "tests/**/*",
+    "workflows/**/*"
+]
+
+[tool.setuptools.dynamic]
+version = {attr = "anvio.version.anvio_version"}

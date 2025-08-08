@@ -3,12 +3,7 @@
 
 """Lots of under-the-rug, operational garbage in here. Run. Run away."""
 
-anvio_version = '7.1-dev'
-anvio_codename = 'hope' # after Hope E. Hopps, https://sivb.org/awards/student-awards/hope-e-hopps-award.html
-                        # see the release notes for details: https://github.com/merenlab/anvio/releases/tag/v7
-
-major_python_version_required = 3
-minor_python_version_required = 7
+from anvio.version import anvio_version, anvio_codename, major_python_version_required, minor_python_version_required, get_versions
 
 import sys
 import platform
@@ -28,14 +23,12 @@ try:
                          f"    Python version anvi'o wants ..........: {major_python_version_required}.{minor_python_version_required}.*\n\n")
 
         if anvio_version.endswith('dev'):
-            sys.stderr.write("Those who follow the active development branch of anvi'o (like \n"
-                             "yourself) are among our most important users as they help us \n"
-                             "find and address bugs before they can make their way into a stable \n"
-                             "release. Thus, we are extra sorry for this inconvenience :/ But \n"
-                             "the change in the required Python version (which must happened \n"
-                             "after you started tracking the active development branch) \n"
-                             "requires you to get rid of your current anvi'o enviroment, and \n"
-                             "setup a new one using the most up-to-date instructions here:\n\n"
+            sys.stderr.write("Those who follow the active development branch of anvi'o (like yourself) are among our most important \n"
+                             "users of the platform as they help us find and address bugs before they can make their way into a stable \n"
+                             "release. Thus, we are extra sorry for this inconvenience :/ But it seems there was a big change in the \n"
+                             "main branch, and the required version of Python is no longer compatible with your current conda \n"
+                             "environment :/ This means, you need to get rid of your current anvio-dev conda enviroment, and setup a \n"
+                             "new one following the most up-to-date installation instructions for anvio-dev here:\n\n"
                              "    https://anvio.org/install/#5-follow-the-active-development-youre-a-wizard-arry\n\n"
                              "Thank you for your patience and understanding.\n\n")
         else:
@@ -52,12 +45,6 @@ except Exception:
 import os
 import json
 import copy
-
-from tabulate import tabulate
-
-# yes, this library is imported but never used, but don't remove it
-# unless you want to explode `bottle`:
-import pkg_resources
 
 # very important variable to determine which help docs are relevant for
 # this particlar anvi'o environment
@@ -77,6 +64,9 @@ DEBUG_AUTO_FILL_ANVIO_DBS = '--debug-auto-fill-anvio-dbs' in sys.argv
 USER_KNOWS_IT_IS_NOT_A_GOOD_IDEA = '--I-know-this-is-not-a-good-idea' in sys.argv
 DOCS_PATH = os.path.join(os.path.dirname(__file__), 'docs')
 TMP_DIR = None
+# global args that we can set internally as needed
+RETURN_ALL_FUNCTIONS_FROM_SOURCE_FOR_EACH_GENE = False  # set to True if you want all functional annotations from a given annotation source
+                                                        # instead of the best hit per gene
 
 # if the user wants to use a non-default tmp directory, we set it here
 if '--tmp-dir' in sys.argv:
@@ -111,6 +101,8 @@ def P(d, dont_exit=False):
 
 def TABULATE(table, header, numalign="right", max_width=0):
     """Encoding-safe `tabulate`"""
+
+    from tabulate import tabulate
 
     tablefmt = "fancy_grid" if sys.stdout.encoding == "UTF-8" else "grid"
     table = tabulate(table, headers=header, tablefmt=tablefmt, numalign=numalign)
@@ -262,6 +254,11 @@ D = {
                      "for more info. Also you shouldn't hesitate to try to find the right file format until you get "
                      "it working. There are stringent checks on this file, and you will not break anything while trying!."}
                 ),
+    'collection': (
+            ['--collection'],
+            {'metavar': 'COLLECTION-TXT',
+             'help': "A TAB-delimited file with two columns and no header to associate each item with a bin."}
+                ),
     'split-length': (
             ['-L', '--split-length'],
             {'metavar': 'INT',
@@ -286,19 +283,19 @@ D = {
                      "analyses is 4, historically. Although tetra-nucleotide frequencies seem to offer the "
                      "the sweet spot of sensitivity, information density, and manageable number of dimensions "
                      "for clustering approaches, you are welcome to experiment (but maybe you should leave "
-                     "it as is for your first set of analyses)."}
+                     "it as is for your first set of analyses). Note that the maximum k-mer size is 5 (unless you "
+                     "can increase the column limit in `sqlite3` to 32k, in which case the max is 7)."}
                 ),
     'prodigal-translation-table': (
             ['--prodigal-translation-table'],
             {'metavar': 'INT',
              'default': None,
-             'help': "This is a parameter to pass to the Prodigal for a specific translation table. This parameter "
+             'help': "This is a parameter to pass to the Pyrodigal-gv for a specific translation table. This parameter "
                      "corresponds to the parameter `-g` in Prodigal, the default value of which is 11 (so if you do "
-                     "not set anything, it will be set to 11 in Prodigal runtime. Please refer to the Prodigal "
+                     "not set anything, it will be set to 11 in Pyrodigal-gv runtime. Please refer to the Prodigal "
                      "documentation to determine what is the right translation table for you if you think you need "
                      "it.)"}
                 ),
-
     'skip-gene-calling': (
             ['--skip-gene-calling'],
             {'default': False,
@@ -306,6 +303,27 @@ D = {
              'help': "By default, generating an anvi'o contigs database includes the identification of open reading "
                      "frames in contigs by running a bacterial gene caller. Declaring this flag will by-pass that "
                      "process. If you prefer, you can later import your own gene calling results into the database."}
+                ),
+    'prodigal-single-mode': (
+            ['--prodigal-single-mode'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "By default, anvi'o will use pyrodigal-gv for gene calling (unless you skipped gene calling, or provided "
+                     "anvi'o with external gene calls). One of the flags anvi'o includes in pyrodigal-gv run is `-p meta`, which "
+                     "optimizes pyrodigal-gv's ability to identify genes in metagenomic assemblies. In some rare cases, for a "
+                     "given set of contigs pyrodigal-gv will yield a segmentation fault error due to one or more genes in your "
+                     "collections will confuse the program when it is used with the `-p meta` flag. While anvi'o developers "
+                     "are not quite sure under what circumstances this happens, we realized that removal of this flag often "
+                     "solves this issue. If you are dealing with such cyrptic errors, the inclusion of `--skip-prodigal-meta-flag` "
+                     "will instruct anvi'o to run pyrodigal-gv without the `-meta` flag, and may resolve this issue for you."}
+                ),
+    'full-gene-calling-report': (
+            ['--full-gene-calling-report'],
+            {'metavar': 'FILE',
+             'default': None,
+             'help': "When anvi'o is done with gene calling using pyrodigal, it only stores some data about individual gene "
+                     "calls. Using this parameter you can pass an output file to report most comprehensive data on gene calls "
+                     "as a TAB-delimited text file with gene caller ids matching to those that are stored in the contigs-db."}
                 ),
     'remove-partial-hits': (
             ['--remove-partial-hits'],
@@ -403,21 +421,28 @@ D = {
                 ),
     'bams-and-profiles': (
             ['-P', '--bams-and-profiles'],
-            {'metavar': 'FILE_PATH',
+            {'metavar': 'BAMS-AND-PROFILES-FILE',
              'help': "A four-column TAB-delimited flat text file. The header line must contain these columns: 'name', "
                      "'contigs_db_path', 'profile_db_path', and 'bam_file_path'. See the profiles-and-bams.txt artifact "
                      "for the details of the file."}
                 ),
+    'pre-computed-inversions': (
+            ['--pre-computed-inversions'],
+            {'metavar': 'INVERSIONS-FILE',
+             'help': "A TAB-delimited file that lists sample-specific or consensus inversions identified by the program "
+                     "`anvi-report-inversions`."}
+                ),
     'gene-caller': (
             ['--gene-caller'],
             {'metavar': 'GENE-CALLER',
-             'default': constants.default_gene_caller,
-             'help': f"The gene caller to utilize. Anvi'o supports multiple gene callers, and some operations (including this one) "
-                     f"requires an explicit mentioning of which one to use. The default {constants.default_gene_caller} is but it "
-                     f"will not be enough if you were experiencing your rebelhood as you should, and have generated your contigs "
-                     f"database with `--external-gene-callers` or something. Also, some HMM collections may add new gene calls "
-                     f"into a given contigs database as an ad-hoc fashion, so if you want to see all the options available to you "
-                     f"in a given contigs database, please run the program `anvi-db-info` and take a look at the output."}
+             'default': None,
+             'help': "The gene caller to utilize. Anvi'o supports multiple gene callers, and some operations (including this one) "
+                     "may require an explicit mentioning of which one to use. The default gene caller is identified automatically "
+                     "in most cases (based on whether the most frequent gene calls match to a known gene caller in anvi'o), but if "
+                     "you have a contigs-db generated with `--external-gene-callers` or something, you may have to pay extra "
+                     "attention here. Also, some HMM collections may add new gene calls into a given contigs-db as an ad-hoc fashion, "
+                     "so if you want to see all the options available to you in a given contigs database, please run the program "
+                     "`anvi-db-info` and take a look at the output."}
                 ),
     'list-gene-callers': (
             ['--list-gene-callers'],
@@ -504,6 +529,26 @@ D = {
                      "codon frequencies opens doors to powerful evolutionary insights in downstream analyses, due to its "
                      "computational complexity, this feature comes 'off' by default. Using this flag you can rise against the "
                      "authority, as you always should, and make anvi'o profile codons."}
+                ),
+    'skip-edges': (
+            ['--skip-edges'],
+            {'default': 0,
+             'type': int,
+             'metavar': 'NUM NUCLEOTIDES',
+             'choices': range(0, 51),
+             'help': "By default, anvi'o will report variable nucleotides and their allele frequencies from any nucleotide ."
+                     "position in a given short read found in the BAM file. Although, there are some applications where the "
+                     "observed variation in short reads will depend on the location of the nucleotide positions in the read. "
+                     "For instance, in ancient DNA sequencing, the start and the end of short reads are often suffer from "
+                     "DNA damage, leading to an increased number of single-nucleotide variants that emerge from the edges of "
+                     "short reads when they are aligned to a reference. This parameter offers a means to ameliorate the "
+                     "inflation of SNVs due to biases associated with short-read edges by enabling the user to ask anvi'o "
+                     "to ignore a few number of nucleotides from the beginning and the end of short reads as they're being "
+                     "profiled. For instance, a parameter of `5` will make sure that the mismatches of a given read to the "
+                     "reference sequence at the first and the last 5 nucleotides will not be reported in the variability "
+                     "table. Please note that the coverage data will not be impacted by the use of this parameter -- "
+                     "only what is reported as variants will be impacted, decreasing the impact of noise in specific "
+                     "applications."}
                 ),
     'drop-previous-annotations': (
             ['--drop-previous-annotations'],
@@ -706,7 +751,10 @@ D = {
             ['-m', '--metagenome-mode'],
             {'default': False,
              'action': 'store_true',
-             'help': "Treat a given contigs database as a metagenome rather than treating it as a single genome."}
+             'help': "[PER-CONTIG ESTIMATION] Treat a given contigs database as an unbinned metagenome rather than "
+                     "treating it as a single genome. Since we don't know which contigs go together, we'll estimate "
+                     "metabolism for each contig independently. Can be resource-intensive (particularly with memory). "
+                     "Not recommended to combine with --matrix-format or --get-raw-data-as-json."}
                 ),
     'scg-name-for-metagenome-mode': (
             ['-S','--scg-name-for-metagenome-mode'],
@@ -889,11 +937,12 @@ D = {
             ['--cog-version'],
             {'default': None,
              'type': str,
-             'help': "COG version. The default is the latest version, which is COG20, meaning that anvi'o will "
-                     "use the NCBI's 2020 release of COGs to setup the database and run it on contigs databases. "
-                     "There is also an older version of COGs from 2014. If you would like anvi'o to work with that "
-                     "one, please use COG14 as a parameter. On a single computer you can have both, and on a single "
-                     "contigs database you can run both. Cool and confusing. The anvi'o way."}
+             'help': "COG version. The default is the latest version, which is COG24, meaning that anvi'o will "
+                     "use the NCBI's 2024 release of COGs to setup the database and run it on contigs databases. "
+                     "Alternatively you can pass any of these as a parameter: 'COG20' (2020 release of the database), "
+                     "or 'COG14' (the 2014 release of the database). You can have multiple databases on your "
+                     "computer, and you can run multiple of them on a single contigs-db file. Cool and confusing. "
+                     "The anvi'o way."}
                 ),
     'pfam-data-dir': (
             ['--pfam-data-dir'],
@@ -950,6 +999,14 @@ D = {
              'help': "The directory path for your KEGG setup, which will include things like "
                      "KOfam profiles, KEGG MODULE data, and KEGG BRITE data. Anvi'o will try "
                      "to use the default path if you do not specify anything."}
+                ),
+    'modelseed-data-dir': (
+            ['--modelseed-data-dir'],
+            {'default': None,
+             'metavar': 'DIR_PATH',
+             'type': str,
+             'help': "The directory path for your ModelSEED Biochemistry setup. Anvi'o will try to use "
+                     "the default path if you do not specify anything."}
                 ),
     'user-modules': (
             ['-u', '--user-modules'],
@@ -1033,37 +1090,50 @@ D = {
                      "you will not have the most up-to-date version of KEGG for your annotations, metabolism "
                      "estimations, or any other downstream uses of this data. If that is going to be a problem for you, "
                      "do not fear - you can provide this flag to tell anvi'o to download the latest, freshest data directly "
-                     "from KEGG's REST API and set it up into an anvi'o-compatible database."}
+                     "from KEGG's REST API and set it up into anvi'o-compatible files."}
                 ),
     'only-download': (
             ['--only-download'],
             {'default': False,
              'action': 'store_true',
              'help': "You want this program to only download data from KEGG, and then stop. It will not "
-                     "make a modules database. (It would be a *very* good idea for you to specify a "
-                     "data directory using --kegg-data-dir in this case, so that you can find the resulting "
-                     "data easily and avoid messing up any data in the default KEGG directory. But you are "
-                     "of course free to do whatever you want.). Note that KOfam profiles will still be "
-                     "processed with `hmmpress` if you choose this option."}
+                     "process the data (ie, into organized HMMs or a modules database). (It would be a "
+                     "*very* good idea for you to specify a data directory using --kegg-data-dir in this "
+                     "case, so that you can find the resulting data easily and avoid messing up any data "
+                     "in the default KEGG directory. But you are of course free to do whatever you want.)"}
              ),
-    'only-database': (
-            ['--only-database'],
+    'only-processing': (
+            ['--only-processing'],
             {'default': False,
              'action': 'store_true',
-             'help': "You already have all the KEGG data you need on your computer. Perhaps you even got it from "
+             'help': "You already have all the KEGG data you need on your computer. Probably you even got it from "
                      "this program, using the --only-download option. We don't know. What matters is that you don't "
-                     "need anything downloaded, you just want this program to setup a modules database from that "
-                     "existing data. Good. We can do that if you provide this flag (and probably also the --kegg-data-dir "
+                     "need anything downloaded, you just want this program to process that "
+                     "existing data. Good. We can do that if you provide this flag (and hopefully also the --kegg-data-dir "
                      "in which said data is located)."}
+             ),
+    'include-stray-KOs': (
+            ['--include-stray-KOs'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "'Stray KOs' are what we call KEGG Orthlogs that KEGG does not provide a bit score threshold for. "
+                     "If you want to include these protein families in your annotations and downstream analyses, then "
+                     "you can use this flag. Anvi'o does something very basic to estimate a bit score threshold for "
+                     "annotating these KOs, which is (1) to download the KEGG GENES sequences associated with each family, "
+                     "(2) to build a new HMM from these GENES (since KEGG GENES updates with new sequences faster than KOfam "
+                     "updates its models), (3) to run HMMER of each new model against the KO's associated sequences, and (4) "
+                     "to take the minimum bit score of those hits as the bit score threshold for the KO. Downstream, we use "
+                     "the anvi'o-generated models to annotate these KO families with their estimated bit score thresholds."}
              ),
     'kegg-snapshot': (
             ['--kegg-snapshot'],
             {'default': None,
              'type': str,
              'metavar': 'RELEASE_NUM',
-             'help': "If you are particularly interested in an earlier snapshot of KEGG that anvi'o knows about, you can set it here. "
-                     "Otherwise anvi'o will always use the latest snapshot it knows about, which is likely to be the one associated with "
-                     "the current release of anvi'o."}
+             'help': "The default behavior of this program is to download a pre-processed snapshot of data "
+                     "from KEGG. If you are particularly interested in an earlier snapshot of KEGG that anvi'o "
+                     "knows about, you can set it here. Otherwise anvi'o will always use the latest snapshot "
+                     "it knows about, which is likely to be the one associated with the current release of anvi'o."}
                 ),
     'hide-outlier-SNVs': (
             ['--hide-outlier-SNVs'],
@@ -1087,7 +1157,7 @@ D = {
                      "but if you are using this program to scan a very large number of HMMs, hmmsearch might "
                      "be a better choice for performance. For this reason, hmmsearch is the default in operations like "
                      "anvi-run-pfams and anvi-run-kegg-kofams. See this article for a discussion on the performance "
-                     "of these two programs: https://cryptogenomicon.org/2011/05/27/hmmscan-vs-hmmsearch-speed-the-numerology/"}
+                     "of these two programs: http://cryptogenomicon.org/hmmscan-vs-hmmsearch-speed-the-numerology.html"}
                 ),
     'hmm-source': (
             ['--hmm-source'],
@@ -1146,6 +1216,13 @@ D = {
                      "functions rather than actual functions? We can't. But we have this flag here so you can "
                      "instruct anvi'o to listen to you and not to us."}
                 ),
+    'also-report-accession-ids': (
+            ['--also-report-accession-ids'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When used, this flag will instruct anvi'o to also report the function accession ids "
+                     "in a new column, in addition to function name in the output file."}
+                ),
     'aggregate-using-all-hits': (
             ['--aggregate-using-all-hits'],
             {'default': False,
@@ -1200,6 +1277,14 @@ D = {
                      "the gene names that appear multiple times, and remove all but the one with the lowest e-value. Good "
                      "for whenever you really need to get only a single copy of single-copy core genes from a genome bin."}
                 ),
+    'return-all-function-hits-for-each-gene': (
+            ['--return-all-function-hits-for-each-gene'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Any given function annotation source may provide more than one annotation for a given gene. Using this flag "
+                     "will instruct anvi'o to report all hits, even if the default behavior is to report only the most "
+                     " statistically significant one."}
+                ),
     'unique-genes': (
             ['--unique-genes'],
             {'default': False,
@@ -1230,6 +1315,13 @@ D = {
                      "that number of genomes, it simply will not be reported. This is especially useful for phylogenomic "
                      "analyses, where you may want to only focus on genes that are prevalent across the set of genomes "
                      "you wish to analyze."}
+                ),
+    'gene-clusters-txt': (
+            ['--gene-clusters-txt'],
+            {'metavar': 'FILE PATH',
+             'help': "A three-column TAB-delimited file that associates genes across genomes with one another as 'gene clusters' "
+                     "for DIY pangenomics 😬 See https://anvio.org/help/main/artifacts/gene-clusters-txt/ for details "
+                     "of the file format."}
                 ),
     'max-num-gene-clusters-missing-from-genome': (
             ['--max-num-gene-clusters-missing-from-genome'],
@@ -1362,6 +1454,20 @@ D = {
              'type': str,
              'help': "Characters to separate things (the default is whatever is most suitable)."}
                 ),
+    'ignore-genes-longer-than': (
+            ['--ignore-genes-longer-than'],
+            {'metavar': 'MAX_LENGTH',
+             'default': 0,
+             'type': int,
+             'help': "In some cases the gene calling step can identify open reading frames that span across extremely long "
+                     "stretches of genomes. Such mistakes can lead to downstream issues, especially when concatenate flag "
+                     "is used, including failure to align genes. This flag allows anvi'o to ignore extremely long gene calls to "
+                     "avoid unintended issues (i.e., during phylogenomic analyses). If you use this flag, please carefully "
+                     "examine the output messages from the program to see which genes are removed from the analysis. "
+                     "Please note that the length parameter considers the nucleotide lenght of the open reading frame, "
+                     "even if you asked for amino acid sequences to be returned. Setting this parameter to small values, "
+                     "such as less than 10000 nucleotides may lead to the removal of genuine genes, so please use it carefully."}
+                ),
     'align-with': (
             ['--align-with'],
             {'metavar': 'ALIGNER',
@@ -1417,14 +1523,20 @@ D = {
             {'metavar': 'SEARCH_TERMS',
              'help': "Search terms. Multiple of them can be declared separated by a delimiter (the default is a comma)."}
                 ),
-    'sensitive': (
-            ['--sensitive'],
+    'case-sensitive': (
+            ['--case-sensitive'],
             {'default': False,
              'action': 'store_true',
-             'help': "DIAMOND sensitivity. With this flag you can instruct DIAMOND to be 'sensitive', rather than 'fast' "
-                     "during the search. It is likely the search will take remarkably longer. But, hey, if you are doing "
-                     "it for your final analysis, maybe it should take longer and be more accurate. This flag is only "
-                     "relevant if you are running DIAMOND."}
+             'help': "When declared, anvi'o will perform a search that is case sensitive."}
+                ),
+    'exact-match': (
+            ['--exact-match'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "By default, anvi'o will search for a given string in anywhere within function description or "
+                     "accession IDs. If you declare this flag, then anvi'o will look for 'exact' matches of the search "
+                     "string in its entirety in a given field. This can be very useful if you are CERTAIN about the "
+                     "function or accession id you are interested in, and you want to get nothing but that exact match."}
                 ),
     'gene-caller-ids': (
             ['--gene-caller-ids'],
@@ -2075,8 +2187,9 @@ D = {
             ['-O', '--output-file-prefix'],
             {'metavar': 'FILENAME_PREFIX',
              'type': str,
-             'help': "A prefix to be used while naming the output files (no file type "
-                     "extensions please; just a prefix)."}
+             'help': "A prefix to be used while naming the output files. No file type "
+                     "extensions please; just a prefix -- all ouptut file names and "
+                     "extensions will be appended to this prefix."}
                 ),
     'long-format': (
             ['--long-format'],
@@ -2147,7 +2260,7 @@ D = {
             ['-I', '--ip-address'],
             {'metavar': 'IP_ADDR',
              'type': str,
-             'default': '0.0.0.0',
+             'default': 'localhost',
              'help': "IP address for the HTTP server. The default ip address (%(default)s) should "
                      "work just fine for most."}
                 ),
@@ -2449,6 +2562,27 @@ D = {
                      "and internal anvi'o heuristics control whether or not indels should be reported, but with this "
                      "flag all indels are reported."}
                 ),
+    'list-defline-variables': (
+            ['--list-defline-variables'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When declared, anvi'o will list the variable names that can be used to construct deflines in "
+                     "FASTA outputs from the user-defined `--defline-format` strings."}
+                ),
+    'defline-format': (
+            ['--defline-format'],
+            {'default': None,
+             'metavar': "F-STRING",
+             'help': "Proivide a defline template for anvi'o to use when generating the FASTA output. The way this "
+                     "works is actually quite simple: first you learn about all the options that exist using the "
+                     "`--list-defline-variables`, and then use them to create your template. Available variables "
+                     "should be listed within curly brackets, which will be evaluated in contex. Anything outside "
+                     "of curly brackets will be kept as is. For instance, if you would like your defline to have "
+                     "the gene caller ID after the contig name in which it occurs, you can use this template: "
+                     "'{contig_name}_{gene_caller_id}', and your defline will look like '>XXX_182'. In most cases "
+                     "'{gene_caller_id}' will serve as the default defline format if this parameters is not used. "
+                     "See more examples in online help."}
+                ),
     'report-extended-deflines': (
             ['--report-extended-deflines'],
             {'default': False,
@@ -2523,16 +2657,6 @@ D = {
              'help': "Just like the minimum contig length parameter, but to set a maximum. Basically this will remove "
                      "any contig longer than a certain value. Why would anyone need this? Who knows. But if you ever "
                      "do, it is here."}
-                ),
-    'min-mean-coverage': (
-            ['-X', '--min-mean-coverage'],
-            {'metavar': 'INT',
-             'default': 0,
-             'type': int,
-             'help': "Minimum mean coverage for contigs to be kept in the analysis. The default value is %(default)d, "
-                     "which is for your best interest if you are going to profile multiple BAM files which are then "
-                     "going to be merged for a cross-sectional or time series analysis. Do not change it if you are not "
-                     "sure this is what you want to do."}
                 ),
     'min-coverage-for-variability': (
             ['-V', '--min-coverage-for-variability'],
@@ -2618,6 +2742,20 @@ D = {
                      "is because anvi'o computes gene coverages by going back to actual coverage values of each gene to "
                      "average them, instead of using contig average coverage values, for extreme accuracy."}
                 ),
+    'calculate-Q2Q3-carefully': (
+            ['--calculate-Q2Q3-carefully'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "By default, anvi'o summarizes collections by cutting corners. One of those corners is to take values "
+                     "for mean coverage Q2Q3 for each contig, and normalize that value by the size of the contig, and "
+                     "average those values to have a single value for the bin. While this strategy works quite well for "
+                     "regular mean coverage, the calculation of mean coverage Q2Q3 requires the ENTIRETY of the raw "
+                     "coverage values for each contig to be first concatenated so they can be sorted to calculate the "
+                     "most accurate Q2Q3 value for a given bin. This flag ensures anvi'o calculates mean coverage Q2Q3 "
+                     "values in that careful way at the expense of things taking much longer (but it really is worth it "
+                     "for your final summary of everything). Please see https://github.com/merenlab/anvio/pull/2366 for "
+                     "details."}
+                ),
     'reformat-contig-names': (
             ['--reformat-contig-names'],
             {'default': False,
@@ -2672,10 +2810,28 @@ D = {
              'action': 'store_true',
              'help': "By default, we don't include KEGG Ortholog annotations if they are not in KOfam, or if "
                      "the KOfam profile does not have a bitscore threshold with which we can distinguish good hits "
-                     "from bad hits (anvi-run-kegg-kofams does not even annotate these KOs). But if you got your "
-                     "annotations outside of anvi'o and you want to include ALL KOs in your analysis, use this flag "
-                     "to do so. This flag may be especially appropriate in the case of enzymes-txt input, though you "
-                     "can use it with all input types."}
+                     "from bad hits (anvi-run-kegg-kofams does not annotate these KOs unless you use the "
+                     "--include-stray-KOs flag). But if you got your annotations outside of anvi'o and you want to "
+                     "include ALL KOs in your analysis, use this flag to do so. This flag may be especially appropriate "
+                     "in the case of enzymes-txt input, though you can use it with all input types."}
+                ),
+    'ignore-unknown-KOs': (
+            ['--ignore-unknown-KOs'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "If we find an annotation that we don't recognize, usually this program throws an error. If you'd "
+                     "rather that we gracefully ignored such annotations, use this flag. But since errors about unrecognized "
+                     "thingies can sometimes be helpful for spotting problems with your data, we recommend not turning this "
+                     "behavior on until you have seen these errors and are absolutely sure that you do not care."}
+                ),
+    'exclude-dashed-reactions': (
+            ['--exclude-dashed-reactions'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Sometimes KEGG modules include steps like '--' that don't have an associated enzyme with a KOfam model. "
+                     "By default, we mark these steps as absent in our completeness and copy number calculations. If you'd prefer "
+                     "to ignore these '--' steps entirely (resulting in higher estimates), then use this flag. See "
+                     "https://github.com/merenlab/anvio/issues/2393 for a relevant discussion on this :)"}
                 ),
     'users-data-dir': (
             ['-U', '--users-data-dir'],
@@ -2943,25 +3099,25 @@ D = {
              'help': "Provide if working with INSeq/Tn-Seq genomic data. With this, all gene level "
                      "coverage stats will be calculated using INSeq/Tn-Seq statistical methods."}
                 ),
-    'migrate-dbs-safely': (
-            ['--migrate-dbs-safely'],
+    'migrate-safely': (
+            ['--migrate-safely'],
             {'required': False,
              'action': 'store_true',
              'default': False,
-             'help': "If you chose this, anvi'o will first create a copy of your original database. If something "
-                     "goes wrong, it will restore the original. If everything works, it will remove the old copy. "
-                     "IF YOU HAVE DATABASES THAT ARE VERY LARGE OR IF YOU ARE MIGRATING MANY MANY OF THEM THIS "
-                     "OPTION WILL ADD A HUGE I/O BURDEN ON YOUR SYSTEM. But still. Safety is safe."}
+             'help': "If you chose this, anvi'o will first create a copy of your input file, and if something "
+                     "goes wrong, it will restore the original. If everything works fine, it will remove the copy. "
+                     "IF YOU HAVE ANVI'O ARTIFACTS THAT ARE VERY LARGE OR IF YOU ARE MIGRATING MANY MANY OF THEM, "
+                     "THIS OPTION WILL ADD A HUGE I/O BURDEN ON YOUR SYSTEM :/ But still. Safety is safe."}
                 ),
-    'migrate-dbs-quickly': (
-            ['--migrate-dbs-quickly'],
+    'migrate-quickly': (
+            ['--migrate-quickly'],
             {'required': False,
              'action': 'store_true',
              'default': False,
-             'help': "If you chose this, anvi'o will migrate your databases in place. It will be much faster (and arguably "
-                     "more fun) than the safe option, but if something goes wrong, you will lose data. During the first "
-                     "five years of anvi'o development not a single user lost data using our migration scripts as far as "
-                     "we know. But there is always a first, and today might be your lucky day."}
+             'help': "If you chose this, anvi'o will migrate your artifats in place. It will be much faster (and arguably "
+                     "more fun since #YOLO) than the safe option, but if something goes wrong, you will lose data. "
+                     "During the first five years of anvi'o development not, a single user lost data using our migration "
+                     "scripts as far as we know. But there is always a first, and today might be your lucky day."}
                 ),
     'module-completion-threshold': (
             ['--module-completion-threshold'],
@@ -3056,6 +3212,35 @@ D = {
             {'default': False,
              'action': 'store_true',
              'help': "Use this flag to skip using BRITE hierarchies, which we don't recommend but let you do anyways."}
+                ),
+    'no-hmmer-prefiltering': (
+            ['--no-hmmer-prefiltering'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "By default, the initial set of hits we get back from HMMER are subject to its default e-value "
+                     "threshold of 10. However, if you are working with a very large dataset, this pre-filtering based "
+                     "on e-value might be too stringent and lead to missing some legitimate hits. If this is your case, "
+                     "you can use this flag to turn off the HMMER pre-filtering based on e-value (instead we will use `-T "
+                     "-20` and `-domT -20`). All hits we get from HMMER will still be subject to later bitscore-based "
+                     "filtering and the annotation heuristic to ensure we don't let in any garbage annotations (unless you "
+                     "use the `--keep-all-hits` or the `--skip-bitscore-heuristic` flags, respectively). See "
+                     "https://github.com/merenlab/anvio/issues/2446 for more details."}
+                ),
+    'skip-binary-relations': (
+            ['--skip-binary-relations'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag to skip setting up KEGG binary relation files, which we don't "
+                     "recommend, since they are necessary for running `anvi-reaction-network`, but "
+                     "let you do anyways."}
+                ),
+    'skip-map-images': (
+            ['--skip-map-images'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag to skip setting up KEGG pathway map image files, which we don't "
+                     "recommend, since they are used in visualizing pathway membership, but let you "
+                     "do anyways."}
                 ),
     'heuristic-e-value': (
             ['-E', '--heuristic-e-value'],
@@ -3542,6 +3727,12 @@ D = {
                      "a comma-separated list. The default stats are 'detection' and "
                      "'mean_coverage_Q2Q3'. To see a list of available stats, use this flag "
                      "and provide an absolutely ridiculous string after it (we suggest 'cattywampus', but you do you)."}
+    ),
+    'report-all-estimates': (
+            ['--report-all-estimates'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag to report all C/R estimates, from all domains."}
     )
 }
 
@@ -3561,27 +3752,18 @@ def K(param_id, params_dict={}):
 
 # The rest of this file is composed of code that responds to '-v' or '--version' calls from clients,
 # and provides access to the database version numbers for all anvi'o modules.
-
-import anvio.tables as t
-from anvio.terminal import Run
-
-
-run = Run()
-
-
-def set_version():
-    return anvio_version, \
-           anvio_codename, \
-           t.contigs_db_version, \
-           t.pan_db_version, \
-           t.profile_db_version, \
-           t.genes_db_version, \
-           t.auxiliary_data_version, \
-           t.genomes_storage_vesion, \
-           t.structure_db_version, \
-           t.metabolic_modules_db_version, \
-           t.trnaseq_db_version
-
+(__version__,
+ __codename__,
+ __contigs__version__,
+ __profile__version__, \
+ __genes__version__, \
+ __pan__version__, \
+ __auxiliary_data_version__, \
+ __structure__version__, \
+ __genomes_storage_version__ , \
+ __trnaseq__version__, \
+ __workflow_config_version__,
+ __kegg_modules_version__) = get_versions()
 
 def get_version_tuples():
     return [("Anvi'o version", "%s (v%s)" % (__codename__, __version__)),
@@ -3597,29 +3779,20 @@ def get_version_tuples():
 
 
 def print_version():
-    run.info("Anvi'o", "%s (v%s)" % (__codename__, __version__), mc='green', nl_after=1)
+    from anvio.terminal import Run
+    run = Run()
+    run.info("Anvi'o", "%s (v%s)" % (__codename__, __version__), mc='green')
+    run.info("Python", platform.python_version(), mc='cyan', nl_after=1)
     run.info("Profile database", __profile__version__)
     run.info("Contigs database", __contigs__version__)
     run.info("Pan database", __pan__version__)
     run.info("Genome data storage", __genomes_storage_version__)
-    run.info("Auxiliary data storage", __auxiliary_data_version__)
     run.info("Structure database", __structure__version__)
     run.info("Metabolic modules database", __kegg_modules_version__)
-    run.info("tRNA-seq database", __trnaseq__version__, nl_after=1)
-
-
-__version__, \
-__codename__, \
-__contigs__version__, \
-__pan__version__, \
-__profile__version__, \
-__genes__version__, \
-__auxiliary_data_version__, \
-__genomes_storage_version__ , \
-__structure__version__, \
-__kegg_modules_version__, \
-__trnaseq__version__ = set_version()
-
+    run.info("tRNA-seq database", __trnaseq__version__)
+    run.info("Genes database", __genes__version__)
+    run.info("Auxiliary data storage", __auxiliary_data_version__)
+    run.info("Workflow configurations", __workflow_config_version__, nl_after=1)
 
 if '-v' in sys.argv or '--version' in sys.argv:
     print_version()

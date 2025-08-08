@@ -1,11 +1,11 @@
 /**
  * Helper funcitons for amvi'o inspection pages
  *
- *  Author: A. Murat Eren <a.murat.eren@gmail.com>
- *  Credits: Özcan Esen, Gökmen Göksel, Tobias Paczian.
- *  Copyright 2015, The anvio Project
+ *  Authors: A. Murat Eren <a.murat.eren@gmail.com>
+ *           Ozcan Esen
+ *           Isaac Fink <iafink@uchicago.edu>
  *
- * This file is part of anvi'o (<https://github.com/meren/anvio>).
+ * Copyright 2015-2021, The anvi'o project (http://anvio.org)
  *
  * Anvi'o is a free software. You can redistribute this program
  * and/or modify it under the terms of the GNU General Public
@@ -54,7 +54,8 @@ function getUrlVars() {
 $(document).ready(function() {
   $(window).on('click', function (e) {
     //did not click a popover toggle or popover
-    if ($(e.target).data('toggle') !== 'popover'
+    if (!$(e.target).is('[data-toggle="popover"]') 
+        && !$(e.target).closest('.popover').length
         && $(e.target).parents('.popover.in').length === 0) {
         $('.popover').popover('hide');
     }
@@ -63,6 +64,7 @@ $(document).ready(function() {
 
 
 function get_gene_functions_table_html(gene){
+
     functions_table_html =  '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span>';
     functions_table_html += '<h2>Gene Call</h2>';
     functions_table_html += '<table class="table table-striped" style="width: 100%; text-align: center;">';
@@ -79,22 +81,76 @@ function get_gene_functions_table_html(gene){
                           + '</td><td>' + gene.percentage_in_split.toFixed(2) + '%'
                           + '</td></tr></tbody></table>';
 
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="show_sequence(' + gene.gene_callers_id + ');">DNA</button> ';
+    functions_table_html += '<div class="row">'
+    functions_table_html += '<div class="col-xs-1">'
+    functions_table_html += '<button type="button" class="btn btn-outline-secondary btn-sm ml-3 mr-1" onClick="show_sequence(' + gene.gene_callers_id + ');">DNA</button> ';
+    functions_table_html += '</div>'
+    functions_table_html += '<div class="col-xs-1">'
 
     if(gene.call_type == 1)
-        functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="show_aa_sequence(' + gene.gene_callers_id + ');">AA</button> ';
+        functions_table_html += '<button type="button" class="btn btn-outline-secondary btn-sm " onClick="show_aa_sequence(' + gene.gene_callers_id + ');">AA</button> ';
     else
-        functions_table_html += '<button type="button" class="btn btn-default btn-sm" disabled>Get AA seq</button> ';
+        functions_table_html += '<button type="button" class="btn btn-outline-secondary btn-sm" disabled>AA</button> ';
+    functions_table_html += '</div>'
 
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="get_sequence_and_blast(' + gene.gene_callers_id + ', \'blastn\', \'nr\', \'gene\');">blastn @ nr</button> ';
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="get_sequence_and_blast(' + gene.gene_callers_id + ', \'blastn\', \'refseq_genomic\', \'gene\');">blastn @ refseq_genomic</button> ';
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="get_sequence_and_blast(' + gene.gene_callers_id + ', \'blastx\', \'nr\', \'gene\');">blastx @ nr</button> ';
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="get_sequence_and_blast(' + gene.gene_callers_id + ', \'blastx\', \'refseq_genomic\', \'gene\');">blastx @ refseq_genomic</button> ';
+    //Blast search button created here
+    functions_table_html += `<div class="col-xs-1 dp-button"> \
+    <div class="dropdown"> \
+      <button id="dLabel" role="button" data-toggle="dropdown" class="btn btn-outline-secondary btn-sm" data-target="#" href="#"> \
+                BLAST SEARCH <span class="caret"></span> \
+            </button> \
+      <ul class="dropdown-menu multi-level fa-ul blast-dropdown-btn p-3" role="menu" aria-labelledby="dropdownMenu"> \
+        <li class="dropdown-submenu text-secondary"> \
+          <a class="sublink" tabindex="-1" href="#">Nucleotide <span></span> Nucleotide</a> \
+          <ul class="dropdown-menu text-secondary ml-3 mb-3">`;
+    functions_table_html += '<li><a class="sublink-db" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id + ', \'blastn\', \'nr\', \'gene\');">nr/nt</a></li> ';
+    functions_table_html += '<li><a class="sublink-db" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'blastn\', \'refseq_select\', \'gene\');">refseq_select</a></li> ';
+    functions_table_html += '<li><a class="sublink-db" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'blastn\', \'refseq_rna\', \'gene\');">refseq_rna</a></li>'; 
+    functions_table_html += '</ul></li>';
+
+    if(gene.call_type == 1){
+
+      functions_table_html += '<li class="dropdown-submenu text-secondary"> <a class="sublink" tabindex="-1" href="#">Trans. Nucleotide <span></span> Protein</a><ul class="dropdown-menu text-secondary ml-3 mb-3">';
+      functions_table_html += '<li><a class="sublink-db" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id + ', \'blastx\', \'nr\', \'gene\');">nr</a></li> ';
+      functions_table_html += '<li><a class="sublink-db" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'blastx\', \'refseq_select\', \'gene\');">refseq_select</a></li> ';
+      functions_table_html += '<li><a class="sublink-db" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'blastx\', \'refseq_protein\', \'gene\');">refseq_protein</a></li>'; 
+      functions_table_html += '</ul> </li>';
+
+      functions_table_html += `<li class="dropdown-submenu text-secondary"> \
+      <a class="sublink" tabindex="-1" href="#"> Protein <span></span> Protein </a> \
+        <ul class="dropdown-menu text-secondary ml-3 mb-3">`;
+
+      functions_table_html += '<li><a class="sublink-db" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id + ', \'blastp\', \'nr\', \'gene\');">nr</a></li> ';
+      functions_table_html += '<li><a class="sublink-db" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'blastp\', \'refseq_select\', \'gene\');">refseq_select</a></li> ';
+      functions_table_html += '<li><a class="sublink-db" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'blastp\', \'refseq_protein\', \'gene\');">refseq_protein</a></li>'; 
+
+      functions_table_html += `</ul> \
+      </li> \
+      <li class="dropdown-submenu text-secondary"> \
+      <a class="sublink" tabindex="-1" href="#"> Protein <span></span> Trans. Nucleotide </a> \
+        <ul class="dropdown-menu text-secondary ml-3 mb-3">`;
+
+      functions_table_html += '<li><a class="sublink-db" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id + ', \'tblastn\', \'nr\', \'gene\');">nr/nt</a></li> ';
+      functions_table_html += '<li><a class="sublink-db" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'tblastn\', \'refseq_select\', \'gene\');">refseq_select</a></li> ';
+      functions_table_html += '<li><a class="sublink-db" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'tblastn\', \'refseq_rna\', \'gene\');">refseq_rna</a></li>'; 
+      functions_table_html += '</ul> </li>';
+      functions_table_html += `<li class="dropdown-submenu text-secondary"> \
+      <a class="sublink" tabindex="-1" href="#"> Trans. Nucleotide <span></span> Trans. Nucleotide </a> \
+      <ul class="dropdown-menu text-secondary ml-3 mb-3">`;
+
+      functions_table_html += '<li><a class="sublink-db" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id + ', \'tblastx\', \'nr\', \'gene\');">nr</a></li> ';
+      functions_table_html += '<li><a class="sublink-db" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'tblastx\', \'refseq_select\', \'gene\');">refseq_select</a></li> ';
+      functions_table_html += '<li><a class="sublink-db" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'tblastx\', \'refseq_rna\', \'gene\');">refseq_rna</a></li>'; 
+      functions_table_html += '</ul></li></ul> ';
+    }
+    functions_table_html += '</div></div>';
+    functions_table_html += '<div class="col-xs-1 dp-button"> <a class="btn btn-outline-secondary btn-sm" href="#" onClick="search_protein_structure_in_alphafold(' + gene.gene_callers_id + ', \'gene\');">Alphafold Search</a></div>' ;
+    functions_table_html += '</div>';
 
     if(!gene.functions)
         return functions_table_html;
 
-    functions_table_html += '<h2>Annotations</h2>';
+    functions_table_html += '<h2 class="col-12">Annotations</h2>';
     functions_table_html += '<table class="table table-striped">';
     functions_table_html += '<thead><th>Source</th>';
     functions_table_html += '<th>Accession</th>';
@@ -157,17 +213,17 @@ function get_gene_functions_table_html_for_pan(gene_callers_id, genome_name){
                           + '</td></tr></tbody></table>';
     functions_table_html += '<textarea id="aa_sequence_fasta" style="display: none;">' + aa_sequence_fasta + '</textarea>';
     functions_table_html += '<textarea id="dna_sequence_fasta" style="display: none;">' + dna_sequence_fasta + '</textarea>';
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="show_sequence_modal(\'AA Sequence\', $(\'#aa_sequence_fasta\').val());">Get AA sequence</button> ';
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="show_sequence_modal(\'DNA Sequence\', $(\'#dna_sequence_fasta\').val());">Get DNA sequence</button> ';
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="fire_up_ncbi_blast($(\'#aa_sequence_fasta\').val(), \'tblastn\', \'nr\', \'gene\');">tblastn @ nr</button> ';
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="fire_up_ncbi_blast($(\'#aa_sequence_fasta\').val(), \'tblastn\', \'refseq_genomic\', \'gene\');">tblastn @ refseq_genomic</button> ';
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="fire_up_ncbi_blast($(\'#aa_sequence_fasta\').val(), \'blastp\', \'nr\', \'gene\');">blastp @ nr</button> ';
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="fire_up_ncbi_blast($(\'#aa_sequence_fasta\').val(), \'blastp\', \'refseq_genomic\', \'gene\');">blastp @ refseq_genomic</button> ';
+    functions_table_html += '<button type="button" class="btn btn-outline-secondary btn-sm" onClick="show_sequence_modal(\'AA Sequence\', $(\'#aa_sequence_fasta\').val());">Get AA sequence</button> ';
+    functions_table_html += '<button type="button" class="btn btn-outline-secondary btn-sm" onClick="show_sequence_modal(\'DNA Sequence\', $(\'#dna_sequence_fasta\').val());">Get DNA sequence</button> ';
+    functions_table_html += '<button type="button" class="btn btn-outline-secondary btn-sm" onClick="fire_up_ncbi_blast($(\'#aa_sequence_fasta\').val(), \'tblastn\', \'nr\', \'gene\');">tblastn @ nr</button> ';
+    functions_table_html += '<button type="button" class="btn btn-outline-secondary btn-sm" onClick="fire_up_ncbi_blast($(\'#aa_sequence_fasta\').val(), \'tblastn\', \'refseq_genomic\', \'gene\');">tblastn @ refseq_genomic</button> ';
+    functions_table_html += '<button type="button" class="btn btn-outline-secondary btn-sm" onClick="fire_up_ncbi_blast($(\'#aa_sequence_fasta\').val(), \'blastp\', \'nr\', \'gene\');">blastp @ nr</button> ';
+    functions_table_html += '<button type="button" class="btn btn-outline-secondary btn-sm" onClick="fire_up_ncbi_blast($(\'#aa_sequence_fasta\').val(), \'blastp\', \'refseq_genomic\', \'gene\');">blastp @ refseq_genomic</button> ';
 
     if(!gene.functions)
         return functions_table_html;
 
-    functions_table_html += '<h2>Annotations</h2>';
+    functions_table_html += '<h2 class="col-12">Annotations</h2>';
     functions_table_html += '<table class="table table-striped">';
     functions_table_html += '<thead><th>Source</th>';
     functions_table_html += '<th>Accession</th>';
@@ -204,14 +260,14 @@ function show_sequence_modal(title, content) {
       <div class="modal-dialog"> \
           <div class="modal-content"> \
               <div class="modal-header"> \
-                  <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button> \
                   <h4 class="modal-title">' + title + '</h4> \
+                  <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button> \
               </div> \
               <div class="modal-body"> \
-                      <textarea class="form-control" style="width: 100%; height: 100%; font-family: monospace;" rows="16" onclick="$(this).select();" readonly>' + (content.startsWith('>') ? content : '>' + content) + '</textarea> \
+                      <textarea class="form-control" style="width: 100%; height: 100%; font-family: "Roboto", Helvetica, Arial;" rows="16" onclick="$(this).select();" readonly>' + (content.startsWith('>') ? content : '>' + content) + '</textarea> \
               </div> \
               <div class="modal-footer"> \
-                  <button class="btn btn-default" data-dismiss="modal" type="button">Close</button> \
+                  <button class="btn btn-outline-secondary" data-dismiss="modal" type="button">Close</button> \
               </div> \
           </div> \
       </div> \
@@ -290,28 +346,22 @@ function drawArrows(_start, _stop, colortype, gene_offset_y, color_genes=null) {
 
       var y = 10 + (gene.level * 20);
 
-      var category = "none";
-      if(colortype == "COG") {
-        if(gene.functions !== null && gene.functions.hasOwnProperty("COG_CATEGORY") && gene.functions.COG_CATEGORY != null) {
-          category = gene.functions["COG_CATEGORY"][0][0];
-        }
-        if(category == null || category == "X") category = "none";
-      } else if(colortype == "KEGG") {
-        if(gene.functions !== null && gene.functions.hasOwnProperty("KEGG_Class") && gene.functions.KEGG_Class != null) {
-          category = getCategoryForKEGGClass(gene.functions["KEGG_Class"][1]);
-        }
-        if(category == null) category = "none";
-      } else if(colortype == "Source") {
-        if (gene.source.startsWith('Ribosomal_RNA')) {
-          category = 'rRNA';
-        } else if (gene.source == 'Transfer_RNAs') {
-          category = 'tRNA';
-        } else if (gene.functions !== null) {
-          category = 'Function';
-        } else {
-          category = "None";
+
+      let category = getCagForType(gene.functions, colortype);
+
+      if(!category) {
+        category = "None";
+        if(colortype == "Source") {
+          if (gene.source.startsWith('Ribosomal_RNA')) {
+            category = 'rRNA';
+          } else if (gene.source == 'Transfer_RNAs') {
+            category = 'tRNA';
+          } else if (gene.functions !== null) {
+            category = 'Function';
+          }
         }
       }
+
       if(color_genes != null && !isEmpty(color_genes) && color_genes.includes("" + gene.gene_callers_id)) {
         category = gene.gene_callers_id;
       }
@@ -330,17 +380,25 @@ function drawArrows(_start, _stop, colortype, gene_offset_y, color_genes=null) {
       }
 
       // M10 15 l20 0
+      let color;
+      if(category == gene.gene_callers_id) {
+        // highlighted gene id
+        color = state['highlight-genes'][category];
+      } else {
+        let prop = colortype.toLowerCase() + '-colors';
+        color = state[prop][category] ? state[prop][category] : "#808080";
+      }
       path = paths.append('svg:path')
            .attr('id', 'gene_' + gene.gene_callers_id)
            .attr('d', 'M' + start +' '+ y +' l'+ stop +' 0')
-           .attr('stroke', category == "none" ? "gray" : $('#picker_' + category).attr('color'))
+           .attr('stroke', color)
            .attr('stroke-width', 6)
            .attr("style", "cursor:pointer;")
            .attr('marker-end', function() {
 
              if ((gene.direction == 'r' && gene.start_in_split > _start) ||
                  (gene.direction == 'f' && gene.stop_in_split  < _stop)) {
-                   return 'url(#arrow_' + category + ')';
+                   return 'url(#arrow_' + getCleanCagCode(category) + ')';
                  }
 
               return '';
@@ -356,25 +414,24 @@ function drawArrows(_start, _stop, colortype, gene_offset_y, color_genes=null) {
         toggleGeneIDColor(gene.gene_callers_id);
       });
     });
-    $('[data-toggle="popover"]').popover({"html": true, "trigger": "click", "container": "body", "viewport": "body", "placement": "top"});
-
-    // workaround for known popover bug
-    // source: https://stackoverflow.com/questions/32581987/need-click-twice-after-hide-a-shown-bootstrap-popover
-    $('body').on('hidden.bs.popover', function (e) {
-      $(e.target).data("bs.popover").inState.click = false;
-    });
+    $('[data-toggle="popover"]').popover({html: true, sanitize: false, "trigger": "click", "container": "body", "viewport": "body", "placement": "top" });
 
     $('[data-toggle="popover"]').on('shown.bs.popover', function (e) {
-      var popover = $(e.target).data("bs.popover").$tip;
+      var popover = $(e.target).data("bs.popover").tip;
+      $(popover).addClass('d-block');
 
-      if ($(popover).css('top').charAt(0) === '-') {
-        $(popover).css('top', '0px');
-      }
+      // update popover position before scrolling
+      $(popover).popover('update');
 
-      if ($(popover).css('left').charAt(0) === '-') {
-        $(popover).css('left', '0px');
-      }
+      $('div').on('scroll', function () {
+        var $container = $(this);
+        $(this).find('.popover').each(function () {
+            $(this).css({
+                top: - $container.scrollTop()
+            });
+        });
     });
+  });
 }
 
 function getGeneEndpts(_start, _stop) {
@@ -386,6 +443,69 @@ function getGeneEndpts(_start, _stop) {
   });
 
   return ret;
+}
+
+/*
+ *  @returns arbitrary category:color dict given a list of categories
+ */
+function getCustomColorDict(fn_type, cags=null, order=null) {
+  if(fn_type == "Source") return default_source_colors;
+
+  if(!cags) {
+    cags = Object.values(geneParser["data"]).map(gene => gene.functions ? getCagForType(gene.functions, fn_type) : null)
+                                                .filter(o => { if(!o) o = "None"; return o != null });
+    cags = cags.filter((item, i) => { return cags.indexOf(item) == i }); // remove duplicates
+  }
+
+  // move "Other" and "None" to end of list
+  if(cags.includes("Other")) cags.push(cags.splice(cags.indexOf("Other"), 1)[0]);
+  if(cags.includes("None")) cags.push(cags.splice(cags.indexOf("None"), 1)[0]);
+
+  let out = custom_cag_colors.reduce((out, field, index) => {
+    out[cags[index]] = field;
+    return out;
+  }, {});
+
+  // sort using order
+  if(order) {
+    let colors = Object.values(out);
+    Object.keys(out).forEach(cag => { out[cag] = colors[order[cag]] });
+  }
+
+  if(cags.includes("Other")) out["Other"] = "#FFFFFF";
+  if(cags.includes("None")) out["None"] = "#808080";
+  delete out["undefined"];
+  delete out[null];
+  return out;
+}
+
+/*
+ *  @returns array of functional annotation types from genes
+ */
+function getFunctionalAnnotations() {
+  for(gene of geneParser["data"]) {
+    if(!gene.functions) continue;
+    return Object.keys(gene.functions);
+  }
+  return [];
+}
+
+function orderColorTable(order) {
+  order_gene_colors_by_count = order == 'count';
+  generateFunctionColorTable(null, $("#gene_color_order").val());
+}
+
+function filterColorTable(thresh) {
+  if(isNaN(thresh)) {
+    alert("Error: filtering threshold must be numeric");
+    return;
+  } else if(thresh < 1) {
+    alert("Error: filtering threshold must be an integer >= 1");
+    return;
+  }
+  thresh_count_gene_colors = thresh;
+  generateFunctionColorTable(null, $("#gene_color_order").val());
+  redrawArrows();
 }
 
 var base_colors = ['#CCB48F', '#727EA3', '#65567A', '#CCC68F', '#648F7D', '#CC9B8F', '#A37297', '#708059'];
@@ -403,22 +523,6 @@ function get_comp_nt_color(nts){
         return "orange";
     else
         return "black";
-}
-
-function getCategoryForKEGGClass(class_str) {
-  if(class_str == null) return null;
-
-  var category_name = getClassFromKEGGAnnotation(class_str);
-  return getKeyByValue(KEGG_categories, category_name);
-}
-
-function getClassFromKEGGAnnotation(class_str) {
-  return class_str.substring(17, class_str.indexOf(';', 17));
-}
-
-// https://stackoverflow.com/questions/9907419/how-to-get-a-key-in-a-javascript-object-by-its-value/36705765
-function getKeyByValue(object, value) {
-  return Object.keys(object).find(key => object[key] === value);
 }
 
 // https://stackoverflow.com/questions/16947100/max-min-of-large-array-in-js

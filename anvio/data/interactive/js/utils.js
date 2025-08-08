@@ -1,10 +1,10 @@
 /**
  * Utility functions for anvi'o interactive interface
  *
- *  Author: Özcan Esen <ozcanesen@gmail.com>
- *  Copyright 2015, The anvio Project
+ *  Authors: Özcan Esen <ozcanesen@gmail.com>
+ *           A. Murat Eren <a.murat.eren@gmail.com>
  *
- * This file is part of anvi'o (<https://github.com/meren/anvio>).
+ * Copyright 2015-2021, The anvi'o project (http://anvio.org)
  *
  * Anvi'o is a free software. You can redistribute this program
  * and/or modify it under the terms of the GNU General Public
@@ -34,31 +34,112 @@ function is_large_angle(a, b) {
     return (Math.abs(b - a) > Math.PI) ? 1 : 0;
 }
 
+function clamp(num, min, max) {
+  return Math.min(Math.max(num, min), max);
+}
+
 function info(step) {
     // a funciton to keep user posted about what is going on.
     timestamp = (new Date(Date.now())).toLocaleString().substr(11,7);
     console.log(step + " (" + timestamp + ").");
 }
 
-function get_sequence_and_blast(item_name, program, database, target) {
+// https://stackoverflow.com/questions/9907419/how-to-get-a-key-in-a-javascript-object-by-its-value/36705765
+function getKeyByValue(object, value) {
+  return Object.keys(object).find(key => object[key] === value);
+}
+
+//-----------------------------------------------------------------------------
+// Gene function coloring
+//-----------------------------------------------------------------------------
+
+/*
+ *  @returns target gene's category code for a given functional annotation type.
+ */
+function getCagForType(geneFunctions, fn_type) {
+  let out = geneFunctions != null && geneFunctions[fn_type] != null ? geneFunctions[fn_type][1] : null;
+  if(out && out.indexOf(',') != -1) out = out.substr(0,out.indexOf(',')); // take first cag in case of a comma-separated list
+  if(out && out.indexOf(';') != -1) out = out.substr(0,out.indexOf(';'));
+  if(out && out.indexOf('!!!') != -1) out = out.substr(0,out.indexOf('!!!'));
+  return out;
+}
+
+/*
+ *  @returns target gene's category code for a given functional annotation type,
+ *            given genomeID and geneID.
+ */
+function getCagForID(genomeID, geneID, fn_type) {
+  let funs = settings.genomeData.genomes.find(x => x[0]==genomeID)[1].genes.functions[geneID];
+  return getCagForType(funs, fn_type);
+}
+
+function appendColorRow(label, cagCode, color, prepend=false) {
+  let code = getCleanCagCode(cagCode);
+  var tbody_content =
+   '<tr id="picker_row_' + code + '"> \
+      <td></td> \
+      <td> \
+        <div id="picker_' + code + '" class="colorpicker annotation_color" color="' + color + '" background-color="' + color + '" style="background-color: ' + color + '; margin-right:16px; margin-left:16px"></div> \
+      </td> \
+      <td>' + label + '</td> \
+    </tr>';
+
+  if(prepend) {
+    $('#tbody_function_colors').prepend(tbody_content);
+  } else {
+    $('#tbody_function_colors').append(tbody_content);
+  }
+}
+
+function getCleanCagCode(code) {
+  if(!isNaN(code)) return code;
+  return code.split(' ').join('_').split('(').join('_').split(')').join('_').split(':').join('_').split('/').join('_').split('+').join('_').split('.').join('_').split('\'').join('_').split('\"').join('_');
+}
+
+//-----------------------------------------------------------------------------
+
+function search_protein_structure_in_alphafold(gene_id, target) {
     $.ajax({
         type: 'GET',
         cache: false,
-        // async: false is important here. DO NOT REMOVE.
-        // If direct call chain between event handler and the code that opens new window is broken
-        // chrome popup blocker will not allow opening new window.
-        // async: false does not use asynchronus callbacks so protects direct call chain.
         async: false,
-        url: '/data/' + target + '/' + item_name,
+        url: '/data/' + target + '/' + gene_id,
         success: function(data) {
-            if ('error' in data){
+            if ('error' in data) {
                 toastr.error(data['error'], "", { 'timeOut': '0', 'extendedTimeOut': '0' });
             } else {
-              var sequence = '>' + data['header'] + '\n' + data['sequence'];
-              fire_up_ncbi_blast(sequence, program, database, target)
+                var sequence = data['aa_sequence'];
+
+                var alphafoldUrl = 'https://www.alphafold.ebi.ac.uk/search/text/' + encodeURIComponent(sequence);
+                window.open(alphafoldUrl, '_blank');
             }
         }
     });
+}
+
+function search_gene_sequence_in_remote_dbs(gene_id, program, database, target) {
+    
+        $.ajax({
+            type: 'GET',
+            cache: false,
+            // async: false is important here. DO NOT REMOVE.
+            // If direct call chain between event handler and the code that opens new window is broken
+            // chrome popup blocker will not allow opening new window.
+            // async: false does not use asynchronus callbacks so protects direct call chain.
+            async: false,
+            url: '/data/' + target + '/' + gene_id,
+            success: function(data) {
+                if ('error' in data){
+                    toastr.error(data['error'], "", { 'timeOut': '0', 'extendedTimeOut': '0' });
+                } else {
+                    var sequence = '>' + data['header'] + '\n' + data['sequence'];
+                    if(program == 'blastp' || program == 'tblastn'){
+                        var sequence = '>' + data['header'] + '\n' + data['aa_sequence'];
+                    }
+                    fire_up_ncbi_blast(sequence, program, database, target)
+                }
+            }
+        });
 }
 
 function fire_up_ncbi_blast(sequence, program, database, target)
@@ -69,10 +150,9 @@ function fire_up_ncbi_blast(sequence, program, database, target)
     }
 
     var post_variables = {
-        'PROGRAM': 'blastn',
-        'DATABASE': 'nr',
+        'PROGRAM': '',
+        'DATABASE': '',
         'QUERY': '',
-        'BLAST_PROGRAMS': 'megaBlast',
         'PAGE_TYPE': 'BlastSearch',
         'SHOW_DEFAULTS': 'on',
         'SHOW_OVERVIEW': 'on',
@@ -111,6 +191,9 @@ function fire_up_ncbi_blast(sequence, program, database, target)
     for (name in post_variables)
     {
         $(form).append('<input type="hidden" name="' + name + '" value="' + post_variables[name] + '" />');
+    }
+    if(program=='blastn'){
+        $(form).append('<input type="hidden" name="BLAST_PROGRAMS" value="megaBlast" />');
     }
 
     blast_window.document.body.appendChild(form);
@@ -201,25 +284,32 @@ function getParameterByName(name, url) {
 function renderMarkdown(content) {
     var renderer = new marked.Renderer();
 
-    renderer.link = function( href, title, text ) {
+    renderer.link = function (hrefObj, title, text) {
+        var href = typeof hrefObj === 'string' ? hrefObj : hrefObj.href;
+
+        if (typeof href !== 'string') {
+            console.error('Expected href to be a string, got:', hrefObj);
+            return `<a href="#">${text}</a>`;
+        }
+
         if (href.startsWith('item://')) {
             var item_name = href.split('//')[1];
-
             var html = '<a href="#" class="item-link">' + text + '<span class="tooltiptext"> \
                 <span href="#" onclick="bins.HighlightItems(\'' + item_name + '\');">HIGHLIGHT</span>';
 
-            if (mode == 'full' | mode == 'pan') {
-                var target = (mode == 'pan') ? 'inspect_gene_cluster' : 'inspect_contig';
+            if (mode === 'full' || mode === 'pan') {
+                var target = (mode === 'pan') ? 'inspect_gene_cluster' : 'inspect_contig';
                 html += ' | <span href="#" onclick="context_menu_target_id = label_to_node_map[\'' + item_name + '\'].id; \
                                                  menu_callback(\'' + target + '\');">INSPECT</span>';
             }
 
             return html + '</span></a>';
         }
-        return '<a target="_blank" href="' + href + '" title="' + title + '">' + text + '</a>';
-    }
 
-    return marked(content, { renderer:renderer });
+        return `<a target="_blank" href="${href}" title="${title}">${text}</a>`;
+    };
+
+    return marked.parse(content, { renderer: renderer });
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -260,13 +350,13 @@ function showTaxonomyTableDialog(title, content)
     var randomID = title.hashCode();
 
     var template = `
-    <div class="modal fade taxonomyTableDialog" id="modal` + randomID + `" role="dialog" data-backdrop="false" style="pointer-events: none; width: 100%;">
-        <div class="modal-dialog" style="pointer-events: all; width: 1200px;">
+    <div class="modal fade taxonomyTableDialog" id="modal` + randomID + `" role="dialog" data-backdrop="false" style="pointer-events: none;">
+        <div class="taxonomy-modal-dialog modal-dialog" style="pointer-events: all;">
             <div class="modal-content">
 
                 <div class="modal-header">
+                    <h4 class="modal-title">` + title + `</h4>
                     <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-                     <h4 class="modal-title">` + title + `</h4>
                 </div>
 
                 <div class="modal-body">
@@ -274,7 +364,7 @@ function showTaxonomyTableDialog(title, content)
                 </div>
 
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Fine</button>
+                    <button type="button" class="btn btn-outline-danger" data-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>
@@ -285,9 +375,6 @@ function showTaxonomyTableDialog(title, content)
     $('#modal' + randomID).on('hidden.bs.modal', function () {
         $(this).remove();
     });
-
-    // trigger bootstrap-sortable in case newly generated page content may have sortable tables.
-    $.bootstrapSortable({ applyLast: true })
 }
 
 
@@ -296,13 +383,13 @@ function showGeneClusterFunctionsSummaryTableDialog(title, content)
     var randomID = title.hashCode();
 
     var template = `
-    <div class="modal fade taxonomyTableDialog" id="modal` + randomID + `" role="dialog" data-backdrop="false" style="pointer-events: none; width: 100%;">
-        <div class="modal-dialog" style="pointer-events: all; width: 1200px;">
+    <div class="modal fade taxonomyTableDialog" id="modal` + randomID + `" role="dialog" data-backdrop="false" style="pointer-events: none;">
+        <div class="taxonomy-modal-dialog modal-dialog" style="pointer-events: all;">
             <div class="modal-content">
 
                 <div class="modal-header">
+                    <h4 class="modal-title">` + title + `</h4>
                     <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
-                     <h4 class="modal-title">` + title + `</h4>
                 </div>
 
                 <p style="margin: 20px; font-style: italic;">Please note that this is just a quick view of the functions associated with your gene clusters. A much more appropriate way to summarize this information and more is to use the program <a href="http://merenlab.org/software/anvio/help/programs/anvi-summarize/" target="_blank">anvi-summarize</a>, and inspect the resulting TAB-delimited output file</p>
@@ -312,7 +399,7 @@ function showGeneClusterFunctionsSummaryTableDialog(title, content)
                 </div>
 
                 <div class="modal-footer">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Fine</button>
+                    <button type="button" class="btn btn-outline-danger" data-dismiss="modal">Close</button>
                 </div>
             </div>
         </div>
@@ -322,10 +409,7 @@ function showGeneClusterFunctionsSummaryTableDialog(title, content)
     $('#modal' + randomID).modal({'show': true, 'backdrop': true, 'keyboard': false}).find('.modal-dialog').draggable({handle: '.modal-header'});
     $('#modal' + randomID).on('hidden.bs.modal', function () {
         $(this).remove();
-    });
-
-    // trigger bootstrap-sortable in case newly generated page content may have sortable tables.
-    $.bootstrapSortable({ applyLast: true })
+    });    
 }
 
 
@@ -346,14 +430,14 @@ function showDraggableDialog(title, content, updateOnly)
             <div class="modal-dialog" style="pointer-events: all;"> \
                 <div class="modal-content no-shadow"> \
                     <div class="modal-header"> \
+                        <h4 class="modal-title">' + title + '</h4> \
                         <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button> \
-                         <h4 class="modal-title">' + title + '</h4> \
                     </div> \
                     <div class="modal-body"> \
                         ' + content + ' \
                     </div> \
                     <div class="modal-footer"> \
-                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button> \
+                        <button type="button" class="btn btn-outline-danger" data-dismiss="modal">Close</button> \
                     </div> \
                 </div> \
             </div> \
@@ -364,10 +448,7 @@ function showDraggableDialog(title, content, updateOnly)
     $('#modal' + randomID).modal({'show': true, 'backdrop': false, 'keyboard': false}).find('.modal-dialog').draggable({handle: '.modal-header'});
     $('#modal' + randomID).on('hidden.bs.modal', function () {
         $(this).remove();
-    });
-
-    // trigger bootstrap-sortable in case newly generated page content may have sortable tables.
-    $.bootstrapSortable({ applyLast: true })
+    });    
 }
 
 //--------------------------------------------------------------------------------------------------

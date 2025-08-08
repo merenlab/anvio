@@ -1,3 +1,23 @@
+/**
+ * Javascript library to visualize additional layer info
+ * (previously known as samples db)
+ *
+ *  Authors: Ozcan Esen
+ *           A. Murat Eren <a.murat.eren@gmail.com>
+ *
+ * Copyright 2015-2021, The anvi'o project (http://anvio.org)
+ *
+ * Anvi'o is a free software. You can redistribute this program
+ * and/or modify it under the terms of the GNU General Public
+ * License as published by the Free Software Foundation, either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with anvi'o. If not, see <http://opensource.org/licenses/GPL-3.0>.
+ *
+ * @license GPL-3.0+ <http://opensource.org/licenses/GPL-3.0>
+ */
+
 var samples_categorical_colors = {};
 var samples_categorical_stats = {};
 var samples_stack_bar_colors = {};
@@ -32,6 +52,7 @@ function get_newick_leaf_order(newick)
 $(document).ready(function() {
     $('#samples_order').change(function() {
         $('#btn_redraw_samples').prop('disabled', true);
+        $('#btn_redraw_samples_layer').prop('disabled', true);
 
         if (samples_order_dict.hasOwnProperty(this.value)) {
             samplesClusteringData = samples_order_dict[this.value];
@@ -91,7 +112,7 @@ $(document).ready(function() {
 
     $('#group_select_all').click(function() {
         let target_group = $('#group_list_for_select_all').val();
-        
+
         $('#tbody_samples tr').each((index, tr) => {
             let group = $(tr).attr('samples-group-name');
 
@@ -103,7 +124,7 @@ $(document).ready(function() {
 
     $('#group_unselect_all').click(function() {
         let target_group = $('#group_list_for_select_all').val();
-        
+
         $('#tbody_samples tr').each((index, tr) => {
             let group = $(tr).attr('samples-group-name');
 
@@ -224,7 +245,7 @@ function update_samples_layer_min_max(select) {
             if (max === null || Math.sqrt(parseFloat(samples_information_dict[group][lname][sample_name])) > max) {
                 max = Math.sqrt(parseFloat(samples_information_dict[group][lname][sample_name]));
             }
-        } 
+        }
         else if (norm == 'log') {
             if (max === null || log10(parseFloat(samples_information_dict[group][lname][sample_name]) + 1) > max) {
                 max = log10(parseFloat(samples_information_dict[group][lname][sample_name]) + 1);
@@ -244,7 +265,7 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
         let first_sample = Object.keys(samples_information_dict[group])[0];
         for (let layer_name in samples_information_dict[group][first_sample]) {
             let found = false;
-            
+
             for (const [index, entry] of all_information_layers.entries()) {
                 if (entry['group'] == group && entry['layer_name'] == layer_name) {
                     found = true;
@@ -284,12 +305,12 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
 
         var pretty_name = getNamedLayerDefaults(layer_name, 'pretty_name', layer_name);
         pretty_name = (pretty_name.indexOf('!') > -1) ? pretty_name.split('!')[0] : pretty_name;
-        
+
         var short_name = (pretty_name.length > 10) ? pretty_name.slice(0,10) + "..." : pretty_name;
 
         var hasSettings = false;
-        if (typeof(samples_layers) !== 'undefined' && 
-            typeof(samples_layers[group]) !== 'undefined' && 
+        if (typeof(samples_layers) !== 'undefined' &&
+            typeof(samples_layers[group]) !== 'undefined' &&
             typeof(samples_layers[group][layer_name]) !== 'undefined') {
                 hasSettings = true;
                 layer_settings = samples_layers[group][layer_name];
@@ -298,8 +319,8 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
         if (isNumber(samples_information_dict[group][first_sample][layer_name]))
         {
             var data_type = "numeric";
-            
-            if (hasSettings) 
+
+            if (hasSettings)
             {
                 var norm         = layer_settings['normalization'];
                 var min          = layer_settings['min']['value'];
@@ -327,22 +348,22 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
                 '<td title="{name}" class="titles">{short-name}</td>' +
                 '<td><div class="colorpicker picker_start" color="{color-start}" style="background-color: {color-start}; {color-start-hide}"></div><div class="colorpicker" color="{color}" style="background-color: {color}"></div></td>' +
                 '<td style="width: 50px;">' +
-                '    <select style="width: 50px;" class="type" onChange="togglePickerStart(this);">' +
+                '    <select style="width: 50px;" class="type type_multiple form-control form-control-sm select-sm" onChange="togglePickerStart(this);">' +
                 '        <option value="bar"{option-type-bar}>Bar</option>' +
                 '        <option value="intensity"{option-type-intensity}>Intensity</option>' +
                 '    </select>' +
                 '</td>' +
                 '<td>' +
-                '    <select onChange="update_samples_layer_min_max(this);" class="normalization">' +
+                '    <select onChange="update_samples_layer_min_max(this);" class="form-control form-control-sm col-12 select-sm type_multiple normalization">' +
                 '        <option value="none"{option-none}>none</option>' +
                 '        <option value="sqrt"{option-sqrt}>sqrt</option>' +
                 '        <option value="log"{option-log}>log</option>' +
                 '    </select>' +
                 '</td>' +
-                '<td><input class="input-height" type="text" size="3" value="{height}"></input></td>' +
-                '<td><input class="input-margin" type="text" size="3" value="{margin}"></input></td>' +
-                '<td><input class="input-min" type="text" size="4" value="{min}"></input></td>' +
-                '<td><input class="input-max" type="text" size="4" value="{max}"></input></td>' +
+                '<td><input class="form-control form-control-sm input-height" type="text" size="3" value="{height}"></input></td>' +
+                '<td><input class="form-control form-control-sm input-margin" type="text" size="3" value="{margin}"></input></td>' +
+                '<td><input class="form-control form-control-sm input-min" type="text" size="4" value="{min}"></input></td>' +
+                '<td><input class="form-control form-control-sm input-max" type="text" size="4" value="{max}"></input></td>' +
                 '<td><input type="checkbox" class="layer_selectors"></input></td>' +
                 '</tr>';
 
@@ -362,10 +383,10 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
                                .replace(new RegExp('{max}', 'g'), max)
                                .replace(new RegExp('{margin}', 'g'), margin);
         }
-        else if (layer_name.indexOf(';') > -1) 
+        else if (layer_name.indexOf(';') > -1)
         {
             var data_type = "stack-bar";
-            
+
             if (hasSettings)
             {
                 var norm   = layer_settings['normalization'];
@@ -382,19 +403,19 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
             var template = '<tr samples-group-name="{group}" samples-layer-name="{name}" data-type="{data-type}">' +
                 '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
                 '<td title="{pretty-name}" class="titles">{short-name}</td>' +
-                '<td>n/a</td>' +
+                '<td style="width: 50px;">n/a</td>' +
                 '<td style="width: 50px;">n/a</td>' +
                 '<td>' +
-                '    <select class="normalization">' +
+                '    <select class="normalization type type_multiple form-control form-control-sm col-12 select-sm">' +
                 '        <option value="none"{option-none}>none</option>' +
                 '        <option value="sqrt"{option-sqrt}>sqrt</option>' +
                 '        <option value="log"{option-log}>log</option>' +
                 '    </select>' +
                 '</td>' +
-                '<td><input class="input-height" type="text" size="3" value="{height}"></input></td>' +
-                '<td><input class="input-margin" type="text" size="3" value="{margin}"></input></td>' +
-                '<td>n/a</td>' +
-                '<td>n/a</input></td>' +
+                '<td><input class="form-control form-control-sm input-height" type="text" size="3" value="{height}"></input></td>' +
+                '<td><input class="form-control form-control-sm input-margin" type="text" size="3" value="{margin}"></input></td>' +
+                '<td style="width: 50px;">n/a</td>' +
+                '<td style="width: 50px;">n/a</td>' +
                 '<td><input type="checkbox" class="layer_selectors"></input></td>' +
                 '</tr>';
 
@@ -411,7 +432,7 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
         else
         {
             var data_type = "categorical";
-            
+
             if (hasSettings)
             {
                 var height = layer_settings['height'];
@@ -426,13 +447,13 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
             var template = '<tr samples-group-name="{group}" samples-layer-name="{name}" data-type="{data-type}">' +
                 '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
                 '<td title="{name}" class="titles">{short-name}</td>' +
-                '<td>n/a</td>' +
                 '<td style="width: 50px;">n/a</td>' +
-                '<td>n/a</td>' +
-                '<td><input class="input-height" type="text" size="3" value="{height}"></input></td>' +
-                '<td><input class="input-margin" type="text" size="3" value="{margin}"></input></td>' +
-                '<td>n/a</td>' +
-                '<td>n/a</input></td>' +
+                '<td style="width: 50px;">n/a</td>' +
+                '<td style="width: 50px;">n/a</td>' +
+                '<td><input class="form-control form-control-sm input-height" type="text" size="3" value="{height}"></input></td>' +
+                '<td><input class="form-control form-control-sm input-margin" type="text" size="3" value="{margin}"></input></td>' +
+                '<td style="width: 50px;">n/a</td>' +
+                '<td style="width: 50px;">n/a</td>' +
                 '<td><input type="checkbox" class="layer_selectors"></input></td>' +
                 '</tr>';
 
@@ -464,7 +485,7 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
         }
     }).keyup(function() {
         $(this).colpickSetColor(this.value);
-    });    
+    });
 }
 
 function drawSamples() {
@@ -499,7 +520,7 @@ function drawSamplesLayers(settings) {
 
         var start = (samples_layer_settings['height'] == 0) ? 0 : samples_layer_settings['margin'];
         var end   = start + samples_layer_settings['height'];
-        
+
         if (i > 0)
         {
             start += samples_layer_boundaries[i-1][1];
@@ -562,7 +583,7 @@ function drawSamplesLayers(settings) {
             }
             samples_end = Math.max(layer_index);
 
-            if (samples_layer_settings['data-type'] == 'numeric') 
+            if (samples_layer_settings['data-type'] == 'numeric')
             {
                 var value = _samples_information_dict[group][sample_name][samples_layer_name];
                 var min = parseFloat(samples_layer_settings['min']['value']);
@@ -609,7 +630,7 @@ function drawSamplesLayers(settings) {
                 rect.setAttribute('sample-group', group);
                 rect.setAttribute('layer-name', samples_layer_name);
             }
-            else if (samples_layer_settings['data-type'] == 'stack-bar') 
+            else if (samples_layer_settings['data-type'] == 'stack-bar')
             {
                 var norm = samples_layer_settings['normalization'];
                 var stack_bar_items = _samples_information_dict[group][sample_name][samples_layer_name].split(';');
@@ -743,9 +764,9 @@ function drawSamplesLayers(settings) {
                 drawText('samples', {
                         'x': layer_boundaries[samples_end][1] + 20,
                         'y': 0 - (samples_layer_boundaries[i][0] + samples_layer_boundaries[i][1]) / 2 + font_size / 6
-                    }, 
-                    getNamedLayerDefaults(samples_layer_name, 'pretty_name', samples_layer_name), 
-                    font_size + 'px', 
+                    },
+                    getNamedLayerDefaults(samples_layer_name, 'pretty_name', samples_layer_name),
+                    font_size + 'px',
                     'left',
                     samples_layer_settings['color'],
                     'baseline');
@@ -767,8 +788,8 @@ function drawSamplesLayers(settings) {
                 drawText('samples', {
                         'x': layer_boundaries[samples_end][1] + 20,
                         'y': 0 - (samples_layer_boundaries[i][0] + samples_layer_boundaries[i][1]) / 2 + font_size / 6
-                    }, 
-                    getNamedLayerDefaults(samples_pretty_name, 'pretty_name', samples_pretty_name), 
+                    },
+                    getNamedLayerDefaults(samples_pretty_name, 'pretty_name', samples_pretty_name),
                     font_size + 'px',
                     'left',
                     '#919191',
@@ -785,7 +806,7 @@ function drawSamplesLayers(settings) {
                     font_size + 'px',
                     'left',
                     samples_layer_settings['color'],
-                    'baseline');   
+                    'baseline');
             }
         }
     }

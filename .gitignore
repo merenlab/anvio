@@ -8,6 +8,8 @@
 /build/
 /dist/
 test-output/
+node_modules/
+package-lock.json
 /*.egg-info/
 anvio/__pycache__/
 anvio/extensions/concoct/vbgmm.c
@@ -16,6 +18,8 @@ anvio/data/misc/Pfam/
 anvio/data/misc/PDB.db
 anvio/data/misc/Interacdome/
 anvio/data/misc/MODELLER/db/
+anvio/data/misc/CAZyme/
+anvio/data/misc/ModelSEED/
 anvio/data/interactive/lib/ngl/
 smtp_config.ini
 .snakemake

@@ -9,7 +9,9 @@ Please note that the examples below show only KEGG data, but user-defined metabo
 
 ## Long-format output modes
 
-The long-format output option produces tab-delimited files. Different output "modes" will result in output files with different information.
+The long-format output option produces tab-delimited files. Different output "modes" will result in output files with different information. You can use the `--list-available-modes` parameter to see which modes are implemented in your version of anvi'o. 
+
+Some of these modes are customizable, such that you can select which columns of information to include in the output with the flag `--custom-output-headers`. Use the `--list-available-output-headers` parameter to see what kinds of information you can choose from.
 
 ### 'Modules' Mode
 
@@ -56,6 +58,18 @@ If you use the flag `--add-coverage` and provide a profile database, additional 
 
 In this mock example, the module in this row has four gene calls in it. The `SAMPLE_1_gene_coverages` column lists the mean coverage of each of those genes in SAMPLE_1 (in the same order as the gene calls are listed in the `gene_caller_ids_in_module` column), and the `SAMPLE_1_avg_coverage` column holds the average of these values. As you probably expected, the `detection` columns are similarly defined, except that they contain detection values instead of coverage.
 
+**Pathway substrates, products, and intermediates**
+
+To add information about molecular compounds that are relevant to each metabolic pathway, you can customize the `modules mode` output. Here is an example command to do that:
+
+{{ codestart }}
+anvi-estimate-metabolism -c %(contigs-db)s \
+                         --output-modes modules_custom \
+                         --custom-output-headers module,module_name,module_substrates,module_intermediates,module_products,pathwise_module_completeness,stepwise_module_completeness
+{{ codestop }}
+
+The resulting output file will have a column for each item in the `--custom-output-headers` list, including one each for the substrates (input compounds), products (output compounds) and intermediates.
+
 {:.warning}
 The 'hits_in_modules' output mode has been deprecated as of anvi'o `v7.1-dev`. If you have one of these output files and need information about it, you should look in the documentation pages for anvi'o `v7`. If you would like to obtain a similar output, the closest available is 'module_paths' mode.
 
@@ -83,17 +97,18 @@ The same principle applies to user-defined metabolic modules, except that the en
 
 Without further ado, here is an example of this output mode (also from the Infant Gut dataset):
 
-|**module**|**genome_name**|**db_name**|**pathwise_module_completeness**|**pathwise_module_is_complete**|**path_id**|**path**|**path_completeness**|
-|:--|:--|:--|:--|:--|:--|:--|:--|
-|M00001|Enterococcus_faecalis_6240|E_faecalis_6240|1.0|True|0|K00844,K01810,K00850,K01623,K01803,K00134,K00927,K01834,K01689,K00873|0.8|
-|M00001|Enterococcus_faecalis_6240|E_faecalis_6240|1.0|True|1|K12407,K01810,K00850,K01623,K01803,K00134,K00927,K01834,K01689,K00873|0.8|
-|M00001|Enterococcus_faecalis_6240|E_faecalis_6240|1.0|True|2|K00845,K01810,K00850,K01623,K01803,K00134,K00927,K01834,K01689,K00873|0.8|
-|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|
+|**module**|**genome_name**|**db_name**|**pathwise_module_completeness**|**pathwise_module_is_complete**|**path_id**|**path**|**path_completeness**|**annotated_enzymes_in_path**|
+|:--|:--|:--|:--|:--|:--|:--|:--|:--|
+|M00001|Enterococcus_faecalis_6240|E_faecalis_6240|1.0|True|0|K00844,K01810,K00850,K01623,K01803,K00134,K00927,K01834,K01689,K00873|0.8|[MISSING K00844],K01810,K00850,[MISSING K01623],K01803,K00134,K00927,K01834,K01689,K00873|
+|M00001|Enterococcus_faecalis_6240|E_faecalis_6240|1.0|True|1|K12407,K01810,K00850,K01623,K01803,K00134,K00927,K01834,K01689,K00873|0.8|[MISSING K12407],K01810,K00850,[MISSING K01623],K01803,K00134,K00927,K01834,K01689,K00873|
+|M00001|Enterococcus_faecalis_6240|E_faecalis_6240|1.0|True|2|K00845,K01810,K00850,K01623,K01803,K00134,K00927,K01834,K01689,K00873|0.8|[MISSING K00845],K01810,K00850,[MISSING K01623],K01803,K00134,K00927,K01834,K01689,K00873|
+|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|
 
 Many of the columns in this data overlap with the 'modules' mode columns; you can find descriptions of those in the previous section. Below are the descriptions of new columns in this mode:
 - `path_id`: a unique identifier of the current path through the module
 - `path`: the current path of enzymes through the module (described above)
 - `path_completeness`: a fraction between 0 and 1 indicating the proportion of enzymes in the _current path_ that are annotated. To learn how this number is calculated, see [the anvi-estimate-metabolism help page](https://anvio.org/help/main/programs/anvi-estimate-metabolism/#how-is-pathwise-completenesscopy-number-calculated)
+- `annotated_enzymes_in_path`: a list of enzymes in the current path that were annotated in the current sample (in same order as the path). If an enzyme is missing annotations, that is indicated with the string `[MISSING (enzyme)]`.
 
 Note that in this output mode, `pathwise_module_completeness` and `pathwise_module_is_complete` are the pathwise completeness scores of the module overall, not of a particular path through the module. These values will be repeated for all lines describing the same module.
 

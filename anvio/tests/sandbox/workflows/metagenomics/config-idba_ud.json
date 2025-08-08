@@ -17,7 +17,7 @@
         "MERGE_DIR": "06_MERGED_idba_ud",
         "LOGS_DIR": "00_LOGS_idba_ud"
     },
-    "config_version": "2",
+    "config_version": "3",
     "anvi_gen_contigs_database": {
         "--project-name": "{group}"
     },
@@ -55,7 +55,7 @@
     },
     "megahit": {
         "--min-contig-len": 1000,
-        "--memory": 1e6,
+        "--memory": 1000000.0,
         "threads": 7
     },
     "iu_filter_quality_minoche": {

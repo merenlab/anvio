@@ -10,8 +10,7 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.workflows.pangenomics import PangenomicsWorkflow
 
-__author__ = "Alon Shaiber"
-__copyright__ = "Copyright 2017, The anvio Project"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -54,7 +53,6 @@ rule anvi_pan_genome:
         mcl_inflation = M.get_rule_param("anvi_pan_genome", "--mcl-inflation"),
         min_occurrence = M.get_rule_param("anvi_pan_genome", "--min-occurrence"),
         min_percent_identity = M.get_rule_param("anvi_pan_genome", "--min-percent-identity"),
-        sensitive = M.get_rule_param("anvi_pan_genome", "--sensitive"),
         description = M.get_rule_param("anvi_pan_genome", "--description"),
         overwrite_output_destinations = M.get_rule_param("anvi_pan_genome", "--overwrite-output-destinations"),
         skip_hierarchical_clustering = M.get_rule_param("anvi_pan_genome", "--skip-hierarchical-clustering"),
@@ -67,7 +65,7 @@ rule anvi_pan_genome:
             anvi-pan-genome -g {input} --num-threads {threads} -o {params.output_dir} --project-name {params.project_name} {params.genome_names}\
             {params.skip_alignments} {params.align_with} {params.exclude_partial_gene_calls}\
             {params.use_ncbi_blast} {params.minbit} {params.mcl_inflation}\
-            {params.min_occurrence} {params.min_percent_identity} {params.sensitive}\
+            {params.min_occurrence} {params.min_percent_identity} \
             {params.description} {params.overwrite_output_destinations}\
             {params.skip_hierarchical_clustering} {params.enforce_hierarchical_clustering}\
             {params.distance} {params.linkage} >> {log} 2>&1

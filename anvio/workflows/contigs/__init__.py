@@ -16,8 +16,7 @@ from anvio.errors import ConfigError
 from anvio.workflows import WorkflowSuperClass
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -64,13 +63,13 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                                     "emapper": {"--database": "bact", "--usemem": True, "--override": True},
                                     "anvi_script_run_eggnog_mapper": {"--use-version": "0.12.6"}})
 
-        self.rule_acceptable_params_dict['anvi_run_ncbi_cogs'] = ['run', '--cog-data-dir', '--sensitive', '--temporary-dir-path', '--search-with']
+        self.rule_acceptable_params_dict['anvi_run_ncbi_cogs'] = ['run', '--cog-data-dir', '--temporary-dir-path', '--search-with']
 
         self.rule_acceptable_params_dict['anvi_run_scg_taxonomy'] = ['run', '--scgs-taxonomy-data-dir']
 
         self.rule_acceptable_params_dict['anvi_run_trna_scan'] = ['run', '--trna-cutoff-score']
 
-        self.rule_acceptable_params_dict['anvi_run_hmms'] = ['run', '--installed-hmm-profile', '--hmm-profile-dir', '--also-scan-trnas']
+        self.rule_acceptable_params_dict['anvi_run_hmms'] = ['run', '--installed-hmm-profile', '--hmm-profile-dir', '--also-scan-trnas', '--add-to-functions-table']
 
         self.rule_acceptable_params_dict['anvi_run_pfams'] = ['run', '--pfam-data-dir']
 
@@ -103,7 +102,9 @@ class ContigsDBWorkflow(WorkflowSuperClass):
         self.fasta_txt_file = self.get_param_value_from_config('fasta_txt')
 
         if self.fasta_txt_file:
-            filesnpaths.is_file_exists(self.fasta_txt_file)
+            if not filesnpaths.is_file_exists(self.fasta_txt_file, dont_raise=True):
+                raise ConfigError('You know the path you have for `fasta_txt` in your config file? There is no such file on your disk :(')
+
             self.contigs_information = u.get_TAB_delimited_file_as_dictionary(self.fasta_txt_file)
             self.fasta_information.update(self.contigs_information)
             self.group_names = list(self.contigs_information.keys())

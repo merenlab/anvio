@@ -24,8 +24,7 @@ from anvio.tables.miscdata import TableForLayerOrders, TableForLayerAdditionalDa
 from anvio.tables.views import TablesForViews
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -334,7 +333,7 @@ class MultipleRuns:
         # do we have a description file?
         if self.description_file_path:
             filesnpaths.is_file_plain_text(self.description_file_path)
-            self.description = open(os.path.abspath(self.description_file_path), 'rU').read()
+            self.description = open(os.path.abspath(self.description_file_path), 'r').read()
 
 
     def set_sample_id(self):
@@ -534,6 +533,12 @@ class MultipleRuns:
         else:
             self.run.warning("Indels were not profiled, hence, these tables will be empty in the merged profile database.")
 
+        # if SNVs are not profiled, we don't have any variability table.
+        if self.SNVs_profiled:
+            self.essential_fields = constants.essential_data_fields_for_anvio_profiles
+        else:
+            self.essential_fields = [f for f in constants.essential_data_fields_for_anvio_profiles if f != "variability"]
+
         # critical part:
         self.gen_view_data_tables_from_atomic_data()
 
@@ -552,8 +557,6 @@ class MultipleRuns:
     def populate_misc_data_tables(self):
         self.run.info_single("Additional data and layer orders...", nl_before=1, nl_after=1, mc="blue")
 
-        essential_fields = constants.essential_data_fields_for_anvio_profiles
-
         # initialize views.
         args = argparse.Namespace(profile_db = self.merged_profile_db_path)
         profile_db_super = dbops.ProfileSuperclass(args)
@@ -563,7 +566,7 @@ class MultipleRuns:
         layer_orders_data_dict = {}
         failed_attempts = []
         self.progress.new('Working on layer orders')
-        for essential_field in essential_fields:
+        for essential_field in self.essential_fields:
             self.progress.update('recovering order for "%s"' % (essential_field))
             try:
                 data_value = clustering.get_newick_tree_data_for_dict(profile_db_super.views[essential_field]['dict'],
@@ -607,11 +610,9 @@ class MultipleRuns:
 
 
     def gen_view_data_tables_from_atomic_data(self):
-        essential_fields = constants.essential_data_fields_for_anvio_profiles
-
         self.progress.new('Views')
         for target in ['contigs', 'splits']:
-            for essential_field in essential_fields:
+            for essential_field in self.essential_fields:
                 table_name_to_read_from = '_'.join([essential_field, target])
                 for input_profile_db_path in self.profile_dbs_info_dict:
                     sample_id = self.profile_dbs_info_dict[input_profile_db_path]['sample_id']

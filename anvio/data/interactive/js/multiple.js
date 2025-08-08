@@ -1,4 +1,21 @@
-//  Edit Attributes For Multiple Layers
+/**
+ * Edit Attributes For Multiple Layers
+ *
+ *  Authors: Ozcan Esen
+ *           Dogan Can Kilment
+ *
+ * Copyright 2015-2021, The anvi'o project (http://anvio.org)
+ *
+ * Anvi'o is a free software. You can redistribute this program
+ * and/or modify it under the terms of the GNU General Public
+ * License as published by the Free Software Foundation, either
+ * version 3 of the License, or (at your option) any later version.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with anvi'o. If not, see <http://opensource.org/licenses/GPL-3.0>.
+ *
+ * @license GPL-3.0+ <http://opensource.org/licenses/GPL-3.0>
+ */
 
 $(document).ready(function() {
     $('.select_layer').on('change', function() {
@@ -62,7 +79,7 @@ $(document).ready(function() {
 
     $('.input-height-multiple, .input-margin-multiple, .input-min-multiple, .input-max-multiple').on('change', function() {
         var new_val = this.value;
-        var target_selector = '.' + this.getAttribute('class').replace('-multiple', '') + ':enabled';
+        var target_selector = '.' + this.getAttribute('class').split(' ').pop().replace('-multiple', '') + ':enabled';
         var table = $(this).closest('table');
 
         $(table).find('.layer_selectors:checked:visible').each(
@@ -77,7 +94,9 @@ $(document).ready(function() {
         var new_val = this.value;
         if (new_val == "")
             return;
-        var target_selector = '.' + this.getAttribute('class').replace('_multiple', '');
+        // get last item of class name, which is the target selector
+        // Make sure to remove _multiple from the class name
+        var target_selector = '.' + this.getAttribute('class').split(' ').pop().replace('_multiple', '');
         var table = $(this).closest('table');
 
         $(table).find('.layer_selectors:checked:visible').each(
@@ -85,7 +104,7 @@ $(document).ready(function() {
                 var row = $(this).parent().parent();
                 var combo = $(row).find(target_selector);
 
-                if (combo.find('option[value="' + new_val + '"]').length > 0) 
+                if (combo.find('option[value="' + new_val + '"]').length > 0)
                 {
                     combo.val(new_val).trigger('change');
                     return;
@@ -104,4 +123,62 @@ $(document).ready(function() {
             }
         );
     });
+});
+
+$(document).ready(function() {
+    $('.select_bins').on('input', function() {
+        var input_value = this.value.toLowerCase();
+        var table = $('#bins-table');
+        var colorPicker = $('#picker_multiple_bins');
+
+        $('#picker_multiple_bins').css('background-color', '#FFFFFF').attr('color', '#FFFFFF');
+        let matchCount = 0;
+
+        table.find('.bin-row').each(function() {
+            var bin_name = $(this).find('.bin-name').val().toLowerCase();
+            var bin_color = $(this).find('.colorpicker').attr('color');
+
+            if (bin_name.includes(input_value)) {
+                $(this).show();
+                matchCount++;
+                colorPicker.css('background-color', bin_color).attr('color', bin_color);
+            } else {
+                $(this).hide();
+            }
+        });
+
+        updateMatchCount(matchCount);
+
+    });
+
+    $('.select_bins').on('keypress', function(e) {
+        if (e.which === 13) {
+            applyColorToBins();
+        }
+    });
+
+    $('#apply_color_button').on('click', function() {
+        applyColorToBins();
+    });
+
+    function applyColorToBins() {
+        var input_value = $('.select_bins').val().toLowerCase();
+        var selectedColor = $('#picker_multiple_bins').attr('color');
+        let matchCount = 0;
+
+        $('#bins-table').find('.bin-row').each(function() {
+            var bin_name = $(this).find('.bin-name').val().toLowerCase();
+            if (bin_name.includes(input_value)) {
+                $(this).find('.colorpicker').css('background-color', selectedColor).attr('color', selectedColor);
+                matchCount++;
+            }
+        });
+
+        updateMatchCount(matchCount);
+
+    }
+
+    function updateMatchCount(count) {
+        $('#apply_color_button').text('Apply (' + count + ' matches)');
+    }
 });

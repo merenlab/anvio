@@ -1,12 +1,12 @@
 /**
- *  SVG drawing functions.
+ *  Helper functions to draw SVG objects.
  *
- *  Author: Özcan Esen <ozcanesen@gmail.com>
- *  Credits: A. Murat Eren
- *  Copyright 2017, The anvio Project
+ *  Authors: Ozcan Esen
+ *           Matthew Klein <mtt.l.kln@gmail.com>
+ *           A. Murat Eren <a.murat.eren@gmail.com>
  *
- * This file is part of anvi'o (<https://github.com/meren/anvio>).
- *
+ * Copyright 2015-2021, The anvi'o project (http://anvio.org)
+
  * Anvi'o is a free software. You can redistribute this program
  * and/or modify it under the terms of the GNU General Public
  * License as published by the Free Software Foundation, either
@@ -150,7 +150,7 @@ function drawBinLegend(bins_to_draw, top, left) {
     drawText('bin_legend', {'x': left + 30, 'y': top}, 'Name', '10px');
 
     if (mode == 'pan') {
-        drawText('bin_legend', {'x': left + 170, 'y': top}, 'PCs', '10px');
+        drawText('bin_legend', {'x': left + 170, 'y': top}, 'GCs', '10px');
         drawText('bin_legend', {'x': left + 230, 'y': top}, 'Gene Calls', '10px');
     } else {
         drawText('bin_legend', {'x': left + 170, 'y': top}, 'Contigs', '10px');
@@ -165,7 +165,7 @@ function drawBinLegend(bins_to_draw, top, left) {
         drawText('bin_legend', {'x': left + 30, 'y': top }, bin['name'], '12px');
 
         if (mode == 'pan') {
-            drawText('bin_legend', {'x': left + 170, 'y': top}, bin['pcs'], '12px');
+            drawText('bin_legend', {'x': left + 170, 'y': top}, bin['gene_clusters'], '12px');
             drawText('bin_legend', {'x': left + 230, 'y': top}, bin['gene-calls'], '12px');
         } else {
             drawText('bin_legend', {'x': left + 170, 'y': top}, bin['contig-count'], '12px');
@@ -209,8 +209,13 @@ function drawLayerLegend(_layers, _view, _layer_order, top, left) {
         top = top + 20;
 
         // color
-        if (layer_settings.hasOwnProperty('color') && typeof layer_settings['color'] != 'undefined')
-            drawRectangle('layer_legend', left, top - 8, 16, 16, layer_settings['color'], 1, 'black');
+        if (layer_settings.hasOwnProperty('color') && typeof layer_settings['color'] != 'undefined'){
+            if(layer_settings.type == 'intensity'){
+                drawRectangle('layer_legend', left - 5, top - 8, 16, 30, layer_settings['color'], 1, 'black', false, false, false, layer_settings['color-start']);
+            }else{
+                drawRectangle('layer_legend', left, top - 8, 16, 16, layer_settings['color'], 1, 'black');
+            }
+        }
 
         // name
         drawText('layer_legend', {'x': left + 30, 'y': top}, short_name, '12px');
@@ -246,71 +251,252 @@ function drawLayerLegend(_layers, _view, _layer_order, top, left) {
 
 }
 
+async function drawScaleBar(settings, top, left) {
+    createBin('viewport', 'scale_bar');
+
+    try {
+        const data = await $.ajax({
+            type: 'POST',
+            cache: false,
+            url: '/data/get_scale_bar',
+            contentType: 'application/json',
+            data: JSON.stringify({
+                'newick': clusteringData,
+            })
+        });
+
+        var scale_bar = data['scale_bar_value'];
+        console.log("Max Branch Length:", scale_bar);
+
+        const scaleBarLength = 30;
+        top = top + 170;
+
+        if ((settings['tree-type'] == 'circlephylogram' || settings['tree-type'] == 'phylogram')) {
+            drawRectangle('scale_bar', left - 10, top - 20, 80, 300, 'white', 1, 'black');
+            drawText('scale_bar', {
+                'x': left,
+                'y': top
+            }, "Scale Bar", '16px');
+
+            var line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            line.setAttribute('stroke-width', 1);
+            line.setAttribute('stroke', 'black');
+            line.setAttribute('x1', left);
+            line.setAttribute('y1', top + 30);
+            line.setAttribute('x2', left + scaleBarLength * 5);
+            line.setAttribute('y2', top + 30);
+            var svg = document.getElementById('scale_bar');
+            svg.appendChild(line);
+
+            var startLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            startLine.setAttribute('stroke-width', 1);
+            startLine.setAttribute('stroke', 'black');
+            startLine.setAttribute('x1', left);
+            startLine.setAttribute('y1', top + 25);
+            startLine.setAttribute('x2', left);
+            startLine.setAttribute('y2', top + 35);
+            svg.appendChild(startLine);
+
+            var endLine = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+            endLine.setAttribute('stroke-width', 1);
+            endLine.setAttribute('stroke', 'black');
+            endLine.setAttribute('x1', left + scaleBarLength * 5);
+            endLine.setAttribute('y1', top + 25);
+            endLine.setAttribute('x2', left + scaleBarLength * 5);
+            endLine.setAttribute('y2', top + 35);
+            svg.appendChild(endLine);
+
+            var scaleValue = (scale_bar).toFixed(2);
+            drawText('scale_bar', {
+                'x': left + ((scaleBarLength * 5) / 2) - 10,
+                'y': top + 45
+            }, scaleValue, '12px');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+    }
+}
+
 function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
-    function checkInRange(){ // check to see if SV data point is within user specified range
-        if(p.branch_support >= supportValueData.numberRange[0] && p.branch_support <= supportValueData.numberRange[1]){
-            return true
+    /**
+     * Render text on the SVG if it's within the specified range and the user has selected to display numbers.
+     * For circle phylogram tree type, it checks if the support value is above the threshold and sets the color accordingly.
+     * For phylogram tree type, it checks if the support value is above the threshold and sets the color accordingly. 
+     * Text rotation is applied based on the user's selection.
+     * @param {string} svg_id - The ID of the SVG element.
+     * @param {object} p - The position object containing xy coordinates.
+    */
+    
+    function checkInRange(){
+        /**
+         * Check if the branch support values fall within the given number range.
+         * @return {bool}    True if the branch support values are within the specified range, False otherwise.
+        */
+        if (typeof p.branch_support === 'string' && p.branch_support.includes('/')) {
+            const [branch_support_value0, branch_support_value1] = p.branch_support.split('/').map(parseFloat);
+            const min_support = Math.min(branch_support_value0, branch_support_value1);
+            const max_support = Math.max(branch_support_value0, branch_support_value1);
+            return min_support >= supportValueData.numberRange[0] && max_support <= supportValueData.numberRange[1];
         } else {
-            return false
+            return p.branch_support >= supportValueData.numberRange[0] && p.branch_support <= supportValueData.numberRange[1];
         }
     }
 
     if( supportValueData.showNumber && checkInRange()){ // only render text if in range AND selected by user
+        var operator = supportValueData.thresholdOperator;
+        var operator_symbol = '&&';
+        if (operator === 'OR'){
+            operator_symbol = '||';
+        }
         if($('#tree_type').val() == 'circlephylogram'){
-            if(supportValueData.textRotation == '0'){
-                drawText(svg_id, p.xy, p.branch_support, supportValueData.fontSize, 'right', 'black', 'baseline', true)
+            let color = supportValueData.secondFontColor !== null ? supportValueData.secondFontColor : 'black';
+            if (typeof p.branch_support === 'string' && p.branch_support.includes('/')) {
+                const [branch_support_value0, branch_support_value1] = p.branch_support.split('/').map(parseFloat);
+                // Evaluate the condition using the appropriate logical operator
+                var condition0 = supportValueData.thresholdRange0[0] <= branch_support_value0 && branch_support_value0 <= supportValueData.thresholdRange0[1];
+                var condition1 = supportValueData.thresholdRange1[0] <= branch_support_value1 && branch_support_value1 <= supportValueData.thresholdRange1[1];
+                if ((operator_symbol === '&&' && condition0 && condition1) || (operator_symbol === '||' && (condition0 || condition1))) {
+                    color = supportValueData.fontColor;
+                }
             } else {
-                drawRotatedText(svg_id, p.xy, p.branch_support, parseInt(supportValueData.textRotation), supportValueData.fontSize, 'right', 'black', 'baseline', true)
+                if (p.branch_support > supportValueData.thresholdValue) {
+                    color = supportValueData.fontColor;
+                }
             }
-        } else {
-            if(supportValueData.textRotation == '0'){
-                drawRotatedText(svg_id, p.xy, p.branch_support, -90, supportValueData.fontSize, 'right', 'black', 'baseline', true)
+            
+            let rotation = supportValueData.textRotation === '0' ? 0 : parseInt(supportValueData.textRotation);
+            if (rotation === 0) {
+                drawText(svg_id, p.xy, p.branch_support, supportValueData.fontSize, 'Roboto', color, '', 'baseline');
             } else {
-                drawRotatedText(svg_id, p.xy, p.branch_support, parseInt(supportValueData.textRotation), supportValueData.fontSize, 'right', 'black', 'baseline', true)
+                drawRotatedText(svg_id, p.xy, p.branch_support, rotation, 'right', supportValueData.fontSize, 'Roboto', color, '', 'baseline');
             }
+        } else { //Phylogram
+            let rotation = (typeof p.branch_support === 'string' && p.branch_support.includes('/')) ? -90 : parseInt(supportValueData.textRotation);
+            let color = supportValueData.secondFontColor !== null ? supportValueData.secondFontColor : 'black';
+            
+            if (typeof p.branch_support === 'string' && p.branch_support.includes('/')) {
+                const [branch_support_value0, branch_support_value1] = p.branch_support.split('/').map(parseFloat);
+                var condition0 = supportValueData.thresholdRange0[0] <= branch_support_value0 && branch_support_value0 <= supportValueData.thresholdRange0[1];
+                var condition1 = supportValueData.thresholdRange1[0] <= branch_support_value1 && branch_support_value1 <= supportValueData.thresholdRange1[1];
+                if ((operator_symbol === '&&' && condition0 && condition1) || (operator_symbol === '||' && (condition0 || condition1))) {
+                    color = supportValueData.fontColor;
+                }
+            } else {
+                if (p.branch_support > supportValueData.thresholdValue) {
+                    color = supportValueData.fontColor;
+                }
+            }
+            
+            drawRotatedText(svg_id, p.xy, p.branch_support, rotation, 'left', supportValueData.fontSize, 'Roboto', color, '', 'baseline');
+            
         }
     }
     if(supportValueData.showSymbol && checkInRange()){ // only render symbol if in range AND selected by user
         drawSymbol()
     }
 
-    function drawSymbol(){
-        let circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle')
-        let radius
-        let maxRadius = supportValueData.maxRadius
-        let rangeLow = parseFloat(supportValueData.numberRange[0])
-        let rangeHigh = parseFloat(supportValueData.numberRange[1])
-
-        function calculatePercentile(){ // calculate percentile of data point in range
-            return (p.branch_support - rangeLow) / (rangeHigh - rangeLow)
+    /**
+     * Draw symbols on an SVG canvas based on branch support values.
+     * @returns {Element} The first circle element drawn on the SVG canvas.
+     */
+    function drawSymbol() {
+        let first_circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        let second_circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        let maxRadius = supportValueData.maxRadius;
+        let minRadius = supportValueData.minRadius;
+        let rangeLow = parseFloat(supportValueData.numberRange[0]);
+        let rangeHigh = parseFloat(supportValueData.numberRange[1]);
+        var operator = supportValueData.thresholdOperator;
+        var operator_symbol = '&&';
+        if (operator === 'OR'){
+            operator_symbol = '||';
         }
 
-        function setDetails(percentile){
-            if(percentile > .67){
-                supportValueData.invertSymbol ? radius = maxRadius * .4 : radius = maxRadius
-            } else if (percentile < .67 && percentile > .33){
-                radius = maxRadius * .7
+        /**
+         * Calculate the percentile of a support value within the range.
+         * @param {number} support_value - The branch support value.
+         * @returns {number} The calculated percentile.
+         */
+        function calculatePercentile(support_value) {
+            return (support_value - rangeLow) / (rangeHigh - rangeLow);
+        }
+
+        /**
+         * Set details for the circle based on the percentile.
+         * @param {Element} circle - The SVG circle element.
+         * @param {number} percentile - The percentile value.
+         */
+        function setDetails(circle, percentile) {
+            let radius;
+            if (percentile > 0.67) {
+                supportValueData.invertSymbol ? radius = maxRadius * 0.4 : radius = maxRadius;
+            } else if (percentile < 0.67 && percentile > 0.33) {
+                radius = maxRadius * 0.7;
+                if(radius < minRadius && !supportValueData.invertSymbol){
+                    radius = minRadius;
+                }
             } else {
-                supportValueData.invertSymbol ? radius = maxRadius : radius = maxRadius * .4
+                supportValueData.invertSymbol ? radius = maxRadius : radius = maxRadius * 0.4;
+                if(radius < minRadius && !supportValueData.invertSymbol){
+                    radius = minRadius;
+                }
             }
-
+            circle.setAttribute('r', radius);
+            circle.setAttribute('fill', supportValueData.symbolColor);
+            circle.setAttribute('opacity', 0.6);
         }
 
-        function makeCircle(){ // time to make the gravy
-            setDetails(calculatePercentile())
-
-            circle.setAttribute('cx', p.xy.x)
-            circle.setAttribute('cy', p.xy.y)
-            circle.setAttribute('r', radius)
-            circle.setAttribute('id', p.id)
-            circle.setAttribute('fill', supportValueData.symbolColor )
-            circle.setAttribute('opacity', .6)
-
+        /**
+         * Create a circle element based on the support value.
+         * @param {number} support_value - The branch support value.
+         * @param {number} index - The index of the circle.
+         * @returns {Element} The created circle element.
+         */
+        function makeCircle(support_value, index) {
+            let circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+            setDetails(circle, calculatePercentile(support_value));
+            circle.setAttribute('cx', p.xy.x);
+            circle.setAttribute('cy', p.xy.y);
+            circle.setAttribute('id', p.id + '_' + index);
             var svg = document.getElementById(svg_id);
             svg.appendChild(circle);
             return circle;
         }
-        return makeCircle()
+
+        if (typeof p.branch_support === 'string' && p.branch_support.includes('/')) {
+            let branch_support_values = p.branch_support.split('/').map(parseFloat);
+            var condition0 = supportValueData.thresholdRange0[0] <= branch_support_values[0] && branch_support_values[0] <= supportValueData.thresholdRange0[1];
+            var condition1 = supportValueData.thresholdRange1[0] <= branch_support_values[1] && branch_support_values[1] <= supportValueData.thresholdRange1[1];
+
+            if((operator_symbol === '&&' && condition0 && condition1) || (operator_symbol === '||' && (condition0 || condition1))){
+                if(supportValueData.symbolDataSource == 2){ // Single Bootstrap value exist
+                    first_circle = makeCircle(branch_support_values[0], 0);
+                }else{ // Multiple BSV
+                    if(supportValueData.symbolDataSource == 0){
+                        first_circle = makeCircle(branch_support_values[0], 0);
+                    }else{
+                        second_circle = makeCircle(branch_support_values[1], 1);
+                        second_circle.setAttribute('fill', supportValueData.secondSymbolColor);
+                    }
+                }
+            }
+
+            if($('#tree_type').val() == 'circlephylogram'){
+                second_circle.setAttribute('cx', p.xy.x);
+                second_circle.setAttribute('cy', p.xy.y);
+            } else{
+                let firstCircleCx = parseFloat(first_circle.getAttribute('cx'));
+                let updatedCx = firstCircleCx + maxRadius * 2;
+                second_circle.setAttributeNS(null, 'cx', updatedCx.toString());
+            }
+
+        } else {
+            if(p.branch_support >= supportValueData.thresholdValue){
+                first_circle = makeCircle(p.branch_support, 0);
+            }
+        }
+
+        return first_circle;
     }
 }
 
@@ -353,7 +539,7 @@ function drawText(svg_id, p, string, font_size, align, color, baseline, supportC
     text.setAttribute('y', p['y']);
     text.setAttribute('pointer-events', 'none');
     text.setAttribute('text-rendering', 'optimizeLegibility');
-    text.setAttribute('font-family', 'Helvetica Neue, Helvetica, Arial, sans-serif;')
+    text.setAttribute('font-family', 'Roboto','Helvetica', 'Arial;')
 
     text.setAttribute('onclick', function(event){
         console.log(event)
@@ -406,6 +592,14 @@ function drawFixedWidthText(svg_id, p, string, font_size, color, width, height) 
 
 //--------------------------------------------------------------------------------------------------
 function drawRotatedText(svg_id, p, string, angle, align, font_size, font_family, color, maxLength, baseline) {
+    var svg = document.getElementById(svg_id);
+    
+    // Check if the SVG element exists before proceeding
+    if (!svg) {
+        console.warn(`SVG element with ID '${svg_id}' not found. Cannot append rotated text.`);
+        return;
+    }
+
     var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
     //newLine.setAttribute('id','node' + p.id);
     text.setAttribute('style', 'alignment-baseline: ' + baseline);
@@ -438,7 +632,6 @@ function drawRotatedText(svg_id, p, string, angle, align, font_size, font_family
 
     var textNode = document.createTextNode(string);
     text.appendChild(textNode);
-    var svg = document.getElementById(svg_id);
     svg.appendChild(text);
 
     // trim long text
@@ -498,6 +691,13 @@ function drawGuideLine(svg_id, id, angle, start_radius, end_radius) {
 
 function drawPie(svg_id, id, start_angle, end_angle, inner_radius, outer_radius, large_arc_flag, color, fill_opacity, pointer_events) {
     var pie = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+
+    // Check if the SVG element exists before proceeding
+    var svg = document.getElementById(svg_id);
+    if (!svg) {
+        console.warn(`SVG element with ID '${svg_id}' not found. Cannot append pie slice.`);
+        return;
+    }
 
     if (start_angle > end_angle) {
         // swap
@@ -571,9 +771,42 @@ function drawPhylogramRectangle(svg_id, id, x, y, height, width, color, fill_opa
     return rect;
 }
 
-function drawRectangle(svg_id, x, y, height, width, fill, stroke_width, stroke_color, f_click, f_mouseenter, f_mouseleave) {
+function drawRectangle(svg_id, x, y, height, width, fill, stroke_width, stroke_color, f_click, f_mouseenter, f_mouseleave, secondary_fill) {
+    var svg = document.getElementById(svg_id);
+
     var rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
-    rect.setAttribute('fill', fill);
+
+    if (secondary_fill) {
+        var gradientId = 'gradient' + Math.random().toString(36).substr(2, 9);
+
+        var gradient = document.createElementNS('http://www.w3.org/2000/svg', 'linearGradient');
+        gradient.setAttribute('id', gradientId);
+
+        // Create the start and end colors for the gradient
+        var stop1 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+        stop1.setAttribute('offset', '0%');
+        stop1.setAttribute('stop-color', fill);
+
+        var stop2 = document.createElementNS('http://www.w3.org/2000/svg', 'stop');
+        stop2.setAttribute('offset', '100%');
+        stop2.setAttribute('stop-color', secondary_fill);
+
+        gradient.appendChild(stop1);
+        gradient.appendChild(stop2);
+
+        // Append the gradient to a defs element in the SVG
+        var defs = svg.querySelector('defs');
+        if (!defs) {
+            defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+            svg.appendChild(defs);
+        }
+        defs.appendChild(gradient);
+
+        // Use the gradient as the fill for the rectangle
+        rect.setAttribute('fill', 'url(#' + gradientId + ')');
+    } else {
+        rect.setAttribute('fill', fill);
+    }
     rect.setAttribute('stroke-width', stroke_width);
     rect.setAttribute('stroke', stroke_color);
 
@@ -586,7 +819,6 @@ function drawRectangle(svg_id, x, y, height, width, fill, stroke_width, stroke_c
     $(rect).mouseenter(f_mouseenter);
     $(rect).mouseleave(f_mouseleave);
 
-    var svg = document.getElementById(svg_id);
     svg.appendChild(rect);
 
     return rect;

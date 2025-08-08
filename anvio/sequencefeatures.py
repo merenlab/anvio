@@ -23,8 +23,7 @@ from anvio.errors import ConfigError
 import IlluminaUtils.lib.fastqlib as u
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2021, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -193,7 +192,7 @@ class PrimerSearch:
                     match = re.search(primer_sequence, seq)
 
                     if not match:
-                        # no match here. but how about the the reverse complement of it?
+                        # no match here. but how about the reverse complement of it?
                         seq = utils.rev_comp(seq)
 
                         match = re.search(primer_sequence, seq)
@@ -628,6 +627,9 @@ class Palindromes:
             # as a function of the sequence length
             method = self.palindrome_search_algorithms['BLAST'] if len(sequence) >= 5000 else self.palindrome_search_algorithms['numba']
 
+        # make sure the sequence is uppercase:
+        sequence = sequence.upper()
+
         # get palindromes found in the sequence
         palindromes = method(sequence, **kwargs)
 
@@ -694,7 +696,7 @@ class Palindromes:
                                     -word_size {self.blast_word_size} \
                                     -strand minus"""
 
-        p = subprocess.Popen(search_command, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True, executable='/bin/bash')
+        p = subprocess.Popen(search_command, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.DEVNULL, shell=True, executable='/bin/bash')
         BLAST_output = p.communicate()[0]
 
         # parse the BLAST XML output

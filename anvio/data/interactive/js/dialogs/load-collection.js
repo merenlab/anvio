@@ -26,8 +26,8 @@ function LoadCollectionDialog() {
     this.dialog.innerHTML = `<div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
                     <h4 class="modal-title">Load bin collection</h4>
+                    <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button>
                 </div>
                 <div class="modal-body">
                     <div class="col-md-7">
@@ -41,7 +41,7 @@ function LoadCollectionDialog() {
                     </div>
                     <div class="col-md-6 col-md-offset-3 form-inline" style="${mode != 'full' ? 'display:none' : ''}">
                         <br /> Minimum bin size: 
-                        <input type="text" value="1" size="4" class="form-control input-xs threshold-value">
+                        <input type="text" value="0" size="4" class="form-control input-xs threshold-value">
                         <select class="form-control input-xs threshold-base">
                             <option value="1000">K</option>
                             <option value="1000000">M</option>
@@ -52,7 +52,7 @@ function LoadCollectionDialog() {
 
                 <div class="modal-footer">
                     <button type="button" class="btn btn-primary">Load</button>
-                    <button class="btn btn-default" data-dismiss="modal" type="button">Close</button>
+                    <button class="btn btn-outline-danger" data-dismiss="modal" type="button">Close</button>
                 </div>
             </div>
         </div>`;
@@ -107,7 +107,7 @@ LoadCollectionDialog.prototype.LoadCollection = function() {
 
     let threshold_value = this.dialog.querySelector('.threshold-value').value;
     let threshold_base  = this.dialog.querySelector('.threshold-base').value;
-    let threshold = parseInt(threshold_value) * parseInt(threshold_base);
+    let threshold = parseInt(threshold_value) * (parseInt(threshold_base) || 1);
 
     $.ajax({
         type: 'GET',

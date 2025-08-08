@@ -59,33 +59,30 @@ anvi-analyze-synteny -g %(genomes-storage-db)s \
 
 If you are following the anvi'o master branch on your computer, you can create a test case for this program.
 
-First, go to any work dirctory, and run the following commands:
+First, go to any work directory, and run the following commands:
 
 ``` bash
 anvi-self-test --suite metagenomics-full \
-               --output-dir TEST-OUTPUT
-
-# make a external-genomesfile
-echo -e "name\tcontigs_db_path\ng01\tTEST-OUTPUT/01.db\ng02\tTEST-OUTPUT/02.db\ng03\tTEST-OUTPUT/03.db" > TEST-OUTPUT/external-genomes-file.txt
+               --output-dir TEST_OUTPUT
 ```
 
 Run one or more alternative scenarios and check output files:
 
 ```
-anvi-analyze-synteny -e TEST-OUTPUT/external-genomes-file.txt \
-                     --annotation-source COG_FUNCTION \
-                     --window-range 2:3 \
-                     -o TEST-OUTPUT/synteny_output_no_unknowns.tsv
+anvi-analyze-synteny -g TEST_OUTPUT/TEST-GENOMES.db \
+                     --annotation-source COG20_FUNCTION \
+                     --ngram-window-range 2:3 \
+                     -o TEST_OUTPUT/synteny_output_no_unknowns.tsv
 
-anvi-analyze-synteny -e TEST-OUTPUT/external-genomes-file.txt \
-                     --annotation-source COG_FUNCTION \
-                     --window-range 2:3 \
-                     -o TEST-OUTPUT/synteny_output_with_unknowns.tsv \
+anvi-analyze-synteny -g TEST_OUTPUT/TEST-GENOMES.db \
+                     --annotation-source COG20_FUNCTION \
+                     --ngram-window-range 2:3 \
+                     -o TEST_OUTPUT/synteny_output_with_unknowns.tsv \
                      --analyze-unknown-functions
 
-anvi-analyze-synteny -e TEST-OUTPUT/external-genomes-cps.txt \
-                     --annotation-source COG_FUNCTION \
-                     --window-range 2:3 \
-                     -o TEST-OUTPUT/tsv.txt \
+anvi-analyze-synteny -g TEST_OUTPUT/TEST-GENOMES.db \
+                     --annotation-source COG20_FUNCTION \
+                     --ngram-window-range 2:3 \
+                     -o TEST_OUTPUT/tsv.txt \
                      --analyze-unknown-functions
 ```

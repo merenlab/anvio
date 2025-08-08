@@ -10,8 +10,7 @@ import anvio.terminal as terminal
 from anvio.errors import ConfigError
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2019, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -141,6 +140,7 @@ class MetaBAT2:
             bin_count += 1
             with open(bin_file, 'r') as f:
                 pretty_bin_name = os.path.basename(bin_file).replace('.', '_')
-                clusters[pretty_bin_name] = list(map(str.strip, f.readlines()))
-
+                if pretty_bin_name != "METABAT__BinInfo_txt":
+                    clusters[pretty_bin_name] = [l.split("\t")[0] for l in f.readlines()]
+                    
         return clusters

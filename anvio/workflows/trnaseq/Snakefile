@@ -12,8 +12,7 @@ from anvio.workflows.trnaseq import TRNASeqWorkflow
 from anvio.errors import ConfigError
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2021, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -54,9 +53,9 @@ rule iu_gen_configs:
     run:
         out_dir = os.path.join(dirs_dict['QC_DIR'], wildcards.sample_name)
         library_num = M.sample_names.index(wildcards.sample_name)
-        r1_prefix = M.r1_prefixes[library_num]
-        r2_prefix = M.r2_prefixes[library_num]
-        shell("iu-gen-configs {input} -o {out_dir} --r1-prefix %s --r2-prefix %s >> {log} 2>&1" % (r1_prefix, r2_prefix))
+        r1_prefix = M.r1_prefixes[library_num] if M.r1_prefixes else None
+        r2_prefix = M.r2_prefixes[library_num] if M.r2_prefixes else None
+        shell("iu-gen-configs {input} -o {out_dir} %s %s >> {log} 2>&1" % (f"{'--r1-prefix ' + r1_prefix if r1_prefix else ''}", f"{'--r2-prefix ' + r2_prefix if r2_prefix else ''}"))
 
 
 rule iu_merge_pairs:

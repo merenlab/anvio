@@ -20,8 +20,7 @@ from anvio.errors import ConfigError, FilesNPathsError
 from anvio.workflows.metagenomics import MetagenomicsWorkflow
 from anvio.tables.miscdata import TableForLayerAdditionalData
 
-__author__ = "Alon Shaiber"
-__copyright__ = "Copyright 2017, The anvio Project"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -785,6 +784,8 @@ rule anvi_profile:
         contigs_of_interest = M.get_rule_param("anvi_profile", "--contigs-of-interest"),
         queue_size = M.get_rule_param("anvi_profile", "--queue-size"),
         write_buffer_size_per_thread = M.get_rule_param("anvi_profile", "--write-buffer-size-per-thread"),
+        min_percent_identity = M.get_rule_param("anvi_profile", "--min-percent-identity"),
+        fetch_filter = M.get_rule_param("anvi_profile", "--fetch-filter"),
         max_contig_length = M.get_rule_param("anvi_profile", "--max-contig-length"),
     threads: M.T('anvi_profile')
     resources: nodes = M.T('anvi_profile'),
@@ -798,7 +799,9 @@ rule anvi_profile:
                              {params.skip_hierarchical_clustering} {params.distance} \
                              {params.linkage} {params.min_mean_coverage} \
                              {params.min_coverage_for_variability} {params.contigs_of_interest} \
-                             {params.queue_size} {params.write_buffer_size_per_thread} {params.max_contig_length} >> {log} 2>&1
+                             {params.queue_size} {params.write_buffer_size_per_thread} \
+                             {params.min_percent_identity} {params.fetch_filter} \
+                             {params.max_contig_length} >> {log} 2>&1
         """
 
 
@@ -1221,7 +1224,7 @@ rule import_percent_of_reads_mapped:
                     echo -e "sample\ttotal_num_reads" > {output.total_num_reads_txt}
                     # ok so this whole thing is a terrible hack anyway, so the next two lines
                     # shouldn't surprise you. Basically printing one line with the sample name
-                    # and the the number of reads (which is grepped from the log file)
+                    # and the number of reads (which is grepped from the log file)
                     echo -e "`echo -n "{params.bowtie_log}" | awk 'BEGIN{{FS="-"}}{{printf("%s\t", $2)}}';\
                             grep 'reads; of these:' {params.bowtie_log} | awk '{{print $1 * 2}}'`" >> {output.total_num_reads_txt}
 

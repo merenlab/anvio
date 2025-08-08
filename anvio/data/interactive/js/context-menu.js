@@ -1,9 +1,9 @@
 /**
- *  Handles right click menu
+ *  Handles right click menu functions
  *
- *  Author: Özcan Esen <ozcanesen@gmail.com>
- *  Credits: A. Murat Eren
- *  Copyright 2018, The anvio Project
+ *  Authors: Özcan Esen <ozcanesen@gmail.com>
+ *           A. Murat Eren
+ *           Matthew Klein <mtt.l.kln@gmail.com>
  *
  * This file is part of anvi'o (<https://github.com/merenlab/anvio>).
  *
@@ -17,6 +17,7 @@
  *
  * @license GPL-3.0+ <http://opensource.org/licenses/GPL-3.0>
  */
+
 let outerLimit1;
 let outerLimit2;
 
@@ -26,7 +27,8 @@ ContextMenu = function(options) {
     this.node = options.node;
     this.layer = options.layer;
     this.isSample = options.isSample;
-    let all = options.all
+    let all = options.all;
+    let internal_node = true;
 
     this.menu_items = {
         'select': {
@@ -139,7 +141,6 @@ ContextMenu = function(options) {
                 if (!$('#panel-left').is(':visible')) {
                     toggleLeftPanel()
                 }
-                $($('.nav-tabs a').eq(3)).tab('show')
 
                 let splitHTML = layerdata_title[node.label][layer[0] -1].split('</td>')
                 let legend = extractContent(splitHTML[0]).toLowerCase()
@@ -228,8 +229,58 @@ ContextMenu = function(options) {
                 drawTree();
             }
         },
-        'reroot': {
-            'title': 'Reroot the tree/denrogram here',
+        'reroot_disabled': {
+            'title': 'Reroot the tree/dendogram here'
+        },
+        'reroot_default': {
+            'title': 'Reroot (default)',
+            'action': (node, layer, param) => {
+                let [left_most, right_most] = this.node.GetBorderNodes();
+
+                $.ajax({
+                    type: 'POST',
+                    cache: false,
+                    url: '/data/reroot_tree',
+                    data: {
+                        'newick': clusteringData,
+                        'left_most': left_most.label,
+                        'right_most': right_most.label
+                    },
+                    success: function(data) {
+                        collapsedNodes = [];
+                        clusteringData = data['newick'];
+                        $('#tree_modified_warning').show();
+                        drawTree();
+                    }
+                });
+            }
+        },
+        'reroot_with_internal_node': {
+            'title': 'Tree has internal node names',
+            'action': (node, layer, param) => {
+                let [left_most, right_most] = this.node.GetBorderNodes();
+
+                $.ajax({
+                    type: 'POST',
+                    cache: false,
+                    url: '/data/reroot_tree',
+                    data: {
+                        'newick': clusteringData,
+                        'left_most': left_most.label,
+                        'right_most': right_most.label,
+                        'internal_node': internal_node
+                    },
+                    success: function(data) {
+                        collapsedNodes = [];
+                        clusteringData = data['newick'];
+                        $('#tree_modified_warning').show();
+                        drawTree();
+                    }
+                });
+            }
+        },
+        'reroot_with_support_values': {
+            'title': 'Tree has branch support values',
             'action': (node, layer, param) => {
                 let [left_most, right_most] = this.node.GetBorderNodes();
 
@@ -270,25 +321,25 @@ ContextMenu = function(options) {
         'blastn_nr': {
             'title': ' - blastn @ nr',
             'action': (node, layer, param) => {
-                get_sequence_and_blast(node.label, 'blastn', 'nr', (mode == 'gene') ? 'gene' : 'contig');
+                search_gene_sequence_in_remote_dbs(node.label, 'blastn', 'nr', (mode == 'gene') ? 'gene' : 'contig');
              }
         },
         'blastx_nr': {
             'title': ' - blastx @ nr',
             'action': (node, layer, param) => {
-                get_sequence_and_blast(node.label, 'blastx', 'nr', (mode == 'gene') ? 'gene' : 'contig');
+                search_gene_sequence_in_remote_dbs(node.label, 'blastx', 'nr', (mode == 'gene') ? 'gene' : 'contig');
              }
         },
         'blastn_refseq_genomic': {
             'title': ' - blastn @ refseq_genomic',
             'action': (node, layer, param) => {
-                get_sequence_and_blast(node.label, 'blastn', 'refseq_genomic', (mode == 'gene') ? 'gene' : 'contig');
+                search_gene_sequence_in_remote_dbs(node.label, 'blastn', 'refseq_genomic', (mode == 'gene') ? 'gene' : 'contig');
              }
         },
         'blastx_refseq_protein': {
             'title': ' - blastx @ refseq_protein',
             'action': (node, layer, param) => {
-                get_sequence_and_blast(node.label, 'blastx', 'refseq_protein', (mode == 'gene') ? 'gene' : 'contig');
+                search_gene_sequence_in_remote_dbs(node.label, 'blastx', 'refseq_protein', (mode == 'gene') ? 'gene' : 'contig');
              }
         },
         'samples_rotate': {
@@ -480,12 +531,12 @@ ContextMenu.prototype.BuildMenu = function() {
                 menu.push('blastx_refseq_protein');
             }
 
-            // tree/dendrogram operations
-            // FIXME: this option should not appear when there is no
-            //        tree/dendrogram available
-            menu.push('divider');
-            menu.push('reroot');
-
+            else if (mode == 'manual'){
+                menu.push('reroot_disabled');
+                menu.push('reroot_default');
+                menu.push('reroot_with_internal_node');
+                menu.push('reroot_with_support_values');
+            }
         }
         else
         {
@@ -500,7 +551,10 @@ ContextMenu.prototype.BuildMenu = function() {
 
                 menu.push('collapse');
                 menu.push('rotate');
-                menu.push('reroot');
+
+                menu.push('divider');
+                menu.push('reroot_disabled');
+                menu.push('reroot_default');
             }
         }
 
@@ -523,9 +577,11 @@ ContextMenu.prototype.Show = function() {
 
     for (const item of this.BuildMenu()) {
         if (item == 'divider') {
-            list.innerHTML += `<li class="divider"></li>`;
+            list.innerHTML += `<li class="dropdown-divider"></li>`;
+        } else if (item.includes('disabled')){
+            list.innerHTML += `<li><a class="dropdown-item disabled bold" href="#">${this.menu_items[item]['title']}</a></li>`;
         } else {
-            list.innerHTML += `<li><a href="#" item-name="${item}">${this.menu_items[item]['title']}</a></li>`;
+            list.innerHTML += `<li><a class="dropdown-item" href="#" item-name="${item}">${this.menu_items[item]['title']}</a></li>`;
         }
     }
 

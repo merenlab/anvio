@@ -115,7 +115,7 @@ gene_level_taxonomy_source|centrifuge
 
 This example shows the contents of the `self` table, which is a special table that keep track of some meta information about the contigs database itself. If you compare this output to the output you get from the program %(anvi-db-info)s, you may feel like you have found a shortcut to see something very core about the philosophy behind anvi'o and how it works.
 
-This environment is extremely powerful to ask complex, creative, or unconventional questions to learn anything you may want to learn about your data, even if anvi'o is not ready to answer those questions for you. Here we can use a question that was asked on anvi'o Slack by an anvi'o user to demonstrate this:
+This environment is extremely powerful to ask complex, creative, or unconventional questions to learn anything you may want to learn about your data, even if anvi'o is not ready to answer those questions for you. Here we can use a question that was asked on anvi'o Discord by an anvi'o user to demonstrate this:
 
 > My contigs database includes contigs longer than 500 nts, how can I get summary statistics for my genes (such as the number of gene calls and the number of annotations per function annotation source) but **only for contigs that are longer than 10,000 nts**?
 
@@ -286,15 +286,17 @@ To get an output that can be pasted to markdown-aware editors such as GitHub, so
 |KOfam|14391|
 |Transfer_RNAs|323|
 
-[Learning SQL](https://www.w3schools.com/sql/sql_intro.asp) is not difficult, and one can practice their skills using their existing anvi'o databases. When there is a specific question, forming a meaningful SQL query takes only minutes. If you are not sure where to start or how to form an SQL query, you can always reach out to the community at the anvi'o Slack.
+[Learning SQL](https://www.w3schools.com/sql/sql_intro.asp) is not difficult, and one can practice their skills using their existing anvi'o databases. When there is a specific question, forming a meaningful SQL query takes only minutes. If you are not sure where to start or how to form an SQL query, you can always reach out to the community at the anvi'o Discord.
 
 ## For programmers
 
-It is also possible to use anvi'o as a Python library to work with anvi'o artifacts, including %(contigs-db)s. The purpose of this section is to list tips and use cases for programmers, and it is extended by questions we have received from the community. If you have a problem you wish to solve programmatically, but not sure how, please reach out to the community via anvi'o Slack or anvi'o GitHub.
+It is also possible to use anvi'o as a Python library to work with anvi'o artifacts, including %(contigs-db)s. The purpose of this section is to list tips and use cases for programmers, and it is extended by questions we have received from the community. If you have a problem you wish to solve programmatically, but not sure how, please reach out to the community via anvi'o Discord or anvi'o GitHub.
 
-### Get number of approximate number of genomes
+### Get approximate number of genomes
 
-You can get the number of genomes once %(anvi-run-hmms)s is run on an contigs database. Here are some examples:
+You can estimate the number of genomes once %(anvi-run-hmms)s is run on an contigs database. 
+
+Here are some examples of how to do this programmatically (more info on how the estimates are calculated can be found [here](https://anvio.org/help/main/programs/anvi-display-contigs-stats/#how-do-we-predict-the-number-of-genomes)):
 
 ``` python
 from anvio.hmmops import NumGenomesEstimator
@@ -324,3 +326,4 @@ print(num_genomes)
 print(domains_included)
 >>> ['archaea', 'eukarya']
 ```
+

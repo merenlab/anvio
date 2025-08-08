@@ -1,0 +1,1367 @@
+#!/usr/bin/env Rscript
+
+## To run unit tests:
+##
+## - Install the `testthat` package.
+##
+## - The test runner is located ${anvio_source_dir}/anvio/tests/sandbox/test_visualize_split_coverages/run_tests.R
+##
+## - Run the test runner with Rscript at the terminal.
+##
+## There are also some whole pipeline tests in a Makefile that you can
+## run by entering the
+## ${anvio_source_dir}/anvio/tests/sandbox/test_visualize_split_coverages/
+## directory and running the 'make' command.
+
+#### Logging functions ####
+
+## Generate a logging function with the given `verbosity`.  Only
+## prints messages that are higher in priority than the given
+## `verbosity` level.
+make_logger <- function(verbosity = 2) {
+  ## Lower verbosity means less verbose.  So only messages less than
+  ## verbosity level will get printed.  This is a lookup function
+  ## for verbosity levels.
+  log_level <- function(msg_type) {
+    switch(
+      msg_type,
+      "UNKNOWN" = 1,
+      "FATAL" = 1,
+      "ERROR" = 1,
+      "WARN" = 2,
+      "INFO" = 2,
+      "DEBUG" = 3,
+      3 # default
+    )
+  }
+
+  ## Expects a valid msg_type.  `msg` can be a format string as it
+  ## is passed to sprintf.`...` can be used to pass sprintf style
+  ## format string opts.
+  log_msg <- function(msg_type, msg, ...) {
+    ## Messages look like this:
+    ## E, [2019-06-20 18:21:28.150640 #18632] ERROR -- Hi error
+    now <- strftime(Sys.time(), format = "%Y-%m-%d %H:%M:%OS6")
+    pid <- Sys.getpid()
+    msg_code <- substr(msg_type, start = 1, stop = 1)
+    msg_prefix <- sprintf(
+      "%s, [%s #%d] %s -- ",
+      msg_code,
+      now,
+      pid,
+      msg_type
+    )
+
+    if (log_level(msg_type) <= verbosity) {
+      write(
+        paste0(
+          msg_prefix,
+          sprintf(msg, ...)),
+        file = stderr())
+    }
+  }
+
+  structure(
+    list(
+      unknown = function(msg, ...) {
+        log_msg("UNKNOWN", msg, ...)
+      },
+      fatal = function(msg, ...) {
+        log_msg("FATAL", msg, ...)
+      },
+      error = function(msg, ...) {
+        log_msg("ERROR", msg, ...)
+      },
+      warn = function(msg, ...) {
+        log_msg("WARN", msg, ...)
+      },
+      info = function(msg, ...) {
+        log_msg("INFO", msg, ...)
+      },
+      debug = function(msg, ...) {
+        log_msg("DEBUG", msg, ...)
+      }
+    ),
+    class = "logger"
+  )
+}
+
+## Write a `msg` to stderr then exit with code 1.
+abort <- function(msg, ...) {
+  logger$fatal(msg, ...)
+  quit(save = "no", status = 1, runLast = FALSE)
+}
+
+#### End logging functions ####
+
+#### Import libraries ####
+
+## Try to load the packages.  Abort if they are not available.
+if (!suppressPackageStartupMessages(require(ggplot2))) {
+  abort("ggplot2 is a required package!")
+}
+
+if (!suppressPackageStartupMessages(require(optparse))) {
+  abort("optparse is a required package!")
+}
+
+#### End import libraries ####
+
+#### Utility functions ####
+
+is_hex_color <- function(color) {
+  grepl("#[0-9a-fA-F]{6}", color)
+}
+
+## `formula` should refer to variable names in the `df`.  First thing
+## in the formula is the data, and the second thing is the
+## variable/group that you want to group the first thing by.
+sapply_by_group <- function(formula, df, fn, ...) {
+  agg <- aggregate(formula, df, fn, ...)
+  vec <- as.vector(t(agg[2]))
+}
+
+#### These functions are used for compression ####
+get_points_per_sample <- function(split_coverages) {
+  aggregate(
+    coverage ~ sample_name,
+    split_coverages,
+    length
+  )$coverage
+}
+
+get_window_size <- function(sample_size) {
+  ## This size was chosen because it reduces the size, but still
+  ## looks nice over a large range of values.
+  window_size <- floor(sample_size / 1000 * 3)
+
+  ## Window size must be odd.
+  ifelse(window_size %% 2 == 0,
+         window_size + 1,
+         window_size)
+}
+
+## Smooths the coverage using running medians of size `window_size`,
+## group-by-group.  Output is sorted by sample_name (according to
+## their factor levels), so the result may NOT be in the same order as
+## the input data frame if the input data frame is NOT sorted by
+## sample_name first.
+smooth_coverage <- function(split_coverages, window_size) {
+  sapply_by_group(
+    coverage ~ sample_name,
+    split_coverages,
+    runmed,
+    k = window_size
+  )
+}
+
+## Takes each point whose x_values mod `window_size` is zero.  Also
+## take the last point in each sample to get the whole contig.
+shrink_data <- function(split_coverages, window_size) {
+  ## Get max x_values in each sample.
+  agg <- aggregate(
+    x_values ~ sample_name,
+    split_coverages,
+    max
+  )
+
+  ## Merge in the max x_values with the rest of split_coverages data.
+  merged <- merge(
+    split_coverages,
+    agg,
+    by = "sample_name",
+    all.x = TRUE,
+    suffixes = c("", ".max")
+  )
+
+  ## Take only rows whose x_values divides the window size, plus
+  ## the last row for each sample.
+  subset(merged,
+         x_values %% window_size == 0 | x_values == x_values.max)
+}
+
+## Applies a hard cap to coverage values.  Replaces any above the cap
+## with `max_coverage`.
+cap_coverage <- function(coverage, max_coverage) {
+  ifelse(coverage > max_coverage,
+         max_coverage,
+         coverage)
+}
+
+## Opposite of %in%
+"%nin%" <- Negate("%in%")
+
+#### End utility functions ####
+
+#### Functions to handle user input ####
+
+check_required_args <- function(opts) {
+  ## Make sure the required args are given.
+  required_args = c("infile", "outfile_basename")
+  for (arg in required_args) {
+    if (is.null(opts[[arg]])) {
+      msg <- paste0("'",
+                    arg,
+                    "' is a required argument.  For help, try running:  anvi-script-visualize-split-coverages --help")
+      abort(msg)
+    }
+  }
+}
+
+check_infile <- function(opts) {
+  ## Make sure the infile exists.
+  if (!file.exists(opts$infile)) {
+    abort(paste0("Input file '",
+                 opts$infile,
+                 "' does not exist!"))
+  }
+}
+
+check_outfile <- function(opts) {
+  ## Make sure the directory of the outfile exists.
+  outdir <- dirname(opts$outfile_basename)
+  if (!dir.exists(outdir)) {
+    abort(paste0("Directory '",
+                 outdir,
+                 "' for the outfile '",
+                 opts$outfile,
+                 "' does not exist!"))
+  }
+}
+
+check_sample_data_file <- function(opts) {
+  ## Check that the additional data file exists if it is given.
+  if (!is.null(opts$sample_data) && !file.exists(opts$sample_data)) {
+    abort(paste0("Additional data file '",
+                 opts$sample_data,
+                 "' does not exist!"))
+  }
+}
+
+check_snv_data_file <- function(opts) {
+  ## Check the SNV file exists if it is given.
+  if (!is.null(opts$snv_data) && !file.exists(opts$snv_data)) {
+    abort(paste0("SNV data file '",
+                 opts$snv_data,
+                 "' does not exist!"))
+  }
+}
+
+## Check that double type options are actually doubles.
+check_typeof_double_opts <- function(opts) {
+  double_type_opts <- c("whole_chart_width",
+                        "individual_chart_height",
+                        "max_coverage",
+                        "compress_threshold",
+                        "window_size",
+                        "snv_marker_width",
+                        "snv_marker_transparency")
+  for (arg in double_type_opts) {
+    if (typeof(opts[[arg]]) != "double") {
+      abort(paste0("the type of '",
+                   arg,
+                   "' should be double, but got '",
+                   typeof(opts[[arg]])))
+    }
+  }
+}
+
+## Some options control sizes of things.  In general these should be
+## at least 1.
+check_size_opts <- function(opts) {
+  ## Any of these options are sizes and should be >= 1.
+  size_opts <- c("whole_chart_width",
+                 "individual_chart_height",
+                 "max_coverage",
+                 "compress_threshold")
+  for (arg in size_opts) {
+    if (opts[[arg]] < 1) {
+      abort(paste0("'",
+                   arg,
+                   "' should be >= 1.  Got '",
+                   opts[[arg]],
+                   "'."))
+    }
+  }
+}
+
+## Window size must be odd.  If it is even, bump it up to the next odd
+## number.
+check_window_size <- function(opts) {
+  ## Anything less than 1 means auto, so only bump things > 1.
+  if (opts$window_size >= 1 && opts$window_size %% 2 == 0) {
+    logger$warn("--window-size must be odd.  Got '%f', using '%f' instead.",
+                opts$window_size,
+                opts$window_size + 1)
+
+    opts$window_size <- opts$window_size + 1
+  }
+}
+
+
+## Only certain charting types have been implemented.  Make sure user
+## selects one of these.
+check_chart_type <- function(opts) {
+  ## Make sure chart type is available.
+  available_chart_types = c("area", "line")
+  ## Chart type has a default so we don't need to check for its
+  ## existance.
+  if (opts$chart_type %nin% available_chart_types) {
+    abort(paste0("bad chart type.  Chart type must be one of: ",
+                 paste(available_chart_types, collapse = ", "),
+                 ". Got '",
+                 opts$chart_type,
+                 "'."))
+  }
+}
+
+## Certain options expext colors.  These can include anything in
+## `colors()` as well as valid hex codes.
+check_color_opts <- function(opts) {
+  color_opts <- c("coverage_plot_color",
+                  "snv_wobble_pos_color",
+                  "snv_non_wobble_pos_color",
+                  "snv_intergenic_color")
+
+  for (arg in color_opts) {
+    color <- opts[[arg]]
+
+    if (color %nin% colors() && !is_hex_color(color)) {
+      arg_name <- paste0(
+        "--",
+        gsub("_", "-", arg)
+      )
+
+      abort(paste0(
+        "bad color specification for opt ",
+        arg_name,
+        ".  Expected a valid named color or a hex code.  Got '",
+        color,
+        "'."
+      ))
+    }
+  }
+}
+
+## Only 1, 2, and 3 are valid args.
+check_verbosity <- function(opts) {
+  verbose_opts <- 1:3
+  if (opts$verbose %nin% verbose_opts) {
+    abort(paste0("bad argument to --verbose.  Must be one of: ",
+                 paste(verbose_opts, collapse = ", "),
+                 ". Got '",
+                 opts$verbose,
+                 "'."))
+  }
+}
+
+## `opts` is the output of parse_args function
+check_opts <- function(opts) {
+  check_required_args(opts)
+  check_infile(opts)
+  check_outfile(opts)
+  check_snv_data_file(opts)
+  check_sample_data_file(opts)
+  check_typeof_double_opts(opts)
+  check_size_opts(opts)
+  check_window_size(opts)
+  check_chart_type(opts)
+  check_color_opts(opts)
+  check_verbosity(opts)
+}
+
+#### End user input checking functions ####
+
+#### Parsing functions
+
+## Parse the split coverages file.
+parse_split_coverages <- function(opts) {
+  ## Sanity check: split coverages should always be given.
+  ## check_opts ensures this.
+  if (is.null(opts$infile)) {
+    abort("missing '$infile' from opts list")
+  }
+
+  logger$debug("Reading split_coverages")
+  split_coverages <- read.table(opts$infile,
+                                header = TRUE,
+                                sep = "\t",
+                                stringsAsFactors = TRUE)
+
+  logger$debug("Checking split_coverages")
+  ## Check split coverage header rows
+  expected_split_cov_header <- c(
+    "unique_entry_id",
+    "nt_position",
+    "split_name",
+    "sample_name",
+    "coverage"
+  )
+  if (any(colnames(split_coverages) != expected_split_cov_header)) {
+    abort("bad header row in split coverages file")
+  }
+
+  logger$debug("Ordering split_coverages")
+
+  ## Lots of steps expected nicely sorted data frame, so sort it by
+  ## sample_name, then split_name, then nt_position.
+  split_coverages <- split_coverages[order(split_coverages$sample_name,
+                                           split_coverages$split_name,
+                                           split_coverages$nt_position), ]
+
+  logger$debug("Checking for multiple split_names")
+
+  unique_split_names <- unique(split_coverages$split_name)
+  num_unique_split_names <- length(unique_split_names)
+  logger$debug("Unique split names in split coverages file: %d",
+               num_unique_split_names)
+
+  ## If there are multiple split_names in the split coverages file,
+  ## we need to make sure they are all sorted properly, then we need
+  ## to treat all split_names within a single contig as one big
+  ## super-contig.
+  if (num_unique_split_names > 1) {
+    logger$debug("Multiple split names found")
+    ## Get number of positions (rows) for all splits per sample.
+    sample_counts <- table(split_coverages$sample_name)
+
+    logger$debug("dim(sample_counts): %s", dim(sample_counts))
+
+    ## Make sample-wide nucleotide positions.  Each sample has
+    ## nucleotide positions running from 0 to count - 1.
+
+    ## This will be a list if the samples have different total
+    ## numbers of nucleotides (e.g., different numbers of splits)
+    ## or a matrix if all samples have exactly the same number of
+    ## nucleotides.
+    nt_posns_by_sample <- sapply(sample_counts, function(count) { 0:(count - 1) })
+
+    ## unlist() followed by as.vector() handles both of the above
+    ## cases.
+    split_coverages$x_values <- as.vector(unlist(nt_posns_by_sample))
+  } else {
+    logger$debug("Single split name found")
+    ## Use the regular nt_position as the x_values.
+    split_coverages$x_values <- split_coverages$nt_position
+  }
+
+  logger$debug("Getting contig offsets")
+  ## We need to calculate offsets for each of the contigs in order to
+  ## link up the SNV data.  The first one would have no offset, the
+  ## 2nd would have to take into account the legth of the first
+  ## offset.  Etc.
+  contig_offsets <- get_contig_offsets(split_coverages)
+
+  if (!opts$no_compression) {
+    logger$debug("Compression is on")
+    ## Check if the samples are big enough for compression
+
+    ## Number of data points per sample.
+    points_per_sample <- get_points_per_sample(split_coverages)
+
+
+    ## Check if we need to compress.
+    if (any(points_per_sample > opts$compress_threshold)) {
+
+      ## If window_size is set to auto, then we need to calculate it now.
+      if (opts$window_size < 1) {
+        logger$debug("Automatically setting the window size.")
+
+        ## Warn if not all points per sample are equal
+        if (length(unique(points_per_sample)) > 1) {
+          logger$warn("Not all samples have the same number of points!  Setting compression to the largest sample.")
+        }
+
+        sample_size<- max(points_per_sample)
+        logger$info("Largest sample has %d points", sample_size)
+
+        opts$window_size <- get_window_size(sample_size)
+      }
+
+      logger$info("Compressing samples.  Window size is %d", opts$window_size)
+      logger$info("Total data points before compression: %d", nrow(split_coverages))
+
+      ## Replace orig. coverage with smoothed cov.
+      split_coverages$coverage <- smooth_coverage(split_coverages, opts$window_size)
+
+      split_coverages <- shrink_data(split_coverages, opts$window_size)
+
+      logger$info("Total data points after compression: %d", nrow(split_coverages))
+
+      if (nrow(split_coverages) >= 100000) {
+        tmp_nsamples <- length(unique(as.character(split_coverages$sample_name)))
+
+        logger$warn("Even after compression, you still have more than 100,000 data points.  Unless you have added sample_group info with --sample-data, plotting may be very slow.",
+                    tmp_nsamples)
+      }
+    }
+  }
+
+  ## Cap the coverage at the max coverage value.
+  logger$info("Coverage will be capped at %d", opts$max_coverage)
+  split_coverages$coverage <- cap_coverage(split_coverages$coverage, opts$max_coverage)
+
+  list(split_coverages = split_coverages,
+       contig_offsets = contig_offsets)
+}
+
+
+## Check sample_data headers
+check_sample_data_headers <- function(sample_data) {
+  logger$debug("Checking sample_data header")
+
+  if (any(colnames(sample_data) %nin% c("sample_name", "sample_color", "sample_group"))) {
+    abort("bad header row in sample_data file")
+  }
+}
+
+## Returns a copy of `sample_data` without any rows whose sample is
+## NOT also present in split_coverages.
+check_samples_against_split_coverages <- function(dat, split_coverages, which_file) {
+  good_samples <- as.character(dat$sample_name) %in%
+    unique(as.character(split_coverages$sample_name))
+
+  if (all(good_samples == FALSE)) {
+    abort("None of the samples listed in the %s file were also in the split coverages file!",
+          which_file)
+  } else if (any(good_samples == FALSE)) {
+    logger$warn("Some of the samples listed in the %s file were not also in the split coverages file.  These will not be included in the %s.",
+                which_file,
+                which_file)
+  }
+
+  dat[good_samples, ]
+}
+
+## If only one group is specified, warn the user, as group is used to
+## break samples into separate PDFs.
+check_sample_groups <- function(sample_data) {
+  logger$debug("Checking sample_data groups")
+
+  default_group <- "__anvi__default__sample__group"
+
+  if (any(as.character(sample_data$sample_group) == default_group)) {
+    abort("You used __anvi__default__sample__group as a sample_group.  Please choose a different group name.")
+  }
+
+  if (is.null(sample_data$sample_group)) {
+    rep(default_group, times = nrow(sample_data))
+  } else if (length(unique(sample_data$sample_group)) == 1) {
+    logger$warn("A single group was provided for all samples in sample_data file.  This option is for splitting samples across PDFs.  Did you mean to specify more than one group?")
+
+    sample_data$sample_group
+  } else {
+    sample_data$sample_group
+  }
+}
+
+## Check that all color names are either named R colors or
+## hexcodes.  If not, make them the default color.
+fix_colors <- function(sample_data, opts) {
+  logger$debug("Checking the colors")
+
+  ## sample_color is not always present in the sample_data file.
+  if (is.null(sample_data$sample_color)) {
+    rep(opts$coverage_plot_color, times = nrow(sample_data))
+  } else {
+    sapply(
+      sample_data$sample_color,
+      function(color) {
+        ifelse(color == "" || (color %nin% colors() && !is_hex_color(color)),
+               opts$coverage_plot_color,
+               as.character(color))
+      }
+    )
+  }
+}
+
+parse_sample_data <- function(opts) {
+  if (is.null(opts$sample_data)) {
+    sample_data = NULL
+  } else {
+    logger$debug("Parsing sample data")
+
+    sample_data = read.table(opts$sample_data,
+                             header = TRUE,
+                             sep = "\t",
+                             comment.char = "")
+
+    check_sample_data_headers(sample_data)
+    check_sample_groups(sample_data)
+    sample_data$sample_color <- fix_colors(sample_data, opts)
+  }
+
+  sample_data
+}
+
+## functions to parse SNV data ##
+
+## Certain colnames are required.  This function validates presence
+## of those.
+check_snv_data_header <- function(snv_data) {
+  required_colnames <- c(
+    "contig_name",
+    "split_name",
+    "sample_id",
+    "pos", # this is position in the split
+    "departure_from_reference",
+    "competing_nts"
+  )
+
+  actual_colnames <- colnames(snv_data)
+
+  for (required_colname in required_colnames) {
+    if (required_colname %nin% actual_colnames) {
+      abort(paste0("column name '",
+                   required_colname,
+                   "'is required, but was not found in the SNV file."))
+    }
+  }
+}
+
+check_snv_proportions <- function(vals) {
+  ## Divergence from ref must be between 0 and 1.
+  if (any(vals < 0 || vals > 1)) {
+    abort("bad departure_from_reference values.  Should be between 0 and 1.")
+  }
+
+  ## Divergence from ref must be present for all rows.
+  if (any(is.na(vals))) {
+    abort("missing values in departure_from_reference_column")
+  }
+}
+
+check_snv_contigs_and_splits <- function(snv_data) {
+  ## First, all split names must correspond to their contigs.
+  contig_name <- snv_data$contig_name
+  contig_from_split_name <- sub("_split_[0-9]+$", "", snv_data$split_name)
+
+  if (any(contig_name != contig_from_split_name)) {
+    abort("Not all the split names match up with the contig names!")
+  }
+}
+
+parse_snv_data <- function(opts) {
+  if (is.null(opts$snv_data)) {
+    snv_data <- NULL
+  } else {
+    logger$debug("Parsing SNV data")
+
+    snv_data <- read.table(opts$snv_data,
+                           header = TRUE,
+                           sep = "\t",
+                           comment.char = "")
+
+    check_snv_data_header(snv_data)
+    check_snv_proportions(snv_data$departure_from_reference)
+    check_snv_contigs_and_splits(snv_data)
+
+    ## Change sample_id to sample_name to match the split cov file.
+    snv_data <- transform(snv_data,
+                          sample_name = snv_data$sample_id,
+                          sample_id = NULL)
+
+    ## Sort by contig, then by sample_name
+    snv_data <- snv_data[order(snv_data$split_name, snv_data$sample_name), ]
+  }
+
+  snv_data
+}
+
+check_sample_names <- function(sample_data, sample_names) {
+  ## Make sure all sample names in additional data are present
+  ## in original data.
+  if (any(sample_data$sample_name %nin% sample_names)) {
+    abort("There were sample names in the additional data file not present in the split coverages file")
+  }
+}
+
+subset_split_coverages <- function(split_coverages, sample_data) {
+  ## If additional data is here, we need to subset the split
+  ## coverages data.  Only samples listed in the additional data
+  ## file are to be drawn.
+  split_coverages_subset <- subset(split_coverages,
+                                   sample_name %in% sample_data$sample_name)
+
+  if (nrow(split_coverages) != nrow(split_coverages_subset)) {
+    logger$info("Not all samples in the split coverages file were present in the sample data file.")
+  }
+
+  split_coverages_subset
+}
+
+sort_split_coverages <- function(split_coverages, sample_data) {
+  ## We also want to sort the dataframe by the order of sample
+  ## names in the additional data file.  So set the factor
+  ## levels by the order they appear in additional data file.
+  split_coverages$sample_name <- factor(split_coverages$sample_name,
+                                        levels = sample_data$sample_name)
+
+  ## First order by sample name, then by x_values.  Sort by x_values
+  ## rather than first by split_name as the x_values will have
+  ## already been set up to be in the correct order regardless of
+  ## whether there are multiple split names in the file.
+  split_coverages[order(split_coverages$sample_name,
+                        split_coverages$x_values), ]
+}
+
+add_sample_data <- function(split_coverages, sample_data) {
+  ## Add sample data to split_coverages df.  Left outer join to
+  ## ensure all data points are there.  Though the additional
+  ## data should have every sample that is in split coverages.
+  merge(x = split_coverages,
+        y = sample_data,
+        by = "sample_name",
+        all.x = TRUE)
+}
+
+## Contigs are offset by the length of all preceding contigs.  This is
+## done sample-by-sample.  Note: Most likely the contigs would have
+## the same lengths in all samples, but this function does NOT assume
+## that, hence it's probably more complicated than necessary.
+##
+## Important:  this must be run BEFORE any data reduction.
+##
+get_contig_offsets <- function(split_coverages) {
+  logger$debug("Getting lengths per sample")
+  ## Get split_name lengths in each sample.  Returns a matrix with
+  ## samples as rows and split_name as columns.
+  contig_lengths <- tapply(
+    X = split_coverages$nt_position,
+    INDEX = list(
+      sample_name = split_coverages$sample_name,
+      split_name = split_coverages$split_name
+    ),
+    FUN = length
+  ) # returns a nsamples X nsplits matrix, with dimnames
+
+  logger$debug("Getting number of samples")
+  nsamples <- nrow(contig_lengths)
+  ncontigs <- ncol(contig_lengths)
+
+  logger$debug("Getting contig offsets")
+  ## Rows will be contigs/splits and cols will be samples.  Entries
+  ## will be offset of contig/split for that sample.
+  contig_offsets <- apply(
+    contig_lengths,
+    1,
+    function(lengths) {
+      sapply(seq_along(lengths), function(contig_idx) {
+        ifelse(
+          contig_idx == 1,
+          ## The first contig has no offset.
+          0,
+          ## The rest need to sum the previous.
+          sum(lengths[1:(contig_idx - 1)])
+        )
+      })
+    }
+  )
+  ## returns a vector if there is only one contig, or one sample.
+  ## Matrix otherwise, name of row dimname will be lost.
+
+  ## In the case of one sample, or one contig ensure that it's an
+  ## ncontigs X nsamples matrix.
+  if (is.null(dim(contig_offsets))) {
+    logger$debug("Ensuring data is a matrix")
+    contig_offsets <- matrix(contig_offsets, nrow = ncontigs, ncol = nsamples)
+  }
+
+  ## Set dimnames (technically not sure if this should be levels or not)
+  dimnames(contig_offsets) <- list(
+    split_name = levels(split_coverages$split_name),
+    sample_name = levels(split_coverages$sample_name)
+  )
+
+  contig_offsets
+}
+
+## Return a vec of offset snv positions.  These will match up with the
+## `x_values` of the split_coverages data.  Output is in the same
+## order as the snv_data input.
+get_offset_snv_positions <- function(snv_data, contig_offsets) {
+  unlist(
+    Map(
+      function(sample_name, split_name, snv_pos) {
+        ## Must convert split_name and sample_name to character before
+        ## lookup as they are factors.
+        offset <- contig_offsets[as.character(split_name), as.character(sample_name)]
+
+        if (is.null(offset)) {
+          abort("split_name: '",
+                split_name,
+                "' with sample '",
+                sample_name,
+                "' was not found in contig_offsets!")
+        }
+
+        snv_pos + offset
+      },
+      snv_data$sample_name,
+      snv_data$split_name,
+      snv_data$pos
+    )
+  )
+}
+
+parse_input_data <- function(opts) {
+  logger$debug("Parsing split coverages")
+  tmp <- parse_split_coverages(opts)
+  split_coverages <- tmp$split_coverages
+  contig_offsets <- tmp$contig_offsets
+
+  logger$debug("No. unique samples in split names file: %d",
+               length(unique(split_coverages$sample_name)))
+
+  sample_data <- parse_sample_data(opts)
+  snv_data <- parse_snv_data(opts)
+
+  ## If sample_data file is given, we need to adjust the split
+  ## coverages data frame.
+  if (is.null(sample_data)) {
+    ## First, warn the user if they have a lot of samples that the
+    ## script will probably be slow.
+    if (length(unique(as.character(split_coverages$sample_name))) >= 10) {
+      logger$warn("You have more than 10 samples.  If the plotting is very slow, consider adding sample_group information using the --sample-data option.")
+    }
+  } else {
+    ## Remove any rows whose samples aren't also present in the
+    ## split coverages file.
+    sample_data <- check_samples_against_split_coverages(sample_data,
+                                                         split_coverages,
+                                                         "sample data")
+
+    logger$info("Sample_data given.  Adjusting split_coverages.")
+    ## Make sure the names in sample_data df are okay.
+    check_sample_names(sample_data, split_coverages$sample_name)
+
+    logger$debug("Before reading sample_data, there were %d samples.",
+                 length(unique(split_coverages$sample_name)))
+
+    split_coverages <- subset_split_coverages(split_coverages, sample_data)
+    split_coverages <- sort_split_coverages(split_coverages, sample_data)
+    split_coverages <- add_sample_data(split_coverages, sample_data)
+
+    logger$debug("After reading sample_data, %d samples were kept.",
+                 length(unique(split_coverages$sample_name)))
+  }
+
+  ## Even if the sample_data file was given, sometimes it will not
+  ## have the sample_group column, so check to see if you need to set
+  ## the default.
+  if (is.null(split_coverages$sample_group)) {
+    default_group <- "__anvi__default__sample__group"
+    split_coverages$sample_group <- rep(default_group,
+                                        times = nrow(split_coverages))
+  }
+
+  if (!is.null(snv_data)) {
+    snv_data <- check_samples_against_split_coverages(snv_data,
+                                                      split_coverages,
+                                                      "SNV data")
+
+    ## Check that split_names in the snv data match those in the
+    ## split coverages file.
+    if (any(levels(snv_data$split_name) %nin% levels(split_coverages$split_name))) {
+      abort("Some split_names in the SNV data file are not present in the split coverages file.")
+    }
+
+    ## We need to order the snv data in the same split order as the
+    ## split_coverages.  Then need to convert the pos column of the
+    ## snv_data so that it matches the x_values in the split_coverages
+    ## file.
+
+    snv_data$x_values <- get_offset_snv_positions(
+      snv_data,
+      contig_offsets
+    )
+  }
+
+  list(split_coverages = split_coverages,
+       snv_data = snv_data,
+       sample_data = sample_data,
+       ## Take sample names here in case any samples were removed
+       ## above in the sample_data step.
+       sample_names = split_coverages$sample_name)
+}
+
+#### End parsing functions and helpers ####
+
+
+#### Plotting functions ####
+
+## This function handles any "basic" plots like area, line, or
+## anything in ggplot2 that uses the same aesthetics as geom_area or
+## geom_line.
+basic_plot <- function(dat, opts) {
+  geom_fn <- switch(
+    opts$chart_type,
+    "area" = geom_area,
+    "line" = geom_line,
+    ## Default
+    {
+      logger$warn("Chart type '%s' is not a valid choice.  Using 'area' instead",
+                  opts$chart_type)
+
+      geom_area
+    }
+  )
+
+  ## Sanity check.  sample_group should always be set.
+  if (is.null(dat$split_coverages$sample_group)) {
+    abort("Something went wrong....sample_group was not set!")
+  }
+
+  sample_groups <- unique(dat$split_coverages$sample_group)
+  logger$debug("There will be %d sample group(s)", length(sample_groups))
+
+  ## In the case of a single sample_group this will be length one.
+  sapply(sample_groups, function(group) {
+    split_coverages_subset <- subset(dat$split_coverages,
+                                     sample_group == group)
+
+    if (nrow(split_coverages_subset) == 0) {
+      abort("The split_coverages subset for sample group '%s' has no rows!")
+    }
+
+
+    included_samples <- unique(as.character(split_coverages_subset$sample_name))
+    nsamples <- length(included_samples)
+
+    ## Set up the coverage chart.
+    cov_plot <- ggplot(split_coverages_subset,
+                       aes(x = x_values,
+                           y = coverage,
+                           group = sample_name))
+
+    ## Add the coverage geom.
+    if (is.null(split_coverages_subset$sample_color)) {
+      cov_plot <- cov_plot + geom_fn(fill = opts$coverage_plot_color)
+    } else {
+      cov_plot <- cov_plot + geom_fn(fill = split_coverages_subset$sample_color)
+    }
+
+    ## Add the SNV data if it is available.
+    if (!is.null(dat$snv_data)) {
+      max_cov <- tapply(X = split_coverages_subset$coverage,
+                        INDEX = split_coverages_subset$sample_name,
+                        FUN = max)
+      max_cov <- data.frame(max_cov = max_cov, sample_name = names(max_cov))
+
+      snv_color <- data.frame(
+        base_pos_in_codon = 0:3,
+        snv_color = c(
+          opts$snv_intergenic_color,
+          opts$snv_non_wobble_pos_color,
+          opts$snv_non_wobble_pos_color,
+          opts$snv_wobble_pos_color
+        )
+      )
+
+      # TODO double check that we don't need to also subset this.
+      snv_plot_dat <- merge(dat$snv_data, max_cov, by = "sample_name")
+      snv_plot_dat <- merge(snv_plot_dat, snv_color, by = "base_pos_in_codon")
+
+      snv_plot_dat_subset <- subset(snv_plot_dat, sample_name %in% included_samples)
+
+      if (nrow(snv_plot_dat_subset) > 0) {
+
+        cov_plot <- cov_plot +
+          geom_segment(
+            data = snv_plot_dat_subset,
+            mapping = aes(x = x_values,
+                          xend = x_values,
+                          y = 0,
+                          yend = departure_from_reference * max_cov),
+            color = snv_plot_dat_subset$snv_color,
+            size = opts$snv_marker_width,
+            alpha = opts$snv_marker_transparency
+          )
+      } else {
+        logger$warn("Sample group '%s' had no SNV data!  No SNV data will be plotted for this group!",
+                    group)
+      }
+    }
+
+    ## Add xlim. FIXME xlim is parsed on the fly right here, but it should be checked before this point
+    if (!is.null(opts[['xlim']])) {
+      xlims <- lapply(unlist(strsplit(opts$xlim[[1]], ',')), as.integer)
+      cov_plot <- cov_plot + coord_cartesian(xlim = c(xlims[[1]], xlims[[2]]))
+    }
+
+    ## Tweak the theme.
+    cov_plot <- cov_plot + theme_bw()
+    cov_plot <- cov_plot + theme(legend.position = "none")
+
+    ## Check for free y scale.
+    if (opts$free_y_scale) {
+      cov_plot <- cov_plot + facet_grid(sample_name ~ ., scales = "free_y")
+    } else {
+      cov_plot <- cov_plot + facet_grid(sample_name ~ .)
+    }
+
+    ## Add chart labels.
+    cov_plot <- cov_plot + labs(x = "Nucleotide position", y = "Coverage")
+
+    list(plot = cov_plot,
+         sample_group = group,
+         nsamples = nsamples)
+  },
+  simplify = FALSE)
+}
+
+
+## This function is called in the main part of the script.  Wrapper fn
+## to handle plot drawing.  If you want to add new plot types in the
+## future, call them here.
+draw_plot <- function(...) {
+  if (opts$chart_type == "area" || opts$chart_type == "line") {
+    basic_plot(...)
+  } else {
+    ## Sanity check: check_opts should prevent this from happening.
+    abort("bad chart type")
+  }
+}
+
+## This function is called in the main part of the script.
+## Fn to write plot to disk.
+write_plot <- function(gg_plots, dat, opts) {
+  ## Strip off PDF if user added it.
+  outfile_basename <- gsub(".pdf$",
+                           "",
+                           opts$outfile_basename,
+                           ignore.case = TRUE)
+
+  if (length(gg_plots) == 1) {
+    logger$debug("Found only 1 plot")
+    plt <- gg_plots[[1]]
+    outfile <- paste0(outfile_basename, ".pdf")
+
+    pdf(outfile,
+        width = opts$whole_chart_width,
+        height = opts$individual_chart_height * plt$nsamples)
+    print(plt$plot)
+    suppressMessages(invisible(dev.off()))
+  } else {
+    logger$debug("Found %d plots", length(gg_plots))
+    for (plt in gg_plots) {
+      outfile <- paste0(
+        outfile_basename,
+        "___",
+        ## Replace any spaces with underscores.
+        gsub("[[:space:]]+", "_", plt$sample_group),
+        ".pdf"
+      )
+
+      pdf(outfile,
+          width = opts$whole_chart_width,
+          height = opts$individual_chart_height * plt$nsamples)
+      print(plt$plot)
+      suppressMessages(invisible(dev.off()))
+    }
+  }
+}
+
+#### Optparse ####
+set_up_opts <- function() {
+  option_list <- list(
+    ## Infile options
+    make_option(opt_str = c("-i", "--infile"),
+                action = "store",
+                type = "character",
+                help = "Path to infile (i.e., output of anvi-get-split-coverages)"),
+    make_option(opt_str = c("-s", "--sample-data"),
+                action = "store",
+                type = "character",
+                help = "Path to additional data file"),
+    make_option(opt_str = c("-d", "--snv-data"),
+                action = "store",
+                type = "character",
+                help = "Path to SNV data file (output of anvi-gen-variability-profile"),
+
+    ## Outfile options
+    make_option(opt_str = c("-o", "--outfile-basename"),
+                action = "store",
+                type = "character",
+                help = "Outfile basename (can be a path, if the directory exists)"),
+
+    ## Chart options
+    make_option(opt_str = c("-t", "--chart-type"),
+                action = "store",
+                type = "character",
+                default = "area",
+                help = "What type of chart do you want? [default %default]"),
+    make_option(opt_str = c("-w", "--whole-chart-width"),
+                action = "store",
+                type = "double",
+                default = 10.0,
+                help = "Width of the whole chart [default %default]"),
+    make_option(opt_str = c("-c", "--individual-chart-height"),
+                action = "store",
+                type = "double",
+                default = 2.0,
+                help = "Height of each individual coverage chart [default %default]"),
+    make_option(opt_str = c("-f", "--free-y-scale"),
+                action = "store_true",
+                type = "logical",
+                default = FALSE,
+                help = "Depending on the visualization strategy, the y-axis of the plot may be scaled to the common max.\
+                        Use this flag to let them go free so every single plot has its own maximum \
+                        value. [default %default]"),
+    make_option(opt_str = c("-x", "--xlim"),
+                action = "store",
+                type = "character",
+                default = NULL,
+                help = "Define the x-limits (domain) of the plot. If there are multiple splits, the limits refer to post-merged \
+                        positions. Input should be two comma-separated integers (e.g. 2287,4232). [default %default]"),
+
+    ## Chart colors
+    make_option(opt_str = c("--coverage-plot-color"),
+                action = "store",
+                type = "character",
+                default = "#333333",
+                help = "Color for the coverage plot [default %default]"),
+    ## SNV colors
+    make_option(opt_str = c("--snv-wobble-pos-color"),
+                action = "store",
+                type = "character",
+                ## default = "#77e03a",
+                default = "#749637",
+                help = "Color for the 3rd position variants [default %default]"),
+    make_option(opt_str = c("--snv-non-wobble-pos-color"),
+                action = "store",
+                type = "character",
+                ## default = "#f8002f",
+                default = "#e33e33",
+                help = "Color for the 1st and 2nd position variants [default %default]"),
+    make_option(opt_str = c("--snv-intergenic-color"),
+                action = "store",
+                type = "character",
+                ## default = "#000c14",
+                default = "#999999",
+                help = "Color for the intergenic variants [default %default]"),
+    make_option(opt_str = c("--snv-marker-width"),
+                action = "store",
+                type = "double",
+                default = "0.5",
+                help = "Width of the SNV markers [default %default]"),
+    make_option(opt_str = c("--snv-marker-transparency"),
+                action = "store",
+                type = "double",
+                default = "1.0",
+                help = "Transparency of the SNV markers [default %default]"),
+
+    ## Data "compression"
+    make_option(opt_str = c("-m", "--max-coverage"),
+                action = "store",
+                type = "double",
+                default = 1000,
+                help = "Max coverage.  Any value g.t. this will be capped at this value. [default %default]"),
+    make_option(opt_str = c("-p", "--compress-threshold"),
+                action = "store",
+                type = "double",
+                default = 1000,
+                help = "If samples have more data points than this, they will be compressed. [default %default]"),
+    make_option(opt_str = c("-n", "--window-size"),
+                action = "store",
+                type = "double",
+                default = 0,
+                help = "Window size for compression.  Higher number = more compression. Pass 0 for auto. [default %default]"),
+    make_option(opt_str = c("-r", "--no-compression"),
+                action = "store_true",
+                type = "logical",
+                default = FALSE,
+                help = "Pass this flag if you want no compression.  Overrides other compression opts."),
+
+    ## Verbosity
+    make_option(opt_str = c("-v", "--verbose"),
+                action = "store",
+                type = "numeric",
+                default = 2,
+                help = "Set the verbosity level (1, 2, or 3).  Higher number = more log messages.  [default %default]")
+
+  )
+
+  ## - SNV data is the output from anvi-gen-variability-profile.  Note
+  ##   that both contig_name and split_name columns must be present in
+  ##   this file.
+
+  usage <- "%prog -i split_coverages.txt -o coverage_graphs.pdf [...other opts...]"
+
+  description <- "
+Description:
+
+  anvi-script-visualize-split-coverages
+  =====================================
+
+  Generate PDF image of coverage for splits across multiple samples.
+
+  Split coverages data
+  --------------------
+
+  - The main input file required for this script is the output of
+    the program anvi-get-split-coverages.
+
+  - All contigs/splits present in a sample will be merged along
+    the x-axis in alphabetical order.
+
+  - Required columns include:
+    - unique_entry_id
+    - nt_position
+    - split_name
+    - sample_name
+    - coverage
+
+  Sample data
+  -----------
+
+  - If the sample data is provided, only samples listed in the sample
+    data file will be output in the final PDF.  I.e., you can use the
+    sample data file to limit the number of samples in the final
+    output.
+
+  - If the sample data is provided, but none of the samples listed in
+    the sample data file are also in the split coverages file, then the
+    program will abort.  If some of the samples listed in the sample
+    data file are not present in the split coverages file, then those
+    samples present in the sample data file, but not present in the
+    split coverages file will be ignored.
+
+  - Sample data may be provided to group the samples.  If you have a
+    lot of samples, you should consider grouping them, or else the
+    script will take a lof of time.  Each group of samples will get
+    its own PDF output.
+
+  - Sample groups can be numbers, letters, strings, or a mix (e.g.,
+    sample_1, 1, A).
+
+  - Sample data may be provided in order to color the graphs.  Sample
+    colors should be in the sample_color column.
+
+  - Any color that is not included in `colors()` or a valid hex code
+    (e.g., #00FF00) will be changed to the color specified by the
+    --coverage-plot-color parameter.
+
+  - Required columns include:
+    - sample_name
+
+  - At least one of these columns should be present:
+    - sample_color
+    - sample_group
+
+  SNV data
+  --------
+
+  - SNV data is the output from anvi-gen-variability-profile.
+    this file.
+
+  - If any of the split names present in the SNV data file are not
+    also present in the split coverages file, then the program will
+    abort.
+
+  - If the SNV data is provided, but none of the samples listed in
+    the SNV data file are also in the split coverages file, then the
+    program will abort.  If some of the samples listed in the SNV
+    data file are not present in the split coverages file, then those
+    samples present in the SNV data file, but not present in the
+    split coverages file will be ignored.
+
+  - When providing SNV data, it is best to also pass in the
+    --free-y-scale argument as well.
+
+  - The height of the SNV line represents the departure_from_reference
+    column scaled to the max coverage of all splits per sample.
+
+  - Default colors for 3rd position (wobble position), 1st and 2nd
+    position, and intergenic variants are green, red, and black.
+
+  - Required columns include:
+    - contig_name
+    - split_name
+    - sample_id
+    - pos
+    - departure_from_reference
+    - competing_nts
+
+  Outfile
+  -------
+
+  --outfile-basename (-o) is used to specify the basename of the output file.
+
+  - For example, If you pass in --outfile-basename split_cov_output, and you
+    also did not provide any sample groups, then you will get a PDF named
+    'split_cov_output.pdf'.
+
+  - If you did include sample group info, (for example, if you included two
+    sample groups, 'group 1' and 'group 2', then your output files would look
+    like this: 'split_cov_output___group_1.pdf' and
+    'split_cov_output___group_2.pdf'.
+
+  - If the path you provide includes a directory that does not exist, the
+    program will abort.  Please make the directory first, and then rerun.
+
+  Chart options
+  -------------
+
+  - Current options for --chart-type include: 'area', 'line'
+
+  - When specifying colors by hex code on the command line,
+    be sure to surroud the hex code in single quotes.
+    I.e., --coverage-plot-color '#333333' will work, but just
+    --coverage-plot-color #333333 will not work.
+
+  Compression
+  -----------
+
+  ggplot2 can take a long time to plot lots of data
+  points.  Even a smallish data (a couple of samples, ~30,000 data
+  points per samples) can take a few minutes to plot.
+
+    --compress-threshold ...if samples have more data points than this,
+      then they will be compressed.
+
+    --window-size ...Sets the window size for the compression.  The
+      higher this number is, the more compression.  Setting the
+      window size < 1 will let the program automatically determine a
+      reasonable window size depending on your data.
+
+    --no-compression ...Pass this flag if you want to completely
+      bypass compression regardless of any other compression options."
+
+  opts <- parse_args(OptionParser(usage = usage,
+                                  option_list = option_list,
+                                  description = description),
+                     convert_hyphens_to_underscores = TRUE)
+
+  opts
+}
+
+## Do not edit the comment on the next line, or you will break the unit tests!!
+#### End of function definitions ####
+
+opts <- set_up_opts()
+
+## Set up logger
+logger <- make_logger(opts$verbose)
+
+## Nicely print options
+logger$debug("Opts %s",
+             apply(rbind(names(opts),
+                         as.vector(unlist(opts))),
+                   2,
+                   paste,
+                   collapse = ": "))
+
+logger$info("Checking options")
+check_opts(opts)
+
+logger$info("Parsing input data")
+dat <- parse_input_data(opts)
+
+logger$info("Making coverage plots")
+cov_plot <- draw_plot(dat, opts)
+
+logger$info("Writing coverage plots")
+write_plot(cov_plot, dat, opts)
+
+logger$info("Done!")

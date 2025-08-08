@@ -3,49 +3,61 @@
 
 """Lonely, helper functions that are broadly used and don't fit anywhere"""
 
-import os
-import sys
-import ssl
-import yaml
-import gzip
-import time
-import copy
-import socket
-import shutil
-import smtplib
-import tarfile
-import hashlib
-import textwrap
-import linecache
-import webbrowser
-import subprocess
-import tracemalloc
-import configparser
-import urllib.request, urllib.error, urllib.parse
+# The following try/except block is to make sure when git hooks are doing
+# their things in anvi'o development environments, we have a means to remind
+# developers that they may have not initialized their anvi'o environment
+# properly. This didn't have to be in utils.py, but since this module is
+# imported from so many other modules, it is kind of an appropriate place
+# for this
+try:
+    import os
+    import sys
+    import ssl
+    import yaml
+    import gzip
+    import time
+    import copy
+    import socket
+    import shutil
+    import tarfile
+    import hashlib
+    import textwrap
+    import linecache
+    import webbrowser
+    import subprocess
+    import tracemalloc
+    import urllib.request, urllib.error, urllib.parse
 
-import numpy as np
-import pandas as pd
-import Bio.PDB as PDB
-import itertools as it
+    import numpy as np
+    import pandas as pd
+    import Bio.PDB as PDB
+    import itertools as it
 
-from numba import jit
-from collections import Counter
-from email.mime.text import MIMEText
+    from numba import jit
+    from collections import Counter
 
-import anvio
-import anvio.db as db
-import anvio.tables as t
-import anvio.fastalib as u
-import anvio.constants as constants
-import anvio.filesnpaths as filesnpaths
+    import anvio
+    import anvio.db as db
+    import anvio.tables as t
+    import anvio.fastalib as u
+    import anvio.constants as constants
+    import anvio.filesnpaths as filesnpaths
 
-from anvio.dbinfo import DBInfo as dbi
-from anvio.errors import ConfigError, FilesNPathsError
-from anvio.sequence import Composition
-from anvio.terminal import Run, Progress, SuppressAllOutput, get_date, TimeCode, pluralize
-
-with SuppressAllOutput():
-    from ete3 import Tree
+    from anvio.dbinfo import DBInfo as dbi
+    from anvio.sequence import Composition
+    from anvio.version import versions_for_db_types
+    from anvio.errors import ConfigError, FilesNPathsError
+    from anvio.terminal import Run, Progress, SuppressAllOutput, get_date, TimeCode, pluralize
+except ModuleNotFoundError as e:
+    # Extract just the module name from "No module named 'modulename'"
+    module_name = str(e).split("'")[1] if "'" in str(e) else str(e)
+    print(f"\n\nWARNING\n"
+          f"\n===========================================================\n"
+          f"The anvi'o conda environment does not seem to have not been\n"
+          f"properly initialized since Python complains that it cannot\n"
+          f"import '{module_name}'. Are you sure you have initialized\n"
+          f"the anvi'o environment properly?\n\n")
+    sys.exit()
 
 # psutil is causing lots of problems for lots of people :/
 with SuppressAllOutput():
@@ -55,8 +67,7 @@ with SuppressAllOutput():
     except:
         PSUTIL_OK=False
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -332,6 +343,64 @@ def is_port_in_use(port, ip='0.0.0.0'):
     return in_use
 
 
+def get_available_program_names_in_active_environment(prefix=None, contains=None, postfix=None):
+    """Find all executable programs in the current environment that match the given criteria.
+
+    Parameters
+    ==========
+    prefix : str, optional
+        The prefix to search for (e.g., 'anvi-')
+    contains : str, optional
+        String that must be contained in the program name (e.g., 'graph')
+    postfix : str, optional
+        The postfix/suffix to search for (e.g., '.py', '-dev')
+
+    Returns
+    =======
+    program_names : set
+        A set of program names that match all specified criteria
+    """
+    program_names = set()
+
+    # Get all directories in PATH
+    path_dirs = os.environ.get('PATH', '').split(os.pathsep)
+
+    for path_dir in path_dirs:
+        if not path_dir or not os.path.isdir(path_dir):
+            continue
+
+        try:
+            # List all files in the directory
+            for item in os.listdir(path_dir):
+                item_path = os.path.join(path_dir, item)
+
+                # Check if it's a file and executable
+                if os.path.isfile(item_path) and os.access(item_path, os.X_OK):
+                    # Check all specified criteria
+                    matches = True
+
+                    if prefix is not None:
+                        if not item.lower().startswith(prefix.lower()):
+                            matches = False
+
+                    if contains is not None and matches:
+                        if contains.lower() not in item.lower():
+                            matches = False
+
+                    if postfix is not None and matches:
+                        if not item.lower().endswith(postfix.lower()):
+                            matches = False
+
+                    if matches:
+                        program_names.add(item)
+
+        except (PermissionError, OSError):
+            # Skip directories we can't read
+            continue
+
+    return program_names
+
+
 def is_program_exists(program, dont_raise=False):
     IsExe = lambda p: os.path.isfile(p) and os.access(p, os.X_OK)
 
@@ -441,7 +510,7 @@ class CoverageStats:
         if coverage.size < 4:
             self.mean_Q2Q3 = self.mean
         else:
-            sorted_c = sorted(coverage)
+            sorted_c = np.sort(coverage)
             Q = int(coverage.size * 0.25)
             Q2Q3 = sorted_c[Q:-Q]
             self.mean_Q2Q3 = np.mean(Q2Q3)
@@ -602,25 +671,6 @@ def store_array_as_TAB_delimited_file(a, output_path, header, exclude_columns=[]
     return output_path
 
 
-def multi_index_pivot(df, index = None, columns = None, values = None):
-    # https://github.com/pandas-dev/pandas/issues/23955
-    output_df = df.copy(deep = True)
-    if index is None:
-        names = list(output_df.index.names)
-        output_df = output_df.reset_index()
-    else:
-        names = index
-    output_df = output_df.assign(tuples_index = [tuple(i) for i in output_df[names].values])
-    if isinstance(columns, list):
-        output_df = output_df.assign(tuples_columns = [tuple(i) for i in output_df[columns].values])  # hashable
-        output_df = output_df.pivot(index = 'tuples_index', columns = 'tuples_columns', values = values)
-        output_df.columns = pd.MultiIndex.from_tuples(output_df.columns, names = columns)  # reduced
-    else:
-        output_df = output_df.pivot(index = 'tuples_index', columns = columns, values = values)
-    output_df.index = pd.MultiIndex.from_tuples(output_df.index, names = names)
-    return output_df
-
-
 def store_dataframe_as_TAB_delimited_file(d, output_path, columns=None, include_index=False, index_label="index", naughty_characters=[-np.inf, np.inf], rep_str=""):
     """ Stores a pandas DataFrame as a tab-delimited file.
 
@@ -659,7 +709,8 @@ def store_dataframe_as_TAB_delimited_file(d, output_path, columns=None, include_
 
 
 def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None, key_header=None, keys_order=None,
-                                     header_item_conversion_dict=None, do_not_close_file_obj=False, do_not_write_key_column=False):
+                                     header_item_conversion_dict=None, do_not_close_file_obj=False, do_not_write_key_column=False,
+                                     none_value=''):
     """Store a dictionary of dictionaries as a TAB-delimited file.
 
     Parameters
@@ -677,6 +728,8 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
         A file object ot write (instead of the output file path)
     key_header: string
         The header for the first column ('key' if None)
+    keys_order: list
+        The order in which to write the rows (if None, first order keys will be sorted to get the row order)
     header_item_conversion_dict: dictionary
         To replace the column names at the time of writing.
     do_not_close_file_obj: boolean
@@ -684,6 +737,8 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
     do_not_write_key_column: boolean
         If True, the first column (keys of the dictionary) will not be written to the file. For use in
         instances when the key is meaningless or arbitrary.
+    none_value : string
+        What value to write for entries that are None. Default is empty string ('').
 
     Returns
     =======
@@ -757,7 +812,7 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
                                    "as a TAB-delimited file :/ You ask for '%s', but it is not "
                                    "even a key in the dictionary" % (header))
 
-            line.append(str(val) if not isinstance(val, type(None)) else '')
+            line.append(str(val) if not isinstance(val, type(None)) else none_value)
 
         if anvio.AS_MARKDOWN:
             f.write(f"|{'|'.join(map(str, line))}|\n")
@@ -826,9 +881,54 @@ def add_to_2D_numeric_array(x, y, a, count=1):
     return a
 
 
-def is_all_columns_present_in_TAB_delim_file(columns, file_path):
-    columns = get_columns_of_TAB_delim_file(file_path)
-    return False if len([False for c in columns if c not in columns]) else True
+def is_all_columns_present_in_TAB_delim_file(columns, file_path, including_first_column=False):
+    columns_in_file = get_columns_of_TAB_delim_file(file_path, include_first_column=including_first_column)
+    return False if len([False for c in columns if c not in columns_in_file]) else True
+
+
+def is_all_npm_packages_installed():
+    """A function to test whether all npm packages are installed in the interactive directory.
+
+    This check is for ensuring that necessary npm packages are installed in the
+    anvio/data/interactive directory.
+    """
+
+    # find the root directory of anvi'o module
+    anvio_module_path = os.path.dirname(os.path.abspath(anvio.__file__))
+    interactive_dir_path = os.path.join(anvio_module_path, 'data', 'interactive')
+
+    if not os.path.exists(interactive_dir_path):
+        raise ConfigError("The interactive directory does not exist in the anvi'o module. "
+                          "Please ensure the directory is present.")
+
+    # Check if Node.js is installed
+    if shutil.which("node") is None:
+        run.warning("It seems your installation is missing Node.js, a recent requirement of anvi'o "
+                    "environments. Please run the following command in your terminal, and you should "
+                    "be good to go:", header="⚠️  YOUR ATTENTION PLEASE ⚠️", overwrite_verbose=True, lc='yellow')
+        run.info_single("      conda install -c conda-forge nodejs", level=0, overwrite_verbose=True, nl_before=1)
+        raise ConfigError("Node.js is not installed. Please install it using conda and try again.")
+
+    # Check if node_modules exists and is not empty
+    node_modules_path = os.path.join(interactive_dir_path, 'node_modules')
+
+    if not os.path.exists(node_modules_path) or not os.listdir(node_modules_path):
+        run.warning("Anvi'o recently changed its use of external libraries for interactive interfaces"
+                    "from git submodules to npm packages. Your current setup does not seem to have the "
+                    "necessary files in place, so the purpose of this warning is to help you match your "
+                    "setup to most up-to-date anvi'o code. If you run the commands below in your terminal, "
+                    "you will most likely be fine :) But if things don't work out, please reach out to us "
+                    "on GitHub or Discord since this is a new feature and some hiccups may occur.",
+                    header="⚠️  YOUR ATTENTION PLEASE ⚠️", overwrite_verbose=True,
+                    lc='yellow')
+        run.info_single(f"1) cd {interactive_dir_path}", level=0, overwrite_verbose=True)
+        run.info_single("2) npm install", level=0, overwrite_verbose=True)
+        run.info_single("3) cd -", level=0, overwrite_verbose=True)
+
+        raise ConfigError("Some npm packages seem to be missing in your interactive directory. "
+                          "Please run 'npm install' in the interactive directory and try again.")
+    else:
+        return True
 
 
 def HTMLColorToRGB(colorstring, scaled=True):
@@ -850,7 +950,7 @@ def transpose_tab_delimited_file(input_file_path, output_file_path, remove_after
     filesnpaths.is_file_tab_delimited(input_file_path)
     filesnpaths.is_output_file_writable(output_file_path)
 
-    file_content = [line.strip('\n').split('\t') for line in open(input_file_path, 'rU').readlines()]
+    file_content = [line.strip('\n').split('\t') for line in open(input_file_path, 'r').readlines()]
 
     output_file = open(output_file_path, 'w')
     for entry in zip(*file_content):
@@ -863,7 +963,7 @@ def transpose_tab_delimited_file(input_file_path, output_file_path, remove_after
     return output_file_path
 
 
-def split_fasta(input_file_path, parts=1, file_name_prefix=None, shuffle=False, output_dir=None):
+def split_fasta(input_file_path, parts=1, file_name_prefix=None, shuffle=False, output_dir=None, return_number_of_sequences=False):
     """Splits a given FASTA file into multiple parts.
 
     Please note that this function will not clean after itself. You need to take care of the
@@ -883,12 +983,15 @@ def split_fasta(input_file_path, parts=1, file_name_prefix=None, shuffle=False, 
     output_dir : str, path
         Output directory. By default, anvi'o will store things in a new directory under
         the system location for temporary files
+    return_number_of_sequences : bool
+        Whether to return the number of sequences in the original fasta file
 
     Returns
     =======
     output_file_paths : list
         Array with `parts` number of elements where each item is an output file path
-
+    length : int, optional
+        The number of sequences in the original fasta file. Only returnd if 'return_number_of_sequences' is True
     """
     if not file_name_prefix:
         file_name_prefix = os.path.basename(input_file_path)
@@ -953,7 +1056,11 @@ def split_fasta(input_file_path, parts=1, file_name_prefix=None, shuffle=False, 
 
     source.close()
 
-    return output_file_paths
+    if return_number_of_sequences:
+        return output_file_paths, length
+
+    else:
+        return output_file_paths
 
 
 def get_random_colors_dict(keys):
@@ -1048,7 +1155,7 @@ def get_column_data_from_TAB_delim_file(input_file_path, column_indices=[], expe
     for index in column_indices:
         d[index] = []
 
-    with open(input_file_path, "rU") as input_file:
+    with open(input_file_path, "r") as input_file:
         for line in input_file.readlines():
             fields = line.strip('\n').split(separator)
 
@@ -1066,12 +1173,16 @@ def get_columns_of_TAB_delim_file(file_path, include_first_column=False):
     filesnpaths.is_file_exists(file_path)
 
     if include_first_column:
-        return open(file_path, 'rU').readline().strip('\n').split('\t')
+        return open(file_path, 'r').readline().strip('\n').split('\t')
     else:
-        return open(file_path, 'rU').readline().strip('\n').split('\t')[1:]
+        return open(file_path, 'r').readline().strip('\n').split('\t')[1:]
 
 
 def get_names_order_from_newick_tree(newick_tree, newick_format=1, reverse=False, names_with_only_digits_ok=False):
+    # import ete3
+    with SuppressAllOutput():
+        from ete3 import Tree
+
     filesnpaths.is_proper_newick(newick_tree, names_with_only_digits_ok=names_with_only_digits_ok)
 
     tree = Tree(newick_tree, format=newick_format)
@@ -1081,9 +1192,23 @@ def get_names_order_from_newick_tree(newick_tree, newick_format=1, reverse=False
     return list(reversed(names)) if reverse else names
 
 
-def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_return=[], transpose=False, pad_with_zeros=False):
+def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_return=[], transpose=False, pad_with_zeros=False, run=run):
     filesnpaths.is_file_exists(file_path)
     filesnpaths.is_file_tab_delimited(file_path)
+
+    run.warning("Anvi'o is recovering your data from your TAB-delimited file, and it is"
+                "instructed to pad your input vectors with 0 values probably because you "
+                "used the flag `--pad-input-with-zeros` somewhere. Just so you know.")
+
+    if cols_to_return and pad_with_zeros:
+        raise ConfigError("Dear developer, you can't use `cols_to_return` and `pad_with_zeros` at the same "
+                          "time with this function. The `pad_with_zeros` header variable in this function "
+                          "is a mystery at this point. But the only way to be able to use it requires one "
+                          "to not use `cols_to_return`. More mystery .. but essentially this is a necessity "
+                          "because we have to update fields_of_interest value if pad_with_zeros is true, so "
+                          "anvi'o clustering step DOES NOT IGNORE THE LAST SAMPLE IN THE MATRIX BECUASE PAD "
+                          "WITH ZEROS SHIFT EVERYTHING, and we can't do it blindly if the programmer requests "
+                          "only specific columnts to be returned with `cols_to_return` :/")
 
     if transpose:
         transposed_file_path = filesnpaths.get_temp_file_path()
@@ -1095,7 +1220,7 @@ def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_re
     id_to_sample_dict = {}
     sample_to_id_dict = {}
 
-    input_matrix = open(file_path, 'rU')
+    input_matrix = open(file_path, 'r')
     columns = input_matrix.readline().strip('\n').split('\t')[1:]
 
     fields_of_interest = []
@@ -1114,19 +1239,23 @@ def get_vectors_from_TAB_delim_matrix(file_path, cols_to_return=None, rows_to_re
     id_counter = 0
     for line in input_matrix.readlines():
         row_name = line.strip().split('\t')[0]
+
         if rows_to_return and row_name not in rows_to_return:
-                continue
+            continue
+
         id_to_sample_dict[id_counter] = row_name
         fields = line.strip('\n').split('\t')[1:]
 
-        # long story.
+        # because stupid stuff. see warning above.
         if pad_with_zeros:
             fields = [0] + fields + [0]
+            fields_of_interest = list(range(0, len(fields)))
 
         try:
             if fields_of_interest:
                 vector = [float(fields[i]) if fields[i] != '' else None for i in fields_of_interest]
             else:
+                # the code will literally never enter here:
                 vector = [float(f) if f != '' else None for f in fields]
         except ValueError:
             raise ConfigError("Matrix should contain only numerical values.")
@@ -1337,7 +1466,7 @@ def check_R_packages_are_installed(required_package_dict):
                               "\"library(%(example)s)\" to see what is wrong with %(example)s on your system. Running this on your "
                               "terminal will test whether the package is properly loading or not and the resulting error messages will likely "
                               "be much more helpful solving the issue. If none of the solutions offered here worked for you, feel free to "
-                              "come to anvi'o Slack and ask around -- others may already have a solution for it already. Apologies for the "
+                              "come to anvi'o Discord and ask around -- others may already have a solution for it already. Apologies for the "
                               "frustration. R frustrates everyone." % {'missing': ', '.join(missing_packages),
                                                                        'conda': ', '.join(['"%s"' % required_package_dict[i] for i in missing_packages]),
                                                                        'example': missing_packages[0]})
@@ -1497,7 +1626,7 @@ def get_gene_caller_ids_from_args(gene_caller_ids, delimiter=','):
     gene_caller_ids_set = set([])
     if gene_caller_ids:
         if os.path.exists(gene_caller_ids):
-            gene_caller_ids_set = set([g.strip() for g in open(gene_caller_ids, 'rU').readlines()])
+            gene_caller_ids_set = set([g.strip() for g in open(gene_caller_ids, 'r').readlines()])
         else:
             gene_caller_ids_set = set([g.strip() for g in gene_caller_ids.split(delimiter)])
 
@@ -1695,6 +1824,43 @@ def get_cmd_line():
     return ' '.join(c_argv)
 
 
+def get_f_string_evaluated_by_dict(f_string, d):
+    """A function to evaluate the contents of an f-string given a dictionary.
+
+    This simple function enables the following, even when the variables in the f-string
+    are not defined in a given context, but appear as keys in a dictionary:
+
+        >>> d = {'bar': 'apple', 'foo': 'pear', 'num': 5}
+        >>> f_string = "{num}_{bar}_or_{foo}"
+        >>> print(f"{get_f_string_evaluated_by_dict(f_string, d)}")
+            "5_apple_or_pear"
+
+    This functionality enables to receive a user-defined f-string from the commandline,
+    and interpret it into a meaningful string using a dictionary. This is similar to the
+    following use from earlier days of Python, but it doesn't bother the user to know
+    about variable types and deal with an annoying syntax:
+
+        >>> d = {'bar': 'apple', 'foo': 'pear', 'num': 5}
+        >>> print("%(num)d_%(bar)s_or_%(foo)s" % d)
+            "5_apple_or_pear"
+    """
+
+    stringlets = [p.split('}') for p in f_string.split('{')]
+
+    if any([len(s) == 1 or len(s[0]) == 0 for s in stringlets[1:]]):
+        raise ConfigError("Your f-string syntax is not working for anvi'o :/ Perhaps you "
+                          "forgot to open or close a curly bracket?")
+
+    unrecognized_vars = [s[0] for s in stringlets[1:] if s[0] not in d]
+    if len(unrecognized_vars):
+        raise ConfigError(f"Some of the variables in your f-string does not occur in the source "
+                          f"dictionary :/ Here is the list of those that are not matching to anything: "
+                          f"{', '.join(unrecognized_vars)}. In the meantime, these are the known keys: "
+                          f"{', '.join(d.keys())}.")
+
+    return stringlets[0][0] + ''.join([f"{d[s[0]]}{s[1]}" for s in stringlets[1:]])
+
+
 def get_time_to_date(local_time, fmt='%Y-%m-%d %H:%M:%S'):
     try:
         local_time = float(local_time)
@@ -1772,7 +1938,7 @@ def concatenate_files(dest_file, file_list, remove_concatenated_files=False):
 
     dest_file_obj = open(dest_file, 'w')
     for chunk_path in file_list:
-        for line in open(chunk_path, 'rU'):
+        for line in open(chunk_path, 'r'):
             dest_file_obj.write(line)
 
     dest_file_obj.close()
@@ -1784,7 +1950,45 @@ def concatenate_files(dest_file, file_list, remove_concatenated_files=False):
     return dest_file
 
 
-def merge_stretches(stretches, min_distance_between_independent_stretches):
+def get_stretches_for_numbers_list(numbers_list, discard_singletons=False):
+    """Takes a array of numbers, and turns reports back stretches
+
+    For example, for a `numbers_list` that looks like this:
+
+        >>> [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 15, 16, 17, 18, 99]
+
+    This function will return the following:
+
+        >>> [(2, 12), (15, 18), (99, 99)]
+
+    If the user chooses to `discard_singletons`, then for the same input list,
+    they will get the following:
+
+        >>> [(2, 12), (15, 18), (99, 99)]
+
+    The output of this function can be the input of `merge_stretches` function.
+    """
+
+    if not len(numbers_list):
+        return []
+
+    numbers_list = sorted(numbers_list)
+
+    stretches = []
+    groups = it.groupby(numbers_list, key=lambda item, c=it.count():item-next(c))
+
+    for k, g in groups:
+        stretch = list(g)
+
+        if discard_singletons and len(stretch) == 1:
+            continue
+
+        stretches.append((stretch[0], stretch[-1]), )
+
+    return stretches
+
+
+def merge_stretches(stretches, min_distance_between_independent_stretches=0):
     """A function to merge stretches of indices in an array.
 
     It takes an array, `stretches`, that looks like this:
@@ -1795,47 +1999,66 @@ def merge_stretches(stretches, min_distance_between_independent_stretches):
 
         >>> [(3, 9), (14, 27), (32, 42)]
 
+    If all you have is an array of numbers rather than stretches to be merbed, see
+    the function `get_stretches_for_numbers_list`.
     """
-    stretches_to_merge = []
 
-    # The following state machine determines which entries in a given array
-    # should be merged
-    CURRENT = 0
-    START, END = 0, 1
+    if not len(stretches):
+        return None
+
+    if not isinstance(stretches[0], tuple):
+        raise ConfigError("This function expect a list of tuples :/")
+
+    STRETCHES_FINAL = stretches
+    STRETCHES_CURRENT = stretches
+
     while 1:
-        if not len(stretches):
-            break
+        stretches_to_merge = []
 
-        NEXT = CURRENT + 1
-
-        if NEXT == len(stretches):
-            stretches_to_merge.append([stretches[CURRENT]])
-            break
-
+        CURRENT = 0
+        START, END = 0, 1
         while 1:
-            if NEXT > len(stretches):
+            if not len(STRETCHES_CURRENT):
                 break
 
-            if stretches[NEXT][START] - stretches[CURRENT][END] < min_distance_between_independent_stretches:
-                NEXT = NEXT + 1
+            NEXT = CURRENT + 1
 
-                if NEXT == len(stretches):
+            if NEXT == len(STRETCHES_CURRENT):
+                stretches_to_merge.append([STRETCHES_CURRENT[CURRENT]])
+                break
+
+            while 1:
+                if NEXT > len(STRETCHES_CURRENT):
                     break
-            else:
+
+                if STRETCHES_CURRENT[NEXT][START] - STRETCHES_CURRENT[CURRENT][END] < min_distance_between_independent_stretches:
+                    NEXT = NEXT + 1
+
+                    if NEXT == len(STRETCHES_CURRENT):
+                        break
+                else:
+                    break
+
+            if NEXT > len(STRETCHES_CURRENT):
                 break
+            elif NEXT - CURRENT == 1:
+                stretches_to_merge.append([STRETCHES_CURRENT[CURRENT]])
+                CURRENT += 1
+            else:
+                stretches_to_merge.append(STRETCHES_CURRENT[CURRENT:NEXT])
+                CURRENT = NEXT
 
-        if NEXT > len(stretches):
+        # here the array `stretches_to_merge` contains all the lists of
+        # stretches that need to be merged.
+        STRETCHES_MERGED = [(s[0][0], s[-1][1]) for s in stretches_to_merge]
+
+        if STRETCHES_FINAL == STRETCHES_MERGED:
             break
-        elif NEXT - CURRENT == 1:
-            stretches_to_merge.append([stretches[CURRENT]])
-            CURRENT += 1
         else:
-            stretches_to_merge.append(stretches[CURRENT:NEXT])
-            CURRENT = NEXT
+            STRETCHES_FINAL = STRETCHES_MERGED
+            STRETCHES_CURRENT = STRETCHES_MERGED
 
-    # here the array `stretches_to_merge` contains all the lists of
-    # stretches that need to be merged.
-    return [(s[0][0], s[-1][1]) for s in stretches_to_merge]
+    return STRETCHES_FINAL
 
 
 def get_chunk(stream, separator, read_size=4096):
@@ -1980,6 +2203,63 @@ def get_split_start_stops_without_gene_calls(contig_length, split_length):
         chunks.append(last_tuple)
 
     return chunks
+
+
+def get_default_gene_caller(contigs_db_path):
+    """Returns the default gene caller, but in a smart way.
+
+    Well. Smart is not a very accurate way to say this. Here is some history. For the longest time,
+    anvi'o used `prodigal` as its default gene caller. So we had this one entry in anvio/constants.py
+    that said `default_gene_caller = 'prodigal'`, and life was simple. Then it became clear that
+    we needed to switch to pyrodigal-gv, which was an effort to maintain the stale repository of
+    prodigal, but also included some models for giant viruses. But we couldn't simply change
+    `default_gene_caller` to `pyrodigal-gv`, since there were many contigs-db files out there with
+    prodigal gene calls, which are equally fine. But why is this a problem?
+
+    It is a problem when the user wants to build a pangenome, or export amino acid sequences for
+    a given contigs-db file. In those cases, anvi'o needs to know which default gene caller it
+    should use, and only if it can't find that should it ask the user to choose a gene caller
+    explicitly. Removing `prodigal` from the constants file was going to make users' life very
+    difficult when they were using a newer version of anvi'o (with `pyrodigal-gv` as the default
+    gene caller in the constants.py) but using contigs-db files generated with older versions.
+
+    The purpose of this function is to solve that problem by retrieving the 'default' gene caller
+    by considering all gene callers listed in constants.py, and taking a look at the most
+    frequent source of gene calls in the contigs-db file. If `prodigal` is the most frequent
+    gene caller, and if it is still in the list of default gene callers in constants.py, then
+    this function would return `prodigal`. The same for `pyrodigal-gv`. Only after checking
+    for all recognized default gene callers would the relevant context ask the user to provide
+    a gene caller for downstream operations.
+
+    Parameters
+    ==========
+    contigs_db_path : str
+        Path to an anvi'o contigs-db file
+
+    Returns
+    =======
+    value : str
+        None if most frequent gene caller source in contigs_db is not in constants.py, else
+        the gene caller source as default
+    """
+
+    is_contigs_db(contigs_db_path)
+
+    contigs_db = db.DB(contigs_db_path, anvio.__contigs__version__)
+
+    gene_call_sources_in_contigs_db = contigs_db.get_single_column_from_table(t.genes_in_contigs_table_name, 'source')
+
+    try:
+        most_frequent_gene_caller = Counter(gene_call_sources_in_contigs_db).most_common(1)[0][0]
+    except IndexError:
+        most_frequent_gene_caller = None
+
+    contigs_db.disconnect()
+
+    if most_frequent_gene_caller in constants.default_gene_callers:
+        return most_frequent_gene_caller
+    else:
+        return None
 
 
 def get_split_and_contig_names_of_interest(contigs_db_path, gene_caller_ids):
@@ -2874,6 +3154,22 @@ def create_fasta_dir_from_sequence_sources(genome_desc, fasta_txt=None):
 
     if fasta_txt is not None:
         fastas = get_TAB_delimited_file_as_dictionary(fasta_txt, expected_fields=['name', 'path'], only_expected_fields=True)
+
+        # make sure every entry in the fasta_txt has a path that exists
+        genomes_missing_fasta_files = [g for g, e in fastas.items() if not os.path.exists(e['path'])]
+
+        if len(genomes_missing_fasta_files):
+            if len(genomes_missing_fasta_files) == 1:
+                msg = (f"One of the genome entries in your fasta-txt file, namely '{genomes_missing_fasta_files[0]}' does "
+                       f"not seem to have its FASTA file at the location it is mentioned in the file :/ ")
+            else:
+                msg = (f"Multiple genome entries in your fasta-txt file have a FASTA file path that don't match to an "
+                       f"existing FASTA file :/ Here are the list of offenders: {', '.join(genomes_missing_fasta_files)}. ")
+
+            msg += "Please correct your fasta-txt, and try again."
+
+            raise ConfigError(f"{msg}")
+
         for name in fastas.keys():
             genome_names.add(name)
             hash_for_output_file = hashlib.sha256(name.encode('utf-8')).hexdigest()
@@ -2966,7 +3262,7 @@ def unique_FASTA_file(input_file_path, output_fasta_path=None, names_file_path=N
 
     if output_fasta_path == input_file_path or names_file_path == input_file_path:
         raise ConfigError("Anvi'o will not unique this. Output FASTA path and names file path should "
-                           "be different from the the input file path...")
+                           "be different from the input file path...")
 
     filesnpaths.is_output_file_writable(output_fasta_path)
     filesnpaths.is_output_file_writable(names_file_path)
@@ -3143,6 +3439,13 @@ def gen_gexf_network_file(units, samples_dict, output_file, sample_mapping_dict=
 
     filesnpaths.is_output_file_writable(output_file)
 
+    def RepresentsFloat(s):
+        try:
+            float(s)
+            return True
+        except ValueError:
+            return False
+
     output = open(output_file, 'w')
 
     samples = sorted(samples_dict.keys())
@@ -3257,13 +3560,21 @@ def is_ascii_only(text):
     return all(ord(c) < 128 for c in text)
 
 
-def get_bams_and_profiles_txt_as_data(file_path):
+def get_bams_and_profiles_txt_as_data(file_path, no_profile_and_bam_column_is_ok=False):
     """bams-and-profiles.txt is an anvi'o artifact with four columns.
 
     This function will sanity check one, process it, and return data.
 
     Updates to this function may require changes in the artifact description at
     anvio/docs/artifacts/bams-and-profiles-txt.md
+
+    Parameters
+    ==========
+    no_profile_and_bam_column_is_ok : bool
+        In some specific instances (e.g., as specific as wanting to compute
+        inversion activities in new metagenomes for pre-computed inversion sites),
+        downstream analyses may not require profile-db files or BAM files. In such,
+        cases the programmer can use this parameter to relax the sanity checks
     """
 
     COLUMN_DATA = lambda x: get_column_data_from_TAB_delim_file(file_path, [columns_found.index(x)])[columns_found.index(x)][1:]
@@ -3272,13 +3583,19 @@ def get_bams_and_profiles_txt_as_data(file_path):
         raise ConfigError(f"The bams and profiles txt file must be a TAB-delimited flat text file :/ "
                           f"The file you have at '{file_path}' is nothing of that sorts.")
 
-    expected_columns = ['name', 'contigs_db_path', 'profile_db_path', 'bam_file_path']
+    if no_profile_and_bam_column_is_ok:
+        expected_columns = ['name', 'contigs_db_path']
+    else:
+        expected_columns = ['name', 'contigs_db_path', 'profile_db_path', 'bam_file_path']
 
     columns_found = get_columns_of_TAB_delim_file(file_path, include_first_column=True)
 
     if not set(expected_columns).issubset(set(columns_found)):
         raise ConfigError(f"A bams and profiles txt file is supposed to have at least the following "
                           f"{len(expected_columns)} columns: \"{', '.join(expected_columns)}\".")
+
+    has_profile_db_column = 'profile_db_path' in columns_found
+    has_bam_file_column = 'bam_file_path' in columns_found
 
     names = COLUMN_DATA('name')
     if len(set(names)) != len(names):
@@ -3291,20 +3608,26 @@ def get_bams_and_profiles_txt_as_data(file_path):
                           "contigs database. Meaning, you have to use the same contigs database path for "
                           "every entry. Confusing? Yes. Still a rule? Yes.")
 
-    profile_db_paths = COLUMN_DATA('profile_db_path')
-    if len(set(profile_db_paths)) != len(profile_db_paths):
-        raise ConfigError("You listed the same profile database more than once in your bams and profiles txt file :/")
+    if not has_profile_db_column:
+        pass
+    else:
+        profile_db_paths = COLUMN_DATA('profile_db_path')
+        if len(set(profile_db_paths)) != len(profile_db_paths):
+            raise ConfigError("You listed the same profile database more than once in your bams and profiles txt file :/")
 
-    bam_file_paths = COLUMN_DATA('bam_file_path')
-    if len(set(bam_file_paths)) != len(bam_file_paths):
-        raise ConfigError("You listed the same BAM file more than once in your bams and profiles txt file :/")
+        bam_file_paths = COLUMN_DATA('bam_file_path')
+        if len(set(bam_file_paths)) != len(bam_file_paths):
+            raise ConfigError("You listed the same BAM file more than once in your bams and profiles txt file :/")
 
     contigs_db_path = contigs_db_paths[0]
     profiles_and_bams = get_TAB_delimited_file_as_dictionary(file_path)
     for sample_name in profiles_and_bams:
         profiles_and_bams[sample_name].pop('contigs_db_path')
-        filesnpaths.is_file_bam_file(profiles_and_bams[sample_name]['bam_file_path'])
-        is_profile_db_and_contigs_db_compatible(profiles_and_bams[sample_name]['profile_db_path'], contigs_db_path)
+        if has_bam_file_column:
+            filesnpaths.is_file_bam_file(profiles_and_bams[sample_name]['bam_file_path'])
+
+        if has_profile_db_column:
+            is_profile_db_and_contigs_db_compatible(profiles_and_bams[sample_name]['profile_db_path'], contigs_db_path)
 
     # this file can optionally contain `r1` and `r2` for short reads
     for raw_reads in ['r1', 'r2']:
@@ -3358,11 +3681,21 @@ def get_samples_txt_file_as_dict(file_path, run=run, progress=progress):
     for sample_name in samples_txt:
         check_sample_id(sample_name)
 
-        if not os.path.exists(samples_txt[sample_name]['r1']) or not os.path.exists(samples_txt[sample_name]['r2']):
-            samples_with_missing_files.append(sample_name)
+        r1_sample_paths = samples_txt[sample_name]['r1'].split(',')
+        r2_sample_paths = samples_txt[sample_name]['r2'].split(',')
 
-        if samples_txt[sample_name]['r1'] == samples_txt[sample_name]['r2']:
-            samples_with_identical_r1_r2_files.append(sample_name)
+        if len(r1_sample_paths) != len(r2_sample_paths):
+            raise ConfigError(f"Uh oh. The sample {sample_name} has a different number of R1 ({len(r1_sample_paths)}) "
+                              f"and R2 ({len(r2_sample_paths)}) paths. Anvi'o expects these to be the same, so please "
+                              f"fix this in your samples-txt file.")
+
+        for path in r1_sample_paths + r2_sample_paths:
+            if not os.path.exists(path):
+                samples_with_missing_files.append(sample_name)
+
+        for i in range(len(r1_sample_paths)):
+            if r1_sample_paths[i] == r2_sample_paths[i]:
+                samples_with_identical_r1_r2_files.append(sample_name)
 
     if len(samples_with_missing_files):
         raise ConfigError(f"Bad news. Your samples txt contains {pluralize('sample', len(samples_with_missing_files))} "
@@ -3372,7 +3705,6 @@ def get_samples_txt_file_as_dict(file_path, run=run, progress=progress):
     if len(samples_with_identical_r1_r2_files):
         raise ConfigError(f"Interesting. Your samples txt contains {pluralize('sample', len(samples_with_missing_files))} "
                           f"({', '.join(samples_with_identical_r1_r2_files)}) where r1 and r2 file paths are identical. Not OK.")
-
 
     return samples_txt
 
@@ -3475,7 +3807,8 @@ def get_groups_txt_file_as_dict(file_path, run=run, progress=progress, include_m
 def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_to_append=None, column_names=None,\
                                         column_mapping=None, indexing_field=0, separator='\t', no_header=False,\
                                         ascii_only=False, only_expected_fields=False, assign_none_for_missing=False,\
-                                        none_value=None, empty_header_columns_are_OK=False, return_failed_lines=False):
+                                        none_value=None, empty_header_columns_are_OK=False, return_failed_lines=False,
+                                        ignore_duplicated_keys=False):
     """Takes a file path, returns a dictionary.
 
        - If `return_failed_lines` is True, it the function will not throw an exception, but instead
@@ -3497,7 +3830,7 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
     failed_lines = []
     column_mapping_for_line_failed = None
 
-    f = open(file_path, 'rU')
+    f = open(file_path, 'r')
 
     # learn the number of fields and reset the file:
     num_fields = len(f.readline().strip('\n').split(separator))
@@ -3596,12 +3929,16 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
         else:
             entry_name = line_fields[indexing_field]
 
-        if entry_name in d:
-            raise ConfigError("The entry name %s appears more than once in the TAB-delimited file '%s'. We assume that you "
-                              "did not do it that purposefully, but if you need this file in this form, then feel free to "
-                              "contact us so we can try to find a solution for you. But if you have gotten this error while "
-                              "working with HMMs, do not contact us since helping you in that case is beyond us (see the issue "
-                              "#1206 for details))." % (entry_name, file_path))
+        if entry_name in d and not ignore_duplicated_keys:
+            raise ConfigError("The entry name %s appears more than once in the TAB-delimited file '%s'. There may be more "
+                              "instances of duplicated entries, but anvi'o stopped in the first instance. If this is expected "
+                              "and if you are a programmer, you can turn on the flag `ignore_duplicated_keys`, which will "
+                              "ensure that duplicated entries are ignored, and only the last one is represented in the "
+                              "resulting dictionary. If this is expected behavior of the input file and yet you are a user "
+                              "then feel free to contact us and we will happily take a look at your case and perhaps update "
+                              "the anvi'o program. But if you have gotten this error while working with HMMs, do not contact "
+                              "us since helping you in that case is beyond us (see https://github.com/merenlab/anvio/issues/1206 "
+                              "for details))." % (entry_name, file_path))
 
         d[entry_name] = {}
 
@@ -3799,7 +4136,7 @@ def get_HMM_sources_dictionary(source_dirs=[]):
                        and len(w) >= 3 \
                        and w[0] not in '_0123456789'
 
-    R = lambda f: open(os.path.join(source, f), 'rU').readlines()[0].strip()
+    R = lambda f: open(os.path.join(source, f), 'r').readlines()[0].strip()
     for source in source_dirs:
         if source.endswith('/'):
             source = source[:-1]
@@ -3869,6 +4206,26 @@ def get_HMM_sources_dictionary(source_dirs=[]):
     return sources
 
 
+def get_attribute_from_hmm_file(file_path, attribute):
+    """
+    Retrieves the value of attribute from an HMMER/3 formatted HMM file.
+    - file_path: (str) absolute file path to the .HMM file
+    - attribute: (str) the attribute to get from the HMM file
+    """
+    filesnpaths.is_file_exists(file_path)
+    value = None
+    with open(file_path) as hmm:
+        for line in hmm.readlines():
+            if line.startswith(attribute):
+                value = [f.strip() for f in line.split(attribute) if len(f)][0]
+                break
+
+    if value is None:
+        raise ValueError(f"The HMM file {file_path} did not contain {attribute}.")
+
+    return value
+
+
 def check_misc_data_keys_for_format(data_keys_list):
     """Ensure user-provided misc data keys are compatible with the current version of anvi'o"""
 
@@ -3920,14 +4277,19 @@ def sanity_check_hmm_model(model_path, genes):
                           "Here is a list of missing gene names: %s" % ', '.join(list(genes_in_model.difference(genes))))
 
 
-def get_missing_programs_for_hmm_analysis():
-    missing_programs = []
-    for p in ['prodigal', 'hmmscan']:
-        try:
-            is_program_exists(p)
-        except ConfigError:
-            missing_programs.append(p)
-    return missing_programs
+def sanity_check_pfam_accessions(pfam_accession_ids):
+    """This function sanity checks a list of Pfam accession IDs
+
+    Parameters
+    ==========
+    pfam_accession_ids: list
+        list of possible Pfam accessions
+    """
+    not_pfam_accession_ids = [pfam_accession_id for pfam_accession_id in pfam_accession_ids if not pfam_accession_id.startswith("PF")]
+
+    if len(not_pfam_accession_ids):
+        raise ConfigError(f"The following accessions do not appear to be from Pfam because they do not "
+                          f"start with \"PF\", please double check the following: {','.join(not_pfam_accession_ids)}")
 
 
 def get_genes_database_path_for_bin(profile_db_path, collection_name, bin_name):
@@ -3953,11 +4315,11 @@ def get_db_variant(db_path):
 def get_required_version_for_db(db_path):
     db_type = get_db_type(db_path)
 
-    if db_type not in t.versions_for_db_types:
+    if db_type not in versions_for_db_types:
         raise ConfigError("Anvi'o was trying to get the version of the -alleged- anvi'o database '%s', but it failed "
                            "because it turns out it doesn't know anything about this '%s' type." % (db_path, db_type))
 
-    return t.versions_for_db_types[db_type]
+    return versions_for_db_types[db_type]
 
 
 def get_all_sample_names_from_the_database(db_path):
@@ -4166,6 +4528,18 @@ def is_structure_db_and_contigs_db_compatible(structure_db_path, contigs_db_path
 
     return True
 
+
+def is_pan_db_and_genomes_storage_db_compatible(pan_db_path, genomes_storage_path):
+    pdb = dbi(pan_db_path)
+    gdb = dbi(genomes_storage_path)
+
+    if pdb.hash != gdb.hash:
+        raise ConfigError(f"The pan database and the genomes storage database do not seem to "
+                          f"be compatible. More specifically, the genomes storage database is "
+                          f"not the one that was used when the pangenome was created. "
+                          f"({pdb.hash} != {gdb.hash})")
+
+    return True
 
 # # FIXME
 # def is_external_genomes_compatible_with_pan_database(pan_db_path, external_genomes_path):
@@ -4467,160 +4841,12 @@ def check_h5py_module():
         import h5py
         h5py.__version__
     except:
-        raise ConfigError("There is an issue but it is easy to resolve and everything is fine! To continue, please "
-                          "first install the Python module `h5py` by running `pip install h5py==2.8.0` in your "
-                          "anvi'o environment. The reason why the standard anvi'o package does not include "
-                          "this module is both complicated and really unimportant. Re-running the migration "
-                          "after `h5py` is installed will make things go smootly.")
-
-
-def RepresentsInt(s):
-    try:
-        int(s)
-        return True
-    except ValueError:
-        return False
-
-
-def RepresentsFloat(s):
-    try:
-        float(s)
-        return True
-    except ValueError:
-        return False
-
-
-class Mailer:
-    def __init__(self, from_address='admin@localhost', server_address='localhost', server_port=25,
-                 init_tls=False, username=None, password=None, run=Run(verbose=False),
-                 progress=Progress(verbose=False)):
-        self.from_address = from_address
-        self.server_address = server_address
-        self.server_port = server_port
-        self.init_tls = init_tls
-        self.username = username
-        self.password = password
-
-        self.server = None
-        self.config_ini_path = None
-
-        self.run = run
-        self.progress = progress
-
-        self.config_template = {
-                'SMTP': {
-                        'from_address': {'mandatory': True, 'test': lambda x: str(x)},
-                        'server_address': {'mandatory': True, 'test': lambda x: str(x)},
-                        'server_port': {'mandatory': True, 'test': lambda x: RepresentsInt(x) and int(x) > 0, 'required': 'an integer'},
-                        'init_tls': {'mandatory': True, 'test': lambda x: x in ['True', 'False'], 'required': 'True or False'},
-                        'username': {'mandatory': True, 'test': lambda x: str(x)},
-                        'password': {'mandatory': True, 'test': lambda x: str(x)},
-                    },
-            }
-
-
-    def init_from_config(self, config_ini_path):
-        def get_option(self, config, section, option, cast):
-            try:
-                return cast(config.get(section, option).strip())
-            except configparser.NoOptionError:
-                return None
-
-        filesnpaths.is_file_exists(config_ini_path)
-
-        self.config_ini_path = config_ini_path
-
-        config = configparser.ConfigParser()
-
-        try:
-            config.read(self.config_ini_path)
-        except Exception as e:
-            raise ConfigError("Well, the file '%s' does not seem to be a config file at all :/ Here "
-                               "is what the parser had to complain about it: %s" % (self.config_ini_path, e))
-
-        section = 'SMTP'
-
-        if section not in config.sections():
-            raise ConfigError("The config file '%s' does not seem to have an 'SMTP' section, which "
-                               "is essential for Mailer class to learn server and authentication "
-                               "settings. Please check the documentation to create a proper config "
-                               "file." % self.config_ini_path)
-
-
-        for option, value in config.items(section):
-            if option not in list(self.config_template[section].keys()):
-                raise ConfigError('Unknown option, "%s", under section "%s".' % (option, section))
-            if 'test' in self.config_template[section][option] and not self.config_template[section][option]['test'](value):
-                if 'required' in self.config_template[section][option]:
-                    r = self.config_template[section][option]['required']
-                    raise ConfigError('Unexpected value ("%s") for option "%s", under section "%s". '
-                                       'What is expected is %s.' % (value, option, section, r))
-                else:
-                    raise ConfigError('Unexpected value ("%s") for option "%s", under section "%s".' % (value, option, section))
-
-        self.run.warning('', header="SMTP Configuration is read", lc='cyan')
-        for option, value in config.items(section):
-            self.run.info(option, value if option != 'password' else '*' * len(value))
-            setattr(self, option, value)
-
-
-    def test(self):
-        self.connect()
-        self.disconnect()
-
-
-    def connect(self):
-        if not self.server_address or not self.server_port:
-            raise ConfigError("SMTP server has not been configured to send e-mails :/")
-
-        try:
-           self.server = smtplib.SMTP(self.server_address, self.server_port)
-
-           if self.init_tls:
-               self.server.ehlo()
-               self.server.starttls()
-
-           if self.username:
-               self.server.login(self.username, self.password)
-
-        except Exception as e:
-            raise ConfigError("Something went wrong while connecting to the SMTP server :/ This is what we "
-                               "know about the problem: %s" % e)
-
-
-    def disconnect(self):
-        if self.server:
-            self.server.quit()
-
-        self.server = None
-
-
-    def send(self, to, subject, content):
-        self.progress.new('E-mail')
-        self.progress.update('Establishing a connection ..')
-        self.connect()
-
-        self.progress.update('Preparing the package ..')
-        msg = MIMEText(content)
-        msg['To'] = to
-        msg['Subject'] = subject
-        msg['From'] = self.from_address
-        msg['Reply-to'] = self.from_address
-
-        try:
-            self.progress.update('Sending the e-mail to "%s" ..' % to)
-            self.server.sendmail(self.from_address, [to], msg.as_string())
-        except Exception as e:
-            self.progress.end()
-            raise ConfigError("Something went wrong while trying to connet send your e-mail :( "
-                               "This is what we know about the problem: %s" % e)
-
-
-        self.progress.update('Disconnecting ..')
-        self.disconnect()
-        self.progress.end()
-
-        self.run.info('E-mail', 'Successfully sent to "%s"' % to)
+        raise ConfigError("There is an issue but it is easy to resolve and everything is fine! "
+                          "To continue, please first install the newest version of the Python module `h5py` "
+                          "by running `pip install h5py` in your anvi'o environment. "
+                          "The reason why the standard anvi'o package does not include this module is both "
+                          "complicated and really unimportant. Re-running the migration after `h5py` is installed "
+                          "will make things go smoothly.")
 
 
 def split_by_delim_not_within_parens(d, delims, return_delims=False):

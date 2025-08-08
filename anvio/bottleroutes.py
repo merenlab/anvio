@@ -53,8 +53,7 @@ from anvio.tables.miscdata import TableForLayerOrders
 from anvio.tables.collections import TablesForCollections
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = ["A. Murat Eren"]
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -76,6 +75,8 @@ class BottleApplication(Bottle):
 
         # WSGI for bottle to use
         self._wsgi_for_bottle = "paste"
+
+        self.additional_gc_data = None
 
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
 
@@ -162,7 +163,7 @@ class BottleApplication(Bottle):
         self.route('/store_description',                       callback=self.store_description, method='POST')
         self.route('/upload_project',                          callback=self.upload_project, method='POST')
         self.route('/data/contig/<split_name>',                callback=self.get_sequence_for_split)
-        self.route('/summarize/<collection_name>',             callback=self.gen_summary)
+        self.route('/summarize/<collection_name>',             callback=self.gen_summary, method='POST')
         self.route('/summary/<collection_name>/:filename#.*#', callback=self.send_summary_static)
         self.route('/data/gene/<gene_callers_id>',             callback=self.get_sequence_for_gene_call)
         self.route('/data/hmm/<bin_name>/<gene_name>',         callback=self.get_hmm_hit_from_bin)
@@ -188,11 +189,13 @@ class BottleApplication(Bottle):
         self.route('/data/reroot_tree',                        callback=self.reroot_tree, method='POST')
         self.route('/data/save_tree',                          callback=self.save_tree, method='POST')
         self.route('/data/check_homogeneity_info',             callback=self.check_homogeneity_info, method='POST')
+        self.route('/data/get_additional_gc_data/<gc_id>/<gc_key>',    callback=self.get_additional_gc_data, method='POST')
         self.route('/data/search_items',                       callback=self.search_items_by_name, method='POST')
         self.route('/data/get_taxonomy',                       callback=self.get_taxonomy, method='POST')
         self.route('/data/get_functions_for_gene_clusters',    callback=self.get_functions_for_gene_clusters, method='POST')
         self.route('/data/get_gene_info/<gene_callers_id>',    callback=self.get_gene_info)
         self.route('/data/get_metabolism',                     callback=self.get_metabolism)
+        self.route('/data/get_scale_bar',                      callback=self.get_scale_bar, method='POST')
 
 
     def run_application(self, ip, port):
@@ -1038,6 +1041,7 @@ class BottleApplication(Bottle):
         # common params. we will set pan/profile specific params a bit later:
         summarizer_args.collection_name = collection_name
         summarizer_args.taxonomic_level = self.interactive.taxonomic_level
+        init_gene_coverages = json.loads(request.forms.get('init_gene_coverages'))
 
         if self.interactive.mode == 'pan':
             summarizer_args.pan_db = self.interactive.pan_db_path
@@ -1046,6 +1050,9 @@ class BottleApplication(Bottle):
         elif self.interactive.mode == 'full':
             summarizer_args.profile_db = self.interactive.profile_db_path
             summarizer_args.contigs_db = self.interactive.contigs_db_path
+            if init_gene_coverages:
+                summarizer_args.init_gene_coverages = True
+
             summarizer_args.output_dir = os.path.join(os.path.dirname(summarizer_args.profile_db), 'SUMMARY_%s' % collection_name)
         else:
             return json.dumps({'error': 'We do not know anything about this mode: "%s"' % self.interactive.mode})
@@ -1061,7 +1068,7 @@ class BottleApplication(Bottle):
 
         path = "summary/%s/index.html" % (collection_name)
         return json.dumps({'path': path})
-
+        
 
     def send_summary_static(self, collection_name, filename):
         if self.interactive.mode == 'pan':
@@ -1418,27 +1425,59 @@ class BottleApplication(Bottle):
             return json.dumps({'status': 1})
 
 
+    def get_additional_gc_data(self, gc_id, gc_key):
+        try:
+            return json.dumps({
+                'status': 0,
+                'gene_cluster_data': self.interactive.items_additional_data_dict[gc_id][gc_key]
+            })
+        except:
+            return json.dumps({'status': 1})
+
     def reroot_tree(self):
+        # Get the Newick tree string from the form data
         newick = request.forms.get('newick')
+        internal_node = request.forms.get('internal_node')
         tree = Tree(newick, format=1)
 
+        branch_support_value = {1:''}
+        unique_index = 1
+
+        if not internal_node:
+        # for every node that is not leaf or root, associate with a unique index
+            for node in tree.traverse():
+                if not node.is_leaf() and not node.is_root():
+                    unique_index += 1
+                    branch_support_value[unique_index] = node.name
+                    node.support = unique_index
+
+        # Find the leftmost and rightmost nodes based on the provided names
         left_most = tree.search_nodes(name=request.forms.get('left_most'))[0]
         right_most = tree.search_nodes(name=request.forms.get('right_most'))[0]
 
+        # Find the new root by identifying the common ancestor of the leftmost and rightmost nodes
         new_root = tree.get_common_ancestor(left_most, right_most)
+
+        # Set the new root as the outgroup
         tree.set_outgroup(new_root)
 
-        # Ete3 tree.write function replaces some charachters that we support in the interface.
-        # As a workaround we are going to encode node names with base32, after serialization
-        # we are going to decode them back.
+        if not internal_node:
+            # Assign support values as node names for non-leaf and non-root nodes
+            for node in tree.traverse():
+                if not node.is_leaf() and not node.is_root():
+                    node.name = branch_support_value[node.support]
+
+        # Encode node names using base32 encoding
         for node in tree.traverse('preorder'):
             node.name = 'base32' + base64.b32encode(node.name.encode('utf-8')).decode('utf-8')
 
+        # Serialize the tree to Newick format
         new_newick = tree.write(format=1)
 
-        # ete also converts base32 padding charachter "=" to "_" so we need to replace it.
-        new_newick = re.sub(r"base32(\w*)", lambda m: base64.b32decode(m.group(1).replace('_','=')).decode('utf-8'), new_newick)
+        # Decode base32 encoded node names back
+        new_newick = re.sub(r"base32(\w*)", lambda m: base64.b32decode(m.group(1).replace('_', '=')).decode('utf-8'), new_newick)
 
+        # Return the modified Newick format tree string as JSON
         return json.dumps({'newick': new_newick})
 
 
@@ -1481,3 +1520,17 @@ class BottleApplication(Bottle):
             d[gene_cluster_name] = self.interactive.gene_clusters_functions_summary_dict[gene_cluster_name]
 
         return json.dumps({'functions': d, 'sources': list(self.interactive.gene_clusters_function_sources)})
+
+
+    def get_scale_bar(self):
+        try:
+            newick = request.json.get('newick')
+            tree = Tree(newick, format=1)
+
+            total_branch_length = tree.get_farthest_leaf()[1]
+
+        except Exception as e:
+            message = str(e.clear_text()) if hasattr(e, 'clear_text') else str(e)
+            return json.dumps({'status': 1, 'message': message})
+            
+        return json.dumps({'scale_bar_value': total_branch_length})
