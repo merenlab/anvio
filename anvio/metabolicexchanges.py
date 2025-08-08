@@ -900,10 +900,15 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         
         num_compounds_to_process = len(self.compound_to_pathway_walk_chains)
         processed_count = 0
+        num_skipped = 0
         self.progress.new('Processing compounds in KEGG Pathway Maps', progress_total_items=num_compounds_to_process)
-
         for compound_id in self.compound_to_pathway_walk_chains:
             if compound_id in self.processed_compound_ids:
+                num_skipped+=1
+                if anvio.DEBUG:
+                    self.run.warning(f"Pathway Map Walk prediction method is skipping compound {compound_id} because "
+                                     f"it was an equivalent compound for {self.eq_compounds[compound_id]['equivalent_id']}",
+                                     lc='yellow', header='DEBUG')
                 continue
             compound_reaction_chains = {compound_id: self.compound_to_pathway_walk_chains[compound_id]}
             eq_comp = None
@@ -1115,6 +1120,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         self.run.info("Number of exchanged compounds predicted from KEGG Pathway Map walks", len(potentially_exchanged_compounds))
         self.run.info("Number of unique compounds predicted from KEGG Pathway Map walks", len(unique_compounds))
         self.run.info("Number of compounds with no prediction KEGG Pathway Map walks", len(no_prediction_compounds))
+        self.run.info("Number of equivalent compound IDs (that we skipped processing twice) in KEGG Pathway Map walks", num_skipped)
 
         return potentially_exchanged_compounds, unique_compounds, pathway_walk_evidence, no_prediction_compounds
 
@@ -1133,15 +1139,23 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         potentially_exchanged_compounds = {}
         no_prediction_compounds = {}
         num_compounds_to_process = len(compound_set)
+        num_skipped=0
         processed_count=0
         self.progress.new('Processing compounds in reaction network', progress_total_items=num_compounds_to_process)
         for compound_id in compound_set:
             if compound_id in self.processed_compound_ids:
+                num_skipped+=1
+                if anvio.DEBUG:
+                    reason="it was already processed"
+                    if compound_id in self.eq_compounds:
+                        reason=f"it was an equivalent compound for {self.eq_compounds[compound_id]['equivalent_id']}"
+                    self.run.warning(f"Reaction Network Subset prediction method is skipping compound {compound_id} because "
+                                     f"{reason}.", lc='yellow', header='DEBUG')
                 continue
             compound_name = self.merged.metabolites[compound_id].modelseed_name
             if anvio.DEBUG:
                 self.progress.reset()
-                self.run.info_single(f"Working on compound {compound_id} ({compound_name})")
+                self.run.info_single(f"Reaction Network Subset prediction: working on compound {compound_id} ({compound_name})")
             sub_ids = [compound_id]
             eq_comp = None
             if compound_id in self.eq_compounds:
@@ -1247,6 +1261,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         self.progress.end()
         self.run.info("Number of exchanged compounds predicted from Reaction Network subset approach", len(potentially_exchanged_compounds))
         self.run.info("Number of unique compounds predicted from Reaction Network subset approach", len(unique_compounds))
+        self.run.info("Number of compound IDs that we skipped processing twice in Reaction Network subset approach", num_skipped)
 
         return potentially_exchanged_compounds, unique_compounds, no_prediction_compounds
 
