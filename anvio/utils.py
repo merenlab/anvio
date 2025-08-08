@@ -1391,9 +1391,25 @@ def run_functional_enrichment_stats(functional_occurrence_stats_input_file_path,
     # here we will naively try to cast every column that matches `p_*` to float, and every
     # column that matches `N_*` to int.
     column_names = list(enrichment_stats.values())[0].keys()
-    column_names_to_cast = [(c, float) for c in ['unadjusted_p_value', 'adjusted_q_value', 'enrichment_score']] + \
+    column_names_to_cast = [(c, float) for c in ['unadjusted_p_value', 'enrichment_score']] + \
                            [(c, float) for c in column_names if c.startswith('p_')] + \
                            [(c, int) for c in column_names if c.startswith('N_')]
+
+    # in case the enrichment script couldn't estimate q-values, we skip casting the q-value column and warn the user
+    # that things could break downstream
+    num_NA_qvals = 0
+    for entry, entry_vals in enrichment_stats.items():
+        if entry_vals['adjusted_q_value'] == 'NA':
+            num_NA_qvals += 1
+    if num_NA_qvals:
+        run.warning(f"POTENTIAL CODE-BREAKING ISSUES INCOMING! The functional enrichment output contains {num_NA_qvals} q-values "
+                    f"that are 'NA' values. This can happen if the enrichment script is unable to estimate q-values for your "
+                    f"input data (check the log file at '{log_file_path}' for warnings about the situation). At this time, "
+                    f"the 'NA' q-values are not causing issues, but they *might* break downstream code that is expecting to "
+                    f"find numbers instead. Please keep an eye out for errors, and remember this message when you see them.")
+    else:
+        column_names_to_cast += ('adjusted_q_value', float)
+
     for entry in enrichment_stats:
         for column_name, to_cast in column_names_to_cast:
             try:
