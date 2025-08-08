@@ -1552,7 +1552,7 @@ class PangenomeGraph():
         self.summarize_pangenome_graph()
 
         # calculate the display
-        self.layout_pangenome_graph()
+        # self.layout_pangenome_graph()
 
         # if the user has not provided a tree file,
         # calculate one from the graph properties
@@ -1647,6 +1647,9 @@ class PangenomeGraph():
 
 
     def generate_pan_graph_db(self):
+
+        self.run.warning(None, header="Generate and populate pangenome graph database.", lc="green")
+
         """Generates an empty pan-graph-db and populates it with essential information"""
 
         # generate an empty pan-graph-db
@@ -1705,19 +1708,18 @@ class PangenomeGraph():
 
 
     def store_nodes_in_pan_graph_db(self):
-        nodes = dict(self.pangenome_graph.graph.nodes(data=True))
 
         self.progress.new('Storing syn gene cluster nodes in pan-graph-db')
         self.progress.update('...')
 
         table_for_nodes = TableForNodes(self.pan_graph_db_path, run=self.run, progress=self.progress)
-        for node in nodes:
+        for node, data in self.pangenome_graph.graph.nodes(data=True):
             node_entry = {
                 'node_id': node,
-                'node_type': nodes[node]['type'],
-                'gene_cluster_id': nodes[node]['gene_cluster'],
-                'gene_calls_json': json.dumps(nodes[node]['gene_calls']),
-                'alignment_summary': json.dumps(nodes[node]['alignment'])
+                'node_type': data['type'],
+                'gene_cluster_id': data['gene_cluster'],
+                'gene_calls_json': json.dumps(data['gene_calls']),
+                'alignment_summary': json.dumps(data['alignment'])
             }
 
             table_for_nodes.add(node_entry)
@@ -1727,26 +1729,25 @@ class PangenomeGraph():
         table_for_nodes.store()
 
         pan_graph_db = dbops.PanGraphDatabase(self.pan_graph_db_path, quiet=True)
-        pan_graph_db.db.set_meta_value('num_nodes', len(nodes))
+        pan_graph_db.db.set_meta_value('num_nodes', len(self.pangenome_graph.graph.nodes()))
         pan_graph_db.disconnect()
 
 
     def store_edges_in_pan_graph_db(self):
         """"""
 
-        edges = {'E_' + str(edge_id).zfill(8): {'source': edge_i, 'target': edge_j, **data} for edge_id, (edge_i, edge_j, data) in enumerate(self.pangenome_graph.graph.edges(data=True))}
-
         self.progress.new('Storing syn gene cluster edges in pan-graph-db')
         self.progress.update('...')
 
         table_for_edges = TableForEdges(self.pan_graph_db_path, run=self.run, progress=self.progress)
-        for edge in edges:
-            edge_entry = {'edge_id': edge,
-                          'source': edges[edge]['source'],
-                          'target': edges[edge]['target'],
-                          'weight': edges[edge]['weight'],
-                          'directions': json.dumps(edges[edge]['directions']),
-                          'route': json.dumps(edges[edge]['route'])}
+        for edge_i, edge_j, data in self.pangenome_graph.graph.edges(data=True):
+            edge_entry = {
+                'edge_id': data['name'],
+                'source': edge_i,
+                'target': edge_j,
+                'weight': data['weight'],
+                'directions': json.dumps(data['directions'])
+            }
             table_for_edges.add(edge_entry)
 
         self.progress.end()
@@ -1754,7 +1755,7 @@ class PangenomeGraph():
         table_for_edges.store()
 
         pan_graph_db = dbops.PanGraphDatabase(self.pan_graph_db_path, quiet=True)
-        pan_graph_db.db.set_meta_value('num_edges', len(edges))
+        pan_graph_db.db.set_meta_value('num_edges', len(self.pangenome_graph.graph.edges(data=True)))
         pan_graph_db.disconnect()
 
 
@@ -1776,7 +1777,7 @@ class PangenomeGraph():
 
         pan_db = dbops.PanSuperclass(self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
         pan_db.init_gene_clusters()
-        
+
         # 2. step: Fill self.pangenome_graph with nodes and edges based on the synteny data
         self.run.warning(None, header="Initalizing pangenome graph and filling with nodes and edges.", lc="green")
         factor = 0.00000001 / 2
@@ -1888,43 +1889,6 @@ class PangenomeGraph():
         for genome in number_gene_calls:
             self.run.info_single(f"Added {number_gene_calls[genome]} gene calls from {genome}.")
 
-        num_syn_cluster = len(self.pangenome_data_df['syn_cluster'].unique())
-        num_graph_nodes = len(self.pangenome_graph.graph.nodes())
-
-        self.run.info_single(f"Added {num_graph_nodes} nodes and {len(self.pangenome_graph.graph.edges())} edges to pangenome graph.")
-        self.run.info_single("Done.")
-
-        if num_syn_cluster != num_graph_nodes:
-            self.run.info_single(f"It looks like {abs(num_syn_cluster - num_graph_nodes)} nodes were not added to the graph. Proceeding from "
-                              f"here might cause some trouble. Maybe you also set a minimum contig size, in this case great job user, go ahead :)")
-
-        # 3. step: Check connectivity of the graph
-        self.pangenome_graph.run_connectivity_check()
-
-        # 4. step: Find edges to reverse to create maxmimum directed force
-        self.run.warning(None, header="Running maximum force calculation on pangenome graph", lc="green")
-
-        selfloops = list(nx.selfloop_edges(self.pangenome_graph.graph))
-        self.run.info_single(f"Found and removed {len(selfloops)} selfloop edge(s)")
-        self.pangenome_graph.graph.remove_edges_from(selfloops)
-
-        # changed_edges, removed_nodes, removed_edges = DirectedForce().return_optimum_complexity()
-        changed_edges = DirectedForce().return_optimum_complexity(
-            self.pangenome_graph.graph,
-            max_iterations=1,
-            start_node=self.start_node
-        )
-
-        self.pangenome_graph.reverse_edges(changed_edges)
-        # self.pangenome_graph.graph.remove_edges_from(removed_edges)
-        # self.pangenome_graph.graph.remove_nodes_from(removed_nodes)
-
-        # self.pangenome_data_df.drop(self.pangenome_data_df.loc[self.pangenome_data_df['syn_cluster'].isin(removed_nodes)].index, inplace=True)
-        # self.run.info_single(f"The pangenome graph is now a connected non-cyclic graph.")
-        if len(changed_edges) == 0:
-            self.run.info_single("This does look weird good but maybe you have a perfect dataset without the need of any edge reversal.")
-        self.run.info_single("Done.")
-
         for node, data in self.pangenome_graph.graph.nodes(data=True):
             node_alignment_summaries = {}
             node_alignment_lengths = []
@@ -1969,3 +1933,45 @@ class PangenomeGraph():
                         cleaned_alignments[genome_name] += alignment[i]
 
             data['alignment'] = {genome_name: utils.summarize_alignment(alignment) if alignment else '' for genome_name, alignment in cleaned_alignments.items()}
+
+        edge_id = 0
+        for edge_i, edge_j, data in self.pangenome_graph.graph.edges(data=True):
+            data['name'] = 'E_' + str(edge_id).zfill(8)
+            edge_id += 1
+
+        num_syn_cluster = len(self.pangenome_data_df['syn_cluster'].unique())
+        num_graph_nodes = len(self.pangenome_graph.graph.nodes())
+
+        self.run.info_single(f"Added {num_graph_nodes} nodes and {len(self.pangenome_graph.graph.edges())} edges to pangenome graph.")
+        self.run.info_single("Done.")
+
+        if num_syn_cluster != num_graph_nodes:
+            self.run.info_single(f"It looks like {abs(num_syn_cluster - num_graph_nodes)} nodes were not added to the graph. Proceeding from "
+                              f"here might cause some trouble. Maybe you also set a minimum contig size, in this case great job user, go ahead :)")
+
+        # 3. step: Check connectivity of the graph
+        self.pangenome_graph.run_connectivity_check()
+
+        # 4. step: Find edges to reverse to create maxmimum directed force
+        self.run.warning(None, header="Running maximum force calculation on pangenome graph", lc="green")
+
+        selfloops = list(nx.selfloop_edges(self.pangenome_graph.graph))
+        self.run.info_single(f"Found and removed {len(selfloops)} selfloop edge(s)")
+        self.pangenome_graph.graph.remove_edges_from(selfloops)
+
+        # changed_edges, removed_nodes, removed_edges = DirectedForce().return_optimum_complexity()
+        changed_edges = DirectedForce().return_optimum_complexity(
+            self.pangenome_graph.graph,
+            max_iterations=1,
+            start_node=self.start_node
+        )
+
+        self.pangenome_graph.reverse_edges(changed_edges)
+        # self.pangenome_graph.graph.remove_edges_from(removed_edges)
+        # self.pangenome_graph.graph.remove_nodes_from(removed_nodes)
+
+        # self.pangenome_data_df.drop(self.pangenome_data_df.loc[self.pangenome_data_df['syn_cluster'].isin(removed_nodes)].index, inplace=True)
+        # self.run.info_single(f"The pangenome graph is now a connected non-cyclic graph.")
+        if len(changed_edges) == 0:
+            self.run.info_single("This does look weird good but maybe you have a perfect dataset without the need of any edge reversal.")
+        self.run.info_single("Done.")
