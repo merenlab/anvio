@@ -3430,6 +3430,17 @@ D = {
              'required': False, 
              'help': "Do you want relevant reaction IDs and chemical equations to be added to the output? Use this flag."}
                 ),
+    'report-compounds-with-no-prediction': (
+            ['--report-compounds-with-no-prediction'], 
+            {'default': False,
+             'action': 'store_true',
+             'required': False, 
+             'help': "By default, metabolic compounds that are not predicted to be either potentially-exchanged or "
+                     "unique will not be present in the output files of this program. If you want to see what those are, "
+                     "then you can use this flag to get an additional output file listing the compounds for which there "
+                     "is no prediction. This option may significantly increase the memory usage of the program, but on the "
+                     "plus side, you can haz moar data. Brought to you by the anvi'o Hall of Fame for Long Parameter Names."}
+                ),
     'no-pathway-walk': (
             ['--no-pathway-walk'], 
             {'default': False,

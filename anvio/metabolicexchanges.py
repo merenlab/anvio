@@ -55,6 +55,7 @@ class ExchangePredictorArgs():
         self.custom_equivalent_compounds_file = A('custom_equivalent_compounds_file')
         self.maximum_gaps = A('maximum_gaps')
         self.add_reactions_to_output = A('add_reactions_to_output')
+        self.report_compounds_with_no_prediction = A('report_compounds_with_no_prediction')
         self.no_pathway_walk = A('no_pathway_walk')
         self.pathway_walk_only = A('pathway_walk_only')
 
