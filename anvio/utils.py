@@ -1402,7 +1402,7 @@ def run_functional_enrichment_stats(functional_occurrence_stats_input_file_path,
                     f"the 'NA' q-values are not causing issues, but they *might* break downstream code that is expecting to "
                     f"find numbers instead. Please keep an eye out for errors, and remember this message when you see them.")
     else:
-        column_names_to_cast += ('adjusted_q_value', float)
+        column_names_to_cast += [('adjusted_q_value', float)]
 
     for entry in enrichment_stats:
         for column_name, to_cast in column_names_to_cast:
