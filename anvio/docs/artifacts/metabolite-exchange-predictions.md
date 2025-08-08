@@ -92,3 +92,16 @@ Each line of this file describes a metabolite that is found in only one of the o
 |cpd00005|NADPH|B_cica|B_cica|None|Pathway_Map_Walk|
 
 It uses the same standard columns and additional columns as the output for potentially-exchanged compounds.
+
+### Compounds with no prediction
+
+This is an optional output file, that is only generated when using the flag `--report-compounds-with-no-prediction`. Each line of this file describes a metabolite that was _not_ predicted to be either potentially-exchanged or unique between the input pair of genomes. Rather, these are compounds that are produced by both organisms and consumed by neither, consumed by both organisms and produced by neither, or produced and consumed by both organisms.
+
+|**`compound_id`**|**`compound_name`**|**`genomes`**|**`produced_by`**|**`consumed_by`**|**`prediction_method`**|
+|:--|:--|:--|:--|:--|:--|
+|cpd00227|L-Homoserine|B_cica,S_muel|B_cica,S_muel|B_cica,S_muel|Pathway_Map_Walk|
+|cpd19009|alpha-D-Mannose|None|None|None|Pathway_Map_Walk|
+|cpd29753|C15811|B_cica,S_muel|None|B_cica,S_muel|Reaction_Network_Subset|
+|cpd00190|beta-D-Glucose|B_cica,S_muel|B_cica,S_muel|None|Reaction_Network_Subset|
+
+It uses the same standard columns and some additional columns as the output for potentially-exchanged compounds.
