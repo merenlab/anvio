@@ -145,6 +145,19 @@ anvi-predict-metabolic-exchanges -c1 B_thetaiotamicron_VPI-5482.db \
                                  --use-equivalent-amino-acids
 SHOW_FILE B_vs_P-potentially-exchanged-compounds.txt
 
+INFO "Single genome pair comparison with --report-compounds-with-no-prediction"
+anvi-predict-metabolic-exchanges -c1 B_thetaiotamicron_VPI-5482.db \
+                                 -c2 P_marinus_CCMP1375.db \
+                                 --kegg-data-dir $kegg_data_dir \
+                                 --modelseed-data-dir $modelseed_dir \
+                                 $thread_controller \
+                                 -O B_vs_P \
+                                 --force-overwrite \
+                                 --use-equivalent-amino-acids \
+                                 --exclude-pathway-maps 00195,00542,00190,00541,00543,00511 \
+                                 --report-compounds-with-no-prediction
+SHOW_FILE B_vs_P-compounds-with-no-prediction.txt
+
 INFO "MULTI-mode prediction: genome pairs file"
 anvi-predict-metabolic-exchanges -e external-genomes.txt \
                                  --genome-pairs genome-pairs.txt \
