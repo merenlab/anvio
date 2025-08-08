@@ -1105,8 +1105,9 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                 if self.report_compounds_with_no_prediction:
                     producer_names = ",".join([self.genomes_to_compare[producer]['name'] for producer in all_prod])
                     consumer_names = ",".join([self.genomes_to_compare[consumer]['name'] for consumer in all_cons])
+                    all_genome_names = ",".join([self.genomes_to_compare[x]['name'] for x in all_prod.union(all_cons) if x])
                     no_prediction_compounds[compound_id] = {'compound_name': compound_name,
-                                                            'genomes': ",".join([x for x in all_prod.union(all_cons) if x]),
+                                                            'genomes': all_genome_names if all_genome_names else None,
                                                             'produced_by': producer_names if producer_names else None,
                                                             'consumed_by': consumer_names if consumer_names else None,
                                                             'prediction_method': 'Pathway_Map_Walk',
@@ -1247,8 +1248,9 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                 if self.report_compounds_with_no_prediction:
                     producer_names = ",".join([self.genomes_to_compare[producer]['name'] for producer in genomes_produce])
                     consumer_names = ",".join([self.genomes_to_compare[consumer]['name'] for consumer in genomes_consume])
+                    all_genome_names = ",".join([self.genomes_to_compare[x]['name'] for x in genomes_produce.union(genomes_consume) if x])
                     no_prediction_compounds[compound_id] = {'compound_name': compound_name,
-                                                        'genomes': ",".join([x for x in set([producer_name,consumer_name]) if x]),
+                                                        'genomes': all_genome_names if all_genome_names else None,
                                                         'produced_by': producer_names if producer_names else None,
                                                         'consumed_by': consumer_names if consumer_names else None,
                                                         'prediction_method': 'Reaction_Network_Subset',
