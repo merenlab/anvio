@@ -82,6 +82,8 @@ class ExchangePredictorArgs():
         self.output_types = ['potentially-exchanged-compounds', 'unique-compounds']
         if not self.no_pathway_walk:
             self.output_types.append('evidence')
+        if self.report_compounds_with_no_prediction:
+            self.output_types.append('compounds-with-no-prediction')
 
         # to fool a single estimator into passing sanity checks, nullify multi estimator args here
         if format_args_for_single_estimator:
@@ -134,7 +136,8 @@ class ExchangePredictorArgs():
             Key is output type, and value is the data dictionary associated with that output type
         """
 
-        output_header = ['compound_id', 'compound_name', 'genomes', 'produced_by', 'consumed_by', 'prediction_method']
+        base_header = ['compound_id', 'compound_name', 'genomes', 'produced_by', 'consumed_by']
+        output_header = base_header + ['prediction_method']
         if self.add_reactions_to_output:
             output_header += [f"production_rxn_ids_{self.genomes_to_compare[g]['name']}" for g in self.genomes_to_compare] + \
                              [f"consumption_rxn_ids_{self.genomes_to_compare[g]['name']}" for g in self.genomes_to_compare] + \
@@ -159,7 +162,9 @@ class ExchangePredictorArgs():
             header_list = output_header
             if mode == 'potentially-exchanged-compounds':
                 header_list = exchange_header
-
+            elif mode == 'compounds-with-no-prediction':
+                header_list = base_header
+            
             if mode == 'evidence':
                 file_obj.append(output_dicts[mode], do_not_write_key_column=True, none_value="None")
             else:
