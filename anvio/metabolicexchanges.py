@@ -139,6 +139,8 @@ class ExchangePredictorArgs():
                              [f"consumption_rxn_ids_{self.genomes_to_compare[g]['name']}" for g in self.genomes_to_compare] + \
                              [f"production_rxn_eqs_{self.genomes_to_compare[g]['name']}" for g in self.genomes_to_compare] + \
                              [f"consumption_rxn_eqs_{self.genomes_to_compare[g]['name']}" for g in self.genomes_to_compare]
+        if self.use_equivalent_amino_acids or self.custom_equivalent_compounds_file:
+            output_header += ['equivalent_compound_id']
         exchange_header = deepcopy(output_header)
         if not self.no_pathway_walk:
             exchange_header += ['max_reaction_chain_length',
@@ -879,6 +881,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
             if compound_id in self.processed_compound_ids:
                 continue
             compound_reaction_chains = {compound_id: self.compound_to_pathway_walk_chains[compound_id]}
+            eq_comp = None
             if compound_id in self.eq_compounds:
                 eq_comp = self.eq_compounds[compound_id]['equivalent_id']
                 if eq_comp in self.compound_to_pathway_walk_chains:
@@ -942,6 +945,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                                                     'produced_by': producer_name,
                                                     'consumed_by': consumer_name,
                                                     'prediction_method': 'Pathway_Map_Walk',
+                                                    'equivalent_compound_id': eq_comp,
                                                     }
                     add_reactions_to_dict_for_compound_pathway_walk(unique_compounds[compound_id])
                 else: # potentially-exchanged
@@ -950,6 +954,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                                                                     'produced_by': producer_name,
                                                                     'consumed_by': consumer_name,
                                                                     'prediction_method': 'Pathway_Map_Walk',
+                                                                    'equivalent_compound_id': eq_comp,
                                                                     }
                     add_reactions_to_dict_for_compound_pathway_walk(potentially_exchanged_compounds[compound_id])
                     per_map_evidence_for_compound = self.get_pathway_walk_evidence(compound_reaction_chains, producer, consumer)
@@ -1097,6 +1102,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                 self.progress.reset()
                 self.run.info_single(f"Working on compound {compound_id} ({compound_name})")
             sub_ids = [compound_id]
+            eq_comp = None
             if compound_id in self.eq_compounds:
                 eq_comp = self.eq_compounds[compound_id]['equivalent_id']
                 sub_ids.append(self.eq_compounds[compound_id]['equivalent_id'])
@@ -1157,6 +1163,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                                                     'produced_by': producer_name,
                                                     'consumed_by': consumer_name,
                                                     'prediction_method': 'Reaction_Network_Subset',
+                                                    'equivalent_compound_id': eq_comp,
                                                     }
                     add_reactions_to_dict_for_compound_reaction_network(unique_compounds[compound_id])
                 else: # potentially-exchanged
@@ -1165,6 +1172,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                                                                     'produced_by': producer_name,
                                                                     'consumed_by': consumer_name,
                                                                     'prediction_method': 'Reaction_Network_Subset',
+                                                                    'equivalent_compound_id': eq_comp,
                                                                     }
                     add_reactions_to_dict_for_compound_reaction_network(potentially_exchanged_compounds[compound_id])
 
