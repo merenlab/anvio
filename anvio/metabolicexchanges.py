@@ -136,8 +136,7 @@ class ExchangePredictorArgs():
             Key is output type, and value is the data dictionary associated with that output type
         """
 
-        base_header = ['compound_id', 'compound_name', 'genomes', 'produced_by', 'consumed_by']
-        output_header = base_header + ['prediction_method']
+        output_header = ['compound_id', 'compound_name', 'genomes', 'produced_by', 'consumed_by', 'prediction_method']
         if self.add_reactions_to_output:
             output_header += [f"production_rxn_ids_{self.genomes_to_compare[g]['name']}" for g in self.genomes_to_compare] + \
                              [f"consumption_rxn_ids_{self.genomes_to_compare[g]['name']}" for g in self.genomes_to_compare] + \
@@ -162,8 +161,6 @@ class ExchangePredictorArgs():
             header_list = output_header
             if mode == 'potentially-exchanged-compounds':
                 header_list = exchange_header
-            elif mode == 'compounds-with-no-prediction':
-                header_list = base_header
             
             if mode == 'evidence':
                 file_obj.append(output_dicts[mode], do_not_write_key_column=True, none_value="None")
@@ -1103,8 +1100,9 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                     consumer_names = ",".join([self.genomes_to_compare[consumer]['name'] for consumer in all_cons])
                     no_prediction_compounds[compound_id] = {'compound_name': compound_name,
                                                             'genomes': ",".join([x for x in all_prod.union(all_cons) if x]),
-                                                            'produced_by': producer_names,
-                                                            'consumed_by': consumer_names,
+                                                            'produced_by': producer_names if producer_names else None,
+                                                            'consumed_by': consumer_names if consumer_names else None,
+                                                            'prediction_method': 'Pathway_Map_Walk',
                                                             'equivalent_compound_id': eq_comp,
                                                             }
                     if anvio.DEBUG:
@@ -1237,6 +1235,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                                                         'genomes': ",".join([x for x in set([producer_name,consumer_name]) if x]),
                                                         'produced_by': producer_names if producer_names else None,
                                                         'consumed_by': consumer_names if consumer_names else None,
+                                                        'prediction_method': 'Reaction_Network_Subset',
                                                         'equivalent_compound_id': eq_comp,
                                                         }
 
