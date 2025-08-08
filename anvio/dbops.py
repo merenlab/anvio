@@ -3263,6 +3263,164 @@ class PanSuperclass(object):
                 self.run.info_single('%s' % (source), nl_after = 1 if source == gene_function_sources[-1] else 0)
 
 
+class PanGraphSuperclass(object):
+    def __init__(self, args, r=run, p=progress):
+        self.args = args
+        self.run = r
+        self.progress = p
+
+        self.run.width = 60
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.pan_graph_db_path = A('pan_graph_db')
+        self.genomes_storage_path = A('genomes_storage')
+        self.skip_init_functions = A('skip_init_functions')
+        self.just_do_it = A('just_do_it')
+        self.include_gc_identity_as_function = A('include_gc_identity_as_function')
+        self.discard_ties = A('discard_ties')
+        self.consensus_threshold = A('consensus_threshold')
+
+        self.genome_names = []
+        self.gene_clusters = {}
+        self.gene_clusters_initialized = False
+        self.gene_cluster_names = set([])
+        self.gene_cluster_names_in_db = set([])
+        self.gene_clusters_gene_alignments = {}
+        self.gene_clusters_gene_alignments_available = False
+        self.gene_clusters_function_sources = []
+        self.gene_clusters_functions_dict = {}
+        self.gene_clusters_functions_summary_dict = {}
+        self.gene_callers_id_to_gene_cluster = {}
+        self.item_orders = {}
+        self.views = {}
+        self.collection_profile = {}
+
+        self.items_additional_data_dict = None
+        self.items_additional_data_keys = None
+
+        # k = TableForItemAdditionalData(self.args).get_available_data_keys()
+        # self.functional_homogeneity_info_is_available = 'functional_homogeneity_index' in k
+        # self.geometric_homogeneity_info_is_available = 'geometric_homogeneity_index' in k
+        # self.combined_homogeneity_info_is_available = 'combined_homogeneity_index' in k
+
+        self.num_gene_clusters = None
+        self.num_genes_in_gene_clusters = None
+
+        self.genomes_storage_is_available = False
+        self.genomes_storage_has_functions = False
+        self.functions_initialized = False
+
+        self.gene_cluster_grouping_threshold = -1
+        self.groupcompress = 1
+        self.max_edge_length_filter = -1
+
+        if not self.pan_graph_db_path:
+            self.run.warning('PanGraphSuperclass class called with args without a pan-graph-db variable! Returning prematurely.')
+            return
+
+        filesnpaths.is_file_exists(self.pan_graph_db_path)
+
+        self.progress.new('Initializing the pan database superclass')
+
+        self.progress.update('Creating an instance of the pan database')
+        pan_graph_db = PanGraphDatabase(self.pan_graph_db_path, run=self.run, progress=self.progress)
+
+        self.progress.update('Setting profile self data dict')
+        self.p_meta = pan_graph_db.meta
+
+        self.p_meta['creation_date'] = utils.get_time_to_date(self.p_meta['creation_date']) if 'creation_date' in self.p_meta else 'unknown'
+        self.p_meta['num_genomes'] = len(self.p_meta['genome_names'].split(','))
+
+        self.genome_names = self.p_meta['genome_names']
+        self.nodes = pan_graph_db.db.get_table_as_dict(t.pan_graph_nodes_table_name)
+        self.edges = pan_graph_db.db.get_table_as_dict(t.pan_graph_edges_table_name)
+        self.states = pan_graph_db.db.get_table_as_dict(t.states_table_name)
+        self.pangenome_graph = PangenomeGraphManager()
+
+        for node, data in self.nodes.items():
+            graph_data = {
+                'gene_cluster': data['gene_cluster_id'],
+                'position': (0, 0),
+                'gene_calls': json.loads(data['gene_calls_json']),
+                'type': data['node_type'],
+                'group': '',
+                'layer': {},
+                'alignment': json.loads(data['alignment_summary'])
+            }
+            self.pangenome_graph.graph.add_node(node, **graph_data)
+
+        for edge, data in self.edges.items():
+            graph_data = {
+                'name': edge,
+                'weight': data['weight'],
+                'active': True,
+                'directions': json.loads(data['directions']),
+                'route': [],
+                'length': 0
+            }
+            self.pangenome_graph.graph.add_edge(data['source'], data['target'], **graph_data)
+
+        self.gene_clusters_gene_alignments_available = self.p_meta['gene_alignments_computed']
+
+        self.synteny_gene_cluster_names = set(pan_graph_db.db.get_single_column_from_table(t.pan_graph_nodes_table_name, 'node_id'))
+
+        if not self.synteny_gene_cluster_names:
+            raise ConfigError("You seem to have no synteny gene clusters in this pan database :/ This is weird,\
+                               sad, and curious at the same time. Probably you will have to go back to\
+                               previous outputs of your worklow to make sure everything worked out properly.")
+
+        pan_graph_db.disconnect()
+
+        # create an instance of states table
+        self.states_table = TablesForStates(self.pan_graph_db_path)
+
+        self.progress.end()
+
+        if self.genomes_storage_path:
+            self.genomes_storage = genomestorage.GenomeStorage(self.genomes_storage_path,
+                                                               self.p_meta['genomes_storage_hash'],
+                                                               genome_names_to_focus=self.p_meta['genome_names'].split(','),
+                                                               skip_init_functions=self.skip_init_functions,
+                                                               run=self.run,
+                                                               progress=self.progress)
+            self.genomes_storage_is_available = True
+            self.genomes_storage_has_functions = self.genomes_storage.functions_are_available
+        else:
+            self.run.warning("The pan database is being initialized without a genomes storage.")
+
+        F = lambda x: '[YES]' if x else '[NO]'
+        self.run.info('Pan Graph DB', 'Initialized: %s (v. %s)' % (self.pan_graph_db_path, anvio.__pan__version__))
+
+
+    def load_state(self):
+
+        state_dict = json.loads(self.states[graph.p_meta['state']]['content'])
+
+        gene_cluster_grouping_threshold = state_dict['condtr']
+        max_edge_length_filter = state_dict['maxlength']
+        groupcompress = state_dict['groupcompress']
+
+        node_positions, edge_positions, node_groups = TopologicalLayout().run_synteny_layout_algorithm(
+            F=self.pangenome_graph.graph,
+            gene_cluster_grouping_threshold=gene_cluster_grouping_threshold,
+            groupcompress=groupcompress,
+        )
+
+        self.pangenome_graph.set_edge_positions(edge_positions)
+        self.pangenome_graph.set_node_positions(node_positions)
+        self.pangenome_graph.set_node_groups(node_groups)
+        self.pangenome_graph.cut_edges(max_edge_length_filter)
+
+        export_dict = {
+            'meta': self.p_meta,
+            'states': state_dict,
+            'nodes': dict(self.pangenome_graph.graph.nodes(data=True)),
+            'edges': {data['name']: {'source': edge_i, 'target': edge_j, **data} for edge_i, edge_j, data in self.pangenome_graph.graph.edges(data=True)}
+        }
+
+        return(json.dumps(export_dict, indent=2))
+
+
 class ProfileSuperclass(object):
     """Fancy super class to deal with profile db stuff.
 
