@@ -87,6 +87,7 @@ class PangenomeGraphManager():
             'alignment': ''
         }
         self.edge_standard_attributes = {
+            'name': '',
             'weight': 0.0,
             'active': True,
             'directions': {},
