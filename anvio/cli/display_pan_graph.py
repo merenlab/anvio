@@ -54,13 +54,12 @@ def main():
 def get_args():
     parser = ArgumentParser(description=__description__)
     groupA = parser.add_argument_group('PRIMARY INPUT', "Specify where your pan-db is.")
-    groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db', {'required': False}))
+    groupA.add_argument(*anvio.A('pan-graph-db'), **anvio.K('pan-graph-db', {'required': False}))
     groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
 
     groupB = parser.add_argument_group('OPTIONAL INPUT', "By default, this program will read the pan graph data from the pan-db tables. However, "
                                 "you can also provide it with a JSON file that you have generated previously, in which case the program will skip "
                                 "attempting to read anything from the pan-db and will use the input file to initialize an interface.")
-    groupB.add_argument(*anvio.A('pan-graph-json'), **anvio.K('pan-graph-json'))
 
     groupC = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
     groupC.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))

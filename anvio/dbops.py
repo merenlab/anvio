@@ -57,6 +57,8 @@ from anvio.tables.kmers import KMerTablesForContigsAndSplits
 from anvio.tables.genelevelcoverages import TableForGeneLevelCoverages
 from anvio.tables.contigsplitinfo import TableForContigsInfo, TableForSplitsInfo
 
+from anvio.pangenomegraphmaster import PangenomeGraphManager
+
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
@@ -3418,7 +3420,7 @@ class PanGraphSuperclass(object):
             'edges': {data['name']: {'source': edge_i, 'target': edge_j, **data} for edge_i, edge_j, data in self.pangenome_graph.graph.edges(data=True)}
         }
 
-        return(json.dumps(export_dict, indent=2))
+        return json.dumps(export_dict, indent=2)
 
 
 class ProfileSuperclass(object):
