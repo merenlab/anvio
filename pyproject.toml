@@ -77,10 +77,13 @@ dependencies = [
     "reportlab",
     "pymupdf",
     "jupyterlab",
-    "jupyter-resource-usage",
     "jupyterlab-git",
-    "jupyter-collaboration",
     "jupyterlab-lsp",
+    "jupyterlab-latex",
+    "jupyter-resource-usage",
+    "jupyter-collaboration",
+    "jupyterlab-chat",
+    "jupyter-ai[all]",
     "python-lsp-server[all]"
 ]
 
