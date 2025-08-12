@@ -832,7 +832,7 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
   var enabled = []
   var genome_size = genomes.length;
 
-  var order = newick_to_order(data['meta']['tree']).reverse()
+  var order = newick_to_order(data['meta']['newick']).reverse()
 
   max_dist = 0
   item_order = []
@@ -1172,27 +1172,27 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
 
             if (draw !== "") {
 
-              var bended_edge = '<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y
+              var route_edge = '<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y
 
-              if (edge['bended'].length == 0){
+              if (edge['route'].length == 0){
                 if (linear == 0){
                   if (i_y == j_y) {
-                    bended_edge += ' A ' + i_y_size  + ' ' + j_y_size + ' 0 0 0 ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
+                    route_edge += ' A ' + i_y_size  + ' ' + j_y_size + ' 0 0 0 ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
                   } else {
-                    bended_edge += ' L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
+                    route_edge += ' L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
                   }
                 } else {
-                  bended_edge += ' L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
+                  route_edge += ' L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
                 }
 
               } else {
 
                 var o_y = i_y
 
-                for(var n in edge['bended']) {
+                for(var n in edge['route']) {
 
-                  var n_x = edge['bended'][n][0]
-                  var n_y = edge['bended'][n][1]
+                  var n_x = edge['route'][n][0]
+                  var n_y = edge['route'][n][1]
 
                   if (e == genomes.length) {
                     var o_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + o_y * node_distance_y
@@ -1210,12 +1210,12 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
 
                   if (o_y == n_y) {
                     if (linear == 0){
-                      bended_edge += 'A ' + o_y_size  + ' ' + n_y_size + ' 0 0 0 ' + circle_n_x + ' ' + circle_n_y
+                      route_edge += 'A ' + o_y_size  + ' ' + n_y_size + ' 0 0 0 ' + circle_n_x + ' ' + circle_n_y
                     } else {
-                      bended_edge += 'L ' + circle_n_x + ' ' + circle_n_y
+                      route_edge += 'L ' + circle_n_x + ' ' + circle_n_y
                     }
                   } else {
-                    bended_edge += 'L ' + circle_n_x + ' ' + circle_n_y
+                    route_edge += 'L ' + circle_n_x + ' ' + circle_n_y
                   }
           
                   var o_y = n_y
@@ -1223,22 +1223,22 @@ function generate_svg(data, nodes, genomes, global_x, global_y, edges, layers, l
 
                 if (o_y == j_y) {
                   if (linear == 0){
-                    bended_edge += 'A ' + o_y_size  + ' ' + j_y_size + ' 0 0 0 ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
+                    route_edge += 'A ' + o_y_size  + ' ' + j_y_size + ' 0 0 0 ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
                   } else {
-                    bended_edge += 'L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
+                    route_edge += 'L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
                   }
                 } else {
-                  bended_edge += 'L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
+                  route_edge += 'L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
                 }
               }
 
               if (e == genomes.length) {
                 svg_edges.push(
-                  $(bended_edge)
+                  $(route_edge)
                 )
               } else {
                 svg_genome_tracks[genomes[e]].push(
-                  $(bended_edge)
+                  $(route_edge)
                 )
               }
             }
@@ -1600,6 +1600,8 @@ function defineVariables(data) {
 
   // var layers = new Set();
   var layers = data['meta']['layers']
+  layers = layers.filter(item => item !== 'backbone')
+
   var layers_min = new Object();
   var layers_max = new Object();
   // var groups = new Set();
@@ -1646,11 +1648,11 @@ function defineVariables(data) {
 
   for(var e in all_edges) {
     var edge = all_edges[e];
-    var bended = edge['bended']
-    if (bended.length > 0 && edge['active'] == true) {
-      for (var b in bended) {
-        var x = bended[b][0]
-        var y = bended[b][1]
+    var route = edge['route']
+    if (route.length > 0 && edge['active'] == true) {
+      for (var b in route) {
+        var x = route[b][0]
+        var y = route[b][1]
         global_y = y < global_y ? global_y : y
       }
     }
@@ -1694,6 +1696,8 @@ $(document).ready(function() {
     },
     success: function(data){
       console.log('Successfully load JSON data.')
+
+      console.log(data)
 
       //ANCHOR - UI FUNCTIONS
 
@@ -1786,7 +1790,7 @@ $(document).ready(function() {
         }
       }
 
-      for (var [setting, value] of Object.entries(data['states'][state])) {
+      for (var [setting, value] of Object.entries(data['states'])) {
         if (typeof value === 'number') {
           $('#' + setting)[0].value = value 
         } else if (value == true || value == false) {
@@ -1796,7 +1800,7 @@ $(document).ready(function() {
         }
       }
 
-      functional_annotation_sources_available = data['meta']['functions'];
+      functional_annotation_sources_available = data['meta']['gene_function_sources'];
       $('#searchSources').empty()
       for (var annotation_source of functional_annotation_sources_available){
         $('#searchSources').append(
@@ -2130,11 +2134,11 @@ $(document).ready(function() {
         downloadBlob(blob, title + ".fa");
       });
 
-      old_data['condtr'] = data['states'][state]['condtr']
-      old_data['maxlength'] = data['states'][state]['maxlength']
-      old_data['groupcompress'] = data['states'][state]['groupcompress']
-      // old_data['ungroupfrom'] = data['states'][state]['ungroupfrom']
-      // old_data['ungroupto'] = data['states'][state]['ungroupto']
+      old_data['condtr'] = data['states']['condtr']
+      old_data['maxlength'] = data['states']['maxlength']
+      old_data['groupcompress'] = data['states']['groupcompress']
+      // old_data['ungroupfrom'] = data['states']['ungroupfrom']
+      // old_data['ungroupto'] = data['states']['ungroupto']
       old_data['state'] = data['meta']['state']
 
       var end = new Date().getTime();

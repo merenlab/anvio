@@ -53,11 +53,13 @@ from anvio.tables.genecalls import TablesForGeneCalls
 from anvio.tables.ntpositions import TableForNtPositions
 from anvio.tables.miscdata import TableForItemAdditionalData
 from anvio.tables.miscdata import TableForLayerAdditionalData
+from anvio.tables.miscdata import TableForLayerOrders
 from anvio.tables.kmers import KMerTablesForContigsAndSplits
 from anvio.tables.genelevelcoverages import TableForGeneLevelCoverages
 from anvio.tables.contigsplitinfo import TableForContigsInfo, TableForSplitsInfo
 
 from anvio.pangenomegraphmaster import PangenomeGraphManager
+from anvio.topologicallayout import TopologicalLayout
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
@@ -1885,7 +1887,7 @@ class PanSuperclass(object):
         if not self.gene_cluster_names:
             raise ConfigError("You seem to have no gene clusters in this pan database :/ This is weird,\
                                sad, and curious at the same time. Probably you will have to go back to\
-                               previous outputs of your worklow to make sure everything worked out properly.")
+                               previous outputs of your workflow to make sure everything worked out properly.")
 
         pan_db.disconnect()
 
@@ -3297,8 +3299,12 @@ class PanGraphSuperclass(object):
         self.views = {}
         self.collection_profile = {}
 
-        self.items_additional_data_dict = None
-        self.items_additional_data_keys = None
+        # self.items_additional_data_dict = None
+        # self.items_additional_data_keys = None
+
+        args = argparse.Namespace(pan_or_profile_db=self.pan_graph_db_path, target_data_table="items")
+        items_additional_data = TableForItemAdditionalData(args)
+        self.items_additional_data_keys, self.items_additional_data_dict = items_additional_data.get()
 
         # k = TableForItemAdditionalData(self.args).get_available_data_keys()
         # self.functional_homogeneity_info_is_available = 'functional_homogeneity_index' in k
@@ -3331,12 +3337,16 @@ class PanGraphSuperclass(object):
         self.p_meta = pan_graph_db.meta
 
         self.p_meta['creation_date'] = utils.get_time_to_date(self.p_meta['creation_date']) if 'creation_date' in self.p_meta else 'unknown'
-        self.p_meta['num_genomes'] = len(self.p_meta['genome_names'].split(','))
-
+        self.p_meta['genome_names'] = self.p_meta['genome_names'].split(',')
         self.genome_names = self.p_meta['genome_names']
+        self.p_meta['num_genomes'] = len(self.genome_names)
+        self.p_meta['layers'] = self.items_additional_data_keys
+        self.p_meta['newick'] = ''
+
         self.nodes = pan_graph_db.db.get_table_as_dict(t.pan_graph_nodes_table_name)
         self.edges = pan_graph_db.db.get_table_as_dict(t.pan_graph_edges_table_name)
         self.states = pan_graph_db.db.get_table_as_dict(t.states_table_name)
+
         self.pangenome_graph = PangenomeGraphManager()
 
         for node, data in self.nodes.items():
@@ -3346,7 +3356,7 @@ class PanGraphSuperclass(object):
                 'gene_calls': json.loads(data['gene_calls_json']),
                 'type': data['node_type'],
                 'group': '',
-                'layer': {},
+                'layer': self.items_additional_data_dict[node],
                 'alignment': json.loads(data['alignment_summary'])
             }
             self.pangenome_graph.graph.add_node(node, **graph_data)
@@ -3369,7 +3379,7 @@ class PanGraphSuperclass(object):
         if not self.synteny_gene_cluster_names:
             raise ConfigError("You seem to have no synteny gene clusters in this pan database :/ This is weird,\
                                sad, and curious at the same time. Probably you will have to go back to\
-                               previous outputs of your worklow to make sure everything worked out properly.")
+                               previous outputs of your workflow to make sure everything worked out properly.")
 
         pan_graph_db.disconnect()
 
@@ -3381,7 +3391,7 @@ class PanGraphSuperclass(object):
         if self.genomes_storage_path:
             self.genomes_storage = genomestorage.GenomeStorage(self.genomes_storage_path,
                                                                self.p_meta['genomes_storage_hash'],
-                                                               genome_names_to_focus=self.p_meta['genome_names'].split(','),
+                                                               genome_names_to_focus=self.p_meta['genome_names'],
                                                                skip_init_functions=self.skip_init_functions,
                                                                run=self.run,
                                                                progress=self.progress)
@@ -3394,9 +3404,20 @@ class PanGraphSuperclass(object):
         self.run.info('Pan Graph DB', 'Initialized: %s (v. %s)' % (self.pan_graph_db_path, anvio.__pan__version__))
 
 
-    def load_state(self):
+    def load_state(self, state='default', order='default'):
 
-        state_dict = json.loads(self.states[graph.p_meta['state']]['content'])
+        args = argparse.Namespace(pan_or_profile_db=self.pan_graph_db_path, target_data_table="layer_orders")
+        items_layer_order = TableForLayerOrders(args)
+
+        order_dict = items_layer_order.get()[order]
+        if 'newick' in order_dict:
+            self.p_meta['newick'] = order_dict['newick']
+        else:
+            # FIXME
+            pass
+
+        state_dict = json.loads(self.states[state]['content'])
+        self.p_meta['state'] = state
 
         gene_cluster_grouping_threshold = state_dict['condtr']
         max_edge_length_filter = state_dict['maxlength']

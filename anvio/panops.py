@@ -1790,12 +1790,17 @@ class PangenomeGraph():
             decisison_making[genome] = factor
             factor /= 2
 
-        add_layers = False
+        import_values_found = []
         if self.import_values:
-            if set(self.import_values).issubset(self.pangenome_data_df.columns) and set(self.pangenome_data_df[self.import_values].dtypes.astype(str).values.tolist()).issubset(['int64', 'float64']):
-                self.run.info_single(f"Entries {', '.join(self.import_values)} will be added as optional layers.")
-                add_layers = True
+            for value in self.import_values:
+                if value in self.pangenome_data_df.columns and self.pangenome_data_df.dtypes[value] in ['int64', 'float64']:
+                    import_values_found += [value]
+                    self.run.info_single(f"Column {value} will be added as layer.")
+                else:
+                    self.run.info_single(f"Column {value} not found in the pangenome.")
 
+        self.import_values = import_values_found
+        
         number_gene_calls = {}
         for genome, genome_group in self.pangenome_data_df.groupby(["genome"]):
             extra_connections = []
@@ -1829,14 +1834,14 @@ class PangenomeGraph():
                                 'gene_cluster': gene_cluster_i,
                                 'gene_calls': {genome: gene_caller_id_i},
                                 'type': syn_cluster_type_i,
-                                'layer': group[self.import_values].loc[index_i].to_dict() if add_layers else {}
+                                'layer': group[self.import_values].loc[index_i].to_dict() if self.import_values else {}
                             }
 
                             node_attributes_j = {
                                 'gene_cluster': gene_cluster_j,
                                 'gene_calls': {genome: gene_caller_id_j},
                                 'type': syn_cluster_type_j,
-                                'layer': group[self.import_values].loc[index_j].to_dict() if add_layers else {}
+                                'layer': group[self.import_values].loc[index_j].to_dict() if self.import_values else {}
                             }
 
                             edge_attributes = {
@@ -1855,7 +1860,7 @@ class PangenomeGraph():
                             'gene_cluster': gene_cluster_i,
                             'gene_calls':{genome: gene_caller_id_i},
                             'type': syn_cluster_type_i,
-                            'layer': group[self.import_values].loc[index_i].to_dict() if add_layers else {}
+                            'layer': group[self.import_values].loc[index_i].to_dict() if self.import_values else {}
                         }
 
                         self.pangenome_graph.add_node_to_graph(syn_cluster_i, node_attributes_i)
