@@ -22,7 +22,7 @@ anvi-run-workflow -w ecophylo \
                   --get-default-config config.json
 {{ codestop }}
 
-- %(hmm-list)s: This file designates which HMM should be used to extract the target gene from your %(contigs-db)s. Please note that the ecophylo workflow can only process one gene family at a time i.e. %(hmm-list)s can only contain one HMM. If you would like to process multiple gene families from the same input assemblies then you will need to re-run the workflow with a separate %(hmm-list)s.
+- %(hmm-list)s: This file designates which HMMs should be used to extract the target genes from your %(contigs-db)s. It should contain the name of the gene of interest, the HMM source and whether it is coming from an internal HMM collection or a user-provided. You can have as many input genes as you want and you will get as many EcoPhylo outputs. Optionally, you can add a column called 'group' and each entry with the same group will be merged at the clustering level. This option is only valid if you want to combine the output of multiple HMMs in a meaningful fashion, use it with caution.
 - %(metagenomes)s and/or %(external-genomes)s: These files hold the assemblies where you are looking for the target gene. Genomes in %(external-genomes)s can be reference genomes, [SAGs](https://anvio.org/vocabulary/#single-amplified-genome-sag), and/or [MAGs](https://anvio.org/vocabulary/#metagenome-assembled-genome-mag).
 
 ## A quick tour of the output directory structure
