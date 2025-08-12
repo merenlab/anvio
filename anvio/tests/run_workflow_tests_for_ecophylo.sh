@@ -83,7 +83,8 @@ INFO "Running ecophylo workflow interactive (profile-mode)"
 HMM=`awk 'NR==2{print $2 "_" $1}' hmm_list.txt`
 echo $HMM
 anvi-interactive -c ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/03_CONTIGS/${HMM}-contigs.db \
-                 -p ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED/${HMM}/PROFILE.db
+                 -p ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED/${HMM}/PROFILE.db \
+                 $dry_run_controller
 
 rm -rf $output_dir/workflow_test/ECOPHYLO_WORKFLOW/
 
@@ -109,7 +110,8 @@ anvi-run-workflow -w ecophylo -c no-samples-txt-config.json
 INFO "Running ecophylo workflow interactive (tree-mode)"
 anvi-interactive -t ECOPHYLO_WORKFLOW/05_TREES/${HMM}/${HMM}_renamed.nwk \
                  -p ECOPHYLO_WORKFLOW/05_TREES/${HMM}/${HMM}-PROFILE.db \
-                 --manual
+                 --manual \
+                 $dry_run_controller
 
 rm -rf $output_dir/workflow_test/ECOPHYLO_WORKFLOW/
 
@@ -119,7 +121,8 @@ anvi-run-workflow -w ecophylo -c no-samples-only-external-genomes-txt-config.jso
 INFO "Running ecophylo workflow interactive from external HMM (tree-mode)"
 anvi-interactive -t ECOPHYLO_WORKFLOW/05_TREES/${HMM}/${HMM}_renamed.nwk \
                  -p ECOPHYLO_WORKFLOW/05_TREES/${HMM}/${HMM}-PROFILE.db \
-                 --manual
+                 --manual \
+                 $dry_run_controller
 
 rm -rf $output_dir/workflow_test/ECOPHYLO_WORKFLOW/
 
@@ -129,5 +132,6 @@ anvi-run-workflow -w ecophylo -c merge-by-group-config.json
 INFO "Running ecophylo workflow interactive (merge by group - profile mode)"
 GROUP=`awk 'NR==2{print $4}' hmm_list_group.txt`
 anvi-interactive -c ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/03_CONTIGS/${GROUP}-contigs.db \
-                 -p ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED/${GROUP}/PROFILE.db
+                 -p ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED/${GROUP}/PROFILE.db \
+                 $dry_run_controller
 
