@@ -38,14 +38,38 @@ $ tree ECOPHYLO_WORKFLOW -L 1
 ├── 04_SEQUENCE_STATS
 ├── 05_TREES
 ├── 06_MISC_DATA
-├── METAGENOMICS_WORKFLOW
+└── METAGENOMICS_WORKFLOW
 ```
 
 Let's dive into some key intermediate files!
 
 `01_REFERENCE_PROTEIN_DATA/`
 
-This directory contains data extracted from each individual %(contigs-db)s the user provides via the %(external-genomes)s and/or %(metagenomes)s files. (The wide part of the funnel)
+This directory contains data extracted from each individual %(contigs-db)s the user provides via the %(external-genomes)s and/or %(metagenomes)s files. (The wide part of the funnel). The directory structure is as follow:
+
+```
+01_REFERENCE_PROTEIN_DATA/
+└── ASSEMBLY
+    ├── HMM_SOURCE
+    │   └── PROTEIN
+    │       ├── ASSEMBLY-PROTEIN-external_gene_calls_renamed.tsv
+    │       ├── ASSEMBLY-PROTEIN-external_gene_calls.tsv
+    │       ├── ASSEMBLY-PROTEIN-hmm_hits_renamed.faa
+    │       ├── ASSEMBLY-PROTEIN-hmm_hits_renamed.fna
+    │       ├── ASSEMBLY-PROTEIN-hmm_hits.faa
+    │       ├── ASSEMBLY-PROTEIN-hmm_hits.fna
+    │       ├── ASSEMBLY-PROTEIN-orfs.fna
+    │       ├── ASSEMBLY-PROTEIN-processed.done
+    │       ├── ASSEMBLY-PROTEIN-reformat_report_AA.txt
+    │       └── ASSEMBLY-PROTEIN-reformat_report_nt.txt
+    └── HMM_SOURCE-dom-hmmsearch
+        ├── contigs-hmmsearch.done
+        ├── hmm_hits_filtered.txt
+        ├── hmm_hits.txt
+        ├── hmm.domtable
+        ├── hmm.table
+        └── hmm.table.fixed
+```
 
 - `ASSEMBLY-PROTEIN-external_gene_calls.tsv`: %(external-gene-calls)s for each open reading frame in the analyzed %(contigs-db)s
 - `ASSEMBLY-PROTEIN-external_gene_calls_renamed.tsv`: %(external-gene-calls)s renamed and subsetted for target protein
@@ -61,28 +85,62 @@ This directory contains data extracted from each individual %(contigs-db)s the u
 
 `02_NR_FASTAS/`
 
-This directory is where all the data from individual %(contigs-db)s is combined and contains all the protein family clustering information from the workflow. (The narrow part of the funnel)
+This directory is where all the data from individual %(contigs-db)s is combined and contains all the protein family clustering information from the workflow. (The narrow part of the funnel):
 
-- `PROTEIN-all.faa` and `PROTEIN-all.fna` contains ALL the amino acid and nucleotide sequences that made it past the initial filtering steps and will be clustered
-- `PROTEIN-mmseqs_NR_cluster.tsv`: mmseqs cluster output file. VERY helpful for looking inside clusters (column 1: representative sequence; column 2: cluster member)
-- `PROTEIN-references_for_mapping_NT.fa`: Input ORFs used for the metagenomics workflow
-- `PROTEIN-AA_subset.fa`: translated sequences from `PROTEIN-references_for_mapping_NT.fa`
-- `PROTEIN-external_gene_calls_all.tsv`: external-gene calls file for `PROTEIN-references_for_mapping_NT.fa`
+```
+02_NR_FASTAS/
+└── HMM_SOURCE_PROTEIN
+    ├── HMM_SOURCE_PROTEIN-AA_subset.fa
+    ├── HMM_SOURCE_PROTEIN-all.faa
+    ├── HMM_SOURCE_PROTEIN-all.fna
+    ├── HMM_SOURCE_PROTEIN-combine_sequence_data.done
+    ├── HMM_SOURCE_PROTEIN-external_gene_calls_all.tsv
+    ├── HMM_SOURCE_PROTEIN-external_gene_calls_subset.tsv
+    ├── HMM_SOURCE_PROTEIN-headers.tmp
+    ├── HMM_SOURCE_PROTEIN-mmseqs_NR_all_seqs.fasta
+    ├── HMM_SOURCE_PROTEIN-mmseqs_NR_cluster.done
+    ├── HMM_SOURCE_PROTEIN-mmseqs_NR_cluster.tsv
+    ├── HMM_SOURCE_PROTEIN-mmseqs_NR_rep_seq.fasta
+    ├── HMM_SOURCE_PROTEIN-references_for_mapping_NT.fa
+    └── HMM_SOURCE_PROTEIN-reformat-report-all.txt
+```
+
+- `HMM_SOURCE_PROTEIN-all.faa` and `HMM_SOURCE_PROTEIN-all.fna` contains ALL the amino acid and nucleotide sequences that made it past the initial filtering steps and will be clustered
+- `HMM_SOURCE_PROTEIN-mmseqs_NR_cluster.tsv`: mmseqs cluster output file. VERY helpful for looking inside clusters (column 1: representative sequence; column 2: cluster member)
+- `HMM_SOURCE_PROTEIN-references_for_mapping_NT.fa`: Input ORFs used for the metagenomics workflow
+- `HMM_SOURCE_PROTEIN-AA_subset.fa`: translated sequences from `HMM_SOURCE_PROTEIN-references_for_mapping_NT.fa`
+- `HMM_SOURCE_PROTEIN-external_gene_calls_all.tsv`: external-gene calls file for `HMM_SOURCE_PROTEIN-references_for_mapping_NT.fa`
 
 `03_MSA/`
 
 This directory contains all the intermediate files from multiple sequences alignment steps.
 
-- `PROTEIN-aligned.fa`: raw output from MSA
-- `PROTEIN_aligned_trimmed.fa`: trimmed MSA from `trimal`
-- `PROTEIN_aligned_trimmed_filtered.fa`: subsetted MSA removing sequences with x > 50%% gaps
-- `PROTEIN_gaps_counts.tsv`: Table counting number of gaps per sequence in MSA
+```
+03_MSA/
+└── HMM_SOURCE_PROTEIN
+    ├── HMM_SOURCE_PROTEIN_aligned_trimmed_filtered.fa
+    ├── HMM_SOURCE_PROTEIN_aligned_trimmed.fa
+    ├── HMM_SOURCE_PROTEIN_gaps_counts.tsv
+    ├── HMM_SOURCE_PROTEIN_headers.tmp
+    └── HMM_SOURCE_PROTEIN-aligned.fa
+```
+
+- `HMM_SOURCE_PROTEIN-aligned.fa`: raw output from MSA
+- `HMM_SOURCE_PROTEIN_aligned_trimmed.fa`: trimmed MSA from `trimal`
+- `HMM_SOURCE_PROTEIN_aligned_trimmed_filtered.fa`: subsetted MSA removing sequences with x > 50%% gaps
+- `HMM_SOURCE_PROTEIN_gaps_counts.tsv`: Table counting number of gaps per sequence in MSA
 
 `04_SEQUENCE_STATS/`
 
 This directory contains information regarding the number of sequences filtered at various steps of the workflow.
 
-`PROTEIN_stats.tsv`: tracks number of sequences filtered at different steps of the workflow. Here are definitions for each rule:
+```
+04_SEQUENCE_STATS/
+└── HMM_SOURCE_PROTEIN
+    └── HMM_SOURCE_PROTEIN_stats.tsv
+```
+
+`HMM_SOURCE_PROTEIN_stats.tsv`: tracks number of sequences filtered at different steps of the workflow. Here are definitions for each rule:
 
  - `combine_sequence_data`: total number of sequences before clustering
  - `cluster_X_percent_sim_mmseqs`: number of cluster representative sequences
@@ -94,22 +152,42 @@ This directory contains information regarding the number of sequences filtered a
 
 Here we have all things phylogenetics in the workflow.
 
-- `PROTEIN-PROFILE.db`:
-- `PROTEIN.nwk`: PROTEIN phylogenetic tree
-- `PROTEIN_renamed.faa`:renamed PROTEIN phylogenetic tree fasta file
-- `PROTEIN_renamed.nwk`: renamed PROTEIN phylogenetic tree to be imported in Metagenomics workflow merged profile
-- `PROTEIN_renamed_all.faa`: renamed fasta file with ALL proteins
+```
+05_TREES/
+└── HMM_SOURCE_PROTEIN
+    ├── HMM_SOURCE_PROTEIN_combined.done
+    ├── HMM_SOURCE_PROTEIN_renamed_all.faa
+    ├── HMM_SOURCE_PROTEIN_renamed.faa
+    ├── HMM_SOURCE_PROTEIN_renamed.nwk
+    ├── HMM_SOURCE_PROTEIN-tree.done
+    └── HMM_SOURCE_PROTEIN.nwk
+```
+
+- `HMM_SOURCE_PROTEIN-PROFILE.db`:
+- `HMM_SOURCE_PROTEIN.nwk`: PROTEIN phylogenetic tree
+- `HMM_SOURCE_PROTEIN_renamed.faa`:renamed PROTEIN phylogenetic tree fasta file
+- `HMM_SOURCE_PROTEIN_renamed.nwk`: renamed PROTEIN phylogenetic tree to be imported in Metagenomics workflow merged profile
+- `HMM_SOURCE_PROTEIN_renamed_all.faa`: renamed fasta file with ALL proteins
 
 `06_MISC_DATA/`
 
 This directory contains miscellaneous data created from the flow to help you interpret the phylogeography of your target PROTEIN.
 
-- `PROTEIN_misc.tsv`: This file contains basic information about each representative sequence in the workflow including: 
+```
+06_MISC_DATA/
+└── HMM_SOURCE_PROTEIN
+    ├── anvi_estimate_scg_taxonomy_for_SCGs.done
+    ├── HMM_SOURCE_PROTEIN_estimate_scg_taxonomy_results-RAW-LONG-FORMAT.txt
+    ├── HMM_SOURCE_PROTEIN_misc.tsv
+    └── HMM_SOURCE_PROTEIN_scg_taxonomy_data.tsv
+```
+
+- `HMM_SOURCE_PROTEIN_misc.tsv`: This file contains basic information about each representative sequence in the workflow including: 
   - contigs_db_type: genome or metagenomic assembly
   - genomic_seq_in_cluster: YES/NO a sequence that originate from an input genome is in the cluster
   - cluster_size: number of sequences in mmseqs cluster
 
-`PROTEIN_scg_taxonomy_data.tsv` and `PROTEIN_estimate_scg_taxonomy_results-RAW-LONG-FORMAT.txt` are the output of %(anvi-estimate-scg-taxonomy)s and will only be there if you are explore the phylogeography of a compatible single-copy core gene
+`HMM_SOURCE_PROTEIN_scg_taxonomy_data.tsv` and `HMM_SOURCE_PROTEIN_estimate_scg_taxonomy_results-RAW-LONG-FORMAT.txt` are the output of %(anvi-estimate-scg-taxonomy)s and will only be there if you are explore the phylogeography of a compatible single-copy core gene
 
 `METAGENOMICS_WORKFLOW/`
 
