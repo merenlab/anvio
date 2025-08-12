@@ -12,29 +12,10 @@ __license__ = "GPL 3.0"
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 
-
-contigs_db_version = "24"
-profile_db_version = "40"
-genes_db_version = "6"
-pan_db_version = "21"
-auxiliary_data_version = "2"
-structure_db_version = "2"
-genomes_storage_vesion = "7"
-trnaseq_db_version = "2"
-workflow_config_version = "3"
-metabolic_modules_db_version = "4"
-
-versions_for_db_types = {'contigs': contigs_db_version,
-                         'profile': profile_db_version,
-                         'genes': genes_db_version,
-                         'structure': structure_db_version,
-                         'pan': pan_db_version,
-                         'genomestorage': genomes_storage_vesion,
-                         'auxiliary data for coverages': auxiliary_data_version,
-                         'trnaseq': trnaseq_db_version,
-                         'config': workflow_config_version,
-                         'modules': metabolic_modules_db_version}
-
+####################################################################################################
+# EXTREMELY IMPORTANT NOTE: If you need to change the version number of any anvi'o database
+# due to changes in the table structure, you need to visit the file `anvio/versions.py `
+####################################################################################################
 
 ####################################################################################################
 #
@@ -472,6 +453,7 @@ table_requires_unique_entry_id = {'self': False,
                                   trnaseq_trimmed_table_name: False,
                                   trnaseq_normalized_table_name: False,
                                   trnaseq_modified_table_name: False,
+                                  'a_test_table_that_may_or_may_not_be_there': False, # for weird programmers to be able to test weird things..
         }
 
 

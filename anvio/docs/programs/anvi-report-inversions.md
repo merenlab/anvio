@@ -133,7 +133,7 @@ For every inversion, anvi'o can report the surrounding genes and their function 
 
 You can use the flag `--num-genes-to-consider-in-context` to choose how many genes to consider upstream/downstream of the inversion. By default, anvi'o report three genes downstream, and three genes upstream.
 
-To select a specific gene caller, you can use `--gene-caller`. The default is prodigal.
+To select a specific gene caller, you can use `--gene-caller`. The default is pyrodigal-gv.
 
 If you want to skip this step, you can use the flag `--skip-recovering-genomic-context`.
 

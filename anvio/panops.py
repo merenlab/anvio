@@ -112,6 +112,7 @@ class RarefactionAnalysis:
                 self.run.info("Output file prefix", self.output_file_prefix, mc='green')
             else:
                 self.run.info("Output file prefix", f"{self.pan_project_name} (automatically set by anvi'o)", mc="cyan")
+                self.output_file_prefix = self.pan_project_name
 
         # output file paths -- whether they will be used or not
         J = lambda x: None if self.skip_output_files else os.path.join(self.output_file_prefix.rstrip('/') + '-' + x)

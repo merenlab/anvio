@@ -184,7 +184,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
         gene_caller_to_use = self.get_param_value_from_config(['gene_caller_to_use'])
         if not gene_caller_to_use:
-            gene_caller_to_use = constants.default_gene_caller
+            gene_caller_to_use = constants.default_gene_callers[-1]
 
         sanity_checked_metagenomes_file = os.path.join(self.dirs_dict['HOME'], "sanity_checked_metagenomes.txt")
         sanity_checked_genomes_file = os.path.join(self.dirs_dict['HOME'], "sanity_checked_genomes.txt")

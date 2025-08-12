@@ -2,7 +2,7 @@ This program **downloads and organizes a local copy of the data from [dbCAN2 CAZ
 
 ### Set up cazymes data
 
-anvi'o will download the newest version of the database (V11) by default:
+anvi'o will download the newest version of the database (V13) by default:
 
 {{ codestart }}
 anvi-setup-cazymes 
@@ -11,7 +11,7 @@ anvi-setup-cazymes
 You can use `--cazyme-version`, if you want anvi'o to download a different version of the [dbCAN2 CAZyme HMMs](https://bcb.unl.edu/dbCAN2/download/Databases/) database:
 
 {:.warning}
-The following versions have been tested for download: V9, V10, V11
+The following versions have been tested for download: V9-13
 
 {{ codestart }}
 anvi-setup-cazymes --cazyme-version V10
