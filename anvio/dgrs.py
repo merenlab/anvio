@@ -1617,7 +1617,7 @@ class DGR_Finder:
         headers = [
             "DGR", "VR", "VR_contig", "VR_frame", "VR_sequence", "Midline",
             "VR_start_position", "VR_end_position", "VR_bin", "Mismatch %",
-            "TR_contig", "TR_frame", "TR_sequence", "Base", "Reverse Complement",
+            "TR_contig", "TR_frame", "TR_sequence", "Base", "TR_Reverse Complement",
             "TR_start_position", "TR_end_position", "TR_bin", "TR_in_gene", "HMM_source",
             "distance_to_HMM", "HMM_gene_name", "HMM_direction", "HMM_start",
             "HMM_stop", "HMM_gene_callers_id", "DGR_looks_snv_false", "snv_at_3_codon_over_a_third",
