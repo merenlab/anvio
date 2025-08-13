@@ -830,7 +830,7 @@ class DGR_Finder:
                                         self.run.warning(f"Removing the DGR with its VR on this contig: {qseq} and TR on this contig: {hseq}. Found imperfect tandem repeat in the query sequence {seq} with repeat count {atr1.repeat} and motif {atr1.motif}")
 
                             #look for tandem homopolymers and 2 base short tandem repeats that are over 4 (so occur 5 times) times in the sequence
-                            for ssr in pytrf.STRFinder('name', seq, mono=5, di=5):
+                            for ssr in pytrf.STRFinder('name', seq, mono=10, di=5):
                                 #if ((len(ssr.motif) == 1) or (len(ssr.motif) == 2)) and ssr.repeat > 6:
                                 if ssr:
                                     has_repeat = True
