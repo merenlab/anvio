@@ -1686,7 +1686,7 @@ $(document).ready(function() {
   var current_groups = {}
 
   $.ajax({
-    url: "/pangraph/get_json",
+    url: "/pangraph/initial_pangraph_json_data",
     type: "POST",
     cache: false,
     contentType: "application/json",
@@ -1694,11 +1694,10 @@ $(document).ready(function() {
     error: function(){
       console.log('Error while attempting to load JSON data.')
     },
-    success: function(data){
+    success: function(json){
       console.log('Successfully load JSON data.')
-
-      console.log(data)
-
+      data = json['data']
+      // console.log(data)
       //ANCHOR - UI FUNCTIONS
 
       var start = new Date().getTime();
@@ -2194,7 +2193,7 @@ $(document).ready(function() {
     if (reiterate == true) {
 
       $.ajax({
-        url: "/pangraph/settings",
+        url: "/pangraph/rerun_pangraph_json_data",
         type: "POST",
         async: false,
         data: JSON.stringify(new_data),
@@ -2203,14 +2202,14 @@ $(document).ready(function() {
         error: function(){
           console.log('Error while attempting to update JSON data.')
         },
-        success: function(){
+        success: function(json){
           console.log('Successfully updated JSON data.')
         }
       });
     }
 
     $.ajax({
-      url: "/pangraph/get_json",
+      url: "/pangraph/get_pangraph_json_data",
       type: "POST",
       cache: false,
       contentType: "application/json",
@@ -2218,9 +2217,10 @@ $(document).ready(function() {
       error: function(){
         console.log('Error while attempting to load JSON data.')
       },
-      success: function(data){
+      success: function(json){
         console.log('Successfully load JSON data.')
 
+        data = json['data']
         var body = $('#svgbox')
         body.empty()
 

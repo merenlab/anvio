@@ -3342,13 +3342,13 @@ class PanGraphSuperclass(object):
         self.p_meta['num_genomes'] = len(self.genome_names)
         self.p_meta['layers'] = self.items_additional_data_keys
         self.p_meta['newick'] = ''
+        self.p_meta['order'] = ''
 
         self.nodes = pan_graph_db.db.get_table_as_dict(t.pan_graph_nodes_table_name)
         self.edges = pan_graph_db.db.get_table_as_dict(t.pan_graph_edges_table_name)
         self.states = pan_graph_db.db.get_table_as_dict(t.states_table_name)
 
         self.pangenome_graph = PangenomeGraphManager()
-
         for node, data in self.nodes.items():
             graph_data = {
                 'gene_cluster': data['gene_cluster_id'],
@@ -3416,9 +3416,9 @@ class PanGraphSuperclass(object):
             # FIXME
             pass
 
-        state_dict = json.loads(self.states[state]['content'])
+        self.p_meta['order'] = order
         self.p_meta['state'] = state
-
+        state_dict = json.loads(self.states[state]['content'])
         gene_cluster_grouping_threshold = state_dict['condtr']
         max_edge_length_filter = state_dict['maxlength']
         groupcompress = state_dict['groupcompress']
@@ -3434,6 +3434,34 @@ class PanGraphSuperclass(object):
         self.pangenome_graph.set_node_groups(node_groups)
         self.pangenome_graph.cut_edges(max_edge_length_filter)
 
+
+    def rerun_state(self, gene_cluster_grouping_threshold, groupcompress, max_edge_length_filter):
+
+        args = argparse.Namespace(pan_or_profile_db=self.pan_graph_db_path, target_data_table="layer_orders")
+        items_layer_order = TableForLayerOrders(args)
+
+        order_dict = items_layer_order.get()[self.p_meta['order']]
+        if 'newick' in order_dict:
+            self.p_meta['newick'] = order_dict['newick']
+        else:
+            # FIXME
+            pass
+
+        node_positions, edge_positions, node_groups = TopologicalLayout().run_synteny_layout_algorithm(
+            F=self.pangenome_graph.graph,
+            gene_cluster_grouping_threshold=gene_cluster_grouping_threshold,
+            groupcompress=groupcompress,
+        )
+
+        self.pangenome_graph.set_edge_positions(edge_positions)
+        self.pangenome_graph.set_node_positions(node_positions)
+        self.pangenome_graph.set_node_groups(node_groups)
+        self.pangenome_graph.cut_edges(max_edge_length_filter)
+
+
+    def get_json(self):
+
+        state_dict = json.loads(self.states[self.p_meta['state']]['content'])
         export_dict = {
             'meta': self.p_meta,
             'states': state_dict,
@@ -3441,7 +3469,8 @@ class PanGraphSuperclass(object):
             'edges': {data['name']: {'source': edge_i, 'target': edge_j, **data} for edge_i, edge_j, data in self.pangenome_graph.graph.edges(data=True)}
         }
 
-        return json.dumps(export_dict, indent=2)
+        return(export_dict)
+
 
 
 class ProfileSuperclass(object):

@@ -197,12 +197,15 @@ class BottleApplication(Bottle):
         self.route('/data/get_gene_info/<gene_callers_id>',    callback=self.get_gene_info)
         self.route('/data/get_metabolism',                     callback=self.get_metabolism)
         self.route('/data/get_scale_bar',                      callback=self.get_scale_bar, method='POST')
-        self.route('/pangraph/settings',                       callback=self.get_pangraph_settings, method="POST")
-        self.route('/pangraph/get_json',                       callback=self.get_pangraph_json_data, method="POST")
-        self.route('/pangraph/alignment',                      callback=self.get_pangraph_gc_alignment, method="POST")
-        self.route('/pangraph/analyse',                        callback=self.get_pangraph_bin_summary, method="POST")
-        self.route('/pangraph/function',                       callback=self.get_pangraph_gc_function, method="POST")
-        self.route('/pangraph/filter',                         callback=self.get_pangraph_passed_gene_clusters, method="POST")
+        self.route('/pangraph/get_pangraph_json_data',         callback=self.get_pangraph_json_data, method='POST')
+        self.route('/pangraph/initial_pangraph_json_data',     callback=self.initial_pangraph_json_data, method='POST')
+        self.route('/pangraph/rerun_pangraph_json_data',       callback=self.rerun_pangraph_json_data, method='POST')
+        # self.route('/pangraph/settings',                       callback=self.get_pangraph_settings, method="POST")
+        # self.route('/pangraph/get_json',                       callback=self.get_pangraph_json_data, method="POST")
+        # self.route('/pangraph/alignment',                      callback=self.get_pangraph_gc_alignment, method="POST")
+        # self.route('/pangraph/analyse',                        callback=self.get_pangraph_bin_summary, method="POST")
+        # self.route('/pangraph/function',                       callback=self.get_pangraph_gc_function, method="POST")
+        # self.route('/pangraph/filter',                         callback=self.get_pangraph_passed_gene_clusters, method="POST")
 
     def run_application(self, ip, port):
         # check for the wsgi module bottle will use.
@@ -1545,127 +1548,152 @@ class BottleApplication(Bottle):
 
 
     def get_pangraph_json_data(self):
-        return self.interactive.get_pangraph_json()
+        try:
+            data = self.interactive.get_json()
+            return(json.dumps({'status': 0, 'data': data}))
+        except:
+            return(json.dumps({'status': 1, 'data': ''}))
 
 
-    def get_pangraph_bin_summary(self):
-        payload = request.json
-        selection = payload['selection']
-        result = {}
+    def initial_pangraph_json_data(self):
+        try:
+            self.interactive.load_state('default', 'default')
+            data = self.interactive.get_json()
+            return(json.dumps({'status': 0, 'data': data}))
+        except:
+            return(json.dumps({'status': 1, 'data': ''}))
 
-        self.interactive.init_gene_clusters()
-        self.interactive.init_gene_clusters_functions_summary_dict()
+    
+    def rerun_pangraph_json_data(self):
+        try:
+            payload = request.json
+            max_edge_length_filter = payload['maxlength']
+            gene_cluster_grouping_threshold = payload['condtr']
+            groupcompress = payload['groupcompress']
+    
+            self.interactive.rerun_state(gene_cluster_grouping_threshold, groupcompress, max_edge_length_filter)
+            return(json.dumps({'status': 0}))
+        except:
+            return(json.dumps({'status': 1}))
 
-        bin_functions = {}
-        all_functions = []
+    # def get_pangraph_bin_summary(self):
+    #     payload = request.json
+    #     selection = payload['selection']
+    #     result = {}
 
-        for bin in list(payload.keys())[1:]:
+    #     self.interactive.init_gene_clusters()
+    #     self.interactive.init_gene_clusters_functions_summary_dict()
 
-            bin_functions[bin] = []
-            gene_cluster_list = payload[bin]
-            for gene_cluster_name in gene_cluster_list:
-                function = self.interactive.gene_clusters_functions_summary_dict[gene_cluster_name][selection]['function']
+    #     bin_functions = {}
+    #     all_functions = []
 
-                bin_functions[bin].append(function)
-                all_functions.append(function)
+    #     for bin in list(payload.keys())[1:]:
 
-        for function in all_functions:
-            result[function] = {}
-            for bin in bin_functions.keys():
-                if function in bin_functions[bin]:
-                    result[function][bin] = 1
-                else:
-                    result[function][bin] = 0
+    #         bin_functions[bin] = []
+    #         gene_cluster_list = payload[bin]
+    #         for gene_cluster_name in gene_cluster_list:
+    #             function = self.interactive.gene_clusters_functions_summary_dict[gene_cluster_name][selection]['function']
 
-        return json.dumps(result)
+    #             bin_functions[bin].append(function)
+    #             all_functions.append(function)
 
+    #     for function in all_functions:
+    #         result[function] = {}
+    #         for bin in bin_functions.keys():
+    #             if function in bin_functions[bin]:
+    #                 result[function][bin] = 1
+    #             else:
+    #                 result[function][bin] = 0
 
-    def get_pangraph_settings(self):
-        payload = request.json
-        max_edge_length_filter = payload['maxlength']
-        gene_cluster_grouping_threshold = payload['condtr']
-        groupcompress = payload['groupcompress']
-        # ungroupfrom = payload['ungroupfrom']
-        # ungroupto = payload['ungroupto']
-        state = payload['state']
-        pan_graph_json_path = self.interactive.pan_graph_json_path
-
-        args = argparse.Namespace(
-            pan_graph_json=pan_graph_json_path,
-            output_dir = os.path.dirname(pan_graph_json_path),
-            max_edge_length_filter=max_edge_length_filter,
-            gene_cluster_grouping_threshold=gene_cluster_grouping_threshold,
-            grouping_compression=groupcompress,
-            # ungrouping_open = ungroupfrom,
-            # ungrouping_close = ungroupto,
-            load_state = state
-        )
-
-        Pangraph = panops.PangenomeGraphMaster(args)
-        Pangraph.process_pangenome_graph()
-
-        return({'status': 0})
+    #     return json.dumps(result)
 
 
-    def get_pangraph_gc_alignment(self):
-        payload = request.json
-        result = {}
+    # def get_pangraph_settings(self):
+    #     payload = request.json
+    #     max_edge_length_filter = payload['maxlength']
+    #     gene_cluster_grouping_threshold = payload['condtr']
+    #     groupcompress = payload['groupcompress']
+    #     # ungroupfrom = payload['ungroupfrom']
+    #     # ungroupto = payload['ungroupto']
+    #     state = payload['state']
+    #     pan_graph_json_path = self.interactive.pan_graph_json_path
 
-        for genome in payload.keys():
-            genecall, name = payload[genome]
-            gene_cluster_alignment_dict = self.interactive.get_sequences_for_gene_clusters(gene_cluster_names=set([name]), skip_alignments=False, report_DNA_sequences=False)[name]
-            sequence = gene_cluster_alignment_dict[genome][int(genecall)]
+    #     args = argparse.Namespace(
+    #         pan_graph_json=pan_graph_json_path,
+    #         output_dir = os.path.dirname(pan_graph_json_path),
+    #         max_edge_length_filter=max_edge_length_filter,
+    #         gene_cluster_grouping_threshold=gene_cluster_grouping_threshold,
+    #         grouping_compression=groupcompress,
+    #         # ungrouping_open = ungroupfrom,
+    #         # ungrouping_close = ungroupto,
+    #         load_state = state
+    #     )
 
-            result[genome] = [genecall, sequence]
+    #     Pangraph = panops.PangenomeGraphMaster(args)
+    #     Pangraph.process_pangenome_graph()
 
-        return(result)
+    #     return({'status': 0})
 
 
-    def get_pangraph_gc_function(self):
-        payload = request.json
-        result = {}
+    # def get_pangraph_gc_alignment(self):
+    #     payload = request.json
+    #     result = {}
 
-        self.interactive.init_gene_clusters()
-        self.interactive.init_gene_clusters_functions_summary_dict()
+    #     for genome in payload.keys():
+    #         genecall, name = payload[genome]
+    #         gene_cluster_alignment_dict = self.interactive.get_sequences_for_gene_clusters(gene_cluster_names=set([name]), skip_alignments=False, report_DNA_sequences=False)[name]
+    #         sequence = gene_cluster_alignment_dict[genome][int(genecall)]
 
-        gene_cluster_name = payload['genecluster']
+    #         result[genome] = [genecall, sequence]
 
-        for selection in self.interactive.gene_clusters_functions_summary_dict[gene_cluster_name].keys():
-            result[selection] = self.interactive.gene_clusters_functions_summary_dict[gene_cluster_name][selection]
-        return json.dumps(result)
+    #     return(result)
 
-    def get_pangraph_passed_gene_clusters(self):
-        payload = request.json
-        result = {'gene_clusters': []}
 
-        self.interactive.init_gene_clusters()
-        self.interactive.init_gene_clusters_functions_summary_dict()
+    # def get_pangraph_gc_function(self):
+    #     payload = request.json
+    #     result = {}
 
-        functions_dict = self.interactive.gene_clusters_functions_summary_dict
+    #     self.interactive.init_gene_clusters()
+    #     self.interactive.init_gene_clusters_functions_summary_dict()
 
-        for gene_cluster in functions_dict.keys():
-            for selection in payload.keys():
-                if selection in functions_dict[gene_cluster].keys():
-                    for search in payload[selection]:
-                        value = functions_dict[gene_cluster][selection]
+    #     gene_cluster_name = payload['genecluster']
 
-                        accession = value['accession']
-                        func = value['function']
+    #     for selection in self.interactive.gene_clusters_functions_summary_dict[gene_cluster_name].keys():
+    #         result[selection] = self.interactive.gene_clusters_functions_summary_dict[gene_cluster_name][selection]
+    #     return json.dumps(result)
 
-                        if not accession or not func:
-                            accession = ''
-                            func = ''
+    # def get_pangraph_passed_gene_clusters(self):
+    #     payload = request.json
+    #     result = {'gene_clusters': []}
 
-                        if search == '':
+    #     self.interactive.init_gene_clusters()
+    #     self.interactive.init_gene_clusters_functions_summary_dict()
 
-                            # print(search, accession, func)
-                            if search == accession or search == func:
-                                if gene_cluster not in result['gene_clusters']:
-                                    result['gene_clusters'] += [gene_cluster]
+    #     functions_dict = self.interactive.gene_clusters_functions_summary_dict
 
-                        else:
-                            if search.lower() in accession.lower() or search.lower() in func.lower():
-                                if gene_cluster not in result['gene_clusters']:
-                                    result['gene_clusters'] += [gene_cluster]
+    #     for gene_cluster in functions_dict.keys():
+    #         for selection in payload.keys():
+    #             if selection in functions_dict[gene_cluster].keys():
+    #                 for search in payload[selection]:
+    #                     value = functions_dict[gene_cluster][selection]
 
-        return json.dumps(result)
+    #                     accession = value['accession']
+    #                     func = value['function']
+
+    #                     if not accession or not func:
+    #                         accession = ''
+    #                         func = ''
+
+    #                     if search == '':
+
+    #                         # print(search, accession, func)
+    #                         if search == accession or search == func:
+    #                             if gene_cluster not in result['gene_clusters']:
+    #                                 result['gene_clusters'] += [gene_cluster]
+
+    #                     else:
+    #                         if search.lower() in accession.lower() or search.lower() in func.lower():
+    #                             if gene_cluster not in result['gene_clusters']:
+    #                                 result['gene_clusters'] += [gene_cluster]
+
+    #     return json.dumps(result)
