@@ -541,60 +541,34 @@ Command 'set -euo pipefail;  echo Nothing to merge for Ribosomal_S11. This shoul
 
 ### Can I run multiple hmms on the same data?
 
-Yes! But sadly, not at the same time, and anvi'o feels really bad about that :(
+Yes! You can simply add as many entries in the %(hmm-list)s input file. You can have genes from the same HMM source, or from different source. Here is how the output directory looks like for two Ribosomal Proteins from the Archaea_73 and Bacteria_71 HMM source:
 
-To be clear, you can run one complete workflow, then change the path in the `"hmm_list"` parameter in the config file to a different %(hmm-list)s then rerun the workflow on the same data in the same directory. For example, this ecophylo directory contains the outputs of Ribosomal_L16 and Ribosomal_S11 over the same data:
+```
+name	source	path
+Ribosomal_L17	Bacteria_71	INTERNAL
+Ribosomal_L16	Bacteria_71	INTERNAL
+```
 
-```bash
-$ tree ECOPHYLO_WORKFLOW/ -L 2
+The output directory will contains the same overall directory structure and the subdirectories will matches the corresponding HMM source and genes:
 
-ECOPHYLO_WORKFLOW/
+```
 ├── 01_REFERENCE_PROTEIN_DATA
-│   ├── E_facealis_MAG
-│   ├── Enterococcus_faecalis_6240
-│   ├── Enterococcus_faecium_6589
-│   ├── S_aureus_MAG
-│   └── co_assembly
+│   ├── ASSEMBLY_1
+│   └── ASSEBMLY_2
 ├── 02_NR_FASTAS
-│   ├── Ribosomal_L16
-│   └── Ribosomal_S11
+│   ├── Bacteria_71_Ribosomal_L16
+│   └── Bacteria_71_Ribosomal_L17
 ├── 03_MSA
-│   ├── Ribosomal_L16
-│   └── Ribosomal_S11
+│   ├── Bacteria_71_Ribosomal_L16
+│   └── Bacteria_71_Ribosomal_L17
 ├── 04_SEQUENCE_STATS
-│   ├── Ribosomal_L16
-│   └── Ribosomal_S11
+│   └── Bacteria_71_Ribosomal_L16
 ├── 05_TREES
-│   ├── Ribosomal_L16
-│   ├── Ribosomal_L16_combined.done
-│   ├── Ribosomal_S11
-│   └── Ribosomal_S11_combined.done
-├── 06_MISC_DATA
-│   ├── Ribosomal_L16_estimate_scg_taxonomy_results-RAW-LONG-FORMAT.txt
-│   ├── Ribosomal_L16_misc.tsv
-│   ├── Ribosomal_L16_scg_taxonomy_data.tsv
-│   ├── Ribosomal_S11_estimate_scg_taxonomy_results-RAW-LONG-FORMAT.txt
-│   ├── Ribosomal_S11_misc.tsv
-│   └── Ribosomal_S11_scg_taxonomy_data.tsv
-├── METAGENOMICS_WORKFLOW
-│   ├── 00_LOGS
-│   ├── 03_CONTIGS
-│   ├── 04_MAPPING
-│   ├── 05_ANVIO_PROFILE
-│   ├── 06_MERGED
-│   ├── 07_SUMMARY
-│   ├── Ribosomal_L16_ECOPHYLO_WORKFLOW_state.json
-│   ├── Ribosomal_L16_add_default_collection.done
-│   ├── Ribosomal_L16_state_imported_profile.done
-│   ├── Ribosomal_S11_ECOPHYLO_WORKFLOW_state.json
-│   ├── Ribosomal_S11_add_default_collection.done
-│   ├── Ribosomal_S11_state_imported_profile.done
-│   ├── fasta.txt
-│   ├── metagenomics_config.json
-│   ├── metagenomics_workflow.done
-│   └── samples.txt
-├── Ribosomal_L16_anvi_estimate_scg_taxonomy_for_SCGs.done
-├── Ribosomal_S11_anvi_estimate_scg_taxonomy_for_SCGs.done
+│   ├── Bacteria_71_Ribosomal_L16
+│   └── Bacteria_71_Ribosomal_L17
+└── 06_MISC_DATA
+    ├── Bacteria_71_Ribosomal_L16
+    └── Bacteria_71_Ribosomal_L17
 ```
 
 To visualize the results of the different ecophylo runs, just change the paths to include the different proteins:
