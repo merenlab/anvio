@@ -632,7 +632,7 @@ class KeggSetup(KeggContext):
         KeggContext.__init__(self, self.args)
 
         # get KEGG snapshot info for default setup
-        self.target_snapshot = self.kegg_snapshot or 'v2025-02-04'
+        self.target_snapshot = self.kegg_snapshot or 'v2025-08-07'
         self.target_snapshot_yaml = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG-SNAPSHOTS.yaml')
         self.snapshot_dict = utils.get_yaml_as_dict(self.target_snapshot_yaml)
 
@@ -907,7 +907,8 @@ class KeggSetup(KeggContext):
                     f"directory, which is used in pathway visualization: {map_image_data_dir}"
                 )
 
-        if not os.path.isfile(self.kegg_brite_pathways_file):
+        brite_json_file = os.path.join(path_to_kegg_in_archive, os.path.basename(self.kegg_brite_pathways_file))
+        if not os.path.isfile(brite_json_file):
             are_map_files_included = False
             if anvio.DEBUG and not self.skip_map_images:
                 self.run.warning(
@@ -9849,6 +9850,7 @@ class KeggModuleEnrichment(KeggContext):
         self.output_file_path = A('output_file')
         self.include_missing = True if A('include_samples_missing_from_groups_txt') else False
         self.use_stepwise_completeness = A('use_stepwise_completeness')
+        self.qlambda = A('qlambda')
 
         # init the base class
         KeggContext.__init__(self, self.args)
@@ -10108,6 +10110,7 @@ class KeggModuleEnrichment(KeggContext):
         # run the enrichment analysis
         enrichment_stats = utils.run_functional_enrichment_stats(enrichment_input_path,
                                                                  self.output_file_path,
+                                                                 qlambda=self.qlambda,
                                                                  run=self.run,
                                                                  progress=self.progress)
 
