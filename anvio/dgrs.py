@@ -1311,7 +1311,9 @@ class DGR_Finder:
                                         base, is_reverse_complement, query_frame, VR_sequence, subject_frame, subject_genome_start_position, subject_genome_end_position,
                                         subject_contig, midline, percentage_of_mismatches, DGR_looks_snv_false, snv_at_3_codon_over_a_third, mismatch_pos_contig_relative,
                                         snv_VR_positions, numb_of_snv_in_matches_not_mutagen_base, numb_of_mismatches, numb_of_SNVs)
-
+                    else:
+                        if anvio.DEBUG and self.verbose:
+                                        self.run.warning(f"Removing a candidate DGR {sequence_component} with a VR on this contig: {query_contig} and TR here: {subject_contig}. This is the letter: {letter}, count:{count}. This is based on the percentatge of mismatches ({percentage_of_mismatches:.2%}) and or the number of mismatches ({mismatch_length_bp}). Defaults are: percentage_mismatch={self.percentage_mismatch:.2%} and number_of_mismatches={self.number_of_mismatches}.", header="DGR REMOVED", lc='yellow')
         if anvio.DEBUG:
             self.run.warning(f"The temp directory, '{self.temp_dir}', is kept. Don't forget to clean it up later!", header="Debug")
         else:
