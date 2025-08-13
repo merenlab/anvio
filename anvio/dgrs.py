@@ -2226,66 +2226,6 @@ class DGR_Finder:
 
 
 
-    def print_primers_dict_to_csv(self, primers_dict):
-        self.run.info_single("Storing the primers used to calculate VR diversity in 'DGR_Primers_used_for_VR_diversity.csv'.")
-        output_directory_path = self.output_directory
-        output_path= os.path.join(output_directory_path, "DGR_Primers_used_for_VR_diversity.csv")
-
-        if self.skip_primer_variability:
-            ## Define the header for the CSV file
-            csv_header = ['Primer_ID', 'Used_Original_Primer', 'Initial_Primer', 'Anchor_Primer', 'Whole_Primer']
-
-            # Open the CSV file in write mode
-            with open(output_path, mode='w', newline='') as file:
-                writer = csv.writer(file)
-                writer.writerow(csv_header)  # Write the header row
-
-                # Iterate through the dictionary and write each primer's information to the CSV file
-                for primer_name, primer_info in primers_dict.items():
-                    # For skip_primer_variability mode, there's no 'used_original_primer' key
-                    # so we set it to True since we're using original primers
-                    used_original_primer = True
-                    initial_primer = primer_info.get('initial_primer_sequence', '')
-                    anchor_primer = primer_info.get('vr_anchor_primer', '')
-                    whole_primer = primer_info.get('primer_sequence', '')
-
-                    writer.writerow([
-                        primer_name,
-                        used_original_primer,
-                        initial_primer,
-                        anchor_primer,
-                        whole_primer
-                    ])
-        else:
-            primers_dict = self.sample_primers_dict
-            # Define the header for the CSV file
-            csv_header = ['Primer_ID', 'Sample_ID', 'No_SNV_Primer', 'Initial_Primer', 'Anchor_Primer', 'Whole_Primer']
-
-            # Open the CSV file in write mode
-            with open(output_path, mode='w', newline='') as file:
-                writer = csv.writer(file)
-                writer.writerow(csv_header)  # Write the header row
-
-                # Iterate through the dictionary and write each primer's information to the CSV file
-                for primer_name, samples in primers_dict.items():
-                    for sample_id, primer_info in samples.items():
-                        used_original_primer = primer_info['used_original_primer']
-                        initial_primer = primer_info['initial_primer_sequence']
-                        anchor_primer = primer_info['vr_anchor_primer']
-                        whole_primer = primer_info['primer_sequence']
-
-                        writer.writerow([
-                        primer_name,
-                        sample_id,
-                        used_original_primer,
-                        initial_primer,
-                        anchor_primer,
-                        whole_primer
-                        ])
-        return
-
-
-
     def compute_dgr_variability_profiling(self):
         """
         Go back to the raw metagenomic reads to compute the variability profiles of the variable regions
@@ -2304,7 +2244,7 @@ class DGR_Finder:
         =======
 
         """
-        #TODO: Double check if these are already checked in sanity check
+
         if self.skip_compute_DGR_variability_profiling or not self.raw_r1_r2_reads_are_present:
             return
 
@@ -2625,6 +2565,69 @@ class DGR_Finder:
         ######################
         # END MULTITHREADING #
         ######################
+
+
+    def print_primers_dict_to_csv(self, primers_dict):
+        """
+        Turn the primers dictionary into a csv file for users to visualise post analysis.
+        This function will create a CSV file named 'DGR_Primers_used_for_VR_diversity.csv' in the output directory.
+        """
+        self.run.info_single("Storing the primers used to calculate VR diversity in 'DGR_Primers_used_for_VR_diversity.csv'.")
+        output_directory_path = self.output_directory
+        output_path= os.path.join(output_directory_path, "DGR_Primers_used_for_VR_diversity.csv")
+
+        if self.skip_primer_variability:
+            ## Define the header for the CSV file
+            csv_header = ['Primer_ID', 'Used_Original_Primer', 'Initial_Primer', 'Anchor_Primer', 'Whole_Primer']
+
+            # Open the CSV file in write mode
+            with open(output_path, mode='w', newline='') as file:
+                writer = csv.writer(file)
+                writer.writerow(csv_header)  # Write the header row
+
+                # Iterate through the dictionary and write each primer's information to the CSV file
+                for primer_name, primer_info in primers_dict.items():
+                    # For skip_primer_variability mode, there's no 'used_original_primer' key
+                    # so we set it to True since we're using original primers
+                    used_original_primer = True
+                    initial_primer = primer_info.get('initial_primer_sequence', '')
+                    anchor_primer = primer_info.get('vr_anchor_primer', '')
+                    whole_primer = primer_info.get('primer_sequence', '')
+
+                    writer.writerow([
+                        primer_name,
+                        used_original_primer,
+                        initial_primer,
+                        anchor_primer,
+                        whole_primer
+                    ])
+        else:
+            primers_dict = self.sample_primers_dict
+            # Define the header for the CSV file
+            csv_header = ['Primer_ID', 'Sample_ID', 'No_SNV_Primer', 'Initial_Primer', 'Anchor_Primer', 'Whole_Primer']
+
+            # Open the CSV file in write mode
+            with open(output_path, mode='w', newline='') as file:
+                writer = csv.writer(file)
+                writer.writerow(csv_header)  # Write the header row
+
+                # Iterate through the dictionary and write each primer's information to the CSV file
+                for primer_name, samples in primers_dict.items():
+                    for sample_id, primer_info in samples.items():
+                        used_original_primer = primer_info['used_original_primer']
+                        initial_primer = primer_info['initial_primer_sequence']
+                        anchor_primer = primer_info['vr_anchor_primer']
+                        whole_primer = primer_info['primer_sequence']
+
+                        writer.writerow([
+                        primer_name,
+                        sample_id,
+                        used_original_primer,
+                        initial_primer,
+                        anchor_primer,
+                        whole_primer
+                        ])
+        return
 
 
 
