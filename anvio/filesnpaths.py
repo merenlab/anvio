@@ -564,6 +564,7 @@ class AppendableFile:
             self.keys_order = kwargs['keys_order'] if 'keys_order' in kwargs else None
             self.header_item_conversion_dict = kwargs['header_item_conversion_dict'] if 'header_item_conversion_dict' in kwargs else None
             self.do_not_write_key_column = kwargs['do_not_write_key_column'] if 'do_not_write_key_column' in kwargs else False
+            self.none_value = kwargs['none_value'] if 'none_value' in kwargs else None
 
             self.append_dict_to_file(data, self.file_handle)
         elif isinstance(data, str):
@@ -595,7 +596,8 @@ class AppendableFile:
             utils.store_dict_as_TAB_delimited_file(dict_to_append, None, headers=self.headers, file_obj=file_handle, \
                                                     key_header=self.key_header, keys_order=self.keys_order, \
                                                     header_item_conversion_dict=self.header_item_conversion_dict, \
-                                                    do_not_close_file_obj=True, do_not_write_key_column=self.do_not_write_key_column)
+                                                    do_not_close_file_obj=True, do_not_write_key_column=self.do_not_write_key_column, \
+                                                    none_value=self.none_value)
         else:
             # if dictionary is empty, just return
             if not dict_to_append:
