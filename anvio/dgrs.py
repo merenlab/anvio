@@ -2056,7 +2056,7 @@ class DGR_Finder:
 
             # setup the args object
             args = argparse.Namespace(samples_dict= samples_dict_for_sample,
-                                    primers_dict= primers_dict,
+                                    primers_dict= primers_for_sample,
                                     output_dir=output_directory_path,
                                     only_report_primer_matches = True
                                     )
