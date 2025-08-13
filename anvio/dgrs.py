@@ -80,8 +80,9 @@ class DGR_Finder:
         self.num_genes_to_consider_in_context = A('num_genes_to_consider_in_context') or 3
         self.samples_txt = A('samples_txt')
         self.whole_primer_length = A('whole_primer_length') or 65
-        self.initial_primer_length = A('initial_variable_primer_length') or 12 #TODO test different values for this. If Illumina reads are 250 bases then depends on length of VR
         self.skip_compute_DGR_variability_profiling = A('skip_compute_DGR_variability_profiling')
+        self.skip_initial_primer = A('skip_initial_primer') or False
+        self.initial_primer_length = (A('initial_variable_primer_length') or (0 if self.skip_initial_primer else 12)) #TODO test different values for this. If Illumina reads are 250 bases then depends on length of VR
         self.skip_primer_variability = A('skip_primer_variability')
         self.numb_imperfect_tandem_repeats = A('numb_imperfect_tandem_repeats') or 10
         self.repeat_motif_coverage = A('repeat_motif_coverage') or 0.8
@@ -126,6 +127,7 @@ class DGR_Finder:
         #computing variability profiling for every VR in every DGR by searching through raw reads?
         if not self.skip_compute_DGR_variability_profiling:
             self.run.info('Samples.txt', self.samples_txt)
+            self.run.info('Skip Initial Primer', self.skip_initial_primer)
             self.run.info('Initial Primer Length', self.initial_primer_length)
             self.run.info('Variable Region Primer Length', self.whole_primer_length)
             #self.run.info("R1/R2 for raw reads present?", "True" if self.raw_r1_r2_reads_are_present else "False")
@@ -2104,19 +2106,29 @@ class DGR_Finder:
                 TR_frame = vr_data['TR_frame']
 
                 #CHECK if VR sequence is not at the start of a contig so you can get the initial primer sequence
-                if vr_data['VR_start_position'] >= self.initial_primer_length:
-                    vr_primer_region_start = vr_data['VR_start_position'] - self.initial_primer_length
-                    vr_primer_region_end = (vr_data['VR_start_position'] -1)
-                else:
-                    #this will take the start of the contig to create a shorter initial primer length
+                if self.skip_initial_primer:
+                    self.run.warning(f"The initial primer length is set to 0 for DGR {dgr_id} VR {vr_id}. This means that the primer will not have an initial sequence before the VR primer. ")
                     vr_primer_region_start = vr_data['VR_start_position']
-                    vr_primer_region_end = (vr_data['VR_start_position'] -1)
-                    self.run.warning(f"The primer sequence for this VR {dgr_id}_{vr_id}, is going to fall off the start of the Contig. This is the pesky VR contig: {vr_data['VR_contig']}.")
+                    vr_primer_region_end = (vr_data['VR_start_position'])
+                if self.initial_primer_length > 0:
+                    if vr_data['VR_start_position'] >= self.initial_primer_length:
+                        vr_primer_region_start = vr_data['VR_start_position'] - self.initial_primer_length
+                        vr_primer_region_end = (vr_data['VR_start_position'] -1)
+                    else:
+                        #this will take the start of the contig to create a shorter initial primer length
+                        vr_primer_region_start = vr_data['VR_start_position']
+                        vr_primer_region_end = (vr_data['VR_start_position'] -1)
+                        self.run.warning(f"The primer sequence for this VR {dgr_id}_{vr_id}, is going to fall off the start of the contig. This is the pesky VR contig: {vr_data['VR_contig']}.")
+                else:
+                    raise ConfigError(f"The initial primer length is set to a negative value or zero for DGR {dgr_id} VR {vr_id}. This is not allowed. Please set the initial primer length to a positive value.")
 
                 contig_sequence = self.contig_sequences[vr_data['VR_contig']]['sequence']
-                vr_primer_region = contig_sequence[vr_primer_region_start:vr_primer_region_end + 1]
-                #add every primer sequence to the dgrs_dict
-                vr_data['vr_primer_region'] = vr_primer_region
+                if not self.skip_initial_primer:
+                    vr_primer_region = contig_sequence[vr_primer_region_start:vr_primer_region_end + 1]
+                    #add every primer sequence to the dgrs_dict
+                    vr_data['vr_primer_region'] = vr_primer_region
+                else:
+                    vr_data['vr_primer_region'] = ''
 
                 VR_sequence = vr_data['VR_sequence']
                 TR_sequence = vr_data['TR_sequence']
