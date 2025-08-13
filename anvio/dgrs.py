@@ -1,6 +1,6 @@
 # -*- coding: utf-8
 # pylint: disable=line-too-long
-"""A module to find Diversity Generating Retroelements"""
+"""A module to find Diversity-Generating Retroelements"""
 
 import re
 import xml.etree.ElementTree as ET
