@@ -37,7 +37,6 @@ run = Run()
 
 def main():
     args = get_args()
-    print(args)
     try:
         if args.hmm_usage:
             args.hmm_usage = [p.strip() for p in args.hmm_usage.split(',') if p.strip()]
