@@ -75,7 +75,8 @@ dependencies = [
     "pulp==2.7.0",
     "biopython",
     "reportlab",
-    "pymupdf"
+    "pymupdf",
+    "pytrf"
 ]
 
 [project.urls]
@@ -194,6 +195,7 @@ Contact = "https://anvio.org/people"
 "anvi-reaction-network"                             = "anvio.cli.reaction_network:main"
 "anvi-refine"                                       = "anvio.cli.refine:main"
 "anvi-rename-bins"                                  = "anvio.cli.rename_bins:main"
+"anvi-report-dgrs"                                  = "anvio.cli.report_dgrs:main"
 "anvi-report-inversions"                            = "anvio.cli.report_inversions:main"
 "anvi-report-linkmers"                              = "anvio.cli.report_linkmers:main"
 "anvi-run-cazymes"                                  = "anvio.cli.run_cazymes:main"
