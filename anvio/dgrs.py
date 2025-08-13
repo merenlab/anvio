@@ -258,7 +258,7 @@ class DGR_Finder:
         """
         #initialise temporary dictionary
         tmp_directory_path = self.temp_dir
-        self.target_file_path = os.path.join(tmp_directory_path,f"input_file.fasta")
+        self.target_file_path = os.path.join(tmp_directory_path,f"reference_sequences.fasta")
         self.run.info('Temporary (contig) reference input for blast', self.target_file_path)
 
 
@@ -601,7 +601,7 @@ class DGR_Finder:
                                     "of this tool if you believe this should not be the case. Anvi'o wishes you a nice day :)")
 
             # Write SeqRecord objects to a new FASTA file
-            output_fasta_path = os.path.join(self.temp_dir,"output.fasta")
+            output_fasta_path = os.path.join(self.temp_dir,"potential_dgrs.fasta")
             with open(output_fasta_path, "w") as output_handle:
                 SeqIO.write(contig_records, output_handle, "fasta")
 
