@@ -1188,8 +1188,6 @@ class GetReadsFromBAM:
                             read_DIRECTION = 'R1' if read.is_read1 else 'R2'
                             mate_DIRECTION = 'R2' if read_DIRECTION == 'R1' else 'R1'
 
-                            counter_for_unknown_mate = unknown_mate_defline_to_counter[defline]
-
                             # rev_comp either R1 or R2 to match the original short reads orientation
                             if read.is_reverse:
                                 short_reads_dict[mate_DIRECTION][counter] = D(unknown_mate_tracker_dict[defline]['seq'])

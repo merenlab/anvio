@@ -289,6 +289,7 @@ class GenomeStorage(object):
 
         num_gene_calls_added_total = 0
         num_partial_gene_calls_total = 0
+        num_gene_calls_without_aa_sequence_total = 0
 
         genome_names_to_go_through = sorted(genome_descriptions.genomes.keys())
 
@@ -297,6 +298,7 @@ class GenomeStorage(object):
             self.progress.update('%s ...' % genome_name)
             num_gene_calls_added = 0
             num_partial_gene_calls = 0
+            num_gene_calls_without_aa_sequence = 0
 
             genome = genome_descriptions.genomes[genome_name]
 
@@ -306,6 +308,14 @@ class GenomeStorage(object):
 
             for gene_caller_id in genome['gene_caller_ids']:
                 is_partial_gene_call = gene_caller_id in genome['partial_gene_calls']
+
+                if not len(aa_sequences_dict[gene_caller_id]['sequence']):
+                    # the user has a gene call that contains genes without amino acid sequences
+                    # this often happens when certain open reading frames (such as those that
+                    # encode trnasfer RNAs, ribosomal RNAs, or other non-coding features) are
+                    # included in the list of genes. We will mark them here, report to the
+                    # user, and downstream analyses will exclude them.
+                    num_gene_calls_without_aa_sequence += 1
 
                 self.add_gene_call(genome_name,
                                     gene_caller_id,
@@ -326,13 +336,26 @@ class GenomeStorage(object):
 
 
             self.progress.end()
-            self.run.info_single('%s is stored with %s genes (%s of which were partial)' % (genome_name, pp(num_gene_calls_added), pp(num_partial_gene_calls)),
+
+            # prepare some messages for the user
+            gene_info = []
+            if num_partial_gene_calls:
+                gene_info.append(f"partial genes: {pp(num_partial_gene_calls)}")
+
+            if num_gene_calls_without_aa_sequence:
+                gene_info.append(f"non-coding genes: {pp(num_gene_calls_without_aa_sequence)}")
+
+            if len(gene_info):
+                gene_info = f" ({', '.join(gene_info)})"
+
+            self.run.info_single(f"'{genome_name}' is stored with {pp(num_gene_calls_added)} genes{gene_info}",
                           cut_after=120,
                           nl_before = 1 if genome_name == genome_names_to_go_through[0] else 0,
                           nl_after  = 1 if genome_name == genome_names_to_go_through[-1] else 0)
 
             num_gene_calls_added_total += num_gene_calls_added
             num_partial_gene_calls_total += num_partial_gene_calls
+            num_gene_calls_without_aa_sequence_total += num_gene_calls_without_aa_sequence
 
         # write entries to the database.
         self.db.insert_many(t.genome_info_table_name, entries=self.genome_info_entries)
@@ -346,6 +369,16 @@ class GenomeStorage(object):
                                                                                 pp(len(genome_descriptions.external_genome_names))))
         self.run.info('Number of gene calls', '%s' % pp(num_gene_calls_added_total))
         self.run.info('Number of partial gene calls', '%s' % pp(num_partial_gene_calls_total))
+        self.run.info('Number of non-coding gene calls', '%s' % pp(num_gene_calls_without_aa_sequence_total))
+
+        if num_gene_calls_without_aa_sequence_total:
+            self.run.warning(f"As you can see above, there were a total of {pp(num_gene_calls_without_aa_sequence_total)} gene calls "
+                             f"across your genomes that did not have an amino acid sequence. This happens when the gene calls in a "
+                             f"given genome includes non-coding open reading frames (such as transfer RNAs, ribosomal RNAs, or other "
+                             f"features). While the genome storage will have them included, they may not be used by downstream "
+                             f"analyses that require amino acid sequences (such as pangenomics or phylogenomics). It is all fine, "
+                             f"and this message is here just to let you know of what is going on (and it is in green instead of "
+                             f"red, so you be calm and carry on).", lc='green')
 
         self.close()
 
@@ -439,7 +472,8 @@ class GenomeStorage(object):
         self.run.info('Exclude partial gene calls', exclude_partial_gene_calls, nl_after=1)
 
         total_num_aa_sequences = 0
-        total_num_excluded_aa_sequences = 0
+        total_num_partial_gene_calls = 0
+        total_gene_calls_with_no_aa_sequence = 0
 
         fasta_output = fastalib.FastaOutput(output_file_path)
 
@@ -455,10 +489,16 @@ class GenomeStorage(object):
                 is_partial = self.is_partial_gene_call(genome_name, gene_caller_id)
 
                 if exclude_partial_gene_calls and is_partial:
-                    total_num_excluded_aa_sequences += 1
+                    total_num_partial_gene_calls += 1
                     continue
 
                 aa_sequence = self.get_gene_sequence(genome_name, gene_caller_id)
+
+                # there is absolutely no reason to include genes without amino acid sequences
+                # when the name of the functio is 'gen_combined_aa_sequences_FASTA'.
+                if not len(aa_sequence):
+                    total_gene_calls_with_no_aa_sequence += 1
+                    continue
 
                 if report_with_genome_name:
                     fasta_output.write_id('%s_%d' % (genome_name, int(gene_caller_id)))
@@ -472,11 +512,15 @@ class GenomeStorage(object):
 
         fasta_output.close()
 
+        total_num_excluded_genes = total_num_partial_gene_calls + total_gene_calls_with_no_aa_sequence
+
         self.run.info('AA sequences FASTA', output_file_path)
         self.run.info('Num AA sequences reported', '%s' % pp(total_num_aa_sequences), nl_before=1)
-        self.run.info('Num excluded gene calls', '%s' % pp(total_num_excluded_aa_sequences))
+        self.run.info('Num partial gene calls excluded', '%s' % pp(total_num_partial_gene_calls))
+        if total_gene_calls_with_no_aa_sequence:
+            self.run.info('Num non-coding genes excluded', '%s' % pp(total_gene_calls_with_no_aa_sequence), mc='red')
 
-        return total_num_aa_sequences, total_num_excluded_aa_sequences
+        return total_num_aa_sequences, total_num_excluded_genes
 
 
     def close(self):

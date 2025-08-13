@@ -3048,7 +3048,7 @@ class ContigsInteractive():
 
     def generate_tables(self):
         # let's keep track of all keys we will need to access later from the interface. if
-        # we don't do this, non-standard keys (such as 'Gene caller (prodigal)' becomes very
+        # we don't do this, non-standard keys (such as 'Gene caller (pyrodigal-gv)' becomes very
         # inaccessable when we need to access to it the way we access to 'N50' or 'Contig
         # Lengths'):
         self.human_readable_keys = []
@@ -3085,7 +3085,7 @@ class ContigsInteractive():
 
         self.progress.update('Number of genes ...')
         contig_lengths_for_all = [c['contig_lengths'] for c in self.contigs_stats.values()]
-        basic_stats.append(['Num Genes (' + constants.default_gene_caller + ')'] + [c['num_genes'] for c in self.contigs_stats.values()])
+        basic_stats.append(['Num Genes'] + [c['num_genes'] for c in self.contigs_stats.values()])
 
         self.progress.update('N/L values ...')
         n_values = [c['n_values'] for c in self.contigs_stats.values()]

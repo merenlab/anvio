@@ -18,8 +18,8 @@ from anvio.errors import ConfigError
 from anvio.dbops import ContigsDatabase
 from anvio.workflows.ecophylo import EcoPhyloWorkflow
 
-__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
-__credits__ = ['mschecht']
+__copyright__ = "Copyleft 2015-2025, The Anvi'o Project (http://anvio.org/)"
+__credits__ = ['mschecht', 'FlorianTrigodet']
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Matthew S. Schechter"
@@ -84,7 +84,6 @@ rule anvi_run_hmms_hmmsearch:
         done = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{hmm_source}-dom-hmmsearch", "contigs-hmmsearch.done"),
         hmm_hits = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{hmm_source}-dom-hmmsearch", "hmm_hits.txt")
     params:
-        #hmm_source = M.get_param_value_from_config(['anvi_run_hmms_hmmsearch', '--installed-hmm-profile']),
         additional_params = M.get_param_value_from_config(['anvi_run_hmms_hmmsearch', 'additional_params'])
     threads: get_hmm_threads
     run:
@@ -697,10 +696,10 @@ rule remove_sequences_with_X_percent_gaps:
         seq_counts_tsv = os.path.join(dirs_dict['MSA'], "{group}", "{group}_gaps_counts"),
         max_percentage_gaps = M.get_param_value_from_config(['remove_sequences_with_X_percent_gaps', '--max-percentage-gaps'])
     threads: M.T('remove_sequences_with_X_percent_gaps')
-	run:
-		shell("anvi-script-reformat-fasta {input} -o {output.fasta} \
-									              --max-percentage-gaps {params.max_percentage_gaps} \
-									              --export-gap-counts-table {params.seq_counts_tsv} >> {log} 2>&1")
+    run:
+        shell("anvi-script-reformat-fasta {input} -o {output.fasta} \
+                                                  --max-percentage-gaps {params.max_percentage_gaps} \
+                                                  --export-gap-counts-table {params.seq_counts_tsv} >> {log} 2>&1")
 
 
 rule count_num_sequences_filtered:
@@ -1042,6 +1041,7 @@ rule anvi_run_scg_taxonomy:
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_run_scg_taxonomy-{sample_name}.log")
+    input: expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{{sample_name}}", "{hmm_source}-dom-hmmsearch", "contigs-hmmsearch.done"), hmm_source = M.unique_hmm_source.keys())
     params:
         scg_taxonomy_version = M.get_param_value_from_config(['scg_taxonomy_database_version']),
         additional_params = M.get_param_value_from_config(['anvi_run_scg_taxonomy', 'additional_params'])

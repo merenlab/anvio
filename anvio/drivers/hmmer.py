@@ -3,8 +3,8 @@
 
 import os
 import io
-import shutil
 import glob
+import shutil
 
 # multiprocess is a fork of multiprocessing that uses the dill serializer instead of pickle
 # using the multiprocessing module directly results in a pickling error in Python 3.10 which

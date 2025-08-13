@@ -324,6 +324,8 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         '''
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
         output_file_path = A('output_file')
+        qlambda = A('qlambda')
+
         tmp_functional_occurrence_file = filesnpaths.get_temp_file_path()
 
         enrichment_file_path = output_file_path
@@ -341,7 +343,8 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         self.functional_occurrence_stats()
 
         # run enrichment script. this uses the output saved from the previous step.
-        enrichment_stats = utils.run_functional_enrichment_stats(tmp_functional_occurrence_file, output_file_path, run=self.run, progress=self.progress)
+        enrichment_stats = utils.run_functional_enrichment_stats(tmp_functional_occurrence_file, output_file_path,
+                                                                qlambda=qlambda, run=self.run, progress=self.progress)
 
         return enrichment_stats
 
@@ -977,7 +980,7 @@ class ContigSummarizer(SummarizerSuperClass):
         """
 
         if not gene_caller_to_use:
-            gene_caller_to_use = constants.default_gene_caller
+            gene_caller_to_use = utils.get_default_gene_caller(self.contigs_db_path)
 
         args = argparse.Namespace(contigs_db=self.contigs_db_path)
 
@@ -1105,8 +1108,9 @@ class ContigSummarizer(SummarizerSuperClass):
 
     def get_summary_dict_for_assembly(self, gene_caller_to_use=None):
         """Returns a simple summary dict for a given contigs database"""
+
         if not gene_caller_to_use:
-            gene_caller_to_use = constants.default_gene_caller
+            gene_caller_to_use = utils.get_default_gene_caller(self.contigs_db_path)
 
         self.progress.new('Generating contigs db summary')
 

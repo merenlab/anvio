@@ -309,7 +309,8 @@ class ContigsSuperclass(object):
 
         # Read GENES in splits information
         genes_in_splits = contigs_db.db.smart_get(t.genes_in_splits_table_name, 'split',
-                                               self.split_names_of_interest, progress=self.progress)
+                                               self.split_names_of_interest, progress=self.progress,
+                                               error_if_no_data=False)
 
         contigs_db.disconnect()
 
@@ -356,7 +357,8 @@ class ContigsSuperclass(object):
 
         # Read GENES in contigs information
         genes_in_contigs_dict = contigs_db.db.smart_get(t.genes_in_contigs_table_name, 'contig',
-                                                     contig_names_of_interest, progress=self.progress)
+                                                     contig_names_of_interest, progress=self.progress,
+                                                     error_if_no_data=False)
 
         contigs_db.disconnect()
 
@@ -4828,7 +4830,7 @@ class ContigsDatabase:
                               "skipped. Please make up your mind.")
 
         if (external_gene_calls_file_path or skip_gene_calling) and prodigal_translation_table:
-            raise ConfigError("You asked anvi'o to %s, yet you set a specific translation table for prodigal. These "
+            raise ConfigError("You asked anvi'o to %s, yet you set a specific translation table for pyrodigal-gv. These "
                               "parameters do not make much sense and anvi'o is kindly asking you to make up your "
                               "mind." % ('skip gene calling' if skip_gene_calling else 'use external gene calls'))
 
@@ -5021,7 +5023,7 @@ class ContigsDatabase:
             self.run.info('External gene calls file have AA sequences?', external_gene_calls_include_amino_acid_sequences, mc='green')
             self.run.info('Proper frames will be predicted?', (not skip_predict_frame), mc='green')
         else:
-            self.run.info('Is prodigal run in single mode?', ('YES' if prodigal_single_mode else 'NO'), mc='green')
+            self.run.info('Is pyrodigal-gv run in single mode?', ('YES' if prodigal_single_mode else 'NO'), mc='green')
 
         self.run.info('Ignoring internal stop codons?', ignore_internal_stop_codons)
         self.run.info('Splitting pays attention to gene calls?', (not skip_mindful_splitting))

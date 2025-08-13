@@ -6,7 +6,6 @@
 import io
 import sys
 import gzip
-import numpy
 import hashlib
 
 import anvio
