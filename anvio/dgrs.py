@@ -748,8 +748,8 @@ class DGR_Finder:
                 self.process_single(root, bin_name, max_percent_identity)
 
                 # Merge results into `merged_mismatch_hits`
-                for hit_identity, hit_data in self.mismatch_hits.items():
-                    self.merged_mismatch_hits.setdefault(hit_identity, []).append(hit_data)
+                for hit_identity_unique, hit_data in self.mismatch_hits.items():
+                    self.merged_mismatch_hits.setdefault(hit_identity_unique, []).append(hit_data)
 
             self.run.info_single(f"Total unique mismatches: {len(self.merged_mismatch_hits)}")
             return self.merged_mismatch_hits
@@ -782,6 +782,8 @@ class DGR_Finder:
         If bin_name is None, it means we're processing a single BLAST output.
         """
 
+        hit_id_counter = 0
+
         for iteration in root.findall(".//Iteration"):
             for hit in iteration.findall(".//Hit"):
                 for hsp in hit.findall(".//Hsp"):
@@ -791,9 +793,10 @@ class DGR_Finder:
 
                     if percentage_identity < max_percent_identity:
                         section_id = iteration.find('Iteration_query-def').text
-                        hsp_num = hsp.find('Hsp_num').text
+                        hit_id_counter += 1
 
-                        hit_identity = '_'.join([section_id, f'_BLAST_hsp_is_{hsp_num}'])
+
+                        hit_identity_unique = '_'.join([section_id, f'_count_{hit_id_counter}'])
                         pattern = r"start_bp(\d+)_end_bp(\d+)"
 
                         match = re.search(pattern, section_id)
@@ -894,7 +897,7 @@ class DGR_Finder:
                         query_contig = section_id.split('_section', 1)[0]
                         subject_contig = hit.find('Hit_def').text
 
-                        self.mismatch_hits[hit_identity] = {
+                        self.mismatch_hits[hit_identity_unique] = {
                             'bin': bin_name if bin_name else "single",
                             'query_seq': qseq,
                             'hit_seq': hseq,
