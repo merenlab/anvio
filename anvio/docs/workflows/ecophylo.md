@@ -604,6 +604,20 @@ Finally, edit the `"HOME"` string to a new path to ensure you make a new directo
 },
 ```
 
+
+### Can I merge the genes from two HMM models?
+
+We ran into the situation where we had multiple HMM models representing different clades of a gene. In this type of cases it would make sense to want to combine all the genes, that had at least one hit to one HMM model, into a single EcoPhylo tree.
+
+To do something like this, you can use the optional 'group' column in the %(hmm-list)s file. Every gene with the same 'group' name will be merged at the first clustering step of the workflow. Here is an fictive example:
+
+```
+name	source	path	group
+CladeA	Integrase_HMMs	Integrase_external_hmm	Integrase
+CladeB	Integrase_HMMs	Integrase_external_hmm	Integrase
+```
+
+
 ### Can I add more genomes and metagenomes to my analysis?
 
 Yes you can add more genomes and metagenomes in your %(metagenomes)s, %(external-genomes)s, and %(samples-txt)s.
