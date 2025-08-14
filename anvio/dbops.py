@@ -3449,7 +3449,7 @@ class PanGraphSuperclass(PanSuperclass):
 
         return export_dict
 
-    def initialize_pangenome_graph(self):
+    def init_pangenome_graph(self):
         for node, data in self.nodes.items():
             graph_data = {
                 'gene_cluster': data['gene_cluster_id'],
@@ -3488,6 +3488,10 @@ class PanGraphSuperclass(PanSuperclass):
         return self.synteny_gene_clusters_functions_dict
 
     @property
+    def gene_clusters_functions_summary_dict(self):
+        return self.synteny_gene_clusters_functions_summary_dict
+
+    @property
     def gene_clusters_gene_alignments_available(self):
         return self.synteny_gene_clusters_gene_alignments_available
 
@@ -3523,14 +3527,18 @@ class PanGraphSuperclass(PanSuperclass):
 
         self.synteny_gene_clusters_initialized = True
 
+    def init_synteny_gene_clusters_functions_summary_dict(self):
+        super().init_gene_clusters_functions_summary_dict()
+
+
     def init_synteny_gene_clusters_functions(self):
         # Copying a complete function only to change some variable names does not feel
         # very anvi'o. Therefore the functions of PanSuperClass are inherited with
         # poperties on the equivalent synteny gene cluster variables.
         super().init_gene_clusters_functions()
 
-    def search_for_gene_functions(self, search_terms):
-        super().search_for_gene_functions(search_terms)
+    def search_for_gene_functions(self, search_terms, requested_sources=None, verbose=False, full_report=False, case_sensitive=False, exact_match=False):
+        return super().search_for_gene_functions(search_terms, requested_sources, verbose, full_report, case_sensitive, exact_match)
 
 
 class ProfileSuperclass(object):
