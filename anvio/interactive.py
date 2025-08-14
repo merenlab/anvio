@@ -3039,6 +3039,10 @@ class PangraphInteractive(PanGraphSuperclass):
 
         if A('pan_graph_db'):
             PanGraphSuperclass.__init__(self, self.args)
+            self.init_pangenome_graph()
+            self.init_synteny_gene_clusters()
+            self.init_synteny_gene_clusters_functions()
+            self.init_synteny_gene_clusters_functions_summary_dict()
         else:
             self.run.warning("Since you did not provide anvi'o with a pan-db file, this program will initiate "
                              "the pangenome graph interface with the JSON file you have provided",
@@ -3046,41 +3050,6 @@ class PangraphInteractive(PanGraphSuperclass):
 
 
     def get_pangraph_json(self):
-
-        """A function to 'get' pangraph JSON data from wherever appropriate.
-
-        Currently this function returns the user-provided JSON data, but it
-        will take into consideration other parameters and pan-db to determine
-        which resource is the most appropriate to retrieve the pangraph data.
-        """
-
-        # if self.pan_graph_db_path:
-        #     json_data = json.load(open(self.pan_graph_json_path))
-        # else:
-        #     # FIXME: this is where we will get things from the pan-db, but it
-        #     #        is not yet implemented
-        #     raise ConfigError("Not implemented.")
-
-        # make sure the JSON data we have access is compatible with the codebase
-        # we are running.
-
-        # version_we_have = str(json_data['meta']['version']) if 'version' in json_data['meta'] else None
-        # version_we_want = str(anvio.__pangraph__version__)
-
-        # if version_we_have == None:
-        #     raise ConfigError("Bad news: the pan-graph data you have is outdated :/ You will have to re-run "
-        #                       "the program `anvi-pan-graph` on these data to generate an up-to-date "
-        #                       "pan-graph artifact that your current codebase can work with.")
-
-        # if version_we_have != version_we_want:
-        #     raise ConfigError(f"We have a problem here. The data for your pan-graph is at version {version_we_have}. "
-        #                       f"Yet the anvi'o codebase you have here can only work with pan-graph version {version_we_want}. "
-        #                       f"The best solution to address this mismatch is to re-run the program `anvi-pan-graph` "
-        #                       f"on your dataset.")
-
-        # all good with the version stuff:
-        # return json_data
-
         return(self.load_state())
 
 
