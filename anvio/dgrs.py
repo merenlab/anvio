@@ -2583,7 +2583,7 @@ class DGR_Finder:
 
         if self.skip_primer_variability:
             # Define the header for the TSV file
-            csv_header = ['Primer_ID', 'Used_Original_Primer', 'Initial_Primer', 'Anchor_Primer', 'Whole_Primer']
+            csv_header = ['Primer_ID', 'Used_Original_Primer', 'Initial_Primer', 'Masked_Primer', 'Whole_Primer']
 
             # Open the TSV file in write mode
             with open(output_path, mode='w', newline='') as file:
