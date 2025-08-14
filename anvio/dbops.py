@@ -3487,15 +3487,39 @@ class PanGraphSuperclass(PanSuperclass):
     def gene_clusters_functions_dict(self):
         return self.synteny_gene_clusters_functions_dict
 
+    @property
+    def gene_clusters_gene_alignments_available(self):
+        return self.synteny_gene_clusters_gene_alignments_available
+
+    @property
+    def gene_clusters_gene_alignments(self):
+        return self.synteny_gene_clusters_gene_alignments
+
+    @property
+    def gene_callers_id_to_gene_cluster(self):
+        return self.gene_callers_id_to_synteny_gene_cluster
+
     def init_synteny_gene_clusters(self):
         for node, data in self.nodes.items():
             if data['gene_cluster_id'] != 'GC_00000000':
                 self.synteny_gene_clusters[node] = {}
                 node_gene_calls = json.loads(data['gene_calls_json'])
-                for genome in self.genome_names:
-                    self.synteny_gene_clusters[node][genome] = []
-                    if genome in node_gene_calls:
-                        self.synteny_gene_clusters[node][genome] += [node_gene_calls[genome]]
+                for genome_name in self.genome_names:
+                    self.synteny_gene_clusters[node][genome_name] = []
+                    if genome_name in node_gene_calls:
+                        gene_callers_id = node_gene_calls[genome_name]
+                        self.synteny_gene_clusters[node][genome_name] += [gene_callers_id]
+
+                        if genome_name not in self.gene_callers_id_to_synteny_gene_cluster:
+                            self.gene_callers_id_to_synteny_gene_cluster[genome_name] = {}
+    
+                        self.gene_callers_id_to_synteny_gene_cluster[genome_name][gene_callers_id] = node
+    
+                        if self.synteny_gene_clusters_gene_alignments_available:
+                            if genome_name not in self.synteny_gene_clusters_gene_alignments:
+                                self.synteny_gene_clusters_gene_alignments[genome_name] = {}
+    
+                            self.synteny_gene_clusters_gene_alignments[genome_name][gene_callers_id] = data['alignment_summary']
 
         self.synteny_gene_clusters_initialized = True
 
@@ -3504,6 +3528,9 @@ class PanGraphSuperclass(PanSuperclass):
         # very anvi'o. Therefore the functions of PanSuperClass are inherited with
         # poperties on the equivalent synteny gene cluster variables.
         super().init_gene_clusters_functions()
+
+    def search_for_gene_functions(self, search_terms):
+        super().search_for_gene_functions(search_terms)
 
 
 class ProfileSuperclass(object):
