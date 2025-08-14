@@ -3512,13 +3512,13 @@ class PanGraphSuperclass(PanSuperclass):
 
                         if genome_name not in self.gene_callers_id_to_synteny_gene_cluster:
                             self.gene_callers_id_to_synteny_gene_cluster[genome_name] = {}
-    
+
                         self.gene_callers_id_to_synteny_gene_cluster[genome_name][gene_callers_id] = node
-    
+
                         if self.synteny_gene_clusters_gene_alignments_available:
                             if genome_name not in self.synteny_gene_clusters_gene_alignments:
                                 self.synteny_gene_clusters_gene_alignments[genome_name] = {}
-    
+
                             self.synteny_gene_clusters_gene_alignments[genome_name][gene_callers_id] = data['alignment_summary']
 
         self.synteny_gene_clusters_initialized = True
