@@ -1328,7 +1328,7 @@ class DGR_Finder:
 
     def get_gene_info(self):
         """
-        This function collects information genes in which the variable regions act in and prints all the information to a CSV file.
+        This function collects information genes in which the variable regions act in and prints all the information to a TSV file.
 
         Parameters
         ==========
@@ -1342,7 +1342,7 @@ class DGR_Finder:
         if len(self.DGRs_found_dict) == 0:
             return
 
-        self.run.info_single(f"Computing the Genes the Variable Regions occur in and creating a '{self.output_directory}_DGR_genes_found.csv'.")
+        self.run.info_single(f"Computing the Genes the Variable Regions occur in and creating a '{self.output_directory}_DGR_genes_found.tsv'.")
 
         # initiate a dictionary for the gene where we find VR
         self.vr_gene_info = {}
@@ -1438,16 +1438,16 @@ class DGR_Finder:
         #TODO: MAKE into WRITE DGR_genes_found write function
         # define output path
         output_directory_path = self.output_directory
-        output_path_for_genes_found = os.path.join(output_directory_path, f"{self.output_directory}_DGR_genes_found.csv")
+        output_path_for_genes_found = os.path.join(output_directory_path, f"{self.output_directory}_DGR_genes_found.tsv")
 
-        # Define the header for the CSV file
+        # Define the header for the TSV file
         csv_header = ['DGR_ID', 'VR_ID', 'Contig', 'Start', 'Stop', 'Direction', 'Partial', 'Call_Type', 'Gene_Caller_Source', 'Version', 'Gene_Caller_ID', 'DNA_Sequence', 'AA_Sequence', 'Length', 'Gene_Functions', 'Gene_Function_Source', 'Gene_Function_Accession']
 
-        # Open the CSV file in write mode
+        # Open the TSV file in write mode
         with open(output_path_for_genes_found, mode='w', newline='') as file:
-            writer = csv.writer(file)
+            writer = csv.writer(file, delimiter='\t')
             writer.writerow(csv_header)  # Write the header row
-            # Iterate through the dictionary and write each gene's information to the CSV file
+            # Iterate through the dictionary and write each gene's information to the TSV file
             for dgr_id, vr_data in self.vr_gene_info.items():
                 for vr_id, gene_info in vr_data.items():
                     if not gene_info:
@@ -1493,8 +1493,8 @@ class DGR_Finder:
 
         Returns
         =======
-        : csv
-            A csv tabular file containing the template and variable regions
+        : tsv
+            A tsv tabular file containing the template and variable regions
 
         """
         dgrs_dict = self.DGRs_found_dict
@@ -1601,7 +1601,7 @@ class DGR_Finder:
 
     def create_found_tr_vr_csv(self):
         """
-        This function creates a csv tabular format of the template and variable regions that are found from this tool.
+        This function creates a tsv tabular format of the template and variable regions that are found from this tool.
         Parameters
         ==========
         DGRs_found_dict : dict
@@ -1609,14 +1609,14 @@ class DGR_Finder:
 
         Returns
         =======
-        : csv
-            A csv tabular file containing the template and variable regions
+        : tsv
+            A tsv tabular file containing the template and variable regions
 
         """
         output_directory_path = self.output_directory
 
         dgrs_dict = self.DGRs_found_dict
-        output_path_dgrs = os.path.join(output_directory_path, f"{self.output_directory}_DGRs_found.csv")
+        output_path_dgrs = os.path.join(output_directory_path, f"{self.output_directory}_DGRs_found.tsv")
         headers = [
             "DGR", "VR", "VR_contig", "VR_frame", "VR_sequence", "Midline",
             "VR_start_position", "VR_end_position", "VR_bin", "Mismatch %",
@@ -1635,14 +1635,14 @@ class DGR_Finder:
                             "be the case. Anvi'o wishes you a nice day :)", header="NO DIVERSITY-GENERATING RETROELEMENTS")
             return
 
-        # Open the CSV file and write headers and rows
+        # Open the TSV file and write headers and rows
         with open(output_path_dgrs, 'w', newline='') as csvfile:
-            csv_writer = csv.writer(csvfile)
+            csv_writer = csv.writer(csvfile, delimiter='\t')
             csv_writer.writerow(headers)
 
             for dgr, tr in dgrs_dict.items():
                 for vr, vr_data in tr['VRs'].items():
-                    # Populate csv_row for DGRs_found.csv format
+                    # Populate tsv_row for DGRs_found.tsv format
                     csv_row = [
                         dgr, vr, vr_data['VR_contig'], vr_data.get('VR_frame', 'N/A'),
                         vr_data['VR_sequence'], vr_data['midline'], vr_data['VR_start_position'],
@@ -2497,7 +2497,7 @@ class DGR_Finder:
             use_sample_primers = False
 
         # Output the final primers dictionary
-        self.run.info_single("Computing the Variable Regions Primers and creating a 'DGR_Primers_used_for_VR_diversity.csv' file.")
+        self.run.info_single("Computing the Variable Regions Primers and creating a 'DGR_Primers_used_for_VR_diversity.tsv' file.")
         self.print_primers_dict_to_csv(self.sample_primers_dict if not self.skip_primer_variability else primers_dict)
 
         ##################
@@ -2572,23 +2572,25 @@ class DGR_Finder:
 
     def print_primers_dict_to_csv(self, primers_dict):
         """
-        Turn the primers dictionary into a csv file for users to visualise post analysis.
-        This function will create a CSV file named 'DGR_Primers_used_for_VR_diversity.csv' in the output directory.
+        Turn the primers dictionary into a tsv file for users to visualise post analysis.
+        This function will create a TSV file named 'DGR_Primers_used_for_VR_diversity.tsv' in the output directory.
         """
-        self.run.info_single("Storing the primers used to calculate VR diversity in 'DGR_Primers_used_for_VR_diversity.csv'.")
+
+        self.run.info_single("Storing the primers used to calculate VR diversity in 'DGR_Primers_used_for_VR_diversity.tsv'.")
+
         output_directory_path = self.output_directory
-        output_path= os.path.join(output_directory_path, "DGR_Primers_used_for_VR_diversity.csv")
+        output_path= os.path.join(output_directory_path, "DGR_Primers_used_for_VR_diversity.tsv")
 
         if self.skip_primer_variability:
-            ## Define the header for the CSV file
+            # Define the header for the TSV file
             csv_header = ['Primer_ID', 'Used_Original_Primer', 'Initial_Primer', 'Anchor_Primer', 'Whole_Primer']
 
-            # Open the CSV file in write mode
+            # Open the TSV file in write mode
             with open(output_path, mode='w', newline='') as file:
-                writer = csv.writer(file)
+                writer = csv.writer(file, delimiter='\t')
                 writer.writerow(csv_header)  # Write the header row
 
-                # Iterate through the dictionary and write each primer's information to the CSV file
+                # Iterate through the dictionary and write each primer's information to the TSV file
                 for primer_name, primer_info in primers_dict.items():
                     # For skip_primer_variability mode, there's no 'used_original_primer' key
                     # so we set it to True since we're using original primers
@@ -2606,15 +2608,15 @@ class DGR_Finder:
                     ])
         else:
             primers_dict = self.sample_primers_dict
-            # Define the header for the CSV file
+            # Define the header for the TSV file
             csv_header = ['Primer_ID', 'Sample_ID', 'No_SNV_Primer', 'Initial_Primer', 'Anchor_Primer', 'Whole_Primer']
 
-            # Open the CSV file in write mode
+            # Open the TSV file in write mode
             with open(output_path, mode='w', newline='') as file:
-                writer = csv.writer(file)
+                writer = csv.writer(file, delimiter='\t')
                 writer.writerow(csv_header)  # Write the header row
 
-                # Iterate through the dictionary and write each primer's information to the CSV file
+                # Iterate through the dictionary and write each primer's information to the TSV file
                 for primer_name, samples in primers_dict.items():
                     for sample_id, primer_info in samples.items():
                         used_original_primer = primer_info['used_original_primer']
@@ -2847,17 +2849,17 @@ class DGR_Finder:
 
     def parameter_output_sheet(self):
         """
-        This function creates a csv tabular format of all the parameters the user input in the current run.
+        This function creates a tsv tabular format of all the parameters the user input in the current run.
 
         Returns
         =======
-        : csv
-            A csv tabular file containing the template and variable regions
+        : tsv
+            A tsv tabular file containing the template and variable regions
 
         """
-        output_path_parameters = os.path.join(self.output_directory, "Parameters_used_in_DGRs_found.csv")
+        output_path_parameters = os.path.join(self.output_directory, "Parameters_used_in_DGRs_found.tsv")
         with open(output_path_parameters, 'w', newline='') as csvfile:
-            csv_writer = csv.writer(csvfile)
+            csv_writer = csv.writer(csvfile, delimiter='\t')
             headers = ["Parameter", "Value"]
             csv_writer.writerow(headers)
             #TODO:MAKE SURE THIS LIST IS COMPLETE AND IN THE RIGHT ORDER
