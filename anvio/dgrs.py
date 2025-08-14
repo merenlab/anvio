@@ -2087,7 +2087,7 @@ class DGR_Finder:
         Returns
         =======
         primers_dict : dict
-            A dictionary containing the various primers for each sample including the compositional sections of each primer (i.e. anchor primer and the initial primer)
+            A dictionary containing the various primers for each sample including the compositional sections of each primer (i.e. masked primer and the initial primer)
         """
 
         #create primers dictionary
@@ -2208,13 +2208,13 @@ class DGR_Finder:
                             vr_primer[i] = '.'
 
                     # Convert list back to string
-                    vr_anchor_primer = ''.join(vr_primer)
+                    vr_masked_primer = ''.join(vr_primer)
 
-                    # Add the vr_anchor_primer sequence to the dgrs_dict
-                    vr_data['vr_anchor_primer'] = vr_anchor_primer
+                    # Add the vr_masked_primer sequence to the dgrs_dict
+                    vr_data['vr_masked_primer'] = vr_masked_primer
 
                 elif len(TR_sequence) != len(VR_sequence):
-                    self.run.warning(f"Thats weird! The {vr_id} does not have the same length as the {dgr_id}'s TR :( so you can't create an anchor primer sequence")
+                    self.run.warning(f"Thats weird! The {vr_id} does not have the same length as the {dgr_id}'s TR :( so you can't create an masked primer sequence")
 
         ###########################################
         # UPDATED DGRs dict with Primer Sequences #
@@ -2224,7 +2224,7 @@ class DGR_Finder:
             for vr_key, vr_data in dgr_data['VRs'].items():
                 vr_id = vr_key
                 primers_dict[dgr_id + '_' + vr_id + '_Primer'] = {'initial_primer_sequence': vr_data['vr_initial_primer_region'],
-                                                                'vr_anchor_primer': vr_data['vr_anchor_primer']}
+                                                                'vr_masked_primer': vr_data['vr_masked_primer']}
         return primers_dict
 
 
@@ -2399,7 +2399,7 @@ class DGR_Finder:
                         if not primer_snvs.empty:
                             # Get original sequences separately
                             original_initial_primer = primers_dict[original_primer_key]['initial_primer_sequence']
-                            vr_anchor_primer = primers_dict[original_primer_key]['vr_anchor_primer']
+                            vr_masked_primer = primers_dict[original_primer_key]['vr_masked_primer']
 
                             # Work on a copy of the initial primer sequence only
                             new_initial_primer = list(original_initial_primer)
@@ -2413,10 +2413,10 @@ class DGR_Finder:
                                 if consensus_base and 0 <= position < len(new_initial_primer):
                                     new_initial_primer[position] = consensus_base
 
-                            # Store the initial + anchor separately, combine only later
+                            # Store the initial + masked separately, combine only later
                             self.sample_primers_dict[dgr_vr_key][sample_name] = {
                                 'initial_primer_sequence': ''.join(new_initial_primer),
-                                'vr_anchor_primer': vr_anchor_primer,
+                                'vr_masked_primer': vr_masked_primer,
                                 'used_original_primer': False,
                             }
 
@@ -2425,7 +2425,7 @@ class DGR_Finder:
                             # Use the original primer sequence since no SNVs were found
                             self.sample_primers_dict[dgr_vr_key][sample_name] = {
                                 'initial_primer_sequence': original_initial_primer,
-                                'vr_anchor_primer': vr_anchor_primer,
+                                'vr_masked_primer': vr_masked_primer,
                                 'used_original_primer': True,
                             }
                             self.run.warning(f"No valid SNVs for primer region in sample {sample_name} for {dgr_vr_key}, skipping sample consensus.")
@@ -2438,13 +2438,13 @@ class DGR_Finder:
                 for dgr_vr_key, samples in self.sample_primers_dict.items():
                     for sample_name, primer_data in samples.items():
                         primer_key = f"{dgr_vr_key}_Primer"
-                        vr_anchor_primer = primers_dict[primer_key]['vr_anchor_primer']
-                        primer_data['vr_anchor_primer'] = vr_anchor_primer
+                        vr_masked_primer = primers_dict[primer_key]['vr_masked_primer']
+                        primer_data['vr_masked_primer'] = vr_masked_primer
 
-                        # Combine the initial primer sequence and vr_anchor_primer for each sample
+                        # Combine the initial primer sequence and vr_masked_primer for each sample
                         initial_primer = primer_data['initial_primer_sequence']
-                        vr_anchor_primer = primer_data['vr_anchor_primer']
-                        primer_sequence = initial_primer + vr_anchor_primer
+                        vr_masked_primer = primer_data['vr_masked_primer']
+                        primer_sequence = initial_primer + vr_masked_primer
 
                         # Add the combined primer sequence to the sample data
                         primer_data['primer_sequence'] = primer_sequence
@@ -2459,7 +2459,7 @@ class DGR_Finder:
                     vr_id = vr_key
                     primer_key = f'{dgr_id}_{vr_id}_Primer'
                     # Set the final primer sequence in primers_dict based on initial sequence and variability analysis
-                    primers_dict[primer_key]['primer_sequence'] = (primers_dict[primer_key]['initial_primer_sequence'] + primers_dict[primer_key]['vr_anchor_primer'])
+                    primers_dict[primer_key]['primer_sequence'] = (primers_dict[primer_key]['initial_primer_sequence'] + primers_dict[primer_key]['vr_masked_primer'])
 
                     # Ensure the primer sequence does not exceed the desired length
                     if len(primers_dict[primer_key]['primer_sequence']) > self.whole_primer_length:
@@ -2477,10 +2477,10 @@ class DGR_Finder:
                 for vr_key, vr_data in dgr_data['VRs'].items():
                     vr_id = vr_key
                     primer_key = f'{dgr_id}_{vr_id}_Primer'
-                    # Set the final primer sequence using initial + anchor sequences
+                    # Set the final primer sequence using initial + masked sequences
                     primers_dict[primer_key]['primer_sequence'] = (
                         primers_dict[primer_key]['initial_primer_sequence'] +
-                        primers_dict[primer_key]['vr_anchor_primer'])
+                        primers_dict[primer_key]['vr_masked_primer'])
 
                     # Ensure the primer sequence does not exceed the desired length
                     if len(primers_dict[primer_key]['primer_sequence']) > self.whole_primer_length:
@@ -2596,20 +2596,20 @@ class DGR_Finder:
                     # so we set it to True since we're using original primers
                     used_original_primer = True
                     initial_primer = primer_info.get('initial_primer_sequence', '')
-                    anchor_primer = primer_info.get('vr_anchor_primer', '')
+                    masked_primer = primer_info.get('vr_masked_primer', '')
                     whole_primer = primer_info.get('primer_sequence', '')
 
                     writer.writerow([
                         primer_name,
                         used_original_primer,
                         initial_primer,
-                        anchor_primer,
+                        masked_primer,
                         whole_primer
                     ])
         else:
             primers_dict = self.sample_primers_dict
             # Define the header for the TSV file
-            csv_header = ['Primer_ID', 'Sample_ID', 'No_SNV_Primer', 'Initial_Primer', 'Anchor_Primer', 'Whole_Primer']
+            csv_header = ['Primer_ID', 'Sample_ID', 'No_SNV_Primer', 'Initial_Primer', 'Masked_Primer', 'Whole_Primer']
 
             # Open the TSV file in write mode
             with open(output_path, mode='w', newline='') as file:
@@ -2621,7 +2621,7 @@ class DGR_Finder:
                     for sample_id, primer_info in samples.items():
                         used_original_primer = primer_info['used_original_primer']
                         initial_primer = primer_info['initial_primer_sequence']
-                        anchor_primer = primer_info['vr_anchor_primer']
+                        masked_primer = primer_info['vr_masked_primer']
                         whole_primer = primer_info['primer_sequence']
 
                         writer.writerow([
@@ -2629,7 +2629,7 @@ class DGR_Finder:
                         sample_id,
                         used_original_primer,
                         initial_primer,
-                        anchor_primer,
+                        masked_primer,
                         whole_primer
                         ])
         return
