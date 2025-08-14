@@ -2093,23 +2093,11 @@ class DGR_Finder:
         #create primers dictionary
         primers_dict = {}
 
-        #get contigs.db and contig sequences
-        contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
-        self.contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
-
-        # need to get the length of each consensus dgr's tr to have a set length for each VR profile in every sample so that they are the same
-        #self.primer_remainder_lengths = {}
-
         for dgr_id, dgr_data in dgrs_dict.items():
             for vr_key, vr_data in dgr_data['VRs'].items():
                 vr_id = vr_key
 
                 #save original frames
-                VR_FRAME = vr_data['VR_frame']
-                TR_FRAME = vr_data['TR_frame']
-                vr_data['original_VR_frame'] = VR_FRAME
-                vr_data['original_TR_frame'] = TR_FRAME
-
                 VR_frame = vr_data['VR_frame']
                 TR_frame = vr_data['TR_frame']
 
