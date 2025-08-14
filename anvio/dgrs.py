@@ -2076,7 +2076,7 @@ class DGR_Finder:
         but also of anchor points in the VR. These anchor points are the bases in the TR that are not A bases and only at the places the TR and VR match.
 
                     TR:GCTAACTGACATAATT
-        Anchor_primer :GCT..C.G.C.T..TT
+        masked_primer :GCT..C.G.C.T..TT
                     VR:GCTCACGGACTTCATT
 
         Parameters
