@@ -228,7 +228,10 @@ class DGR_Finder:
             raise ConfigError("Files with .html suffix exist in the directory. Please delete them before rerunning and we will keep calm and carry on. (later this will delete them for you)")
 
         if self.initial_primer_length <  0:
-            raise ConfigError("The initial primer length is set to a negative value or zero. This is not allowed. Please set the initial primer length to a positive value, or use the flag '--skip-initial-primer' to skip creating an initial primer.")
+            raise ConfigError("The initial primer length is set to a negative value or zero. This is not allowed. Please set the initial primer length to a positive value.")
+
+        if self.whole_primer_length <= 0:
+                raise ConfigError("The whole primer length is set to a negative value or zero. This is not allowed. Please set the whole primer length to a positive value.")
 
         if not self.skip_compute_DGR_variability_profiling and not self.samples_txt:
             raise ConfigError("No samples.txt declared and no skip-compute-DGR-variability-profiling flag used. Either use the skip flag or "
