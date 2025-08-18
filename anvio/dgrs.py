@@ -904,7 +904,7 @@ class DGR_Finder:
                         subject_contig = hit.find('Hit_def').text
 
                         self.mismatch_hits[hit_identity_unique] = {
-                            'bin': bin_name if bin_name else "single",
+                            'bin': bin_name if bin_name else "N/A",
                             'query_seq': qseq,
                             'hit_seq': hseq,
                             'midline': midline,
