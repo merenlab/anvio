@@ -261,7 +261,7 @@ class DGR_Finder:
         """
         #initialise temporary dictionary
         tmp_directory_path = self.temp_dir
-        self.target_file_path = os.path.join(tmp_directory_path,f"reference_sequences.fasta")
+        self.target_file_path = os.path.join(tmp_directory_path,"reference_sequences.fasta")
         self.run.info('Temporary (contig) reference input for blast', self.target_file_path)
 
 
@@ -440,7 +440,7 @@ class DGR_Finder:
                     self.run.warning(f"No sequences with SNVs were found with the parameters minimum distance between SNVs:{self.max_dist_bw_snvs} "
                                     f"and range size of SNVs:{self.min_range_size}, this means there are no variable region candidates for a blast search"
                                     , header="NO SEQUENCES WITH SUBSTANTIAL SNVS FOUND")
-                    raise ConfigError(f"Therefore, we will exit here because anvi'o has nothing to search for DGRs in, "
+                    raise ConfigError("Therefore, we will exit here because anvi'o has nothing to search for DGRs in, "
                                     "nada, nowt, nothin'! However, you can go back and tinker with the parameters "
                                     "of this tool if you believe this should not be the case. Anvi'o wishes you a nice day :)")
 
@@ -600,7 +600,7 @@ class DGR_Finder:
                 self.run.warning(f"No sequences with SNVs were found with the parameters maximum distance between SNVs:{self.max_dist_bw_snvs} "
                                 f"and range size of SNVs:{self.min_range_size}, this means there are no variable region candidates for a blast search"
                                 , header="NO SEQUENCES WITH SUBSTANTIAL SNVS FOUND")
-                raise ConfigError(f"Therefore, we will exit here because anvi'o has nothing to search for DGRs in, "
+                raise ConfigError("Therefore, we will exit here because anvi'o has nothing to search for DGRs in, "
                                     "nada, nowt, nothin'! However, you can go back and tinker with the parameters "
                                     "of this tool if you believe this should not be the case. Anvi'o wishes you a nice day :)")
 
@@ -1889,9 +1889,9 @@ class DGR_Finder:
 
         if not len(self.genomic_context_surrounding_dgrs):
             self.run.warning(f"Even though the tool went through all {PL('DGR', len(dgrs_dict))} "
-                            f"it was unable to recover any genomic context for any of them. So your final reports will "
-                            f"not include any insights into the surrounding genomic context of all your DGRs ( a little bit sad "
-                            f"but otherwise you will be fine).")
+                            "it was unable to recover any genomic context for any of them. So your final reports will "
+                            "not include any insights into the surrounding genomic context of all your DGRs ( a little bit sad "
+                            "but otherwise you will be fine).")
 
 
 
@@ -2258,13 +2258,13 @@ class DGR_Finder:
         # let the user know what is going on
         msg = (f"Now anvi'o will compute in-sample activity of {PL('DGR VR', len(self.DGRs_found_dict))} "
             f"across {PL('sample', num_samples)}. Brace yourself and please note that this can "
-            f"take a very long time since for each sample, anvi'o will go through each short read to search for ever variable region "
-            f"sequence/s per DGR. You can always skip this step and search for individual primers "
-            f"listed in the output file using the program `anvi-search-primers` with the parameter "
-            f"`--min-remainder-length` set to the length of the consensus template region of the DGRs' VR you are interested in "
+            "take a very long time since for each sample, anvi'o will go through each short read to search for ever variable region "
+            "sequence/s per DGR. You can always skip this step and search for individual primers "
+            "listed in the output file using the program `anvi-search-primers` with the parameter "
+            "`--min-remainder-length` set to the length of the consensus template region of the DGRs' VR you are interested in "
             "and the flag `--only-report-remainders` to explore the variable region activity of that one variable region "
-            f"manually. Maybe this makes no sense? See the documentation for `anvi-report-dgrs` (and hope for "
-            f"the best)")
+            "manually. Maybe this makes no sense? See the documentation for `anvi-report-dgrs` (and hope for "
+            "the best)")
         self.run.warning(None, header="PERFORMANCE NOTE", lc="yellow")
 
         if num_samples > self.num_threads:
