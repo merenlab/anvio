@@ -1130,6 +1130,9 @@ class DGR_Finder:
                     percentage_of_mismatches = (count/mismatch_length_bp)
                     if (percentage_of_mismatches > self.percentage_mismatch) and (mismatch_length_bp > self.number_of_mismatches):
 
+                        original_query_frame = query_frame
+                        original_subject_frame = subject_frame
+
                         # if the letter is T, then we assume that it is an A base and we reverse complement EVERYTHING
                         if letter == 'T':
                             TR_sequence = str(subject_sequence.reverse_complement())
@@ -1137,14 +1140,18 @@ class DGR_Finder:
                             midline = ''.join(reversed(original_midline))
                             base = 'A'
                             is_reverse_complement = True
-                            query_frame = query_frame * -1
-                            subject_frame = subject_frame * -1
+                            # query_frame is the VR frame
+                            VR_frame = original_query_frame * -1
+                            # subject_frame is the TR frame
+                            TR_frame = original_subject_frame * -1
                         else:
                             TR_sequence = str(subject_sequence)
                             VR_sequence = str(query_sequence)
                             midline = original_midline
                             base = letter
                             is_reverse_complement = False
+                            VR_frame = original_query_frame
+                            TR_frame = original_subject_frame
 
 
                         #### SNV logic based removal of DGRs.
@@ -1293,7 +1300,7 @@ class DGR_Finder:
                             num_DGR += 1
                             self.run.warning(f"Adding new DGR {num_DGR} in the bin: {bin}, the VR is on this contig: {query_contig}", header="NEW DGR", lc='yellow')
                             self.add_new_DGR(num_DGR, bin, TR_sequence, query_genome_start_position, query_genome_end_position, query_contig,
-                                        base, is_reverse_complement, query_frame, VR_sequence, subject_frame, subject_genome_start_position, subject_genome_end_position,
+                                        base, is_reverse_complement, TR_frame, VR_sequence, VR_frame, subject_genome_start_position, subject_genome_end_position,
                                         subject_contig, midline, percentage_of_mismatches, DGR_looks_snv_false, snv_at_3_codon_over_a_third, mismatch_pos_contig_relative,
                                         snv_VR_positions, numb_of_snv_in_matches_not_mutagen_base, numb_of_mismatches, numb_of_SNVs)
                         else:
@@ -1305,7 +1312,7 @@ class DGR_Finder:
                                                                                                                 self.DGRs_found_dict[dgr]['TR_end_position']):
                                     was_added = True
                                     #TODO can rename consensus_TR
-                                    self.update_existing_DGR(dgr, bin, query_frame, VR_sequence, subject_frame, TR_sequence, midline, percentage_of_mismatches, is_reverse_complement, query_genome_start_position,
+                                    self.update_existing_DGR(dgr, bin, TR_frame, VR_sequence, VR_frame, TR_sequence, midline, percentage_of_mismatches, is_reverse_complement, query_genome_start_position,
                                                     query_genome_end_position, query_contig, subject_genome_start_position, subject_genome_end_position,
                                                     subject_contig, DGR_looks_snv_false, snv_at_3_codon_over_a_third, mismatch_pos_contig_relative, snv_VR_positions,
                                                     numb_of_snv_in_matches_not_mutagen_base, numb_of_mismatches, numb_of_SNVs)
@@ -1314,10 +1321,25 @@ class DGR_Finder:
                                 # add new TR and its first VR
                                 self.run.warning(f"Adding new DGR {num_DGR} in the bin: {bin}, the VR is on this contig: {query_contig}", header="NEW DGR", lc='yellow')
                                 num_DGR += 1
-                                self.add_new_DGR(num_DGR, bin, TR_sequence, query_genome_start_position, query_genome_end_position, query_contig,
-                                        base, is_reverse_complement, query_frame, VR_sequence, subject_frame, subject_genome_start_position, subject_genome_end_position,
-                                        subject_contig, midline, percentage_of_mismatches, DGR_looks_snv_false, snv_at_3_codon_over_a_third, mismatch_pos_contig_relative,
-                                        snv_VR_positions, numb_of_snv_in_matches_not_mutagen_base, numb_of_mismatches, numb_of_SNVs)
+                                self.add_new_DGR(num_DGR,
+                                                bin,
+                                                TR_sequence,
+                                                query_genome_start_position,
+                                                query_genome_end_position,
+                                                query_contig,
+                                                base,
+                                                is_reverse_complement,
+                                                TR_frame,
+                                                VR_sequence,
+                                                VR_frame,
+                                                subject_genome_start_position, subject_genome_end_position,
+                                                subject_contig,
+                                                midline,
+                                                percentage_of_mismatches,
+                                                DGR_looks_snv_false,
+                                                snv_at_3_codon_over_a_third, mismatch_pos_contig_relative,
+                                                snv_VR_positions, numb_of_snv_in_matches_not_mutagen_base, numb_of_mismatches,
+                                                numb_of_SNVs)
                     else:
                         if anvio.DEBUG and self.verbose:
                                         self.run.warning(f"Removing a candidate DGR {sequence_component} with a VR on this contig: {query_contig} and TR here: {subject_contig}. This is the letter: {letter}, count:{count}. This is based on the percentatge of mismatches ({percentage_of_mismatches:.2%}) and or the number of mismatches ({mismatch_length_bp}). Defaults are: percentage_mismatch={self.percentage_mismatch:.2%} and number_of_mismatches={self.number_of_mismatches}.", header="DGR REMOVED", lc='yellow')
@@ -1622,9 +1644,9 @@ class DGR_Finder:
         dgrs_dict = self.DGRs_found_dict
         output_path_dgrs = os.path.join(output_directory_path, f"{self.output_directory}_DGRs_found.tsv")
         headers = [
-            "DGR", "VR", "VR_contig", "VR_frame", "VR_sequence", "Midline",
+            "DGR", "VR", "VR_contig", "VR_frame_reported", "VR_sequence", "Midline",
             "VR_start_position", "VR_end_position", "VR_bin", "Mismatch %",
-            "TR_contig", "TR_frame", "TR_sequence", "Base", "TR_Reverse Complement",
+            "TR_contig", "TR_frame_Reported", "TR_sequence", "Base", "Reverse Complemented_from_BLAST",
             "TR_start_position", "TR_end_position", "TR_bin", "TR_in_gene", "HMM_source",
             "distance_to_HMM", "HMM_gene_name", "HMM_direction", "HMM_start",
             "HMM_stop", "HMM_gene_callers_id", "DGR_looks_snv_false", "snv_at_3_codon_over_a_third",
