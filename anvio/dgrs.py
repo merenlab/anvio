@@ -738,10 +738,10 @@ class DGR_Finder:
                     continue
 
                 if os.stat(f"{self.blast_output}").st_size == 0:
-                    self.run.warning(f"No DGR like sequences are being found via BLAST.", header="NO DGRS FOUND")
-                    raise ConfigError(f"Therefore, we will exit here because anvi'o has found no DGRs in your data, "
-                                        "nada, nowt, nothin'! However, you can go back and tinker with the parameters "
-                                        "of this tool if you believe this should not be the case. Anvi'o wishes you a nice day :)")
+                    self.run.warning("No DGR like sequences are being found via BLAST.", header="NO DGRS FOUND")
+                    raise ConfigError("Therefore, we will exit here because anvi'o has found no DGRs in your data, "
+                                    "nada, nowt, nothin'! However, you can go back and tinker with the parameters "
+                                    "of this tool if you believe this should not be the case. Anvi'o wishes you a nice day :)")
 
                 # Parse XML file for the current bin
                 tree = ET.parse(blast_file)
@@ -754,6 +754,8 @@ class DGR_Finder:
                 for hit_identity_unique, hit_data in self.mismatch_hits.items():
                     self.merged_mismatch_hits.setdefault(hit_identity_unique, []).append(hit_data)
 
+            # aesthetic new line
+            print("\n")
             self.run.info_single(f"Total unique mismatches: {len(self.merged_mismatch_hits)}")
             return self.merged_mismatch_hits
 
@@ -763,10 +765,10 @@ class DGR_Finder:
             self.mismatch_hits = {}
 
             if os.stat(f"{self.blast_output}").st_size == 0:
-                self.run.warning(f"No DGR like sequences are being found via BLAST.", header="NO DGRS FOUND")
-                raise ConfigError(f"Therefore, we will exit here because anvi'o has found no DGRs in your data, "
-                                        "nada, nowt, nothin'! However, you can go back and tinker with the parameters "
-                                        "of this tool if you believe this should not be the case. Anvi'o wishes you a nice day :)")
+                self.run.warning("No DGR like sequences are being found via BLAST.", header="NO DGRS FOUND")
+                raise ConfigError("Therefore, we will exit here because anvi'o has found no DGRs in your data, "
+                                "nada, nowt, nothin'! However, you can go back and tinker with the parameters "
+                                "of this tool if you believe this should not be the case. Anvi'o wishes you a nice day :)")
 
             # Parse the standard BLAST output
             tree = ET.parse(self.blast_output)
@@ -1086,7 +1088,8 @@ class DGR_Finder:
 
         if self.only_a_bases:
                 #This is here so that every potential VR doesn't get a new warning and clog up the terminal
-                self.run.warning("Just a note to say that we are only looking for DGRs that have A bases as their site of mutagenesis.", header="Searching for only A mutagenesis based DGRs")
+                self.run.warning("Just a note to say that we are only looking for DGRs that have A bases as their site of mutagenesis.",
+                                header="Searching for only A mutagenesis based DGRs")
 
         if self.collections_mode:
             hits_item = self.merged_mismatch_hits
@@ -1213,7 +1216,7 @@ class DGR_Finder:
 
                             # subset VR snv df, by matches in VR and TR *AND* reference in VR being mutagenesis base (usually A)
                             snv_in_matches_not_mutagen_base = matching_snv_rows[~matching_snv_rows['pos_in_contig'].isin(mismatch_pos_contig_relative) & (matching_snv_rows['reference'] != letter_to_skip)]
-                            #this needs to be a set of the posisiont in contig so that there are not multiple reported
+                            #this needs to be a set of the position in contig so that there are not multiple reported
                             numb_of_snv_in_matches_not_mutagen_base = len(set(snv_in_matches_not_mutagen_base['pos_in_contig']))
                             numb_of_mismatches = len(position)
                             numb_of_SNVs = len(snv_VR_positions)
@@ -1239,7 +1242,7 @@ class DGR_Finder:
                                     DGR_looks_snv_false = True
                                     self.run.warning("Skipping candidate DGR due to SNV filters. Specifically, in this case the candidate DGR has a high "
                                                 "likelihood of being a false positive due to the fact that there are a high proportion of SNVs that are coming "
-                                                f"from the non mismatching or mutagenesis bases which is where the SNVs are expoected to be. There are this many SNVs total: {numb_of_SNVs} of which "
+                                                f"from the non mismatching or mutagenesis bases which is where the SNVs are expected to be. There are this many SNVs total: {numb_of_SNVs} of which "
                                                 f"{numb_of_snv_in_matches_not_mutagen_base} are in matching positions of the TR and VR (the proportion is therefore: {prop_non_mutagen_snv:.2%}). "
                                                 "The cut off for these SNVs is proportional to the total number of SNVs in the VR if there are >30 than 30%% SNVs in matching positions are allowed, "
                                                 "if less than 30 SNVs than 25%% are allowed, this is by default. If you think that this is incorrect please change the '--snv-matching-proportion' parameter "
