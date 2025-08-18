@@ -308,15 +308,15 @@ class DGR_Finder:
 
                 profile_db = dbops.ProfileDatabase(self.profile_db_path)
                 #Sort pandas data-frame of SNVs by contig name and then by position of SNV within contig
-                self.snv_panda_bin = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name).sort_values(by=['split_name', 'pos_in_contig'])
-                self.snv_panda_bin['contig_name'] = self.snv_panda_bin.split_name.str.split('_split_').str[0]
+                self.snv_panda_full = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name).sort_values(by=['split_name', 'pos_in_contig'])
+                self.snv_panda_full['contig_name'] = self.snv_panda_full.split_name.str.split('_split_').str[0]
 
                 self.split_names_unique = bin_splits_list
 
                 profile_db.disconnect()
 
                 # Filter snv_panda by the list of splits associated with this bin
-                self.snv_panda = self.snv_panda_bin[self.snv_panda_bin['split_name'].isin(bin_splits_list)]
+                self.snv_panda = self.snv_panda_full[self.snv_panda_full['split_name'].isin(bin_splits_list)]
 
                 sample_id_list = list(set(self.snv_panda.sample_id.unique()))
 
@@ -470,9 +470,10 @@ class DGR_Finder:
             #open merged profile-db and get the variable nucleotide table as a dictionary then access the split names as a list to use in get_snvs
             profile_db = dbops.ProfileDatabase(self.profile_db_path)
             #Sort pandas data-frame of SNVs by contig name and then by position of SNV within contig
-            self.snv_panda = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name).sort_values(by=['split_name', 'pos_in_contig'])
-            self.snv_panda['contig_name'] = self.snv_panda['split_name'].apply(lambda x: x.split('_split_')[0])
+            self.snv_panda_full = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name).sort_values(by=['split_name', 'pos_in_contig'])
+            self.snv_panda_full['contig_name'] = self.snv_panda_full['split_name'].apply(lambda x: x.split('_split_')[0])
             self.split_names_unique = utils.get_all_item_names_from_the_database(self.profile_db_path)
+            self.snv_panda = self.snv_panda_full
 
             profile_db.disconnect()
 
@@ -1079,12 +1080,9 @@ class DGR_Finder:
         #possible DGR dictionary
         self.DGRs_found_dict = {}
 
-        profile_db = dbops.ProfileDatabase(self.profile_db_path)
-
         #Sort pandas data-frame of SNVs by contig name and then by position of SNV within contig
-        self.snv_panda_bin = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name).sort_values(by=['split_name', 'pos_in_contig'])
-        self.snv_panda_bin['contig_name'] = self.snv_panda_bin.split_name.str.split('_split_').str[0]
-        profile_db.disconnect()
+        self.snv_panda['contig_name'] = self.snv_panda.split_name.str.split('_split_').str[0]
+
 
         if self.only_a_bases:
                 #This is here so that every potential VR doesn't get a new warning and clog up the terminal
@@ -1159,8 +1157,8 @@ class DGR_Finder:
                         # Going to look and create a threshold - for populations etc
 
                         #subset snv df by query contig (vr contig) and VR range
-                        matching_snv_rows = self.snv_panda_bin[(self.snv_panda_bin['contig_name'] == query_contig) &
-                        (self.snv_panda_bin['pos_in_contig'].between(query_genome_start_position, query_genome_end_position))]
+                        matching_snv_rows = self.snv_panda_full[(self.snv_panda_full['contig_name'] == query_contig) &
+                        (self.snv_panda_full['pos_in_contig'].between(query_genome_start_position, query_genome_end_position))]
 
                         #make snv vr positions a list so we can print it in the output
                         snv_VR_positions = sorted(set(matching_snv_rows['pos_in_contig'].to_list()))
