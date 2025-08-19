@@ -2066,12 +2066,9 @@ class DGR_Finder:
         """
         while True:
             sample_name = input_queue.get(True)
-            print(f"(I am in compute per sample func) Processing sample: {sample_name}")
             if sample_name is None:
                 print('Sample {sample_name} is none, loop will be broken.')
                 break
-
-            print(f"Processing sample: {sample_name}")
 
             #Extract sample-specific primers if the flag is set
             if use_sample_primers and sample_primers_dict:
