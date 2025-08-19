@@ -49,7 +49,9 @@ class DGR_Finder:
         self.run = run
         self.progress = progress
 
-        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        def A(x):
+            return args.__dict__[x] if x in args.__dict__ else None
+
         self.contigs_db_path = A('contigs_db')
         self.profile_db_path= A('profile_db')
         self.word_size = A('word_size')
@@ -142,7 +144,7 @@ class DGR_Finder:
 
             if output_dir:
                 filesnpaths.gen_output_directory(self.output_directory, delete_if_exists=False)
-        except:
+        except Exception:
             raise ConfigError(f"Hold up your directory ({self.output_directory}) already exists. To avoid overwriting data we are stopping "
                             "you here. You have three options if you want to continue: rename your directory, delete your existing directory, "
                             "or rerun with the flag `--just-do-it` (which will overwrite your directory. You have been warned).")
