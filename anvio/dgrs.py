@@ -1377,6 +1377,7 @@ class DGR_Finder:
                             "that surrounds the DGRs")
 
             contigs_db.disconnect()
+            return
 
         # are there functions?
         function_sources_found = contigs_db.meta['gene_function_sources'] or []
@@ -1446,16 +1447,14 @@ class DGR_Finder:
                         # gene length
                         gene_call['length'] = gene_call['stop'] - gene_call['start']
 
-                        # add fasta header
-                        header = '|'.join([f"contig:{contig_name}",
-                                    f"start:{gene_call['start']}",
-                                    f"stop:{gene_call['stop']}",
-                                    f"direction:{gene_call['direction']}",
-                                    f"rev_compd:{rev_compd}",
-                                    f"length:{gene_call['length']}"])
-
                         self.vr_gene_info[dgr][vr] = gene_call
                         break
+        contigs_db.disconnect()
+
+        # Write the results to TSV file
+        self.write_dgr_genes_found_tsv()
+
+        return
 
     def write_dgr_genes_found_tsv(self):
         """
