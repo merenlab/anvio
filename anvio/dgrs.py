@@ -2132,7 +2132,6 @@ class DGR_Finder:
 
                 # Keep the frame info, but also check reverse flag
                 VR_frame = vr_data['VR_frame']
-                is_reverse = vr_data.get('is_reverse_complement', False)
 
                 # decide where initial primer comes from
                 skip_initial_primer = False
