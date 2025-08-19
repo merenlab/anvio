@@ -128,7 +128,6 @@ class DGR_Finder:
             self.run.info('Samples.txt', self.samples_txt)
             self.run.info('Initial Primer Length', self.initial_primer_length)
             self.run.info('Variable Region Primer Length', self.whole_primer_length)
-            #self.run.info("R1/R2 for raw reads present?", "True" if self.raw_r1_r2_reads_are_present else "False")
 
 
 
@@ -2124,7 +2123,6 @@ class DGR_Finder:
 
         # create primers dictionary
         primers_dict = {}
-        #TODO: CHECK THE STRAND OF THE INITIAL PRIMER REGION
 
         for dgr_id, dgr_data in dgrs_dict.items():
             for vr_id, vr_data in dgr_data['VRs'].items():
