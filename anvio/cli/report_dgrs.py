@@ -118,7 +118,7 @@ def get_args():
     groupD.add_argument("--snv-codon-position", help="The maximum percentage of SNVs that are allowed in the 3rd codon position of the variable region.", type=float, default=0.33, metavar="FLOAT")
 
     groupE = parser.add_argument_group('CONTIGS AND PROFILE DB INPUT ARGUMENTS', "Options for using the Contigs.db and Profile.db input for this program")
-    groupE.add_argument("-s","--distance-between-snv", help="Length of bp between SNVs for them to be added to the high SNV density window. Default = 5 ", type=int, default=5, metavar="INT")
+    groupE.add_argument("-s","--distance-between-snv", help="Length of bp between SNVs for them to be added to the high SNV density window. Default = 5 ", type=int, default=8, metavar="INT")
     groupE.add_argument("-r","--minimum-range-size", help="Minimum length of SNVs window. Default = 5", type=int, default=5, metavar="INT")
     groupE.add_argument("--variable-buffer-length", help="Length of bp added to your high SNV density 'window'. Default = 35", type=int, default=35)
     groupE.add_argument("-d","--departure-from-reference-percentage", help="Minimum departure from reference to consider a SNV. Default is 0.1", type=float, default=0.1)
