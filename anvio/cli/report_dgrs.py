@@ -155,8 +155,6 @@ def get_args():
                     "file that points to raw FASTQ reads you have used to generate your merged PROFILE.db. "
                     "Truly mind boggling stuff.")
     groupI.add_argument(*anvio.A('samples-txt'), **anvio.K('samples-txt'))
-    groupI.add_argument('--skip-initial-primer', default=False, action="store_true", help="This flag skips creating an initial primer before the variable "
-                        "region primer when searching in short reads. This is useful when your samples are too diverse for an initial primer" )
     groupI.add_argument('--initial-variable-primer-length', default=12, type=int, help="This is the initial section of the variable region primer "
                     "that actually comes before the variable region itself. This is to ensure that the whole primer is specific enough for the "
                     "primer search to find only the variable regions within the short reads. Default = 12 bp.", metavar="INT")
