@@ -1457,8 +1457,22 @@ class DGR_Finder:
                         self.vr_gene_info[dgr][vr] = gene_call
                         break
 
-        #TODO: MAKE into WRITE DGR_genes_found write function
-        # define output path
+    def write_dgr_genes_found_tsv(self):
+        """
+        Write the DGR gene information to a TSV file.
+
+        Parameters
+        ==========
+
+        Creates
+        =======
+        {self.output_directory}_DGR_genes_found.tsv: tsv
+            A TSV file containing the DGR gene information, including gene IDs, contig names etc
+        """
+        if not hasattr(self, 'vr_gene_info') or not self.vr_gene_info:
+            self.run.warning("No gene information available to write to TSV file.")
+            return
+
         output_directory_path = self.output_directory
         output_path_for_genes_found = os.path.join(output_directory_path, f"{self.output_directory}_DGR_genes_found.tsv")
 
@@ -1499,6 +1513,7 @@ class DGR_Finder:
                         gene_annotation_source,
                         gene_annotation_accession
                     ])
+            self.run.info_single(f"DGR genes information successfully written to '{self.output_directory}'")
         return
 
 
