@@ -264,10 +264,8 @@ class DGR_Finder:
 
 
         if self.collections_mode:
-            self.run.info_single("Collections mode activated. Get ready to see as many BLASTn as bins in your collection. Big things be happenin'.")
+            self.run.info_single("Collections mode activated. Get ready to see as many BLASTn as bins in your collection. Big things be happenin'.", nl_before=1)
             #I know we don't need contigs sequences here as everything is done for splits, but I think I need this here for the rest of the code to function as normal
-            #TODO: Need to see if this works or if I need to change the rest of the code to work with splits
-            #TODO: add warning if a contig is over multiple splits. Because you blast the splits against contigs.
             contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
             self.contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
             contigs_db.disconnect()
@@ -485,7 +483,7 @@ class DGR_Finder:
 
             # filter snv_panda for min departure from ref and codon position
             if self.discovery_mode:
-                self.run.info_single("Running discovery mode. Search for SNVs in all possible locations. You go Dora the explorer!")
+                self.run.info_single("Running discovery mode. Search for SNVs in all possible locations. You go Dora the explorer!", nl_before=1)
                 self.snv_panda = self.snv_panda.query("departure_from_reference >= @self.departure_from_reference_percentage")
 
             else:
@@ -752,9 +750,7 @@ class DGR_Finder:
                 for hit_identity_unique, hit_data in self.mismatch_hits.items():
                     self.merged_mismatch_hits.setdefault(hit_identity_unique, []).append(hit_data)
 
-            # aesthetic new line
-            print("\n")
-            self.run.info_single(f"Total unique mismatches: {len(self.merged_mismatch_hits)}")
+            self.run.info_single(f"Total unique mismatches: {len(self.merged_mismatch_hits)}", nl_before=1)
             return self.merged_mismatch_hits
 
         #run in normal none collections mode
@@ -1187,7 +1183,7 @@ class DGR_Finder:
                             # Apply threshold of 66% because we want less than a third of snvs to be at the third codon position
                             is_3_over_a_third = percent_3 > (self.snv_codon_position * 100)
                             if is_3_over_a_third:
-                                self.run.info_single(f"3rd codon position is over a third of the total VR SNVs, so we remove you. {percent_3}")
+                                self.run.info_single(f"3rd codon position is over a third of the total VR SNVs, so we remove you. {percent_3}", nl_before=1)
                                 snv_at_3_codon_over_a_third = True
                                 if anvio.debug:
                                     self.run.warning(f"Skipping candidate DGR due to SNV filters. One with a VR on this contig: {query_contig}. Specifically, in this case the candidate DGR has a high "
@@ -1342,7 +1338,7 @@ class DGR_Finder:
         if anvio.DEBUG:
             self.run.warning(f"The temp directory, '{self.temp_dir}', is kept. Don't forget to clean it up later!", header="Debug")
         else:
-            self.run.info_single("Cleaning up the temp directory (use `--debug` to keep it for testing purposes)", nl_before=1, nl_after=1)
+            self.run.info_single("Cleaning up the temp directory (use `--debug` to keep it for testing purposes)", nl_before=1)
             shutil.rmtree(self.temp_dir)
         return
 
@@ -1364,7 +1360,7 @@ class DGR_Finder:
         if len(self.DGRs_found_dict) == 0:
             return
 
-        self.run.info_single(f"Computing the Genes the Variable Regions occur in and creating a '{self.output_directory}_DGR_genes_found.tsv'.")
+        self.run.info_single(f"Computing the Genes the Variable Regions occur in and creating a '{self.output_directory}_DGR_genes_found.tsv'.", nl_before=1)
 
         # initiate a dictionary for the gene where we find VR
         self.vr_gene_info = {}
@@ -1512,7 +1508,8 @@ class DGR_Finder:
                         gene_annotation_source,
                         gene_annotation_accession
                     ])
-            self.run.info_single(f"DGR genes information successfully written to '{self.output_directory}'")
+
+            self.run.info_single(f"DGR genes information successfully written to '{self.output_directory}'" , nl_before=1)
         return
 
 
@@ -1538,8 +1535,7 @@ class DGR_Finder:
         if len(dgrs_dict) == 0:
             return
 
-        self.run.info_single("Computing the closest HMMs to the Template Regions and printing them in your output csv.")
-        print('\n')
+        self.run.info_single("Computing the closest HMMs to the Template Regions and printing them in your output csv.", nl_before=1)
 
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
 
@@ -1711,7 +1707,7 @@ class DGR_Finder:
 
         # we know when we are not wanted
         if self.skip_recovering_genomic_context:
-            self.run.info_single('Skipping genomic context recovery due to self.skip_recovering_genomic_context being True')
+            self.run.info_single('Skipping genomic context recovery due to self.skip_recovering_genomic_context being True', nl_before=1)
             return
 
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
@@ -1765,7 +1761,7 @@ class DGR_Finder:
 
             if not len(gene_calls_in_TR_contig):
                 trs_with_no_gene_calls_around.add(dgr_id)
-                self.run.info_single(f'No gene calls found around TR {dgr_id}')
+                self.run.info_single(f'No gene calls found around TR {dgr_id}', nl_before=1)
                 continue
 
             # Process TR gene calls
@@ -1848,7 +1844,7 @@ class DGR_Finder:
 
                 if not len(gene_calls_in_VR_contig):
                     vrs_with_no_gene_calls_around.add(vr_id)
-                    self.run.info_single(f'No gene calls found around DGR {dgr_id} VR {vr_id}')
+                    self.run.info_single(f'No gene calls found around DGR {dgr_id} VR {vr_id}', nl_before=1)
                     continue
 
                 min_distance_to_VR_start, min_distance_to_VR_end = float('inf'), float('inf')
@@ -1905,7 +1901,7 @@ class DGR_Finder:
 
         contigs_db.disconnect()
         self.progress.end()
-        self.run.info_single('Completed recovering genomic context surrounding the DGRs')
+        self.run.info_single('Completed recovering genomic context surrounding the DGRs', nl_before=1)
 
         self.run.info(f"[Genomic Context] Searched for {PL('DGR', len(dgrs_dict))}",
                     f"Recovered for {PL('TR', len(self.genomic_context_surrounding_dgrs[dgr_id]))}",
@@ -1943,7 +1939,7 @@ class DGR_Finder:
         """
 
         if self.skip_recovering_genomic_context:
-            self.run.info_single('Skipping reporting genomic context due to self.skip_recovering_genomic_context being True')
+            self.run.info_single('Skipping reporting genomic context due to self.skip_recovering_genomic_context being True', nl_before=1)
             return
 
         if not len(self.genomic_context_surrounding_dgrs):
@@ -2002,7 +1998,7 @@ class DGR_Finder:
                                 tr_functions_output.write(f"{dgr_id}_TR\t{gene_call.get('gene_callers_id', '')}\t\t\t\n")
                         else:
                             # Log if gene_call is not a dictionary
-                            self.run.info_single(f"Unexpected type for gene_call: {gene_call} (expected dict but got {type(gene_call)})")
+                            self.run.info_single(f"Unexpected type for gene_call: {gene_call} (expected dict but got {type(gene_call)})", nl_before=1)
 
                 # Log information about the reporting files
                 self.run.info(f"Reporting file on gene context for {dgr_id} TR", tr_genes_output_path)
@@ -2038,8 +2034,8 @@ class DGR_Finder:
                             else:
                                 vr_functions_output.write(f"{dgr_id} {vr_id}\t{gene_call['gene_callers_id']}\t\t\t\n")
 
-                    self.run.info(f'Reporting file on gene context for {dgr_id} {vr_id}', vr_genes_output_path)
-                    self.run.info(f'Reporting file on functional context for {dgr_id} {vr_id}', vr_functions_output_path, nl_after=1)
+                    self.run.info(f'    Reporting file on gene context for {dgr_id} {vr_id}', vr_genes_output_path)
+                    self.run.info(f'    Reporting file on functional context for {dgr_id} {vr_id}', vr_functions_output_path, nl_after=1)
 
 
 
@@ -2266,8 +2262,7 @@ class DGR_Finder:
         use_sample_primers = False
 
         if not len(dgrs_dict):
-            self.run.info_single("Compute DGR variability profile function speaking: There are no DGRs to "
-                                "compute in-sample variability :/", mc="red")
+            raise ConfigError("Compute DGR variability profile function speaking: There are no DGRs to compute in-sample variability :/")
 
         sample_names = list(self.samples_txt_dict.keys())
         num_samples = len(sample_names)
@@ -2286,14 +2281,15 @@ class DGR_Finder:
 
         if num_samples > self.num_threads:
             self.run.info_single(f"You have {PL('sample', num_samples)} but {PL('thread', self.num_threads)}. Therefore, not all samples will be processed "
-                                f"in parallel. Just an FYI. {msg}.", level=0, nl_after=1)
+                                f"in parallel. Just an FYI. {msg}.", level=0, nl_before=1)
         elif self.num_threads > num_samples:
             self.run.info_single(f"You have {PL('sample', num_samples)} but {PL('thread', self.num_threads)}. Since only samples are run in "
                                 f"parallel, the additional {PL('thread', self.num_threads - num_samples)} you have there are not really "
-                                f"useful for anything. Just an FYI. {msg}.", level=0, nl_after=1)
+                                f"useful for anything. Just an FYI. {msg}.", level=0, nl_before=1)
             self.num_threads = num_samples
         else:
-            self.run.info_single(f"{msg}.", level=0, nl_after=1)
+
+            self.run.info_single(f"{msg}.", level=0, nl_before=1)
 
         # here we will need to reconstruct a samples_dict and primers_dict to pass to the class
         # `PrimerSearch`. for this we first need to generate a list of primers. for each
@@ -2404,9 +2400,7 @@ class DGR_Finder:
                             self.sample_primers_dict[dgr_vr_key] = {}
 
                         if anvio.DEBUG:
-                            self.run.info_single(f"Processing sample {sample_name} for DGR {dgr_id} VR {vr_id}")
-                            print(primers_dict[original_primer_key])
-                            print(primers_dict)
+                            self.run.info_single(f"Processing sample {sample_name} for DGR {dgr_id} VR {vr_id}", nl_before=1)
 
                         if not primer_snvs.empty:
                             # Get original sequences separately
@@ -2437,7 +2431,7 @@ class DGR_Finder:
                                 'used_original_primer': False,}
 
                             self.run.info_single(
-                                f"Updated sample {sample_name} primer for {dgr_vr_key}: {''.join(new_initial_primer)}")
+                                f"Updated sample {sample_name} primer for {dgr_vr_key}: {''.join(new_initial_primer)}", nl_before=1)
 
                         else:
                             # Use the original primer sequence since no SNVs were found
@@ -2458,7 +2452,7 @@ class DGR_Finder:
                             )
 
                 if anvio.DEBUG:
-                    self.run.info_single(f"Sample {sample_name} processed. Sample-specific primers dict: {self.sample_primers_dict}")
+                    self.run.info_single(f"Sample {sample_name} processed. Sample-specific primers dict: {self.sample_primers_dict}", nl_before=1)
 
                 # Update the sample-specific primers dictionary with the new primer sequence
                 for dgr_vr_key, samples in self.sample_primers_dict.items():
@@ -2477,24 +2471,24 @@ class DGR_Finder:
 
                         if anvio.DEBUG:
                             # Print the updated primer sequence for debugging
-                            self.run.info_single(f"Sample: {sample_name}, DGR: {dgr_vr_key}, Primer Sequence: {primer_sequence}")
+                            self.run.info_single(f"Sample: {sample_name}, DGR: {dgr_vr_key}, Primer Sequence: {primer_sequence}", nl_before=1)
 
             if anvio.DEBUG:
-                self.run.info_single(f"Updated sample primers dictionary: {self.sample_primers_dict}")
+                self.run.info_single(f"Updated sample primers dictionary: {self.sample_primers_dict}", nl_before=1)
 
 
         if not self.skip_primer_variability:
-            self.run.info_single("Primer variability analysis is enabled. Using sample-specific primers.")
+            self.run.info_single("Primer variability analysis is enabled. Using sample-specific primers.", nl_before=1)
 
             # Ensure `sample_primers_dict` is updated and passed during computation
             use_sample_primers = True
 
         if self.skip_primer_variability:
-            self.run.info_single("Skipping primer variability analysis. Using default primers.")
+            self.run.info_single("Skipping primer variability analysis. Using default primers.", nl_before=1)
             use_sample_primers = False
 
         # Output the final primers dictionary
-        self.run.info_single("Computing the Variable Regions Primers and creating a 'DGR_Primers_used_for_VR_diversity.tsv' file.")
+        self.run.info_single("Computing the Variable Regions Primers and creating a 'DGR_Primers_used_for_VR_diversity.tsv' file.", nl_before=1)
         self.print_primers_dict_to_csv(self.sample_primers_dict if not self.skip_primer_variability else primers_dict)
 
         ##################
@@ -2517,7 +2511,7 @@ class DGR_Finder:
         # engage the proletariat, our hard-working wage-earner class
         workers = []
         for i in range(self.num_threads):
-            self.run.info_single(f"starting worker {i}")
+            self.run.info_single(f"Starting worker {i}", nl_before=1)
             worker = multiprocessing.Process(target=DGR_Finder.compute_dgr_variability_profiling_per_vr,
                                             args=(input_queue,
                                                 output_queue,
@@ -2542,7 +2536,7 @@ class DGR_Finder:
                 sample_finished_processing = output_queue.get()
                 if anvio.DEBUG:
                     self.progress.reset()
-                    self.run.info_single(f"Sample {sample_finished_processing} has finished processing.")
+                    self.run.info_single(f"Sample {sample_finished_processing} has finished processing.", nl_before=1)
                 num_samples_processed += 1
                 self.progress.increment(increment_to=num_samples_processed)
                 if self.num_threads > 1:
@@ -2552,7 +2546,7 @@ class DGR_Finder:
                         self.progress.update("All done!")
             except KeyboardInterrupt:
                 self.run.info_single("Received kill signal, terminating all processes... Don't believe anything you see "
-                                    "below this and destroy all the output files with fire.", nl_before=1, nl_after=1)
+                                    "below this and destroy all the output files with fire.", nl_before=1)
                 break
 
         if self.num_threads > 1:
@@ -2573,7 +2567,7 @@ class DGR_Finder:
         This function will create a TSV file named 'DGR_Primers_used_for_VR_diversity.tsv' in the output directory.
         """
 
-        self.run.info_single("Storing the primers used to calculate VR diversity in 'DGR_Primers_used_for_VR_diversity.tsv'.")
+        self.run.info_single("Storing the primers used to calculate VR diversity in 'DGR_Primers_used_for_VR_diversity.tsv'.", nl_before=1)
 
         output_directory_path = self.output_directory
         output_path= os.path.join(output_directory_path, "DGR_Primers_used_for_VR_diversity.tsv")
@@ -2910,8 +2904,7 @@ class DGR_Finder:
         self.process_blast_results()
         self.filter_for_TR_VR()
         if args.parameter_output:
-            self.run.info_single("Writing to Parameters used file.")
-            print('\n')
+            self.run.info_single("Writing to Parameters used file.", nl_before=1)
             self.parameter_output_sheet()
         self.get_gene_info()
         self.get_hmm_info()
