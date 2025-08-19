@@ -1077,7 +1077,8 @@ class DGR_Finder:
         self.DGRs_found_dict = {}
 
         #Sort pandas data-frame of SNVs by contig name and then by position of SNV within contig
-        self.snv_panda['contig_name'] = self.snv_panda.split_name.str.split('_split_').str[0]
+        self.snv_panda = self.snv_panda.copy()
+        self.snv_panda.loc[:, 'contig_name'] = self.snv_panda.split_name.str.split('_split_').str[0]
 
 
         if self.only_a_bases:
