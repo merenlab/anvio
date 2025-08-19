@@ -64,7 +64,7 @@ class DGR_Finder:
         self.min_base_types_tr = A('min_base_types_tr') or 2
         self.only_a_bases =A('only_a_bases')
         self.temp_dir = A('temp_dir') or filesnpaths.get_temp_directory_path()
-        self.max_dist_bw_snvs = A('distance_between_snv')
+        self.max_dist_bw_snvs = A('distance_between_snv') or 8
         self.variable_buffer_length = A('variable_buffer_length')
         self.departure_from_reference_percentage = A('departure_from_reference_percentage')
         self.gene_caller_to_consider_in_context = A('gene_caller') or 'prodigal'
