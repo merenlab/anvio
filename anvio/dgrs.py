@@ -2073,11 +2073,13 @@ class DGR_Finder:
                 break
 
             print(f"Processing sample: {sample_name}")
+
             #Extract sample-specific primers if the flag is set
             if use_sample_primers and sample_primers_dict:
                 primers_for_sample = sample_primers_dict.get(sample_name, primers_dict)
             else:
                 primers_for_sample = primers_dict
+
             samples_dict_for_sample = {sample_name: samples_dict[sample_name]}
 
             # setup the args object
@@ -2113,8 +2115,9 @@ class DGR_Finder:
             A dictionary containing the various primers for each sample including the compositional sections of each primer (i.e. masked primer and the initial primer)
         """
 
-        #create primers dictionary
+        # create primers dictionary
         primers_dict = {}
+        #TODO: CHECK THE STRAND OF THE INITIAL PRIMER REGION
 
         for dgr_id, dgr_data in dgrs_dict.items():
             for vr_key, vr_data in dgr_data['VRs'].items():
@@ -2400,6 +2403,8 @@ class DGR_Finder:
 
                         dgr_vr_key = f'{dgr_id}_{vr_key}'
                         original_primer_key = f'{dgr_id}_{vr_key}_Primer'
+
+                        # make sure dict exists
                         if dgr_vr_key not in self.sample_primers_dict:
                             self.sample_primers_dict[dgr_vr_key] = {}
 
@@ -2407,6 +2412,7 @@ class DGR_Finder:
                             self.run.info_single(f"Processing sample {sample_name} for DGR {dgr_id} VR {vr_id}")
                             print(primers_dict[original_primer_key])
                             print(primers_dict)
+
                         if not primer_snvs.empty:
                             # Get original sequences separately
                             original_initial_primer = primers_dict[original_primer_key]['initial_primer_sequence']
@@ -2503,6 +2509,7 @@ class DGR_Finder:
 
             # Ensure `sample_primers_dict` is updated and passed during computation
             use_sample_primers = True
+
         if self.skip_primer_variability:
             self.run.info_single("Skipping primer variability analysis. Using default primers.")
             use_sample_primers = False
