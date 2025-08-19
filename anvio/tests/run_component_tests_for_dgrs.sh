@@ -33,7 +33,7 @@ INFO "Running debug the base analysis (without reporting the activity or genomic
 anvi-report-dgrs -c 02_CONTIGS/CONTIGS.db \
                 -p 03_PROFILE/PROFILE.db \
                 -I Reverse_Transcriptase \
-                -o DGRS_BASIC \
+                -o DGRS_BASIC_DEBUG \
                 --parameter-output \
                 --skip-compute-DGR-variability-profiling \
                 --skip-recovering-genomic-context \
@@ -44,7 +44,7 @@ INFO "Running debug amd verbose the base analysis (without reporting the activit
 anvi-report-dgrs -c 02_CONTIGS/CONTIGS.db \
                 -p 03_PROFILE/PROFILE.db \
                 -I Reverse_Transcriptase \
-                -o DGRS_BASIC \
+                -o DGRS_BASIC_DEBUG_VERBOSE \
                 --parameter-output \
                 --skip-compute-DGR-variability-profiling \
                 --skip-recovering-genomic-context \
@@ -56,7 +56,7 @@ INFO "Running the base analysis (without reporting the activity of dgrs)"
 anvi-report-dgrs -c 02_CONTIGS/CONTIGS.db \
                 -p 03_PROFILE/PROFILE.db \
                 -I Reverse_Transcriptase \
-                -o DGRS_BASIC \
+                -o DGRS_GENOMIC_CONTEXT \
                 --parameter-output \
                 --skip-compute-DGR-variability-profiling \
                 $thread_controller
@@ -65,8 +65,8 @@ INFO "Running the base analysis only looking at adenine bases (without reporting
 anvi-report-dgrs -c 02_CONTIGS/CONTIGS.db \
                 -p 03_PROFILE/PROFILE.db \
                 -I Reverse_Transcriptase \
-                -o DGRS_BASIC \
-                --only-a-bases
+                -o DGRS_BASIC_ONLY_A_BASES \
+                --only-a-bases \
                 --parameter-output \
                 --skip-compute-DGR-variability-profiling \
                 $thread_controller
@@ -78,16 +78,16 @@ anvi-report-dgrs -c 02_CONTIGS/CONTIGS.db \
                 --discovery-mode \
                 -o DGRS_BASIC_DISCOVERY \
                 --parameter-output \
-                --skip-compute-DGR-variability-profiling\
+                --skip-compute-DGR-variability-profiling \
                 --skip-recovering-genomic-context \
                 $thread_controller
 
 INFO "Running the analysis with the collections mode where each VR is in a different bin, meaning each DGR has 1 VR (without reporting the activity of dgrs)"
 anvi-report-dgrs -c 02_CONTIGS/CONTIGS.db \
-                -p 05_MERGED/PROFILE.db \
+                -p 03_PROFILE/PROFILE.db \
                 -I Reverse_Transcriptase \
                 --collections-mode \
-                -collection-name DGR \
+                --collection-name DGR_COLLECTION_ONE_VR \
                 -o DGRS_COLLECTION_ONE_VR \
                 --parameter-output \
                 --skip-compute-DGR-variability-profiling \
