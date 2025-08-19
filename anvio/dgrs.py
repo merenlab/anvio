@@ -2255,7 +2255,6 @@ class DGR_Finder:
         #define defaults
         dgrs_dict = self.DGRs_found_dict
         use_sample_primers = False
-        sample_primers_dict = None
 
         if not len(dgrs_dict):
             self.run.info_single("Compute DGR variability profile function speaking: There are no DGRs to "
@@ -2409,31 +2408,45 @@ class DGR_Finder:
                             new_initial_primer = list(original_initial_primer)
 
                             # Vectorized operation to find consensus SNVs and update the primer sequence
-                            # TODO: make departure from ref a parameter?
-                            consensus_snvs = primer_snvs[primer_snvs['departure_from_reference'] > 0.5].apply(DGR_Finder.get_consensus_base, axis=1)
-                            positions_in_primer = (vr_start - self.initial_primer_length) - primer_snvs[primer_snvs['departure_from_reference'] > 0.5]['pos_in_contig'] - 1
+                            consensus_snvs = primer_snvs[
+                                primer_snvs['departure_from_reference'] > 0.5].apply(DGR_Finder.get_consensus_base, axis=1)
+
+                            positions_in_primer = (
+                                (vr_start - self.initial_primer_length)
+                                - primer_snvs[primer_snvs['departure_from_reference'] > 0.5]['pos_in_contig']
+                                - 1)
 
                             for position, consensus_base in zip(positions_in_primer, consensus_snvs):
                                 if consensus_base and 0 <= position < len(new_initial_primer):
                                     new_initial_primer[position] = consensus_base
 
-                            # Store the initial + masked separately, combine only later
+                            # update sample-specific dict entry
                             self.sample_primers_dict[dgr_vr_key][sample_name] = {
                                 'initial_primer_sequence': ''.join(new_initial_primer),
                                 'vr_masked_primer': vr_masked_primer,
-                                'used_original_primer': False,
-                            }
+                                'primer_sequence': ''.join(new_initial_primer) + vr_masked_primer,
+                                'used_original_primer': False,}
 
-                            self.run.info_single(f"Updated sample {sample_name} primer for {dgr_vr_key}: {''.join(new_initial_primer)}")
+                            self.run.info_single(
+                                f"Updated sample {sample_name} primer for {dgr_vr_key}: {''.join(new_initial_primer)}")
+
                         else:
                             # Use the original primer sequence since no SNVs were found
+                            original_initial_primer = primers_dict[original_primer_key]['initial_primer_sequence']
+                            vr_masked_primer = primers_dict[original_primer_key]['vr_masked_primer']
+
+                            # update sample-specific dict entry
                             self.sample_primers_dict[dgr_vr_key][sample_name] = {
                                 'initial_primer_sequence': original_initial_primer,
                                 'vr_masked_primer': vr_masked_primer,
+                                'primer_sequence': original_initial_primer + vr_masked_primer,
                                 'used_original_primer': True,
                             }
-                            self.run.warning(f"No valid SNVs for primer region in sample {sample_name} for {dgr_vr_key}, skipping sample consensus.")
-                            continue
+
+                            self.run.warning(
+                                f"No valid SNVs for primer region in sample {sample_name} for {dgr_vr_key}, "
+                                f"skipping sample consensus."
+                            )
 
                 if anvio.DEBUG:
                     self.run.info_single(f"Sample {sample_name} processed. Sample-specific primers dict: {self.sample_primers_dict}")
@@ -2457,39 +2470,9 @@ class DGR_Finder:
                             # Print the updated primer sequence for debugging
                             self.run.info_single(f"Sample: {sample_name}, DGR: {dgr_vr_key}, Primer Sequence: {primer_sequence}")
 
-            # Final processing to ensure primer sequence consistency and length restrictions
-            for dgr_id, dgr_data in dgrs_dict.items():
-                for vr_key, vr_data in dgr_data['VRs'].items():
-                    vr_id = vr_key
-                    primer_key = f'{dgr_id}_{vr_id}_Primer'
-                    # Set the final primer sequence in primers_dict based on initial sequence and variability analysis
-                    primers_dict[primer_key]['primer_sequence'] = (primers_dict[primer_key]['initial_primer_sequence'] + primers_dict[primer_key]['vr_masked_primer'])
-
-                    # Ensure the primer sequence does not exceed the desired length
-                    if len(primers_dict[primer_key]['primer_sequence']) > self.whole_primer_length:
-                        print(f"The primer for {sample_name} {dgr_id} {vr_id} is above the desired length. Trimming to {self.whole_primer_length}.")
-                        primers_dict[primer_key]['primer_sequence'] = primers_dict[primer_key]['primer_sequence'][:self.whole_primer_length]
-
             if anvio.DEBUG:
                 self.run.info_single(f"Updated sample primers dictionary: {self.sample_primers_dict}")
 
-        # always create primer_sequence key, regardless of skip_primer_variability setting
-        if self.skip_primer_variability:
-            # When skipping primer variability, we still need to create the primer_sequence key
-            # using the original sequences
-            for dgr_id, dgr_data in dgrs_dict.items():
-                for vr_key, vr_data in dgr_data['VRs'].items():
-                    vr_id = vr_key
-                    primer_key = f'{dgr_id}_{vr_id}_Primer'
-                    # Set the final primer sequence using initial + masked sequences
-                    primers_dict[primer_key]['primer_sequence'] = (
-                        primers_dict[primer_key]['initial_primer_sequence'] +
-                        primers_dict[primer_key]['vr_masked_primer'])
-
-                    # Ensure the primer sequence does not exceed the desired length
-                    if len(primers_dict[primer_key]['primer_sequence']) > self.whole_primer_length:
-                        print(f"The primer for {dgr_id} {vr_id} is above the desired length. Trimming to {self.whole_primer_length}.")
-                        primers_dict[primer_key]['primer_sequence'] = primers_dict[primer_key]['primer_sequence'][:self.whole_primer_length]
 
         if not self.skip_primer_variability:
             self.run.info_single("Primer variability analysis is enabled. Using sample-specific primers.")
