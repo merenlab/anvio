@@ -646,7 +646,6 @@ class DGR_Finder:
         #extract all starts and stops
         all_start = []
         all_end = []
-        contig_name = None
         for start, end in entries:
             all_start.append(start)
             all_end.append(end)
@@ -807,7 +806,6 @@ class DGR_Finder:
 
                         match = re.search(pattern, section_id)
                         query_start_position = int(match.group(1))
-                        query_end_position = int(match.group(2))
 
                         qseq = str(hsp.find('Hsp_qseq').text)
                         hseq = str(hsp.find('Hsp_hseq').text)
@@ -865,7 +863,7 @@ class DGR_Finder:
                                     if anvio.DEBUG and self.verbose:
                                         self.run.warning(f"Removing the DGR with its VR on this contig: {qseq} and TR on this contig: {hseq}. Found approximate tandem repeat in the query sequence {seq} with repeat count {atr2.repeat}, motif {atr2.motif} and coverage {coverage}")
 
-                        if has_repeat == True:
+                        if has_repeat:
                             #breakout of loop (don't add as dgr)
                             continue
 
@@ -1106,7 +1104,6 @@ class DGR_Finder:
                 position = hit_data['position']
                 subject_genome_start_position = hit_data['subject_genome_start_position']
                 subject_genome_end_position = hit_data['subject_genome_end_position']
-                alignment_length = hit_data['alignment_length']
                 subject_sequence = Seq(hit_data['hit_seq'])
                 original_midline = hit_data['midline']
                 query_sequence = Seq(hit_data['query_seq'])
@@ -1545,7 +1542,7 @@ class DGR_Finder:
                 gene_name = entry['gene_name']
                 e_value = entry['e_value']
                 HMM_source = entry['source']
-                if not gene_callers_id in found_HMMS_dict.keys():
+                if gene_callers_id not in found_HMMS_dict.keys():
                     found_HMMS_dict[gene_callers_id] = {'gene_name':gene_name,
                                                             'e_value':e_value,
                                                             'HMM_source':HMM_source}
