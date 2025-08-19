@@ -1423,13 +1423,10 @@ class DGR_Finder:
                         # While we are here, let's add more info about the gene
                         # DNA sequence:
                         dna_sequence = self.contig_sequences[contig_name]['sequence'][gene_call['start']:gene_call['stop']]
-                        rev_compd = None
                         if gene_call['direction'] == 'f':
                             gene_call['DNA_sequence'] = dna_sequence
-                            rev_compd = False
                         else:
                             gene_call['DNA_sequence'] = utils.rev_comp(dna_sequence)
-                            rev_compd = True
 
                         # add AA sequence
                         where_clause = f'''gene_callers_id == "{gene_callers_id}"'''
@@ -2798,7 +2795,6 @@ class DGR_Finder:
                         if hmm_id is not None and current_gene_id is not None and hmm_id == current_gene_id:
                             gene['COLOR'] = '#c366e8'  # Purple if there's a match based on hmm_id and gene_id
 
-
                         gene['VRX'] = gene['start_vr_g']
                         gene['VCX'] = (gene['start_vr_g'] + (gene['stop_vr_g'] - gene['start_vr_g']) / 2)
                         gene['VGY'] = gene['VRX'] + gene['VRW'] + gene_arrow_width
@@ -2848,7 +2844,7 @@ class DGR_Finder:
             csv_writer = csv.writer(csvfile, delimiter='\t')
             headers = ["Parameter", "Value"]
             csv_writer.writerow(headers)
-            ##############
+
             parameters = [
                 ("Contig.db", self.contigs_db_path),
                 ("Profile.db", self.profile_db_path),
@@ -2906,6 +2902,6 @@ class DGR_Finder:
         self.recover_genomic_context_surrounding_dgrs()
         self.report_genomic_context_surrounding_dgrs()
         self.create_found_tr_vr_csv()
-        self.compute_dgr_variability_profiling() # add if statement to this for the metagenomics mode DGRs
+        self.compute_dgr_variability_profiling()
         self.process_dgr_data_for_HTML_summary()
         return
