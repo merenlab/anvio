@@ -2859,30 +2859,43 @@ class DGR_Finder:
             csv_writer = csv.writer(csvfile, delimiter='\t')
             headers = ["Parameter", "Value"]
             csv_writer.writerow(headers)
-            #TODO:MAKE SURE THIS LIST IS COMPLETE AND IN THE RIGHT ORDER
             ##############
             parameters = [
-                ("Contig.db", self.contigs_db_path if self.contigs_db_path else None),
-                ("Profile.db", self.profile_db_path if self.profile_db_path else None),
+                ("Contig.db", self.contigs_db_path),
+                ("Profile.db", self.profile_db_path),
+                ("Temporary Directory", self.temp_dir if self.temp_dir else None),
+                ("Output Directory", self.output_directory if self.output_directory else "default"),
                 ("Word Size of BLAST", self.word_size if self.word_size else "8"),
-                ("Number of Threads for BLAST", self.num_threads if self.num_threads else None),
+                ("Number of Threads for BLAST", self.num_threads if self.num_threads else "1"),
                 ("Skip 'Ns'", self.skip_Ns if self.skip_Ns else "FALSE"),
                 ("Skip '-'", self.skip_dashes if self.skip_dashes else "FALSE"),
                 ("Number of Mismatches", self.number_of_mismatches if self.number_of_mismatches else "7"),
                 ("Percentage of Mismatches", self.percentage_mismatch if self.percentage_mismatch else "0.8"),
+                ("Only A Bases", self.only_a_bases or "FALSE"),
                 ("Minimum Mismatching Base Types in VR", self.min_base_types_vr if self.min_base_types_vr else "2"),
                 ("Minimum Base Types in VR", self.min_base_types_vr if self.min_base_types_vr else "2"),
                 ("Minimum Base Types in TR", self.min_base_types_tr if self.min_base_types_tr else "2"),
-                ("Temporary Directory", self.temp_dir if self.temp_dir else None),
-                ("Distance between SNVs", self.max_dist_bw_snvs if self.max_dist_bw_snvs else "5"),
-                ("Variable Buffer Length", self.variable_buffer_length if self.variable_buffer_length else "20"),
-                ("Departure from Reference (Percentage)", self.departure_from_reference_percentage if self.departure_from_reference_percentage else "0.1"),
-                ("Minimum Range size of High Density SNVs", self.min_range_size if self.min_range_size else "5"),
+                ("Number of imperfect tandem repeats", self.numb_imperfect_tandem_repeats or "10"),
+                ("Repeat motif coverage", self.repeat_motif_coverage or "0.8"),
+                ("Distance between SNVs", self.max_dist_bw_snvs if self.max_dist_bw_snvs else "8"),
+                ("Variable Buffer Length", self.variable_buffer_length if self.variable_buffer_length else "35"),
+                ("SNV Matching Proportion", self.snv_matching_proportion or "0.25/0.30"),
+                ("SNV Codon Position", self.snv_codon_position or "0.33"),
                 ("Gene caller", self.gene_caller_to_consider_in_context if self.gene_caller_to_consider_in_context else "prodigal"),
-                ("HMMs Provided to Search through", self.hmm if self.hmm else "Reverse_Transcriptase"),
-                ("Discovery mode", self.discovery_mode if self.discovery_mode else "FALSE"),
-                ("Collections Mode", self.collections_mode if self.collections_mode else "FALSE"),
-                ("Output Directory", self.output_directory if self.output_directory else "default")
+                ("Number of genes to consider in context", self.num_genes_to_consider_in_context or "3"),
+                ("Skip Recovering Genomic Context", self.skip_recovering_genomic_context or "FALSE"),
+                ("HMMs Provided to Search through", self.hmm or "Reverse_Transcriptase"),
+                ("Discovery mode", self.discovery_mode or "FALSE"),
+                ("Collections Mode", self.collections_mode or "FALSE"),
+                ("Collections Given", self.collections_given or "None"),
+                ("Parameter Outputs", self.parameter_outputs or "FALSE"),
+                ("Just Do It", self.just_do_it or "FALSE"),
+                ("Verbose", self.verbose or "FALSE"),
+                ("Samples.txt", self.samples_txt or "None"),
+                ("Initial Primer Length", self.initial_primer_length or "12"),
+                ("Variable Region Primer Length", self.whole_primer_length or "65"),
+                ("Skip Compute DGR Variability Profiling", self.skip_compute_DGR_variability_profiling or "FALSE"),
+                ("Skip Primer Variability", self.skip_primer_variability or "FALSE")
             ]
 
             csv_writer.writerows(parameters)
