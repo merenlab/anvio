@@ -2099,6 +2099,7 @@ class DGR_Finder:
         """
         A function to generate primers for each and every VR. These are composed of not only an initial primer sequence before the VR
         but also of anchor points in the VR. These anchor points are the bases in the TR that are not A bases and only at the places the TR and VR match.
+        The primer_sequence is then composed of the initial primer sequence, the masked primer sequence, and a flag stating if the primer is a L_to_R or not (left to right or right to left) because they are all on the same strand. These primers don't take the total primer length into account yet.
 
                     TR:GCTAACTGACATAATT
         masked_primer :GCT..C.G.C.T..TT
@@ -2120,125 +2121,111 @@ class DGR_Finder:
         #TODO: CHECK THE STRAND OF THE INITIAL PRIMER REGION
 
         for dgr_id, dgr_data in dgrs_dict.items():
-            for vr_key, vr_data in dgr_data['VRs'].items():
-                vr_id = vr_key
-
-                #save original frames
-                VR_frame = vr_data['VR_frame']
-                TR_frame = vr_data['TR_frame']
-
-                #CHECK if VR sequence is not at the start of a contig so you can get the initial primer sequence
-                if self.skip_initial_primer:
-                    self.run.warning(f"The initial primer length is set to 0 for DGR {dgr_id} VR {vr_id}. This means that the primer will not have an initial sequence before the VR primer. ")
-                    vr_initial_primer_region_start = vr_data['VR_start_position']
-                    vr_initial_primer_region_end = (vr_data['VR_start_position'])
-                if self.initial_primer_length > 0:
-                    if vr_data['VR_start_position'] >= self.initial_primer_length:
-                        vr_initial_primer_region_start = vr_data['VR_start_position'] - self.initial_primer_length
-                        vr_initial_primer_region_end = (vr_data['VR_start_position'] - 1)
-                    else:
-                        #this will take the start of the contig to create a shorter initial primer length
-                        vr_initial_primer_region_start = vr_data['VR_start_position']
-                        vr_initial_primer_region_end = (vr_data['VR_start_position'] - 1)
-                        self.run.warning(f"The primer sequence for this VR {dgr_id}_{vr_id}, is going to fall off the start of the contig. This is the pesky VR contig: {vr_data['VR_contig']}.")
-                else:
-                    raise ConfigError(f"The initial primer length is set to a negative value or zero for DGR {dgr_id} VR {vr_id}. This is not allowed. Please set the initial primer length to a positive value.")
-
-                contig_sequence = self.contig_sequences[vr_data['VR_contig']]['sequence']
-                if not self.skip_initial_primer:
-                    vr_initial_primer_region = contig_sequence[vr_initial_primer_region_start:vr_initial_primer_region_end + 1]
-                    #add every primer sequence to the dgrs_dict
-                    vr_data['vr_initial_primer_region'] = vr_initial_primer_region
-                else:
-                    vr_data['vr_initial_primer_region'] = ''
+            for vr_id, vr_data in dgr_data['VRs'].items():
+                vr_contig = vr_data['VR_contig']
+                contig_sequence = self.contig_sequences[vr_contig]['sequence']
+                contig_length = len(contig_sequence)
 
                 VR_sequence = vr_data['VR_sequence']
                 TR_sequence = vr_data['TR_sequence']
                 vr_start = vr_data.get('VR_start_position')
                 vr_end = vr_data.get('VR_end_position')
-                vr_contig = vr_data.get('VR_contig')
 
-                #FIRST CHECK THAT YOU HAVEN'T FOUND THE REVERSE COMPLEMENT OF THE STRAND ANYWAYS
-                #flip them so that they are the original way that blast found them!
-                #this will be gross but you need to keep the original keys so therefore create objects to flip
+                # Keep the frame info, but also check reverse flag
+                VR_frame = vr_data['VR_frame']
+                is_reverse = vr_data.get('is_reverse_complement', False)
 
-                #make every frame positive so that the initial primer is always on the left and then both the vr and tr are being compared on the same strand.
-                #Always make the VR strand +1 so that you can compare the primer to the fasta file by definition
-                if vr_data['VR_frame'] == -1:
-                    self.run.info_single(f"I am reverse complementing {dgr_id} {vr_id} AND THE TR because both are -1")
-                    vr_data['rev_comp_VR_seq'] = utils.rev_comp(vr_data['VR_sequence'])
-                    VR_frame = VR_frame * -1
-                    vr_data['VR_reverse_comp_for_primer'] = True
-                    VR_sequence = str(vr_data['rev_comp_VR_seq'])
-                    vr_data['rev_comp_TR_seq'] = utils.rev_comp(vr_data['TR_sequence'])
-                    TR_frame = TR_frame * -1
-                    vr_data['TR_reverse_comp_for_primer'] = True
-                    TR_sequence = str(vr_data['rev_comp_TR_seq'])
-                    if anvio.DEBUG:
-                        self.run.info_single(f"AFTER VR + TR = -1:\n{vr_id} VR sequence: {VR_sequence}\n VR frame {VR_frame}")
-                        self.run.info_single(f"AFTER VR + TR = -1:\n{dgr_id} TR sequence: {TR_sequence}\n  TR frame {TR_frame}")
-                        print('\n')
+                # decide where initial primer comes from
+                skip_initial_primer = False
+                initial_primer_right = False
 
-                if anvio.DEBUG:
-                    self.run.info_single(f"FINAL:\n{vr_id} VR sequence: {VR_sequence}\n VR frame {VR_frame}")
-                    self.run.info_single(f"FINAL:\n{dgr_id} TR sequence: {TR_sequence}\n  TR frame {TR_frame}")
-                    print('\n')
+                # sanity check that the VR is short enough to have an initial primer
+                if (len(VR_sequence) + self.initial_primer_length) > contig_length:
+                    skip_initial_primer = True
+                    self.run.warning(
+                        f"The VR is too close to the start and the end of the contig {vr_contig} "
+                        f"for DGR {dgr_id} VR {vr_id}. The initial primer will therefore be non-existent.")
 
-                #check the TR and VR sequence are the same length
-                if len(TR_sequence) == len(VR_sequence):
-                    profile_db = dbops.ProfileDatabase(self.profile_db_path)
-                    snvs_table = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name).sort_values(by=['split_name', 'pos_in_contig'])
-                    profile_db.disconnect()
+                # which way do we get the primer or skip an initial primer if VR at start/end
+                if (vr_start < self.initial_primer_length and VR_frame == 1) or \
+                (VR_frame == -1 and not vr_end > (contig_length - self.initial_primer_length)):
+                    initial_primer_right = True
 
-                    # Extract the contig name from split_name
-                    snvs_table['contig_name'] = snvs_table['split_name'].str.split('_split_', expand=True)[0]
+                # Store the flag in vr_data so we can reuse it later
+                vr_data['initial_primer_right'] = initial_primer_right
 
-                    vr_positions = set(range(vr_start, vr_end))
+                # get initial primer region if allowed
+                if not skip_initial_primer:
+                    if initial_primer_right:
+                        vr_initial_primer_region = contig_sequence[vr_end : vr_end + self.initial_primer_length]
+                    else:
+                        vr_initial_primer_region = contig_sequence[vr_start - self.initial_primer_length : vr_start]
 
-                    # Filter snvs_table to include only rows with the matching VR_contig
-                    filtered_snvs_table = snvs_table[(snvs_table['contig_name'] == vr_contig) & (snvs_table['pos_in_contig'].isin(vr_positions))]
+                    # store in vr_data so it can be accessed later
+                    vr_data['vr_initial_primer_region'] = vr_initial_primer_region
 
-                    # Convert the positions to a set for faster lookups
-                    primer_snv_positions = set(filtered_snvs_table['pos_in_contig'])
+                # now we need the masked primer sequence # so we need the positions of the VR
+                vr_positions = set(range(vr_start, vr_end))
+                filtered_snvs_table = self.snv_panda_full[
+                    (self.snv_panda_full['contig_name'] == vr_contig) &
+                    (self.snv_panda_full['pos_in_contig'].isin(vr_positions))]
 
-                    vr_primer = []
-                    # Create the vr_primer sequence
-                    # First loop: Create the initial vr_primer sequence
-                    for tr_base, vr_base in zip(TR_sequence, VR_sequence):
-                        if tr_base == 'A':
-                            vr_primer.append('.')
-                        elif tr_base != vr_base:
-                            vr_primer.append('.')
-                        else:
-                            vr_primer.append(tr_base)
+                primer_snv_positions = set(filtered_snvs_table['pos_in_contig'])
 
-                    #Second loop: Apply SNV-based modifications
-                    for i in range(len(vr_primer)):
-                        # Calculate the current position in the VR sequence
-                        current_position = vr_start + i
+                vr_primer_list = []
+                for i, (tr_base, vr_base) in enumerate(zip(TR_sequence, VR_sequence)):
+                    if tr_base == dgr_data['base']:
+                        vr_primer_list.append('.')
+                    elif tr_base != vr_base:
+                        vr_primer_list.append('.')
+                    else:
+                        vr_primer_list.append(tr_base)
 
-                        # Check if the position should be replaced with '.'
-                        if current_position in primer_snv_positions:
-                            vr_primer[i] = '.'
+                # apply SNV-based masking
+                for i in range(len(vr_primer_list)):
+                    current_position = vr_start + i
+                    if current_position in primer_snv_positions:
+                        vr_primer_list[i] = '.'
 
-                    # Convert list back to string
-                    vr_masked_primer = ''.join(vr_primer)
+                vr_masked_primer = ''.join(vr_primer_list)
 
-                    # Add the vr_masked_primer sequence to the dgrs_dict
-                    vr_data['vr_masked_primer'] = vr_masked_primer
+                # Reverse complement the masked primer if the VR is in reverse frame
+                if VR_frame == -1:
+                    vr_masked_primer = utils.rev_comp(vr_masked_primer)
 
-                elif len(TR_sequence) != len(VR_sequence):
-                    self.run.warning(f"Thats weird! The {vr_id} does not have the same length as the {dgr_id}'s TR :( so you can't create an masked primer sequence")
+                vr_data['vr_masked_primer'] = vr_masked_primer
 
-        ###########################################
-        # UPDATED DGRs dict with Primer Sequences #
-        ###########################################
+                # combine initial + masked primer
+                if not skip_initial_primer:
+                    if initial_primer_right:
+                        primer_sequence = vr_masked_primer + vr_initial_primer_region
+                    else:
+                        primer_sequence = vr_initial_primer_region + vr_masked_primer
+                else:
+                    primer_sequence = vr_masked_primer
+                    self.run.warning(
+                        f"Creating primer for DGR {dgr_id} VR {vr_id} without an initial primer region. "
+                        f"Only a masked primer is present, more risky."
+                    )
 
-        for dgr_id, dgr_data in dgrs_dict.items():
-            for vr_key, vr_data in dgr_data['VRs'].items():
-                vr_id = vr_key
-                primers_dict[dgr_id + '_' + vr_id + '_Primer'] = {'initial_primer_sequence': vr_data['vr_initial_primer_region'],
-                                                                'vr_masked_primer': vr_data['vr_masked_primer']}
+                # cut to correct total length
+                if initial_primer_right:
+                    # cut from the LEFT (keep the right side)
+                    primer_sequence = primer_sequence[-self.whole_primer_length:]
+                else:
+                    # cut from the RIGHT (keep the left side)
+                    primer_sequence = primer_sequence[:self.whole_primer_length]
+
+                # store full primer sequence
+                vr_data['primer_sequence'] = primer_sequence
+
+                # update primers_dict
+                primers_dict[f"{dgr_id}_{vr_id}_Primer"] = {
+                    'initial_primer_sequence': vr_data.get('vr_initial_primer_region', 'N/A'),
+                    'vr_masked_primer': vr_data['vr_masked_primer'],
+                    'primer_sequence': vr_data['primer_sequence'],
+                    'initial_primer_right': vr_data['initial_primer_right']}
+
         return primers_dict
 
 
