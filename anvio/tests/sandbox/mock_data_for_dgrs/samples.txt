@@ -1,0 +1,4 @@
+sample	r1	r2
+sample_1_output	01_FASTQ/sample-1-short-reads-R1.fastq	01_FASTQ/sample-1-short-reads-R2.fastq
+sample_2_output	01_FASTQ/sample-2-short-reads-R1.fastq	01_FASTQ/sample-2-short-reads-R2.fastq
+sample_3_output	01_FASTQ/sample-3-short-reads-R1.fastq	01_FASTQ/sample-3-short-reads-R2.fastq
