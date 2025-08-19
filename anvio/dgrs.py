@@ -133,7 +133,9 @@ class DGR_Finder:
 
 
     def sanity_check(self):
-        """Basic checks for a smooth operation"""
+        """
+        Basic checks for a smooth operation
+        """
 
         #First check the contigs.db and profile.db exists
         utils.is_contigs_db(self.contigs_db_path)
@@ -248,15 +250,23 @@ class DGR_Finder:
 
     def get_blast_results(self):
         """
-        This function runs the BLASTn search, which uses sequences with high SNVs as the query and the contigs.db sequences as the target sequences.
+        This function identifies candidate variable regions with high SNV density and runs the BLASTn search, which uses sequences with high SNVs as the query and the contigs.db sequences as the target sequences.
 
         Running the BLASTn generates an xml file of results.
 
         Returns
-        blast_output : xml file
-            An xml of BLASTn results
         =======
+        blast_output : str
+            Path to the BLASTn output file in XML format. The exact filename depends
+            on whether collections mode is active.
+
+        Raises
+        =======
+        ConfigError
+            If no SNV windows are found that meet the filtering criteria,
+            preventing a meaningful BLAST search.
         """
+
         #initialise temporary dictionary
         tmp_directory_path = self.temp_dir
         self.target_file_path = os.path.join(tmp_directory_path,"reference_sequences.fasta")
@@ -616,6 +626,19 @@ class DGR_Finder:
 
 
     def split_sequence_at_given_pos(self, sequence):
+        """
+        This function takes a sequence and splits it into sections based on the positions stored in self.positions
+        Parameters
+        =======
+        sequence : str
+            The nucleotide or amino acid sequence to be split.
+
+        Returns
+        =======
+        sections : list of str
+            A list of subsequences corresponding to the regions defined in `self.positions`.
+        """
+
         sections = []
         for start, end in self.positions:
             section_sequence = sequence[start - 1:end]  # Adjust positions for 0-based indexing
@@ -670,12 +693,14 @@ class DGR_Finder:
         """
         This function takes the contigs.db and the profile.db and finds the SNVs.
         This function is not currently in use but here for Merens' sake.
+
         Returns
         =======
         n.data : panada df
             A dataframe with all of the information in the nucleotide variability table of a profile,
             including the splits, parent contigs, positions of the SNVs, the bases of the SNVs and the coverage.
         """
+
         args = argparse.Namespace(contigs_db=self.contigs_db_path,
                                 profile_db=self.profile_db_path,
                                 splits_of_interest_set= set(self.split_names_unique),
@@ -707,8 +732,14 @@ class DGR_Finder:
             Maximum percentage identity threshold (default 100%).
 
         Returns
+        =======
         mismatch_hits : dict
             A dictionary of all of the BLASTn hits that are less than 100%
+
+        Raises
+        =======
+        ConfigError
+            If no  BLAST output then exit
         """
 
         # If collections_mode is enabled, process multiple bins separately
@@ -775,8 +806,22 @@ class DGR_Finder:
 
     def process_single(self, root, bin_name, max_percent_identity):
         """
-        Process a single bin's BLAST XML data and store mismatch hits.
-        If bin_name is None, it means we're processing a single BLAST output.
+        Parse and process BLAST XML results for a single bin or dataset,
+        filtering for mismatched hits below a given percent identity threshold.
+
+        Parameters
+        ==========
+        root : xml.etree.ElementTree.Element
+            Parsed XML root object from a BLAST output file.
+        bin_name : str or None
+            Name of the bin associated with the BLAST search. If None,
+            results are treated as coming from a single dataset.
+        max_percent_identity : float
+            Maximum percent identity allowed for considering a hit as mismatched.
+            Hits with higher identity are ignored.
+
+        Returns
+        =======
         """
 
         hit_id_counter = 0
@@ -935,11 +980,10 @@ class DGR_Finder:
             percentage_of_mismatches : float
                 Keys of a dictionary containing all of the BLASTn hits that are less than 100%
 
-        Creates
+        Returns
         =======
         DGRs_found_dict : dict
             A dictionary containing the template and variable regions and the corresponding info for those regions
-
         """
 
         DGR_key = f'DGR_{DGR_number:03d}'
@@ -1001,12 +1045,12 @@ class DGR_Finder:
             percentage_of_mismatches : float
                 Keys of a dictionary containing all of the BLASTn hits that are less than 100%
 
-        Creates
+        Returns
         =======
         DGRs_found_dict : dict
             A dictionary containing the template and variable regions and the corresponding info for those regions
-
         """
+
         if existing_DGR_key not in self.DGRs_found_dict:
             raise KeyError(f"Existing DGR key {existing_DGR_key} not found in DGRs_found_dict")
 
@@ -1059,12 +1103,13 @@ class DGR_Finder:
         mismatch_hits : dict
             A dictionary of all of the BLASTn hits that are less than 100%
 
-        Creates
+        Returns
         =======
         DGRs_found_dict : dict
             A dictionary containing the template and variable regions
 
         """
+
         num_DGR = 0
 
         #possible DGR dictionary
@@ -1342,17 +1387,17 @@ class DGR_Finder:
 
     def get_gene_info(self):
         """
-        This function collects information genes in which the variable regions act in and prints all the information to a TSV file.
+        This function collects information on the genes in which the variable regions act in.
 
         Parameters
         ==========
         DGRs_found_dict : dict
             A dictionary containing the template and variable regions
 
-        Creates
+        Returns
         =======
-
         """
+
         if len(self.DGRs_found_dict) == 0:
             return
 
@@ -1454,11 +1499,12 @@ class DGR_Finder:
         Parameters
         ==========
 
-        Creates
+        Returns
         =======
         {self.output_directory}_DGR_genes_found.tsv: tsv
             A TSV file containing the DGR gene information, including gene IDs, contig names etc
         """
+
         if not hasattr(self, 'vr_gene_info') or not self.vr_gene_info:
             self.run.warning("No gene information available to write to TSV file.")
             return
@@ -1514,6 +1560,7 @@ class DGR_Finder:
         This function creates a dictionary of the HMMs provided that are the closest to the template
         regions, this is done by finding the middle of the template region and the middle of the HMM gene
         and comparing those pairs to each other to find the shortest distance.
+
         Parameters
         ==========
         DGRs_found_dict : dict
@@ -1523,7 +1570,6 @@ class DGR_Finder:
         =======
         : tsv
             A tsv tabular file containing the template and variable regions
-
         """
         dgrs_dict = self.DGRs_found_dict
 
@@ -1629,6 +1675,7 @@ class DGR_Finder:
     def create_found_tr_vr_csv(self):
         """
         This function creates a tsv tabular format of the template and variable regions that are found from this tool.
+
         Parameters
         ==========
         DGRs_found_dict : dict
@@ -1690,7 +1737,15 @@ class DGR_Finder:
 
 
     def recover_genomic_context_surrounding_dgrs(self):
-        """Learn about what surrounds the variable region sites of each found DGR"""
+        """
+        Learn about what surrounds the variable region sites of each found DGR
+
+        Returns
+        =======
+        None
+            Updates the instance attribute `self.genomic_context_surrounding_dgrs` with a
+            nested dictionary structure
+        """
 
         # in which we will store the genomic context that surrounds dgrs for downstream fun
         self.genomic_context_surrounding_dgrs = {}
@@ -1921,6 +1976,8 @@ class DGR_Finder:
         """
         Reports two long-format output files for genes and functions around inversion
         STOLEN (modified) FROM INVERSIONS CODE (line 1925)
+        Generate per-DGR reports of genes and annotated functions surrounding TR and VRs.
+
         Parameters
         ==========
         DGRs_found_dict : dict
@@ -1928,7 +1985,8 @@ class DGR_Finder:
 
         Returns
         =======
-
+        None
+            Writes report files to the output directory and logs their paths.
         """
 
         if self.skip_recovering_genomic_context:
@@ -2035,6 +2093,9 @@ class DGR_Finder:
     # Function to get the consensus base
     @staticmethod
     def get_consensus_base(row):
+        """
+        Determine the consensus base from a row of nucleotide frequencies.
+        """
         for nucleotide in nucleotides:
             if row[nucleotide] > 0.5:  # Assuming a threshold for consensus, adjust as necessary
                 return nucleotide
@@ -2557,6 +2618,16 @@ class DGR_Finder:
         """
         Turn the primers dictionary into a tsv file for users to visualise post analysis.
         This function will create a TSV file named 'DGR_Primers_used_for_VR_diversity.tsv' in the output directory.
+
+        Parameters
+        ==========
+        primers_dict : dict
+            Dictionary of primer metadata. Structure differs depending on `self.skip_primer_variability`.
+
+        Returns
+        =======
+        None
+            Creates a TSV file with primer details for downstream review.
         """
 
         self.run.info_single("Storing the primers used to calculate VR diversity in 'DGR_Primers_used_for_VR_diversity.tsv'.", nl_before=1)
@@ -2620,11 +2691,19 @@ class DGR_Finder:
 
 
     def process_dgr_data_for_HTML_summary(self):
-        """Take everything that is known, turn them into data that can be used from Django templates.
+        """
+        Take everything that is known, turn them into data that can be used from Django templates.
 
         A lot of ugly/frightening things happening here to prepare coordinates for SVG objects to be displayed
         or store boolean variables to use the Django template engine effectively. IF YOU DON'T LIKE
         IT DON'T LOOK AT IT. IT MIGHT MAKE YOU CRY
+
+        Returns
+        =======
+        None
+            Generates a directory (`summary_html_output`) containing
+            the HTML summary and supporting files.
+
         """
         if not len(self.DGRs_found_dict):
             self.run.warning("No DGRs were found so no HTML file will be written :(", header="No HTML OUTPUT")
@@ -2889,7 +2968,15 @@ class DGR_Finder:
 
 
     def process(self,args):
-        """Here we process all of the functions in our class and call upon different functions depending on the inputs used"""
+        """
+        Here we process all of the functions in our class and call upon different functions depending on the inputs used,
+        to run the full DGR analysis workflow.
+
+        Parameters
+        =======
+        args : argparse.Namespace
+            Command-line arguments controlling optional outputs.
+        """
         self.sanity_check()
         self.get_blast_results()
         self.process_blast_results()
