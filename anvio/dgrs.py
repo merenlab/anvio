@@ -23,7 +23,6 @@ import anvio.filesnpaths as filesnpaths
 import anvio.tables as t
 import multiprocess as multiprocessing # type: ignore
 
-
 from anvio.errors import ConfigError
 from anvio.drivers.blast import BLAST
 from anvio.variabilityops import NucleotidesEngine
@@ -261,7 +260,6 @@ class DGR_Finder:
         self.target_file_path = os.path.join(tmp_directory_path,"reference_sequences.fasta")
         self.run.info('Temporary (contig) reference input for blast', self.target_file_path)
 
-
         if self.collections_mode:
             self.run.info_single("Collections mode activated. Get ready to see as many BLASTn as bins in your collection. Big things be happenin'.", nl_before=1)
             #I know we don't need contigs sequences here as everything is done for splits, but I think I need this here for the rest of the code to function as normal
@@ -438,7 +436,6 @@ class DGR_Finder:
                     raise ConfigError("Therefore, we will exit here because anvi'o has nothing to search for DGRs in, "
                                     "nada, nowt, nothin'! However, you can go back and tinker with the parameters "
                                     "of this tool if you believe this should not be the case. Anvi'o wishes you a nice day :)")
-
 
                 # Save the subset sequences to a temporary FASTA file
                 output_fasta_path = os.path.join(self.temp_dir, f"bin_{bin_name}_subsequences.fasta")
@@ -1075,7 +1072,6 @@ class DGR_Finder:
         self.snv_panda = self.snv_panda.copy()
         self.snv_panda.loc[:, 'contig_name'] = self.snv_panda.split_name.str.split('_split_').str[0]
 
-
         if self.only_a_bases:
                 #This is here so that every potential VR doesn't get a new warning and clog up the terminal
                 self.run.warning("Just a note to say that we are only looking for DGRs that have A bases as their site of mutagenesis.",
@@ -1143,7 +1139,6 @@ class DGR_Finder:
                             is_reverse_complement = False
                             VR_frame = original_query_frame
                             TR_frame = original_subject_frame
-
 
                         #### SNV logic based removal of DGRs.
                         # first remove dgrs that have more than 34% of the SNVs in the VR range to be coming from the 3rd codon position
@@ -1451,6 +1446,8 @@ class DGR_Finder:
 
         return
 
+
+
     def write_dgr_genes_found_tsv(self):
         """
         Write the DGR gene information to a TSV file.
@@ -1738,7 +1735,6 @@ class DGR_Finder:
         trs_with_no_gene_calls_around = set([])
         vrs_with_no_gene_calls_around = set([])
 
-
         for dgr_key, dgr_data in dgrs_dict.items():
             dgr_id = dgr_key
             self.progress.update(f"{dgr_id}", increment=True)
@@ -1934,7 +1930,6 @@ class DGR_Finder:
         Returns
         =======
 
-
         """
 
         if self.skip_recovering_genomic_context:
@@ -2071,7 +2066,6 @@ class DGR_Finder:
         Returns
         =======
 
-
         """
         while True:
             sample_name = input_queue.get(True)
@@ -2098,6 +2092,7 @@ class DGR_Finder:
             sample_dict, primer_hits = s.process(return_dicts = True)
 
             output_queue.put(sample_name)
+
 
 
     def generate_primers_for_vrs(self, dgrs_dict):
@@ -2474,7 +2469,6 @@ class DGR_Finder:
             if anvio.DEBUG:
                 self.run.info_single(f"Updated sample primers dictionary: {self.sample_primers_dict}", nl_before=1)
 
-
         if not self.skip_primer_variability:
             self.run.info_single("Primer variability analysis is enabled. Using sample-specific primers.", nl_before=1)
 
@@ -2557,6 +2551,7 @@ class DGR_Finder:
         ######################
         # END MULTITHREADING #
         ######################
+
 
 
     def print_primers_dict_to_csv(self, primers_dict):
