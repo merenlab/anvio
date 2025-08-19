@@ -10,16 +10,17 @@ import anvio.terminal as terminal
 # debugging + profiling
 import io
 import cProfile, pstats
+
+from anvio.errors import ConfigError, FilesNPathsError
+from anvio.terminal import time_program, Run
+
 profiler = cProfile.Profile()
-
-
 
 with terminal.SuppressAllOutput():
     import anvio.data.hmm as hmm_data
     available_hmm_sources = list(hmm_data.sources.keys())
 
-from anvio.errors import ConfigError, FilesNPathsError
-from anvio.terminal import time_program, Run
+
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2024, the Meren Lab (http://merenlab.org/)"
