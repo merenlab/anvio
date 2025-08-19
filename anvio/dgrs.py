@@ -81,8 +81,7 @@ class DGR_Finder:
         self.samples_txt = A('samples_txt')
         self.whole_primer_length = A('whole_primer_length') or 65
         self.skip_compute_DGR_variability_profiling = A('skip_compute_DGR_variability_profiling')
-        self.skip_initial_primer = A('skip_initial_primer') or False
-        self.initial_primer_length = (A('initial_variable_primer_length') or (0 if self.skip_initial_primer else 12)) #TODO test different values for this. If Illumina reads are 250 bases then depends on length of VR
+        self.initial_primer_length = A('initial_variable_primer_length') or  12 #TODO test different values for this. If Illumina reads are 250 bases then depends on length of VR
         self.skip_primer_variability = A('skip_primer_variability')
         self.numb_imperfect_tandem_repeats = A('numb_imperfect_tandem_repeats') or 10
         self.repeat_motif_coverage = A('repeat_motif_coverage') or 0.8
@@ -127,7 +126,6 @@ class DGR_Finder:
         #computing variability profiling for every VR in every DGR by searching through raw reads?
         if not self.skip_compute_DGR_variability_profiling:
             self.run.info('Samples.txt', self.samples_txt)
-            self.run.info('Skip Initial Primer', self.skip_initial_primer)
             self.run.info('Initial Primer Length', self.initial_primer_length)
             self.run.info('Variable Region Primer Length', self.whole_primer_length)
             #self.run.info("R1/R2 for raw reads present?", "True" if self.raw_r1_r2_reads_are_present else "False")
