@@ -146,66 +146,63 @@ class BottleApplication(Bottle):
 
 
     def register_routes(self):
-        self.route('/',                                        callback=self.redirect_to_app)
-        self.route('/app/:filename#.*#',                       callback=self.send_static)
-        self.route('/app/shutdown',                            callback=self.server_shutdown)
-        self.route('/data/news',                               callback=self.get_news)
-        self.route('/data/<name>',                             callback=self.send_data)
-        self.route('/data/view/<view_id>',                     callback=self.get_view_data)
-        self.route('/tree/<items_order_id>',                   callback=self.get_items_order)
-        self.route('/state/all',                               callback=self.state_all)
-        self.route('/state/get/<state_name>',                  callback=self.get_state)
-        self.route('/state/save/<state_name>',                 callback=self.save_state, method='POST')
-        self.route('/data/charts/<order_name>/<item_name>',    callback=self.charts, method='POST')
-        self.route('/data/completeness',                       callback=self.completeness, method='POST')
-        self.route('/data/collections',                        callback=self.get_collections)
-        self.route('/data/collection/<collection_name>',       callback=self.get_collection_dict)
-        self.route('/store_collection',                        callback=self.store_collections_dict, method='POST')
-        self.route('/store_description',                       callback=self.store_description, method='POST')
-        self.route('/upload_project',                          callback=self.upload_project, method='POST')
-        self.route('/data/contig/<split_name>',                callback=self.get_sequence_for_split)
-        self.route('/summarize/<collection_name>',             callback=self.gen_summary, method='POST')
-        self.route('/summary/<collection_name>/:filename#.*#', callback=self.send_summary_static)
-        self.route('/data/gene/<gene_callers_id>',             callback=self.get_sequence_for_gene_call)
-        self.route('/data/hmm/<bin_name>/<gene_name>',         callback=self.get_hmm_hit_from_bin)
-        self.route('/data/get_AA_sequences_for_gene_cluster/<gene_cluster_name>',  callback=self.get_AA_sequences_for_gene_cluster)
-        self.route('/data/pan_gene_popup/<gene_callers_id>/<genome_name>',         callback=self.get_gene_popup_for_pan)
-        self.route('/data/geneclusters/<order_name>/<gene_cluster_name>',          callback=self.inspect_gene_cluster)
-        self.route('/data/charts_for_single_gene/<order_name>/<item_name>',        callback=self.charts_for_single_gene, method='POST')
-        self.route('/data/store_refined_bins',                 callback=self.store_refined_bins, method='POST')
-        self.route('/data/phylogeny/aligners',                 callback=self.get_available_aligners)
-        self.route('/data/phylogeny/programs',                 callback=self.get_available_phylogeny_programs)
-        self.route('/data/phylogeny/generate_tree',            callback=self.generate_tree, method='POST')
-        self.route('/data/search_functions',                   callback=self.search_functions, method='POST')
-        self.route('/data/get_contigs_stats',                  callback=self.get_contigs_stats)
-        self.route('/data/get_initial_data',                   callback=self.get_initial_data)
-        self.route('/data/get_column_info',                    callback=self.get_column_info, method='POST')
-        self.route('/data/get_structure/<gene_callers_id:int>',callback=self.get_structure)
-        self.route('/data/get_variability',                    callback=self.get_variability, method='POST')
-        self.route('/data/store_variability',                  callback=self.store_variability, method='POST')
-        self.route('/data/store_structure_as_pdb',             callback=self.store_structure_as_pdb, method='POST')
-        self.route('/data/get_gene_function_info/<gene_callers_id:int>',             callback=self.get_gene_function_info)
-        self.route('/data/get_model_info/<gene_callers_id:int>',             callback=self.get_model_info)
-        self.route('/data/filter_gene_clusters',               callback=self.filter_gene_clusters, method='POST')
-        self.route('/data/reroot_tree',                        callback=self.reroot_tree, method='POST')
-        self.route('/data/save_tree',                          callback=self.save_tree, method='POST')
-        self.route('/data/check_homogeneity_info',             callback=self.check_homogeneity_info, method='POST')
-        self.route('/data/get_additional_gc_data/<gc_id>/<gc_key>',    callback=self.get_additional_gc_data, method='POST')
-        self.route('/data/search_items',                       callback=self.search_items_by_name, method='POST')
-        self.route('/data/get_taxonomy',                       callback=self.get_taxonomy, method='POST')
-        self.route('/data/get_functions_for_gene_clusters',    callback=self.get_functions_for_gene_clusters, method='POST')
-        self.route('/data/get_gene_info/<gene_callers_id>',    callback=self.get_gene_info)
-        self.route('/data/get_metabolism',                     callback=self.get_metabolism)
-        self.route('/data/get_scale_bar',                      callback=self.get_scale_bar, method='POST')
-        self.route('/pangraph/get_pangraph_json_data',         callback=self.get_pangraph_json_data, method='POST')
-        self.route('/pangraph/initial_pangraph_json_data',     callback=self.initial_pangraph_json_data, method='POST')
-        self.route('/pangraph/rerun_pangraph_json_data',       callback=self.rerun_pangraph_json_data, method='POST')
-        # self.route('/pangraph/settings',                       callback=self.get_pangraph_settings, method="POST")
-        # self.route('/pangraph/get_json',                       callback=self.get_pangraph_json_data, method="POST")
-        # self.route('/pangraph/alignment',                      callback=self.get_pangraph_gc_alignment, method="POST")
-        # self.route('/pangraph/analyse',                        callback=self.get_pangraph_bin_summary, method="POST")
-        # self.route('/pangraph/function',                       callback=self.get_pangraph_gc_function, method="POST")
-        # self.route('/pangraph/filter',                         callback=self.get_pangraph_passed_gene_clusters, method="POST")
+        self.route('/',                                                           callback=self.redirect_to_app)
+        self.route('/app/:filename#.*#',                                          callback=self.send_static)
+        self.route('/app/shutdown',                                               callback=self.server_shutdown)
+        self.route('/data/news',                                                  callback=self.get_news)
+        self.route('/data/<name>',                                                callback=self.send_data)
+        self.route('/data/view/<view_id>',                                        callback=self.get_view_data)
+        self.route('/tree/<items_order_id>',                                      callback=self.get_items_order)
+        self.route('/state/all',                                                  callback=self.state_all)
+        self.route('/state/get/<state_name>',                                     callback=self.get_state)
+        self.route('/state/save/<state_name>',                                    callback=self.save_state, method='POST')
+        self.route('/data/charts/<order_name>/<item_name>',                       callback=self.charts, method='POST')
+        self.route('/data/completeness',                                          callback=self.completeness, method='POST')
+        self.route('/data/collections',                                           callback=self.get_collections)
+        self.route('/data/collection/<collection_name>',                          callback=self.get_collection_dict)
+        self.route('/store_collection',                                           callback=self.store_collections_dict, method='POST')
+        self.route('/store_description',                                          callback=self.store_description, method='POST')
+        self.route('/upload_project',                                             callback=self.upload_project, method='POST')
+        self.route('/data/contig/<split_name>',                                   callback=self.get_sequence_for_split)
+        self.route('/summarize/<collection_name>',                                callback=self.gen_summary, method='POST')
+        self.route('/summary/<collection_name>/:filename#.*#',                    callback=self.send_summary_static)
+        self.route('/data/gene/<gene_callers_id>',                                callback=self.get_sequence_for_gene_call)
+        self.route('/data/hmm/<bin_name>/<gene_name>',                            callback=self.get_hmm_hit_from_bin)
+        self.route('/data/get_AA_sequences_for_gene_cluster/<gene_cluster_name>', callback=self.get_AA_sequences_for_gene_cluster)
+        self.route('/data/pan_gene_popup/<gene_callers_id>/<genome_name>',        callback=self.get_gene_popup_for_pan)
+        self.route('/data/geneclusters/<order_name>/<gene_cluster_name>',         callback=self.inspect_gene_cluster)
+        self.route('/data/charts_for_single_gene/<order_name>/<item_name>',       callback=self.charts_for_single_gene, method='POST')
+        self.route('/data/store_refined_bins',                                    callback=self.store_refined_bins, method='POST')
+        self.route('/data/phylogeny/aligners',                                    callback=self.get_available_aligners)
+        self.route('/data/phylogeny/programs',                                    callback=self.get_available_phylogeny_programs)
+        self.route('/data/phylogeny/generate_tree',                               callback=self.generate_tree, method='POST')
+        self.route('/data/search_functions',                                      callback=self.search_functions, method='POST')
+        self.route('/data/get_contigs_stats',                                     callback=self.get_contigs_stats)
+        self.route('/data/get_initial_data',                                      callback=self.get_initial_data)
+        self.route('/data/get_column_info',                                       callback=self.get_column_info, method='POST')
+        self.route('/data/get_structure/<gene_callers_id:int>',                   callback=self.get_structure)
+        self.route('/data/get_variability',                                       callback=self.get_variability, method='POST')
+        self.route('/data/store_variability',                                     callback=self.store_variability, method='POST')
+        self.route('/data/store_structure_as_pdb',                                callback=self.store_structure_as_pdb, method='POST')
+        self.route('/data/get_gene_function_info/<gene_callers_id:int>',          callback=self.get_gene_function_info)
+        self.route('/data/get_model_info/<gene_callers_id:int>',                  callback=self.get_model_info)
+        self.route('/data/filter_gene_clusters',                                  callback=self.filter_gene_clusters, method='POST')
+        self.route('/data/reroot_tree',                                           callback=self.reroot_tree, method='POST')
+        self.route('/data/save_tree',                                             callback=self.save_tree, method='POST')
+        self.route('/data/check_homogeneity_info',                                callback=self.check_homogeneity_info, method='POST')
+        self.route('/data/get_additional_gc_data/<gc_id>/<gc_key>',               callback=self.get_additional_gc_data, method='POST')
+        self.route('/data/search_items',                                          callback=self.search_items_by_name, method='POST')
+        self.route('/data/get_taxonomy',                                          callback=self.get_taxonomy, method='POST')
+        self.route('/data/get_functions_for_gene_clusters',                       callback=self.get_functions_for_gene_clusters, method='POST')
+        self.route('/data/get_gene_info/<gene_callers_id>',                       callback=self.get_gene_info)
+        self.route('/data/get_metabolism',                                        callback=self.get_metabolism)
+        self.route('/data/get_scale_bar',                                         callback=self.get_scale_bar, method='POST')
+        self.route('/pangraph/get_pangraph_json_data',                            callback=self.get_pangraph_json_data, method='POST')
+        self.route('/pangraph/initial_pangraph_json_data',                        callback=self.initial_pangraph_json_data, method='POST')
+        self.route('/pangraph/rerun_pangraph_json_data',                          callback=self.rerun_pangraph_json_data, method='POST')
+        self.route('/pangraph/get_pangraph_synteny_gene_cluster_alignment',       callback=self.get_pangraph_synteny_gene_cluster_alignment, method="POST")
+        self.route('/pangraph/get_pangraph_synteny_gene_cluster_function',        callback=self.get_pangraph_synteny_gene_cluster_function, method="POST")
+        self.route('/pangraph/get_pangraph_synteny_gene_cluster_search_result',   callback=self.get_pangraph_synteny_gene_cluster_search_result, method="POST")
 
     def run_application(self, ip, port):
         # check for the wsgi module bottle will use.
@@ -1576,124 +1573,35 @@ class BottleApplication(Bottle):
         except:
             return(json.dumps({'status': 1}))
 
-    # def get_pangraph_bin_summary(self):
-    #     payload = request.json
-    #     selection = payload['selection']
-    #     result = {}
+    
+    def get_pangraph_synteny_gene_cluster_alignment(self):
+        try:
+            payload = request.json
+            synteny_gene_clusters = payload['synteny_gene_clusters']
 
-    #     self.interactive.init_gene_clusters()
-    #     self.interactive.init_gene_clusters_functions_summary_dict()
-
-    #     bin_functions = {}
-    #     all_functions = []
-
-    #     for bin in list(payload.keys())[1:]:
-
-    #         bin_functions[bin] = []
-    #         gene_cluster_list = payload[bin]
-    #         for gene_cluster_name in gene_cluster_list:
-    #             function = self.interactive.gene_clusters_functions_summary_dict[gene_cluster_name][selection]['function']
-
-    #             bin_functions[bin].append(function)
-    #             all_functions.append(function)
-
-    #     for function in all_functions:
-    #         result[function] = {}
-    #         for bin in bin_functions.keys():
-    #             if function in bin_functions[bin]:
-    #                 result[function][bin] = 1
-    #             else:
-    #                 result[function][bin] = 0
-
-    #     return json.dumps(result)
+            data = self.interactive.get_sequences_for_synteny_gene_clusters(gene_cluster_names=set([synteny_gene_clusters]))
+            return(json.dumps({'status': 0, 'data': data}))
+        except:
+            return(json.dumps({'status': 1, 'data': ''}))
 
 
-    # def get_pangraph_settings(self):
-    #     payload = request.json
-    #     max_edge_length_filter = payload['maxlength']
-    #     gene_cluster_grouping_threshold = payload['condtr']
-    #     groupcompress = payload['groupcompress']
-    #     # ungroupfrom = payload['ungroupfrom']
-    #     # ungroupto = payload['ungroupto']
-    #     state = payload['state']
-    #     pan_graph_json_path = self.interactive.pan_graph_json_path
-
-    #     args = argparse.Namespace(
-    #         pan_graph_json=pan_graph_json_path,
-    #         output_dir = os.path.dirname(pan_graph_json_path),
-    #         max_edge_length_filter=max_edge_length_filter,
-    #         gene_cluster_grouping_threshold=gene_cluster_grouping_threshold,
-    #         grouping_compression=groupcompress,
-    #         # ungrouping_open = ungroupfrom,
-    #         # ungrouping_close = ungroupto,
-    #         load_state = state
-    #     )
-
-    #     Pangraph = panops.PangenomeGraphMaster(args)
-    #     Pangraph.process_pangenome_graph()
-
-    #     return({'status': 0})
+    def get_pangraph_synteny_gene_cluster_function(self):
+        try:
+            payload = request.json
+            synteny_gene_clusters = payload['synteny_gene_clusters']
+    
+            data = dict((synteny_gene_cluster,self.interactive.synteny_gene_clusters_functions_summary_dict[synteny_gene_cluster]) for synteny_gene_cluster in synteny_gene_clusters)
+            return(json.dumps({'status': 0, 'data': data}))
+        except:
+            return(json.dumps({'status': 1, 'data': ''}))
 
 
-    # def get_pangraph_gc_alignment(self):
-    #     payload = request.json
-    #     result = {}
-
-    #     for genome in payload.keys():
-    #         genecall, name = payload[genome]
-    #         gene_cluster_alignment_dict = self.interactive.get_sequences_for_gene_clusters(gene_cluster_names=set([name]), skip_alignments=False, report_DNA_sequences=False)[name]
-    #         sequence = gene_cluster_alignment_dict[genome][int(genecall)]
-
-    #         result[genome] = [genecall, sequence]
-
-    #     return(result)
-
-
-    # def get_pangraph_gc_function(self):
-    #     payload = request.json
-    #     result = {}
-
-    #     self.interactive.init_gene_clusters()
-    #     self.interactive.init_gene_clusters_functions_summary_dict()
-
-    #     gene_cluster_name = payload['genecluster']
-
-    #     for selection in self.interactive.gene_clusters_functions_summary_dict[gene_cluster_name].keys():
-    #         result[selection] = self.interactive.gene_clusters_functions_summary_dict[gene_cluster_name][selection]
-    #     return json.dumps(result)
-
-    # def get_pangraph_passed_gene_clusters(self):
-    #     payload = request.json
-    #     result = {'gene_clusters': []}
-
-    #     self.interactive.init_gene_clusters()
-    #     self.interactive.init_gene_clusters_functions_summary_dict()
-
-    #     functions_dict = self.interactive.gene_clusters_functions_summary_dict
-
-    #     for gene_cluster in functions_dict.keys():
-    #         for selection in payload.keys():
-    #             if selection in functions_dict[gene_cluster].keys():
-    #                 for search in payload[selection]:
-    #                     value = functions_dict[gene_cluster][selection]
-
-    #                     accession = value['accession']
-    #                     func = value['function']
-
-    #                     if not accession or not func:
-    #                         accession = ''
-    #                         func = ''
-
-    #                     if search == '':
-
-    #                         # print(search, accession, func)
-    #                         if search == accession or search == func:
-    #                             if gene_cluster not in result['gene_clusters']:
-    #                                 result['gene_clusters'] += [gene_cluster]
-
-    #                     else:
-    #                         if search.lower() in accession.lower() or search.lower() in func.lower():
-    #                             if gene_cluster not in result['gene_clusters']:
-    #                                 result['gene_clusters'] += [gene_cluster]
-
-    #     return json.dumps(result)
+    def get_pangraph_synteny_gene_cluster_search_result(self):
+        try:
+            payload = request.json
+            search_terms = payload['search_terms']
+    
+            data = self.interactive.search_for_gene_functions(search_list)[0]
+            return(json.dumps({'status': 0, 'data': data}))
+        except:
+            return(json.dumps({'status': 1, 'data': ''}))
