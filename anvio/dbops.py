@@ -3496,6 +3496,10 @@ class PanGraphSuperclass(PanSuperclass):
         return self.synteny_gene_clusters_gene_alignments_available
 
     @property
+    def gene_clusters_initialized(self):
+        return self.synteny_gene_clusters_initialized
+
+    @property
     def gene_clusters_gene_alignments(self):
         return self.synteny_gene_clusters_gene_alignments
 
@@ -3508,6 +3512,7 @@ class PanGraphSuperclass(PanSuperclass):
             if data['gene_cluster_id'] != 'GC_00000000':
                 self.synteny_gene_clusters[node] = {}
                 node_gene_calls = json.loads(data['gene_calls_json'])
+                alignment_summary = json.loads(data['alignment_summary'])
                 for genome_name in self.genome_names:
                     self.synteny_gene_clusters[node][genome_name] = []
                     if genome_name in node_gene_calls:
@@ -3523,13 +3528,12 @@ class PanGraphSuperclass(PanSuperclass):
                             if genome_name not in self.synteny_gene_clusters_gene_alignments:
                                 self.synteny_gene_clusters_gene_alignments[genome_name] = {}
 
-                            self.synteny_gene_clusters_gene_alignments[genome_name][gene_callers_id] = data['alignment_summary']
+                            self.synteny_gene_clusters_gene_alignments[genome_name][gene_callers_id] = alignment_summary[genome_name]
 
         self.synteny_gene_clusters_initialized = True
 
     def init_synteny_gene_clusters_functions_summary_dict(self):
         super().init_gene_clusters_functions_summary_dict()
-
 
     def init_synteny_gene_clusters_functions(self):
         # Copying a complete function only to change some variable names does not feel
@@ -3539,6 +3543,12 @@ class PanGraphSuperclass(PanSuperclass):
 
     def search_for_gene_functions(self, search_terms, requested_sources=None, verbose=False, full_report=False, case_sensitive=False, exact_match=False):
         return super().search_for_gene_functions(search_terms, requested_sources, verbose, full_report, case_sensitive, exact_match)
+
+    def get_sequences_for_synteny_gene_clusters(self, gene_clusters_dict=None, gene_cluster_names=set([]), skip_alignments=False, report_DNA_sequences=False):
+        return(super().get_sequences_for_gene_clusters(gene_clusters_dict, gene_cluster_names, skip_alignments, report_DNA_sequences))
+
+    def get_synteny_gene_cluster_function_summary(self, gene_cluster_id, functional_annotation_source, discard_ties: bool = False, consensus_threshold: float = None):
+        return(super().get_gene_cluster_function_summary(gene_cluster_id, functional_annotation_source, discard_ties, consensus_threshold))
 
 
 class ProfileSuperclass(object):
