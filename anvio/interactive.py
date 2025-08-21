@@ -3049,17 +3049,6 @@ class PangraphInteractive(PanGraphSuperclass):
                              header="NO PAN DB, BUT ALL GOOD 👍", lc="yellow")
 
 
-    def get_pangraph_json(self):
-        return(self.load_state())
-
-
-    def get_pangraph_summary(self):
-        if self.pan_graph_summary_path:
-            summary_data = json.load(open(self.pan_graph_summary_path))
-
-            return summary_data
-
-
 class ContigsInteractive():
     def __init__(self, args, run=run, progress=progress):
         self.mode = 'contigs'
