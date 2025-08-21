@@ -1136,7 +1136,7 @@ class DGR_Finder:
                 root = tree.getroot()
 
                 # Process mismatches from this bin
-                self.process_single(root, bin_name, max_percent_identity)
+                self.parse_and_process_blast_results(root, bin_name, max_percent_identity)
 
                 # Merge results into `merged_mismatch_hits`
                 for hit_identity_unique, hit_data in self.mismatch_hits.items():
@@ -1161,13 +1161,13 @@ class DGR_Finder:
             root = tree.getroot()
 
             # Process the BLAST output normally
-            self.process_single(root, bin_name=None, max_percent_identity=max_percent_identity)
+            self.parse_and_process_blast_results(root, bin_name=None, max_percent_identity=max_percent_identity)
 
             return self.mismatch_hits
 
 
 
-    def process_single(self, root, bin_name, max_percent_identity):
+    def parse_and_process_blast_results(self, root, bin_name, max_percent_identity):
         """
         Parse and process BLAST XML results for a single bin or dataset,
         filtering for mismatched hits below a given percent identity threshold.
