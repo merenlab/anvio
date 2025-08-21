@@ -531,9 +531,25 @@ class DGR_Finder:
 
 
 
-    # Helper methods for mode-specific processing
     def process_collections_mode(self):
-        """Process all bins in collections mode."""
+        """
+        Process contigs in collections mode by running BLASTn separately
+        for each bin in the collection.
+
+        Parameters
+        ==========
+        None
+
+        Returns
+        =======
+        blast_output : str
+            Path to the BLASTn output XML file from the last successfully processed bin.
+
+        Raises
+        ======
+        ConfigError
+            If no valid SNV clusters are found for a bin.
+        """
         # get collections data
         profile_db = dbops.ProfileDatabase(self.profile_db_path)
         where_clause = f'''collection_name == "{self.collections_given}"'''
