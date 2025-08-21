@@ -1,0 +1,1979 @@
+class PangenomeGraphUserInterface {
+    constructor() {
+        this.amino_acid_color_code = {
+            'A': '<span style="color: #000000;">A</span>',
+            'R': '<span style="color: #ff0000;">R</span>',
+            'N': '<span style="color: #000000;">N</span>',
+            'D': '<span style="color: #000000;">D</span>',
+            'C': '<span style="color: #000000;">C</span>',
+            'Q': '<span style="color: #000000;">Q</span>',
+            'E': '<span style="color: #000000;">E</span>',
+            'G': '<span style="color: #ffa500;">G</span>',
+            'H': '<span style="color: #ff0000;">H</span>',
+            'I': '<span style="color: #00ff00;">I</span>',
+            'L': '<span style="color: #00ff00;">L</span>',
+            'K': '<span style="color: #ff0000;">K</span>',
+            'M': '<span style="color: #00ff00;">M</span>',
+            'F': '<span style="color: #00ff00;">F</span>',
+            'P': '<span style="color: #ffa500;">P</span>',
+            'S': '<span style="color: #ffa500;">S</span>',
+            'T': '<span style="color: #ffa500;">T</span>',
+            'W': '<span style="color: #00ffff;">W</span>',
+            'Y': '<span style="color: #00ffff;">Y</span>',
+            'V': '<span style="color: #00ff00;">V</span>',
+            '-': '<span style="color: #000000;">-</span>'
+        };
+        this.bin_dict = {'bin_1': []};
+        this.current_bin_id = 'bin_1';
+        this.current_bin_number = 1;
+        this.data = null;
+        this.settings_dict = {};
+        this.state = 'default';
+        
+        this.layers_min = {};
+        this.layers_max = {};
+        this.global_x = 0;
+        this.global_y = 0;
+        this.nodes = [];
+        this.edges = [];
+        this.layers = {};
+        this.genomes = [];
+        this.group_dict = {};
+        this.functional_annotation_sources_available = [];
+
+        this.add_bin = this.add_bin.bind(this);
+        this.remove_bin = this.remove_bin.bind(this);
+        this.switch_bin = this.switch_bin.bind(this);
+        this.switch_color = this.switch_color.bind(this);
+        this.start_draw = this.start_draw.bind(this);
+        this.hide_tippy = this.hide_tippy.bind(this);
+        this.show_tippy = this.show_tippy.bind(this);
+
+        this.initialize_JSON();
+        this.initialize_buttons();
+    }
+
+    generate_svg(scale=1) {
+
+        var start = new Date().getTime();
+        var svg_search = [];
+        var svg_backbone = [];
+        var svg_text = [];
+        var svg_heatmaps = [];
+        var svg_edges = [];
+        var svg_nodes = [];
+        var svg_groups = [];
+        var svg_genome_tracks = {}
+        for (var genome of this.genomes){
+            svg_genome_tracks[genome] = []
+        }
+        
+        var edgecoloring = {}
+        $("#genomecolors :input[type='color']").each((index, element) => {
+            edgecoloring[element.id] = [index, element.value]
+        })
+        
+        if ($('#flexlinear').prop('checked') == true){
+            var linear = 1
+        } else {
+            var linear = 0
+        }
+        
+        if ($('#flexsaturation').prop('checked') == true){
+            var saturation = 1
+        } else {
+            var saturation = 0
+        }
+        
+        var angle = parseFloat($('#angle')[0].value);
+        var outer_margin = parseFloat($('#outer_margin')[0].value);
+        var inner_margin = parseFloat($('#inner_margin')[0].value);
+        var node_size = parseFloat($('#size')[0].value);
+        var node_thickness = parseFloat($('#circ')[0].value);
+        var edge_thickness = parseFloat($('#edge')[0].value);
+        var line_thickness = parseFloat($('#line')[0].value);
+        var node_distance_x = parseFloat($('#distx')[0].value);
+        var node_distance_y = parseFloat($('#disty')[0].value);
+        var num_position = parseFloat($('#num_position')[0].value);
+        var tree_length = parseFloat($('#tree_length')[0].value);
+        var offset = parseFloat($('#tree_offset')[0].value);
+        var tree_thickness = parseFloat($('#tree_thickness')[0].value);
+        
+        var core_color = $('#core_color')[0].value;
+        var paralog_color = $('#paralog_color')[0].value;
+        var singleton_color = $('#singleton_color')[0].value;
+        var accessory_color = $('#accessory_color')[0].value;
+        var rearranged_color = $('#rearranged_color')[0].value;
+        var trna_color = $('#trna_color')[0].value;
+        var layer_color = $('#layer_color')[0].value;
+        var back_color = $('#back_color')[0].value;
+        var non_back_color = $('#non_back_color')[0].value;
+        var genome_size = this.genomes.length
+        
+        var theta = angle / (this.global_x+1)
+        
+        if (linear == 0){
+            var start_offset = parseFloat($('#inner')[0].value);
+        } else {
+            var start_offset = 0
+        }
+        
+        var middle_layers = new Object();
+        var outer_layers = new Object();
+        
+        var search_size = parseFloat($('#search_hit')[0].value);
+        middle_layers['search'] = [search_size, start_offset, search_size + start_offset]
+        
+        if ($('#flexarrow').prop('checked') == true){
+            var arrow_size = parseFloat($('#arrow')[0].value)
+            middle_layers['arrow'] = [arrow_size, search_size + start_offset, arrow_size + search_size + start_offset]
+        } else {
+            var arrow_size = 0
+        }
+        
+        var graph_size = node_size * 2 + node_thickness
+        outer_layers['graph'] = [graph_size, inner_margin, inner_margin + graph_size]
+        
+        var sum_middle_layer = start_offset + search_size + arrow_size
+        var sum_outer_layer = graph_size + inner_margin
+        
+        var current_middle_stop = sum_middle_layer
+        var current_outer_stop = sum_outer_layer
+        
+        var enabled = []
+        var order = this.newick_to_order(this.data['meta']['newick']).reverse()
+        var max_dist = 0
+        var item_order = []
+        for (var item of order) {
+            var [name, item_start, item_end] = item
+            if (name != 'branching') {
+                item_order.push(name)
+            }
+            if (item_end > max_dist) {
+                max_dist = item_end
+            }
+        }
+        
+        for (var genome of item_order) {
+        
+            if ($('#flex' + genome).prop('checked') == true){
+                enabled.push(genome)
+            }
+            
+            var layer_name = genome + 'layer'
+            if ($('#flex' + layer_name).prop('checked') == true){
+                var layer_width = parseFloat($('#' + layer_name)[0].value)
+            
+                var layer_middle_start = current_middle_stop + inner_margin
+                var layer_middle_stop = layer_middle_start + layer_width
+            
+                current_middle_stop = layer_middle_stop
+                sum_middle_layer += layer_width + inner_margin
+            
+                middle_layers[layer_name] = [layer_width, layer_middle_start, layer_middle_stop]
+            }
+        }
+        
+        if ($('#flexbackbone').prop('checked') == true){
+        //TEST BACKBONE NON BACKBONE LAYER
+            var back_width = parseFloat($('#backbone')[0].value);
+            
+            var layer_width = back_width
+            var layer_middle_start = current_middle_stop + inner_margin
+            var layer_middle_stop = layer_middle_start + layer_width
+            
+            current_middle_stop = layer_middle_stop
+            sum_middle_layer += layer_width + inner_margin
+            
+            middle_layers['back_vs_non_back'] = [layer_width, layer_middle_start, layer_middle_stop]
+        }
+        
+        for (var layer_name of this.layers) {
+            if ($('#flex' + layer_name).prop('checked') == true){
+                var layer_width = parseFloat($('#' + layer_name)[0].value)
+                var layer_outer_start = current_outer_stop + outer_margin
+                var layer_outer_stop = layer_outer_start + layer_width
+                
+                current_outer_stop = layer_outer_stop 
+                sum_outer_layer += layer_width + outer_margin
+                
+                outer_layers[layer_name] = [layer_width, layer_outer_start, layer_outer_stop]
+            }
+        }
+        
+        if (linear == 0){
+            var radius = 0.5 * (node_distance_x / Math.sin(this.deg2rad(theta * (1/2))))
+            var circle_dist = sum_middle_layer + graph_size * 0.5
+            var extra_offset = 0
+            
+            sum_middle_layer += extra_offset
+            for (var layer in middle_layers) {
+                var [layer_width, layer_start, layer_stop] = middle_layers[layer]
+                middle_layers[layer] = [layer_width, layer_start + extra_offset, layer_stop + extra_offset]
+            }
+        
+            var y_size = (sum_middle_layer + (this.global_y * node_distance_y) + sum_outer_layer);
+            var x_size = (sum_middle_layer + (this.global_y * node_distance_y) + sum_outer_layer);
+            if (scale == 0){
+                var svg_core = $('<svg id="result" width="' + x_size*2 + 'px" height="' + y_size*2 + 'px" version="1.1" viewBox="-' + x_size + ' -' + y_size + ' ' + x_size*2 + ' ' + y_size*2 + '" position="absolute" xmlns="http://www.w3.org/2000/svg"></svg>')
+            } else {
+                var svg_core = $('<svg id="result" width="100%" height="100%" version="1.1" viewBox="-' + x_size + ' -' + y_size + ' ' + x_size*2 + ' ' + y_size*2 + '" position="absolute" xmlns="http://www.w3.org/2000/svg"></svg>')
+            }
+        } else {
+            var x_size = (this.global_x + 1) * node_distance_x * 0.5;
+            var y_size = (sum_middle_layer + (global_y * node_distance_y) + sum_outer_layer) * 0.5;
+            if (scale == 0){
+                var svg_core = $('<svg id="result" width="' + x_size*2 + 'px" height="' + y_size*2 + 'px" version="1.1" viewBox="-' + 0.5 * node_distance_y + ' -' + y_size*2 + ' ' + x_size*2 + ' ' + y_size*2 + '" position="absolute" xmlns="http://www.w3.org/2000/svg"></svg>')
+            } else {
+                var svg_core = $('<svg id="result" width="100%" height="100%" version="1.1" viewBox="-' + 0.5 * node_distance_y + ' -' + y_size*2 + ' ' + x_size*2 + ' ' + y_size*2 + '" position="absolute" xmlns="http://www.w3.org/2000/svg"></svg>')
+            }
+        }
+        
+        for (var genome of this.genomes) {
+            var layer_name = genome + 'layer'
+            if (Object.keys(middle_layers).includes(layer_name)){
+        
+                var [layer_width, layer_start, layer_stop] = middle_layers[layer_name]
+            
+                if (linear == 0){
+                    var [circle_a_x, circle_a_y] = this.transform(0-0.5, layer_start, theta)
+                    var [circle_b_x, circle_b_y] = this.transform(0-0.5, layer_stop, theta)
+                    var [circle_c_x, circle_c_y] = this.transform(this.global_x + 0.5, layer_start, theta)
+                    var [circle_d_x, circle_d_y] = this.transform(this.global_x + 0.5, layer_stop, theta)
+                    
+                    if ((this.global_x) * theta > 180) {
+                        var arc_flag = 1
+                    } else {
+                        var arc_flag = 0
+                    }
+            
+                    svg_genome_tracks[genome].push(
+                        $('<path d="M ' + circle_c_x + ' ' + circle_c_y +
+                        ' A ' + layer_start + ' ' + layer_start + ' 0 ' + arc_flag + ' 1 ' + circle_a_x + ' ' + circle_a_y +
+                        ' L ' + circle_b_x + ' ' + circle_b_y +
+                        ' A ' + layer_stop + ' ' + layer_stop + ' 0 ' + arc_flag + ' 0 ' + circle_d_x + ' ' + circle_d_y +
+                        ' Z" stroke-width="0" fill="' + layer_color + '"></path>')
+                    )
+                } else {
+                    var [circle_a_x, circle_a_y] = [(0-0.5) * node_distance_x, -layer_start]
+                    var [circle_b_x, circle_b_y] = [(0-0.5) * node_distance_x, -layer_stop]
+                    var [circle_c_x, circle_c_y] = [(this.global_x + 0.5) * node_distance_x, -layer_start]
+                    var [circle_d_x, circle_d_y] = [(this.global_x + 0.5) * node_distance_x, -layer_stop]
+                    
+                    svg_genome_tracks[genome].push(
+                        $('<path d="M ' + circle_c_x + ' ' + circle_c_y +
+                        ' L ' + circle_a_x + ' ' + circle_a_y +
+                        ' L ' + circle_b_x + ' ' + circle_b_y +
+                        ' L ' + circle_d_x + ' ' + circle_d_y +
+                        ' Z" stroke-width="0" fill="' + layer_color + '"></path>')
+                    )
+                }
+            }
+        }
+        
+        if ($('#flexarrow').prop('checked') == true){
+        
+            var [arrow_size, arrow_start, arrow_stop] = middle_layers['arrow']
+            var pointer_height = arrow_stop - arrow_start
+            var pointer_length = pointer_height / 20
+            var arrow_thickness = pointer_height / 4
+            var steps = Math.round(this.global_x / (num_position + 1))
+            
+            if (steps < 1) {
+                steps = 1
+            }
+            
+            if (linear == 0){
+                var [circle_c_x, circle_c_y] = this.transform(this.global_x + 0.5 - pointer_length, arrow_start + arrow_thickness, theta)
+                var [circle_a_x, circle_a_y] = this.transform(0-0.5, arrow_start + arrow_thickness, theta)
+                var [circle_b_x, circle_b_y] = this.transform(0-0.5, arrow_stop - arrow_thickness, theta)
+                var [circle_d_x, circle_d_y] = this.transform(this.global_x + 0.5 - pointer_length, arrow_stop - arrow_thickness, theta)
+                var [circle_f_x, circle_f_y] = this.transform(this.global_x + 0.5 - pointer_length, arrow_stop, theta)
+                var [circle_g_x, circle_g_y] = this.transform(this.global_x + 0.5, arrow_start + arrow_thickness * 2, theta)
+                var [circle_e_x, circle_e_y] = this.transform(this.global_x + 0.5 - pointer_length, arrow_start, theta)
+                    
+                if ((this.global_x) * theta > 180) {
+                    var arc_flag = 1
+                } else {
+                    var arc_flag = 0
+                }
+                
+                svg_core.append(
+                    $('<path d="M ' + circle_c_x + ' ' + circle_c_y +
+                    ' A ' + (arrow_start + arrow_thickness) + ' ' + (arrow_start + arrow_thickness) + ' 0 ' + arc_flag + ' 1 ' + circle_a_x + ' ' + circle_a_y +
+                    ' L ' + circle_b_x + ' ' + circle_b_y +
+                    ' A ' + (arrow_stop - arrow_thickness) + ' ' + (arrow_stop - arrow_thickness) + ' 0 ' + arc_flag + ' 0 ' + circle_d_x + ' ' + circle_d_y +
+                    ' L ' + circle_f_x + ' ' + circle_f_y +
+                    ' L ' + circle_g_x + ' ' + circle_g_y +
+                    ' L ' + circle_e_x + ' ' + circle_e_y + 
+                    ' Z" stroke-width="0" fill="slateGrey"></path>')
+                )
+                
+                var [circle_h_x, circle_h_y] = this.transform(0-0.5, arrow_start + arrow_thickness * 2, theta)
+                
+            } else {
+                var [circle_c_x, circle_c_y] = [(this.global_x + 0.5 - pointer_length) * node_distance_x, -(arrow_start + arrow_thickness)]
+                var [circle_a_x, circle_a_y] = [(0-0.5) * node_distance_x, -(arrow_start + arrow_thickness)]
+                var [circle_b_x, circle_b_y] = [(0-0.5) * node_distance_x, -(arrow_stop - arrow_thickness)]
+                var [circle_d_x, circle_d_y] = [(this.global_x + 0.5 - pointer_length) * node_distance_x , -(arrow_stop - arrow_thickness)]
+                var [circle_f_x, circle_f_y] = [(this.global_x + 0.5 - pointer_length) * node_distance_x, -arrow_stop]
+                var [circle_g_x, circle_g_y] = [(this.global_x + 0.5) * node_distance_x, -(arrow_start + arrow_thickness * 2)]
+                var [circle_e_x, circle_e_y] = [(this.global_x + 0.5 - pointer_length) * node_distance_x, -arrow_start]
+                
+                svg_core.append(
+                    $('<path d="M ' + circle_c_x + ' ' + circle_c_y +
+                    ' L ' + circle_a_x + ' ' + circle_a_y +
+                    ' L ' + circle_b_x + ' ' + circle_b_y +
+                    ' L ' + circle_d_x + ' ' + circle_d_y +
+                    ' L ' + circle_f_x + ' ' + circle_f_y +
+                    ' L ' + circle_g_x + ' ' + circle_g_y +
+                    ' L ' + circle_e_x + ' ' + circle_e_y + 
+                    ' Z" stroke-width="0" fill="slateGrey"></path>')
+                )
+                
+                var [circle_h_x, circle_h_y] = [(0-0.5) * node_distance_x, -(arrow_start + arrow_thickness * 2)]
+            }
+        
+            svg_text.push(
+                $('<text text-anchor="end" this.transform="translate (-10)" dominant-baseline="middle" x="' + circle_h_x + '" y="' + circle_h_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">Orientation</text>')
+            )
+            
+            var l = steps
+            var k = 1
+            while (k <= num_position) {
+                
+                if (linear == 0){
+                    var [circle_l_x, circle_l_y] = this.transform(l, arrow_start + arrow_thickness * 2, theta)
+                    var rotate = theta * (l+0.5)
+                    if (rotate >= 90 && rotate <= 180) {
+                        rotate += 180;
+                    } else if (rotate >= 180 && rotate <= 270) {
+                        rotate -= 180;
+                    }
+
+                    svg_core.append(
+                        $('<text text-anchor="middle" dominant-baseline="middle" transform="rotate(-' + rotate + ' ' + circle_l_x + ' ' + circle_l_y +')" x="' + circle_l_x + '" y="' + circle_l_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="white">' + l + '</text>')
+                    )
+                } else {
+                    var [circle_l_x, circle_l_y] = [(l) * node_distance_x, -(arrow_start + arrow_thickness * 2)]
+                    svg_core.append(
+                        $('<text text-anchor="middle" dominant-baseline="middle" x="' + circle_l_x + '" y="' + circle_l_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="white">' + l + '</text>')
+                    )
+                }
+                l += steps
+                k += 1
+            };
+        }
+        
+        var end = new Date().getTime();
+        var time = end - start;
+        console.log('SVG drawing core', time, 'ms.')
+        
+        var start = new Date().getTime();
+        for(var i in this.edges) {
+        
+            var edge = this.data['edges'][i];
+            var edge_genomes = Object.keys(edge['directions'])
+            
+            var intersection = edge_genomes.filter(x => enabled.includes(x));
+            if (intersection.length > 0) {
+                var edge_genomes_length = edge_genomes.length;
+                var color = this.pickcolor(edgecoloring, Object.keys(edge['directions']))
+        
+                if (saturation == 1){
+                    var pick = this.lighter_color('#ffffff', color, edge_genomes_length / genome_size);
+                } else {
+                    var pick = color;
+                }
+            
+                var source = edge['source']
+                var target = edge['target']
+                
+                if (source != 'start' && target != 'stop' && edge['active'] == true){
+            
+                    var i_x = this.nodes[source]['position'][0]
+                    var i_y = this.nodes[source]['position'][1]
+                    var j_x = this.nodes[target]['position'][0]
+                    var j_y = this.nodes[target]['position'][1]
+                    
+                    for (let e = 0; e <= this.genomes.length; e++) {
+                    
+                        if (e == this.genomes.length || (this.genomes[e] + 'layer' in middle_layers && edge_genomes.includes(this.genomes[e])) ) {
+                
+                            if (e == this.genomes.length) {
+                
+                                var dir_set = Object.values(edge['directions'])
+                
+                                if (dir_set.includes('L') && dir_set.includes('R')) {
+                                    var stroke = ' stroke-dasharray="' + line_thickness * 4 + ' ' + line_thickness + '" '
+                                } else if (dir_set.includes('L')) {
+                                    var stroke = ' stroke-dasharray="' + line_thickness + '" '
+                                } else {
+                                    var stroke = ''
+                                }
+                
+                                var [graph_size, graph_start, graph_stop] = outer_layers['graph']
+                                var i_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + i_y * node_distance_y
+                                var j_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + j_y * node_distance_y
+                                var draw = pick
+                                var thickness = edge_thickness
+                            } else {
+                                var [layer_width, layer_start, layer_stop] = middle_layers[this.genomes[e] + 'layer']
+                
+                                if (layer_width < line_thickness) {
+                                    var draw = ''
+                                } else {
+                                    layer_width -= line_thickness
+                                    layer_start += line_thickness * 0.5
+                                    layer_stop -= line_thickness * 0.5
+                                    
+                                    var i_y_size = layer_start + i_y * (layer_width / this.global_y)
+                                    var j_y_size = layer_start + j_y * (layer_width / this.global_y)
+                                    var draw = edgecoloring[this.genomes[e]][1]
+                                    var thickness = line_thickness
+                                    var stroke = ''
+                                }
+                            }
+                
+                            if (linear == 0){
+                                var [circle_i_x, circle_i_y] = this.transform(i_x, i_y_size, theta);
+                                var [circle_j_x, circle_j_y] = this.transform(j_x, j_y_size, theta);
+                            } else {
+                                var [circle_i_x, circle_i_y] = [(i_x) * node_distance_x, -i_y_size];
+                                var [circle_j_x, circle_j_y] = [(j_x) * node_distance_x, -j_y_size];
+                            }
+                
+                            if (draw !== "") {
+                
+                                var route_edge = '<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y
+                
+                                if (edge['route'].length == 0){
+                                    if (linear == 0){
+                                        if (i_y == j_y) {
+                                            route_edge += ' A ' + i_y_size  + ' ' + j_y_size + ' 0 0 0 ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
+                                        } else {
+                                            route_edge += ' L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
+                                        }
+                                    } else {
+                                        route_edge += ' L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
+                                    }
+                                } else {
+                                    var o_y = i_y
+                                    for(var n in edge['route']) {
+                                        var n_x = edge['route'][n][0]
+                                        var n_y = edge['route'][n][1]
+                                        
+                                        if (e == this.genomes.length) {
+                                            var o_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + o_y * node_distance_y
+                                            var n_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + n_y * node_distance_y
+                                        } else {
+                                            var o_y_size = layer_start + o_y * (layer_width / this.global_y)
+                                            var n_y_size = layer_start + n_y * (layer_width / this.global_y)
+                                        }
+                
+                                        if (linear == 0){
+                                            var [circle_n_x, circle_n_y] = this.transform(n_x, n_y_size, theta);
+                                        } else {
+                                            var [circle_n_x, circle_n_y] = [(n_x) * node_distance_x, -n_y_size];
+                                        }
+                
+                                        if (o_y == n_y) {
+                                            if (linear == 0){
+                                                route_edge += 'A ' + o_y_size  + ' ' + n_y_size + ' 0 0 0 ' + circle_n_x + ' ' + circle_n_y
+                                            } else {
+                                                route_edge += 'L ' + circle_n_x + ' ' + circle_n_y
+                                            }
+                                        } else {
+                                            route_edge += 'L ' + circle_n_x + ' ' + circle_n_y
+                                        }
+                
+                                        var o_y = n_y
+                                    }
+                
+                                    if (o_y == j_y) {
+                                        if (linear == 0){
+                                            route_edge += 'A ' + o_y_size  + ' ' + j_y_size + ' 0 0 0 ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
+                                        } else {
+                                            route_edge += 'L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
+                                        }
+                                    } else {
+                                        route_edge += 'L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
+                                    }
+                                }
+                
+                                if (e == this.genomes.length) {
+                                    svg_edges.push(
+                                        $(route_edge)
+                                    )
+                                } else {
+                                    svg_genome_tracks[this.genomes[e]].push(
+                                        $(route_edge)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        };
+        
+        var end = new Date().getTime();
+        var time = end - start;
+        console.log('SVG drawing lines', time, 'ms.')
+        
+        var backbone_pos = [];
+        
+        var start = new Date().getTime();
+        var global_values = []
+        for(var k in this.nodes) {
+        
+            var node = this.data['nodes'][k];
+            var node_genomes = Object.keys(node['gene_calls']);
+            var intersection = node_genomes.filter(x => enabled.includes(x));
+            if (intersection.length > 0) {
+            
+                var node_genomes_length = node_genomes.length
+            
+                var k_x = node['position'][0]
+                var k_y = node['position'][1]
+                var node_group = node['group']
+                var node_type = node['type']
+                
+                if (node['layer']['backbone'] == true) {
+                    backbone_pos.push(k_x)
+                }
+            
+                if (!node_group) {
+                    var node_class = 'class="node'
+                    var x_value_start = k_x - 0.5
+                    var x_value_stop = k_x + 0.5
+        
+                } else {
+                    var node_class = 'stroke-opacity="0" fill-opacity="0" class="pseudo'
+                    var group = this.group_dict[node_group]
+                    var group_size = group.length
+                    var group_compress = $('#groupcompress')[0].value
+                    var group_size_compressed = Math.round(group_size * group_compress)
+        
+                    if (group_size_compressed == 0) {
+                        group_size_compressed = 1
+                    }
+    
+                    var z_x = this.data['nodes'][group[0]]['position'][0]
+    
+                    var fraction = group_size_compressed / (group_size)
+                    var group_id = group.findIndex(x => x === k)
+                    
+                    var x_value_start = z_x - (1 - group_id * fraction) + 0.5
+                    var x_value_stop = z_x - (1 - (group_id + 1) * fraction) + 0.5
+    
+                }
+    
+                var color = this.pickcolor(edgecoloring, Object.keys(node['gene_calls']))
+    
+                if (node_type == 'core'){
+                    var node_color = core_color
+                } else if (node_type == 'rearrangement') {
+                    var node_color = rearranged_color
+                } else if (node_type == 'accessory') {
+                    var node_color = accessory_color
+                } else if (node_type == 'duplication') {
+                    var node_color = paralog_color
+                } else if (node_type == 'singleton') {
+                    var node_color = singleton_color
+                } else if (node_type == 'rna') {
+                    var node_color = trna_color
+                } else {
+                    console.log(node_type)
+                }
+    
+                if (saturation == 1) {
+                    var draw = this.lighter_color('#ffffff', color, node_genomes_length / genome_size);
+                    var draw2 = this.lighter_color('#ffffff', node_color, node_genomes_length / genome_size)
+                } else {
+                    var draw = color;
+                    var draw2 = node_color
+                }
+    
+                var [graph_size, graph_start, graph_stop] = outer_layers['graph']
+                var k_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + k_y * node_distance_y
+    
+                if (linear == 0) {
+                    var [circle_k_x, circle_k_y] = this.transform(k_x, k_y_size, theta);
+                } else {
+                    var [circle_k_x, circle_k_y] = [(k_x) * node_distance_x, -k_y_size];
+                }
+    
+                svg_nodes.push(
+                    $('<circle ' + node_class + '" id="' + k + '" cx="' + circle_k_x + '" cy="' + circle_k_y + '" r="' + node_size + '" fill="' + draw2 + '" stroke="' + draw + '" stroke-width="' + node_thickness + '"/>')
+                )
+    
+                var [search_size, search_start, search_stop] = middle_layers['search']
+                
+                var i_x = k_x - 0.5
+                var i_y = search_start
+                var j_x = k_x + 0.5
+                var j_y = search_stop
+                
+                if (!global_values.includes(k_x)) {
+                    svg_search.push(this.create_rectangle(i_x, i_y, j_x, j_y, theta, node_distance_x, linear, 'white', k_x))
+                }
+    
+                for (var layer_name of this.layers) {
+                
+                    if ($('#flex' + layer_name).prop('checked') == true){
+                
+                        var value = node['layer'][layer_name]
+                        var max = layers_max[layer_name]
+                        var min = layers_min[layer_name]
+                        
+                        var [layer_width, layer_start, layer_stop] = outer_layers[layer_name]
+                        var k_y_size = sum_middle_layer + k_y * node_distance_y
+                        
+                        var i_x = x_value_start
+                        var i_y = layer_start + k_y_size
+                        var j_x = x_value_stop
+                        var j_y = layer_stop + k_y_size
+                        var color = this.lighter_color('#00ff00', '#ff0000', (value-min) / (max-min))
+                        
+                        svg_heatmaps.push(this.create_rectangle(i_x, i_y, j_x, j_y, theta, node_distance_x, linear, color))
+                    }
+                }
+            }
+        }
+        
+        global_values.push(k_x)
+        
+        if ($('#flexbackbone').prop('checked') == true){
+            var k_x = 0
+            while (k_x <= this.global_x) {
+        
+                var [backbone_size, backbone_start, backbone_stop] = middle_layers['back_vs_non_back']
+        
+                var i_x = k_x - 0.5
+                var i_y = backbone_start
+                var j_x = k_x + 0.5
+                var j_y = backbone_stop
+                
+                if (backbone_pos.includes(k_x)) {
+                    var color = back_color
+                } else {
+                    var color = non_back_color
+                }
+        
+                svg_backbone.push(this.create_rectangle(i_x, i_y, j_x, j_y, theta, node_distance_x, linear, color, k_x))
+                k_x = k_x + 1
+            }
+        }
+        
+        for(var [l, group] of Object.entries(this.group_dict)) {
+        
+            var group_length = group.length
+            var group_x = group.map((a) => (this.data['nodes'][a]['position'][0]));
+            
+            ind_max = group_x.indexOf(Math.max.apply(Math, group_x))
+            ind_min = group_x.indexOf(Math.min.apply(Math, group_x))
+            
+            var left_node_name = group[ind_min]
+            var right_node_name = group[ind_max]
+        
+            var left_node = this.data['nodes'][left_node_name];
+            var right_node = this.data['nodes'][right_node_name];
+        
+            var group_genomes = Object.keys(left_node['gene_calls']);
+            var group_type = left_node['type']
+        
+            if (group_type == 'core'){
+                var group_color = core_color
+            } else if (group_type == 'rearrangement') {
+                var group_color = rearranged_color
+            } else if (group_type == 'accessory') {
+                var group_color = accessory_color
+            } else if (group_type == 'duplication') {
+                var group_color = paralog_color
+            } else if (group_type == 'singleton') {
+                var group_color = singleton_color
+            } else if (group_type == 'rna') {
+                var group_color = trna_color
+            }
+        
+            var intersection = group_genomes.filter(x => enabled.includes(x));
+            if (intersection.length > 0) {
+        
+                var group_genomes_length = group_genomes.length;
+                var color = pickcolor (edgecoloring, Object.keys(left_node['gene_calls']))
+        
+                if (saturation == 1) {
+                    var draw = this.lighter_color('#ffffff', color, group_genomes_length / genome_size);
+                } else {
+                    var draw = color;
+                }
+        
+                var l_x = left_node['position'][0]
+                var l_y = left_node['position'][1]
+                
+                var m_x = right_node['position'][0]
+                var m_y = right_node['position'][1]
+                
+                var [graph_size, graph_start, graph_stop] = outer_layers['graph']
+                var l_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + l_y * node_distance_y
+                var m_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + m_y * node_distance_y
+                
+                var i_x = l_x
+                var i_y = l_y_size + node_size
+                var j_x = m_x
+                var j_y = m_y_size - node_size
+        
+                if (saturation == 1) {
+                    var color = this.lighter_color('#ffffff', group_color, group_genomes_length / genome_size)
+                } else {
+                    var color = group_color
+                }
+        
+                if ((l_x - m_x) * theta >= 180) {
+                    var arc_flag = 1
+                } else {
+                    var arc_flag = 0
+                }
+        
+                if (linear == 0) {
+                    var [a_x, a_y] = this.transform(i_x, i_y, theta)
+                    var [b_x, b_y] = this.transform(i_x, j_y, theta)
+                    var [c_x, c_y] = this.transform(j_x, i_y, theta)
+                    var [d_x, d_y] = this.transform(j_x, j_y, theta)
+            
+                    var path = $('<path class="group" id="' + l + '" d="' +
+                                'M ' + a_x + ' ' + a_y + ' ' +
+                                'A ' + (l_y_size + node_size) + ' ' + (l_y_size + node_size) + ' 0 ' + arc_flag + ' 0 ' + c_x + ' ' + c_y + ' ' +
+                                'A ' + node_size + ' ' + node_size + ' 0 0 0 ' + d_x + ' ' + d_y + ' ' +
+                                'A ' + (m_y_size - node_size) + ' ' + (m_y_size - node_size) + ' 0 ' + arc_flag + ' 1 ' + b_x + ' ' + b_y + ' ' +
+                                'A ' + node_size + ' ' + node_size + ' 0 0 0 ' + a_x + ' ' + a_y +
+                                '" fill="' + color + '" stroke="' + draw + '" stroke-width="' + node_thickness + '"/>')
+                                
+                } else {
+                    var [a_x, a_y] = [i_x * node_distance_x, -i_y]
+                    var [b_x, b_y] = [i_x * node_distance_x, -j_y]
+                    var [c_x, c_y] = [j_x * node_distance_x, -i_y]
+                    var [d_x, d_y] = [j_x * node_distance_x, -j_y]
+        
+                    var path = $('<path class="group" id="' + l + '" d="' +
+                        'M ' + a_x + ' ' + a_y + ' ' +
+                        'L ' + c_x + ' ' + c_y + ' ' +
+                        'A ' + node_size + ' ' + node_size + ' 0 0 1 ' + d_x + ' ' + d_y + ' ' +
+                        'L ' + b_x + ' ' + b_y + ' ' +
+                        'A ' + node_size + ' ' + node_size + ' 0 0 1 ' + a_x + ' ' + a_y +
+                        '" fill="' + color + '" stroke="' + draw + '" stroke-width="' + node_thickness + '"/>')
+                }
+                    
+                svg_groups.push(path)
+            }
+        };
+        
+        for (var layer_name of this.layers) {
+        
+            if ($('#flex' + layer_name).prop('checked') == true){
+                var [layer_width, layer_start, layer_stop] = outer_layers[layer_name]
+                var y_size = sum_middle_layer + layer_width * 0.5
+            
+                if (linear == 0){
+                    var [circle_x, circle_y] = this.transform(0-0.5, (layer_start + y_size), theta)
+                } else {
+                    var [circle_x, circle_y] = [(0-0.5) * node_distance_x, -(layer_start + y_size)]
+                }
+            
+                svg_text.push(
+                    $('<text text-anchor="end" this.transform="translate (-10)" dominant-baseline="middle" x="' + circle_x + '" y="' + circle_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">' + layer_name + '</text>')
+                )
+            }
+        }
+        
+        var item_dist = {}
+        for (var genome_name of item_order) {
+            if ($('#flex' + genome_name + 'layer').prop('checked') == true){
+                var [layer_width, layer_start, layer_stop] = middle_layers[genome_name + 'layer']
+        
+                if (layer_width >= edge_thickness) {
+                    var y_size = layer_start + layer_width * 0.5
+                    if (linear == 0){
+                        var [circle_x, circle_y] = this.transform(0-0.5, y_size, theta)
+                    } else {
+                        var [circle_x, circle_y] = [(0-0.5) * node_distance_x, -y_size]
+                    }
+        
+                    item_dist[genome_name] = circle_y
+        
+                    svg_text.push(
+                        $('<text text-anchor="end" this.transform="translate (-10)" dominant-baseline="middle" x="' + circle_x + '" y="' + circle_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">' + genome_name + '</text>')
+                    )
+                }
+            }
+        }
+       
+        if ($('#flextree').prop('checked') == true){
+            svg_core.append(this.draw_newick(order, item_dist, max_dist, offset, tree_length, tree_thickness))
+        }
+        
+        var end = new Date().getTime();
+        var time = end - start;
+        console.log('SVG drawing remaining elements', time, 'ms.')
+        
+        var svg_group = $('<g></g>')
+        for (var item of svg_search) svg_group.append(item);
+        svg_core.append(svg_group);
+        
+        var svg_group = $('<g></g>')
+        for (var item of svg_heatmaps) svg_group.append(item);
+        svg_core.append(svg_group);
+        
+        for (var [genome, svg_genome_track] of Object.entries(svg_genome_tracks)) {
+        var svg_group = $('<g></g>')
+        for (var item of svg_genome_track) svg_group.append(item);
+        svg_core.append(svg_group);
+        }
+        
+        var svg_group = $('<g></g>')
+        for (var item of svg_backbone) svg_group.append(item);
+        svg_core.append(svg_group);
+        
+        var svg_group = $('<g></g>')
+        for (var item of svg_edges) svg_group.append(item);
+        svg_core.append(svg_group);
+        
+        var svg_group = $('<g></g>')
+        for (var item of svg_nodes) svg_group.append(item);
+        svg_core.append(svg_group);
+        
+        var svg_group = $('<g></g>')
+        for (var item of svg_groups) svg_group.append(item);
+        svg_core.append(svg_group);
+        
+        var svg_group = $('<g></g>')
+        for (var item of svg_text) svg_group.append(item);
+        svg_core.append(svg_group);
+        
+        return svg_core
+    }
+
+    deg2rad(degrees) {
+        return degrees * Math.PI/180;
+    }
+
+    download_blob(blob, name) {
+
+        var blob_url = URL.createObjectURL(blob);
+        var link = document.createElement("a");
+        
+        link.href = blob_url;
+        link.download = name;
+        
+        document.body.appendChild(link);
+        
+        link.dispatchEvent(new MouseEvent('click', {
+            bubbles: true,
+            cancelable: true,
+            view: window
+        }));
+        
+        document.body.removeChild(link);
+    }
+
+    // NOTE - From https://coderwall.com/p/z8uxzw/javascript-color-blender
+    int_to_hex(num) {
+        var hex = Math.round(num).toString(16);
+        if (hex.length == 1)
+            hex = '0' + hex;
+        return hex;
+    }
+
+    lighter_color(color1, color2, percentage, threshold=0.25) {
+        percentage = threshold + (1 - threshold) * percentage
+        
+        color1 = color1.substring(1);
+        color2 = color2.substring(1);
+        
+        color1 = [parseInt(color1[0] + color1[1], 16), parseInt(color1[2] + color1[3], 16), parseInt(color1[4] + color1[5], 16)];
+        color2 = [parseInt(color2[0] + color2[1], 16), parseInt(color2[2] + color2[3], 16), parseInt(color2[4] + color2[5], 16)];
+        
+        var color3 = [
+        (1 - percentage) * color1[0] + percentage * color2[0],
+        (1 - percentage) * color1[1] + percentage * color2[1],
+        (1 - percentage) * color1[2] + percentage * color2[2]
+        ];
+        
+        color3 = '#' + this.int_to_hex(color3[0]) + this.int_to_hex(color3[1]) + this.int_to_hex(color3[2]);
+        
+        return color3
+    }
+
+    create_rectangle(i_x, i_y, j_x, j_y, theta, node_distance_x, linear, color, id='') {
+    
+        if (id != '') {
+            var extra = '" id="' + id
+        } else {
+            var extra = ''
+        }
+        
+        if (linear == 0) {
+            var [a_x, a_y] = this.transform(i_x, i_y, theta)
+            var [b_x, b_y] = this.transform(j_x, i_y, theta)
+            var [c_x, c_y] = this.transform(i_x, j_y, theta)
+            var [d_x, d_y] = this.transform(j_x, j_y, theta)
+            
+            var path = $('<path d="' +
+                'M ' + a_x + ' ' + a_y + ' ' +
+                'A ' + (i_y) + ' ' + (i_y) + ' 0 0 0 ' + b_x + ' ' + b_y + ' ' +
+                'L' + d_x + ' ' + d_y +  ' ' +
+                'A ' + (j_y) + ' ' + (j_y) + ' 0 0 1 ' + c_x + ' ' + c_y + ' ' +
+                'L' + a_x + ' ' + a_y +
+                '" fill="' + color + extra + '" stroke="" stroke-width="0"/>')
+        } else {
+            var [a_x, a_y] = [i_x * node_distance_x, -i_y]
+            var [b_x, b_y] = [j_x * node_distance_x, -i_y]
+            var [c_x, c_y] = [i_x * node_distance_x, -j_y]
+            var [d_x, d_y] = [j_x * node_distance_x, -j_y]
+            
+            var path = $('<path d="' +
+                'M ' + a_x + ' ' + a_y + ' ' +
+                'L ' + b_x + ' ' + b_y + ' ' +
+                'L ' + d_x + ' ' + d_y +  ' ' +
+                'L ' + c_x + ' ' + c_y + ' ' +
+                'L' + a_x + ' ' + a_y +
+                '" fill="' + color + extra + '" stroke="" stroke-width="0"/>')
+        }
+        
+        return(path)
+    }
+
+    transform(x, y, theta) {
+        var circle_x = y * Math.sin(this.deg2rad(theta * (x+0.5)))
+        var circle_y = y * Math.cos(this.deg2rad(theta * (x+0.5)))
+        return [circle_x, circle_y]
+    }
+
+    pickcolor(edgecoloring, genomes) {
+    
+        var array = []
+        for (var name of genomes) {
+            array.push(edgecoloring[name])
+            var sortedArray = array.sort(function(a, b) {
+                return a[0] - b[0];
+            });
+        }
+        
+        return sortedArray[0][1]
+    }
+
+    draw_newick(order, item_dist, max_dist, offset, max_size, line_thickness) {
+        
+        var output = ''
+        var saving_positions = {}
+        var saving_ids = {}
+        
+        var i = 0
+        
+        for (var [item, start, end] of order){
+        
+            var start_fraction = (max_size * (start / max_dist) - max_size) - offset
+            var end_fraction = (max_size * (end / max_dist) - max_size) - offset
+            
+            if (item != 'branching') {
+                var y_value = item_dist[item]
+                output += '<path d="M ' + start_fraction + ' ' + y_value + ' L ' + end_fraction + ' ' + y_value + '" stroke-width="' + line_thickness + '" stroke="black"></path>'
+        
+                if (Object.values(saving_ids).includes(start_fraction)){
+                    var saving_id = Object.keys(saving_ids)[Object.values(saving_ids).indexOf(start_fraction)]
+                    saving_positions[saving_id].push(y_value)
+                } else {
+                    saving_ids[i] = start_fraction
+                    saving_positions[i] = [y_value]
+                    i = i + 1
+                }
+                if (end_fraction != max_size){
+                    output += '<path d="M ' + end_fraction + ' ' + y_value + ' L ' + (0 - offset) + ' ' + y_value + '" stroke-dasharray="' + line_thickness * 5 + ',' + line_thickness * 5 + '" stroke-width="' + line_thickness + '" stroke="lightgray"></path>'
+                }
+            } else {
+        
+                if (Object.values(saving_ids).includes(end_fraction)){
+                    var saving_id_main = Object.keys(saving_ids)[Object.values(saving_ids).indexOf(end_fraction)]
+                    sorted_positions = saving_positions[saving_id_main].sort()
+            
+                    for (var j = 0; j < sorted_positions.length -1; j++) {
+            
+                        var y_value_i = sorted_positions[j]
+                        var y_value_j = sorted_positions[j+1]
+                        
+                        output += '<path d="M ' + end_fraction + ' ' + y_value_i + ' L ' + end_fraction + ' ' + y_value_j + '" stroke-width="' + line_thickness + '" stroke="black"></path>'        
+                    }
+                } else {
+                    var saving_id_main = -1
+                }
+                
+                y_value = Math.min(...sorted_positions) + (Math.max(...sorted_positions) - Math.min(...sorted_positions)) / 2
+                output += '<path d="M ' + start_fraction + ' ' + y_value + ' L ' + end_fraction + ' ' + y_value + '" stroke-width="' + line_thickness + '" stroke="black"></path>'
+                
+                if (Object.values(saving_ids).includes(start_fraction)) {
+                    var saving_id = Object.keys(saving_ids)[Object.values(saving_ids).indexOf(start_fraction)]
+                    saving_positions[saving_id].push(y_value)
+                } else {
+                    saving_ids[i] = start_fraction
+                    saving_positions[i] = [y_value]
+                    i = i + 1
+                }
+            
+                if (saving_id_main != -1) {
+                    delete saving_ids[saving_id_main]
+                    delete saving_positions[saving_id_main]
+                }
+            }
+        }
+        return(output)
+    }
+
+    newick_to_order(string, prior = 0) {
+        var result = []
+        var newick = string.replace(' ', '')
+        
+        if (newick[0] == '('){
+            var bracket_open = 0
+            var bracket_closed = 0
+            
+            for (var i = 0; i < newick.length; i++) {
+            
+                var sub_letter = newick[i]
+                if (sub_letter == '(') {
+                    bracket_open += 1 
+                } else if (sub_letter == ')') {
+                    bracket_closed += 1
+                }
+    
+                if (bracket_open == bracket_closed) {
+    
+                    var sub_newick = newick.slice(1, i)
+                    var rest = newick.slice(i)
+                    
+                    if (rest.includes(',')) {
+                        var parts = rest.split(',')
+                        if (parts[0].includes(':')) {
+                            var value = parts[0].split(':')[1]
+                        } else {
+                        var value = 0 
+                        }
+        
+                        result.push(...[['branching', prior, prior + parseFloat(value)]])
+                        result.push(...this.newick_to_order(sub_newick, prior + parseFloat(value)))
+        
+                        var next_iter = parts.slice(1).join(',')
+                        result.push(...this.newick_to_order(next_iter, prior))
+                    } else {
+                        if (rest.includes(':')) {
+                            var value = rest.split(':').slice(1)
+                        } else {
+                            var value = 0 
+                        }
+                        result.push(...[['branching', prior, prior + parseFloat(value)]])
+                        result.push(...this.newick_to_order(sub_newick, prior + parseFloat(value)))
+                    }
+                    break;
+                }
+            }
+        } else {
+    
+            if (newick.includes(',')) {
+                var parts = newick.split(',')
+                if (parts[0].includes(':')){
+                    var value = parts[0].split(':')[1]
+                    var branch = parts[0].split(':')[0]
+                } else {
+                    var value = 0 
+                    var branch = parts[0]
+                }
+    
+                var next_iter = parts.slice(1).join(',')
+                result.push(...[[branch, prior, prior + parseFloat(value)]])
+                result.push(...this.newick_to_order(next_iter, prior))    
+            } else{ 
+                if (newick.includes(':')) {
+                    var value = newick.split(':')[1]
+                    var branch = newick.split(':')[0]
+                } else {
+                    var value = 0 
+                    var branch =  newick
+                }
+                result.push(...[[branch, prior, prior + parseFloat(value)]])
+            }
+        } 
+        return(result)
+    }
+    
+    start_draw() {
+        var state = 'default';
+        var new_settings_dict = {};
+        
+        new_settings_dict['condtr'] = parseInt($('#condtr')[0].value);
+        new_settings_dict['maxlength'] = parseInt($('#maxlength')[0].value);
+        new_settings_dict['groupcompress'] = parseFloat($('#groupcompress')[0].value);
+        new_settings_dict['state'] = state;
+        
+        if (JSON.stringify(this.settings_dict) !== JSON.stringify(new_settings_dict)) {
+            this.rerun_JSON(new_settings_dict);
+        }
+
+        $.ajax({
+            url: "/pangraph/get_pangraph_json_data",
+            type: "POST",
+            cache: false,
+            contentType: "application/json",
+            dataType: "json",
+            success: (data) => {
+                this.data = data['data'];
+                console.log('JSON loaded.');
+                this.main_draw();
+            },
+            error: (err) => {
+                console.error('Failed to load JSON:', err);
+            }
+        })
+    }
+
+    hide_tippy(instance) {
+        if (instance.reference.id.startsWith('GCG_')){
+            var element_id = this.group_dict[instance.reference.id][0]
+        } else {
+            var element_id = instance.reference.id
+        }
+        var gene_calls = Object.keys(this.data['nodes'][element_id]['gene_calls'])
+    
+        for (var gene_call of gene_calls) {
+            $('#number_' + gene_call)[0].innerText = '0';
+        }
+    }
+
+    show_tippy(instance) {
+        if (instance.reference.id.startsWith('GCG_')){
+            var element_id = this.group_dict[instance.reference.id][0]
+        } else {
+            var element_id = instance.reference.id
+        }
+        var gene_calls = Object.keys(this.data['nodes'][element_id]['gene_calls'])
+
+        for (var gene_call of gene_calls) {
+            $('#number_' + gene_call)[0].innerText = '1';
+        }
+    }
+    
+    main_draw() {
+        var body = $('#svgbox');
+        body.empty();
+
+        var groups = Object.keys(this.group_dict);
+        var svg_core = this.generate_svg();
+        var genome_size = this.genomes.length;
+        
+        body.append(svg_core);
+        body.html(body.html());
+        
+        if (typeof window.zoomSVG !== 'undefined') {
+            window.zoomSVG.destroy()
+        };
+        
+        window.zoomSVG = svgPanZoom('#result', {
+            zoomEnabled: true,
+            panEnabled: false,
+            controlIconsEnabled: false,
+            minZoom: 0.1,
+            maxZoom: 100
+        });
+    
+        $('#fit').off('click')
+        $('#fit').on('click', function() {
+            window.zoomSVG.resize();
+            window.zoomSVG.fit();
+            window.zoomSVG.center();
+        })
+
+        $('#svgDownload').off('click')
+        $('#svgDownload').on('click', function() {
+            var svg_download = this.generate_svg(scale=0);
+            var blob = new Blob([svg_download[0].outerHTML]);
+            var title = this.data['meta']['project_name']
+            this.download_blob(blob, title + ".svg");
+        });
+
+        var nodes = document.querySelectorAll(".node")
+        var elements = document.querySelectorAll(".node, .group");
+        for (var element of elements) {
+
+            if (element.getAttribute("class") == 'group'){
+                var element_id = this.group_dict[el.getAttribute("id")][0]
+                var node_id = element.getAttribute("id")
+            } else {
+                var element_id = element.getAttribute("id")
+                var node_id = this.data['nodes'][element.getAttribute("id")]["gene_cluster"]
+            }
+
+            tippy(element, {
+                content: '<strong>' + node_id + '</strong>' + '<br />',
+                allowHTML: true,
+                onHide: this.hide_tippy,
+                onShow: this.show_tippy,
+                arrow: false,
+                duration: 0,
+                followCursor: true,
+                theme: "light",
+            });
+        };
+
+        var isDown = false
+        var diff = 0
+
+        var old_xpos = 0
+        var old_ypos = 0
+
+        var xpos = 0
+        var ypos = 0
+
+        var new_xpos = 0
+        var new_ypos = 0
+
+        body.off('mousedown')
+        body.on('mousedown', function(e) {
+            old_xpos = e.offsetX
+            old_ypos = e.offsetY
+            
+            xpos = old_xpos
+            ypos = old_ypos
+            
+            isDown = true
+            diff = 0
+        })
+
+        body.off('mousemove')
+        body.on('mousemove', function(e) {
+            if (isDown === true) {
+                new_xpos = e.offsetX
+                new_ypos = e.offsetY
+        
+                diff += Math.sqrt((new_xpos-xpos)^2+(new_ypos-ypos)^2)
+        
+                if (!e.shiftKey) {
+                    window.zoomSVG.panBy({x: new_xpos-xpos, y: new_ypos-ypos})
+                }
+        
+                xpos = new_xpos
+                ypos = new_ypos
+            }
+        })
+
+        // body.off('mouseup')
+        // body.on('mouseup', function(e) {
+        //     if (isDown === true) {
+
+        //         var selection = document.querySelector('input[name="binradio"]:checked')
+
+        //         isDown = false
+
+        //         if (diff < 10) {
+        //             if (e.target.getAttribute('class') === 'group' || e.target.getAttribute('class') === 'node') {
+        //                 if (e.shiftKey && selection !== null) {
+        //                     var binid = selection.value
+        //                     bins = marknode(e.target, data, binid, bins, genome_size, group_dict);
+        //                 } else {
+        //                     nodeinfo(e.target, data, group_dict, mapAS);
+        //                 }   
+        //             } 
+        //         } else {
+        //             if (e.shiftKey && selection !== null) {
+
+        //                 var binid = selection.value
+
+        //                 var max_xpos = Math.max(old_xpos, xpos)
+        //                 var min_xpos = Math.min(old_xpos, xpos)
+                        
+        //                 var max_ypos = Math.max(old_ypos, ypos)
+        //                 var min_ypos = Math.min(old_ypos, ypos)
+                        
+        //                 for (var n of gc_nodes) {
+
+        //                     var bounding = n.getBoundingClientRect();
+        //                     var left = bounding.left
+        //                     var right = bounding.right
+        //                     var bottom = bounding.bottom
+        //                     var top = bounding.top
+
+        //                     if (min_xpos < left && max_xpos > right && min_ypos < bottom && max_ypos > top) {
+        //                         this.marknode(n, binid);
+
+        //                     }
+        //                 }
+
+        //                 for(var g of groups) {
+        //                     var group = group_dict[g]
+        //                     for (var k of group) {
+        //                         var node = document.getElementById(k);
+                                
+        //                         var bounding = node.getBoundingClientRect();
+        //                         var left = bounding.left
+        //                         var right = bounding.right
+        //                         var bottom = bounding.bottom
+        //                         var top = bounding.top
+                                
+        //                         if (min_xpos < left && max_xpos > right && min_ypos < bottom && max_ypos > top) {
+        //                             var name = document.getElementById(g);
+        //                             bins = marknode(name, binid);
+        //                             break
+        //                         }
+        //                     }
+        //                 }
+        //             }
+        //         }
+        //     })
+
+
+        //     for (var binid of Object.keys(bins)) {
+        //         var nodes = bins[binid];
+        //         var updated_nodes = []
+        //         for (var node of nodes) {
+        //             var name = document.getElementById(node);
+
+        //             if(name) {
+        //                 if (name.getAttribute('class') == 'pseudo') {
+        //                     for(var g in groups) {
+        //                         var group = group_dict[g]
+        //                         if (group.includes(node)) {
+        //                             if (!updated_nodes.includes(g)){
+        //                                 updated_nodes.push(g)
+        //                             }
+        //                         }
+        //                     }
+        //                 } else {
+        //                     updated_nodes.push(node)
+        //                 }
+        //             } else {
+        //                 updated_nodes.push(...group_dict[node])
+        //             };
+        //         }
+
+        //         bins[binid] = updated_nodes
+        //         for (var node of bins[binid]) {
+
+        //             bins[binid] = bins[binid].filter(item => item !== node);
+        //             var name = document.getElementById(node);
+        //             this.marknode(name, binid);
+
+        //         }
+        //     }
+        //     for (var binid of Object.keys(bins)) {
+        //         $('#' + binid + 'color').off("change")
+        //         $('#' + binid + 'color').on("change", function() {
+
+        //             var binid = this.name;
+        //             var nodes = bins[binid];
+                    
+        //             for (var node of nodes) {
+                    
+        //                 bins[binid] = bins[binid].filter(item => item !== node);
+        //                 var name = document.getElementById(node);
+        //                 bins = marknode(name, data, binid, bins, genome_size, group_dict);
+
+        //             }
+        //         })
+        //     }
+    }
+    
+    rerun_JSON(new_data) {
+        $.ajax({
+            url: "/pangraph/rerun_pangraph_json_data",
+            type: "POST",
+            async: false,
+            data: JSON.stringify(new_data),
+            contentType: "application/json",
+            dataType: "json",
+            error: function(){
+                console.log('Error while attempting to update JSON data.')
+            },
+            success: function(json){
+                console.log('Successfully updated JSON data.')
+            }
+        });
+    }
+
+    initialize_JSON() {
+        $.ajax({
+            url: "/pangraph/initial_pangraph_json_data",
+            type: "POST",
+            cache: false,
+            contentType: "application/json",
+            dataType: "json",
+            success: (data) => {
+                this.data = data['data'];
+                console.log('JSON loaded.');
+                this.initialize_variables();
+                console.log('Initialized main variables.');
+                this.initialize_user_interface();
+                console.log('Initialized user interface values.');
+            },
+            error: (err) => {
+                console.error('Failed to load JSON:', err);
+            }
+        });
+    }
+
+    marknode(element, bin_id) {
+        
+        var bin_color = document.getElementById(bin_id + '_color').value
+        var id = element.id;
+        var current = ''
+        
+        var bin_keys = Object.keys(this.bin_dict)
+        for (var key of bin_keys) {
+            if (this.bin_dict[key].includes(id)) {
+                current = key;
+                break;
+            }
+        }
+        
+        var core_color = $('#core_color')[0].value;
+        var paralog_color = $('#paralog_color')[0].value;
+        var singleton_color = $('#singleton_color')[0].value;
+        var accessory_color = $('#accessory_color')[0].value;
+        var rearranged_color = $('#rearranged_color')[0].value;
+        var trna_color = $('#trna_color')[0].value;
+        
+        if ($('#flexsaturation').prop('checked') == true){
+            var saturation = 1
+        } else {
+            var saturation = 0
+        }
+        
+        if (element.getAttribute('class') == 'group') {
+            var group = this.group_dict[id]
+            var node_name = group[0]
+            var node = this.data['nodes'][node_name];
+            var node_type = node['type']
+            var genome = Object.keys(node['gene_calls']).length;
+        } else if (element.getAttribute('class') == 'node') {
+            var node = this.data['nodes'][id];
+            var node_type = node['type']
+            var genome = Object.keys(node['gene_calls']).length;    
+        }
+        
+        if (node_type == 'core'){
+            var node_color = core_color
+        } else if (node_type == 'rearrangement') {
+            var node_color = rearranged_color
+        } else if (node_type == 'accessory') {
+            var node_color = accessory_color
+        } else if (node_type == 'duplication') {
+            var node_color = paralog_color
+        } else if (node_type == 'singleton') {
+            var node_color = singleton_color
+        } else if (node_type == 'rna') {
+            var node_color = trna_color
+        }
+        
+        if (current === bin_id) {
+        
+            if (saturation == 1){
+                element.setAttribute("fill", this.lighter_color('#ffffff', node_color, genome / genome_size))
+            } else {
+                element.setAttribute("fill", node_color)
+            }
+            this.bin_dict[bin_id] = this.bin_dict[bin_id].filter(item => item !== id)
+            $('#' + bin_id + '_value')[0].value = this.bin_dict[bin_id].length
+            
+        } else if (current === '') {
+        
+            if (saturation == 1){
+                element.setAttribute("fill", this.lighter_color('#ffffff', bin_color, genome / genome_size))
+            } else {
+                element.setAttribute("fill", bin_color)
+            }
+            this.bin_dict[bin_id].push(id)
+            $('#' + bin_id + 'value')[0].value = this.bin_dict[bin_id].length
+        
+        } else {
+        
+            if (saturation == 1){
+                element.setAttribute("fill", this.lighter_color('#ffffff', bin_color, genome / genome_size))
+            } else {
+                element.setAttribute("fill", bin_color)
+            }
+            
+            this.bin_dict[current] = this.bin_dict[current].filter(item => item !== id)
+            this.bin_dict[bin_id].push(id)
+            
+            $('#' + bin_id + 'value')[0].value = this.bin_dict[bin_id].length
+            $('#' + current + 'value')[0].value = this.bin_dict[current].length 
+        }     
+    }
+
+    
+    switch_color(instance) {
+        var bin_id = instance.currentTarget.id.replace("_color", "");
+        var nodes = this.bin_dict[bin_id];
+
+        if (nodes !== undefined && nodes.length !== 0) {
+            for (var node of nodes) {
+      
+              this.bin_dict[binid] = this.bin_dict[bin_id].filter(item => item !== node);
+              var node_id = $('#' + node);
+              this.marknode(element, bin_id);
+      
+            }
+        }
+    }
+    
+    switch_bin(instance) {
+        var bin_id = instance.currentTarget.id.replace("_radio", "");
+        this.current_bin_id = bin_id
+    }
+
+    remove_bin() {
+        var bin_id = this.current_bin_id;
+        
+        for (var node of this.bin_dict[bin_id]) {
+        var element = document.getElementById(node);
+            this.marknode(element, bin_id);
+        }
+        
+        $("#" + bin_id + "_grid").remove();
+        delete this.bin_dict[bin_id];
+        
+        if (Object.keys(this.bin_dict).length !== 0) {
+            var next_bin_id = Object.keys(this.bin_dict)[0];
+            $('#' + next_bin_id + '_radio').click();
+        } else {
+            $('#binadd').click();
+        }
+    }
+    
+    add_bin() {
+        this.current_bin_number += 1;
+        this.current_bin_id = "bin_" + this.current_bin_number
+        
+        $('#bingrid').append(
+            $('<div class="col-12" id="bin_' + this.current_bin_number + '_grid"></div>').append(
+                $('<div class="row gy-1 align-items-center" id="row' + this.current_bin_number + '"></div>').append(
+                    $('<div class="col-2"></div>').append(
+                        $('<input type="radio" name="binradio" id="bin_' + this.current_bin_number + '_radio" bin_id="bin_' + this.current_bin_number + '" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top" checked></input>')
+                    )
+                ).append(
+                    $('<div class="col-6"></div>').append(
+                        $('<input type="text" class="form-control flex-fill p-0 border-0" style="background-color: #e9ecef;" value="Bin_' + this.current_bin_number + '" id="bin_' + this.current_bin_number + '_text" aria-describedby=""></input>')
+                    )
+                ).append(
+                    $('<div class="col-2"></div>').append(
+                        $('<input type="text" class="form-control float-end text-end flex-fill p-0 border-0" id="bin_' + this.current_bin_number + '_value" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color" readonly>')
+                    )
+                ).append(
+                    $('<div class="d-flex col-2"></div>').append(
+                        $('<input type="color" class="form-control form-control-color flex-fill p-0 border-0 colorchange" bin_id="bin_' + this.current_bin_number + '" id="bin_' + this.current_bin_number + '_color" value="#000000" aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color"></input>')
+                    )
+                )
+            )
+        );
+
+        $('#bin_' + this.current_bin_number + '_radio').on("click", this.switch_bin)
+        $('#bin_' + this.current_bin_number + '_color').on("change", this.switch_color)
+        this.bin_dict['bin_' + this.current_bin_number] = [];
+    }
+
+    initialize_buttons() {
+        $('#binadd').on("click", this.add_bin);
+        $('#binremove').on("click", this.remove_bin);
+        $('#redraw').on("click", this.start_draw);
+    }
+    
+    initialize_variables() {
+        this.nodes = this.data['nodes'];
+        this.edges = this.data['edges'];
+        this.layers = this.data['meta']['layers'].filter(item => item !== 'backbone');
+        this.genomes = this.data['meta']['genome_names'];
+        this.functional_annotation_sources_available = this.data['meta']['gene_function_sources'];
+
+        for(var n in this.nodes) {
+            var node = this.nodes[n];
+            for(var [layer, value] of Object.entries(node["layer"])) {
+                if (layer in this.layers_min) {
+                    this.layers_min[layer] = value < this.layers_min[layer] ? value : this.layers_min[layer];
+                } else {
+                    this.layers_min[layer] = value;
+                }
+
+                if (layer in this.layers_max) {
+                    this.layers_max[layer] = value > this.layers_max[layer] ? value : this.layers_max[layer];
+                } else {
+                    this.layers_max[layer] = value;
+                }        
+            }
+
+            var group = node["group"];
+            var x = node["position"][0];
+            var y = node["position"][1];
+
+            if (group) {
+                if (group in this.group_dict) {
+                    this.group_dict[group].push(n);
+                } else {
+                    this.group_dict[group] = [n];
+                } 
+            }
+            this.global_x = x < this.global_x ? this.global_x : x;
+            this.global_y = y < this.global_y ? this.global_y : y;
+        }
+
+        for(var e in this.edges) {
+            var edge = this.edges[e];
+            var route = edge['route'];
+            if (route.length > 0 && edge['active'] == true) {
+                for (var b in route) {
+                    var x = route[b][0];
+                    var y = route[b][1];
+                    this.global_y = y < this.global_y ? this.global_y : y;
+                }
+            }
+        }
+    }
+    
+    initialize_user_interface() {
+        for (var layer of this.layers) {
+            if ($('#flex' + layer + '').length == 0) {
+                var element = $('<div class="col-12 d-flex mb-1"></div>').append(
+                    $('<div class="col-2 d-flex align-items-center"></div>').append(
+                        $('<div class="form-switch d-flex"></div>').append(
+                            $('<input class="" type="checkbox" id="flex' + layer + '" name="flex' + layer + '" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip">')
+                        )
+                    )
+                ).append(
+                    $('<div class="col-8 d-flex align-items-center"></div>').append(
+                        layer
+                    )
+                ).append(
+                    $('<div class="d-flex col-2"></div>').append(
+                        $('<input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="' + layer + '" name="' + layer + '" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">')
+                    )
+                );
+        
+                $('#layers').append(element);
+            }
+        }
+
+        $('#title-panel-first-line').text(this.data['meta']['project_name']);
+        $('#title-panel-second-line').text('Pangraph Detail');
+        
+        if (!$('#genomecolors').children().length) {
+            for (var genome of this.genomes) {  
+                $('#genomecolors').append(
+                    $('<div class="col-12 d-flex mb-1">').append(
+                        $('<div class="col-2 d-flex align-items-center">').append(
+                            $('<div class="form-switch d-flex">').append(
+                                $('<input class="" type="checkbox" id="flex' + genome + '" name="' + genome + '" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top">')
+                            )
+                        )
+                    ).append(
+                        $('<div class="col-7 d-flex align-items-center">').append(
+                            genome
+                        )
+                    ).append(
+                        $('<div class="col-1 d-flex align-items-center">').append(
+                            $('<i class="user-handle bi bi-arrows-expand"></i>')
+                        )
+                    ).append(
+                        $('<div class="d-flex col-2">').append(
+                            $('<input type="color" class="form-control form-control-color flex-fill p-0 border-0" id="' + genome + '" name="' + genome + '" value="#000000" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">')
+                        )
+                    )
+                );
+        
+                $('#RightOffcanvasBodyTop').append(
+                    $('<tr>').append(
+                        $('<td class="col-8">').append(
+                            genome
+                        )
+                    ).append(
+                        $('<td class="col-4 text-end" id="number_' + genome + '">').append(
+                            0
+                        )
+                    )
+                );
+        
+                if ($('#flex' + genome + 'layer').length == 0) {
+                    var element = $('<div class="col-12 d-flex mb-1"></div>').append(
+                        $('<div class="col-2 d-flex align-items-center"></div>').append(
+                            $('<div class="form-switch d-flex"></div>').append(
+                                $('<input class="" type="checkbox" id="flex' + genome + 'layer" name="flex' + genome + 'layer" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">')
+                            )
+                        )
+                    ).append(
+                        $('<div class="col-8 d-flex align-items-center"></div>').append(
+                            genome
+                        )
+                    ).append(
+                        $('<div class="d-flex col-2"></div>').append(
+                            $('<input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="' + genome + 'layer" name="' + genome + 'layer" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">')
+                        )
+                    );
+        
+                    $('#layers').append(element);
+                }
+            }
+        }
+        
+        for (var [setting, value] of Object.entries(this.data['states'])) {
+            if (typeof value === 'number') {
+                $('#' + setting)[0].value = value;
+            } else if (value == true || value == false) {
+                $('#' + setting).prop('checked', value);
+            } else {
+                $('#' + setting)[0].value = value;
+            }
+        }
+        
+        $('#searchSources').empty();
+        for (var annotation_source of this.functional_annotation_sources_available){
+            $('#searchSources').append(
+                $('<div class="col-12"></div>').append(
+                    $('<div class="row align-items-center"></div>').append(
+                        $('<div class="col-2 mb-1"></div>').append(
+                            $('<input class="" type="checkbox" id="flex' + annotation_source + '" value="" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">')
+                        )
+                    ).append(  
+                        $('<div class="col-8 mb-1"></div>').append(
+                            annotation_source
+                        )
+                    ).append(
+                        $('<div class="col-2 mb-1"></div>')
+                    )
+                )
+            );
+        }
+        
+        $('#expressiondrop').empty();
+        $('#expressiondrop').append($('<option value="Choose item">Choose item</option>'));
+        $('#expressiondrop').append($('<option value="Name">Name</option>'));
+        $('#expressiondrop').append($('<option value="Position">Position</option>'));
+        
+        $('#filter').empty();
+        $('#filter').append(
+            $('<div class="col-12"></div>').append(
+                $('<div class="row align-items-center"></div>').append(
+                    $('<div class="col-2 mb-1"></div>').append(
+                        $('<input class="" type="checkbox" id="minposition" value="" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">')
+                    )
+                ).append(  
+                    $('<div class="col-8 mb-1"></div>').append(
+                        'Min graph position'
+                    )
+                ).append(
+                    $('<div class="col-2 mb-1"></div>').append(
+                        $('<input type="text" class="form-control flex-fill p-0 border-0" style= "background-color: #e9ecef;" value="" id="minpositiontext" aria-describedby="">')
+                    )  
+                ).append(
+                    $('<div class="col-2 mb-1"></div>').append(
+                        $('<input class="" type="checkbox" id="maxposition" value="" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">')
+                    )
+                ).append( 
+                    $('<div class="col-8 mb-1"></div>').append(
+                        'Max graph position' 
+                    )
+                ).append(
+                    $('<div class="col-2 mb-1"></div>').append(
+                        $('<input type="text" class="form-control flex-fill p-0 border-0" style= "background-color: #e9ecef;" value="" id="maxpositiontext" aria-describedby="">')
+                    )
+                )
+            )
+        );
+        
+        for (var layer of this.layers) {
+            if ($('#flex' + layer).prop('checked') == true){
+                $('#expressiondrop').append($('<option value="' + layer + '">' + layer + '</option>'));
+                $('#filter').append(
+                    $('<div class="col-12"></div>').append(
+                        $('<div class="row align-items-center"></div>').append(
+                            $('<div class="col-2 mb-1"></div>').append(
+                                $('<input class="" type="checkbox" id="min' + layer + '" value="" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">')
+                            )
+                        ).append(  
+                            $('<div class="col-8 mb-1"></div>').append(
+                                'Min ' + layer
+                                )
+                        ).append(
+                            $('<div class="col-2 mb-1"></div>').append(
+                                $('<input type="text" class="form-control flex-fill p-0 border-0" style= "background-color: #e9ecef;" value="" id="min' + layer + 'text" aria-describedby="">')
+                            )  
+                        ).append(
+                            $('<div class="col-2 mb-1"></div>').append(
+                                $('<input class="" type="checkbox" id="max' + layer + '" value="" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">')
+                            )
+                        ).append( 
+                            $('<div class="col-8 mb-1"></div>').append(
+                                'Max ' + layer
+                            )
+                        ).append(
+                            $('<div class="col-2 mb-1"></div>').append(
+                                $('<input type="text" class="form-control flex-fill p-0 border-0" style= "background-color: #e9ecef;" value="" id="max' + layer + 'text" aria-describedby="">')
+                            )
+                        )
+                    )
+                );
+            }
+        }
+        
+        if ($('#flexlinear').prop('checked') == false) {
+            $('#distx').prop('disabled', true);
+            $('#inner').prop('disabled', false);
+        } else {
+            $('#distx').prop('disabled', false);
+            $('#inner').prop('disabled', true);
+        }
+        
+        if ($('#flexarrow').prop('checked') == false) {
+            $('#arrow').prop('disabled', true);
+        } else {
+            $('#arrow').prop('disabled', false);
+        }
+        
+        if ($('#flexbackbone').prop('checked') == false) {
+            $('#backbone').prop('disabled', true);
+        } else {
+            $('#backbone').prop('disabled', false);
+        }
+        
+        if ($('#flexcondtr').prop('checked') == false) {
+            $('#condtr').prop('disabled', true);
+        } else {
+            $('#condtr').prop('disabled', false);
+        }
+        
+        if ($('#flexmaxlength').prop('checked') == false) {
+            $('#maxlength').prop('disabled', true);
+        } else {
+            $('#maxlength').prop('disabled', false);
+        }
+        
+        if ($('#flexgroupcompress').prop('checked') == false) {
+            $('#groupcompress').prop('disabled', true);
+        } else {
+            $('#groupcompress').prop('disabled', false);
+        }
+        
+        $('#flexlinear').change(function() {
+            if ($(this).prop('checked') == true){
+                $('#distx').prop('disabled', false);
+                $('#inner').prop('disabled', true);
+            } else {
+                $('#distx').prop('disabled', true);
+                $('#inner').prop('disabled', false);
+            }
+        })
+        
+        $('#flexbackbone').change(function() {
+            if ($(this).prop('checked') == true){
+                $('#backbone')[0].value = 100;
+                $('#backbone').prop('disabled', false);
+            } else {
+                $('#backbone')[0].value = 0;
+                $('#backbone').prop('disabled', true);
+            }
+        })
+        
+        $('#flexarrow').change(function() {
+            if ($(this).prop('checked') == true){
+                $('#arrow')[0].value = 100;
+                $('#arrow').prop('disabled', false);
+            } else {
+                $('#arrow')[0].value = 0;
+                $('#arrow').prop('disabled', true);
+            }
+        })
+        
+        $('#flexcondtr').change(function() {
+            if ($(this).prop('checked') == true){
+                $('#condtr')[0].value = 2;
+                $('#condtr').prop('disabled', false);
+            } else {
+                $('#condtr')[0].value = -1;
+                $('#condtr').prop('disabled', true);
+            }
+        })
+        
+        $('#flexmaxlength').change(function() {
+            if ($(this).prop('checked') == true){
+                $('#maxlength')[0].value = 1;
+                $('#maxlength').prop('disabled', false);
+            } else {
+                $('#maxlength')[0].value = -1;
+                $('#maxlength').prop('disabled', true);
+            }
+        })
+        
+        $('#flexgroupcompress').change(function() {
+            if ($(this).prop('checked') == true){
+                $('#groupcompress')[0].value = 0.0;
+                $('#groupcompress').prop('disabled', false);
+            } else {
+                $('#groupcompress')[0].value = 1.0;
+                $('#groupcompress').prop('disabled', true);
+            }
+        })
+        
+        $('#flextree').change(function() {
+            if ($(this).prop('checked') == true){
+                for (var genome of this.genomes) {
+                    if ($('#flex' + genome + 'layer').prop('checked') == false){
+                        $('#' + genome + 'layer')[0].value = 50;
+                        $('#flex' + genome + 'layer').prop('checked', true);
+                    }
+                    $('#flex' + genome + 'layer').prop('disabled', true);
+                }
+            } else {
+                for (var genome of this.genomes) {
+                    $('#flex' + genome + 'layer').prop('disabled', false);
+                }
+            }
+        })
+        
+        for (var layer_name of this.layers) {
+            $('#flex' + layer_name).change(function() {
+                var entry = $(this)[0].id.replace("flex", "");
+                if ($(this).prop('checked') == true){
+                    $('#' + entry)[0].value = 25;
+                    $('#' + entry).prop('disabled', false);
+                } else {
+                    $('#' + entry)[0].value = 0;
+                    $('#' + entry).prop('disabled', true);
+                }
+            })
+        }
+        
+        for (var genome of this.genomes) {
+            $('#flex' + genome + 'layer').change(function() {
+                var entry = $(this)[0].id.replace("flex", "");
+                if ($(this).prop('checked') == true){
+                    $('#' + entry)[0].value = 50;
+                    $('#' + entry).prop('disabled', false);
+                } else {
+                    $('#' + entry)[0].value = 0;
+                    $('#' + entry).prop('disabled', true);
+                }
+            })
+        }
+
+        $('#bin_1_color').on("change", this.switch_color)
+        $('#bin_1_radio').on("click", this.switch_bin)
+        
+        sortable('#genomecolors', {
+            forcePlaceholderSize: true,
+            handle: '.user-handle',
+            items: 'div'
+        });
+        this.settings_dict['condtr'] = this.data['states']['condtr']
+        this.settings_dict['maxlength'] = this.data['states']['maxlength']
+        this.settings_dict['groupcompress'] = this.data['states']['groupcompress']
+        this.settings_dict['state'] = this.data['meta']['state']
+    }
+}
+
+$(document).ready(function () {
+    const pgui = new PangenomeGraphUserInterface();
+});
