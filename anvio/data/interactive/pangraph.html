@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     
-    <title>Gene Cluster Network</title>
+    <title>anvi'o pangenome graph interactive</title>
 
     <link type="text/css" rel="stylesheet" href="./node_modules/bootstrap/dist/css/bootstrap.css" />
     <link type="text/css" rel="stylesheet" href="./node_modules/bootstrap-icons/font/bootstrap-icons.min.css" />
@@ -33,7 +33,8 @@
     <script type="text/javascript" src="./node_modules/bootstrap/dist/js/bootstrap.min.js" onerror='alertDependencyError("bootstrap")'></script>
     <script type="text/javascript" src="./node_modules/svg-pan-zoom/dist/svg-pan-zoom.min.js" onerror='alertDependencyError("svg-pan-zoom")'></script>
     <script type="text/javascript" src="./node_modules/sortable-tablesort/sortable.min.js" onerror='alertDependencyError("table-sorter")'></script>
-    <script type="text/javascript" src='js/pangraph.js' type="module"></script>
+    <!-- <script type="text/javascript" src='js/pangraph.js' type="module"></script> -->
+    <script type="text/javascript" src='js/pangenome-graph.js' type="module"></script>
     <script type="text/javascript" src="js/animations.js"></script>
     <script type="text/javascript" src="js/context-menu.js"></script>
     <script type="text/javascript" src="js/tree.js"></script>
@@ -42,6 +43,13 @@
   </head>
 
   <body>
+    <!-- <img src="images/logo.png" style="display: none">
+    <div class="loading-screen">
+        <div class="spinner-container">
+            <div class="loader"></div>
+            <br />Loading...
+        </div>
+    </div> -->
     <div id="wrapper">
       <div class="invisible" id="toggle-panel-top" onclick="$('#toggle-panel-top').toggleClass('visible invisible'); $('#title-panel').show();">
           &#9660; TITLE
@@ -146,7 +154,7 @@
                           Color core 
                         </div>
                         <div class="d-flex col-2">
-                          <input type="color" class="form-control form-control-color flex-fill p-0 border-0" id=core_color name=core_color value="#bcbcbc" aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <input type="color" class="form-control form-control-color flex-fill p-0 border-0" id=core_color name=core_color value="#000000" aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
@@ -156,7 +164,7 @@
                           Color accessory 
                         </div>
                         <div class="d-flex col-2">
-                          <input type="color" class="form-control form-control-color flex-fill p-0 border-0" id=accessory_color name=accessory_color value="#bcbcbc" aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <input type="color" class="form-control form-control-color flex-fill p-0 border-0" id=accessory_color name=accessory_color value="#000000" aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
@@ -166,7 +174,7 @@
                           Color paralog 
                         </div>
                         <div class="d-flex col-2">
-                          <input type="color" class="form-control form-control-color flex-fill p-0 border-0" id=paralog_color name=paralog_color value="#fab972" aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <input type="color" class="form-control form-control-color flex-fill p-0 border-0" id=paralog_color name=paralog_color value="#000000" aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
@@ -176,7 +184,7 @@
                           Color trna 
                         </div>
                         <div class="d-flex col-2">
-                          <input type="color" class="form-control form-control-color flex-fill p-0 border-0" id=trna_color name=trna_color value="#fab972" aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <input type="color" class="form-control form-control-color flex-fill p-0 border-0" id=trna_color name=trna_color value="#000000" aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
@@ -186,7 +194,7 @@
                           Color singleton 
                         </div>
                         <div class="d-flex col-2">
-                          <input type="color" class="form-control form-control-color flex-fill p-0 border-0" id=singleton_color name=singleton_color value="#add8e6" aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <input type="color" class="form-control form-control-color flex-fill p-0 border-0" id=singleton_color name=singleton_color value="#000000" aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
@@ -196,7 +204,7 @@
                           Color rearranged 
                         </div>
                         <div class="d-flex col-2">
-                          <input type="color" class="form-control form-control-color flex-fill p-0 border-0" id=rearranged_color name=rearranged_color value="#bcbcbc" aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <input type="color" class="form-control form-control-color flex-fill p-0 border-0" id=rearranged_color name=rearranged_color value="#000000" aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
@@ -206,7 +214,7 @@
                           Color layers 
                         </div>
                         <div class="d-flex col-2">
-                          <input type="color" class="form-control form-control-color flex-fill p-0 border-0" id=layer_color name=layer_color value="#f5f5f5" aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <input type="color" class="form-control form-control-color flex-fill p-0 border-0" id=layer_color name=layer_color value="#000000" aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
                         </div>
                       </div>
 
@@ -217,7 +225,7 @@
                           Color backbone 
                         </div>
                         <div class="d-flex col-2">
-                          <input type="color" class="form-control form-control-color flex-fill p-0 border-0" id=back_color name=back_color value="#3d70a0" aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <input type="color" class="form-control form-control-color flex-fill p-0 border-0" id=back_color name=back_color value="#000000" aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
                         </div>
                       </div>
 
@@ -228,7 +236,7 @@
                           Color non-backbone
                         </div>
                         <div class="d-flex col-2">
-                          <input type="color" class="form-control form-control-color flex-fill p-0 border-0" id=non_back_color name=non_back_color value="#f8e45c" aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <input type="color" class="form-control form-control-color flex-fill p-0 border-0" id=non_back_color name=non_back_color value="#000000" aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
                         </div>
                       </div>
                       
@@ -256,7 +264,7 @@
                           Orientation arrow
                         </div>
                         <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="arrow" name="arrow" value=100 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="arrow" name="arrow" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
@@ -269,7 +277,7 @@
                           Backbone/non-backbone
                         </div>
                         <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="backbone" name="backbone" value=100 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="backbone" name="backbone" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
                         </div>
                       </div>
                     </div>
@@ -293,7 +301,7 @@
                           Tree length
                         </div>
                         <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="tree_length" name="tree_length" value=500 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="tree_length" name="tree_length" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
@@ -303,7 +311,7 @@
                           Tree offset
                         </div>
                         <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="tree_offset" name="tree_offset" value=100 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="tree_offset" name="tree_offset" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
@@ -313,7 +321,7 @@
                           Tree line thickness
                         </div>
                         <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="tree_thickness" name="tree_thickness" value=3 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="tree_thickness" name="tree_thickness" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
                         </div>
                       </div>
                     </div>
@@ -328,7 +336,7 @@
                           Node x-distance
                         </div>
                         <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="distx" name="distx" value=30 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="distx" name="distx" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
@@ -338,7 +346,7 @@
                           Node y-distance
                         </div>
                         <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="disty" name="disty" value=30 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="disty" name="disty" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
@@ -348,7 +356,7 @@
                           Node radius
                         </div>
                         <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="size" name="size" value=10 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="size" name="size" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
@@ -358,7 +366,7 @@
                           Node line thickness
                         </div>
                         <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="circ" name="circ" value=2 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="circ" name="circ" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
@@ -368,7 +376,7 @@
                           Edge thickness
                         </div>
                         <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="edge" name="edge" value=2 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="edge" name="edge" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
                         </div>
                       </div>
                     </div>
@@ -391,7 +399,7 @@
                           Line graph thickness
                         </div>
                         <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="line" name="line" value=1 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="line" name="line" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
@@ -401,7 +409,7 @@
                           Label size
                         </div>
                         <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="label" name="label" value=12 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="label" name="label" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
@@ -411,7 +419,7 @@
                           Search hit size
                         </div>
                         <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="search_hit" name="search_hit" value=200 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="search_hit" name="search_hit" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
@@ -448,10 +456,20 @@
                         <div class="col-2">
                         </div>
                         <div class="col-8 d-flex align-items-center">
-                          Angle
+                          Pangenome Graph angle
                         </div>
                         <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="angle" name="angle" value=270 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="angle" name="angle" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                        </div>
+                      </div>
+                    <div class="col-12 d-flex mb-1">
+                        <div class="col-2">
+                        </div>
+                        <div class="col-8 d-flex align-items-center">
+                          Number position annotations
+                        </div>
+                        <div class="d-flex col-2">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="num_position" name="num_position" value=10 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
                         </div>
                       </div>
                     </div>
@@ -497,22 +515,6 @@
                           <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="groupcompress" name="groupcompress" value=0.0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
                         </div>
                       </div>
-                      <!-- <div class="col-12 d-flex mb-1">
-                        <div class="col-2 d-flex align-items-center">
-                          <div class="form-switch d-flex">
-                            <input class="" type="checkbox" id="flexungroup" name="flexungroup" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">
-                          </div>
-                        </div>
-                        <div class="col-6 d-flex align-items-center">
-                          Ungroup area
-                        </div>
-                        <div class="col-2 d-flex">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="ungroupfrom" name="ungroupfrom" value='' aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color" disabled>
-                        </div>
-                        <div class="col-2 d-flex">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="ungroupto" name="ungroupto" value='' aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color" disabled>
-                        </div>
-                      </div> -->
                     </div>
 
                     <span class="settings-secondary-header mb-3 mt-3">Genomes</span>
@@ -533,19 +535,19 @@
                     <div class="col-12">
     
                       <div class="row grid align-items-center" id="bingrid">
-                        <div class="col-12" id="bin1">
+                        <div class="col-12" id="bin_1_grid">
                           <div class="row align-items-center">
                             <div class="col-2">
-                              <input type="radio" name="binradio" id="bin1radio" value="bin1" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top" checked>
+                              <input type="radio" name="binradio" id="bin_1_radio" bin_id="bin_1" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top" checked>
                             </div>
                             <div class="col-6">
-                              <input type="text" class="form-control flex-fill p-0 border-0" style= "background-color: #e9ecef;" value="Bin_1" id="bin1text" aria-describedby="">
+                              <input type="text" class="form-control flex-fill p-0 border-0" style= "background-color: #e9ecef;" value="Bin_1" id="bin_1_name" aria-describedby="">
                             </div>
                             <div class="d-flex col-2">
-                              <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="bin1value" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color" readonly>
+                              <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="bin_1_value" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color" readonly>
                             </div>
                             <div class="d-flex col-2">
-                              <input type="color" class="form-control form-control-color flex-fill p-0 border-0 colorchange" id=bin1color name="bin1" value="#000000" aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                              <input type="color" class="form-control form-control-color flex-fill p-0 border-0 colorchange" id=bin_1_color bin_id="bin_1" value="#000000" aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
                             </div>
                           </div>
                         </div>
