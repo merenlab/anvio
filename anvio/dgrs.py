@@ -570,7 +570,7 @@ class DGR_Finder:
 
         # process each bin
         for bin_name, bin_splits_list in bin_splits_dict.items():
-            self.run_info(f"Processing bin: {bin_name} ", nl_before=1)
+            self.run.info_single(f"Processing bin: {bin_name} ", nl_before=1)
             sample_id_list, bin_contig_sequences = self.load_data_and_setup(bin_splits_list)
             # Update self.contig_sequences to the bin-specific sequences for this iteration
             # This is crucial so that the target file export only includes contigs from this bin
@@ -583,7 +583,7 @@ class DGR_Finder:
             try:
                 contig_records = self.find_snv_clusters(sample_id_list)
                 blast_output = self.run_blast(contig_records, f"bin_{bin_name}_subsequences.fasta")
-                self.run_info(f"Completed BLAST for bin: {bin_name}, output: {blast_output}", nl_before=1)
+                self.run.info_single(f"Completed BLAST for bin: {bin_name}, output: {blast_output}", nl_before=1)
             except ConfigError as e:
                 self.run.warning(f"Skipping bin {bin_name}: {str(e)}", nl_before=1)
                 continue
