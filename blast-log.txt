@@ -1,0 +1,13 @@
+# DATE: 10 Oct 24 19:07:41
+# CMD LINE: makeblastdb -in /var/folders/0s/8xnxq89s1rjb5pnysck5tm2m353pqp/T/tmp4frfgqxr -dbtype prot -out /Users/klambert/github/anvio/anvio/data/misc/COG/COG20/DB_BLAST/COG/COG.fa
+
+
+Building a new DB, current time: 10/10/2024 19:07:41
+New DB name:   /Users/klambert/github/anvio/anvio/data/misc/COG/COG20/DB_BLAST/COG/COG.fa
+New DB title:  /var/folders/0s/8xnxq89s1rjb5pnysck5tm2m353pqp/T/tmp4frfgqxr
+Sequence type: Protein
+Keep MBits: T
+Maximum file size: 3000000000B
+Adding sequences from FASTA; added 3213025 sequences in 34.5814 seconds.
+
+
