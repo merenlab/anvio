@@ -1226,7 +1226,7 @@ class DGR_Finder:
                             if is_3_over_a_third:
                                 self.run.info_single(f"3rd codon position is over a third of the total VR SNVs, so we remove you. {percent_3}", nl_before=1)
                                 snv_at_3_codon_over_a_third = True
-                                if anvio.debug:
+                                if anvio.DEBUG:
                                     self.run.warning(f"Skipping candidate DGR due to SNV filters. One with a VR on this contig: {query_contig}. Specifically, in this case the candidate DGR has a high "
                                                 "likelihood of being a false positive due to the fact that there are a high proportion of SNVs that are coming "
                                                 f"from the third codon base position which is unexpected behaviour. This percentage of SNVs comes from the third codon position: "
