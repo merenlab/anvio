@@ -331,7 +331,7 @@ class DGR_Finder:
 
         sample_id_list = list(set(self.snv_panda.sample_id.unique()))
 
-        return  sample_id_list, contig_sequences
+        return sample_id_list, contig_sequences
 
 
 
