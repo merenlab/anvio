@@ -502,8 +502,9 @@ class DGR_Finder:
             raise ConfigError("Well... this is a pretty fatal error. There are no contig sequences found in the contigs database. You should probably go and check your contigs.db.")
 
         # Run BLAST
-        blast_output_filename = output_filename.replace('.fasta', f'_wordsize_{self.word_size}.xml')
-        if 'bin_' in output_filename:
+        #blast_output_filename = output_filename.replace('.fasta', f'_wordsize_{self.word_size}.xml')
+        #if 'bin_' in output_filename:
+        if self.collections_mode:
             # For collections mode, create bin-specific blast output filename
             bin_name = output_filename.split('bin_')[1].split('_subsequences')[0]
             blast_output_filename = f"blast_output_for_bin_{bin_name}_wordsize_{self.word_size}.xml"
