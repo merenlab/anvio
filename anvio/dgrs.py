@@ -355,13 +355,6 @@ class DGR_Finder:
             If no subsequences with sufficient SNV density are found.
         """
 
-        # Ensure reference FASTA exists
-        if not os.path.exists(self.target_file_path):
-            utils.export_sequences_from_contigs_db(
-                self.contigs_db_path,
-                self.target_file_path,
-                seq_names_to_export=sorted(list(self.contig_sequences.keys()))
-            )
         # reset possible windows each run
         self.all_possible_windows = {}
 
@@ -451,16 +444,15 @@ class DGR_Finder:
 
             all_merged_snv_windows[contig_name] = merged_windows_in_contig
 
-        #get short sequences from all_merged_snv_window and create new fasta from self.target_file_path
+        #get short sequences from all_merged_snv_window
         contig_records = []
-        for record in SeqIO.parse(self.target_file_path, "fasta"):
-            contig_name = record.id
-            if contig_name in all_merged_snv_windows:
-                self.positions= all_merged_snv_windows[contig_name]
-                for i, (start, end) in enumerate(self.positions):
-                    section_sequence = record.seq[start:end]
-                    section_id = f"{contig_name}_section_{i}_start_bp{start}_end_bp{end}"
-                    contig_records.append(SeqRecord(section_sequence, id=section_id, description=""))
+        for contig_name in all_merged_snv_windows.keys():
+            contig_sequence=self.contig_sequences[contig_name]['sequence']
+            self.positions= all_merged_snv_windows[contig_name]
+            for i, (start, end) in enumerate(self.positions):
+                section_sequence = contig_sequence[start:end]
+                section_id = f"{contig_name}_section_{i}_start_bp{start}_end_bp{end}"
+                contig_records.append(SeqRecord(section_sequence, id=section_id, description=""))
 
         if len(contig_records) == 0:
             self.run.warning(f"No sequences with SNVs were found with the parameters minimum distance between SNVs:{self.max_dist_bw_snvs} "
