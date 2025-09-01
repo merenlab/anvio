@@ -270,12 +270,31 @@ class DGR_Finder:
         # setup
         self.target_file_path = os.path.join(self.temp_dir, "reference_sequences.fasta")
         self.run.info('Temporary (contig) reference input for blast', self.target_file_path)
-
+        #initialise the SNV table
+        self.init_snv_table()
         if self.collections_mode:
             self.run.info_single("Collections mode activated. Get ready to see as many BLASTn as bins in your collection. Big things be happenin'.", nl_before=1)
             return self.process_collections_mode()
         else:
             return self.process_standard_mode()
+
+
+    def init_snv_table(self):
+        """
+        """
+        # load SNV data
+        profile_db = dbops.ProfileDatabase(self.profile_db_path)
+        self.snv_panda = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name).sort_values(by=['split_name', 'pos_in_contig'])
+        self.snv_panda['contig_name'] = self.snv_panda['split_name'].apply(lambda x: x.split('_split_')[0])
+
+        profile_db.disconnect()
+
+        # apply SNV filters
+        if self.discovery_mode:
+            self.run.info_single("Running discovery mode. Search for SNVs in all possible locations. You go Dora the explorer!")
+            self.snv_panda = self.snv_panda.query("departure_from_reference >= @self.departure_from_reference_percentage")
+        else:
+            self.snv_panda = self.snv_panda.query("departure_from_reference >= @self.departure_from_reference_percentage and base_pos_in_codon in (1, 2)")
 
 
 
