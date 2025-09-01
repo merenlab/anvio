@@ -2251,9 +2251,9 @@ class DGR_Finder:
 
                 # now we need the masked primer sequence # so we need the positions of the VR
                 vr_positions = set(range(vr_start, vr_end))
-                filtered_snvs_table = self.snv_panda_full[
-                    (self.snv_panda_full['contig_name'] == vr_contig) &
-                    (self.snv_panda_full['pos_in_contig'].isin(vr_positions))]
+                filtered_snvs_table = self.snv_panda[
+                    (self.snv_panda['contig_name'] == vr_contig) &
+                    (self.snv_panda['pos_in_contig'].isin(vr_positions))]
 
                 primer_snv_positions = set(filtered_snvs_table['pos_in_contig'])
 
