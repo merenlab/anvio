@@ -670,30 +670,6 @@ class DGR_Finder:
 
 
 
-    def get_snvs(self):
-        """
-        This function takes the contigs.db and the profile.db and finds the SNVs.
-        This function is not currently in use but here for Merens' sake.
-
-        Returns
-        =======
-        n.data : panada df
-            A dataframe with all of the information in the nucleotide variability table of a profile,
-            including the splits, parent contigs, positions of the SNVs, the bases of the SNVs and the coverage.
-        """
-
-        args = argparse.Namespace(contigs_db=self.contigs_db_path,
-                                profile_db=self.profile_db_path,
-                                splits_of_interest_set= set(self.split_names_unique),
-                                compute_gene_coverage_stats=True)
-
-        n = NucleotidesEngine(args, r=terminal.Run(verbose=True), p=terminal.Progress(verbose=True))
-        n.process()
-
-        return n.data
-
-
-
     def process_blast_results(self, max_percent_identity=100):
         """
         Process BLAST output depending on whether collections_mode is enabled.
