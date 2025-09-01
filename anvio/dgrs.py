@@ -628,28 +628,6 @@ class DGR_Finder:
 
 
 
-    def split_sequence_at_given_pos(self, sequence):
-        """
-        This function takes a sequence and splits it into sections based on the positions stored in self.positions
-        Parameters
-        =======
-        sequence : str
-            The nucleotide or amino acid sequence to be split.
-
-        Returns
-        =======
-        sections : list of str
-            A list of subsequences corresponding to the regions defined in `self.positions`.
-        """
-
-        sections = []
-        for start, end in self.positions:
-            section_sequence = sequence[start - 1:end]  # Adjust positions for 0-based indexing
-            sections.append(section_sequence)
-        return sections
-
-
-
     def combine_ranges(self, entries):
         """
         This function takes a list of (contig_name, key, start, end) tuples and takes the longest sequence possible - the smallest start and largest end.
