@@ -85,7 +85,7 @@ class DGR_Finder:
         self.numb_imperfect_tandem_repeats = A('numb_imperfect_tandem_repeats') or 10
         self.repeat_motif_coverage = A('repeat_motif_coverage') or 0.8
         self.snv_matching_proportion = A('snv_matching_proportion') or None
-        self.snv_codon_position = A('snv_codon_position') or 0.33 #default is 33% of SNVs in the third codon position
+        self.snv_codon_position = A('snv_codon_position') or 0.33 # default is 33% of SNVs in the third codon position
 
         # performance
         self.num_threads = int(A('num_threads')) if A('num_threads') else 1
@@ -122,7 +122,7 @@ class DGR_Finder:
         self.run.info('HMM(s) Provided', ", ".join(self.hmm))
         if not self.skip_recovering_genomic_context:
             self.run.info('Number of genes to consider in context', self.num_genes_to_consider_in_context)
-        #computing variability profiling for every VR in every DGR by searching through raw reads?
+        # computing variability profiling for every VR in every DGR by searching through raw reads?
         if not self.skip_compute_DGR_variability_profiling:
             self.run.info('Samples.txt', self.samples_txt)
             self.run.info('Initial Primer Length', self.initial_primer_length)
@@ -135,7 +135,7 @@ class DGR_Finder:
         Basic checks for a smooth operation
         """
 
-        #First check the contigs.db and profile.db exists
+        # first check the contigs.db and profile.db exists
         utils.is_contigs_db(self.contigs_db_path)
         utils.is_profile_db(self.profile_db_path)
 
@@ -181,7 +181,7 @@ class DGR_Finder:
                                 "all the collections in your profile database you can use the program "
                                 "`anvi-show-collections-and-bins` or run the same command with the flag "
                                 "`--list-collections`.")
-            # Ensure collections_given is a single string (collection name)
+            # ensure collections_given is a single string (collection name)
             if not isinstance(self.collections_given, str):
                 raise ValueError("'collection-name' must be a single collection name")
 
@@ -268,13 +268,14 @@ class DGR_Finder:
         # setup
         self.target_file_path = os.path.join(self.temp_dir, "reference_sequences.fasta")
         self.run.info('Temporary (contig) reference input for blast', self.target_file_path)
-        #initialise the SNV table
+        # initialise the SNV table
         self.init_snv_table()
         if self.collections_mode:
             self.run.info_single("Collections mode activated. Get ready to see as many BLASTn as bins in your collection. Big things be happenin'.", nl_before=1)
             return self.process_collections_mode()
         else:
             return self.process_standard_mode()
+
 
 
     def init_snv_table(self):
@@ -320,14 +321,12 @@ class DGR_Finder:
 
         # filter for collections if needed
         if bin_splits_list:
-            #self.snv_panda = snv_panda_full[snv_panda_full['split_name'].isin(bin_splits_list)]
             self.split_names_unique = bin_splits_list
             # get bin-specific contig sequences
             bin_contigs = [split.split('_split_')[0] for split in bin_splits_list]
             contig_sequences = {contig: contig_sequences[contig]
                                     for contig in bin_contigs if contig in contig_sequences}
         else:
-            #self.snv_panda = snv_panda_full
             self.split_names_unique = utils.get_all_item_names_from_the_database(self.profile_db_path)
 
         sample_id_list = list(set(self.snv_panda.sample_id.unique()))
@@ -408,7 +407,7 @@ class DGR_Finder:
                     if window_end > contig_len:
                         window_end = contig_len
 
-                    # Add the window to the contig's list
+                    # add the window to the contig's list
                     self.all_possible_windows[contig_name].append((window_start, window_end))
 
         all_merged_snv_windows = {} # this dictionary will be filled up with the merged window list for each contig
@@ -514,7 +513,7 @@ class DGR_Finder:
 
         # run BLAST
         if self.collections_mode:
-            # For collections mode, create bin-specific blast output filename
+            # for collections mode, create bin-specific blast output filename
             bin_name = output_filename.split('bin_')[1].split('_subsequences')[0]
             blast_output_filename = f"blast_output_for_bin_{bin_name}_wordsize_{self.word_size}.xml"
         else:
@@ -522,7 +521,7 @@ class DGR_Finder:
 
         blast_output_path = os.path.join(self.temp_dir, blast_output_filename)
 
-        blast = BLAST(output_fasta_path, target_fasta=self.target_file_path, search_program='blastn',
+        blast = BLAST(query_fasta_path, target_fasta=self.target_file_path, search_program='blastn',
                     output_file=blast_output_path, additional_params='-dust no', num_threads=self.num_threads)
         blast.evalue = 10
         blast.makedb(dbtype='nucl')
@@ -552,6 +551,7 @@ class DGR_Finder:
         ConfigError
             If no valid SNV clusters are found for a bin.
         """
+
         # get collections data
         profile_db = dbops.ProfileDatabase(self.profile_db_path)
         where_clause = f'''collection_name == "{self.collections_given}"'''
@@ -575,7 +575,7 @@ class DGR_Finder:
             self.run.info_single(f"Processing bin: {bin_name} ", nl_before=1)
             sample_id_list, bin_contig_sequences = self.load_data_and_setup(bin_splits_list)
 
-            # Update target file path to be bin-specific
+            # update target file path to be bin-specific
             self.target_file_path = os.path.join(self.temp_dir, f"bin_{bin_name}_reference_sequences.fasta")
 
             try:
@@ -589,7 +589,7 @@ class DGR_Finder:
                 self.run.warning(f"Error processing bin {bin_name}: {str(e)}", nl_before=1)
                 continue
 
-        # Return the last successful blast output (maintains original behavior)
+        # return the last successful blast output (maintains original behavior)
         return self.blast_output
 
 
@@ -612,6 +612,7 @@ class DGR_Finder:
         ConfigError
             If no valid SNV clusters are found.
         """
+
         sample_id_list, contig_sequences = self.load_data_and_setup()
         contig_records = self.find_snv_clusters(sample_id_list, contig_sequences)
         return self.run_blast(contig_records, "potential_dgrs.fasta", contig_sequences)
@@ -631,7 +632,7 @@ class DGR_Finder:
             A new start and end position for a contig sequence, to get the longest possible string.
         """
 
-        #extract all starts and stops
+        # extract all starts and stops
         all_start = []
         all_end = []
         for start, end in entries:
@@ -689,7 +690,7 @@ class DGR_Finder:
             If no  BLAST output then exit
         """
 
-        # If collections_mode is enabled, process multiple bins separately
+        # if collections_mode is enabled, process multiple bins separately
         if self.collections_mode:
             self.merged_mismatch_hits = {}  # Store combined results
 
@@ -697,7 +698,7 @@ class DGR_Finder:
 
             for bin_name in self.bin_names_list:
 
-                # Reset mismatch hits for each bin
+                # reset mismatch hits for each bin
                 self.mismatch_hits = {}
 
                 blast_file = os.path.join(
@@ -715,23 +716,23 @@ class DGR_Finder:
                                     "nada, nowt, nothin'! However, you can go back and tinker with the parameters "
                                     "of this tool if you believe this should not be the case. Anvi'o wishes you a nice day :)")
 
-                # Parse XML file for the current bin
+                # parse XML file for the current bin
                 tree = ET.parse(blast_file)
                 root = tree.getroot()
 
-                # Process mismatches from this bin
+                # process mismatches from this bin
                 self.parse_and_process_blast_results(root, bin_name, max_percent_identity)
 
-                # Merge results into `merged_mismatch_hits`
+                # merge results into `merged_mismatch_hits`
                 for hit_identity_unique, hit_data in self.mismatch_hits.items():
                     self.merged_mismatch_hits.setdefault(hit_identity_unique, []).append(hit_data)
 
             self.run.info_single(f"Total unique mismatches: {len(self.merged_mismatch_hits)}", nl_before=1)
             return self.merged_mismatch_hits
 
-        #run in normal none collections mode
+        # run in normal none collections mode
         else:
-            # Single BLAST output processing
+            # single BLAST output processing
             self.mismatch_hits = {}
 
             if os.stat(f"{self.blast_output}").st_size == 0:
@@ -740,11 +741,11 @@ class DGR_Finder:
                                 "nada, nowt, nothin'! However, you can go back and tinker with the parameters "
                                 "of this tool if you believe this should not be the case. Anvi'o wishes you a nice day :)")
 
-            # Parse the standard BLAST output
+            # parse the standard BLAST output
             tree = ET.parse(self.blast_output)
             root = tree.getroot()
 
-            # Process the BLAST output normally
+            # process the BLAST output normally
             self.parse_and_process_blast_results(root, bin_name=None, max_percent_identity=max_percent_identity)
 
             return self.mismatch_hits
@@ -837,9 +838,9 @@ class DGR_Finder:
                                     if anvio.DEBUG and self.verbose:
                                         self.run.warning(f"Removing the DGR with its VR on this contig: {qseq} and TR on this contig: {hseq}.Found approximate tandem repeat in the query sequence {seq} with repeat count {atr.repeat}, motif {atr.motif} and coverage {coverage}")
 
-                            #look for approximate tandem repeats that in the VR, using a coverage value of the motif length times by the number of repeats
+                            # look for approximate tandem repeats that in the VR, using a coverage value of the motif length times by the number of repeats
                             # divided by the sequence length
-                            # Need to do this for shorter motifs too because pytrf misses them otherwise
+                            # need to do this for shorter motifs too because pytrf misses them otherwise
                             for atr2 in pytrf.ATRFinder('name', seq, min_motif=3, max_motif=10, min_seedrep=2, min_seedlen=9, min_identity=70):
                                 coverage = (len(atr2.motif)*atr2.repeat) / len(seq)
                                 if coverage > self.repeat_motif_coverage:
@@ -848,7 +849,7 @@ class DGR_Finder:
                                         self.run.warning(f"Removing the DGR with its VR on this contig: {qseq} and TR on this contig: {hseq}. Found approximate tandem repeat in the query sequence {seq} with repeat count {atr2.repeat}, motif {atr2.motif} and coverage {coverage}")
 
                         if has_repeat:
-                            #breakout of loop (don't add as dgr)
+                            # breakout of loop (don't add as dgr)
                             continue
 
                         subject_genome_start_position = min(
@@ -1059,11 +1060,11 @@ class DGR_Finder:
 
         num_DGR = 0
 
-        #possible DGR dictionary
+        # possible DGR dictionary
         self.DGRs_found_dict = {}
 
         if self.only_a_bases:
-                #This is here so that every potential VR doesn't get a new warning and clog up the terminal
+                # this is here so that every potential VR doesn't get a new warning and clog up the terminal
                 self.run.warning("Just a note to say that we are only looking for DGRs that have A bases as their site of mutagenesis.",
                                 header="Searching for only A mutagenesis based DGRs")
 
@@ -1073,7 +1074,7 @@ class DGR_Finder:
             hits_item = self.mismatch_hits
 
         for sequence_component, hit_list in hits_item.items():
-            # Ensure hit_list is always a list
+            # ensure hit_list is always a list
             if not isinstance(hit_list, list):
                 hit_list = [hit_list]  # Wrap non-list items in a list
 
@@ -1087,7 +1088,6 @@ class DGR_Finder:
                 subject_sequence = Seq(hit_data['hit_seq'])
                 original_midline = hit_data['midline']
                 query_sequence = Seq(hit_data['query_seq'])
-                #shredded_sequence_name = sequence_component
                 query_genome_start_position = hit_data['query_genome_start_position']
                 query_genome_end_position = hit_data['query_genome_end_position']
                 query_frame = int(hit_data['query_frame'])
@@ -1102,7 +1102,7 @@ class DGR_Finder:
             if mismatch_length_bp == 0:
                 continue
             else:
-                # Calculate the percentage identity of each alignment
+                # calculate the percentage identity of each alignment
                 for letter, count in subject_mismatch_counts.items():
                     percentage_of_mismatches = (count/mismatch_length_bp)
                     if (percentage_of_mismatches > self.percentage_mismatch) and (mismatch_length_bp > self.number_of_mismatches):
@@ -1139,19 +1139,19 @@ class DGR_Finder:
                         # Currently the code (30.04.2025) adds a column to the DGR_looks_snv_false if there is ONE single SNV at a non-mutagenesis match site.
                         # Going to look and create a threshold - for populations etc
 
-                        #subset snv df by query contig (vr contig) and VR range
+                        # subset snv df by query contig (vr contig) and VR range
                         matching_snv_rows = self.snv_panda[(self.snv_panda['contig_name'] == query_contig) &
                         (self.snv_panda['pos_in_contig'].between(query_genome_start_position, query_genome_end_position))]
 
-                        #make snv vr positions a list so we can print it in the output
+                        # make snv vr positions a list so we can print it in the output
                         snv_VR_positions = sorted(set(matching_snv_rows['pos_in_contig'].to_list()))
 
-                        #currently position of mismatches is relative to the VR needs to be relative to the contig so that they match the vr snv ones
+                        # currently position of mismatches is relative to the VR needs to be relative to the contig so that they match the vr snv ones
                         mismatch_pos_contig_relative = [x + query_genome_start_position for x in position]
 
                         if matching_snv_rows.empty:
-                            #skip because you are useless to us
-                            #i.e. there are no SNVs in the VR)
+                            # skip because you are useless to us
+                            # i.e. there are no SNVs in the VR)
                             continue
                         else:
                             # first check majority of SNVs come from 1&2 codon pos
@@ -1164,7 +1164,7 @@ class DGR_Finder:
                             total = count_1 + count_2 + count_3
                             percent_3 = count_3 / total * 100
 
-                            # Apply threshold of 66% because we want less than a third of snvs to be at the third codon position
+                            # apply threshold of 66% because we want less than a third of snvs to be at the third codon position
                             is_3_over_a_third = percent_3 > (self.snv_codon_position * 100)
                             if is_3_over_a_third:
                                 self.run.info_single(f"3rd codon position is over a third of the total VR SNVs, so we remove you. {percent_3}", nl_before=1)
@@ -1179,8 +1179,8 @@ class DGR_Finder:
                             else:
                                 snv_at_3_codon_over_a_third = False
 
-                            #look if matches of VR have SNVs (exclude mismatch positions and matches of base of mutagenesis in VR (normally A).)
-                            #letter to skip is mutagenesis base (usually A), if mismatch majority A IF rev comp then T, else make mismatch majority use base
+                            # look if matches of VR have SNVs (exclude mismatch positions and matches of base of mutagenesis in VR (normally A).)
+                            # letter to skip is mutagenesis base (usually A), if mismatch majority A IF rev comp then T, else make mismatch majority use base
                             letter_to_skip = base.upper()
 
                             if is_reverse_complement:
@@ -1197,19 +1197,19 @@ class DGR_Finder:
 
                             # subset VR snv df, by matches in VR and TR *AND* reference in VR being mutagenesis base (usually A)
                             snv_in_matches_not_mutagen_base = matching_snv_rows[~matching_snv_rows['pos_in_contig'].isin(mismatch_pos_contig_relative) & (matching_snv_rows['reference'] != letter_to_skip)]
-                            #this needs to be a set of the position in contig so that there are not multiple reported
+                            # this needs to be a set of the position in contig so that there are not multiple reported
                             numb_of_snv_in_matches_not_mutagen_base = len(set(snv_in_matches_not_mutagen_base['pos_in_contig']))
                             numb_of_mismatches = len(position)
                             numb_of_SNVs = len(snv_VR_positions)
 
-                            # Report proportion of non-mutagenesis SNVs vs all SNVs
+                            # report proportion of non-mutagenesis SNVs vs all SNVs
                             if numb_of_SNVs > 0:
                                 prop_non_mutagen_snv = numb_of_snv_in_matches_not_mutagen_base/numb_of_SNVs
 
-                            # Flag to store final DGR-like decision based on SNVs
+                            # flag to store final DGR-like decision based on SNVs
                             DGR_looks_snv_false = False
 
-                            # Apply filters based on SNV count and thresholds
+                            # apply filters based on SNV count and thresholds
                             if self.snv_matching_proportion:
                                 max_allowed_bad_snv_fraction = self.snv_matching_proportion
                             else:
@@ -1218,7 +1218,7 @@ class DGR_Finder:
                                 elif numb_of_SNVs < 30:
                                     max_allowed_bad_snv_fraction = 0.25  # 25%
 
-                                # Evaluate
+                                # evaluate
                                 if prop_non_mutagen_snv >= max_allowed_bad_snv_fraction:
                                     DGR_looks_snv_false = True
                                     self.run.warning("Skipping candidate DGR due to SNV filters. Specifically, in this case the candidate DGR has a high "
@@ -1229,48 +1229,48 @@ class DGR_Finder:
                                                 "if less than 30 SNVs than 25%% are allowed, this is by default. If you think that this is incorrect please change the '--snv-matching-proportion' parameter "
                                                 "to give it a blanket value, this is what we found to be most effective based on our short read metagenome testing.", header="WARNING: DGR REMOVED", lc='yellow')
 
-                        #to test for VR diversity of base types in the protein sequence
+                        # to test for VR diversity of base types in the protein sequence
                         for letter, count in query_mismatch_counts.items():
                             non_zero_bases = sum(1 for count in query_mismatch_counts.values() if count > 0)
                         if not non_zero_bases >= self.min_mismatching_base_types_vr:
                             continue
 
-                        #to test for VR diversity of base types in the sequence
-                        # Count the distinct base types in the sequence
+                        # to test for VR diversity of base types in the sequence
+                        # count the distinct base types in the sequence
                         vr_unique_bases = set(query_sequence) - {"-", "N"}  # Ignore gaps and ambiguous bases if needed
 
-                        # Ensure the sequence has at least the required number of distinct base types
+                        # ensure the sequence has at least the required number of distinct base types
                         if len(vr_unique_bases) <= self.min_base_types_vr:
                             continue
 
-                        #to test for TR diversity of base types in the sequence
-                        # Count the distinct base types in the sequence
+                        # to test for TR diversity of base types in the sequence
+                        # count the distinct base types in the sequence
                         tr_unique_bases = set(subject_sequence) - {"-", "N"}  # Ignore gaps and ambiguous bases if needed
 
-                        # Ensure the sequence has at least the required number of distinct base types
+                        # ensure the sequence has at least the required number of distinct base types
                         if len(tr_unique_bases) <= self.min_base_types_tr:
                             continue
 
                         if self.only_a_bases:
-                            # Filter out bases with count > 0 before checking
+                            # filter out bases with count > 0 before checking
                             nonzero_mismatch_bases = [base for base, count in subject_mismatch_counts.items() if count > 0]
 
-                            # If reverse complemented, treat 'T' as 'A'
+                            # if reverse complemented, treat 'T' as 'A'
                             if is_reverse_complement:
                                 all_mismatches_are_A = all(base in ('A', 'T') for base in nonzero_mismatch_bases)
                             else:
                                 all_mismatches_are_A = all(base == 'A' for base in nonzero_mismatch_bases)
 
-                            # Skip if any mismatching base is not valid
+                            # skip if any mismatching base is not valid
                             if not all_mismatches_are_A:
                                 continue
 
-                        # Here we dont add VR candidates based on SNV parameters.
-                        # Skip DGR if flagged due to SNV-based filters
+                        # here we dont add VR candidates based on SNV parameters.
+                        # skip DGR if flagged due to SNV-based filters
                         if DGR_looks_snv_false or snv_at_3_codon_over_a_third:
                             continue
 
-                        #need to check if the new TR you're looping through exists in the DGR_found_dict, see if position overlap
+                        # need to check if the new TR you're looping through exists in the DGR_found_dict, see if position overlap
                         if not self.DGRs_found_dict:
                             # add first DGR
                             num_DGR += 1
@@ -1408,7 +1408,7 @@ class DGR_Finder:
                             gene_call['sources'] = []
                             gene_call['accessions'] = []
 
-                        # While we are here, let's add more info about the gene
+                        # while we are here, let's add more info about the gene
                         # DNA sequence:
                         where_clause = f'''contig == "{contig_name}"'''
                         contig_sequence = contigs_db.db.get_some_rows_from_table_as_dict(t.contig_sequences_table_name, where_clause=where_clause, error_if_no_data=False)
@@ -1430,7 +1430,7 @@ class DGR_Finder:
                         break
         contigs_db.disconnect()
 
-        # Write the results to TSV file
+        # write the results to TSV file
         self.write_dgr_genes_found_tsv()
 
         return
@@ -1457,20 +1457,20 @@ class DGR_Finder:
         output_directory_path = self.output_directory
         output_path_for_genes_found = os.path.join(output_directory_path, f"{self.output_directory}_DGR_genes_found.tsv")
 
-        # Define the header for the TSV file
+        # define the header for the TSV file
         csv_header = ['DGR_ID', 'VR_ID', 'Contig', 'Start', 'Stop', 'Direction', 'Partial', 'Call_Type', 'Gene_Caller_Source', 'Version', 'Gene_Caller_ID', 'DNA_Sequence', 'AA_Sequence', 'Length', 'Gene_Functions', 'Gene_Function_Source', 'Gene_Function_Accession']
 
-        # Open the TSV file in write mode
+        # open the TSV file in write mode
         with open(output_path_for_genes_found, mode='w', newline='') as file:
             writer = csv.writer(file, delimiter='\t')
             writer.writerow(csv_header)  # Write the header row
-            # Iterate through the dictionary and write each gene's information to the TSV file
+            # iterate through the dictionary and write each gene's information to the TSV file
             for dgr_id, vr_data in self.vr_gene_info.items():
                 for vr_id, gene_info in vr_data.items():
                     if not gene_info:
                         continue
 
-                    # Convert list of functions to string
+                    # convert list of functions to string
                     gene_functions = ''.join(gene_info['functions'])
                     gene_annotation_source = ''.join(gene_info['sources'])
                     gene_annotation_accession = ''.join(gene_info['accessions'])
@@ -1546,9 +1546,9 @@ class DGR_Finder:
                     found_HMMS_dict[gene_callers_id]['e_value'] = e_value
                     found_HMMS_dict[gene_callers_id]['HMM_source'] = HMM_source
 
-        # Check if the gene_caller_id exists in genes_in_contigs
+        # check if the gene_caller_id exists in genes_in_contigs
         for gene_callers_id, hmm_dict in found_HMMS_dict.items():
-            # Retrieve the 'start' and 'stop' values
+            # retrieve the 'start' and 'stop' values
             int_gene_callers_id = int(gene_callers_id)
             start_value = genes_in_contigs[int_gene_callers_id]['start']
             stop_value = genes_in_contigs[int_gene_callers_id]['stop']
@@ -1566,14 +1566,14 @@ class DGR_Finder:
 
             found_HMMS_dict[gene_callers_id] = hmm_dict
 
-        #look at general consensus TR in the level up so all the TRs have the same HMM if in the same DGR.
+        # look at general consensus TR in the level up so all the TRs have the same HMM if in the same DGR.
         for DGR_id, DGR_info in dgrs_dict.items():
             TR_start_position = DGR_info['TR_start_position']
             TR_end_position = DGR_info['TR_end_position']
             TR_middle_position = (TR_start_position + TR_end_position) / 2
 
-            # Initialize closest_distances dictionary inside the loop
-            closest_distances = {}  # Initialize an empty dictionary to store closest distances
+            # initialize closest_distances dictionary inside the loop
+            closest_distances = {}  # initialize an empty dictionary to store closest distances
             HMM_found = False
 
             for gene_callers_id, hmm_dict in found_HMMS_dict.items():
@@ -1647,21 +1647,21 @@ class DGR_Finder:
             "VR_TR_mismatch_positions", "snv_VR_positions"
         ]
 
-        # Check if either dictionary is empty or lacks meaningful keys
+        # check if either dictionary is empty or lacks meaningful keys
         if not any(dgrs_dict.values()):
             self.run.warning("No DGRS were found so no output file will be written :( However, you can go "
                             "back and tinker with the parameters of this tool if you believe this should not "
                             "be the case. Anvi'o wishes you a nice day :)", header="NO DIVERSITY-GENERATING RETROELEMENTS")
             return
 
-        # Open the TSV file and write headers and rows
+        # open the TSV file and write headers and rows
         with open(output_path_dgrs, 'w', newline='') as csvfile:
             csv_writer = csv.writer(csvfile, delimiter='\t')
             csv_writer.writerow(headers)
 
             for dgr, tr in dgrs_dict.items():
                 for vr, vr_data in tr['VRs'].items():
-                    # Populate tsv_row for DGRs_found.tsv format
+                    # populate tsv_row for DGRs_found.tsv format
                     csv_row = [
                         dgr, vr, vr_data['VR_contig'], vr_data.get('VR_frame', 'N/A'),
                         vr_data['VR_sequence'], vr_data['midline'], vr_data['VR_start_position'],
@@ -1742,7 +1742,7 @@ class DGR_Finder:
             TR_start = dgr_data.get('TR_start_position')
             TR_end = dgr_data.get('TR_end_position')
 
-            # Initialize TR context
+            # initialize TR context
             tr_context_genes = {}
 
             is_tr_in_gene = False
@@ -1758,7 +1758,7 @@ class DGR_Finder:
                 self.run.info_single(f'No gene calls found around TR {dgr_id}', nl_before=1)
                 continue
 
-            # Process TR gene calls
+            # process TR gene calls
             min_distance_to_TR_start, min_distance_to_TR_end = float('inf'), float('inf')
             closest_gene_call_to_TR_start, closest_gene_call_to_TR_end = None, None
             for gene_callers_id, gene_call in gene_calls_in_TR_contig.items():
@@ -1787,7 +1787,7 @@ class DGR_Finder:
                 contig_sequence = contigs_db.db.get_some_rows_from_table_as_dict(t.contig_sequences_table_name, where_clause=where_clause, error_if_no_data=False)
                 dna_sequence = contig_sequence[TR_contig_name]['sequence'][gene_call['start']:gene_call['stop']]
 
-                #dna_sequence = self.contig_sequences[TR_contig_name]['sequence'][gene_call['start']:gene_call['stop']]
+                # dna_sequence = self.contig_sequences[TR_contig_name]['sequence'][gene_call['start']:gene_call['stop']]
                 rev_compd = None
                 if gene_call['direction'] == 'f':
                     gene_call['DNA_sequence'] = dna_sequence
@@ -1810,14 +1810,14 @@ class DGR_Finder:
                                 f"length:{gene_call['length']}"])
                 gene_call['header'] = ' '.join([str(gene_callers_id), header])
 
-                # Store the gene call in the dictionary using gene_callers_id as the key
+                # store the gene call in the dictionary using gene_callers_id as the key
                 tr_context_genes[gene_callers_id] = gene_call
 
-                # Check if the TR is inside this gene
+                # check if the TR is inside this gene
                 if TR_start >= gene_call['start'] and TR_end <= gene_call['stop']:
                     is_tr_in_gene = True
 
-            # After processing all the gene calls for the TR, add the result to dgrs_dict
+            # after processing all the gene calls for the TR, add the result to dgrs_dict
             dgrs_dict[dgr_id]['TR_in_gene'] = is_tr_in_gene
 
             self.genomic_context_surrounding_dgrs[dgr_id] = copy.deepcopy(tr_context_genes)
@@ -1831,7 +1831,7 @@ class DGR_Finder:
                 VR_start = vr_data.get('VR_start_position')
                 VR_end = vr_data.get('VR_end_position')
 
-                # Initialize VR context
+                # initialize VR context
                 vr_context_genes = {}
 
                 if VR_contig not in gene_calls_per_VR_contig:
@@ -1872,7 +1872,7 @@ class DGR_Finder:
                     where_clause = f'''contig == "{VR_contig}"'''
                     contig_sequence = contigs_db.db.get_some_rows_from_table_as_dict(t.contig_sequences_table_name, where_clause=where_clause, error_if_no_data=False)
                     dna_sequence = contig_sequence[VR_contig]['sequence'][gene_call['start']:gene_call['stop']]
-                    #dna_sequence = self.contig_sequences[VR_contig]['sequence'][gene_call['start']:gene_call['stop']]
+                    # dna_sequence = self.contig_sequences[VR_contig]['sequence'][gene_call['start']:gene_call['stop']]
                     rev_compd = None
                     if gene_call['direction'] == 'f':
                         gene_call['DNA_sequence'] = dna_sequence
@@ -1895,7 +1895,7 @@ class DGR_Finder:
                                     f"length:{gene_call['length']}"])
                     gene_call['header'] = ' '.join([str(gene_callers_id), header])
 
-                    # Store the gene call in the dictionary using gene_callers_id as the key
+                    # store the gene call in the dictionary using gene_callers_id as the key
                     vr_context_genes[gene_callers_id] = gene_call
 
                     self.genomic_context_surrounding_dgrs[dgr_id][vr_id] = copy.deepcopy(vr_context_genes)
@@ -1955,12 +1955,12 @@ class DGR_Finder:
         genes_output_headers = ["gene_callers_id", "start", "stop", "direction", "partial", "call_type", "source", "version", "contig"]
         functions_output_headers = ["gene_callers_id", "source", 'accession', 'function']
 
-        # Process each DGR and its VRs
+        # process each DGR and its VRs
         for dgr_key, dgr_data in dgrs_dict.items():
-            # Assuming dgr_key itself is the dgr_id or a dictionary containing it
+            # assuming dgr_key itself is the dgr_id or a dictionary containing it
             dgr_id = dgr_key  # If dgr_key is the dgr_id itself
 
-            # Create output directory for DGR
+            # create output directory for DGR
             if dgrs_dict == self.DGRs_found_dict:
                 dgr_directory = os.path.join(self.output_directory, "PER_DGR", dgr_id)
 
@@ -1974,40 +1974,40 @@ class DGR_Finder:
                 tr_genes_output.write("dgr_id\tentry_type\t%s\n" % '\t'.join(genes_output_headers))
                 tr_functions_output.write("dgr_id\t%s\n" % '\t'.join(functions_output_headers))
 
-                # Create fake gene call entries for TR and VRs:
+                # create fake gene call entries for TR and VRs:
                 d = dict([(h, '') for h in genes_output_headers])
 
-                # Fill in non-empty data for the TR in the DGR and insert it:
+                # fill in non-empty data for the TR in the DGR and insert it:
                 d['contig'] = dgr_data.get('TR_contig')  # Use dgr_data to access TR info
                 d['start'] = dgr_data.get('TR_start_position')
                 d['stop'] = dgr_data.get('TR_end_position')
                 tr_genes_output.write(f"{dgr_id}_TR\tTEMPLATE_REGION\t%s\n" % '\t'.join([f"{d[h]}" for h in genes_output_headers]))
 
-                # Check if there are surrounding genes for the TR and write them
+                # check if there are surrounding genes for the TR and write them
                 if dgr_id in self.genomic_context_surrounding_dgrs:
-                    # Iterate over the gene_callers_id and the associated gene_call dictionary
+                    # iterate over the gene_callers_id and the associated gene_call dictionary
                     for gene_callers_id, gene_call in self.genomic_context_surrounding_dgrs[dgr_id].items():
-                        # Ensure the gene_call is a dictionary
+                        # ensure the gene_call is a dictionary
                         if isinstance(gene_call, dict):
-                            # Write gene information to the output, ensuring we access the correct fields
+                            # write gene information to the output, ensuring we access the correct fields
                             tr_genes_output.write(f"{dgr_id}_TR\tGENE\t%s\n" % '\t'.join([f"{gene_call.get(h, '')}" for h in genes_output_headers]))
 
-                            # If 'functions' is present in the gene_call, write functions to the output
+                            # if 'functions' is present in the gene_call, write functions to the output
                             if 'functions' in gene_call and gene_call['functions']:
                                 for hit in gene_call['functions']:
                                     tr_functions_output.write(f"{dgr_id}_TR\t{hit['gene_callers_id']}\t{hit['source']}\t{hit['accession'].split('!!!')[0]}\t{hit['function'].split('!!!')[0]}\n")
                             else:
-                                # Write placeholder if no functions are found
+                                # write placeholder if no functions are found
                                 tr_functions_output.write(f"{dgr_id}_TR\t{gene_call.get('gene_callers_id', '')}\t\t\t\n")
                         else:
-                            # Log if gene_call is not a dictionary
+                            # log if gene_call is not a dictionary
                             self.run.info_single(f"Unexpected type for gene_call: {gene_call} (expected dict but got {type(gene_call)})", nl_before=1)
 
-                # Log information about the reporting files
+                # log information about the reporting files
                 self.run.info(f"Reporting file on gene context for {dgr_id} TR", tr_genes_output_path)
                 self.run.info(f"Reporting file on functional context for {dgr_id} TR", tr_functions_output_path, nl_after=1)
 
-            # Fill in non-empty data for each VR in the DGR and insert it:
+            # fill in non-empty data for each VR in the DGR and insert it:
             for vr_key, vr_data in dgr_data['VRs'].items():
                 vr_id = vr_key
                 vr_directory = os.path.join(dgr_directory, f"VR_{vr_id}")
@@ -2020,13 +2020,13 @@ class DGR_Finder:
                     vr_genes_output.write("dgr_id\tentry_type\t%s\n" % '\t'.join(genes_output_headers))
                     vr_functions_output.write("dgr_id\t%s\n" % '\t'.join(functions_output_headers))
 
-                    # Create fake gene call entry for VR:
+                    # create fake gene call entry for VR:
                     d['contig'] = vr_data.get('VR_contig')
                     d['start'] = vr_data.get('VR_start_position')
                     d['stop'] = vr_data.get('VR_end_position')
                     vr_genes_output.write(f"{dgr_id} {vr_id}\tVARIABLE_REGION\t%s\n" % '\t'.join([f"{d[h]}" for h in genes_output_headers]))
 
-                    # Check if there are surrounding genes for the VR and write them
+                    # check if there are surrounding genes for the VR and write them
                     if vr_id in self.genomic_context_surrounding_dgrs:
                         for gene_call in self.genomic_context_surrounding_dgrs[vr_id]:
                             vr_genes_output.write(f"{dgr_id} VR_{vr_id}\tGENE\t%s\n" % '\t'.join([f"{gene_call[h]}" for h in genes_output_headers]))
@@ -2042,14 +2042,14 @@ class DGR_Finder:
 
 
 
-    # Function to get the consensus base
+    # function to get the consensus base
     @staticmethod
     def get_consensus_base(row):
         """
         Determine the consensus base from a row of nucleotide frequencies.
         """
         for nucleotide in nucleotides:
-            if row[nucleotide] > 0.5:  # Assuming a threshold for consensus, adjust as necessary
+            if row[nucleotide] > 0.5:  # assuming a threshold for consensus, adjust as necessary
                 return nucleotide
         return None
 
@@ -2085,7 +2085,7 @@ class DGR_Finder:
                 print('Sample {sample_name} is none, loop will be broken.')
                 break
 
-            #Extract sample-specific primers if the flag is set
+            # extract sample-specific primers if the flag is set
             if use_sample_primers and sample_primers_dict:
                 primers_for_sample = sample_primers_dict.get(sample_name, primers_dict)
             else:
@@ -2180,7 +2180,7 @@ class DGR_Finder:
                 (VR_frame == -1 and not vr_end > (contig_length - self.initial_primer_length)):
                     initial_primer_right = True
 
-                # Store the flag in vr_data so we can reuse it later
+                # store the flag in vr_data so we can reuse it later
                 vr_data['initial_primer_right'] = initial_primer_right
 
                 # get initial primer region if allowed
@@ -2218,7 +2218,7 @@ class DGR_Finder:
 
                 vr_masked_primer = ''.join(vr_primer_list)
 
-                # Reverse complement the masked primer if the VR is in reverse frame
+                # reverse complement the masked primer if the VR is in reverse frame
                 if VR_frame == -1:
                     vr_masked_primer = utils.rev_comp(vr_masked_primer)
 
@@ -2281,7 +2281,7 @@ class DGR_Finder:
         if self.skip_compute_DGR_variability_profiling or not self.raw_r1_r2_reads_are_present:
             return
 
-        #define defaults
+        # define defaults
         dgrs_dict = self.DGRs_found_dict
         use_sample_primers = False
 
@@ -2367,7 +2367,7 @@ class DGR_Finder:
         primers_dict = self.generate_primers_for_vrs(dgrs_dict)
 
         if not self.skip_primer_variability:
-            #then define use_sample_primers as True
+            # then define use_sample_primers as True
             use_sample_primers = True
 
             # create a sample_primers_dict to store the primers for each sample
@@ -2377,7 +2377,7 @@ class DGR_Finder:
             snvs_table = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name).sort_values(by=['split_name', 'pos_in_contig'])
             profile_db.disconnect()
 
-            # Sanity check for mismatch between samples given and samples in SNV table
+            # sanity check for mismatch between samples given and samples in SNV table
             sample_names_given = set(sample_names)
             sample_names_in_snv_table = set(snvs_table['sample_id'])
             samples_missing_in_snv_table = sample_names_given.difference(sample_names_in_snv_table)
@@ -2392,16 +2392,16 @@ class DGR_Finder:
                                 "This is fatal; anvi'o will now quit. Either recreate your profile.db with the samples you would like to search for the DGR VRs variability, "
                                 "or give 'anvi-report-dgrs' the correct samples.")
 
-            # Iterate over the samples
+            # iterate over the samples
             for sample_name in sample_names:
                 if sample_name not in sample_names_in_snv_table:
                     self.run.warning(f"Sample {sample_name} is missing from the SNV table, skipping this sample.")
-                    continue  # Skip this sample if it's not in the SNV table
+                    continue  # skip this sample if it's not in the SNV table
 
-                # Filter SNVs for the current sample
+                # filter SNVs for the current sample
                 sample_snvs = snvs_table[snvs_table['sample_id'] == sample_name]
 
-                # Iterate through DGRs and VRs
+                # iterate through DGRs and VRs
                 for dgr_id, dgr_data in dgrs_dict.items():
                     for vr_key, vr_data in dgr_data['VRs'].items():
                         vr_id = vr_key
@@ -2409,7 +2409,7 @@ class DGR_Finder:
                         vr_end = vr_data.get('VR_end_position')
                         vr_contig = vr_data.get('VR_contig')
 
-                        # Filter SNVs within the primer region for the current VR
+                        # filter SNVs within the primer region for the current VR
                         primer_snvs = sample_snvs[
                             (sample_snvs['split_name'].apply(lambda x: x.split('_split')[0]) == vr_contig) &
                             (sample_snvs['pos_in_contig'] >= vr_start - self.initial_primer_length) &
@@ -2427,14 +2427,14 @@ class DGR_Finder:
                             self.run.info_single(f"Processing sample {sample_name} for DGR {dgr_id} VR {vr_id}", nl_before=1)
 
                         if not primer_snvs.empty:
-                            # Get original sequences separately
+                            # get original sequences separately
                             original_initial_primer = primers_dict[original_primer_key]['initial_primer_sequence']
                             vr_masked_primer = primers_dict[original_primer_key]['vr_masked_primer']
 
-                            # Work on a copy of the initial primer sequence only
+                            # work on a copy of the initial primer sequence only
                             new_initial_primer = list(original_initial_primer)
 
-                            # Vectorized operation to find consensus SNVs and update the primer sequence
+                            # vectorized operation to find consensus SNVs and update the primer sequence
                             consensus_snvs = primer_snvs[
                                 primer_snvs['departure_from_reference'] > 0.5].apply(DGR_Finder.get_consensus_base, axis=1)
 
@@ -2458,7 +2458,7 @@ class DGR_Finder:
                                 f"Updated sample {sample_name} primer for {dgr_vr_key}: {''.join(new_initial_primer)}", nl_before=1)
 
                         else:
-                            # Use the original primer sequence since no SNVs were found
+                            # use the original primer sequence since no SNVs were found
                             original_initial_primer = primers_dict[original_primer_key]['initial_primer_sequence']
                             vr_masked_primer = primers_dict[original_primer_key]['vr_masked_primer']
 
@@ -2478,23 +2478,23 @@ class DGR_Finder:
                 if anvio.DEBUG:
                     self.run.info_single(f"Sample {sample_name} processed. Sample-specific primers dict: {self.sample_primers_dict}", nl_before=1)
 
-                # Update the sample-specific primers dictionary with the new primer sequence
+                # update the sample-specific primers dictionary with the new primer sequence
                 for dgr_vr_key, samples in self.sample_primers_dict.items():
                     for sample_name, primer_data in samples.items():
                         primer_key = f"{dgr_vr_key}_Primer"
                         vr_masked_primer = primers_dict[primer_key]['vr_masked_primer']
                         primer_data['vr_masked_primer'] = vr_masked_primer
 
-                        # Combine the initial primer sequence and vr_masked_primer for each sample
+                        # combine the initial primer sequence and vr_masked_primer for each sample
                         initial_primer = primer_data['initial_primer_sequence']
                         vr_masked_primer = primer_data['vr_masked_primer']
                         primer_sequence = initial_primer + vr_masked_primer
 
-                        # Add the combined primer sequence to the sample data
+                        # add the combined primer sequence to the sample data
                         primer_data['primer_sequence'] = primer_sequence
 
                         if anvio.DEBUG:
-                            # Print the updated primer sequence for debugging
+                            # print the updated primer sequence for debugging
                             self.run.info_single(f"Sample: {sample_name}, DGR: {dgr_vr_key}, Primer Sequence: {primer_sequence}", nl_before=1)
 
             if anvio.DEBUG:
@@ -2503,14 +2503,14 @@ class DGR_Finder:
         if not self.skip_primer_variability:
             self.run.info_single("Primer variability analysis is enabled. Using sample-specific primers.", nl_before=1)
 
-            # Ensure `sample_primers_dict` is updated and passed during computation
+            # ensure `sample_primers_dict` is updated and passed during computation
             use_sample_primers = True
 
         if self.skip_primer_variability:
             self.run.info_single("Skipping primer variability analysis. Using default primers.", nl_before=1)
             use_sample_primers = False
 
-        # Output the final primers dictionary
+        # output the final primers dictionary
         self.run.info_single("Computing the Variable Regions Primers and creating a 'DGR_Primers_used_for_VR_diversity.tsv' file.", nl_before=1)
         self.print_primers_dict_to_csv(self.sample_primers_dict if not self.skip_primer_variability else primers_dict)
 
@@ -2524,7 +2524,7 @@ class DGR_Finder:
         output_queue = manager.Queue()
 
         self.dgr_activity = []
-        #create directory for Primer matches
+        # create directory for Primer matches
         primer_folder= os.path.join(self.output_directory, "PRIMER_MATCHES")
 
         # put all the sample names in our input queue
@@ -2543,7 +2543,7 @@ class DGR_Finder:
                                                 primer_folder),
 
                                             kwargs=({'progress': self.progress if self.num_threads == 1 else progress_quiet,
-                                                    'use_sample_primers': use_sample_primers,  # Pass flag based on `self.skip_primer_variability`
+                                                    'use_sample_primers': use_sample_primers,  # pass flag based on `self.skip_primer_variability`
                                                     'sample_primers_dict': self.sample_primers_dict if use_sample_primers else None,  # Pass only if needed
                                                 }))
             workers.append(worker)
@@ -2607,17 +2607,17 @@ class DGR_Finder:
         output_path= os.path.join(output_directory_path, "DGR_Primers_used_for_VR_diversity.tsv")
 
         if self.skip_primer_variability:
-            # Define the header for the TSV file
+            # define the header for the TSV file
             csv_header = ['Primer_ID', 'Used_Original_Primer', 'Initial_Primer', 'Masked_Primer', 'Whole_Primer']
 
-            # Open the TSV file in write mode
+            # open the TSV file in write mode
             with open(output_path, mode='w', newline='') as file:
                 writer = csv.writer(file, delimiter='\t')
                 writer.writerow(csv_header)  # Write the header row
 
-                # Iterate through the dictionary and write each primer's information to the TSV file
+                # iterate through the dictionary and write each primer's information to the TSV file
                 for primer_name, primer_info in primers_dict.items():
-                    # For skip_primer_variability mode, there's no 'used_original_primer' key
+                    # for skip_primer_variability mode, there's no 'used_original_primer' key
                     # so we set it to True since we're using original primers
                     used_original_primer = True
                     initial_primer = primer_info.get('initial_primer_sequence', '')
@@ -2633,7 +2633,7 @@ class DGR_Finder:
                     ])
         else:
             primers_dict = self.sample_primers_dict
-            # Define the header for the TSV file
+            # define the header for the TSV file
             csv_header = ['Primer_ID', 'Sample_ID', 'No_SNV_Primer', 'Initial_Primer', 'Masked_Primer', 'Whole_Primer']
 
             # Open the TSV file in write mode
@@ -2641,7 +2641,7 @@ class DGR_Finder:
                 writer = csv.writer(file, delimiter='\t')
                 writer.writerow(csv_header)  # Write the header row
 
-                # Iterate through the dictionary and write each primer's information to the TSV file
+                # iterate through the dictionary and write each primer's information to the TSV file
                 for primer_name, samples in primers_dict.items():
                     for sample_id, primer_info in samples.items():
                         used_original_primer = primer_info['used_original_primer']
@@ -2701,21 +2701,21 @@ class DGR_Finder:
         dgrs_dict = self.DGRs_found_dict
 
         for dgr_key, dgr_data in dgrs_dict.items():
-            # Assuming dgr_key itself is the dgr_id or a dictionary containing it
+            # assuming dgr_key itself is the dgr_id or a dictionary containing it
             dgr_id = dgr_key
 
             self.summary['dgrs'][dgr_id] = {'dgr_data': copy.deepcopy(dgr_data), 'tr_genes': {}, 'vr_genes': {}}
 
-            # Handle genomic context recovery
+            # handle genomic context recovery
             if not self.skip_recovering_genomic_context:
-                # Deep copy the genomic context for TR and VR genes
+                # deep copy the genomic context for TR and VR genes
                 tr_genes = {gene_id: gene_info
                     for gene_id, gene_info in self.genomic_context_surrounding_dgrs.get(dgr_id, {}).items()
                     if isinstance(gene_id, int)}
 
                 # then we will learn about these so we can transform the coordinates of anything we wish
                 # to display in the output
-                # Get the start and stop positions of the first and last genes in tr_genes
+                # get the start and stop positions of the first and last genes in tr_genes
                 genomic_context_start_tr = min(gene['start'] for gene in tr_genes.values()) - 100
                 genomic_context_end_tr = max(gene['stop'] for gene in tr_genes.values()) + 100
 
@@ -2737,12 +2737,12 @@ class DGR_Finder:
                 self.summary['dgrs'][dgr_id]['dgr_data']['TT'] = tr_start + (tr_end - tr_start) / 2
 
                 for gene_id, gene in tr_genes.items():
-                    # Transform start and stop coordinates for the gene
+                    # transform start and stop coordinates for the gene
                     gene['start_tr_g'] = (gene['start'] - genomic_context_start_tr) / (genomic_context_end_tr - genomic_context_start_tr) * new_context_length
                     gene['stop_tr_g'] = (gene['stop'] - genomic_context_start_tr) / (genomic_context_end_tr - genomic_context_start_tr) * new_context_length
 
                     if (gene['stop_tr_g'] - gene['start_tr_g']) < default_gene_arrow_width:
-                        # If the transformed length of the gene is smaller than the default arrow width
+                        # if the transformed length of the gene is smaller than the default arrow width
                         gene_arrow_width = gene['stop_tr_g'] - gene['start_tr_g']
                         gene['stop_tr_g'] = gene['start_tr_g']
                         gene['TRW'] = 0
@@ -2750,7 +2750,7 @@ class DGR_Finder:
                         gene_arrow_width = default_gene_arrow_width
                         gene['TRW'] = (gene['stop_tr_g'] - gene['start_tr_g']) - gene_arrow_width
 
-                    # Determine color based on gene functions first
+                    # determine color based on gene functions first
                     if gene['functions']:
                         gene['has_functions'] = True
                         gene['COLOR'] = '#008000'  # Green for genes with functions
@@ -2758,7 +2758,7 @@ class DGR_Finder:
                         gene['has_functions'] = False
                         gene['COLOR'] = '#c3c3c3'  # Grey for genes without functions
 
-                    # Check for hmm_id and gene_id match if provided in the dgr_data
+                    # check for hmm_id and gene_id match if provided in the dgr_data
                     try:
                         hmm_id = int(dgr_data.get('HMM_gene_callers_id'))
                         current_gene_id = int(gene.get('gene_callers_id'))
@@ -2769,24 +2769,24 @@ class DGR_Finder:
                     if hmm_id is not None and current_gene_id is not None and hmm_id == current_gene_id:
                         gene['COLOR'] = '#c366e8'  # Purple if there's a match based on hmm_id and gene_id
 
-                    # Additional transformations for coordinates
+                    # additional transformations for coordinates
                     gene['TRX'] = gene['start_tr_g']
                     gene['TCX'] = (gene['start_tr_g'] + (gene['stop_tr_g'] - gene['start_tr_g']) / 2)
                     gene['TGY'] = gene['TRX'] + gene['TRW'] + gene_arrow_width
                     gene['TGTRANS'] = gene['TRX'] + gene['TRX'] + gene['TRW'] + gene_arrow_width
                     gene['TRX_TRW'] = gene['TRX'] + gene['TRW'] - 0.5
 
-                    # Append the gene to the summary
+                    # append the gene to the summary
                     self.summary['dgrs'][dgr_id]['tr_genes'][gene_id] = gene
 
                 for vr_key, vr_data in dgr_data.get('VRs', {}).items():
                     vr_id = vr_key
                     self.summary['dgrs'][dgr_id]['dgr_data']['VRs'] = self.summary['dgrs'][dgr_id]['dgr_data'].get('VRs', {})
 
-                    # Extract VR genes (string keys like 'VR_001')
+                    # extract VR genes (string keys like 'VR_001')
                     vr_genes = self.genomic_context_surrounding_dgrs.get(dgr_id, {})[vr_key]
 
-                    # Calculate genomic context for VR genes
+                    # calculate genomic context for VR genes
                     genomic_context_start_vr = min(
                         vr_genes[gene]['start']
                         for gene in vr_genes
@@ -2797,7 +2797,7 @@ class DGR_Finder:
                         for gene in vr_genes
                     ) + 100
 
-                    #transform coordinates for VR data
+                    # transform coordinates for VR data
                     vr_start = (int(vr_data['VR_start_position']) - genomic_context_start_vr) / (genomic_context_end_vr - genomic_context_start_vr) * new_context_length
                     vr_end  = (int(vr_data['VR_end_position']) - genomic_context_start_vr) / (genomic_context_end_vr - genomic_context_start_vr) * new_context_length
 
@@ -2826,15 +2826,15 @@ class DGR_Finder:
                             gene_arrow_width = default_gene_arrow_width
                             gene['VRW'] = (gene['stop_vr_g'] - gene['start_vr_g']) - gene_arrow_width
 
-                        # Determine color based on gene functions first
+                        # determine color based on gene functions first
                         if gene['functions']:
                             gene['has_functions'] = True
-                            gene['COLOR'] = '#008000'  # Green for genes with functions
+                            gene['COLOR'] = '#008000'  # green for genes with functions
                         else:
                             gene['has_functions'] = False
-                            gene['COLOR'] = '#c3c3c3'  # Grey for genes without functions
+                            gene['COLOR'] = '#c3c3c3'  # grey for genes without functions
 
-                        # Check for hmm_id and gene_id match if provided in the dgr_data
+                        # check for hmm_id and gene_id match if provided in the dgr_data
                         try:
                             hmm_id = int(dgr_data.get('HMM_gene_callers_id'))
                             current_gene_id = int(gene.get('gene_callers_id'))
@@ -2843,7 +2843,7 @@ class DGR_Finder:
                             current_gene_id = None
 
                         if hmm_id is not None and current_gene_id is not None and hmm_id == current_gene_id:
-                            gene['COLOR'] = '#c366e8'  # Purple if there's a match based on hmm_id and gene_id
+                            gene['COLOR'] = '#c366e8'  # purple if there's a match based on hmm_id and gene_id
 
                         gene['VRX'] = gene['start_vr_g']
                         gene['VCX'] = (gene['start_vr_g'] + (gene['stop_vr_g'] - gene['start_vr_g']) / 2)
@@ -2851,7 +2851,7 @@ class DGR_Finder:
                         gene['VGTRANS'] = gene['VRX'] + gene['VRX'] + gene['VRW'] + gene_arrow_width
                         gene['VRX_VRW'] = gene['VRX'] + gene['VRW'] - 0.5 # <-- minus 0.5 makes the arrow nicely cover the rest of the gene
 
-                    # Append transformed VR genes to the summary
+                    # append transformed VR genes to the summary
                     self.summary['dgrs'][dgr_id]['vr_genes'][vr_id] = gene
 
                     # and finally we will store this hot mess in our dictionary
@@ -2859,7 +2859,7 @@ class DGR_Finder:
                     self.summary['dgrs'][dgr_id]['dgr_data']['VRs'][vr_id]['vr_genes'] = vr_genes
 
                     # also we need the path to the output files
-                    # Store output file paths for DGRs and VRs
+                    # store output file paths for DGRs and VRs
                     self.summary['files'][dgr_id] = {
                         'tr_genes': os.path.join('PER_DGR', dgr_id, 'SURROUNDING-GENES.txt'),
                         'functions': os.path.join('PER_DGR', dgr_id, 'SURROUNDING-FUNCTIONS.txt'),
@@ -2867,7 +2867,7 @@ class DGR_Finder:
                         'vr_functions': os.path.join('PER_DGR', vr_id, 'SURROUNDING-FUNCTIONS.txt')
                     }
 
-        # Ensure the destination directory does not exist before generating the summary HTML
+        # ensure the destination directory does not exist before generating the summary HTML
         destination_dir = 'summary_html_output'
         if os.path.exists(destination_dir):
             shutil.rmtree(destination_dir)
