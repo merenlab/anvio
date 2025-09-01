@@ -497,10 +497,26 @@ class DGR_Finder:
 
         self.run.info('Temporary (SNV window) query input for blast', output_fasta_path)
 
+        # turn contig sequences into a list of SeqRecords
+        contig_sequences_list = []
+        for name, seq in contig_sequences.items():
+            if isinstance(seq, dict):
+                # If seq is like {"sequence": "ATCG...", ...}
+                record = SeqRecord(Seq(seq["sequence"]), id=name, description="")
+            elif isinstance(seq, str):
+                # If seq is already a string
+                record = SeqRecord(Seq(seq), id=name, description="")
+            else:
+                # If it's already a SeqRecord, just use it
+                record = seq
+            contig_sequences_list.append(record)
+
         # Export target sequences
-        if len(self.contig_sequences) > 0:
-            utils.export_sequences_from_contigs_db(self.contigs_db_path, self.target_file_path,
-                                                seq_names_to_export=sorted(list(self.contig_sequences.keys())))
+        if len(contig_sequences) > 0:
+            with open(self.target_file_path, "w") as output_handle:
+                SeqIO.write(contig_sequences_list, output_handle, "fasta")
+            #utils.export_sequences_from_contigs_db(self.contigs_db_path, self.target_file_path,
+                                                #seq_names_to_export=sorted(list(contig_sequences.keys())))
         else:
             raise ConfigError("Well... this is a pretty fatal error. There are no contig sequences found in the contigs database. You should probably go and check your contigs.db.")
 
