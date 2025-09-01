@@ -1839,7 +1839,11 @@ class DGR_Finder:
                     hits = list(contigs_db.db.get_some_rows_from_table_as_dict(t.gene_function_calls_table_name, where_clause=where_clause, error_if_no_data=False).values())
                     gene_call['functions'] = [h for h in hits if h['gene_callers_id'] == gene_callers_id]
 
-                dna_sequence = self.contig_sequences[TR_contig_name]['sequence'][gene_call['start']:gene_call['stop']]
+                where_clause = f'''contig == "{TR_contig_name}"'''
+                contig_sequence = contigs_db.db.get_some_rows_from_table_as_dict(t.contig_sequences_table_name, where_clause=where_clause, error_if_no_data=False)
+                dna_sequence = contig_sequence[TR_contig_name]['sequence'][gene_call['start']:gene_call['stop']]
+
+                #dna_sequence = self.contig_sequences[TR_contig_name]['sequence'][gene_call['start']:gene_call['stop']]
                 rev_compd = None
                 if gene_call['direction'] == 'f':
                     gene_call['DNA_sequence'] = dna_sequence
@@ -1921,7 +1925,10 @@ class DGR_Finder:
                         hits = list(contigs_db.db.get_some_rows_from_table_as_dict(t.gene_function_calls_table_name, where_clause=where_clause, error_if_no_data=False).values())
                         gene_call['functions'] = [h for h in hits if h['gene_callers_id'] == gene_callers_id]
 
-                    dna_sequence = self.contig_sequences[VR_contig]['sequence'][gene_call['start']:gene_call['stop']]
+                    where_clause = f'''contig == "{VR_contig}"'''
+                    contig_sequence = contigs_db.db.get_some_rows_from_table_as_dict(t.contig_sequences_table_name, where_clause=where_clause, error_if_no_data=False)
+                    dna_sequence = contig_sequence[VR_contig]['sequence'][gene_call['start']:gene_call['stop']]
+                    #dna_sequence = self.contig_sequences[VR_contig]['sequence'][gene_call['start']:gene_call['stop']]
                     rev_compd = None
                     if gene_call['direction'] == 'f':
                         gene_call['DNA_sequence'] = dna_sequence
