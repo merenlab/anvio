@@ -17,4 +17,5 @@ known_tests = {'mini'                  : ['run_component_tests_for_minimal_metag
                'workflow-sra-download' : ['run_workflow_tests_for_sra_download.sh'],
                'run-cazymes'           : ['run_component_tests_for_cazymes.sh'],
                'export-locus'          : ['run_component_tests_for_export_locus.sh'],
+               'dgrs'                  : ['run_component_tests_for_dgrs.sh']
                }
