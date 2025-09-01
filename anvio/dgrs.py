@@ -317,13 +317,8 @@ class DGR_Finder:
         """
         # load contig sequences
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
-        self.contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
+        contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
         contigs_db.disconnect()
-
-        # load SNV data
-        profile_db = dbops.ProfileDatabase(self.profile_db_path)
-        self.snv_panda_full = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name).sort_values(by=['split_name', 'pos_in_contig'])
-        self.snv_panda_full['contig_name'] = self.snv_panda_full['split_name'].apply(lambda x: x.split('_split_')[0])
 
         # filter for collections if needed
         if bin_splits_list:
@@ -331,8 +326,8 @@ class DGR_Finder:
             self.split_names_unique = bin_splits_list
             # get bin-specific contig sequences
             bin_contigs = [split.split('_split_')[0] for split in bin_splits_list]
-            contig_sequences = {contig: self.contig_sequences[contig]
-                                    for contig in bin_contigs if contig in self.contig_sequences}
+            contig_sequences = {contig: contig_sequences[contig]
+                                    for contig in bin_contigs if contig in contig_sequences}
         else:
             self.snv_panda = self.snv_panda_full
             self.split_names_unique = utils.get_all_item_names_from_the_database(self.profile_db_path)
@@ -354,7 +349,7 @@ class DGR_Finder:
 
 
 
-    def find_snv_clusters(self, sample_id_list):
+    def find_snv_clusters(self, sample_id_list, contig_sequences):
         """
         Detect clusters of SNVs within contigs, merges overlapping windows,and extracts subsequences as candidate variable regions.
 
@@ -419,7 +414,7 @@ class DGR_Finder:
                         window_start = range_start - self.variable_buffer_length
                         window_end = range_end + self.variable_buffer_length
 
-                    contig_len = len(self.contig_sequences[contig_name]['sequence'])
+                    contig_len = len(contig_sequences[contig_name]['sequence'])
 
                     if window_start <0:
                         window_start = 0
@@ -466,7 +461,7 @@ class DGR_Finder:
         #get short sequences from all_merged_snv_window
         contig_records = []
         for contig_name in all_merged_snv_windows.keys():
-            contig_sequence=self.contig_sequences[contig_name]['sequence']
+            contig_sequence=contig_sequences[contig_name]['sequence']
             self.positions= all_merged_snv_windows[contig_name]
             for i, (start, end) in enumerate(self.positions):
                 section_sequence = contig_sequence[start:end]
@@ -485,7 +480,7 @@ class DGR_Finder:
 
 
 
-    def run_blast(self, contig_records, output_filename):
+    def run_blast(self, contig_records, output_filename, contig_sequences):
         """
         Run BLASTn using SNV cluster subsequences as queries against contig sequences.
 
@@ -584,29 +579,20 @@ class DGR_Finder:
         for bin_name, bin_splits_list in bin_splits_dict.items():
             self.run.info_single(f"Processing bin: {bin_name} ", nl_before=1)
             sample_id_list, bin_contig_sequences = self.load_data_and_setup(bin_splits_list)
-            # Update self.contig_sequences to the bin-specific sequences for this iteration
-            # This is crucial so that the target file export only includes contigs from this bin
-            original_contig_sequences = self.contig_sequences  # Save original
-            self.contig_sequences = bin_contig_sequences
 
             # Update target file path to be bin-specific
             self.target_file_path = os.path.join(self.temp_dir, f"bin_{bin_name}_reference_sequences.fasta")
 
             try:
-                contig_records = self.find_snv_clusters(sample_id_list)
-                blast_output = self.run_blast(contig_records, f"bin_{bin_name}_subsequences.fasta")
+                contig_records = self.find_snv_clusters(sample_id_list, bin_contig_sequences)
+                blast_output = self.run_blast(contig_records, f"bin_{bin_name}_subsequences.fasta", bin_contig_sequences)
                 self.run.info_single(f"Completed BLAST for bin: {bin_name}, output: {blast_output}", nl_before=1)
             except ConfigError as e:
                 self.run.warning(f"Skipping bin {bin_name}: {str(e)}", nl_before=1)
                 continue
             except Exception as e:
                 self.run.warning(f"Error processing bin {bin_name}: {str(e)}", nl_before=1)
-                # Restore original contig sequences before continuing
-                self.contig_sequences = original_contig_sequences
                 continue
-
-            # Restore original contig sequences for next iteration
-            self.contig_sequences = original_contig_sequences
 
         # Return the last successful blast output (maintains original behavior)
         return self.blast_output
@@ -632,8 +618,8 @@ class DGR_Finder:
             If no valid SNV clusters are found.
         """
         sample_id_list, contig_sequences = self.load_data_and_setup()
-        contig_records = self.find_snv_clusters(sample_id_list)
-        return self.run_blast(contig_records, "potential_dgrs.fasta")
+        contig_records = self.find_snv_clusters(sample_id_list, contig_sequences)
+        return self.run_blast(contig_records, "potential_dgrs.fasta", contig_sequences)
 
 
 
@@ -1479,7 +1465,9 @@ class DGR_Finder:
 
                         # While we are here, let's add more info about the gene
                         # DNA sequence:
-                        dna_sequence = self.contig_sequences[contig_name]['sequence'][gene_call['start']:gene_call['stop']]
+                        where_clause = f'''contig == "{contig_name}"'''
+                        contig_sequence = contigs_db.db.get_some_rows_from_table_as_dict(t.contig_sequences_table_name, where_clause=where_clause, error_if_no_data=False)
+                        dna_sequence = contig_sequence[contig_name]['sequence'][gene_call['start']:gene_call['stop']]
                         if gene_call['direction'] == 'f':
                             gene_call['DNA_sequence'] = dna_sequence
                         else:
