@@ -26,6 +26,7 @@ from anvio.drivers.blast import BLAST
 from anvio.summaryhtml import SummaryHTMLOutput
 from anvio.sequencefeatures import PrimerSearch
 from anvio.constants import nucleotides
+import anvio.fastalib as fastalib
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2024, the Meren Lab (http://merenlab.org/)"
@@ -444,15 +445,17 @@ class DGR_Finder:
 
             all_merged_snv_windows[contig_name] = merged_windows_in_contig
 
-        #get short sequences from all_merged_snv_window
-        contig_records = []
+        # get short sequences from all_merged_snv_window
+        contig_records = {}
         for contig_name in all_merged_snv_windows.keys():
             contig_sequence=contig_sequences[contig_name]['sequence']
             self.positions= all_merged_snv_windows[contig_name]
             for i, (start, end) in enumerate(self.positions):
                 section_sequence = contig_sequence[start:end]
                 section_id = f"{contig_name}_section_{i}_start_bp{start}_end_bp{end}"
-                contig_records.append(SeqRecord(section_sequence, id=section_id, description=""))
+                # add sequence to dictionary of
+                contig_records[section_id] = section_sequence
+                # contig_records.append(SeqRecord(section_sequence, id=section_id, description=""))
 
         if len(contig_records) == 0:
             self.run.warning(f"No sequences with SNVs were found with the parameters minimum distance between SNVs:{self.max_dist_bw_snvs} "
@@ -472,7 +475,7 @@ class DGR_Finder:
 
         Parameters
         ==========
-        contig_records : list of SeqRecord
+        contig_records : dict
             SNV cluster subsequences to use as query sequences.
         output_filename : str
             Name of the temporary FASTA file to store query sequences.
@@ -487,39 +490,29 @@ class DGR_Finder:
         ConfigError
             If no contig sequences are found in the contigs database.
         """
-        # Write sequences to FASTA
-        output_fasta_path = os.path.join(self.temp_dir, output_filename)
-        with open(output_fasta_path, "w") as output_handle:
-            SeqIO.write(contig_records, output_handle, "fasta")
+        # write sequences to FASTA
+        query_fasta_path = os.path.join(self.temp_dir, output_filename)
+        query_fasta = fastalib.FastaOutput(query_fasta_path)
+        for seq_id, seq in contig_records.items():
+            query_fasta.write_id(seq_id)
+            query_fasta.write_seq(seq)
+        query_fasta.close()
 
-        self.run.info('Temporary (SNV window) query input for blast', output_fasta_path)
+        self.run.info('Temporary (SNV window) query input for blast', query_fasta_path)
 
-        # turn contig sequences into a list of SeqRecords
-        contig_sequences_list = []
-        for name, seq in contig_sequences.items():
-            if isinstance(seq, dict):
-                # If seq is like {"sequence": "ATCG...", ...}
-                record = SeqRecord(Seq(seq["sequence"]), id=name, description="")
-            elif isinstance(seq, str):
-                # If seq is already a string
-                record = SeqRecord(Seq(seq), id=name, description="")
-            else:
-                # If it's already a SeqRecord, just use it
-                record = seq
-            contig_sequences_list.append(record)
-
-        # Export target sequences
+        #  export target sequences
         if len(contig_sequences) > 0:
-            with open(self.target_file_path, "w") as output_handle:
-                SeqIO.write(contig_sequences_list, output_handle, "fasta")
-            #utils.export_sequences_from_contigs_db(self.contigs_db_path, self.target_file_path,
-                                                #seq_names_to_export=sorted(list(contig_sequences.keys())))
+            # make target fasta
+            target_fasta = fastalib.FastaOutput(self.target_file_path)
+            for name, sequence in contig_sequences.items():
+                seq = sequence['sequence']
+                target_fasta.write_id(name)
+                target_fasta.write_seq(seq)
+            target_fasta.close()
         else:
             raise ConfigError("Well... this is a pretty fatal error. There are no contig sequences found in the contigs database. You should probably go and check your contigs.db.")
 
-        # Run BLAST
-        #blast_output_filename = output_filename.replace('.fasta', f'_wordsize_{self.word_size}.xml')
-        #if 'bin_' in output_filename:
+        # run BLAST
         if self.collections_mode:
             # For collections mode, create bin-specific blast output filename
             bin_name = output_filename.split('bin_')[1].split('_subsequences')[0]
