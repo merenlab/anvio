@@ -2163,6 +2163,23 @@ class DGR_Finder:
 
 
 
+    def init_vr_contigs(self):
+        """
+        """
+        vr_contigs = ()
+        for dgr_id, dgr_data in self.DGRs_found_dict.items():
+            for vr_id, vr_data in dgr_data['VRs'].items():
+                vr_contig = vr_data['VR_contig']
+                vr_contigs += (vr_contig,)
+
+        contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
+        where_clause = '''contig IN (%s)''' % (', '.join([f'"{str(g)}"' for g in vr_contigs]))
+        self.vr_contig_sequences = contigs_db.db.get_some_rows_from_table_as_dict(t.contig_sequences_table_name, where_clause=where_clause, error_if_no_data=False)
+        contigs_db.disconnect()
+        return
+
+
+
     def generate_primers_for_vrs(self, dgrs_dict):
         """
         A function to generate primers for each and every VR. These are composed of not only an initial primer sequence before the VR
@@ -2186,11 +2203,13 @@ class DGR_Finder:
 
         # create primers dictionary
         primers_dict = {}
+        # initialise the vr contig sequences
+        self.init_vr_contigs()
 
         for dgr_id, dgr_data in dgrs_dict.items():
             for vr_id, vr_data in dgr_data['VRs'].items():
                 vr_contig = vr_data['VR_contig']
-                contig_sequence = self.contig_sequences[vr_contig]['sequence']
+                contig_sequence = self.vr_contig_sequences[vr_contig]['sequence']
                 contig_length = len(contig_sequence)
 
                 VR_sequence = vr_data['VR_sequence']
