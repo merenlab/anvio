@@ -322,26 +322,15 @@ class DGR_Finder:
 
         # filter for collections if needed
         if bin_splits_list:
-            self.snv_panda = self.snv_panda_full[self.snv_panda_full['split_name'].isin(bin_splits_list)]
+            #self.snv_panda = snv_panda_full[snv_panda_full['split_name'].isin(bin_splits_list)]
             self.split_names_unique = bin_splits_list
             # get bin-specific contig sequences
             bin_contigs = [split.split('_split_')[0] for split in bin_splits_list]
             contig_sequences = {contig: contig_sequences[contig]
                                     for contig in bin_contigs if contig in contig_sequences}
         else:
-            self.snv_panda = self.snv_panda_full
+            #self.snv_panda = snv_panda_full
             self.split_names_unique = utils.get_all_item_names_from_the_database(self.profile_db_path)
-
-            contig_sequences = self.contig_sequences
-
-        profile_db.disconnect()
-
-        # apply SNV filters
-        if self.discovery_mode:
-            self.run.info_single("Running discovery mode. Search for SNVs in all possible locations. You go Dora the explorer!")
-            self.snv_panda = self.snv_panda.query("departure_from_reference >= @self.departure_from_reference_percentage")
-        else:
-            self.snv_panda = self.snv_panda.query("departure_from_reference >= @self.departure_from_reference_percentage and base_pos_in_codon in (1, 2)")
 
         sample_id_list = list(set(self.snv_panda.sample_id.unique()))
 
@@ -1113,10 +1102,6 @@ class DGR_Finder:
         #possible DGR dictionary
         self.DGRs_found_dict = {}
 
-        #Sort pandas data-frame of SNVs by contig name and then by position of SNV within contig
-        self.snv_panda = self.snv_panda.copy()
-        self.snv_panda.loc[:, 'contig_name'] = self.snv_panda.split_name.str.split('_split_').str[0]
-
         if self.only_a_bases:
                 #This is here so that every potential VR doesn't get a new warning and clog up the terminal
                 self.run.warning("Just a note to say that we are only looking for DGRs that have A bases as their site of mutagenesis.",
@@ -1195,8 +1180,8 @@ class DGR_Finder:
                         # Going to look and create a threshold - for populations etc
 
                         #subset snv df by query contig (vr contig) and VR range
-                        matching_snv_rows = self.snv_panda_full[(self.snv_panda_full['contig_name'] == query_contig) &
-                        (self.snv_panda_full['pos_in_contig'].between(query_genome_start_position, query_genome_end_position))]
+                        matching_snv_rows = self.snv_panda[(self.snv_panda['contig_name'] == query_contig) &
+                        (self.snv_panda['pos_in_contig'].between(query_genome_start_position, query_genome_end_position))]
 
                         #make snv vr positions a list so we can print it in the output
                         snv_VR_positions = sorted(set(matching_snv_rows['pos_in_contig'].to_list()))
