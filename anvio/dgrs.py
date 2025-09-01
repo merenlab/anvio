@@ -11,8 +11,6 @@ import argparse
 import copy
 import pytrf # type: ignore
 
-from Bio import SeqIO # type: ignore
-from Bio.SeqRecord import SeqRecord # type: ignore
 from Bio.Seq import Seq # type: ignore
 
 import anvio
@@ -25,7 +23,6 @@ import multiprocess as multiprocessing # type: ignore
 
 from anvio.errors import ConfigError
 from anvio.drivers.blast import BLAST
-from anvio.variabilityops import NucleotidesEngine
 from anvio.summaryhtml import SummaryHTMLOutput
 from anvio.sequencefeatures import PrimerSearch
 from anvio.constants import nucleotides
