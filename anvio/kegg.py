@@ -4037,6 +4037,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         self.profile_db = None
         # This can be initialized later if necessary by setup_ko_dict()
         self.ko_dict = {}
+        self.stray_ko_dict = {}
 
         # INIT BASE CLASSES
         KeggEstimatorArgs.__init__(self, self.args)
