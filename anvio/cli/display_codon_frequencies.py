@@ -21,7 +21,7 @@ __version__ = anvio.__version__
 __authors__ = ['meren', 'semiller10']
 __requires__ = ['contigs-db', 'profile-db', 'collection', 'bin']
 __provides__ = ['interactive', 'svg']
-__description__ = ("Display codon frequency statistics across genes in a given genome")
+__description__ = ("Display codon frequency statistics across genes in a given genome in the anvi'o interactive interface.")
 
 
 @terminal.time_program
