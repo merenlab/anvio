@@ -1,34 +1,44 @@
 
-This program takes the variability data stored within a %(profile-db)s and compiles it from across samples into a single matrix that comprehensively describes your SNVs, SCVs or SAAVs (a %(variability-profile-txt)s).  
+This program takes the variability data stored within a %(profile-db)s and compiles it from across samples into a single matrix that comprehensively describes your SNVs, SCVs or SAAVs (a %(variability-profile-txt)s).
 
-This program is described on [this blog post](http://merenlab.org/2015/07/20/analyzing-variability/#the-anvio-way), so take a look at that for more details. 
+This program is described on [this blog post](http://merenlab.org/2015/07/20/analyzing-variability/#the-anvio-way), so take a look at that for more details.
 
-## Let's talk parameters 
+## Let's talk parameters
 
-Here is a basic run with no bells or whisles: 
+Here is a basic run with no bells or whisles:
 
 {{ codestart }}
 anvi-gen-variability-profile -p %(profile-db)s \
-                             -c %(contigs-db)s \ 
+                             -c %(contigs-db)s \
                              -C DEFAULT \
                              -b EVERYTHING
 {{ codestop }}
 
-Note that this program requires you to specify a subset of the databases that you want to focus on, so to focus on everything in the databases, run %(anvi-script-add-default-collection)s and use the resulting %(collection)s and %(bin)s, as shown above. 
+Note that this program requires you to specify a subset of the databases that you want to focus on, so to focus on everything in the databases, run %(anvi-script-add-default-collection)s and use the resulting %(collection)s and %(bin)s, as shown above.
 
-You can add structural annotations by providing a %(structure-db)s. 
+You can add structural annotations by providing a %(structure-db)s.
 
 {{ codestart }}
 anvi-gen-variability-profile -p %(profile-db)s \
                              -c %(contigs-db)s \
                              -C DEFAULT \
                              -b EVERYTHING \
-                             -s %(structure-db)s 
+                             -s %(structure-db)s
 {{ codestop }}
 
-### Focusing on a subset of the input 
+You can also output your %(variability-profile-txt)s to a specific location, which can be useful when working with multiple `engine` parameters.
 
-Instead of focusing on everything (providing the collection `DEFAULT` and the bin `EVERYTHING`), there are three ways to focus on a subset of the input: 
+{{ codestart }}
+anvi-gen-variability-profile -p %(profile-db)s \
+                             -c %(contigs-db)s \
+                             -C DEFAULT \
+                             -b EVERYTHING \
+                             --output-file /path/to/your/variability.txt
+{{ codestop }}
+
+### Focusing on a subset of the input
+
+Instead of focusing on everything (providing the collection `DEFAULT` and the bin `EVERYTHING`), there are three ways to focus on a subset of the input:
 
 1. Provide a list of gene caller IDs (as a parameter with the flag `--gene-caller-ids` as shown below, or as a file with the flag `--genes-of-interest`)
 
@@ -38,26 +48,26 @@ Instead of focusing on everything (providing the collection `DEFAULT` and the bi
                                  --gene-caller-ids 1,2,3
     {{ codestop }}
 
-2. Provide a %(splits-txt)s to focus only on a specific set of splits. 
+2. Provide a %(splits-txt)s to focus only on a specific set of splits.
 
     {{ codestart }}
     anvi-gen-variability-profile -p %(profile-db)s \
                                  -c %(contigs-db)s \
                                  --splits-of-intest %(splits-txt)s
     {{ codestop }}
-    
-3. Provide some other %(collection)s and %(bin)s. 
+
+3. Provide some other %(collection)s and %(bin)s.
 
     {{ codestart }}
     anvi-gen-variability-profile -p %(profile-db)s \
-                                 -c %(contigs-db)s \ 
+                                 -c %(contigs-db)s \
                                  -C %(collection)s \
                                  -b %(bin)s
     {{ codestop }}
 
-### Additional ways to focus the input 
+### Additional ways to focus the input
 
-When providing a %(structure-db)s, you can also limit your analysis to only genes that have structures in your database. 
+When providing a %(structure-db)s, you can also limit your analysis to only genes that have structures in your database.
 
 {{ codestart }}
 anvi-gen-variability-profile -p %(profile-db)s \
@@ -85,7 +95,7 @@ DAY_22A
 ...
 {{ codestop }}
 
-### SNVs vs. SCVs vs. SAAVs 
+### SNVs vs. SCVs vs. SAAVs
 
 Which one you're analyzing depends entirely on the `engine` parameter, which you can set to `NT` (nucleotides), `CDN` (codons), or `AA` (amino acids). The default value is nucleotides. Note that to analyze SCVs or SAAVs, you'll have needed to use the flag `--profile-SCVs` when you ran %(anvi-profile)s.
 
@@ -109,7 +119,7 @@ anvi-gen-variability-profile -p %(profile-db)s \
                              --engine CDN
 {{ codestop }}
 
-### Filtering the output 
+### Filtering the output
 
 You can filter the output in various ways, so that you can get straight to the variability positions that you're most interested in. Here are some of the filters that you can set:
 
@@ -120,7 +130,7 @@ You can filter the output in various ways, so that you can get straight to the v
 
 ### --quince-mode
 
-You can also set `--quince-mode`, which reports the variability data across all samples for each position reported (even if that position isn't variable in some samples). For example, if nucleotide position 34 of contig 1 was a SNV in one sample, the output would contain data for nucleotide position 34 for all of your samples. 
+You can also set `--quince-mode`, which reports the variability data across all samples for each position reported (even if that position isn't variable in some samples). For example, if nucleotide position 34 of contig 1 was a SNV in one sample, the output would contain data for nucleotide position 34 for all of your samples.
 
 ### --kiefl-mode
 

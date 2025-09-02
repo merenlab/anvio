@@ -17,7 +17,7 @@ Without the flag `--cog-data-dir`, anvi'o will just search in the default locati
 If you want to annotate your genes with a non-default version of %(cogs-data)s, provide that version after the `--cog-version` parameter:
 
 {{ codestart }}
-anvi-setup-ncbi-cogs --cog-version COG14
+anvi-setup-ncbi-cogs --cog-version COG24
 {{ codestop }}
 
 ### Choosing a different search program
@@ -26,4 +26,11 @@ By default, this program uses `diamond` to search for hits to the database. You 
 {{ codestart }}
 anvi-run-ncbi-cogs -c %(contigs-db)s \
             --search-with blastp
+{{ codestop }}
+
+### Running with multiple threads
+{{ codestart }}
+anvi-run-ncbi-cogs -c %(contigs-db)s \
+            --cog-data-dir path/to/%(cogs-data)s \
+            -T 16
 {{ codestop }}

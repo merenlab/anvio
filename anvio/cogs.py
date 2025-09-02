@@ -1,7 +1,7 @@
 # -*- coding: utf-8
 # pylint: disable=line-too-long
 """
-    Making sense of COGs.
+    Making sense of COGs
 """
 
 import os
@@ -40,10 +40,12 @@ progress = terminal.Progress()
 pp = terminal.pretty_print
 P = terminal.pluralize
 
-J = lambda x, y: os.path.join(x, y)
-
 # if you add a new database version, please do not forget to add its reference here
-COG_REFERENCES = {'COG20': {
+COG_REFERENCES = {'COG24': {
+                            'ref_text': 'Galperin et al. 2025',
+                            'doi_link': 'https://doi.org/10.1093/nar/gkae983',
+                           },
+                  'COG20': {
                             'ref_text': 'Galperin et al. 2021',
                             'doi_link': 'https://doi.org/10.1093/nar/gkaa1018',
                            },
@@ -247,7 +249,7 @@ class COGs:
 
 
         if not aa_sequences_file_path:
-            aa_sequences_file_path = J(self.temp_dir_path, 'aa_sequences.fa')
+            aa_sequences_file_path = os.path.join(self.temp_dir_path, 'aa_sequences.fa')
             dbops.ContigsSuperclass(self.args, r=terminal.Run(verbose=False)).get_sequences_for_gene_callers_ids(output_file_path=aa_sequences_file_path,
                                                                                   report_aa_sequences=True,
                                                                                   simple_headers=True)
@@ -256,9 +258,9 @@ class COGs:
         search_results_tabular = self.search_methods_factory[self.search_with](aa_sequences_file_path)
 
         # convert the output to a hits dict
-        if self.COG_version == 'COG14' or self.COG_version == 'arCOG14':
+        if self.COG_version in ['COG14', 'arCOG14']:
             self.hits = utils.get_BLAST_tabular_output_as_dict(search_results_tabular, target_id_parser_func=lambda x: x.split('|')[1])
-        elif self.COG_version == 'COG20':
+        elif self.COG_version in ['COG20', 'COG24']:
             self.hits = utils.get_BLAST_tabular_output_as_dict(search_results_tabular)
         else:
             raise ConfigError("You need to edit all the if/else statements with COG version checks to ensure proper "
@@ -284,11 +286,13 @@ class COGs:
                 gene_function_calls_table.add_empty_sources_to_functional_sources({'COG14_FUNCTION', 'COG14_CATEGORY'})
             elif self.COG_version == 'COG20':
                 gene_function_calls_table.add_empty_sources_to_functional_sources({'COG20_FUNCTION', 'COG20_CATEGORY', 'COG20_PATHWAY'})
+            elif self.COG_version == 'COG24':
+                gene_function_calls_table.add_empty_sources_to_functional_sources({'COG24_FUNCTION', 'COG24_CATEGORY', 'COG24_PATHWAY'})
             else:
                 raise ConfigError("You need to edit all the if/else statements with COG version checks to ensure proper "
                                   "parsing of a new generation of COG files.")
             return
-        
+
         elif not self.hits and self.aa_sequence_file_input:
             self.run.warning("COGs class has no hits to process. Returning empty handed.")
             return
@@ -349,7 +353,7 @@ class COGs:
 
                 if self.COG_version == 'COG14' or self.COG_version == 'arCOG14':
                     pass
-                elif self.COG_version == 'COG20':
+                elif self.COG_version in ['COG20', 'COG24']:
                     if cogs_data.cogs[COG_id]['pathway']:
                         pathways.append(cogs_data.cogs[COG_id]['pathway'])
                 else:
@@ -363,7 +367,7 @@ class COGs:
             if self.COG_version == 'COG14' or self.COG_version == 'arCOG14':
                 add_entry(gene_callers_id, f'{self.COG_version}_FUNCTION', '!!!'.join(COG_ids), '!!!'.join(annotations), self.hits[gene_callers_id]['evalue'])
                 add_entry(gene_callers_id, f'{self.COG_version}_CATEGORY', '!!!'.join(categories), '!!!'.join(category_descriptions), 0.0)
-            elif self.COG_version == 'COG20':
+            elif self.COG_version in ['COG20', 'COG24']:
                 add_entry(gene_callers_id, f'{self.COG_version}_FUNCTION', '!!!'.join(COG_ids), '!!!'.join(annotations), self.hits[gene_callers_id]['evalue'])
                 add_entry(gene_callers_id, f'{self.COG_version}_CATEGORY', '!!!'.join(categories), '!!!'.join(category_descriptions), 0.0)
                 if len(pathways):
@@ -383,16 +387,20 @@ class COGs:
         if len(missing_cogs_found):
             self.run.warning('Although your COGs are successfully added to the database, there were some COG IDs your genes hit '
                              'were among the ones that were not described in the raw data. Here is the list of %d COG IDs that '
-                             'were hit %d times: %s.' % (len(missing_cogs_found), hits_for_missing_cogs, ', '.join(missing_cogs_found)))
+                             'were hit %d times: %s.' % (len(missing_cogs_found), hits_for_missing_cogs, ', '.join(missing_cogs_found)), lc='yellow')
 
         if len(missing_ncbi_protein_ids_found):
-            self.run.warning("Well. Your COGs were successfully added to the database, but there were some garbage anvi'o brushed "
+            missing_ncbi_protein_ids_msg = ', '.join([str(s) for s in missing_ncbi_protein_ids_found])
+            self.run.warning("Well. Your COGs were successfully added to the database, but there were some things anvi'o brushed "
                              "off under the rug. There were %d genes in your database that hit %d protein IDs in NCBIs COGs database, "
-                             "but since NCBI did not release what COGs they correspond to in the database they made available (that "
-                             "helps us to resolve protein IDs to COG ids), we could not annotate those genes with functions. Anvi'o "
-                             "apologizes on behalf of all computer scientists for half-done stuff we often force biologists to deal "
-                             "with. If you want to do some Googling, these were the offending protein IDs: '%s'." % \
-                                        (hits_for_missing_ncbi_protein_ids, len(missing_ncbi_protein_ids_found), ', '.join([str(s) for s in missing_ncbi_protein_ids_found])))
+                             "but those protein IDs were not described in the table that associates protein IDs to COG IDs. Our manual "
+                             "inspections before suggested that these hits are usually matching to very poorly described functions that "
+                             "are not mature enough to warrant a new COG id, or to be associated with an existing one. While that is "
+                             "our interpretation, we may be totally wrong, and we welcome you to double-check these. Here are the "
+                             "offending protein IDs if you would like to dig deeper: " % \
+                                        (hits_for_missing_ncbi_protein_ids, len(missing_ncbi_protein_ids_found)), lc='yellow')
+
+            self.run.info_single(missing_ncbi_protein_ids_msg, nl_after=1, level=0, cut_after=0)
 
         if len(in_proteins_FASTA_not_in_cogs_CSV):
             # so some of the hits represented in the FASTA file from the NCBI were not put in the
@@ -417,9 +425,9 @@ class COGs:
         diamond = Diamond(aa_sequences_file_path, run=self.run, progress=self.progress, num_threads=self.num_threads)
 
         diamond.target_fasta = self.available_db_search_program_targets['diamond']
-        self.run.log_file_path = self.log_file_path or J(self.temp_dir_path, 'log.txt')
-        diamond.search_output_path = J(self.temp_dir_path, 'diamond-search-results')
-        diamond.tabular_output_path = J(self.temp_dir_path, 'diamond-search-results.txt')
+        self.run.log_file_path = self.log_file_path or os.path.join(self.temp_dir_path, 'log.txt')
+        diamond.search_output_path = os.path.join(self.temp_dir_path, 'diamond-search-results')
+        diamond.tabular_output_path = os.path.join(self.temp_dir_path, 'diamond-search-results.txt')
 
         diamond.max_target_seqs = 1
 
@@ -433,8 +441,8 @@ class COGs:
         blast = BLAST(aa_sequences_file_path, run=self.run, progress=self.progress, num_threads=self.num_threads)
 
         blast.target_fasta = self.available_db_search_program_targets['blastp']
-        self.run.log_file_path = self.log_file_path or J(self.temp_dir_path, 'log.txt')
-        blast.search_output_path = J(self.temp_dir_path, 'blast-search-results.txt')
+        self.run.log_file_path = self.log_file_path or os.path.join(self.temp_dir_path, 'log.txt')
+        blast.search_output_path = os.path.join(self.temp_dir_path, 'blast-search-results.txt')
         blast.max_target_seqs = 1
 
         blast.blast()
@@ -478,7 +486,7 @@ class COGsData:
 
         if self.COG_version == 'COG14' or self.COG_version == 'arCOG14':
             self.cogs = utils.get_TAB_delimited_file_as_dictionary(self.essential_files['COG.txt'], no_header=True, column_names=['COG', 'categories', 'annotation'])
-        elif self.COG_version == 'COG20':
+        elif self.COG_version in ['COG20', 'COG24']:
             self.cogs = utils.get_TAB_delimited_file_as_dictionary(self.essential_files['COG.txt'], no_header=True, column_names=['COG', 'categories', 'annotation', 'pathway'])
         else:
             raise ConfigError("You need to edit all the if/else statements with COG version checks to ensure proper "
@@ -588,6 +596,33 @@ class COGsSetup:
                                   'type': 'database',
                                   'formatted_file_name': 'IGNORE_THIS_AND_SEE_THE_FUNCTION'},
                              },
+                        'COG24':
+                             {'cog-24.cog.csv': {
+                                  'url': 'https://ftp.ncbi.nlm.nih.gov/pub/COG/COG2024/data/cog-24.cog.csv',
+                                  'func': self.format_p_id_to_cog_id_cPickle,
+                                  'type': 'essential',
+                                  'formatted_file_name': 'PID-TO-CID.cPickle'},
+                              'cog-24.def.tab': {
+                                  'url': 'https://ftp.ncbi.nlm.nih.gov/pub/COG/COG2024/data/cog-24.def.tab',
+                                  'func': self.format_cog_names,
+                                  'type': 'essential',
+                                  'formatted_file_name': 'COG.txt'},
+                              'cog-24.fun.tab': {
+                                  'url': 'https://ftp.ncbi.nlm.nih.gov/pub/COG/COG2024/data/cog-24.fun.tab',
+                                  'func': self.format_categories,
+                                  'type': 'essential',
+                                  'formatted_file_name': 'CATEGORIES.txt'},
+                              'checksum.md5.txt': {  # No func as it is called by the setup_raw_data function
+                                   'url': 'https://ftp.ncbi.nlm.nih.gov/pub/COG/COG2024/data/checksums.md5',
+                                   'type': 'non-essential',
+                                   'formatted_file_name': 'CHECKSUMS.txt'},
+                              'COGorg24.faa.gz': {
+                                  'url': 'https://ftp.ncbi.nlm.nih.gov/pub/COG/COG2024/data/COGorg24.faa.gz',
+                                  'func': self.format_protein_db,
+                                  'type': 'database',
+                                  'formatted_file_name': 'IGNORE_THIS_AND_SEE_THE_FUNCTION'},
+                             },
+
                         }
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
@@ -595,7 +630,13 @@ class COGsSetup:
         self.just_do_it = A('just_do_it')
         self.reset = A('reset')
         self.COG_data_source = 'unknown'
-        self.COG_version = A('cog_version') or 'COG20'
+        self.COG_version = A('cog_version') or 'COG24' # this is where we set the default database version
+                                                       # it is dumb, and there is a better way to do it by
+                                                       # keeping all the available version and the default
+                                                       # version in the constants module, but this is what
+                                                       # it is at the moment. if you change this value,
+                                                       # please don't forget to change the `cog-version`
+                                                       # help menu in anvio/__init__.py
 
         if self.COG_version not in self.cog_files:
             raise ConfigError(f"The COG versions known to anvi'o do not include '{self.COG_version}' :/ This is "
@@ -612,7 +653,7 @@ class COGsSetup:
             self.COG_base_dir = os.environ['ANVIO_COG_DATA_DIR']
             self.COG_data_source = 'The environmental variable.'
         else:
-            self.COG_base_dir = J(os.path.dirname(anvio.__file__), 'data/misc/COG')
+            self.COG_base_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/COG')
             self.COG_data_source = "The anvi'o default."
 
         self.COG_base_dir = os.path.abspath(os.path.expanduser(self.COG_base_dir))
@@ -622,32 +663,25 @@ class COGsSetup:
         self.run.info('COG data source', self.COG_data_source)
         self.run.info('COG base directory', self.COG_base_dir)
 
-        self.COG_data_dir_version = J(self.COG_data_dir, '.VERSION')
-        self.raw_NCBI_files_dir = J(self.COG_data_dir, 'RAW_DATA_FROM_NCBI')
+        self.COG_data_dir_version = os.path.join(self.COG_data_dir, '.VERSION')
+        self.raw_NCBI_files_dir = os.path.join(self.COG_data_dir, 'RAW_DATA_FROM_NCBI')
 
         self.files = self.cog_files[self.COG_version]
 
         self.cogs_found_in_proteins_fasta = set([])
         self.cogs_found_in_cog_names_file = set([])
 
-        # citation, if possible
-        if self.COG_version in COG_REFERENCES:
-            ref_str = f"{COG_REFERENCES[self.COG_version]['ref_text']} ({COG_REFERENCES[self.COG_version]['doi_link']})"
-            self.run.warning(f"Anvi'o will set up the {self.COG_version} version of NCBI COGs. "
-                             f"We recommend citing the following reference for this database when you publish your findings : "
-                             f"{ref_str}", lc='green', header="CITATION")
-
 
     def get_formatted_db_paths(self):
         formatted_db_paths = {}
 
-        diamond_db_path = J(self.COG_data_dir, 'DB_DIAMOND')
+        diamond_db_path = os.path.join(self.COG_data_dir, 'DB_DIAMOND')
         if os.path.exists(diamond_db_path):
-            formatted_db_paths['diamond'] = J(diamond_db_path, 'COG')
+            formatted_db_paths['diamond'] = os.path.join(diamond_db_path, 'COG')
 
-        blast_db_path = J(self.COG_data_dir, 'DB_BLAST')
+        blast_db_path = os.path.join(self.COG_data_dir, 'DB_BLAST')
         if os.path.exists(blast_db_path):
-            formatted_db_paths['blastp'] = J(blast_db_path, 'COG/COG.fa')
+            formatted_db_paths['blastp'] = os.path.join(blast_db_path, 'COG/COG.fa')
 
         return formatted_db_paths
 
@@ -660,14 +694,14 @@ class COGsSetup:
         essential_files = {}
         for v in list(self.files.values()):
             if v['type'] == 'essential':
-                essential_files[v['formatted_file_name']] = J(self.COG_data_dir, v['formatted_file_name'])
+                essential_files[v['formatted_file_name']] = os.path.join(self.COG_data_dir, v['formatted_file_name'])
 
         # add the missing COG IDs file into the list:
-        essential_files['MISSING_COG_IDs.cPickle'] = J(self.COG_data_dir, 'MISSING_COG_IDs.cPickle')
+        essential_files['MISSING_COG_IDs.cPickle'] = os.path.join(self.COG_data_dir, 'MISSING_COG_IDs.cPickle')
 
         for file_name in essential_files:
             if not os.path.exists(essential_files[file_name]):
-                raise ConfigError("At least one essential formatted file that is necesary for COG operations is not where it should "
+                raise ConfigError("At least one essential formatted file that is necessary for COG operations is not where it should "
                                    "be ('%s'). You should run COG setup, with the flag `--reset` if necessary, to make sure things "
                                    "are in order." % essential_files[file_name])
 
@@ -703,6 +737,13 @@ class COGsSetup:
             raise ConfigError("The version of your COG data directory is different than what anvi'o hoping to see. "
                                "It seems you need to (re)run anvi'o script to download and format COG data from NCBI.")
 
+        # citation, if possible
+        if self.COG_version in COG_REFERENCES:
+            ref_str = f"{COG_REFERENCES[self.COG_version]['ref_text']} ({COG_REFERENCES[self.COG_version]['doi_link']})"
+            self.run.warning(f"Anvi'o will set up the {self.COG_version} version of NCBI COGs. "
+                             f"We recommend citing the following reference for this database when you publish your findings : "
+                             f"{ref_str}", lc='green', header="CITATION")
+
         # get raw files
         self.get_raw_data()
 
@@ -723,7 +764,7 @@ class COGsSetup:
                              "be fully compatible. Anvi'o thanks everyone for their contributions." % \
                                                         (len(missing_cog_ids), len(self.cogs_found_in_proteins_fasta)))
 
-        dictio.write_serialized_object(missing_cog_ids, J(self.COG_data_dir, 'MISSING_COG_IDs.cPickle'))
+        dictio.write_serialized_object(missing_cog_ids, os.path.join(self.COG_data_dir, 'MISSING_COG_IDs.cPickle'))
 
 
     def format_p_id_to_cog_id_cPickle(self, input_file_path, output_file_path):
@@ -778,9 +819,15 @@ class COGsSetup:
                     COG = fields[6]
                 except Exception as e:
                     raise_error(line_counter, line, fields, e)
-            elif self.COG_version == 'COG20' or self.COG_version == 'arCOG14':
+            elif self.COG_version in ['COG20', 'arCOG14']:
                 try:
                     p_id = fields[2].replace('.', '_')
+                    COG = fields[6]
+                except Exception as e:
+                    raise_error(line_counter, line, fields, e)
+            elif self.COG_version == 'COG24':
+                try:
+                    p_id = fields[2]
                     COG = fields[6]
                 except Exception as e:
                     raise_error(line_counter, line, fields, e)
@@ -817,9 +864,16 @@ class COGsSetup:
         except UnicodeDecodeError:
             lines = open(input_file_path, encoding='ISO-8859-1').readlines()
 
+        # some lines may not have the expected number of columns, and it is a good idea to
+        # keep track of them explicitly so the careful users have an idea about what is going on
+        bad_lines = []
+        line_counter = 0
+
         for line in lines:
             if line.startswith('#'):
                 continue
+
+            line_counter += 1
 
             if self.COG_version == 'COG14':
                 # example line from 2014:
@@ -839,11 +893,17 @@ class COGsSetup:
 
                 output.write('\t'.join([COG, ', '.join(list(category)), function]) + '\n')
 
-            elif self.COG_version == 'COG20':
+            elif self.COG_version in ['COG20', 'COG24']:
                 # example line from 2020:
                 #
                 # COG0059	EH	Ketol-acid reductoisomerase	IlvC	Isoleucine, leucine, valine biosynthesis		1NP3
-                COG, category, function, nn, pathway, pubmed_id, PDB_id = line.strip('\n').split('\t')
+                try:
+                    COG, category, function, nn, pathway, pubmed_id, PDB_id = [e.strip() for e in line.strip('\n').split('\t')]
+                except ValueError:
+                    # this is a line with unexpected number of columns. we shall remember
+                    # it for later:
+                    bad_lines.append(line)
+                    continue
 
                 function = ''.join([i if ord(i) < 128 else '' for i in function])
                 function = function if not nn else f"{function} ({nn})"
@@ -859,6 +919,11 @@ class COGsSetup:
             self.cogs_found_in_cog_names_file.add(COG)
             progress.end()
 
+        if len(bad_lines):
+            self.run.warning(f"Just so you know, there were {len(bad_lines)} lines in the COGs file (which contained "
+                             f"{line_counter} lines itself) that did not have the expected number of columns for "
+                             f"entries in this file and anvi'o ignored them.")
+
 
     def format_categories(self, input_file_path, output_file_path):
         progress.new('Formatting COG categories file')
@@ -871,8 +936,34 @@ class COGsSetup:
 
             if self.COG_version == 'COG14':
                 category, description = line.strip('\n').split('\t')
-            elif self.COG_version == 'COG20' or self.COG_version == 'arCOG14':
+            elif self.COG_version in ['COG20', 'arCOG14']:
+                # example lines from COG20:
+                #     J	FCCCFC	Translation, ribosomal structure and biogenesis
+                #     A	FCDCFC	RNA processing and modification
+                #     K	FCDCEC	Transcription
+                #     L	FCDCDC	Replication, recombination and repair
+                #     B	FCDCCC	Chromatin structure and dynamics
+                #     D	FCFCDC	Cell cycle control, cell division, chromosome partitioning
+                #     Y	FCFCCC	Nuclear structure
+                #     V	FCFCBC	Defense mechanisms
+                #     T	FCFCAC	Signal transduction mechanisms
+                #     M	ECFCAC	Cell wall/membrane/envelope biogenesis
                 category, _, description = line.strip('\n').split('\t')
+            elif self.COG_version == 'COG24':
+                # exmaple lines from 24 -- either two or four columns. GREAT.
+                #
+                #     1	INFORMATION STORAGE AND PROCESSING
+                #     J	1	FCCCFC	Translation, ribosomal structure and biogenesis
+                #     A	1	FCDCFC	RNA processing and modification
+                #     K	1	FCDCEC	Transcription
+                #     L	1	FCDCDC	Replication, recombination and repair
+                #     B	1	FCDCCC	Chromatin structure and dynamics
+                #     2	CELLULAR PROCESSES AND SIGNALING
+                #     D	2	FCFCCC	Cell cycle control, cell division, chromosome partitioning
+                #     Y	2	FCFCBC	Nuclear structure
+                #     V	2	FCFCAC	Defense mechanisms
+                fields = line.strip('\n').split('\t')
+                category, description = fields[0], fields[-1]
             else:
                 raise ConfigError("You need to edit all the if/else statements with COG version checks to ensure proper "
                                   "parsing of a new generation of COG files.")
@@ -904,14 +995,14 @@ class COGsSetup:
         progress.end()
 
         if utils.is_program_exists('diamond', dont_raise=True):
-            output_dir = J(self.COG_data_dir, 'DB_DIAMOND')
+            output_dir = os.path.join(self.COG_data_dir, 'DB_DIAMOND')
             if os.path.exists(output_dir):
                 shutil.rmtree(output_dir)
 
             os.mkdir(output_dir)
 
-            output_db_path = J(output_dir, 'COG')
-            log_file_path = J(output_dir, 'log.txt')
+            output_db_path = os.path.join(output_dir, 'COG')
+            log_file_path = os.path.join(output_dir, 'log.txt')
 
             self.run.info('Diamond log', log_file_path)
 
@@ -924,14 +1015,14 @@ class COGsSetup:
                              "generate a search database for it. Remember this when/if things go South.")
 
         if utils.is_program_exists('makeblastdb', dont_raise=True) and utils.is_program_exists('blastp', dont_raise=True):
-            output_dir = J(self.COG_data_dir, 'DB_BLAST')
+            output_dir = os.path.join(self.COG_data_dir, 'DB_BLAST')
             if os.path.exists(output_dir):
                 shutil.rmtree(output_dir)
 
             os.mkdir(output_dir)
 
-            output_db_path = J(output_dir, 'COG')
-            log_file_path = J(output_dir, 'log.txt')
+            output_db_path = os.path.join(output_dir, 'COG')
+            log_file_path = os.path.join(output_dir, 'log.txt')
 
             self.run.info('BLAST log', log_file_path)
 
@@ -955,7 +1046,7 @@ class COGsSetup:
             if not 'url' in self.files[file_name]:
                 continue
 
-            file_path = J(self.raw_NCBI_files_dir, file_name)
+            file_path = os.path.join(self.raw_NCBI_files_dir, file_name)
             if not os.path.exists(file_path):
                 utils.download_file(self.files[file_name]['url'], file_path, progress=progress, run=run)
 
@@ -965,25 +1056,25 @@ class COGsSetup:
         self.check_raw_data_hash_and_existence(None, None)
 
         for file_name in self.files:
-            file_path = J(self.raw_NCBI_files_dir, file_name)
+            file_path = os.path.join(self.raw_NCBI_files_dir, file_name)
 
             if not 'func' in self.files[file_name]:
                 continue
 
-            self.files[file_name]['func'](file_path, J(self.COG_data_dir, self.files[file_name]['formatted_file_name']))
+            self.files[file_name]['func'](file_path, os.path.join(self.COG_data_dir, self.files[file_name]['formatted_file_name']))
 
 
     def check_raw_data_hash_and_existence(self, input_file_path, output_file_path):
-        """Checks the cheksum of each downloaded file to ensure succesful download."""
+        """Checks the checksum of each downloaded file to ensure successful download."""
         progress.new('Checking checksums and file existence')
 
         # Checksum file either provided by NCBI or us
-        if self.COG_version == 'COG20':
-            input_file_path = J(self.raw_NCBI_files_dir, "checksum.md5.txt")
+        if self.COG_version in ['COG20', 'COG24']:
+            input_file_path = os.path.join(self.raw_NCBI_files_dir, "checksum.md5.txt")
 
-        elif self.COG_version == 'COG14' or self.COG_version == 'arCOG14':
+        elif self.COG_version in ['COG14', 'arCOG14']:
             # Get check_.md5.txt file from anvio/misc
-            input_file_path = J(os.path.dirname(anvio.__file__), 'data/misc/CHECKSUMS-FOR-COG-DATA.txt')
+            input_file_path = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/CHECKSUMS-FOR-COG-DATA.txt')
 
         else:
             self.run.warning(f"Anvio does not know how to check the checksums of the COG version `{self.COG_version}`."
@@ -991,7 +1082,7 @@ class COGsSetup:
                              f"danger since failed downloads often lead to catastrophic errors instead of "
                              f"quiet omission of such problems :)")
 
-        # Get a dictionnary of checksums, the file is formatted as "checksum filename" per line
+        # Get a dictionary of checksums, the file is formatted as "checksum filename" per line
         checksums = {}
         for line in open(input_file_path, 'r').readlines():
             stripped = line.strip('\n').split(' ')
@@ -1001,13 +1092,13 @@ class COGsSetup:
 
         # For each file, check existence and check checksum
         for file_name in self.files:
-            file_path = J(self.raw_NCBI_files_dir, file_name)
+            file_path = os.path.join(self.raw_NCBI_files_dir, file_name)
 
             # Check file exists
             if not os.path.exists(file_path):
                 raise ConfigError("Something is wrong :/ Raw files are not in place...")
 
-            # Check file present in checksum
+            # Check file present in checksum file
             if file_name not in checksums.keys() and file_name != "checksum.md5.txt" and file_name != 'CHECKSUMS-FOR-COG-DATA.txt':
                 self.run.warning(f"The file name `{file_name}` is not present in the checksum file. You should be able to "
                                  f"continue despite this, but this is unexpected.")

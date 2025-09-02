@@ -85,39 +85,41 @@ function loadAll() {
     });
 
     contig_id = getParameterByName('id');
-    highlight_gene = getParameterByName('highlight_gene') == 'true';
-    gene_mode = getParameterByName('gene_mode') == 'true';
+    highlight_gene = getParameterByName('highlight_gene') === 'true';
+    gene_mode = getParameterByName('gene_mode') === 'true';
 
-    if (typeof localStorage.state === 'undefined')
-    {
-        state = {}
-    }
-    else
-    {
+    if (typeof localStorage.state === 'undefined') {
+        state = {
+            snvs_enabled: false,
+            show_highlights: true
+        };
+    } else {
         state = JSON.parse(localStorage.state);
     }
 
-    if(state['snvs_enabled'] == null) {
-        state['snvs_enabled'] = getParameterByName('show_snvs') == 'true';
+    // Ensure state properties are defined
+    if (state['snvs_enabled'] == null) {
+        state['snvs_enabled'] = getParameterByName('show_snvs') === 'true';
+    }
+    if (state['show_highlights'] == null) {
+        state['show_highlights'] = true;
     }
 
-    if(state['show_highlights'] == null) state['show_highlights'] = true;
-
-    var endpoint = (gene_mode ? 'charts_for_single_gene' : 'charts');
+    const endpoint = gene_mode ? 'charts_for_single_gene' : 'charts';
 
     info("Sending ajax request to gather split data");
     $.ajax({
             type: 'POST',
             cache: false,
-            url: '/data/' + endpoint + '/' + state['order-by'] + '/' + contig_id,
+            url: '/data/' + endpoint + '/' + encodeURIComponent(state['order-by']) + '/' + encodeURIComponent(contig_id),
             data: {'state': JSON.stringify(state)},
-            success: function(contig_data) {
+            success: function(response) {
                 info("Received split data from the server");
-                state = contig_data['state'];
-                page_header = contig_data.title;
-                layers = contig_data.layers;
-                coverage = contig_data.coverage;
-                sequence = contig_data.sequence;
+                state = response['state'];
+                page_header = response.title;
+                layers = response.layers;
+                coverage = response.coverage;
+                sequence = response.sequence;
                 variability = [];
                 indels = [];
 
@@ -127,10 +129,10 @@ function loadAll() {
                     for (var l=0; l<4; l++) {
                         variability[i][l] = [];
                         for (var h=0; h<coverage[i].length; h++) {
-                            if (contig_data.variability[i][l].hasOwnProperty(h)) {
-                                variability[i][l].push(contig_data.variability[i][l][h]);
-                                if (state['snvs_enabled'] && contig_data.variability[i][l][h] > maxVariability) {
-                                    maxVariability = contig_data.variability[i][l][h];
+                            if (response.variability[i][l].hasOwnProperty(h)) {
+                                variability[i][l].push(response.variability[i][l][h]);
+                                if (state['snvs_enabled'] && response.variability[i][l][h] > maxVariability) {
+                                    maxVariability = response.variability[i][l][h];
                                 }
                             } else {
                                 variability[i][l].push(0);
@@ -138,9 +140,10 @@ function loadAll() {
                         }
                     }
                 }
+                state['snvs_enabled'] = state['snvs_enabled'] ?? getParameterByName('show_snvs') === 'true';
 
-                competing_nucleotides = contig_data.competing_nucleotides;
-                indels = contig_data.indels;
+                competing_nucleotides = response.competing_nucleotides;
+                indels = response.indels;
 
                 info("Building indels table");
                 for(var i=0; i<indels.length; i++) {
@@ -156,11 +159,11 @@ function loadAll() {
                   }
                 }
 
-                previous_contig_name = contig_data.previous_contig_name;
-                next_contig_name = contig_data.next_contig_name;
-                index = contig_data.index;
-                total = contig_data.total;
-                genes = contig_data.genes;
+                previous_contig_name = response.previous_contig_name;
+                next_contig_name = response.next_contig_name;
+                index = response.index;
+                total = response.total;
+                genes = response.genes;
 
                 // if the gene is in reverse direction, we here we will add
                 // a reversed copy of the amino acid sequence so we can show
@@ -214,7 +217,7 @@ function loadAll() {
                                         Selection range from
                                             <input class="form-control input-xs col-4" id="brush_start" type="text" value="0" size="3">
                                         to
-                                            <input class="form-control input-xs col-4" id="brush_end" type="text" value="${sequence.length}" size="3">\
+                                            <input class="form-control input-xs col-4" id="brush_end" type="text" value="${sequence ? sequence.length : 0}" size="3">\
                                     </div>`);
 
                 info("Checking for gene functional annotations");
@@ -235,25 +238,13 @@ function loadAll() {
                 if(state['fixed-y-scale'] == null) state['fixed-y-scale'] = false;
 
                 // adjust menu options
-                if(!indels_enabled && (!state['snvs_enabled'] || maxVariability==0)) {
-                  $('#toggleSNVIndelTable').hide();
-                  $("#indels").hide();
-                  $('#settings-section-info-SNV-warning').append("Note: SNVs and indels are disabled for this split.");
-                  $('#settings-section-info-SNV-warning').show();
+                manageSNVsState(state, maxVariability);
+
+                if (!indels_enabled && (!state['snvs_enabled'] || maxVariability == 0)) {
+                    console.log("Hiding SNVs and indels due to the condition being met.");
+                    // Code to hide SNVs and indels
                 } else {
-                  if(!indels_enabled) {
-                    $('#indels').hide();
-                    $('#indels_picker').hide();
-                    $('#settings-section-info-SNV-warning').append("Note: indels are disabled for this split.");
-                    $('#settings-section-info-SNV-warning').show();
-                  }
-                  if(!state['snvs_enabled'] || maxVariability==0) {
-                    $('#snv_picker').hide();
-                    state['snv_scale_bottom'] = state['snv_scale_dir_up'] = false;
-                    $('#snv_scale_box, #scale_dir_box').attr("checked", "unchecked");
-                    $('#settings-section-info-SNV-warning').append("Note: SNVs are disabled for this split.");
-                    $('#settings-section-info-SNV-warning').show();
-                  }
+                    console.log("SNVs and indels should be visible.");
                 }
 
                 // create function color menu and table; set default color states
@@ -332,38 +323,42 @@ function loadAll() {
 
                 // on initial load from main interface
                 if(state['state-name'] != current_state_name) {
-                  $.ajax({
-                          type: 'GET',
-                          cache: false,
-                          url: '/state/get/' + state['state-name'],
-                          success: function(response) {
-                              try {
-                                  if(!response){
-                                      // FIXME: This means we are likely in stand-alone mode where the inspection page
-                                      // is called via `anvi-inspect` and without going through the main interface.
-                                      // In this case there is no state, and no other data to be read from, and we
-                                      // fail to show SNVs and INDELs even when they are there, which is not the best
-                                      // behavior here. leaving this here so we remember:
-                                      toastr.error("You probably are here via `anvi-inspect`, and due to some technical issues, "
-                                                   + "the interface is being initialized without any SNV or INDEL data :/ Anvi'o "
-                                                   + "developers apologize for this shortcoming.");
-                                  } else {
-                                      clusteringData = response[1]['data'];
-                                      info("Loading ordering data");
-                                      loadOrderingAdditionalData(response[1]);
+                    $.ajax({
+                        type: 'GET',
+                        cache: false,
+                        url: '/state/get/' + state['state-name'],
+                        success: function(response) {
+                            try {
+                                // FIXME: This means we are likely in stand-alone mode where the inspection page
+                                // is called via `anvi-inspect` and without going through the main interface.
+                                // In this case there is no state, and no other data to be read from, and we
+                                // fail to show SNVs and INDELs even when they are there, which is not the best
+                                // behavior here. leaving this here so we remember:
+                                
+                                if (!response || response.length < 2) {
+                                    toastr.error("Invalid response received from the server.");
+                                    return;
+                                }
 
-                                      info("Processing state data from the server");
-                                      processState(state['state-name'], response[0]);
-                                  }
-                              } catch(e) {
-                                  console.error("Exception thrown", e.stack);
-                                  toastr.error('Failed to parse state data, ' + e);
-                                  defer.reject();
-                                  return;
-                              }
-                              waitingDialog.hide();
-                          }
-                  });
+                                clusteringData = response[1]['data'];
+                                info("Loading ordering data");
+                                loadOrderingAdditionalData(response[1]);
+
+                                info("Processing state data from the server");
+                                processState(state['state-name'], response[0]);
+                            } catch (e) {
+                                console.error("Exception thrown", e.stack);
+                                toastr.error('Failed to parse state data, ' + e);
+                            } finally {
+                                waitingDialog.hide();
+                            }
+                        },
+                        error: function(jqXHR, textStatus, errorThrown) {
+                            console.error("AJAX error: ", textStatus, errorThrown);
+                            toastr.error('Failed to load state data from the server. Please try again later.');
+                            waitingDialog.hide();
+                        }
+                    });
                 }
 
                 info("Setting event listeners");
@@ -521,6 +516,33 @@ function loadAll() {
                 });
             }
         });
+}
+
+function manageSNVsState(state, maxVariability) {
+    // Hide or show elements based on SNVs and indels state
+    if (!indels_enabled && (!state.snvs_enabled || (maxVariability === 0 && !state.snvs_enabled))) {
+        $('#toggleSNVIndelTable').hide();
+        $("#indels").hide();
+        $('#settings-section-info-SNV-warning').append("Note: SNVs and indels are disabled for this split.");
+        $('#settings-section-info-SNV-warning').show();
+    } else {
+        if (!indels_enabled) {
+            $('#indels').hide();
+            $('#indels_picker').hide();
+            $('#snv_picker').show();
+            $('#toggleSNVIndelTable').show();
+            $('#settings-section-info-SNV-warning').append("Note: indels are disabled for this split.");
+            $('#settings-section-info-SNV-warning').show();
+        }
+        else if (!state.snvs_enabled || maxVariability === 0) {
+            $('#snv_picker').hide();
+            $('#toggleSNVIndelTable').show();
+            state['snv_scale_bottom'] = state['snv_scale_dir_up'] = false;
+            $('#snv_scale_box, #scale_dir_box').attr("checked", "unchecked");
+            $('#settings-section-info-SNV-warning').append("Note: SNVs are disabled for this split.");
+            $('#settings-section-info-SNV-warning').show();
+        }
+    }
 }
 
 function drawHighlightBoxes() {
@@ -1552,8 +1574,18 @@ function createCharts(state){
         layers_ordered = layers;
         state['layers'][layers[0]] = state['layers']['length'];
     } else {
-        // this is the usual path for merged profiles:
-        layers_ordered = state['layer-order'].filter(function (value) { if (layers.indexOf(value)>-1) return true; return false; });
+        if (state && Array.isArray(state['layer-order'])) {
+            layers_ordered = state['layer-order'].filter(function (value) {
+                return layers.indexOf(value) > -1;
+            });
+        } else {
+            layers_ordered = [];
+        }
+    }
+
+    if (state && state['layers']) {
+    } else {
+        return;
     }
 
     visible_layers = 0;

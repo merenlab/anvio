@@ -140,6 +140,7 @@ class MetaBAT2:
             bin_count += 1
             with open(bin_file, 'r') as f:
                 pretty_bin_name = os.path.basename(bin_file).replace('.', '_')
-                clusters[pretty_bin_name] = list(map(str.strip, f.readlines()))
-
+                if pretty_bin_name != "METABAT__BinInfo_txt":
+                    clusters[pretty_bin_name] = [l.split("\t")[0] for l in f.readlines()]
+                    
         return clusters

@@ -395,7 +395,7 @@ class ThreadedProdigalRunner(ThreadedCommandRunner):
         """
         # Todo: probably should move this check into the constructor.
         if self.number_of_splits <= 0:
-            ValueError(f'number_of_splits muts be > 0.  Got {self.number_of_splits}')
+            raise ValueError(f'number_of_splits must be > 0.  Got {self.number_of_splits}')
 
         # Todo are there errors to catch here?
         self.input_file_splits = utils.split_fasta(self.input_file_path, parts=self.number_of_splits, shuffle=True)
@@ -471,7 +471,7 @@ class ThreadedProdigalRunner(ThreadedCommandRunner):
         # Check that the proper keyword arguments are given.
         for key in ['peptide_path', 'gff_path']:
             if key not in self.output_file_split_paths:
-                ValueError(f"kwargs should have the key '{key}', but it is missing.")
+                raise ValueError(f"kwargs should have the key '{key}', but it is missing.")
 
         peptide_paths = self.output_file_split_paths['peptide_path']
         gff_paths = self.output_file_split_paths['gff_path']

@@ -21,16 +21,17 @@ from typing import Dict, List, Tuple, Union
 
 import anvio
 import anvio.db as db
+import anvio.tables as t
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-import anvio.tables as t
 import anvio.ccollections as ccollections
 
 from anvio.errors import ConfigError
 from anvio.drivers.hmmer import HMMer
 from anvio.drivers.muscle import Muscle
 from anvio.parsers import parser_modules
+from anvio.version import versions_for_db_types
 from anvio.tables.genefunctions import TableForGeneFunctions
 from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileSuperclass, ProfileDatabase, PanSuperclass
 from anvio.genomedescriptions import MetagenomeDescriptions, GenomeDescriptions
@@ -631,7 +632,7 @@ class KeggSetup(KeggContext):
         KeggContext.__init__(self, self.args)
 
         # get KEGG snapshot info for default setup
-        self.target_snapshot = self.kegg_snapshot or 'v2024-09-29'
+        self.target_snapshot = self.kegg_snapshot or 'v2025-08-07'
         self.target_snapshot_yaml = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG-SNAPSHOTS.yaml')
         self.snapshot_dict = utils.get_yaml_as_dict(self.target_snapshot_yaml)
 
@@ -821,7 +822,7 @@ class KeggSetup(KeggContext):
         db_conn.disconnect()
 
         # if modules.db is out of date, give warning
-        target_version = int(anvio.tables.versions_for_db_types['modules'])
+        target_version = int(versions_for_db_types['modules'])
         if current_db_version != target_version:
             self.run.warning(f"Just so you know, the KEGG archive that was just set up contains an outdated MODULES.db (version: "
                              f"{current_db_version}). You may want to run `anvi-migrate` on this database before you do anything else. "
@@ -906,7 +907,8 @@ class KeggSetup(KeggContext):
                     f"directory, which is used in pathway visualization: {map_image_data_dir}"
                 )
 
-        if not os.path.isfile(self.kegg_brite_pathways_file):
+        brite_json_file = os.path.join(path_to_kegg_in_archive, os.path.basename(self.kegg_brite_pathways_file))
+        if not os.path.isfile(brite_json_file):
             are_map_files_included = False
             if anvio.DEBUG and not self.skip_map_images:
                 self.run.warning(
@@ -1331,8 +1333,6 @@ class KeggSetup(KeggContext):
 
             fields = re.split('\s{2,}', line)
             data_vals = None
-            data_def = None
-            line_entries = []
 
             # when data name unknown, parse from first field
             if line[0] != ' ':
@@ -2043,13 +2043,13 @@ class KOfamDownload(KeggSetup):
         thresholds_not_none = 0
         with open(self.stray_ko_thresholds_file, 'w') as out:
             out.write("knum\tthreshold\tscore_type\tdefinition\n")
-            for k, t in threshold_dict.items():
-                if t:
+            for k, thr in threshold_dict.items():
+                if thr:
                     model_name = k
                     if k in models_with_anvio_version:
                         model_name = f"{k}{STRAY_KO_ANVIO_SUFFIX}"
                     ko_definition = self.ko_dict[k]['definition']
-                    out.write(f"{model_name}\t{t}\tfull\t{ko_definition}\n")
+                    out.write(f"{model_name}\t{thr}\tfull\t{ko_definition}\n")
                     thresholds_not_none += 1
         self.run.info("File with estimated bit score thresholds", self.stray_ko_thresholds_file)
         self.run.info("Number of estimated thresholds", thresholds_not_none)
@@ -2950,6 +2950,7 @@ class RunKOfams(KeggContext):
         self.keep_all_hits = True if A('keep_all_hits') else False
         self.log_bitscores = True if A('log_bitscores') else False
         self.skip_bitscore_heuristic = True if A('skip_bitscore_heuristic') else False
+        self.no_hmmer_prefiltering = True if A('no_hmmer_prefiltering') else False
         self.bitscore_heuristic_e_value = A('heuristic_e_value')
         self.bitscore_heuristic_bitscore_fraction = A('heuristic_bitscore_fraction')
         self.skip_brite_hierarchies = A('skip_brite_hierarchies')
@@ -3468,15 +3469,19 @@ class RunKOfams(KeggContext):
                                                       simple_headers=True,
                                                       report_aa_sequences=True)
 
+        # turn off HMMER's default reporting thresholds if requested. We use an extremely low bitscore threshold instead.
+        noise_cutoff_terms = None
+        if self.no_hmmer_prefiltering:
+            noise_cutoff_terms = "-T -20 --domT -20"
         # run hmmscan
         hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads, program_to_use=self.hmm_program)
-        hmm_hits_file = hmmer.run_hmmer('KOfam', 'AA', 'GENE', None, None, len(self.ko_dict), self.kofam_hmm_file_path, None, None)
+        hmm_hits_file = hmmer.run_hmmer('KOfam', 'AA', 'GENE', None, None, len(self.ko_dict), self.kofam_hmm_file_path, None, noise_cutoff_terms)
 
         has_stray_hits = False
         stray_hits_file = None
         if self.include_stray_kos:
             ohmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads, program_to_use=self.hmm_program)
-            stray_hits_file = ohmmer.run_hmmer('Stray KOs', 'AA', 'GENE', None, None, len(self.stray_ko_dict), self.stray_ko_hmm_file_path, None, None)
+            stray_hits_file = ohmmer.run_hmmer('Stray KOs', 'AA', 'GENE', None, None, len(self.stray_ko_dict), self.stray_ko_hmm_file_path, None, noise_cutoff_terms)
             has_stray_hits = True if stray_hits_file else False
 
         if not hmm_hits_file and not has_stray_hits:
@@ -3530,7 +3535,12 @@ class RunKOfams(KeggContext):
         # If requested, store bit scores of each hit in file
         if self.log_bitscores:
             self.bitscore_log_file = os.path.splitext(os.path.basename(self.contigs_db_path))[0] + "_bitscores.txt"
-            anvio.utils.store_dict_as_TAB_delimited_file(search_results_dict, self.bitscore_log_file, key_header='entry_id')
+            # we have to change some things in the raw search results because the KOfam models don't store the gene functions
+            # and the HMM ID is actually stored in a model's gene name element
+            for key, entry in search_results_dict.items():
+                entry['gene_hmm_id'] = entry['gene_name']
+                entry['gene_name'] = self.get_annotation_from_ko_dict(entry['gene_hmm_id'], ok_if_missing_from_dict=True)
+            anvio.utils.store_dict_as_TAB_delimited_file(search_results_dict, self.bitscore_log_file, do_not_write_key_column=True)
             self.run.info("Bit score information file: ", self.bitscore_log_file)
 
         # mark contigs db with hash of modules.db content for version tracking
@@ -3582,6 +3592,7 @@ class KeggEstimatorArgs():
         self.exclude_kos_no_threshold = False if A('include_kos_not_in_kofam') else True
         self.include_stray_kos = True if A('include_stray_KOs') else False
         self.ignore_unknown_kos = True if A('ignore_unknown_KOs') else False
+        self.exclude_dashed_reactions = True if A('exclude_dashed_reactions') else False
         self.module_specific_matrices = A('module_specific_matrices') or None
         self.no_comments = True if A('no_comments') else False
         self.external_genomes_file = A('external_genomes') or None
@@ -3875,7 +3886,7 @@ class KeggEstimatorArgs():
         definition in this case. However, in case there is an internal '--' within a more complicated definition, this function
         ignores the part of the string that includes it and processes the remainder of the string before re-joining the two parts.
         It is not able to do this for steps with more than one internal '--', which would require multiple splits and joins, so
-        this case results in an error.
+        this case results in an error. Note that when self.exclude_dashed_reactions is True, we instead remove '--' entirely.
 
         PARAMETERS
         ==========
@@ -3888,6 +3899,8 @@ class KeggEstimatorArgs():
             The same string, with nonessential enzyme accessions (if any) removed.
         """
 
+        if step_string == '--' and self.exclude_dashed_reactions:
+            return ""
         if step_string != '--' and '-' in step_string:
             saw_double_dash = False             # a Boolean to indicate if we found '--' within the step definition
             str_prior_to_double_dash = None     # if we find '--', this variable stores the string that occurs prior to and including this '--'
@@ -3899,8 +3912,12 @@ class KeggEstimatorArgs():
                                           "remove_nonessential_enzymes_from_module_step(). This function is not currently able to handle this "
                                           "situation. Please contact a developer and ask them to turn this into a smarter function. :) ")
                     saw_double_dash = True
-                    str_prior_to_double_dash = step_string[:idx+2]
-                    step_string = step_string[idx+2:] # continue processing the remainder of the string
+                    if self.exclude_dashed_reactions: # remove the internal '--' 
+                        str_prior_to_double_dash = step_string[:idx]
+                        step_string = step_string[idx+3:] # also remove the space after it
+                    else:
+                        str_prior_to_double_dash = step_string[:idx+2]
+                        step_string = step_string[idx+2:] # continue processing the remainder of the string
                     continue
                 elif step_string[idx+1] == '(': # group to eliminate
                     parens_index = idx+1
@@ -4865,17 +4882,21 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     cur_index += 1
 
                 elif step[cur_index] == "-":
-                    # '--' no associated enzyme case, always False (assumed incomplete)
+                    # '--' no associated enzyme case, by default False (assumed incomplete)
                     if step[cur_index+1] == "-":
-                        step_is_present_condition_statement += "False"
-                        cur_index += 2 # skip over both '-', the next character should be a space or end of DEFINITION line
+                        if self.exclude_dashed_reactions: # skip it instead
+                            cur_index += 3 # skip over both '-' AND the following space
+                        else:
+                            step_is_present_condition_statement += "False"
+                            cur_index += 2 # skip over both '-', the next character should be a space or end of DEFINITION line
 
                         if anvio.DEBUG:
                             self.run.warning(f"While estimating the stepwise completeness of KEGG module {mnum}, anvi'o saw "
                                              f"'--' in the module DEFINITION. This indicates a step in the pathway that has no "
-                                             f"associated enzyme. By default, anvi'o is marking this step incomplete. But it may not be, "
-                                             f"and as a result this module might be falsely considered incomplete. So it may be in your "
-                                             f"interest to take a closer look at this individual module.")
+                                             f"associated enzyme. By default, anvi'o marks steps like these incomplete, *unless* "
+                                             f"you are using the flag --exclude-dashed-reactions. But if you aren't using that flag, "
+                                             f"it is possible that this module might be falsely considered incomplete. So it may be in your "
+                                             f"interest to take a closer look at module {mnum}.")
                         if cur_index < len(step) and step[cur_index] != " ":
                             raise ConfigError(f"Serious, serious parsing sadness is happening. We just processed a '--' in "
                                               f"a DEFINITION line for module {mnum} but did not see a space afterwards. Instead, "
@@ -5026,11 +5047,16 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     # 1) steps without associated enzymes, ie --
                     if atomic_step == "--":
                         # when '--' in a DEFINITION line happens, it signifies a reaction step that has no associated enzyme.
-                        # we assume that such steps are not complete
+                        # by default, we assume that such steps are not complete
                         has_no_ko_step = True
-                        warning_str = "'--' steps are assumed incomplete"
+                        if self.exclude_dashed_reactions:
+                            warning_str = "'--' step was ignored in the calculation"
+                            num_nonessential_steps_in_path += 1 # this is to ensure we fix the denominator later
+                        else:
+                            warning_str = "'--' steps are assumed incomplete"
+                            atomic_step_copy_number.append(0)
+
                         meta_dict_for_bin[mnum]["warnings"].add(warning_str)
-                        atomic_step_copy_number.append(0)
                     # 2) non-essential KOs, ie -Kxxxxx
                     elif atomic_step[0] == "-" and not any(x in atomic_step[1:] for x in ['-','+']):
                         """
@@ -5224,7 +5250,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         mod_stepwise_completeness = num_complete / (num_steps - num_nonessential_steps)
         meta_dict_for_bin[mnum]["stepwise_completeness"] = mod_stepwise_completeness
 
-        was_already_complete = meta_dict_for_bin[mnum]["stepwise_is_complete"]
         now_complete = True if mod_stepwise_completeness >= self.module_completion_threshold else False
         meta_dict_for_bin[mnum]["stepwise_is_complete"] = now_complete
 
@@ -5296,7 +5321,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         else:
             meta_dict_for_bin[mod]["most_complete_paths"] = []
 
-        was_already_complete = meta_dict_for_bin[mod]["pathwise_is_complete"]
         now_complete = True if meta_dict_for_bin[mod]["pathwise_percent_complete"] >= self.module_completion_threshold else False
         meta_dict_for_bin[mod]["pathwise_is_complete"] = now_complete
 
@@ -5739,8 +5763,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
             # handle anything following parentheses
             if close_parens_idx < len(step_string) - 1:
-                post_str = step_string[close_parens_idx+1:]
-
                 post_steps = step_string[close_parens_idx+2:]
                 post_copy = self.get_step_copy_number(post_steps, enzyme_hit_counts)
 
@@ -5786,8 +5808,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
             # base cases
             elif '-' in step_string:
-                if step_string == '--': # no KO profile => no copy number
-                    return 0
+                if step_string == '--': # no KO profile => no copy number (unless user wants to ignore these, in which case
+                        return 0        # they were already removed by remove_nonessential_enzymes_from_module_step() above)
                 else: # contains non-essential KO, should never happen because we eliminated them above
                     raise ConfigError(f"Something is very wrong, because the get_step_copy_number() function found a nonessential "
                                       f"enzyme in the step definition {step_string}")
@@ -6173,8 +6195,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         filesnpaths.is_file_json_formatted(self.estimate_from_json)
         kegg_metabolism_superdict = json.load(open(self.estimate_from_json), parse_int=int)
         if ('USER' in kegg_metabolism_superdict['data_sources'] and not self.user_input_dir):
-            raise ConfigError(f"You provided a JSON file generated from USER data, but you "
-                              f"did not specify which data directory to use with the `--user-modules` flag.")
+            raise ConfigError("You provided a JSON file generated from USER data, but you "
+                              "did not specify which data directory to use with the `--user-modules` flag.")
         if (kegg_metabolism_superdict['data_sources'] == 'KEGG' and self.user_input_dir):
             raise ConfigError(f"You provided a JSON file generated from {kegg_metabolism_superdict['data_source']} data only, but then "
                               f"you provided us with a USER metabolism data directory. You should not use the `--user-modules` flag for this file.")
@@ -8349,7 +8371,7 @@ class ModulesDatabase(KeggContext):
             self.db.set_meta_value('total_brite_entries', None)
         self.db.set_meta_value('creation_date', time.time())
         self.db.set_meta_value('hash', self.get_db_content_hash())
-        self.db.set_meta_value('version', t.metabolic_modules_db_version)
+        self.db.set_meta_value('version', anvio.__kegg_modules_version__)
 
         self.db.disconnect()
 
@@ -9366,7 +9388,6 @@ class ModulesDatabase(KeggContext):
                         category_dict[key] = ortholog_set = set()
                     ortholog_set.add((ortholog_accession, ortholog_name))
                 else:
-                    num_categories = len(parsed_categories)
                     for level, category in enumerate(parsed_categories, 1):
                         if level == topdown_level_cutoff:
                             try:
@@ -9389,7 +9410,6 @@ class ModulesDatabase(KeggContext):
                         category_dict[key] = ortholog_set = set()
                     ortholog_set.add((ortholog_accession, ortholog_name))
                 else:
-                    num_categories = len(parsed_categories)
                     for level, category in enumerate(parsed_categories, 1):
                         if level == topdown_level_cutoff:
                             try:
@@ -9598,7 +9618,15 @@ class ModulesDatabase(KeggContext):
             d = d.strip()
             combined_def_line += d + " "
         combined_def_line = combined_def_line.strip()
-        def_line_paths = self.recursive_definition_unroller(combined_def_line)
+        
+        try:
+            def_line_paths = self.recursive_definition_unroller(combined_def_line)
+        except RecursionError as re:
+            raise ConfigError(f"Uh oh. While unrolling the definition of module {mnum}, we got an error. "
+                              f"Unfortunately, we don't know much at this point, but here is the error message: '{re}'. "
+                              f"At this point, our best guess is that something is wrong with the module defintion, so please "
+                              f"take a look at the following DEFINITION lines and see if anything looks fishy (like stray "
+                              f"spaces, missing spaces, or unbalanced parentheses): {combined_def_line}")
 
         return def_line_paths
 
@@ -9661,7 +9689,7 @@ class ModulesDatabase(KeggContext):
                             for a in alts:
                                 if len(a) > 1:
                                     raise ConfigError("Uh oh. recursive_definition_unroller() speaking. We found a protein complex with more "
-                                                      "than one KO per alternative option here: %s" % s)
+                                                    "than one KO per alternative option here: %s" % s)
                                 for cs in complex_strs:
                                     extended_complex = cs + a[0]
                                     new_complex_strs.append(extended_complex)
@@ -9822,6 +9850,7 @@ class KeggModuleEnrichment(KeggContext):
         self.output_file_path = A('output_file')
         self.include_missing = True if A('include_samples_missing_from_groups_txt') else False
         self.use_stepwise_completeness = A('use_stepwise_completeness')
+        self.qlambda = A('qlambda')
 
         # init the base class
         KeggContext.__init__(self, self.args)
@@ -10081,6 +10110,7 @@ class KeggModuleEnrichment(KeggContext):
         # run the enrichment analysis
         enrichment_stats = utils.run_functional_enrichment_stats(enrichment_input_path,
                                                                  self.output_file_path,
+                                                                 qlambda=self.qlambda,
                                                                  run=self.run,
                                                                  progress=self.progress)
 
@@ -10135,7 +10165,7 @@ def _download_worker(
                 utils.download_file(url, path)
                 output = True
                 break
-            except (ConfigError, ConnectionResetError) as e:
+            except (ConfigError, ConnectionResetError):
                 num_tries += 1
                 if num_tries > max_num_tries:
                     output = path

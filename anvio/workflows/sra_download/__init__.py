@@ -4,6 +4,7 @@
 
 import os
 import anvio
+import hashlib
 import pandas as pd
 
 import anvio.utils as utils
@@ -35,13 +36,13 @@ class SRADownloadWorkflow(WorkflowSuperClass):
         for program in NCBI_sra_tool_programs:
             if not utils.is_program_exists(program, dont_raise=True):
                 raise ConfigError(f"The program {program} is not installed in your anvi'o conda environment. "
-                                  f"'prefetch' and 'fasterq-dump'  are from the NCBI SRA toolkit and must be installed for the "
+                                  f"'prefetch' and 'fasterq-dump' are from the NCBI SRA toolkit and must be installed for the "
                                   f"sra_download workflow to work. Please check out the installation instructions here: "
                                   f"https://github.com/ncbi/sra-tools/wiki/01.-Downloading-SRA-Toolkit")
         for program in other_programs:
             if not utils.is_program_exists(program, dont_raise=True):
                 raise ConfigError(f"The program {program} is not installed in your anvi'o conda environment. Please "
-                                  f"double check you installed all of the programs listed in the anvio'o installation tutorial: https://anvio.org/install/")
+                                  f"double check you installed all of the programs listed in the anvi'o installation tutorial: https://anvio.org/install/")
 
         # Snakemake rules
         self.rules.extend(['prefetch',
@@ -49,6 +50,7 @@ class SRADownloadWorkflow(WorkflowSuperClass):
                            'pigz'])
 
         self.general_params.extend(['SRA_accession_list']) # user needs provide a tsv of SRA accessions
+        self.general_params.extend(['Remove_unzipped_SRA_files']) # user needs provide a tsv of SRA accessions
 
         # Parameters for each rule that are accessible in the config.json file
         rule_acceptable_params_dict = {}
@@ -61,6 +63,7 @@ class SRADownloadWorkflow(WorkflowSuperClass):
         # Set default values for accessible rules and order of rules in config.json file
         self.default_config.update({
             'SRA_accession_list': 'SRA_accession_list.txt',
+            'Remove_unzipped_SRA_files': True,
             'prefetch': {'--max-size': "40g", 'threads': 2},
             'fasterq_dump': {'threads': 6},
             'pigz': {'threads': 8}})
@@ -111,3 +114,12 @@ class SRADownloadWorkflow(WorkflowSuperClass):
         target_files = [os.path.join(self.dirs_dict['FASTAS'], f"generate_samples_txt.done")]
 
         return target_files
+
+    
+    def calculate_md5(self, file_path):
+        """Calculate the md5sum of a file"""
+        hash_md5 = hashlib.md5()
+        with open(file_path, "rb") as f:
+            for chunk in iter(lambda: f.read(65536), b""):
+                hash_md5.update(chunk)
+        return hash_md5.hexdigest()

@@ -10,7 +10,8 @@ When run on a %(contigs-fasta)s this program will,
 
 * **Soft-split contigs** longer than 20,000 bp into smaller ones (you can change the split size using the `--split-length` flag). When the gene calling step is not skipped, the process of splitting contigs will consider where genes are and avoid cutting genes in the middle. For very, very large assemblies this process can take a while, and you can skip it with `--skip-mindful-splitting` flag.
 
-* **Identify open reading frames** using [Prodigal](http://prodigal.ornl.gov/), UNLESS, (1) you have used the flag `--skip-gene-calling` (no gene calls will be made) or (2) you have provided %(external-gene-calls)s.
+* **Identify open reading frames** using [pyrodigal-gv](https://github.com/althonos/pyrodigal-gv) which is an extension of [pyrodigal](https://github.com/althonos/pyrodigal) ([doi:10.21105/joss.04296](https://doi.org/10.21105/joss.04296)) (which builds upon [prodigal](http://prodigal.ornl.gov/), the approach originally implemented by Hyatt et al ([doi:10.1186/1471-2105-11-119](https://doi.org/10.1186/1471-2105-11-119)).
+Additionally, it includes metagenomics models for giant viruses and viruses with alternative genetic codes by Camargo et al [doi:10.1038/s41587-023-01953-y](https://doi.org/10.1038/s41587-023-01953-y). **UNLESS**, (1) you have used the flag `--skip-gene-calling` (no gene calls will be made) or (2) you have provided %(external-gene-calls)s. See other details related to gene calling below.
 
 {:.notice}
 This program can work with compressed input FASTA files (i.e., the file name ends with a `.gz` extention).
@@ -40,6 +41,8 @@ anvi-gen-contigs-database -f scaffolds.fa \
                           -o North_Atlantic_MGX_004.db
 {{ codestop }}
 
+To shorten the runtime, you can also multithread `anvi-gen-contigs-database` with the `-T` flag followed by the desired number of threads, depending on your system.
+
 There are a myriad of programs you can run on a %(contigs-db)s once it is created to add more and more layers of information on it. Please see the artifact %(contigs-db)s to see a list of steps you can follow.
 
 ### Create a contigs database with external gene calls
@@ -60,6 +63,31 @@ anvi-gen-contigs-database -f %(contigs-fasta)s \
                           --external-gene-calls %(external-gene-calls)s \
                           --ignore-internal-stop-codons
 {{ codestop }}
+
+### Gene calling
+
+By default, this program will use [pyrodigal](https://github.com/althonos/pyrodigal) for gene calling, and the key aspects of the resulting information about genes in input sequences are stored in the resulting %(contigs-db)s files. That said, gene calls include much more information than what will be stored in the database. If you need a more comprehensive report on gene calls, you can run %(anvi-gen-contigs-database)s with the following parameter:
+
+{{ codestart }}
+anvi-gen-contigs-database -f %(contigs-fasta)s \
+                          -o %(contigs-db)s \
+                          --full-gene-calling-report OUTPUT.txt
+{{ codestop }}
+
+In this case the `OUTPUT.txt` will contain additional data, and the gene caller ids will match to those that are stored in the database therefore tractable all downstream analyses that will stem from the resulting %(contigs-db)s. Here is a snippet from an example file:
+
+|**gene_callers_id**|**contig**|**start**|**stop**|**direction**|**partial**|**partial_begin**|**partial_end**|**confidence**|**gc_cont**|**rbs_motif**|**rbs_spacer**|**score**|**cscore**|**rscore**|**sscore**|**start_type**|**translation_table**|**tscore**|**uscore**|**sequence**|**translated_sequence**|
+|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|
+|0|NC_009091|169|1327|f|False|False|False|99.99|0.3013|||153.96808116167358|151.14841116167358|-0.9874499999999999|2.8196700000000003|ATG|11|2.8971|0.9100200000000003|ATGGAAATTATTTGTAATCAAAATGAATTA(...)|MEIICNQNELNNAIQLVSKAVASRPTHPIL(...)|
+|1|NC_009091|1388|2036|f|False|False|False|99.99|0.2885|GGA/GAG/AGG|5-10bp|81.87259573141999|71.58136573142|2.71875|10.291229999999999|ATG|11|2.8971|4.67538|ATGGTCCTTAATTATGGAAATGGTGAAAAT(...)|MVLNYGNGENVWMHPPVHRILGWYSRPSNL(...)|
+|2|NC_009091|2039|4379|f|False|False|False|99.99|0.3260|GGA/GAG/AGG|5-10bp|352.2303246874159|347.0894946874159|2.71875|5.14083|ATG|11|2.8971|-0.47502|ATGATAAATCAAGAAAATAATGATCTATAT(...)|MINQENNDLYDLNEALQVENLTLNDYEEIC(...)|
+|3|NC_009091|4426|5887|f|False|False|False|99.99|0.3347|||194.19481790304437|188.61028790304437|-0.9874499999999999|5.584530000000002|ATG|11|2.8971|3.6748800000000017|ATGTGCGGAATAGTTGGAATCGTTTCTTCA(...)|MCGIVGIVSSDDVNQQIYDSLLLLQHRGQD(...)|
+|4|NC_009091|5883|8325|r|False|False|False|99.99|0.2731|||318.93104438253084|315.33533438253085|-0.9874499999999999|3.5957100000000004|ATG|11|2.8971|1.6860600000000003|ATGGATAAGAAAAACTTCACTTCTATCTCA(...)|MDKKNFTSISLQEEMQRSYLEYAMSVIVGR(...)|
+|5|NC_009091|8402|9266|r|False|False|False|99.99|0.2719|||99.52927145207937|93.12346145207937|-0.9874499999999999|6.405809999999998|ATG|11|2.8971|4.496159999999998|ATGAAAAAGTTTTTACAAAGAATACTCTGG(...)|MKKFLQRILWISLISFYFLQIKKVQAIVPY(...)|
+|6|NC_009091|9262|10219|r|False|False|False|99.99|0.3239|||107.44082411540528|104.45237411540528|-0.9874499999999999|2.9884500000000003|ATG|11|2.8971|1.0788000000000002|ATGATTAATAGGATTCAAGACAAAAAAGAA(...)|MINRIQDKKEISKKLKERAIFEGFTIAGIA(...)|
+|7|NC_009091|10365|11100|f|False|False|False|99.99|0.3319|||71.66956065705634|79.71184065705633|-0.9874499999999999|-8.042279999999998|TTG|11|-9.60915|2.55432|TTGGTTGAATCTAATCAAAATCAAGATTCC(...)|MVESNQNQDSNLGSRLQQDLKNDLIAGLLV(...)|
+|8|NC_009091|11103|11721|f|False|False|False|99.99|0.2993|||69.10757680331382|69.03014680331381|-0.9874499999999999|0.07743000000000055|ATG|11|2.8971|-1.8322199999999995|ATGCATAATAGATCTCTTTCTAGAGAATTA(...)|MHNRSLSRELSLISLGLIKDKGDLKLNKFQ(...)|
+|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|(...)|
 
 ### Changing k-mer size
 

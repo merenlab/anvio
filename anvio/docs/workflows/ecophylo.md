@@ -22,7 +22,7 @@ anvi-run-workflow -w ecophylo \
                   --get-default-config config.json
 {{ codestop }}
 
-- %(hmm-list)s: This file designates which HMM should be used to extract the target gene from your %(contigs-db)s. Please note that the ecophylo workflow can only process one gene family at a time i.e. %(hmm-list)s can only contain one HMM. If you would like to process multiple gene families from the same input assemblies then you will need to re-run the workflow with a separate %(hmm-list)s.
+- %(hmm-list)s: This file designates which HMMs should be used to extract the target genes from your %(contigs-db)s. It should contain the name of the gene of interest, the HMM source and whether it is coming from an internal HMM collection or a user-provided. You can have as many input genes as you want and you will get as many EcoPhylo outputs. Optionally, you can add a column called 'group' and each entry with the same group will be merged at the clustering level. This option is only valid if you want to combine the output of multiple HMMs in a meaningful fashion, use it with caution.
 - %(metagenomes)s and/or %(external-genomes)s: These files hold the assemblies where you are looking for the target gene. Genomes in %(external-genomes)s can be reference genomes, [SAGs](https://anvio.org/vocabulary/#single-amplified-genome-sag), and/or [MAGs](https://anvio.org/vocabulary/#metagenome-assembled-genome-mag).
 
 ## A quick tour of the output directory structure
@@ -38,14 +38,38 @@ $ tree ECOPHYLO_WORKFLOW -L 1
 ├── 04_SEQUENCE_STATS
 ├── 05_TREES
 ├── 06_MISC_DATA
-├── METAGENOMICS_WORKFLOW
+└── METAGENOMICS_WORKFLOW
 ```
 
 Let's dive into some key intermediate files!
 
 `01_REFERENCE_PROTEIN_DATA/`
 
-This directory contains data extracted from each individual %(contigs-db)s the user provides via the %(external-genomes)s and/or %(metagenomes)s files. (The wide part of the funnel)
+This directory contains data extracted from each individual %(contigs-db)s the user provides via the %(external-genomes)s and/or %(metagenomes)s files. (The wide part of the funnel). The directory structure is as follow:
+
+```
+01_REFERENCE_PROTEIN_DATA/
+└── ASSEMBLY
+    ├── HMM_SOURCE
+    │   └── PROTEIN
+    │       ├── ASSEMBLY-PROTEIN-external_gene_calls_renamed.tsv
+    │       ├── ASSEMBLY-PROTEIN-external_gene_calls.tsv
+    │       ├── ASSEMBLY-PROTEIN-hmm_hits_renamed.faa
+    │       ├── ASSEMBLY-PROTEIN-hmm_hits_renamed.fna
+    │       ├── ASSEMBLY-PROTEIN-hmm_hits.faa
+    │       ├── ASSEMBLY-PROTEIN-hmm_hits.fna
+    │       ├── ASSEMBLY-PROTEIN-orfs.fna
+    │       ├── ASSEMBLY-PROTEIN-processed.done
+    │       ├── ASSEMBLY-PROTEIN-reformat_report_AA.txt
+    │       └── ASSEMBLY-PROTEIN-reformat_report_nt.txt
+    └── HMM_SOURCE-dom-hmmsearch
+        ├── contigs-hmmsearch.done
+        ├── hmm_hits_filtered.txt
+        ├── hmm_hits.txt
+        ├── hmm.domtable
+        ├── hmm.table
+        └── hmm.table.fixed
+```
 
 - `ASSEMBLY-PROTEIN-external_gene_calls.tsv`: %(external-gene-calls)s for each open reading frame in the analyzed %(contigs-db)s
 - `ASSEMBLY-PROTEIN-external_gene_calls_renamed.tsv`: %(external-gene-calls)s renamed and subsetted for target protein
@@ -61,28 +85,62 @@ This directory contains data extracted from each individual %(contigs-db)s the u
 
 `02_NR_FASTAS/`
 
-This directory is where all the data from individual %(contigs-db)s is combined and contains all the protein family clustering information from the workflow. (The narrow part of the funnel)
+This directory is where all the data from individual %(contigs-db)s is combined and contains all the protein family clustering information from the workflow. (The narrow part of the funnel):
 
-- `PROTEIN-all.faa` and `PROTEIN-all.fna` contains ALL the amino acid and nucleotide sequences that made it past the initial filtering steps and will be clustered
-- `PROTEIN-mmseqs_NR_cluster.tsv`: mmseqs cluster output file. VERY helpful for looking inside clusters (column 1: representative sequence; column 2: cluster member)
-- `PROTEIN-references_for_mapping_NT.fa`: Input ORFs used for the metagenomics workflow
-- `PROTEIN-AA_subset.fa`: translated sequences from `PROTEIN-references_for_mapping_NT.fa`
-- `PROTEIN-external_gene_calls_all.tsv`: external-gene calls file for `PROTEIN-references_for_mapping_NT.fa`
+```
+02_NR_FASTAS/
+└── HMM_SOURCE_PROTEIN
+    ├── HMM_SOURCE_PROTEIN-AA_subset.fa
+    ├── HMM_SOURCE_PROTEIN-all.faa
+    ├── HMM_SOURCE_PROTEIN-all.fna
+    ├── HMM_SOURCE_PROTEIN-combine_sequence_data.done
+    ├── HMM_SOURCE_PROTEIN-external_gene_calls_all.tsv
+    ├── HMM_SOURCE_PROTEIN-external_gene_calls_subset.tsv
+    ├── HMM_SOURCE_PROTEIN-headers.tmp
+    ├── HMM_SOURCE_PROTEIN-mmseqs_NR_all_seqs.fasta
+    ├── HMM_SOURCE_PROTEIN-mmseqs_NR_cluster.done
+    ├── HMM_SOURCE_PROTEIN-mmseqs_NR_cluster.tsv
+    ├── HMM_SOURCE_PROTEIN-mmseqs_NR_rep_seq.fasta
+    ├── HMM_SOURCE_PROTEIN-references_for_mapping_NT.fa
+    └── HMM_SOURCE_PROTEIN-reformat-report-all.txt
+```
+
+- `HMM_SOURCE_PROTEIN-all.faa` and `HMM_SOURCE_PROTEIN-all.fna` contains ALL the amino acid and nucleotide sequences that made it past the initial filtering steps and will be clustered
+- `HMM_SOURCE_PROTEIN-mmseqs_NR_cluster.tsv`: mmseqs cluster output file. VERY helpful for looking inside clusters (column 1: representative sequence; column 2: cluster member)
+- `HMM_SOURCE_PROTEIN-references_for_mapping_NT.fa`: Input ORFs used for the metagenomics workflow
+- `HMM_SOURCE_PROTEIN-AA_subset.fa`: translated sequences from `HMM_SOURCE_PROTEIN-references_for_mapping_NT.fa`
+- `HMM_SOURCE_PROTEIN-external_gene_calls_all.tsv`: external-gene calls file for `HMM_SOURCE_PROTEIN-references_for_mapping_NT.fa`
 
 `03_MSA/`
 
 This directory contains all the intermediate files from multiple sequences alignment steps.
 
-- `PROTEIN-aligned.fa`: raw output from MSA
-- `PROTEIN_aligned_trimmed.fa`: trimmed MSA from `trimal`
-- `PROTEIN_aligned_trimmed_filtered.fa`: subsetted MSA removing sequences with x > 50%% gaps
-- `PROTEIN_gaps_counts.tsv`: Table counting number of gaps per sequence in MSA
+```
+03_MSA/
+└── HMM_SOURCE_PROTEIN
+    ├── HMM_SOURCE_PROTEIN_aligned_trimmed_filtered.fa
+    ├── HMM_SOURCE_PROTEIN_aligned_trimmed.fa
+    ├── HMM_SOURCE_PROTEIN_gaps_counts.tsv
+    ├── HMM_SOURCE_PROTEIN_headers.tmp
+    └── HMM_SOURCE_PROTEIN-aligned.fa
+```
+
+- `HMM_SOURCE_PROTEIN-aligned.fa`: raw output from MSA
+- `HMM_SOURCE_PROTEIN_aligned_trimmed.fa`: trimmed MSA from `trimal`
+- `HMM_SOURCE_PROTEIN_aligned_trimmed_filtered.fa`: subsetted MSA removing sequences with x > 50%% gaps
+- `HMM_SOURCE_PROTEIN_gaps_counts.tsv`: Table counting number of gaps per sequence in MSA
 
 `04_SEQUENCE_STATS/`
 
 This directory contains information regarding the number of sequences filtered at various steps of the workflow.
 
-`PROTEIN_stats.tsv`: tracks number of sequences filtered at different steps of the workflow. Here are definitions for each rule:
+```
+04_SEQUENCE_STATS/
+└── HMM_SOURCE_PROTEIN
+    └── HMM_SOURCE_PROTEIN_stats.tsv
+```
+
+`HMM_SOURCE_PROTEIN_stats.tsv`: tracks number of sequences filtered at different steps of the workflow. Here are definitions for each rule:
 
  - `combine_sequence_data`: total number of sequences before clustering
  - `cluster_X_percent_sim_mmseqs`: number of cluster representative sequences
@@ -94,22 +152,42 @@ This directory contains information regarding the number of sequences filtered a
 
 Here we have all things phylogenetics in the workflow.
 
-- `PROTEIN-PROFILE.db`:
-- `PROTEIN.nwk`: PROTEIN phylogenetic tree
-- `PROTEIN_renamed.faa`:renamed PROTEIN phylogenetic tree fasta file
-- `PROTEIN_renamed.nwk`: renamed PROTEIN phylogenetic tree to be imported in Metagenomics workflow merged profile
-- `PROTEIN_renamed_all.faa`: renamed fasta file with ALL proteins
+```
+05_TREES/
+└── HMM_SOURCE_PROTEIN
+    ├── HMM_SOURCE_PROTEIN_combined.done
+    ├── HMM_SOURCE_PROTEIN_renamed_all.faa
+    ├── HMM_SOURCE_PROTEIN_renamed.faa
+    ├── HMM_SOURCE_PROTEIN_renamed.nwk
+    ├── HMM_SOURCE_PROTEIN-tree.done
+    └── HMM_SOURCE_PROTEIN.nwk
+```
+
+- `HMM_SOURCE_PROTEIN-PROFILE.db`:
+- `HMM_SOURCE_PROTEIN.nwk`: PROTEIN phylogenetic tree
+- `HMM_SOURCE_PROTEIN_renamed.faa`:renamed PROTEIN phylogenetic tree fasta file
+- `HMM_SOURCE_PROTEIN_renamed.nwk`: renamed PROTEIN phylogenetic tree to be imported in Metagenomics workflow merged profile
+- `HMM_SOURCE_PROTEIN_renamed_all.faa`: renamed fasta file with ALL proteins
 
 `06_MISC_DATA/`
 
 This directory contains miscellaneous data created from the flow to help you interpret the phylogeography of your target PROTEIN.
 
-- `PROTEIN_misc.tsv`: This file contains basic information about each representative sequence in the workflow including: 
+```
+06_MISC_DATA/
+└── HMM_SOURCE_PROTEIN
+    ├── anvi_estimate_scg_taxonomy_for_SCGs.done
+    ├── HMM_SOURCE_PROTEIN_estimate_scg_taxonomy_results-RAW-LONG-FORMAT.txt
+    ├── HMM_SOURCE_PROTEIN_misc.tsv
+    └── HMM_SOURCE_PROTEIN_scg_taxonomy_data.tsv
+```
+
+- `HMM_SOURCE_PROTEIN_misc.tsv`: This file contains basic information about each representative sequence in the workflow including: 
   - contigs_db_type: genome or metagenomic assembly
   - genomic_seq_in_cluster: YES/NO a sequence that originate from an input genome is in the cluster
   - cluster_size: number of sequences in mmseqs cluster
 
-`PROTEIN_scg_taxonomy_data.tsv` and `PROTEIN_estimate_scg_taxonomy_results-RAW-LONG-FORMAT.txt` are the output of %(anvi-estimate-scg-taxonomy)s and will only be there if you are explore the phylogeography of a compatible single-copy core gene
+`HMM_SOURCE_PROTEIN_scg_taxonomy_data.tsv` and `HMM_SOURCE_PROTEIN_estimate_scg_taxonomy_results-RAW-LONG-FORMAT.txt` are the output of %(anvi-estimate-scg-taxonomy)s and will only be there if you are explore the phylogeography of a compatible single-copy core gene
 
 `METAGENOMICS_WORKFLOW/`
 
@@ -463,60 +541,34 @@ Command 'set -euo pipefail;  echo Nothing to merge for Ribosomal_S11. This shoul
 
 ### Can I run multiple hmms on the same data?
 
-Yes! But sadly, not at the same time, and anvi'o feels really bad about that :(
+Yes! You can simply add as many entries in the %(hmm-list)s input file. You can have genes from the same HMM source, or from different source. Here is how the output directory looks like for two Ribosomal Proteins from the Archaea_73 and Bacteria_71 HMM source:
 
-To be clear, you can run one complete workflow, then change the path in the `"hmm_list"` parameter in the config file to a different %(hmm-list)s then rerun the workflow on the same data in the same directory. For example, this ecophylo directory contains the outputs of Ribosomal_L16 and Ribosomal_S11 over the same data:
+```
+name	source	path
+Ribosomal_L17	Bacteria_71	INTERNAL
+Ribosomal_L16	Bacteria_71	INTERNAL
+```
 
-```bash
-$ tree ECOPHYLO_WORKFLOW/ -L 2
+The output directory will contains the same overall directory structure and the subdirectories will matches the corresponding HMM source and genes:
 
-ECOPHYLO_WORKFLOW/
+```
 ├── 01_REFERENCE_PROTEIN_DATA
-│   ├── E_facealis_MAG
-│   ├── Enterococcus_faecalis_6240
-│   ├── Enterococcus_faecium_6589
-│   ├── S_aureus_MAG
-│   └── co_assembly
+│   ├── ASSEMBLY_1
+│   └── ASSEBMLY_2
 ├── 02_NR_FASTAS
-│   ├── Ribosomal_L16
-│   └── Ribosomal_S11
+│   ├── Bacteria_71_Ribosomal_L16
+│   └── Bacteria_71_Ribosomal_L17
 ├── 03_MSA
-│   ├── Ribosomal_L16
-│   └── Ribosomal_S11
+│   ├── Bacteria_71_Ribosomal_L16
+│   └── Bacteria_71_Ribosomal_L17
 ├── 04_SEQUENCE_STATS
-│   ├── Ribosomal_L16
-│   └── Ribosomal_S11
+│   └── Bacteria_71_Ribosomal_L16
 ├── 05_TREES
-│   ├── Ribosomal_L16
-│   ├── Ribosomal_L16_combined.done
-│   ├── Ribosomal_S11
-│   └── Ribosomal_S11_combined.done
-├── 06_MISC_DATA
-│   ├── Ribosomal_L16_estimate_scg_taxonomy_results-RAW-LONG-FORMAT.txt
-│   ├── Ribosomal_L16_misc.tsv
-│   ├── Ribosomal_L16_scg_taxonomy_data.tsv
-│   ├── Ribosomal_S11_estimate_scg_taxonomy_results-RAW-LONG-FORMAT.txt
-│   ├── Ribosomal_S11_misc.tsv
-│   └── Ribosomal_S11_scg_taxonomy_data.tsv
-├── METAGENOMICS_WORKFLOW
-│   ├── 00_LOGS
-│   ├── 03_CONTIGS
-│   ├── 04_MAPPING
-│   ├── 05_ANVIO_PROFILE
-│   ├── 06_MERGED
-│   ├── 07_SUMMARY
-│   ├── Ribosomal_L16_ECOPHYLO_WORKFLOW_state.json
-│   ├── Ribosomal_L16_add_default_collection.done
-│   ├── Ribosomal_L16_state_imported_profile.done
-│   ├── Ribosomal_S11_ECOPHYLO_WORKFLOW_state.json
-│   ├── Ribosomal_S11_add_default_collection.done
-│   ├── Ribosomal_S11_state_imported_profile.done
-│   ├── fasta.txt
-│   ├── metagenomics_config.json
-│   ├── metagenomics_workflow.done
-│   └── samples.txt
-├── Ribosomal_L16_anvi_estimate_scg_taxonomy_for_SCGs.done
-├── Ribosomal_S11_anvi_estimate_scg_taxonomy_for_SCGs.done
+│   ├── Bacteria_71_Ribosomal_L16
+│   └── Bacteria_71_Ribosomal_L17
+└── 06_MISC_DATA
+    ├── Bacteria_71_Ribosomal_L16
+    └── Bacteria_71_Ribosomal_L17
 ```
 
 To visualize the results of the different ecophylo runs, just change the paths to include the different proteins:
@@ -551,6 +603,20 @@ Finally, edit the `"HOME"` string to a new path to ensure you make a new directo
     "LOGS_DIR": "00_LOGS"
 },
 ```
+
+
+### Can I merge the genes from two HMM models?
+
+We ran into the situation where we had multiple HMM models representing different clades of a gene. In this type of cases it would make sense to want to combine all the genes, that had at least one hit to one HMM model, into a single EcoPhylo tree.
+
+To do something like this, you can use the optional 'group' column in the %(hmm-list)s file. Every gene with the same 'group' name will be merged at the first clustering step of the workflow. Here is an fictive example:
+
+```
+name	source	path	group
+CladeA	Integrase_HMMs	Integrase_external_hmm	Integrase
+CladeB	Integrase_HMMs	Integrase_external_hmm	Integrase
+```
+
 
 ### Can I add more genomes and metagenomes to my analysis?
 
