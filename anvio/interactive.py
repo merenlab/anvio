@@ -213,14 +213,23 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.completeness = Completeness(self.contigs_db_path)
             self.collections.populate_collections_dict(self.contigs_db_path)
 
-            # initialize ContigsSuperclass
-            ContigsSuperclass.__init__(self, self.args)
-            self.init_splits_taxonomy(self.taxonomic_level)
-
             # while we are here, let's make sure we are not working with apples and oranges here if there
             # also a profile-db defined in this context.
             if self.profile_db_path:
-                utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
+                if self.mode == 'codon-frequencies':
+                    if os.path.exists(self.profile_db_path):
+                        raise ConfigError(f"Sorry, in this mode you have to specify a profile-db path for a profile-db "
+                                          f"TO BE generated for you by anvi'o, not a path for one that already exists :( "
+                                          f"It may be the case that you already have used `anvi-display-codon-frequencies` "
+                                          f"with a profile-db PATH to generate the file at '{self.profile_db_path}'. In this "
+                                          f"case, you should use the program `anvi-interactive` to visualize the data stored "
+                                          f"in that file by running `anvi-interactive -p {self.profile_db_path} --manual`")
+                else:
+                    utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
+
+            # initialize ContigsSuperclass because we are normal people with a contigs-db
+            ContigsSuperclass.__init__(self, self.args)
+            self.init_splits_taxonomy(self.taxonomic_level)
         else:
             # Why do we have these here? This question has somewhat a convoluted answer. In the previous
             # iterations of the code, we would initialize the ContigsSuperclass regardless of whether we
@@ -267,21 +276,6 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 self.mode = 'trnaseq'
             else:
                 self.mode = 'full'
-
-        if self.mode in ['full', 'collection', 'trnaseq', 'gene'] and not self.profile_db_path:
-            raise ConfigError("You must declare a profile database for this to work :(")
-
-        ContigsSuperclass.__init__(self, self.args)
-        self.init_splits_taxonomy(self.taxonomic_level)
-
-        # make sure we are not dealing with apples and oranges here.
-        if self.contigs_db_path and self.profile_db_path:
-            if self.mode == 'codon-frequencies':
-                if os.path.exists(self.profile_db_path):
-                    raise ConfigError("Sorry, in this mode you have to specify a profile-db path for a profile-db "
-                                  "to be generated, not for one that already exists :(")
-            else:
-                utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
         self.P = lambda x: os.path.join(self.p_meta['output_dir'], x)
         self.cwd = os.getcwd()
