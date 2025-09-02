@@ -3824,7 +3824,7 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
                                         column_mapping=None, indexing_field=0, separator='\t', no_header=False,\
                                         ascii_only=False, only_expected_fields=False, assign_none_for_missing=False,\
                                         none_value=None, empty_header_columns_are_OK=False, return_failed_lines=False,
-                                        ignore_duplicated_keys=False):
+                                        ignore_duplicated_keys=False, key_prefix=None):
     """Takes a file path, returns a dictionary.
 
        - If `return_failed_lines` is True, it the function will not throw an exception, but instead
@@ -3944,6 +3944,9 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
             entry_name = 'line__%09d__' % line_counter
         else:
             entry_name = line_fields[indexing_field]
+
+            if key_prefix:
+                entry_name = key_prefix + entry_name
 
         if entry_name in d and not ignore_duplicated_keys:
             raise ConfigError("The entry name %s appears more than once in the TAB-delimited file '%s'. There may be more "
@@ -4381,10 +4384,13 @@ def get_all_item_names_from_the_database(db_path, run=run):
     all_items = set([])
 
     database = db.DB(db_path, get_required_version_for_db(db_path))
-    db_type = database.get_meta_value('db_type')
+
+    db_type, db_variant = get_db_type_and_variant(db_path)
 
     if db_type == 'profile':
-        if is_blank_profile(db_path):
+        if db_variant == 'codon-frequencies':
+            all_items = set(database.get_single_column_from_table('codon_frequencies_view', 'item'))
+        elif is_blank_profile(db_path):
             run.warning("Someone asked for the split names in a blank profile database. Sadly, anvi'o does not keep track "
                         "of split names in blank profile databases. This function will return an empty set as split names "
                         "to not kill your mojo, but whatever you were trying to do will not work :(")

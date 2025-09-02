@@ -378,6 +378,41 @@ function showTaxonomyTableDialog(title, content)
 }
 
 
+function showGeneFunctionsSummaryTableDialog(title, content)
+{
+    var randomID = title.hashCode();
+
+    var template = `
+    <div class="modal fade taxonomyTableDialog" id="modal` + randomID + `" role="dialog" data-backdrop="false" style="pointer-events: none;">
+        <div class="taxonomy-modal-dialog modal-dialog" style="pointer-events: all;">
+            <div class="modal-content">
+
+                <div class="modal-header">
+                    <h4 class="modal-title">` + title + `</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                </div>
+
+                <p style="margin: 20px; font-style: italic;">Here is the list of functions that are associated with the gene calls in your bin.</p>
+
+                <div class="modal-body">
+                    ` + content + `
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-danger" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>`;
+
+    $('body').append(template);
+    $('#modal' + randomID).modal({'show': true, 'backdrop': true, 'keyboard': false}).find('.modal-dialog').draggable({handle: '.modal-header'});
+    $('#modal' + randomID).on('hidden.bs.modal', function () {
+        $(this).remove();
+    });    
+}
+
+
 function showGeneClusterFunctionsSummaryTableDialog(title, content)
 {
     var randomID = title.hashCode();

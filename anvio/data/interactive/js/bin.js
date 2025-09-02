@@ -74,31 +74,30 @@ Bins.prototype.NewBin = function(id, binState) {
         var redundancy = "---";
     }
 
-    var template = `<tr bin-id="${id}" class="bin-row">
-                       <td><input type="radio" name="active_bin" value="${id}"></td>
-                       <td><div id="bin_color_${id}" class="colorpicker" color="${color}" style="background-color: ${color}"></td>
-                       <td data-value="${name}">
-                            <input type="text" class="bin-name" oninput="this.value = event.target.value.replaceAll(' ', '_');" onChange="emit('bin-settings-changed'); this.parentNode.setAttribute('data-value', this.value);" size="21" id="bin_name_${id}" value="${name}">
-                        </td>
-                       ${mode != 'pan' ? `
-                           <td data-value="${contig_count}" class="num-items"><input type="button" value="${contig_count}" title="Click for contig names" onClick="showContigNames(${id});"></td>
-                           <td data-value="${contig_length}" class="length-sum"><span>${contig_length}</span></td>
-                       ` : ''}
-                       ${mode == 'pan' ? `
-                            <td data-value="${num_gene_clusters}" class="num-gene-clusters"><input type="button" value="${num_gene_clusters}" title="Click for quick gene cluster summaries" onClick="showGeneClusterDetails(${id});"></td>
-                            <td data-value="${num_gene_calls}" class="num-gene-calls"><input type="button" value="${num_gene_calls}"></td>
-                       ` : `
-                            <td data-value="${completeness}" class="completeness"><input type="button" value="${completeness}" title="Click for completeness table" onClick="showCompleteness(${id});"></td>
-                            <td data-value="${redundancy}" class="redundancy"><input type="button" value="${redundancy}" title="Click for redundant hits" onClick="showRedundants(${id}); "></td>
-                       `}
-                       <td><center><span class="default-bin-icon bi bi-trash-fill fa-lg" aria-hidden="true" alt="Delete this bin" title="Delete this bin" onClick="bins.DeleteBin(${id});"></span></center></td>
-                    </tr>
-                    ${ mode === 'full' || mode === 'refine' || mode === 'manual' || mode === 'pan' ? `<tr style="${ $('#estimate_taxonomy').is(':checked') ? `` : `display: none;`}" data-parent="${id}">
-                    <td style="border-top: 0px;">&nbsp;</td>
-                    <td style="border-top: 0px;">&nbsp;</td>
-                    <td colspan="6" style="border-top: 0px; padding-top: 0px;">
-                        <span bin-id="${id}" class="taxonomy-name-label">N/A</span>
-                    </td></tr>` : ``}`;
+    var template = '<tr bin-id="' + id + '" class="bin-row">' +
+                   '<td><input type="radio" name="active_bin" value="' + id + '"></td>' +
+                   '<td><div id="bin_color_' + id + '" class="colorpicker" color="' + color + '" style="background-color: ' + color + '"></div></td>' +
+                   '<td data-value="' + name + '"><input type="text" class="bin-name" oninput="this.value = event.target.value.replaceAll(\' \', \'_\');" onchange="emit(\'bin-settings-changed\'); this.parentNode.setAttribute(\'data-value\', this.value);" size="21" id="bin_name_' + id + '" value="' + name + '"></td>';
+
+    if (mode === 'pan') {
+        template += '<td data-value="' + num_gene_clusters + '" class="num-gene-clusters"><input type="button" value="' + num_gene_clusters + '" title="Click for quick gene cluster summaries" onclick="showGeneClusterDetails(' + id + ');"></td>' +
+                    '<td data-value="' + num_gene_calls + '" class="num-gene-calls"><input type="button" value="' + num_gene_calls + '"></td>';
+    } else if (mode === 'codon-frequencies') {
+        template += '<td data-value="' + contig_count + '" class="num-items"><input type="button" value="' + contig_count + '" title="Click for contig names" onclick="showGeneFunctions(' + id + ');"></td>';
+    } else {
+        template += '<td data-value="' + contig_count + '" class="num-items"><input type="button" value="' + contig_count + '" title="Click for contig names" onclick="showContigNames(' + id + ');"></td>' +
+                    '<td data-value="' + contig_length + '" class="length-sum"><span>' + contig_length + '</span></td>';
+    }
+
+    template += '<td><center><span class="default-bin-icon bi bi-trash-fill fa-lg" aria-hidden="true" alt="Delete this bin" title="Delete this bin" onclick="bins.DeleteBin(' + id + ');"></span></center></td>' +
+                '</tr>' +
+
+    ((mode === 'full' || mode === 'refine' || mode === 'manual' || mode === 'pan') ?
+        '<tr style="' + ($('#estimate_taxonomy').is(':checked') ? '' : 'display: none;') + '" data-parent="' + id + '">' +
+            '<td style="border-top: 0px;">&nbsp;</td>' +
+            '<td style="border-top: 0px;">&nbsp;</td>' +
+            '<td colspan="6" style="border-top: 0px; padding-top: 0px;"><span bin-id="' + id + '" class="taxonomy-name-label">N/A</span></td>' +
+        '</tr>' : '');
 
     this.container.insertAdjacentHTML('beforeend', template);
     this.SelectLastRadio();
@@ -494,6 +493,20 @@ Bins.prototype.UpdateBinsWindow = function(bin_list) {
                 bin_row.querySelector('td.num-gene-calls').setAttribute('data-value', num_gene_calls);
                 bin_row.querySelector('td.num-gene-calls>input').value = num_gene_calls;
             }
+        } else if (mode === 'codon-frequencies') {
+            let num_items = 0;
+
+            for (let node of this.selections[bin_id].values()) {
+                if (node.IsLeaf()) {
+                    num_items++;
+                }
+            }
+
+            let bin_row = this.container.querySelector(`tr[bin-id="${bin_id}"]`);
+            let bin_name = bin_row.querySelector('.bin-name').value;
+
+            bin_row.querySelector('td.num-items').setAttribute('data-value', num_items);
+            bin_row.querySelector('td.num-items>input').value = num_items;
         } else {
             let num_items = 0;
             let length_sum = 0;
