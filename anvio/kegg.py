@@ -3988,8 +3988,10 @@ class KeggEstimatorArgs():
 
         if knum in self.ko_dict:
             metadata_dict["enzyme_definition"] = self.ko_dict[knum]['definition']
-        elif self.include_stray_kos and self.stray_ko_dict and knum in self.stray_ko_dict:
+        elif self.include_stray_kos and self.stray_ko_dict and knum in self.stray_ko_dict or f"{knum}{STRAY_KO_ANVIO_SUFFIX}" in self.stray_ko_dict:
             # if we can't find the enzyme in the KO dictionary, try to find it in the stray KO dictionary (if it exists)
+            if knum not in self.stray_ko_dict and f"{knum}{STRAY_KO_ANVIO_SUFFIX}" in self.stray_ko_dict:
+                knum = f"{knum}{STRAY_KO_ANVIO_SUFFIX}"
             metadata_dict["enzyme_definition"] = self.stray_ko_dict[knum]['definition']
         else:
             # if we still can't find the enzyme, try to find it in the database
