@@ -1,7 +1,7 @@
 {
     "version": "3",
     "tree-type": "phylogram",
-    "order-by": "tree:unknown:unknown",
+    "order-by": ">> gene_call",
     "current-view": "single",
     "tree-width": "30000",
     "outer-ring-height": "200",
