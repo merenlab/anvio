@@ -2034,7 +2034,6 @@ function showGeneFunctions(bin_id, updateOnly) {
                              <th>Function</th>
                            </tr>
                            </thead>
-
                            <tbody>`;
 
             // building the table for each gene cluster
@@ -2053,30 +2052,28 @@ function showGeneFunctions(bin_id, updateOnly) {
                         function_string = 'N/A';
                     }
 
-
                     if (index == 0) {
                         content += `<tr style="border-top: 3px solid #d0d0d0;">
-                                    <td rowspan="${ Object.keys(response['sources']).length }"><b>${gene_callers_id}</b></td>
-                                    <td>${ function_source }</a></td>
-                                    <td>${ accession_string }</td>
-                                    <td>${ function_string }</td>
+                                    <td rowspan="${Object.keys(response['sources']).length}"><b>${gene_callers_id}</b></td>
+                                    <td>${function_source}</td>
+                                    <td>${accession_string}</td>
+                                    <td>${function_string}</td>
                                     </tr>`;
                     } else {
                         content += `<tr>
-                                    <td>${ function_source }</a></td>
-                                    <td>${ accession_string }</td>
-                                    <td>${ function_string }</td>
+                                    <td>${function_source}</td>
+                                    <td>${accession_string}</td>
+                                    <td>${function_string}</td>
                                     </tr>`;
                     }
                 });
             });
 
-        content += `</tbody></table>`
+            content += `</tbody></table>`;
 
-        showGeneFunctionsSummaryTableDialog('A summary of functions for ' + bin_info['items'].length + ' genes in "' + bin_info['bin_name'] + '".', content + '</table>');
+            showGeneFunctionsSummaryTableDialog('A summary of functions for ' + bin_info['items'].length + ' genes in "' + bin_info['bin_name'] + '".', content);
         }
     });
-
 }
 
 
