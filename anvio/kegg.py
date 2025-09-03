@@ -95,7 +95,7 @@ OUTPUT_MODES = {'modules': {
                 'hits': {
                     'output_suffix': "hits.txt",
                     'data_dict': "kofams",
-                    'headers': ["enzyme", "gene_caller_id", "contig", "modules_with_enzyme", "enzyme_definition"],
+                    'headers': ["enzyme", "gene_caller_id", "contig", "modules_with_enzyme", "enzyme_definition", "warnings"],
                     'description': "Information on all enzyme annotations in the contigs DB, regardless of module membership"
                     },
                 }
@@ -260,7 +260,7 @@ OUTPUT_HEADERS = {'module' : {
                         },
                   'warnings' : {
                         'cdict_key': 'warnings',
-                        'mode_type': 'modules',
+                        'mode_type': 'all',
                         'description': "This column holds a comma-separated list of notes about things that might affect completeness "
                                        "estimates for a module, such as missing enzyme profiles."
                         },
@@ -4839,6 +4839,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         return bin_level_module_dict, bin_level_ko_dict
 
+
     def compute_stepwise_module_completeness_for_bin(self, mnum, meta_dict_for_bin):
         """This function calculates the stepwise completeness of the specified module within the given bin dictionary.
 
@@ -6992,6 +6993,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         d[self.ko_unique_id]["modules_with_enzyme"] = metadata_dict["modules_with_enzyme"]
                     if "enzyme_definition" in headers_to_include:
                         d[self.ko_unique_id]["enzyme_definition"] = metadata_dict["enzyme_definition"]
+                    if "warnings" in headers_to_include:
+                        if not k_dict["warnings"]:
+                            d[self.ko_unique_id]["warnings"] = "None"
+                        else:
+                            d[self.ko_unique_id]["warnings"] = ",".join(sorted(k_dict["warnings"]))
 
                     if self.add_coverage:
                         if self.enzymes_txt:
