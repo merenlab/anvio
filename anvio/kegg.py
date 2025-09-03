@@ -6330,12 +6330,14 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         # check and warning for enzymes not in self.all_kos_in_db
         enzymes_not_in_modules = list(enzyme_df[~enzyme_df["enzyme_accession"].isin(self.all_kos_in_db.keys())]['enzyme_accession'].unique())
+        if self.include_stray_kos:
+            enzymes_not_in_modules = [e for e in enzymes_not_in_modules if e not in self.stray_ko_dict]
         if enzymes_not_in_modules:
             example = enzymes_not_in_modules[0]
             self.run.warning(f"FYI, some enzymes in the 'enzyme_accession' column of your input enzymes-txt file do not belong to any "
                              f"metabolic modules (that we know about). These enzymes will be ignored for the purposes of estimating module "
                              f"completeness, but should still appear in enzyme-related outputs (if those were requested). In case you are "
-                             f"curious, here is one example (run this program with --debug to get a full list): {example}")
+                             f"curious, here is one example: {example}")
 
         # if cov/det columns are not in the file, we explicitly turn off flag to add this data to output
         if self.add_coverage and ('coverage' not in enzyme_df.columns or 'detection' not in enzyme_df.columns):
