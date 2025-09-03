@@ -4727,8 +4727,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                         "that any modules this KO belongs to can never be fully complete (this includes "
                                         f"{mods_str}). ")
                     for m in mods_it_is_in:
-                        if knum[0] != 'M':
-                            bin_level_module_dict[m]["warnings"].add(f"No KOfam profile for {knum}")
+                        bin_level_module_dict[m]["warnings"].add(f"No KOfam profile for {knum}")
 
                 if anvio.DEBUG:
                     if self.exclude_kos_no_threshold:
