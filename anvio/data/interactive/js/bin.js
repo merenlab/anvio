@@ -86,7 +86,9 @@ Bins.prototype.NewBin = function(id, binState) {
         template += '<td data-value="' + contig_count + '" class="num-items"><input type="button" value="' + contig_count + '" title="Click for contig names" onclick="showGeneFunctions(' + id + ');"></td>';
     } else {
         template += '<td data-value="' + contig_count + '" class="num-items"><input type="button" value="' + contig_count + '" title="Click for contig names" onclick="showContigNames(' + id + ');"></td>' +
-                    '<td data-value="' + contig_length + '" class="length-sum"><span>' + contig_length + '</span></td>';
+                    '<td data-value="' + contig_length + '" class="length-sum"><span>' + contig_length + '</span></td>' +
+                    '<td data-value="' + completeness + '" class="completeness"><input type="button" value="' + completeness + '" title="Click for completeness table" onclick="showCompleteness(' + id + ');"></td>' +
+                    '<td data-value="' + redundancy + '" class="redundancy"><input type="button" value="' + redundancy + '" title="Click for redundant hits" onclick="showRedundants(' + id + ');"></td>';
     }
 
     template += '<td><center><span class="default-bin-icon bi bi-trash-fill fa-lg" aria-hidden="true" alt="Delete this bin" title="Delete this bin" onclick="bins.DeleteBin(' + id + ');"></span></center></td>' +
