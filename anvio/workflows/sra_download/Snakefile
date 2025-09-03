@@ -91,18 +91,11 @@ rule prefetch:
     run:
         shell("prefetch {wildcards.accession} --output-directory {params.SRA_OUTPUT_DIR} --max-size {params.MAX_SIZE} >> {log} 2>&1")
 
-        sra_file = os.path.join(dirs_dict['SRA_prefetch'], "{accession}", "{accession}.sra")
-        sralite_file = os.path.join(dirs_dict['SRA_prefetch'], "{accession}", "{accession}.sralite")
+        sra_file = os.path.join(dirs_dict['SRA_prefetch'], f"{wildcards.accession}", f"{wildcards.accession}.sra")
+        sralite_file = os.path.join(dirs_dict['SRA_prefetch'], f"{wildcards.accession}", f"{wildcards.accession}.sralite")
         if not os.path.exists(sra_file) and not os.path.exists(sralite_file):
-            raise ConfigError(f"Following the execution of `prefetch` for accession {accession}, we could not find either of "
+            raise ConfigError(f"Following the execution of `prefetch` for accession {wildcards.accession}, we could not find either of "
                               f"the expected output files {sra_file} or {sralite_file}.")
-
-def output_from_prefetch(wildcards):
-    """Returns either the path to a .sra file or the path to a .sralite file depending on which was created by prefetch."""
-    sra_file = os.path.join(dirs_dict['SRA_prefetch'], "{wildcards.accession}", "{wildcards.accession}.sra")
-    if not os.path.exists(sra_file):
-        sra_file = os.path.join(dirs_dict['SRA_prefetch'], "{wildcards.accession}", "{wildcards.accession}.sralite")
-    return sra_file
 
 rule check_md5sum:
     """Curl the md5sum file from the SRA FTP site"""
@@ -113,11 +106,20 @@ rule check_md5sum:
         prefetch_DONE = os.path.join(dirs_dict['SRA_prefetch'], "{accession}", "{accession}.prefetch.done")
     params:
         md5sum = os.path.join(dirs_dict['SRA_prefetch'], "{accession}", "{accession}.json"),
-        sra_file = unpack(output_from_prefetch)
+        sra_file = os.path.join(dirs_dict['SRA_prefetch'], "{accession}", "{accession}.sra")
     output:
         md5sum_DONE = touch(os.path.join(dirs_dict['SRA_prefetch'], "{accession}", "{accession}.md5sum.done"))
     threads: M.T('check_md5sum')
     run:
+        # Identify the correct SRA file from prefetch
+        sralite_file = os.path.join(dirs_dict['SRA_prefetch'], f"{wildcards.accession}", f"{wildcards.accession}.sralite")
+        if not os.path.exists(params.sra_file) and os.path.exists(sralite_file):
+           params.sra_file = sralite_file
+
+        log_path = str(log)
+        with open(log_path, 'w') as log_file:
+            log_file.write(f"Checking MD5sum for file: {params.sra_file}\n")
+
         # Get the md5sum from the SRA FTP site
         shell("curl 'https://locate.ncbi.nlm.nih.gov/sdl/2/retrieve?filetype=run&location-type=forced&location=s3.us-east-1&accept-charges=aws&acc={wildcards.accession}' --output {params.md5sum} >> {log} 2>&1")
 
@@ -129,7 +131,6 @@ rule check_md5sum:
         calculated_md5 = M.calculate_md5(file_path=params.sra_file)
 
         # Compare expected and calculated md5 and log the result
-        log_path = str(log)
         with open(log_path, 'a') as log_file:   
             if calculated_md5 == expected_md5:
                 log_file.write(f"Checksums match: {calculated_md5}\n")
