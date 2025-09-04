@@ -68,6 +68,7 @@ def get_args():
                                          "if you wish. The default threshold is %(default)g."}))
     groupE.add_argument(*anvio.A('use-stepwise-completeness'), **anvio.K('use-stepwise-completeness'))
     groupE.add_argument(*anvio.A('include-samples-missing-from-groups-txt'), **anvio.K('include-samples-missing-from-groups-txt'))
+    groupE.add_argument(*anvio.A('qlambda'), **anvio.K('qlambda'))
     groupE.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
     return parser.get_args(parser)

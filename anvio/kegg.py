@@ -116,7 +116,7 @@ OUTPUT_MODES = {'modules': {
                 'hits': {
                     'output_suffix': "hits.txt",
                     'data_dict': "kofams",
-                    'headers': ["enzyme", "gene_caller_id", "contig", "modules_with_enzyme", "enzyme_definition"],
+                    'headers': ["enzyme", "gene_caller_id", "contig", "modules_with_enzyme", "enzyme_definition", "warnings"],
                     'description': "Information on all enzyme annotations in the contigs DB, regardless of module membership"
                     },
                 }
@@ -281,7 +281,7 @@ OUTPUT_HEADERS = {'module' : {
                         },
                   'warnings' : {
                         'cdict_key': 'warnings',
-                        'mode_type': 'modules',
+                        'mode_type': 'all',
                         'description': "This column holds a comma-separated list of notes about things that might affect completeness "
                                        "estimates for a module, such as missing enzyme profiles."
                         },
@@ -653,7 +653,7 @@ class KeggSetup(KeggContext):
         KeggContext.__init__(self, self.args)
 
         # get KEGG snapshot info for default setup
-        self.target_snapshot = self.kegg_snapshot or 'v2025-02-04'
+        self.target_snapshot = self.kegg_snapshot or 'v2025-08-07'
         self.target_snapshot_yaml = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG-SNAPSHOTS.yaml')
         self.snapshot_dict = get_yaml_as_dict(self.target_snapshot_yaml)
 
@@ -928,7 +928,8 @@ class KeggSetup(KeggContext):
                     f"directory, which is used in pathway visualization: {map_image_data_dir}"
                 )
 
-        if not os.path.isfile(self.kegg_brite_pathways_file):
+        brite_json_file = os.path.join(path_to_kegg_in_archive, os.path.basename(self.kegg_brite_pathways_file))
+        if not os.path.isfile(brite_json_file):
             are_map_files_included = False
             if anvio.DEBUG and not self.skip_map_images:
                 self.run.warning(
@@ -3770,15 +3771,6 @@ class KeggEstimatorArgs():
                     self.all_kos_in_db[k] = {'modules': [], 'annotation_source': src, 'function': func}
                 self.all_kos_in_db[k]['modules'].append(mod)
 
-                # if we have our own versions of any stray KOs, then we include them here to enable lookups downstream
-                k_anvio = f"{k}{STRAY_KO_ANVIO_SUFFIX}"
-                if self.include_stray_kos and (k_anvio in self.ko_dict or (self.stray_ko_dict and k_anvio in self.stray_ko_dict)):
-                    if k_anvio not in self.all_kos_in_db:
-                        src = 'KOfam'
-                        func = self.all_modules_in_db[mod]['ORTHOLOGY'][k] if 'ORTHOLOGY' in self.all_modules_in_db[mod] else self.ko_dict[k_anvio]['definition']
-                        self.all_kos_in_db[k_anvio] = {'modules': [], 'annotation_source': src, 'function': func}
-                    self.all_kos_in_db[k_anvio]['modules'].append(mod)
-
 
     def init_paths_for_module(self, mnum, mod_db=None):
         """This function unrolls the module DEFINITION for the module provided and returns a list of all paths through it.
@@ -4008,8 +4000,10 @@ class KeggEstimatorArgs():
 
         if knum in self.ko_dict:
             metadata_dict["enzyme_definition"] = self.ko_dict[knum]['definition']
-        elif self.include_stray_kos and self.stray_ko_dict and knum in self.stray_ko_dict:
+        elif self.include_stray_kos and self.stray_ko_dict and knum in self.stray_ko_dict or f"{knum}{STRAY_KO_ANVIO_SUFFIX}" in self.stray_ko_dict:
             # if we can't find the enzyme in the KO dictionary, try to find it in the stray KO dictionary (if it exists)
+            if knum not in self.stray_ko_dict and f"{knum}{STRAY_KO_ANVIO_SUFFIX}" in self.stray_ko_dict:
+                knum = f"{knum}{STRAY_KO_ANVIO_SUFFIX}"
             metadata_dict["enzyme_definition"] = self.stray_ko_dict[knum]['definition']
         else:
             # if we still can't find the enzyme, try to find it in the database
@@ -4057,6 +4051,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         self.profile_db = None
         # This can be initialized later if necessary by setup_ko_dict()
         self.ko_dict = {}
+        self.stray_ko_dict = {}
 
         # INIT BASE CLASSES
         KeggEstimatorArgs.__init__(self, self.args)
@@ -4519,7 +4514,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                                                where_clause=hits_where_clause)
 
         contigs_db.disconnect()
-
+        
         # combine the information for each gene call into neat tuples for returning
         # each gene call is only on one split of one contig, so we can convert these lists of tuples into dictionaries for easy access
         # but some gene calls have multiple kofam hits (and some kofams have multiple gene calls), so we must keep the tuple structure for those
@@ -4642,8 +4637,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         # we update the header list for the affected modes
         self.available_modes["hits"]["headers"].extend(kofam_hits_coverage_headers + kofam_hits_detection_headers)
         self.available_modes["modules"]["headers"].extend(modules_coverage_headers + modules_detection_headers)
-
-
+    
     def mark_kos_present_for_list_of_splits(self, kofam_hits_in_splits, split_list=None, bin_name=None):
         """This function generates two bin-level dictionaries of dictionaries to store metabolism data.
 
@@ -4715,6 +4709,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                            "unique_to_this_module": set(),
                                            "warnings" : set()
                                           }
+        
         for knum in all_kos:
             """
             We can only add warnings about missing KOfam profiles because for other annotation sources, we don't
@@ -4725,8 +4720,17 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             Furthermore, this can only be done when we are using both KEGG data and user data (ie, not --only-user-modules)
             because we need access to the self.ko_dict
             """
-            if not self.only_user_modules and self.all_kos_in_db[knum]['annotation_source'] == 'KOfam' and knum not in self.ko_dict \
-                        and (f"{knum}{STRAY_KO_ANVIO_SUFFIX}" not in self.ko_dict) and self.exclude_kos_no_threshold:
+            
+            if knum.startswith("M"):
+                continue
+            
+            if (not self.only_user_modules 
+                and self.all_kos_in_db[knum]['annotation_source'] == 'KOfam' 
+                and knum not in self.ko_dict 
+                and knum not in self.stray_ko_dict 
+                and f"{knum}{STRAY_KO_ANVIO_SUFFIX}" not in self.stray_ko_dict
+                and self.exclude_kos_no_threshold):
+                
                 mods_it_is_in = self.all_kos_in_db[knum]['modules']
                 if mods_it_is_in:
                     if anvio.DEBUG:
@@ -4735,8 +4739,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                         "that any modules this KO belongs to can never be fully complete (this includes "
                                         f"{mods_str}). ")
                     for m in mods_it_is_in:
-                        if knum[0] != 'M':
-                            bin_level_module_dict[m]["warnings"].add(f"No KOfam profile for {knum}")
+                        bin_level_module_dict[m]["warnings"].add(f"No KOfam profile for {knum}")
 
                 if anvio.DEBUG:
                     if self.exclude_kos_no_threshold:
@@ -4748,25 +4751,37 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                          f"re-running this program with the --include-kos-not-in-kofam flag.")
 
                 continue
-
+            
             bin_level_ko_dict[knum] = {"gene_caller_ids" : set(),
                                      "modules" : None,
                                      "genes_to_contigs" : {},
-                                     "contigs_to_genes" : {}
+                                     "contigs_to_genes" : {},
+                                     "warnings" : set()
                                      }
 
         kos_not_in_modules = []
+        
         for ko, gene_call_id, split, contig in kofam_hits_in_splits:
+            # make sure we can count annotations to anvi'o versions of stray KO models by using KEGG's original accession
+            is_anvio_version = False
+            if ko.endswith(STRAY_KO_ANVIO_SUFFIX):
+                is_anvio_version = True
+                ko = ko.replace(STRAY_KO_ANVIO_SUFFIX, "")
+                
             if ko not in self.all_kos_in_db:
+                
                 kos_not_in_modules.append(ko)
+                
                 # KOs that are not in modules will not be initialized above in the ko hit dictionary, so we add them here if we haven't already
                 if ko not in bin_level_ko_dict:
                     bin_level_ko_dict[ko] = {"gene_caller_ids" : set(),
                                              "modules" : None,
                                              "genes_to_contigs" : {},
-                                             "contigs_to_genes" : {}
+                                             "contigs_to_genes" : {},
+                                             "warnings" : set()
                                              }
             else:
+                
                 # if we are missing the KO from the dictionary at this point, we should fail nicely instead of with a KeyError
                 if ko not in bin_level_ko_dict:
                     if self.ignore_unknown_kos:
@@ -4785,6 +4800,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                       f"metabolism, you can re-run `anvi-estimate-metablism` with the flag `--ignore-unknown-KOs`. If this message "
                                      f"made you worry, you could also re-do your annotations or remove these unknown enzymes from your input "
                                      f"--enzymes-txt file to be on the safe side.")
+                
                 present_in_mods = self.all_kos_in_db[ko]['modules']
                 bin_level_ko_dict[ko]["modules"] = present_in_mods
 
@@ -4792,12 +4808,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 is_unique = False
                 if len(present_in_mods) == 1:
                     is_unique = True
-
-                # make sure we can count annotations to anvi'o versions of stray KO models by using KEGG's original accession
-                is_anvio_version = False
-                if ko.endswith(STRAY_KO_ANVIO_SUFFIX):
-                    is_anvio_version = True
-                    ko = ko.replace(STRAY_KO_ANVIO_SUFFIX, "")
 
                 for m in present_in_mods:
                     bin_level_module_dict[m]["gene_caller_ids"].add(gene_call_id)
@@ -4821,7 +4831,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
                     # point out use of anvi'o-specific KO models
                     if is_anvio_version:
-                        bin_level_module_dict[m]["warnings"].add(f"used '{ko}{STRAY_KO_ANVIO_SUFFIX}' model to annotate {ko}")
+                        warning = f"used '{ko}{STRAY_KO_ANVIO_SUFFIX}' model to annotate {ko}"
+                        bin_level_module_dict[m]["warnings"].add(warning)
+                        bin_level_ko_dict[ko]["warnings"].add(warning)
+                    
 
             bin_level_ko_dict[ko]["gene_caller_ids"].add(gene_call_id)
             bin_level_ko_dict[ko]["genes_to_contigs"][gene_call_id] = contig
@@ -6329,12 +6342,14 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         # check and warning for enzymes not in self.all_kos_in_db
         enzymes_not_in_modules = list(enzyme_df[~enzyme_df["enzyme_accession"].isin(self.all_kos_in_db.keys())]['enzyme_accession'].unique())
+        if self.include_stray_kos:
+            enzymes_not_in_modules = [e for e in enzymes_not_in_modules if e not in self.stray_ko_dict]
         if enzymes_not_in_modules:
             example = enzymes_not_in_modules[0]
             self.run.warning(f"FYI, some enzymes in the 'enzyme_accession' column of your input enzymes-txt file do not belong to any "
                              f"metabolic modules (that we know about). These enzymes will be ignored for the purposes of estimating module "
                              f"completeness, but should still appear in enzyme-related outputs (if those were requested). In case you are "
-                             f"curious, here is one example (run this program with --debug to get a full list): {example}")
+                             f"curious, here is one example: {example}")
 
         # if cov/det columns are not in the file, we explicitly turn off flag to add this data to output
         if self.add_coverage and ('coverage' not in enzyme_df.columns or 'detection' not in enzyme_df.columns):
@@ -6563,7 +6578,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_metabolism_for_pangenome_bins(kofam_hits_info, collection_dict)
             else:
                 kofam_hits_info = self.init_hits_and_splits(annotation_sources=self.annotation_sources_to_use)
-
+                
                 if self.add_coverage:
                     self.init_gene_coverage(gcids_for_kofam_hits={int(tpl[1]) for tpl in kofam_hits_info})
 
@@ -6992,6 +7007,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         d[self.ko_unique_id]["modules_with_enzyme"] = metadata_dict["modules_with_enzyme"]
                     if "enzyme_definition" in headers_to_include:
                         d[self.ko_unique_id]["enzyme_definition"] = metadata_dict["enzyme_definition"]
+                    if "warnings" in headers_to_include:
+                        if not k_dict["warnings"]:
+                            d[self.ko_unique_id]["warnings"] = "None"
+                        else:
+                            d[self.ko_unique_id]["warnings"] = ",".join(sorted(k_dict["warnings"]))
 
                     if self.add_coverage:
                         if self.enzymes_txt:
@@ -9870,6 +9890,7 @@ class KeggModuleEnrichment(KeggContext):
         self.output_file_path = A('output_file')
         self.include_missing = True if A('include_samples_missing_from_groups_txt') else False
         self.use_stepwise_completeness = A('use_stepwise_completeness')
+        self.qlambda = A('qlambda')
 
         # init the base class
         KeggContext.__init__(self, self.args)
@@ -10129,6 +10150,7 @@ class KeggModuleEnrichment(KeggContext):
         # run the enrichment analysis
         enrichment_stats = run_functional_enrichment_stats(enrichment_input_path,
                                                                  self.output_file_path,
+                                                                 qlambda=self.qlambda,
                                                                  run=self.run,
                                                                  progress=self.progress)
 

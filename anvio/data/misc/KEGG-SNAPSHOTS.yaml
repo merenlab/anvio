@@ -106,12 +106,6 @@ v2024-08-30:
     modules_db_version: 4
     no_stray_KOs: True
 
-v2024-09-08:
-    url: https://figshare.com/ndownloader/files/49080904
-    archive_name: KEGG_build_2024-09-08_5a9644d40061.tar.gz
-    hash: 5a9644d40061
-    modules_db_version: 4
-
 v2024-09-29:
     url: https://figshare.com/ndownloader/files/49500822
     archive_name: KEGG_build_2024-09-29_5a9644d40061.tar.gz
@@ -124,6 +118,12 @@ v2025-02-04:
     hash: 4039c79d9c82
     modules_db_version: 4
     no_maps: True
+
+v2025-08-07:
+    url: https://figshare.com/ndownloader/files/57008792
+    archive_name: KEGG_build_2025-08-07_66e53d49e65a.tar.gz
+    hash: 66e53d49e65a
+    modules_db_version: 4
 
 
 # How to add a new KEGG snapshot to this file:

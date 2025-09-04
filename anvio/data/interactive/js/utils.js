@@ -378,6 +378,51 @@ function showTaxonomyTableDialog(title, content)
 }
 
 
+function showGeneFunctionsSummaryTableDialog(title, content) {
+    var randomID = title.hashCode();
+
+    var template = `
+    <div class="modal fade geneFunctionsSummaryDialog" id="modal${randomID}" role="dialog">
+        <div class="gene-functions-modal-dialog modal-dialog modal-dialog-centered" style="pointer-events: all; max-width: 90vw; width: 90vw;">
+            <div class="modal-content" style="max-height: 80vh; display: flex; flex-direction: column;">
+
+                <div class="modal-header" style="flex-shrink: 0;">
+                    <h4 class="modal-title">${title}</h4>
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
+                </div>
+
+                <p style="margin: 20px; font-style: italic; flex-shrink: 0;">
+                    Here is the list of functions that are associated with the gene calls in your bin.
+                </p>
+
+                <div class="modal-body" style="overflow: auto; flex: 1; min-height: 0; padding: 0 20px 20px 20px;">
+                    <div class="table-responsive" style="max-height: none;">
+                        ${content}
+                    </div>
+                </div>
+
+                <div class="modal-footer" style="flex-shrink: 0;">
+                    <button type="button" class="btn btn-outline-danger" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>`;
+
+    $('body').append(template);
+
+    $('#modal' + randomID).modal({
+        'show': true,
+        'backdrop': true,
+        'keyboard': true
+    }).find('.modal-dialog').draggable({
+        handle: '.modal-header'
+    });
+
+    $('#modal' + randomID).on('hidden.bs.modal', function () {
+        $(this).remove();
+    });
+}
+
 function showGeneClusterFunctionsSummaryTableDialog(title, content)
 {
     var randomID = title.hashCode();
@@ -409,7 +454,7 @@ function showGeneClusterFunctionsSummaryTableDialog(title, content)
     $('#modal' + randomID).modal({'show': true, 'backdrop': true, 'keyboard': false}).find('.modal-dialog').draggable({handle: '.modal-header'});
     $('#modal' + randomID).on('hidden.bs.modal', function () {
         $(this).remove();
-    });    
+    });
 }
 
 

@@ -329,6 +329,8 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         '''
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
         output_file_path = A('output_file')
+        qlambda = A('qlambda')
+
         tmp_functional_occurrence_file = filesnpaths.get_temp_file_path()
 
         enrichment_file_path = output_file_path
@@ -346,7 +348,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         self.functional_occurrence_stats()
 
         # run enrichment script. this uses the output saved from the previous step.
-        enrichment_stats = run_functional_enrichment_stats(tmp_functional_occurrence_file, output_file_path, run=self.run, progress=self.progress)
+        enrichment_stats = run_functional_enrichment_stats(tmp_functional_occurrence_file, output_file_path, qlambda=qlambda, run=self.run, progress=self.progress)
 
         return enrichment_stats
 

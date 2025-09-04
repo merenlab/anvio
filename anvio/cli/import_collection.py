@@ -15,7 +15,7 @@ from anvio.errors import ConfigError, FilesNPathsError
 from anvio.tables.collections import TablesForCollections
 from anvio.dbinfo import is_blank_profile, is_contigs_db, is_pan_or_profile_db
 from anvio.utils.anviohelp import get_contig_name_to_splits_dict
-from anvio.utils.database import get_all_item_names_from_the_database, get_db_type
+from anvio.utils.database import get_all_item_names_from_the_database, get_db_type, get_db_type_and_variant
 from anvio.utils.files import get_TAB_delimited_file_as_dictionary
 from anvio.utils.validation import check_collection_name
 
@@ -160,14 +160,20 @@ def run_program():
     # here we attempt to make sure the names in the input file are relevant to the
     # names in the contigs database database. but clearly it is not relevant if there
     # is no contigs database is associated with the profile database, so if there is none,
-    # we cheat :
+    # we start looking at other options. some databases without any association with a
+    # contigs-db may still have items listed in them even if they are 'blank' profile-db
+    # files (such as `codon-frequencies` is a good example):
+    blank_profile_db_variants_with_proper_item_names = ['codon-frequencies']
+
     if args.pan_or_profile_db:
-        if get_db_type(args.pan_or_profile_db) == 'profile':
+        db_type, db_variant = get_db_type_and_variant(args.pan_or_profile_db)
+
+        if db_type == 'profile':
             associated_with_a_contigs_db = dbops.ProfileDatabase(args.pan_or_profile_db).meta['contigs_db_hash']
         else:
             associated_with_a_contigs_db = None
 
-        if is_blank_profile(args.pan_or_profile_db):
+        if is_blank_profile(args.pan_or_profile_db) and db_variant not in blank_profile_db_variants_with_proper_item_names:
             if associated_with_a_contigs_db:
                 db_names = get_all_item_names_from_the_database(args.contigs_db)
             else:
