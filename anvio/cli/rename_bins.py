@@ -7,7 +7,6 @@ import operator
 
 import anvio
 import anvio.dbops as dbops
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
@@ -15,6 +14,8 @@ import anvio.ccollections as ccollections
 from anvio.completeness import Completeness
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.tables.collections import TablesForCollections
+from anvio.dbinfo import is_profile_db_and_contigs_db_compatible
+from anvio.utils.validation import is_this_name_OK_for_database
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -58,7 +59,7 @@ def run_program():
     size_for_MAG = A('size_for_MAG')
     dry_run = A('dry_run')
 
-    utils.is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path)
+    is_profile_db_and_contigs_db_compatible(profile_db_path, contigs_db_path)
 
     collections = ccollections.Collections()
     collections.populate_collections_dict(profile_db_path)
@@ -71,7 +72,7 @@ def run_program():
         raise ConfigError("Anvi'o is having hard time believing that you called this function without "
                            "a prefix to rename bins in the collection '%s'." % collection_name_to_read)
 
-    utils.is_this_name_OK_for_database('prefix for bins', prefix)
+    is_this_name_OK_for_database('prefix for bins', prefix)
 
     if not report_file_path:
         raise ConfigError("You must provide an output file name to report file changes. It may or may not "
@@ -106,7 +107,7 @@ def run_program():
     if not collection_name_to_write:
         raise ConfigError("You must provide a new collection name to write updated bin names.")
 
-    utils.is_this_name_OK_for_database('collection name two write', collection_name_to_write)
+    is_this_name_OK_for_database('collection name two write', collection_name_to_write)
 
     if  collection_name_to_read not in collections.collections_dict:
         raise ConfigError("%s is not a valid collection name, because it doesn't exist :(. See a "

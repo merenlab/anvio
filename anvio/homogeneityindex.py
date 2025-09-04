@@ -6,8 +6,8 @@
 
 import anvio
 
-import anvio.utils as utils
 import anvio.terminal as terminal
+from anvio.utils.sequences import is_amino_acid_functionally_conserved
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -57,7 +57,7 @@ class HomogeneityCalculator(object):
                         if amino_acid_residue_1 == amino_acid_residue_2 and (amino_acid_residue_1 != 'X' and amino_acid_residue_1 != 'J' \
                                                                             and amino_acid_residue_1 != 'B' and amino_acid_residue_1 != 'Z'):
                             similarity_score += 3
-                        elif utils.is_amino_acid_functionally_conserved(amino_acid_residue_1,amino_acid_residue_2):
+                        elif is_amino_acid_functionally_conserved(amino_acid_residue_1,amino_acid_residue_2):
                             similarity_score += 2
                         #elif amino_acid_residue_2 != "-":
                             #similarity_score += 1

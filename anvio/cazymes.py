@@ -8,7 +8,6 @@ import shutil
 
 import anvio
 import anvio.dbops as dbops
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
@@ -17,6 +16,10 @@ from anvio.drivers.hmmer import HMMer
 from anvio.dbops import ContigsDatabase
 from anvio.parsers import parser_modules
 from anvio.tables.genefunctions import TableForGeneFunctions
+from anvio.dbinfo import is_contigs_db
+from anvio.utils.commandline import run_command
+from anvio.utils.misc import get_hash_for_list
+from anvio.utils.network import download_file
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
@@ -119,7 +122,7 @@ class CAZymeSetup(object):
         self.run.info("Local database path", self.cazyme_data_dir)
 
         try:
-            utils.download_file(self.db_url, os.path.join(self.cazyme_data_dir, "CAZyme_HMMs.txt"), progress=self.progress)
+            download_file(self.db_url, os.path.join(self.cazyme_data_dir, "CAZyme_HMMs.txt"), progress=self.progress)
         except Exception as e:
             raise ConfigError(f"Anvi'o failed to setup your CAZymes at the stage of downloading the data :/ It is very likely that "
                               f"the version '{self.db_version}' does not exist on the server, or the locations of the files have "
@@ -147,7 +150,7 @@ class CAZymeSetup(object):
         file_path = os.path.join(self.cazyme_data_dir, "CAZyme_HMMs.txt")
         cmd_line = ['hmmpress', file_path]
         log_file_path = os.path.join(self.cazyme_data_dir, '00_hmmpress_log.txt')
-        ret_val = utils.run_command(cmd_line, log_file_path)
+        ret_val = run_command(cmd_line, log_file_path)
 
         if ret_val:
             raise ConfigError("Hmm. There was an error while running `hmmpress` on the CAZyme HMM profiles. "
@@ -201,7 +204,7 @@ class CAZyme(object):
             self.noise_cutoff_terms = "-E 1e-12"
 
         filesnpaths.is_program_exists(self.hmm_program)
-        utils.is_contigs_db(self.contigs_db_path)
+        is_contigs_db(self.contigs_db_path)
 
         if not self.cazyme_data_dir:
             self.cazyme_data_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/CAZyme')
@@ -263,7 +266,7 @@ class CAZyme(object):
 
         # Create a hash from the database version and URL for tracking
         hash_content = f"{self.db_version}_{self.db_url}"
-        cazyme_hash = utils.get_hash_for_list([hash_content])
+        cazyme_hash = get_hash_for_list([hash_content])
 
         contigs_db = ContigsDatabase(self.contigs_db_path)
         contigs_db.db.set_meta_value('cazyme_db_hash', cazyme_hash)

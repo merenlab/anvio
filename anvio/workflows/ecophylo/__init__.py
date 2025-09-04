@@ -2,15 +2,12 @@
 # pylint: disable=line-too-long
 """ Classes to define and work with anvi'o ecophylo workflows. """
 
-from distutils.command.config import config
 import os
-import anvio
 import argparse
 import pandas as pd
 
 import anvio
 import anvio.data.hmm
-import anvio.utils as u
 import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
@@ -19,8 +16,7 @@ from anvio.errors import ConfigError
 from anvio.workflows import WorkflowSuperClass
 from anvio.genomedescriptions import GenomeDescriptions
 from anvio.genomedescriptions import MetagenomeDescriptions
-
-import anvio.constants as constants
+from anvio.utils.hmm import get_HMM_sources_dictionary
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = ['mschecht']
@@ -509,7 +505,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                                       f"please put 'INTERNAL' for the path.")
 
             if hmm_path != "INTERNAL":
-                sources = u.get_HMM_sources_dictionary([hmm_path])
+                sources = get_HMM_sources_dictionary([hmm_path])
 
                 for source,value in sources.items():
                     gene = value['genes']

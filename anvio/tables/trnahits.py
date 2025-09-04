@@ -11,7 +11,6 @@ import shutil
 from collections import Counter
 
 import anvio
-import anvio.utils as utils
 import anvio.hmmops as hmmops
 import anvio.terminal as terminal
 import anvio.constants as constants
@@ -21,6 +20,9 @@ import anvio.drivers.trnscan_se as trnascan_se
 from anvio.errors import ConfigError
 from anvio.tables.hmmhits import TablesForHMMHits
 from anvio.tables.genefunctions import TableForGeneFunctions
+from anvio.dbinfo import is_contigs_db
+from anvio.utils.fasta import export_sequences_from_contigs_db
+from anvio.utils.hmm import get_pruned_HMM_hits_dict
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -104,7 +106,7 @@ class TablesForTransferRNAs:
 
 
     def populate_search_tables(self, contigs_db_path):
-        utils.is_contigs_db(contigs_db_path)
+        is_contigs_db(contigs_db_path)
 
         info_table = hmmops.SequencesForHMMHits(contigs_db_path).hmm_hits_info
 
@@ -120,7 +122,7 @@ class TablesForTransferRNAs:
 
         contig_sequences_fasta_path = os.path.join(self.tmp_directory_path, 'contig_sequences.fa')
 
-        utils.export_sequences_from_contigs_db(contigs_db_path,
+        export_sequences_from_contigs_db(contigs_db_path,
                                                contig_sequences_fasta_path)
 
         search_results_dict = self.run_trnascan_on_FASTA(fasta_file_path=contig_sequences_fasta_path)
@@ -204,7 +206,7 @@ class TablesForTransferRNAs:
                              "All those entries are now gone :/ But here is the list of amino "
                              "acids and their frequencies: '%s'." % (info_line), header="WEIRD AMINO ACIDS ALERT")
 
-        search_results_dict = utils.get_pruned_HMM_hits_dict(search_results_dict)
+        search_results_dict = get_pruned_HMM_hits_dict(search_results_dict)
 
         tables_for_hmm_hits = TablesForHMMHits(contigs_db_path, run=self.run, progress=self.progress)
         search_results_dict = tables_for_hmm_hits.add_new_gene_calls_to_contigs_db_and_update_serach_results_dict(self.kind_of_search,

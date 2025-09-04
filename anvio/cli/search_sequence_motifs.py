@@ -7,7 +7,6 @@ import argparse
 from anvio.argparse import ArgumentParser
 
 import anvio
-import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
@@ -15,6 +14,10 @@ import anvio.filesnpaths as filesnpaths
 from anvio.dbinfo import DBInfo as dbi
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.tables.miscdata import TableForItemAdditionalData
+from anvio.dbinfo import is_profile_db_and_contigs_db_compatible
+from anvio.utils.database import get_all_item_names_from_the_database
+from anvio.utils.files import store_dict_as_TAB_delimited_file
+from anvio.utils.sequences import rev_comp
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -83,7 +86,7 @@ class SequenceMotifSearch:
             filesnpaths.is_output_file_writable(self.output_file_path)
 
         if self.profile_db_path:
-            utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
+            is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
         # let's make sure motif sequences are actual DNA/RNA sequences
         character_regex = re.compile(r'^[ACGTNUactgnu]+$')
@@ -139,7 +142,7 @@ class SequenceMotifSearch:
                     self.motif_frequencies[item_name] = {}
 
                 self.motif_frequencies[item_name][motif] = sequences_dict[item_name]['sequence'].count(motif) + \
-                                                           sequences_dict[item_name]['sequence'].count(utils.rev_comp(motif))
+                                                           sequences_dict[item_name]['sequence'].count(rev_comp(motif))
 
     def store_motif_frequencies(self):
         """Stores motif frequencies into databases or output files
@@ -180,7 +183,7 @@ class SequenceMotifSearch:
                 self.run.info("Motif frequencies stored in db", "No (but could've been with `--store-in-db`)", nl_before=1)
 
         if self.output_file_path:
-            utils.store_dict_as_TAB_delimited_file(self.motif_frequencies, self.output_file_path, headers=[header_item_name] + sorted(list(self.motifs)))
+            store_dict_as_TAB_delimited_file(self.motif_frequencies, self.output_file_path, headers=[header_item_name] + sorted(list(self.motifs)))
             self.run.info("Motif frequencies stored in output file", self.output_file_path, mc='green')
         else:
             self.run.info("Motif frequencies stored in output file", "No (but could've been with `--output-file`)")
@@ -194,7 +197,7 @@ class SequenceMotifSearch:
 
 
     def search_motifs_in_split_sequences(self):
-        split_names_in_profile_db = utils.get_all_item_names_from_the_database(self.profile_db_path, run=self.run)
+        split_names_in_profile_db = get_all_item_names_from_the_database(self.profile_db_path, run=self.run)
 
         contigs_db = dbops.ContigsSuperclass(self.args, r=self.run, p=self.progress)
         contigs_db.init_split_sequences(split_names_of_interest=split_names_in_profile_db)
@@ -203,7 +206,7 @@ class SequenceMotifSearch:
 
 
     def search_motifs_in_gene_sequences(self):
-        gene_caller_ids = utils.get_all_item_names_from_the_database(self.genes_db_path)
+        gene_caller_ids = get_all_item_names_from_the_database(self.genes_db_path)
 
         contigs_db = dbops.ContigsSuperclass(self.args, r=self.run, p=self.progress)
         gene_caller_ids_list, sequences_dict = contigs_db.get_sequences_for_gene_callers_ids(gene_caller_ids_list=list(gene_caller_ids))

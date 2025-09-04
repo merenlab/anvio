@@ -8,7 +8,6 @@ import anvio
 import anvio.db as db
 import anvio.tables as t
 import anvio.fastalib as u
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
@@ -16,6 +15,11 @@ import anvio.genecalling as genecalling
 
 from anvio.tables.tableops import Table
 from anvio.errors import ConfigError
+from anvio.dbinfo import is_contigs_db
+from anvio.utils.database import get_required_version_for_db
+from anvio.utils.fasta import export_sequences_from_contigs_db
+from anvio.utils.files import get_TAB_delimited_file_as_dictionary, get_columns_of_TAB_delim_file
+from anvio.utils.sequences import get_most_likely_translation_frame, get_translated_sequence_for_gene_call, rev_comp
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -40,7 +44,7 @@ class TablesForGeneCalls(Table):
         self.args = args
         self.debug = debug
 
-        utils.is_contigs_db(self.db_path)
+        is_contigs_db(self.db_path)
 
         if self.contigs_fasta:
             filesnpaths.is_file_exists(self.contigs_fasta)
@@ -186,11 +190,11 @@ class TablesForGeneCalls(Table):
             expected_fields = t.genes_in_contigs_table_structure
             column_mapping = [int, str, int, int, str, int, int, str, str]
 
-            if 'aa_sequence' in utils.get_columns_of_TAB_delim_file(input_file_path):
+            if 'aa_sequence' in get_columns_of_TAB_delim_file(input_file_path):
                 expected_fields = t.genes_in_contigs_table_structure + ['aa_sequence']
                 column_mapping.append(lambda x: '' if x is None else str(x)) # str(None) is 'None', amazingly
 
-            gene_calls_dict = utils.get_TAB_delimited_file_as_dictionary(input_file_path,
+            gene_calls_dict = get_TAB_delimited_file_as_dictionary(input_file_path,
                                                                          expected_fields=expected_fields,
                                                                          only_expected_fields=True,
                                                                          column_mapping=column_mapping)
@@ -314,7 +318,7 @@ class TablesForGeneCalls(Table):
                 contig_sequences[fasta.id] = {'sequence': fasta.seq}
             fasta.close()
         else:
-            database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+            database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
             contig_sequences = database.get_table_as_dict(t.contig_sequences_table_name)
 
         # keep track of things to report later
@@ -350,7 +354,7 @@ class TablesForGeneCalls(Table):
 
             sequence = contig_sequences[contig_name]['sequence'][gene_call['start']:gene_call['stop']]
             if gene_call['direction'] == 'r':
-                sequence = utils.rev_comp(sequence)
+                sequence = rev_comp(sequence)
 
             # a let's keep track of partial gene calls
             if partial:
@@ -368,7 +372,7 @@ class TablesForGeneCalls(Table):
             elif predict_frame:
                 # no amino acid sequence is provided, BUT USER WANTS FRAME TO BE PREDICTED
                 # we may be good, if we can try to predict one for it.
-                frame, amino_acid_sequence = utils.get_most_likely_translation_frame(sequence, model=model, stop_prob=stop_prob, null_prob=null_prob)
+                frame, amino_acid_sequence = get_most_likely_translation_frame(sequence, model=model, stop_prob=stop_prob, null_prob=null_prob)
 
                 if frame is None:
                     # we not good because we couldn't find a frame for it. because this gene call has no predicted frame,
@@ -386,7 +390,7 @@ class TablesForGeneCalls(Table):
                 # no amino acid sequence is provided, AND USER DOES NOW WANTS FRAME TO BE PREDICTED (what an a-hole)
                 # we will do the dumb thing, and try to translate the DNA sequence directly
                 try:
-                    amino_acid_sequence = utils.get_translated_sequence_for_gene_call(sequence, gene_callers_id)
+                    amino_acid_sequence = get_translated_sequence_for_gene_call(sequence, gene_callers_id)
                 except ConfigError as non_divisible_by_3_error:
                     raise ConfigError(non_divisible_by_3_error.e + ". Since you are creating a contigs database, "
                                       "anvi'o is willing to strike you a deal, but it will require you to trust her a bit more and give her "
@@ -491,7 +495,7 @@ class TablesForGeneCalls(Table):
 
         if not self.contigs_fasta:
             self.contigs_fasta = filesnpaths.get_temp_file_path()
-            utils.export_sequences_from_contigs_db(self.db_path,
+            export_sequences_from_contigs_db(self.db_path,
                                                    output_file_path=self.contigs_fasta,
                                                    run=self.run)
             remove_fasta_after_processing = True
@@ -522,8 +526,8 @@ class TablesForGeneCalls(Table):
 
 
     def populate_genes_in_contigs_table(self, gene_calls_dict, amino_acid_sequences, append_to_the_db=False):
-        utils.is_contigs_db(self.db_path)
-        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        is_contigs_db(self.db_path)
+        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
 
         if not append_to_the_db:
             database._exec('''DELETE FROM %s''' % (t.genes_in_contigs_table_name))
@@ -561,7 +565,7 @@ class TablesForGeneCalls(Table):
 
 
     def populate_genes_in_splits_tables(self, gene_calls_dict=None):
-        utils.is_contigs_db(self.db_path)
+        is_contigs_db(self.db_path)
         Table.__init__(self, self.db_path, anvio.__contigs__version__, self.run, self.progress)
         self.init_gene_calls_dict()
 
@@ -623,7 +627,7 @@ class TablesForGeneCalls(Table):
                                            }
 
         # open connection
-        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
 
         # push entries for genes in splits table
         db_entries = [[d[h] for h in t.genes_in_splits_table_structure] for d in genes_in_splits.d]

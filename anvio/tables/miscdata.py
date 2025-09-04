@@ -6,7 +6,6 @@
 import anvio
 import anvio.db as db
 import anvio.tables as t
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
@@ -14,6 +13,24 @@ from anvio.errors import ConfigError, GenesDBError
 from anvio.tables.tableops import Table
 
 import pandas as pd
+from anvio.dbinfo import (
+    is_blank_profile,
+    is_contigs_db,
+    is_pan_or_profile_db,
+    is_profile_db_and_contigs_db_compatible
+)
+from anvio.utils.anviohelp import get_contig_name_to_splits_dict
+from anvio.utils.database import (
+    get_all_item_names_from_the_database,
+    get_all_sample_names_from_the_database,
+    get_db_type,
+    get_genes_database_path_for_bin,
+    get_required_version_for_db
+)
+from anvio.utils.files import get_TAB_delimited_file_as_dictionary, get_columns_of_TAB_delim_file, store_dict_as_TAB_delimited_file
+from anvio.utils.misc import get_predicted_type_of_items_in_a_dict
+from anvio.utils.phylogenetics import get_names_order_from_newick_tree
+from anvio.utils.validation import check_misc_data_keys_for_format
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -49,7 +66,7 @@ class AdditionalAndOrderDataBaseClass(Table, object):
         # in fact the genes database, so here we will do quite a sketchy thing, and will update our
         # db path with that.
         if A('gene_mode'):
-            gene_db_path = utils.get_genes_database_path_for_bin(profile_db_path=A('profile_db'),
+            gene_db_path = get_genes_database_path_for_bin(profile_db_path=A('profile_db'),
                                                                  collection_name=A('collection_name'),
                                                                  bin_name=A('bin_id'))
 
@@ -86,23 +103,23 @@ class AdditionalAndOrderDataBaseClass(Table, object):
             raise ConfigError("The AdditionalAndOrderDataBaseClass does not know anything about the table it should "
                               "be working with.")
 
-        self.db_type = utils.get_db_type(self.db_path)
+        self.db_type = get_db_type(self.db_path)
 
         if self.db_type in ['pan', 'profile', 'genes']:
-            utils.is_pan_or_profile_db(self.db_path, genes_db_is_also_accepted=True)
+            is_pan_or_profile_db(self.db_path, genes_db_is_also_accepted=True)
 
             if self.target_table not in ['layers', 'items', 'layer_orders']:
                 raise ConfigError("The only target data table names possible for DBs of type '%s' are 'layers' "
                                   "and 'items'" % self.db_type)
 
         elif self.db_type == 'contigs':
-            utils.is_contigs_db(self.db_path)
+            is_contigs_db(self.db_path)
 
             if self.target_table not in ['nucleotides', 'amino_acids']:
                 raise ConfigError("The only target data table names possible for DBs of type '%s' are 'nucleotides' "
                                   "and 'amino_acids'" % self.db_type)
 
-        self.db_version = utils.get_required_version_for_db(self.db_path)
+        self.db_version = get_required_version_for_db(self.db_path)
 
         self.progress.new("Fetching existing data keys from database")
         self.progress.update("...")
@@ -126,9 +143,9 @@ class AdditionalAndOrderDataBaseClass(Table, object):
 
     def populate_from_file(self, additional_data_file_path, skip_check_names=None):
 
-        if skip_check_names is None and utils.is_blank_profile(self.db_path):
+        if skip_check_names is None and is_blank_profile(self.db_path):
             # FIXME: this BS is here because blank anvi'o profiles do not know what items they have,
-            #        hence the utils.get_all_item_names_from_the_database function eventually explodes if we
+            #        hence the get_all_item_names_from_the_database function eventually explodes if we
             #        don't skip check names.
             skip_check_names = True
 
@@ -138,8 +155,8 @@ class AdditionalAndOrderDataBaseClass(Table, object):
         filesnpaths.is_file_tab_delimited(additional_data_file_path)
 
         self.progress.update("Loading input file into memory")
-        data_keys = utils.get_columns_of_TAB_delim_file(additional_data_file_path)
-        data_dict = utils.get_TAB_delimited_file_as_dictionary(additional_data_file_path)
+        data_keys = get_columns_of_TAB_delim_file(additional_data_file_path)
+        data_dict = get_TAB_delimited_file_as_dictionary(additional_data_file_path)
 
         bad_keys = [k for k in data_keys if k.strip() != k]
         if len(bad_keys):
@@ -176,7 +193,7 @@ class AdditionalAndOrderDataBaseClass(Table, object):
                               "misc data tables. Using both of these parameters is quite risky, so anvi'o "
                               "would like you to use only one of them at a time. Apologies.")
 
-        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
 
         # not all additional data table types have data_group concept
         if data_groups_list:
@@ -274,14 +291,14 @@ class AdditionalAndOrderDataBaseClass(Table, object):
         if not(len(data)):
             raise ConfigError("Additional data table for %s is empty. There is nothing to export :/" % self.target_table)
 
-        utils.store_dict_as_TAB_delimited_file(data, output_file_path, headers=[self.target_table] + keys)
+        store_dict_as_TAB_delimited_file(data, output_file_path, headers=[self.target_table] + keys)
 
         self.run.info('Target data table', self.target_table)
         self.run.info('Output file', output_file_path)
 
 
     def list_data_keys(self):
-        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
 
         NOPE = lambda: self.run.info_single("There are no additional data for '%s' in this database :/" \
                                                 % (self.target_table), nl_before=1, nl_after=1, mc='red')
@@ -364,7 +381,7 @@ class AdditionalAndOrderDataBaseClass(Table, object):
         if data_keys_list and not isinstance(data_keys_list, list):
             raise ConfigError("List of keys must be of type `list`. Go away (and come back).")
 
-        utils.check_misc_data_keys_for_format(data_keys_list)
+        check_misc_data_keys_for_format(data_keys_list)
 
         # FIXME: we have two controls here. The first one is how we work with order data natively. The second one is how it
         #        looks like when it is read through the .get() member function of the TableForLayerOrders because rest of
@@ -392,7 +409,7 @@ class AdditionalAndOrderDataBaseClass(Table, object):
     def init_table_as_dataframe(self):
         """Init the raw table as a dataframe"""
 
-        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
         self.df = database.get_table_as_dataframe(self.table_name, error_if_no_data=False)
         database.disconnect()
 
@@ -427,7 +444,7 @@ class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
 
         self.progress.new('Recovering layer order data')
         self.progress.update('...')
-        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
         order_data = database.get_table_as_dict(self.table_name)
         database.disconnect()
         self.progress.end()
@@ -482,7 +499,7 @@ class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                 stacked_bar_name, item_name = data_key.split('!')
                 data_key_name = '%s [%s]' % (stacked_bar_name, item_name)
             else:
-                type_class = utils.get_predicted_type_of_items_in_a_dict(additional_data_dict, data_key)
+                type_class = get_predicted_type_of_items_in_a_dict(additional_data_dict, data_key)
                 predicted_key_type = type_class.__name__ if type_class else 'unknown'
                 data_key_name = data_key
 
@@ -572,7 +589,7 @@ class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                                      data_dict[item_name]['data_type'],
                                      data_dict[item_name]['data_value']]))
 
-        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
         database._exec_many('''INSERT INTO %s VALUES (?,?,?)''' % self.table_name, db_entries)
         database.disconnect()
 
@@ -585,7 +602,7 @@ class OrderDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         for data_key in data_dict:
             try:
                 if data_dict[data_key]['data_type'] == 'newick':
-                    layer_names[data_key] = utils.get_names_order_from_newick_tree(data_dict[data_key]['data_value'])
+                    layer_names[data_key] = get_names_order_from_newick_tree(data_dict[data_key]['data_value'])
                 else:
                     layer_names[data_key] = [s.strip() for s in data_dict[data_key]['data_value'].split(',')]
             except:
@@ -644,7 +661,7 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         self.progress.new('Recovering additional keys and data for %s' % self.target_table)
         self.progress.update('...')
 
-        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
         additional_data_keys_in_db = database.get_single_column_from_table(self.table_name, 'data_key', unique=True, \
                         where_clause="""data_group LIKE '%s'""" % self.target_data_group)
         database.disconnect()
@@ -683,7 +700,7 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         self.progress.new('Recovering additional data for %s' % self.target_table)
         self.progress.update('...')
 
-        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
         if not len(additional_data_keys_requested):
             additional_data_keys = additional_data_keys_in_db
             additional_data = database.get_some_rows_from_table_as_dict(self.table_name,
@@ -759,9 +776,9 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                               "seem to know about a contigs database. Did you forget to provide a contigs-db? "
                               "Because it is kind of necessary :/")
 
-        utils.is_profile_db_and_contigs_db_compatible(self.db_path, self.contigs_db_path)
+        is_profile_db_and_contigs_db_compatible(self.db_path, self.contigs_db_path)
 
-        contig_name_to_split_names_dict = utils.get_contig_name_to_splits_dict(self.contigs_db_path)
+        contig_name_to_split_names_dict = get_contig_name_to_splits_dict(self.contigs_db_path)
 
         new_data_dict = {}
         for contig_name in data_dict:
@@ -813,7 +830,7 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
             if '!' in key:
                 predicted_key_type = "stackedbar"
             else:
-                type_class = utils.get_predicted_type_of_items_in_a_dict(data_dict, key)
+                type_class = get_predicted_type_of_items_in_a_dict(data_dict, key)
                 predicted_key_type = type_class.__name__ if type_class else None
 
             key_types[key] = predicted_key_type
@@ -821,7 +838,7 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                                             nl_after = 1 if key == data_keys_list[-1] else 0)
 
         # we be responsible here.
-        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
         all_keys_for_group = database.get_single_column_from_table(self.table_name,
             'data_key', unique=True, where_clause="""data_group='%s'""" % self.target_data_group)
         database.disconnect()
@@ -900,7 +917,7 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         if not len(self.storage_buffer):
             return
 
-        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
         database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?)''' % self.table_name, self.storage_buffer)
         database.disconnect()
 
@@ -916,7 +933,7 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
 
 
     def get_group_names(self):
-        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
         group_names = database.get_single_column_from_table(self.table_name, 'data_group', unique=True)
         database.disconnect()
 
@@ -946,7 +963,7 @@ class TableForItemAdditionalData(AdditionalDataBaseClass):
     def check_names(self, data_dict):
         """Compares item names found in the data dict to the ones in the db"""
 
-        items_in_db = utils.get_all_item_names_from_the_database(self.db_path)
+        items_in_db = get_all_item_names_from_the_database(self.db_path)
         items_in_data = set(data_dict.keys())
 
         # this step is essential for genes database, where item naems are actually
@@ -1015,7 +1032,7 @@ class TableForLayerAdditionalData(AdditionalDataBaseClass):
     def check_names(self, data_dict):
         """Compares layer names found in the data dict to the ones in the db"""
 
-        layers_in_db = utils.get_all_sample_names_from_the_database(self.db_path)
+        layers_in_db = get_all_sample_names_from_the_database(self.db_path)
         layers_in_data = set(data_dict.keys())
 
         layers_in_data_but_not_in_db = layers_in_data.difference(layers_in_db)
@@ -1064,7 +1081,7 @@ class TableForLayerOrders(OrderDataBaseClass):
     def check_names(self, data_dict):
         """Compares layer names found in the data dict to the ones in the db"""
 
-        layers_in_db = set(utils.get_all_sample_names_from_the_database(self.db_path))
+        layers_in_db = set(get_all_sample_names_from_the_database(self.db_path))
         layers_in_data = self.get_layer_names(data_dict)
 
         for data_key in data_dict:
@@ -1104,7 +1121,7 @@ class TableForNucleotideAdditionalData(AdditionalDataBaseClass):
     def check_names(self, data_dict):
         """Compares data key values found in the data dict to the ones in the db"""
 
-        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
 
         # A dict of {<contig_name>: <contig_length>, ...}
         contig_lengths = dict(database.get_some_columns_from_table(t.contigs_info_table_name, 'contig,length'))
@@ -1330,7 +1347,7 @@ class TableForAminoAcidAdditionalData(AdditionalDataBaseClass):
         FIXME This is an unforgiving function, i.e. --just-do-it does nothing
         """
 
-        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
         gene_lengths = database.get_table_as_dataframe(
             t.genes_in_contigs_table_name,
             columns_of_interest=('gene_callers_id', 'start', 'stop'),

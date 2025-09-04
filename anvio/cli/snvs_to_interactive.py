@@ -6,12 +6,13 @@ import random
 
 import anvio
 import anvio.tables as t
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.interactive as interactive
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.utils.files import get_TAB_delimited_file_as_dictionary
+from anvio.utils.misc import get_ordinal_from_integer
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -46,7 +47,7 @@ def run_program():
 
     progress.new('Reading in your giant file')
     progress.update('...')
-    profile = utils.get_TAB_delimited_file_as_dictionary(args.profile)
+    profile = get_TAB_delimited_file_as_dictionary(args.profile)
     progress.end()
 
     run.info('Num entries', pp(len(profile)))
@@ -122,7 +123,7 @@ def run_program():
             data_dict[unique_pos_identifier][sample] = departure_from_consensus
 
         # append 'st', 'nd', or 'th' to make categorical
-        additional_data_dict[unique_pos_identifier]['Position in codon'] = utils.get_ordinal_from_integer(int(entry['base_pos_in_codon']))
+        additional_data_dict[unique_pos_identifier]['Position in codon'] = get_ordinal_from_integer(int(entry['base_pos_in_codon']))
         additional_data_dict[unique_pos_identifier]['Gene callers ID'] = int(entry['corresponding_gene_call']) if int(entry['corresponding_gene_call']) > -1 else 0
 
     progress.end()

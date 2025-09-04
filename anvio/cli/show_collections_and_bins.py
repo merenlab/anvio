@@ -6,11 +6,11 @@ of bins and collections found in it."""
 import sys
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.ccollections as ccollections
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.dbinfo import is_pan_or_profile_db
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -37,7 +37,7 @@ def run_program():
     run = terminal.Run()
     progress = terminal.Progress()
 
-    utils.is_pan_or_profile_db(args.pan_or_profile_db)
+    is_pan_or_profile_db(args.pan_or_profile_db)
 
     progress.new('Accessing to the collections table')
     progress.update('...')

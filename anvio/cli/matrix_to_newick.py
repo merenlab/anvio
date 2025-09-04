@@ -4,12 +4,12 @@
 import sys
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.clustering as clustering
 
 from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.utils.files import get_vectors_from_TAB_delim_matrix
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -38,7 +38,7 @@ def main():
     try:
         # a quick check of the data to see if there are any missing
         # values
-        _, _, _, vectors = utils.get_vectors_from_TAB_delim_matrix(args.input_matrix, run=run)
+        _, _, _, vectors = get_vectors_from_TAB_delim_matrix(args.input_matrix, run=run)
         num_missing_data = len([item for sublist in vectors for item in sublist if item == None])
         if num_missing_data:
             run.warning(f"Oy. Your file contains {PL('missing data item', num_missing_data)}. Anvi'o will do its "

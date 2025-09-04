@@ -6,12 +6,12 @@ import multiprocessing.pool
 
 import anvio
 import anvio.fastalib as f
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
+from anvio.utils.files import store_dict_as_TAB_delimited_file
 
 try:
     import pyrodigal_gv
@@ -169,7 +169,7 @@ class Pyrodigal_gv:
         self.run.info('Result', f'Pyrodigal-gv (v{pyrodigal_gv.__version__}) has identified {pp(len(gene_calls_dict))} genes.', nl_after=1)
 
         if self.full_gene_calling_report:
-            utils.store_dict_as_TAB_delimited_file(gene_calls_dict, self.full_gene_calling_report, headers=self.header_for_full_report)
+            store_dict_as_TAB_delimited_file(gene_calls_dict, self.full_gene_calling_report, headers=self.header_for_full_report)
             self.run.info('Full gene calling report', self.full_gene_calling_report, nl_after=1)
 
         return gene_calls_dict, amino_acid_sequences_dict

@@ -13,7 +13,6 @@ import pandas as pd
 import anvio
 import anvio.tables as t
 import anvio.kegg as kegg
-import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.hmmops as hmmops
 import anvio.terminal as terminal
@@ -21,6 +20,7 @@ import anvio.constants as constants
 import anvio.summarizer as summarizer
 import anvio.clustering as clustering
 import anvio.filesnpaths as filesnpaths
+import anvio.tables.miscdata as miscdata
 import anvio.ccollections as ccollections
 import anvio.structureops as structureops
 import anvio.variabilityops as variabilityops
@@ -32,17 +32,31 @@ from anvio.variabilityops import VariabilitySuper
 from anvio.variabilityops import variability_engines
 from anvio.dbops import get_default_item_order_name
 from anvio.genomedescriptions import AggregateFunctions
+from anvio.tables.collections import TablesForCollections
 from anvio.errors import ConfigError, RefineError, GenesDBError
 from anvio.clusteringconfuguration import ClusteringConfiguration
 from anvio.dbops import ProfileSuperclass, ContigsSuperclass, PanSuperclass, TablesForStates, ProfileDatabase
-
-from anvio.tables.miscdata import (
-    TableForItemAdditionalData,
-    TableForLayerAdditionalData,
-    TableForLayerOrders,
-    TableForAminoAcidAdditionalData,
+from anvio.dbinfo import (
+    is_contigs_db,
+    is_profile_db,
+    is_profile_db_and_contigs_db_compatible,
+    is_structure_db
 )
-from anvio.tables.collections import TablesForCollections
+from anvio.utils.anviohelp import get_contig_name_to_splits_dict
+from anvio.utils.database import get_all_item_names_from_the_database, get_db_variant
+from anvio.utils.fasta import get_FASTA_file_as_dictionary
+from anvio.utils.files import (
+    get_TAB_delimited_file_as_dictionary,
+    get_column_data_from_TAB_delim_file,
+    get_columns_of_TAB_delim_file,
+    store_dict_as_TAB_delimited_file
+)
+from anvio.utils.misc import get_predicted_type_of_items_in_a_dict
+from anvio.utils.network import get_anvio_news
+from anvio.utils.phylogenetics import get_names_order_from_newick_tree
+from anvio.utils.sequences import get_GC_content_for_sequence
+from anvio.utils.validation import check_misc_data_keys_for_format
+
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -116,7 +130,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                "you send to this class. What are you doing?")
 
         if self.profile_db_path and filesnpaths.is_file_exists(self.profile_db_path, dont_raise=True):
-            utils.is_profile_db(self.profile_db_path)
+            is_profile_db(self.profile_db_path)
 
         if self.additional_layers_path:
             filesnpaths.is_file_tab_delimited(self.additional_layers_path)
@@ -160,9 +174,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # get additional data for items and layers, and get layer orders data.
         try:
             a_db_is_found = (os.path.exists(self.pan_db_path) if self.pan_db_path else False) or (os.path.exists(self.profile_db_path) if self.profile_db_path else False)
-            self.items_additional_data_keys, self.items_additional_data_dict = TableForItemAdditionalData(self.args).get() if a_db_is_found else ([], {})
-            self.layers_additional_data_keys, self.layers_additional_data_dict = TableForLayerAdditionalData(self.args).get_all() if a_db_is_found else ([], {})
-            self.layers_order_data_dict = TableForLayerOrders(self.args).get() if a_db_is_found else {}
+            self.items_additional_data_keys, self.items_additional_data_dict = miscdata.TableForItemAdditionalData(self.args).get() if a_db_is_found else ([], {})
+            self.layers_additional_data_keys, self.layers_additional_data_dict = miscdata.TableForLayerAdditionalData(self.args).get_all() if a_db_is_found else ([], {})
+            self.layers_order_data_dict = miscdata.TableForLayerOrders(self.args).get() if a_db_is_found else {}
         except GenesDBError as e:
             self.items_additional_data_keys, self.items_additional_data_dict = [], {}
             self.layers_additional_data_keys, self.layers_additional_data_dict = [], {}
@@ -173,7 +187,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                         "bottleneck sadface.png): %s" % e.clear_text(), header="EXCEPTION OMMITTED (BUT PROBABLY YOU'RE FINE)", lc='yellow')
 
         for group_name in self.layers_additional_data_keys:
-            layer_orders = TableForLayerOrders(self.args).update_orders_dict_using_additional_data_dict({},
+            layer_orders = miscdata.TableForLayerOrders(self.args).update_orders_dict_using_additional_data_dict({},
                 self.layers_additional_data_keys[group_name], self.layers_additional_data_dict[group_name]) if a_db_is_found else {}
             for order_name in layer_orders:
                 self.layers_order_data_dict['%s :: %s' % (group_name, order_name)] = layer_orders[order_name]
@@ -209,7 +223,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             raise ConfigError("You must declare a profile database for this to work :(")
 
         if self.contigs_db_path:
-            self.contigs_db_variant = utils.get_db_variant(self.contigs_db_path)
+            self.contigs_db_variant = get_db_variant(self.contigs_db_path)
             self.completeness = Completeness(self.contigs_db_path)
             self.collections.populate_collections_dict(self.contigs_db_path)
 
@@ -225,7 +239,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                           f"case, you should use the program `anvi-interactive` to visualize the data stored "
                                           f"in that file by running `anvi-interactive -p {self.profile_db_path} --manual`")
                 else:
-                    utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
+                    is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
             # initialize ContigsSuperclass because we are normal people with a contigs-db
             ContigsSuperclass.__init__(self, self.args)
@@ -344,8 +358,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         # take care of additional layers, and update ordering information for items
         if self.additional_layers_path:
-            self.items_additional_data_dict = utils.get_TAB_delimited_file_as_dictionary(self.additional_layers_path, dict_to_append=self.items_additional_data_dict, assign_none_for_missing=True)
-            self.items_additional_data_keys = self.items_additional_data_keys + utils.get_columns_of_TAB_delim_file(self.additional_layers_path)
+            self.items_additional_data_dict = get_TAB_delimited_file_as_dictionary(self.additional_layers_path, dict_to_append=self.items_additional_data_dict, assign_none_for_missing=True)
+            self.items_additional_data_keys = self.items_additional_data_keys + get_columns_of_TAB_delim_file(self.additional_layers_path)
 
         self.check_names_consistency()
         self.gen_orders_for_items_based_on_additional_layers_data()
@@ -379,7 +393,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             # gene caller ids in anvi'o are always integers
             names_with_only_digits_ok = self.mode == 'gene'
 
-            self.displayed_item_names_ordered = utils.get_names_order_from_newick_tree(default_item_order['data'], reverse=True, names_with_only_digits_ok=names_with_only_digits_ok)
+            self.displayed_item_names_ordered = get_names_order_from_newick_tree(default_item_order['data'], reverse=True, names_with_only_digits_ok=names_with_only_digits_ok)
         elif default_item_order['type'] == 'basic':
             self.displayed_item_names_ordered = default_item_order['data']
         else:
@@ -449,7 +463,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         for layer in [additional_layer for additional_layer in self.items_additional_data_keys]:
             self.progress.update('for "%s" ...' % layer)
-            layer_type = utils.get_predicted_type_of_items_in_a_dict(self.items_additional_data_dict, layer)
+            layer_type = get_predicted_type_of_items_in_a_dict(self.items_additional_data_dict, layer)
 
             if layer_type == None:
                 skipped_additional_data_layers.append(layer)
@@ -536,7 +550,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         self.progress.update('...')
 
         # get a dictionary to translate between contig names and split names
-        contig_name_to_splits_dict = utils.get_contig_name_to_splits_dict(self.contigs_db_path)
+        contig_name_to_splits_dict = get_contig_name_to_splits_dict(self.contigs_db_path)
 
         # get a list of contig names based on their lengths
         contig_names_sorted_by_length = [tpl[0] \
@@ -698,11 +712,11 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if self.tree:
             filesnpaths.is_file_exists(self.tree)
             newick_tree_text = ''.join([l.strip() for l in open(os.path.abspath(self.tree)).readlines()])
-            self.displayed_item_names_ordered = sorted(utils.get_names_order_from_newick_tree(newick_tree_text))
+            self.displayed_item_names_ordered = sorted(get_names_order_from_newick_tree(newick_tree_text))
         elif tree_order_found_in_db:
-            self.displayed_item_names_ordered = sorted(utils.get_names_order_from_newick_tree(item_orders_in_db[tree_order_found_in_db]['data']))
+            self.displayed_item_names_ordered = sorted(get_names_order_from_newick_tree(item_orders_in_db[tree_order_found_in_db]['data']))
         else:
-            self.displayed_item_names_ordered = sorted(utils.get_column_data_from_TAB_delim_file(self.view_data_path, column_indices=[0])[0][1:])
+            self.displayed_item_names_ordered = sorted(get_column_data_from_TAB_delim_file(self.view_data_path, column_indices=[0])[0][1:])
 
         # try to convert item names into integer values for proper sorting later. it's OK if it does
         # not work.
@@ -757,15 +771,15 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         elif self.view_data_path:
             # sanity of the view data
             filesnpaths.is_file_tab_delimited(view_data_path)
-            view_data_columns = utils.get_columns_of_TAB_delim_file(view_data_path, include_first_column=True)
+            view_data_columns = get_columns_of_TAB_delim_file(view_data_path, include_first_column=True)
 
-            utils.check_misc_data_keys_for_format(view_data_columns)
+            check_misc_data_keys_for_format(view_data_columns)
 
             # load view data as the default view:
             self.p_meta['default_view'] = 'single'
             self.default_view = self.p_meta['default_view']
             self.views[self.default_view] = {'header': view_data_columns[1:],
-                                             'dict': utils.get_TAB_delimited_file_as_dictionary(view_data_path)}
+                                             'dict': get_TAB_delimited_file_as_dictionary(view_data_path)}
             
             # sanity check for items order stored in database, since we cannot check the consistency of items 
             # when we import items orders as the view data is not stored in the profile db
@@ -802,12 +816,12 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         if self.p_meta['splits_fasta']:
             filesnpaths.is_file_fasta_formatted(self.p_meta['splits_fasta'])
 
-            # the utils.get_FASTA_file_as_dictionary returns a dictionary, but anvi'o expects
+            # the get_FASTA_file_as_dictionary returns a dictionary, but anvi'o expects
             # a different format when bottleroutes accesses interactive.split_sequences. so
             # here we will first turn the naive dictionary from get_FASTA_file_as_dictionary
             # into a dictionary with 'sequence' keys:
             self.split_sequences = {}
-            split_sequences = utils.get_FASTA_file_as_dictionary(self.p_meta['splits_fasta'])
+            split_sequences = get_FASTA_file_as_dictionary(self.p_meta['splits_fasta'])
             for split_name in split_sequences:
                 self.split_sequences[split_name] = {'sequence': split_sequences[split_name]}
 
@@ -821,7 +835,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             # setup a mock splits_basic_info dict
             for split_id in self.displayed_item_names_ordered:
                 self.splits_basic_info[split_id] = {'length': len(self.split_sequences[split_id]['sequence']),
-                                                    'gc_content': utils.get_GC_content_for_sequence(self.split_sequences[split_id]['sequence'])}
+                                                    'gc_content': get_GC_content_for_sequence(self.split_sequences[split_id]['sequence'])}
 
         # create a new, empty profile database for manual operations
         if not os.path.exists(self.profile_db_path):
@@ -1254,8 +1268,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             if num_genomes > 1:
                 layer_order = clustering.get_newick_tree_data_for_dict(self.views[view]['dict'], transpose=True, zero_fill_missing=True, distance=self.distance, linkage=self.linkage)
                 args = argparse.Namespace(profile_db=self.profile_db_path, target_data_table="layer_orders", just_do_it=True)
-                TableForLayerOrders(args, r=terminal.Run(verbose=False)).add({f"{view.upper()}": {'data_type': 'newick', 'data_value': layer_order}}, skip_check_names=True)
-                self.layers_order_data_dict = TableForLayerOrders(args, r=terminal.Run(verbose=False)).get()
+                miscdata.TableForLayerOrders(args, r=terminal.Run(verbose=False)).add({f"{view.upper()}": {'data_type': 'newick', 'data_value': layer_order}}, skip_check_names=True)
+                self.layers_order_data_dict = miscdata.TableForLayerOrders(args, r=terminal.Run(verbose=False)).get()
 
             # add vew tables to the database
             TablesForViews(self.profile_db_path).create_new_view(
@@ -1265,20 +1279,20 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                             from_matrix_form=True)
 
         # let's do this here as well so our dicts are not pruned.
-        self.displayed_item_names_ordered = sorted(utils.get_names_order_from_newick_tree(items_order))
+        self.displayed_item_names_ordered = sorted(get_names_order_from_newick_tree(items_order))
 
         # here we will store a layer for function names in the additional data tables of the profile databse and
         args = argparse.Namespace(profile_db=self.profile_db_path, target_data_table="items", just_do_it=True)
-        TableForItemAdditionalData(args, r=terminal.Run(verbose=False)).add(facc.hash_to_function_dict, [facc.function_annotation_source], skip_check_names=True)
+        miscdata.TableForItemAdditionalData(args, r=terminal.Run(verbose=False)).add(facc.hash_to_function_dict, [facc.function_annotation_source], skip_check_names=True)
 
         # if we have functional enrichment analysis results for these genomes, let's add that into
         # the database as well!
         if facc.functional_enrichment_stats_dict:
-            TableForItemAdditionalData(args, r=terminal.Run(verbose=False)).add(facc.functional_enrichment_stats_dict, ['enrichment_score', 'unadjusted_p_value', 'adjusted_q_value', 'associated_groups'], skip_check_names=True)
+            miscdata.TableForItemAdditionalData(args, r=terminal.Run(verbose=False)).add(facc.functional_enrichment_stats_dict, ['enrichment_score', 'unadjusted_p_value', 'adjusted_q_value', 'associated_groups'], skip_check_names=True)
 
         # here we will read the items additional data back so it is both in there for future `anvi-interactive` ops,
         # AND in here in the interactive class to visualize the information.
-        self.items_additional_data_keys, self.items_additional_data_dict = TableForItemAdditionalData(args, r=terminal.Run(verbose=False)).get()
+        self.items_additional_data_keys, self.items_additional_data_dict = miscdata.TableForItemAdditionalData(args, r=terminal.Run(verbose=False)).get()
 
         # everything we need is in the database now. time to add a mini state (note that we
         # replace the function layer name template with the annotation source on the fly):
@@ -1425,7 +1439,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # profile database along with other info:
         self.collection, bins_info_dict, split_names_in_db_but_missing_in_collection = \
                                         self.collections.get_trimmed_dicts(self.collection_name,
-                                                                           utils.get_all_item_names_from_the_database(self.profile_db_path))
+                                                                           get_all_item_names_from_the_database(self.profile_db_path))
 
         # we will do something quite tricky here. first, we will load the full mode to get the self.views
         # data structure fully initialized based on the profile database. Then, we using information about
@@ -1650,7 +1664,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # if the user has an additional view data, load it up into the self.views dict.
         if self.additional_view_path:
             filesnpaths.is_file_tab_delimited(self.additional_view_path)
-            additional_view_columns = utils.get_columns_of_TAB_delim_file(self.additional_view_path)
+            additional_view_columns = get_columns_of_TAB_delim_file(self.additional_view_path)
 
             if not additional_view_columns[-1] == '__parent__':
                 raise ConfigError("The last column of the additional view must be '__parent__' with the proper "
@@ -1660,7 +1674,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
             self.views['user_view'] = {'table_name': 'NA',
                                        'header': additional_view_columns,
-                                       'dict': utils.get_TAB_delimited_file_as_dictionary(self.additional_view_path, column_mapping=column_mapping)}
+                                       'dict': get_TAB_delimited_file_as_dictionary(self.additional_view_path, column_mapping=column_mapping)}
 
         # if the user specifies a view, set it as default:
         if self.view:
@@ -1844,7 +1858,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             # make sure item names in collection mode matches to the items in the user-provided tree
             if self.mode == 'collection':
                 item_names_in_collection = set(self.collection.keys())
-                item_names_in_user_tree = set(utils.get_names_order_from_newick_tree(self.tree, names_with_only_digits_ok=True))
+                item_names_in_user_tree = set(get_names_order_from_newick_tree(self.tree, names_with_only_digits_ok=True))
                 if not item_names_in_collection == item_names_in_user_tree:
                     if anvio.FORCE_USE_MY_TREE:
                         run.warning(f"Anvi'o told you that the tree file you provided had {len(item_names_in_user_tree)} names, which "
@@ -1862,7 +1876,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                           f"items that are only in your collection and not in your tree, or vice versa. There should be a one "
                                           f"to one match between the two.")
             elif self.mode == 'pan':
-                item_names_in_user_tree = set(utils.get_names_order_from_newick_tree(self.tree, names_with_only_digits_ok=True))
+                item_names_in_user_tree = set(get_names_order_from_newick_tree(self.tree, names_with_only_digits_ok=True))
                 if not item_names_in_user_tree == set(self.gene_cluster_names):
                     raise ConfigError(f"You are passing a tree to the interactive interface, which is a mechanism for you to organize your "
                                       f"gene clusters the way you like. More power to you! But there is a problem: the names in your tree do "
@@ -2001,7 +2015,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         layer_types = {}
         for layer_name in layer_names_to_consider:
-            layer_types[layer_name] = utils.get_predicted_type_of_items_in_a_dict(splits_dict, layer_name)
+            layer_types[layer_name] = get_predicted_type_of_items_in_a_dict(splits_dict, layer_name)
 
         # while this looks extremely inefficient, it is not that bad, in fact. This loop simply goes thorugh
         # every layer name that is in `layer_names_to_consider` until it hits the first non-None value that
@@ -2209,7 +2223,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             return
         else:
             try:
-                self.anvio_news = utils.get_anvio_news()
+                self.anvio_news = get_anvio_news()
             except:
                 pass
 
@@ -2257,7 +2271,7 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
 
         # Init the amino acid additional data table object
         args = argparse.Namespace(contigs_db=self.contigs_db_path)
-        self.amino_acid_additional_data = TableForAminoAcidAdditionalData(args)
+        self.amino_acid_additional_data = miscdata.TableForAminoAcidAdditionalData(args)
 
         if self.store_full_variability_in_memory:
             self.profile_full_variability_data()
@@ -2415,7 +2429,7 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
             profile_db_path = self.profile_db_path
 
         x = argparse.Namespace(pan_or_profile_db=profile_db_path, target_data_table="layers")
-        additional_layers_table = TableForLayerAdditionalData(args=x)
+        additional_layers_table = miscdata.TableForLayerAdditionalData(args=x)
 
         layer_names, additional_layer_dict = additional_layers_table.get()
 
@@ -2890,11 +2904,11 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
     def sanity_check(self):
         if not self.structure_db_path:
             raise ConfigError("Must provide a structure database.")
-        utils.is_structure_db(self.structure_db_path)
+        is_structure_db(self.structure_db_path)
 
         if not self.contigs_db_path:
             raise ConfigError("Must provide a contigs database.")
-        utils.is_contigs_db(self.contigs_db_path)
+        is_contigs_db(self.contigs_db_path)
 
         if not self.profile_db_path and not self.variability_table_path:
             raise ConfigError("You have to provide either a variability table generated from "
@@ -3463,7 +3477,7 @@ class AdHocRunGenerator:
         # write view data
         view_data_path = self.get_output_file_path('view.txt')
         self.run.info("View data file", view_data_path)
-        utils.store_dict_as_TAB_delimited_file(self.view_data, view_data_path, headers = ['contig'] + self.samples)
+        store_dict_as_TAB_delimited_file(self.view_data, view_data_path, headers = ['contig'] + self.samples)
 
         # generate newick and write to file
         if not self.skip_clustering_view_data:

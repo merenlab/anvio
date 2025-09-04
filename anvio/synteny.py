@@ -13,13 +13,14 @@ import pandas as pd
 from collections import Counter
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.genomestorage as genomestorage
 
 from anvio.dbops import PanDatabase
 from anvio.errors import ConfigError
+from anvio.utils.files import get_column_data_from_TAB_delim_file
+from anvio.utils.misc import get_time_to_date
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
@@ -80,7 +81,7 @@ class NGram(object):
 
             self.p_meta = self.pan_db.meta
 
-            self.p_meta['creation_date'] = utils.get_time_to_date(self.p_meta['creation_date']) if 'creation_date' in self.p_meta else 'unknown'
+            self.p_meta['creation_date'] = get_time_to_date(self.p_meta['creation_date']) if 'creation_date' in self.p_meta else 'unknown'
             self.p_meta['genome_names'] = sorted([s.strip() for s in self.p_meta['external_genome_names'].split(',') + self.p_meta['internal_genome_names'].split(',') if s])
             self.p_meta['num_genomes'] = len(self.p_meta['genome_names'])
             self.genome_names = self.p_meta['genome_names']
@@ -117,7 +118,7 @@ class NGram(object):
         # Focus on specfic set of genomes
         if self.genome_names_to_focus:
             if filesnpaths.is_file_exists(self.genome_names_to_focus, dont_raise=True):
-                self.genome_names_to_focus = utils.get_column_data_from_TAB_delim_file(self.genome_names_to_focus, column_indices=[0], expected_number_of_fields=1)[0]
+                self.genome_names_to_focus = get_column_data_from_TAB_delim_file(self.genome_names_to_focus, column_indices=[0], expected_number_of_fields=1)[0]
             else:
                 self.genome_names_to_focus = [g.strip() for g in self.genome_names_to_focus.split(',')]
 

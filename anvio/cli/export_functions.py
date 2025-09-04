@@ -6,11 +6,12 @@ import sys
 import anvio
 import anvio.tables as t
 import anvio.dbops as dbops
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.dbinfo import is_contigs_db
+from anvio.utils.misc import get_filtered_dict
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -30,7 +31,7 @@ def main():
     progress = terminal.Progress()
 
     try:
-        utils.is_contigs_db(args.contigs_db)
+        is_contigs_db(args.contigs_db)
 
         progress.new('Initializing')
         progress.update('...')
@@ -67,7 +68,7 @@ def main():
                                       f"This is a no-no, so please make sure all your gene caller IDs are integers.")
 
             progress.new("Filtering the functions dict for requested gene calls")
-            functions_dict = utils.get_filtered_dict(functions_dict, 'gene_callers_id', set([int(x) for x in requested_genes]))
+            functions_dict = get_filtered_dict(functions_dict, 'gene_callers_id', set([int(x) for x in requested_genes]))
             progress.end()
 
         run.info('Annotation sources', '%s.' % (', '.join(annotation_sources)))
@@ -84,7 +85,7 @@ def main():
 
             progress.new('Initializing')
             progress.update('Filtering the functions dict ...')
-            functions_dict = utils.get_filtered_dict(functions_dict, 'source', set(requested_sources))
+            functions_dict = get_filtered_dict(functions_dict, 'source', set(requested_sources))
             progress.end()
 
 

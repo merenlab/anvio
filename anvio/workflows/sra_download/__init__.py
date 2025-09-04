@@ -7,12 +7,12 @@ import anvio
 import hashlib
 import pandas as pd
 
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 from anvio.workflows import WorkflowSuperClass
+from anvio.utils.system import is_program_exists
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -34,13 +34,13 @@ class SRADownloadWorkflow(WorkflowSuperClass):
         other_programs = ['pigz']
 
         for program in NCBI_sra_tool_programs:
-            if not utils.is_program_exists(program, dont_raise=True):
+            if not is_program_exists(program, dont_raise=True):
                 raise ConfigError(f"The program {program} is not installed in your anvi'o conda environment. "
                                   f"'prefetch' and 'fasterq-dump' are from the NCBI SRA toolkit and must be installed for the "
                                   f"sra_download workflow to work. Please check out the installation instructions here: "
                                   f"https://github.com/ncbi/sra-tools/wiki/01.-Downloading-SRA-Toolkit")
         for program in other_programs:
-            if not utils.is_program_exists(program, dont_raise=True):
+            if not is_program_exists(program, dont_raise=True):
                 raise ConfigError(f"The program {program} is not installed in your anvi'o conda environment. Please "
                                   f"double check you installed all of the programs listed in the anvi'o installation tutorial: https://anvio.org/install/")
 

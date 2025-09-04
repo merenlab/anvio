@@ -11,13 +11,13 @@ import anvio.db as db
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
-from anvio.utils import check_sample_id
-from anvio.utils import store_array_as_TAB_delimited_file as store_array
-from anvio.utils import store_dict_as_TAB_delimited_file
-from anvio.utils import is_all_columns_present_in_TAB_delim_file as cols_present
-from anvio.utils import get_vectors_from_TAB_delim_matrix as get_vectors
 from anvio.errors import ConfigError
+from anvio.utils.validation import check_sample_id
 from anvio.tables.miscdata import TableForItemAdditionalData
+from anvio.utils.files import store_array_as_TAB_delimited_file as store_array
+from anvio.utils.files import store_dict_as_TAB_delimited_file
+from anvio.utils.files import is_all_columns_present_in_TAB_delim_file as cols_present
+from anvio.utils.files import get_vectors_from_TAB_delim_matrix as get_vectors
 
 run = terminal.Run()
 progress = terminal.Progress()

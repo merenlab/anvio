@@ -7,11 +7,11 @@ import pysam
 
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.utils.validation import is_this_name_OK_for_database
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__   = []
@@ -49,7 +49,7 @@ def load_dict_from_tsv(path):
             if not '\t' in line:
                 raise Exception(f"ERROR: Invalid line in {path} (missing tab): {line}")
             new, old = line.strip().split("\t")
-            utils.is_this_name_OK_for_database('contig name prefix', new)
+            is_this_name_OK_for_database('contig name prefix', new)
             old = old.split(" ")[0].split("\t")[0]
             name_dict[old] = new
 

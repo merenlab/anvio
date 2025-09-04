@@ -5,11 +5,11 @@ import sys
 import numpy as numpy
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.summarizer as summarizer
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.utils.files import store_dict_as_TAB_delimited_file
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -109,7 +109,7 @@ def run_program():
 
     progress.update('Storing the output for gene presence data')
 
-    utils.store_dict_as_TAB_delimited_file(gene_coverages_across_samples, '%s-GENE-COVs.txt' % genome_name)
+    store_dict_as_TAB_delimited_file(gene_coverages_across_samples, '%s-GENE-COVs.txt' % genome_name)
 
     output = open(genome_name + '-ENV-DETECTION.txt', 'w')
     output.write('gene_callers_id\tdetection\n')

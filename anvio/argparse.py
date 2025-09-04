@@ -7,7 +7,7 @@ import sys
 import argparse
 import textwrap
 
-from colored import fg, bg, attr
+from colored import fg, attr
 from rich_argparse import RichHelpFormatter
 
 import anvio
@@ -17,7 +17,8 @@ import anvio.terminal as terminal
 from anvio.programs import Program
 from anvio.errors import ConfigError
 from anvio.dbinfo import FindAnvioDBs
-from anvio.utils import is_program_exists as get_program_path
+
+from anvio.utils.system import is_program_exists as get_program_path
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"

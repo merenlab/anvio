@@ -19,7 +19,6 @@ References
 import anvio
 import anvio.pfam as pfam
 import anvio.dbops as dbops
-import anvio.utils as utils
 import anvio.tables as tables
 import anvio.terminal as terminal
 import anvio.constants as constants
@@ -35,6 +34,7 @@ import shutil
 import argparse
 import numpy as np
 import pandas as pd
+from anvio.utils.network import download_file
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -632,7 +632,7 @@ class InteracDomeSetup(object):
         """
 
         for path, url in self.interacdome_files.items():
-            utils.download_file(
+            download_file(
                 url,
                 os.path.join(self.interacdome_data_dir, path),
                 check_certificate=False,

@@ -9,7 +9,6 @@ import pandas as pd
 
 import anvio
 import anvio.db as db
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.clustering as clustering
@@ -22,6 +21,9 @@ from anvio.errors import ConfigError
 from anvio.drivers import pyani, sourmash, fastani
 from anvio.tables.miscdata import TableForLayerAdditionalData
 from anvio.tables.miscdata import TableForLayerOrders
+from anvio.dbinfo import is_pan_db
+from anvio.utils.fasta import create_fasta_dir_from_sequence_sources, get_read_lengths_from_fasta
+from anvio.utils.files import get_TAB_delimited_file_as_dictionary, store_dataframe_as_TAB_delimited_file, store_dict_as_TAB_delimited_file
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
@@ -279,7 +281,7 @@ class Dereplicate:
                 raise ConfigError("Your results directory does not have a text file for the report %s. "
                                  "Anvi'o cannot dereplicate genomes from prevous results without this report" % report)
 
-            self.similarity.results[report] = utils.get_TAB_delimited_file_as_dictionary(J(dir_path, matching_filepaths[0]))
+            self.similarity.results[report] = get_TAB_delimited_file_as_dictionary(J(dir_path, matching_filepaths[0]))
 
         run.info('%s results directory imported from' % self.program_name, dir_path)
 
@@ -302,12 +304,12 @@ class Dereplicate:
     def report(self):
         if self.sequence_source_provided and not self.skip_fasta_report:
             self.populate_genomes_dir()
-            utils.store_dataframe_as_TAB_delimited_file(self.gen_fasta_report_output(), self.FASTA_REPORT_path)
+            store_dataframe_as_TAB_delimited_file(self.gen_fasta_report_output(), self.FASTA_REPORT_path)
 
         if not self.import_previous_results:
             self.similarity.report(self.SIMILARITY_SCORES_dir, ok_if_exists=True)
 
-        utils.store_dataframe_as_TAB_delimited_file(self.gen_cluster_report_output(), self.CLUSTER_REPORT_path)
+        store_dataframe_as_TAB_delimited_file(self.gen_cluster_report_output(), self.CLUSTER_REPORT_path)
 
 
     def populate_genomes_dir(self):
@@ -404,13 +406,13 @@ class Dereplicate:
             full_dict = self.similarity.genome_desc.genomes
 
         if self.similarity.fasta_txt:
-            fastas = utils.get_TAB_delimited_file_as_dictionary(self.similarity.fasta_txt, expected_fields=['name', 'path'], only_expected_fields=True)
+            fastas = get_TAB_delimited_file_as_dictionary(self.similarity.fasta_txt, expected_fields=['name', 'path'], only_expected_fields=True)
 
             for name in fastas:
                 full_dict[name] = {}
                 full_dict[name]['percent_completion'] = None
                 full_dict[name]['percent_redundancy'] = None
-                full_dict[name]['total_length'] = sum(utils.get_read_lengths_from_fasta(fastas[name]['path']).values())
+                full_dict[name]['total_length'] = sum(get_read_lengths_from_fasta(fastas[name]['path']).values())
 
         if self.representative_method == 'Qscore':
             missing_completion = False
@@ -638,7 +640,7 @@ class GenomeSimilarity:
         filesnpaths.check_output_directory(self.output_dir, ok_if_exists=(ok_if_exists or self.just_do_it))
 
         if self.pan_db:
-            utils.is_pan_db(self.pan_db)
+            is_pan_db(self.pan_db)
 
 
     def cluster(self):
@@ -659,7 +661,7 @@ class GenomeSimilarity:
 
     def add_to_pan_db(self):
         if self.pan_db:
-            utils.is_pan_db(self.pan_db)
+            is_pan_db(self.pan_db)
             pan = db.DB(self.pan_db, anvio.__pan__version__)
 
             db_genome_names = set([])
@@ -705,7 +707,7 @@ class GenomeSimilarity:
         for report_name in self.results:
             output_path_for_report = J(output_dir, self.method + '_' + report_name)
 
-            utils.store_dict_as_TAB_delimited_file(self.results[report_name], output_path_for_report + '.txt')
+            store_dict_as_TAB_delimited_file(self.results[report_name], output_path_for_report + '.txt')
 
             if report_name in self.clusterings:
                 with open(output_path_for_report + '.newick', 'w') as f:
@@ -716,7 +718,7 @@ class GenomeSimilarity:
 
     def get_genome_names_list_and_genome_source_dict(self):
         def get_names(f):
-            d = utils.get_TAB_delimited_file_as_dictionary(f, expected_fields=['name'], indexing_field=-1) if f else {}
+            d = get_TAB_delimited_file_as_dictionary(f, expected_fields=['name'], indexing_field=-1) if f else {}
             return [line['name'] for line in d.values()]
 
         names = {
@@ -753,7 +755,7 @@ class GenomeSimilarity:
         self.temp_dir,\
         self.hash_to_name,\
         self.genome_names,\
-        self.name_to_temp_path = utils.create_fasta_dir_from_sequence_sources(self.genome_desc, self.fasta_txt)
+        self.name_to_temp_path = create_fasta_dir_from_sequence_sources(self.genome_desc, self.fasta_txt)
 
         return self.temp_dir
 

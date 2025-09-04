@@ -5,11 +5,11 @@ import sys
 import random
 
 import anvio
-import anvio.utils as utils
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.learning import RF
+from anvio.utils.files import get_TAB_delimited_file_as_dictionary, get_columns_of_TAB_delim_file, get_vectors_from_TAB_delim_matrix
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -37,16 +37,16 @@ def run_program():
     filesnpaths.is_file_tab_delimited(args.matrix)
     filesnpaths.is_output_file_writable(args.output)
 
-    cols = utils.get_columns_of_TAB_delim_file(args.matrix)
+    cols = get_columns_of_TAB_delim_file(args.matrix)
     if cols[0] != "class":
         raise ConfigError("This file doesn't seem to comply with the expected file format (the second "
                            "column is not 'class').")
 
-    d = utils.get_TAB_delimited_file_as_dictionary(args.matrix)
+    d = get_TAB_delimited_file_as_dictionary(args.matrix)
     genome_to_class = dict([(g, d[g]['class']) for g in d])
     features = cols[1:]
 
-    id_to_genome, genome_to_id, columns, vectors = utils.get_vectors_from_TAB_delim_matrix(args.matrix, cols_to_return = features)
+    id_to_genome, genome_to_id, columns, vectors = get_vectors_from_TAB_delim_matrix(args.matrix, cols_to_return = features)
 
     genomes = sorted(genome_to_class.keys())
     labels = [genome_to_class[genome] for genome in genomes]

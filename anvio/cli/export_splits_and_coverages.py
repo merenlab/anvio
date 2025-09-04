@@ -14,11 +14,12 @@ from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.dbops as dbops
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.utils.fasta import export_sequences_from_contigs_db
+from anvio.utils.files import store_dict_as_TAB_delimited_file
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -64,11 +65,11 @@ def main():
 
         progress.update('Gathering coverage data...')
         coverages = profile_db.get_split_coverages_dict(use_Q2Q3_coverages=args.use_Q2Q3_coverages, splits_mode=args.splits_mode, report_contigs=args.report_contigs)
-        utils.store_dict_as_TAB_delimited_file(coverages, coverages_output, ['contig'] + sorted(list(samples)))
+        store_dict_as_TAB_delimited_file(coverages, coverages_output, ['contig'] + sorted(list(samples)))
 
         progress.update('Dealing with sequences...')
         progress.update('Gathering coverage data')
-        utils.export_sequences_from_contigs_db(args.contigs_db, sequences_output, seq_names_to_export=sorted(list(coverages.keys())), splits_mode=(not args.report_contigs))
+        export_sequences_from_contigs_db(args.contigs_db, sequences_output, seq_names_to_export=sorted(list(coverages.keys())), splits_mode=(not args.report_contigs))
 
         progress.end()
 

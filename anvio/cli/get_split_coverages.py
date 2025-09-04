@@ -8,7 +8,6 @@ from operator import itemgetter
 
 import anvio
 import anvio.tables as t
-import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.summarizer as summarizer
@@ -17,6 +16,9 @@ import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.argparse import ArgumentParser
+from anvio.dbinfo import is_contigs_db, is_profile_db
+from anvio.utils.database import get_db_variant
+from anvio.utils.validation import is_gene_caller_id
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -47,10 +49,10 @@ def run_program():
     run = terminal.Run()
     progress = terminal.Progress()
 
-    utils.is_profile_db(args.profile_db)
+    is_profile_db(args.profile_db)
 
     profile_db = dbops.ProfileSuperclass(args)
-    profile_db_variant = utils.get_db_variant(args.profile_db)
+    profile_db_variant = get_db_variant(args.profile_db)
 
     if args.list_splits:
         print('\n'.join(sorted(list(profile_db.split_names))))
@@ -58,13 +60,13 @@ def run_program():
 
     # further sanity checks
     if args.contigs_db:
-        utils.is_contigs_db(args.contigs_db)
+        is_contigs_db(args.contigs_db)
 
     # this extra flag is necessary for avoiding args.gene_caller_id == 0 which could evaluate to False
     # when gene caller id is 0 :)
     has_valid_gene_caller_id_arg = False
     if args.gene_caller_id != None:
-        has_valid_gene_caller_id_arg = utils.is_gene_caller_id(args.gene_caller_id)
+        has_valid_gene_caller_id_arg = is_gene_caller_id(args.gene_caller_id)
         if not args.contigs_db:
             raise ConfigError("If you wish to work with a gene caller id, you also need to provide "
                               "a contigs database (but you are off to a very good start).")

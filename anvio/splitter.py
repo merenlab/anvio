@@ -16,7 +16,6 @@ import anvio
 import anvio.db as db
 import anvio.tables as t
 import anvio.dbops as dbops
-import anvio.utils as utils
 import anvio.hmmops as hmmops
 import anvio.profiler as profiler
 import anvio.terminal as terminal
@@ -34,6 +33,13 @@ from anvio.tables.kmers import KMerTablesForContigsAndSplits
 from anvio.tables.collections import TablesForCollections
 from anvio.tables.genefunctions import TableForGeneFunctions
 from anvio.clusteringconfuguration import ClusteringConfiguration
+from anvio.dbinfo import is_pan_db, is_profile_db_and_contigs_db_compatible
+from anvio.utils.commandline import get_gene_caller_ids_from_args
+from anvio.utils.database import get_db_variant
+from anvio.utils.files import gzip_compress_file, store_dict_as_TAB_delimited_file
+from anvio.utils.misc import get_filtered_dict
+from anvio.utils.sequences import rev_comp, rev_comp_gene_calls_dict
+from anvio.utils.validation import check_sample_id
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -80,7 +86,7 @@ class PanSplitter(summarizer.PanSummarizer):
             raise ConfigError("You came all the way here without a pan database. Congratulations! But we "
                               "kinda need it at this stage really :/ GOOD DAY.")
 
-        utils.is_pan_db(self.pan_db_path)
+        is_pan_db(self.pan_db_path)
 
         if self.list_collections:
             self.collections.list_collections()
@@ -170,7 +176,7 @@ class ProfileSplitter:
         if not self.profile_db_path:
             raise ConfigError("No profile db no cookie. Bye.")
 
-        utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
+        is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
 
         profile_db = dbops.ProfileDatabase(self.profile_db_path)
         if profile_db.meta['db_type'] != 'profile':
@@ -466,7 +472,7 @@ class BinSplitter(summarizer.Bin, XSplitter):
         self.linkage = A('linkage') or constants.linkage_method_default
         self.compress_auxiliary_data = A('compress_auxiliary_data')
 
-        self.db_variant = str(utils.get_db_variant(self.profile_db_path))
+        self.db_variant = str(get_db_variant(self.profile_db_path))
 
         # make sure early on that both the distance and linkage is OK.
         clustering.is_distance_and_linkage_compatible(self.distance, self.linkage)
@@ -599,7 +605,7 @@ class BinSplitter(summarizer.Bin, XSplitter):
 
         if self.compress_auxiliary_data:
             self.progress.update('Compressing the profile db auxiliary data file ...')
-            utils.gzip_compress_file(new_auxiliary_profile_data_path)
+            gzip_compress_file(new_auxiliary_profile_data_path)
 
         self.progress.end()
 
@@ -765,7 +771,7 @@ class LocusSplitter:
                "repository page and we will address it.")
 
         if self.gene_caller_ids and self.is_in_flank_mode:
-            num_genes = len(utils.get_gene_caller_ids_from_args(self.gene_caller_ids, delimiter=self.delimiter))
+            num_genes = len(get_gene_caller_ids_from_args(self.gene_caller_ids, delimiter=self.delimiter))
             if num_genes != 2:
                 raise ConfigError("You're in flank mode and opted to use gene caller ids to identify the "
                                   "flanking genes. But you provided anvi'o %d gene caller id, and anvi'o "
@@ -801,7 +807,7 @@ class LocusSplitter:
             else:
                 self.run.info('Genes to report', 'Matching gene, and %d genes after it' % (self.num_genes_list[1]))
 
-        utils.check_sample_id(self.output_file_prefix)
+        check_sample_id(self.output_file_prefix)
 
         self.run.warning(None, header="Input / Output", lc="cyan")
         self.run.info('Contigs DB', os.path.abspath(self.input_contigs_db_path))
@@ -821,7 +827,7 @@ class LocusSplitter:
         if self.gene_caller_ids:
             self.run.info('Mode', 'User-provided gene caller id(s)')
 
-            gene_caller_ids_of_interest = list(utils.get_gene_caller_ids_from_args(self.gene_caller_ids, self.delimiter))
+            gene_caller_ids_of_interest = list(get_gene_caller_ids_from_args(self.gene_caller_ids, self.delimiter))
             self.sources = ['gene_caller_ids']
         elif self.use_hmm:
             self.run.info('Mode', 'HMM search')
@@ -831,7 +837,7 @@ class LocusSplitter:
             self.run.info('Search term', self.search_term, mc='green')
             self.run.info('HMM sources being used', ', '.join(s.sources))
 
-            hmm_hits = utils.get_filtered_dict(s.hmm_hits, 'gene_name', set(self.search_term))
+            hmm_hits = get_filtered_dict(s.hmm_hits, 'gene_name', set(self.search_term))
             gene_caller_ids_of_interest = [entry['gene_callers_id'] for entry in hmm_hits.values()]
 
             self.targets.append('HMMs')
@@ -1144,7 +1150,7 @@ class LocusSplitter:
                                          'reverse_complemented:%s' % str(reverse_complement)])
 
                 f.write('>%s\n' % locus_header)
-                f.write('%s\n' % utils.rev_comp(locus_sequence) if reverse_complement else locus_sequence)
+                f.write('%s\n' % rev_comp(locus_sequence) if reverse_complement else locus_sequence)
 
         # report a fancy anvi'o contigs database
         self.store_locus_as_contigs_db(contig_name,
@@ -1178,8 +1184,8 @@ class LocusSplitter:
         # gene calls here, and remember this for later.
         gene_calls_list = list(gene_calls.keys())
         if reverse_complement:
-            sequence = utils.rev_comp(sequence)
-            gene_calls, gene_caller_id_conversion_dict = utils.rev_comp_gene_calls_dict(gene_calls, sequence)
+            sequence = rev_comp(sequence)
+            gene_calls, gene_caller_id_conversion_dict = rev_comp_gene_calls_dict(gene_calls, sequence)
         else:
             gene_caller_id_conversion_dict = dict([(gene_calls_list[g], g) for g in range(0, len(gene_calls_list))])
             new_gene_calls = {}
@@ -1196,7 +1202,7 @@ class LocusSplitter:
         # similarly, here we will store external gene calls so there will be no gene calling during
         # the generation of the contigs database
         headers = ['gene_callers_id', 'contig', 'start', 'stop', 'direction', 'partial', 'call_type', 'source', 'version']
-        utils.store_dict_as_TAB_delimited_file(gene_calls, locus_external_gene_calls, headers=headers)
+        store_dict_as_TAB_delimited_file(gene_calls, locus_external_gene_calls, headers=headers)
 
         # this is where magic happens. we ask anvi'o to create a contigs database for us.
         args = argparse.Namespace(contigs_fasta=locus_sequence_fasta,

@@ -6,12 +6,13 @@ from collections import Counter
 import anvio
 import anvio.db as db
 import anvio.tables as t
-import anvio.utils as utils
 import anvio.terminal as terminal
 
 from anvio.tables.tableops import Table
 from anvio.errors import ConfigError
 from anvio.tables.genecalls import GenesInSplits
+from anvio.dbinfo import is_contigs_db
+from anvio.utils.database import get_required_version_for_db
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -36,7 +37,7 @@ class TaxonNamesTable(object):
 
  
     def populate_taxon_names_table(self):
-        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
 
         db_entries = [tuple([t_name_id] + [self.taxon_names_dict[t_name_id][t_level] for t_level in t.taxon_names_table_structure[1:]]) for t_name_id in self.taxon_names_dict]
         database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?)''' % t.taxon_names_table_name, db_entries)
@@ -56,7 +57,7 @@ class TablesForGeneLevelTaxonomy(Table, TaxonNamesTable):
         self.run = run
         self.progress = progress
 
-        utils.is_contigs_db(self.db_path)
+        is_contigs_db(self.db_path)
 
         Table.__init__(self, self.db_path, anvio.__contigs__version__, self.run, self.progress)
         TaxonNamesTable.__init__(self, self.db_path, self.run, self.progress)
@@ -81,7 +82,7 @@ class TablesForGeneLevelTaxonomy(Table, TaxonNamesTable):
         self.sanity_check()
 
         # oepn connection
-        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
 
         self.splits_info = database.get_table_as_dict(t.splits_info_table_name)
 
@@ -113,7 +114,7 @@ class TablesForGeneLevelTaxonomy(Table, TaxonNamesTable):
 
     def populate_genes_taxonomy_table(self):
         # open connection
-        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
 
         # push taxonomy data
         db_entries = [(gene_callers_id, self.genes_taxonomy_dict[gene_callers_id]) for gene_callers_id in self.genes_taxonomy_dict]
@@ -216,7 +217,7 @@ class TablesForGeneLevelTaxonomy(Table, TaxonNamesTable):
                 num_splits_with_taxonomy += 1
 
         # open connection
-        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
 
         # push taxonomy data
         db_entries = [(split, splits_dict[split]) for split in splits_dict]

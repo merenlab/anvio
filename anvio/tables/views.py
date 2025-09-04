@@ -3,12 +3,12 @@
 
 import anvio
 import anvio.tables as t
-import anvio.utils as utils
 import anvio.terminal as terminal
 
 from anvio.dbops import DBClassFactory
 from anvio.errors import ConfigError
 from anvio.tables.tableops import Table
+from anvio.utils.database import get_required_version_for_db
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -31,7 +31,7 @@ class TablesForViews(Table):
         self.progress = progress
         self.db_path = db_path
 
-        Table.__init__(self, self.db_path, utils.get_required_version_for_db(db_path), self.run, self.progress)
+        Table.__init__(self, self.db_path, get_required_version_for_db(db_path), self.run, self.progress)
 
 
     def sanity_check(self, view_data):

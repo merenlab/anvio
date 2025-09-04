@@ -9,13 +9,15 @@ import argparse
 import os
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.constants as constants
 
 from anvio.errors import ConfigError
 
 from anvio.threadingops import ThreadedProdigalRunner
+from anvio.utils.commandline import get_command_output_from_shell
+from anvio.utils.fasta import get_num_sequences_in_fasta
+from anvio.utils.system import is_program_exists
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
@@ -92,8 +94,8 @@ class Prodigal:
     def check_version(self):
         """checks the installed version of prodigal, sets the parser"""
 
-        utils.is_program_exists('prodigal')
-        output, ret_code = utils.get_command_output_from_shell('prodigal -v')
+        is_program_exists('prodigal')
+        output, ret_code = get_command_output_from_shell('prodigal -v')
 
         version_found = output.split(b'\n')[1].split()[1].split(b':')[0].lower().decode("utf-8")
 
@@ -133,7 +135,7 @@ class Prodigal:
 
         # if more threads assigned to gene calling than the number of sequences in the FASTA file,
         # it can cause issues downstream, and we should set the number of threads accordingly.
-        num_sequences_in_fasta_file = utils.get_num_sequences_in_fasta(fasta_file_path)
+        num_sequences_in_fasta_file = get_num_sequences_in_fasta(fasta_file_path)
         if num_sequences_in_fasta_file < self.num_threads:
             self.progress.reset()
             self.run.warning(f"Even though you set the number of threads to {self.num_threads}, your FASTA file contains only "

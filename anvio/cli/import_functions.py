@@ -4,12 +4,12 @@
 import sys
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 
 from anvio.parsers import parser_modules
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.tables.genefunctions import TableForGeneFunctions
+from anvio.utils.files import get_TAB_delimited_file_as_dictionary
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -42,7 +42,7 @@ def main():
                                    "one file as an input.")
 
             input_matrix = args.input_files[0]
-            functions_dict = utils.get_TAB_delimited_file_as_dictionary(input_matrix,
+            functions_dict = get_TAB_delimited_file_as_dictionary(input_matrix,
                                                                         expected_fields = ['gene_callers_id', 'source', 'accession', 'function', 'e_value'],
                                                                         column_mapping  = [int, str, str, str, float],
                                                                         only_expected_fields = True,

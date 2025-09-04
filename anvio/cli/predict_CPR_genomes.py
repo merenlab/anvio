@@ -6,7 +6,6 @@ import sys
 import copy
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
@@ -16,6 +15,7 @@ from anvio.completeness import Completeness
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.hmmops import SequencesForHMMHits
 from anvio.dbops import ContigsSuperclass
+from anvio.dbinfo import is_contigs_db
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -44,7 +44,7 @@ def run_program():
     progress = terminal.Progress()
     pp = terminal.pretty_print
 
-    utils.is_contigs_db(args.contigs_db)
+    is_contigs_db(args.contigs_db)
 
     collections = ccollections.Collections()
     collections.populate_collections_dict(args.contigs_db)

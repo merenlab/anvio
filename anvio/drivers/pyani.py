@@ -4,11 +4,13 @@
 import os
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
+from anvio.utils.commandline import run_command
+from anvio.utils.files import get_TAB_delimited_file_as_dictionary
+from anvio.utils.system import is_program_exists
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -42,14 +44,14 @@ class PyANI:
 
 
     def check_programs(self):
-        utils.is_program_exists(self.program_name)
+        is_program_exists(self.program_name)
 
         if self.method == 'ANIb':
-            utils.is_program_exists('blastn')
+            is_program_exists('blastn')
         elif self.method == 'ANIblastall':
-            utils.is_program_exists('blastall')
+            is_program_exists('blastall')
         elif self.method == 'ANIm':
-            utils.is_program_exists('nucmer')
+            is_program_exists('nucmer')
 
 
     def run_command(self, input_path):
@@ -65,7 +67,7 @@ class PyANI:
 
         self.progress.new('PyANI')
         self.progress.update('Running ...')
-        exit_code = utils.run_command(full_command, self.log_file_path)
+        exit_code = run_command(full_command, self.log_file_path)
         self.progress.end()
 
         if int(exit_code):
@@ -81,7 +83,7 @@ class PyANI:
         for matrix_name in output_matrix_names:
             output_matrix_path = full_matrix_path(matrix_name)
             if os.path.exists(output_matrix_path):
-                matrices[matrix_name] = utils.get_TAB_delimited_file_as_dictionary(output_matrix_path, empty_header_columns_are_OK=True)
+                matrices[matrix_name] = get_TAB_delimited_file_as_dictionary(output_matrix_path, empty_header_columns_are_OK=True)
 
         if not len(matrices):
             raise ConfigError("None of the output matrices pyANI was supposed to generate was found in the "

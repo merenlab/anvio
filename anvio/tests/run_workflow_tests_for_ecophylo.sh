@@ -17,6 +17,16 @@ cp $files/data/input_files/hmm_list_group.txt                           $output_
 cp $files/data/input_files/hmm_list_external.txt                        $output_dir/workflow_test
 cd $output_dir/workflow_test
 
+# First check if gen-paired-end-reads exists and is executable
+INFO "Checking if reads-for-assembly is in place"
+if [ ! -x ~/github/reads-for-assembly/gen-paired-end-reads ]; then
+    echo "Error: gen-paired-end-reads not found or not executable at ~/github/reads-for-assembly/"
+    echo "see https://github.com/merenlab/reads-for-assembly and get a copy"
+    exit 1
+else
+    echo "All good"
+fi
+
 INFO "Migrating all databases"
 anvi-migrate *db --migrate-quickly
 
@@ -41,7 +51,6 @@ awk '{
     print
 }' default-config.json > merge-by-group-config.json
 
-
 INFO "Generating r1 and r2 short reads for samples"
 mkdir -p output
 samples="sampleB_thetaiotamicron_Ribosomal_L16 sample_IGD_SUBSET_Ribosomal_L16 sample_P_marinus_Ribosomal_L16"
@@ -53,7 +62,7 @@ done
 
 echo -e "sample\tr1\tr2" > samples.txt
 for reads in `ls output/*-R1.fastq`;
-do 
+do
     name=$(basename $reads -R1.fastq | sed 's|-|_|g')
     echo -e "${name}\t${reads}\t${reads/-R1.fastq/-R2.fastq}" >> samples.txt
 done
@@ -134,4 +143,3 @@ GROUP=`awk 'NR==2{print $4}' hmm_list_group.txt`
 anvi-interactive -c ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/03_CONTIGS/${GROUP}-contigs.db \
                  -p ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED/${GROUP}/PROFILE.db \
                  $dry_run_controller
-

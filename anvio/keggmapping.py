@@ -21,7 +21,6 @@ from typing import Dict, Iterable, List, Literal, Set, Tuple, Union
 
 import anvio.kegg as kegg
 import anvio.kgml as kgml
-import anvio.utils as utils
 import anvio.dbinfo as dbinfo
 import anvio.terminal as terminal
 import anvio.reactionnetwork as rn
@@ -31,6 +30,7 @@ from anvio.errors import ConfigError
 from anvio.genomestorage import GenomeStorage
 from anvio.dbops import ContigsDatabase, PanSuperclass
 from anvio import FORCE_OVERWRITE, QUIET, __version__ as VERSION
+from anvio.utils.files import get_groups_txt_file_as_dict
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -604,7 +604,7 @@ class Mapper:
                     f"'group_threshold' must be a number between 0 and 1, not {group_threshold}"
                 )
 
-            source_group, group_sources = utils.get_groups_txt_file_as_dict(
+            source_group, group_sources = get_groups_txt_file_as_dict(
                 groups_txt, run=self.run, progress=self.progress
             )
             categories = list(group_sources)
@@ -1479,7 +1479,7 @@ class Mapper:
                     f"'group_threshold' must be a number between 0 and 1, not {group_threshold}"
                 )
 
-            source_group, group_sources = utils.get_groups_txt_file_as_dict(
+            source_group, group_sources = get_groups_txt_file_as_dict(
                 groups_txt, run=self.run, progress=self.progress
             )
             categories = list(group_sources)

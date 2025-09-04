@@ -4,11 +4,12 @@
 import os
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
+from anvio.utils.commandline import run_command
+from anvio.utils.system import is_program_exists
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -33,7 +34,7 @@ class MCL:
         self.mcl_input_file_path = mcl_input_file_path
         self.num_threads = num_threads
 
-        utils.is_program_exists('mcl')
+        is_program_exists('mcl')
 
         # if the programmer wishes to store the clusters output file in a particular
         # location, they will have to explicitly set the path after gettinga an
@@ -84,7 +85,7 @@ class MCL:
 
         self.run.info('mcl cmd', ' '.join([str(x) for x in cmd_line]), quiet=True)
 
-        utils.run_command(cmd_line, self.run.log_file_path)
+        run_command(cmd_line, self.run.log_file_path)
 
         self.progress.end()
 

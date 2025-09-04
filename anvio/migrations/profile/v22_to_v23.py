@@ -8,10 +8,12 @@ import tempfile
 import argparse
 
 import anvio.db as db
-import anvio.utils as utils
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
+from anvio.dbinfo import is_profile_db
+from anvio.utils.files import get_TAB_delimited_file_as_dictionary, get_columns_of_TAB_delim_file, store_dict_as_TAB_delimited_file
+from anvio.utils.misc import get_predicted_type_of_items_in_a_dict
 
 current_version, next_version = [x[1:] for x in __name__.split('_to_')]
 
@@ -131,8 +133,8 @@ class SamplesInformationDatabase:
 
         samples_information_dict, samples_order_dict = self.get_samples_information_and_order_dicts()
 
-        utils.store_dict_as_TAB_delimited_file(samples_order_dict, order_output_path, headers=['attributes', 'data_type', 'data_value'])
-        utils.store_dict_as_TAB_delimited_file(samples_information_dict, information_output_path, headers=['samples'] + sorted(list(list(samples_information_dict.values())[0].keys())))
+        store_dict_as_TAB_delimited_file(samples_order_dict, order_output_path, headers=['attributes', 'data_type', 'data_value'])
+        store_dict_as_TAB_delimited_file(samples_information_dict, information_output_path, headers=['samples'] + sorted(list(list(samples_information_dict.values())[0].keys())))
 
         return information_output_path, order_output_path
 
@@ -162,8 +164,8 @@ class AdditionalAndOrderDataBaseClass(Table, object):
 
 
     def populate_from_file(self, additional_data_file_path, skip_check_names=None):
-        data_keys = utils.get_columns_of_TAB_delim_file(additional_data_file_path)
-        data_dict = utils.get_TAB_delimited_file_as_dictionary(additional_data_file_path)
+        data_keys = get_columns_of_TAB_delim_file(additional_data_file_path)
+        data_dict = get_TAB_delimited_file_as_dictionary(additional_data_file_path)
 
         if not len(data_keys):
             raise ConfigError("There is something wrong with the additional data file for %s at %s. "
@@ -218,7 +220,7 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
             if '!' in key:
                 predicted_key_type = "stackedbar"
             else:
-                type_class = utils.get_predicted_type_of_items_in_a_dict(data_dict, key)
+                type_class = get_predicted_type_of_items_in_a_dict(data_dict, key)
                 predicted_key_type = type_class.__name__ if type_class else None
 
             key_types[key] = predicted_key_type
@@ -300,7 +302,7 @@ def migrate(db_path):
     if db_path is None:
         raise ConfigError("No database path is given.")
 
-    utils.is_profile_db(db_path)
+    is_profile_db(db_path)
 
     profile_db = db.DB(db_path, None, ignore_version = True)
     if str(profile_db.get_version()) != current_version:

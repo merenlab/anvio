@@ -18,11 +18,12 @@ import multiprocess as multiprocessing
 from collections import defaultdict
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
+from anvio.utils.commandline import get_command_output_from_shell, run_command, start_command
+from anvio.utils.system import is_program_exists
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -145,9 +146,9 @@ class Vmatch(object):
 
         for program_name, attr_name in zip((self.index_program_name, self.search_program_name),
                                            ('installed_index_program_version', 'installed_search_program_version')):
-            utils.is_program_exists(program_name)
+            is_program_exists(program_name)
 
-            output, ret_code = utils.get_command_output_from_shell(f'{program_name} -version')
+            output, ret_code = get_command_output_from_shell(f'{program_name} -version')
             try:
                 version_found = output.split(b'\n')[0].split(b' ')[2].decode("utf-8")
                 if not self.quiet:
@@ -202,7 +203,7 @@ class Vmatch(object):
                        '-pl',
                        '-tis', '-suf', '-sti1', '-lcp', '-bck', '-ois', '-skp',
                        '-v']
-        ret_val = utils.run_command(command, self.log_path, remove_log_file_if_exists=False)
+        ret_val = run_command(command, self.log_path, remove_log_file_if_exists=False)
 
         if int(ret_val):
             raise ConfigError("vmktree returned with non-zero exit code, there may be some errors. "
@@ -276,7 +277,7 @@ class Vmatch(object):
                            f'{self.index_path}']
             output_chunk_file = open(output_chunk_path, 'w', encoding='utf-8')
             unprocessed_chunk_dict[unprocessed_chunk_num]['output_file'] = output_chunk_file
-            subprocess = utils.start_command(command, self.log_path, stdout=output_chunk_file, remove_log_file_if_exists=False)
+            subprocess = start_command(command, self.log_path, stdout=output_chunk_file, remove_log_file_if_exists=False)
             unprocessed_chunk_dict[unprocessed_chunk_num]['subprocess'] = subprocess
 
         # Chunk output parsing can lag behind vmatch, so distribute parsing jobs to multiple
@@ -357,7 +358,7 @@ class Vmatch(object):
                                    f'{self.index_path}']
                     output_chunk_file = open(output_chunk_path, 'w', encoding='utf-8')
                     unprocessed_chunk_dict[unprocessed_chunk_num]['output_file'] = output_chunk_file
-                    subprocess = utils.start_command(command, self.log_path, stdout=output_chunk_file, remove_log_file_if_exists=False)
+                    subprocess = start_command(command, self.log_path, stdout=output_chunk_file, remove_log_file_if_exists=False)
                     unprocessed_chunk_dict[unprocessed_chunk_num]['subprocess'] = subprocess
 
                     self.progress.update_pid(pid)

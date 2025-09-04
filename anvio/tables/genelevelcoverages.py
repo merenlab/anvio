@@ -6,11 +6,13 @@ import numpy as np
 import anvio
 import anvio.db as db
 import anvio.tables as t
-import anvio.utils as utils
 import anvio.terminal as terminal
 
 from anvio.tables.tableops import Table
 from anvio.errors import ConfigError
+from anvio.utils.algorithms import convert_binary_blob_to_numpy_array, convert_numpy_array_to_binary_blob
+from anvio.utils.database import get_required_version_for_db
+from anvio.utils.misc import get_hash_for_list
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -58,7 +60,7 @@ class TableForGeneLevelCoverages(Table):
                               "parameters have changed at some point).")
 
 
-        Table.__init__(self, self.db_path, utils.get_required_version_for_db(db_path), run=self.run, progress=self.progress)
+        Table.__init__(self, self.db_path, get_required_version_for_db(db_path), run=self.run, progress=self.progress)
 
         self.num_entries = 0
 
@@ -68,7 +70,7 @@ class TableForGeneLevelCoverages(Table):
 
     def check_params(self):
         """Make sure params to generate gene-level stats match across the board"""
-        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
         non_matching_parameters = []
         for parameter in self.parameters:
             try:
@@ -120,9 +122,9 @@ class TableForGeneLevelCoverages(Table):
                                   "here is that someone called the `read` function, but the instance of this "
                                   "class does not know any splits, and the `ignore_splits_name_check` is False.")
 
-            splits_hash = utils.get_hash_for_list(self.split_names)
+            splits_hash = get_hash_for_list(self.split_names)
 
-            db_hash = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path)).get_meta_value('splits_hash')
+            db_hash = db.DB(self.db_path, get_required_version_for_db(self.db_path)).get_meta_value('splits_hash')
 
             if splits_hash != db_hash:
                 raise ConfigError("Terrible news of the day: You have a genes database for the collection %s and bin %s. But "
@@ -137,7 +139,7 @@ class TableForGeneLevelCoverages(Table):
 
 
     def read(self):
-        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
         if not database.get_meta_value('gene_level_coverages_stored'):
             # we don't have any gene-level coverage data stored in this database
             database.disconnect()
@@ -149,7 +151,7 @@ class TableForGeneLevelCoverages(Table):
         self.progress.new("Database bleep bloop")
         self.progress.update("Recovering %s stats from the genes database..." % self.mode)
 
-        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
         raw_data = database.get_table_as_dict(self.table_name)
         data = {}
 
@@ -165,10 +167,10 @@ class TableForGeneLevelCoverages(Table):
                 data[gene_callers_id][sample_name] = entry
 
             g, n = data[gene_callers_id][sample_name]['gene_coverage_values_per_nt'], data[gene_callers_id][sample_name]['gene_coverage_values_per_nt']
-            data[gene_callers_id][sample_name]['gene_coverage_values_per_nt'] = utils.convert_binary_blob_to_numpy_array(g, 'uint16')
+            data[gene_callers_id][sample_name]['gene_coverage_values_per_nt'] = convert_binary_blob_to_numpy_array(g, 'uint16')
 
             if n:
-                data[gene_callers_id][sample_name]['non_outlier_positions'] = utils.convert_binary_blob_to_numpy_array(n, 'uint16')
+                data[gene_callers_id][sample_name]['non_outlier_positions'] = convert_binary_blob_to_numpy_array(n, 'uint16')
             else:
                 data[gene_callers_id][sample_name]['non_outlier_positions'] = None
 
@@ -195,13 +197,13 @@ class TableForGeneLevelCoverages(Table):
                 d = []
                 for h in self.table_structure:
                     if h in ['gene_coverage_values_per_nt', 'non_outlier_positions']:
-                        d.append(utils.convert_numpy_array_to_binary_blob(np.array(entry[h]), 'uint16'))
+                        d.append(convert_numpy_array_to_binary_blob(np.array(entry[h]), 'uint16'))
                     else:
                         d.append(entry[h])
 
                 db_entries.append(tuple(d), )
 
-        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
         database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?)''' % self.table_name, db_entries)
 
         for parameter in self.parameters:

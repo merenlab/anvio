@@ -6,11 +6,11 @@ import pickle
 import numpy as np
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
+from anvio.utils.files import get_TAB_delimited_file_as_dictionary, get_columns_of_TAB_delim_file
 
 with terminal.SuppressAllOutput():
     import sklearn.ensemble
@@ -55,8 +55,8 @@ class RF:
 
 
     def predict_from_TAB_delimited_file(self, file_path):
-        cols = utils.get_columns_of_TAB_delim_file(file_path)
-        return self.predict(utils.get_TAB_delimited_file_as_dictionary(file_path, column_mapping=[str] + [float] * len(cols)))
+        cols = get_columns_of_TAB_delim_file(file_path)
+        return self.predict(get_TAB_delimited_file_as_dictionary(file_path, column_mapping=[str] + [float] * len(cols)))
 
 
     def predict(self, data_dict):

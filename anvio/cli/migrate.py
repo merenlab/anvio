@@ -9,13 +9,14 @@ import shutil
 
 import anvio
 import anvio.db as db
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.migrations import migration_scripts
 from anvio.version import versions_for_db_types
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.utils.commandline import get_command_output_from_shell
+from anvio.utils.system import check_h5py_module
 
 
 __description__ = "Migrates any anvi'o artifact, whether it is a database or a config file, to a newer version. Pure magic."
@@ -48,7 +49,7 @@ class Migrater(object):
         self.safe_mode = self.args.migrate_safely
 
         try:
-            self.sqlite_version = utils.get_command_output_from_shell("sqlite3 --version")[0].decode("utf-8").split(' ')[0].split('.')
+            self.sqlite_version = get_command_output_from_shell("sqlite3 --version")[0].decode("utf-8").split(' ')[0].split('.')
         except:
             self.sqlite_version = None
 
@@ -100,7 +101,7 @@ class Migrater(object):
 
         # make sure we have the Python module for HDF is present if we have an .h5 file
         if self.artifact_path.endswith('GENOMES.h5'):
-            utils.check_h5py_module()
+            check_h5py_module()
 
         # if we have a JSON file, we have to make sure a few things to say we're good to go
         if self.artifact_path.endswith('json') or self.artifact_path.endswith('JSON'):

@@ -6,11 +6,11 @@ import sys
 import anvio
 import anvio.tables as t
 import anvio.dbops as dbops
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.dbinfo import is_pan_db
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -30,7 +30,7 @@ def main():
     run = terminal.Run()
 
     try:
-        utils.is_pan_db(args.pan_db)
+        is_pan_db(args.pan_db)
 
         if not args.output_file:
             raise ConfigError("You should provide an output file name so anvi'o does not have to make up a silly "

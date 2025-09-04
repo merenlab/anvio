@@ -7,6 +7,7 @@ from anvio.sequencefeatures import Palindromes
 
 import unittest
 import argparse
+from anvio.utils.sequences import rev_comp
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
@@ -29,7 +30,7 @@ class TestFindPalindrome(unittest.TestCase):
                 (5, 15, 18, 28),
             ],
             palindrome_seqs = [
-                (self.nt_10, anvio.utils.rev_comp(self.nt_10)),
+                (self.nt_10, anvio.rev_comp(self.nt_10)),
             ],
         )
 
@@ -56,7 +57,7 @@ class TestFindPalindrome(unittest.TestCase):
                 (5, 15, 15, 25),
             ],
             palindrome_seqs = [
-                (self.nt_10, anvio.utils.rev_comp(self.nt_10)),
+                (self.nt_10, anvio.rev_comp(self.nt_10)),
             ],
         )
 
@@ -84,7 +85,7 @@ class TestFindPalindrome(unittest.TestCase):
                 (4, 14, 14+delta, 24+delta),
             ],
             palindrome_seqs = [
-                (self.nt_10, anvio.utils.rev_comp(self.nt_10)),
+                (self.nt_10, anvio.rev_comp(self.nt_10)),
             ],
         )
 
@@ -112,8 +113,8 @@ class TestFindPalindrome(unittest.TestCase):
                 (5, 15, 38, 48),
             ],
             palindrome_seqs = [
-                (self.nt_10, anvio.utils.rev_comp(self.nt_10)),
-                (self.nt_10, anvio.utils.rev_comp(self.nt_10)),
+                (self.nt_10, anvio.rev_comp(self.nt_10)),
+                (self.nt_10, anvio.rev_comp(self.nt_10)),
             ],
         )
 
@@ -143,7 +144,7 @@ class TestFindPalindrome(unittest.TestCase):
         pal_for = 'AACTGGAGCT'
         #          ||| ||| ||
         pal_rev = 'AACAGGAACT'
-        pal_rev = anvio.utils.rev_comp(pal_rev)
+        pal_rev = anvio.rev_comp(pal_rev)
 
         seq = self.seq_with_palindromes(
             template = self.nt_30,
@@ -203,7 +204,7 @@ class TestFindPalindrome(unittest.TestCase):
                     (5, 15, 18, 28),
                 ],
                 palindrome_seqs = [
-                    (self.nt_10, anvio.utils.rev_comp(self.nt_10)),
+                    (self.nt_10, anvio.rev_comp(self.nt_10)),
                 ],
             )
             p = Palindromes(argparse.Namespace(
@@ -229,7 +230,7 @@ class TestFindPalindrome(unittest.TestCase):
                 (5, 15, 15, 25),
             ],
             palindrome_seqs = [
-                (self.nt_10, anvio.utils.rev_comp(self.nt_10)),
+                (self.nt_10, anvio.rev_comp(self.nt_10)),
             ],
         )
 
@@ -257,8 +258,8 @@ class TestFindPalindrome(unittest.TestCase):
                 (5, 15, 38, 48),
             ],
             palindrome_seqs = [
-                (self.nt_10, anvio.utils.rev_comp(self.nt_10)),
-                (self.nt_10, anvio.utils.rev_comp(self.nt_10)),
+                (self.nt_10, anvio.rev_comp(self.nt_10)),
+                (self.nt_10, anvio.rev_comp(self.nt_10)),
             ],
         )
 
@@ -288,7 +289,7 @@ class TestFindPalindrome(unittest.TestCase):
         pal_for = 'AACTGGAGCTCGAACTG'
         #          |||||||| |||||||| 
         pal_rev = 'AACTGGAGGTCGAACTG'
-        pal_rev = anvio.utils.rev_comp(pal_rev)
+        pal_rev = anvio.rev_comp(pal_rev)
 
         x0, x1 = 5, 30
 
@@ -343,7 +344,7 @@ class TestFindPalindrome(unittest.TestCase):
                 (4, 14, 14+delta, 24+delta),
             ],
             palindrome_seqs = [
-                (self.nt_10, anvio.utils.rev_comp(self.nt_10)),
+                (self.nt_10, anvio.rev_comp(self.nt_10)),
             ],
         )
 

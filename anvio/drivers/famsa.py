@@ -5,11 +5,12 @@ import os
 import shutil
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
+from anvio.utils.commandline import run_command_STDIN
+from anvio.utils.system import is_program_exists
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -33,7 +34,7 @@ class FAMSA:
 
         self.program_name = program_name
 
-        utils.is_program_exists(self.program_name)
+        is_program_exists(self.program_name)
 
         self.citation = "Deorowicz et al., doi:10.1038/srep33964"
         self.web = "https://github.com/refresh-bio/FAMSA"
@@ -62,7 +63,7 @@ class FAMSA:
         if additional_params:
             cmd_line += additional_params
 
-        output = utils.run_command_STDIN(cmd_line, log_file_path, sequences_data)
+        output = run_command_STDIN(cmd_line, log_file_path, sequences_data)
 
         if output[0:5] != 'FAMSA' or output[-6:].strip() != "Done!":
             with open(log_file_path, "a") as log_file: log_file.write('# THIS IS THE OUTPUT YOU ARE LOOKING FOR:\n\n%s\n' % (output))

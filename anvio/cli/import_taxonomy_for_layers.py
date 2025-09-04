@@ -7,13 +7,13 @@ from anvio.argparse import ArgumentParser
 import anvio
 import anvio.tables as t
 import anvio.dbops as dbops
-import anvio.utils as utils
 import anvio.parsers as parsers
 import anvio.terminal as terminal
 
 from anvio.constants import levels_of_taxonomy
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.tables.miscdata import TableForLayerAdditionalData
+from anvio.dbinfo import is_blank_profile, is_profile_db_merged
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -47,7 +47,7 @@ def run_program():
         raise ConfigError("You need to use '--input-files' parameter to list file(s) that is/are required the "
                            "parser you chose. Please see the documentation for details.")
 
-    if utils.is_profile_db_merged(args.profile_db) and not utils.is_blank_profile(args.profile_db):
+    if is_profile_db_merged(args.profile_db) and not is_blank_profile(args.profile_db):
         raise ConfigError("This will not work with merged profile databases :(")
 
     if args.min_abundance < 0 or args.min_abundance > 5:

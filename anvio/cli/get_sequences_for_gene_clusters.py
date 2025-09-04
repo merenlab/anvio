@@ -8,12 +8,12 @@ from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.dbops as dbops
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.summarizer as summarizer
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError, DictIOError
+from anvio.utils.files import get_columns_of_TAB_delim_file
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -71,7 +71,7 @@ def run_program():
             gene_cluster_ids = set([args.gene_cluster_id])
             run.info('Mode', 'Working with a single gene cluster.')
         else:
-            columns = utils.get_columns_of_TAB_delim_file(args.gene_cluster_ids_file, include_first_column=True)
+            columns = get_columns_of_TAB_delim_file(args.gene_cluster_ids_file, include_first_column=True)
             if len(columns) != 1:
                 raise ConfigError("The input file for gene cluster IDs must contain a single column. It seems yours has %d :/" % len(columns))
 

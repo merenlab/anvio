@@ -8,10 +8,10 @@ import numpy as np
 import anvio
 import anvio.db as db
 import anvio.tables as t
-import anvio.utils as utils
 import anvio.terminal as terminal
 
 from anvio.errors import AuxiliaryDataError
+from anvio.utils.algorithms import convert_binary_blob_to_numpy_array, convert_numpy_array_to_binary_blob
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -79,7 +79,7 @@ class AuxiliaryDataForSplitCoverages(object):
             # coverage of this split faster
             stored_coverage = len(coverage_array)
         else:
-            stored_coverage = utils.convert_numpy_array_to_binary_blob(coverage_array.astype(self.coverage_dtype))
+            stored_coverage = convert_numpy_array_to_binary_blob(coverage_array.astype(self.coverage_dtype))
 
         self.coverage_entries.append((split_name, sample_name, stored_coverage, ))
 
@@ -145,7 +145,7 @@ class AuxiliaryDataForSplitCoverages(object):
                 # decompressed. So if you've ended up here, you're enjoying a 2X speed gain.
                 coverage_array = np.zeros(blob, dtype=self.coverage_dtype)
             else:
-                coverage_array = utils.convert_binary_blob_to_numpy_array(blob, dtype=self.coverage_dtype)
+                coverage_array = convert_binary_blob_to_numpy_array(blob, dtype=self.coverage_dtype)
 
             split_coverage[sample_name] = coverage_array
 

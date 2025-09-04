@@ -6,20 +6,23 @@ import os
 import sys
 import json
 import copy
+import shutil
 import argparse
 import importlib
 
 from collections import Counter
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
+from anvio.terminal import get_date
 from anvio.errors import ConfigError
 from anvio.authors import AnvioAuthors
-from anvio.docs import ANVIO_ARTIFACTS, ANVIO_WORKFLOWS, THIRD_PARTY_PROGRAMS
 from anvio.summaryhtml import SummaryHTMLOutput
+from anvio.docs import ANVIO_ARTIFACTS, ANVIO_WORKFLOWS, THIRD_PARTY_PROGRAMS
+from anvio.utils.system import get_available_program_names_in_active_environment
+from anvio.utils.commandline import run_command_STDIN
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -194,7 +197,7 @@ class AnvioPrograms(AnvioAuthors):
 
             >>> echo -e '#!/bin/bash\n[ "$3" = "1" ] && python -c "import anvio.programs as p; p.AnvioPrograms().sanity_check()"' > .git/hooks/post-checkout && chmod +x .git/hooks/post-checkout
         """
-        available_programs_according_to_python_environment = utils.get_available_program_names_in_active_environment(prefix='anvi-')
+        available_programs_according_to_python_environment = get_available_program_names_in_active_environment(prefix='anvi-')
         available_programs_according_to_anvio = set(list(self.program_names_and_paths.keys()))
 
         programs_only_environment_knows_about = available_programs_according_to_python_environment - available_programs_according_to_anvio
@@ -840,12 +843,12 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
     def copy_images(self):
         """Copies images from the codebase to the output directory"""
 
-        utils.shutil.copytree(self.images_source_directory, os.path.join(self.output_directory_path, 'images'))
+        shutil.copytree(self.images_source_directory, os.path.join(self.output_directory_path, 'images'))
 
         os.makedirs(os.path.join(self.output_directory_path, 'images/authors'))
 
         for author in self.authors:
-            utils.shutil.copy(self.authors[author]['avatar'], os.path.join(self.output_directory_path, 'images/authors', os.path.basename(self.authors[author]['avatar'])))
+            shutil.copy(self.authors[author]['avatar'], os.path.join(self.output_directory_path, 'images/authors', os.path.basename(self.authors[author]['avatar'])))
 
 
     def init_anvio_markdown_variables_conversion_dict(self):
@@ -947,7 +950,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
             d = {'artifact': ANVIO_ARTIFACTS[artifact],
                  'meta': {'summary_type': 'artifact',
                           'version': '\n'.join(['|%s|%s|' % (t[0], t[1]) for t in anvio.get_version_tuples()]),
-                          'date': utils.get_date(),
+                          'date': get_date(),
                           'version_short_identifier': self.version_short_identifier}
                 }
 
@@ -1035,7 +1038,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
             d = {'workflow': self.workflows[workflow_name],
                  'meta': {'summary_type': 'workflow',
                           'version': '\n'.join(['|%s|%s|' % (t[0], t[1]) for t in anvio.get_version_tuples()]),
-                          'date': utils.get_date(),
+                          'date': get_date(),
                           'version_short_identifier': self.version_short_identifier}
                  }
 
@@ -1077,7 +1080,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
             d = {'program': {},
                  'meta': {'summary_type': 'program',
                           'version': '\n'.join(['|%s|%s|' % (t[0], t[1]) for t in anvio.get_version_tuples()]),
-                          'date': utils.get_date(),
+                          'date': get_date(),
                           'version_short_identifier': self.version_short_identifier}
                 }
 
@@ -1137,7 +1140,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
              'artifact_types': self.artifact_types,
              'meta': {'summary_type': 'programs_and_artifacts_index',
                       'version': '%s (%s)' % (anvio.anvio_version, anvio.anvio_codename),
-                      'date': utils.get_date()}
+                      'date': get_date()}
             }
 
         d['program_provides_requires'] = self.get_program_requires_provides_dict(prefix='')
@@ -1266,7 +1269,7 @@ class ProgramsVignette(AnvioPrograms):
             progress.new('Bleep bloop')
             progress.update('%s (%d of %d)' % (program_name, i+1, len(self.programs)))
 
-            output = utils.run_command_STDIN('%s --help --quiet' % (program.program_path), log_file, '').split('\n')
+            output = run_command_STDIN('%s --help --quiet' % (program.program_path), log_file, '').split('\n')
 
             if anvio.DEBUG:
                     usage, params, output = parse_help_output(output)
@@ -1298,7 +1301,7 @@ class ProgramsVignette(AnvioPrograms):
                     'all_names': program_names + script_names,
                     'meta': {'summary_type': 'vignette',
                              'version': '\n'.join(['|%s|%s|' % (t[0], t[1]) for t in anvio.get_version_tuples()]),
-                             'date': utils.get_date()}}
+                             'date': get_date()}}
 
         if anvio.DEBUG:
             run.warning(None, 'THE OUTPUT DICT')

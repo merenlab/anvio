@@ -9,13 +9,13 @@ from argparse import Namespace
 
 import anvio
 import anvio.dbops as dbops
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.ccollections as ccollections
 
 from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.tables.genelevelcoverages import TableForGeneLevelCoverages
+from anvio.utils.database import get_genes_database_path_for_bin
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -47,7 +47,7 @@ def main():
         splits_dict = ccollections.GetSplitNamesInBins(args).get_dict()
         bin_names = sorted(list(splits_dict.keys()))
 
-        genes_dbs_found = [bin_name for bin_name in splits_dict if os.path.exists(utils.get_genes_database_path_for_bin(args.profile_db, args.collection_name, bin_name))]
+        genes_dbs_found = [bin_name for bin_name in splits_dict if os.path.exists(get_genes_database_path_for_bin(args.profile_db, args.collection_name, bin_name))]
         if genes_dbs_found:
             if args.just_do_it:
                 # well then.
@@ -72,7 +72,7 @@ def main():
         for i in range(0, len(bin_names)):
             bin_name = bin_names[i]
             # recover the expected path
-            genes_db_path = utils.get_genes_database_path_for_bin(args.profile_db, args.collection_name, bin_name)
+            genes_db_path = get_genes_database_path_for_bin(args.profile_db, args.collection_name, bin_name)
 
             run.warning(None, header="WORKING ON '%s' (%d of %d)" % (bin_name, i + 1, len(bin_names)), lc='green')
 

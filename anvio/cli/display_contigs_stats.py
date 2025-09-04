@@ -5,13 +5,14 @@ import sys
 from anvio.argparse import ArgumentParser
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.interactive as interactive
 from anvio.bottleroutes import BottleApplication
 
 from anvio.errors import ConfigError, FilesNPathsError, DictIOError
+from anvio.utils.debug import is_all_npm_packages_installed
+from anvio.utils.network import get_port_num
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -53,7 +54,7 @@ def main():
     A = lambda x: args.__dict__[x] if x in args.__dict__ else None
 
     try:
-        utils.is_all_npm_packages_installed()
+        is_all_npm_packages_installed()
 
         if A('report_as_text'):
             if not A('output_file'):
@@ -70,7 +71,7 @@ def main():
                 sys.exit()
 
             args.mode = 'contigs'
-            port_number = utils.get_port_num(args.port_number, args.ip_address, run=run)
+            port_number = get_port_num(args.port_number, args.ip_address, run=run)
 
             app = BottleApplication(d)
             app.run_application(args.ip_address, port_number)

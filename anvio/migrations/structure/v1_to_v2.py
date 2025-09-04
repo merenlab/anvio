@@ -5,10 +5,10 @@ import sys
 import argparse
 
 import anvio.db as db
-import anvio.utils as utils
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
+from anvio.dbinfo import is_structure_db
 
 run = terminal.Run()
 progress = terminal.Progress()
@@ -58,7 +58,7 @@ def migrate(db_path):
         raise ConfigError("No database path is given.")
 
     # make sure someone is not being funny
-    utils.is_structure_db(db_path)
+    is_structure_db(db_path)
 
     structure_db = db.DB(db_path, None, ignore_version = True)
     if str(structure_db.get_version()) != current_version:

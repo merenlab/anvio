@@ -6,11 +6,12 @@ import sys
 import time
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.utils.files import concatenate_files, gzip_compress_file
+from anvio.utils.hmm import get_attribute_from_hmm_file
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
@@ -83,9 +84,9 @@ def run_program():
         progress.update(hmm_file + ' ...', increment=True)
 
         data_dict[hmm_file] = {}
-        data_dict[hmm_file]['ga'] = utils.get_attribute_from_hmm_file(hmm_file, 'GA ')
-        data_dict[hmm_file]['gene'] = utils.get_attribute_from_hmm_file(hmm_file, 'NAME')
-        data_dict[hmm_file]['accession'] = utils.get_attribute_from_hmm_file(hmm_file, 'ACC')
+        data_dict[hmm_file]['ga'] = get_attribute_from_hmm_file(hmm_file, 'GA ')
+        data_dict[hmm_file]['gene'] = get_attribute_from_hmm_file(hmm_file, 'NAME')
+        data_dict[hmm_file]['accession'] = get_attribute_from_hmm_file(hmm_file, 'ACC')
         data_dict[hmm_file]['source'] = hmm_source
     progress.end()
 
@@ -99,8 +100,8 @@ def run_program():
     W = lambda p, c: open(J(p), 'w').write(f'{c}\n')
 
     # Concatenate and compress the genes.hmm
-    utils.concatenate_files(J('genes.hmm'), [hmm_file for hmm_file in hmm_files])
-    utils.gzip_compress_file(J('genes.hmm'))
+    concatenate_files(J('genes.hmm'), [hmm_file for hmm_file in hmm_files])
+    gzip_compress_file(J('genes.hmm'))
 
     # Generate genes output
     with open(J('genes.txt'), 'w') as genestxt:

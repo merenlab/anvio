@@ -12,12 +12,12 @@ from colored import Fore, Back, Style
 
 import anvio
 import anvio.programs as p
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.terminal import tabulate
 from anvio.errors import ConfigError
+from anvio.utils.commandline import run_command_STDIN
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -112,7 +112,7 @@ class ProgramSearch:
 
     def parse_description_from_program_call(self, program):
         log_file = filesnpaths.get_temp_file_path()
-        output = utils.run_command_STDIN('%s --help' % (program.program_path), log_file, '').split('\n')
+        output = run_command_STDIN('%s --help' % (program.program_path), log_file, '').split('\n')
 
         try:
             _, description, _, _ = p.parse_help_output(output)

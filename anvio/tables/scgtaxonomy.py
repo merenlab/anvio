@@ -4,11 +4,12 @@
 import anvio
 import anvio.db as db
 import anvio.tables as t
-import anvio.utils as utils
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
 from anvio.tables.tableops import Table
+from anvio.dbinfo import is_contigs_db
+from anvio.utils.database import get_required_version_for_db
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -30,7 +31,7 @@ class TableForSCGTaxonomy(Table):
         self.run = run
         self.progress = progress
 
-        utils.is_contigs_db(self.db_path)
+        is_contigs_db(self.db_path)
 
         Table.__init__(self, self.db_path, anvio.__contigs__version__, self.run, self.progress)
 
@@ -42,7 +43,7 @@ class TableForSCGTaxonomy(Table):
            At the time of writing this class w couldn't find a better way to do it.
         """
 
-        self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        self.database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
 
         entries=[]
         for gene_callers_id, scg_name, scg_hits in blastp_search_output:
@@ -72,7 +73,7 @@ class TableForSCGTaxonomy(Table):
             This sould be read from the ctx.target_database_release in taxonomyops.
         """
 
-        self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        self.database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
         self.database.update_meta_value("scg_taxonomy_was_run", taxonomy_was_run)
         self.database.update_meta_value("scg_taxonomy_database_version", database_version)
         self.database.disconnect()
@@ -90,7 +91,7 @@ class TableForSCGTaxonomy(Table):
 
 
     def get_data_for_taxonomy_estimation(self):
-        self.database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        self.database = db.DB(self.db_path, get_required_version_for_db(self.db_path))
 
         #FIXME Argument for select return genes
 

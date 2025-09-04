@@ -6,10 +6,12 @@ import glob
 import tempfile
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
+from anvio.utils.anviohelp import ununique_BLAST_tabular_output
+from anvio.utils.commandline import run_command, run_command_STDIN
+from anvio.utils.system import is_program_exists
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -57,8 +59,8 @@ class BLAST:
         self.log_file_path = 'blast-log.txt'
         self.max_target_seqs = None
 
-        utils.is_program_exists('makeblastdb')
-        utils.is_program_exists(self.search_program)
+        is_program_exists('makeblastdb')
+        is_program_exists(self.search_program)
 
         # if names_dict is None, all fine. if not, the query_fasta is assumed to be uniqued, and names_dict is
         # the dictionary that connects the ids in the fasta file, to ids that were identical to it.
@@ -109,7 +111,7 @@ class BLAST:
                     '-dbtype', dbtype,
                     '-out', output_db_path or self.target_fasta]
 
-        utils.run_command(cmd_line, self.log_file_path)
+        run_command(cmd_line, self.log_file_path)
 
         self.progress.end()
 
@@ -153,7 +155,7 @@ class BLAST:
         self.progress.new('BLAST')
         self.progress.update('running search (using %s with %d thread(s)) ...' % (self.search_program, self.num_threads))
 
-        utils.run_command(cmd_line, self.log_file_path)
+        run_command(cmd_line, self.log_file_path)
 
         self.progress.end()
 
@@ -189,7 +191,7 @@ class BLAST:
         self.progress.new('BLAST')
         self.progress.update('running search (using %s with %d thread(s)) ...' % (self.search_program, self.num_threads))
 
-        output = utils.run_command_STDIN(cmd_line, self.log_file_path, multisequence, remove_log_file_if_exists=False)
+        output = run_command_STDIN(cmd_line, self.log_file_path, multisequence, remove_log_file_if_exists=False)
 
         self.progress.end()
 
@@ -204,6 +206,6 @@ class BLAST:
         self.progress.new('BLAST')
         self.progress.update('Un-uniqueing the tabular output ...')
 
-        utils.ununique_BLAST_tabular_output(self.search_output_path, self.names_dict)
+        ununique_BLAST_tabular_output(self.search_output_path, self.names_dict)
 
         self.progress.end()

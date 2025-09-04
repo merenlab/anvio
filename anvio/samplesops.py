@@ -4,11 +4,12 @@
 
 import os
 
-import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import SamplesError
+from anvio.utils.files import get_TAB_delimited_file_as_dictionary
+from anvio.utils.phylogenetics import get_names_order_from_newick_tree
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -48,7 +49,7 @@ class SamplesInformation:
 
         self.sample_names_in_samples_information_file = filesnpaths.is_proper_samples_information_file(samples_information_path)
 
-        self.samples_information_dict, self.aliases_to_attributes_dict = self.convert_samples_information_dict(utils.get_TAB_delimited_file_as_dictionary(samples_information_path))
+        self.samples_information_dict, self.aliases_to_attributes_dict = self.convert_samples_information_dict(get_TAB_delimited_file_as_dictionary(samples_information_path))
         self.samples_information_default_layer_order = open(samples_information_path, 'r').readline().strip().split('\t')[1:]
 
         self.run.info('Samples information', 'Loaded for %d samples' % len(self.samples_information_dict), quiet=self.quiet)
@@ -100,7 +101,7 @@ class SamplesInformation:
 
         self.sample_names_in_samples_order_file = filesnpaths.is_proper_samples_order_file(samples_order_path)
 
-        self.samples_order_dict = utils.get_TAB_delimited_file_as_dictionary(samples_order_path)
+        self.samples_order_dict = get_TAB_delimited_file_as_dictionary(samples_order_path)
 
         self.available_orders = set(self.samples_order_dict.keys())
 
@@ -238,6 +239,6 @@ class SamplesInformation:
                                    "order for the samples database.")
 
             a_basic_order = [o['basic'].split(',') if o['basic'] else None for o in list(self.samples_order_dict.values())][0]
-            a_tree_order = utils.get_names_order_from_newick_tree([o['newick'] if o['newick'] else None for o in list(self.samples_order_dict.values())][0])
+            a_tree_order = get_names_order_from_newick_tree([o['newick'] if o['newick'] else None for o in list(self.samples_order_dict.values())][0])
 
             self.samples_information_default_layer_order = a_basic_order or a_tree_order

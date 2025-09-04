@@ -1,16 +1,16 @@
 # -*- coding: utf-8
 """Parser for HMMER's various outputs"""
 
+import os
+import numpy as np
+import pandas as pd
+
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
 from anvio.parsers.base import Parser
-
-import os
-import numpy as np
-import pandas as pd
+from anvio.utils.files import get_chunk
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -200,7 +200,7 @@ class HMMERStandardOutput(object):
         self.progress.update('Parsing %s' % self.hmmer_std_out)
 
         with open(self.hmmer_std_out) as f:
-            for i, query in enumerate(utils.get_chunk(f, separator=self.delim_query, read_size=32768)):
+            for i, query in enumerate(get_chunk(f, separator=self.delim_query, read_size=32768)):
 
                 if i % 500 == 0:
                     self.progress.update('%d done' % i)
@@ -232,8 +232,6 @@ class HMMERStandardOutput(object):
 
     def read_lines_until(self, condition, include_last=False, store=True):
         lines = []
-        return_value = lines if store else True
-
         for line in self.query_lines[self.line_no:]:
             self.line_no += 1
 
