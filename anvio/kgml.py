@@ -853,9 +853,13 @@ class Pathway(Element):
         missing_kegg_ids: List[str] = []
         for kegg_id in kegg_ids:
             try:
-                entries += self.kegg_id_element_lookup[kegg_id]
+                elements = self.kegg_id_element_lookup[kegg_id]
             except KeyError:
                 missing_kegg_ids.append(kegg_id)
+                continue
+            for element in elements:
+                if element.tag == 'entry':
+                    entries.append(element)
         if missing_kegg_ids and expect_kegg_ids:
             raise ValueError(
                 "The following 'kegg_ids' that were provided are not found among entries in the "
