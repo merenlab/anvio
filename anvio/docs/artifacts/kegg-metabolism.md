@@ -166,18 +166,19 @@ The 'hits' output file will have the suffix `hits.txt`. Unlike the previous mode
 
 Here is an example of this output mode (also from the Infant Gut dataset):
 
-enzyme | genome_name | db_name | gene_caller_id | contig | modules_with_enzyme | enzyme_definition
-|:--|:--|:--|:--|:--|:--|:--|
-K25026 | Enterococcus_faecalis_6240 | E_faecalis_6240 | 1608 | Enterococcus_faecalis_6240_contig_00003_chromosome | M00001,M00549,M00909 | glucokinase [EC:2.7.1.2]
-K01810 | Enterococcus_faecalis_6240 | E_faecalis_6240 | 600 | Enterococcus_faecalis_6240_contig_00003_chromosome | M00001,M00004,M00892,M00909 | glucose-6-phosphate isomerase [EC:5.3.1.9]
-K00850 | Enterococcus_faecalis_6240 | E_faecalis_6240 | 225 | Enterococcus_faecalis_6240_contig_00003_chromosome | M00001,M00345 | 6-phosphofructokinase 1 [EC:2.7.1.11]
-(...) |(...)|(...)|(...)|(...)|(...)|(...)|
+enzyme | genome_name | db_name | gene_caller_id | contig | modules_with_enzyme | enzyme_definition | warnings
+|:--|:--|:--|:--|:--|:--|:--|:--|
+K25026 | Enterococcus_faecalis_6240 | E_faecalis_6240 | 1608 | Enterococcus_faecalis_6240_contig_00003_chromosome | M00001,M00549,M00909 | glucokinase [EC:2.7.1.2] | None
+K01810 | Enterococcus_faecalis_6240 | E_faecalis_6240 | 600 | Enterococcus_faecalis_6240_contig_00003_chromosome | M00001,M00004,M00892,M00909 | glucose-6-phosphate isomerase [EC:5.3.1.9] | None
+K00850 | Enterococcus_faecalis_6240 | E_faecalis_6240 | 225 | Enterococcus_faecalis_6240_contig_00003_chromosome | M00001,M00345 | 6-phosphofructokinase 1 [EC:2.7.1.11] | None
+(...) |(...)|(...)|(...)|(...)|(...)|(...)|(...)|
 
 Here are the descriptions of any new columns not yet discussed in the previous sections:
 
 - `enzyme`: an enzyme that was annotated in the contigs database
 - `modules_with_enzyme`: the modules (if any) that this enzyme belongs to
 - `enzyme_definition`: the function of this enzyme (often includes the enzyme name and EC number)
+- `warnings`: when you used the flag `--include-stray-KOs`, this column will tell you if a given annotation was done using the "anvi'o version" of the KO family's pHMM. What this means is that anvi'o created the pHMM out of all KEGG GENES sequences for the KO when %(anvi-setup-kegg-data)s was run. See [this documentation section](https://anvio.org/help/main/programs/anvi-setup-kegg-data/#what-are-stray-kos-and-what-happens-when-i-include-them) for details.
 
 **Coverage and detection values in the output**
 
