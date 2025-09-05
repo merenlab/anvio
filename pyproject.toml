@@ -75,7 +75,8 @@ dependencies = [
     "pulp==2.7.0",
     "biopython",
     "reportlab",
-    "pymupdf"
+    "pymupdf",
+    "tomli==2.2.1"
 ]
 
 [project.urls]
