@@ -2,7 +2,7 @@ This program **stores a metabolic %(reaction-network)s in a %(contigs-db)s or %(
 
 The network consists of data on biochemical reactions predicted to be encoded by the genome or pangenome.
 
-Information on the predicted reactions and the involved metabolites are stored in tables of the %(contigs-db)s or %(pan-db)s. The program, %(anvi-get-metabolic-model-file)s, can be used to export the %(reaction-network)s from the database to a %(reaction-network-json)s file formatted for input into programs for flux balance analysis.
+Information on the predicted reactions and the involved metabolites is stored in tables of the %(contigs-db)s or %(pan-db)s. The program %(anvi-get-metabolic-model-file)s can be used to export the %(reaction-network)s from the database to a %(reaction-network-json)s file formatted for input into programs for flux balance analysis.
 
 ## Setup
 
@@ -28,7 +28,7 @@ anvi-setup-kegg-data -D -T 5
 
 ### Install in non-default location
 
-To preserve KEGG data that you already have set up for whatever reason, the new snapshot or download can be placed in a non-default location using the option, `--kegg-data-dir`.
+To preserve KEGG data that you already have set up for whatever reason, the new snapshot or download can be placed in a non-default location using the option `--kegg-data-dir`.
 
 {{ codestart }}
 anvi-setup-kegg-data --kegg-data-dir path/to/other/directory
@@ -44,7 +44,7 @@ anvi-setup-modelseed-database --dir path/to/other/directory
 
 ## Usage
 
-%(anvi-reaction-network)s takes a either a %(contigs-db)s OR a %(pan-db)s and %(genomes-storage-db)s as required input. Genes stored within the %(contigs-db)s or %(genomes-storage-db)s must have KO protein annotations, which can be assigned by %(anvi-run-kegg-kofams)s.
+%(anvi-reaction-network)s takes either a %(contigs-db)s OR a %(pan-db)s and %(genomes-storage-db)s as required input. Genes stored within the %(contigs-db)s or %(genomes-storage-db)s must have KO protein annotations, which can be assigned by %(anvi-run-kegg-kofams)s.
 
 {{ codestart }}
 anvi-reaction-network -c /path/to/contigs-db

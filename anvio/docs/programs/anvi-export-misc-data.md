@@ -8,7 +8,7 @@ If your misc-data is associated with a specific data group, you can provide that
 
 ### From a pan-db or profile-db: items, layers, layer orders
 
-**From a %(pan-db)s or %(profile-db)s, you can export**
+**From a %(pan-db)s or %(profile-db)s, you can export:**
 
 - items data (%(misc-data-items)s) into a %(misc-data-items-txt)s. 
 
@@ -33,7 +33,7 @@ anvi-export-misc-data -p %(profile-db)s \
 
 ### From a contigs-db: nucleotide and amino acid information
 
-**From a %(contigs-db)s, you can export**
+**From a %(contigs-db)s, you can export:**
 
 - nucleotide data (%(misc-data-nucleotides)s) into a %(misc-data-nucleotides-txt)s.
 

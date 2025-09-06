@@ -7,19 +7,19 @@ Genomes provided to this program must be contained in either a %(bin)s (within a
 
 ### Running on contigs databases 
 
-For example, calling 
+For example, executing 
 
 {{ codestart }}
 anvi-estimate-genome-completeness -c %(contigs-db)s 
 {{ codestop }}
 
-will output to the terminal the completition and redundancy of the single-copy core genes in your %(contigs-db)s, assuming that all of its contigs represent a single genome. To output this information to a file, you can add the flag `-o` and provide an output path. 
+will output to the terminal the completeness and redundancy of the single-copy core genes in your %(contigs-db)s, assuming that all of its contigs represent a single genome. To output this information to a file, you can add the flag `-o` and provide an output path. 
 
-To get this information for several contigs databases at once, you can provide them as an %(external-genomes)s, as so:
+To get this information for several contigs databases at once, you can provide them as an %(external-genomes)s, as follows:
 
 {{ codestart }}
 anvi-estimate-genome-completeness -e %(external-genomes)s \
-                                  -o completition.txt
+                                  -o completeness.txt
 {{ codestop }}
 
 ### Running on bins 
@@ -32,7 +32,7 @@ anvi-estimate-genome-completeness -c %(contigs-db)s \
                                   -C %(collection)s 
 {{ codestop }}
 
-To see what collections are contained in your contigs database, call 
+To see what collections are contained in your contigs database, execute 
 
 {{ codestart }}
 anvi-estimate-genome-completeness -c %(contigs-db)s \
@@ -42,4 +42,4 @@ anvi-estimate-genome-completeness -c %(contigs-db)s \
 
 or run %(anvi-show-collections-and-bins)s for a more comprehensive overview. 
 
-If you're looking for a more comprehensive overview of your entire collection and its contents, the completition and redunduncy statistics for your bins are also included when you run %(anvi-summarize)s. 
+If you're seeking a more comprehensive overview of your entire collection and its contents, the completeness and redundancy statistics for your bins are also included when you run %(anvi-summarize)s.

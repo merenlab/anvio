@@ -1,6 +1,6 @@
 This program **exports the contig sequences from a %(contigs-db)s**, outputting them as a %(contigs-fasta)s. It also has the ability to output the sequences of your splits instead. 
 
-You can run this program as follows: 
+You can execute this program as follows: 
 
 {{ codestart }}
 anvi-export-contigs -c %(contigs-db)s \
@@ -23,7 +23,7 @@ where `my_favorite_contigs.txt` looks like this:
     
 ### Splits mode
 
-Want to look at your splits instead of your contigs? Just run with the flag `splits-mode` attached. 
+Want to examine your splits instead of your contigs? Just run with the flag `--splits-mode` attached. 
 
 {{ codestart }}
 anvi-export-contigs -c %(contigs-db)s \

@@ -1,6 +1,6 @@
 This program converts a %(linkmers-txt)s artifact into %(oligotypes)s data.
 
-A %(linkmers-txt)s artifact describes each of your short reads that mapped to specific target nucleotide positions in a reference contig. This program counts the total occurance of each combination in those target positions within each of your samples. 
+A %(linkmers-txt)s artifact describes each of your short reads that mapped to specific target nucleotide positions in a reference contig. This program counts the total occurrence of each combination at those target positions within each of your samples.
 
 For example, if your %(linkmers-txt)s focused on two target positions, and you ran the following:
 
