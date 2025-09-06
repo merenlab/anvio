@@ -77,14 +77,13 @@ def get_args():
     groupD.add_argument(*anvio.A('sum'), **anvio.K('sum'))
     groupD.add_argument(*anvio.A('average'), **anvio.K('average'))
 
-    groupF = parser.add_argument_group('FILTER GENES, FUNCTIONS, CODONS',
-        "Genes/functions can be filtered by the number of codons they contain, e.g., ignore genes "
+    groupF = parser.add_argument_group('FILTER GENES, CODONS',
+        "Genes can be filtered by the number of codons they contain, e.g., ignore genes "
         "shorter than 300 codons. Codons can be selected a priori, e.g., ignore Ala codons, or "
         "rarer codons can be excluded, e.g., ignore amino acids that are decoded by ≤3 codons in "
         "≥90%% of genes. Filters can improve the statistical utility of codon relative frequency "
         "data.")
     groupF.add_argument(*anvio.A('gene-min-codons'), **anvio.K('gene-min-codons'))
-    groupF.add_argument(*anvio.A('function-min-codons'), **anvio.K('function-min-codons'))
     groupF.add_argument(*anvio.A('exclude-amino-acids'), **anvio.K('exclude-amino-acids'))
     groupF.add_argument(*anvio.A('include-amino-acids'), **anvio.K('include-amino-acids'))
     groupF.add_argument(*anvio.A('sequence-min-amino-acids'), **anvio.K('sequence-min-amino-acids'))

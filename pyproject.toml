@@ -76,6 +76,7 @@ dependencies = [
     "biopython",
     "reportlab",
     "pymupdf",
+    "tomli==2.2.1"
     "jupyterlab",
     "jupyterlab-git",
     "jupyterlab-lsp",
