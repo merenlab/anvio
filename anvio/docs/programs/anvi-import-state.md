@@ -1,6 +1,6 @@
 This program allows you to import a %(state)s from a %(state-json)s.
 
-You can run this program on a %(profile-db)s or %(pan-db)s like so: 
+You can run this program on a %(profile-db)s or %(pan-db)s as follows:
 
 {{ codestart }}
 anvi-import-state -p %(profile-db)s \

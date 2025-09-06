@@ -1,4 +1,4 @@
-This program, as one might think, allows you to export a %(misc-data-items-order)s, outputing a %(misc-data-items-order-txt)s. 
+This program allows you to export a %(misc-data-items-order)s, outputting a %(misc-data-items-order-txt)s. 
 
 You can export one of the item orders in a %(profile-db)s or %(pan-db)s as follows: 
 
@@ -15,4 +15,4 @@ However, to list the item orders available in this database, just don't include 
 anvi-export-items-order -p %(pan-db)s 
 {{ codestop }}
 
-You'll get a `Config Error` that will tell you what item orders are available. 
+You'll get a `Config Error` that will inform you what item orders are available.

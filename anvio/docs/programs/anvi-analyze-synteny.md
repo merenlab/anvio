@@ -1,4 +1,4 @@
-Briefly, %(anvi-analyze-synteny)s counts %(ngrams)s by converting contigs into strings of annotations for a given user-defined source of gene annotation. A source annotation for %(functions)s **must** be provided to create %(ngrams)s, upon which anvi'o will use a sliding window of size `N` to deconstruct the loci of interest into %(ngrams)s and count their frequencies.
+The %(anvi-analyze-synteny)s program quantifies %(ngrams)s by transforming contigs into strings of annotations based on a user-specified gene annotation source. A functional annotation source for %(functions)s **must** be provided to generate %(ngrams)s. The program employs a sliding window of size `N` to deconstruct genomic loci of interest into %(ngrams)s and calculate their occurrence frequencies.
 
 ### Run for a given function annotation source
 
@@ -9,7 +9,7 @@ anvi-analyze-synteny -g %(genomes-storage-db)s \
                      -o %(ngrams)s
 {{ codestop }}
 
-For instance, if you have run %(anvi-run-ncbi-cogs)s on each %(contigs-db)s you have used to generate your %(genomes-storage-db)s, your `--annotation-source` can be `NCBI_COGS`:
+For instance, if you have executed %(anvi-run-ncbi-cogs)s on each %(contigs-db)s used to generate your %(genomes-storage-db)s, your `--annotation-source` parameter can be specified as `NCBI_COGS`:
 
 {{ codestart }}
 anvi-analyze-synteny -g %(genomes-storage-db)s \
@@ -21,7 +21,7 @@ anvi-analyze-synteny -g %(genomes-storage-db)s \
 
 ### Handling genes with unknown functions 
 
-By default, %(anvi-analyze-synteny)s will ignore genes with unknown functions based on the annotation source of interest. However, this can be circumvented either by providing a %(pan-db)s, so the program would use gene cluster identities as function names:
+By default, %(anvi-analyze-synteny)s excludes genes with unknown functions based on the specified annotation source. However, this behavior can be modified through two alternative approaches. First, by providing a %(pan-db)s, which enables the program to utilize gene cluster identities as functional annotations:
 
 {{ codestart }}
 anvi-analyze-synteny -g %(genomes-storage-db)s \
@@ -30,7 +30,7 @@ anvi-analyze-synteny -g %(genomes-storage-db)s \
                      -o %(ngrams)s
 {{ codestop }}
 
-or by explicitly asking the program to consider unknown functions, in which case the program would not discard ngrams that include genes without functions:
+Alternatively, you can explicitly instruct the program to consider genes with unknown functions, which will include ngrams containing functionally unannotated genes in the analysis:
 
 {{ codestart }}
 anvi-analyze-synteny -g %(genomes-storage-db)s \
@@ -40,11 +40,11 @@ anvi-analyze-synteny -g %(genomes-storage-db)s \
                      --analyze-unknown-functions
 {{ codestop }}
 
-The disadvantage of the latter strategy is that since all genes with unknown functions will be considered the same, the frequency of ngrams that contain genes with unknown functions may be inflated in your final results.
+The primary limitation of this latter approach is that all genes lacking functional annotations are treated as identical entities, which may artificially inflate the frequency of ngrams containing unannotated genes in your final results.
 
 ### Run with multiple annotations
 
-If multiple gene annotation sources are provided (i.e., a pangenome for gene clusters identities as well as a functional annotation source), the user must define which annotation source will be used to create the %(ngrams)s using the parameter `--ngram-source`. The resulting %(ngrams)s will then be re-annotated with the second annotation source and also reported. 
+When multiple gene annotation sources are provided (such as a pangenome database for gene cluster identities in addition to a functional annotation source), you must specify which annotation source will be used to construct the %(ngrams)s using the `--ngram-source` parameter. The resulting %(ngrams)s will subsequently be re-annotated with the secondary annotation source and reported accordingly. 
 
 {{ codestart }}
 anvi-analyze-synteny -g %(genomes-storage-db)s \
@@ -59,14 +59,14 @@ anvi-analyze-synteny -g %(genomes-storage-db)s \
 
 If you are following the anvi'o master branch on your computer, you can create a test case for this program.
 
-First, go to any work directory, and run the following commands:
+First, navigate to any working directory and execute the following commands:
 
 ``` bash
 anvi-self-test --suite metagenomics-full \
                --output-dir TEST_OUTPUT
 ```
 
-Run one or more alternative scenarios and check output files:
+Execute one or more alternative scenarios and examine the output files:
 
 ```
 anvi-analyze-synteny -g TEST_OUTPUT/TEST-GENOMES.db \

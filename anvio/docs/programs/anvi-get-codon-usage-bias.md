@@ -8,7 +8,7 @@ Some CUB metrics depend on a reference codon composition while others are refere
 
 ### CUB of genes
 
-This command produces a table of CUB values from coding sequences in the contigs database. The first column of the table contains gene caller IDs and each subsequent column contains values for a CUB metric, e.g., the Codon Adaptation Index (CAI) of [Sharp and Li, 1987](https://academic.oup.com/nar/article-abstract/15/3/1281/1166844?redirectedFrom=fulltext) and 𝛿 of [Ran and Higgs, 2012](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0051652).  CUB metrics that rely upon a reference codon composition, such as CAI and 𝛿, establish this composition from genes in the genome that are annotated as ribosomal proteins by KEGG KOfams/BRITE. Certain parameters have default values to increase the statistical significance of results (`--query-min-analyzed-codons`, `--reference-exclude-amino-acid-count`, `--reference-min-analyzed-codons`).
+This command produces a table of CUB values from coding sequences in the contigs database. The first column of the table contains gene caller IDs and each subsequent column contains values for a CUB metric, e.g., the Codon Adaptation Index (CAI) of [Sharp and Li, 1987](https://academic.oup.com/nar/article-abstract/15/3/1281/1166844?redirectedFrom=fulltext) and δ of [Ran and Higgs, 2012](https://journals.plos.org/plosone/article?id=10.1371/journal.pone.0051652).  CUB metrics that rely upon a reference codon composition, such as CAI and δ, establish this composition from genes in the genome that are annotated as ribosomal proteins by KEGG KOfams/BRITE. Certain parameters have default values to increase the statistical significance of results (`--query-min-analyzed-codons`, `--reference-exclude-amino-acid-count`, `--reference-min-analyzed-codons`).
 
 {{ codestart }}
 anvi-get-codon-usage-bias -c %(contigs-db)s \
@@ -27,7 +27,7 @@ anvi-get-codon-usage-bias -c %(contigs-db)s \
 
 ### Custom CUB reference gene set
 
-This command establishes a CUB reference codon composition from genes with functional annotations defined a supplemental file. This file should be headerless, tab-delimited, and have three columns of function annotation sources (required), function accessions, and function names (either an accession or name is required).
+This command establishes a CUB reference codon composition from genes with functional annotations defined in a supplemental file. This file should be headerless, tab-delimited, and have three columns of function annotation sources (required), function accessions, and function names (either an accession or name is required).
 
 {{ codestart }}
 anvi-get-codon-usage-bias -c %(contigs-db)s \
@@ -118,7 +118,7 @@ Functions and function annotation sources (e.g., 'KOfam', 'Pfam') can be provide
 
 #### Inputs
 
-There are multiple options to define which functions and sources should be used as CUB queries. `--functions-sources` without arguments uses all available sources that had been used to annotate genes.
+There are multiple options to define which functions and sources should be used as CUB queries. `--function-sources` without arguments uses all available sources that had been used to annotate genes.
 
 `--function-accessions` and `--function-names` select functions from a single provided source. The following example uses both options to select COG functions.
 
@@ -127,16 +127,16 @@ anvi-get-codon-usage-bias -c %(contigs-db)s \
                           -o path/to/output_table.txt \
                           --function-sources COG14_FUNCTION \
                           --function-accessions COG0004 COG0005 \
-                          --function-names "Ammonia channel protein AmtB" "Purine nucleoside phorphorylase"
+                          --function-names "Ammonia channel protein AmtB" "Purine nucleoside phosphorylase"
 {{ codestop }}
 
-To use different functions from different sources, a tab-delimited file can be provided to `functions-txt`. This headerless file must have three columns, for source, accession, and name of functions, respectively, with an entry in each row for source.
+To use different functions from different sources, a tab-delimited file can be provided to `--select-functions-txt`. This headerless file must have three columns for source, accession, and name of functions, respectively, with an entry in each row for source.
 
-By default, selected function accessions or names do not need to be present in input genomes; the program will query any selected function accessions or names that annotated genes. This behavior can be changed using the flag, `--expect-functions`, so that the program will throw an error when any of the selected accessions or names are absent.
+By default, selected function accessions or names do not need to be present in input genomes; the program will query any selected function accessions or names that annotated genes. This behavior can be changed using the flag `--expect-functions`, so that the program will throw an error when any of the selected accessions or names are absent.
 
 #### BRITE hierarchies
 
-Genes are classified in KEGG BRITE functional hierarchies by %(anvi-run-kegg-kofams)s. For example, a bacterial SSU ribosomal protein is classified in a hierarchy of ribosomal genes, `Ribosome>>>Ribosomal proteins>>>Bacteria>>>Small subunit`. CUB can be calculated for function queries at each level of the hierarchy, from the most general, those genes in the `Ribosome`, to the most specific -- in the example, those genes in `Ribosome>>>Ribosomal proteins>>>Bacteria>>>Small subunit`. Therefore, the following command returns CUB values for each annotated hierarchy level -- in the example, the output would include four rows for the genes in each level from `Ribosome` to `Small subunit`.
+Genes are classified in KEGG BRITE functional hierarchies by %(anvi-run-kegg-kofams)s. For example, a bacterial SSU ribosomal protein is classified in a hierarchy of ribosomal genes, `Ribosome>>>Ribosomal proteins>>>Bacteria>>>Small subunit`. CUB can be calculated for function queries at each level of the hierarchy, from the most general, those genes in the `Ribosome`, to the most specific—in the example, those genes in `Ribosome>>>Ribosomal proteins>>>Bacteria>>>Small subunit`. Therefore, the following command returns CUB values for each annotated hierarchy level—in the example, the output would include four rows for the genes in each level from `Ribosome` to `Small subunit`.
 
 {{ codestart }}
 anvi-get-codon-usage-bias -c %(contigs-db)s \
@@ -146,7 +146,7 @@ anvi-get-codon-usage-bias -c %(contigs-db)s \
 
 ### Custom reference
 
-A custom reference codon composition for reference-dependent CUB calculations can be defined by functional annotations and/or genes IDs. By default, the reference codon composition is defined by the concatenation of all genes in the genome annotated as ribosomal proteins by KEGG KOfams/BRITE.
+A custom reference codon composition for reference-dependent CUB calculations can be defined by functional annotations and/or gene IDs. By default, the reference codon composition is defined by the concatenation of all genes in the genome annotated as ribosomal proteins by KEGG KOfams/BRITE.
 
 #### Reference functions
 
@@ -158,7 +158,7 @@ Use `--expect-functions` to require that all functions that define the reference
 
 #### Reference genes
 
-Use `--reference-gene-caller-ids` for select genes to be in the custom reference gene set. This only works when processing a single genome. An error will be thrown if not all of the provided gene caller IDs are present in the genome.
+Use `--reference-gene-caller-ids` to select genes to be in the custom reference gene set. This only works when processing a single genome. An error will be thrown if not all of the provided gene caller IDs are present in the genome.
 
 ### Filter genes and codons
 
@@ -166,7 +166,7 @@ Use `--reference-gene-caller-ids` for select genes to be in the custom reference
 
 It may be useful to restrict codons in the analysis to those encoding certain amino acids. Stop codons are excluded by default from CUB calculations. Codons encoding a single amino acid (Met and Trp) do not factor into CUB calculations. Example: exclude Ala, Arg, and stop codons with `--exclude-amino-acids Ala Arg STP`.
 
-Dynamic exclusion of amino acids can be useful in CUB calculations. For example, a query gene with 1 AAT and 1 AAC encoding Asn, or "synonymous relative frequencies" of 0.5 AAT and 0.5 AAC, has very little data to support comparison to the synonymous relative frequencies of a large number of Asn codons in a set of reference genes. A query with 1 AAT and 0 AAC, or synonymous relative frequencies of 1.0 AAT and 0.0 AAC, would be even more statistically insignificant. Reference-dependent CUB metrics, such as 𝛿, rely upon the ratio of synonymous relative codon frequencies in the query and reference, and so can be skewed for queries with small counts of various codons. `--pansequence-min-amino-acids` removes rarer amino acids across the dataset, setting a minimum number of codons in a minimum number of genes to retain the amino acid. For example, amino acids with <5 codons in >90%% of genes will be excluded from the analysis with the arguments, `--pansequence-min-amino-acids 5 0.9`.
+Dynamic exclusion of amino acids can be useful in CUB calculations. For example, a query gene with 1 AAT and 1 AAC encoding Asn, or "synonymous relative frequencies" of 0.5 AAT and 0.5 AAC, has very little data to support comparison to the synonymous relative frequencies of a large number of Asn codons in a set of reference genes. A query with 1 AAT and 0 AAC, or synonymous relative frequencies of 1.0 AAT and 0.0 AAC, would be even more statistically insignificant. Reference-dependent CUB metrics, such as δ, rely upon the ratio of synonymous relative codon frequencies in the query and reference, and so can be skewed for queries with small counts of various codons. `--pansequence-min-amino-acids` removes rarer amino acids across the dataset, setting a minimum number of codons in a minimum number of genes to retain the amino acid. For example, amino acids with <5 codons in >90%% of genes will be excluded from the analysis with the arguments `--pansequence-min-amino-acids 5 0.9`.
 
 Codons for rarer amino acids within each gene or function query can be excluded from the CUB calculation with `--sequence-min-amino-acids`. For example, amino acids with <5 codons in a query will be excluded from the analysis with `--sequence-min-amino-acids 5`.
 
@@ -184,7 +184,7 @@ It may seem redundant for `remaining` and `both` to both be possibilities, but t
 | [Exclude stop codons and single-codon amino acids](#codons) | `--exclude-amino-acids STP Met Trp` |
 | [Exclude codons for amino acids with <5 codons in >90%% of genes](#codons) | `--pansequence-min-amino-acids 5 0.9` |
 | [Replace codons for amino acids with <5 codons in the gene or function with NaN](#codons) | `--sequence-min-amino-acids 5` |
-| [Exclude queries with <300 codons involved in the CUB calculation](#query-length) | `--query-min-analyzed-codons 300` |
+| [Exclude queries with <300 codons involved in the CUB calculation](#analyzed-query-codon-count) | `--query-min-analyzed-codons 300` |
 
 #### Function codon count
 

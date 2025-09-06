@@ -1,6 +1,6 @@
 Similarly to %(anvi-get-codon-frequencies)s, this program counts the number of times each amino acid occurs in a given sequence, whether that's a %(collection)s, %(bin)s, set of contigs (listed in a %(splits-txt)s), or a set of genes. The output of this is a %(aa-frequencies-txt)s. 
 
-There are four possible things you can count the amino acid frequencies in: 
+There are four possible targets you can count amino acid frequencies in: 
 * All of the contigs in a %(contigs-db)s
 * A series of %(bin)ss
 * A list of contigs
@@ -8,9 +8,9 @@ There are four possible things you can count the amino acid frequencies in:
 
 Examples for each are below.
 
-### Option 1: all contigs in a contigs-db
+### Option 1: all contigs in a contigs database
 
-To count the amino acids in all of the contigs in a %(contigs-db)s, you can just provide the %(contigs-db)s of interest, as so:
+To count the amino acids in all of the contigs in a %(contigs-db)s, you can provide the %(contigs-db)s of interest, as follows:
 
 {{ codestart }}
 anvi-get-aa-counts -c %(contigs-db)s \
@@ -38,7 +38,7 @@ anvi-get-aa-counts -c %(contigs-db)s \
     
 ### Option 3: a list of contigs
 
-Just provide a %(splits-txt)s file that lists the contigs you want to look at. 
+Simply provide a %(splits-txt)s file that lists the contigs you want to examine. 
 
 {{ codestart }}
 anvi-get-aa-counts -c %(contigs-db)s \
@@ -48,7 +48,7 @@ anvi-get-aa-counts -c %(contigs-db)s \
 
 ### Option 4: a list of genes 
 
-Just provide a list of gene caller ids, straight into the terminal, like so:
+Simply provide a list of gene caller IDs, directly in the terminal, as follows:
 
 {{ codestart }}
 anvi-get-aa-counts -c %(contigs-db)s \
