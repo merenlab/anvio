@@ -160,7 +160,7 @@ There are many ways to alter the behavior of this program to fit your needs. You
 
 ### Changing the module completion threshold
 
-As explained in the [technical details section](#how-is-the-module-completeness-score-calculated) below, module completeness is computed as the percentage of steps in the metabolic pathway that are 'present' based on the annotated enzymes in the contigs database. If this completeness is greater than a certain percentage, then the entire module is considered to be 'complete' in the sample and the corresponding row in the long-format modules mode output file will have 'True' under the `module_is_complete` column. By default, the module completion threshold is 0.75, or 75%.
+As explained in the [technical details section](#how-is-the-module-completeness-score-calculated) below, module completeness is computed as the percentage of steps in the metabolic pathway that are 'present' based on the annotated enzymes in the contigs database. If this completeness is greater than a certain percentage, then the entire module is considered to be 'complete' in the sample and the corresponding row in the long-format modules mode output file will have 'True' under the `module_is_complete` column. By default, the module completion threshold is 0.75, or 75%%.
 
 Changing this parameter _usually_ doesn't have any effect other than changing the proportions of 'True' and 'False' values in the `module_is_complete` column of long-format modules mode output (or the proportion of 1s and 0s in the module presence-absence matrix for `--matrix-format` output). It does _not_ alter completeness scores. It also does not affect which modules are printed to the output file, unless you use the `--only-complete` flag (described in a later section). Therefore, the purpose of changing this threshold is usually so that you can filter the output later somehow (i.e., by searching for 'True' values in the long-format output).
 
@@ -311,7 +311,7 @@ Here is an example of defining the modules output to contain columns with the mo
 anvi-estimate-metabolism -c %(contigs-db)s --output-modes modules_custom --custom-output-headers module,module_name,module_completeness
 {{ codestop }}
 
-**Including modules with 0% completeness in long-format output**
+**Including modules with 0%% completeness in long-format output**
 
 By default, modules with completeness scores of 0 are not printed to the output files to save on space (both pathwise completeness and stepwise completeness must be 0 to exclude modules from the output). But you can explicitly include them by adding the `--include-zeros` flag.
 
@@ -514,21 +514,21 @@ This means that the %(modules-db)s used by %(anvi-run-kegg-kofams)s has differen
 
 1. You upgraded to a new anvi'o version and downloaded the default %(kegg-data)s associated with that release, but are working with a %(contigs-db)s that was annotated with a previous anvi'o version (and therefore a different instance of %(kegg-data)s).
 2. Without changing anvi'o versions, you annotated your %(contigs-db)s with default %(kegg-data)s, and subsequently replaced that data with a different instance by running %(anvi-setup-kegg-data)s again with the `--reset` flag (and likely also with the `--kegg-archive`, `--kegg-snapshot`, or `--download-from-kegg` options, all of which get you a non-default version of KEGG data). Then you tried to run %(anvi-estimate-metabolism)s with the new data.
-3. You have multiple instances of %(kegg-data)s on your computer in different locations, and you used different ones for %(anvi-run-kegg-kofams)s and %(anvi-estimate-metabolism)s. 
+3. You have multiple instances of %(kegg-data)s on your computer in different locations, and you used different ones for %(anvi-run-kegg-kofams)s and %(anvi-estimate-metabolism)s.
 4. Your collaborator gave you some databases that they annotated with a different version of %(kegg-data)s than you have on your computer.
 
 There are two main solutions for most of these situations, which differ according to which set of annotations you would prefer to use.
 
 **First option**: you want to update your %(contigs-db)s to have new annotations that match to the current %(modules-db)s. In this case, you have to rerun %(anvi-run-kegg-kofams)s on the %(contigs-db)s. Make sure you provide the same `--kegg-data-dir` value (if any) that you put in the `anvi-estimate-metabolism` command that gave you this error. 
 
-**Second option**: you want to continue working with the existing set of annotations in the %(contigs-db)s. This means you need to change which %(modules-db)s you are using for %(anvi-estimate-metabolism)s. The error message should tell you the hash of the %(modules-db)s used for annotation. You can use that hash to identify the matching database so that you can either re-download that database, or (if you already have it) find it on your computer. 
+**Second option**: you want to continue working with the existing set of annotations in the %(contigs-db)s. This means you need to change which %(modules-db)s you are using for %(anvi-estimate-metabolism)s. The error message should tell you the hash of the %(modules-db)s used for annotation. You can use that hash to identify the matching database so that you can either re-download that database, or (if you already have it) find it on your computer.
 
 If you have multiple instances of %(kegg-data)s on your computer, you can run `anvi-db-info` on the %(modules-db)s in each of those directories until you find the one with the hash you are looking for. Then provide the path to that directory using the `kegg-data-dir` parameter of `anvi-estimate-metabolism`.
 
 {:.notice}
 If you've recently upgraded your anvi'o version (i.e., situation 1 from above) and you kept your previous installation of anvi'o, the database you want should still be available as part of that environment. You can find its location by activating the environment and running the following code in your terminal: `export ANVIO_MODULES_DB=`python -c "import anvio; import os; print(os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG/MODULES.db'))"``. Use `echo $ANVIO_MODULES_DB` to print the path in your terminal, and `anvi-db-info $ANVIO_MODULES_DB` to verify that its hash matches the one in your contigs database.
 
-If you don't have any matching instances of %(kegg-data)s on your computer, you will need to download it. First, check if the version you want is one of the KEGG snapshots that anvi'o provides by looking at the `KEGG-SNAPSHOTS.yaml` file in the anvi'o codebase. For instance, you can get the location of that file and print it to your terminal by running the following: 
+If you don't have any matching instances of %(kegg-data)s on your computer, you will need to download it. First, check if the version you want is one of the KEGG snapshots that anvi'o provides by looking at the `KEGG-SNAPSHOTS.yaml` file in the anvi'o codebase. For instance, you can get the location of that file and print it to your terminal by running the following:
 
 ```
 export ANVIO_KEGG_SNAPSHOTS=$(python -c "import anvio; import os; print(os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG-SNAPSHOTS.yaml'))")
@@ -538,7 +538,7 @@ cat $ANVIO_KEGG_SNAPSHOTS
 Take a look through the different versions. If you see one with a hash matching the one used to annotate your %(contigs-db)s, then you can download that version by following [the directions for setting up a KEGG snapshot](https://anvio.org/help/main/programs/anvi-setup-kegg-data/#setting-up-an-earlier-kegg-snapshot). Provide the snapshot version name to the `--kegg-snapshot` parameter of %(anvi-setup-kegg-data)s.
 
 **I can't find KEGG data with a matching hash!**
-If you don't have a matching metabolism database on your computer, and none of the snapshots in the `KEGG-SNAPSHOTS.yaml` file have the hash that you need, your %(contigs-db)s was probably annotated with KO and module data [downloaded directly from KEGG](https://anvio.org/help/main/programs/anvi-setup-kegg-data/#getting-the-most-up-to-date-kegg-data-downloading-directly-from-kegg). If you have obtained the %(contigs-db)s from a collaborator (i.e., situation 4 from above), ask them to also share their %(kegg-data)s with you, following [these steps](https://anvio.org/help/main/programs/anvi-setup-kegg-data/#how-do-i-share-this-data). Otherwise, anvi'o cannot really help you get this data back, and you may have to resort to option 1 described above. 
+If you don't have a matching metabolism database on your computer, and none of the snapshots in the `KEGG-SNAPSHOTS.yaml` file have the hash that you need, your %(contigs-db)s was probably annotated with KO and module data [downloaded directly from KEGG](https://anvio.org/help/main/programs/anvi-setup-kegg-data/#getting-the-most-up-to-date-kegg-data-downloading-directly-from-kegg). If you have obtained the %(contigs-db)s from a collaborator (i.e., situation 4 from above), ask them to also share their %(kegg-data)s with you, following [these steps](https://anvio.org/help/main/programs/anvi-setup-kegg-data/#how-do-i-share-this-data). Otherwise, anvi'o cannot really help you get this data back, and you may have to resort to option 1 described above.
 
 If none of these solutions help you to get rid of the version incompatibility error, please feel free to reach out to the anvi'o developers for help.
 
@@ -666,11 +666,11 @@ Once we have our list of alternative paths through the module, the next task is 
 
 1. A single KO - this is straightforward. If we have an annotation for this KO in our pool of 'KOfam' annotations, then the step is complete (1).
 
-2. A protein complex - remember that these are multiple KOs connected with '+' (if they are essential components) or '-' (if they are non-essential). Well, for these steps, we compute a fractional completeness based on the number of essential components that are present in the annotation pool. We basically ignore the non-essential KOs. For example, the complex 'K00174+K00175-K00177-K00176' would be considered 50% complete (a score of 0.5) if only 'K00174' were present in the annotation pool.
+2. A protein complex - remember that these are multiple KOs connected with '+' (if they are essential components) or '-' (if they are non-essential). Well, for these steps, we compute a fractional completeness based on the number of essential components that are present in the annotation pool. We basically ignore the non-essential KOs. For example, the complex 'K00174+K00175-K00177-K00176' would be considered 50%% complete (a score of 0.5) if only 'K00174' were present in the annotation pool.
 
 3. Non-essential KOs - some KOs are marked as non-essential even when they are not part of a protein complex. They look like this: '-K12420', with a minus sign in front of the KO identifier (that particular example comes from module [M00778](https://www.genome.jp/kegg-bin/show_module?M00778)). These steps are ignored for the purposes of computing module completeness.
 
-4. Steps without associated KOs - some reactions do not have a KO identifier, but instead there is the string `--` serving as a placeholder in the module definition. Since we can't annotate the genes required for these steps, we have no idea if they are complete or not, so we always consider them incomplete (0). Modules that have steps like this can therefore never have 100% completeness - it is unfortunate, but what can we do? We warn the user about these instances so that they can manually check for any missing steps.
+4. Steps without associated KOs - some reactions do not have a KO identifier, but instead there is the string `--` serving as a placeholder in the module definition. Since we can't annotate the genes required for these steps, we have no idea if they are complete or not, so we always consider them incomplete (0). Modules that have steps like this can therefore never have 100%% completeness - it is unfortunate, but what can we do? We warn the user about these instances so that they can manually check for any missing steps.
 
 5. Modules - finally, some modules are defined by other modules. We can't determine if these steps are complete until we've estimated completeness for every module, so we ignore these for now.
 
@@ -693,7 +693,7 @@ As an example, consider module [M00618](https://www.genome.jp/kegg-bin/show_modu
 ```
 M00377 M00579
 ```
-Suppose module M00377 had a completeness score of 0.7 and module M00579 had a score of 0.4, based on the prior estimations. Then the completeness score of the `[M00377,M00579]` path would be (0.7+0.4)/2 = 0.55. Since this is the only possible path through the module, M00618 is 55% complete.
+Suppose module M00377 had a completeness score of 0.7 and module M00579 had a score of 0.4, based on the prior estimations. Then the completeness score of the `[M00377,M00579]` path would be (0.7+0.4)/2 = 0.55. Since this is the only possible path through the module, M00618 is 55%% complete.
 
 #### Part 5: Path copy number
 
@@ -701,7 +701,7 @@ In reality, this part is actually done at the same time as Part 2, but it is eas
 
 1. A single KO - the copy number of this atomic step is equal to the number of annotations (hits) of this enzyme. If the atomic step is K00133 and you have 5 genes annotated with K00133, then you have 5 copies of that step. If you have 0 annotations, then the step copy number is 0. This is the simplest case.
 
-2. A protein complex - these are a bit tricky. Once again, we ignore the non-essential components and only consider essential ones. But we use the number of annotations to figure out how many _complete_ copies of the protein complex exist in the input sample. For example, suppose we have 2 annotations for K00174 and 3 annotations for K00175. These are the only two essential components in the complex 'K00174+K00175-K00177-K00176'. Since we have at least two annotations for both of these enzymes, we have two copies of the complex. What about the third annotation for K00175? Well, it can't do much all by itself. This hypothetical third copy of the complex is only 50% complete (1 out of 2 essential components), which is less than the default module completeness threshold of 75%. So we ignore it, and say that we have 2 copies of the enzyme complex. _However, this calculation can change if you were to adjust the module completeness threshold._ If you set the threshold to be 50% or lower, then 50% is enough to consider the third copy of the complex complete (in which case, we would say that we have 3 copies of the enzyme complex).
+2. A protein complex - these are a bit tricky. Once again, we ignore the non-essential components and only consider essential ones. But we use the number of annotations to figure out how many _complete_ copies of the protein complex exist in the input sample. For example, suppose we have 2 annotations for K00174 and 3 annotations for K00175. These are the only two essential components in the complex 'K00174+K00175-K00177-K00176'. Since we have at least two annotations for both of these enzymes, we have two copies of the complex. What about the third annotation for K00175? Well, it can't do much all by itself. This hypothetical third copy of the complex is only 50%% complete (1 out of 2 essential components), which is less than the default module completeness threshold of 75%%. So we ignore it, and say that we have 2 copies of the enzyme complex. _However, this calculation can change if you were to adjust the module completeness threshold._ If you set the threshold to be 50%% or lower, then 50%% is enough to consider the third copy of the complex complete (in which case, we would say that we have 3 copies of the enzyme complex).
 
 3. Non-essential KOs - just like we ignore these steps when computing completeness, we also ignore them when computing copy number.
 
@@ -725,7 +725,7 @@ Each copy of the path is a horizontal row of X's in the simple graphic above. Th
 
 Once we have the completeness scores and copy numbers of all possible paths through the module, we can compute the copy number of the module itself. Remember from Part 3 that we saved the paths which have the highest completeness score? We take the maximum copy number of those paths of highest completeness.
 
-So if the module does not have any complete paths, then its copy number is 0. If it has one complete path, then its copy number is the copy number of that path. If there are multiple paths with highest completeness score, then its copy number is the maximum of the copy numbers of those paths - for example, let's say we have two paths, both of which are 90% complete. One of those paths has a copy number of 1 and the other has a copy number of 3. The module copy number would be 3 in this case.
+So if the module does not have any complete paths, then its copy number is 0. If it has one complete path, then its copy number is the copy number of that path. If there are multiple paths with highest completeness score, then its copy number is the maximum of the copy numbers of those paths - for example, let's say we have two paths, both of which are 90%% complete. One of those paths has a copy number of 1 and the other has a copy number of 3. The module copy number would be 3 in this case.
 
 {:.notice}
 We're making assumptions here again, just like we were when computing module completeness. Any of those paths (or none of them) could be the one that is used in the cell, and we don't know which one. But the idea here is that if a sample has the most copies of path X, there is probably a good reason that it has that many copies because microbial cells like to streamline their genomes whenever possible.
@@ -819,7 +819,7 @@ K00133 => complete (1)
 (K00872,K02204,K02203) => complete (1)
 K01733 => complete (1)
 ```
-Then the overall stepwise completeness of M00018 would be 4/5, or 80%. If we were using the default module completeness threshold of 0.75, then this module would be considered 'complete' overall based on its stepwise score.
+Then the overall stepwise completeness of M00018 would be 4/5, or 80%%. If we were using the default module completeness threshold of 0.75, then this module would be considered 'complete' overall based on its stepwise score.
 
 Note: if any of the module's top-level steps are defined by other modules, we skip computing its completeness for now because we don't know the completeness of these steps yet. These will be adjusted in the next section.
 
