@@ -468,15 +468,28 @@ function createCookie(name, value, days) {
 // ============================================================================
 
 /**
- * Show taxonomy table dialog
- * @param {string} title - Dialog title
- * @param {string} content - Dialog content HTML
+ * Generic modal dialog creator
+ * @param {Object} options - Modal configuration options
+ * @private
  */
-function showTaxonomyTableDialog(title, content) {
+function _createModalDialog(options) {
+    const {
+        title,
+        content,
+        modalClass = 'genericDialog',
+        dialogClass = 'modal-dialog',
+        noteHTML = null
+    } = options;
+
     const randomID = title.hashCode();
+
+    const noteSection = noteHTML
+        ? `<p style="margin: 20px; font-style: italic; flex-shrink: 0;">${noteHTML}</p>`
+        : '';
+
     const template = `
-        <div class="modal fade taxonomyTableDialog" id="modal${randomID}" role="dialog">
-            <div class="taxonomy-modal-dialog modal-dialog modal-dialog-centered"
+        <div class="modal fade ${modalClass}" id="modal${randomID}" role="dialog">
+            <div class="${dialogClass} modal-dialog modal-dialog-centered"
                  style="pointer-events: all; max-width: 90vw; width: 90vw;">
                 <div class="modal-content" style="max-height: 80vh; display: flex; flex-direction: column;">
                     <div class="modal-header" style="flex-shrink: 0;">
@@ -484,7 +497,8 @@ function showTaxonomyTableDialog(title, content) {
                         <button type="button" class="close" data-dismiss="modal"
                                 aria-hidden="true">${MODALS.CLOSE_BUTTON_HTML}</button>
                     </div>
-                    <div class="modal-body" style="overflow: auto; flex: 1; min-height: 0; padding: 20px;">
+                    ${noteSection}
+                    <div class="modal-body" style="overflow: auto; flex: 1; min-height: 0; padding: ${noteHTML ? '0 20px 20px 20px' : '20px'};">
                         <div class="table-responsive" style="max-height: none;">
                             ${content}
                         </div>
@@ -505,6 +519,20 @@ function showTaxonomyTableDialog(title, content) {
 
     $(`#modal${randomID}`).on('hidden.bs.modal', function() {
         $(this).remove();
+    });
+}
+
+/**
+ * Show taxonomy table dialog
+ * @param {string} title - Dialog title
+ * @param {string} content - Dialog content HTML
+ */
+function showTaxonomyTableDialog(title, content) {
+    _createModalDialog({
+        title,
+        content,
+        modalClass: 'taxonomyTableDialog',
+        dialogClass: 'taxonomy-modal-dialog'
     });
 }
 
@@ -514,41 +542,12 @@ function showTaxonomyTableDialog(title, content) {
  * @param {string} content - Dialog content HTML
  */
 function showGeneFunctionsSummaryTableDialog(title, content) {
-    const randomID = title.hashCode();
-    const template = `
-        <div class="modal fade geneFunctionsSummaryDialog" id="modal${randomID}" role="dialog">
-            <div class="gene-functions-modal-dialog modal-dialog modal-dialog-centered"
-                 style="pointer-events: all; max-width: 90vw; width: 90vw;">
-                <div class="modal-content" style="max-height: 80vh; display: flex; flex-direction: column;">
-                    <div class="modal-header" style="flex-shrink: 0;">
-                        <h4 class="modal-title">${title}</h4>
-                        <button type="button" class="close" data-dismiss="modal"
-                                aria-hidden="true">${MODALS.CLOSE_BUTTON_HTML}</button>
-                    </div>
-                    <p style="margin: 20px; font-style: italic; flex-shrink: 0;">
-                        Here is the list of functions that are associated with the gene calls in your bin.
-                    </p>
-                    <div class="modal-body" style="overflow: auto; flex: 1; min-height: 0; padding: 0 20px 20px 20px;">
-                        <div class="table-responsive" style="max-height: none;">
-                            ${content}
-                        </div>
-                    </div>
-                    <div class="modal-footer" style="flex-shrink: 0;">
-                        <button type="button" class="btn btn-outline-danger"
-                                data-dismiss="modal">Close</button>
-                    </div>
-                </div>
-            </div>
-        </div>`;
-
-    $('body').append(template);
-    $(`#modal${randomID}`)
-        .modal({ show: true, backdrop: true, keyboard: true })
-        .find('.modal-dialog')
-        .draggable({ handle: '.modal-header' });
-
-    $(`#modal${randomID}`).on('hidden.bs.modal', function() {
-        $(this).remove();
+    _createModalDialog({
+        title,
+        content,
+        modalClass: 'geneFunctionsSummaryDialog',
+        dialogClass: 'gene-functions-modal-dialog',
+        noteHTML: 'Here is the list of functions that are associated with the gene calls in your bin.'
     });
 }
 
@@ -558,45 +557,18 @@ function showGeneFunctionsSummaryTableDialog(title, content) {
  * @param {string} content - Dialog content HTML
  */
 function showGeneClusterFunctionsSummaryTableDialog(title, content) {
-    const randomID = title.hashCode();
     const noteHTML = `
         Please note that this is just a quick view of the functions associated with your gene clusters.
         A much more appropriate way to summarize this information and more is to use the program
         <a href="http://merenlab.org/software/anvio/help/programs/anvi-summarize/" target="_blank">
         anvi-summarize</a>, and inspect the resulting TAB-delimited output file`;
 
-    const template = `
-        <div class="modal fade geneClusterFunctionsSummaryDialog" id="modal${randomID}" role="dialog">
-            <div class="gene-cluster-functions-modal-dialog modal-dialog modal-dialog-centered"
-                 style="pointer-events: all; max-width: 90vw; width: 90vw;">
-                <div class="modal-content" style="max-height: 80vh; display: flex; flex-direction: column;">
-                    <div class="modal-header" style="flex-shrink: 0;">
-                        <h4 class="modal-title">${title}</h4>
-                        <button type="button" class="close" data-dismiss="modal"
-                                aria-hidden="true">${MODALS.CLOSE_BUTTON_HTML}</button>
-                    </div>
-                    <p style="margin: 20px; font-style: italic; flex-shrink: 0;">${noteHTML}</p>
-                    <div class="modal-body" style="overflow: auto; flex: 1; min-height: 0; padding: 0 20px 20px 20px;">
-                        <div class="table-responsive" style="max-height: none;">
-                            ${content}
-                        </div>
-                    </div>
-                    <div class="modal-footer" style="flex-shrink: 0;">
-                        <button type="button" class="btn btn-outline-danger"
-                                data-dismiss="modal">Close</button>
-                    </div>
-                </div>
-            </div>
-        </div>`;
-
-    $('body').append(template);
-    $(`#modal${randomID}`)
-        .modal({ show: true, backdrop: true, keyboard: true })
-        .find('.modal-dialog')
-        .draggable({ handle: '.modal-header' });
-
-    $(`#modal${randomID}`).on('hidden.bs.modal', function() {
-        $(this).remove();
+    _createModalDialog({
+        title,
+        content,
+        modalClass: 'geneClusterFunctionsSummaryDialog',
+        dialogClass: 'gene-cluster-functions-modal-dialog',
+        noteHTML
     });
 }
 
