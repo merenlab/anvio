@@ -328,6 +328,7 @@ rule anvi_run_hmms:
         hmm_profile_dir = M.get_rule_param("anvi_run_hmms", "--hmm-profile-dir"),
 	    also_scan_trnas = M.get_rule_param("anvi_run_hmms", "--also-scan-trnas"),
         add_to_functions_tbl = M.get_rule_param("anvi_run_hmms", "--add-to-functions-table"),
+        just_do_it = M.get_rule_param("anvi_run_hmms", "--just-do-it")
     threads: M.T('anvi_run_hmms')
     resources: nodes = M.T('anvi_run_hmms'),
     shell: w.r("anvi-run-hmms -c {input} \
@@ -335,7 +336,8 @@ rule anvi_run_hmms:
                               {params.hmm_profile_dir} \
                               {params.installed_hmm_profile} \
 			                  {params.also_scan_trnas} \
-                              {params.add_to_functions_tbl} >> {log} 2>&1")
+                              {params.add_to_functions_tbl} \
+                              {params.just_do_it} >> {log} 2>&1")
 
 
 rule anvi_run_pfams:
