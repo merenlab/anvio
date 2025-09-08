@@ -28,7 +28,7 @@ anvi-compute-metabolic-enrichment -M MODULES.TXT \
 
 ### Additional parameters
 
-The default completeness threshold for a module to be considered 'present' in a genome is 0.75 (75%%). If you wish to modify this threshold, you can specify a different value between (0, 1] using the `--module-completion-threshold` parameter:
+The default completeness threshold for a module to be considered 'present' in a genome is 0.75 (75%). If you wish to modify this threshold, you can specify a different value between (0, 1] using the `--module-completion-threshold` parameter:
 
 {{ codestart }}
 anvi-compute-metabolic-enrichment -M MODULES.TXT \
