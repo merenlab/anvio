@@ -100,10 +100,10 @@ class Pyrodigal_gv:
                                   f"your FASTA file is only {pp(longest_sequence_length)}. Which means, you will have to drop "
                                   f"the `--prodigal-single-mode` for this to work :/")
 
-            self.predictor = pyrodigal_gv.ViralGeneFinder()
+            self.predictor = pyrodigal_gv.ViralGeneFinder(mask=True)
             self.predictor.train(longest_sequence)
         else:
-            self.predictor = pyrodigal_gv.ViralGeneFinder(meta=True)
+            self.predictor = pyrodigal_gv.ViralGeneFinder(meta=True, mask=True)
 
         # since the predictor is now set, next we will read all sequences into the memory :/
         data = []
