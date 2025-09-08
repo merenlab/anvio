@@ -2,17 +2,17 @@
 
 The metabolic pathways that this program considers (by default) are those defined by KEGG Orthologs (KOs) in the [KEGG MODULE resource](https://www.genome.jp/kegg/module.html). Each KO represents a gene function, and a KEGG module is a set of KOs that collectively carry out the steps in a metabolic pathway.
 
-Alternatively or additionally, you can define your own set of metabolic modules and estimate their completeness with this program. Detailed instructions for doing this can be found by looking at the %(user-modules-data)s and %(anvi-setup-user-modules)s pages.
+Alternatively or additionally, you can define your own set of metabolic modules and estimate their completeness with this program. Detailed instructions for doing this can be found by looking at the %(user-modules-data)s and  %(anvi-setup-user-modules)s pages.
 
 Given a properly annotated %(contigs-db)s or %(pan-db)s, this program determines which enzymes are present and uses these functions to compute the completeness of each metabolic module. There are currently two strategies for estimating module completeness - pathwise and stepwise - which are discussed in the technical details section on this page. The output of this program is one or more tabular text files - see %(kegg-metabolism)s for the output description and examples.
 
-For a practical tutorial on how to use this program, visit [this link](https://anvio.org/tutorials/fmt-mag-metabolism/). A more abstract discussion of available parameters, as well as technical details about how the metabolism estimation is performed, can be found below.
+For a practical tutorial on how to use this program, visit [this link](https://anvio.org/tutorials/fmt-mag-metabolism/). A more abstract discussion of available parameters, as well as technical details about how the metabolism estimation is done, can be found below.
 
 ## What metabolism data can I use?
 
 You have three options when it comes to estimating metabolism.
 
-1. KEGG only (this is the default). In this case, estimation will be run on modules from the KEGG MODULES database, which you must set up on your computer using %(anvi-setup-kegg-data)s. If you have a default setup of KEGG, you need not provide any parameters to choose this option. However, if you have your KEGG data in a non-default location on your computer, you will have to use the `--kegg-data-dir` parameter to indicate its location.
+1. KEGG only (this is the default). In this case, estimation will be run on modules from the KEGG MODULES database, which you must set up on your computer using %(anvi-setup-kegg-data)s. If you have a default setup of KEGG, you need not provide any parameters to choose this option. However, if you have your KEGG data in a non-default location on your computer, you will have to use the `--kegg-data-dir` parameter to point out its location.
 2. KEGG + USER data. In this case, we estimate on KEGG modules as in (1), but _also_ on user-defined metabolic modules that you set up with %(anvi-setup-user-modules)s and provide to this program with the `--user-modules` parameter.
 3. USER data only. You can elect to skip estimation on KEGG modules and _only_ run on your own data by providing both the `--user-modules` and `--only-user-modules` parameters.
 
@@ -20,15 +20,15 @@ You have three options when it comes to estimating metabolism.
 
 Metabolism estimation relies on gene annotations from the functional annotation source 'KOfam', also referred to as %(kegg-functions)s. Therefore, for this to work, you need to have annotated your %(contigs-db)s with hits to the KEGG KOfam database by running %(anvi-run-kegg-kofams)s prior to using this program, unless you are using the `--only-user-modules` option to ONLY estimate on user-defined metabolic modules.
 
-Both %(anvi-run-kegg-kofams)s and %(anvi-estimate-metabolism)s rely on the %(kegg-data)s provided by %(anvi-setup-kegg-data)s, so if you do not already have that data on your computer, %(anvi-setup-kegg-data)s needs to be run first. To summarize, these are the steps that need to be completed before you can use %(anvi-estimate-metabolism)s:
+Both %(anvi-run-kegg-kofams)s and %(anvi-estimate-metabolism)s rely on the %(kegg-data)s provided by %(anvi-setup-kegg-data)s, so if you do not already have that data on your computer, %(anvi-setup-kegg-data)s needs to be run first. To summarize, these are the steps that need to be done before you can use %(anvi-estimate-metabolism)s:
 
-1. Run %(anvi-setup-kegg-data)s to get data from KEGG onto your computer. This step only needs to be performed once.
+1. Run %(anvi-setup-kegg-data)s to get data from KEGG onto your computer. This step only needs to be done once.
 2. [If not using `--only-user-modules`] Run %(anvi-run-kegg-kofams)s to annotate your %(contigs-db)s with %(kegg-functions)s. This program must be run on each contigs database that you want to estimate metabolism for.
 
-If you want to estimate metabolism for your own modules, then you have a couple of additional steps:
+If you want to estimate for your own metabolism data, then you have a couple of extra steps to go through:
 
 3. Define your own metabolic modules by following the formatting guidelines described [here](https://merenlab.org/software/anvio/help/main/programs/anvi-setup-user-modules/#how-do-i-format-the-module-files) and [here](https://merenlab.org/software/anvio/help/main/artifacts/user-modules-data/#a-step-by-step-guide-to-creating), and then run %(anvi-setup-user-modules)s to parse them into a %(modules-db)s,
-4. Annotate your %(contigs-db)s with the functional annotation sources that are required for your module definitions. This may require running several different programs. For instance, if your modules are defined in terms of NCBI COGs (i.e., the `COG20_FUNCTION` annotation source), you will need to run %(anvi-run-ncbi-cogs)s. If you are using a set of custom HMMs, you will need to run %(anvi-run-hmms)s on that set using the `--add-to-functions-table` parameter. If you already have annotations from one or more of these sources, you could also import them into the contigs database using the program %(anvi-import-functions)s. Note that if you want to estimate metabolism on a pangenome, this annotation step needs to be run before you create the %(genomes-storage-db)s and %(pan-db)s.
+4. Annotate your %(contigs-db)s with the functional annotation sources that are required for your module definitions. This may require running a few different programs. For instance, if your modules are defined in terms of NCBI COGS (ie, the `COG20_FUNCTION` annotation source), you will need to run %(anvi-run-ncbi-cogs)s. If you are using a set of custom HMMs, you will need to run %(anvi-run-hmms)s on that set using the `--add-to-functions-table` parameter. If you already have annotations from one or more of these sources, you could also import them into the contigs database using the program %(anvi-import-functions)s. Note that if you want to estimate metabolism on a pangenome, this annotation step needs to be run before you create the %(genomes-storage-db)s and %(pan-db)s.
 
 ## Running metabolism estimation
 
@@ -39,7 +39,7 @@ You can run metabolism estimation on any set of annotated sequences, but these s
 - Assembled, unbinned metagenomes. There is no distinction between sequences that belong to different microbial populations in the %(contigs-db)s for an unbinned metagenome.
 - Pangenomes in which you have binned gene clusters. Each pangenome is described in a %(pan-db)s, and must include a %(collection)s of your gene cluster bins of interest.
 
-As you can see, %(anvi-estimate-metabolism)s can take one or more contigs database(s) as input, but the information that is extracted from those databases depends on the context (i.e., genome, metagenome, bin). In the case of internal genomes (or bins), it is possible to have multiple inputs but only one input contigs database. So for clarity's sake, we sometimes refer to the inputs as 'samples' in the descriptions below. If you are getting confused, just try to remember that a 'sample' can be a genome, a metagenome, or a bin.
+As you can see, %(anvi-estimate-metabolism)s can take one or more contigs database(s) as input, but the information that is taken from those databases depends on the context (ie, genome, metagenome, bin). In the case of internal genomes (or bins), is possible to have multiple inputs but only one input contigs db. So for clarity's sake, we sometimes refer to the inputs as 'samples' in the descriptions below. If you are getting confused, just try to remember that a 'sample' can be a genome, a metagenome, or a bin.
 
 If you don't have any sequences, there is an additional input option for you:
 - A list of enzymes, as described in an %(enzymes-txt)s file. For the purposes of metabolism estimation, the enzymes in this file will be interpreted as all coming from the same 'genome'.
@@ -55,7 +55,7 @@ The most basic use-case for this program is when you have one contigs database d
 anvi-estimate-metabolism -c %(contigs-db)s
 {{ codestop }}
 
-In some cases -- for instance, to compute community-level pathway copy numbers -- it is also appropriate to use this approach for unbinned metagenome assemblies.
+In some cases -- for instance, to compute community-level pathway copy numbers -- it is also appropriate to do this for unbinned metagenome assemblies.
 
 ### Estimation for bins in a metagenome
 
@@ -91,14 +91,14 @@ bin_5
 
 ### Estimation for contigs in a metagenome assembly
 
-If you have an unbinned metagenome assembly, you can estimate metabolism for it using `--metagenome-mode`. In this case, since there is no way to determine which contigs belong to which microbial populations in the sample, estimation will be performed on a per-contig basis; that is, for each contig, only the genes present on that contig will be used to determine pathway completeness within the contig.
+If you have an unbinned metagenome assembly, you can estimate metabolism for it using `--metagenome-mode`. In this case, since there is no way to determine which contigs belong to which microbial populations in the sample, estimation will be done on a per-contig basis; that is, for each contig, only the genes present on that contig will be used to determine pathway completeness within the contig.
 
 {{ codestart }}
 anvi-estimate-metabolism -c %(contigs-db)s --metagenome-mode
 {{ codestop }}
 
 {:.notice}
-In metagenome mode, this program will estimate metabolism for each contig in the metagenome separately. This will tend to underestimate module completeness because it is likely that many modules will be distributed across multiple contigs belonging to the same population. If you prefer to instead treat all enzyme annotations in the metagenome as belonging to one collective genome, you can do so by simply leaving out the `--metagenome-mode` flag (effectively treating your metagenome as a single genome, although in your heart you will know that your contigs database really contains a metagenome). Please note that this will result in the opposite tendency to overestimate module completeness (as the enzymes will in reality be coming from multiple different populations), and there will be significant redundancy. We are working on improving our estimation algorithm for metagenome mode. In the meantime, if you are concerned about the misleading results from either of these situations, we suggest binning your metagenomes first and running estimation for the bins as described below.
+In metagenome mode, this program will estimate metabolism for each contig in the metagenome separately. This will tend to underestimate module completeness because it is likely that many modules will be broken up across multiple contigs belonging to the same population. If you prefer to instead treat all enzyme annotations in the metagenome as belonging to one collective genome, you can do so by simply leaving out the `--metagenome-mode` flag (to effectively pretend that you are doing estimation for a single genome, although in your heart you will know that your contigs database really contains a metagenome). Please note that this will result in the opposite tendency to overestimate module completeness (as the enzymes will in reality be coming from multiple different populations), and there will be a lot of redundancy. We are working on improving our estimation algorithm for metagenome mode. In the meantime, if you are worried about the misleading results from either of these situations, we suggest binning your metagenomes first and running estimation for the bins as described below.
 
 
 ### Estimation for gene cluster bins in a pangenome
@@ -109,19 +109,19 @@ You can estimate the metabolisms collectively encoded by a set of gene clusters 
 anvi-estimate-metabolism --pan-db %(pan-db)s -g %(genomes-storage-db)s -C COLLECTION_NAME
 {{ codestop }}
 
-In this case, the program will estimate metabolism for each bin of gene clusters independently, by considering the set of enzyme annotations encoded within the set of gene clusters in the bin. Each gene cluster typically includes more than one gene from different genomes, and can therefore have multiple functions associated with it. To select which annotation is most relevant for estimation purposes, we pick the dominant function from each annotation source -- for instance, the KOfam with the highest number of annotations within the cluster and the COG with the highest number of annotations. Please note that this means that a gene cluster can still have multiple annotations associated with it (a maximum of one per annotation source), so we don't allow calculation of copy numbers for pangenomes (i.e., you can't use the `--add-copy-number` flag for this input type).
+In this case, the program will estimate metabolism for each bin of gene clusters independently, by considering the set of enzyme annotations encoded within the set of gene clusters in the bin. Each gene cluster typically includes more than one gene from different genomes, and can therefore have multiple functions associated with it. To select which annotation is most relevant for estimation purposes, we pick the dominant function from each annotation source -- for instance, the KOfam with the highest number of annotations within the cluster and the COG with the highest number of annotations. Please note that this means that a gene cluster can still have multple annotations associated with it (a maximum of one per annotation source), so we don't allow calculation of copy numbers for pangenomes (i.e., you can't use the `--add-copy-number` flag for this input type).
 
 Want to run the estimation on all the gene clusters in the pangenome? You should add a default collection first using %(anvi-script-add-default-collection)s.
 
 ### Estimation for a set of enzymes
 
-Suppose you have a list of enzymes. This could be an entirely theoretical list, or they could come from some annotation data that you obtained outside of anvi'o - regardless of where you obtained this set, you can determine what metabolic pathways these enzymes contribute to. All you have to do is format that list as an %(enzymes-txt)s file, and provide that input file to this program, like so:
+Suppose you have a list of enzymes. This could be an entirely theoretical list, or they could come from some annotation data that you got outside of anvi'o - regardless of where you came up with this set, you can figure out what metabolic pathways these enzymes contribute to. All you have to do is format that list as an %(enzymes-txt)s file, and give that input file to this program, like so:
 
 {{ codestart }}
 anvi-estimate-metabolism --enzymes-txt %(enzymes-txt)s
 {{ codestop }}
 
-The program will treat all of these enzymes as coming from one theoretical 'genome' (though the reality depends on how you defined or obtained the set), so the completion estimates for each metabolic pathway will consider all enzymes in the file. If you want to instead break up your set of enzymes across multiple 'genomes', then you will have to make multiple different input files and run this program on each one.
+The program will pretend all of these enzymes are coming from one theoretical 'genome' (though the reality depends on how you defined or obtained the set), so the completion estimates for each metabolic pathway will consider all enzymes in the file. If you want to instead break up your set of enzymes across multiple 'genomes', then you will have to make multiple different input files and run this program on each one.
 
 
 ## MULTI-MODE: Running metabolism estimation on multiple contigs databases
@@ -160,7 +160,7 @@ There are many ways to alter the behavior of this program to fit your needs. You
 
 ### Changing the module completion threshold
 
-As explained in the [technical details section](#how-is-the-module-completeness-score-calculated) below, module completeness is computed as the percentage of steps in the metabolic pathway that are 'present' based on the annotated enzymes in the contigs database. If this completeness is greater than a certain percentage, then the entire module is considered to be 'complete' in the sample and the corresponding row in the long-format modules mode output file will have 'True' under the `module_is_complete` column. By default, the module completion threshold is 0.75, or 75%.
+As explained in the [technical details section](#how-is-the-module-completeness-score-calculated) below, module completeness is computed as the percentage of steps in the metabolic pathway that are 'present' based on the annotated enzymes in the contigs database. If this completeness is larger than a certain percentage, then the entire module is considered to be 'complete' in the sample and the corresponding row in the long-format modules mode output file will have 'True' under the `module_is_complete` column. By default, the module completion threshold is 0.75, or 75%%.
 
 Changing this parameter _usually_ doesn't have any effect other than changing the proportions of 'True' and 'False' values in the `module_is_complete` column of long-format modules mode output (or the proportion of 1s and 0s in the module presence-absence matrix for `--matrix-format` output). It does _not_ alter completeness scores. It also does not affect which modules are printed to the output file, unless you use the `--only-complete` flag (described in a later section). Therefore, the purpose of changing this threshold is usually so that you can filter the output later somehow (i.e., by searching for 'True' values in the long-format output).
 
@@ -174,7 +174,7 @@ anvi-estimate-metabolism -c %(contigs-db)s --module-completion-threshold 0.5
 
 ### Working with a non-default KEGG data directory
 
-If you have previously annotated your contigs databases using a non-default KEGG data directory with `--kegg-data-dir` (see %(anvi-run-kegg-kofams)s), or you have moved the KEGG data directory that you wish to use to a non-default location, then you will need to specify where to find the KEGG data so that this program can use the correct one. In that case, this is how you do it:
+If you have previously annotated your contigs databases using a non-default KEGG data directory with `--kegg-data-dir` (see %(anvi-run-kegg-kofams)s), or you have moved the KEGG data directory that you wish to use to a non-default location, then you will need to specify where to find the KEGG data so that this program can use the right one. In that case, this is how you do it:
 
 {{ codestart }}
 anvi-estimate-metabolism -c %(contigs-db)s --kegg-data-dir /path/to/directory/KEGG
@@ -190,9 +190,9 @@ anvi-estimate-metabolism -c %(contigs-db)s --user-modules /path/to/USER/director
 
 The `--user-modules` parameter can be used in conjunction with the `--kegg-data-dir` parameter to control which KEGG data is being used at the same time.
 
-### Skipping KEGG data (i.e., only working with user-defined metabolism data)
+### Skipping KEGG data (ie, only working with user-defined metabolism data)
 
-If you wish to only estimate for your own metabolic modules, you can skip estimating for KEGG modules by providing the `--only-user-modules` flag. The advantage of doing this is that you can skip running %(anvi-run-kegg-kofams)s on your databases (which will save you significant time and computational resources).
+If you wish to only estimate for your own metabolic modules, you can skip estimating for KEGG modules by providing the `--only-user-modules` flag. The nice thing about doing this is that you can skip running %(anvi-run-kegg-kofams)s on your databases (which will save you lots of time and computational resources).
 
 {{ codestart }}
 anvi-estimate-metabolism -c %(contigs-db)s --user-modules /path/to/USER/directory --only-user-modules
@@ -206,7 +206,7 @@ anvi-estimate-metabolism -c %(contigs-db)s --user-modules /path/to/USER/director
 anvi-estimate-metabolism -c %(contigs-db)s --include-stray-KOs
 {{ codestop }}
 
-If your input database includes annotations to stray KOs and you _don't_ want to use them for computing pathway completeness and copy number, then simply leave out this flag. However, you may get an error once anvi'o encounters a KO that it doesn't recognize. In that case, you should explicitly request to ignore these annotations by adding the flag `--ignore-unknown-KOs`, as suggested in the error message:
+If your input database includes annotations to stray KOs and you _don't_ want to use them for computing pathway completeness and copy number, then simply leave out this flag. However, you may get an error once anvi'o stumbles upon a KO that it doesn't recognize. In that case, you should explicitly request to ignore these annotations by adding the flag `--ignore-unknown-KOs`, as suggested in the error message:
 
 {{ codestart }}
 anvi-estimate-metabolism -c %(contigs-db)s --ignore-unknown-KOs
@@ -252,7 +252,7 @@ Please note that you _must_ provide your input file(s) for this to work.
 
 **Using a non-default output mode**
 
-You can specify one or more long-format output modes using the `--output-modes` parameter. The mode names must exactly match one of the available modes from the `--list-available-modes` output.
+You can specify one or more long-format output modes using the `--output-modes` parameter. The mode names must exactly match to one of the available modes from the `--list-available-modes` output.
 
 {{ codestart }}
 anvi-estimate-metabolism -c %(contigs-db)s --output-modes hits
@@ -289,7 +289,7 @@ stepwise_module_completeness .................: Percent completeness of a module
                                                 on the space character) [modules output mode]
 pathwise_module_is_complete ..................: Whether a module is considered complete or not based on its PATHWISE percent completeness and the completeness threshold [modules output mode]
 pathwise_module_completeness .................: Percent completeness of a module, computed as maximum completeness of all possible combinations of enzymes ('paths') in the definition [modules output mode]
-enzymes_unique_to_module .....................: A list of enzymes that only belong to this module (i.e., they are not members of multiple modules) [modules output mode]
+enzymes_unique_to_module .....................: A list of enzymes that only belong to this module (ie, they are not members of multiple modules) [modules output mode]
 unique_enzymes_hit_counts ....................: How many times each unique enzyme appears in the sample (order of counts corresponds to list in `enzymes_unique_to_module` field) [modules output mode]
 proportion_unique_enzymes_present ............: Proportion of enzymes unique to this one module that are present in the sample [modules output mode]
 unique_enzymes_context_string ................: Describes the unique enzymes contributing to the `proportion_unique_enzymes_present` field [modules output mode]
@@ -301,7 +301,7 @@ As you can see, this flag is also useful when you want to quickly look up the de
 
 For each header, the output mode(s) that it is applicable to are listed after the description. The headers you can choose from for `modules_custom` output end in either `[modules output mode]` or `[all output modes]`.
 
-Just as with `--list-available-modes`, you must provide your input file(s) for this to work. In fact, some headers will change depending on which input types you provide. You will see additional possible headers if you use the `--add-copy-number` or `--add-coverage` flags (though this only works for single sample inputs, not for Multi Mode - if you wish to get custom output for Multi Mode, it is best to construct your custom header list by examining the possible headers for your given parameter set for a SINGLE sample from your input file).
+Just as with `--list-available-modes`, you must provide your input file(s) for this to work. In fact, some headers will change depending on which input types you provide. You will see additional possible headers if you use the `--add-copy-number` or `--add-coverage` flags (though this only works for single sample inputs, not for Multi Mode - if you wish to get custom output for Multi Mode, it is best to construct your custom header list by looking at the possible headers for your given parameter set for a SINGLE sample from your input file).
 
 **Using custom output mode**
 
@@ -311,7 +311,7 @@ Here is an example of defining the modules output to contain columns with the mo
 anvi-estimate-metabolism -c %(contigs-db)s --output-modes modules_custom --custom-output-headers module,module_name,module_completeness
 {{ codestop }}
 
-**Including modules with 0% completeness in long-format output**
+**Including modules with 0%% completeness in long-format output**
 
 By default, modules with completeness scores of 0 are not printed to the output files to save on space (both pathwise completeness and stepwise completeness must be 0 to exclude modules from the output). But you can explicitly include them by adding the `--include-zeros` flag.
 
@@ -358,7 +358,7 @@ anvi-estimate-metabolism -c %(contigs-db)s -p %(profile-db)s --add-coverage --li
 ### Matrix Output
 Matrix format is only available when working with multiple contigs databases. Several output matrices will be generated, each of which describes one statistic such as module completion score, module presence/absence, or enzyme annotation (hit) counts. As with long-format output, each output file will have the same prefix and the file suffixes will indicate which type of data is present in the file.
 
-In each matrix, the rows will describe modules, top-level steps, or enzymes. The columns will describe your input samples (i.e., genomes, metagenomes, bins), and each cell will be the corresponding statistic. You can see examples of this output format by viewing %(kegg-metabolism)s.
+In each matrix, the rows will describe modules, top-level steps, or enzymes. The columns will describe your input samples (i.e. genomes, metagenomes, bins), and each cell will be the corresponding statistic. You can see examples of this output format by viewing %(kegg-metabolism)s.
 
 **Obtaining matrix-formatted output**
 
@@ -468,7 +468,7 @@ When you use this flag, you will get matrices describing copy number statistics 
 
 ### Other output options
 
-Regardless of which output type you are working with, there are a few generic options for controlling how the output files look.
+Regardless of which output type you are working with, there are a few generic options for controlling how the output files look like.
 
 **Changing the output file prefix**
 
@@ -526,7 +526,7 @@ There are two main solutions for most of these situations, which differ accordin
 If you have multiple instances of %(kegg-data)s on your computer, you can run `anvi-db-info` on the %(modules-db)s in each of those directories until you find the one with the hash you are looking for. Then provide the path to that directory using the `kegg-data-dir` parameter of `anvi-estimate-metabolism`.
 
 {:.notice}
-If you've recently upgraded your anvi'o version (i.e., situation 1 from above) and you kept your previous installation of anvi'o, the database you want should still be available as part of that environment. You can find its location by activating the environment and running the following code in your terminal: `export ANVIO_MODULES_DB=`python -c "import anvio; import os; print(os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG/MODULES.db'))"``. Use `echo $ANVIO_MODULES_DB` to print the path in your terminal, and `anvi-db-info $ANVIO_MODULES_DB` to verify that its hash matches the one in your contigs database.
+If you've recently upgraded your anvi'o version (i.e., situation 1 from above) and you kept your previous installation of anvi'o, the database you want should still be available as part of that environment. You can find its location by activating the environment and running the following code in your terminal: `export ANVIO_MODULES_DB=`python -c "import anvio; import os; print(os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG/MODULES.db'))"``. Use `echo $ANVIO_MODULES_DB` to print the path in your terminal, and `anvi-db-info $ANVIO_MODULES_DB` to verify that its hash matches to the one in your contigs database.
 
 If you don't have any matching instances of %(kegg-data)s on your computer, you will need to download it. First, check if the version you want is one of the KEGG snapshots that anvi'o provides by looking at the `KEGG-SNAPSHOTS.yaml` file in the anvi'o codebase. For instance, you can get the location of that file and print it to your terminal by running the following: 
 
@@ -535,7 +535,7 @@ export ANVIO_KEGG_SNAPSHOTS=$(python -c "import anvio; import os; print(os.path.
 cat $ANVIO_KEGG_SNAPSHOTS
 ```
 
-Take a look through the different versions. If you see one with a hash matching the one used to annotate your %(contigs-db)s, then you can download that version by following [the directions for setting up a KEGG snapshot](https://anvio.org/help/main/programs/anvi-setup-kegg-data/#setting-up-an-earlier-kegg-snapshot). Provide the snapshot version name to the `--kegg-snapshot` parameter of %(anvi-setup-kegg-data)s.
+Take a look through the different versions. If you see one with a hash matching to the one used to annotate your %(contigs-db)s, then you can download that version by following [the directions for setting up a KEGG snapshot](https://anvio.org/help/main/programs/anvi-setup-kegg-data/#setting-up-an-earlier-kegg-snapshot). Provide the snapshot version name to the `--kegg-snapshot` parameter of %(anvi-setup-kegg-data)s.
 
 **I can't find KEGG data with a matching hash!**
 If you don't have a matching metabolism database on your computer, and none of the snapshots in the `KEGG-SNAPSHOTS.yaml` file have the hash that you need, your %(contigs-db)s was probably annotated with KO and module data [downloaded directly from KEGG](https://anvio.org/help/main/programs/anvi-setup-kegg-data/#getting-the-most-up-to-date-kegg-data-downloading-directly-from-kegg). If you have obtained the %(contigs-db)s from a collaborator (i.e., situation 4 from above), ask them to also share their %(kegg-data)s with you, following [these steps](https://anvio.org/help/main/programs/anvi-setup-kegg-data/#how-do-i-share-this-data). Otherwise, anvi'o cannot really help you get this data back, and you may have to resort to option 1 described above. 
@@ -545,7 +545,7 @@ If none of these solutions help you to get rid of the version incompatibility er
 
 ## What to do if estimation is not working as expected for user-defined metabolic modules?
 
-If you are estimating completeness of user-defined modules and find that the results are not as expected, you should double check your module files to make sure the pathway is defined properly. Are the enzyme accession numbers in the DEFINITION correct? Do you have the proper ANNOTATION_SOURCE for each enzyme, and are these lines spelled properly and matching the annotation sources in your contigs database(s)? If you are using custom HMM profiles, did you remember to use the `--add-to-functions-table` parameter?
+If you are estimating completeness of user-defined modules and find that the results are not as expected, you should double check your module files to make sure the pathway is defined properly. Are the enzyme accession numbers in the DEFINITION correct? Do you have the proper ANNOTATION_SOURCE for each enzyme, and are these lines spelled properly and matching to the annotation sources in your contigs database(s)? If you are using custom HMM profiles, did you remember to use the `--add-to-functions-table` parameter?
 
 If these things are correct but you are still not finding an annotation for one or more enzymes that you _know_ should be in your sequence data, consider why those annotations might not be there - perhaps the e-values are too low for the annotations to be kept in the database? Keep in mind that you can always try to add enzyme annotations (with the proper sources) to your database using %(anvi-import-functions)s before running %(anvi-estimate-metabolism)s again.
 
@@ -591,9 +591,9 @@ Module definitions can be even more complex than this. Both of these examples ha
 Hopefully this information will help you understand our estimation strategies in the next section.
 
 #### KOfam (enzyme) annotations
-For metabolism estimation to work properly, gene identifiers in the pool of annotations must match the gene identifiers used in the pathway definitions. For KEGG MODULEs, we rely on annotations from the [KEGG KOfam database](https://www.genome.jp/tools/kofamkoala/), which is a set of HMM profiles for KEGG Orthologs (KOs). The program %(anvi-run-kegg-kofams)s can annotate your %(contigs-db)s with hits to the KEGG KOfam database. It adds these annotations under the source name 'KOfam'.
+For metabolism estimation to work properly, gene identifiers in the pool of annotations must match to the gene identifiers used in the pathway definitions. For KEGG MODULEs, we rely on annotations from the [KEGG KOfam database](https://www.genome.jp/tools/kofamkoala/), which is a set of HMM profiles for KEGG Orthologs (KOs). The program %(anvi-run-kegg-kofams)s can annotate your %(contigs-db)s with hits to the KEGG KOfam database. It adds these annotations under the source name 'KOfam'.
 
-Which of the annotations are considered for metabolism estimation depends on the input context. If you are working with isolate genomes (i.e., _not_ metagenome mode or bins), then all of the annotations under source 'KOfam' will be used. If you are working with bins in metagenomes, then for each bin, only the 'KOfam' annotations that are present in that bin will be in the annotation pool. Finally, for metagenome mode, since estimation is done for each contig separately, only the annotations present in each contig will be considered at a time.
+Which of the annotations are considered for metabolism estimation depends on the input context. If you are working with isolate genomes (ie, _not_ metagenome mode or bins), then all of the annotations under source 'KOfam' will be used. If you are working with bins in metagenomes, then for each bin, only the 'KOfam' annotations that are present in that bin will be in the annotation pool. Finally, for metagenome mode, since estimation is done for each contig separately, only the annotations present in each contig will be considered at a time.
 
 User-defined metabolic modules must specify the annotation source(s) needed to find their component enzymes in your data. Adding these annotation sources to your contigs databases may require running a variety of programs. However, `anvi-estimate-metabolism` loads these gene annotations and uses them in the same way as it does 'KOfam' annotations for KEGG data.
 
@@ -607,13 +607,13 @@ For the 'pathwise' strategy, we consider all possible 'paths' through the module
 
 For the 'stepwise' strategy, we break down the module DEFINITION into its major, or 'top-level', steps. Each "top-level" step usually represents either one metabolic reaction or a branch point in the pathway, and is defined by one or more enzymes that either work together or serve as alternatives to each other to catalyze this reaction or set of reactions. We use the available enzyme annotations to determine whether each step can be catalyzed or not - just a binary value representing whether the step is present or not. Then we compute the stepwise module completeness as the percent of present top-level steps. This is the least granular way of estimating module completeness because we do not distinguish between enzyme alternatives - these are all considered as one step which is either entirely present or entirely absent.
 
-The pathwise and stepwise strategies also apply to copy number calculations, in which enzyme annotations are allocated to create different copies of a path, step, or module. Path copy number is computed as the number of complete copies of a path through a module, and a module's pathwise copy number is then calculated as the maximum copy number of any of its paths that have the highest completeness score. Step copy number is the number of complete copies of a top-level step, and a module's stepwise copy number is the minimum copy number of all of its top-level steps.
+The pathwise and stepwise strategies also apply to copy number calculations, in which enzyme annotations are allocated to create different copies of a path, step, or module. Path copy number is computed as the number of complete copies of a path through a module, and a module's pathwise copy number is then calculated as the maximum copy number of any of its paths that have the highest completeness score. Step copy number is the number of complete copies of a top-level step, and a module's stepwise copy number is the minimum copy number of all of its top--level steps.
 
-Confused? Yes, this is complicated! But hopefully the illustrative examples in the next few sections will clarify things.
+Confused? Yeah, this is complicated stuff! But hopefully the illustrative examples in the next few sections will clear it up.
 
 ### How is pathwise completeness/copy number calculated?
 
-For demonstration purposes, let's walk through the estimation of pathwise completeness and copy number for one module, in one 'sample' (i.e., a genome, bin, or contig in a metagenome). Just keep in mind that the steps described below are followed for each module in each sample.
+For demonstration purposes, let's talk through the estimation of pathwise completeness and copy number for one module, in one 'sample' (ie a genome, bin, or contig in a metagenome). Just keep in mind that the steps described below are followed for each module in each sample.
 
 #### Part 1: Unrolling module definitions
 As you saw above in the module examples, there can be multiple alternative KOs for a given step in a pathway. This means that there can be more than one way to have a 'complete' metabolic module. Therefore, to estimate completeness, we first have to identify all possible 'paths' through the module definition, where a 'path' is a set of KOs that could make the module complete (if they were all present in the annotation pool).
@@ -639,7 +639,7 @@ K00928  K12524  K12525  K12526
   |       |       |       |
 K00133  K00133  K00133  K00133
 ```
-The third step is another compound step, but this time we can get 3 atomic steps out of it. That means that our 4 possible paths so far each get 3 alternatives, bringing our total alternative path count up to 12:
+The third step is another compound step, but this time we can get 3 atomic steps out of it. That means that our 4 possible paths so far each gets 3 alternatives, bringing our total alternative path count up to 12:
 ```
        K00928                K12524                K12525                K12526
          |                     |                     |                     |
@@ -647,7 +647,7 @@ The third step is another compound step, but this time we can get 3 atomic steps
       /  |   \              /  |   \              /  |   \              /  |   \
 K00003 K12524 K12525  K00003 K12524 K12525  K00003 K12524 K12525  K00003 K12524 K12525
 ```
-Hopefully you get the picture by now. The end result is a list of lists, like this:
+Okay, hopefully you get the picture by now. The end result is a list of lists, like this:
 ```
 [[K00928,K00133,K00003,K00872,K01733],
 [K00928,K00133,K00003,K02204,K01733],
@@ -664,13 +664,13 @@ By the way, here is one alternative path from the module M00011, just so you kno
 #### Part 2: Marking steps complete
 Once we have our list of alternative paths through the module, the next task is to compute the completeness of each path. Each alternative path is a list of atomic steps or protein complexes. We loop over every step in the path and use the annotation pool of KOs to decide whether the step is complete (1) or not (0). We have the following cases to handle:
 
-1. A single KO - this is straightforward. If we have an annotation for this KO in our pool of 'KOfam' annotations, then the step is complete (1).
+1. A single KO - this is easy. If we have an annotation for this KO in our pool of 'KOfam' annotations, then the step is complete (1).
 
-2. A protein complex - remember that these are multiple KOs connected with '+' (if they are essential components) or '-' (if they are non-essential). Well, for these steps, we compute a fractional completeness based on the number of essential components that are present in the annotation pool. We basically ignore the non-essential KOs. For example, the complex 'K00174+K00175-K00177-K00176' would be considered 50% complete (a score of 0.5) if only 'K00174' were present in the annotation pool.
+2. A protein complex - remember that these are multiple KOs connected with '+' (if they are essential components) or '-' (if they are non-essential). Well, for these steps, we compute a fractional completeness based on the number of essential components that are present in the annotation pool. We basically ignore the non-essential KOs. For example, the complex 'K00174+K00175-K00177-K00176' would be considered 50%% complete (a score of 0.5) if only 'K00174' were present in the annotation pool.
 
 3. Non-essential KOs - some KOs are marked as non-essential even when they are not part of a protein complex. They look like this: '-K12420', with a minus sign in front of the KO identifier (that particular example comes from module [M00778](https://www.genome.jp/kegg-bin/show_module?M00778)). These steps are ignored for the purposes of computing module completeness.
 
-4. Steps without associated KOs - some reactions do not have a KO identifier, but instead there is the string `--` serving as a placeholder in the module definition. Since we can't annotate the genes required for these steps, we have no idea if they are complete or not, so we always consider them incomplete (0). Modules that have steps like this can therefore never have 100% completeness - it is unfortunate, but what can we do? We warn the user about these instances so that they can manually check for any missing steps.
+4. Steps without associated KOs - some reactions do not have a KO identifier, but instead there is the string `--` serving as a placeholder in the module definition. Since we can't annotate the genes required for these steps, we have no idea if they are complete or not, so we always consider them incomplete (0). Modules that have steps like this can therefore never have 100%% completeness - it is sad, but what can we do? We warn the user about these instances so that they can check manually for any missing steps.
 
 5. Modules - finally, some modules are defined by other modules. We can't determine if these steps are complete until we've estimated completeness for every module, so we ignore these for now.
 
@@ -680,11 +680,11 @@ To get the completeness score for a given path through the module, we first add 
 By this time, we have a completeness score (a fraction between 0 and 1) for every possible path through the module. To get the completeness score for the module overall, we simply take the maximum of all these completeness scores.
 
 {:.notice}
-Why take the maximum? We are assuming here that if the metabolic pathway is actually being used in a cell (which we can't know for sure without doing some transcriptomics and possibly metabolomics), the most complete set of enzymes in that pathway is the most likely to be used. This is certainly a questionable assumption, but we need to make some choices like this in order to summarize the data, so we do it. It becomes trickier to interpret this number when there is more than one path through the module that has the maximum completeness score - which one is being used? We cannot know just from (meta)genomics data, so it would take additional data types or knowledge of the biological system to figure this out.
+Why take the maximum? We are assuming here that if the metabolic pathway is actually being used in a cell (which we can't know for sure without doing some transcriptomics and possibly metabolomics), the most complete set of enzymes in that pathway is the most likely to be used. This is certainly a questionable assumption, but we need to make some choices like this in order to summarize the data, so we do it. It gets tricker to interpret this number when there is more than one path through the module that has the maximum completeness score - which one is being used? We cannot know just from (meta)genomics data, so it would take additional data types or knowledge of the biological system to figure this out.
 
-We can then check this number against the module completeness threshold (which is 0.75 by default). If the module completeness score is greater than or equal to the threshold, we mark the module as 'complete'. This boolean value is meant only as a way to easily filter through the modules output, and you shouldn't put too much stock in it because it covers up many nuances, as you can tell from the details above :).
+We can then check this number against the module completeness threshold (which is 0.75 by default). If the module completeness score is greater than or equal to the threshold, we mark the module as 'complete'. This boolean value is meant only as a way to easily filter through the modules output, and you shouldn't put too much stock in it because it covers up a lot of nuances, as you can tell from the details above :).
 
-Note that some modules, especially those with many possible paths, can have more than one path which has the maximum completeness score (that is, the score that determines the completeness of the module). This will be important later for calculating pathwise copy number, so we keep track of all of the paths with this maximum completeness score.
+Note that some modules, especially those with a lot of possible paths, can have more than one path which has the maximum completeness score (that is, the score that determines the completeness of the module). This will be important later for calculating pathwise copy number, so we keep track of all of the paths with this maximum completeness score.
 
 #### Part 4: Adjusting completeness
 But don't forget that there are some modules defined by other modules. These are usually what KEGG calls 'Signature Modules', which are collections of enzymes that collectively encode some phenotype, rather than a typical pathway of chemical reactions. For these modules, we have to go back and adjust the completeness score after we know the completeness of its component modules. To do this, we basically re-do the previous two tasks to recompute the number of complete steps in each path and the overall completeness of the module. This time, when we reach a 'Module' atomic step (case 5), we take that module's fractional completeness score to be the completeness of the step.
@@ -693,7 +693,7 @@ As an example, consider module [M00618](https://www.genome.jp/kegg-bin/show_modu
 ```
 M00377 M00579
 ```
-Suppose module M00377 had a completeness score of 0.7 and module M00579 had a score of 0.4, based on the prior estimations. Then the completeness score of the `[M00377,M00579]` path would be (0.7+0.4)/2 = 0.55. Since this is the only possible path through the module, M00618 is 55% complete.
+Suppose module M00377 had a completeness score of 0.7 and module M00579 had a score of 0.4, based on the prior estimations. Then the completeness score of the `[M00377,M00579]` path would be (0.7+0.4)/2 = 0.55. Since this is the only possible path through the module, M00618 is 55%% complete.
 
 #### Part 5: Path copy number
 
@@ -701,7 +701,7 @@ In reality, this part is actually done at the same time as Part 2, but it is eas
 
 1. A single KO - the copy number of this atomic step is equal to the number of annotations (hits) of this enzyme. If the atomic step is K00133 and you have 5 genes annotated with K00133, then you have 5 copies of that step. If you have 0 annotations, then the step copy number is 0. This is the simplest case.
 
-2. A protein complex - these are a bit tricky. Once again, we ignore the non-essential components and only consider essential ones. But we use the number of annotations to figure out how many _complete_ copies of the protein complex exist in the input sample. For example, suppose we have 2 annotations for K00174 and 3 annotations for K00175. These are the only two essential components in the complex 'K00174+K00175-K00177-K00176'. Since we have at least two annotations for both of these enzymes, we have two copies of the complex. What about the third annotation for K00175? Well, it can't do much all by itself. This hypothetical third copy of the complex is only 50% complete (1 out of 2 essential components), which is less than the default module completeness threshold of 75%. So we ignore it, and say that we have 2 copies of the enzyme complex. _However, this calculation can change if you were to adjust the module completeness threshold._ If you set the threshold to be 50% or lower, then 50% is enough to consider the third copy of the complex complete (in which case, we would say that we have 3 copies of the enzyme complex).
+2. A protein complex - these are a bit tricky. Once again, we ignore the non-essential components and only consider essential ones. But we use the number of annotations to figure out how many _complete_ copies of the protein complex exist in the input sample. For example, suppose we have 2 annotations for K00174 and 3 annotations for K00175. These are the only two essential components in the complex 'K00174+K00175-K00177-K00176'. Since we have at least two annotations for both of these enzymes, we have two copies of the complex. What about the third annotation for K00175? Well, it can't do much all by itself. This hypothetical third copy of the complex is only 50%% complete (1 out of 2 essential components), which is less than the default module completeness threshold of 75%%. So we ignore it, and say that we have 2 copies of the enzyme complex. _However, this calculation can change if you were to adjust the module completeness threshold._ If you set the threshold to be 50%% or lower, then 50%% is enough to consider the third copy of the complex complete (in which case, we would say that we have 3 copies of the enzyme complex).
 
 3. Non-essential KOs - just like we ignore these steps when computing completeness, we also ignore them when computing copy number.
 
@@ -725,7 +725,7 @@ Each copy of the path is a horizontal row of X's in the simple graphic above. Th
 
 Once we have the completeness scores and copy numbers of all possible paths through the module, we can compute the copy number of the module itself. Remember from Part 3 that we saved the paths which have the highest completeness score? We take the maximum copy number of those paths of highest completeness.
 
-So if the module does not have any complete paths, then its copy number is 0. If it has one complete path, then its copy number is the copy number of that path. If there are multiple paths with highest completeness score, then its copy number is the maximum of the copy numbers of those paths - for example, let's say we have two paths, both of which are 90% complete. One of those paths has a copy number of 1 and the other has a copy number of 3. The module copy number would be 3 in this case.
+So if the module does not have any complete paths, then its copy number is 0. If it has one complete path, then its copy number is the copy number of that path. If there are multiple paths with highest completeness score, then its copy number is the maximum of the copy numbers of those paths - for example, let's say we have two paths, both of which are 90%% complete. One of those paths has a copy number of 1 and the other has a copy number of 3. The module copy number would be 3 in this case.
 
 {:.notice}
 We're making assumptions here again, just like we were when computing module completeness. Any of those paths (or none of them) could be the one that is used in the cell, and we don't know which one. But the idea here is that if a sample has the most copies of path X, there is probably a good reason that it has that many copies because microbial cells like to streamline their genomes whenever possible.
@@ -739,7 +739,7 @@ This part is analogous to Part 4, in that we go back later to adjust the copy nu
 #### Pathwise Strategy Summary
 In short: pathwise module completeness in a given sample is calculated as the maximum fraction of essential KOs (enzymes) that are annotated in the sample, where the maximum is taken over all possible sets of KOs (enzymes) from the module definition. Likewise, pathwise module copy number is calculated as the maximum copy number of any path with the module's completeness score.
 
-These values become harder to interpret when we are considering metagenomes rather than the genomes of individual organisms. There could be many different paths through a module used by different populations in a metagenome, but the module completeness/copy number values would summarize only the most common path(s). For situations like this, it is advisable to take advantage of the ['module_paths' output mode](https://anvio.org/help/main/artifacts/kegg-metabolism/#module-paths-mode) to examine these scores for all individual paths through each module.
+These values get harder to interpret when we are considering metagenomes rather than the genomes of individual organisms. There could be lots of different paths through a module used by different populations in a metagenome, but the module completeness/copy number values would summarize only the most common path(s). For situations like this, it is a good idea to take advantage of the ['module_paths' output mode](https://anvio.org/help/main/artifacts/kegg-metabolism/#module-paths-mode) to look at these scores for all individual paths through each module.
 
 ### How is stepwise completeness/copy number calculated?
 
@@ -747,7 +747,7 @@ Now we'll walk through an example of estimating stepwise completeness and copy n
 
 #### Part 1: Top-level steps
 
-For stepwise completeness and copy number, we perform our calculations at the level of top-level steps. These are the major steps in a metabolic pathway, each of which usually represents a single chemical reaction. A top-level step describes the enzyme(s) that can be used to catalyze that reaction. We can get the top-level steps of a module by splitting its DEFINITION string by its spaces (not including any spaces within parentheses).
+For stepwise completeness and copy number, we do our calculations at the level of top-level steps. These are the major steps in a metabolic pathway, each of which usually represents a single chemical reaction. A top-level step describes the enzyme(s) that can be used to catalyze that reaction. We can get the top-level steps of a module by splitting its DEFINITION string by its spaces (not including any spaces within parentheses).
 
 Let's use module [M00018](https://www.genome.jp/kegg-bin/show_module?M00018) as an example again. Earlier we described how M00018 is made up of five major steps, each one of which represents a single reaction in this metabolic pathway.
 
@@ -765,14 +765,14 @@ K00133
 K01733
 ```
 
-This is far more straightforward than unrolling the module into all possible paths. For the stepwise metrics, we will focus only on these major steps, and moreover, we will ignore much of the nuance that comes from alternative enzymes within a top-level step.
+This is far more straightforward than unrolling the module into all possible paths. For the stepwise metrics, we will focus only on these major steps, and what's more, we will ignore a lot of the nuance that comes from alternative enzymes within a top-level step.
 
 #### Part 2: Step completeness
 
 Unlike pathwise completeness, where we consider all possible alternatives and compute a fractional completeness for each path, a top-level step can only be entirely complete (1) or entirely incomplete (0). In other words, step completeness is binary. We don't care _how_ the step is complete. It doesn't matter which of the enzymes in a step are used to make it complete.
 
 To compute this binary completeness for each top-level step, we convert the step into a Boolean expression by following this set of rules:
-- enzyme accessions (i.e., KOs) are replaced with 'True' if the enzyme is annotated in the sample, and otherwise are replaced with 'False'.
+- enzyme accessions (ie, KOs) are replaced with 'True' if the enzyme is annotated in the sample, and otherwise are replaced with 'False'.
 - `--` steps do not have associated enzyme profiles, so we cannot say whether these steps are complete. These are always 'False'.
 - commas represent alternative enzymes, meaning you can use either one or the other. We convert commas into OR relationships.
 - spaces represent sequential enzymes, meaning that you need both (one after the other). We convert spaces into AND relationships.
@@ -780,7 +780,7 @@ To compute this binary completeness for each top-level step, we convert the step
 - minus signs ('-') represent nonessential enzyme components, meaning that you don't need them. We ignore these.
 - parentheses are kept where they are to maintain proper order of operations.
 
-After this conversion is completed, we can simply evaluate the Boolean expression to determine whether or not the step is complete.
+After this conversion is done, we can simply evaluate the Boolean expression to determine whether or not the step is complete.
 
 Let's use the step `(K00928,K12524,K12525,K12526)` from M00018 as an example. Suppose that both K12524 and K12526 are annotated in the sample. Then this step would be converted into the following Boolean expression:
 ```
@@ -819,18 +819,18 @@ K00133 => complete (1)
 (K00872,K02204,K02203) => complete (1)
 K01733 => complete (1)
 ```
-Then the overall stepwise completeness of M00018 would be 4/5, or 80%. If we were using the default module completeness threshold of 0.75, then this module would be considered 'complete' overall based on its stepwise score.
+Then the overall stepwise completeness of M00018 would be 4/5, or 80%%. If we were using the default module completeness threshold of 0.75, then this module would be considered 'complete' overall based on its stepwise score.
 
 Note: if any of the module's top-level steps are defined by other modules, we skip computing its completeness for now because we don't know the completeness of these steps yet. These will be adjusted in the next section.
 
 #### Part 4: Adjusting completeness
 
-Just like in pathwise completeness, we need to deal with the case when a module is defined by another module. In Part 3, we skipped any modules that have top-level steps defined by other modules. Now, we go back and re-compute the completeness of any of these steps using the Boolean expression from Part 2 (i.e., by replacing module accessions with 'True' if their stepwise completeness is above the module completeness threshold, or 'False' otherwise). Then we repeat Part 3 on the affected modules to calculate their overall stepwise completeness.
+Just like in pathwise completeness, we need to deal with the case when a module is defined by another module. In Part 3, we skipped any modules that have top-level steps defined by other modules. Now, we go back and re-compute the completeness of any of these steps using the Boolean expression from Part 2 (ie, by replacing module accessions with 'True' if their stepwise completeness is above the module completeness threshold, or 'False' otherwise). Then we repeat Part 3 on the affected modules to calculate their overall stepwise completeness.
 
 #### Part 5: Step copy number
 
 Now we need to calculate the copy number of each top-level step. We can do this by converting the step into an _arithmetic expression_ this time, by following a new set of rules:
-- enzyme accessions (i.e., KOs) are replaced with the number of annotations this accession has in the given sample.
+- enzyme accessions (ie, KOs) are replaced with the number of annotations this accession has in the given sample.
 - `--` steps are unknown, so we replace these with a count of '0'.
 - commas represent alternative enzymes, meaning you can use either one or the other. We convert commas into addition operations.
 - spaces represent sequential enzymes, meaning that you need both (one after the other). We convert spaces into min() operations.
@@ -857,7 +857,7 @@ To finish up the left side of the step definition, we have an AND relationship b
 
 Moving on to the second half of the step definition, the sequential enzymes in `(K18689 K18690 K22813)` become `min(1,0,0)`.
 
-Finally, we put everything together, using addition since there is a comma (OR relationship) between the two halves of the definition:
+Finally, we put everything all together, using addition since there is a comma (OR relationship) between the two halves of the definition:
 ```
 (min(2,(0 + min(1,1,1,2))) + min(1,0,0))
 ```
@@ -896,4 +896,4 @@ Once again, we must go back and adjust the copy number for any modules that are 
 #### Stepwise Strategy Summary
 In short: stepwise module completeness in a given sample is calculated as the percentage of complete top-level steps. Likewise, stepwise module copy number is calculated as the minimum copy number of all top-level steps in the module definition.
 
-To help interpret these stepwise metrics for modules, it is advisable to look at the ['module_steps' output mode](https://anvio.org/help/main/artifacts/kegg-metabolism/#module-steps-mode) to see the scores for all individual top-level steps in a module.
+To help interpret these stepwise metrics for modules, it is a good idea to look at the ['module_steps' output mode](https://anvio.org/help/main/artifacts/kegg-metabolism/#module-steps-mode) to see the scores for all individual top-level steps in a module.

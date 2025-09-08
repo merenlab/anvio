@@ -2,7 +2,7 @@ This program may be useful if you are interested in learning the insert size dis
 
 ## Example run
 
-The most straightforward way to run the program is as follows:
+The most straightforward way to run the program is the following:
 
 {{ codestart }}
 anvi-get-tlen-dist-from-bam %(bam-file)s
@@ -21,7 +21,7 @@ Maximum template length to consider ..........: 500,000
 WARNING
 ===============================================
 Some of your contigs, 2 of 8 to be precise, did not seem to have any template
-length data. There are many reasons this could happen, including a very high
+lenght data. There are many reasons this could happen, including a very high
 `--min-tlen-frequency` parameter for BAM files with small number of reads. But
 since there are some contigs that seem to have proper paired-end reads with
 template lengths, anvi'o will continue reporting and put zeros for contigs that
@@ -30,7 +30,7 @@ have no data in output files.
 Output file ..................................: TEMPLATE-LENGTH-STATS.txt
 
 
-✅ anvi-get-tlen-dist-from-bam took 0:00:05.483682
+✓ anvi-get-tlen-dist-from-bam took 0:00:05.483682
 ```
 
 ## Output file
@@ -53,7 +53,7 @@ The program will report a TAB-delimited output file with the following format:
 If you run the program with the flag `--plot`, it will attempt to plot a histogram for all contigs in the BAM file.
 
 {:.warning}
-The plotting function requires an additional Python library, [plotext](https://github.com/piccolomo/plotext), to be installed. While it is not a part of the default anvi'o distribution, you can install it in your environment by running `pip install plotext`.
+The plotting function requires an additional Python library, [plotext](https://github.com/piccolomo/plotext), to be installed. While it is not a part of the default anvi'o distirbution, you can install it in your environment by running `pip install plotext`.
 
 Here is an example run:
 

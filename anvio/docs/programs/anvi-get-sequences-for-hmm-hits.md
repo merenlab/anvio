@@ -1,6 +1,6 @@
 This program can work with anvi'o %(contigs-db)s, %(external-genomes)s, or %(internal-genomes)s files to return sequences for HMM hits identified through the default anvi'o %(hmm-source)ss (such as the domain-specific single-copy core genes) or user-defined %(hmm-source)ss (such as HMMs for specific antibiotic resistance gene families or any other targets).
 
-Using it with single-copy core genes in default anvi'o HMMs makes it a very versatile tool for phylogenomics, as the user can define specific sets of genes to be aligned and concatenated.
+Using it with single-copy core genes in default anvi'o HMMs make it a very versatile tool for phylogenomics as the user can define specific sets of genes to be aligned and concatenated.
 
 
 ### Learn available HMM sources
@@ -83,7 +83,7 @@ anvi-get-sequences-for-hmm-hits -c %(contigs-db)s \
 
 ### Change the formatting of the output FASTA files
 
-Please note that this program allows you to format the deflines of the resulting FASTA file to a great extent whenever possible. For this, it uses a set of previously-defined variables you can use to define a template of your liking. To learn about the available variables, you can include the following flag in your command:
+Please note that this program allows you to format the deflines of the resulting FASTA file to a great extent whenever possible. For this, it uses a set of previously-defined variables you can use to define a template of your liking. You can learn about the available variables, you can include the following flag in your command:
 
 {{ codestart }}
 anvi-get-sequences-for-hmm-hits -c %(contigs-db)s \
@@ -300,13 +300,13 @@ anvi-get-sequences-for-hmm-hits -c %(contigs-db)s \
                                 -o %(genes-fasta)s
 {{ codestop }}
 
-Please note the presence of a new flag in this particular command line, `--return-best-hit`. This flag is most appropriate if one wishes to perform phylogenomic analyses, which ensures that for any given protein family, there will be only one gene reported from a given genome. This is necessary due to the nature of the data that goes into phylogenomic analyses, where typically multiple single-copy core genes from each genome are individually aligned and the results are concatenated into a super matrix for tree construction. This requirement will be violated *if* for a given single-copy core gene (SCG) family any given genome in the dataset has two or more genes rather than one, which can happen for a variety of technical or biological reasons. In that case, we need to pick only one of those genes, which is exactly what `--return-best-hit` flag does for us. Let's say we have two `Ribosomal_L3` gene hits in a given genome. When declared, this flag will choose the `Ribosomal_L3` gene that has the most significant hit given the hidden Markov model for `Ribosomal_L3` that was used to search for `Ribosomal_L3` genes in genomes. In cases where genome quality is sufficient and contamination is not a considerable risk, this step will choose the right hit as in many cases of multiple hits for SCGs the additional ones will have very low significance. Essentially, `--return-best-hit` makes sure you are working with the most appropriate genes for phylogenomics given the HMM models and significance scores for your matches in your genomes.
+Please note teh presence of a new flag in this particular command line, `--return-best-hit`. This flag is most appropriate if one wishes to perform phylogenomic analyses, which ensures that for any given protein family, there will be only one gene reported from a given genome. This is necessary due to the nature of the data that goes into phylogenomic analyses, where typically multiple single-copy core genes from each genome are individually aligned and the results are concatenated into a super matrix for tree construction. This requirement will be violated *if* for a given single-copy core gene (SCG) family any given genome in the dataset has two or more genes rather than one, which can happen for a variety of technical or biological reasons. In that case, we need to pick only one of those genes, which is exactly what `--return-best-hit` flag does for us. Let's say we have two `Ribosomal_L3` gene hits in a given genome. When declared, this flag will choose the `Ribosomal_L3` gene that has the most significant hit given the hidden Markov model for `Ribosomal_L3` that was used to search for `Ribosomal_L3` genes in genomes. In cases where genome quality is sufficient and contamination is not a considerable risk, this step will choose the right hit as in many cases of multiple hits for SCGs the additional ones will have very low significance. Essentially, `--return-best-hit` makes sure you are working with the most appropriate genes for phylogenomics given the HMM modesl and significance scores for your matches in your genomes.
 
 ## Tips
 
 ### Performance optimization for aligners by passing additional params
 
-When `--concatenate-genes` flag is used for phylogenomics applications, %(anvi-gen-phylogenomic-tree)s relies on sequence alignment using `muscle` by default. For very large numbers of sequences this step may fail due to various reasons, such as running out of memory, exceeding the time allocated for the job, etc. If you are having such performance issues, you may want to pass additional parameters to the aligner. For this, you can use BASH environmental variables. For instance, if you wish `muscle` to do only two iterations of alignment and stop after, you can pass that request to the anvi'o driver for `muscle` the following way by exporting a shell variable called `MUSCLE_PARAMS`:
+When `--concatenate-genes` flag is used for phylogenomics applications, %(anvi-gen-phylogenomic-tree)s relies on sequence alignment using `muscle` by default. For very large number of sequences this step may fail due to various reasons, such as running out of memory, exceeding the time allocated for the job, etc. If you are having such performance issues, you may want to pass additional parameters to the aligner. For this, you can use BASH environmental variables. For instance, if you wish `muscle` to do only two iterations of alignment and stop after, you can pass that request to the anvi'o driver for `muscle` the following way by exporting a shell varaible called `MUSCLE_PARAMS`:
 
 ``` bash
 # export a shell variable with additional params you learned from
@@ -317,9 +317,9 @@ export MUSCLE_PARAMS="-maxiters 2"
 anvi-get-sequences-for-hmm-hits (...)
 ```
 
-If you are trying to make sure things are going the way you expect, feel free to turn on the debug outputs by adding `--debug` to your command line. This will allow you to see exactly what commands are running behind the scenes, and will keep the temporary directories for each alignment so you can find the log files in them to see raw outputs from `muscle`. See the anvi'o GitHub issue [#2200](https://github.com/merenlab/anvio/issues/2200) for an extreme case and example ways to debug the process with example commands and outputs.
+If you are trying to make sure things are going the way you expect, feel free to turn on the debug outputs by adding `--debug` to your command line. This will allow you to see exactly what commands are running behind hte scenes, and will keep the temporary directories for each alignment so you can find the log files in them to see raw outputs from `muscle`. See the anvi'o GitHub issue [#2200](https://github.com/merenlab/anvio/issues/2200) for an extreme case and example ways to debug the process with example commands and outputs.
 
-### Get amino acid sequences for each gene in a model individually
+### Get amino acid seqeunces for each gene in a model individually
 
 If you are interested in recovering HMM hits for each gene in a model anvi'o knows about as a separate FASTA file, you can do it with a `for` loop easily. After learning your genes of interest, first run this to make sure your terminal environment knows about them (this is an example with a few genes from the HMM source `Bacteria_71`, but you can add as many genes as you like and use any HMM source anvi'o recognizes, of course):
 

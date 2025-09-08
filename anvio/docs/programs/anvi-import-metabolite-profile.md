@@ -1,4 +1,4 @@
-This program imports a metabolite abundance profile, such as from metabolomics experiments, into a %(profile-db)s.
+This program imports a metabolite abundance profile, such as from metabolomic experiments, into a %(profile-db)s.
 
 This program takes as input a tab-delimited file of metabolite abundance data and a %(profile-db)s. The tabular file must have three columns with the following names: "accession", "sample", and "abundance". Each row of the table corresponds to a distinct metabolite abundance measurement.
 

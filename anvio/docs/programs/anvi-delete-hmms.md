@@ -1,15 +1,15 @@
-This program removes %(hmm-hits)s from a %(contigs-db)s. This allows you to repopulate functional annotations with a different source or program, or simply remove data that may be cluttering the interface.
+This program, as implied by the name, is used to delete a %(hmm-hits)s from a %(contigs-db)s. This way, you can repopulate the function annotations with a different source or program or just delete data that's clogging up the interface.
 
-It is generally advisable to export your information before deletion as a precautionary measure. The HMM hits will appear in most displays, so if you have already run %(anvi-summarize)s, you should have this information preserved. 
+It is generally a good idea to export your information before deleting it, just in case. The HMM hits will show up in most displays, so if you've already run %(anvi-summarize)s, you should be good. 
 
-To list available %(hmm-source)ss in a database, execute:
+To list available %(hmm-source)ss in a database, call 
 
 {{ codestart }}
 anvi-delete-hmms -c %(contigs-db)s \
                  --list-hmm-sources
 {{ codestop }}
 
-You can then remove %(hmm-hits)s from a specific source using the command:
+Then, you can easily delete %(hmm-hits)s from a specific source with the command
 
 {{ codestart }}
 anvi-delete-hmms -c %(contigs-db)s \

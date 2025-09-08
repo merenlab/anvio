@@ -1,9 +1,9 @@
-Get short reads from a %(bam-file)s in the form of %(short-reads-fasta)s.
+Get short reads from a %(bam-file)s in the form of %(short-reads-fasta)s).
 
 {:.warning}
-The purpose of this program is not to replace more efficient tools to recover short reads from BAM files such as `samtools`. Since it was designed to address much more subtle needs, this program may have a huge memory fingerprint for very large and numerous BAM files.
+The purpose of this program is not to replace more efficient tools to recover short reads from BAM files such as `samtool`. Since it was designed to address much more subtle needs, this program may have a huge memory fingerprint for very large and numerous BAM files.
 
-Using this program you can:
+Using this program you can,
 
 * Get all reads from one or more BAM files
 * Get reads matching to contig names found in any %(bin)s in a %(collection)s
@@ -11,7 +11,7 @@ Using this program you can:
 * Get all reads matching to a specific contig name
 * Get reads matching to a specific region of a specific contig name
 
-In addition, you can use the previously-defined fetch filters via the `--fetch-filter` parameter to get only short reads that satisfy a particular set of criteria (i.e., those that are in forward-forward or reverse-reverse orientation, those that have a template length longer than 1,000 nucleotides, and so on). For a complete set of fetch filters you can use, please see the help menu of the program.
+In addition, you can use the previously-defined fetch filters via the `--fetch-filter` parmeter to get only short reads satisfy a particular set of criteria (i.e., those that are in forward-forward or reverse-reverse orientation, those that have a template length longer than 1,000 nucleotides, and so on). For a complete set of fetch filters you can use, please see the help menu of the program.
 
 The program can report all reads in a single file, or you can ask reads to be split into R1 and R2 files for mapping results of paired-end sequences using the flag `--split-R1-and-R2`. In this case, reads that are not paired will be reported in a file with the prefix `_UNPAIRED.fa`.
 
@@ -71,11 +71,11 @@ anvi-get-short-reads-from-bam BAM_FILE_1.bam BAM_FILE_2.bam \
                               --output-file OUTPUT.fa
 {{ codestop }}
 
-In this mode, the program will fetch any read that includes a nucleotide that matches to anywhere in the region defined by the user. This means, if the user sets `--target-region-start` to `100` and `--target-region-end` to `101`, all reads that have a nucleotide mapping to the 100th position will be returned.
+In this mode, the program will fetch any read that includes a nucleotide that matches to anywhere in the region defined by the user. Which means, if the user sets `--target-region-start` to `100` and `--target-region-end` to `101`, all reads that have a nuclotide mapping to the `100th` position will be returned.
 
 ### Changing the output format
 
-You can split the output based on the directionality of paired-end reads. Adding the tag `--split-R1-and-R2` causes the program to create three separate output files: one for R1 (sequences in the forward direction), one for R2 (sequences in the reverse direction; i.e. reverse complement of R1 sequences), and one for unpaired reads. When doing this, you can name these three files with a prefix by using the flag `-O`.
+You can split the output based on the directionality of paired-end reads. Adding the tag `--split-R1-and-R2` causes the program to create three separate output files: one for R1 (sequences in the forward direction), one for R2 (sequences in the reverse direction; i.e. reverse complement of R1 sequences), and one for unparied reads. When doing this, you can name these three files with a prefix by using the flag `-O`.
 
 {{ codestart }}
 anvi-get-short-reads-from-bam -o path/to/output \

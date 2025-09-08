@@ -1,31 +1,31 @@
-Displays information about an anvi'o database and allows users to modify that information when necessary.
+Displays information about an anvi'o database, and allows users to modify that information when absolutely necessary.
 
-This program is particularly useful for debugging and for quickly verifying database properties - to answer questions such as "Have I run HMMs on this %(contigs-db)s yet?" or "Is this a merged %(profile-db)s?" This program can also be potentially problematic when used to inappropriately modify database information, so if you need to change something, please proceed with caution.
+This program is particularly useful for debugging, but also handy in a pinch if you want to check some facts about your database - to answer questions like "did I run HMMs on this %(contigs-db)s yet?" or "is this a merged %(profile-db)s?" This program can also be very dangerous when used to inappropriately modify database information, so if you want to change something, please proceed with caution.
 
 ### What information will I see?
 
-All anvi'o databases contain a table of self-describing information known as the "self" table. This table helps anvi'o track critical facts such as the database type, version number, and creation date. It also stores information about how the database was generated, what types of data it contains, which programs have been executed on it, and other relevant metadata. In general, this table exists to ensure that anvi'o can verify you are performing appropriate operations with your data and prevent errors. `anvi-db-info` displays the contents of the self table when you execute this program on an anvi'o database.
+All anvi'o databases contain a table of self-describing information known as the "self" table. It helps anvi'o keep track of critical facts such as the type of the database, its version number, and the date it was created. It also saves information about how the database was generated, what sorts of data it contains, what programs have been run on it, and so on. In general, this table exists so that anvi'o can make sure you are doing the right things with your data and that nothing will blow up. `anvi-db-info` will show you the contents of the self table when you run this program on an anvi'o database.
 
-The information in the self table varies depending on the type of database you are examining. For example, a %(contigs-db)s self table will indicate the number of contigs (and splits) in the database, whether gene calling has been performed (and with which gene callers), and which functional annotation sources have been used to annotate the genes. A %(profile-db)s self table will list which samples contain mapping information, how many reads were mapped from each sample, and whether SNVs have been profiled. A %(modules-db)s (see also %(kegg-data)s) self table will indicate how many KEGG modules are stored in the database and provide the hash value of the database contents. We could continue with additional examples, but the pattern should be clear.
+The information in the self table will be different depending on the kind of database you are looking at. For example, a %(contigs-db)s self table will indicate the number of contigs (and splits) in the database, whether or not gene calling was done (and with what gene callers), and which functional annotation sources have been used to annotate the genes. A %(profile-db)s self table will list which samples it contains mapping information for, how many reads where mapped from each sample, and whether or not SNVs have been profiled. A %(modules-db)s (see also %(kegg-data)s) self table will tell you how many KEGG modules are saved in the database and what is the hash value of the database contents. We could go on, but you probably get the picture.
 
 ### View information about a database
 
-This is the primary way most users will interact with this program, and it is straightforward. Simply provide the path to any anvi'o database to this program and review the output displayed on your terminal:
+This is the only way that most people will use this program, and it is very simple. Just provide the path to any anvi'o database to this program, and check the output on your terminal screen:
 
 {{ codestart }}
 anvi-db-info path-to-DB.db
 {{ codestop }}
 
-For a more specific example, if you have a %(contigs-db)s called `CONTIGS.db`, you would examine its self table by executing:
+Let's be even more specific and say you have a %(contigs-db)s called `CONTIGS.db`. To look at its self table, you would run the following:
 {{ codestart }}
 anvi-db-info CONTIGS.db
 {{ codestop }}
 
-That's all there is to it! Simple and straightforward.
+That's it! Easy-peasy lemon-squeezy.
 
 ### Example output
 
-Here is an example of what you might see for a %(contigs-db)s:
+Here is an example of what you might see for a %(contigs-db)s.
 
 ```
 DB Info (no touch)
@@ -88,21 +88,21 @@ AVAILABLE HMM SOURCES
 * 'Ribosomal_RNAs' (type 'Ribosomal_RNAs' with 12 models and 9 hits)
 ```
 
-Most of this output is self-explanatory. However, one aspect that may not be immediately obvious is that in many cases we use `0` to indicate 'False' and `1` to indicate 'True'. For this example, you can see that SCG taxonomy has been run on this database, but tRNA taxonomy has not.
+Most of this output is self-explanatory. But one thing that may not be quite obvious to some is that in many cases we use `0` to indicate 'False' and `1` to indicate 'True'. So for this example, you will see that SCG taxonomy was run on this database, but tRNA taxonomy was not.
 
 ### Modifying database information
-We must emphasize - you probably should not do this. Manually changing values in the self table has the potential to cause downstream problems because it allows you to bypass some of anvi'o's internal sanity checks that prevent inappropriate operations. If you modify these values and subsequently encounter unexpected errors, this should not be surprising.
+We just need to start by saying - you probably shouldn't do this. Manually changing the values in the self table has the potential to break things downstream because it lets you avoid some of anvi'o's internal sanity checks which prevent you from doing things you shouldn't. If you change things and start running into ugly errors, do not be surprised.
 
-That said, sometimes advanced users need to make modifications, and `anvi-db-info` provides this capability. If a programmer has directed you to update a value in the self table or if you are proceeding independently, this is the process. Let's modify the `project_name` value as an example because it is primarily descriptive and relatively safe:
+That being said, sometimes you just need to live on the edge and do some hacking, and `anvi-db-info` will let you do that. If a programmer sent you here to update a value in the self table or if you are just foraging ahead on your own, this is how you would do it. Let's change the `project_name` value as an example because it is mostly descriptive and seems fairly safe:
 
 {{ codestart }}
 anvi-db-info --self-key project_name --self-value "test" CONTIGS.db
 {{ codestop }}
 
-If you execute this command, you will see a warning indicating the current value of `project_name` and what it will be changed to, but the value will not actually be modified yet. If you are certain you want to proceed, you must then execute:
+If you run this, you will see a warning telling you what the current value of `project_name` is and what it will be changed to, but the value will not actually be changed just yet. If you are sure you want to do this, you then need to run:
 
 {{ codestart }}
 anvi-db-info --self-key project_name --self-value "test" CONTIGS.db  --just-do-it
 {{ codestop }}
 
-Then you may proceed with your analysis.
+Then go on your merry adventuring way.

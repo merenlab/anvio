@@ -4,14 +4,14 @@ If you want other information about your gene calls from a %(contigs-db)s, you c
 
 ### Running on a contigs database
 
-You can run this program on a %(contigs-db)s as follows:
+You can run this program on a %(contigs-db)s like so:
 
 {{ codestart }}
 anvi-get-sequences-for-gene-calls -c %(contigs-db)s \
                                   -o path/to/output
 {{ codestop }}
 
-This will create a %(genes-fasta)s that contains every gene in your contigs database. If you only want a specific subset of genes, you can run the following:
+This is create a %(genes-fasta)s that contains every gene in your contigs database. If you only want a specific subset of genes, you can run the following:
 
 {{ codestart }}
 anvi-get-sequences-for-gene-calls -c %(contigs-db)s \
@@ -22,7 +22,7 @@ anvi-get-sequences-for-gene-calls -c %(contigs-db)s \
 
 Now the resulting %(genes-fasta)s will contain only those three genes.
 
-Please note that this program allows you to format the deflines of the resulting FASTA file to a great extent. For this, it uses a set of previously-defined variables you can use to define a template of your liking. To learn about the available variables, you can include the following flag in your command:
+Please note that this program allows you to format the deflines of the resulting FASTA file to a great extent. For this, it uses a set of previously-defined variables you can use to define a template of your liking. You can learn about the available variables, you can include the following flag in your command:
 
 {{ codestart }}
 anvi-get-sequences-for-gene-calls -c %(contigs-db)s \
@@ -68,7 +68,7 @@ GTTACAACGGGATTAGATGAAGAAAGCAAACAGATTGTCAATCAATTGTTAAACCAATTAAACAAAGAGCAAGGAGTCAC
 GCACAGCAAGTGATTCGTATTGTAGCAGGAAAGGTGGCGCCGACAGATGGATTTAGCAGTTAA
 ```
 
-The simple option shown above is also the default defline format anvi'o uses. Here is a more sophisticated example:
+The simple option shown above also is the default defline format anvi'o uses. Here is a more sophisticated example:
 
 ```
 anvi-get-sequences-for-gene-calls -c INFANT-GUT-TUTORIAL/CONTIGS.db \
@@ -110,7 +110,7 @@ You also have the option to report the output in [gff3 format](https://github.co
 
 ### Running on a genomes storage database
 
-You can also get the sequences from gene calls in a %(genomes-storage-db)s, as follows:
+You can also get the sequences from gene calls in a %(genomes-storage-db)s, like so:
 
 {{ codestart }}
 anvi-get-sequences-for-gene-calls -g %(genomes-storage-db)s \

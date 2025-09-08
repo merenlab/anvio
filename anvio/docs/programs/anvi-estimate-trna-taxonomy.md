@@ -1,6 +1,6 @@
-This program **uses the taxonomic associations of your tRNA sequences to estimate the taxonomy for genomes, metagenomes, or %(collection)s stored in your %(contigs-db)s**. 
+This program **uses the taxonomy associates of your tRNA sequences to estimate the taxonomy for genomes, metagenomes, or %(collection)s stored in your %(contigs-db)s**. 
 
-This is the final step in the tRNA-taxonomy workflow. Before running this program, you'll need to have run %(anvi-run-trna-taxonomy)s on the %(contigs-db)s that you're inputting to this program.
+This is the final step in the trna-taxonomy workflow. Before running this program, you'll need to have run %(anvi-run-trna-taxonomy)s on the %(contigs-db)s that you're inputting to this program.
 
 ## Input options 
 
@@ -12,7 +12,7 @@ By default, this program will assume that your %(contigs-db)s contains only a si
 anvi-estimate-trna-taxonomy -c %(contigs-db)s
 {{ codestop }}
 
-This will provide you with only the best taxonomy hit for your genome based on your tRNA data. If you want to examine the underlying results from %(anvi-run-trna-taxonomy)s that it's using to reach this conclusion, add the `--debug` flag. 
+This will give you only the best taxonomy hit for your genome based on your tRNA data. If you want to look under the hood and see what results from %(anvi-run-trna-taxonomy)s it's using to get there, add the `--debug` flag. 
 
 {{ codestart }}
 anvi-estimate-trna-taxonomy -c %(contigs-db)s \
@@ -21,14 +21,14 @@ anvi-estimate-trna-taxonomy -c %(contigs-db)s \
 
 ### 2: Running on a metagenome
 
-In metagenome mode, this program will assume that your %(contigs-db)s contains multiple genomes and will attempt to provide you with an overview of the taxa within it. To do this, anvi'o will determine which anticodon has the most hits in your contigs (for example `GGG`), and then will examine the taxonomy hits for tRNA with that anticodon across your contigs. 
+In metagenome mode, this program will assume that your %(contigs-db)s contains multiple genomes and will try to give you an overview of the taxa within it.  To do this, anvi'o will determine which anticodon has the most hits in your contigs (for example `GGG`), and then will look at the taxnomy hits for tRNA with that anticodon across your contigs. 
 
 {{ codestart }}
 anvi-estimate-trna-taxonomy -c %(contigs-db)s \
                            --metagenome-mode 
 {{ codestop }}
 
-If instead you want to examine a specific anticodon, you can specify that with the `-S` parameter. For example, to look at `GGT`, just run the following: 
+If instead you want to look at a specific anticodon, you can specify that with the `-S` parameter. For example, to look at `GGT`, just run the following: 
 
 {{ codestart }}
 anvi-estimate-trna-taxonomy -c %(contigs-db)s \
@@ -38,7 +38,7 @@ anvi-estimate-trna-taxonomy -c %(contigs-db)s \
 
 ### 3: Running on multiple metagenomes
 
-You can use this program to examine multiple metagenomes by providing a %(metagenomes)s artifact. This is useful to get an overview of what kinds of taxa might be in your metagenomes, and what kinds of taxa they share. 
+You can use this program to look at multiple metagenomes by providing a %(metagenomes)s artifact. This is useful to get an overview of what kinds of taxa might be in your metagenomes, and what kinds of taxa they share. 
 
 Running this
 
@@ -55,15 +55,15 @@ You can use this program to estimate the taxonomy of all of the %(bin)ss in a %(
 
 {{ codestart }}
 anvi-estimate-trna-taxonomy -c %(contigs-db)s \
-                           -C %(collection)s  \
-                           -p %(profile-db)s 
+                           --C %(collection)s  \
+                           --p %(profile-db)s 
 {{ codestop }}
 
-When doing this, you can also save the final results into your %(profile-db)s as %(misc-data-layers)s with the flag `--update-profile-db-with-taxonomy`
+When doing this, you can also put the final results into your %(profile-db)s as a %(misc-data-layers)s with the flag `--update-profile-db-with-taxonomy`
 
 ### 5: I don't even have a contigs-db. Just a fasta file. 
 
-This program can run the entire ad hoc sequence search without a %(contigs-db)s involved (just a fasta file and number of target sequences as a percent of the total; default: 20 percent), but this is not recommended. However, if you provide other parameters, they will be ignored. 
+This program can run the entire ad hoc sequence search without a %(contigs-db)s involved (just a fasta and number of target sequences as a percent of the total; default: 20 percent), but this is not recommended. However, if you provide other parameters, they will be ignored. 
 
 {{ codestart }}
 anvi-estimate-trna-taxonomy --dna-sequence %(fasta)s \
@@ -72,17 +72,17 @@ anvi-estimate-trna-taxonomy --dna-sequence %(fasta)s \
 
 ## The Output
 
-Now that you've specified your desired inputs, you should consider whether you want an output and what it will look like. By default, this program won't provide you with an output file (just %(genome-taxonomy)s information in your %(contigs-db)s). However, if you add any of these output options, it will instead produce a %(genome-taxonomy-txt)s. 
+Now that you've inputted your desired inputs, you think about whether you want an output and what it will look like. By default, this program won't give you an output (just %(genome-taxonomy)s information in your %(contigs-db)s. However, if you add any of these output options, it will instead produce a %(genome-taxonomy-txt)s. 
 
 ### Anticodon Frequencies
 
-If you want to examine the anticodon frequencies before getting taxonomy information at all (for example because you can't decide which anticodon to use for input option 2), add the flag `--report-anticodon-frequencies`. This will report the anticodon frequencies to a tab-delimited file and exit the program. 
+If you want to look at the anticodon frequencies before getting taxonomy info at all (for example because you can't decide which anticodon to use for input option 2), add the flag `--report-anticodon-frequencies`. This will report the anticodon frequencies to a tab-delimited file and quit the program. 
 
 ### A single output 
 
-To get a single output (a comprehensive table for your viewing pleasure), just add the output file path. 
+To get a single output (a fancy table for your viewing pleasure), just add the output file path. 
 
-In this example, the input will be a single %(contigs-db)s (input option 1): 
+In this example, the input will be a single %(contigs-db)s (input option 1), 
 
 {{ codestart }}
 anvi-estimate-trna-taxonomy -c %(contigs-db)s \
@@ -105,11 +105,11 @@ If you're running on a %(profile-db)s, you can also choose to add the anticodon 
 
 ### Multiple outputs
 
-If you have multiple outputs (i.e., you are examining multiple metagenomes (input option number 3) or you are examining each anticodon individually with `--per-anticodon-output-file`), you should instead provide an output filename prefix.  
+If you have multiple outputs (i.e. you are looking at multiple metagenomes (input option number 3) or you are looking at each anticodon individually with `--per-anticodon-output-file`), you should instead provide a output filename prefix.  
 
 {{ codestart }}
 anvi-estimate-trna-taxonomy --metagenomes %(metagenomes)s \
                            --output-file-prefix EXAMPLE
 {{ codestop }}
 
-The rest of the options listed for the single output (i.e., focusing on a taxonomic level, simplifying taxonomy information, etc.) still apply.
+The rest of the options listed for the single output (i.e. focusing on a taxonomic level, simplifying taxonomy information, etc.) still apply. 
