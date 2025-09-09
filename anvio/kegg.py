@@ -4146,11 +4146,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             self.update_available_headers_for_pan()
 
         # INPUT OPTIONS SANITY CHECKS
-        if not self.estimate_from_json and not self.contigs_db_path and not self.enzymes_txt and not self.pan_db_path:
+        if not self.estimate_from_json and not self.contigs_db_path and self.enzymes_of_interest_df is None and not self.pan_db_path:
             raise ConfigError("NO INPUT PROVIDED. Please use the `-h` flag to see possible input options.")
         # incompatible input options
-        if (self.contigs_db_path and (self.pan_db_path or self.enzymes_txt)) or \
-           (self.enzymes_txt and self.pan_db_path):
+        if (self.contigs_db_path and (self.pan_db_path or self.enzymes_of_interest_df is not None)) or \
+           (self.enzymes_of_interest_df is not None and self.pan_db_path):
             raise ConfigError("MULTIPLE INPUT OPTIONS DETECTED. Please check your parameters. You cannot provide more than one "
                              "of the following: a contigs database, an enzymes-txt file, or a pangenome database.")
 
@@ -4201,7 +4201,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             utils.is_pan_db_and_genomes_storage_db_compatible(self.pan_db_path, self.genomes_storage_path)
 
         if self.add_coverage:
-            if not self.enzymes_txt:
+            if self.enzymes_of_interest_df is None:
                 if not self.profile_db_path:
                     raise ConfigError("Adding coverage values requires a profile database. Please provide one if you can. :)")
                 if utils.is_blank_profile(self.profile_db_path):
@@ -4300,6 +4300,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             self.run.info('Bin IDs file', self.bin_ids_file, quiet=self.quiet)
         if self.enzymes_txt:
             self.run.info("Enzymes txt file", self.enzymes_txt, quiet=self.quiet)
+        elif self.enzymes_of_interest_df is not None:
+            self.run.info("Enzymes of interest", f"{', '.join(self.enzymes_of_interest_df['enzyme_accession'].tolist())}", quiet=self.quiet)
+
 
         estimation_mode = "Genome (or metagenome assembly)"
         if self.profile_db_path and self.collection_name:
@@ -4309,7 +4312,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 estimation_mode = "Individual contigs within a collection in a metagenome"
         elif self.metagenome_mode:
             estimation_mode = "Individual contigs in a metagenome"
-        elif self.enzymes_txt:
+        elif self.enzymes_of_interest_df is not None:
             estimation_mode = "List of enzymes"
         elif self.pan_db_path:
             estimation_mode = "Gene cluster bins in a pangenome"
@@ -4332,7 +4335,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             self.contigs_db_project_name = contigs_db.meta['project_name']
         elif self.enzymes_txt:
             self.contigs_db_project_name = os.path.basename(self.enzymes_txt).replace(".", "_")
-        elif self.enzymes_of_interest_df:
+        elif self.enzymes_of_interest_df is not None:
             self.contigs_db_project_name = 'user_defined_enzymes'
         else:
             raise ConfigError("This piece of code ended up at a place it should have never ended up at :( We need attention "
@@ -4652,7 +4655,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         """
 
         # obtain list of sample names
-        if self.enzymes_txt: # for this input the sample name is just the name of the input file (dots converted to underscores)
+        if self.enzymes_of_interest_df is not None: # in this case the input name is already determined by the initialization method
             samples_list = [self.contigs_db_project_name]
 
         else:
@@ -5455,7 +5458,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         meta_dict_for_bin[mod]["average_coverage_per_sample"] = {}
         meta_dict_for_bin[mod]["average_detection_per_sample"] = {}
 
-        if not self.enzymes_txt and not self.profile_db:
+        if not self.enzymes_of_interest_df and not self.profile_db:
             raise ConfigError("The add_module_coverage() function cannot work without a properly initialized "
                               "profile database.")
 
@@ -5475,7 +5478,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                     sample_set.add(sample)
             self.coverage_sample_list = list(sample_set)
         else:
-            if self.enzymes_txt:
+            if self.enzymes_of_interest_df is not None:
                 self.coverage_sample_list = [self.contigs_db_project_name]
             else:
                 self.coverage_sample_list = self.profile_db.p_meta['samples']
@@ -5487,7 +5490,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             coverage_sum = 0
             detection_sum = 0
             for g in meta_dict_for_bin[mod]["gene_caller_ids"]:
-                if self.enzymes_txt:
+                if self.enzymes_of_interest_df is not None:
                     cov = self.enzymes_of_interest_df[self.enzymes_of_interest_df['gene_id'] == g]['coverage'].values[0]
                     det = self.enzymes_of_interest_df[self.enzymes_of_interest_df['gene_id'] == g]['detection'].values[0]
                 else:
@@ -6368,8 +6371,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return new_kegg_metabolism_superdict
 
 
-    def estimate_metabolism_from_enzymes_txt(self):
-        """Estimates metabolism on a set of enzymes provided in a text file.
+    def estimate_metabolism_for_enzymes_of_interest(self):
+        """Estimates metabolism on a set of enzymes provided by the user.
 
         This function assumes that all enzymes in the file are coming from a single genome, and is effectively the
         same as the estimate_for_genome() function.
@@ -6378,7 +6381,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         or by populating the self.enzymes_of_interest_df upon initialization of the args class -- see the KeggEstimatorArgs
         for details). In this mode, we make fake splits and contigs to match the expected input to the atomic functions, and
         the contigs_db_project_name attribute has been set (previously) to the name of the enzyme txt file (OR simply to
-        'user_defined_enzymes', depending on the initialization with or without enzymes_txt file).
+        'user_defined_enzymes', depending on the initialization).
 
         RETURNS
         =======
@@ -6556,8 +6559,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             elif not self.all_modules_in_db:
                 self.init_data_from_modules_db()
 
-            if self.enzymes_txt:
-                kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_metabolism_from_enzymes_txt()
+            if self.enzymes_of_interest_df is not None:
+                kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_metabolism_for_enzymes_of_interest()
             elif self.pan_db_path:
                 gene_cluster_collections = ccollections.Collections()
                 gene_cluster_collections.populate_collections_dict(self.pan_db_path)
@@ -6758,7 +6761,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 gene_coverages_in_mod = []
                 gene_detection_in_mod = []
                 for gc in gcids_in_mod:
-                    if self.enzymes_txt:
+                    if self.enzymes_of_interest_df is not None:
                         gc_idx = gc
                     else:
                         gc_idx = int(gc)
@@ -7011,7 +7014,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                             d[self.ko_unique_id]["warnings"] = ",".join(sorted(k_dict["warnings"]))
 
                     if self.add_coverage:
-                        if self.enzymes_txt:
+                        if self.enzymes_of_interest_df is not None:
                             for s in self.coverage_sample_list:
                                 sample_cov_header = s + "_coverage"
                                 d[self.ko_unique_id][sample_cov_header] = self.enzymes_of_interest_df[self.enzymes_of_interest_df["gene_id"] == gc_id]["coverage"].values[0]
