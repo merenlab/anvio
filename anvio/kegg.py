@@ -3604,11 +3604,14 @@ class KeggEstimatorArgs():
         self.ko_unique_id = None
         self.genome_mode = False  ## controls some warnings output, will be set to True downstream if necessary
 
-        self.enzymes_of_interest_df = None # if the args object includes an enzymes_txt, this variable is automatically
-                                           # filled by *this* class below, and all classes that inherit KeggEstimatorArgs
-                                           # then use `self.enzymes_of_interest_df` for all downstream tasks. having
-                                           # this variable exposed at this stage makes the API access to the estimator
-                                           # classes without a TAB-delimited file, and by simply filling in this variable.
+        # A bit of special attention for self.enzymes_of_interest_df. the purpose of this variable is to
+        # give programmers a means to initialize estimator classes with a data frame of enzymes. so this
+        # variable is not accessible to any of the command line interfaces, but if the args object includes
+        # an enzymes_txt (which is accessible through command line interfaces), the contents of
+        # self.enzymes_of_interest_df will be automatically filled by this class below. an important
+        # point is that all classes that inherit KeggEstimatorArgs will only  use `self.enzymes_of_interest_df`
+        # for all downstream tasks.
+        self.enzymes_of_interest_df = A('enzymes_of_interest_df')
 
         # the below will be filled in by init_data_from_modules_db()
         self.all_modules_in_db = {}
