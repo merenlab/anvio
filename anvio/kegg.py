@@ -3599,9 +3599,16 @@ class KeggEstimatorArgs():
         self.internal_genomes_file = A('internal_genomes') or None
         self.metagenomes_file = A('metagenomes') or None
         self.kegg_data_dir = A('kegg_data_dir')
+
         self.modules_unique_id = None
         self.ko_unique_id = None
         self.genome_mode = False  ## controls some warnings output, will be set to True downstream if necessary
+
+        self.enzymes_of_interest_df = None # if the args object includes an enzymes_txt, this variable is automatically
+                                           # filled by *this* class below, and all classes that inherit KeggEstimatorArgs
+                                           # then use `self.enzymes_of_interest_df` for all downstream tasks. having
+                                           # this variable exposed at this stage makes the API access to the estimator
+                                           # classes without a TAB-delimited file, and by simply filling in this variable.
 
         # the below will be filled in by init_data_from_modules_db()
         self.all_modules_in_db = {}
@@ -3641,6 +3648,10 @@ class KeggEstimatorArgs():
         # parse specific matrix modules if necessary
         if self.module_specific_matrices:
             self.module_specific_matrices = [_m.strip() for _m in self.module_specific_matrices.split(",")]
+
+        # load up the enzymes of interest if the user passed an enzyme_txt file
+        if self.enzymes_txt:
+            self.enzymes_of_interest_df = self.load_data_from_enzymes_txt()
 
 
     def setup_output_for_appending(self):
@@ -3999,6 +4010,76 @@ class KeggEstimatorArgs():
                                   "(self.ko_dict, or (self.stray_ko_dict) in some cases). This should never have happened.")
 
         return metadata_dict
+
+
+    def load_data_from_enzymes_txt(self):
+        """This function loads and sanity checks an enzymes txt file, and returns it as a pandas dataframe.
+
+        RETURNS
+        =======
+        enzyme_df : Pandas DataFrame
+            contains the information in the enzymes txt file
+        """
+
+        self.progress.new("Loading enzymes-txt file...")
+        expected_fields = ['gene_id', 'enzyme_accession', 'source']
+        enzyme_df = pd.read_csv(self.enzymes_txt, sep="\t")
+        self.progress.end()
+
+        self.run.info("Number of genes loaded from enzymes-txt file", enzyme_df.shape[0])
+
+        # sanity check for required columns
+        missing = []
+        for f in expected_fields:
+            if f not in enzyme_df.columns:
+                missing.append(f)
+        if missing:
+            miss_str = ", ".join(missing)
+            exp_str = ", ".join(expected_fields)
+            raise ConfigError(f"Your enzymes-txt file ({self.enzymes_txt}) is missing some required columns. "
+                              f"The columns it needs to have are: {exp_str}. And the missing column(s) include: {miss_str}")
+
+        # warning about extra columns
+        used_cols = expected_fields + ['coverage', 'detection']
+        extra_cols = []
+        for c in enzyme_df.columns:
+            if c not in used_cols:
+                extra_cols.append(c)
+        if extra_cols:
+            e_str = ", ".join(extra_cols)
+            self.run.warning(f"Just so you know, your input enzymes-txt file contained some columns of data that we are not "
+                             f"going to use. This isn't an issue or anything, just an FYI. We're ignoring the following field(s): {e_str}")
+
+        # check and warning for enzymes not in self.all_kos_in_db
+        enzymes_not_in_modules = list(enzyme_df[~enzyme_df["enzyme_accession"].isin(self.all_kos_in_db.keys())]['enzyme_accession'].unique())
+        if self.include_stray_kos:
+            enzymes_not_in_modules = [e for e in enzymes_not_in_modules if e not in self.stray_ko_dict]
+        if enzymes_not_in_modules:
+            example = enzymes_not_in_modules[0]
+            self.run.warning(f"FYI, some enzymes in the 'enzyme_accession' column of your input enzymes-txt file do not belong to any "
+                             f"metabolic modules (that we know about). These enzymes will be ignored for the purposes of estimating module "
+                             f"completeness, but should still appear in enzyme-related outputs (if those were requested). In case you are "
+                             f"curious, here is one example: {example}")
+
+        # if cov/det columns are not in the file, we explicitly turn off flag to add this data to output
+        if self.add_coverage and ('coverage' not in enzyme_df.columns or 'detection' not in enzyme_df.columns):
+            self.run.warning("You requested coverage/detection values to be added to the output files, but your "
+                             "input file does not seem to contain either a 'coverage' column or a 'detection' column, or both. "
+                             "Since we don't have this data, --add-coverage will not work, so we are turning this "
+                             "flag off. Sorry ¯\_(ツ)_/¯")
+            self.add_coverage = False
+            # remove coverage headers from the list so we don't try to access them later
+            kofam_hits_coverage_headers = [self.contigs_db_project_name + "_coverage", self.contigs_db_project_name + "_detection"]
+            modules_coverage_headers = [self.contigs_db_project_name + "_gene_coverages", self.contigs_db_project_name + "_avg_coverage",
+                                        self.contigs_db_project_name + "_gene_detection", self.contigs_db_project_name + "_avg_detection"]
+            for h in kofam_hits_coverage_headers:
+                if h in self.available_modes["hits"]["headers"]:
+                    self.available_modes["hits"]["headers"].remove(h)
+            for h in modules_coverage_headers:
+                if h in self.available_modes["modules"]["headers"]:
+                    self.available_modes["modules"]["headers"].remove(h)
+
+        return enzyme_df
 
 
 class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
@@ -6279,76 +6360,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         self.run.info("Bins/genomes/metagenomes found", ", ".join(bins_found))
         return new_kegg_metabolism_superdict
-
-
-    def load_data_from_enzymes_txt(self):
-        """This function loads and sanity checks an enzymes txt file, and returns it as a pandas dataframe.
-
-        RETURNS
-        =======
-        enzyme_df : Pandas DataFrame
-            contains the information in the enzymes txt file
-        """
-
-        self.progress.new("Loading enzymes-txt file...")
-        expected_fields = ['gene_id', 'enzyme_accession', 'source']
-        enzyme_df = pd.read_csv(self.enzymes_txt, sep="\t")
-        self.progress.end()
-
-        self.run.info("Number of genes loaded from enzymes-txt file", enzyme_df.shape[0])
-
-        # sanity check for required columns
-        missing = []
-        for f in expected_fields:
-            if f not in enzyme_df.columns:
-                missing.append(f)
-        if missing:
-            miss_str = ", ".join(missing)
-            exp_str = ", ".join(expected_fields)
-            raise ConfigError(f"Your enzymes-txt file ({self.enzymes_txt}) is missing some required columns. "
-                              f"The columns it needs to have are: {exp_str}. And the missing column(s) include: {miss_str}")
-
-        # warning about extra columns
-        used_cols = expected_fields + ['coverage', 'detection']
-        extra_cols = []
-        for c in enzyme_df.columns:
-            if c not in used_cols:
-                extra_cols.append(c)
-        if extra_cols:
-            e_str = ", ".join(extra_cols)
-            self.run.warning(f"Just so you know, your input enzymes-txt file contained some columns of data that we are not "
-                             f"going to use. This isn't an issue or anything, just an FYI. We're ignoring the following field(s): {e_str}")
-
-        # check and warning for enzymes not in self.all_kos_in_db
-        enzymes_not_in_modules = list(enzyme_df[~enzyme_df["enzyme_accession"].isin(self.all_kos_in_db.keys())]['enzyme_accession'].unique())
-        if self.include_stray_kos:
-            enzymes_not_in_modules = [e for e in enzymes_not_in_modules if e not in self.stray_ko_dict]
-        if enzymes_not_in_modules:
-            example = enzymes_not_in_modules[0]
-            self.run.warning(f"FYI, some enzymes in the 'enzyme_accession' column of your input enzymes-txt file do not belong to any "
-                             f"metabolic modules (that we know about). These enzymes will be ignored for the purposes of estimating module "
-                             f"completeness, but should still appear in enzyme-related outputs (if those were requested). In case you are "
-                             f"curious, here is one example: {example}")
-
-        # if cov/det columns are not in the file, we explicitly turn off flag to add this data to output
-        if self.add_coverage and ('coverage' not in enzyme_df.columns or 'detection' not in enzyme_df.columns):
-            self.run.warning("You requested coverage/detection values to be added to the output files, but your "
-                             "input file does not seem to contain either a 'coverage' column or a 'detection' column, or both. "
-                             "Since we don't have this data, --add-coverage will not work, so we are turning this "
-                             "flag off. Sorry ¯\_(ツ)_/¯")
-            self.add_coverage = False
-            # remove coverage headers from the list so we don't try to access them later
-            kofam_hits_coverage_headers = [self.contigs_db_project_name + "_coverage", self.contigs_db_project_name + "_detection"]
-            modules_coverage_headers = [self.contigs_db_project_name + "_gene_coverages", self.contigs_db_project_name + "_avg_coverage",
-                                        self.contigs_db_project_name + "_gene_detection", self.contigs_db_project_name + "_avg_detection"]
-            for h in kofam_hits_coverage_headers:
-                if h in self.available_modes["hits"]["headers"]:
-                    self.available_modes["hits"]["headers"].remove(h)
-            for h in modules_coverage_headers:
-                if h in self.available_modes["modules"]["headers"]:
-                    self.available_modes["modules"]["headers"].remove(h)
-
-        return enzyme_df
 
 
     def estimate_metabolism_from_enzymes_txt(self):
