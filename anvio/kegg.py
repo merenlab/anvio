@@ -4142,9 +4142,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         if self.pan_db_path:
             self.update_available_headers_for_pan()
 
-        if self.enzymes_txt:
-            self.contigs_db_project_name = os.path.basename(self.enzymes_txt).replace(".", "_")
-
         # INPUT OPTIONS SANITY CHECKS
         if not self.estimate_from_json and not self.contigs_db_path and not self.enzymes_txt and not self.pan_db_path:
             raise ConfigError("NO INPUT PROVIDED. Please use the `-h` flag to see possible input options.")
@@ -4330,7 +4327,13 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             # We will need to load it again later just before accessing data to avoid SQLite error that comes from different processes accessing the DB
             contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
             self.contigs_db_project_name = contigs_db.meta['project_name']
-
+        elif self.enzymes_txt:
+            self.contigs_db_project_name = os.path.basename(self.enzymes_txt).replace(".", "_")
+        elif self.enzymes_of_interest_df:
+            self.contigs_db_project_name = 'user_defined_enzymes'
+        else:
+            raise ConfigError("This piece of code ended up at a place it should have never ended up at :( We need attention "
+                              "from a programmer here.")
 
         # LOAD KEGG DATA
         if not self.only_user_modules:
