@@ -3651,7 +3651,7 @@ class KeggEstimatorArgs():
 
         # load up the enzymes of interest if the user passed an enzyme_txt file
         if self.enzymes_txt:
-            self.enzymes_of_interest_df = self.load_data_from_enzymes_txt()
+            self.enzymes_of_interest_df = self.get_enzymes_of_interest_df()
 
 
     def setup_output_for_appending(self):
@@ -4012,7 +4012,7 @@ class KeggEstimatorArgs():
         return metadata_dict
 
 
-    def load_data_from_enzymes_txt(self):
+    def get_enzymes_of_interest_df(self):
         """This function loads and sanity checks an enzymes txt file, and returns it as a pandas dataframe.
 
         RETURNS
