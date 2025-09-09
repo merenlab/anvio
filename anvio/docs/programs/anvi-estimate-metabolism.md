@@ -123,6 +123,44 @@ anvi-estimate-metabolism --enzymes-txt %(enzymes-txt)s
 
 The program will pretend all of these enzymes are coming from one theoretical 'genome' (though the reality depends on how you defined or obtained the set), so the completion estimates for each metabolic pathway will consider all enzymes in the file. If you want to instead break up your set of enzymes across multiple 'genomes', then you will have to make multiple different input files and run this program on each one.
 
+Just to note, you can also access this functionality programmatically by passing a list of enzymes to the library %(anvi-estimate-metabolism)s relies upon in the following fashion without an %(enzymes-txt)s:
+
+```python
+import pandas as pd
+from types import SimpleNamespace
+
+from anvio.kegg import KeggMetabolismEstimator
+
+# define enzymes you are interested in as a simple pandas
+# dataframe
+df = pd.DataFrame({
+    "gene_id": [
+        219, 323, 125, 381, 119, 383, 368, 230, 434, 42,
+        414, 118, 117, 335, 254, 135, 174, 471, 41, 160,
+        319, 152, 101, 263, 481, 373, 177, 29, 166, 321,
+        350, 358, 117, 150, 138, 249, 116, 154, 406, 190,
+        226, 205, 469
+    ],
+    "enzyme_accession": [
+        "K21064", "K21064", "K21064", "K20391", "K20385", "K11616", "K02483", "K02483", "K02483", "K01174",
+        "K21298", "K20384", "K20384", "K02086", "K00849", "K00691", "K01000", "K03824", "K07473", "K03601",
+        "K06221", "K02899", "K03205", "K08153", "K02495", "K07089", "K03589", "K20344", "K03402", "K01759",
+        "K03628", "K00133", "K20383", "K02888", "K00286", "K04750", "K07729", "K07098", "K07098", "K22230",
+        "K00873", "K01006", "K03177"
+    ],
+    "source": ["KOfam"] * 43
+})
+
+m = KeggMetabolismEstimator(SimpleNamespace(enzymes_of_interest_df=df))
+
+# recover the super dictionaries that will give you everything you need
+# to do whatever you would like to do with the estimates in your downstream
+# code
+kegg_metabolism_superdict, kofam_hits_superdict = m.estimate_metabolism_for_enzymes_of_interest()
+
+# OR, call the main function to generate all the output files
+m.estimate_metabolism()
+```
 
 ## MULTI-MODE: Running metabolism estimation on multiple contigs databases
 
