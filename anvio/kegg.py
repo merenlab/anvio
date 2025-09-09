@@ -5482,8 +5482,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             detection_sum = 0
             for g in meta_dict_for_bin[mod]["gene_caller_ids"]:
                 if self.enzymes_txt:
-                    cov = self.enzymes_txt_data[self.enzymes_txt_data['gene_id'] == g]['coverage'].values[0]
-                    det = self.enzymes_txt_data[self.enzymes_txt_data['gene_id'] == g]['detection'].values[0]
+                    cov = self.enzymes_of_interest_df[self.enzymes_of_interest_df['gene_id'] == g]['coverage'].values[0]
+                    det = self.enzymes_of_interest_df[self.enzymes_of_interest_df['gene_id'] == g]['detection'].values[0]
                 else:
                     cov = self.profile_db.gene_level_coverage_stats_dict[g][s]['mean_coverage']
                     det = self.profile_db.gene_level_coverage_stats_dict[g][s]['detection']
@@ -6368,9 +6368,11 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         This function assumes that all enzymes in the file are coming from a single genome, and is effectively the
         same as the estimate_for_genome() function.
 
-        Requires the self.enzymes_txt_data attribute to have been established (ie, by loading the self.enzymes_txt file).
-        We make fake splits and contigs to match the expected input to the atomic functions, and the contigs_db_project_name
-        attribute has been set (previously) to the name of the enzyme txt file
+        Requires the self.enzymes_of_interest_df attribute to have been established (either through self.enzymes_txt parameter,
+        or by populating the self.enzymes_of_interest_df upon initialization of the args class -- see the KeggEstimatorArgs
+        for details). In this mode, we make fake splits and contigs to match the expected input to the atomic functions, and
+        the contigs_db_project_name attribute has been set (previously) to the name of the enzyme txt file (OR simply to
+        'user_defined_enzymes', depending on the initialization with or without enzymes_txt file).
 
         RETURNS
         =======
@@ -6382,7 +6384,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         kofam_gene_split_contig = []
         # no splits or contigs here
-        for gene_call_id, ko in zip(self.enzymes_txt_data["gene_id"], self.enzymes_txt_data["enzyme_accession"]):
+        for gene_call_id, ko in zip(self.enzymes_of_interest_df["gene_id"], self.enzymes_of_interest_df["enzyme_accession"]):
             kofam_gene_split_contig.append((ko,gene_call_id,"NA","NA"))
 
         enzyme_metabolism_superdict = {}
@@ -6549,7 +6551,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 self.init_data_from_modules_db()
 
             if self.enzymes_txt:
-                self.enzymes_txt_data = self.load_data_from_enzymes_txt()
                 kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_metabolism_from_enzymes_txt()
             elif self.pan_db_path:
                 gene_cluster_collections = ccollections.Collections()
@@ -7007,9 +7008,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                         if self.enzymes_txt:
                             for s in self.coverage_sample_list:
                                 sample_cov_header = s + "_coverage"
-                                d[self.ko_unique_id][sample_cov_header] = self.enzymes_txt_data[self.enzymes_txt_data["gene_id"] == gc_id]["coverage"].values[0]
+                                d[self.ko_unique_id][sample_cov_header] = self.enzymes_of_interest_df[self.enzymes_of_interest_df["gene_id"] == gc_id]["coverage"].values[0]
                                 sample_det_header = s + "_detection"
-                                d[self.ko_unique_id][sample_det_header] = self.enzymes_txt_data[self.enzymes_txt_data["gene_id"] == gc_id]["detection"].values[0]
+                                d[self.ko_unique_id][sample_det_header] = self.enzymes_of_interest_df[self.enzymes_of_interest_df["gene_id"] == gc_id]["detection"].values[0]
                         else:
                             if not self.profile_db:
                                 raise ConfigError("We're sorry that you came all this way, but it seems the profile database has "
