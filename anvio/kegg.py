@@ -6371,7 +6371,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return new_kegg_metabolism_superdict
 
 
-    def estimate_metabolism_for_enzymes_of_interest(self):
+    def estimate_metabolism_for_enzymes_of_interest(self, pruned_superdicts=False):
         """Estimates metabolism on a set of enzymes provided by the user.
 
         This function assumes that all enzymes in the file are coming from a single genome, and is effectively the
@@ -6382,6 +6382,13 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         for details). In this mode, we make fake splits and contigs to match the expected input to the atomic functions, and
         the contigs_db_project_name attribute has been set (previously) to the name of the enzyme txt file (OR simply to
         'user_defined_enzymes', depending on the initialization).
+
+        PARAMETERS
+        ==========
+        pruned_superdicts : bool
+            when True, the function will only return superdicts that contain data for metabolic modules
+            whose `pathwise_percent_complete` score is over 0.0 and enzymes that are represented by at
+            least one gene
 
         RETURNS
         =======
@@ -6411,6 +6418,13 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         # append to file
         self.append_kegg_metabolism_superdicts(enzyme_metabolism_superdict, enzyme_ko_superdict)
+
+        if pruned_superdicts:
+            # redefine the contents of (1) enzyme_metabolism_superdict based on the second level
+            # entries with pathwise_percent_complete > 0.0, and (2) enzyme_ko_superdict based on
+            # the second level entries with more than one gene call:
+            enzyme_metabolism_superdict = {source: {module_name: values for module_name, values in entries.items() if values.get("pathwise_percent_complete") > 0.0} for source, entries in enzyme_metabolism_superdict.items()}
+            enzyme_ko_superdict = {source: {kofam_name: values for kofam_name, values in entries.items() if len(values["gene_caller_ids"]) > 0} for source, entries in enzyme_ko_superdict.items()}
 
         return enzyme_metabolism_superdict, enzyme_ko_superdict
 
