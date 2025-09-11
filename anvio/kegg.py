@@ -6371,7 +6371,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         return new_kegg_metabolism_superdict
 
 
-    def estimate_metabolism_for_enzymes_of_interest(self, pruned_superdicts=False):
+    def estimate_metabolism_for_enzymes_of_interest(self):
         """Estimates metabolism on a set of enzymes provided by the user.
 
         This function assumes that all enzymes in the file are coming from a single genome, and is effectively the
@@ -6382,13 +6382,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         for details). In this mode, we make fake splits and contigs to match the expected input to the atomic functions, and
         the contigs_db_project_name attribute has been set (previously) to the name of the enzyme txt file (OR simply to
         'user_defined_enzymes', depending on the initialization).
-
-        PARAMETERS
-        ==========
-        pruned_superdicts : bool
-            when True, the function will only return superdicts that contain data for metabolic modules
-            whose `pathwise_percent_complete` score is over 0.0 and enzymes that are represented by at
-            least one gene
 
         RETURNS
         =======
@@ -6418,13 +6411,6 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         # append to file
         self.append_kegg_metabolism_superdicts(enzyme_metabolism_superdict, enzyme_ko_superdict)
-
-        if pruned_superdicts:
-            # redefine the contents of (1) enzyme_metabolism_superdict based on the second level
-            # entries with pathwise_percent_complete > 0.0, and (2) enzyme_ko_superdict based on
-            # the second level entries with more than one gene call:
-            enzyme_metabolism_superdict = {source: {module_name: values for module_name, values in entries.items() if values.get("pathwise_percent_complete") > 0.0} for source, entries in enzyme_metabolism_superdict.items()}
-            enzyme_ko_superdict = {source: {kofam_name: values for kofam_name, values in entries.items() if len(values["gene_caller_ids"]) > 0} for source, entries in enzyme_ko_superdict.items()}
 
         return enzyme_metabolism_superdict, enzyme_ko_superdict
 
@@ -6508,7 +6494,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
 
     def estimate_metabolism(self, skip_storing_data=False, output_files_dictionary=None, return_superdicts=False,
-                            return_subset_for_matrix_format=False, all_modules_in_db=None, all_kos_in_db=None, module_paths_dict=None):
+                            return_subset_for_matrix_format=False, all_modules_in_db=None, all_kos_in_db=None,
+                            module_paths_dict=None, prune_superdicts=False):
         """This is the driver function for estimating metabolism for a single contigs DB.
 
         It will decide what to do based on whether the input DB is a genome, metagenome, or pangenome.
@@ -6540,6 +6527,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             KeggMetabolismEstimatorMulti class
         module_paths_dict : dictionary
             Again, same thing as all_modules_in_db param - only provided if passed from KeggMetabolismEstimatorMulti
+        prune_superdicts : bool
+            when True, the function will prune superdicts to ensure they contain data only for metabolic modules
+            whose `pathwise_percent_complete` score is over 0.0 and enzymes that are represented by at least one gene
 
         RETURNS
         =======
@@ -6562,6 +6552,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             else:
                 self.output_file_dict = self.setup_output_for_appending()
 
+        # recovering superdicts for metabolic modules and kofams
         if self.estimate_from_json:
             kegg_metabolism_superdict = self.estimate_metabolism_from_json_data()
         else:
@@ -6592,7 +6583,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_metabolism_for_pangenome_bins(kofam_hits_info, collection_dict)
             else:
                 kofam_hits_info = self.init_hits_and_splits(annotation_sources=self.annotation_sources_to_use)
-                
+
                 if self.add_coverage:
                     self.init_gene_coverage(gcids_for_kofam_hits={int(tpl[1]) for tpl in kofam_hits_info})
 
@@ -6606,9 +6597,20 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                 else:
                     raise ConfigError("This class doesn't know how to deal with that yet :/")
 
+        # now we have our superdicts, the first order of buisness is to check if the user is interested in pruned versions of
+        # these dicts
+        if prune_superdicts:
+            # the next two lines simply redefine the contents of (1) kegg_metabolism_superdict based on the second level
+            # entries with pathwise_percent_complete > 0.0, and (2) kofam_hits_superdict based on the second level
+            # entries with more than one gene call:
+            kegg_metabolism_superdict = {source: {module_name: values for module_name, values in entries.items() if values.get("pathwise_percent_complete") > 0.0} for source, entries in kegg_metabolism_superdict.items()}
+            kofam_hits_superdict = {source: {kofam_name: values for kofam_name, values in entries.items() if len(values["gene_caller_ids"]) > 0} for source, entries in kofam_hits_superdict.items()}
+
+        # we take care of the JSON output if requested
         if self.write_dict_to_json:
             self.store_metabolism_superdict_as_json(kegg_metabolism_superdict, self.json_output_file_path + ".json")
 
+        # more housekeeping for outputs
         if not self.multi_mode:
             for mode, file_object in self.output_file_dict.items():
                 file_object.close()
@@ -6622,8 +6624,9 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         # and KO hits.
         elif return_subset_for_matrix_format:
             return self.generate_subsets_for_matrix_format(kegg_metabolism_superdict, kofam_hits_superdict, only_complete_modules=self.only_complete)
-        # otherwise we return nothing at all
-        return
+        else:
+          # otherwise we return nothing at all
+          return
 
 ######### OUTPUT DICTIONARY FUNCTIONS #########
 
