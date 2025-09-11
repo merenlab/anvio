@@ -137,20 +137,22 @@ from anvio.kegg import KeggMetabolismEstimator
 # used for anything, but becomes a part of the reporting for you
 # to be able to track things when needed):
 df = pd.DataFrame({
-    "gene_id": [219, 323, 125, 381, 119, 383, 368, 230, 434, 42, 414, 118, 117, 335, 254, 135, 174, 471, 41, 160, 319, 152, 101, 263, 481, 373, 177, 29, 166, 321, 350, 358, 117, 150, 138, 249, 116, 154, 406, 190, 226, 205, 469],
-    "enzyme_accession": ["K21064", "K21064", "K21064", "K20391", "K20385", "K11616", "K02483", "K02483", "K02483", "K01174", "K21298", "K20384", "K20384", "K02086", "K00849", "K00691", "K01000", "K03824", "K07473", "K03601", "K06221", "K02899", "K03205", "K08153", "K02495", "K07089", "K03589", "K20344", "K03402", "K01759", "K03628", "K00133", "K20383", "K02888", "K00286", "K04750", "K07729", "K07098", "K07098", "K22230", "K00873", "K01006", "K03177"],
-    "source": ["KOfam"] * 43
+    "gene_id": [219, 323, 125, 381, 119, 383, 368, 230, 434, 42],
+    "enzyme_accession": ["K21064", "K21064", "K21064", "K20391", "K20385", "K11616", "K02483", "K02483", "K02483", "K01174"],
+    "source": ["KOfam"] * 10
 })
 
+# get an instance of the KEGG metabolism estimator class
 m = KeggMetabolismEstimator(SimpleNamespace(enzymes_of_interest_df=df))
 
-# recover pruned super dictionaries that will give you everything you need
-# to do whatever you would like to do with the estimates in your downstream
-# code:
-kegg_metabolism_superdict, kofam_hits_superdict = m.estimate_metabolism_for_enzymes_of_interest(pruned_superdicts=True)
-
-# OR, call the main function to generate all the output files
+# now you can generate all the standard output files for the specific list of enzymes
 m.estimate_metabolism()
+
+# or recover pruned super dictionaries that will give you everything you need
+# to continue with metabolic estimates for the set of enzymes in your downstream
+# Python code by instructing the function to skip the storage of data, and return
+# pruned superdicts instead:
+kegg_metabolism_superdict, kofam_hits_superdict = m.estimate_metabolism(skip_storing_data=True, return_superdicts=True, prune_superdicts=True)
 ```
 
 ## MULTI-MODE: Running metabolism estimation on multiple contigs databases
