@@ -3663,10 +3663,10 @@ class KeggEstimatorArgs():
         output_dict = {}
         for mode in self.output_modes:
             output_path = self.output_file_prefix + "_" + self.available_modes[mode]["output_suffix"]
-            if filesnpaths.is_file_exists(output_path, dont_raise=True):
-                raise ConfigError("It seems like output files with your requested prefix already exist, for "
-                                  f"example: {output_path}. Please delete the existing files or provide a "
-                                  "different output prefix.")
+
+            # check the status of this output file
+            filesnpaths.is_output_file_writable(output_path, ok_if_exists=False)
+
             output_file_for_mode = filesnpaths.AppendableFile(output_path, append_type=dict, fail_if_file_exists=False)
             output_dict[mode] = output_file_for_mode
 
@@ -7315,10 +7315,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         if self.matrix_format:
             for stat in ['completeness', 'presence', 'ko_hits']:
                 matrix_output_file = '%s-%s-MATRIX.txt' % (self.output_file_prefix, stat)
-                if filesnpaths.is_file_exists(matrix_output_file, dont_raise=True):
-                    raise ConfigError(f"Uh oh... there is already matrix output (such as {matrix_output_file}) "
-                                      "using this file prefix in the current directory. Please either remove these files "
-                                      "or give us a different prefix (with -O).")
+                filesnpaths.is_output_file_writable(matrix_output_file, ok_if_exists=False)
 
         # set name header
         if self.metagenomes_file:
@@ -9936,11 +9933,9 @@ class KeggModuleEnrichment(KeggContext):
         filesnpaths.is_file_exists(self.groups_txt)
         filesnpaths.is_file_plain_text(self.groups_txt)
 
-        if filesnpaths.is_file_exists(self.output_file_path, dont_raise=True):
-            raise ConfigError(f"Whoops... we almost overwrote the existing output file {self.output_file_path}. But we stopped just in time. "
-                               "If you really want us to replace the contents of that file with new enrichment results, then remove this "
-                               "file before you run this program again.")
-        filesnpaths.is_output_file_writable(self.output_file_path)
+        # make sure we are not overwriting anything
+        filesnpaths.is_output_file_writable(self.output_file_path, ok_if_exists=False)
+
 
         if not self.quiet:
             self.run.info("modules-txt input file", self.modules_txt)
