@@ -9,6 +9,7 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 
+
 class SamplesTxt:
     """
     Unified handler for anvi'o samples-txt files.
@@ -40,54 +41,54 @@ class SamplesTxt:
         "single_end": ["r1"],
         "long_read":  ["lr"],
         "hybrid":     ["r1", "r2", "lr"],
-        "free":       [],          # only the first column is guaranteed; others are optional
+        "free":       [],  # only first column + optional others
     }
 
-    def __init__(self, args, run=terminal.Run(), expected_format="paired_end", valid_formats=None):
-        """
-        Parameters
-        ----------
-        args : argparse.Namespace with args.samples_txt
-        expected_format : str in DEFAULT_VALID_FORMATS (incl. "free")
-        valid_formats : optional dict[str, list[str]] to extend/override DEFAULT_VALID_FORMATS
-        """
-        self.samples_txt = getattr(args, "samples_txt", None)
-        if not self.samples_txt:
-            raise ConfigError("SamplesTxt expects args.samples_txt to point to a samples-txt file.")
-
-        # Ensure tab-delimited and get headers (including first column)
-        filesnpaths.is_file_tab_delimited(self.samples_txt)
-        columns_found = utils.get_columns_of_TAB_delim_file(self.samples_txt, include_first_column=True)
-
-        # Accept first column 'sample' or 'name'
-        first_col = columns_found[0]
-        if first_col not in ("sample", "name"):
-            raise ConfigError("The first column of any samples-txt must be either `sample` or `name` :/")
-
-        # Allow caller to extend supported modes
+    def __init__(self, path, expected_format="free", valid_formats=None, skip_check_sanity=False):
+        self.artifact_path = path
+        self.expected_format = expected_format
         self.valid_formats = dict(self.DEFAULT_VALID_FORMATS)
         if valid_formats:
             self.valid_formats.update(valid_formats)
 
-        if expected_format not in self.valid_formats:
+        # Light, non-failing prep. All raising happens in check_sanity().
+        self._raw_text = None
+        self._columns_found = None
+        self._first_col = None
+        self._raw_rows = None  # as returned by get_TAB_delimited_file_as_dictionary
+        self._data = None      # normalized dict we expose
+
+        self._load_raw_text()                 # populate _raw_text
+        self._inspect_headers()      # populate _columns_found / _first_col
+        self._parse_rows()           # populate _raw_rows and normalized _data (no strict validation yet)
+
+        if not skip_check_sanity:
+            self.check_sanity()
+
+    def check_sanity(self):
+        """Perform all sanity checks and warnings."""
+        # Validate mode key
+        if self.expected_format not in self.valid_formats:
             raise ConfigError(
-                f"SamplesTxt: expected_format must be one of {list(self.valid_formats)}, got '{expected_format}'."
+                f"SamplesTxt speaking: expected_format must be one of {list(self.valid_formats)}, got '{self.expected_format}'."
             )
-        self.expected_format = expected_format
 
-        # Compute expected/potential columns for header-level checks
-        minimal_required = [first_col] + (["group"] if "group" in columns_found else [])
-        # Mode-required columns (free => none here)
-        mode_required = self.valid_formats[self.expected_format]
-        expected_columns = [first_col] + mode_required
+        # File is tab-delimited (raises on failure)
+        filesnpaths.is_file_tab_delimited(self.artifact_path)
 
-        # Header sanity (keep legacy behavior: warn on extras, require mode columns)
-        possible_columns = set([first_col, "r1", "r2", "lr", "group"])
-        if not set(expected_columns).issubset(set(columns_found)):
-            # phrase similar to legacy error tone
-            raise ConfigError(f"A samples txt file is supposed to have at least the columns {', '.join(expected_columns)}.")
+        # Header checks (first col, required columns for the chosen mode)
+        if self._first_col not in ("sample", "name"):
+            raise ConfigError("The first column of any samples-txt must be either `sample` or `name` :/")
 
-        extra_columns = set(columns_found) - possible_columns
+        expected_columns = [self._first_col] + self.valid_formats[self.expected_format]
+        if not set(expected_columns).issubset(set(self._columns_found)):
+            raise ConfigError(
+                f"A samples txt file is supposed to have at least the columns {', '.join(expected_columns)}."
+            )
+
+        # Warn about extras columns
+        possible_columns = set([self._first_col, "r1", "r2", "lr", "group"])
+        extra_columns = set(self._columns_found) - possible_columns
         if extra_columns:
             run.warning(
                 "Your samples txt file contains %s: %s compared to what is expected of a `samples-txt` file, "
@@ -97,60 +98,208 @@ class SamplesTxt:
                 lc="yellow"
             )
 
-        # Read as dict keyed by first column via existing utils function
-        # NOTE: we do not pass expected_fields here because 'free' should not force r1/r2/lr presence.
-        raw = utils.get_TAB_delimited_file_as_dictionary(self.samples_txt)
-
-        # Normalize into a new dict keyed by canonical 'sample' (even if file used 'name')
-        self.data = self._normalize_and_validate(raw, first_col)
-
-        # Soft warning about unconventional fastq suffixes for short-reads (keeps workflow vibes)
+        # Per-row validations, file existence, identical pairs
+        self._validate_rows_by_mode()
+        self._check_file_existence_and_identical_pairs()
         self._warn_on_unconventional_fastq_suffixes()
 
-    def to_dict(self):
-        """Return the full normalized mapping."""
-        return self.data
+    def as_raw(self):
+        """Return the raw TSV text of the samples-txt file."""
+        return self._raw_text
 
-    def as_dataframe(self):
-        """Return a pandas.DataFrame resembling the legacy workflow expectation."""
+    def as_dict(self):
+        """Return normalized dict: {sample: {'group', 'r1':[], 'r2':[], 'lr':[]}}"""
+        return self._data
+
+    def as_df(self):
+        """DataFrame view for downstream code expecting a df."""
         import pandas as pd
         rows = []
-        for s, info in self.data.items():
-            row = {
+        for s, info in self._data.items():
+            rows.append({
                 "sample": s,
                 "group": info.get("group"),
                 "r1": ",".join(info.get("r1", [])) if info.get("r1") else "",
                 "r2": ",".join(info.get("r2", [])) if info.get("r2") else "",
                 "lr": ",".join(info.get("lr", [])) if info.get("lr") else "",
-            }
-            rows.append(row)
+            })
         df = pd.DataFrame(rows)
-        # Preserve legacy columns order if present
         cols = ["sample", "group", "r1", "r2", "lr"]
         return df[[c for c in cols if c in df.columns]]
 
+    # Optional helper for CLI code that still passes args:
+    @classmethod
+    def from_args(cls, args, **kwargs):
+        return cls(getattr(args, "samples_txt", None), **kwargs)
+
+    def _load_raw_text(self):
+        with open(self.artifact_path, "r", encoding="utf-8") as f:
+            self._raw_text = f.read()
+
+    def _inspect_headers(self):
+        self._columns_found = utils.get_columns_of_TAB_delim_file(self.artifact_path, include_first_column=True)
+        self._first_col = self._columns_found[0] if self._columns_found else None
+
+    def _parse_rows(self):
+        # Do not pass expected_fields here; 'free' and partial headers should still parse.
+        self._raw_rows = utils.get_TAB_delimited_file_as_dictionary(self.artifact_path)
+        self._data = self._normalize_rows(self._raw_rows, self._first_col)
+
+    @staticmethod
+    def _split_paths(cell):
+        if cell is None:
+            return []
+        return [p.strip() for p in str(cell).split(",") if p.strip()]
+
+    def _normalize_rows(self, raw, first_col):
+        data = {}
+        for key, row in raw.items():
+            sample = str(row.get(first_col, key)).strip()
+            if not sample:
+                # Keep this non-fatal here; will be enforced in check_sanity()
+                sample = key if key else ""
+            if not sample:
+                # If truly empty, raise now—there's no way to key the dict.
+                raise ConfigError("Encountered an empty sample name.")
+
+            # Validate sample id
+            utils.check_sample_id(sample)
+
+            if sample in data:
+                raise ConfigError(f"Names of samples in your samples_txt file must be unique. Found duplicate: {sample}")
+
+            info = {
+                "group": (str(row.get("group")).strip() if row.get("group") not in (None, "") else None),
+                "r1": self._split_paths(row.get("r1")),
+                "r2": self._split_paths(row.get("r2")),
+                "lr": self._split_paths(row.get("lr")),
+            }
+            data[sample] = info
+        return data
+
+    def _validate_rows_by_mode(self):
+        mode = self.expected_format
+        for sample, info in self._data.items():
+            r1, r2, lr = info["r1"], info["r2"], info["lr"]
+            if mode == "paired_end":
+                if not r1 or not r2:
+                    raise ConfigError(f"[{sample}] Paired-end expected: require both 'r1' and 'r2'.")
+                if len(r1) != len(r2):
+                    raise ConfigError(f"[{sample}] Paired-end expected: number of r1 files ({len(r1)}) must match r2 ({len(r2)}).")
+                if lr:
+                    raise ConfigError(f"[{sample}] Paired-end mode: unexpected long-read ('lr') paths provided.")
+            elif mode == "single_end":
+                if not r1:
+                    raise ConfigError(f"[{sample}] Single-end expected: require 'r1' with at least one path.")
+                if r2:
+                    raise ConfigError(f"[{sample}] Single-end mode: 'r2' must be empty/absent.")
+                if lr:
+                    raise ConfigError(f"[{sample}] Single-end mode: 'lr' must be empty/absent.")
+            elif mode == "long_read":
+                if not lr:
+                    raise ConfigError(f"[{sample}] Long-read expected: require 'lr' with at least one path.")
+                if r1 or r2:
+                    raise ConfigError(f"[{sample}] Long-read mode: 'r1'/'r2' must be empty/absent.")
+            elif mode == "hybrid":
+                if not r1 or not r2:
+                    raise ConfigError(f"[{sample}] Hybrid expected: require both 'r1' and 'r2'.")
+                if len(r1) != len(r2):
+                    raise ConfigError(f"[{sample}] Hybrid expected: number of r1 files ({len(r1)}) must match r2 ({len(r2)}).")
+                if not lr:
+                    raise ConfigError(f"[{sample}] Hybrid expected: require 'lr' with at least one path.")
+            elif mode == "free":
+                if not (r1 or r2 or lr):
+                    raise ConfigError(f"[{sample}] Free mode: provide at least one of 'lr' or 'r1' (with optional 'r2').")
+                if r2 and not r1:
+                    raise ConfigError(f"[{sample}] Free mode: 'r2' provided without 'r1'.")
+                if r1 and r2 and len(r1) != len(r2):
+                    raise ConfigError(f"[{sample}] Free mode: number of r1 files ({len(r1)}) must match r2 ({len(r2)}).")
+            else:
+                raise ConfigError(f"Unknown validation mode '{mode}'")
+
+    def _check_file_existence_and_identical_pairs(self):
+        missing = set()
+        identical = set()
+        for sample, info in self._data.items():
+            for p in info.get("r1", []) + info.get("r2", []) + info.get("lr", []):
+                if not os.path.exists(p):
+                    missing.add(sample)
+            r1, r2 = info.get("r1", []), info.get("r2", [])
+            if r1 and r2:
+                if len(r1) != len(r2):
+                    # Redundant with _validate_rows_by_mode, but keep the legacy-friendly message around:
+                    raise ConfigError(
+                        f"Uh oh. The sample {sample} has a different number of R1 ({len(r1)}) and R2 ({len(r2)}) paths. "
+                        f"Anvi'o expects these to be the same, so please fix this in your samples-txt file."
+                    )
+                for i in range(len(r1)):
+                    if r1[i] == r2[i]:
+                        identical.add(sample)
+
+        if missing:
+            raise ConfigError(
+                "Bad news. Your samples txt contains %s (%s) with missing files (by which we mean that the "
+                "r1/r2/lr paths are there, but the files they point to are not)."
+                % (utils.pluralize('sample', len(missing)), ", ".join(sorted(missing)))
+            )
+
+        if identical:
+            raise ConfigError(
+                "Interesting. Your samples txt contains %s (%s) where r1 and r2 file paths are identical. Not OK."
+                % (utils.pluralize('sample', len(identical)), ", ".join(sorted(identical)))
+            )
+
+    def _warn_on_unconventional_fastq_suffixes(self):
+        # Check ALL paths (SR and LR). Accept .fastq, .fastq.gz, .fq, .fq.gz
+        all_paths = []
+        for info in self._data.values():
+            all_paths.extend(info.get("r1", []))
+            all_paths.extend(info.get("r2", []))
+            all_paths.extend(info.get("lr", []))
+
+        allowed = (".fastq", ".fastq.gz", ".fq", ".fq.gz")
+        bad = [p for p in all_paths if p and not p.endswith(allowed)]
+        if bad:
+            run.warning(
+                "We noticed some of your sequence files in '%s' do not end with one of "
+                "'.fastq', '.fastq.gz', '.fq', or '.fq.gz'. That's okay, but anvi'o decided it "
+                "should warn you. Here are the first 5 such files that have unconventional "
+                "file extensions: %s."
+                % (self.artifact_path, ", ".join(bad[:5]))
+            )
+
     def samples(self):
-        return list(self.data.keys())
+        """List of sample names."""
+        return list(self._data.keys())
+
+    def has_groups(self):
+        """True if at least one row has a non-empty 'group' value."""
+        return any(bool(info.get("group")) for info in self._data.values())
 
     def groups(self):
-        """Return {group_value: [samples...]} for rows with a non-empty group."""
+        """{group_value: [samples...]} for rows with 'group' set."""
         g = {}
-        for s, info in self.data.items():
+        for s, info in self._data.items():
             grp = info.get("group")
             if grp:
                 g.setdefault(grp, []).append(s)
         return g
 
-    def has_groups(self):
-        return any(bool(info.get("group")) for info in self.data.values())
+    def group_names(self):
+        """List of group names present (unique)."""
+        return list(self.groups().keys())
+
+    def group_sizes(self):
+        """{group_value: size}."""
+        return {g: len(members) for g, members in self.groups().items()}
 
     def short_reads_dict(self, include_single_end=True):
         """
-        {sample: {'r1': [...], 'r2': [...]}} for samples with short reads.
-        If include_single_end=False, only include rows with both r1 and r2.
+        {sample: {'r1': [...], 'r2': [...]}} for samples that provide short reads.
+        If include_single_end=False, only include rows where both r1 and r2 exist.
         """
         out = {}
-        for s, info in self.data.items():
+        for s, info in self._data.items():
             r1, r2 = info.get("r1", []), info.get("r2", [])
             if r1 and r2:
                 out[s] = {"r1": list(r1), "r2": list(r2)}
@@ -161,150 +310,12 @@ class SamplesTxt:
     def long_reads_dict(self):
         """{sample: {'lr': [...]}} for samples that provide long reads."""
         return {s: {"lr": list(info.get("lr", []))}
-                for s, info in self.data.items() if info.get("lr")}
+                for s, info in self._data.items() if info.get("lr")}
 
-    @staticmethod
-    def _split_paths(cell):
-        if cell is None:
-            return []
-        # utils.get_TAB_delimited_file_as_dictionary returns strings
-        return [p.strip() for p in str(cell).split(",") if p.strip()]
-
-    def _normalize_and_validate(self, raw, first_col):
+    def get_sample(self, sample):
         """
-        - Normalize keys to 'sample'.
-        - Normalize columns to {group, r1[], r2[], lr[]}.
-        - Validate per expected_format, check file existence, matching counts, identical r1/r2.
+        Return the normalized dict for one sample:
+        {'group': ..., 'r1': [...], 'r2': [...], 'lr': [...]}
         """
-        data = {}
-        missing_files = set()
-        identical_r1_r2 = set()
-
-        # Build normalized map
-        for key, row in raw.items():
-            # row is a dict of column->value (strings)
-            # Canonical sample id from first column (sample/name)
-            sample = str(row.get(first_col, key)).strip()
-            if not sample:
-                raise ConfigError("Encountered an empty sample name.")
-            # Validate sample id via existing util
-            utils.check_sample_id(sample)
-            if sample in data:
-                raise ConfigError(f"Names of samples in your samples_txt file must be unique. Found duplicate: {sample}")
-
-            r1 = self._split_paths(row.get("r1"))
-            r2 = self._split_paths(row.get("r2"))
-            lr = self._split_paths(row.get("lr"))
-            group = row.get("group", None)
-            group = (str(group).strip() if group is not None else None) or None
-
-            info = {"group": group, "r1": r1, "r2": r2, "lr": lr}
-            data[sample] = info
-
-        # Mode-specific validation
-        for sample, info in data.items():
-            self._validate_row_by_mode(sample, info, self.expected_format)
-
-        # file presence + identical r1/r2 checks (extended to lr)
-        for sample, info in data.items():
-            # Paired consistency checks already done; now existence:
-            for path in info.get("r1", []) + info.get("r2", []) + info.get("lr", []):
-                if not os.path.exists(path):
-                    missing_files.add(sample)
-
-            # Identical r1/r2 paths (pairwise)
-            r1, r2 = info.get("r1", []), info.get("r2", [])
-            if r1 and r2:
-                if len(r1) != len(r2):
-                    # Should have been caught earlier, but keep a helpful error here too.
-                    raise ConfigError(
-                        f"Uh oh. The sample {sample} has a different number of R1 ({len(r1)}) and R2 ({len(r2)}) paths."
-                        " Anvi'o expects these to be the same, so please fix this in your samples-txt file."
-                    )
-                for i in range(len(r1)):
-                    if r1[i] == r2[i]:
-                        identical_r1_r2.add(sample)
-
-        if missing_files:
-            raise ConfigError(
-                "Bad news. Your samples txt contains %s (%s) with missing files (by which we mean that the "
-                "r1/r2/lr paths are there, but the files they point to are not)." %
-                (utils.pluralize('sample', len(missing_files)), ', '.join(sorted(missing_files)))
-            )
-
-        if identical_r1_r2:
-            raise ConfigError(
-                "Interesting. Your samples txt contains %s (%s) where r1 and r2 file paths are identical. Not OK." %
-                (utils.pluralize('sample', len(identical_r1_r2)), ', '.join(sorted(identical_r1_r2)))
-            )
-
-        return data
-
-    def _validate_row_by_mode(self, sample, info, mode):
-        r1, r2, lr = info["r1"], info["r2"], info["lr"]
-
-        if mode == "paired_end":
-            if not r1 or not r2:
-                raise ConfigError(f"[{sample}] Paired-end expected: require both 'r1' and 'r2'.")
-            if len(r1) != len(r2):
-                raise ConfigError(f"[{sample}] Paired-end expected: number of r1 files ({len(r1)}) must match r2 ({len(r2)}).")
-            if lr:
-                raise ConfigError(f"[{sample}] Paired-end mode: unexpected long-read ('lr') paths provided.")
-
-        elif mode == "single_end":
-            if not r1:
-                raise ConfigError(f"[{sample}] Single-end expected: require 'r1' with at least one path.")
-            if r2:
-                raise ConfigError(f"[{sample}] Single-end mode: 'r2' must be empty/absent.")
-            if lr:
-                raise ConfigError(f"[{sample}] Single-end mode: 'lr' must be empty/absent.")
-
-        elif mode == "long_read":
-            if not lr:
-                raise ConfigError(f"[{sample}] Long-read expected: require 'lr' with at least one path.")
-            if r1 or r2:
-                raise ConfigError(f"[{sample}] Long-read mode: 'r1'/'r2' must be empty/absent.")
-
-        elif mode == "hybrid":
-            # must have paired AND lr
-            if not r1 or not r2:
-                raise ConfigError(f"[{sample}] Hybrid expected: require both 'r1' and 'r2'.")
-            if len(r1) != len(r2):
-                raise ConfigError(f"[{sample}] Hybrid expected: number of r1 files ({len(r1)}) must match r2 ({len(r2)}).")
-            if not lr:
-                raise ConfigError(f"[{sample}] Hybrid expected: require 'lr' with at least one path.")
-
-        elif mode == "free":
-            # must provide at least one modality
-            if not (r1 or r2 or lr):
-                raise ConfigError(f"[{sample}] Free mode: provide at least one of 'lr' or 'r1' (with optional 'r2').")
-            # if r2 is present, r1 must be present and counts must match
-            if r2 and not r1:
-                raise ConfigError(f"[{sample}] Free mode: 'r2' provided without 'r1'.")
-            if r1 and r2 and len(r1) != len(r2):
-                raise ConfigError(
-                    f"[{sample}] Free mode: number of r1 files ({len(r1)}) must match r2 ({len(r2)})."
-                )
-        else:
-            raise ConfigError(f"Unknown validation mode '{mode}'")
-
-    def _warn_on_unconventional_fastq_suffixes(self):
-        # Check ALL paths (short-reads and long-reads)
-        all_paths = []
-        for info in self.data.values():
-            all_paths.extend(info.get("r1", []))
-            all_paths.extend(info.get("r2", []))
-            all_paths.extend(info.get("lr", []))
-
-        allowed_suffixes = (".fastq", ".fastq.gz", ".fq", ".fq.gz")
-        bad = [p for p in all_paths if p and not p.endswith(allowed_suffixes)]
-
-        if bad:
-            run.warning(
-                "We noticed some of your sequence files in '%s' do not end with one of "
-                "'.fastq', '.fastq.gz', '.fq', or '.fq.gz'. That's okay, but anvi'o decided it "
-                "should warn you. Here are the first 5 such files that have unconventional "
-                "file extensions: %s."
-                % (self.samples_txt, ", ".join(bad[:5]))
-            )
+        return self._data[sample]
 
