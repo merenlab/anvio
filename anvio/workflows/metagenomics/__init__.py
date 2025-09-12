@@ -16,6 +16,7 @@ from anvio.drivers import driver_modules
 from anvio.workflows import WorkflowSuperClass
 from anvio.workflows.contigs import ContigsDBWorkflow
 from anvio.errors import ConfigError
+from anvio.artifacts.samples_txt import SamplesTxt
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
