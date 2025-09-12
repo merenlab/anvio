@@ -153,31 +153,12 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         super().init()
 
         # loading the samples.txt file
-        self.samples_txt_file = self.get_param_value_from_config(['samples_txt'])
-
-        if not self.samples_txt_file:
-            if os.path.exists('samples.txt'):
-                self.samples_txt_file = 'samples.txt'
-            else:
-                raise ConfigError("Ehem. Your config file does not include a `samples_txt` directive. "
-                                  "Anvi'o tried to assume that your `samples.txt` may be in your work "
-                                  "directory, but you don't seem to have a `samples.txt` file anywhere "
-                                  "around either. So please add a `samples.txt` directive.")
-
-        filesnpaths.is_file_tab_delimited(self.samples_txt_file)
-        try:
-            # getting the samples information (names, [group], path to r1, path to r2) from samples.txt
-            self.samples_information = pd.read_csv(self.samples_txt_file, sep='\t', index_col=False)
-        except IndexError as e:
-            raise ConfigError("Looks like your samples_txt file, '%s', is not properly formatted. "
-                              "This is what we know: '%s'" % (self.samples_txt_file, e))
-        if 'sample' not in list(self.samples_information.columns):
-            raise ConfigError("Looks like your samples_txt file, '%s', is not properly formatted. "
-                              "We are not sure what's wrong, but we can't find a column with title 'sample'." % self.samples_txt_file)
-
+        samples_txt_file = self.get_param_value_from_config(['samples_txt'])
+        self.samples_txt = SamplesTxt(samples_txt_file)
+        self.samples_information = self.samples_txt.as_df()
 
         # get a list of the sample names
-        self.sample_names = list(self.samples_information['sample'])
+        self.sample_names = self.samples_txt.samples()
         self.run_metaspades = self.get_param_value_from_config(['metaspades', 'run'])
         self.use_scaffold_from_metaspades = self.get_param_value_from_config(['metaspades', 'use_scaffolds'])
         self.use_scaffold_from_idba_ud = self.get_param_value_from_config(['idba_ud', 'use_scaffolds'])
@@ -188,7 +169,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         self.fasta_txt_file = self.get_param_value_from_config('fasta_txt')
         self.profile_databases = {}
 
-        if len(self.samples_information.index) < 2 and self.references_mode:
+        # TODO: we should be able to run the workflow with a single sample
+        if len(self.sample_names) < 2 and self.references_mode:
             raise ConfigError("The metagenomics workflow needs to have at least 2 metagenomes in a samples.txt to be in reference mode.")
 
         self.references_for_removal_txt = self.get_param_value_from_config(['remove_short_reads_based_on_references',\
@@ -204,7 +186,6 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         elif self.run_split:
             raise ConfigError('If you want to run anvi-split you must provide a collections_txt file')
 
-        self.init_samples_txt()
         self.init_kraken()
         self.init_refereces_txt()
 
@@ -214,7 +195,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
             self.profile_databases[group] = os.path.join(self.dirs_dict["MERGE_DIR"], group, "PROFILE.db") if self.group_sizes[group] > 1 else \
                                                os.path.join(self.dirs_dict["PROFILE_DIR"],
                                                             group,
-                                                            self.samples_information.loc[self.samples_information['group']==group,'sample'].values[0],
+                                                            self.samples_txt.groups()[group][0],
                                                             "PROFILE.db")
 
 
@@ -294,12 +275,13 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                           "fasta_txt" % self.fasta_txt_file)
 
         # Collecting information regarding groups.
-        if "group" in self.samples_information.columns:
+        if self.samples_txt.has_groups():
             # if groups were specified then members of a groups will be co-assembled.
-            self.group_names = list(self.samples_information['group'].unique())
+            self.group_names = self.samples_txt.group_names()
             # creating a dictionary with groups as keys and number of samples in
             # the groups as values
-            self.group_sizes = self.samples_information['group'].value_counts().to_dict()
+            #self.group_sizes = self.samples_information['group'].value_counts().to_dict()
+            self.group_sizes = self.samples_txt.group_sizes()
 
             if self.references_mode:
                 # sanity check to see that groups specified in samples.txt match
@@ -332,6 +314,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                 run.warning("No groups were specified in your samples_txt. This is fine. "
                             "But we thought you should know. Any assembly will be performed "
                             "on individual samples (i.e. NO co-assembly).")
+                # TODO: maybe SamplesTxt should automatically add a group colunn if none exists?
                 self.samples_information['group'] = self.samples_information['sample']
                 self.group_names = list(self.sample_names)
                 self.group_sizes = dict.fromkeys(self.group_names,1)
@@ -351,41 +334,6 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
             raise ConfigError('You seem to be interested in running the metagenomics workflow in assembly mode. '
                               'In this mode you can\'t skip `anvi_script_reformat_fasta` rule, which means you need '
                               'to add this rule to your config file with `"run": true` directive for this to work.')
-
-
-    def init_samples_txt(self):
-        if 'sample' not in self.samples_information.columns.values:
-            raise ConfigError("You know what. This '%s' file does not look anything like "
-                              "a samples file." % self.samples_txt_file)
-
-        if len(self.samples_information['sample']) != len(set(self.samples_information['sample'])):
-            raise ConfigError("Names of samples in your samples_txt file must be unique. "
-                              "It looks like some names appear twice in your file: %s" % self.samples_txt_file)
-
-        for sample in self.samples_information['sample']:
-            try:
-                u.check_sample_id(sample)
-            except ConfigError as e:
-                raise ConfigError("While processing the samples txt file ('%s'), anvi'o ran into the following error: "
-                                  "%s" % (self.samples_txt_file, e))
-
-        if 'r1' not in self.samples_information.columns or 'r2' not in self.samples_information:
-            raise ConfigError("Looks like your samples_txt file, '%s', is not properly formatted. "
-                              "We are not sure what's wrong, but we expected to find columns with "
-                              "titles 'r1' and 'r2' and we did not find such columns." % self.samples_txt_file)
-
-        fastq_file_names = list(self.samples_information['r1']) + list(self.samples_information['r2'])
-        try:
-            bad_fastq_names = [s for s in fastq_file_names if (not s.endswith('.fastq') and not s.endswith('.fastq.gz'))]
-        except Exception as e:
-            raise ConfigError(f"The format of your samples txt file does not seem to be working for anvi'o. This is "
-                              f"what the downstream processes had to say: '{e}'. Please double-check columns in "
-                              f"your samples txt.")
-        if bad_fastq_names:
-            run.warning("We noticed some of your sequence files in '%s' do not end with either '.fastq' "
-                        "or '.fastq.gz'. That's okay, but anvi'o decided it should warn you. Here are the first "
-                        "5 such files that have unconventional file extensions: %s." \
-                         % (self.samples_txt_file, ', '.join(bad_fastq_names[:5])))
 
 
     def init_kraken(self):
