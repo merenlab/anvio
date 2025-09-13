@@ -36,6 +36,8 @@ from anvio import FORCE_OVERWRITE, __version__ as VERSION
 from anvio.filesnpaths import is_file_exists, is_output_file_writable
 
 from anvio.metabolism.context import KeggContext
+from anvio.metabolism.constants import GLOBAL_MAP_ID_PATTERN, OVERVIEW_MAP_ID_PATTERN
+
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2024, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
@@ -186,13 +188,13 @@ class Pathway(Element):
     def is_global_map(self):
         if self.number is None:
             return None
-        return True if re.match(kegg.GLOBAL_MAP_ID_PATTERN, self.number) else False
+        return True if re.match(GLOBAL_MAP_ID_PATTERN, self.number) else False
 
     @property
     def is_overview_map(self):
         if self.number is None:
             return None
-        return True if re.match(kegg.OVERVIEW_MAP_ID_PATTERN, self.number) else False
+        return True if re.match(OVERVIEW_MAP_ID_PATTERN, self.number) else False
 
     def set_color_priority(
         self,
