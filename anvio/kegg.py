@@ -48,8 +48,6 @@ __maintainer__ = "Iva Veseli"
 __email__ = "iveseli@uchicago.edu"
 
 
-run = terminal.Run()
-progress = terminal.Progress()
 run_quiet = terminal.Run(log_file_path=None, verbose=False)
 progress_quiet = terminal.Progress(verbose=False)
 pp = terminal.pretty_print
@@ -57,7 +55,7 @@ P = terminal.pluralize
 
 
 class KeggEstimatorArgs():
-    def __init__(self, args, format_args_for_single_estimator=False, run=run, progress=progress):
+    def __init__(self, args, format_args_for_single_estimator=False, run=terminal.Run(), progress=terminal.Progress()):
         """A base class to assign arguments for KeggMetabolism estimator classes.
 
         Parameters
@@ -593,7 +591,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         All the arguments supplied by user to anvi-estimate-metabolism
     """
 
-    def __init__(self, args, run=run, progress=progress):
+    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
         self.args = args
         self.run = run
         self.progress = progress
@@ -738,10 +736,10 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
         # OUTPUT OPTIONS SANITY CHECKS
         if anvio.DEBUG:
-            run.info("Output Modes", ", ".join(self.output_modes))
-            run.info("Module completeness threshold", self.module_completion_threshold)
-            run.info("Only complete modules included in output", self.only_complete)
-            run.info("Zero-completeness modules excluded from output", self.exclude_zero_modules)
+            self.run.info("Output Modes", ", ".join(self.output_modes))
+            self.run.info("Module completeness threshold", self.module_completion_threshold)
+            self.run.info("Only complete modules included in output", self.only_complete)
+            self.run.info("Zero-completeness modules excluded from output", self.exclude_zero_modules)
         illegal_modes = set(self.output_modes).difference(set(self.available_modes.keys()))
         if illegal_modes:
             raise ConfigError("You have requested some output modes that we cannot handle. The offending modes "
@@ -984,7 +982,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
     def list_output_modes(self):
         """This function prints out the available output modes for the metabolism estimation script."""
-        run.warning(None, header="AVAILABLE OUTPUT MODES", lc="green")
+        self.run.warning(None, header="AVAILABLE OUTPUT MODES", lc="green")
 
         for mode, mode_meta in self.available_modes.items():
             self.run.info(mode, mode_meta['description'])
@@ -3762,7 +3760,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
         All the arguments supplied by user to anvi-estimate-metabolism
     """
 
-    def __init__(self, args, run=run, progress=progress):
+    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
         self.args = args
         self.run = run
         self.progress = progress
@@ -3885,7 +3883,7 @@ class KeggMetabolismEstimatorMulti(KeggContext, KeggEstimatorArgs):
     def list_output_modes(self):
         """This function prints out the available output modes for the metabolism estimation script."""
 
-        run.warning(None, header="AVAILABLE OUTPUT MODES", lc="green")
+        self.run.warning(None, header="AVAILABLE OUTPUT MODES", lc="green")
 
         for mode, mode_meta in self.available_modes.items():
             self.run.info(mode, mode_meta['description'])
