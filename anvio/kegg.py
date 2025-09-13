@@ -36,6 +36,9 @@ from anvio.tables.genefunctions import TableForGeneFunctions
 from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileSuperclass, ProfileDatabase, PanSuperclass
 from anvio.genomedescriptions import MetagenomeDescriptions, GenomeDescriptions
 from anvio.dbinfo import DBInfo
+from anvio.metabolism.constants import *
+from anvio.metabolism.context import KeggContext
+from anvio.metabolism.modulesdb import ModulesDatabase
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
