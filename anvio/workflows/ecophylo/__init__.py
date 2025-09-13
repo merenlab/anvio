@@ -276,6 +276,8 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             # metagenomics workflow rule.
             self.samples_txt = SamplesTxt(self.samples_txt_file, expected_format="paired_end")
 
+            self.sample_names_for_mapping_list = self.samples_txt.samples()
+
             if self.AA_mode == True:
                 raise ConfigError("You provided a samples.txt so you're in profile mode! Please change AA_mode to false.")
 
