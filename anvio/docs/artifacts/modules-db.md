@@ -123,12 +123,12 @@ The modules database class has plenty of helpful functions defined for it. You c
 import anvio
 import argparse
 import os
-from anvio import kegg
+from anvio.metabolism.modulesdb import ModulesDatabase
 
 args = argparse.Namespace()
 # CHANGE THIS PATH IF YOU WANT TO LOAD A MODULES DB AT A NON-DEFAULT LOCATION
 path_to_db = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/KEGG/MODULES.db')
-db = kegg.ModulesDatabase(path_to_db, args)
+db = ModulesDatabase(path_to_db, args)
 ```
 Once you have done this, you can start to use the helper functions. For example, the following function will return a list of all paths through a module:
 ```python

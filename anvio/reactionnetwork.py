@@ -29,7 +29,6 @@ from argparse import Namespace
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Set, Tuple, Union, Iterable
 
-import anvio.kegg as kegg
 import anvio.utils as utils
 import anvio.dbinfo as dbinfo
 import anvio.tables as tables
@@ -41,6 +40,9 @@ from anvio.errors import ConfigError
 from anvio import DEBUG, __file__ as ANVIO_PATH, __version__ as VERSION
 from anvio.dbops import ContigsDatabase, PanDatabase, PanSuperclass, ProfileDatabase
 
+from anvio.metabolism.context import KeggContext
+from anvio.metabolism.modulesdb import ModulesDatabase
+from anvio.metabolism.downloads import _download_worker
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2024, the Meren Lab (http://merenlab.org/)"
@@ -5472,10 +5474,10 @@ class KEGGData:
 
     Attributes
     ==========
-    kegg_context : anvio.kegg.KeggContext
+    kegg_context : anvio.metabolism.context.KeggContext
         This contains anvi'o KEGG database attributes, such as filepaths.
 
-    modules_db : anvio.kegg.ModulesDatabase
+    modules_db : anvio.metabolism.modulesdb.ModulesDatabase
         The anvi'o modules database from which KEGG data is loaded.
 
     modules_db_hash : str
@@ -5546,7 +5548,7 @@ class KEGGData:
         """
         args = argparse.Namespace()
         args.kegg_data_dir = kegg_dir
-        self.kegg_context = kegg.KeggContext(args)
+        self.kegg_context = KeggContext(args)
 
         missing_paths = self.check_for_binary_relation_files()
         if missing_paths:
@@ -5558,9 +5560,7 @@ class KEGGData:
 
         utils.is_kegg_modules_db(self.kegg_context.kegg_modules_db_path)
 
-        self.modules_db = kegg.ModulesDatabase(
-            self.kegg_context.kegg_modules_db_path, argparse.Namespace(quiet=True)
-        )
+        self.modules_db = ModulesDatabase(self.kegg_context.kegg_modules_db_path, argparse.Namespace(quiet=True))
         self.modules_db_hash = self.modules_db.db.get_meta_value('hash')
 
         self.ko_data: Dict[str, Dict[str, Any]] = {}
@@ -5968,7 +5968,7 @@ class KODatabase:
                 )
             workers: List[mp.Process] = []
             for _ in range(num_threads):
-                worker = mp.Process(target=kegg._download_worker, args=(input_queue, output_queue))
+                worker = mp.Process(target=_download_worker, args=(input_queue, output_queue))
                 workers.append(worker)
                 worker.start()
             downloaded_count = 0

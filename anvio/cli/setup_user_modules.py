@@ -4,10 +4,10 @@
 import sys
 
 import anvio
-import anvio.kegg as kegg
 
-from anvio.errors import ConfigError, FilesNPathsError
 from anvio.terminal import time_program
+from anvio.metabolism.setup import KeggSetup
+from anvio.errors import ConfigError, FilesNPathsError
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
@@ -27,7 +27,7 @@ def main():
     args.download_from_kegg = None
 
     try:
-        setup = kegg.KeggSetup(args)
+        setup = KeggSetup(args)
         setup.setup_user_data()
     except ConfigError as e:
         print(e)

@@ -13,7 +13,9 @@ import anvio.filesnpaths as filesnpaths
 from anvio.dbinfo import DBInfo as dbi
 from anvio.dbops import ContigsDatabase
 from anvio.errors import ConfigError, FilesNPathsError
-from anvio.kegg import KeggContext, KeggMetabolismEstimator
+
+from anvio.metabolism.context import KeggContext
+from anvio.metabolism.estimate import KeggMetabolismEstimator
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

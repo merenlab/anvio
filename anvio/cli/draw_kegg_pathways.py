@@ -11,13 +11,13 @@ import pandas as pd
 
 from argparse import Namespace
 
-import anvio.kegg as kegg
 import anvio.filesnpaths as filesnpaths
 
 from anvio.keggmapping import Mapper
 from anvio.argparse import ArgumentParser
 from anvio import A, K, __version__ as VERSION
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.metabolism.context import KeggContext
 
 
 __authors__ = ["semiller10"]
@@ -294,7 +294,7 @@ def check_package_dependencies():
 def check_kegg_data(args: Namespace) -> None:
     kegg_args = Namespace()
     kegg_args.kegg_data_dir = args.kegg_dir
-    kegg_context = kegg.KeggContext(kegg_args)
+    kegg_context = KeggContext(kegg_args)
 
     if not os.path.exists(kegg_context.kegg_map_image_kgml_file):
         raise ConfigError(

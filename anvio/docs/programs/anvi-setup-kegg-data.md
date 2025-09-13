@@ -258,9 +258,9 @@ If you want to get some data from the KEGG website that is not included in our d
 ```python
 import anvio
 import argparse
-from anvio import kegg
+from anvio.metabolism.setup import KeggSetup
 args = argparse.Namespace(reset=False)
-setup = kegg.KeggSetup(args, skip_init=True)
+setup = KeggSetup(args, skip_init=True)
 ```
 
 Once you have this class loaded, you can use its functions for a variety of download and processing tasks. We'll show some examples below.
