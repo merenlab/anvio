@@ -16,6 +16,7 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 from anvio.workflows import WorkflowSuperClass
+from anvio.artifacts.samples_txt import SamplesTxt
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -216,33 +217,30 @@ class TRNASeqWorkflow(WorkflowSuperClass):
 
         # Load table of sample info from samples_txt.
         self.samples_txt_file = self.get_param_value_from_config(['samples_txt'])
-        filesnpaths.is_file_exists(self.samples_txt_file)
-        try:
-            # An error will subsequently be raised in `check_samples_txt` if there is no header.
-            self.sample_info = pd.read_csv(self.samples_txt_file, sep='\t', index_col=False)
-        except IndexError as e:
-            raise ConfigError("The samples_txt file, '%s', does not appear to be properly formatted. "
-                              "This is the error from trying to load it: '%s'" % (self.samples_txt_file, e))
+        self.samples_txt = SamplesTxt(self.samples_txt_file)
+        self.samples_info = self.samples_txt.as_df()
+        # SamplesTxt already perfoms some checks, but we perform additional checks here, like the optional
+        # treatment column and the project name if running anvi-merge-trnaseq.
         self.check_samples_txt()
 
-        self.sample_names = self.sample_info['sample'].tolist()
-        if 'treatment' not in self.sample_info:
+        self.sample_names = self.samples_txt.samples()
+        if 'treatment' not in self.samples_info:
             # The treatment is the same for each sample and is set in the config file.
-            self.sample_info['treatment'] = [self.get_param_value_from_config(['anvi_trnaseq', '--treatment'])] * len(self.sample_names)
+            self.samples_info['treatment'] = [self.get_param_value_from_config(['anvi_trnaseq', '--treatment'])] * len(self.sample_names)
         if self.run_iu_merge_pairs:
-            self.treatments = self.sample_info['treatment']
-            self.r1_paths = self.sample_info['r1'].tolist()
-            self.r2_paths = self.sample_info['r2'].tolist()
+            self.treatments = self.samples_info['treatment']
+            self.r1_paths = self.samples_info['r1'].tolist()
+            self.r2_paths = self.samples_info['r2'].tolist()
             self.r1_prefixes = self.get_r1_prefixes()
             self.r2_prefixes = self.get_r2_prefixes()
             self.fasta_paths = None
         else:
-            self.treatments = self.sample_info['treatment']
+            self.treatments = self.samples_info['treatment']
             self.r1_paths = None
             self.r2_paths = None
             self.r1_prefixes = None
             self.r2_prefixes = None
-            self.fasta_paths = self.sample_info['fasta'].tolist()
+            self.fasta_paths = self.samples_info['fasta'].tolist()
 
         self.target_files = self.get_target_files()
 
@@ -270,7 +268,7 @@ class TRNASeqWorkflow(WorkflowSuperClass):
             min_header = ['sample', 'fasta']
         missing_columns = []
         for column_title in min_header:
-            if column_title not in self.sample_info.columns:
+            if column_title not in self.samples_info.columns:
                 missing_columns.append(column_title)
         if missing_columns:
             raise ConfigError("The samples_txt file, '%s', is not properly formatted, "
@@ -280,14 +278,14 @@ class TRNASeqWorkflow(WorkflowSuperClass):
 
     def check_sample_names(self):
         """Check that the name of each tRNA-seq library is anvi'o-compliant."""
-        for sample_name in self.sample_info['sample']:
+        for sample_name in self.samples_info['sample']:
             try:
                 u.check_sample_id(sample_name)
             except ConfigError as e:
                 raise ConfigError("While processing the samples_txt file, '%s', "
                                   "anvi'o ran into the following error: %s" % (self.samples_txt_file, e))
 
-        if len(set(self.sample_info['sample'])) != len(self.sample_info['sample']):
+        if len(set(self.samples_info['sample'])) != len(self.samples_info['sample']):
             raise ConfigError("Sample names in the samples_txt file, '%s', must be unique." % self.samples_txt_file)
 
 
@@ -295,8 +293,8 @@ class TRNASeqWorkflow(WorkflowSuperClass):
         """Check the types of sample treatments, which are primarily meant to differentiate
         technical replicates involving different enzymatic treatments to remove nucleotide
         modifications."""
-        if 'treatment' in self.sample_info.columns:
-            treatments = self.sample_info['treatment'].tolist()
+        if 'treatment' in self.samples_info.columns:
+            treatments = self.samples_info['treatment'].tolist()
             unknown_treatments = []
             for treatment in treatments:
                 if treatment not in TRNASeqWorkflow.KNOWN_TREATMENTS:
@@ -331,7 +329,7 @@ class TRNASeqWorkflow(WorkflowSuperClass):
         considering merged or unpaired reads. Allow both absolute and relative paths in
         samples_txt."""
         if self.run_iu_merge_pairs:
-            fastq_paths = self.sample_info['r1'].tolist() + self.sample_info['r2'].tolist()
+            fastq_paths = self.samples_info['r1'].tolist() + self.samples_info['r2'].tolist()
             bad_fastq_paths = []
             for fastq_path in fastq_paths:
                 if os.path.isabs(fastq_path):
@@ -356,7 +354,7 @@ class TRNASeqWorkflow(WorkflowSuperClass):
                             "Here are the first 5 such files that have unconventional file extensions: %s."
                             % (self.samples_txt_file, ', '.join(bad_fastq_names[:5])))
         else:
-            fasta_paths = self.sample_info['fasta'].tolist()
+            fasta_paths = self.samples_info['fasta'].tolist()
             bad_fasta_paths = []
             for fasta_path in fasta_paths:
                 if os.path.isabs(fasta_path):
@@ -402,11 +400,11 @@ class TRNASeqWorkflow(WorkflowSuperClass):
         identifiers (random nucleotides). The user should provide these sequences in samples_txt.
         This function converts read 1 prefixes into regex strings that are recognized by
         Illumina-utils."""
-        if 'r1_prefix' not in self.sample_info:
+        if 'r1_prefix' not in self.samples_info:
             return None
 
         r1_prefixes = []
-        for r1_prefix_input in self.sample_info['r1_prefix'].tolist():
+        for r1_prefix_input in self.samples_info['r1_prefix'].tolist():
             r1_prefix = '^'
             for nt in r1_prefix_input:
                 if nt not in self.RECOGNIZED_PREFIX_NTS:
@@ -429,11 +427,11 @@ class TRNASeqWorkflow(WorkflowSuperClass):
         identifiers (random nucleotides). The user should provide these sequences in samples_txt.
         This function converts read 2 prefixes into regex strings that are recognized by
         Illumina-utils."""
-        if 'r2_prefix' not in self.sample_info:
+        if 'r2_prefix' not in self.samples_info:
             return None
 
         r2_prefixes = []
-        for r2_prefix_input in self.sample_info['r2_prefix'].tolist():
+        for r2_prefix_input in self.samples_info['r2_prefix'].tolist():
             r2_prefix = '^'
             for nt in r2_prefix_input:
                 if nt not in self.RECOGNIZED_PREFIX_NTS:
