@@ -990,7 +990,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
 
     def list_output_headers(self):
         """This function prints out the available output headers for the 'custom' output mode"""
-        run.warning(None, header="AVAILABLE OUTPUT HEADERS", lc="green")
+        self.run.warning(None, header="AVAILABLE OUTPUT HEADERS", lc="green")
 
         for header, header_meta in self.available_headers.items():
             desc_str = header_meta['description']
