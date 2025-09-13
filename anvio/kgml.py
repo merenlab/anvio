@@ -28,7 +28,6 @@ from matplotlib.colors import Colormap, rgb2hex
 
 from typing import Dict, Iterable, List, Literal, Tuple, Union
 
-import anvio.kegg as kegg
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
@@ -36,6 +35,7 @@ from anvio import FORCE_OVERWRITE, __version__ as VERSION
 from anvio.filesnpaths import is_file_exists, is_output_file_writable
 
 from anvio.metabolism.context import KeggContext
+from anvio.metabolism.downloads import download_org_pathway_image_files
 from anvio.metabolism.constants import GLOBAL_MAP_ID_PATTERN, OVERVIEW_MAP_ID_PATTERN
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -1902,7 +1902,7 @@ class Drawer:
             is_file_exists(map_filepath)
 
         if use_org_map and not is_file_exists(map_filepath, dont_raise=True):
-            kegg.download_org_pathway_image_files(f'{pathway.org}{pathway.number}', self.kegg_dir)
+            download_org_pathway_image_files(f'{pathway.org}{pathway.number}', self.kegg_dir)
 
         bio_pathway.image = map_filepath
 
@@ -1972,7 +1972,7 @@ class Drawer:
                 kwargs['fontsize'] = 9
 
         if use_org_map and not is_file_exists(map_filepath, dont_raise=True):
-            kegg.download_org_pathway_image_files(f'{pathway.org}{pathway.number}', self.kegg_dir)
+            download_org_pathway_image_files(f'{pathway.org}{pathway.number}', self.kegg_dir)
 
         bio_pathway.image = map_filepath
 
@@ -2036,7 +2036,7 @@ class Drawer:
                 kwargs['fontsize'] = 9
 
         if use_org_map and not is_file_exists(map_filepath, dont_raise=True):
-            kegg.download_org_pathway_image_files(f'{pathway.org}{pathway.number}', self.kegg_dir)
+            download_org_pathway_image_files(f'{pathway.org}{pathway.number}', self.kegg_dir)
 
         bio_pathway.image = map_filepath
 

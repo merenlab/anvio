@@ -42,6 +42,7 @@ from anvio import DEBUG, __file__ as ANVIO_PATH, __version__ as VERSION
 from anvio.dbops import ContigsDatabase, PanDatabase, PanSuperclass, ProfileDatabase
 
 from anvio.metabolism.context import KeggContext
+from anvio.metabolism.downloads import _download_worker
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2024, the Meren Lab (http://merenlab.org/)"
@@ -5969,7 +5970,7 @@ class KODatabase:
                 )
             workers: List[mp.Process] = []
             for _ in range(num_threads):
-                worker = mp.Process(target=kegg._download_worker, args=(input_queue, output_queue))
+                worker = mp.Process(target=_download_worker, args=(input_queue, output_queue))
                 workers.append(worker)
                 worker.start()
             downloaded_count = 0
