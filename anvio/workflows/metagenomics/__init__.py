@@ -155,7 +155,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
         # loading the samples.txt file
         samples_txt_file = self.get_param_value_from_config(['samples_txt'])
-        self.samples_txt = SamplesTxt(samples_txt_file)
+        self.samples_txt = SamplesTxt(samples_txt_file, expected_format="paired_end")
         self.samples_information = self.samples_txt.as_df()
 
         # get a list of the sample names
