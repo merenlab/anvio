@@ -129,7 +129,7 @@ Just to note, you can also access this functionality programmatically by passing
 import pandas as pd
 from types import SimpleNamespace
 
-from anvio.kegg import KeggMetabolismEstimator
+from anvio.metabolism.estimate import KeggMetabolismEstimator
 
 # define any number of enzymes you are interested in as a pandas
 # dataframe. You can set the 'gene_id' information to anything
