@@ -107,25 +107,47 @@ class SamplesTxt:
         """Return the raw TSV text of the samples-txt file."""
         return self._raw_text
 
-    def as_dict(self):
-        """Return normalized dict: {sample: {'group', 'r1':[], 'r2':[], 'lr':[]}}"""
-        return self._data
+    def as_dict(self, include_extras=True):
+        """
+        Return {sample: {'group','r1','r2','lr', [extras...]}}.
+        Set include_extras=False to get only the canonical keys.
+        """
+        if include_extras:
+            return self._data
+        # only with classic keys
+        return {
+            s: {k: v for k, v in info.items() if k in {"group", "r1", "r2", "lr"}}
+            for s, info in self._data.items()
+        }
 
-    def as_df(self):
+    def as_df(self, include_extras=True):
         """DataFrame view for downstream code expecting a df."""
         import pandas as pd
         rows = []
         for s, info in self._data.items():
-            rows.append({
+            row = {
                 "sample": s,
                 "group": info.get("group"),
                 "r1": ",".join(info.get("r1", [])) if info.get("r1") else "",
                 "r2": ",".join(info.get("r2", [])) if info.get("r2") else "",
                 "lr": ",".join(info.get("lr", [])) if info.get("lr") else "",
-            })
+            }
+            if include_extras:
+                for col in self._extra_columns:
+                    row[col] = info.get(col, "")
+            rows.append(row)
+
         df = pd.DataFrame(rows)
-        cols = ["sample", "group", "r1", "r2", "lr"]
+        base = ["sample", "group", "r1", "r2", "lr"]
+        if include_extras:
+            cols = base + self._extra_columns
+        else:
+            cols = base
         return df[[c for c in cols if c in df.columns]]
+
+    def extra_columns(self):
+        """Return a list of user-supplied extra column names in file order."""
+        return list(self._extra_columns)
 
     # Optional helper for CLI code that still passes args:
     @classmethod
@@ -139,6 +161,12 @@ class SamplesTxt:
     def _inspect_headers(self):
         self._columns_found = utils.get_columns_of_TAB_delim_file(self.artifact_path, include_first_column=True)
         self._first_col = self._columns_found[0] if self._columns_found else None
+
+        # Columns that are not part of the canonical schema (keep header order)
+        self._extra_columns = [
+            c for c in (self._columns_found or [])
+            if c not in {self._first_col, "group", "r1", "r2", "lr"}
+        ]
 
     def _parse_rows(self):
         # Do not pass expected_fields here; 'free' and partial headers should still parse.
@@ -174,6 +202,12 @@ class SamplesTxt:
                 "r2": self._split_paths(row.get("r2")),
                 "lr": self._split_paths(row.get("lr")),
             }
+
+            # Flatten user extras (strings as-is; keep empty as "")
+            for col in self._extra_columns:
+                val = row.get(col)
+                info[col] = "" if val in (None,) else str(val)
+
             data[sample] = info
         return data
 
