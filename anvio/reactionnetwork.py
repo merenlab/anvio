@@ -41,6 +41,7 @@ from anvio.errors import ConfigError
 from anvio import DEBUG, __file__ as ANVIO_PATH, __version__ as VERSION
 from anvio.dbops import ContigsDatabase, PanDatabase, PanSuperclass, ProfileDatabase
 
+from anvio.metabolism.context import KeggContext
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2024, the Meren Lab (http://merenlab.org/)"
@@ -5472,7 +5473,7 @@ class KEGGData:
 
     Attributes
     ==========
-    kegg_context : anvio.kegg.KeggContext
+    kegg_context : anvio.metabolism.context.KeggContext
         This contains anvi'o KEGG database attributes, such as filepaths.
 
     modules_db : anvio.kegg.ModulesDatabase
@@ -5546,7 +5547,7 @@ class KEGGData:
         """
         args = argparse.Namespace()
         args.kegg_data_dir = kegg_dir
-        self.kegg_context = kegg.KeggContext(args)
+        self.kegg_context = KeggContext(args)
 
         missing_paths = self.check_for_binary_relation_files()
         if missing_paths:

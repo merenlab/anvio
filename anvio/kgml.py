@@ -35,6 +35,7 @@ from anvio.errors import ConfigError
 from anvio import FORCE_OVERWRITE, __version__ as VERSION
 from anvio.filesnpaths import is_file_exists, is_output_file_writable
 
+from anvio.metabolism.context import KeggContext
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2024, the Meren Lab (http://merenlab.org/)"
 __credits__ = []
@@ -1658,7 +1659,7 @@ class Drawer:
 
     Attributes
     ==========
-    kegg_context : anvio.kegg.KeggContext
+    kegg_context : anvio.metabolism.context.KeggContext
         This contains anvi'o KEGG database attributes, such as filepaths.
 
     xml_ops : XMLOps
@@ -1706,7 +1707,7 @@ class Drawer:
         """
         args = Namespace()
         args.kegg_data_dir = kegg_dir
-        self.kegg_context = kegg.KeggContext(args)
+        self.kegg_context = KeggContext(args)
 
         self.xml_ops = XMLOps()
 
@@ -2094,7 +2095,7 @@ class Tester:
         args = Namespace()
         if kegg_dirpath is not None:
             args.kegg_data_dir = kegg_dirpath
-        kegg_context = kegg.KeggContext(args)
+        kegg_context = KeggContext(args)
         for dirname in os.listdir(kegg_context.map_image_kgml_dir):
             dirpath = os.path.join(kegg_context.map_image_kgml_dir, dirname)
             if not os.path.isdir(dirpath):
