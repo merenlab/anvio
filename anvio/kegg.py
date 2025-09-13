@@ -3,43 +3,30 @@
 """This file contains Kegg related classes."""
 
 import os
-import shutil
-import glob
 import re
 import copy
-import statistics
 import json
-import time
-import hashlib
-import collections
-import pandas as pd
-import numpy as np
-import multiprocessing as mp
+import math
+import statistics
 
+import pandas as pd
 from scipy import stats
-from typing import Dict, List, Tuple, Union
 
 import anvio
-import anvio.db as db
 import anvio.tables as t
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 
-from anvio.errors import ConfigError
-from anvio.drivers.hmmer import HMMer
-from anvio.drivers.muscle import Muscle
-from anvio.parsers import parser_modules
-from anvio.version import versions_for_db_types
-from anvio.tables.genefunctions import TableForGeneFunctions
-from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileSuperclass, ProfileDatabase, PanSuperclass
-from anvio.genomedescriptions import MetagenomeDescriptions, GenomeDescriptions
 from anvio.dbinfo import DBInfo
+from anvio.errors import ConfigError
+from anvio.genomedescriptions import MetagenomeDescriptions, GenomeDescriptions
+from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileSuperclass, ProfileDatabase, PanSuperclase
+
 from anvio.metabolism.constants import *
 from anvio.metabolism.context import KeggContext
 from anvio.metabolism.modulesdb import ModulesDatabase
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
