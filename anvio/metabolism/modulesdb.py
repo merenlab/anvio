@@ -27,10 +27,10 @@ class ModulesDatabase(KeggContext):
     empty args object:
     ```
     >>> import argparse
-    >>> from anvio import kegg
+    >>> from anvio.metabolism.modulesdb import ModulesDatabase
     >>> path_to_db = "YOUR/PATH/HERE/MODULES.db"
     >>> args = argparse.Namespace()
-    >>> kegg.ModulesDatabase(path_to_db, args)
+    >>> ModulesDatabase(path_to_db, args)
     ```
     """
 

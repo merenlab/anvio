@@ -11,10 +11,10 @@ import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
 from anvio.version import versions_for_db_types
-from anvio.metabolism.context import KeggContext
 from anvio.terminal import pluralize as P
 
-from anvio.kegg import ModulesDatabase
+from anvio.metabolism.context import KeggContext
+from anvio.metabolism.modulesdb import ModulesDatabase
 
 
 class KeggSetup(KeggContext):

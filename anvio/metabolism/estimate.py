@@ -22,7 +22,7 @@ import anvio.ccollections as ccollections
 from anvio.dbinfo import DBInfo
 from anvio.errors import ConfigError
 from anvio.genomedescriptions import MetagenomeDescriptions, GenomeDescriptions
-from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileSuperclass, ProfileDatabase, PanSuperclase
+from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileSuperclass, ProfileDatabase, PanSuperclass
 
 from anvio.metabolism.constants import *
 from anvio.metabolism.context import KeggContext
