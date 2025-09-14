@@ -34,6 +34,7 @@ For single-end reads, the samples-txt file should have at least the following tw
 
 ### Long reads example
 For long reads, the samples-txt file should have at least the following two columns:
+
 |sample|lr|
 |:--|:--|
 |Sample_01|/path/to/XXX-01-lr.fastq.gz|
@@ -42,6 +43,7 @@ For long reads, the samples-txt file should have at least the following two colu
 
 ### Mixed reads example
 If you have a mix of paired-end, single-end, and long reads, your samples-txt file should have at least the following columns:
+
 |sample|r1|r2|lr|
 |:--|:--|:--|:--|
 |Sample_01|/path/to/XXX-01-R1.fastq.gz|/path/to/XXX-01-R2.fastq.gz||
