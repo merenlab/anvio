@@ -397,6 +397,8 @@ class DirectedForce():
                     else:
                         if current_backward_connected:
 
+                            print('HI')
+
                             number = max([(G.get_edge_data(current_node, backward)['weight'], i) for (i, backward) in enumerate(current_backward_connected)])[1]
                             current_connector = current_backward_connected[number]
                             next_node = current_node
@@ -405,11 +407,11 @@ class DirectedForce():
                             # while next_node not in resolved_nodes:
                             while True:
 
-                                # print(next_node, current_connector)
+                                current_node = next_node
 
                                 if G.has_edge(M_predecessors[current_node], current_node):
 
-                                    current_node = next_node
+                                    # current_node = next_node
 
                                     data = G.get_edge_data(current_node, current_connector)
 
@@ -474,6 +476,8 @@ class DirectedForce():
                 M.add_edge(stop, 'STOP', **data)
 
             M_successors[stop] += ['STOP']
+
+            self.run.info_single(f"One node {stop} remained open. This should be checked and will be count as a problem.")
 
         if not nx.is_directed_acyclic_graph(M):
             raise ConfigError("Oh no. It looks like your graph is so complex or includes a motif I haven't seen before"
