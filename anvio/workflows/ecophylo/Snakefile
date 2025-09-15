@@ -1065,7 +1065,6 @@ rule anvi_estimate_scg_taxonomy:
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_scg_taxonomy_{group}.log")
     input:
         final_list_of_sequences_for_mapping_headers = os.path.join(dirs_dict['MSA'], "{group}", "{group}_headers.tmp"),
-        run_scg_taxonomy = expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_scg_taxonomy.done"), sample_name = M.names_list),
     params:
         reformat_file = rules.combine_sequence_data.output.reformat_report_all,
         misc_data_dir = os.path.join(dirs_dict['MISC_DATA'], "{group}"),
