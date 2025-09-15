@@ -2,7 +2,6 @@
 # pylint: disable=line-too-long
 
 import os
-import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
@@ -44,7 +43,9 @@ class SamplesTxt:
         "free":       [],  # only first column + optional others
     }
 
-    def __init__(self, path, expected_format="free", valid_formats=None, skip_check_sanity=False):
+    def __init__(self, path, expected_format="free", valid_formats=None, skip_check_sanity=False, run=terminal.Run()):
+        self.run = run
+
         self.artifact_path = path
         self.expected_format = expected_format
         self.valid_formats = dict(self.DEFAULT_VALID_FORMATS)
@@ -90,7 +91,7 @@ class SamplesTxt:
         possible_columns = set([self._first_col, "r1", "r2", "lr", "group"])
         extra_columns = set(self._columns_found) - possible_columns
         if extra_columns:
-            run.warning(
+            self.run.warning(
                 "Your samples txt file contains %s: %s compared to what is expected of a `samples-txt` file, "
                 "which is absolutely fine. You're reading this message because anvi'o wanted to make sure you "
                 "know that it knows that it is the case. Classic anvi'o virtue signaling."
@@ -294,7 +295,7 @@ class SamplesTxt:
         allowed = (".fastq", ".fastq.gz", ".fq", ".fq.gz")
         bad = [p for p in all_paths if p and not p.endswith(allowed)]
         if bad:
-            run.warning(
+            self.run.warning(
                 "We noticed some of your sequence files in '%s' do not end with one of "
                 "'.fastq', '.fastq.gz', '.fq', or '.fq.gz'. That's okay, but anvi'o decided it "
                 "should warn you. Here are the first 5 such files that have unconventional "
