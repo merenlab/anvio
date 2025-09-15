@@ -264,12 +264,12 @@ class SamplesTxt:
 
         if missing:
             raise ConfigError(f"Bad news. Your samples txt contains {utils.pluralize('sample', len(missing))} "
-                              f"({", ".join(sorted(missing))}) with missing files (by which we mean that the "
+                              f"({', '.join(sorted(missing))}) with missing files (by which we mean that the "
                               f"r1/r2/lr paths are there, but the files they point to are not).")
 
         if identical:
             raise ConfigError(f"Interesting. Your samples txt contains {utils.pluralize('sample', len(identical))} "
-                              f"({", ".join(sorted(identical))}) where r1 and r2 file paths are identical. Not OK.")
+                              f"({', '.join(sorted(identical))}) where r1 and r2 file paths are identical. Not OK.")
 
     def _warn_on_unconventional_fastq_suffixes(self):
         # Check ALL paths (SR and LR). Accept .fastq, .fastq.gz, .fq, .fq.gz
