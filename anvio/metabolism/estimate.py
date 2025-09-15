@@ -27,7 +27,6 @@ __version__ = anvio.__version__
 __maintainer__ = "Iva Veseli"
 __email__ = "iveseli@uchicago.edu"
 
-
 run_quiet = terminal.Run(log_file_path=None, verbose=False)
 progress_quiet = terminal.Progress(verbose=False)
 pp = terminal.pretty_print
@@ -185,7 +184,6 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                                                        'description': "Number of copies of each top-level step in the module (the minimum of these is the stepwise module copy number)"
                                                        }
 
-
         # OUTPUT OPTIONS SANITY CHECKS
         if anvio.DEBUG:
             self.run.info("Output Modes", ", ".join(self.output_modes))
@@ -194,9 +192,8 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
             self.run.info("Zero-completeness modules excluded from output", self.exclude_zero_modules)
         illegal_modes = set(self.output_modes).difference(set(self.available_modes.keys()))
         if illegal_modes:
-            raise ConfigError("You have requested some output modes that we cannot handle. The offending modes "
-                              "are: %s. Please use the flag --list-available-modes to see which ones are acceptable."
-                              % (", ".join(illegal_modes)))
+            raise ConfigError(f"You have requested some output modes that we cannot handle. The offending modes "
+                              f"are: {', '.join(illegal_modes)}. Please use the flag --list-available-modes to see which ones are acceptable.")
         if self.custom_output_headers and "modules_custom" not in self.output_modes:
             raise ConfigError("You seem to have provided a list of custom headers without actually requesting a 'custom' output "
                               "mode. We think perhaps you missed something, so we are stopping you right there.")
@@ -208,9 +205,8 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                 self.run.info("Custom Output Headers", ", ".join(self.custom_output_headers))
             illegal_headers = set(self.custom_output_headers).difference(set(self.available_headers.keys()))
             if illegal_headers:
-                raise ConfigError("You have requested some output headers that we cannot handle. The offending ones "
-                                  "are: %s. Please use the flag --list-available-output-headers to see which ones are acceptable."
-                                  % (", ".join(illegal_headers)))
+                raise ConfigError(f"You have requested some output headers that we cannot handle. The offending ones "
+                                  f"are: {', '.join(illegal_headers)}. Please use the flag --list-available-output-headers to see which ones are acceptable.")
 
             # check if any headers requested for modules_custom mode are reserved for KOfams mode
             if "modules_custom" in self.output_modes:
@@ -222,17 +218,15 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
         outputs_require_ko_dict = [m for m in self.output_modes if self.available_modes[m]['data_dict'] == 'kofams']
         output_string = ", ".join(outputs_require_ko_dict)
         if self.estimate_from_json and len(outputs_require_ko_dict):
-            raise ConfigError("You have requested to estimate metabolism from a JSON file and produce the following KOfam hit "
-                              f"output mode(s): {output_string}. Unforunately, this is not possible because "
-                              "our JSON estimation function does not currently produce the required data for KOfam hit output. "
-                              "Please instead request some modules-oriented output mode(s) for your JSON input.")
-
+            raise ConfigError(f"You have requested to estimate metabolism from a JSON file and produce the following KOfam "
+                              f"hit output mode(s): {output_string}. Unforunately, this is not possible because our JSON "
+                              f"estimation function does not currently produce the required data for KOfam hit output. "
+                              f"Please instead request some modules-oriented output mode(s) for your JSON input.")
 
         if self.matrix_format:
             raise ConfigError("You have asked for output in matrix format, but unfortunately this currently only works in "
-                             "multi-mode. Please give this program an input file contining multiple bins or contigs databases instead "
-                             "of the single contigs database that you have provided. We are very sorry for any inconvenience.")
-
+                              "multi-mode. Please give this program an input file contining multiple bins or contigs databases instead "
+                              "of the single contigs database that you have provided. We are very sorry for any inconvenience.")
 
         # let user know what they told anvi'o to work on
         if self.contigs_db_path:
@@ -275,7 +269,6 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                              "memory footprint when used with --matrix-format or --get-raw-data-as-json, since both "
                              "of those options require storing all the per-contig data in memory. You have been warned. "
                              "The OOM-Killer may strike.")
-
 
         if self.contigs_db_path:
             utils.is_contigs_db(self.contigs_db_path)
@@ -2371,4 +2364,3 @@ def module_definition_to_enzyme_accessions(mod_definition):
     acc_list = re.split(r'\s+', mod_definition)
 
     return acc_list
-
