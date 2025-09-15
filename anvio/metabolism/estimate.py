@@ -21,7 +21,6 @@ import anvio.ccollections as ccollections
 from anvio.dbinfo import DBInfo
 from anvio.errors import ConfigError
 from anvio.genomedescriptions import MetagenomeDescriptions, GenomeDescriptions
-from anvio.dbops import ContigsDatabase, ProfileSuperclass, ProfileDatabase, PanSuperclass
 
 from anvio.metabolism.context import KeggContext
 from anvio.metabolism.modulesdb import ModulesDatabase
@@ -815,6 +814,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
             utils.is_contigs_db(self.contigs_db_path)
             # here we load the contigs DB just for sanity check purposes.
             # We will need to load it again later just before accessing data to avoid SQLite error that comes from different processes accessing the DB
+            from anvio.dbops import ContigsDatabase # <- import here to avoid circular import
             contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
             self.contigs_db_project_name = contigs_db.meta['project_name']
         elif self.enzymes_txt:
@@ -1049,6 +1049,7 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
                                  f"purposes of estimating metabolism.")
 
         self.progress.update('Loading gene call data from contigs DB')
+        from anvio.dbops import ContigsDatabase # <- import here to avoid circular import
         contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
 
         split_list = ','.join(["'%s'" % split_name for split_name in splits_to_use])
@@ -1145,6 +1146,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         else:
             if not self.profile_db:
                 self.args.skip_consider_gene_dbs = True
+
+                from anvio.dbops import ProfileSuperclass # <- import here to avoid circular import
                 self.profile_db = ProfileSuperclass(self.args)
 
             samples_list = self.profile_db.p_meta['samples']
@@ -2914,6 +2917,8 @@ class KeggMetabolismEstimator(KeggContext, KeggEstimatorArgs):
         enzyme_cluster_split_contig : list
             (enzyme_accession, gene_cluster_id, split, contig) tuples in which split and contig are both NAs
         """
+
+        from anvio.dbops import PanSuperclass # <- import here to avoid circular import
 
         pan_super = PanSuperclass(self.args)
         pan_super.init_gene_clusters(gene_cluster_ids_to_focus = gene_cluster_list)
