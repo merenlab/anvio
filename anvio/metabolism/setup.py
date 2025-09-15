@@ -841,7 +841,9 @@ class KeggSetup(KeggContext):
                                   f"--overwrite-output-destinations flag. But the old database will go away forever in that case. Just making "
                                   f"sure you are aware of that, so that you have no regrets.")
         try:
-            mod_db = ModulesDatabase(db_path, module_data_directory=module_data_directory, brite_data_directory=brite_data_directory, data_source=source, args=self.args, module_dictionary=self.module_dict, pathway_dictionary=self.pathway_dict, brite_dictionary=self.brite_dict, skip_brite_hierarchies=skip_brite_hierarchies, run=run, progress=progress)
+            mod_db = ModulesDatabase(db_path, module_data_directory=module_data_directory, brite_data_directory=brite_data_directory, data_source=source,
+                                     args=self.args, module_dictionary=self.module_dict, pathway_dictionary=self.pathway_dict, brite_dictionary=self.brite_dict,
+                                     skip_brite_hierarchies=skip_brite_hierarchies, run=self.run, progress=self.progress)
             mod_db.create()
         except Exception as e:
             print(e)
