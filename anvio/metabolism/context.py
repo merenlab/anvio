@@ -175,14 +175,17 @@ class KeggContext(object):
             else:
                 self.stray_ko_dict = utils.get_TAB_delimited_file_as_dictionary(self.stray_ko_thresholds_file)
         else:
-            raise ConfigError(f"You've requested to include stray KO models in your analysis, but we cannot find the "
-                              f"estimated bit score thresholds for these models, which can be generated during "
-                              f"`anvi-setup-kegg-data` and stored at the following path: {self.stray_ko_thresholds_file}. This "
-                              f"means that `anvi-setup-kegg-data` was run without the `--include-stray-KOs` flag for the KEGG "
-                              f"data directory that you are using. You have two options: 1) give up on including these models and "
-                              f"re-run your command without the `--include-stray-KOs` flag, or 2) change the KEGG data that you "
-                              f"are using, which could be as simple as specifying a new `--kegg-data-dir` or as complex as re-running "
-                              f"`anvi-setup-kegg-data` to obtain a dataset with predicted thresholds for stray KO models.")
+            raise ConfigError(f"You have requested to include stray KO models in your analysis, but anvi'o cannot find the "
+                              f"estimated bit score thresholds for these models. Usually these values are generated when you run "
+                              f"`anvi-setup-kegg-data`, and stored at the following path: {self.stray_ko_thresholds_file}. Their "
+                              f"absence in your setup indicates that `anvi-setup-kegg-data` was run without the `--include-stray-KOs` "
+                              f"flag. You have two options. You can either (1) give up on including these models and re-run your "
+                              f"annotation step without the `--include-stray-KOs` flag, or (2) change the KEGG data that you "
+                              f"are using with one that includes score threshold estimations. For the latter, the most straightforward "
+                              f"solution is to rerun `anvi-setup-kegg-data` with `--include-stray-KOs` flag. If you prefer to keep "
+                              f"your default KEGG data is, you may consider also including `--kegg-data-dir` parameter to "
+                              f"`anvi-setup-kegg-data` along with `--include-stray-KOs` to create a new copy of your local database "
+                              f"elsewhere.")
 
 
     def get_ko_skip_list(self):
