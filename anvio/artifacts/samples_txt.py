@@ -59,7 +59,7 @@ class SamplesTxt:
         self._raw_rows = None  # as returned by get_TAB_delimited_file_as_dictionary
         self._data = None      # normalized dict we expose
 
-        self._load_raw_text()                 # populate _raw_text
+        self._load_raw_text()        # populate _raw_text
         self._inspect_headers()      # populate _columns_found / _first_col
         self._parse_rows()           # populate _raw_rows and normalized _data (no strict validation yet)
 
@@ -70,9 +70,7 @@ class SamplesTxt:
         """Perform all sanity checks and warnings."""
         # Validate mode key
         if self.expected_format not in self.valid_formats:
-            raise ConfigError(
-                f"SamplesTxt speaking: expected_format must be one of {list(self.valid_formats)}, got '{self.expected_format}'."
-            )
+            raise ConfigError(f"SamplesTxt speaking: expected_format must be one of {list(self.valid_formats)}, got '{self.expected_format}'.")
 
         # File is tab-delimited (raises on failure)
         filesnpaths.is_file_tab_delimited(self.artifact_path)
@@ -83,21 +81,16 @@ class SamplesTxt:
 
         expected_columns = [self._first_col] + self.valid_formats[self.expected_format]
         if not set(expected_columns).issubset(set(self._columns_found)):
-            raise ConfigError(
-                f"A samples txt file is supposed to have at least the columns {', '.join(expected_columns)}."
-            )
+            raise ConfigError(f"A samples txt file is supposed to have at least the columns {', '.join(expected_columns)}.")
 
         # Warn about extras columns
         possible_columns = set([self._first_col, "r1", "r2", "lr", "group"])
         extra_columns = set(self._columns_found) - possible_columns
         if extra_columns:
-            self.run.warning(
-                "Your samples txt file contains %s: %s compared to what is expected of a `samples-txt` file, "
-                "which is absolutely fine. You're reading this message because anvi'o wanted to make sure you "
-                "know that it knows that it is the case. Classic anvi'o virtue signaling."
-                % (utils.pluralize('extra column', len(extra_columns)), ', '.join(sorted(extra_columns))),
-                lc="yellow"
-            )
+            self.run.warning(f"Your samples txt file contains {utils.pluralize('extra column', len(extra_columns))}: "
+                             f"{', '.join(sorted(extra_columns))} compared to what is expected of a `samples-txt` file, "
+                             f"which is absolutely fine. You're reading this message because anvi'o wanted to make sure you "
+                             f"know that it knows that it is the case. Classic anvi'o virtue signaling.", lc="yellow")
 
         # Per-row validations, file existence, identical pairs
         self._validate_rows_by_mode()
@@ -109,8 +102,8 @@ class SamplesTxt:
         return self._raw_text
 
     def as_dict(self, include_extras=True):
-        """
-        Return {sample: {'group','r1','r2','lr', [extras...]}}.
+        """Return {sample: {'group','r1','r2','lr', [extras...]}}.
+
         Set include_extras=False to get only the canonical keys.
         """
         if include_extras:
@@ -263,26 +256,20 @@ class SamplesTxt:
             if r1 and r2:
                 if len(r1) != len(r2):
                     # Redundant with _validate_rows_by_mode, but keep the legacy-friendly message around:
-                    raise ConfigError(
-                        f"Uh oh. The sample {sample} has a different number of R1 ({len(r1)}) and R2 ({len(r2)}) paths. "
-                        f"Anvi'o expects these to be the same, so please fix this in your samples-txt file."
-                    )
+                    raise ConfigError(f"Uh oh. The sample {sample} has a different number of R1 ({len(r1)}) and R2 ({len(r2)}) paths. "
+                                      f"Anvi'o expects these to be the same, so please fix this in your samples-txt file.")
                 for i in range(len(r1)):
                     if r1[i] == r2[i]:
                         identical.add(sample)
 
         if missing:
-            raise ConfigError(
-                "Bad news. Your samples txt contains %s (%s) with missing files (by which we mean that the "
-                "r1/r2/lr paths are there, but the files they point to are not)."
-                % (utils.pluralize('sample', len(missing)), ", ".join(sorted(missing)))
-            )
+            raise ConfigError(f"Bad news. Your samples txt contains {utils.pluralize('sample', len(missing))} "
+                              f"({", ".join(sorted(missing))}) with missing files (by which we mean that the "
+                              f"r1/r2/lr paths are there, but the files they point to are not).")
 
         if identical:
-            raise ConfigError(
-                "Interesting. Your samples txt contains %s (%s) where r1 and r2 file paths are identical. Not OK."
-                % (utils.pluralize('sample', len(identical)), ", ".join(sorted(identical)))
-            )
+            raise ConfigError(f"Interesting. Your samples txt contains {utils.pluralize('sample', len(identical))} "
+                              f"({", ".join(sorted(identical))}) where r1 and r2 file paths are identical. Not OK.")
 
     def _warn_on_unconventional_fastq_suffixes(self):
         # Check ALL paths (SR and LR). Accept .fastq, .fastq.gz, .fq, .fq.gz
@@ -295,13 +282,10 @@ class SamplesTxt:
         allowed = (".fastq", ".fastq.gz", ".fq", ".fq.gz")
         bad = [p for p in all_paths if p and not p.endswith(allowed)]
         if bad:
-            self.run.warning(
-                "We noticed some of your sequence files in '%s' do not end with one of "
-                "'.fastq', '.fastq.gz', '.fq', or '.fq.gz'. That's okay, but anvi'o decided it "
-                "should warn you. Here are the first 5 such files that have unconventional "
-                "file extensions: %s."
-                % (self.artifact_path, ", ".join(bad[:5]))
-            )
+            self.run.warning(f"We noticed some of your sequence files in '{self.artifact_path}' do not end with one "
+                             f"of the expected extensions (which include '.fastq', '.fastq.gz', '.fq', or '.fq.gz'). "
+                             f"That's okay, but anvi'o decided that it still should warn you. Here are the first 5 "
+                             f"such files that have unconventional extensions: {', '.join(bad[:5])}.")
 
     def samples(self):
         """List of sample names."""
@@ -348,8 +332,8 @@ class SamplesTxt:
                 for s, info in self._data.items() if info.get("lr")}
 
     def get_sample(self, sample):
-        """
-        Return the normalized dict for one sample:
+        """Return the normalized dict for one sample:
+
         {'group': ..., 'r1': [...], 'r2': [...], 'lr': [...]}
         """
         return self._data[sample]
