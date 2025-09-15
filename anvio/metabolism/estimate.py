@@ -6,7 +6,6 @@ import os
 import re
 import copy
 import json
-import math
 import statistics
 
 import pandas as pd
@@ -22,11 +21,11 @@ import anvio.ccollections as ccollections
 from anvio.dbinfo import DBInfo
 from anvio.errors import ConfigError
 from anvio.genomedescriptions import MetagenomeDescriptions, GenomeDescriptions
-from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileSuperclass, ProfileDatabase, PanSuperclass
+from anvio.dbops import ContigsDatabase, ProfileSuperclass, ProfileDatabase, PanSuperclass
 
-from anvio.metabolism.constants import *
 from anvio.metabolism.context import KeggContext
 from anvio.metabolism.modulesdb import ModulesDatabase
+from anvio.metabolism.constants import DEFAULT_OUTPUT_MODE, OUTPUT_MODES, OUTPUT_HEADERS, STRAY_KO_ANVIO_SUFFIX, STEP_METADATA_HEADERS, KO_METADATA_HEADERS, MODULE_METADATA_HEADERS
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
