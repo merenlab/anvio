@@ -1,18 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
-"""This file contains Kegg related classes."""
+"""Main KEGG metabolism estimator classes."""
 
 import os
 import re
 import copy
 import json
-import statistics
-
-import pandas as pd
-from scipy import stats
-
 import anvio
-import anvio.tables as t
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
@@ -22,9 +16,10 @@ from anvio.dbinfo import DBInfo
 from anvio.errors import ConfigError
 from anvio.genomedescriptions import MetagenomeDescriptions, GenomeDescriptions
 
-from anvio.metabolism.context import KeggContext
 from anvio.metabolism.modulesdb import ModulesDatabase
-from anvio.metabolism.constants import DEFAULT_OUTPUT_MODE, OUTPUT_MODES, OUTPUT_HEADERS, STRAY_KO_ANVIO_SUFFIX, STEP_METADATA_HEADERS, KO_METADATA_HEADERS, MODULE_METADATA_HEADERS
+from anvio.metabolism.algorithms import KeggEstimationAlgorithms
+from anvio.metabolism.dbaccess import KeggEstimatorArgs, KeggDataLoader
+from anvio.metabolism.constants import OUTPUT_MODES, MODULE_METADATA_HEADERS, KO_METADATA_HEADERS, STEP_METADATA_HEADERS
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
