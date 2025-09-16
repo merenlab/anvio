@@ -2025,7 +2025,49 @@ function showGeneFunctions(bin_id, updateOnly) {
                 return;
             }
 
-            let content = `<table class="table table-striped">
+            const fmtPct = (v) => (typeof v === 'number' && !isNaN(v)) ? (v * 100).toFixed(1) + '%' : 'NA';
+
+            let content = ``;
+
+            // Metabolism summary table (prepended)
+            const metabolism = response && response.metabolism;
+            if (metabolism && typeof metabolism === 'object' && Object.keys(metabolism).length) {
+                let metabolismContent = `
+                    <h6 class="mt-2 mb-2">Metabolism summary</h6>
+                    <table class="table table-sm table-striped">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>Module</th>
+                                <th>Pathway %</th>
+                                <th>Stepwise %</th>
+                                <th>Genes (gene_caller_ids)</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+
+                Object.keys(metabolism).sort().forEach((moduleId) => {
+                    const m = metabolism[moduleId] || {};
+                    const genes = Array.isArray(m.gene_caller_ids) ? m.gene_caller_ids.join(', ') : 'NA';
+                    const pathwayPct  = fmtPct(m.pathwise_percent_complete);
+                    const stepwisePct = fmtPct(m.stepwise_completeness);
+                    const complete = (m.pathwise_is_complete === true) || (m.stepwise_is_complete === true);
+                    const badge = complete ? ` <span class="badge badge-success">complete</span>` : '';
+
+                    metabolismContent += `
+                        <tr>
+                            <td><b>${moduleId}</b>${badge}</td>
+                            <td>${pathwayPct}</td>
+                            <td>${stepwisePct}</td>
+                            <td style="max-width: 420px; word-break: break-word;">${genes}</td>
+                        </tr>`;
+                });
+
+                metabolismContent += `</tbody></table>`;
+                content += metabolismContent + `<hr class="my-3">`;
+            }
+
+            // Existing functions table
+            content += `<table class="table table-striped">
                            <thead class="thead-light">
                            <tr>
                              <th>Gene call</th>
@@ -2036,20 +2078,19 @@ function showGeneFunctions(bin_id, updateOnly) {
                            </thead>
                            <tbody>`;
 
-            // building the table for each gene cluster
-            Object.keys(response['functions']).map(function(gene_callers_id) {
-
+            Object.keys(response['functions']).forEach(function(gene_callers_id) {
                 let d = response['functions'][gene_callers_id];
 
-                Object.keys(response['sources']).map(function(index) {
+                Object.keys(response['sources']).forEach(function(index) {
                     let function_source = response['sources'][index];
+                    let accession_string, function_string;
 
                     if (d[function_source]) {
                         accession_string = getPrettyFunctionsString(d[function_source][0], function_source);
-                        function_string = getPrettyFunctionsString(d[function_source][1])
+                        function_string  = getPrettyFunctionsString(d[function_source][1]);
                     } else {
                         accession_string = 'N/A';
-                        function_string = 'N/A';
+                        function_string  = 'N/A';
                     }
 
                     if (index == 0) {
@@ -2071,10 +2112,14 @@ function showGeneFunctions(bin_id, updateOnly) {
 
             content += `</tbody></table>`;
 
-            showGeneFunctionsSummaryTableDialog('A summary of functions for ' + bin_info['items'].length + ' genes in "' + bin_info['bin_name'] + '".', content);
+            showGeneFunctionsSummaryTableDialog(
+                'A summary of functions for ' + bin_info['items'].length + ' genes in "' + bin_info['bin_name'] + '".',
+                content
+            );
         }
     });
 }
+
 
 
 function showGeneClusterDetails(bin_id, updateOnly) {
