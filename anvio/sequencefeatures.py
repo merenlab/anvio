@@ -70,9 +70,7 @@ class PrimerSearch:
                               "a primers dictionary through `primers_dict` parameter. See online help for more.")
 
         if self.samples_txt:
-            #self.samples_dict = utils.get_samples_txt_file_as_dict(self.samples_txt, run=run)
-            samples_txt = SamplesTxt(self.samples_txt, expected_format='free')
-            self.samples_dict = samples_txt.as_dict()
+            self.samples_dict = SamplesTxt(self.samples_txt, expected_format='free', run=self.run).as_dict()
         else:
             self.samples_dict = A('samples_dict')
             if not isinstance(self.samples_dict, dict):
