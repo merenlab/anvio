@@ -1529,9 +1529,9 @@ class BottleApplication(Bottle):
             kegg_metabolism_superdict, kofam_hits_superdict = {}, {}
 
         payload = {'functions': functions,
-                   'metabolism': kegg_metabolism_superdict,
+                   'metabolism': kegg_metabolism_superdict['user_defined_enzymes'],
                    'sources': self.interactive.gene_function_call_sources}
-    
+
         return json.dumps(payload, default=utils.to_jsonable)
 
 
