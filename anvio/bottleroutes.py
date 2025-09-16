@@ -1511,19 +1511,28 @@ class BottleApplication(Bottle):
 
         gene_caller_ids = json.loads(request.forms.get('gene_caller_ids'))
 
-        d = {}
         # remember, the gene caller ids we get here will all ahve the `g_` prefix (why? because
         # anvi'o refuses to work with trees where leaf names that are composed of digits only, and
         # to cluster our genes we had to add `g_` to the beginning of them)
         gene_caller_ids = [int(g.lstrip('g_')) for g in gene_caller_ids]
 
+        functions = {}
         for gene_callers_id in gene_caller_ids:
             if gene_callers_id not in self.interactive.gene_function_calls_dict:
-                d[gene_callers_id] = {}
+                functions[gene_callers_id] = {}
             else:
-                d[gene_callers_id] = self.interactive.gene_function_calls_dict[gene_callers_id]
+                functions[gene_callers_id] = self.interactive.gene_function_calls_dict[gene_callers_id]
 
-        return json.dumps({'functions': d, 'sources': list(self.interactive.gene_function_call_sources)})
+        if 'KOfam' in self.interactive.gene_function_call_sources:
+            kegg_metabolism_superdict, kofam_hits_superdict = self.interactive.get_metabolism_estimates_for_a_list_of_genes(gene_caller_ids)
+        else:
+            kegg_metabolism_superdict, kofam_hits_superdict = {}, {}
+
+        payload = {'functions': functions,
+                   'metabolism': kegg_metabolism_superdict,
+                   'sources': self.interactive.gene_function_call_sources}
+    
+        return json.dumps(payload, default=utils.to_jsonable)
 
 
     def get_functions_for_gene_clusters(self):
