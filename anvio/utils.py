@@ -3757,6 +3757,59 @@ def get_groups_txt_file_as_dict(file_path, run=run, progress=progress, include_m
     return item_to_group_dict, group_to_item_dict
 
 
+def to_jsonable(obj):
+    """Lightweight `default` hook for `json.dumps`.
+
+    Converts a few common non-JSON types to JSON-serializable equivalents and
+    lets the standard encoder handle everything else:
+
+      • set/frozenset → list
+      • numpy.integer → int
+      • numpy.floating → float
+      • numpy.ndarray → list (via `.tolist()`)
+
+    This function is **not recursive**; it is called only for objects the JSON
+    encoder cannot handle on its own. If `obj` isn’t one of the supported
+    types, a `TypeError` is raised (per the `json` default hook contract). The
+    purpose of it is to save our asses when we want to pass large, nested
+    dictionaries with many kinds of different objects to the interactive
+    interface.
+
+    Parameters
+    ==========
+    obj : Any
+        The object handed to the hook by `json.dumps`.
+
+    Returns
+    =======
+    Any
+        A JSON-serializable value (dict, list, str, int, float, bool, or None).
+
+    Notes
+    =====
+    Set ordering is not guaranteed. If you need stable output, convert sets to
+    sorted lists in a wrapper.
+
+    Examples
+    ========
+    >>> d = {...} # some dict of any size and level of nestedness 
+    >>> json.dumps(f, default=utils.to_jsonable)
+    """
+
+    if isinstance(obj, (set, frozenset)):
+        return list(obj)
+
+    try:
+        import numpy as np
+        if isinstance(obj, np.integer):   return int(obj)
+        if isinstance(obj, np.floating):  return float(obj)
+        if isinstance(obj, np.ndarray):   return obj.tolist()
+    except Exception:
+        pass
+
+    raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
+
+
 def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_to_append=None, column_names=None,\
                                         column_mapping=None, indexing_field=0, separator='\t', no_header=False,\
                                         ascii_only=False, only_expected_fields=False, assign_none_for_missing=False,\
