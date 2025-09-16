@@ -1252,13 +1252,16 @@ class ContigsSuperclass(object):
         return corresponding_gene_calls
 
 
-    def get_metabolism_estimates_for_a_list_of_genes(self, gene_caller_ids):
+    def get_metabolism_estimates_for_a_list_of_genes(self, gene_caller_ids, output_file_prefix=None):
         """Give this function a bunch of genes, and get back metabolic insights
 
         Parameters
         ==========
         gene_caller_ids : list
             One or more gene caller ids that occur in this contigs-db
+        output_file_prefix : str
+            If None, the function will simply return supericts. If a string
+            is present, it will generate an output file with estimates
 
         Returns
         =======
@@ -1318,10 +1321,11 @@ class ContigsSuperclass(object):
         self.run.info("Number of genes wiht KOfam annoations", f"{len(enzymes_df)} ({len(enzymes_df) * 100 / len(gene_caller_ids):.2f}% of all)")
 
         # get an instance of the metabolism estromator class and recover superdicts
-        args = argparse.Namespace(enzymes_of_interest_df=enzymes_df)
+        args = argparse.Namespace(enzymes_of_interest_df=enzymes_df, output_file_prefix=output_file_prefix)
         m = KeggMetabolismEstimator(args, run=terminal.Run(verbose=False))
 
-        metabolism_d, hits_d = m.estimate_metabolism(skip_storing_data=True,
+        skip_storing_data = False if output_file_prefix else True
+        metabolism_d, hits_d = m.estimate_metabolism(skip_storing_data=skip_storing_data,
                                                      return_superdicts=True,
                                                      prune_superdicts=True)
 
