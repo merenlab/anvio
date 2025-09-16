@@ -1512,12 +1512,12 @@ class BottleApplication(Bottle):
         gene_caller_ids = json.loads(request.forms.get('gene_caller_ids'))
 
         d = {}
-        for gene_callers_id in gene_caller_ids:
-            # remember, the gene caller ids we get here will all ahve the `g_` prefix (why? because
-            # anvi'o refuses to work with trees where leaf names that are composed of digits only, and
-            # to cluster our genes we had to add `g_` to the beginning of them)
-            gene_callers_id = int(gene_callers_id.lstrip('g_'))
+        # remember, the gene caller ids we get here will all ahve the `g_` prefix (why? because
+        # anvi'o refuses to work with trees where leaf names that are composed of digits only, and
+        # to cluster our genes we had to add `g_` to the beginning of them)
+        gene_caller_ids = [int(g.lstrip('g_')) for g in gene_caller_ids]
 
+        for gene_callers_id in gene_caller_ids:
             if gene_callers_id not in self.interactive.gene_function_calls_dict:
                 d[gene_callers_id] = {}
             else:
