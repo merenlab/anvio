@@ -1314,7 +1314,7 @@ class ContigsSuperclass(object):
         # now it is time to generate the dataframe of enzymes
         enzymes_df = pd.DataFrame(columns=["gene_id", "enzyme_accession", "source"])
         for gene_caller_id in gene_caller_ids:
-            if gene_caller_id in self.gene_function_calls_dict and 'KOfam' in self.gene_function_calls_dict[gene_caller_id]:
+            if gene_caller_id in self.gene_function_calls_dict and 'KOfam' in self.gene_function_calls_dict[gene_caller_id] and self.gene_function_calls_dict[gene_caller_id]['KOfam']:
                 enzyme_accession = self.gene_function_calls_dict[gene_caller_id]['KOfam'][0]
                 enzymes_df.loc[len(enzymes_df)] = [gene_caller_id, enzyme_accession, "KOfam"]
 
