@@ -958,6 +958,9 @@ class ContigsSuperclass(object):
                 raise ConfigError("Some of the functional sources you requested are missing from the contigs database '%s'. Here "
                                   "they are (or here it is, whatever): %s." % \
                                                  (self.contigs_db_path, ', '.join(["'%s'" % s for s in missing_sources])))
+        else:
+            # if we are here, we have all the sources present
+            return sources
 
 
     def search_for_gene_functions(self, search_terms, requested_sources=None, verbose=False, full_report=False, delimiter=',', case_sensitive=False, exact_match=False, genes_as_split_names=False):
