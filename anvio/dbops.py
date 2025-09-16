@@ -49,8 +49,6 @@ from anvio.drivers import Aligners
 from anvio.errors import ConfigError
 from anvio.dbinfo import DBInfo as dbi
 
-from anvio.metabolism.estimate import KeggMetabolismEstimator
-
 from anvio.tables.states import TablesForStates
 from anvio.tables.genecalls import TablesForGeneCalls
 from anvio.tables.ntpositions import TableForNtPositions
