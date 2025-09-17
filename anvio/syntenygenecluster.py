@@ -220,11 +220,16 @@ class SyntenyGeneCluster():
 
                 joined_contigs_df.reset_index(drop=False, inplace=True)
 
+                offset = 0
                 for contig, group in joined_contigs_df.groupby(["contig"]):
                     group.sort_values(["contig", "start", "stop"], axis=0, ascending=[True, True, True], ignore_index=True, inplace=True)
-
                     group.rename_axis("position", inplace=True)
                     group.reset_index(drop=False, inplace=True)
+
+                    # print(contig, offset, offset + len(group) -1)
+
+                    group["position"] += offset
+                    offset += len(group)
 
                     pangenome_data_list += [group]
                 self.run.info_single(f"Successfully mined data from genome {genome}.")

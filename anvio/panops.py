@@ -1718,6 +1718,7 @@ class PangenomeGraph():
                 'node_id': node,
                 'node_type': data['type'],
                 'gene_cluster_id': data['gene_cluster'],
+                'synteny_position_json': json.dumps(data['synteny']),
                 'gene_calls_json': json.dumps(data['gene_calls']),
                 'alignment_summary': json.dumps(data['alignment'])
             }
@@ -1800,7 +1801,7 @@ class PangenomeGraph():
                     self.run.info_single(f"Column {value} not found in the pangenome.")
 
         self.import_values = import_values_found
-        
+
         number_gene_calls = {}
         for genome, genome_group in self.pangenome_data_df.groupby(["genome"]):
             extra_connections = []
@@ -1809,7 +1810,7 @@ class PangenomeGraph():
                 group.reset_index(drop=False, inplace=True)
                 group.sort_values(["position"], axis=0, ascending=True, inplace=True)
 
-                syn_cluster_tuples = list(map(tuple, group[['index', 'syn_cluster', 'syn_cluster_type', 'gene_cluster', 'gene_caller_id']].values.tolist()))
+                syn_cluster_tuples = list(map(tuple, group[['index', 'syn_cluster', 'syn_cluster_type', 'gene_cluster', 'gene_caller_id', 'position']].values.tolist()))
 
                 group.set_index('index', inplace=True)
 
@@ -1827,12 +1828,13 @@ class PangenomeGraph():
                     if len(syn_cluster_tuples) > 1:
                         syn_cluster_tuple_pairs = map(tuple, zip(syn_cluster_tuples, syn_cluster_tuples[1:]))
                         for syn_cluster_tuple_pair in syn_cluster_tuple_pairs:
-                            index_i, syn_cluster_i, syn_cluster_type_i, gene_cluster_i, gene_caller_id_i = syn_cluster_tuple_pair[0]
-                            index_j, syn_cluster_j, syn_cluster_type_j, gene_cluster_j, gene_caller_id_j = syn_cluster_tuple_pair[1]
+                            index_i, syn_cluster_i, syn_cluster_type_i, gene_cluster_i, gene_caller_id_i, synteny_i = syn_cluster_tuple_pair[0]
+                            index_j, syn_cluster_j, syn_cluster_type_j, gene_cluster_j, gene_caller_id_j, synteny_j = syn_cluster_tuple_pair[1]
 
                             node_attributes_i = {
                                 'gene_cluster': gene_cluster_i,
                                 'gene_calls': {genome: gene_caller_id_i},
+                                'synteny': {genome: synteny_i},
                                 'type': syn_cluster_type_i,
                                 'layer': group[self.import_values].loc[index_i].to_dict() if self.import_values else {}
                             }
@@ -1840,6 +1842,7 @@ class PangenomeGraph():
                             node_attributes_j = {
                                 'gene_cluster': gene_cluster_j,
                                 'gene_calls': {genome: gene_caller_id_j},
+                                'synteny': {genome: synteny_j},
                                 'type': syn_cluster_type_j,
                                 'layer': group[self.import_values].loc[index_j].to_dict() if self.import_values else {}
                             }
@@ -1854,11 +1857,12 @@ class PangenomeGraph():
                             self.pangenome_graph.add_edge_to_graph(syn_cluster_i, syn_cluster_j, edge_attributes)
 
                     else:
-                        index_i, syn_cluster_i, syn_cluster_type_i, gene_cluster_i, gene_caller_id_i = syn_cluster_tuples[0]
+                        index_i, syn_cluster_i, syn_cluster_type_i, gene_cluster_i, gene_caller_id_i, synteny_i = syn_cluster_tuples[0]
 
                         node_attributes_i = {
                             'gene_cluster': gene_cluster_i,
-                            'gene_calls':{genome: gene_caller_id_i},
+                            'gene_calls': {genome: gene_caller_id_i},
+                            'synteny': {genome: synteny_i},
                             'type': syn_cluster_type_i,
                             'layer': group[self.import_values].loc[index_i].to_dict() if self.import_values else {}
                         }
@@ -1878,8 +1882,8 @@ class PangenomeGraph():
                 num = 0
                 while num < len(extra_connections):
 
-                    index_i, extra_connections_syn_i, extra_connections_type_i, extra_connections_gc_i, extra_connections_id_i = extra_connections[num]
-                    index_j, extra_connections_syn_j, extra_connections_type_j, extra_connections_gc_j, extra_connections_id_j = extra_connections[num+1]
+                    index_i, extra_connections_syn_i, extra_connections_type_i, extra_connections_gc_i, extra_connections_id_i, extra_connections_synteny_i = extra_connections[num]
+                    index_j, extra_connections_syn_j, extra_connections_type_j, extra_connections_gc_j, extra_connections_id_j, extra_connections_synteny_j = extra_connections[num+1]
 
                     num += 2
 

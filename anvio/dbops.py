@@ -3453,24 +3453,26 @@ class PanGraphSuperclass(PanSuperclass):
         return export_dict
 
     def init_pangenome_graph(self):
+
         for node, data in self.nodes.items():
             graph_data = {
                 'gene_cluster': data['gene_cluster_id'],
-                'position': (0, 0),
                 'gene_calls': json.loads(data['gene_calls_json']),
+                'synteny': json.loads(data['synteny_position_json']),
                 'type': data['node_type'],
-                'group': '',
                 'layer': self.items_additional_data_dict[node],
+                'position': (0, 0),
+                'group': '',
                 'alignment': json.loads(data['alignment_summary'])
             }
             self.pangenome_graph.graph.add_node(node, **graph_data)
 
         for edge, data in self.edges.items():
             graph_data = {
-                'name': edge,
                 'weight': data['weight'],
-                'active': True,
                 'directions': json.loads(data['directions']),
+                'name': edge,
+                'active': True,
                 'route': [],
                 'length': 0
             }
