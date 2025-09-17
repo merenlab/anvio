@@ -63,7 +63,7 @@ def get_args():
     groupC = parser.add_argument_group('DETAILS OF GRAPH COMPUTATION', "Variables that will influence the computation of the graph, the organization "
                                 "of the gene clusters, and edges between them.")
 
-    groupC.add_argument('--circularize', default=True, action="store_true", help = "WARNING: Only useable on single contig genomes.")
+    groupC.add_argument('--circularize', default=False, action="store_true", help = "WARNING: Only useable on single contig genomes.")
     groupC.add_argument('--just-do-it', default=False, action="store_true", help = "Description.")
     groupC.add_argument('--project-name', default=None, help = "Description.")
     groupC.add_argument('--load-state', default='default', type=str, help="Description.")
