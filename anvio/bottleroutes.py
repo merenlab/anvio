@@ -1524,9 +1524,9 @@ class BottleApplication(Bottle):
                 functions[gene_callers_id] = self.interactive.gene_function_calls_dict[gene_callers_id]
 
         if 'KOfam' in self.interactive.gene_function_call_sources:
-            kegg_metabolism_superdict, kofam_hits_superdict = self.interactive.get_metabolism_estimates_for_a_list_of_genes(gene_caller_ids)
+            kegg_metabolism_superdict, _ = self.interactive.get_metabolism_estimates_for_a_list_of_genes(gene_caller_ids)
         else:
-            kegg_metabolism_superdict, kofam_hits_superdict = {}, {}
+            kegg_metabolism_superdict, _ = {'user_defined_enzymes': {}}, {}
 
         payload = {'functions': functions,
                    'metabolism': kegg_metabolism_superdict['user_defined_enzymes'],
