@@ -397,8 +397,6 @@ class DirectedForce():
                     else:
                         if current_backward_connected:
 
-                            print('HI')
-
                             number = max([(G.get_edge_data(current_node, backward)['weight'], i) for (i, backward) in enumerate(current_backward_connected)])[1]
                             current_connector = current_backward_connected[number]
                             next_node = current_node
