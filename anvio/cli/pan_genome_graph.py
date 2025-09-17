@@ -69,7 +69,7 @@ def get_args():
     groupC.add_argument('--load-state', default='default', type=str, help="Description.")
     groupC.add_argument('--import-values', default='start,stop,partial,call_type,length', type=str, help = "Description.")
     groupC.add_argument('--priority-genome', default='', type=str, help = "Description.")
-    groupC.add_argument('--min-contig-chain', default=10, type=int, help = "Description.")
+    groupC.add_argument('--min-contig-chain', default=5, type=int, help = "Description.")
     groupC.add_argument('--max-edge-length-filter', default=-1, type=int, help = "Description.")
     groupC.add_argument('--gene-cluster-grouping-threshold', default=-1, type=int, help = "Description.")
     groupC.add_argument('--grouping-compression', default=1.0, type=float, help = "Description.")
