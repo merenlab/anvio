@@ -392,7 +392,7 @@ function showGeneFunctionsSummaryTableDialog(title, content) {
                 </div>
 
                 <p style="margin: 20px; font-style: italic; flex-shrink: 0;">
-                    Here is the list of functions that are associated with the gene calls in your bin.
+                    Tables below show the functions encoded by the genes in this bin, and their involvement in metabolic modules, if any..
                 </p>
 
                 <div class="modal-body" style="overflow: auto; flex: 1; min-height: 0; padding: 0 20px 20px 20px;">
