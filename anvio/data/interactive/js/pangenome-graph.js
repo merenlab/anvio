@@ -29,6 +29,17 @@ class PangenomeGraphUserInterface {
         this.data = null;
         this.settings_dict = {};
         this.state = 'default';
+
+        this.panZoomInstance = null;
+
+        this.isDown = false
+        this.diff = 0
+        this.old_xpos = 0
+        this.old_ypos = 0
+        this.cur_xpos = 0
+        this.cur_ypos = 0
+        this.new_xpos = 0
+        this.new_ypos = 0
         
         this.layers_min = {};
         this.layers_max = {};
@@ -45,9 +56,16 @@ class PangenomeGraphUserInterface {
         this.remove_bin = this.remove_bin.bind(this);
         this.switch_bin = this.switch_bin.bind(this);
         this.switch_color = this.switch_color.bind(this);
+        this.marknode = this.marknode.bind(this);
         this.start_draw = this.start_draw.bind(this);
         this.hide_tippy = this.hide_tippy.bind(this);
         this.show_tippy = this.show_tippy.bind(this);
+        this.press_down = this.press_down.bind(this);
+        this.press_move = this.press_move.bind(this);
+        this.press_up = this.press_up.bind(this);
+        this.svg_download = this.svg_download.bind(this);
+        this.fit_aspect = this.fit_aspect.bind(this);
+        this.generate_svg = this.generate_svg.bind(this);
 
         this.initialize_JSON();
         this.initialize_buttons();
@@ -1128,6 +1146,7 @@ class PangenomeGraphUserInterface {
                 this.data = data['data'];
                 console.log('JSON loaded.');
                 this.initialize_variables();
+                console.log('Initialized main variables.');
                 this.main_draw();
             },
             error: (err) => {
@@ -1161,46 +1180,182 @@ class PangenomeGraphUserInterface {
             $('#number_' + gene_call)[0].innerText = '1';
         }
     }
+
+    press_down(instance) {
+        this.old_xpos = instance.offsetX;
+        this.old_ypos = instance.offsetY;
+        
+        this.cur_xpos = instance.offsetX;
+        this.cur_ypos = instance.offsetY;
+        
+        this.isDown = true;
+        this.diff = 0;
+    }
+
+    press_move(instance) {
+        if (this.isDown === true) {
+            this.new_xpos = instance.offsetX
+            this.new_ypos = instance.offsetY
+
+            this.diff += Math.sqrt((this.new_xpos-this.cur_xpos)^2+(this.new_ypos-this.cur_ypos)^2)
+    
+            if (!instance.shiftKey) {
+                this.panZoomInstance.panBy({x: this.new_xpos-this.cur_xpos, y: this.new_ypos-this.cur_ypos})
+            }
+    
+            this.cur_xpos = instance.offsetX
+            this.cur_ypos = instance.offsetY
+        }
+    }
+
+    press_up(instance) {
+        if (this.isDown === true) {
+            this.isDown = false
+
+            if (this.diff < 10) {
+                if (instance.target.getAttribute('class') === 'group' || instance.target.getAttribute('class') === 'node') {
+                    if (instance.shiftKey) {
+                        var bin_id = this.current_bin_id;
+                        this.marknode(instance.target, bin_id);
+                    } else {
+                        this.nodeinfo(instance.target);
+                    }   
+                } 
+            } else {
+                if (instance.shiftKey) {
+
+                    var bin_id = this.current_bin_id;
+
+                    var max_xpos = Math.max(this.old_xpos, this.cur_xpos)
+                    var min_xpos = Math.min(this.old_xpos, this.cur_xpos)
+                    
+                    var max_ypos = Math.max(this.old_ypos, this.cur_ypos)
+                    var min_ypos = Math.min(this.old_ypos, this.cur_ypos)
+
+                    var nodes = document.querySelectorAll(".node")
+                    for (var n of nodes) {
+
+                        var bounding = n.getBoundingClientRect();
+                        var left = bounding.left
+                        var right = bounding.right
+                        var bottom = bounding.bottom
+                        var top = bounding.top
+
+                        if (this.min_xpos < left && this.max_xpos > right && this.min_ypos < bottom && this.max_ypos > top) {
+                            this.marknode(n, bin_id);
+
+                        }
+                    }
+
+                    var groups = Object.keys(this.group_dict);
+                    for(var g of groups) {
+                        var group = this.group_dict[g]
+                        for (var k of group) {
+                            var node = document.getElementById(k);
+                            
+                            var bounding = node.getBoundingClientRect();
+                            var left = bounding.left
+                            var right = bounding.right
+                            var bottom = bounding.bottom
+                            var top = bounding.top
+                            
+                            if (this.min_xpos < left && this.max_xpos > right && this.min_ypos < bottom && this.max_ypos > top) {
+                                var name = document.getElementById(g);
+                                this.marknode(name, bin_id);
+                                break
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // for (var bin_id of Object.keys(this.bin_dict)) {
+            //     var nodes = this.bin_dict[bin_id];
+            //     var updated_nodes = []
+            //     for (var node of nodes) {
+            //         var name = document.getElementById(node);
+
+            //         if(name) {
+            //             if (name.getAttribute('class') == 'pseudo') {
+            //                 for(var g in groups) {
+            //                     var group = this.group_dict[g]
+            //                     if (group.includes(node)) {
+            //                         if (!updated_nodes.includes(g)){
+            //                             updated_nodes.push(g)
+            //                         }
+            //                     }
+            //                 }
+            //             } else {
+            //                 updated_nodes.push(node)
+            //             }
+            //         } else {
+            //             updated_nodes.push(...this.group_dict[node])
+            //         };
+            //     }
+
+            //     this.bin_dict[bin_id] = updated_nodes
+            //     for (var node of this.bin_dict[bin_id]) {
+
+            //         this.bin_dict[bin_id] = this.bin_dict[bin_id].filter(item => item !== node);
+            //         var name = document.getElementById(node);
+            //         this.marknode(name, bin_id);
+
+            //     }
+            // }
+            // for (var bin_id of Object.keys(this.bin_dict)) {
+            //     $('#' + bin_id + 'color').off("change")
+            //     $('#' + bin_id + 'color').on("change", function() {
+
+            //         var binid = this.name;
+            //         var nodes = bins[binid];
+                    
+            //         for (var node of nodes) {
+                    
+            //             bins[binid] = bins[binid].filter(item => item !== node);
+            //             var name = document.getElementById(node);
+            //             bins = marknode(name, data, binid, bins, genome_size, group_dict);
+
+            //         }
+            //     })
+            // }
+    }
+
+    fit_aspect() {
+        this.panZoomInstance.resize();
+        this.panZoomInstance.fit();
+        this.panZoomInstance.center();
+    }
+
+    svg_download() {
+        var svg_download = this.generate_svg(0);
+        var blob = new Blob([svg_download[0].outerHTML]);
+        var title = this.data['meta']['project_name']
+        this.download_blob(blob, title + ".svg");
+    }
     
     main_draw() {
         var body = $('#svgbox');
         body.empty();
 
-        var groups = Object.keys(this.group_dict);
         var svg_core = this.generate_svg();
         var genome_size = this.genomes.length;
         
         body.append(svg_core);
         body.html(body.html());
         
-        if (typeof window.zoomSVG !== 'undefined') {
-            window.zoomSVG.destroy()
+        if (this.panZoomInstance !== null) {
+            this.panZoomInstance.destroy()
         };
         
-        window.zoomSVG = svgPanZoom('#result', {
+        this.panZoomInstance = svgPanZoom('#result', {
             zoomEnabled: true,
             panEnabled: false,
             controlIconsEnabled: false,
             minZoom: 0.1,
             maxZoom: 100
         });
-    
-        $('#fit').off('click')
-        $('#fit').on('click', function() {
-            window.zoomSVG.resize();
-            window.zoomSVG.fit();
-            window.zoomSVG.center();
-        })
 
-        $('#svgDownload').off('click')
-        $('#svgDownload').on('click', function() {
-            var svg_download = this.generate_svg(scale=0);
-            var blob = new Blob([svg_download[0].outerHTML]);
-            var title = this.data['meta']['project_name']
-            this.download_blob(blob, title + ".svg");
-        });
-
-        var nodes = document.querySelectorAll(".node")
         var elements = document.querySelectorAll(".node, .group");
         for (var element of elements) {
 
@@ -1223,162 +1378,6 @@ class PangenomeGraphUserInterface {
                 theme: "light",
             });
         };
-
-        var isDown = false
-        var diff = 0
-
-        var old_xpos = 0
-        var old_ypos = 0
-
-        var xpos = 0
-        var ypos = 0
-
-        var new_xpos = 0
-        var new_ypos = 0
-
-        body.off('mousedown')
-        body.on('mousedown', function(e) {
-            old_xpos = e.offsetX
-            old_ypos = e.offsetY
-            
-            xpos = old_xpos
-            ypos = old_ypos
-            
-            isDown = true
-            diff = 0
-        })
-
-        body.off('mousemove')
-        body.on('mousemove', function(e) {
-            if (isDown === true) {
-                new_xpos = e.offsetX
-                new_ypos = e.offsetY
-        
-                diff += Math.sqrt((new_xpos-xpos)^2+(new_ypos-ypos)^2)
-        
-                if (!e.shiftKey) {
-                    window.zoomSVG.panBy({x: new_xpos-xpos, y: new_ypos-ypos})
-                }
-        
-                xpos = new_xpos
-                ypos = new_ypos
-            }
-        })
-
-        // body.off('mouseup')
-        // body.on('mouseup', function(e) {
-        //     if (isDown === true) {
-
-        //         var selection = document.querySelector('input[name="binradio"]:checked')
-
-        //         isDown = false
-
-        //         if (diff < 10) {
-        //             if (e.target.getAttribute('class') === 'group' || e.target.getAttribute('class') === 'node') {
-        //                 if (e.shiftKey && selection !== null) {
-        //                     var binid = selection.value
-        //                     bins = marknode(e.target, data, binid, bins, genome_size, group_dict);
-        //                 } else {
-        //                     nodeinfo(e.target, data, group_dict, mapAS);
-        //                 }   
-        //             } 
-        //         } else {
-        //             if (e.shiftKey && selection !== null) {
-
-        //                 var binid = selection.value
-
-        //                 var max_xpos = Math.max(old_xpos, xpos)
-        //                 var min_xpos = Math.min(old_xpos, xpos)
-                        
-        //                 var max_ypos = Math.max(old_ypos, ypos)
-        //                 var min_ypos = Math.min(old_ypos, ypos)
-                        
-        //                 for (var n of gc_nodes) {
-
-        //                     var bounding = n.getBoundingClientRect();
-        //                     var left = bounding.left
-        //                     var right = bounding.right
-        //                     var bottom = bounding.bottom
-        //                     var top = bounding.top
-
-        //                     if (min_xpos < left && max_xpos > right && min_ypos < bottom && max_ypos > top) {
-        //                         this.marknode(n, binid);
-
-        //                     }
-        //                 }
-
-        //                 for(var g of groups) {
-        //                     var group = group_dict[g]
-        //                     for (var k of group) {
-        //                         var node = document.getElementById(k);
-                                
-        //                         var bounding = node.getBoundingClientRect();
-        //                         var left = bounding.left
-        //                         var right = bounding.right
-        //                         var bottom = bounding.bottom
-        //                         var top = bounding.top
-                                
-        //                         if (min_xpos < left && max_xpos > right && min_ypos < bottom && max_ypos > top) {
-        //                             var name = document.getElementById(g);
-        //                             bins = marknode(name, binid);
-        //                             break
-        //                         }
-        //                     }
-        //                 }
-        //             }
-        //         }
-        //     })
-
-
-        //     for (var binid of Object.keys(bins)) {
-        //         var nodes = bins[binid];
-        //         var updated_nodes = []
-        //         for (var node of nodes) {
-        //             var name = document.getElementById(node);
-
-        //             if(name) {
-        //                 if (name.getAttribute('class') == 'pseudo') {
-        //                     for(var g in groups) {
-        //                         var group = group_dict[g]
-        //                         if (group.includes(node)) {
-        //                             if (!updated_nodes.includes(g)){
-        //                                 updated_nodes.push(g)
-        //                             }
-        //                         }
-        //                     }
-        //                 } else {
-        //                     updated_nodes.push(node)
-        //                 }
-        //             } else {
-        //                 updated_nodes.push(...group_dict[node])
-        //             };
-        //         }
-
-        //         bins[binid] = updated_nodes
-        //         for (var node of bins[binid]) {
-
-        //             bins[binid] = bins[binid].filter(item => item !== node);
-        //             var name = document.getElementById(node);
-        //             this.marknode(name, binid);
-
-        //         }
-        //     }
-        //     for (var binid of Object.keys(bins)) {
-        //         $('#' + binid + 'color').off("change")
-        //         $('#' + binid + 'color').on("change", function() {
-
-        //             var binid = this.name;
-        //             var nodes = bins[binid];
-                    
-        //             for (var node of nodes) {
-                    
-        //                 bins[binid] = bins[binid].filter(item => item !== node);
-        //                 var name = document.getElementById(node);
-        //                 bins = marknode(name, data, binid, bins, genome_size, group_dict);
-
-        //             }
-        //         })
-        //     }
     }
     
     rerun_JSON(new_data) {
@@ -1439,6 +1438,8 @@ class PangenomeGraphUserInterface {
         var accessory_color = $('#accessory_color')[0].value;
         var rearranged_color = $('#rearranged_color')[0].value;
         var trna_color = $('#trna_color')[0].value;
+
+        var genome_size = this.genomes.length
         
         if ($('#flexsaturation').prop('checked') == true){
             var saturation = 1
@@ -1490,7 +1491,7 @@ class PangenomeGraphUserInterface {
                 element.setAttribute("fill", bin_color)
             }
             this.bin_dict[bin_id].push(id)
-            $('#' + bin_id + 'value')[0].value = this.bin_dict[bin_id].length
+            $('#' + bin_id + '_value')[0].value = this.bin_dict[bin_id].length
         
         } else {
         
@@ -1503,8 +1504,8 @@ class PangenomeGraphUserInterface {
             this.bin_dict[current] = this.bin_dict[current].filter(item => item !== id)
             this.bin_dict[bin_id].push(id)
             
-            $('#' + bin_id + 'value')[0].value = this.bin_dict[bin_id].length
-            $('#' + current + 'value')[0].value = this.bin_dict[current].length 
+            $('#' + bin_id + '_value')[0].value = this.bin_dict[bin_id].length
+            $('#' + current + '_value')[0].value = this.bin_dict[current].length 
         }     
     }
 
@@ -1516,8 +1517,8 @@ class PangenomeGraphUserInterface {
         if (nodes !== undefined && nodes.length !== 0) {
             for (var node of nodes) {
       
-              this.bin_dict[binid] = this.bin_dict[bin_id].filter(item => item !== node);
-              var node_id = $('#' + node);
+              this.bin_dict[bin_id] = this.bin_dict[bin_id].filter(item => item !== node);
+              var element = document.getElementById(node);
               this.marknode(element, bin_id);
       
             }
@@ -1583,6 +1584,11 @@ class PangenomeGraphUserInterface {
         $('#binadd').on("click", this.add_bin);
         $('#binremove').on("click", this.remove_bin);
         $('#redraw').on("click", this.start_draw);
+        $('#fit').on('click', this.fit_aspect);
+        $('#svgDownload').on('click', this.svg_download);
+        $('#svgbox').on('mousedown', this.press_down)
+        $('#svgbox').on('mousemove', this.press_move)
+        $('#svgbox').on('mouseup', this.press_up)
     }
     
     initialize_variables() {
