@@ -1,18 +1,11 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-import os
 import sys
-import glob
-import subprocess
-
-from Bio import SeqIO, SearchIO
-from Bio.SeqRecord import SeqRecord
 
 import anvio
-import anvio.fastalib as f
 import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
+import anvio.pangenome_graph_preprocess as preprocess
 
 from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
@@ -27,9 +20,13 @@ __provides__ = []
 __description__ = "Reorient contigs based on the longest complete genome presend in the given folder"
 
 
+@terminal.time_program
 def main():
+    args = get_args()
+
     try:
-        run_program()
+        prep = preprocess.external_genomes_preprocess(args)
+        prep.process()
     except ConfigError as e:
         print(e)
         sys.exit(-1)
@@ -37,156 +34,10 @@ def main():
         print(e)
         sys.exit(-2)
 
-
-def get_num_contigs_and_genome_length(file_path):
-    fasta = f.SequenceSource(file_path)
-
-    num_contigs = 0
-    length = 0
-
-    while next(fasta):
-        num_contigs += 1
-        length += len(fasta.seq)
-
-    return(num_contigs, length)
-
-
-def run_program():
-    args = get_args()
-    progress = terminal.Progress()
-    run = terminal.Run()
-    P = terminal.pluralize
-
-    input_dir = args.input_dir
-    output_dir = args.output_dir
-    prioritize_genome_size = args.prioritize_genome_size
-    prioritize_number_of_contigs = args.prioritize_number_of_contigs
-
-    reference_fasta = None
-
-    filesnpaths.is_output_dir_writable(input_dir)
-    filesnpaths.is_output_dir_writable(output_dir)
-
-    if (not prioritize_genome_size and not prioritize_number_of_contigs) or (prioritize_genome_size and prioritize_number_of_contigs):
-        raise ConfigError("You must choose one of these parameters -- not both, not none: `--prioritize-genome-size` "
-                          "or `--prioritize-number-of-contigs`.")
-
-    # find FASTA files in the user directory and determine the best reference de novo
-    genome_properties = {}
-
-    best_length = 0
-    best_num_contigs = sys.maxsize
-
-    F = lambda x: glob.glob(os.path.join(input_dir, x))
-    input_fasta_files = F('*.fa') + F('*.fasta') + F('*.fna') + F('*.ffn') + F('*.faa')
-
-    run.warning(f"Anvi'o found {P('FASTA file', len(input_fasta_files))} in out input directory, and "
-                f"will try to orient contigs in them based on the best reference in the same directory.",
-                header="FASTA FILES FOUND", lc="yellow")
-
-    for fasta_file in input_fasta_files:
-        num_contigs, length = get_num_contigs_and_genome_length(fasta_file)
-        genome_properties[fasta_file] = {'num_contigs': num_contigs, 'length': length}
-
-        run.info_single(f"{os.path.basename(fasta_file)} ({P('contig', num_contigs)}; {P('nt', length)})", level=2)
-
-        if prioritize_genome_size and length > best_length:
-            reference_fasta = fasta_file
-            best_length = length
-        elif prioritize_number_of_contigs and num_contigs < best_num_contigs:
-            reference_fasta = fasta_file
-            best_num_contigs = num_contigs
-        elif prioritize_number_of_contigs and num_contigs == best_num_contigs:
-            if length > best_length:
-                reference_fasta = fasta_file
-                best_length = length
-        else:
-            # wtf case
-            pass
-
-    run.info("Method to select reference", "Minimum number of contigs" if prioritize_number_of_contigs else "Maximum length", nl_before=1)
-    addtl_info = P('nt', genome_properties[reference_fasta]['length']) if prioritize_genome_size else P('contig', genome_properties[reference_fasta]['num_contigs'])
-    run.info("Reference FASTA", f"{reference_fasta} ({addtl_info})", nl_after=1)
-
-    if genome_properties[reference_fasta]['num_contigs'] != 1:
-        if prioritize_genome_size:
-            raise ConfigError("Sadly, the reference genome anvi'o chose for you based on geonome size priority seems to have multiple contigs, "
-                              "which suggests that it is not a complete genome :/ The current implementation of this script does not know "
-                              "how to use a genome with multiple contigs as reference. You can try to re-run the program with `--prioritize-number-of-contigs` "
-                              "flag if you have a complete genome.")
-        elif prioritize_number_of_contigs:
-            raise ConfigError("The genome in your collection with the smallest number of contigs is still not a complete genome :( There is nothing "
-                              "this program can do for you at this point. Sorry!")
-        else:
-            # wtf case
-            pass
-
-
-    # progress.new("BLAST")
-    for fasta_file in input_fasta_files:
-        blast_result_file = '.'.join(fasta_file.split('.')[:-1]) + '-blast.xml'
-        num_contigs, length = get_num_contigs_and_genome_length(fasta_file)
-        output_file = os.path.join(output_dir, os.path.basename(fasta_file))
-
-        if fasta_file != reference_fasta:
-            # run BLAST
-            # progress.update(f"Running {os.path.basename(fasta_file)} against the reference ...")
-            cmd_line = ["blastn", "-query", reference_fasta, "-out", blast_result_file, "-outfmt", "5", "-subject", fasta_file]
-            subprocess.run(cmd_line, text=True, capture_output=True)
-
-            # progress.update(f"Parsing {os.path.basename(fasta_file)} hits ...")
-            qresult = SearchIO.read(blast_result_file, 'blast-xml')
-            fasta_entry = list(SeqIO.parse(fasta_file, "fasta"))
-
-            hits = 0
-            with open(output_file, "w+") as output_handle:
-                for contig in qresult:
-
-                    original_record = [entry for entry in fasta_entry if entry.id == contig.id][0]
-
-                    original_record_sequence = original_record.seq
-                    reversed_record_sequence = original_record.seq.reverse_complement()
-
-                    reoriented_record_hit = contig[0].hit.seq.replace("-", "")
-                    reoriented_record_sequence = ""
-
-                    if reoriented_record_hit in original_record_sequence:
-                        reoriented_record_sequence = original_record_sequence
-                        # print("lala")
-                    elif reoriented_record_hit in reversed_record_sequence:
-                        reoriented_record_sequence = reversed_record_sequence
-                        # print("lulu")
-                    else:
-                        pass
-
-                    if reoriented_record_sequence:
-                        hits += 1
-                        reoriented_record = SeqRecord(reoriented_record_sequence, id=original_record.id, name=original_record.name, description=original_record.description)
-                        SeqIO.write(reoriented_record, output_handle, "fasta")
-                    else:
-                        progress.reset()
-                        run.info_single("No output possible, the FASTA files do not align :(")
-
-            run.info_single(f"{hits} out of {num_contigs} for fasta {fasta_file}")
-
-        else:
-            with open(fasta_file) as input_handle:
-                lines = input_handle.readlines()
-                with open(output_file, "w+") as output_handle:
-                    output_handle.writelines(lines)
-
-            run.info_single(f"Copied reference fasta {fasta_file}")
-
-    progress.end()
-
-
 def get_args():
     parser = ArgumentParser(description=__description__)
     groupA = parser.add_argument_group('INPUT FILES')
-    groupA.add_argument(*anvio.A('input-dir'), **anvio.K('input-dir', {'help': "Path for the directory "
-                "that contains the FASTA files of interest. Anvi'o will take into consideration any file "
-                "in this directory that has any of the following extensions: '.fa', '.fasta', '.fna', "
-                "'.ffn', and '.faa'."}))
+    groupA.add_argument(*anvio.A('fasta-text-file'), **anvio.K('fasta-text-file', {'required': True}))
     groupA.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'help': ""}))
 
     groupB = parser.add_argument_group('REFERECE GENOME OPTIONS', description="Orienting contigs will require a reference genome that "
