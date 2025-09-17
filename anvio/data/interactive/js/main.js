@@ -2033,32 +2033,55 @@ function showGeneFunctions(bin_id, updateOnly) {
             const metabolism = response && response.metabolism;
             if (metabolism && typeof metabolism === 'object' && Object.keys(metabolism).length) {
                 let metabolismContent = `
-                    <h6 class="mt-2 mb-2">Metabolism summary</h6>
-                    <table class="table table-sm table-striped">
+                    <p style="padding-top:30px;"><b>Gene metabolic module involvement.</b> A table that shows which metabolic modules the
+                    genes in particular bin are involved. The completion scores show that for each metabolic module, what percentage of
+                    the module is represented by the genes in the bin. A single gene may be involved in multiple metabolic modules since
+                    that how metabolism rolls.</p>
+                    <table class="table table-sm table-striped" style="width: 95%; margin-left: 10px;">
                         <thead class="thead-light">
                             <tr>
-                                <th>Module</th>
-                                <th>Pathway %</th>
-                                <th>Stepwise %</th>
-                                <th>Genes (gene_caller_ids)</th>
+                                <th>Metabolic module</th>
+                                <th style="text-align: center;">Contribution to pathway completeness</th>
+                                <th style="text-align: center;">Contribution to Stepwise completeness</th>
+                                <th style="text-align: center;">Gene calls involved</th>
                             </tr>
                         </thead>
                         <tbody>`;
 
-                Object.keys(metabolism).sort().forEach((moduleId) => {
+            Object.keys(metabolism)
+                .sort((a, b) => {
+                    const pa = metabolism[a]?.pathwise_percent_complete ?? 0;
+                    const pb = metabolism[b]?.pathwise_percent_complete ?? 0;
+
+                    if (pb !== pa) {
+                        return pb - pa; // higher pathway completeness first
+                    }
+
+                    const ga = Array.isArray(metabolism[a]?.gene_caller_ids) ? metabolism[a].gene_caller_ids.length : 0;
+                    const gb = Array.isArray(metabolism[b]?.gene_caller_ids) ? metabolism[b].gene_caller_ids.length : 0;
+
+                    return gb - ga; // higher gene count first
+                })
+                .forEach((moduleId) => {
                     const m = metabolism[moduleId] || {};
                     const genes = Array.isArray(m.gene_caller_ids) ? m.gene_caller_ids.join(', ') : 'NA';
                     const pathwayPct  = fmtPct(m.pathwise_percent_complete);
                     const stepwisePct = fmtPct(m.stepwise_completeness);
+                    const moduleName = m.NAME;
+                    const moduleClass = m.CLASS;
                     const complete = (m.pathwise_is_complete === true) || (m.stepwise_is_complete === true);
                     const badge = complete ? ` <span class="badge badge-success">complete</span>` : '';
 
                     metabolismContent += `
                         <tr>
-                            <td><b>${moduleId}</b>${badge}</td>
-                            <td>${pathwayPct}</td>
-                            <td>${stepwisePct}</td>
-                            <td style="max-width: 420px; word-break: break-word;">${genes}</td>
+                            <td style="padding-left: 20px;">
+                               <b>${moduleId}</b>${badge}<br />
+                               - Module function: ${moduleName}<br />
+                               - Module class: ${moduleClass.split(";").map((p,i,a)=> i===a.length-1 ? `<b>${p.trim()}</b>` : p).join("; ")}
+                            </td>
+                            <td style="text-align: center; vertical-align: middle;">${pathwayPct}</td>
+                            <td style="text-align: center; vertical-align: middle;">${stepwisePct}</td>
+                            <td style="text-align: center; vertical-align: middle; max-width: 420px; word-break: break-word;">${genes}</td>
                         </tr>`;
                 });
 
@@ -2066,8 +2089,11 @@ function showGeneFunctions(bin_id, updateOnly) {
                 content += metabolismContent + `<hr class="my-3">`;
             }
 
-            // Existing functions table
-            content += `<table class="table table-striped">
+            // Prepare and append the functions table
+            content += `
+                        <p style="padding-top:30px;"><b>Gene functions</b>. The table below shows the functional annotation of each gene
+                        by each function annotation source available in the contigs-db.</p>
+                        <table class="table table-striped" style="width: 95%; margin-left: 10px;">
                            <thead class="thead-light">
                            <tr>
                              <th>Gene call</th>
