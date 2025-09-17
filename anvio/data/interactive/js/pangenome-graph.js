@@ -671,8 +671,8 @@ class PangenomeGraphUserInterface {
             var group_length = group.length
             var group_x = group.map((a) => (this.data['nodes'][a]['position'][0]));
             
-            ind_max = group_x.indexOf(Math.max.apply(Math, group_x))
-            ind_min = group_x.indexOf(Math.min.apply(Math, group_x))
+            var ind_max = group_x.indexOf(Math.max.apply(Math, group_x))
+            var ind_min = group_x.indexOf(Math.min.apply(Math, group_x))
             
             var left_node_name = group[ind_min]
             var right_node_name = group[ind_max]
@@ -701,7 +701,7 @@ class PangenomeGraphUserInterface {
             if (intersection.length > 0) {
         
                 var group_genomes_length = group_genomes.length;
-                var color = pickcolor (edgecoloring, Object.keys(left_node['gene_calls']))
+                var color = this.pickcolor(edgecoloring, Object.keys(left_node['gene_calls']))
         
                 if (saturation == 1) {
                     var draw = this.lighter_color('#ffffff', color, group_genomes_length / genome_size);
@@ -1127,6 +1127,7 @@ class PangenomeGraphUserInterface {
             success: (data) => {
                 this.data = data['data'];
                 console.log('JSON loaded.');
+                this.initialize_variables();
                 this.main_draw();
             },
             error: (err) => {
@@ -1204,7 +1205,7 @@ class PangenomeGraphUserInterface {
         for (var element of elements) {
 
             if (element.getAttribute("class") == 'group'){
-                var element_id = this.group_dict[el.getAttribute("id")][0]
+                var element_id = this.group_dict[element.getAttribute("id")][0]
                 var node_id = element.getAttribute("id")
             } else {
                 var element_id = element.getAttribute("id")
