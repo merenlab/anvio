@@ -81,6 +81,7 @@ class PangenomeGraphManager():
             'gene_cluster': '',
             'position': (0,0),
             'gene_calls': {},
+            'synteny': {},
             'type': '',
             'group': '',
             'layer': {},
@@ -372,15 +373,20 @@ class PangenomeGraphManager():
     def reverse_edges(self, changed_edges):
         for (edge_i, edge_j) in changed_edges:
             directions = {genome:'L' for genome, direction in self.graph[edge_i][edge_j]['directions'].items()}
-            weight = self.graph[edge_i][edge_j]['weight']
+            # weight = self.graph[edge_i][edge_j]['weight']
 
-            edge_attributes = {
-                'weight': weight,
-                'directions': directions
-            }
+            edge_attributes_ij = self.graph[edge_i][edge_j]
+            edge_attributes_ij['directions'] = directions
 
-            self.add_edge_to_graph(edge_j, edge_i, edge_attributes)
-            self.graph.remove_edge(edge_i, edge_j)
+            if self.graph.has_edge(edge_j, edge_i):
+                edge_attributes_ji = self.graph[edge_j][edge_i]
+
+                print('one double sided edge')
+                edge_attributes_ji['weight'] += edge_attributes_ij['weight']
+                edge_attributes_ji['directions'].update(edge_attributes_ij['directions'])
+            else:
+                self.add_edge_to_graph(edge_j, edge_i, edge_attributes_ij)
+                self.graph.remove_edge(edge_i, edge_j)
 
 
     def set_node_positions(self, node_positions):
