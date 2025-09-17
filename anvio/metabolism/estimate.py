@@ -1067,14 +1067,20 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
             for mode, file_object in self.output_file_dict.items():
                 file_object.close()
 
-        # at this point, if we are generating long-format output, the data has already been appended to files
-        # so we needn't keep it in memory. We don't return it, unless the programmer wants us to.
+        # 'returning stuff' stage
         if return_superdicts:
+            # if the programmer asked the superdicts to be returned, we will now extend them with metabolic
+            # module NAME and CLASS information since it can't hurt to have those for downstream analyses.
+            for sample_name in kegg_metabolism_superdict:
+                for module_name in kegg_metabolism_superdict[sample_name]:
+                    kegg_metabolism_superdict[sample_name][module_name]['NAME'] = self.all_modules_in_db[module_name]['NAME']
+                    kegg_metabolism_superdict[sample_name][module_name]['CLASS'] = self.all_modules_in_db[module_name]['CLASS']
+
             return kegg_metabolism_superdict, kofam_hits_superdict
-        # on the other hand, if we are generating matrix output, we need a limited subset of this data downstream
-        # so in this case, we can extract and return smaller dictionaries for module completeness, module presence/absence,
-        # and KO hits.
         elif return_subset_for_matrix_format:
+            # if we are generating matrix output, we need a limited subset of this data downstream
+            # so in this case, we can extract and return smaller dictionaries for module completeness,
+            # module presence/absence, and KO hits.
             return self.generate_subsets_for_matrix_format(kegg_metabolism_superdict, kofam_hits_superdict, only_complete_modules=self.only_complete)
         else:
           # otherwise we return nothing at all

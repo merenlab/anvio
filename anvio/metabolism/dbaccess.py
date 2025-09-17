@@ -427,8 +427,8 @@ class KeggDataLoader(KeggContext):
         self.progress = progress
         KeggContext.__init__(self, args)
 
-    def init_hits_and_splits(self, contigs_db_path, profile_db_path=None, collection_name=None, 
-                            annotation_sources=['KOfam'], splits_to_use=None, 
+    def init_hits_and_splits(self, contigs_db_path, profile_db_path=None, collection_name=None,
+                            annotation_sources=['KOfam'], splits_to_use=None,
                             user_input_dir=None, all_kos_in_db=None):
         """This function loads KOfam hits, gene calls, splits, and contigs from the contigs DB.
 
