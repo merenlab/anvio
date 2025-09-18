@@ -1541,18 +1541,29 @@ class BottleApplication(Bottle):
             run.warning(message)
             return json.dumps({'status': 1, 'message': message})
 
+
         gene_cluster_names = json.loads(request.forms.get('gene_clusters'))
 
-        d = {}
+        functions = {}
         for gene_cluster_name in gene_cluster_names:
             if gene_cluster_name not in self.interactive.gene_clusters_functions_summary_dict:
                 message = (f"At least one of the gene clusters in your list (e.g., {gene_cluster_name}) is missing in "
                            f"the functions summary dict :/")
                 return json.dumps({'status': 1, 'message': message})
 
-            d[gene_cluster_name] = self.interactive.gene_clusters_functions_summary_dict[gene_cluster_name]
+            functions[gene_cluster_name] = self.interactive.gene_clusters_functions_summary_dict[gene_cluster_name]
 
-        return json.dumps({'functions': d, 'sources': list(self.interactive.gene_clusters_function_sources)})
+        # do the metabolism thing
+        if 'KOfam' in self.interactive.gene_clusters_function_sources:
+            kegg_metabolism_superdict, _ = self.interactive.get_metabolism_estimates_for_a_list_of_gene_clusters(gene_cluster_names)
+        else:
+            kegg_metabolism_superdict, _ = {'user_defined_enzymes': {}}, {}
+
+        payload = {'functions': functions,
+                   'metabolism': kegg_metabolism_superdict['user_defined_enzymes'],
+                   'sources': list(self.interactive.gene_clusters_function_sources)}
+
+        return json.dumps(payload, default=utils.to_jsonable)
 
 
     def get_scale_bar(self):
