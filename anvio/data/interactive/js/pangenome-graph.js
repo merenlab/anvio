@@ -1208,7 +1208,8 @@ class PangenomeGraphUserInterface {
         this.isDown = true;
         this.diff = 0;
 
-        if (instance.shiftKey) {
+        var svgEl = document.getElementById('result');
+        if (instance.shiftKey && typeof(svgEl) != 'undefined' && svgEl != null) {
             var svgEl = document.getElementById('result');
             var viewport = svgEl.querySelector('.svg-pan-zoom_viewport');
             var pt = svgEl.createSVGPoint();
@@ -1234,16 +1235,16 @@ class PangenomeGraphUserInterface {
     }
 
     press_move(instance) {
+
         if (this.isDown === true) {
             this.new_xpos = instance.offsetX
             this.new_ypos = instance.offsetY
-
             this.diff += Math.sqrt((this.new_xpos-this.cur_xpos)^2+(this.new_ypos-this.cur_ypos)^2)
-    
-            if (!instance.shiftKey) {
+
+            var svgEl = document.getElementById('result');
+            if (!instance.shiftKey && typeof(this.panZoomInstance) != 'undefined' && this.panZoomInstance != null) {
                 this.panZoomInstance.panBy({x: this.new_xpos-this.cur_xpos, y: this.new_ypos-this.cur_ypos})
-            } else {
-                var svgEl = document.getElementById('result');
+            } else if (instance.shiftKey && typeof(svgEl) != 'undefined' && svgEl != null) {
                 var viewport = svgEl.querySelector('.svg-pan-zoom_viewport');
                 var pt = svgEl.createSVGPoint();
                 pt.x = instance.clientX;
