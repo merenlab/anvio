@@ -97,11 +97,26 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
         # INPUT OPTIONS SANITY CHECKS
         if not self.estimate_from_json and not self.contigs_db_path and self.enzymes_of_interest_df is None and not self.pan_db_path:
             raise ConfigError("NO INPUT PROVIDED. Please use the `-h` flag to see possible input options.")
+
         # incompatible input options
         if (self.contigs_db_path and (self.pan_db_path or self.enzymes_of_interest_df is not None)) or \
            (self.enzymes_of_interest_df is not None and self.pan_db_path):
             raise ConfigError("MULTIPLE INPUT OPTIONS DETECTED. Please check your parameters. You cannot provide more than one "
                              "of the following: a contigs database, an enzymes-txt file, or a pangenome database.")
+
+        if self.enzymes_of_interest_df is not None:
+            if None in self.enzymes_of_interest_df["enzyme_accession"].to_list():
+                if self.enzymes_txt:
+                    raise ConfigError("It appears that your enzymes-txt file contains one or more lines with no enzyme accession. "
+                                      "Please fix this and try again.")
+                else:
+                    raise ConfigError("Dear programmer, the enzymes dataframe you have sent here includes enzymes with no "
+                                      "accession IDs. This is no bueno.")
+
+            if any([not enzyme_accession.startswith('K') for enzyme_accession in self.enzymes_of_interest_df["enzyme_accession"].to_list()]):
+                raise ConfigError("It appears that the list of enzymes this function received includes those that do not look like "
+                                  "the kind of enzyme accession IDs anvi'o is used to working with (i.e. K00001, K12345, etc). "
+                                  "Please check your input.")
 
         if self.only_user_modules and not self.user_input_dir:
             raise ConfigError("You can only use the flag --only-user-modules if you provide a --user-modules directory.")
