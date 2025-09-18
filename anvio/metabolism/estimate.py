@@ -1,18 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8
-"""This file contains Kegg related classes."""
+"""Main KEGG metabolism estimator classes."""
 
 import os
 import re
 import copy
 import json
-import statistics
-
-import pandas as pd
-from scipy import stats
-
 import anvio
-import anvio.tables as t
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
@@ -22,16 +16,16 @@ from anvio.dbinfo import DBInfo
 from anvio.errors import ConfigError
 from anvio.genomedescriptions import MetagenomeDescriptions, GenomeDescriptions
 
-from anvio.metabolism.context import KeggContext
 from anvio.metabolism.modulesdb import ModulesDatabase
-from anvio.metabolism.constants import DEFAULT_OUTPUT_MODE, OUTPUT_MODES, OUTPUT_HEADERS, STRAY_KO_ANVIO_SUFFIX, STEP_METADATA_HEADERS, KO_METADATA_HEADERS, MODULE_METADATA_HEADERS
+from anvio.metabolism.algorithms import KeggEstimationAlgorithms
+from anvio.metabolism.dbaccess import KeggEstimatorArgs, KeggDataLoader
+from anvio.metabolism.constants import OUTPUT_MODES, MODULE_METADATA_HEADERS, KO_METADATA_HEADERS, STEP_METADATA_HEADERS
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "Iva Veseli"
 __email__ = "iveseli@uchicago.edu"
-
 
 run_quiet = terminal.Run(log_file_path=None, verbose=False)
 progress_quiet = terminal.Progress(verbose=False)
@@ -103,11 +97,26 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
         # INPUT OPTIONS SANITY CHECKS
         if not self.estimate_from_json and not self.contigs_db_path and self.enzymes_of_interest_df is None and not self.pan_db_path:
             raise ConfigError("NO INPUT PROVIDED. Please use the `-h` flag to see possible input options.")
+
         # incompatible input options
         if (self.contigs_db_path and (self.pan_db_path or self.enzymes_of_interest_df is not None)) or \
            (self.enzymes_of_interest_df is not None and self.pan_db_path):
             raise ConfigError("MULTIPLE INPUT OPTIONS DETECTED. Please check your parameters. You cannot provide more than one "
                              "of the following: a contigs database, an enzymes-txt file, or a pangenome database.")
+
+        if self.enzymes_of_interest_df is not None:
+            if None in self.enzymes_of_interest_df["enzyme_accession"].to_list():
+                if self.enzymes_txt:
+                    raise ConfigError("It appears that your enzymes-txt file contains one or more lines with no enzyme accession. "
+                                      "Please fix this and try again.")
+                else:
+                    raise ConfigError("Dear programmer, the enzymes dataframe you have sent here includes enzymes with no "
+                                      "accession IDs. This is no bueno.")
+
+            if any([not enzyme_accession.startswith('K') for enzyme_accession in self.enzymes_of_interest_df["enzyme_accession"].to_list()]):
+                raise ConfigError("It appears that the list of enzymes this function received includes those that do not look like "
+                                  "the kind of enzyme accession IDs anvi'o is used to working with (i.e. K00001, K12345, etc). "
+                                  "Please check your input.")
 
         if self.only_user_modules and not self.user_input_dir:
             raise ConfigError("You can only use the flag --only-user-modules if you provide a --user-modules directory.")
@@ -190,7 +199,6 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                                                        'description': "Number of copies of each top-level step in the module (the minimum of these is the stepwise module copy number)"
                                                        }
 
-
         # OUTPUT OPTIONS SANITY CHECKS
         if anvio.DEBUG:
             self.run.info("Output Modes", ", ".join(self.output_modes))
@@ -199,9 +207,8 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
             self.run.info("Zero-completeness modules excluded from output", self.exclude_zero_modules)
         illegal_modes = set(self.output_modes).difference(set(self.available_modes.keys()))
         if illegal_modes:
-            raise ConfigError("You have requested some output modes that we cannot handle. The offending modes "
-                              "are: %s. Please use the flag --list-available-modes to see which ones are acceptable."
-                              % (", ".join(illegal_modes)))
+            raise ConfigError(f"You have requested some output modes that we cannot handle. The offending modes "
+                              f"are: {', '.join(illegal_modes)}. Please use the flag --list-available-modes to see which ones are acceptable.")
         if self.custom_output_headers and "modules_custom" not in self.output_modes:
             raise ConfigError("You seem to have provided a list of custom headers without actually requesting a 'custom' output "
                               "mode. We think perhaps you missed something, so we are stopping you right there.")
@@ -213,9 +220,8 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                 self.run.info("Custom Output Headers", ", ".join(self.custom_output_headers))
             illegal_headers = set(self.custom_output_headers).difference(set(self.available_headers.keys()))
             if illegal_headers:
-                raise ConfigError("You have requested some output headers that we cannot handle. The offending ones "
-                                  "are: %s. Please use the flag --list-available-output-headers to see which ones are acceptable."
-                                  % (", ".join(illegal_headers)))
+                raise ConfigError(f"You have requested some output headers that we cannot handle. The offending ones "
+                                  f"are: {', '.join(illegal_headers)}. Please use the flag --list-available-output-headers to see which ones are acceptable.")
 
             # check if any headers requested for modules_custom mode are reserved for KOfams mode
             if "modules_custom" in self.output_modes:
@@ -227,17 +233,15 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
         outputs_require_ko_dict = [m for m in self.output_modes if self.available_modes[m]['data_dict'] == 'kofams']
         output_string = ", ".join(outputs_require_ko_dict)
         if self.estimate_from_json and len(outputs_require_ko_dict):
-            raise ConfigError("You have requested to estimate metabolism from a JSON file and produce the following KOfam hit "
-                              f"output mode(s): {output_string}. Unforunately, this is not possible because "
-                              "our JSON estimation function does not currently produce the required data for KOfam hit output. "
-                              "Please instead request some modules-oriented output mode(s) for your JSON input.")
-
+            raise ConfigError(f"You have requested to estimate metabolism from a JSON file and produce the following KOfam "
+                              f"hit output mode(s): {output_string}. Unforunately, this is not possible because our JSON "
+                              f"estimation function does not currently produce the required data for KOfam hit output. "
+                              f"Please instead request some modules-oriented output mode(s) for your JSON input.")
 
         if self.matrix_format:
             raise ConfigError("You have asked for output in matrix format, but unfortunately this currently only works in "
-                             "multi-mode. Please give this program an input file contining multiple bins or contigs databases instead "
-                             "of the single contigs database that you have provided. We are very sorry for any inconvenience.")
-
+                              "multi-mode. Please give this program an input file contining multiple bins or contigs databases instead "
+                              "of the single contigs database that you have provided. We are very sorry for any inconvenience.")
 
         # let user know what they told anvi'o to work on
         if self.contigs_db_path:
@@ -280,7 +284,6 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                              "memory footprint when used with --matrix-format or --get-raw-data-as-json, since both "
                              "of those options require storing all the per-contig data in memory. You have been warned. "
                              "The OOM-Killer may strike.")
-
 
         if self.contigs_db_path:
             utils.is_contigs_db(self.contigs_db_path)
@@ -1079,14 +1082,20 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
             for mode, file_object in self.output_file_dict.items():
                 file_object.close()
 
-        # at this point, if we are generating long-format output, the data has already been appended to files
-        # so we needn't keep it in memory. We don't return it, unless the programmer wants us to.
+        # 'returning stuff' stage
         if return_superdicts:
+            # if the programmer asked the superdicts to be returned, we will now extend them with metabolic
+            # module NAME and CLASS information since it can't hurt to have those for downstream analyses.
+            for sample_name in kegg_metabolism_superdict:
+                for module_name in kegg_metabolism_superdict[sample_name]:
+                    kegg_metabolism_superdict[sample_name][module_name]['NAME'] = self.all_modules_in_db[module_name]['NAME']
+                    kegg_metabolism_superdict[sample_name][module_name]['CLASS'] = self.all_modules_in_db[module_name]['CLASS']
+
             return kegg_metabolism_superdict, kofam_hits_superdict
-        # on the other hand, if we are generating matrix output, we need a limited subset of this data downstream
-        # so in this case, we can extract and return smaller dictionaries for module completeness, module presence/absence,
-        # and KO hits.
         elif return_subset_for_matrix_format:
+            # if we are generating matrix output, we need a limited subset of this data downstream
+            # so in this case, we can extract and return smaller dictionaries for module completeness,
+            # module presence/absence, and KO hits.
             return self.generate_subsets_for_matrix_format(kegg_metabolism_superdict, kofam_hits_superdict, only_complete_modules=self.only_complete)
         else:
           # otherwise we return nothing at all
@@ -2376,4 +2385,3 @@ def module_definition_to_enzyme_accessions(mod_definition):
     acc_list = re.split(r'\s+', mod_definition)
 
     return acc_list
-
