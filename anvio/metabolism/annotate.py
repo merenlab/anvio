@@ -41,7 +41,6 @@ class RunKOfams(KeggContext):
         self.no_hmmer_prefiltering = True if A('no_hmmer_prefiltering') else False
         self.bitscore_heuristic_e_value = A('heuristic_e_value')
         self.bitscore_heuristic_bitscore_fraction = A('heuristic_bitscore_fraction')
-        self.skip_brite_hierarchies = A('skip_brite_hierarchies')
         self.ko_dict = None # should be set up by setup_ko_dict()
         self.stray_ko_dict = None # should be set up by setup_stray_ko_dict(), if possible
 
@@ -79,13 +78,8 @@ class RunKOfams(KeggContext):
         # load existing kegg modules db, if one exists
         if os.path.exists(self.kegg_modules_db_path):
             self.kegg_modules_db = ModulesDatabase(self.kegg_modules_db_path, module_data_directory=self.kegg_module_data_dir,
-                                                   brite_data_directory=self.brite_data_dir, skip_brite_hierarchies=self.skip_brite_hierarchies,
                                                    args=self.args)
 
-            if not self.skip_brite_hierarchies and not self.kegg_modules_db.db.get_meta_value('is_brite_setup'):
-                self.run.warning("The KEGG Modules database does not contain BRITE hierarchy data, "
-                                 "which could very well be useful to you. BRITE is guaranteed to be set up "
-                                 "when downloading the latest version of KEGG with `anvi-setup-kegg-data`.")
         else:
             self.run.warning("No modules database was found in the KEGG data directory you specified. This is fine, but "
                              "you will not get functional annotations related to KEGG MODULES or BRITE hierarchies in your "
@@ -305,12 +299,6 @@ class RunKOfams(KeggContext):
                         'e_value': None,
                     }
 
-                if self.kegg_modules_db and not self.skip_brite_hierarchies:
-                    # get BRITE categorization information in the form to be added to the contigs database
-                    ortholog_categorizations_dict = self.get_ortholog_categorizations_dict(knum, gcid)
-                    if ortholog_categorizations_dict:
-                        self.kegg_brite_categorizations_dict[counter] = ortholog_categorizations_dict
-
                 counter += 1
             else:
                 num_hits_removed += 1
@@ -459,12 +447,6 @@ class RunKOfams(KeggContext):
                                 'e_value': None,
                             }
 
-                        if self.kegg_modules_db and not self.skip_brite_hierarchies:
-                            # get BRITE categorization information in the form to be added to the contigs database
-                            ortholog_categorizations_dict = self.get_ortholog_categorizations_dict(best_knum, gcid)
-                            if ortholog_categorizations_dict:
-                                self.kegg_brite_categorizations_dict[next_key] = ortholog_categorizations_dict
-
                         next_key += 1
                         num_annotations_added += 1
 
@@ -474,48 +456,6 @@ class RunKOfams(KeggContext):
             self.run.info("... of these, number of regular KOs is", num_annotations_added - num_stray_KOs_added)
             self.run.info("... of these, number of stray KOs is", num_stray_KOs_added)
         self.run.info("Total number of hits in annotation dictionary after adding these back", len(self.functions_dict.keys()))
-
-
-    def get_ortholog_categorizations_dict(self, ortholog_accession, gene_callers_id=None):
-        """Return a dictionary of ortholog BRITE categorizations.
-
-        The dictionary is formatted to represent a row of the `gene_functions` table in the contigs database.
-        """
-
-        ortholog_brite_dict = self.kegg_modules_db.get_ortholog_brite_categorizations(ortholog_accession)
-        if not ortholog_brite_dict:
-            return None
-
-        # the following explains the format of BRITE "accession" and "function" entries in the
-        # table. Orthologs can be in multiple hierarchies, and can be categorized in a hierarchy
-        # multiple times. Each categorization of the ortholog in a hierarchy is separated by "!!!",
-        # and each category in the categorization is separated by ">>>". The hierarchy name is
-        # placed at the beginning of each categorization. Perhaps the name of hierarchy "ko00001",
-        # which is "KEGG Orthology (KO)", should not be placed at the beginning of categorizations
-        # due to its uninformativeness, but for the sake of consistency, the format is maintained
-        # for this hierarchy. For example, "K01647 citrate synthase" produces the following
-        # "accession" and "function" strings:
-        # "ko00001!!!ko00001!!!ko01000"
-        # "KEGG Orthology (KO)>>>09100 Metabolism>>>09101 Carbohydrate metabolism>>>00020 Citrate cycle (TCA cycle)!!!
-        #  KEGG Orthology (KO)>>>09100 Metabolism>>>09101 Carbohydrate metabolism>>>00630 Glyoxylate and dicarboxylate metabolism!!!
-        #  Enzymes>>>2. Transferases>>>2.3 Acyltransferases>>>2.3.3 Acyl groups converted into alkyl groups on transfer>>>2.3.3.1 citrate (Si)-synthase"
-        hierarchy_accession = ""
-        categorizations = ""
-        categorization_dicts = list(ortholog_brite_dict.values())
-        for categorization_dict in categorization_dicts[: -1]:
-            hierarchy_accession += f"{categorization_dict['hierarchy_accession']}!!!"
-            categorizations += f"{categorization_dict['hierarchy_name']}>>>{categorization_dict['categorization']}!!!"
-        last_categorization_dict = categorization_dicts[-1]
-        hierarchy_accession += last_categorization_dict['hierarchy_accession']
-        categorizations += f"{last_categorization_dict['hierarchy_name']}>>>{last_categorization_dict['categorization']}"
-
-        ortholog_categorizations_dict = {'gene_callers_id': gene_callers_id,
-                                         'source': 'KEGG_BRITE',
-                                         'accession': hierarchy_accession,
-                                         'function': categorizations,
-                                         'e_value': None}
-
-        return ortholog_categorizations_dict
 
 
     def store_annotations_in_db(self):
