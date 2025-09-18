@@ -136,6 +136,7 @@ class PangenomeGraphManager():
             self.graph.add_node(syn_cluster, **attributes)
         else:
             self.graph.nodes[syn_cluster]['gene_calls'].update(attributes['gene_calls'])
+            self.graph.nodes[syn_cluster]['synteny'].update(attributes['synteny'])
 
 
     def add_edge_to_graph(self, syn_cluster_i, syn_cluster_j, attributes):

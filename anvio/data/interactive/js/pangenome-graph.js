@@ -24,6 +24,7 @@ class PangenomeGraphUserInterface {
             '-': '<span style="color: #000000;">-</span>'
         };
         this.bin_dict = {'bin_1': []};
+        this.bin_group_dict = {};
         this.current_bin_id = 'bin_1';
         this.current_bin_number = 1;
         this.data = null;
@@ -40,7 +41,8 @@ class PangenomeGraphUserInterface {
         this.cur_ypos = 0
         this.new_xpos = 0
         this.new_ypos = 0
-        
+
+        this.synteny = {}
         this.layers_min = {};
         this.layers_max = {};
         this.global_x = 0;
@@ -54,9 +56,11 @@ class PangenomeGraphUserInterface {
 
         this.add_bin = this.add_bin.bind(this);
         this.remove_bin = this.remove_bin.bind(this);
+        this.update_bin = this.update_bin.bind(this);
         this.switch_bin = this.switch_bin.bind(this);
         this.switch_color = this.switch_color.bind(this);
         this.marknode = this.marknode.bind(this);
+
         this.start_draw = this.start_draw.bind(this);
         this.hide_tippy = this.hide_tippy.bind(this);
         this.show_tippy = this.show_tippy.bind(this);
@@ -65,6 +69,7 @@ class PangenomeGraphUserInterface {
         this.press_up = this.press_up.bind(this);
         this.svg_download = this.svg_download.bind(this);
         this.fit_aspect = this.fit_aspect.bind(this);
+
         this.generate_svg = this.generate_svg.bind(this);
 
         this.initialize_JSON();
@@ -1136,6 +1141,8 @@ class PangenomeGraphUserInterface {
             this.rerun_JSON(new_settings_dict);
         }
 
+        this.settings_dict = new_settings_dict;
+
         $.ajax({
             url: "/pangraph/get_pangraph_json_data",
             type: "POST",
@@ -1221,104 +1228,108 @@ class PangenomeGraphUserInterface {
                         this.nodeinfo(instance.target);
                     }   
                 } 
-            } else {
-                if (instance.shiftKey) {
+            // } else {
+            //     if (instance.shiftKey) {
 
-                    var bin_id = this.current_bin_id;
+            //         var bin_id = this.current_bin_id;
 
-                    var max_xpos = Math.max(this.old_xpos, this.cur_xpos)
-                    var min_xpos = Math.min(this.old_xpos, this.cur_xpos)
+            //         var max_xpos = Math.max(this.old_xpos, this.cur_xpos)
+            //         var min_xpos = Math.min(this.old_xpos, this.cur_xpos)
                     
-                    var max_ypos = Math.max(this.old_ypos, this.cur_ypos)
-                    var min_ypos = Math.min(this.old_ypos, this.cur_ypos)
+            //         var max_ypos = Math.max(this.old_ypos, this.cur_ypos)
+            //         var min_ypos = Math.min(this.old_ypos, this.cur_ypos)
 
-                    var nodes = document.querySelectorAll(".node")
-                    for (var n of nodes) {
+            //         var nodes = document.querySelectorAll(".node")
+            //         for (var n of nodes) {
 
-                        var bounding = n.getBoundingClientRect();
-                        var left = bounding.left
-                        var right = bounding.right
-                        var bottom = bounding.bottom
-                        var top = bounding.top
+            //             var bounding = n.getBoundingClientRect();
+            //             var left = bounding.left
+            //             var right = bounding.right
+            //             var bottom = bounding.bottom
+            //             var top = bounding.top
 
-                        if (this.min_xpos < left && this.max_xpos > right && this.min_ypos < bottom && this.max_ypos > top) {
-                            this.marknode(n, bin_id);
+            //             if (this.min_xpos < left && this.max_xpos > right && this.min_ypos < bottom && this.max_ypos > top) {
+            //                 this.marknode(n, bin_id);
 
-                        }
-                    }
+            //             }
+            //         }
 
-                    var groups = Object.keys(this.group_dict);
-                    for(var g of groups) {
-                        var group = this.group_dict[g]
-                        for (var k of group) {
-                            var node = document.getElementById(k);
+            //         var groups = Object.keys(this.group_dict);
+            //         for(var g of groups) {
+            //             var group = this.group_dict[g]
+            //             for (var k of group) {
+            //                 var node = document.getElementById(k);
                             
-                            var bounding = node.getBoundingClientRect();
-                            var left = bounding.left
-                            var right = bounding.right
-                            var bottom = bounding.bottom
-                            var top = bounding.top
+            //                 var bounding = node.getBoundingClientRect();
+            //                 var left = bounding.left
+            //                 var right = bounding.right
+            //                 var bottom = bounding.bottom
+            //                 var top = bounding.top
                             
-                            if (this.min_xpos < left && this.max_xpos > right && this.min_ypos < bottom && this.max_ypos > top) {
-                                var name = document.getElementById(g);
-                                this.marknode(name, bin_id);
-                                break
-                            }
-                        }
-                    }
-                }
+            //                 if (this.min_xpos < left && this.max_xpos > right && this.min_ypos < bottom && this.max_ypos > top) {
+            //                     var name = document.getElementById(g);
+            //                     this.marknode(name, bin_id);
+            //                     break
+            //                 }
+            //             }
+            //         }
+            //     }
             }
         }
+    }
 
+    update_bin() {
+        for (var bin_id of Object.keys(this.bin_dict)) {
+            var nodes = this.bin_dict[bin_id];
+            var updated_nodes = []
+            for (var node of nodes) {
+                var name = document.getElementById(node);
+
+                if(name) {
+                    if (name.getAttribute('class') == 'pseudo') {
+                        var groups = Object.keys(this.group_dict);
+                        for(var g of groups) {
+                            var group = this.group_dict[g]
+                            if (group.includes(node)) {
+                                if (!updated_nodes.includes(g)){
+                                    updated_nodes.push(g)
+                                }
+                            }
+                        }
+                    } else {
+                        updated_nodes.push(node)
+                    }
+                } else {
+                    updated_nodes.push(...this.bin_group_dict[node])
+                    delete this.bin_group_dict[node];
+                };
+            }
+
+            this.bin_dict[bin_id] = updated_nodes
+            for (var node of this.bin_dict[bin_id]) {
+
+                this.bin_dict[bin_id] = this.bin_dict[bin_id].filter(item => item !== node);
+                var name = document.getElementById(node);
+                this.marknode(name, bin_id);
+
+            }
+        }
         // for (var bin_id of Object.keys(this.bin_dict)) {
-            //     var nodes = this.bin_dict[bin_id];
-            //     var updated_nodes = []
-            //     for (var node of nodes) {
-            //         var name = document.getElementById(node);
+        //     $('#' + bin_id + 'color').off("change")
+        //     $('#' + bin_id + 'color').on("change", function() {
 
-            //         if(name) {
-            //             if (name.getAttribute('class') == 'pseudo') {
-            //                 for(var g in groups) {
-            //                     var group = this.group_dict[g]
-            //                     if (group.includes(node)) {
-            //                         if (!updated_nodes.includes(g)){
-            //                             updated_nodes.push(g)
-            //                         }
-            //                     }
-            //                 }
-            //             } else {
-            //                 updated_nodes.push(node)
-            //             }
-            //         } else {
-            //             updated_nodes.push(...this.group_dict[node])
-            //         };
-            //     }
+        //         var binid = this.name;
+        //         var nodes = bins[binid];
+                
+        //         for (var node of nodes) {
+                
+        //             bins[binid] = bins[binid].filter(item => item !== node);
+        //             var name = document.getElementById(node);
+        //             bins = marknode(name, data, binid, bins, genome_size, group_dict);
 
-            //     this.bin_dict[bin_id] = updated_nodes
-            //     for (var node of this.bin_dict[bin_id]) {
-
-            //         this.bin_dict[bin_id] = this.bin_dict[bin_id].filter(item => item !== node);
-            //         var name = document.getElementById(node);
-            //         this.marknode(name, bin_id);
-
-            //     }
-            // }
-            // for (var bin_id of Object.keys(this.bin_dict)) {
-            //     $('#' + bin_id + 'color').off("change")
-            //     $('#' + bin_id + 'color').on("change", function() {
-
-            //         var binid = this.name;
-            //         var nodes = bins[binid];
-                    
-            //         for (var node of nodes) {
-                    
-            //             bins[binid] = bins[binid].filter(item => item !== node);
-            //             var name = document.getElementById(node);
-            //             bins = marknode(name, data, binid, bins, genome_size, group_dict);
-
-            //         }
-            //     })
-            // }
+        //         }
+        //     })
+        // }
     }
 
     fit_aspect() {
@@ -1378,6 +1389,8 @@ class PangenomeGraphUserInterface {
                 theme: "light",
             });
         };
+
+        this.update_bin();
     }
     
     rerun_JSON(new_data) {
@@ -1482,6 +1495,10 @@ class PangenomeGraphUserInterface {
             }
             this.bin_dict[bin_id] = this.bin_dict[bin_id].filter(item => item !== id)
             $('#' + bin_id + '_value')[0].value = this.bin_dict[bin_id].length
+
+            if (element.getAttribute('class') == 'group') {
+                delete this.bin_group_dict[id];
+            }
             
         } else if (current === '') {
         
@@ -1492,6 +1509,10 @@ class PangenomeGraphUserInterface {
             }
             this.bin_dict[bin_id].push(id)
             $('#' + bin_id + '_value')[0].value = this.bin_dict[bin_id].length
+
+            if (element.getAttribute('class') == 'group') {
+                this.bin_group_dict[id] = group
+            }
         
         } else {
         
@@ -1534,7 +1555,8 @@ class PangenomeGraphUserInterface {
         var bin_id = this.current_bin_id;
         
         for (var node of this.bin_dict[bin_id]) {
-        var element = document.getElementById(node);
+            var element = document.getElementById(node);
+            console.log(element)
             this.marknode(element, bin_id);
         }
         
@@ -1598,6 +1620,13 @@ class PangenomeGraphUserInterface {
         this.genomes = this.data['meta']['genome_names'];
         this.functional_annotation_sources_available = this.data['meta']['gene_function_sources'];
 
+        this.group_dict = {}
+        this.synteny = {}
+        
+        for(var g in this.genomes) {
+            this.synteny[this.genomes[g]] = {}
+        }
+        
         for(var n in this.nodes) {
             var node = this.nodes[n];
             for(var [layer, value] of Object.entries(node["layer"])) {
@@ -1627,8 +1656,12 @@ class PangenomeGraphUserInterface {
             }
             this.global_x = x < this.global_x ? this.global_x : x;
             this.global_y = y < this.global_y ? this.global_y : y;
-        }
 
+            for(var [genome, synteny_position] of Object.entries(node["synteny"])) {
+                this.synteny[genome][synteny_position] = n
+            }
+        }
+        
         for(var e in this.edges) {
             var edge = this.edges[e];
             var route = edge['route'];
