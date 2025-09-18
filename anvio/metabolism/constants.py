@@ -241,8 +241,6 @@ KO_METADATA_HEADERS = ["enzyme_definition", "modules_with_enzyme"]
 # and to the relevant step metadata clause in write_stat_to_matrix()
 STEP_METADATA_HEADERS = ["step_definition"]
 
-# Global and overview map IDs have certain ranges of numbers.
-GLOBAL_MAP_ID_PATTERN = re.compile(r'\d{1}11\d{2}')
-OVERVIEW_MAP_ID_PATTERN = re.compile(r'\d{1}1[23]\d{2}')
+
 
 

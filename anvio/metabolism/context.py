@@ -1,5 +1,4 @@
 import os
-import collections
 
 import anvio
 import anvio.utils as utils
@@ -21,38 +20,6 @@ class KeggContext(object):
         self.kegg_module_data_dir = os.path.join(self.kegg_data_dir, "modules")
         self.kegg_hmm_data_dir = os.path.join(self.kegg_data_dir, "HMMs")
         self.pathway_data_dir = os.path.join(self.kegg_data_dir, "pathways")
-        self.brite_data_dir = os.path.join(self.kegg_data_dir, "BRITE")
-        self.binary_relation_data_dir = os.path.join(self.kegg_data_dir, "binary_relations")
-
-        # The 'KEGG/map_images' directory has a structure of nested directories. 'map_images'
-        # contains 'png' for image files and 'kgml' for XML mapping files. Within both 'png' and
-        # 'kgml' are directories, '1x' and '2x', for lower and higher resolution maps. 'png/1x'
-        # contains 5 directories of image files highlighting different things: 'map', 'ko', 'ec',
-        # 'rn', and 'org'. 'png/2x' contains 1 directory, 'map', as higher resolution images are
-        # only available for manually drawn maps. 'kgml/1x' and 'kgml/2x' each contain 4 directories
-        # of XML files that allow modification of different lower and higher resolution maps: 'ko',
-        # 'ec', 'rn', and 'org'.
-        self.map_image_data_dir = os.path.join(self.kegg_data_dir, "map_images")
-        self.png_dir = os.path.join(self.map_image_data_dir, "png")
-        self.kgml_dir = os.path.join(self.map_image_data_dir, "kgml")
-        self.png_1x_dir = os.path.join(self.png_dir, "1x")
-        self.png_2x_dir = os.path.join(self.png_dir, "2x")
-        self.png_1x_map_dir = os.path.join(self.png_1x_dir, "map")
-        self.png_1x_ko_dir = os.path.join(self.png_1x_dir, "ko")
-        self.png_1x_ec_dir = os.path.join(self.png_1x_dir, "ec")
-        self.png_1x_rn_dir = os.path.join(self.png_1x_dir, "rn")
-        self.png_1x_org_dir = os.path.join(self.png_1x_dir, "org")
-        self.png_2x_map_dir = os.path.join(self.png_2x_dir, "map")
-        self.kgml_1x_dir = os.path.join(self.kgml_dir, "1x")
-        self.kgml_2x_dir = os.path.join(self.kgml_dir, "2x")
-        self.kgml_1x_ko_dir = os.path.join(self.kgml_1x_dir, "ko")
-        self.kgml_1x_ec_dir = os.path.join(self.kgml_1x_dir, "ec")
-        self.kgml_1x_rn_dir = os.path.join(self.kgml_1x_dir, "rn")
-        self.kgml_1x_org_dir = os.path.join(self.kgml_1x_dir, "org")
-        self.kgml_2x_ko_dir = os.path.join(self.kgml_2x_dir, "ko")
-        self.kgml_2x_ec_dir = os.path.join(self.kgml_2x_dir, "ec")
-        self.kgml_2x_rn_dir = os.path.join(self.kgml_2x_dir, "rn")
-        self.kgml_2x_org_dir = os.path.join(self.kgml_2x_dir, "org")
 
         self.quiet = A('quiet') or False
         self.just_do_it = A('just_do_it')
@@ -65,12 +32,7 @@ class KeggContext(object):
         self.stray_ko_thresholds_file = os.path.join(self.orphan_data_dir, "estimated_thresholds_for_stray_kos.txt")
         self.kegg_module_file = os.path.join(self.kegg_data_dir, "modules.keg")
         self.kegg_pathway_file = os.path.join(self.kegg_data_dir, "pathways.keg")
-        self.kegg_brite_hierarchies_file = os.path.join(self.kegg_data_dir, "hierarchies.json")
-        self.kegg_brite_pathways_file = os.path.join(self.kegg_data_dir, "br08901.json")
         self.kegg_modules_db_path = os.path.join(self.kegg_data_dir, "MODULES.db")
-        self.kegg_binary_relation_files = {('KO', 'EC'): "ko2ec.xl", ('KO', 'RN'): "ko2rn.xl"}
-        self.kegg_pathway_list_file = os.path.join(self.kegg_data_dir, "pathway_list.tsv")
-        self.kegg_map_image_kgml_file = os.path.join(self.kegg_data_dir, "map_kgml.tsv")
 
         if self.user_input_dir:
             self.user_module_data_dir = os.path.join(self.user_input_dir, "modules")
@@ -231,60 +193,3 @@ class KeggContext(object):
         return skip_list, no_threshold_list
 
 
-    @staticmethod
-    def invert_brite_json_dict(brite_dict):
-        """Invert a BRITE hierarchy dict loaded from a json file into a dict keyed by KEGG entries.
-
-        There are only two keys expected in a BRITE json file, 'name' and 'children'. The value for
-        'name' is a string and the value for 'children' is a list of dicts.
-
-        Here is an example of what the beginning of the json dict looks like for 'br08902 BRITE
-        Hierarchy Files', the 'hierarchy of all existing hierarchies':
-           {
-             "name": "br08902",
-             "children": [
-               {
-                 "name": "Pathway and Brite",
-                 "children": [
-                   {
-                     "name": "Pathway maps",
-                     "children": [
-                       {
-                         "name": "br08901  KEGG pathway maps"
-                       }
-                     ]
-                   }, ...
-        Observe that innermost dicts only have a single entry keyed by 'name'.
-
-        Here is the corresponding entry in the returned dict for the item in the example:
-            'br08901  KEGG pathway maps':
-                [['br08902', 'Pathway and Brite', 'Pathway maps']]
-        The value is a list of lists because an item can occur multiple times in the same hierarchy.
-
-        PARAMETERS
-        ==========
-        brite_dict : dict
-            dict loaded from BRITE hierarchy json file
-
-        RETURNS
-        =======
-        categorization_dict : dict
-            dict of entry categorizations in BRITE hierarchy
-        """
-
-        children_stack = collections.deque()
-        children_stack.append(([brite_dict['name']], brite_dict['children']))
-        categorization_dict = {}
-        while children_stack:
-            hierarchy, children_list = children_stack.popleft()
-            for child_dict in children_list:
-                child_name = child_dict['name']
-                if 'children' in child_dict:
-                    children_stack.append((hierarchy + [child_name], child_dict['children']))
-                else:
-                    try:
-                        categorization_dict[child_name].append(hierarchy)
-                    except KeyError:
-                        categorization_dict[child_name] = [hierarchy]
-
-        return categorization_dict
