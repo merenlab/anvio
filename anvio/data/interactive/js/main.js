@@ -2147,7 +2147,6 @@ function showGeneFunctions(bin_id, updateOnly) {
 }
 
 
-
 function showGeneClusterDetails(bin_id, updateOnly) {
     if (typeof updateOnly === 'undefined')
         updateOnly = false;
@@ -2171,53 +2170,122 @@ function showGeneClusterDetails(bin_id, updateOnly) {
                 return;
             }
 
-            let content = `<table class="table table-striped">
-                           <thead class="thead-light">
-                           <tr>
-                             <th>Gene cluster</th>
-                             <th>Source</th>
-                             <th>Accession</th>
-                             <th>Function</th>
-                           </tr>
-                           </thead>
+            const fmtPct = (v) => (typeof v === 'number' && !isNaN(v)) ? (v * 100).toFixed(1) + '%' : 'NA';
 
-                           <tbody>`;
+            let content = ``;
 
-            // building the table for each gene cluster
-            Object.keys(response['functions']).map(function(gene_cluster_name) {
+            // Metabolism summary table (prepended) — same structure/sorting as showGeneFunctions
+            const metabolism = response && response.metabolism;
+            if (metabolism && typeof metabolism === 'object' && Object.keys(metabolism).length) {
+                let metabolismContent = `
+                    <p style="padding-top:30px;"><b>Gene cluster metabolic module involvement.</b> The table below shows which metabolic modules the
+                    gene clusters in this bin are involved in. The completion scores show that for each metabolic module, what percentage of
+                    the module is represented by the gene clusters in the bin. A single gene cluster may be involved in multiple metabolic modules since
+                    that how metabolism rolls.</p>
+                    <table class="table table-sm table-striped" style="width: 95%; margin-left: 10px;">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>Metabolic module</th>
+                                <th style="text-align: center;">Contribution to pathway completeness</th>
+                                <th style="text-align: center;">Contribution to Stepwise completeness</th>
+                                <th style="text-align: center;">Gene clusters involved</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
 
-                let d = response['functions'][gene_cluster_name];
+                Object.keys(metabolism)
+                    .sort((a, b) => {
+                        const pa = metabolism[a]?.pathwise_percent_complete ?? 0;
+                        const pb = metabolism[b]?.pathwise_percent_complete ?? 0;
 
-                Object.keys(response['sources']).map(function(index) {
+                        if (pb !== pa) return pb - pa; // higher pathway completeness first
+
+                        const ga = Array.isArray(metabolism[a]?.gene_caller_ids) ? metabolism[a].gene_caller_ids.length : 0;
+                        const gb = Array.isArray(metabolism[b]?.gene_caller_ids) ? metabolism[b].gene_caller_ids.length : 0;
+
+                        return gb - ga; // higher gene count first
+                    })
+                    .forEach((moduleId) => {
+                        const m = metabolism[moduleId] || {};
+                        const genes = Array.isArray(m.gene_caller_ids) ? m.gene_caller_ids.join(', ') : 'NA';
+                        const pathwayPct  = fmtPct(m.pathwise_percent_complete);
+                        const stepwisePct = fmtPct(m.stepwise_completeness);
+                        const moduleName  = m.NAME ?? 'NA';
+                        const moduleClass = (typeof m.CLASS === 'string' ? m.CLASS : 'NA');
+                        const complete = (m.pathwise_is_complete === true) || (m.stepwise_is_complete === true);
+                        const badge = complete ? ` <span class="badge badge-success">complete</span>` : '';
+
+                        metabolismContent += `
+                            <tr>
+                                <td style="padding-left: 20px;">
+                                   <b>${moduleId}</b>${badge}<br />
+                                   - Module function: ${moduleName}<br />
+                                   - Module class: ${moduleClass.split(";").map((p,i,a)=> i===a.length-1 ? `<b>${p.trim()}</b>` : p).join("; ")}
+                                </td>
+                                <td style="text-align: center; vertical-align: middle;">${pathwayPct}</td>
+                                <td style="text-align: center; vertical-align: middle;">${stepwisePct}</td>
+                                <td style="text-align: center; vertical-align: middle; max-width: 420px; word-break: break-word;">${genes}</td>
+                            </tr>`;
+                    });
+
+                metabolismContent += `</tbody></table>`;
+                content += metabolismContent + `<hr class="my-3">`;
+            }
+
+            // Gene cluster functions table (unchanged layout; same headers/rowspan behavior)
+            content += `
+                <p style="padding-top:30px;"><b>Gene cluster functions</b>. The table below shows the functional annotation of each gene
+                cluster by each function annotation source available in the contigs-db.</p>
+                <table class="table table-striped" style="width: 95%; margin-left: 10px;">
+                   <thead class="thead-light">
+                   <tr>
+                     <th>Gene cluster</th>
+                     <th>Source</th>
+                     <th>Accession</th>
+                     <th>Function</th>
+                   </tr>
+                   </thead>
+                   <tbody>`;
+
+            // Build rows for each gene cluster
+            Object.keys(response['functions']).forEach(function(gene_cluster_name) {
+                let d = response['functions'][gene_cluster_name] || {};
+
+                Object.keys(response['sources']).forEach(function(index) {
                     let function_source = response['sources'][index];
 
-                    accession_string = getPrettyFunctionsString(d[function_source]['accession'], function_source)
-                    function_string = getPrettyFunctionsString(d[function_source]['function'])
+                    // robustly handle missing fields
+                    const accRaw = d[function_source]?.accession;
+                    const funRaw = d[function_source]?.function;
 
+                    const accession_string = getPrettyFunctionsString(accRaw, function_source) || 'N/A';
+                    const function_string  = getPrettyFunctionsString(funRaw) || 'N/A';
 
                     if (index == 0) {
                         content += `<tr style="border-top: 3px solid #d0d0d0;">
-                                    <td rowspan="${  Object.keys(response['sources']).length }"><b>${ gene_cluster_name }</b></td>
-                                    <td>${ function_source }</a></td>
-                                    <td>${ accession_string }</td>
-                                    <td>${ function_string }</td>
+                                    <td rowspan="${Object.keys(response['sources']).length}"><b>${gene_cluster_name}</b></td>
+                                    <td>${function_source}</td>
+                                    <td>${accession_string}</td>
+                                    <td>${function_string}</td>
                                     </tr>`;
                     } else {
                         content += `<tr>
-                                    <td>${ function_source }</a></td>
-                                    <td>${ accession_string }</td>
-                                    <td>${ function_string }</td>
+                                    <td>${function_source}</td>
+                                    <td>${accession_string}</td>
+                                    <td>${function_string}</td>
                                     </tr>`;
                     }
                 });
             });
 
-        content += `</tbody></table>`
+            content += `</tbody></table>`;
 
-        showGeneClusterFunctionsSummaryTableDialog('A summary of functions for ' + bin_info['items'].length + ' gene clusters in "' + bin_info['bin_name'] + '".', content + '</table>');
+            showGeneClusterFunctionsSummaryTableDialog(
+                'A summary of functions for ' + bin_info['items'].length + ' gene clusters in "' + bin_info['bin_name'] + '".',
+                content
+            );
         }
     });
-
 }
 
 
