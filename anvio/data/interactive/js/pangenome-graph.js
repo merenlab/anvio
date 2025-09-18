@@ -31,16 +31,20 @@ class PangenomeGraphUserInterface {
         this.settings_dict = {};
         this.state = 'default';
 
+        this.selection = null;
         this.panZoomInstance = null;
 
         this.isDown = false
         this.diff = 0
-        this.old_xpos = 0
-        this.old_ypos = 0
         this.cur_xpos = 0
         this.cur_ypos = 0
         this.new_xpos = 0
         this.new_ypos = 0
+
+        this.svg_cur_xpos = 0
+        this.svg_cur_ypos = 0
+        this.svg_new_xpos = 0
+        this.svg_new_ypos = 0
 
         this.synteny = {}
         this.layers_min = {};
@@ -238,17 +242,17 @@ class PangenomeGraphUserInterface {
             var y_size = (sum_middle_layer + (this.global_y * node_distance_y) + sum_outer_layer);
             var x_size = (sum_middle_layer + (this.global_y * node_distance_y) + sum_outer_layer);
             if (scale == 0){
-                var svg_core = $('<svg id="result" width="' + x_size*2 + 'px" height="' + y_size*2 + 'px" version="1.1" viewBox="-' + x_size + ' -' + y_size + ' ' + x_size*2 + ' ' + y_size*2 + '" position="absolute" xmlns="http://www.w3.org/2000/svg"></svg>')
+                var svg_core = $('<svg id="result" width="' + x_size*2 + 'px" height="' + y_size*2 + 'px" version="1.1" viewBox="-' + x_size + ' -' + y_size + ' ' + x_size*2 + ' ' + y_size*2 + '" xmlns="http://www.w3.org/2000/svg"></svg>')
             } else {
-                var svg_core = $('<svg id="result" width="100%" height="100%" version="1.1" viewBox="-' + x_size + ' -' + y_size + ' ' + x_size*2 + ' ' + y_size*2 + '" position="absolute" xmlns="http://www.w3.org/2000/svg"></svg>')
+                var svg_core = $('<svg id="result" width="100%" height="100%" version="1.1" viewBox="-' + x_size + ' -' + y_size + ' ' + x_size*2 + ' ' + y_size*2 + '" xmlns="http://www.w3.org/2000/svg"></svg>')
             }
         } else {
             var x_size = (this.global_x + 1) * node_distance_x * 0.5;
             var y_size = (sum_middle_layer + (global_y * node_distance_y) + sum_outer_layer) * 0.5;
             if (scale == 0){
-                var svg_core = $('<svg id="result" width="' + x_size*2 + 'px" height="' + y_size*2 + 'px" version="1.1" viewBox="-' + 0.5 * node_distance_y + ' -' + y_size*2 + ' ' + x_size*2 + ' ' + y_size*2 + '" position="absolute" xmlns="http://www.w3.org/2000/svg"></svg>')
+                var svg_core = $('<svg id="result" width="' + x_size*2 + 'px" height="' + y_size*2 + 'px" version="1.1" viewBox="-' + 0.5 * node_distance_y + ' -' + y_size*2 + ' ' + x_size*2 + ' ' + y_size*2 + '" xmlns="http://www.w3.org/2000/svg"></svg>')
             } else {
-                var svg_core = $('<svg id="result" width="100%" height="100%" version="1.1" viewBox="-' + 0.5 * node_distance_y + ' -' + y_size*2 + ' ' + x_size*2 + ' ' + y_size*2 + '" position="absolute" xmlns="http://www.w3.org/2000/svg"></svg>')
+                var svg_core = $('<svg id="result" width="100%" height="100%" version="1.1" viewBox="-' + 0.5 * node_distance_y + ' -' + y_size*2 + ' ' + x_size*2 + ' ' + y_size*2 + '" xmlns="http://www.w3.org/2000/svg"></svg>')
             }
         }
         
@@ -900,6 +904,12 @@ class PangenomeGraphUserInterface {
         document.body.removeChild(link);
     }
 
+    // NOTE - From https://stackoverflow.com/questions/19799777/how-to-add-transparency-information-to-a-hex-color-code
+    addAlpha(color, opacity) {
+        var _opacity = Math.round(Math.min(Math.max(opacity ?? 1, 0), 1) * 255);
+        return color + _opacity.toString(16).toUpperCase();
+    }
+
     // NOTE - From https://coderwall.com/p/z8uxzw/javascript-color-blender
     int_to_hex(num) {
         var hex = Math.round(num).toString(16);
@@ -923,9 +933,9 @@ class PangenomeGraphUserInterface {
         (1 - percentage) * color1[2] + percentage * color2[2]
         ];
         
-        color3 = '#' + this.int_to_hex(color3[0]) + this.int_to_hex(color3[1]) + this.int_to_hex(color3[2]);
-        
-        return color3
+        var color4 = '#' + this.int_to_hex(color3[0]) + this.int_to_hex(color3[1]) + this.int_to_hex(color3[2]);
+
+        return color4
     }
 
     create_rectangle(i_x, i_y, j_x, j_y, theta, node_distance_x, linear, color, id='') {
@@ -1174,7 +1184,7 @@ class PangenomeGraphUserInterface {
             $('#number_' + gene_call)[0].innerText = '0';
         }
     }
-
+    
     show_tippy(instance) {
         if (instance.reference.id.startsWith('GCG_')){
             var element_id = this.group_dict[instance.reference.id][0]
@@ -1189,14 +1199,38 @@ class PangenomeGraphUserInterface {
     }
 
     press_down(instance) {
-        this.old_xpos = instance.offsetX;
-        this.old_ypos = instance.offsetY;
+        // this.old_xpos = instance.offsetX;
+        // this.old_ypos = instance.offsetY;
         
         this.cur_xpos = instance.offsetX;
         this.cur_ypos = instance.offsetY;
         
         this.isDown = true;
         this.diff = 0;
+
+        if (instance.shiftKey) {
+            var svgEl = document.getElementById('result');
+            var viewport = svgEl.querySelector('.svg-pan-zoom_viewport');
+            var pt = svgEl.createSVGPoint();
+            pt.x = instance.clientX;
+            pt.y = instance.clientY;
+    
+            var svgP = pt.matrixTransform(viewport.getScreenCTM().inverse());
+            this.svg_cur_xpos = svgP.x
+            this.svg_cur_ypos = svgP.y
+
+            this.selection = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+            this.selection.setAttribute("x", 0);
+            this.selection.setAttribute("y", 0);
+            this.selection.setAttribute("width", 0);
+            this.selection.setAttribute("height", 0);
+            
+            var bin_color = document.getElementById(this.current_bin_id + '_color').value
+            var fill_color = this.addAlpha(bin_color, 0.1);
+
+            this.selection.setAttribute("fill", fill_color);
+            viewport.appendChild(this.selection);
+        }
     }
 
     press_move(instance) {
@@ -1208,10 +1242,30 @@ class PangenomeGraphUserInterface {
     
             if (!instance.shiftKey) {
                 this.panZoomInstance.panBy({x: this.new_xpos-this.cur_xpos, y: this.new_ypos-this.cur_ypos})
-            }
+            } else {
+                var svgEl = document.getElementById('result');
+                var viewport = svgEl.querySelector('.svg-pan-zoom_viewport');
+                var pt = svgEl.createSVGPoint();
+                pt.x = instance.clientX;
+                pt.y = instance.clientY;
+        
+                var svgP = pt.matrixTransform(viewport.getScreenCTM().inverse());
+                this.svg_new_xpos = svgP.x
+                this.svg_new_ypos = svgP.y
     
-            this.cur_xpos = instance.offsetX
-            this.cur_ypos = instance.offsetY
+                var min_svg_xpos = Math.min(this.svg_cur_xpos, this.svg_new_xpos);
+                var min_svg_ypos = Math.min(this.svg_cur_ypos, this.svg_new_ypos);
+                var width = Math.abs(this.svg_cur_xpos - this.svg_new_xpos);
+                var height = Math.abs(this.svg_cur_ypos - this.svg_new_ypos);
+                
+                this.selection.setAttribute("x", min_svg_xpos);
+                this.selection.setAttribute("y", min_svg_ypos);
+                this.selection.setAttribute("width", width);
+                this.selection.setAttribute("height", height);
+            }
+
+            this.cur_xpos = this.new_xpos;
+            this.cur_ypos = this.new_ypos;
         }
     }
 
@@ -1228,52 +1282,53 @@ class PangenomeGraphUserInterface {
                         this.nodeinfo(instance.target);
                     }   
                 } 
-            // } else {
-            //     if (instance.shiftKey) {
+            } else {
+                if (instance.shiftKey) {
+                    var bin_id = this.current_bin_id;
 
-            //         var bin_id = this.current_bin_id;
-
-            //         var max_xpos = Math.max(this.old_xpos, this.cur_xpos)
-            //         var min_xpos = Math.min(this.old_xpos, this.cur_xpos)
+                    var min_svg_xpos = Math.min(this.svg_cur_xpos, this.svg_new_xpos);
+                    var min_svg_ypos = Math.min(this.svg_cur_ypos, this.svg_new_ypos);
+                    var width = Math.abs(this.svg_cur_xpos - this.svg_new_xpos);
+                    var height = Math.abs(this.svg_cur_ypos - this.svg_new_ypos);
                     
-            //         var max_ypos = Math.max(this.old_ypos, this.cur_ypos)
-            //         var min_ypos = Math.min(this.old_ypos, this.cur_ypos)
+                    var nodes = document.querySelectorAll(".node")
+                    for (var n of nodes) {
+                        var bbox = n.getBBox();
 
-            //         var nodes = document.querySelectorAll(".node")
-            //         for (var n of nodes) {
+                        if (
+                            bbox.x + bbox.width >= min_svg_xpos &&
+                            bbox.x <= min_svg_xpos + width &&
+                            bbox.y + bbox.height >= min_svg_ypos &&
+                            bbox.y <= min_svg_ypos + height
+                        ) {
+                            this.marknode(n, bin_id);
+                        }
+                    }
 
-            //             var bounding = n.getBoundingClientRect();
-            //             var left = bounding.left
-            //             var right = bounding.right
-            //             var bottom = bounding.bottom
-            //             var top = bounding.top
+                    var groups = Object.keys(this.group_dict);
+                    for(var g of groups) {
+                        var group = this.group_dict[g]
+                        for (var k of group) {
+                            var node = document.getElementById(k);
+                            var bbox = node.getBBox();
+                            if (
+                                bbox.x + bbox.width >= min_svg_xpos &&
+                                bbox.x <= min_svg_xpos + width &&
+                                bbox.y + bbox.height >= min_svg_ypos &&
+                                bbox.y <= min_svg_ypos + height
+                            ) {
+                                var name = document.getElementById(g);
+                                this.marknode(name, bin_id);
+                                break
+                            }
+                        }
+                    }
+                }
+            }
 
-            //             if (this.min_xpos < left && this.max_xpos > right && this.min_ypos < bottom && this.max_ypos > top) {
-            //                 this.marknode(n, bin_id);
-
-            //             }
-            //         }
-
-            //         var groups = Object.keys(this.group_dict);
-            //         for(var g of groups) {
-            //             var group = this.group_dict[g]
-            //             for (var k of group) {
-            //                 var node = document.getElementById(k);
-                            
-            //                 var bounding = node.getBoundingClientRect();
-            //                 var left = bounding.left
-            //                 var right = bounding.right
-            //                 var bottom = bounding.bottom
-            //                 var top = bounding.top
-                            
-            //                 if (this.min_xpos < left && this.max_xpos > right && this.min_ypos < bottom && this.max_ypos > top) {
-            //                     var name = document.getElementById(g);
-            //                     this.marknode(name, bin_id);
-            //                     break
-            //                 }
-            //             }
-            //         }
-            //     }
+            if (this.selection) {
+                this.selection.remove();
+                this.selection = null;
             }
         }
     }
@@ -1314,22 +1369,6 @@ class PangenomeGraphUserInterface {
 
             }
         }
-        // for (var bin_id of Object.keys(this.bin_dict)) {
-        //     $('#' + bin_id + 'color').off("change")
-        //     $('#' + bin_id + 'color').on("change", function() {
-
-        //         var binid = this.name;
-        //         var nodes = bins[binid];
-                
-        //         for (var node of nodes) {
-                
-        //             bins[binid] = bins[binid].filter(item => item !== node);
-        //             var name = document.getElementById(node);
-        //             bins = marknode(name, data, binid, bins, genome_size, group_dict);
-
-        //         }
-        //     })
-        // }
     }
 
     fit_aspect() {
@@ -1346,15 +1385,13 @@ class PangenomeGraphUserInterface {
     }
     
     main_draw() {
-        var body = $('#svgbox');
-        body.empty();
-
         var svg_core = this.generate_svg();
         var genome_size = this.genomes.length;
-        
-        body.append(svg_core);
-        body.html(body.html());
-        
+
+        // TODO this is just a temporary fix the whole generate_svg() has to be rewritten in either 
+        // createElementNS or raw html string fashion. FML.
+        $('#svgbox').empty().html(svg_core[0].outerHTML);
+
         if (this.panZoomInstance !== null) {
             this.panZoomInstance.destroy()
         };
@@ -1556,7 +1593,6 @@ class PangenomeGraphUserInterface {
         
         for (var node of this.bin_dict[bin_id]) {
             var element = document.getElementById(node);
-            console.log(element)
             this.marknode(element, bin_id);
         }
         
@@ -1611,6 +1647,7 @@ class PangenomeGraphUserInterface {
         $('#svgbox').on('mousedown', this.press_down)
         $('#svgbox').on('mousemove', this.press_move)
         $('#svgbox').on('mouseup', this.press_up)
+        $('#svgbox').on('mouseleave', this.press_up)
     }
     
     initialize_variables() {
