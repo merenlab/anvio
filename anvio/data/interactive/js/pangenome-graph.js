@@ -256,48 +256,6 @@ class PangenomeGraphUserInterface {
             }
         }
         
-        for (var genome of this.genomes) {
-            var layer_name = genome + 'layer'
-            if (Object.keys(middle_layers).includes(layer_name)){
-        
-                var [layer_width, layer_start, layer_stop] = middle_layers[layer_name]
-            
-                if (linear == 0){
-                    var [circle_a_x, circle_a_y] = this.transform(0-0.5, layer_start, theta)
-                    var [circle_b_x, circle_b_y] = this.transform(0-0.5, layer_stop, theta)
-                    var [circle_c_x, circle_c_y] = this.transform(this.global_x + 0.5, layer_start, theta)
-                    var [circle_d_x, circle_d_y] = this.transform(this.global_x + 0.5, layer_stop, theta)
-                    
-                    if ((this.global_x) * theta > 180) {
-                        var arc_flag = 1
-                    } else {
-                        var arc_flag = 0
-                    }
-            
-                    svg_genome_tracks[genome].push(
-                        $('<path d="M ' + circle_c_x + ' ' + circle_c_y +
-                        ' A ' + layer_start + ' ' + layer_start + ' 0 ' + arc_flag + ' 1 ' + circle_a_x + ' ' + circle_a_y +
-                        ' L ' + circle_b_x + ' ' + circle_b_y +
-                        ' A ' + layer_stop + ' ' + layer_stop + ' 0 ' + arc_flag + ' 0 ' + circle_d_x + ' ' + circle_d_y +
-                        ' Z" stroke-width="0" fill="' + layer_color + '"></path>')
-                    )
-                } else {
-                    var [circle_a_x, circle_a_y] = [(0-0.5) * node_distance_x, -layer_start]
-                    var [circle_b_x, circle_b_y] = [(0-0.5) * node_distance_x, -layer_stop]
-                    var [circle_c_x, circle_c_y] = [(this.global_x + 0.5) * node_distance_x, -layer_start]
-                    var [circle_d_x, circle_d_y] = [(this.global_x + 0.5) * node_distance_x, -layer_stop]
-                    
-                    svg_genome_tracks[genome].push(
-                        $('<path d="M ' + circle_c_x + ' ' + circle_c_y +
-                        ' L ' + circle_a_x + ' ' + circle_a_y +
-                        ' L ' + circle_b_x + ' ' + circle_b_y +
-                        ' L ' + circle_d_x + ' ' + circle_d_y +
-                        ' Z" stroke-width="0" fill="' + layer_color + '"></path>')
-                    )
-                }
-            }
-        }
-        
         if ($('#flexarrow').prop('checked') == true){
         
             var [arrow_size, arrow_start, arrow_stop] = middle_layers['arrow']
@@ -391,6 +349,8 @@ class PangenomeGraphUserInterface {
                 k += 1
             };
         }
+
+        var edge_synteny = {}
         
         var end = new Date().getTime();
         var time = end - start;
@@ -398,8 +358,9 @@ class PangenomeGraphUserInterface {
         
         var start = new Date().getTime();
         for(var i in this.edges) {
-        
+
             var edge = this.data['edges'][i];
+            // console.log(edge)
             var edge_genomes = Object.keys(edge['directions'])
             
             var intersection = edge_genomes.filter(x => enabled.includes(x));
@@ -423,126 +384,233 @@ class PangenomeGraphUserInterface {
                     var j_x = this.nodes[target]['position'][0]
                     var j_y = this.nodes[target]['position'][1]
                     
-                    for (let e = 0; e <= this.genomes.length; e++) {
-                    
-                        if (e == this.genomes.length || (this.genomes[e] + 'layer' in middle_layers && edge_genomes.includes(this.genomes[e])) ) {
+                    var dir_set = Object.values(edge['directions'])
+    
+                    if (dir_set.includes('L') && dir_set.includes('R')) {
+                        var stroke = ' stroke-dasharray="' + line_thickness * 4 + ' ' + line_thickness + '" '
+                    } else if (dir_set.includes('L')) {
+                        var stroke = ' stroke-dasharray="' + line_thickness + '" '
+                    } else {
+                        var stroke = ''
+                    }
+
+                    if (dir_set.includes('R')) {
+                        if (source in edge_synteny) {
+                        } else {
+                            edge_synteny[source] = {}
+                        }
+    
+                        edge_synteny[source][target] = edge['route']
+                    } else {
+                        if (target in edge_synteny) {
+                        } else {
+                            edge_synteny[target] = {}
+                        }
+
+                        edge_synteny[target][source] = [...edge['route']].reverse()
+                    }
+    
+                    var [graph_size, graph_start, graph_stop] = outer_layers['graph']
+                    var i_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + i_y * node_distance_y
+                    var j_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + j_y * node_distance_y
+                    var draw = pick
+                    var thickness = edge_thickness
                 
-                            if (e == this.genomes.length) {
+                    if (linear == 0){
+                        var [circle_i_x, circle_i_y] = this.transform(i_x, i_y_size, theta);
+                        var [circle_j_x, circle_j_y] = this.transform(j_x, j_y_size, theta);
+                    } else {
+                        var [circle_i_x, circle_i_y] = [(i_x) * node_distance_x, -i_y_size];
+                        var [circle_j_x, circle_j_y] = [(j_x) * node_distance_x, -j_y_size];
+                    }
+        
+                    if (draw !== "") {
                 
-                                var dir_set = Object.values(edge['directions'])
-                
-                                if (dir_set.includes('L') && dir_set.includes('R')) {
-                                    var stroke = ' stroke-dasharray="' + line_thickness * 4 + ' ' + line_thickness + '" '
-                                } else if (dir_set.includes('L')) {
-                                    var stroke = ' stroke-dasharray="' + line_thickness + '" '
-                                } else {
-                                    var stroke = ''
-                                }
-                
-                                var [graph_size, graph_start, graph_stop] = outer_layers['graph']
-                                var i_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + i_y * node_distance_y
-                                var j_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + j_y * node_distance_y
-                                var draw = pick
-                                var thickness = edge_thickness
-                            } else {
-                                var [layer_width, layer_start, layer_stop] = middle_layers[this.genomes[e] + 'layer']
-                
-                                if (layer_width < line_thickness) {
-                                    var draw = ''
-                                } else {
-                                    layer_width -= line_thickness
-                                    layer_start += line_thickness * 0.5
-                                    layer_stop -= line_thickness * 0.5
-                                    
-                                    var i_y_size = layer_start + i_y * (layer_width / this.global_y)
-                                    var j_y_size = layer_start + j_y * (layer_width / this.global_y)
-                                    var draw = edgecoloring[this.genomes[e]][1]
-                                    var thickness = line_thickness
-                                    var stroke = ''
-                                }
-                            }
-                
+                        var route_edge = '<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y
+        
+                        if (edge['route'].length == 0){
                             if (linear == 0){
-                                var [circle_i_x, circle_i_y] = this.transform(i_x, i_y_size, theta);
-                                var [circle_j_x, circle_j_y] = this.transform(j_x, j_y_size, theta);
+                                if (i_y == j_y) {
+                                    route_edge += ' A ' + i_y_size  + ' ' + j_y_size + ' 0 0 0 ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
+                                } else {
+                                    route_edge += ' L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
+                                }
                             } else {
-                                var [circle_i_x, circle_i_y] = [(i_x) * node_distance_x, -i_y_size];
-                                var [circle_j_x, circle_j_y] = [(j_x) * node_distance_x, -j_y_size];
+                                route_edge += ' L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
                             }
-                
-                            if (draw !== "") {
-                
-                                var route_edge = '<path class="path" d="M ' + circle_i_x + ' ' + circle_i_y
-                
-                                if (edge['route'].length == 0){
+                        } else {
+                            var o_y = i_y
+                            for(var n in edge['route']) {
+                                var n_x = edge['route'][n][0]
+                                var n_y = edge['route'][n][1]
+                                var o_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + o_y * node_distance_y
+                                var n_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + n_y * node_distance_y
+        
+                                if (linear == 0){
+                                    var [circle_n_x, circle_n_y] = this.transform(n_x, n_y_size, theta);
+                                } else {
+                                    var [circle_n_x, circle_n_y] = [(n_x) * node_distance_x, -n_y_size];
+                                }
+        
+                                if (o_y == n_y) {
                                     if (linear == 0){
-                                        if (i_y == j_y) {
-                                            route_edge += ' A ' + i_y_size  + ' ' + j_y_size + ' 0 0 0 ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
-                                        } else {
-                                            route_edge += ' L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
-                                        }
+                                        route_edge += ' A ' + o_y_size  + ' ' + n_y_size + ' 0 0 0 ' + circle_n_x + ' ' + circle_n_y
                                     } else {
-                                        route_edge += ' L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
+                                        route_edge += ' L ' + circle_n_x + ' ' + circle_n_y
                                     }
                                 } else {
-                                    var o_y = i_y
-                                    for(var n in edge['route']) {
-                                        var n_x = edge['route'][n][0]
-                                        var n_y = edge['route'][n][1]
-                                        
-                                        if (e == this.genomes.length) {
-                                            var o_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + o_y * node_distance_y
-                                            var n_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + n_y * node_distance_y
-                                        } else {
-                                            var o_y_size = layer_start + o_y * (layer_width / this.global_y)
-                                            var n_y_size = layer_start + n_y * (layer_width / this.global_y)
-                                        }
-                
-                                        if (linear == 0){
-                                            var [circle_n_x, circle_n_y] = this.transform(n_x, n_y_size, theta);
-                                        } else {
-                                            var [circle_n_x, circle_n_y] = [(n_x) * node_distance_x, -n_y_size];
-                                        }
-                
-                                        if (o_y == n_y) {
-                                            if (linear == 0){
-                                                route_edge += 'A ' + o_y_size  + ' ' + n_y_size + ' 0 0 0 ' + circle_n_x + ' ' + circle_n_y
-                                            } else {
-                                                route_edge += 'L ' + circle_n_x + ' ' + circle_n_y
-                                            }
-                                        } else {
-                                            route_edge += 'L ' + circle_n_x + ' ' + circle_n_y
-                                        }
-                
-                                        var o_y = n_y
-                                    }
-                
-                                    if (o_y == j_y) {
-                                        if (linear == 0){
-                                            route_edge += 'A ' + o_y_size  + ' ' + j_y_size + ' 0 0 0 ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
-                                        } else {
-                                            route_edge += 'L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
-                                        }
-                                    } else {
-                                        route_edge += 'L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
-                                    }
+                                    route_edge += ' L ' + circle_n_x + ' ' + circle_n_y
                                 }
-                
-                                if (e == this.genomes.length) {
-                                    svg_edges.push(
-                                        $(route_edge)
-                                    )
+        
+                                var o_y = n_y
+                            }
+        
+                            if (o_y == j_y) {
+                                if (linear == 0){
+                                    route_edge += ' A ' + o_y_size  + ' ' + j_y_size + ' 0 0 0 ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
                                 } else {
-                                    svg_genome_tracks[this.genomes[e]].push(
-                                        $(route_edge)
-                                    )
+                                    route_edge += ' L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
                                 }
+                            } else {
+                                route_edge += ' L ' + circle_j_x + ' ' + circle_j_y + '"' + stroke + ' stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'
                             }
                         }
+
+                        svg_edges.push($(route_edge))
                     }
                 }
             }
         };
+
+        for (var genome of this.genomes) {
+            var layer_name = genome + 'layer'
+            if (Object.keys(middle_layers).includes(layer_name)){
+        
+                var [layer_width, layer_start, layer_stop] = middle_layers[layer_name]
+            
+                if (linear == 0){
+                    var [circle_a_x, circle_a_y] = this.transform(0-0.5, layer_start, theta)
+                    var [circle_b_x, circle_b_y] = this.transform(0-0.5, layer_stop, theta)
+                    var [circle_c_x, circle_c_y] = this.transform(this.global_x + 0.5, layer_start, theta)
+                    var [circle_d_x, circle_d_y] = this.transform(this.global_x + 0.5, layer_stop, theta)
+                    
+                    if ((this.global_x) * theta > 180) {
+                        var arc_flag = 1
+                    } else {
+                        var arc_flag = 0
+                    }
+            
+                    svg_genome_tracks[genome].push(
+                        $('<path d="M ' + circle_c_x + ' ' + circle_c_y +
+                        ' A ' + layer_start + ' ' + layer_start + ' 0 ' + arc_flag + ' 1 ' + circle_a_x + ' ' + circle_a_y +
+                        ' L ' + circle_b_x + ' ' + circle_b_y +
+                        ' A ' + layer_stop + ' ' + layer_stop + ' 0 ' + arc_flag + ' 0 ' + circle_d_x + ' ' + circle_d_y +
+                        ' Z" stroke-width="0" fill="' + layer_color + '"></path>')
+                    )
+                } else {
+                    var [circle_a_x, circle_a_y] = [(0-0.5) * node_distance_x, -layer_start]
+                    var [circle_b_x, circle_b_y] = [(0-0.5) * node_distance_x, -layer_stop]
+                    var [circle_c_x, circle_c_y] = [(this.global_x + 0.5) * node_distance_x, -layer_start]
+                    var [circle_d_x, circle_d_y] = [(this.global_x + 0.5) * node_distance_x, -layer_stop]
+                    
+                    svg_genome_tracks[genome].push(
+                        $('<path d="M ' + circle_c_x + ' ' + circle_c_y +
+                        ' L ' + circle_a_x + ' ' + circle_a_y +
+                        ' L ' + circle_b_x + ' ' + circle_b_y +
+                        ' L ' + circle_d_x + ' ' + circle_d_y +
+                        ' Z" stroke-width="0" fill="' + layer_color + '"></path>')
+                    )
+                }
+
+                var sorted_keys = Object.keys(this.synteny[genome]).sort(function (a, b) {return parseInt(a) - parseInt(b);});
+                if (layer_width >= line_thickness) {
+
+                    layer_width -= line_thickness
+                    layer_start += line_thickness * 0.5
+                    layer_stop -= line_thickness * 0.5
+                    
+                    var draw = edgecoloring[genome][1]
+                    var thickness = line_thickness
+                    var stroke = ''
+
+                    var edge_chain = []
+                    for(var i of sorted_keys){
+    
+                        var j = (parseInt(i) + 1).toString()
+                        var node_i = this.synteny[genome][i]
+                        var node_j = this.synteny[genome][j]
+
+                        var pass_on = 1
+                        
+                        if (typeof(node_i) != 'undefined' && typeof(node_j) != 'undefined'){
+
+                            var i_x = this.nodes[node_i]['position'][0]
+                            var i_y = this.nodes[node_i]['position'][1]
+                            var j_x = this.nodes[node_j]['position'][0]
+                            var j_y = this.nodes[node_j]['position'][1]
+
+                            if (node_i in edge_synteny) {
+                                if (node_j in edge_synteny[node_i]) {
+                                    if (edge_chain.length == 0) {
+                                        edge_chain.push([i_x, i_y])
+                                    }
+
+                                    edge_chain.push(...edge_synteny[node_i][node_j])
+                                    edge_chain.push([j_x, j_y])
+                                } else {pass_on = 0}
+                            } else {pass_on = 0}
+                        } else {pass_on = 0}
+
+                        if (pass_on == 0) {
+                            var route_edge = ''
+
+                            for (var p=0; p < edge_chain.length - 1; p++){
+                                var p_x = edge_chain[p][0]
+                                var p_y = edge_chain[p][1]
+                                var p_y_size = layer_start + p_y * (layer_width / this.global_y)
+
+                                if (linear == 0){
+                                    var [circle_p_x, circle_p_y] = this.transform(p_x, p_y_size, theta);
+                                } else {
+                                    var [circle_p_x, circle_p_y] = [(p_x) * node_distance_x, -p_y_size];
+                                }
+
+                                if (route_edge == "") {
+                                    route_edge = '<path class="path" d="M ' + circle_p_x + ' ' + circle_p_y
+                                }
+                                
+                                var q_x = edge_chain[p+1][0]
+                                var q_y = edge_chain[p+1][1]
+                                var q_y_size = layer_start + q_y * (layer_width / this.global_y)
+
+                                if (linear == 0){
+                                    var [circle_q_x, circle_q_y] = this.transform(q_x, q_y_size, theta);
+                                } else {
+                                    var [circle_q_x, circle_q_y] = [(q_x) * node_distance_x, -q_y_size];
+                                }
+
+                                if (p_y == q_y) {
+                                    if (linear == 0){
+                                        route_edge += ' A ' + p_y_size  + ' ' + q_y_size + ' 0 0 0 ' + circle_q_x + ' ' + circle_q_y
+                                    } else {
+                                        route_edge += ' L ' + circle_q_x + ' ' + circle_q_y
+                                    }
+                                } else {
+                                    route_edge += ' L ' + circle_q_x + ' ' + circle_q_y
+                                }
+                            }
+
+                            // console.log(route_edge)
+                            edge_chain = []
+
+                            if (route_edge != "") {
+                                svg_genome_tracks[genome].push($(route_edge + '" stroke="' + draw + '" stroke-width="' + thickness + '" fill="none"/>'))
+                            }
+                        }                            
+                    }
+                }
+            }
+        }
         
         var end = new Date().getTime();
         var time = end - start;
