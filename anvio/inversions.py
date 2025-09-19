@@ -31,6 +31,7 @@ import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
 from anvio.summaryhtml import SummaryHTMLOutput
+from anvio.artifacts.samples_txt import SamplesTxt
 from anvio.sequencefeatures import Palindromes, PrimerSearch
 
 
@@ -1403,9 +1404,11 @@ class Inversions:
             # because otherwise PrimerSearch will search primers for every sample in
             # `samples_dict`
             samples_dict_for_sample = {sample_name: samples_dict[sample_name]}
+            # then we make a samples_artifact
+            samples_artifact_for_sample = SamplesTxt.from_dict(samples_dict_for_sample)
 
             # setup the args object
-            args = argparse.Namespace(samples_dict=samples_dict_for_sample,
+            args = argparse.Namespace(samples_artifact=samples_artifact_for_sample,
                                       primers_dict=primers_dict,
                                       min_remainder_length=oligo_length,
                                       min_frequency=min_frequency,
