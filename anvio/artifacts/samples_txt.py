@@ -6,6 +6,7 @@ import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
+from pathlib import Path
 from anvio.errors import ConfigError
 
 
@@ -43,25 +44,37 @@ class SamplesTxt:
         "free":       [],  # only first column + optional others
     }
 
-    def __init__(self, path, expected_format="free", valid_formats=None, skip_check_sanity=False, run=terminal.Run()):
+    def __init__(self, path_or_data, expected_format="free", valid_formats=None, skip_check_sanity=False, run=terminal.Run()):
         self.run = run
 
-        self.artifact_path = path
         self.expected_format = expected_format
         self.valid_formats = dict(self.DEFAULT_VALID_FORMATS)
         if valid_formats:
             self.valid_formats.update(valid_formats)
 
-        # Light, non-failing prep. All raising happens in check_sanity().
+        # Detect source type
+        if isinstance(path_or_data, (str, Path)):
+            self._source = "path"
+            self.artifact_path = str(path_or_data)
+        else:
+            self._source = "dict"
+            self.artifact_path = None
+
+        # Placeholders used later
         self._raw_text = None
         self._columns_found = None
         self._first_col = None
-        self._raw_rows = None  # as returned by get_TAB_delimited_file_as_dictionary
-        self._data = None      # normalized dict we expose
+        self._raw_rows = None   # mapping-like, sample_key -> row dict
+        self._data = None       # normalized
 
-        self._load_raw_text()        # populate _raw_text
-        self._inspect_headers()      # populate _columns_found / _first_col
-        self._parse_rows()           # populate _raw_rows and normalized _data (no strict validation yet)
+        # Load/parse by source
+        if self._source == "path":
+            self._load_raw_text()
+            self._inspect_headers_from_file()
+            self._parse_rows_from_file()
+        else:
+            self._inspect_headers_from_data(path_or_data)
+            self._parse_rows_from_data(path_or_data)
 
         if not skip_check_sanity:
             self.check_sanity()
@@ -72,8 +85,9 @@ class SamplesTxt:
         if self.expected_format not in self.valid_formats:
             raise ConfigError(f"SamplesTxt speaking: expected_format must be one of {list(self.valid_formats)}, got '{self.expected_format}'.")
 
-        # File is tab-delimited (raises on failure)
-        filesnpaths.is_file_tab_delimited(self.artifact_path)
+        # File checks only when source is a path:
+        if self._source == "path":
+            filesnpaths.is_file_tab_delimited(self.artifact_path)
 
         # Header checks (first col, required columns for the chosen mode)
         if self._first_col not in ("sample", "name"):
@@ -92,14 +106,37 @@ class SamplesTxt:
                              f"which is absolutely fine. You're reading this message because anvi'o wanted to make sure you "
                              f"know that it knows that it is the case. Classic anvi'o virtue signaling.", lc="yellow")
 
-        # Per-row validations, file existence, identical pairs
+        # Per-row validations
         self._validate_rows_by_mode()
         self._check_file_existence_and_identical_pairs()
         self._warn_on_unconventional_fastq_suffixes()
 
     def as_raw(self):
-        """Return the raw TSV text of the samples-txt file."""
-        return self._raw_text
+        """If constructed from a file, return raw file text; otherwise a synthesized TSV."""
+        if self._source == "path":
+            return self._raw_text
+
+        # synthesize TSV in canonical order: first_col, group, r1, r2, lr, extras...
+        cols = [self._first_col, "group", "r1", "r2", "lr"] + list(self._extra_columns)
+        # keep only those that exist anywhere
+        present = [c for c in cols if any(c in row for row in self._raw_rows.values()) or c == self._first_col]
+        lines = ["\t".join(present)]
+        for key, row in self._raw_rows.items():
+            vals = []
+            for c in present:
+                if c == self._first_col:
+                    vals.append(str(row.get(self._first_col, key)))
+                elif c in {"r1","r2","lr"}:
+                    v = row.get(c, "")
+                    # leave as originally provided (string or list → comma-join for display)
+                    if isinstance(v, (list, tuple)):
+                        vals.append(",".join(str(x) for x in v))
+                    else:
+                        vals.append(str(v) if v is not None else "")
+                else:
+                    vals.append("" if row.get(c) in (None,) else str(row.get(c)))
+            lines.append("\t".join(vals))
+        return "\n".join(lines)
 
     def as_dict(self, include_extras=True):
         """Return {sample: {'group','r1','r2','lr', [extras...]}}.
@@ -148,24 +185,93 @@ class SamplesTxt:
     def from_args(cls, args, **kwargs):
         return cls(getattr(args, "samples_txt", None), **kwargs)
 
+    @classmethod
+    def from_dict(cls, data, **kwargs):
+        """Build a SamplesTxt from an in-memory dict/list (no file)."""
+        return cls(data, **kwargs)
+
     def _load_raw_text(self):
         with open(self.artifact_path, "r", encoding="utf-8") as f:
             self._raw_text = f.read()
 
-    def _inspect_headers(self):
+    def _inspect_headers_from_file(self):
         self._columns_found = utils.get_columns_of_TAB_delim_file(self.artifact_path, include_first_column=True)
         self._first_col = self._columns_found[0] if self._columns_found else None
 
-        # Columns that are not part of the canonical schema (keep header order)
         self._extra_columns = [
             c for c in (self._columns_found or [])
             if c not in {self._first_col, "group", "r1", "r2", "lr"}
         ]
 
-    def _parse_rows(self):
+    def _parse_rows_from_file(self):
         # Do not pass expected_fields here; 'free' and partial headers should still parse.
         self._raw_rows = utils.get_TAB_delimited_file_as_dictionary(self.artifact_path)
         self._data = self._normalize_rows(self._raw_rows, self._first_col)
+
+    def _inspect_headers_from_data(self, data):
+        """
+        Accept either:
+          A) dict[str, dict]: {sample -> {r1/r2/lr/group/EXTRA...}}
+          B) list[dict]:      [{'sample':..., 'r1':..., ...}, ...]
+        Compute synthetic header list: first column, canonical fields, then extras (sorted).
+        """
+        if isinstance(data, dict):
+            # dict-of-dicts → first column will be 'sample'
+            keys = set().union(*[set((v or {}).keys()) for v in data.values()]) if data else set()
+            self._first_col = "sample"
+            cols = ["sample"]
+            # Prefer canonical order
+            for c in ["group", "r1", "r2", "lr"]:
+                if c in keys:
+                    cols.append(c)
+            extras = sorted([c for c in keys if c not in {"group","r1","r2","lr"}])
+            cols.extend(extras)
+            self._columns_found = cols
+            self._extra_columns = extras
+        elif isinstance(data, list):
+            keys = set().union(*[set((row or {}).keys()) for row in data]) if data else set()
+            self._first_col = "sample" if "sample" in keys else ("name" if "name" in keys else "sample")
+            cols = [self._first_col]
+            for c in ["group", "r1", "r2", "lr"]:
+                if c in keys:
+                    cols.append(c)
+            extras = sorted([c for c in keys if c not in {self._first_col,"group","r1","r2","lr"}])
+            cols.extend(extras)
+            self._columns_found = cols
+            self._extra_columns = extras
+        else:
+            raise ConfigError(f"Unsupported data type for SamplesTxt: {type(data)}")
+
+    def _parse_rows_from_data(self, data):
+        """Coerce the in-memory object to the same _raw_rows shape used for file input."""
+        self._raw_rows = self._coerce_data_to_raw_rows(data, self._first_col)
+        self._data = self._normalize_rows(self._raw_rows, self._first_col)
+
+    def _coerce_data_to_raw_rows(self, data, first_col):
+        """
+        Return a mapping: sample_key -> row dict (row includes first_col key).
+        Accepts dict[str, dict] and list[dict].
+        Values for r1/r2/lr may be str (comma-separated) or list; we pass them through;
+        splitting is handled later by _normalize_rows.
+        """
+        rows = {}
+        if isinstance(data, dict):
+            for sample, info in data.items():
+                row = dict(info or {})
+                # ensure first_col exists
+                row[first_col] = sample if first_col == "sample" else row.get(first_col, sample)
+                rows[sample] = row
+        else:  # list[dict]
+            for row in data:
+                if first_col not in row and "sample" in row:
+                    # promote 'sample' into first_col if header chose 'name'
+                    row = dict(row)
+                    row[first_col] = row["sample"]
+                key = str(row.get(first_col, "")).strip()
+                if not key:
+                    raise ConfigError("Encountered a row without a sample/name.")
+                rows[key] = dict(row)
+        return rows
 
     @staticmethod
     def _split_paths(cell):
