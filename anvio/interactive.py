@@ -12,7 +12,6 @@ import pandas as pd
 
 import anvio
 import anvio.tables as t
-import anvio.kegg as kegg
 import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.hmmops as hmmops
@@ -32,17 +31,13 @@ from anvio.variabilityops import VariabilitySuper
 from anvio.variabilityops import variability_engines
 from anvio.dbops import get_default_item_order_name
 from anvio.genomedescriptions import AggregateFunctions
+from anvio.tables.collections import TablesForCollections
+from anvio.metabolism.estimate import KeggMetabolismEstimator
 from anvio.errors import ConfigError, RefineError, GenesDBError
 from anvio.clusteringconfuguration import ClusteringConfiguration
 from anvio.dbops import ProfileSuperclass, ContigsSuperclass, PanSuperclass, TablesForStates, ProfileDatabase
-
-from anvio.tables.miscdata import (
-    TableForItemAdditionalData,
-    TableForLayerAdditionalData,
-    TableForLayerOrders,
-    TableForAminoAcidAdditionalData,
-)
-from anvio.tables.collections import TablesForCollections
+from anvio.tables.miscdata import TableForItemAdditionalData, TableForLayerAdditionalData
+from anvio.tables.miscdata import TableForLayerOrders, TableForAminoAcidAdditionalData
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -3277,7 +3272,7 @@ class MetabolismInteractive():
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
         self.contigs_db_path = A('contigs_db') #TODO delete if we don't need this
 
-        self.estimator = kegg.KeggMetabolismEstimator(args)
+        self.estimator = KeggMetabolismEstimator(args)
 
 
     def get_metabolism_data(self):

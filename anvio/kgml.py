@@ -28,12 +28,15 @@ from matplotlib.colors import Colormap, rgb2hex
 
 from typing import Dict, Iterable, List, Literal, Tuple, Union
 
-import anvio.kegg as kegg
 import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
 from anvio import FORCE_OVERWRITE, __version__ as VERSION
 from anvio.filesnpaths import is_file_exists, is_output_file_writable
+
+from anvio.metabolism.context import KeggContext
+from anvio.metabolism.downloads import download_org_pathway_image_files
+from anvio.metabolism.constants import GLOBAL_MAP_ID_PATTERN, OVERVIEW_MAP_ID_PATTERN
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2024, the Meren Lab (http://merenlab.org/)"
@@ -185,13 +188,13 @@ class Pathway(Element):
     def is_global_map(self):
         if self.number is None:
             return None
-        return True if re.match(kegg.GLOBAL_MAP_ID_PATTERN, self.number) else False
+        return True if re.match(GLOBAL_MAP_ID_PATTERN, self.number) else False
 
     @property
     def is_overview_map(self):
         if self.number is None:
             return None
-        return True if re.match(kegg.OVERVIEW_MAP_ID_PATTERN, self.number) else False
+        return True if re.match(OVERVIEW_MAP_ID_PATTERN, self.number) else False
 
     def set_color_priority(
         self,
@@ -1658,7 +1661,7 @@ class Drawer:
 
     Attributes
     ==========
-    kegg_context : anvio.kegg.KeggContext
+    kegg_context : anvio.metabolism.context.KeggContext
         This contains anvi'o KEGG database attributes, such as filepaths.
 
     xml_ops : XMLOps
@@ -1706,7 +1709,7 @@ class Drawer:
         """
         args = Namespace()
         args.kegg_data_dir = kegg_dir
-        self.kegg_context = kegg.KeggContext(args)
+        self.kegg_context = KeggContext(args)
 
         self.xml_ops = XMLOps()
 
@@ -1899,7 +1902,7 @@ class Drawer:
             is_file_exists(map_filepath)
 
         if use_org_map and not is_file_exists(map_filepath, dont_raise=True):
-            kegg.download_org_pathway_image_files(f'{pathway.org}{pathway.number}', self.kegg_dir)
+            download_org_pathway_image_files(f'{pathway.org}{pathway.number}', self.kegg_dir)
 
         bio_pathway.image = map_filepath
 
@@ -1969,7 +1972,7 @@ class Drawer:
                 kwargs['fontsize'] = 9
 
         if use_org_map and not is_file_exists(map_filepath, dont_raise=True):
-            kegg.download_org_pathway_image_files(f'{pathway.org}{pathway.number}', self.kegg_dir)
+            download_org_pathway_image_files(f'{pathway.org}{pathway.number}', self.kegg_dir)
 
         bio_pathway.image = map_filepath
 
@@ -2033,7 +2036,7 @@ class Drawer:
                 kwargs['fontsize'] = 9
 
         if use_org_map and not is_file_exists(map_filepath, dont_raise=True):
-            kegg.download_org_pathway_image_files(f'{pathway.org}{pathway.number}', self.kegg_dir)
+            download_org_pathway_image_files(f'{pathway.org}{pathway.number}', self.kegg_dir)
 
         bio_pathway.image = map_filepath
 
@@ -2094,7 +2097,7 @@ class Tester:
         args = Namespace()
         if kegg_dirpath is not None:
             args.kegg_data_dir = kegg_dirpath
-        kegg_context = kegg.KeggContext(args)
+        kegg_context = KeggContext(args)
         for dirname in os.listdir(kegg_context.map_image_kgml_dir):
             dirpath = os.path.join(kegg_context.map_image_kgml_dir, dirname)
             if not os.path.isdir(dirpath):

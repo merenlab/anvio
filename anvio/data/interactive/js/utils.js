@@ -392,7 +392,7 @@ function showGeneFunctionsSummaryTableDialog(title, content) {
                 </div>
 
                 <p style="margin: 20px; font-style: italic; flex-shrink: 0;">
-                    Here is the list of functions that are associated with the gene calls in your bin.
+                    Tables below show the functions encoded by the genes in this bin, and their involvement in metabolic modules, if any..
                 </p>
 
                 <div class="modal-body" style="overflow: auto; flex: 1; min-height: 0; padding: 0 20px 20px 20px;">
@@ -423,27 +423,31 @@ function showGeneFunctionsSummaryTableDialog(title, content) {
     });
 }
 
-function showGeneClusterFunctionsSummaryTableDialog(title, content)
-{
+
+function showGeneClusterFunctionsSummaryTableDialog(title, content) {
     var randomID = title.hashCode();
 
     var template = `
-    <div class="modal fade taxonomyTableDialog" id="modal` + randomID + `" role="dialog" data-backdrop="false" style="pointer-events: none;">
-        <div class="taxonomy-modal-dialog modal-dialog" style="pointer-events: all;">
-            <div class="modal-content">
+    <div class="modal fade geneFunctionsSummaryDialog" id="modal${randomID}" role="dialog">
+        <div class="gene-functions-modal-dialog modal-dialog modal-dialog-centered" style="pointer-events: all; max-width: 90vw; width: 90vw;">
+            <div class="modal-content" style="max-height: 80vh; display: flex; flex-direction: column;">
 
-                <div class="modal-header">
-                    <h4 class="modal-title">` + title + `</h4>
+                <div class="modal-header" style="flex-shrink: 0;">
+                    <h4 class="modal-title">${title}</h4>
                     <button type="button" class="close" data-dismiss="modal" aria-hidden="true">&times;</button>
                 </div>
 
-                <p style="margin: 20px; font-style: italic;">Please note that this is just a quick view of the functions associated with your gene clusters. A much more appropriate way to summarize this information and more is to use the program <a href="http://merenlab.org/software/anvio/help/programs/anvi-summarize/" target="_blank">anvi-summarize</a>, and inspect the resulting TAB-delimited output file</p>
+                <p style="margin: 20px; font-style: italic; flex-shrink: 0;">
+                    Tables below show the functions associated with the gene clusters in this bin, and their involvement in metabolic modules, if any.
+                </p>
 
-                <div class="modal-body">
-                    ` + content + `
+                <div class="modal-body" style="overflow: auto; flex: 1; min-height: 0; padding: 0 20px 20px 20px;">
+                    <div class="table-responsive" style="max-height: none;">
+                        ${content}
+                    </div>
                 </div>
 
-                <div class="modal-footer">
+                <div class="modal-footer" style="flex-shrink: 0;">
                     <button type="button" class="btn btn-outline-danger" data-dismiss="modal">Close</button>
                 </div>
             </div>
@@ -451,7 +455,15 @@ function showGeneClusterFunctionsSummaryTableDialog(title, content)
     </div>`;
 
     $('body').append(template);
-    $('#modal' + randomID).modal({'show': true, 'backdrop': true, 'keyboard': false}).find('.modal-dialog').draggable({handle: '.modal-header'});
+
+    $('#modal' + randomID).modal({
+        'show': true,
+        'backdrop': true,
+        'keyboard': true
+    }).find('.modal-dialog').draggable({
+        handle: '.modal-header'
+    });
+
     $('#modal' + randomID).on('hidden.bs.modal', function () {
         $(this).remove();
     });
