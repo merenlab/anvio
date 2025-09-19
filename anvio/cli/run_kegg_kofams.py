@@ -4,10 +4,10 @@
 import sys
 
 import anvio
-import anvio.kegg as kegg
 
-from anvio.errors import ConfigError, FilesNPathsError
 from anvio.terminal import time_program
+from anvio.metabolism.annotate import RunKOfams
+from anvio.errors import ConfigError, FilesNPathsError
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
@@ -22,7 +22,7 @@ def main():
     args = get_args()
 
     try:
-        p = kegg.RunKOfams(args)
+        p = RunKOfams(args)
         p.process_kofam_hmms()
     except ConfigError as e:
         print(e)

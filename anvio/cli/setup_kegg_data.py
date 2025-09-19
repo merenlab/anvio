@@ -5,11 +5,14 @@ import sys
 import argparse
 
 import anvio
-import anvio.kegg as kegg
 
 from anvio.terminal import time_program
 from anvio.ttycolors import color_text as c
 from anvio.errors import ConfigError, FilesNPathsError
+
+from anvio.metabolism.setup import KeggSetup
+from anvio.metabolism.downloads import KOfamDownload, ModulesDownload
+
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
@@ -115,12 +118,12 @@ def run_program():
         raise ConfigError(f"Unrecognized parameters: {' '.join(mode_unknown)}. Did you perhaps fail to specify the right mode?")
 
     if mode == "all" and not args.download_from_kegg:
-        setup = kegg.KeggSetup(args)
+        setup = KeggSetup(args)
         setup.setup_all_data_from_archive_or_snapshot()
     else:
         if mode == "KOfam" or mode == "all":
             args.download_from_kegg = True
-            setup = kegg.KOfamDownload(args)
+            setup = KOfamDownload(args)
             setup.setup_kofams()
         if mode == "modules" or mode == "all":
             # do not reset the directory if it already happened
@@ -128,7 +131,7 @@ def run_program():
                 args.reset = False
                 args.skip_init = True
             args.download_from_kegg = True
-            setup = kegg.ModulesDownload(args)
+            setup = ModulesDownload(args)
             setup.setup_modules_data()
 
 

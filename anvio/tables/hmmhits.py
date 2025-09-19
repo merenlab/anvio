@@ -895,8 +895,8 @@ class FilterHmmHitsTable(object):
             self.run.info("Number of hmm-hits with complete gene-calls", num_complete_gene_calls)
             self.run.info("Number of partial gene-calls filtered from hmm-hits", num_total_gene_calls - num_complete_gene_calls)
 
-        # Save the filtered DataFrame to a temporary file and return its file path
-        domtblout_tmp_out = filesnpaths.get_temp_file_path()
+        # Save the filtered DataFrame to a temporary directory and return its file path
+        domtblout_tmp_out = os.path.join(filesnpaths.get_temp_directory_path(), 'tmp_dom_out.txt')
         df_final.to_csv(domtblout_tmp_out, sep='\t', index=False)
 
         return domtblout_tmp_out

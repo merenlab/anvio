@@ -164,8 +164,7 @@ rule filter_hmm_hits_by_model_coverage:
     """Remove weak hmm hits using model alignment coverage filter"""
 
     version: 1.0
-    log:
-        log = os.path.join(dirs_dict['LOGS_DIR'], "filter_hmm_hits_by_model_coverage-{sample_name}-{hmm_source}.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "filter_hmm_hits_by_model_coverage-{sample_name}-{hmm_source}.log")
     input:
         #done = ancient(rules.anvi_run_hmms_hmmsearch.output.done),
         hmm_hits = ancient(rules.anvi_run_hmms_hmmsearch.output.hmm_hits)
@@ -214,7 +213,7 @@ rule filter_hmm_hits_by_model_coverage:
         else:
             no_hmm_hits_string = f"The hmm source {hmm_source} was not found in the hmm_hits of the contigs_db: {contigs_db}"
             print(no_hmm_hits_string)
-            with open(log.log, "w") as logfile:
+            with open(log, "w") as logfile:
                 logfile.write(no_hmm_hits_string)
 
         # Get hmm_hits.txt
@@ -229,8 +228,7 @@ rule process_hmm_hits:
     """
 
     version: 1.0
-    log:
-        log = os.path.join(dirs_dict['LOGS_DIR'], "process_hmm_hits-{sample_name}-{hmm_source}-{hmm_name}.log")
+    log: os.path.join(dirs_dict['LOGS_DIR'], "process_hmm_hits-{sample_name}-{hmm_source}-{hmm_name}.log")
     input:
         done = ancient(rules.filter_hmm_hits_by_model_coverage.output.done),
     output:
@@ -1065,7 +1063,6 @@ rule anvi_estimate_scg_taxonomy:
     log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_scg_taxonomy_{group}.log")
     input:
         final_list_of_sequences_for_mapping_headers = os.path.join(dirs_dict['MSA'], "{group}", "{group}_headers.tmp"),
-        run_scg_taxonomy = expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}", "{sample_name}_scg_taxonomy.done"), sample_name = M.names_list),
     params:
         reformat_file = rules.combine_sequence_data.output.reformat_report_all,
         misc_data_dir = os.path.join(dirs_dict['MISC_DATA'], "{group}"),

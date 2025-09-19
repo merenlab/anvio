@@ -181,6 +181,8 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         if not self.hmm_list_path:
             raise ConfigError('Please provide a path to an hmm_list.txt')
 
+        self.run_scg_taxonomy = self.get_param_value_from_config(['anvi_run_scg_taxonomy', 'run'])
+
         self.init_hmm_list_txt()
 
         gene_caller_to_use = self.get_param_value_from_config(['gene_caller_to_use'])
@@ -393,8 +395,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         target_file = os.path.join(self.dirs_dict['MISC_DATA'], "{group}", "{group}_misc.tsv")
         target_files.append(target_file)
 
-        run_scg_taxonomy = self.get_param_value_from_config(["anvi_run_scg_taxonomy", "run"]) == True
-        if run_scg_taxonomy:
+        if self.run_scg_taxonomy:
             target_file = os.path.join(self.dirs_dict['MISC_DATA'], "{group}", "anvi_estimate_scg_taxonomy_for_SCGs.done")
             target_files.append(target_file)
 
@@ -426,6 +427,18 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         # for samples and unique hmm_source, get the input files
         for hmm_source, hmm_name in hmm_source_name:
             input_file = [os.path.join(self.dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], sample_name, hmm_source, hmm_name, f"{sample_name}-{hmm_name}-processed.done") for sample_name in self.names_list]
+            input_files.extend(input_file)
+
+        # you may wonder why do we need the outputs of anvi-run-scg-taxonomy here.
+        # It is for a practical reason: when a snakemake workflow is generating a lot of jobs,
+        # you can use the flag --batch my_rule=n/N to run a subset of jobs at a time. Here,
+        # by adding the output of anvi-run-scg-taxonomy as an input to this rule, you can
+        # use the --batch flag to run until 'combine_sequence_data'. Otherwise, snakemake
+        # will try to run scg taxonomy in the first batch, and basically ruining the purpose
+        # of the --batch flag.
+        # tl;dr: we make the rule 'combine_sequence_data' the bottleneck for the --batch flag
+        if self.run_scg_taxonomy:
+            input_file = [os.path.join(self.dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], sample_name, f"{sample_name}_scg_taxonomy.done") for sample_name in self.names_list]
             input_files.extend(input_file)
 
         return input_files
@@ -497,7 +510,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                     raise ConfigError(f"{hmm_source} is not an 'INTERNAL' hmm source for anvi'o. "
                                       f"Please double check {self.hmm_list_path} to see if you spelled it right or "
                                       f"please checkout the default internal hmms here: https://merenlab.org/software/anvio/help/7/artifacts/hmm-source/#default-hmm-sources")
-                if hmm_name not in constants.default_scgs_for_taxonomy and self.get_param_value_from_config(["anvi_run_scg_taxonomy", "run"]):
+                if hmm_name not in constants.default_scgs_for_taxonomy and self.run_scg_taxonomy:
                     raise ConfigError(f"You asked EcoPhylo to use anvi-estimate-scg-taxonomy but the HMM {hmm_name} in {hmm_source} is not compatible. "
                                       f"You can either turn off anvi-estimate-scg-taxonomy in the config file, or choose a compatible gene in this set: "
                                       f"{constants.default_scgs_for_taxonomy}")
@@ -532,7 +545,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         # if groups combine two or more hmm, then anvi-scg-taxonomy is not compatible with the workflow
         # TODO: I hope we can change that in the future, probably by making a contigs.db for the representative sequence,
         # in tree mode or not.
-        if len(unique_group) < len(self.hmm_dict) and self.get_param_value_from_config(["anvi_run_scg_taxonomy", "run"]):
+        if len(unique_group) < len(self.hmm_dict) and self.run_scg_taxonomy:
             raise ConfigError(f"You have one or more 'group' in your HMM list file (or multiple identical entries - but you "
                               f"shouldn't be doing that) and at the moment it is not compatible with anvi-estimate-scg-taxonomy. "
                               f"The good news is that you can turn off anvi-run-scg-taxonmy in your config file.")

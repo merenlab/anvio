@@ -5,11 +5,12 @@
 import sys
 
 import anvio
-import anvio.kegg as kegg
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.metabolism.enrichment import KeggModuleEnrichment
+
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
@@ -31,7 +32,7 @@ def main():
     try:
         filesnpaths.is_output_file_writable(args.output_file)
 
-        e = kegg.KeggModuleEnrichment(args)
+        e = KeggModuleEnrichment(args)
         e.run_enrichment_stats()
     except ConfigError as e:
         print(e)

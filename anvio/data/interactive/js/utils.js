@@ -503,6 +503,7 @@ function _createModalDialog(options) {
                             ${content}
                         </div>
                     </div>
+
                     <div class="modal-footer" style="flex-shrink: 0;">
                         <button type="button" class="btn btn-outline-danger"
                                 data-dismiss="modal">Close</button>
