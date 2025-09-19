@@ -543,12 +543,19 @@ function showTaxonomyTableDialog(title, content) {
  * @param {string} content - Dialog content HTML
  */
 function showGeneFunctionsSummaryTableDialog(title, content) {
+     const noteHTML = `Tables below show the functions encoded by the genes in this bin, and their involvement in
+                       metabolic modules, if any...
+
+                       Please note that this is just a quick view of the functions associated with your genes.
+                       A much more appropriate way to summarize this information is to use the program
+                       <a href="http://merenlab.org/software/anvio/help/programs/anvi-summarize/" target="_blank">
+                       anvi-summarize</a> when applicable, and inspect the resulting TAB-delimited output file.`;
     _createModalDialog({
         title,
         content,
         modalClass: 'geneFunctionsSummaryDialog',
         dialogClass: 'gene-functions-modal-dialog',
-        noteHTML: 'Here is the list of functions that are associated with the gene calls in your bin.'
+        noteHTML
     });
 }
 
@@ -558,11 +565,13 @@ function showGeneFunctionsSummaryTableDialog(title, content) {
  * @param {string} content - Dialog content HTML
  */
 function showGeneClusterFunctionsSummaryTableDialog(title, content) {
-    const noteHTML = `
-        Please note that this is just a quick view of the functions associated with your gene clusters.
-        A much more appropriate way to summarize this information and more is to use the program
-        <a href="http://merenlab.org/software/anvio/help/programs/anvi-summarize/" target="_blank">
-        anvi-summarize</a>, and inspect the resulting TAB-delimited output file`;
+    const noteHTML = `Tables below show the functions associated with the gene clusters in this bin, and their
+                      involvement in metabolic modules, if any.
+
+                      Please note that this is just a quick view of the functions associated with your gene
+                      clusters. A much more appropriate way to summarize this information is to use the program
+                      <a href="http://merenlab.org/software/anvio/help/programs/anvi-summarize/" target="_blank">
+                      anvi-summarize</a> when applicable, and inspect the resulting TAB-delimited output file.`;
 
     _createModalDialog({
         title,
