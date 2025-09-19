@@ -44,6 +44,9 @@ class KeggSetup(KeggContext):
         self.only_download = True if A('only_download') else False
         self.only_processing = True if A('only_processing') else False
         self.skip_init = skip_init
+        self.skip_brite_hierarchies = True if A('skip_brite_hierarchies') else False
+        self.skip_binary_relations = True if A('skip_binary_relations') else False
+        self.skip_map_images = True if A('skip_map_images') else False
 
         if self.kegg_archive_path and self.download_from_kegg:
             raise ConfigError("You provided two incompatible input options, --kegg-archive and --download-from-kegg. "
@@ -62,6 +65,7 @@ class KeggSetup(KeggContext):
 
         # initializing these to None here so that it doesn't break things downstream
         self.pathway_dict = None
+        self.brite_dict = None
 
         # init the base class
         KeggContext.__init__(self, self.args)
@@ -197,6 +201,9 @@ class KeggSetup(KeggContext):
 
         self.progress.update('Checking KEGG archive structure and contents...')
         archive_is_ok = self.kegg_archive_is_ok(unpacked_archive_name)
+        archive_contains_brite = self.check_archive_for_brite(unpacked_archive_name)
+        archive_contains_binary_relations = self.check_archive_for_binary_relations(unpacked_archive_name)
+        archive_contains_map_images = self.check_archive_for_map_files(unpacked_archive_name)
         self.progress.end()
         if archive_is_ok:
             if os.path.exists(self.kegg_data_dir):
@@ -204,6 +211,27 @@ class KeggSetup(KeggContext):
             path_to_kegg_in_archive = os.path.join(unpacked_archive_name, "KEGG")
             shutil.move(path_to_kegg_in_archive, self.kegg_data_dir)
             shutil.rmtree(unpacked_archive_name)
+
+            if not archive_contains_brite and not self.skip_brite_hierarchies:
+                self.run.warning("The KEGG data archive does not contain the necessary files to set up BRITE hierarchy classification. "
+                                 "This is not a problem, and KEGG set up proceeded without it. BRITE is guaranteed to be set up when "
+                                 "downloading the latest version of KEGG with `anvi-setup-kegg-data`.")
+
+            if not archive_contains_binary_relations and not self.skip_binary_relations:
+                self.run.warning(
+                    "The KEGG data archive does not contain the binary relation files needed for "
+                    "`anvi-reaction-network`. This is not a problem, and KEGG setup proceeded "
+                    "without it. Binary relation files are guaranteed to be set up when "
+                    "downloading the latest version of KEGG with `anvi-setup-kegg-data`."
+                )
+
+            if not archive_contains_map_images and not self.skip_map_images:
+                self.run.warning(
+                    "The KEGG data archive does not contain the expected pathway map files used "
+                    "for pathway visualization. This is not a problem, and KEGG setup proceeded "
+                    "without it. Map files are guaranteed to be set up when downloading the latest "
+                    "version of KEGG with `anvi-setup-kegg-data`."
+                )
 
             # if necessary, warn user about migrating the modules db
             self.check_modules_db_version()
@@ -238,6 +266,96 @@ class KeggSetup(KeggContext):
             self.run.warning(f"Just so you know, the KEGG archive that was just set up contains an outdated MODULES.db (version: "
                              f"{current_db_version}). You may want to run `anvi-migrate` on this database before you do anything else. "
                              f"Here is the path to the database: {self.kegg_modules_db_path}")
+
+
+    def check_archive_for_brite(self, unpacked_archive_path):
+        """Check the archive for the BRITE directory and 'hierarchy of hierarchies' json file.
+
+        It is ok for archives not to have these present, but let the user know.
+        """
+
+        is_brite_included = True
+
+        path_to_kegg_in_archive = os.path.join(unpacked_archive_path, "KEGG")
+        brite_directories_and_files = [self.brite_data_dir,
+                                       self.kegg_brite_hierarchies_file]
+        for f in brite_directories_and_files:
+            path_to_f_in_archive = os.path.join(path_to_kegg_in_archive, os.path.basename(f))
+            if not os.path.exists(path_to_f_in_archive) and not self.skip_brite_hierarchies:
+                is_brite_included = False
+                if anvio.DEBUG:
+                    self.run.warning(f"The KEGG archive does not contain the following optional BRITE file or directory: {path_to_f_in_archive}")
+
+        return is_brite_included
+
+
+    def check_archive_for_binary_relations(self, unpacked_archive_path):
+        """
+        Check the archive for the binary relations directory and files.
+
+        It is ok for archives not to have these present, but let the user know.
+        """
+        path_to_kegg_in_archive = os.path.join(unpacked_archive_path, "KEGG")
+        binary_relation_data_dir = os.path.join(
+            path_to_kegg_in_archive, os.path.basename(self.binary_relation_data_dir)
+        )
+        if os.path.isdir(binary_relation_data_dir):
+            is_binary_relation_dir_included = True
+        else:
+            is_binary_relation_dir_included = False
+            if anvio.DEBUG and not self.skip_binary_relations:
+                self.run.warning(
+                    "The KEGG archive does not contain the following optional binary relations "
+                    f"directory needed for `anvi-reaction-network`: {binary_relation_data_dir}"
+                )
+
+        if is_binary_relation_dir_included:
+            missing_files = []
+            for file in self.kegg_binary_relation_files.values():
+                path = os.path.join(binary_relation_data_dir, file)
+                if not os.path.isfile(path):
+                    missing_files.append(file)
+            if anvio.DEBUG and missing_files:
+                self.run.warning(
+                    "The following binary relation files expected in an up-to-date anvi'o KEGG "
+                    f"installation are missing from the directory, '{binary_relation_data_dir}', "
+                    f"in the archive: {', '.join(missing_files)}"
+                )
+
+        return is_binary_relation_dir_included
+
+
+    def check_archive_for_map_files(self, unpacked_archive_path):
+        """
+        Check the archive for the pathway map directory containing image and KGML files, and for the
+        BRITE json file classifying pathway maps.
+
+        It is ok for archives not to have these present, but let the user know.
+        """
+        are_map_files_included = True
+        path_to_kegg_in_archive = os.path.join(unpacked_archive_path, "KEGG")
+
+        map_image_data_dir = os.path.join(
+            path_to_kegg_in_archive, os.path.basename(self.map_image_data_dir)
+        )
+        if not os.path.isdir(map_image_data_dir):
+            are_map_files_included = False
+            if anvio.DEBUG and not self.skip_map_images:
+                self.run.warning(
+                    "The KEGG archive does not contain the following optional pathway map images "
+                    f"directory, which is used in pathway visualization: {map_image_data_dir}"
+                )
+
+        brite_json_file = os.path.join(path_to_kegg_in_archive, os.path.basename(self.kegg_brite_pathways_file))
+        if not os.path.isfile(brite_json_file):
+            are_map_files_included = False
+            if anvio.DEBUG and not self.skip_map_images:
+                self.run.warning(
+                    "The KEGG archive does not contain the following optional json file, a BRITE "
+                    f"hierarchy classifying pathway maps: {self.kegg_brite_pathways_file}"
+                )
+
+        return are_map_files_included
 
 
     def setup_kegg_snapshot(self):
@@ -711,7 +829,7 @@ class KeggSetup(KeggContext):
                               f"unique. OK? ok. Here is the list of module names you should change: {bad_mods_str}")
 
 
-    def setup_modules_db(self, db_path, module_data_directory, source='KEGG'):
+    def setup_modules_db(self, db_path, module_data_directory, brite_data_directory=None, source='KEGG', skip_brite_hierarchies=False):
         """This function creates a Modules DB at the specified path."""
 
         if filesnpaths.is_file_exists(db_path, dont_raise=True):
@@ -723,9 +841,9 @@ class KeggSetup(KeggContext):
                                   f"--overwrite-output-destinations flag. But the old database will go away forever in that case. Just making "
                                   f"sure you are aware of that, so that you have no regrets.")
         try:
-            mod_db = ModulesDatabase(db_path, module_data_directory=module_data_directory, data_source=source,
-                                     args=self.args, module_dictionary=self.module_dict, pathway_dictionary=self.pathway_dict,
-                                    run=self.run, progress=self.progress)
+            mod_db = ModulesDatabase(db_path, module_data_directory=module_data_directory, brite_data_directory=brite_data_directory, data_source=source,
+                                     args=self.args, module_dictionary=self.module_dict, pathway_dictionary=self.pathway_dict, brite_dictionary=self.brite_dict,
+                                     skip_brite_hierarchies=skip_brite_hierarchies, run=self.run, progress=self.progress)
             mod_db.create()
         except Exception as e:
             print(e)
@@ -741,4 +859,4 @@ class KeggSetup(KeggContext):
         """
 
         self.create_user_modules_dict()
-        self.setup_modules_db(db_path=self.user_modules_db_path, module_data_directory=self.user_module_data_dir, source='USER')
+        self.setup_modules_db(db_path=self.user_modules_db_path, module_data_directory=self.user_module_data_dir, source='USER', skip_brite_hierarchies=True)
