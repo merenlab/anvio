@@ -59,7 +59,7 @@ class PrimerSearch:
             raise ConfigError("You can't ask anvi'o to report only primer matches AND only remainders "
                               "at the same time. Please take a look at the help menu.")
 
-        if not (A('samples_dict') or A('samples_txt')):
+        if not (A('samples_artifact') or A('samples_txt')):
             raise ConfigError("This class is being initialized incorrectly :/ The `args` object must either include "
                               "path for a `samples-txt` file through `samples_txt` parameter, or a dictionary for "
                               "a samples dictionary through `samples_dict` parameter. See online help for more.")
@@ -72,9 +72,8 @@ class PrimerSearch:
         if self.samples_txt:
             self.samples_dict = SamplesTxt(self.samples_txt, expected_format='free', run=self.run).as_dict()
         else:
-            self.samples_dict = A('samples_dict')
-            if not isinstance(self.samples_dict, dict):
-                raise ConfigError("The `primers_dict` parameter must be a literal dictionary.")
+            samples_artifact = A('samples_artifact')
+            self.samples_dict = samples_artifact.as_dict()
 
         if self.primers_file_path:
             self.primers_dict = utils.get_primers_txt_file_as_dict(self.primers_file_path)
