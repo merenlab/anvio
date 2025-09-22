@@ -203,7 +203,7 @@ $(document).ready(function() {
     }
 
     initData();
-        // Sidebar Hide/Show button 
+        // Sidebar Hide/Show button
         $(".sidebar-toggle").click(function() {
             $(this).text(function(i, text) {
                 if(text === "Hide"){
@@ -761,7 +761,7 @@ function populateColorDicts() {
 function buildLegendTables() {
     // Clear existing legend tables first
     $("#legend_settings").empty();
-    
+
     legends = [];
     let toastr_warn_flag = false;
 
@@ -894,7 +894,7 @@ function buildLegendTables() {
         if (!legends[i]['item_names']){
             const currentColors = categorical_data_colors[legend['key']] || {};
             const defaultColor = Object.values(currentColors)[0] || '#FFFFFF';
-            
+
             template += `
                 <p style="background: #f3f3f3; border-radius: 3px; padding: 10px; font-style: italic;">
                 Use the table below to set colors for your categories in the layer <b>${legend['name']}</b>. Here you can (1) use the input box below to type in the name of a category
@@ -983,7 +983,7 @@ function buildLegendTables() {
         onChange: function(hsb, hex, rgb, el, bySetColor) {
             $(el).css('background-color', '#' + hex);
             $(el).attr('color', '#' + hex);
-            
+
             // Immediately update the corresponding color in the data structures
             const legendId = el.id.split('-colorpicker')[0];
             const legend = legends.find(l => l.name.replaceAll(' ', '-') === legendId);
@@ -996,7 +996,7 @@ function buildLegendTables() {
                     stack_bar_colors[legend.key][el.getAttribute('data-category')] = '#' + hex;
                 }
             }
-            
+
             if (!bySetColor && drawer) {
                 drawer.draw();
             }
@@ -2002,290 +2002,447 @@ function showCompleteness(bin_id, updateOnly) {
 }
 
 
-function showGeneFunctions(bin_id, updateOnly) {
-    if (typeof updateOnly === 'undefined')
-        updateOnly = false;
+// Shared configuration objects for the two function types
+const FUNCTION_CONFIGS = {
+    genes: {
+        url: '/data/get_functions_for_a_collection_of_genes',
+        dataKey: 'gene_caller_ids',
+        itemLabel: 'genes',
+        itemIdLabel: 'Gene call',
+        metabolismDescription: 'Gene metabolic module involvement. A table that shows which metabolic modules the genes in particular bin are involved. The completion scores show that for each metabolic module, what percentage of the module is represented by the genes in the bin. A single gene may be involved in multiple metabolic modules since that how metabolism rolls.',
+        functionsDescription: 'Gene functions. The table below shows the functional annotation of each gene by each function annotation source available in the contigs-db.',
+        dialogFunction: 'showGeneFunctionsSummaryTableDialog',
+        getAccessionString: (d, function_source) => getPrettyFunctionsString(d[function_source][0], function_source),
+        getFunctionString: (d, function_source) => getPrettyFunctionsString(d[function_source][1])
+    },
+    clusters: {
+        url: '/data/get_functions_for_gene_clusters',
+        dataKey: 'gene_clusters',
+        itemLabel: 'gene clusters',
+        itemIdLabel: 'Gene cluster',
+        metabolismDescription: 'Gene cluster metabolic module involvement. The table below shows which metabolic modules the gene clusters in this bin are involved in. The completion scores show that for each metabolic module, what percentage of the module is represented by the gene clusters in the bin. A single gene cluster may be involved in multiple metabolic modules since that how metabolism rolls.',
+        functionsDescription: 'Gene cluster functions. The table below shows the functional annotation of each gene cluster by each function annotation source available in the contigs-db.',
+        dialogFunction: 'showGeneClusterFunctionsSummaryTableDialog',
+        getAccessionString: (d, function_source) => {
+            const result = getPrettyFunctionsString(d[function_source]?.accession, function_source);
+            return (Array.isArray(result) && result.length === 1 && result[0] === '-') ? 'N/A' : (result || 'N/A');
+        },
+        getFunctionString: (d, function_source) => {
+            const result = getPrettyFunctionsString(d[function_source]?.function);
+            return (Array.isArray(result) && result.length === 1 && result[0] === '-') ? 'N/A' : (result || 'N/A');
+        }
+    }
+};
 
-    var title = 'Genes in "' + $('#bin_name_' + bin_id).val() + '"';
+// Shared function that handles both genes and gene clusters
+function showItemFunctions(bin_id, config, updateOnly = false) {
+    const binNameElement = $('#bin_name_' + bin_id);
+    const title = `${config.itemLabel} in "${binNameElement.val()}"`;
 
     if (updateOnly && !checkObjectExists('#modal' + title.hashCode()))
         return;
 
     let bin_info = bins.ExportBin(bin_id);
 
+    // Prepare AJAX data based on config
+    let ajaxData = {};
+    ajaxData[config.dataKey] = JSON.stringify(bin_info['items'], null, 4);
+
     $.ajax({
         type: 'POST',
-        url: '/data/get_functions_for_a_collection_of_genes',
-        data: {
-            'gene_caller_ids': JSON.stringify(bin_info['items'], null, 4),
-        },
+        url: config.url,
+        data: ajaxData,
         success: (response) => {
             if (response.hasOwnProperty('status') && response.status != 0) {
                 toastr.error('"' + response.message + '", the server said.', "The anvi'o headquarters is upset");
                 return;
             }
 
-            const fmtPct = (v) => (typeof v === 'number' && !isNaN(v)) ? (v * 100).toFixed(1) + '%' : 'NA';
+            const content = buildFunctionsContent(response, config);
+            const dialogTitle = `A summary of functions for ${bin_info['items'].length} ${config.itemLabel} in "${bin_info['bin_name']}".`;
 
-            let content = ``;
-
-            // Metabolism summary table (prepended)
-            const metabolism = response && response.metabolism;
-            if (metabolism && typeof metabolism === 'object' && Object.keys(metabolism).length) {
-                let metabolismContent = `
-                    <p style="padding-top:30px;"><b>Gene metabolic module involvement.</b> A table that shows which metabolic modules the
-                    genes in particular bin are involved. The completion scores show that for each metabolic module, what percentage of
-                    the module is represented by the genes in the bin. A single gene may be involved in multiple metabolic modules since
-                    that how metabolism rolls.</p>
-                    <table class="table table-sm table-striped" style="width: 95%; margin-left: 10px;">
-                        <thead class="thead-light">
-                            <tr>
-                                <th>Metabolic module</th>
-                                <th style="text-align: center;">Contribution to pathway completeness</th>
-                                <th style="text-align: center;">Contribution to Stepwise completeness</th>
-                                <th style="text-align: center;">Gene calls involved</th>
-                            </tr>
-                        </thead>
-                        <tbody>`;
-
-            Object.keys(metabolism)
-                .sort((a, b) => {
-                    const pa = metabolism[a]?.pathwise_percent_complete ?? 0;
-                    const pb = metabolism[b]?.pathwise_percent_complete ?? 0;
-
-                    if (pb !== pa) {
-                        return pb - pa; // higher pathway completeness first
-                    }
-
-                    const ga = Array.isArray(metabolism[a]?.gene_caller_ids) ? metabolism[a].gene_caller_ids.length : 0;
-                    const gb = Array.isArray(metabolism[b]?.gene_caller_ids) ? metabolism[b].gene_caller_ids.length : 0;
-
-                    return gb - ga; // higher gene count first
-                })
-                .forEach((moduleId) => {
-                    const m = metabolism[moduleId] || {};
-                    const genes = Array.isArray(m.gene_caller_ids) ? m.gene_caller_ids.join(', ') : 'NA';
-                    const pathwayPct  = fmtPct(m.pathwise_percent_complete);
-                    const stepwisePct = fmtPct(m.stepwise_completeness);
-                    const moduleName = m.NAME;
-                    const moduleClass = m.CLASS;
-                    const complete = (m.pathwise_is_complete === true) || (m.stepwise_is_complete === true);
-                    const badge = complete ? ` <span class="badge badge-success">complete</span>` : '';
-
-                    metabolismContent += `
-                        <tr>
-                            <td style="padding-left: 20px;">
-                               <b>${moduleId}</b>${badge}<br />
-                               - Module function: ${moduleName}<br />
-                               - Module class: ${moduleClass.split(";").map((p,i,a)=> i===a.length-1 ? `<b>${p.trim()}</b>` : p).join("; ")}
-                            </td>
-                            <td style="text-align: center; vertical-align: middle;">${pathwayPct}</td>
-                            <td style="text-align: center; vertical-align: middle;">${stepwisePct}</td>
-                            <td style="text-align: center; vertical-align: middle; max-width: 420px; word-break: break-word;">${genes}</td>
-                        </tr>`;
-                });
-
-                metabolismContent += `</tbody></table>`;
-                content += metabolismContent + `<hr class="my-3">`;
+            // Call the appropriate dialog function
+            if (config.dialogFunction === 'showGeneFunctionsSummaryTableDialog') {
+                showGeneFunctionsSummaryTableDialog(dialogTitle, content);
+            } else {
+                showGeneClusterFunctionsSummaryTableDialog(dialogTitle, content);
             }
 
-            // Prepare and append the functions table
-            content += `
-                        <p style="padding-top:30px;"><b>Gene functions</b>. The table below shows the functional annotation of each gene
-                        by each function annotation source available in the contigs-db.</p>
-                        <table class="table table-striped" style="width: 95%; margin-left: 10px;">
-                           <thead class="thead-light">
-                           <tr>
-                             <th>Gene call</th>
-                             <th>Source</th>
-                             <th>Accession</th>
-                             <th>Function</th>
-                           </tr>
-                           </thead>
-                           <tbody>`;
-
-            Object.keys(response['functions']).forEach(function(gene_callers_id) {
-                let d = response['functions'][gene_callers_id];
-
-                Object.keys(response['sources']).forEach(function(index) {
-                    let function_source = response['sources'][index];
-                    let accession_string, function_string;
-
-                    if (d[function_source]) {
-                        accession_string = getPrettyFunctionsString(d[function_source][0], function_source);
-                        function_string  = getPrettyFunctionsString(d[function_source][1]);
-                    } else {
-                        accession_string = 'N/A';
-                        function_string  = 'N/A';
-                    }
-
-                    if (index == 0) {
-                        content += `<tr style="border-top: 3px solid #d0d0d0;">
-                                    <td rowspan="${Object.keys(response['sources']).length}"><b>${gene_callers_id}</b></td>
-                                    <td>${function_source}</td>
-                                    <td>${accession_string}</td>
-                                    <td>${function_string}</td>
-                                    </tr>`;
-                    } else {
-                        content += `<tr>
-                                    <td>${function_source}</td>
-                                    <td>${accession_string}</td>
-                                    <td>${function_string}</td>
-                                    </tr>`;
-                    }
-                });
-            });
-
-            content += `</tbody></table>`;
-
-            showGeneFunctionsSummaryTableDialog(
-                'A summary of functions for ' + bin_info['items'].length + ' genes in "' + bin_info['bin_name'] + '".',
-                content
-            );
+            // Setup filtering after dialog is shown
+            setTimeout(() => setupItemTableFiltering(), 100);
         }
     });
 }
 
+// Shared function to build the content HTML
+function buildFunctionsContent(response, config) {
+    const fmtPct = (v) => (typeof v === 'number' && !isNaN(v)) ? (v * 100).toFixed(1) + '%' : 'NA';
+    let content = '';
 
-function showGeneClusterDetails(bin_id, updateOnly) {
-    if (typeof updateOnly === 'undefined')
-        updateOnly = false;
+    // Build metabolism summary table if present
+    content += buildMetabolismTable(response, config, fmtPct);
 
-    var title = 'Gene clusters in "' + $('#bin_name_' + bin_id).val() + '"';
+    // Build filter controls
+    content += buildFilterControls(response['sources'], response['functions'], config);
 
-    if (updateOnly && !checkObjectExists('#modal' + title.hashCode()))
-        return;
+    // Build functions table
+    content += buildFunctionsTable(response, config);
 
-    let bin_info = bins.ExportBin(bin_id);
+    return content;
+}
 
-    $.ajax({
-        type: 'POST',
-        url: '/data/get_functions_for_gene_clusters',
-        data: {
-            'gene_clusters': JSON.stringify(bin_info['items'], null, 4),
-        },
-        success: (response) => {
-            if (response.hasOwnProperty('status') && response.status != 0) {
-                toastr.error('"' + response.message + '", the server said.', "The anvi'o headquarters is upset");
-                return;
+// Shared function to build metabolism table
+function buildMetabolismTable(response, config, fmtPct) {
+    const metabolism = response && response.metabolism;
+    if (!metabolism || typeof metabolism !== 'object' || !Object.keys(metabolism).length) {
+        return '';
+    }
+
+    let metabolismContent = `
+        <p style="padding-top:30px;"><b>${config.metabolismDescription}</b></p>
+        <table class="table table-sm table-striped" style="width: 95%; margin-left: 10px;">
+            <thead class="thead-light">
+                <tr>
+                    <th>Metabolic module</th>
+                    <th style="text-align: center;">Contribution to pathway completeness</th>
+                    <th style="text-align: center;">Contribution to Stepwise completeness</th>
+                    <th style="text-align: center;">${config.itemLabel === 'genes' ? 'Gene calls' : 'Gene clusters'} involved</th>
+                </tr>
+            </thead>
+            <tbody>`;
+
+    // Sort and process metabolism modules
+    Object.keys(metabolism)
+        .sort((a, b) => {
+            const pa = metabolism[a]?.pathwise_percent_complete ?? 0;
+            const pb = metabolism[b]?.pathwise_percent_complete ?? 0;
+
+            if (pb !== pa) return pb - pa;
+
+            const ga = Array.isArray(metabolism[a]?.gene_caller_ids) ? metabolism[a].gene_caller_ids.length : 0;
+            const gb = Array.isArray(metabolism[b]?.gene_caller_ids) ? metabolism[b].gene_caller_ids.length : 0;
+
+            return gb - ga;
+        })
+        .forEach((moduleId) => {
+            const m = metabolism[moduleId] || {};
+            const genes = Array.isArray(m.gene_caller_ids) ? m.gene_caller_ids.join(', ') : 'NA';
+            const pathwayPct = fmtPct(m.pathwise_percent_complete);
+            const stepwisePct = fmtPct(m.stepwise_completeness);
+            const moduleName = m.NAME ?? 'NA';
+            const moduleClass = (typeof m.CLASS === 'string' ? m.CLASS : 'NA');
+            const complete = (m.pathwise_is_complete === true) || (m.stepwise_is_complete === true);
+            const badge = complete ? ` <span class="badge badge-success">complete</span>` : '';
+
+            metabolismContent += `
+                <tr>
+                    <td style="padding-left: 20px;">
+                       <b>${moduleId}</b>${badge}<br />
+                       - Module function: ${moduleName}<br />
+                       - Module class: ${moduleClass.split(";").map((p,i,a)=> i===a.length-1 ? `<b>${p.trim()}</b>` : p).join("; ")}
+                    </td>
+                    <td style="text-align: center; vertical-align: middle;">${pathwayPct}</td>
+                    <td style="text-align: center; vertical-align: middle;">${stepwisePct}</td>
+                    <td style="text-align: center; vertical-align: middle; max-width: 420px; word-break: break-word;">${genes}</td>
+                </tr>`;
+        });
+
+    metabolismContent += `</tbody></table><hr class="my-3">`;
+
+    return metabolismContent;
+}
+
+// Shared function to build filter controls
+function buildFilterControls(sources, functions, config) {
+    // Calculate total number of items (genes/clusters)
+    const totalItems = Object.keys(functions).length;
+
+    // Calculate annotation counts for each source
+    const sourceCounts = {};
+    Object.keys(sources).forEach(function(index) {
+        let source = sources[index];
+        sourceCounts[source] = 0;
+
+        // Count how many items have annotations for this source
+        Object.keys(functions).forEach(function(item_id) {
+            let d = functions[item_id] || {};
+
+            if (d[source]) {
+                // Use the config functions for consistency
+                const accession_string = config.getAccessionString(d, source);
+                const function_string = config.getFunctionString(d, source);
+
+                // Count as annotated if either accession or function is not N/A
+                if (accession_string !== 'N/A' || function_string !== 'N/A') {
+                    sourceCounts[source]++;
+                }
+            }
+        });
+    });
+
+    let filterControls = `
+        <div style="background-color: #f8f9fa; padding: 15px; margin: 20px 10px; border-radius: 5px;">
+            <h6><i class="fa fa-filter"></i> Display Filters</h6>
+            <div style="margin-bottom: 10px;">
+                <label>
+                    <input type="checkbox" id="hideNA" checked> Hide entries with no annotation (N/A)
+                </label>
+            </div>
+            <div>
+                <strong>Annotation Sources for ${totalItems} ${config.itemLabel}:</strong><br>
+                <div style="margin-top: 5px; display: flex; flex-wrap: wrap; gap: 15px;">`;
+
+    Object.keys(sources).forEach(function(index) {
+        let source = sources[index];
+        let count = sourceCounts[source];
+        filterControls += `
+            <label style="margin-right: 15px;">
+                <input type="checkbox" class="source-filter" data-source="${source}" checked>
+                ${source} <span style="color: #666; font-size: 0.9em;">(${count})</span>
+            </label>`;
+    });
+
+    filterControls += `
+                </div>
+                <div style="margin-top: 10px;">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="selectAllSources">Select All</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="deselectAllSources">Deselect All</button>
+                </div>
+            </div>
+        </div>`;
+
+    return filterControls;
+}
+
+// Shared function to build functions table
+function buildFunctionsTable(response, config) {
+    let content = `
+        <p style="padding-top:30px;"><b>${config.functionsDescription}</b></p>
+        <table class="table" id="itemFunctionsTable" style="width: 95%; margin-left: 10px; table-layout: fixed;">
+           <thead class="thead-light">
+           <tr>
+             <th style="width: 10%;">${config.itemIdLabel}</th>
+             <th style="width: 10%;">Source</th>
+             <th style="width: 10%;">Accession</th>
+             <th style="width: 70%;">Function</th>
+           </tr>
+           </thead>
+           <tbody>`;
+
+    Object.keys(response['functions']).forEach(function(item_id) {
+        let d = response['functions'][item_id] || {};
+
+        Object.keys(response['sources']).forEach(function(index) {
+            let function_source = response['sources'][index];
+            let accession_string, function_string;
+            let hasAnnotation = false;
+
+            // Use config-specific logic for data extraction
+            if (d[function_source]) {
+                accession_string = config.getAccessionString(d, function_source);
+                function_string = config.getFunctionString(d, function_source);
+                hasAnnotation = (accession_string !== 'N/A' && function_string !== 'N/A');
+            } else {
+                accession_string = 'N/A';
+                function_string = 'N/A';
             }
 
-            const fmtPct = (v) => (typeof v === 'number' && !isNaN(v)) ? (v * 100).toFixed(1) + '%' : 'NA';
+            const dataAttrs = `data-source="${function_source}" data-has-annotation="${hasAnnotation}" data-item="${item_id}"`;
 
-            let content = ``;
-
-            // Metabolism summary table (prepended) — same structure/sorting as showGeneFunctions
-            const metabolism = response && response.metabolism;
-            if (metabolism && typeof metabolism === 'object' && Object.keys(metabolism).length) {
-                let metabolismContent = `
-                    <p style="padding-top:30px;"><b>Gene cluster metabolic module involvement.</b> The table below shows which metabolic modules the
-                    gene clusters in this bin are involved in. The completion scores show that for each metabolic module, what percentage of
-                    the module is represented by the gene clusters in the bin. A single gene cluster may be involved in multiple metabolic modules since
-                    that how metabolism rolls.</p>
-                    <table class="table table-sm table-striped" style="width: 95%; margin-left: 10px;">
-                        <thead class="thead-light">
-                            <tr>
-                                <th>Metabolic module</th>
-                                <th style="text-align: center;">Contribution to pathway completeness</th>
-                                <th style="text-align: center;">Contribution to Stepwise completeness</th>
-                                <th style="text-align: center;">Gene clusters involved</th>
-                            </tr>
-                        </thead>
-                        <tbody>`;
-
-                Object.keys(metabolism)
-                    .sort((a, b) => {
-                        const pa = metabolism[a]?.pathwise_percent_complete ?? 0;
-                        const pb = metabolism[b]?.pathwise_percent_complete ?? 0;
-
-                        if (pb !== pa) return pb - pa; // higher pathway completeness first
-
-                        const ga = Array.isArray(metabolism[a]?.gene_caller_ids) ? metabolism[a].gene_caller_ids.length : 0;
-                        const gb = Array.isArray(metabolism[b]?.gene_caller_ids) ? metabolism[b].gene_caller_ids.length : 0;
-
-                        return gb - ga; // higher gene count first
-                    })
-                    .forEach((moduleId) => {
-                        const m = metabolism[moduleId] || {};
-                        const genes = Array.isArray(m.gene_caller_ids) ? m.gene_caller_ids.join(', ') : 'NA';
-                        const pathwayPct  = fmtPct(m.pathwise_percent_complete);
-                        const stepwisePct = fmtPct(m.stepwise_completeness);
-                        const moduleName  = m.NAME ?? 'NA';
-                        const moduleClass = (typeof m.CLASS === 'string' ? m.CLASS : 'NA');
-                        const complete = (m.pathwise_is_complete === true) || (m.stepwise_is_complete === true);
-                        const badge = complete ? ` <span class="badge badge-success">complete</span>` : '';
-
-                        metabolismContent += `
-                            <tr>
-                                <td style="padding-left: 20px;">
-                                   <b>${moduleId}</b>${badge}<br />
-                                   - Module function: ${moduleName}<br />
-                                   - Module class: ${moduleClass.split(";").map((p,i,a)=> i===a.length-1 ? `<b>${p.trim()}</b>` : p).join("; ")}
-                                </td>
-                                <td style="text-align: center; vertical-align: middle;">${pathwayPct}</td>
-                                <td style="text-align: center; vertical-align: middle;">${stepwisePct}</td>
-                                <td style="text-align: center; vertical-align: middle; max-width: 420px; word-break: break-word;">${genes}</td>
+            if (index == 0) {
+                content += `<tr style="border-top: 3px solid #d0d0d0;" ${dataAttrs}>
+                            <td rowspan="${Object.keys(response['sources']).length}" style="vertical-align: middle; word-wrap: break-word;"><b>${item_id}</b></td>
+                            <td style="word-wrap: break-word;">${function_source}</td>
+                            <td style="word-wrap: break-word;">${accession_string}</td>
+                            <td style="word-wrap: break-word;">${function_string}</td>
                             </tr>`;
-                    });
+            } else {
+                content += `<tr ${dataAttrs}>
+                            <td style="word-wrap: break-word;">${function_source}</td>
+                            <td style="word-wrap: break-word;">${accession_string}</td>
+                            <td style="word-wrap: break-word;">${function_string}</td>
+                            </tr>`;
+            }
+        });
+    });
 
-                metabolismContent += `</tbody></table>`;
-                content += metabolismContent + `<hr class="my-3">`;
+    content += `</tbody></table>`;
+    return content;
+}
+
+// Shared filtering functionality
+function setupItemTableFiltering() {
+    const table = document.getElementById('itemFunctionsTable');
+    if (!table) return;
+
+    const hideNACheckbox = document.getElementById('hideNA');
+    const sourceCheckboxes = document.querySelectorAll('.source-filter');
+    const selectAllBtn = document.getElementById('selectAllSources');
+    const deselectAllBtn = document.getElementById('deselectAllSources');
+
+    function applyFilters() {
+        const hideNA = hideNACheckbox.checked;
+        const activeSources = Array.from(sourceCheckboxes)
+            .filter(cb => cb.checked)
+            .map(cb => cb.dataset.source);
+
+        const rows = table.querySelectorAll('tbody tr');
+
+        rows.forEach(row => {
+            const hasAnnotation = row.dataset.hasAnnotation === 'true';
+            const source = row.dataset.source;
+
+            let shouldShow = true;
+
+            if (hideNA && !hasAnnotation) {
+                shouldShow = false;
             }
 
-            // Gene cluster functions table (unchanged layout; same headers/rowspan behavior)
-            content += `
-                <p style="padding-top:30px;"><b>Gene cluster functions</b>. The table below shows the functional annotation of each gene
-                cluster by each function annotation source available in the contigs-db.</p>
-                <table class="table table-striped" style="width: 95%; margin-left: 10px;">
-                   <thead class="thead-light">
-                   <tr>
-                     <th>Gene cluster</th>
-                     <th>Source</th>
-                     <th>Accession</th>
-                     <th>Function</th>
-                   </tr>
-                   </thead>
-                   <tbody>`;
+            if (!activeSources.includes(source)) {
+                shouldShow = false;
+            }
 
-            // Build rows for each gene cluster
-            Object.keys(response['functions']).forEach(function(gene_cluster_name) {
-                let d = response['functions'][gene_cluster_name] || {};
+            row.style.display = shouldShow ? '' : 'none';
+        });
 
-                Object.keys(response['sources']).forEach(function(index) {
-                    let function_source = response['sources'][index];
+        updateItemRowspans();
+        updateTableStripes();
+    }
 
-                    // robustly handle missing fields
-                    const accRaw = d[function_source]?.accession;
-                    const funRaw = d[function_source]?.function;
+    function updateTableStripes() {
+        // Get all visible rows grouped by gene
+        const visibleRows = Array.from(table.querySelectorAll('tbody tr')).filter(row =>
+            row.style.display !== 'none'
+        );
 
-                    const accession_string = getPrettyFunctionsString(accRaw, function_source) || 'N/A';
-                    const function_string  = getPrettyFunctionsString(funRaw) || 'N/A';
+        // Group visible rows by gene to handle borders
+        const geneGroups = {};
+        visibleRows.forEach(row => {
+            const gene = row.dataset.item;
+            if (!geneGroups[gene]) {
+                geneGroups[gene] = [];
+            }
+            geneGroups[gene].push(row);
+        });
 
-                    if (index == 0) {
-                        content += `<tr style="border-top: 3px solid #d0d0d0;">
-                                    <td rowspan="${Object.keys(response['sources']).length}"><b>${gene_cluster_name}</b></td>
-                                    <td>${function_source}</td>
-                                    <td>${accession_string}</td>
-                                    <td>${function_string}</td>
-                                    </tr>`;
-                    } else {
-                        content += `<tr>
-                                    <td>${function_source}</td>
-                                    <td>${accession_string}</td>
-                                    <td>${function_string}</td>
-                                    </tr>`;
-                    }
-                });
+        visibleRows.forEach((row, index) => {
+            // Remove any existing stripe background and borders from all cells
+            const cells = row.querySelectorAll('td');
+            cells.forEach(cell => {
+                cell.style.backgroundColor = '';
+                cell.classList.remove('table-striped-manual');
             });
 
-            content += `</tbody></table>`;
+            // Remove any existing thick borders
+            row.style.borderTop = '';
 
-            showGeneClusterFunctionsSummaryTableDialog(
-                'A summary of functions for ' + bin_info['items'].length + ' gene clusters in "' + bin_info['bin_name'] + '".',
-                content
-            );
-        }
+            // Apply stripe to odd rows (0-indexed, so even indices get the stripe)
+            if (index % 2 === 1) {
+                cells.forEach((cell, cellIndex) => {
+                    // Skip the first cell if it's a gene caller ID cell (has rowspan or is dynamic)
+                    if (cellIndex === 0 &&
+                        (cell.getAttribute('rowspan') || cell.classList.contains('dynamic-gene-cell'))) {
+                        return; // Don't stripe the gene caller ID cell
+                    }
+                    cell.style.backgroundColor = 'rgba(0,0,0,.05)';
+                    cell.classList.add('table-striped-manual');
+                });
+            }
+        });
+
+        // Add thick borders to separate gene groups
+        Object.keys(geneGroups).forEach(gene => {
+            const rows = geneGroups[gene];
+            if (rows.length > 0) {
+                // Add thick border to the first visible row of each gene group
+                rows[0].style.borderTop = '3px solid #d0d0d0';
+            }
+        });
+    }
+
+    function updateItemRowspans() {
+        // Get all rows and group them by item (gene/cluster), maintaining document order
+        const allRows = Array.from(table.querySelectorAll('tbody tr'));
+        const itemGroups = {};
+
+        // Group all rows by item, preserving original order
+        allRows.forEach(row => {
+            const item = row.dataset.item;
+            if (!itemGroups[item]) {
+                itemGroups[item] = [];
+            }
+            itemGroups[item].push(row);
+        });
+
+        // Process each item group
+        Object.keys(itemGroups).forEach(item => {
+            const allRowsForItem = itemGroups[item];
+            const visibleRowsForItem = allRowsForItem.filter(row => row.style.display !== 'none');
+
+            // First, clean up any existing gene cells and remove any previously added ones
+            allRowsForItem.forEach(row => {
+                const existingCells = row.querySelectorAll('td');
+                if (existingCells.length > 3) { // More than 3 cells means we have a gene cell
+                    const geneCell = existingCells[0];
+                    geneCell.style.display = 'none';
+                    geneCell.removeAttribute('rowspan');
+                }
+                // Remove any dynamically added gene cells
+                const dynamicGeneCell = row.querySelector('td.dynamic-gene-cell');
+                if (dynamicGeneCell) {
+                    dynamicGeneCell.remove();
+                }
+            });
+
+            // If there are visible rows, ensure the first one has a visible gene cell
+            if (visibleRowsForItem.length > 0) {
+                const firstVisibleRow = visibleRowsForItem[0];
+                let geneCell = firstVisibleRow.querySelector('td:first-child');
+
+                if (geneCell && firstVisibleRow.querySelectorAll('td').length > 3) {
+                    // This row originally had a gene cell, just show it
+                    geneCell.style.display = '';
+                    geneCell.style.verticalAlign = 'middle';
+                    geneCell.style.wordWrap = 'break-word';
+                    geneCell.setAttribute('rowspan', visibleRowsForItem.length);
+                } else {
+                    // This row doesn't have a gene cell, create one
+                    const newGeneCell = document.createElement('td');
+                    newGeneCell.innerHTML = `<b>${item}</b>`;
+                    newGeneCell.setAttribute('rowspan', visibleRowsForItem.length);
+                    newGeneCell.className = 'dynamic-gene-cell';
+                    newGeneCell.style.borderTop = '3px solid #d0d0d0';
+                    newGeneCell.style.verticalAlign = 'middle';
+                    newGeneCell.style.wordWrap = 'break-word';
+                    firstVisibleRow.insertBefore(newGeneCell, firstVisibleRow.firstChild);
+                }
+            }
+        });
+    }
+
+    hideNACheckbox.addEventListener('change', applyFilters);
+    sourceCheckboxes.forEach(cb => cb.addEventListener('change', applyFilters));
+
+    selectAllBtn.addEventListener('click', () => {
+        sourceCheckboxes.forEach(cb => cb.checked = true);
+        applyFilters();
     });
+
+    deselectAllBtn.addEventListener('click', () => {
+        sourceCheckboxes.forEach(cb => cb.checked = false);
+        applyFilters();
+    });
+
+    applyFilters();
+}
+
+// Updated main functions - now much simpler!
+function showGeneFunctions(bin_id, updateOnly) {
+    showItemFunctions(bin_id, FUNCTION_CONFIGS.genes, updateOnly);
+}
+
+function showGeneClusterDetails(bin_id, updateOnly) {
+    showItemFunctions(bin_id, FUNCTION_CONFIGS.clusters, updateOnly);
 }
 
 
@@ -2470,7 +2627,7 @@ function generateSummary() {
         waitingDialog.show('Generating a detailed summary please be patient...', {dialogSize: 'sm'});
     }
     else {
-        waitingDialog.show('Generating summary...', {dialogSize: 'sm'});  
+        waitingDialog.show('Generating summary...', {dialogSize: 'sm'});
     }
     $.ajax({
         type: 'POST',
@@ -2495,7 +2652,7 @@ function generateSummary() {
                 $('#modSummaryResult').modal('show');
             }
         }
-    });    
+    });
 }
 
 function showSaveStateWindow()
@@ -3256,7 +3413,7 @@ function processState(state_name, state) {
             categorical_data_colors[key] = state['categorical-data-colors'][key];
         }
     }
-    
+
     if (state.hasOwnProperty('stack-bar-colors')) {
         for (let key in state['stack-bar-colors']) {
             stack_bar_colors[key] = state['stack-bar-colors'][key];
@@ -3285,7 +3442,7 @@ function processState(state_name, state) {
     if (state.hasOwnProperty('categorical-stats')) {
         categorical_stats = state['categorical-stats'];
     }
-    
+
     if (state.hasOwnProperty('stack-bar-stats')) {
         stack_bar_stats = state['stack-bar-stats'];
     }
