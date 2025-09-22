@@ -81,6 +81,8 @@ class PangenomeGraphUserInterface {
         this.get_gene_cluster_functions_table = this.get_gene_cluster_functions_table.bind(this);
         this.appendalignment = this.appendalignment.bind(this);
         this.get_color_code = this.get_color_code.bind(this);
+        this.alignment_download = this.alignment_download.bind(this);
+        this.info_download = this.info_download.bind(this);
 
         this.generate_svg = this.generate_svg.bind(this);
 
@@ -1665,6 +1667,16 @@ class PangenomeGraphUserInterface {
         this.current_bin_id = bin_id
     }
 
+    add_info_to_bin() {
+    
+        var bin_id = this.current_bin_id;
+        var target = document.getElementById('node_basics_table');
+        var gc_context = target.getAttribute('gc_context');
+        var element = document.getElementById(gc_context)
+        
+        this.marknode(element, bin_id);
+    }
+    
     remove_bin() {
         var bin_id = this.current_bin_id;
         
@@ -1725,6 +1737,9 @@ class PangenomeGraphUserInterface {
         $('#svgbox').on('mousemove', this.press_move)
         $('#svgbox').on('mouseup', this.press_up)
         $('#svgbox').on('mouseleave', this.press_up)
+        $('#AddBin').on("click", this.add_info_to_bin);
+        $('#AlignmentDownload').on("click", this.alignment_download);
+        $('#InfoDownload').on("click", this.info_download);
     }
     
     initialize_variables() {
@@ -2467,6 +2482,80 @@ class PangenomeGraphUserInterface {
         })
         
         return d
+    }
+
+    info_download () {
+    
+        var csv_data = [];
+        var basics = $('#node_basics_table')
+        var title = basics[0].getAttribute("gc_id")
+        var layers = $('#node_layers_table')
+        var functions = $('#node_functions_table')
+        
+        var basics_rows = basics[0].getElementsByTagName('tr');
+        var layers_rows = layers[0].getElementsByTagName('tr');
+        
+        var function_rows = functions[0].getElementsByTagName('tr');
+        
+        for (var i = 0; i < function_rows.length; i++) {
+            
+            if (i >= basics_rows.length) {
+                var basics_cols = []
+                basics_cols = Array.prototype.concat.apply(basics_cols, basics_rows[1].querySelectorAll('td,th'));
+                basics_cols = Array.prototype.concat.apply(basics_cols, layers_rows[1].querySelectorAll('td,th'));
+                var function_cols = function_rows[i].querySelectorAll('td,th');
+            } else { 
+                var basics_cols = []
+                basics_cols = Array.prototype.concat.apply(basics_cols, basics_rows[i].querySelectorAll('td,th'));
+                basics_cols = Array.prototype.concat.apply(basics_cols, layers_rows[i].querySelectorAll('td,th'));
+                var function_cols = function_rows[i].querySelectorAll('td,th');
+            }
+            
+            let csvrow = [];
+            for (var j = 0; j < basics_cols.length; j++) {
+                var info = basics_cols[j].innerHTML
+                csvrow.push(info);
+            }
+            
+            for (var k = 0; k < function_cols.length; k++) {
+                var info = function_cols[k].innerHTML
+                csvrow.push(info);
+            }
+            csv_data.push(csvrow.join(","));
+        }
+        csv_data = csv_data.join('\n');
+        
+        var blob = new Blob([csv_data]);
+        var title = this.data['meta']['project_name']
+        this.download_blob(blob, title + ".csv");
+    }
+
+    alignment_download () {
+
+        var csv_data = '';
+        var alignment = $('#node_sequence_alignments_table')
+        var basics = $('#node_basics_table')
+        var title = alignment[0].getAttribute("gc_id")
+        var xpos = basics[0].getAttribute("gc_pos")
+        
+        var alignment_rows = alignment[0].getElementsByTagName('tr');
+        
+        for (var i = 1; i < alignment_rows.length; i++) {
+        
+            var alignment_cols = alignment_rows[i].querySelectorAll('td,th');
+            
+            csv_data += ">" + title + "|Genome:" + alignment_cols[0].innerHTML +"|Genecall:" + alignment_cols[1].innerHTML + "|Position:" + xpos + '\n';
+            var genome = ''
+            
+            var alignment_nucs = alignment_cols[2].getElementsByTagName('span');
+            for (let k = 0; k < alignment_nucs.length; k++) {
+                genome += alignment_nucs[k].innerHTML
+            }
+            
+            csv_data += genome.match(/.{1,60}/g).join("\r\n") + "\n"
+        }
+        var blob = new Blob([csv_data]);
+        this.download_blob(blob, title + ".fa");
     }
 }
 
