@@ -2156,9 +2156,9 @@ class PangenomeGraphUserInterface {
         
             var container = document.querySelector("#InfoModalBody");
             var elem = container.querySelectorAll('.group_choice');
-            
+
             elem.forEach(el => {
-                el.on("click", this.nodeinfo(e, el.getAttribute("name_id")))
+                $(el).on("click", () => {this.nodeinfo(e, el.getAttribute("name_id"));})
             })
         }
         
@@ -2362,21 +2362,20 @@ class PangenomeGraphUserInterface {
             return '';
         } else {
           var group_context = []
-          for (item in this.group_dict[gene_cluster_context]){
+          for (var item in this.group_dict[gene_cluster_context]){
             group_context.push(this.group_dict[gene_cluster_context][item])
           }
         }
     
         // console.log(gene_cluster_id_current, gene_cluster_context, group_context)
         if (add_align == 1) {
-          gene_cluster_context_table = `<p class="modal_header">Gene cluster context</p>`;
+          var gene_cluster_context_table = `<p class="modal_header">Gene cluster context</p>`;
         }else {
-          gene_cluster_context_table = ''
+          var gene_cluster_context_table = ''
         }
         gene_cluster_context_table += `<div class="gene_cluster_context_items">`;
-        for(index in group_context) {
-            gene_cluster_id = group_context[index];
-            gene_cluster_name = this.data['nodes'][gene_cluster_id]['gene_cluster']
+        for(var gene_cluster_id of group_context) {
+            var gene_cluster_name = this.data['nodes'][gene_cluster_id]['gene_cluster']
     
             if (gene_cluster_id == gene_cluster_id_current){
                 gene_cluster_context_table += `<span class="gene_cluster_id gene_cluster_id_current">` + gene_cluster_name + `</span>`;
