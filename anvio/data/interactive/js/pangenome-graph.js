@@ -73,6 +73,14 @@ class PangenomeGraphUserInterface {
         this.press_up = this.press_up.bind(this);
         this.svg_download = this.svg_download.bind(this);
         this.fit_aspect = this.fit_aspect.bind(this);
+        this.nodeinfo = this.nodeinfo.bind(this);
+        this.get_gene_cluster_display_tables = this.get_gene_cluster_display_tables.bind(this);
+        this.get_gene_cluster_context_table = this.get_gene_cluster_context_table.bind(this);
+        this.get_gene_cluster_basics_table = this.get_gene_cluster_basics_table.bind(this);
+        this.get_layer_data = this.get_layer_data.bind(this);
+        this.get_gene_cluster_functions_table = this.get_gene_cluster_functions_table.bind(this);
+        this.appendalignment = this.appendalignment.bind(this);
+        this.get_color_code = this.get_color_code.bind(this);
 
         this.generate_svg = this.generate_svg.bind(this);
 
@@ -2117,6 +2125,349 @@ class PangenomeGraphUserInterface {
         this.settings_dict['maxlength'] = this.data['states']['maxlength']
         this.settings_dict['groupcompress'] = this.data['states']['groupcompress']
         this.settings_dict['state'] = this.data['meta']['state']
+    }
+    
+    async nodeinfo(e, gene_cluster_id='') {
+
+        var id = e.id;
+        var element = document.getElementById(id);
+        
+        if (element.getAttribute('class') == 'group') {
+            var gene_cluster_context = id;
+        
+            if (!gene_cluster_id) {
+                gene_cluster_id = this.group_dict[id][0]
+            }
+        } else {
+            gene_cluster_id = id;
+            var gene_cluster_context = null;
+        }
+        
+        $('#InfoModalBody').empty()
+        var bodyinfo = $('<div class="card-body overflow-scroll"></div>')
+        
+        $('#InfoModalBody').append(bodyinfo)
+        
+        var all_info = await this.get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_context, 1)
+        
+        bodyinfo.append(all_info)
+        
+        if (element.getAttribute('class') == 'group') {
+        
+            var container = document.querySelector("#InfoModalBody");
+            var elem = container.querySelectorAll('.group_choice');
+            
+            elem.forEach(el => {
+                el.on("click", this.nodeinfo(e, el.getAttribute("name_id")))
+            })
+        }
+        
+        $('#InfoModal').modal('show');
+    }
+
+    async get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_context, add_align) {
+        // The purpose of this function is to build HTML formatted tables to give access to
+        // the details of a gene cluster. The parameters here are,
+        //
+        //   - `gene_cluster_id`: A singular gene cluster id to be detailed,
+        //   - `gene_cluster_context`: A list of gene cluster ids that occur in the same context
+        //      with `gene_cluster_id` (either they were binned together, or they were in the same
+        //      group of gene clusters).
+        //   - `data`: the primary data object from the JSON input
+        //
+        // If everything goes alright, this function will return a table that can be displayed in
+        // any modal window.
+        ///////////////////////////////////////////////////////////////////////////////////////////
+        // BUILD CONTEXT
+        // if this is a gene cluster that is a part of a context, then all others are going to be
+        // shown here
+        ///////////////////////////////////////////////////////////////////////////////////////////
+        
+        var gene_cluster_context_table = this.get_gene_cluster_context_table(gene_cluster_id, gene_cluster_context, add_align);
+        
+        ///////////////////////////////////////////////////////////////////////////////////////////
+        // BUILD BASIC INFORMATION TABLE
+        ///////////////////////////////////////////////////////////////////////////////////////////
+        
+        var basic_info_table = this.get_gene_cluster_basics_table(gene_cluster_id, gene_cluster_context, add_align);
+        
+        ///////////////////////////////////////////////////////////////////////////////////////////
+        // BUILD FUNCTIONS TABLE
+        ///////////////////////////////////////////////////////////////////////////////////////////
+        
+        var basic_layer_table = this.get_layer_data(gene_cluster_id, add_align);
+        
+        var functions_table = await this.get_gene_cluster_functions_table(gene_cluster_id, add_align);
+        
+        ///////////////////////////////////////////////////////////////////////////////////////////
+        // RETRIEVE AND BUILD SEQUENCE ALIGNMENTS
+        ///////////////////////////////////////////////////////////////////////////////////////////
+        
+        if (add_align == 1) {
+        
+            var alignment = {}
+            
+            // if (gene_cluster_id != 'start' && gene_cluster_id != 'stop') {
+            for (var genome of Object.keys(this.data['nodes'][gene_cluster_id]['gene_calls'])) {
+            
+            // if ($('#flex' + genome).prop('checked') == true){
+            
+            var genecall = this.data['nodes'][gene_cluster_id]['gene_calls'][genome]
+            var name = this.data['nodes'][gene_cluster_id]['gene_cluster']
+            alignment[genome] = [genecall, name]
+            
+            // }
+            }
+            // }
+            
+            var gene_cluster_sequence_alignments_table = await this.appendalignment(gene_cluster_id)
+            
+            ///////////////////////////////////////////////////////////////////////////////////////////
+            // MERGE ALL AND RETURN
+            ///////////////////////////////////////////////////////////////////////////////////////////
+            
+            return gene_cluster_context_table + basic_info_table + basic_layer_table + functions_table + gene_cluster_sequence_alignments_table
+        
+        } else {
+        
+            return gene_cluster_context_table + basic_info_table + basic_layer_table + functions_table
+        
+        }
+    }
+    
+    get_layer_data(gene_cluster_id, add_align) {
+    
+        var layers = Object.keys(this.data['meta']['layers'])
+        var basic_info = {}
+        
+        for (var layer_name of layers) {
+            if ($('#flex' + layer_name).prop('checked') == true){
+                basic_info[layer_name] = this.data['nodes'][gene_cluster_id]['layer'][layer_name]
+            }
+        }
+        
+        if (add_align == 1) {
+            var basic_layer_table = `<p class="modal_header mt-0">Layers</p>`;
+            basic_layer_table += `<table class="table table-striped table-bordered sortable" id="node_layers_table">`;
+        } else {
+            var basic_layer_table = ''
+            basic_layer_table += `<table class="table table-striped table-bordered sortable">`;
+        }
+        
+        basic_layer_table += `<tbody>`;
+        basic_layer_table += `<thead class="thead-light"><tr>`;
+        for (const [key, value] of Object.entries(basic_info)) {
+            basic_layer_table += `<th scope="row">` + key + `</th>`;
+        }
+        basic_layer_table += `</tr></thead><tbody>`;
+        
+        basic_layer_table += `<tbody><tr>`;
+        for (const [key, value] of Object.entries(basic_info)) {
+            basic_layer_table += `<td>` + value + `</td>`;
+        }
+        basic_layer_table += `</tbody></tr></table>`;
+        
+        return basic_layer_table;
+
+    }
+    
+    get_gene_cluster_basics_table(gene_cluster_id, gene_cluster_context, add_align) {
+        // first, learn a few basics about the gene cluster to be displayed
+        var x_pos = this.data['nodes'][gene_cluster_id]['position'][0]
+        // var position_in_graph = x_pos + " / " + (data["infos"]["meta"]["global_x_offset"] - 1);
+        var position_in_graph = x_pos;
+        // var num_contributing_genomes = Object.keys(data['elements']['nodes'][gene_cluster_id]['genome']).length + " / " + (data['infos']['num_genomes']);
+        var num_contributing_genomes = Object.keys(this.data['nodes'][gene_cluster_id]['gene_calls']).length;
+        var gene_cluster_name = this.data['nodes'][gene_cluster_id]['gene_cluster']
+        
+        if (gene_cluster_context == null){
+            var context = gene_cluster_id
+        } else {
+            var context = gene_cluster_context
+        }
+        
+        var basic_info = {'ID': gene_cluster_id, 'Gene Cluster': gene_cluster_name, 'Contributing Genomes': num_contributing_genomes, 'Position in Graph': position_in_graph}
+        // build the basic information table
+        if (add_align == 1) {
+            var basic_info_table = `<p class="modal_header mt-0">Basics</p>`;
+            basic_info_table += `<table class="table table-striped table-bordered sortable" gc_context="` + context + `" gc_pos="` + x_pos + `" gc_id="` + gene_cluster_id + `" id="node_basics_table">`;
+        } else {
+            var basic_info_table = ''
+            basic_info_table += `<table class="table table-striped table-bordered sortable">`;
+        }
+        
+        basic_info_table += `<tbody>`;
+        basic_info_table += `<thead class="thead-light"><tr>`;
+        for (var [key, value] of Object.entries(basic_info)) {
+            basic_info_table += `<th scope="row">` + key + `</th>`;
+        }
+        basic_info_table += `</tr></thead><tbody>`;
+        
+        basic_info_table += `<tbody><tr>`;
+        for (var [key, value] of Object.entries(basic_info)) {
+            basic_info_table += `<td>` + value + `</td>`;
+        }
+        basic_info_table += `</tbody></tr></table>`;
+        
+        return basic_info_table;
+    }
+    
+    async get_gene_cluster_functions_table(gene_cluster_id, add_align) {
+        
+        if (add_align == 1) {
+          var functions_table = `<p class="modal_header">Consensus functional annotations</p>`;
+          functions_table += `<table class="table table-striped sortable" gc_id="` + gene_cluster_id + `" id="node_functions_table">`;
+        } else {
+          var functions_table = ''
+          functions_table += `<table class="table table-striped sortable">`;
+        }
+        functions_table += `<thead><tr>`;
+        functions_table += `<th scope="col">Source</th>`;
+        functions_table += `<th scope="col">Accession</th>`;
+        functions_table += `<th scope="col">Function</th>`;
+        functions_table += `</tr></thead><tbody>\n\n`;
+    
+        // var gene_cluster_name = this.data['nodes'][gene_cluster_id]['gene_cluster']
+        var d = await this.get_gene_cluster_consensus_functions([gene_cluster_id]);
+    
+        for (var source of this.functional_annotation_sources_available) {
+
+            var gene_cluster_functions = d['data'][gene_cluster_id]
+            if (source in gene_cluster_functions) {
+                var func = gene_cluster_functions[source]['function']
+                var accession = gene_cluster_functions[source]['accession']
+
+                accession === undefined | accession === null ? accession = '' : accession = accession
+                func === undefined | func === null ? func = '' : func = func
+            } else {
+                var func = ''
+                var accession = ''
+            }
+    
+            functions_table += `<tr>`;
+            functions_table += `<td>` + source + `</td>`;
+            functions_table += `<td>` + accession + `</td>`;
+            functions_table += `<td>` + func + `</td>`;
+            functions_table += `</tr>`;
+        }
+        functions_table += `</tbody></tr></table>\n\n`;
+    
+        return functions_table
+    }
+    
+    
+    get_gene_cluster_context_table(gene_cluster_id_current, gene_cluster_context, add_align) {
+        
+        if (gene_cluster_context == null){
+            return '';
+        } else {
+          var group_context = []
+          for (item in this.group_dict[gene_cluster_context]){
+            group_context.push(this.group_dict[gene_cluster_context][item])
+          }
+        }
+    
+        // console.log(gene_cluster_id_current, gene_cluster_context, group_context)
+        if (add_align == 1) {
+          gene_cluster_context_table = `<p class="modal_header">Gene cluster context</p>`;
+        }else {
+          gene_cluster_context_table = ''
+        }
+        gene_cluster_context_table += `<div class="gene_cluster_context_items">`;
+        for(index in group_context) {
+            gene_cluster_id = group_context[index];
+            gene_cluster_name = this.data['nodes'][gene_cluster_id]['gene_cluster']
+    
+            if (gene_cluster_id == gene_cluster_id_current){
+                gene_cluster_context_table += `<span class="gene_cluster_id gene_cluster_id_current">` + gene_cluster_name + `</span>`;
+            } else {
+                gene_cluster_context_table += `<span class="gene_cluster_id"><a class="btn border-0 m-0 p-0 align-baseline group_choice" context="` + add_align + `" group="` + gene_cluster_context + `" name_id="` + gene_cluster_id + `">` + gene_cluster_name + `</a></span>`;
+            }
+        }
+        gene_cluster_context_table += `</div>`;
+    
+        return gene_cluster_context_table;
+    
+    }
+
+    get_color_code(matched) {
+        return this.amino_acid_color_code[matched]
+    }
+    
+    async appendalignment(gene_cluster_id) {
+        var alignments_table = `<p class="modal_header">Sequence alignments</p>`;
+        alignments_table += `<div class="scroll-wrapper"><table class="table sortable" gc_id="` + gene_cluster_id + `" id="node_sequence_alignments_table">`;
+        alignments_table += `<thead class="thead-dark gc-table-header"><tr>`;
+        alignments_table += `<th class="position-sticky" style="left:0px; z-index:2;" scope="col">Genome</th>`;
+        alignments_table += `<th scope="col">Gene Call</th>`;
+        alignments_table += `<th scope="col"><span id="th-sequence">Sequence</span></th>`;
+        alignments_table += `</tr></thead><tbody>\n\n`;
+    
+        var d = await this.fetchalignment([gene_cluster_id])
+
+        var alignment = d['data'][gene_cluster_id]
+
+        for (var genome of this.genomes) {
+            if (genome in alignment) {
+                for (var [gene_call, sequence] of Object.entries(alignment[genome])) {
+                    var colored_sequence = sequence.replace(/A|R|N|D|C|Q|E|G|H|I|L|K|M|F|P|S|T|W|Y|V|-/gi, this.get_color_code);
+                    
+                    alignments_table += `<tr>`
+                    alignments_table += `<td id="td-genome-cell">` + genome + `</td>`
+                    alignments_table += `<td id="td-value-cell">` + gene_call + `</a></td>`
+                    alignments_table += `<td id="gc-alignment-font"><div class="scrollable-content">` + colored_sequence + `</div></td>`
+                    alignments_table += `</tr>`
+                }
+                    
+            }
+        }
+
+        alignments_table += `</tbody></table></div>\n\n`
+        return alignments_table;
+    }
+
+    get_gene_cluster_consensus_functions(gene_cluster_names) {
+    
+        var func = {};
+        func['synteny_gene_clusters'] = gene_cluster_names
+        
+        var d = $.ajax({
+            url: "/pangraph/get_pangraph_synteny_gene_cluster_function",
+            type: "POST",
+            data: JSON.stringify(func),
+            contentType: "application/json",
+            dataType: "json",
+            error: function(){
+                console.log('Error while attempting to fetch function.')
+            },
+            success: function(){
+                console.log('Successfully fetched function.')
+            }
+        })
+
+        return d
+        }
+    
+    fetchalignment(gene_cluster_names) {
+        
+        var func = {};
+        func['synteny_gene_clusters'] = gene_cluster_names
+    
+        var d = $.ajax({
+            url: "/pangraph/get_pangraph_synteny_gene_cluster_alignment",
+            type: "POST",
+            data: JSON.stringify(func),
+            contentType: "application/json",
+            dataType: "json",
+            error: function(){
+                console.log('Error while attempting to fetch alignment.')
+            },
+            success: function(){
+                console.log('Successfully fetched alignment.')
+            }
+        })
+        
+        return d
     }
 }
 

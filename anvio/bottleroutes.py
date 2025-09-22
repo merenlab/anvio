@@ -1623,8 +1623,8 @@ class BottleApplication(Bottle):
         try:
             payload = request.json
             synteny_gene_clusters = payload['synteny_gene_clusters']
-
-            data = self.interactive.get_sequences_for_synteny_gene_clusters(gene_cluster_names=set([synteny_gene_clusters]))
+    
+            data = self.interactive.get_sequences_for_synteny_gene_clusters(gene_cluster_names=set(synteny_gene_clusters))
             return(json.dumps({'status': 0, 'data': data}))
         except:
             return(json.dumps({'status': 1, 'data': ''}))
@@ -1635,7 +1635,7 @@ class BottleApplication(Bottle):
             payload = request.json
             synteny_gene_clusters = payload['synteny_gene_clusters']
 
-            data = dict((synteny_gene_cluster,self.interactive.synteny_gene_clusters_functions_summary_dict[synteny_gene_cluster]) for synteny_gene_cluster in synteny_gene_clusters)
+            data = {synteny_gene_cluster: self.interactive.synteny_gene_clusters_functions_summary_dict[synteny_gene_cluster] for synteny_gene_cluster in synteny_gene_clusters}
             return(json.dumps({'status': 0, 'data': data}))
         except:
             return(json.dumps({'status': 1, 'data': ''}))
