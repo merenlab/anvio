@@ -444,3 +444,100 @@ class SamplesTxt:
         """
         return self._data[sample]
 
+    @staticmethod
+    def _has_sr(info: dict) -> bool:
+        """A row has short-reads if r1 is provided (r2 may be empty in 'free' mode)."""
+        return bool(info.get("r1"))
+
+    @staticmethod
+    def _has_lr(info: dict) -> bool:
+        """A row has long-reads if lr is provided."""
+        return bool(info.get("lr"))
+
+    def has_any_sr(self) -> bool:
+        """Return True if at least one sample row has short-reads."""
+        return any(self._has_sr(info) for info in self._data.values())
+
+    def has_any_lr(self) -> bool:
+        """Return True if at least one sample row has long-reads."""
+        return any(self._has_lr(info) for info in self._data.values())
+
+    def sample_types(self) -> dict:
+        """
+        Return {base_sample: {'has_sr': bool, 'has_lr': bool}} for quick inspection.
+        """
+        out = {}
+        for s, info in self._data.items():
+            out[s] = {"has_sr": self._has_sr(info), "has_lr": self._has_lr(info)}
+        return out
+
+    def iter_readsets(self, read_type_suffix: str = "auto"):
+        """
+        Yield canonical 'readset' records for downstream workflows.
+
+        A readset is the concrete unit that will be mapped/profiled.
+        Fields:
+          - id           : identifier used in file names / Snakemake wildcards.
+                           Suffix rules (default 'auto'):
+                             * If a sample has BOTH SR and LR → emit two readsets:
+                               '{sample}_SR' and '{sample}_LR'.
+                             * Otherwise (only one type) → use the unsuffixed '{sample}'.
+                           (Future-proof: read_type_suffix='force' always adds _SR/_LR.)
+          - base_sample  : the unsuffixed sample name from samples.txt
+          - type         : 'SR' or 'LR'
+          - mixed_type   : True if the base sample has both SR and LR (useful for logic)
+          - group        : the raw group value (may be None if not provided)
+          - reads        : dict of lists; for SR → {'r1': [...], 'r2': [...]}, for LR → {'lr': [...]}
+
+        Parameters
+        ----------
+         : {'auto', 'force'}
+            'auto'  (default): only suffix when a sample has both SR and LR.
+            'force': always suffix by type (_SR/_LR), even if only one type exists.
+
+        Yields
+        ------
+        dict
+            Readset record as described above.
+        """
+        if read_type_suffix not in {"auto", "force"}:
+            raise ConfigError("read_type_suffix must be 'auto' or 'force'.")
+
+        for sample, info in self._data.items():
+            has_sr = self._has_sr(info)
+            has_lr = self._has_lr(info)
+            mixed = has_sr and has_lr
+
+            # Nothing to emit (shouldn't happen due to sanity checks in 'free' mode).
+            if not (has_sr or has_lr):
+                continue
+
+            # Helper to build one readset dict
+            def _mk(id_, typ, reads_dict):
+                return {"id": id_,
+                        "base_sample": sample,
+                        "type": typ,                # 'SR' or 'LR'
+                        "mixed_type": mixed,        # True if this base sample has both SR and LR
+                        "group": info.get("group"),
+                        "reads": reads_dict, }      # only keys relevant to the type
+
+            # Decide ids under chosen read-type suffix
+            if mixed:
+                yield _mk(f"{sample}_SR", "SR", {"r1": info.get("r1", []), "r2": info.get("r2", [])})
+                yield _mk(f"{sample}_LR", "LR", {"lr":  info.get("lr",  [])})
+            else:
+                # Only SR
+                if has_sr:
+                    rs_id = f"{sample}_SR" if read_type_suffix == "force" else sample
+                    yield _mk(rs_id, "SR", {"r1": info.get("r1", []), "r2": info.get("r2", [])})
+                # Only LR
+                if has_lr:
+                    rs_id = f"{sample}_LR" if read_type_suffix == "force" else sample
+                    yield _mk(rs_id, "LR", {"lr": info.get("lr", [])})
+
+    def get_readsets(self, read_type_suffix: str = "auto"):
+        """
+        Convenience wrapper that returns list(self.iter_readsets(...)).
+        """
+        return list(self.iter_readsets(read_type_suffix=read_type_suffix))
+
