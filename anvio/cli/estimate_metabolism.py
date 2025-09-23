@@ -117,14 +117,14 @@ def get_args():
     groupC.add_argument(*anvio.A('only-complete'), **anvio.K('only-complete'))
     groupC.add_argument(*anvio.A('add-copy-number'), **anvio.K('add-copy-number'))
     groupC.add_argument(*anvio.A('include-kos-not-in-kofam'), **anvio.K('include-kos-not-in-kofam'))
-    groupC.add_argument(*anvio.A('include-stray-KOs'), **anvio.K('include-stray-KOs', {'help': "'Stray KOs' are what we call KEGG Orthlogs "
+    groupC.add_argument(*anvio.A('include-nt-KOs'), **anvio.K('include-nt-KOs', {'help': "'No-threshold KOs', or 'nt-KOs' are what we call KEGG Orthlogs "
                                                             "that KEGG does not provide a bit score threshold for. Anvi'o can estimate "
                                                             "thresholds (and sometimes updates the HMMs) for these KOs, and you can annotate "
-                                                            "them in your data if you run `anvi-run-kegg-kofams` with the `--include-stray-KOs` "
+                                                            "them in your data if you run `anvi-run-kegg-kofams` with the `--include-nt-KOs` "
                                                             "flag. If you did that, and you now want to include those annotations in metabolism "
                                                             "estimates, then you should apply the same flag here. This is kind of similar to the "
-                                                            "`--include-kos-not-in-kofam` flag, but it applies only to the stray KOs that you can "
-                                                            "annotate with `anvi-run-kegg-kofams --include-stray-KOs`."}))
+                                                            "`--include-kos-not-in-kofam` flag, but it applies only to the nt-KOs that you can "
+                                                            "annotate with `anvi-run-kegg-kofams --include-nt-KOs`."}))
     groupC.add_argument(*anvio.A('ignore-unknown-KOs'), **anvio.K('ignore-unknown-KOs'))
     groupC.add_argument(*anvio.A('exclude-dashed-reactions'), **anvio.K('exclude-dashed-reactions'))
 

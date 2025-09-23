@@ -46,7 +46,7 @@ anvi-run-kegg-kofams  -c S_islandicus_LS215.db \
                       --kegg-data-dir $kegg_data_dir \
                       $thread_controller \
                       --just-do-it \
-                      --include-stray-KOs # we include stray KOs for just one of our databases so we can test related flags later
+                      --include-nt-KOs # we include nt-KOs for just one of our databases so we can test related flags later
 
 anvi-run-kegg-kofams  -c CONTIGS.db \
                       --kegg-data-dir $kegg_data_dir \
@@ -228,10 +228,10 @@ SHOW_FILE matrix_format_multi-module_stepwise_presence-MATRIX.txt
 SHOW_FILE matrix_format_multi-step_completeness-MATRIX.txt
 SHOW_FILE matrix_format_multi-enzyme_hits-MATRIX.txt
 
-INFO "Testing estimation with stray KOs"
+INFO "Testing estimation with nt-KOs"
 anvi-estimate-metabolism -c S_islandicus_LS215.db \
-                         --include-stray-KOs \
-                         -O with_stray_KOs \
+                         --include-nt-KOs \
+                         -O with_nt_KOs \
                          --no-progress \
                          --kegg-data-dir $kegg_data_dir
 
