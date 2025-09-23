@@ -85,7 +85,8 @@ class PangenomeGraphUserInterface {
         this.info_download = this.info_download.bind(this);
         this.add_info_to_bin = this.add_info_to_bin.bind(this);
         this.flextree_change = this.flextree_change.bind(this);
-
+        
+        this.draw_newick = this.draw_newick.bind(this);
         this.generate_svg = this.generate_svg.bind(this);
 
         this.initialize_JSON();
@@ -964,7 +965,7 @@ class PangenomeGraphUserInterface {
         }
        
         if ($('#flextree').prop('checked') == true){
-            svg_core.append(this.draw_newick(order, item_dist, max_dist, offset, tree_length, tree_thickness))
+            svg_core.append(this.draw_newick(order, item_dist, max_dist, offset, tree_length, tree_thickness, 0, theta, start_angle))
         }
         
         var end = new Date().getTime();
@@ -1127,8 +1128,8 @@ class PangenomeGraphUserInterface {
         return sortedArray[0][1]
     }
 
-    draw_newick(order, item_dist, max_dist, offset, max_size, line_thickness) {
-        
+    draw_newick(order, item_dist, max_dist, offset, max_size, line_thickness, start, theta, start_angle) {
+
         var output = ''
         var saving_positions = {}
         var saving_ids = {}
@@ -1139,7 +1140,7 @@ class PangenomeGraphUserInterface {
         
             var start_fraction = (max_size * (start / max_dist) - max_size) - offset
             var end_fraction = (max_size * (end / max_dist) - max_size) - offset
-            
+
             if (item != 'branching') {
                 var y_value = item_dist[item]
                 output += '<path d="M ' + start_fraction + ' ' + y_value + ' L ' + end_fraction + ' ' + y_value + '" stroke-width="' + line_thickness + '" stroke="black"></path>'
@@ -1153,7 +1154,7 @@ class PangenomeGraphUserInterface {
                     i = i + 1
                 }
                 if (end_fraction != max_size){
-                    output += '<path d="M ' + end_fraction + ' ' + y_value + ' L ' + (0 - offset) + ' ' + y_value + '" stroke-dasharray="' + line_thickness * 5 + ',' + line_thickness * 5 + '" stroke-width="' + line_thickness + '" stroke="lightgray"></path>'
+                    output += '<path d="M ' + end_fraction + ' ' + y_value + ' L ' + (start - offset) + ' ' + y_value + '" stroke-dasharray="' + line_thickness + '" stroke-width="' + line_thickness + '" stroke="lightgray"></path>'
                 }
             } else {
         
