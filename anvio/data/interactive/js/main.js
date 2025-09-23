@@ -2004,7 +2004,7 @@ function showCompleteness(bin_id, updateOnly) {
 
 // Shared configuration objects for the two function types
 const FUNCTION_CONFIGS = {
-    genes: {
+    individual_genes: {
         url: '/data/get_functions_for_a_collection_of_genes',
         dataKey: 'gene_caller_ids',
         itemLabel: 'genes',
@@ -2015,7 +2015,7 @@ const FUNCTION_CONFIGS = {
         getAccessionString: (d, function_source) => getPrettyFunctionsString(d[function_source][0], function_source),
         getFunctionString: (d, function_source) => getPrettyFunctionsString(d[function_source][1])
     },
-    clusters: {
+    gene_clusters: {
         url: '/data/get_functions_for_gene_clusters',
         dataKey: 'gene_clusters',
         itemLabel: 'gene clusters',
@@ -2082,6 +2082,11 @@ function buildFunctionsContent(response, config) {
     // Build metabolism summary table if present
     content += buildMetabolismTable(response, config, fmtPct);
 
+    content += `
+        <p style="font-size: large; border-bottom: 1px solid black; background: #ffe4c478;">Functions per ${config.itemLabel}</p>
+
+        <p>${config.functionsDescription}</p>`;
+
     // Build filter controls
     content += buildFilterControls(response['sources'], response['functions'], config);
 
@@ -2094,11 +2099,17 @@ function buildFunctionsContent(response, config) {
 // Shared function to build metabolism table
 function buildMetabolismTable(response, config, fmtPct) {
     const metabolism = response && response.metabolism;
-    if (!metabolism || typeof metabolism !== 'object' || !Object.keys(metabolism).length) {
-        return '';
-    }
 
     let metabolismContent = `
+        <p style="font-size: large; border-bottom: 1px solid black; background: #f5f5dc9c;">Metabolic module involvement</p>
+    `;
+
+    if (!metabolism || typeof metabolism !== 'object' || !Object.keys(metabolism).length) {
+        metabolismContent += '<p style="margin-bottom: 35px;">There are no metabolic insights to show here :/</p>';
+        return metabolismContent
+    }
+
+    metabolismContent += `
         <p style="padding-top:30px;"><b>${config.metabolismDescription}</b></p>
         <table class="table table-sm table-striped" style="width: 95%; margin-left: 10px;">
             <thead class="thead-light">
@@ -2182,25 +2193,24 @@ function buildFilterControls(sources, functions, config) {
 
     let filterControls = `
         <div style="background-color: #f8f9fa; padding: 15px; margin: 20px 10px; border-radius: 5px;">
-            <h6><i class="fa fa-filter"></i> Display Filters</h6>
             <div style="margin-bottom: 10px;">
                 <label>
-                    <input type="checkbox" id="hideNA" checked> Hide entries with no annotation (N/A)
+                    <input type="checkbox" id="hideNA" checked> Hide entries with no annotation to simplify the display
                 </label>
             </div>
+            <hr>
             <div>
-                <strong>Annotation Sources for ${totalItems} ${config.itemLabel}:</strong><br>
+                <p>Annotation sources to display for a total of ${totalItems} ${config.itemLabel}:</p>
                 <div style="margin-top: 5px; display: flex; flex-wrap: wrap; gap: 15px;">`;
-
-    Object.keys(sources).forEach(function(index) {
-        let source = sources[index];
-        let count = sourceCounts[source];
-        filterControls += `
-            <label style="margin-right: 15px;">
-                <input type="checkbox" class="source-filter" data-source="${source}" checked>
-                ${source} <span style="color: #666; font-size: 0.9em;">(${count})</span>
-            </label>`;
-    });
+                    Object.keys(sources).forEach(function(index) {
+                        let source = sources[index];
+                        let count = sourceCounts[source];
+                        filterControls += `
+                            <label style="margin-right: 15px;">
+                                <input type="checkbox" class="source-filter" data-source="${source}" checked>
+                                ${source} <span style="color: #666; font-size: 0.9em;">(${count})</span>
+                            </label>`;
+                    });
 
     filterControls += `
                 </div>
@@ -2217,7 +2227,6 @@ function buildFilterControls(sources, functions, config) {
 // Shared function to build functions table
 function buildFunctionsTable(response, config) {
     let content = `
-        <p style="padding-top:30px;"><b>${config.functionsDescription}</b></p>
         <table class="table" id="itemFunctionsTable" style="width: 95%; margin-left: 10px; table-layout: fixed;">
            <thead class="thead-light">
            <tr>
@@ -2438,11 +2447,11 @@ function setupItemTableFiltering() {
 
 // Updated main functions - now much simpler!
 function showGeneFunctions(bin_id, updateOnly) {
-    showItemFunctions(bin_id, FUNCTION_CONFIGS.genes, updateOnly);
+    showItemFunctions(bin_id, FUNCTION_CONFIGS.individual_genes, updateOnly);
 }
 
 function showGeneClusterDetails(bin_id, updateOnly) {
-    showItemFunctions(bin_id, FUNCTION_CONFIGS.clusters, updateOnly);
+    showItemFunctions(bin_id, FUNCTION_CONFIGS.gene_clusters, updateOnly);
 }
 
 
