@@ -2082,6 +2082,8 @@ function buildFunctionsContent(response, config) {
     // Build metabolism summary table if present
     content += buildMetabolismTable(response, config, fmtPct);
 
+    content += '<hr style="margin: 30px !important;">';
+
     content += `
         <p style="font-size: large; border-bottom: 1px solid black; background: #ffe4c478;">Functions per ${config.itemLabel}</p>
 
@@ -2110,7 +2112,7 @@ function buildMetabolismTable(response, config, fmtPct) {
     }
 
     metabolismContent += `
-        <p style="padding-top:30px;"><b>${config.metabolismDescription}</b></p>
+        <p style="margin-bottom: 35px;">${config.metabolismDescription}</p>
         <table class="table table-sm table-striped" style="width: 95%; margin-left: 10px;">
             <thead class="thead-light">
                 <tr>
@@ -2158,7 +2160,7 @@ function buildMetabolismTable(response, config, fmtPct) {
                 </tr>`;
         });
 
-    metabolismContent += `</tbody></table><hr class="my-3">`;
+    metabolismContent += `</tbody></table>`;
 
     return metabolismContent;
 }
@@ -2195,7 +2197,7 @@ function buildFilterControls(sources, functions, config) {
         <div style="background-color: #f8f9fa; padding: 15px; margin: 20px 10px; border-radius: 5px;">
             <div style="margin-bottom: 10px;">
                 <label>
-                    <input type="checkbox" id="hideNA" checked> Hide entries with no annotation to simplify the display
+                    <input type="checkbox" id="hideNA"> Hide entries with no annotation to simplify the display
                 </label>
             </div>
             <hr>
