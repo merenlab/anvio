@@ -83,6 +83,7 @@ class PangenomeGraphUserInterface {
         this.get_color_code = this.get_color_code.bind(this);
         this.alignment_download = this.alignment_download.bind(this);
         this.info_download = this.info_download.bind(this);
+        this.add_info_to_bin = this.add_info_to_bin.bind(this);
 
         this.generate_svg = this.generate_svg.bind(this);
 
@@ -258,7 +259,7 @@ class PangenomeGraphUserInterface {
             }
         } else {
             var x_size = (this.global_x + 1) * node_distance_x * 0.5;
-            var y_size = (sum_middle_layer + (global_y * node_distance_y) + sum_outer_layer) * 0.5;
+            var y_size = (sum_middle_layer + (this.global_y * node_distance_y) + sum_outer_layer) * 0.5;
             if (scale == 0){
                 var svg_core = $('<svg id="result" width="' + x_size*2 + 'px" height="' + y_size*2 + 'px" version="1.1" viewBox="-' + 0.5 * node_distance_y + ' -' + y_size*2 + ' ' + x_size*2 + ' ' + y_size*2 + '" xmlns="http://www.w3.org/2000/svg"></svg>')
             } else {
@@ -729,8 +730,8 @@ class PangenomeGraphUserInterface {
                     if ($('#flex' + layer_name).prop('checked') == true){
                 
                         var value = node['layer'][layer_name]
-                        var max = layers_max[layer_name]
-                        var min = layers_min[layer_name]
+                        var max = this.layers_max[layer_name]
+                        var min = this.layers_min[layer_name]
                         
                         var [layer_width, layer_start, layer_stop] = outer_layers[layer_name]
                         var k_y_size = sum_middle_layer + k_y * node_distance_y
