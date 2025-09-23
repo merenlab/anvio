@@ -81,16 +81,20 @@ class PangenomeGraphUserInterface {
         this.get_gene_cluster_functions_table = this.get_gene_cluster_functions_table.bind(this);
         this.appendalignment = this.appendalignment.bind(this);
         this.get_color_code = this.get_color_code.bind(this);
+        this.alignment_download = this.alignment_download.bind(this);
+        this.info_download = this.info_download.bind(this);
+        this.add_info_to_bin = this.add_info_to_bin.bind(this);
+        this.flextree_change = this.flextree_change.bind(this);
 
         this.generate_svg = this.generate_svg.bind(this);
 
         this.initialize_JSON();
-        this.initialize_buttons();
     }
 
     generate_svg(scale=1) {
 
         var start = new Date().getTime();
+        var svg_arrow = [];
         var svg_search = [];
         var svg_backbone = [];
         var svg_text = [];
@@ -119,8 +123,9 @@ class PangenomeGraphUserInterface {
         } else {
             var saturation = 0
         }
-        
-        var angle = parseFloat($('#angle')[0].value);
+
+        var start_angle = parseFloat($('#start_angle')[0].value);
+        var end_angle = parseFloat($('#end_angle')[0].value);
         var outer_margin = parseFloat($('#outer_margin')[0].value);
         var inner_margin = parseFloat($('#inner_margin')[0].value);
         var node_size = parseFloat($('#size')[0].value);
@@ -145,7 +150,7 @@ class PangenomeGraphUserInterface {
         var non_back_color = $('#non_back_color')[0].value;
         var genome_size = this.genomes.length
         
-        var theta = angle / (this.global_x+1)
+        var theta = (end_angle - start_angle) / (this.global_x+1)
         
         if (linear == 0){
             var start_offset = parseFloat($('#inner')[0].value);
@@ -256,7 +261,7 @@ class PangenomeGraphUserInterface {
             }
         } else {
             var x_size = (this.global_x + 1) * node_distance_x * 0.5;
-            var y_size = (sum_middle_layer + (global_y * node_distance_y) + sum_outer_layer) * 0.5;
+            var y_size = (sum_middle_layer + (this.global_y * node_distance_y) + sum_outer_layer) * 0.5;
             if (scale == 0){
                 var svg_core = $('<svg id="result" width="' + x_size*2 + 'px" height="' + y_size*2 + 'px" version="1.1" viewBox="-' + 0.5 * node_distance_y + ' -' + y_size*2 + ' ' + x_size*2 + ' ' + y_size*2 + '" xmlns="http://www.w3.org/2000/svg"></svg>')
             } else {
@@ -277,21 +282,21 @@ class PangenomeGraphUserInterface {
             }
             
             if (linear == 0){
-                var [circle_c_x, circle_c_y] = this.transform(this.global_x + 0.5 - pointer_length, arrow_start + arrow_thickness, theta)
-                var [circle_a_x, circle_a_y] = this.transform(0-0.5, arrow_start + arrow_thickness, theta)
-                var [circle_b_x, circle_b_y] = this.transform(0-0.5, arrow_stop - arrow_thickness, theta)
-                var [circle_d_x, circle_d_y] = this.transform(this.global_x + 0.5 - pointer_length, arrow_stop - arrow_thickness, theta)
-                var [circle_f_x, circle_f_y] = this.transform(this.global_x + 0.5 - pointer_length, arrow_stop, theta)
-                var [circle_g_x, circle_g_y] = this.transform(this.global_x + 0.5, arrow_start + arrow_thickness * 2, theta)
-                var [circle_e_x, circle_e_y] = this.transform(this.global_x + 0.5 - pointer_length, arrow_start, theta)
+                var [circle_c_x, circle_c_y] = this.transform(this.global_x + 0.5 - pointer_length, arrow_start + arrow_thickness, theta, start_angle)
+                var [circle_a_x, circle_a_y] = this.transform(0-0.5, arrow_start + arrow_thickness, theta, start_angle)
+                var [circle_b_x, circle_b_y] = this.transform(0-0.5, arrow_stop - arrow_thickness, theta, start_angle)
+                var [circle_d_x, circle_d_y] = this.transform(this.global_x + 0.5 - pointer_length, arrow_stop - arrow_thickness, theta, start_angle)
+                var [circle_f_x, circle_f_y] = this.transform(this.global_x + 0.5 - pointer_length, arrow_stop, theta, start_angle)
+                var [circle_g_x, circle_g_y] = this.transform(this.global_x + 0.5, arrow_start + arrow_thickness * 2, theta, start_angle)
+                var [circle_e_x, circle_e_y] = this.transform(this.global_x + 0.5 - pointer_length, arrow_start, theta, start_angle)
                     
                 if ((this.global_x) * theta > 180) {
                     var arc_flag = 1
                 } else {
                     var arc_flag = 0
                 }
-                
-                svg_core.append(
+
+                svg_arrow.push(
                     $('<path d="M ' + circle_c_x + ' ' + circle_c_y +
                     ' A ' + (arrow_start + arrow_thickness) + ' ' + (arrow_start + arrow_thickness) + ' 0 ' + arc_flag + ' 1 ' + circle_a_x + ' ' + circle_a_y +
                     ' L ' + circle_b_x + ' ' + circle_b_y +
@@ -302,7 +307,22 @@ class PangenomeGraphUserInterface {
                     ' Z" stroke-width="0" fill="slateGrey"></path>')
                 )
                 
-                var [circle_h_x, circle_h_y] = this.transform(0-0.5, arrow_start + arrow_thickness * 2, theta)
+                var [circle_h_x, circle_h_y] = this.transform(0-0.5, arrow_start + arrow_thickness * 2, theta, start_angle)
+
+                var rotate = start_angle
+                if (rotate >= 90 && rotate <= 180) {
+                    rotate += 180;
+                    var anchor = "start"
+                } else if (rotate >= 180 && rotate <= 270) {
+                    rotate -= 180;
+                    var anchor = "start"
+                } else {
+                    var anchor = "end"
+                }
+
+                svg_text.push(
+                    $('<text text-anchor="' + anchor + '" transform="rotate(-' + rotate + ' ' + circle_h_x + ' ' + circle_h_y +')" dominant-baseline="middle" x="' + circle_h_x + '" y="' + circle_h_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">Orientation</text>')
+                )
                 
             } else {
                 var [circle_c_x, circle_c_y] = [(this.global_x + 0.5 - pointer_length) * node_distance_x, -(arrow_start + arrow_thickness)]
@@ -313,7 +333,7 @@ class PangenomeGraphUserInterface {
                 var [circle_g_x, circle_g_y] = [(this.global_x + 0.5) * node_distance_x, -(arrow_start + arrow_thickness * 2)]
                 var [circle_e_x, circle_e_y] = [(this.global_x + 0.5 - pointer_length) * node_distance_x, -arrow_start]
                 
-                svg_core.append(
+                svg_arrow.push(
                     $('<path d="M ' + circle_c_x + ' ' + circle_c_y +
                     ' L ' + circle_a_x + ' ' + circle_a_y +
                     ' L ' + circle_b_x + ' ' + circle_b_y +
@@ -325,31 +345,31 @@ class PangenomeGraphUserInterface {
                 )
                 
                 var [circle_h_x, circle_h_y] = [(0-0.5) * node_distance_x, -(arrow_start + arrow_thickness * 2)]
+
+                svg_text.push(
+                    $('<text text-anchor="end" dominant-baseline="middle" x="' + circle_h_x + '" y="' + circle_h_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">Orientation</text>')
+                )
             }
-        
-            svg_text.push(
-                $('<text text-anchor="end" this.transform="translate (-10)" dominant-baseline="middle" x="' + circle_h_x + '" y="' + circle_h_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">Orientation</text>')
-            )
-            
+                
             var l = steps
             var k = 1
             while (k <= num_position) {
                 
                 if (linear == 0){
-                    var [circle_l_x, circle_l_y] = this.transform(l, arrow_start + arrow_thickness * 2, theta)
-                    var rotate = theta * (l+0.5)
+                    var [circle_l_x, circle_l_y] = this.transform(l, arrow_start + arrow_thickness * 2, theta, start_angle)
+                    var rotate = theta * (l+0.5) + start_angle
                     if (rotate >= 90 && rotate <= 180) {
                         rotate += 180;
                     } else if (rotate >= 180 && rotate <= 270) {
                         rotate -= 180;
                     }
 
-                    svg_core.append(
+                    svg_arrow.push(
                         $('<text text-anchor="middle" dominant-baseline="middle" transform="rotate(-' + rotate + ' ' + circle_l_x + ' ' + circle_l_y +')" x="' + circle_l_x + '" y="' + circle_l_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="white">' + l + '</text>')
                     )
                 } else {
                     var [circle_l_x, circle_l_y] = [(l) * node_distance_x, -(arrow_start + arrow_thickness * 2)]
-                    svg_core.append(
+                    svg_arrow.push(
                         $('<text text-anchor="middle" dominant-baseline="middle" x="' + circle_l_x + '" y="' + circle_l_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="white">' + l + '</text>')
                     )
                 }
@@ -425,8 +445,8 @@ class PangenomeGraphUserInterface {
                     var thickness = edge_thickness
                 
                     if (linear == 0){
-                        var [circle_i_x, circle_i_y] = this.transform(i_x, i_y_size, theta);
-                        var [circle_j_x, circle_j_y] = this.transform(j_x, j_y_size, theta);
+                        var [circle_i_x, circle_i_y] = this.transform(i_x, i_y_size, theta, start_angle);
+                        var [circle_j_x, circle_j_y] = this.transform(j_x, j_y_size, theta, start_angle);
                     } else {
                         var [circle_i_x, circle_i_y] = [(i_x) * node_distance_x, -i_y_size];
                         var [circle_j_x, circle_j_y] = [(j_x) * node_distance_x, -j_y_size];
@@ -455,7 +475,7 @@ class PangenomeGraphUserInterface {
                                 var n_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + n_y * node_distance_y
         
                                 if (linear == 0){
-                                    var [circle_n_x, circle_n_y] = this.transform(n_x, n_y_size, theta);
+                                    var [circle_n_x, circle_n_y] = this.transform(n_x, n_y_size, theta, start_angle);
                                 } else {
                                     var [circle_n_x, circle_n_y] = [(n_x) * node_distance_x, -n_y_size];
                                 }
@@ -497,10 +517,10 @@ class PangenomeGraphUserInterface {
                 var [layer_width, layer_start, layer_stop] = middle_layers[layer_name]
             
                 if (linear == 0){
-                    var [circle_a_x, circle_a_y] = this.transform(0-0.5, layer_start, theta)
-                    var [circle_b_x, circle_b_y] = this.transform(0-0.5, layer_stop, theta)
-                    var [circle_c_x, circle_c_y] = this.transform(this.global_x + 0.5, layer_start, theta)
-                    var [circle_d_x, circle_d_y] = this.transform(this.global_x + 0.5, layer_stop, theta)
+                    var [circle_a_x, circle_a_y] = this.transform(0-0.5, layer_start, theta, start_angle)
+                    var [circle_b_x, circle_b_y] = this.transform(0-0.5, layer_stop, theta, start_angle)
+                    var [circle_c_x, circle_c_y] = this.transform(this.global_x + 0.5, layer_start, theta, start_angle)
+                    var [circle_d_x, circle_d_y] = this.transform(this.global_x + 0.5, layer_stop, theta, start_angle)
                     
                     if ((this.global_x) * theta > 180) {
                         var arc_flag = 1
@@ -578,7 +598,7 @@ class PangenomeGraphUserInterface {
                                 var p_y_size = layer_start + p_y * (layer_width / this.global_y)
 
                                 if (linear == 0){
-                                    var [circle_p_x, circle_p_y] = this.transform(p_x, p_y_size, theta);
+                                    var [circle_p_x, circle_p_y] = this.transform(p_x, p_y_size, theta, start_angle);
                                 } else {
                                     var [circle_p_x, circle_p_y] = [(p_x) * node_distance_x, -p_y_size];
                                 }
@@ -592,7 +612,7 @@ class PangenomeGraphUserInterface {
                                 var q_y_size = layer_start + q_y * (layer_width / this.global_y)
 
                                 if (linear == 0){
-                                    var [circle_q_x, circle_q_y] = this.transform(q_x, q_y_size, theta);
+                                    var [circle_q_x, circle_q_y] = this.transform(q_x, q_y_size, theta, start_angle);
                                 } else {
                                     var [circle_q_x, circle_q_y] = [(q_x) * node_distance_x, -q_y_size];
                                 }
@@ -702,7 +722,7 @@ class PangenomeGraphUserInterface {
                 var k_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + k_y * node_distance_y
     
                 if (linear == 0) {
-                    var [circle_k_x, circle_k_y] = this.transform(k_x, k_y_size, theta);
+                    var [circle_k_x, circle_k_y] = this.transform(k_x, k_y_size, theta, start_angle);
                 } else {
                     var [circle_k_x, circle_k_y] = [(k_x) * node_distance_x, -k_y_size];
                 }
@@ -719,7 +739,7 @@ class PangenomeGraphUserInterface {
                 var j_y = search_stop
                 
                 if (!global_values.includes(k_x)) {
-                    svg_search.push(this.create_rectangle(i_x, i_y, j_x, j_y, theta, node_distance_x, linear, 'white', k_x))
+                    svg_search.push(this.create_rectangle(i_x, i_y, j_x, j_y, theta, start_angle, node_distance_x, linear, 'white', k_x))
                 }
     
                 for (var layer_name of this.layers) {
@@ -727,8 +747,8 @@ class PangenomeGraphUserInterface {
                     if ($('#flex' + layer_name).prop('checked') == true){
                 
                         var value = node['layer'][layer_name]
-                        var max = layers_max[layer_name]
-                        var min = layers_min[layer_name]
+                        var max = this.layers_max[layer_name]
+                        var min = this.layers_min[layer_name]
                         
                         var [layer_width, layer_start, layer_stop] = outer_layers[layer_name]
                         var k_y_size = sum_middle_layer + k_y * node_distance_y
@@ -739,7 +759,7 @@ class PangenomeGraphUserInterface {
                         var j_y = layer_stop + k_y_size
                         var color = this.lighter_color('#00ff00', '#ff0000', (value-min) / (max-min))
                         
-                        svg_heatmaps.push(this.create_rectangle(i_x, i_y, j_x, j_y, theta, node_distance_x, linear, color))
+                        svg_heatmaps.push(this.create_rectangle(i_x, i_y, j_x, j_y, theta, start_angle, node_distance_x, linear, color))
                     }
                 }
             }
@@ -764,7 +784,7 @@ class PangenomeGraphUserInterface {
                     var color = non_back_color
                 }
         
-                svg_backbone.push(this.create_rectangle(i_x, i_y, j_x, j_y, theta, node_distance_x, linear, color, k_x))
+                svg_backbone.push(this.create_rectangle(i_x, i_y, j_x, j_y, theta, start_angle, node_distance_x, linear, color, k_x))
                 k_x = k_x + 1
             }
         }
@@ -840,10 +860,10 @@ class PangenomeGraphUserInterface {
                 }
         
                 if (linear == 0) {
-                    var [a_x, a_y] = this.transform(i_x, i_y, theta)
-                    var [b_x, b_y] = this.transform(i_x, j_y, theta)
-                    var [c_x, c_y] = this.transform(j_x, i_y, theta)
-                    var [d_x, d_y] = this.transform(j_x, j_y, theta)
+                    var [a_x, a_y] = this.transform(i_x, i_y, theta, start_angle)
+                    var [b_x, b_y] = this.transform(i_x, j_y, theta, start_angle)
+                    var [c_x, c_y] = this.transform(j_x, i_y, theta, start_angle)
+                    var [d_x, d_y] = this.transform(j_x, j_y, theta, start_angle)
             
                     var path = $('<path class="group" id="' + l + '" d="' +
                                 'M ' + a_x + ' ' + a_y + ' ' +
@@ -879,14 +899,30 @@ class PangenomeGraphUserInterface {
                 var y_size = sum_middle_layer + layer_width * 0.5
             
                 if (linear == 0){
-                    var [circle_x, circle_y] = this.transform(0-0.5, (layer_start + y_size), theta)
+                    var [circle_x, circle_y] = this.transform(0-0.5, (layer_start + y_size), theta, start_angle)
+
+                    var rotate = start_angle
+                    if (rotate >= 90 && rotate <= 180) {
+                        rotate += 180;
+                        var anchor = "start"
+                    } else if (rotate >= 180 && rotate <= 270) {
+                        rotate -= 180;
+                        var anchor = "start"
+                    } else {
+                        var anchor = "end"
+                    }
+
+                    svg_text.push(
+                        $('<text text-anchor="' + anchor + '" transform="rotate(-' + rotate + ' ' + circle_x + ' ' + circle_y +')" dominant-baseline="middle" x="' + circle_x + '" y="' + circle_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">' + layer_name + '</text>')
+                    )
+    
                 } else {
                     var [circle_x, circle_y] = [(0-0.5) * node_distance_x, -(layer_start + y_size)]
+
+                    svg_text.push(
+                        $('<text text-anchor="end" dominant-baseline="middle" x="' + circle_x + '" y="' + circle_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">' + layer_name + '</text>')
+                    )
                 }
-            
-                svg_text.push(
-                    $('<text text-anchor="end" this.transform="translate (-10)" dominant-baseline="middle" x="' + circle_x + '" y="' + circle_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">' + layer_name + '</text>')
-                )
             }
         }
         
@@ -898,16 +934,31 @@ class PangenomeGraphUserInterface {
                 if (layer_width >= edge_thickness) {
                     var y_size = layer_start + layer_width * 0.5
                     if (linear == 0){
-                        var [circle_x, circle_y] = this.transform(0-0.5, y_size, theta)
+                        var [circle_x, circle_y] = this.transform(0-0.5, y_size, theta, start_angle)
+
+                        var rotate = start_angle
+                        if (rotate >= 90 && rotate <= 180) {
+                            rotate += 180;
+                            var anchor = "start"
+                        } else if (rotate >= 180 && rotate <= 270) {
+                            rotate -= 180;
+                            var anchor = "start"
+                        } else {
+                            var anchor = "end"
+                        }
+    
+                        svg_text.push(
+                            $('<text text-anchor="' + anchor + '" transform="rotate(-' + rotate + ' ' + circle_x + ' ' + circle_y +')" dominant-baseline="middle" x="' + circle_x + '" y="' + circle_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">' + genome_name + '</text>')
+                        )
                     } else {
                         var [circle_x, circle_y] = [(0-0.5) * node_distance_x, -y_size]
+
+                        svg_text.push(
+                            $('<text text-anchor="end" dominant-baseline="middle" x="' + circle_x + '" y="' + circle_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">' + genome_name + '</text>')
+                        )
                     }
         
                     item_dist[genome_name] = circle_y
-        
-                    svg_text.push(
-                        $('<text text-anchor="end" this.transform="translate (-10)" dominant-baseline="middle" x="' + circle_x + '" y="' + circle_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">' + genome_name + '</text>')
-                    )
                 }
             }
         }
@@ -919,6 +970,10 @@ class PangenomeGraphUserInterface {
         var end = new Date().getTime();
         var time = end - start;
         console.log('SVG drawing remaining elements', time, 'ms.')
+
+        var svg_group = $('<g></g>')
+        for (var item of svg_arrow) svg_group.append(item);
+        svg_core.append(svg_group);
         
         var svg_group = $('<g></g>')
         for (var item of svg_search) svg_group.append(item);
@@ -1014,7 +1069,7 @@ class PangenomeGraphUserInterface {
         return color4
     }
 
-    create_rectangle(i_x, i_y, j_x, j_y, theta, node_distance_x, linear, color, id='') {
+    create_rectangle(i_x, i_y, j_x, j_y, theta, start_angle, node_distance_x, linear, color, id='') {
     
         if (id != '') {
             var extra = '" id="' + id
@@ -1023,10 +1078,10 @@ class PangenomeGraphUserInterface {
         }
         
         if (linear == 0) {
-            var [a_x, a_y] = this.transform(i_x, i_y, theta)
-            var [b_x, b_y] = this.transform(j_x, i_y, theta)
-            var [c_x, c_y] = this.transform(i_x, j_y, theta)
-            var [d_x, d_y] = this.transform(j_x, j_y, theta)
+            var [a_x, a_y] = this.transform(i_x, i_y, theta, start_angle)
+            var [b_x, b_y] = this.transform(j_x, i_y, theta, start_angle)
+            var [c_x, c_y] = this.transform(i_x, j_y, theta, start_angle)
+            var [d_x, d_y] = this.transform(j_x, j_y, theta, start_angle)
             
             var path = $('<path d="' +
                 'M ' + a_x + ' ' + a_y + ' ' +
@@ -1053,9 +1108,9 @@ class PangenomeGraphUserInterface {
         return(path)
     }
 
-    transform(x, y, theta) {
-        var circle_x = y * Math.sin(this.deg2rad(theta * (x+0.5)))
-        var circle_y = y * Math.cos(this.deg2rad(theta * (x+0.5)))
+    transform(x, y, theta, start_angle) {
+        var circle_x = y * Math.sin(this.deg2rad(theta * (x+0.5) + start_angle))
+        var circle_y = y * Math.cos(this.deg2rad(theta * (x+0.5) + start_angle))
         return [circle_x, circle_y]
     }
 
@@ -1104,7 +1159,7 @@ class PangenomeGraphUserInterface {
         
                 if (Object.values(saving_ids).includes(end_fraction)){
                     var saving_id_main = Object.keys(saving_ids)[Object.values(saving_ids).indexOf(end_fraction)]
-                    sorted_positions = saving_positions[saving_id_main].sort()
+                    var sorted_positions = saving_positions[saving_id_main].sort()
             
                     for (var j = 0; j < sorted_positions.length -1; j++) {
             
@@ -1665,6 +1720,16 @@ class PangenomeGraphUserInterface {
         this.current_bin_id = bin_id
     }
 
+    add_info_to_bin() {
+    
+        var bin_id = this.current_bin_id;
+        var target = document.getElementById('node_basics_table');
+        var gc_context = target.getAttribute('gc_context');
+        var element = document.getElementById(gc_context)
+        
+        this.marknode(element, bin_id);
+    }
+    
     remove_bin() {
         var bin_id = this.current_bin_id;
         
@@ -1713,18 +1778,6 @@ class PangenomeGraphUserInterface {
         $('#bin_' + this.current_bin_number + '_radio').on("click", this.switch_bin)
         $('#bin_' + this.current_bin_number + '_color').on("change", this.switch_color)
         this.bin_dict['bin_' + this.current_bin_number] = [];
-    }
-
-    initialize_buttons() {
-        $('#binadd').on("click", this.add_bin);
-        $('#binremove').on("click", this.remove_bin);
-        $('#redraw').on("click", this.start_draw);
-        $('#fit').on('click', this.fit_aspect);
-        $('#svgDownload').on('click', this.svg_download);
-        $('#svgbox').on('mousedown', this.press_down)
-        $('#svgbox').on('mousemove', this.press_move)
-        $('#svgbox').on('mouseup', this.press_up)
-        $('#svgbox').on('mouseleave', this.press_up)
     }
     
     initialize_variables() {
@@ -1972,6 +2025,8 @@ class PangenomeGraphUserInterface {
                 );
             }
         }
+
+        // Initialize main values based on standard settings
         
         if ($('#flexlinear').prop('checked') == false) {
             $('#distx').prop('disabled', true);
@@ -2010,6 +2065,8 @@ class PangenomeGraphUserInterface {
         } else {
             $('#groupcompress').prop('disabled', false);
         }
+
+        // Initialize main buttons with anonymous functions
         
         $('#flexlinear').change(function() {
             if ($(this).prop('checked') == true){
@@ -2071,22 +2128,6 @@ class PangenomeGraphUserInterface {
             }
         })
         
-        $('#flextree').change(function() {
-            if ($(this).prop('checked') == true){
-                for (var genome of this.genomes) {
-                    if ($('#flex' + genome + 'layer').prop('checked') == false){
-                        $('#' + genome + 'layer')[0].value = 50;
-                        $('#flex' + genome + 'layer').prop('checked', true);
-                    }
-                    $('#flex' + genome + 'layer').prop('disabled', true);
-                }
-            } else {
-                for (var genome of this.genomes) {
-                    $('#flex' + genome + 'layer').prop('disabled', false);
-                }
-            }
-        })
-        
         for (var layer_name of this.layers) {
             $('#flex' + layer_name).change(function() {
                 var entry = $(this)[0].id.replace("flex", "");
@@ -2113,8 +2154,25 @@ class PangenomeGraphUserInterface {
             })
         }
 
+        // Initialize main buttons with "this" bound functions
+        
         $('#bin_1_color').on("change", this.switch_color)
         $('#bin_1_radio').on("click", this.switch_bin)
+
+        $('#flextree').on("change", this.flextree_change)
+
+        $('#binadd').on("click", this.add_bin);
+        $('#binremove').on("click", this.remove_bin);
+        $('#redraw').on("click", this.start_draw);
+        $('#fit').on('click', this.fit_aspect);
+        $('#svgDownload').on('click', this.svg_download);
+        $('#svgbox').on('mousedown', this.press_down)
+        $('#svgbox').on('mousemove', this.press_move)
+        $('#svgbox').on('mouseup', this.press_up)
+        $('#svgbox').on('mouseleave', this.press_up)
+        $('#AddBin').on("click", this.add_info_to_bin);
+        $('#AlignmentDownload').on("click", this.alignment_download);
+        $('#InfoDownload').on("click", this.info_download);
         
         sortable('#genomecolors', {
             forcePlaceholderSize: true,
@@ -2125,6 +2183,22 @@ class PangenomeGraphUserInterface {
         this.settings_dict['maxlength'] = this.data['states']['maxlength']
         this.settings_dict['groupcompress'] = this.data['states']['groupcompress']
         this.settings_dict['state'] = this.data['meta']['state']
+    }
+
+    flextree_change(instance) {
+        if ($(instance.currentTarget).prop('checked') == true){
+            for (var genome of this.genomes) {
+                if ($('#flex' + genome + 'layer').prop('checked') == false){
+                    $('#' + genome + 'layer')[0].value = 50;
+                    $('#flex' + genome + 'layer').prop('checked', true);
+                }
+                $('#flex' + genome + 'layer').prop('disabled', true);
+            }
+        } else {
+            for (var genome of this.genomes) {
+                $('#flex' + genome + 'layer').prop('disabled', false);
+            }
+        }
     }
     
     async nodeinfo(e, gene_cluster_id='') {
@@ -2467,6 +2541,80 @@ class PangenomeGraphUserInterface {
         })
         
         return d
+    }
+
+    info_download () {
+    
+        var csv_data = [];
+        var basics = $('#node_basics_table')
+        var title = basics[0].getAttribute("gc_id")
+        var layers = $('#node_layers_table')
+        var functions = $('#node_functions_table')
+        
+        var basics_rows = basics[0].getElementsByTagName('tr');
+        var layers_rows = layers[0].getElementsByTagName('tr');
+        
+        var function_rows = functions[0].getElementsByTagName('tr');
+        
+        for (var i = 0; i < function_rows.length; i++) {
+            
+            if (i >= basics_rows.length) {
+                var basics_cols = []
+                basics_cols = Array.prototype.concat.apply(basics_cols, basics_rows[1].querySelectorAll('td,th'));
+                basics_cols = Array.prototype.concat.apply(basics_cols, layers_rows[1].querySelectorAll('td,th'));
+                var function_cols = function_rows[i].querySelectorAll('td,th');
+            } else { 
+                var basics_cols = []
+                basics_cols = Array.prototype.concat.apply(basics_cols, basics_rows[i].querySelectorAll('td,th'));
+                basics_cols = Array.prototype.concat.apply(basics_cols, layers_rows[i].querySelectorAll('td,th'));
+                var function_cols = function_rows[i].querySelectorAll('td,th');
+            }
+            
+            let csvrow = [];
+            for (var j = 0; j < basics_cols.length; j++) {
+                var info = basics_cols[j].innerHTML
+                csvrow.push(info);
+            }
+            
+            for (var k = 0; k < function_cols.length; k++) {
+                var info = function_cols[k].innerHTML
+                csvrow.push(info);
+            }
+            csv_data.push(csvrow.join(","));
+        }
+        csv_data = csv_data.join('\n');
+        
+        var blob = new Blob([csv_data]);
+        var title = this.data['meta']['project_name']
+        this.download_blob(blob, title + ".csv");
+    }
+
+    alignment_download () {
+
+        var csv_data = '';
+        var alignment = $('#node_sequence_alignments_table')
+        var basics = $('#node_basics_table')
+        var title = alignment[0].getAttribute("gc_id")
+        var xpos = basics[0].getAttribute("gc_pos")
+        
+        var alignment_rows = alignment[0].getElementsByTagName('tr');
+        
+        for (var i = 1; i < alignment_rows.length; i++) {
+        
+            var alignment_cols = alignment_rows[i].querySelectorAll('td,th');
+            
+            csv_data += ">" + title + "|Genome:" + alignment_cols[0].innerHTML +"|Genecall:" + alignment_cols[1].innerHTML + "|Position:" + xpos + '\n';
+            var genome = ''
+            
+            var alignment_nucs = alignment_cols[2].getElementsByTagName('span');
+            for (let k = 0; k < alignment_nucs.length; k++) {
+                genome += alignment_nucs[k].innerHTML
+            }
+            
+            csv_data += genome.match(/.{1,60}/g).join("\r\n") + "\n"
+        }
+        var blob = new Blob([csv_data]);
+        this.download_blob(blob, title + ".fa");
     }
 }
 
