@@ -246,7 +246,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
             raise ConfigError('If you want to run anvi-split you must provide a collections_txt file')
 
         self.init_kraken()
-        self.init_refereces_txt()
+        self.init_references_txt()
 
         # Set the PROFILE databases paths variable:
         for group in self.group_names:
@@ -320,7 +320,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         return flag
 
 
-    def init_refereces_txt(self):
+    def init_references_txt(self):
         if self.references_mode:
             if not self.fasta_txt_file:
                 raise ConfigError("In refrences mode, you need to also fill in the `fasta_txt` value in your config file.")
