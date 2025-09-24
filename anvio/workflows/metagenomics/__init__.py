@@ -319,74 +319,95 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
 
     def init_references_txt(self):
+        """
+        Initialize grouping and references/assembly identifiers.
+
+        Behavior:
+          - References mode:
+              * Requires fasta_txt to be set and exist.
+              * Group names come from samples.txt groups (if any) and must match fasta names.
+              * If no groups in samples.txt, 'all_against_all' is set True (as before).
+              * Reference IDs remain UNSUFFIXED.
+          - Assembly mode:
+              * If groups present: co-assembly per group.
+              * If no groups: per-sample assembly (group == sample).
+              * Groups are then expanded by read type:
+                  - SR-only  -> G
+                  - LR-only  -> G
+                  - SR+LR    -> G_SR and G_LR
+              * self.assembly_members and self.assembly_types are populated.
+              * Requires anvi_script_reformat_fasta to run.
+          - In both modes:
+              * If all_against_all=True, group_sizes are overridden to len(samples).
+        """
+        # 1) Validate config combo (references_mode vs fasta_txt)
         if self.references_mode:
             if not self.fasta_txt_file:
-                raise ConfigError("In refrences mode, you need to also fill in the `fasta_txt` value in your config file.")
-
+                raise ConfigError("In references mode, you must set 'fasta_txt' in your config.")
             if not filesnpaths.is_file_exists(self.fasta_txt_file, dont_raise=True):
-                raise ConfigError('You know the path you have for `fasta_txt` in your config file? There is no such file on your disk :(')
+                raise ConfigError("The 'fasta_txt' file you provided does not exist.")
+        else:
+            if self.fasta_txt_file:
+                raise ConfigError("To use reference fasta files you must set "
+                                  "'references_mode': true in your config, but you also provided "
+                                  f"fasta_txt: {self.fasta_txt_file}. This is ambiguous.")
 
-        if not self.references_mode:
-            # if it is reference mode then the group names have been assigned in the contigs Snakefile
-            # if it is not reference mode and no groups are supplied in the samples_txt then group names are sample names
-            self.group_names = self.sample_names
-
-        if self.fasta_txt_file and not self.references_mode:
-            raise ConfigError("In order to use reference fasta files you must set "
-                          "\"'references_mode': true\" in your config file, yet "
-                          "you didn't, but at the same time you supplied the following "
-                          "fasta_txt: %s. So we don't know what to do with this "
-                          "fasta_txt" % self.fasta_txt_file)
-
-        # Collecting information regarding groups.
+        # 2) Establish base groups from samples.txt (group -> members)
+        # If user provided groups, we use them; otherwise, group == sample (per-sample assembly).
         if self.samples_txt.has_groups():
-            # if groups were specified then members of a groups will be co-assembled.
-            self.group_names = self.samples_txt.group_names()
-            # creating a dictionary with groups as keys and number of samples in
-            # the groups as values
-            #self.group_sizes = self.samples_information['group'].value_counts().to_dict()
-            self.group_sizes = self.samples_txt.group_sizes()
-
-            if self.references_mode:
-                # sanity check to see that groups specified in samples.txt match
-                # the names of fasta.
-                mismatch = set(self.group_names) - set(self.contigs_information.keys())
-                if mismatch:
-                    raise ConfigError("Group names specified in the samples.txt "
-                                      "file must match the names of fasta "
-                                      "in the fasta.txt file. These are the "
-                                      "mismatches: %s" % mismatch)
-                groups_in_contigs_information_but_not_in_samples_txt = set(self.contigs_information.keys()) - set(self.group_names)
-                if groups_in_contigs_information_but_not_in_samples_txt:
-                    run.warning('The following group names appear in your fasta_txt '
-                                'but do not appear in your samples_txt. Maybe this is '
-                                'ok with you, but we thought you should know. This means '
-                                'that the metagenomics workflow will simply ignore these '
-                                'groups.')
-
+            base_group_names = self.samples_txt.group_names() # list of unsuffixed group names
+            base_group_sizes = self.samples_txt.group_sizes() # {group: size}
         else:
             if self.references_mode:
-                # if the user didn't provide a group column in the samples.txt,
-                # in references mode the default is 'all_against_all'.
-                run.warning("No groups were provided in your samples_txt,\
-                             hence 'all_against_all' mode has been automatically\
-                             set to True.")
+                # No groups in samples.txt -> references define the group universe
+                run.warning("No groups were provided in your samples_txt; "
+                            "'all_against_all' mode has been automatically set to True.")
                 self.set_config_param('all_against_all', True)
+                # Use fasta IDs (unsuffixed) as group names
+                base_group_names = list(self.contigs_information.keys())
+                base_group_sizes = dict.fromkeys(base_group_names, 1)
             else:
-                # if no groups were specified then each sample would be assembled
-                # separately
+                # Assembly mode, no groups -> per-sample assembly
                 run.warning("No groups were specified in your samples_txt. This is fine. "
-                            "But we thought you should know. Any assembly will be performed "
-                            "on individual samples (i.e. NO co-assembly).")
-                # TODO: maybe SamplesTxt should automatically add a group colunn if none exists?
+                            "Assemblies will be performed on individual samples (no co-assembly).")
+                # Keep legacy behavior of mirroring a group column from sample
                 self.samples_information['group'] = self.samples_information['sample']
-                self.group_names = list(self.sample_names)
-                self.group_sizes = dict.fromkeys(self.group_names,1)
+                base_group_names = list(self.sample_names)
+                base_group_sizes = dict.fromkeys(base_group_names, 1)
 
+        # Record the base (unsuffixed) groups first; these may be used by references-mode checks.
+        self.group_names = base_group_names
+        self.group_sizes = base_group_sizes
+
+        # 3) References mode: sanity check that groups match fasta names (unsuffixed)
+        if self.references_mode and self.samples_txt.has_groups():
+            # self.contigs_information is expected to be populated from the ContigsDBWorkflow earlier:
+            # keys(self.contigs_information) are the reference IDs.
+            mismatch = set(self.group_names) - set(self.contigs_information.keys())
+            if mismatch:
+                raise ConfigError("Group names specified in samples.txt must match the names "
+                                  f"of fasta in fasta.txt. Mismatches: {mismatch}")
+            extra_refs = set(self.contigs_information.keys()) - set(self.group_names)
+            if extra_refs:
+                run.warning("The following reference IDs appear in fasta_txt but not in samples_txt; "
+                            "they will be ignored by the metagenomics workflow: "
+                            f"{sorted(extra_refs)}")
+
+        # 4) Assembly mode: expand groups by read type (produces type-aware IDs)
+        # (references mode keeps reference IDs UNSUFFIXED)
+        if not self.references_mode:
+            self.expand_groups_by_read_type()  # sets group_names, group_sizes, assembly_members, assembly_types
+
+        # 5) all_against_all: override sizes so downstream uses merged PROFILEs
         if self.get_param_value_from_config('all_against_all'):
-            # in all_against_all, the size of each group is as big as the number
-            # of samples.
-            self.group_sizes = dict.fromkeys(self.group_names,len(self.sample_names))
+            self.group_sizes = dict.fromkeys(self.group_names, len(self.sample_names))
+
+        # 6) Assembly mode requires reformat_fasta (saves assembler output out of tmp)
+        if (not self.references_mode) and not (self.get_param_value_from_config(['anvi_script_reformat_fasta', 'run']) is True):
+            raise ConfigError("You are running the metagenomics workflow in assembly mode. In this mode you can't skip "
+                              "`anvi_script_reformat_fasta`. Please add this rule to your config with `'run': true`.")
+
+
     def expand_groups_by_read_type(self):
         """
         Expand self.group_names/group_sizes into type-aware assemblies for assembly-mode.
