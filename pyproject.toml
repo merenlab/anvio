@@ -76,16 +76,7 @@ dependencies = [
     "biopython",
     "reportlab",
     "pymupdf",
-    "tomli==2.2.1",
-    "jupyterlab",
-    "jupyterlab-git",
-    "jupyterlab-lsp",
-    "jupyterlab-latex",
-    "jupyter-resource-usage",
-    "jupyter-collaboration",
-    "jupyterlab-chat",
-    "jupyter-ai[all]",
-    "python-lsp-server[all]"
+    "tomli==2.2.1"
 ]
 
 [project.urls]
