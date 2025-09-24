@@ -61,10 +61,11 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                      'bowtie_build', 'bowtie', 'samtools_view', 'anvi_init_bam', 'idba_ud',\
                      'anvi_profile', 'anvi_merge', 'import_percent_of_reads_mapped', 'anvi_cluster_contigs',\
                      'krakenuniq', 'krakenuniq_mpa_report', 'import_krakenuniq_taxonomy', 'metaspades',\
+                     'flye', 'hifiasm_meta', 'minimap2_index', 'minimap2',\
                      'remove_short_reads_based_on_references', 'anvi_summarize', 'anvi_split'])
 
         self.general_params.extend(['samples_txt', "references_mode", "all_against_all",\
-                                    "kraken_txt", "collections_txt"])
+                                    "kraken_txt", "collections_txt", "read_type_suffix"])
 
         rule_acceptable_params_dict = {}
 
@@ -81,8 +82,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
         rule_acceptable_params_dict['anvi_summarize'] = ["additional_params", "run"]
         rule_acceptable_params_dict['anvi_split'] = ["additional_params", "run"]
-        rule_acceptable_params_dict['metaspades'] = ["run", "additional_params", "use_scaffolds"]
-        rule_acceptable_params_dict['megahit'] = ["run", "--min-contig-len", "--min-count", "--k-min",
+        rule_acceptable_params_dict['metaspades'] = ["run", "conda_yaml", "conda_env", "additional_params", "use_scaffolds"]
+        rule_acceptable_params_dict['megahit'] = ["run", "conda_yaml", "conda_env", "--min-contig-len", "--min-count", "--k-min",
                                                   "--k-max", "--k-step", "--k-list",
                                                   "--no-mercy", "--no-bubble", "--merge-level",
                                                   "--prune-level", "--prune-depth", "--low-local-ratio",
@@ -90,16 +91,25 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                                   "--presets", "--memory", "--mem-flag",
                                                   "--use-gpu", "--gpu-mem", "--keep-tmp-files",
                                                   "--tmp-dir", "--continue", "--verbose"]
-        rule_acceptable_params_dict['idba_ud'] = ["run", "--mink", "--maxk", "--step", "--inner_mink",
+        rule_acceptable_params_dict['idba_ud'] = ["run", "conda_yaml", "conda_env", "--mink", "--maxk", "--step", "--inner_mink",
                                                   "--inner_step", "--prefix", "--min_count",
                                                   "--min_support", "--seed_kmer", "--min_contig",
                                                   "--similar", "--max_mismatch", "--min_pairs",
                                                   "--no_bubble", "--no_local", "--no_coverage",
                                                   "--no_correct", "--pre_correction", "use_scaffolds"]
-        rule_acceptable_params_dict['bowtie'] = ["additional_params"]
-        rule_acceptable_params_dict['bowtie_build'] = ["additional_params"]
+        rule_acceptable_params_dict['flye'] = ["run", "conda_yaml", "conda_env", "--meta", "--pacbio-raw", "--pacbio-corr",
+                                                   "--pacbio-hifi", "--nano-raw", "--nano-corr",
+                                                   "--nano-hq", "--genome-size", "--iterations",
+                                                   "--min-overlap", "--read-error", "--keep-haplotypes",
+                                                   "--no-alt-contigs", "--scaffold", "--polish-target",
+                                                   "additional_params", "threads"]
+        rule_acceptable_params_dict['hifiasm_meta'] = ["run", "conda_yaml", "conda_env", "additional_params", "threads"]
+        rule_acceptable_params_dict['bowtie'] = ["conda_yaml", "conda_env", "additional_params"]
+        rule_acceptable_params_dict['bowtie_build'] = ["conda_yaml", "conda_env", "additional_params"]
+        rule_acceptable_params_dict['minimap2_index'] = ["conda_yaml", "conda_env", "additional_params"]
+        rule_acceptable_params_dict['minimap2'] = ["preset","conda_yaml", "conda_env",  "additional_params", "threads"]
         rule_acceptable_params_dict['samtools_view'] = ["additional_params"]
-        rule_acceptable_params_dict['anvi_profile'] = ["--overwrite-output-destinations", "--sample-name", "--report-variability-full",
+        rule_acceptable_params_dict['anvi_profile'] = ["--overwrite-output-destinations", "--report-variability-full",
                                                         "--skip-SNV-profiling", "--profile-SCVs", "--description",
                                                         "--skip-hierarchical-clustering", "--distance", "--linkage", "--min-contig-length",
                                                         "--min-mean-coverage", "--min-coverage-for-variability", "--cluster-contigs",
@@ -135,14 +145,19 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                "SPLIT_PROFILES_DIR": "09_SPLIT_PROFILES"})
 
         self.default_config.update({'samples_txt': "samples.txt",
+                                    'read_type_suffix': 'auto',
                                     'metaspades': {"additional_params": "--only-assembler", "threads": 7},
                                     'megahit': {"--min-contig-len": min_contig_length_for_assembly, "--memory": 0.4, "threads": 7},
                                     'idba_ud': {"--min_contig": min_contig_length_for_assembly, "threads": 7},
+                                    'flye': {"run": False, "threads": 7, "additional_params": ""},
+                                    'hifiasm_meta': {"run": False, "threads": 7, "additional_params": ""},
                                     'iu_filter_quality_minoche': {"run": True, "--ignore-deflines": True},
                                     "gzip_fastqs": {"run": True},
                                     "bowtie": {"additional_params": "--no-unal", "threads": 3},
+                                    'minimap2_index': {"additional_params": ""},
+                                    'minimap2': {"threads": 3, "preset": "map-hifi", "additional_params": "--secondary-seq"},
                                     "samtools_view": {"additional_params": "-F 4"},
-                                    "anvi_profile": {"threads": 3, "--sample-name": "{sample}", "--overwrite-output-destinations": True},
+                                    "anvi_profile": {"threads": 3, "--overwrite-output-destinations": True},
                                     "anvi_merge": {"--sample-name": "{group}", "--overwrite-output-destinations": True},
                                     "import_percent_of_reads_mapped": {"run": True},
                                     "krakenuniq": {"threads": 3, "--gzip-compressed": True, "additional_params": ""},
