@@ -42,20 +42,45 @@ if not this_workflow_is_inherited_by_another:
     # for the generation of contigs databases
     include: w.get_workflow_snake_file_path('contigs')
 
-# sanity check for requested assembly
-# make sure that the user is not requesting multiple assemblers
-available_assemblers = M.get_assembly_software_list()
-number_of_assemblers_in_config_file = 0
-assembly_software_in_config = list()
-for a in available_assemblers:
-    if M.get_param_value_from_config([a, 'run']) == True:
-        number_of_assemblers_in_config_file += 1
-        assembly_software_in_config.append(a)
-if number_of_assemblers_in_config_file > 1:
-    raise ConfigError("This workflow supports the usage of only one assembly "
-                       "software, yet all the following software are "
-                       "included in your config file: %s. Please include only one." % assembly_software_in_config)
+# SR/LR assembler availability from the workflow class
+available_sr, available_lr = M.get_assembly_software_list()
 
+# Which assemblers are enabled in the config?
+sr_enabled = [a for a in available_sr if M.get_param_value_from_config([a, 'run']) is True]
+lr_enabled = [a for a in available_lr if M.get_param_value_from_config([a, 'run']) is True]
+
+sr_count = len(sr_enabled)
+lr_count = len(lr_enabled)
+
+# Enforce assembler selection by read type (SR vs LR)
+if not M.references_mode:
+    # If SR data exists, require exactly one SR assembler
+    if M.has_sr and sr_count == 0:
+        raise WorkflowError(f"You didn't specify any assembler for your short-reads metagenomes and yet "
+                            f"you config file shows that you are not using references_mode. If you already "
+                            f"have your assemblies or reference fasta files, then maybe you need to add "
+                            f"'\"references_mode\": true, and a '\"fasta_txt: \"name-of-your-fasta-txt-file\" "
+                            f"to your config file. Otherwise, if you do mean to use assembly, please set "
+                            f"'run: true' for one of the following available short-read assembler: {available_sr}).")
+    if sr_count > 1:
+        raise WorkflowError(f"Multiple short-reads assemblers are enabled; enable only one of: {available_sr}.")
+
+    # If LR data exists, require exactly one LR assembler
+    if M.has_lr and lr_count == 0:
+        raise WorkflowError(f"You didn't specify any assembler for your long-reads metagenomes and yet "
+                            f"you config file shows that you are not using references_mode. If you already "
+                            f"have your assemblies or reference fasta files, then maybe you need to add "
+                            f"'\"references_mode\": true, and a '\"fasta_txt: \"name-of-your-fasta-txt-file\" "
+                            f"to your config file. Otherwise, if you do mean to use assembly, please set "
+                            f"'run: true' for one of the following available long-read assembler: {available_lr}).")
+    if lr_count > 1:
+        raise WorkflowError(f"Multiple long-read assemblers are enabled; enable only one of: {available_lr}.")
+
+    # if an assembler is enable, but there is no matching reads:
+    if not M.has_sr and sr_count == 1:
+        raise WorkflowError("A short-read assembler is enabled but there are no short-reads in your samples-txt")
+    if not M.has_lr and lr_count == 1:
+        raise WorkflowError("A long-read assembler is enabled but there are no long-reads in your samples-txt")
 
 # by default fastq files will be zipped after qc is done
 run_gzip_fastqs = M.get_param_value_from_config(['gzip_fastqs', 'run']) == True
