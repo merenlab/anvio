@@ -3131,10 +3131,10 @@ D = {
     'get-raw-data-as-json': (
             ['--get-raw-data-as-json'],
             {'default': None,
-            'metavar': 'FILENAME_PREFIX',
+            'metavar': 'FILENAME',
             'type': str,
-            'help': "If you want the raw metabolism estimation data dictionary in JSON-format, provide a filename prefix to this argument."
-                    "The program will then output a file with the .json extension containing this data."}
+            'help': "If you want the raw metabolism estimation data dictionary in JSON-format, provide a filename to this argument "
+                    "(ideally with the .json file extension, but you do you)."}
                 ),
     'store-json-without-estimation': (
             ['--store-json-without-estimation'],
