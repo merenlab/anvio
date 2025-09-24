@@ -87,8 +87,17 @@ run_gzip_fastqs = M.get_param_value_from_config(['gzip_fastqs', 'run']) == True
 
 run_import_percent_of_reads_mapped = M.get_param_value_from_config(['import_percent_of_reads_mapped', 'run']) == True
 
+# convenience sets:
+SR_READSETS = M.get_sr_readset_ids()
+LR_READSETS = M.get_lr_readset_ids()
 
+def regex_from_ids(ids):
+    # if the list is empty, make it never match to avoid accidental triggering
+    return r"(?:{})".format("|".join(re.escape(x) for x in ids)) if ids else r"DO_NOT_MATCH"
 
+# will be used as contrained readset's wildcards for either bowtie or minimap2
+SR_RS_RE = regex_from_ids(SR_READSETS)
+LR_RS_RE = regex_from_ids(LR_READSETS)
 
 ruleorder: import_percent_of_reads_mapped > import_krakenuniq_taxonomy
 
