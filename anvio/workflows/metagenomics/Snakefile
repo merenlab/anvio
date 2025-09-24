@@ -87,20 +87,8 @@ run_gzip_fastqs = M.get_param_value_from_config(['gzip_fastqs', 'run']) == True
 
 run_import_percent_of_reads_mapped = M.get_param_value_from_config(['import_percent_of_reads_mapped', 'run']) == True
 
-run_idba_ud = M.get_param_value_from_config(['idba_ud', 'run'])
 
-run_megahit = M.get_param_value_from_config(['megahit', 'run']) == True
 
-if not M.references_mode and number_of_assemblers_in_config_file!=1 :
-    # Sanity check for assembly mode
-    # Make sure that user specified an assembler
-    raise ConfigError("You didn't specify any assembler for your metagenomes, and yet "
-                      "your config file shows you are not using references_mode. If you "
-                      "already have your assemblies or reference fasta files, then maybe "
-                      "you need to add '\"references_mode\": true', and a '\"fasta_txt\": "
-                      "\"name-of-your-fasta-txt-file\"' to your config file. Otherwise, "
-                      "if you do mean to use assembly, please set 'run: true' for one of the "
-                      "following available assemblers: %s" % ', '.join(available_assemblers))
 
 ruleorder: import_percent_of_reads_mapped > import_krakenuniq_taxonomy
 
