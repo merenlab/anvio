@@ -296,6 +296,8 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
             self.contigs_db_project_name = os.path.basename(self.enzymes_txt).replace(".", "_")
         elif self.enzymes_of_interest_df is not None:
             self.contigs_db_project_name = 'user_defined_enzymes'
+        elif self.estimate_from_json:
+            self.contigs_db_project_name = "json_input"
         else:
             raise ConfigError("This piece of code ended up at a place it should have never ended up at :( We need attention "
                               "from a programmer here.")
@@ -1073,9 +1075,7 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
 
         # we take care of the JSON output if requested
         if self.write_dict_to_json:
-            self.store_metabolism_superdict_as_json(kegg_metabolism_superdict, self.json_output_file_path + ".json",
-                                                  self.user_input_dir, self.only_user_modules,
-                                                  self.kegg_modules_db_path, self.user_modules_db_path)
+            self.store_metabolism_superdict_as_json(kegg_metabolism_superdict, self.json_output_file_path)
 
         # more housekeeping for outputs
         if not self.multi_mode:

@@ -244,7 +244,7 @@ anvi-estimate-metabolism -c S_islandicus_LS215.db \
 
 INFO "Generating JSON output (debug option)"
 anvi-estimate-metabolism -c P_marinus_CCMP1375.db \
-                         --get-raw-data-as-json estimation_data \
+                         --get-raw-data-as-json estimation_data.json \
                          --store-json-without-estimation \
                          --no-progress \
                          --kegg-data-dir $kegg_data_dir
