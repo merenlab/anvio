@@ -481,16 +481,18 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         self.assembly_types = assembly_types
 
 
+    def get_readset_ids(self):
+        return list(self.readset_ids)
 
-        if not self.references_mode and not (self.get_param_value_from_config(['anvi_script_reformat_fasta','run']) == True):
-            # in assembly mode (i.e. not in references mode) we always have
-            # to run reformat_fasta. The only reason for this is that
-            # the megahit output is temporary, and if we dont run
-            # reformat_fasta we will delete the output of meghit at the
-            # end of the workflow without saving a copy.
-            raise ConfigError('You seem to be interested in running the metagenomics workflow in assembly mode. '
-                              'In this mode you can\'t skip `anvi_script_reformat_fasta` rule, which means you need '
-                              'to add this rule to your config file with `"run": true` directive for this to work.')
+
+    def get_sr_readset_ids(self):
+        """IDs of readsets that are short-read (respecting read_type_suffix policy)."""
+        return [rs['id'] for rs in self.readsets if rs['type'] == 'SR']
+
+
+    def get_lr_readset_ids(self):
+        """IDs of readsets that are long-read (respecting read_type_suffix policy)."""
+        return [rs['id'] for rs in self.readsets if rs['type'] == 'LR']
 
 
     def init_kraken(self):
@@ -633,7 +635,59 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
 
     def get_assembly_software_list(self):
-        return ['megahit', 'idba_ud', 'metaspades']
+        """Return two lists of assembler rule names, by read type: (sr_list, lr_list)."""
+        sr = ['megahit', 'idba_ud', 'metaspades']
+        lr = ['flye', 'hifiasm_meta']
+        return sr, lr
+
+
+    # Map readset id -> readset dict for quick lookups
+    @property
+    def readsets_by_id(self):
+        if not hasattr(self, '_readsets_by_id'):
+            self._readsets_by_id = {rs['id']: rs for rs in self.readsets}
+        return self._readsets_by_id
+
+
+    def get_lr_files_for_readset(self, readset_id):
+        """Return the list of long-read files for a given readset id (type must be LR)."""
+        rs = self.readsets_by_id.get(readset_id)
+        if not rs:
+            raise ConfigError(f"Unknown readset id: {readset_id}")
+        if rs['type'] != 'LR':
+            raise ConfigError(f"Readset '{readset_id}' is not LR (type={rs['type']})")
+        return list(rs['reads'].get('lr', []))
+
+
+    def get_lr_files_for_group(self, group_id):
+        """
+        Return the concatenated list of long-read files for all LR member readsets
+        contributing to the LR assembly of this group. For single-member groups,
+        this is just that member's LR list.
+        """
+        if self.references_mode:
+            raise ConfigError("get_lr_files_for_group called in references mode.")
+        if self.assembly_types.get(group_id) != 'LR':
+            raise ConfigError(f"Group '{group_id}' is not LR (type={self.assembly_types.get(group_id)})")
+
+        member_readsets = self.assembly_members.get(group_id, [])
+        files = []
+        for rs_id in member_readsets:
+            files.extend(self.get_lr_files_for_readset(rs_id))
+        return files
+
+
+    def get_sr_files_for_readset(self, readset_id):
+        """Return dict {'r1': [...], 'r2': [...]} for a short-read readset id."""
+        rs = self.readsets_by_id.get(readset_id)
+        if not rs:
+            raise ConfigError(f"Unknown readset id: {readset_id}")
+        if rs['type'] != 'SR':
+            raise ConfigError(f"Readset '{readset_id}' is not SR (type={rs['type']})")
+        return {
+            "r1": list(rs['reads'].get('r1', [])),
+            "r2": list(rs['reads'].get('r2', [])),
+        }
 
 
     def gen_report_with_references_for_removal_info(self, filtered_id_files, output_file_name):
