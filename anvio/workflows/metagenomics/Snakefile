@@ -113,9 +113,9 @@ rule metagenomics_workflow_target_rule:
 
 rule iu_gen_configs:
     '''
-        Generating a config file for each sample.
+        Generating a config file for each short-read sample.
 
-        Notice that this step is ran only once and generates the config files for all samples
+        Notice that this step is ran only once and generates the config files for all short-read samples
     '''
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/iu_gen_configs.log"
