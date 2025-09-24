@@ -757,7 +757,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
     def get_target_files_for_anvi_cluster_contigs(self):
         import anvio.workflows as w
         w.D(self.get_param_value_from_config(['anvi_cluster_contigs', 'run']))
-        if self.get_param_value_from_config(['anvi_cluster_contigs', 'run']) is not True:
+        if self.get_param_value_from_config(['anvi_cluster_contigs', 'run']) != True:
             # the user doesn't want to run this
             return
         w.D('hi2')
