@@ -39,7 +39,6 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         self.samples_information = {}
         self.kraken_annotation_dict = {}
         self.run_krakenuniq = None
-        self.run_metaspades = None
         self.use_scaffold_from_metaspades = None
         self.use_scaffold_from_idba_ud = None
         self.remove_short_reads_based_on_references = None
@@ -174,7 +173,6 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         self.samples_information = self.samples_txt.as_df()
         # get a list of the sample names
         self.sample_names = self.samples_txt.samples()
-        self.run_metaspades = self.get_param_value_from_config(['metaspades', 'run'])
 
         # read type suffix policy for readsets: 'auto' (default) or 'force'
         read_type_suffix = self.get_param_value_from_config('read_type_suffix') or 'auto'
