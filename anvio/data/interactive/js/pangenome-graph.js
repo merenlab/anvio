@@ -971,7 +971,7 @@ class PangenomeGraphUserInterface {
         }
        
         if ($('#flextree').prop('checked') == true){
-            svg_tree = this.draw_newick(order, item_dist, max_dist, offset, tree_length, tree_thickness, theta, start_angle, end_angle)
+            svg_tree = this.draw_newick(order, item_dist, max_dist, offset, tree_length, tree_thickness, theta, start_angle, end_angle, linear, node_distance_x)
         }
         
         var end = new Date().getTime();
@@ -1144,7 +1144,7 @@ class PangenomeGraphUserInterface {
         return [angle_x, angle_y]
     }
 
-    draw_newick(order, item_dist, max_dist, offset, max_size, line_thickness, theta, start_angle, end_angle) {
+    draw_newick(order, item_dist, max_dist, offset, max_size, line_thickness, theta, start_angle, end_angle, linear, node_distance_x) {
 
         var output = []
         var saving_positions = {}
@@ -1160,9 +1160,14 @@ class PangenomeGraphUserInterface {
             if (item != 'branching') {
                 var y_value = item_dist[item]
 
-                var [x, y] = this.circle_transform(this.global_x + 0.5, y_value, theta, start_angle)
-                var [a_x, a_y] = this.angle_transform(x, y, 360 - end_angle, end_fraction)
-                var [b_x, b_y] = this.angle_transform(x, y, 360 - end_angle, start_fraction)
+                if (linear == 0){
+                    var [x, y] = this.circle_transform(this.global_x + 0.5, y_value, theta, start_angle)
+                    var [a_x, a_y] = this.angle_transform(x, y, 360 - end_angle, end_fraction)
+                    var [b_x, b_y] = this.angle_transform(x, y, 360 - end_angle, start_fraction)
+                } else {
+                    var [a_x, a_y] = [(this.global_x + 0.5) * node_distance_x + end_fraction, -y_value]
+                    var [b_x, b_y] = [(this.global_x + 0.5) * node_distance_x + start_fraction, -y_value]
+                }
 
                 output.push('<path d="M ' + a_x + ' ' + a_y + ' L ' + b_x + ' ' + b_y + '" stroke-width="' + line_thickness + '" stroke="black"></path>')
         
@@ -1175,8 +1180,12 @@ class PangenomeGraphUserInterface {
                     i = i + 1
                 }
                 if (end_fraction != max_size){
-                    var [c_x, c_y] = this.angle_transform(x, y, 360 - end_angle, offset)
-                    
+                    if (linear == 0){
+                        var [c_x, c_y] = this.angle_transform(x, y, 360 - end_angle, offset)
+                    } else {
+                        var [c_x, c_y] = [(this.global_x + 0.5) * node_distance_x + offset, -y_value]
+                    }
+                        
                     output.push('<path d="M ' + a_x + ' ' + a_y + ' L ' + c_x + ' ' + c_y + '" stroke-dasharray="' + line_thickness + '" stroke-width="' + line_thickness + '" stroke="lightgray"></path>')
                 }
             } else {
@@ -1190,12 +1199,17 @@ class PangenomeGraphUserInterface {
                         var y_value_i = sorted_positions[j]
                         var y_value_j = sorted_positions[j+1]
 
-                        var [i_x, i_y] = this.circle_transform(this.global_x + 0.5, y_value_i, theta, start_angle)
-                        var [m_x, m_y] = this.angle_transform(i_x, i_y, 360 - end_angle, end_fraction)
-
-                        var [j_x, j_y] = this.circle_transform(this.global_x + 0.5, y_value_j, theta, start_angle)
-                        var [n_x, n_y] = this.angle_transform(j_x, j_y, 360 - end_angle, end_fraction)
-                        
+                        if (linear == 0){
+                            var [i_x, i_y] = this.circle_transform(this.global_x + 0.5, y_value_i, theta, start_angle)
+                            var [m_x, m_y] = this.angle_transform(i_x, i_y, 360 - end_angle, end_fraction)
+    
+                            var [j_x, j_y] = this.circle_transform(this.global_x + 0.5, y_value_j, theta, start_angle)
+                            var [n_x, n_y] = this.angle_transform(j_x, j_y, 360 - end_angle, end_fraction)
+                        } else {
+                            var [m_x, m_y] = [(this.global_x + 0.5) * node_distance_x + end_fraction, -y_value_i]
+                            var [n_x, n_y] = [(this.global_x + 0.5) * node_distance_x + end_fraction, -y_value_j]
+                        }
+                            
                         output.push('<path d="M ' + m_x + ' ' + m_y + ' L ' + n_x + ' ' + n_y + '" stroke-width="' + line_thickness + '" stroke="black"></path>')
                     }
                 } else {
@@ -1203,10 +1217,15 @@ class PangenomeGraphUserInterface {
                 }
                 
                 y_value = Math.min(...sorted_positions) + (Math.max(...sorted_positions) - Math.min(...sorted_positions)) / 2
-                
-                var [x, y] = this.circle_transform(this.global_x + 0.5, y_value, theta, start_angle)
-                var [a_x, a_y] = this.angle_transform(x, y, 360 - end_angle, end_fraction)
-                var [b_x, b_y] = this.angle_transform(x, y, 360 - end_angle, start_fraction)
+
+                if (linear == 0){
+                    var [x, y] = this.circle_transform(this.global_x + 0.5, y_value, theta, start_angle)
+                    var [a_x, a_y] = this.angle_transform(x, y, 360 - end_angle, end_fraction)
+                    var [b_x, b_y] = this.angle_transform(x, y, 360 - end_angle, start_fraction)
+                } else {
+                    var [a_x, a_y] = [(this.global_x + 0.5) * node_distance_x + end_fraction, -y_value]
+                    var [b_x, b_y] = [(this.global_x + 0.5) * node_distance_x + start_fraction, -y_value]
+                }
                 
                 output.push('<path d="M ' + a_x + ' ' + a_y + ' L ' + b_x + ' ' + b_y + '" stroke-width="' + line_thickness + '" stroke="black"></path>')
                 
