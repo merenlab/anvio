@@ -129,14 +129,29 @@ rule iu_gen_configs:
         r2_prefix = M.get_rule_param("iu_gen_configs", "--r2-prefix")
     threads: M.T('iu_gen_configs')
     resources: nodes = M.T('iu_gen_configs'),
-    shell: "iu-gen-configs {input} -o {params.dir} {params.r2_prefix} {params.r1_prefix} >> {log} 2>&1"
+    run:
+        import os, shutil
 
+        # 1) run iu-gen-configs once; it writes {QC_DIR}/{base_sample}.ini
+        shell("iu-gen-configs {input} -o {params.dir} {params.r2_prefix} {params.r1_prefix} >> {log} 2>&1")
 
-def get_raw_fastq(sample):
-    ''' return a dict with the path to the raw fastq files'''
-    r1 = list(M.samples_information[M.samples_information["sample"] == sample]['r1'])[0].split(',')
-    r2 = list(M.samples_information[M.samples_information["sample"] == sample]['r2'])[0].split(',')
-    return {'r1': r1, 'r2': r2}
+        # 2) ensure every SR readset has its own .ini path
+        #    (copy base_sample.ini -> readset.ini when readset != base_sample)
+        #    This keeps {readset}.ini consistent with the rest of the pipeline.
+        for rs in M.get_sr_readset_ids():
+            base = M.readsets_by_id[rs]['base_sample']  # e.g., 'sample_01'
+            src = os.path.join(dirs_dict["QC_DIR"], f"{base}.ini")
+            dst = os.path.join(dirs_dict["QC_DIR"], f"{rs}.ini")
+            if os.path.abspath(src) == os.path.abspath(dst):
+                # unsuffixed SR readset (no copy needed)
+                if not os.path.exists(dst):
+                    # iu-gen-configs should have produced it already; just sanity
+                    raise WorkflowError(f"iu-gen-configs did not produce expected ini: {dst}")
+            else:
+                # suffixed SR readset; make a copy (or symlink if you prefer)
+                if not os.path.exists(src):
+                    raise WorkflowError(f"iu-gen-configs did not produce expected base ini: {src}")
+                shutil.copyfile(src, dst)
 
 
 def get_fastq(readset, zipped=run_gzip_fastqs, post_reference_based_short_read_removal=M.remove_short_reads_based_on_references):
