@@ -45,6 +45,7 @@ def get_args():
     parser.add_argument(*anvio.A('reset'), **anvio.K('reset'))
     parser.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
     parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
+    parser.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
 
     return parser.get_args(parser)
 
