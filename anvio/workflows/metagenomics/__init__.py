@@ -714,13 +714,44 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
 
     def get_raw_fasta(self, wildcards, remove_gz_suffix=True):
+        """
+        Path to the input FASTA for reformat_fasta.
+
+        Priority:
+          1) If a precomputed raw FASTA exists (written by SR/LR assembler wrappers):
+             {FASTA_DIR}/{group}.raw.fa  -> use it.
+          2) References mode (or references slated for removal): delegate to base logic
+             that reads from self.fasta_information[...] (handles .gz via remove_gz_suffix).
+          3) Assembly mode (SR legacy path): use assembler output at
+             {FASTA_DIR}/{group}/final.contigs.fa
+        """
+        # References-mode / reference-removal path (uses fasta_information)
         if self.references_mode or wildcards.group in self.references_for_removal:
-            # in 'reference mode' the input is the reference fasta
-            contigs = super(MetagenomicsWorkflow, self).get_raw_fasta(wildcards, remove_gz_suffix=remove_gz_suffix)
-        else:
-            # by default the input fasta is the assembly output
-            contigs = self.dirs_dict["FASTA_DIR"] + "/%s/final.contigs.fa" % wildcards.group
-        return contigs
+            return super(MetagenomicsWorkflow, self).get_raw_fasta(
+                wildcards, remove_gz_suffix=remove_gz_suffix)
+
+        # Assembly-mode : assembler's canonical output location
+        return os.path.join(self.dirs_dict["FASTA_DIR"], wildcards.group, "final.contigs.fa")
+
+
+    def get_readsets_for_mapping_to_group(self, group_id: str):
+        """
+        Return the list of readset IDs that should be mapped/profiled for a given assembly/group.
+
+        Rules:
+          - If 'all_against_all' is true: everyone maps to everyone → all readsets.
+          - Else:
+              * Assembly mode with groups: only readsets whose unsuffixed 'group' equals the base group.
+              * References mode with groups: only readsets whose 'group' equals the reference id.
+              * References mode without groups never reaches here (we auto-set all_against_all=True).
+        """
+        if self.get_param_value_from_config('all_against_all'):
+            return [rs['id'] for rs in self.readsets]
+
+        # removes the suffix _SR or _LR if present
+        base = group_id[:-3] if group_id.endswith(("_SR", "_LR")) else group_id
+
+        return [rs['id'] for rs in self.readsets if rs.get('group') == base]
 
 
     def get_target_files_for_anvi_cluster_contigs(self):
