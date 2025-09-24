@@ -387,6 +387,78 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
             # in all_against_all, the size of each group is as big as the number
             # of samples.
             self.group_sizes = dict.fromkeys(self.group_names,len(self.sample_names))
+    def expand_groups_by_read_type(self):
+        """
+        Expand self.group_names/group_sizes into type-aware assemblies for assembly-mode.
+
+        Rules:
+          - If a base group (or sample) has only SR → one assembly (unsuffixed).
+          - If only LR → one assembly (unsuffixed).
+          - If it has both SR and LR members → two assemblies: <group>_SR and <group>_LR.
+        Also computes:
+          - self.assembly_members: {assembly_id: [readset_ids contributing to this assembly]}
+          - self.assembly_types: {assembly_id: 'SR'|'LR'}
+        """
+        if self.references_mode:
+            return
+
+        # Base groups: either user groups or one group per sample
+        if self.samples_txt.has_groups():
+            base_groups = self.samples_txt.groups()   # {group: [base_sample, ...]}
+        else:
+            base_groups = {s: [s] for s in self.sample_names}
+
+        # Fast lookups
+        types_by_sample = self.samples_txt.sample_types()  # {sample:{has_sr:bool,has_lr:bool}}
+        # Map (base_sample, type) -> readset id (respects read_type_suffix setting)
+        rs_map = {(rs['base_sample'], rs['type']): rs['id'] for rs in self.readsets}
+
+        new_group_names = []
+        new_group_sizes = {}
+        assembly_members = {}
+        assembly_types   = {}
+
+        for g, members in base_groups.items():
+            sr_members = [s for s in members if types_by_sample.get(s, {}).get('has_sr')]
+            lr_members = [s for s in members if types_by_sample.get(s, {}).get('has_lr')]
+
+            if sr_members and lr_members:
+                g_sr = f"{g}_SR"
+                g_lr = f"{g}_LR"
+                new_group_names.extend([g_sr, g_lr])
+
+                sr_rs = [rs_map[(s, 'SR')] for s in sr_members]
+                lr_rs = [rs_map[(s, 'LR')] for s in lr_members]
+
+                new_group_sizes[g_sr] = len(sr_members)
+                new_group_sizes[g_lr] = len(lr_members)
+                assembly_members[g_sr] = sr_rs
+                assembly_members[g_lr] = lr_rs
+                assembly_types[g_sr] = 'SR'
+                assembly_types[g_lr] = 'LR'
+
+            elif sr_members:
+                new_group_names.append(g)
+                sr_rs = [rs_map[(s, 'SR')] for s in sr_members]
+                new_group_sizes[g] = len(sr_members)
+                assembly_members[g] = sr_rs
+                assembly_types[g] = 'SR'
+
+            elif lr_members:
+                new_group_names.append(g)
+                lr_rs = [rs_map[(s, 'LR')] for s in lr_members]
+                new_group_sizes[g] = len(lr_members)
+                assembly_members[g] = lr_rs
+                assembly_types[g] = 'LR'
+
+            else:
+                run.warning(f"Group '{g}' has no SR or LR reads; skipping.")
+
+        self.group_names = new_group_names
+        self.group_sizes = new_group_sizes
+        self.assembly_members = assembly_members
+        self.assembly_types = assembly_types
+
 
 
         if not self.references_mode and not (self.get_param_value_from_config(['anvi_script_reformat_fasta','run']) == True):
