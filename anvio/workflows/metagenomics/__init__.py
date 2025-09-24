@@ -170,12 +170,55 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
         # loading the samples.txt file
         samples_txt_file = self.get_param_value_from_config(['samples_txt'])
-        self.samples_txt = SamplesTxt(samples_txt_file, expected_format="paired_end")
+        self.samples_txt = SamplesTxt(samples_txt_file, expected_format="free")
         self.samples_information = self.samples_txt.as_df()
-
         # get a list of the sample names
         self.sample_names = self.samples_txt.samples()
         self.run_metaspades = self.get_param_value_from_config(['metaspades', 'run'])
+
+        # read type suffix policy for readsets: 'auto' (default) or 'force'
+        read_type_suffix = self.get_param_value_from_config('read_type_suffix') or 'auto'
+
+        # get the readsets, a.k.a. the fundamental unit that will be assembled and/or mapped.
+        self.readsets = self.samples_txt.get_readsets(read_type_suffix=read_type_suffix)
+        self.readset_ids = [rs['id'] for rs in self.readsets]
+
+        # quick flags about data composition
+        self.has_sr = self.samples_txt.has_any_sr()
+        self.has_lr = self.samples_txt.has_any_lr()
+
+        # sanity checks: assemblers required when assembling (not in references mode)
+        if not self.references_mode:
+            # SR present → require exactly one SR assembler enabled
+            sr_choices = [bool(self.get_param_value_from_config(['megahit', 'run'])),
+                          bool(self.get_param_value_from_config(['metaspades', 'run'])),
+                          bool(self.get_param_value_from_config(['idba_ud', 'run'])),]
+            if self.has_sr and sum(sr_choices) == 0:
+                raise ConfigError("Short-reads detected in samples.txt, but no short-read assembler is enabled "
+                                  "(expected one of: megahit, metaspades, idba_ud).")
+            if sum(sr_choices) > 1:
+                raise ConfigError("Multiple short-read assemblers are enabled; please enable only one of "
+                                  "megahit, metaspades, idba_ud.")
+
+            # LR present → require exactly one LR assembler enabled
+            lr_choices = [bool(self.get_param_value_from_config(['flye', 'run'])),
+                          bool(self.get_param_value_from_config(['hifiasm_meta', 'run'])),]
+            if self.has_lr and sum(lr_choices) == 0:
+                raise ConfigError("Long-reads detected in samples.txt, but no long-read assembler is enabled "
+                                  "(expected one of: flye, hifiasm_meta).")
+            if sum(lr_choices) > 1:
+                raise ConfigError("Multiple long-read assemblers are enabled; please enable only one of "
+                                  "flye, hifiasm_meta.")
+
+        # sanity check for conda env: use either conda_yaml or conda_env, not both
+        for tool in ['flye','hifiasm_meta','minimap2','minimap2_index','bowtie_build','bowtie2','megahit','metaspades','idba_ud']:
+            y = self.get_param_value_from_config([tool, 'conda_yaml'])
+            n = self.get_param_value_from_config([tool, 'conda_env'])
+            if (y and y.strip()) and (n and n.strip()):
+                raise ConfigError(f"For '{tool}', please set only one of 'conda_yaml' (YAML path) "
+                                  f"or 'conda_env' (existing env name), not both.")
+
+
         self.use_scaffold_from_metaspades = self.get_param_value_from_config(['metaspades', 'use_scaffolds'])
         self.use_scaffold_from_idba_ud = self.get_param_value_from_config(['idba_ud', 'use_scaffolds'])
         self.run_qc = self.get_param_value_from_config(['iu_filter_quality_minoche', 'run']) == True
@@ -185,9 +228,9 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         self.fasta_txt_file = self.get_param_value_from_config('fasta_txt')
         self.profile_databases = {}
 
-        # TODO: we should be able to run the workflow with a single sample
-        if len(self.sample_names) < 2 and self.references_mode:
-            raise ConfigError("The metagenomics workflow needs to have at least 2 metagenomes in a samples.txt to be in reference mode.")
+        # just some extra checks. TO BE UTLRA-SAFE
+        if len(self.sample_names) < 1:
+            raise WorkflowError("No samples found in samples.txt")
 
         self.references_for_removal_txt = self.get_param_value_from_config(['remove_short_reads_based_on_references',\
                                                                             'references_for_removal_txt'])
@@ -207,12 +250,19 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
         # Set the PROFILE databases paths variable:
         for group in self.group_names:
-            # we need to use the single profile if the group is of size 1.
-            self.profile_databases[group] = os.path.join(self.dirs_dict["MERGE_DIR"], group, "PROFILE.db") if self.group_sizes[group] > 1 else \
-                                               os.path.join(self.dirs_dict["PROFILE_DIR"],
-                                                            group,
-                                                            self.samples_txt.groups()[group][0],
-                                                            "PROFILE.db")
+            if self.group_sizes[group] > 1:
+                self.profile_databases[group] = os.path.join(self.dirs_dict["MERGE_DIR"], group, "PROFILE.db")
+            else:
+                if not self.references_mode:
+                    # Use the concrete readset id of the single member (e.g., S1 or S3_SR)
+                    member_ids = self.assembly_members.get(group, [])
+                    if not member_ids:
+                        raise ConfigError(f"Internal error: no members recorded for single-member group '{group}'.")
+                    single_member = member_ids[0]
+                else:
+                    # References mode keeps legacy behavior: raw groups map has the sample name
+                    single_member = self.samples_txt.groups()[group][0]
+                self.profile_databases[group] = os.path.join(self.dirs_dict["PROFILE_DIR"], group, single_member, "PROFILE.db")
 
 
     def get_metagenomics_target_files(self):
