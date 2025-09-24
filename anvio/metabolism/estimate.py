@@ -296,6 +296,8 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
             self.contigs_db_project_name = os.path.basename(self.enzymes_txt).replace(".", "_")
         elif self.enzymes_of_interest_df is not None:
             self.contigs_db_project_name = 'user_defined_enzymes'
+        elif self.estimate_from_json:
+            self.contigs_db_project_name = "json_input"
         else:
             raise ConfigError("This piece of code ended up at a place it should have never ended up at :( We need attention "
                               "from a programmer here.")
