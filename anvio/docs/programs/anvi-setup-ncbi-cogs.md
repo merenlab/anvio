@@ -23,7 +23,97 @@ anvi-setup-ncbi-cogs --cog-version COG14
 
 Not sure which versions of %(cogs-data)s are available? You can type something random after the `--cog-version` parameter to see the options.
 
-### Always getting checksum errors? Instructions for manual downloads of the COG data (for COG 2020)
+### Manually downloading the raw data from the NCBI
+
+Some users may need to download the raw data from the NCBI manually, instead of letting `anvi-setup-ncbi-cogs` to do it for them. There may be multiple reasons for this. One reason is the NCBI servesr. Unfortunately we learned the hard way that the NCBI servers are not always reliable, and sometimes the download process gets interrupted, leading to checksum errors, especially for users who have exceptionally slow internet connections. Another reason is that some users may be working in a computing environment that does not have direct access to the internet, and therefore cannot download the data directly from the NCBI. In such cases, users can download the data on a different computer that has (fast) internet access, and then transfer the raw data files to the computer where they want to set up the COGs database.
+
+One issue here is to know exactly what to download, and where to put those files depending on the `--cog-data-dir` or `--cog-version` parameters. Luckily, the `anvi-setup-ncbi-cogs` program can help with that if you were to run it with the `--dry-run` flag on the computer where you wish to setup the COGs database. Here are some examples and the output messages the program will generate for you (I am running these commands on my own comptuer that uses `anvio-dev`, but it will generate specific instructions for your own comptuer):
+
+```
+anvi-setup-ncbi-cogs --dry-run
+
+COG version ..................................: COG24
+COG data source ..............................: The anvi'o default.
+COG base directory ...........................: /Users/meren/github/anvio/anvio/data/misc/COG
+
+DRY RUN MODE WILL NOW TELL YOU THINGS AND QUIT
+===============================================
+The following information will tell you what anvi'o would have done to acquire
+the raw files from the NCBI to set them up on your computer. Using this
+information you should be able to download these files, and move them manually
+to the locations shown below. Please remember that the data shown below will
+depend on teh COG version of your choosing (or, if you haven't specified any,
+the default COG version). Before you start following the instructions below,
+make sure the following directory exists:
+
+    - /Users/meren/github/anvio/anvio/data/misc/COG/COG24/RAW_DATA_FROM_NCBI
+
+Then execute the following steps like a robot 🤖
+
+Download this file ...........................: https://ftp.ncbi.nlm.nih.gov/pub/COG/COG2024/data/cog-24.cog.csv
+ -> and move it here .........................: /Users/meren/github/anvio/anvio/data/misc/COG/COG24/RAW_DATA_FROM_NCBI/cog-24.cog.csv
+
+Download this file ...........................: https://ftp.ncbi.nlm.nih.gov/pub/COG/COG2024/data/cog-24.def.tab
+ -> and move it here .........................: /Users/meren/github/anvio/anvio/data/misc/COG/COG24/RAW_DATA_FROM_NCBI/cog-24.def.tab
+
+Download this file ...........................: https://ftp.ncbi.nlm.nih.gov/pub/COG/COG2024/data/cog-24.fun.tab
+ -> and move it here .........................: /Users/meren/github/anvio/anvio/data/misc/COG/COG24/RAW_DATA_FROM_NCBI/cog-24.fun.tab
+
+Download this file ...........................: https://ftp.ncbi.nlm.nih.gov/pub/COG/COG2024/data/checksums.md5
+ -> and move it here .........................: /Users/meren/github/anvio/anvio/data/misc/COG/COG24/RAW_DATA_FROM_NCBI/checksum.md5.txt
+
+Download this file ...........................: https://ftp.ncbi.nlm.nih.gov/pub/COG/COG2024/data/COGorg24.faa.gz
+ -> and move it here .........................: /Users/meren/github/anvio/anvio/data/misc/COG/COG24/RAW_DATA_FROM_NCBI/COGorg24.faa.gz
+
+Once you have all these files in those locations, `anvi-setup-ncbi-cogs` should
+not attempt to download anything, but process the existing files at these
+specific locations to setup NCBI COGs on your system in peace.
+```
+
+Or if I were to use a specific version and a different COG data directory, I would have gotten different instructions:
+
+```
+anvi-setup-ncbi-cogs --dry-run --cog-data-dir /tmp/test --cog-version COG20
+
+COG version ..................................: COG20
+COG data source ..............................: The command line parameter.
+COG base directory ...........................: /tmp/test
+
+DRY RUN MODE WILL NOW TELL YOU THINGS AND QUIT
+===============================================
+The following information will tell you what anvi'o would have done to acquire
+the raw files from the NCBI to set them up on your computer. Using this
+information you should be able to download these files, and move them manually
+to the locations shown below. Please remember that the data shown below will
+depend on teh COG version of your choosing (or, if you haven't specified any,
+the default COG version). Before you start following the instructions below,
+make sure the following directory exists:
+
+    - /tmp/test/COG20/RAW_DATA_FROM_NCBI
+
+Then execute the following steps like a robot 🤖
+
+Download this file ...........................: ftp://ftp.ncbi.nlm.nih.gov/pub/COG/COG2020/data/cog-20.cog.csv
+ -> and move it here .........................: /tmp/test/COG20/RAW_DATA_FROM_NCBI/cog-20.cog.csv
+
+Download this file ...........................: ftp://ftp.ncbi.nlm.nih.gov/pub/COG/COG2020/data/cog-20.def.tab
+ -> and move it here .........................: /tmp/test/COG20/RAW_DATA_FROM_NCBI/cog-20.def.tab
+
+Download this file ...........................: ftp://ftp.ncbi.nlm.nih.gov/pub/COG/COG2020/data/fun-20.tab
+ -> and move it here .........................: /tmp/test/COG20/RAW_DATA_FROM_NCBI/fun-20.tab
+
+Download this file ...........................: ftp://ftp.ncbi.nlm.nih.gov/pub/COG/COG2020/data/checksums.md5.txt
+ -> and move it here .........................: /tmp/test/COG20/RAW_DATA_FROM_NCBI/checksum.md5.txt
+
+Download this file ...........................: ftp://ftp.ncbi.nlm.nih.gov/pub/COG/COG2020/data/cog-20.fa.gz
+ -> and move it here .........................: /tmp/test/COG20/RAW_DATA_FROM_NCBI/cog-20.fa.gz
+
+Once you have all these files in those locations, `anvi-setup-ncbi-cogs` should
+not attempt to download anything, but process the existing files at these
+specific locations to setup NCBI COGs on your system in peace.
+```
+
+### Always getting checksum errors?
 
 Sometimes the NCBI servers drop incoming connections, leading to incomplete file downloads and errors like the following:
 
@@ -38,9 +128,13 @@ Config Error: Something went wrong with your download :/ The checksum we calcula
 If you have tried re-running `anvi-setup-ncbi-cogs` multiple times but are always getting checksum errors and are about to lose your mind, here is a set of commands that you can follow to manually download the data for the **2020 release of COGs** without having to go through the setup program every time.
 
 First, you will need to move to the directory where anvi'o expects to find the COG files. This location will depend on where conda and anvi'o are installed on your computer, but if you have the anvi'o environment loaded in your terminal, you can easily get there by running the following:
+
 ```
 cd $CONDA_PREFIX/lib/python3.10/site-packages/anvio/data/misc/COG/COG20/RAW_DATA_FROM_NCBI/
 ```
+
+{:.warning}
+This example is for the 2020 release of COGs, but you can figure out which directory to go based on the COG version on your computer by running `anvi-setup-ncbi-cogs --dry-run` as described above.
 
 The files that anvi'o needs to see in that folder are the following:
 ```
