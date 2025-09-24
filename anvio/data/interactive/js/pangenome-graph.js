@@ -102,6 +102,7 @@ class PangenomeGraphUserInterface {
         var svg_heatmaps = [];
         var svg_edges = [];
         var svg_nodes = [];
+        var svg_tree = [];
         var svg_groups = [];
         var svg_genome_tracks = {}
         for (var genome of this.genomes){
@@ -139,6 +140,7 @@ class PangenomeGraphUserInterface {
         var tree_length = parseFloat($('#tree_length')[0].value);
         var offset = parseFloat($('#tree_offset')[0].value);
         var tree_thickness = parseFloat($('#tree_thickness')[0].value);
+        var text_offset = parseFloat($('#label_offset')[0].value);
         
         var core_color = $('#core_color')[0].value;
         var paralog_color = $('#paralog_color')[0].value;
@@ -321,8 +323,10 @@ class PangenomeGraphUserInterface {
                     var anchor = "end"
                 }
 
+                var [angle_h_x, angle_h_y] = this.angle_transform(circle_h_x, circle_h_y, 180 - start_angle, text_offset)
+                
                 svg_text.push(
-                    $('<text text-anchor="' + anchor + '" transform="rotate(-' + rotate + ' ' + circle_h_x + ' ' + circle_h_y +')" dominant-baseline="middle" x="' + circle_h_x + '" y="' + circle_h_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">Orientation</text>')
+                    $('<text text-anchor="' + anchor + '" transform="rotate(-' + rotate + ' ' + angle_h_x + ' ' + angle_h_y +')" dominant-baseline="middle" x="' + angle_h_x + '" y="' + angle_h_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">Orientation</text>')
                 )
                 
             } else {
@@ -345,7 +349,7 @@ class PangenomeGraphUserInterface {
                     ' Z" stroke-width="0" fill="slateGrey"></path>')
                 )
                 
-                var [circle_h_x, circle_h_y] = [(0-0.5) * node_distance_x, -(arrow_start + arrow_thickness * 2)]
+                var [circle_h_x, circle_h_y] = [(0-0.5) * node_distance_x - text_offset, -(arrow_start + arrow_thickness * 2)]
 
                 svg_text.push(
                     $('<text text-anchor="end" dominant-baseline="middle" x="' + circle_h_x + '" y="' + circle_h_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">Orientation</text>')
@@ -947,12 +951,14 @@ class PangenomeGraphUserInterface {
                         } else {
                             var anchor = "end"
                         }
-    
+
+                        var [angle_x, angle_y] = this.angle_transform(circle_x, circle_y, 180 - start_angle, text_offset)
+                        
                         svg_text.push(
-                            $('<text text-anchor="' + anchor + '" transform="rotate(-' + rotate + ' ' + circle_x + ' ' + circle_y +')" dominant-baseline="middle" x="' + circle_x + '" y="' + circle_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">' + genome_name + '</text>')
+                            $('<text text-anchor="' + anchor + '" transform="rotate(-' + rotate + ' ' + angle_x + ' ' + angle_y +')" dominant-baseline="middle" x="' + angle_x + '" y="' + angle_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">' + genome_name + '</text>')
                         )
                     } else {
-                        var [circle_x, circle_y] = [(0-0.5) * node_distance_x, -y_size]
+                        var [circle_x, circle_y] = [(0-0.5) * node_distance_x - text_offset, -y_size]
 
                         svg_text.push(
                             $('<text text-anchor="end" dominant-baseline="middle" x="' + circle_x + '" y="' + circle_y + '" dy="0" font-size="' + $('#label')[0].value + '" font-family="sans-serif" fill="black">' + genome_name + '</text>')
@@ -965,7 +971,7 @@ class PangenomeGraphUserInterface {
         }
        
         if ($('#flextree').prop('checked') == true){
-            svg_core.append(this.draw_newick(order, item_dist, max_dist, offset, tree_length, tree_thickness, theta, start_angle, end_angle))
+            svg_tree = this.draw_newick(order, item_dist, max_dist, offset, tree_length, tree_thickness, theta, start_angle, end_angle)
         }
         
         var end = new Date().getTime();
@@ -985,9 +991,9 @@ class PangenomeGraphUserInterface {
         svg_core.append(svg_group);
         
         for (var [genome, svg_genome_track] of Object.entries(svg_genome_tracks)) {
-        var svg_group = $('<g></g>')
-        for (var item of svg_genome_track) svg_group.append(item);
-        svg_core.append(svg_group);
+            var svg_group = $('<g></g>')
+            for (var item of svg_genome_track) svg_group.append(item);
+            svg_core.append(svg_group);
         }
         
         var svg_group = $('<g></g>')
@@ -1004,6 +1010,10 @@ class PangenomeGraphUserInterface {
         
         var svg_group = $('<g></g>')
         for (var item of svg_groups) svg_group.append(item);
+        svg_core.append(svg_group);
+
+        var svg_group = $('<g></g>')
+        for (var item of svg_tree) svg_group.append(item);
         svg_core.append(svg_group);
         
         var svg_group = $('<g></g>')
@@ -1136,11 +1146,7 @@ class PangenomeGraphUserInterface {
 
     draw_newick(order, item_dist, max_dist, offset, max_size, line_thickness, theta, start_angle, end_angle) {
 
-        // console.log(end_angle)
-        // console.log(item_dist);
-        // console.log(order);
-
-        var output = ''
+        var output = []
         var saving_positions = {}
         var saving_ids = {}
         
@@ -1158,9 +1164,7 @@ class PangenomeGraphUserInterface {
                 var [a_x, a_y] = this.angle_transform(x, y, 360 - end_angle, end_fraction)
                 var [b_x, b_y] = this.angle_transform(x, y, 360 - end_angle, start_fraction)
 
-                console.log(x, y, a_x, a_y, b_x, b_y)
-
-                output += '<path d="M ' + a_x + ' ' + a_y + ' L ' + b_x + ' ' + b_y + '" stroke-width="' + line_thickness + '" stroke="black"></path>'
+                output.push('<path d="M ' + a_x + ' ' + a_y + ' L ' + b_x + ' ' + b_y + '" stroke-width="' + line_thickness + '" stroke="black"></path>')
         
                 if (Object.values(saving_ids).includes(start_fraction)){
                     var saving_id = Object.keys(saving_ids)[Object.values(saving_ids).indexOf(start_fraction)]
@@ -1173,7 +1177,7 @@ class PangenomeGraphUserInterface {
                 if (end_fraction != max_size){
                     var [c_x, c_y] = this.angle_transform(x, y, 360 - end_angle, offset)
                     
-                    output += '<path d="M ' + a_x + ' ' + a_y + ' L ' + c_x + ' ' + c_y + '" stroke-dasharray="' + line_thickness + '" stroke-width="' + line_thickness + '" stroke="lightgray"></path>'
+                    output.push('<path d="M ' + a_x + ' ' + a_y + ' L ' + c_x + ' ' + c_y + '" stroke-dasharray="' + line_thickness + '" stroke-width="' + line_thickness + '" stroke="lightgray"></path>')
                 }
             } else {
         
@@ -1192,7 +1196,7 @@ class PangenomeGraphUserInterface {
                         var [j_x, j_y] = this.circle_transform(this.global_x + 0.5, y_value_j, theta, start_angle)
                         var [n_x, n_y] = this.angle_transform(j_x, j_y, 360 - end_angle, end_fraction)
                         
-                        output += '<path d="M ' + m_x + ' ' + m_y + ' L ' + n_x + ' ' + n_y + '" stroke-width="' + line_thickness + '" stroke="black"></path>'        
+                        output.push('<path d="M ' + m_x + ' ' + m_y + ' L ' + n_x + ' ' + n_y + '" stroke-width="' + line_thickness + '" stroke="black"></path>')
                     }
                 } else {
                     var saving_id_main = -1
@@ -1204,7 +1208,7 @@ class PangenomeGraphUserInterface {
                 var [a_x, a_y] = this.angle_transform(x, y, 360 - end_angle, end_fraction)
                 var [b_x, b_y] = this.angle_transform(x, y, 360 - end_angle, start_fraction)
                 
-                output += '<path d="M ' + a_x + ' ' + a_y + ' L ' + b_x + ' ' + b_y + '" stroke-width="' + line_thickness + '" stroke="black"></path>'
+                output.push('<path d="M ' + a_x + ' ' + a_y + ' L ' + b_x + ' ' + b_y + '" stroke-width="' + line_thickness + '" stroke="black"></path>')
                 
                 if (Object.values(saving_ids).includes(start_fraction)) {
                     var saving_id = Object.keys(saving_ids)[Object.values(saving_ids).indexOf(start_fraction)]

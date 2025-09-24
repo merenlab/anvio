@@ -1628,6 +1628,7 @@ class PangenomeGraph():
                  'flexlinear': False,
                  'line': 5,
                  'label': label,
+                 'label_offset': int(inner_margin / 2),
                  'search_hit': search,
                  'inner_margin': inner_margin,
                  'outer_margin': 0,
