@@ -1030,6 +1030,17 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                 self.init_data_from_modules_db()
 
             if self.enzymes_of_interest_df is not None:
+                # check and warning for enzymes not in self.all_kos_in_db
+                enzymes_not_in_modules = list(self.enzymes_of_interest_df[~self.enzymes_of_interest_df["enzyme_accession"].isin(self.all_kos_in_db.keys())]['enzyme_accession'].unique())
+                if self.include_stray_kos:
+                    enzymes_not_in_modules = [e for e in enzymes_not_in_modules if e not in self.stray_ko_dict]
+                if enzymes_not_in_modules:
+                    example = enzymes_not_in_modules[0]
+                    self.run.warning(f"FYI, some enzymes in the 'enzyme_accession' column of your input enzymes-txt file do not belong to any "
+                                    f"metabolic modules (that we know about). These enzymes will be ignored for the purposes of estimating module "
+                                    f"completeness, but should still appear in enzyme-related outputs (if those were requested). In case you are "
+                                    f"curious, here is one example: {example}")
+                
                 kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_metabolism_for_enzymes_of_interest()
             elif self.pan_db_path:
                 gene_cluster_collections = ccollections.Collections()
