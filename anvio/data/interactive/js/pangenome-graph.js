@@ -2441,7 +2441,7 @@ class PangenomeGraphUserInterface {
         }
         
         if (add_align == 1) {
-            var basic_layer_table = `<p class="modal_header mt-0">Layers</p>`;
+            var basic_layer_table = `<p class="settings-secondary-header mb-3 mt-3">LAYERS</p>`;
             basic_layer_table += `<table class="table table-striped table-bordered sortable" id="node_layers_table">`;
         } else {
             var basic_layer_table = ''
@@ -2459,7 +2459,7 @@ class PangenomeGraphUserInterface {
         for (const [key, value] of Object.entries(basic_info)) {
             basic_layer_table += `<td>` + value + `</td>`;
         }
-        basic_layer_table += `</tbody></tr></table><hr>`;
+        basic_layer_table += `</tbody></tr></table>`;
         
         return basic_layer_table;
 
@@ -2483,7 +2483,7 @@ class PangenomeGraphUserInterface {
         var basic_info = {'ID': gene_cluster_id, 'Gene Cluster': gene_cluster_name, 'Contributing Genomes': num_contributing_genomes, 'Position in Graph': position_in_graph}
         // build the basic information table
         if (add_align == 1) {
-            var basic_info_table = `<p class="modal_header mt-0">Basics</p>`;
+            var basic_info_table = `<p class="settings-secondary-header mb-3 mt-3">BASICS</p>`;
             basic_info_table += `<table class="table table-striped table-bordered sortable" gc_context="` + context + `" gc_pos="` + x_pos + `" gc_id="` + gene_cluster_id + `" id="node_basics_table">`;
         } else {
             var basic_info_table = ''
@@ -2501,7 +2501,7 @@ class PangenomeGraphUserInterface {
         for (var [key, value] of Object.entries(basic_info)) {
             basic_info_table += `<td>` + value + `</td>`;
         }
-        basic_info_table += `</tbody></tr></table><hr>`;
+        basic_info_table += `</tbody></tr></table>`;
         
         return basic_info_table;
     }
@@ -2509,7 +2509,7 @@ class PangenomeGraphUserInterface {
     async get_gene_cluster_functions_table(gene_cluster_id, add_align) {
         
         if (add_align == 1) {
-          var functions_table = `<p class="modal_header">Consensus functional annotations</p>`;
+          var functions_table = `<p class="settings-secondary-header mb-3 mt-3">CONSENSUS FUNCTIONAL ANNOTATIONS</p>`;
           functions_table += `<table class="table table-striped sortable" gc_id="` + gene_cluster_id + `" id="node_functions_table">`;
         } else {
           var functions_table = ''
@@ -2519,7 +2519,7 @@ class PangenomeGraphUserInterface {
         functions_table += `<th scope="col">Source</th>`;
         functions_table += `<th scope="col">Accession</th>`;
         functions_table += `<th scope="col">Function</th>`;
-        functions_table += `</tr></thead><tbody>\n\n`;
+        functions_table += `</tr></thead><tbody>`;
     
         // var gene_cluster_name = this.data['nodes'][gene_cluster_id]['gene_cluster']
         var d = await this.get_gene_cluster_consensus_functions([gene_cluster_id]);
@@ -2544,7 +2544,7 @@ class PangenomeGraphUserInterface {
             functions_table += `<td>` + func + `</td>`;
             functions_table += `</tr>`;
         }
-        functions_table += `</tbody></tr></table><hr>`;
+        functions_table += `</tbody></tr></table>`;
     
         return functions_table
     }
@@ -2563,7 +2563,7 @@ class PangenomeGraphUserInterface {
     
         // console.log(gene_cluster_id_current, gene_cluster_context, group_context)
         if (add_align == 1) {
-          var gene_cluster_context_table = `<p class="modal_header">Gene cluster context</p>`;
+          var gene_cluster_context_table = `<p class="settings-secondary-header mb-3 mt-3">GENE CLUSTER CONTEXT</p>`;
         }else {
           var gene_cluster_context_table = ''
         }
@@ -2588,13 +2588,13 @@ class PangenomeGraphUserInterface {
     }
     
     async appendalignment(gene_cluster_id) {
-        var alignments_table = `<p class="modal_header">Sequence alignments</p>`;
+        var alignments_table = `<p class="settings-secondary-header mb-3 mt-3">SEQUENCE ALIGNMENTS</p>`;
         alignments_table += `<div class="scroll-wrapper"><table class="table sortable" gc_id="` + gene_cluster_id + `" id="node_sequence_alignments_table">`;
         alignments_table += `<thead class="thead-dark gc-table-header"><tr>`;
         alignments_table += `<th class="position-sticky" style="left:0px; z-index:2;" scope="col">Genome</th>`;
         alignments_table += `<th scope="col">Gene Call</th>`;
         alignments_table += `<th scope="col"><span id="th-sequence">Sequence</span></th>`;
-        alignments_table += `</tr></thead><tbody>\n\n`;
+        alignments_table += `</tr></thead><tbody>`;
     
         var d = await this.fetchalignment([gene_cluster_id])
 
@@ -2615,7 +2615,7 @@ class PangenomeGraphUserInterface {
             }
         }
 
-        alignments_table += `</tbody></table></div>\n\n`
+        alignments_table += `</tbody></table></div>`
         return alignments_table;
     }
 
