@@ -65,9 +65,14 @@
   }
 
   .modal-dialog,
-  .modal-content {
+  .modal-content-large {
     /* 80% of window height */
     height: 80%;
+  }
+
+  .modal-content-small {
+    /* 80% of window height */
+    height: 40%;
   }
 
   .modal-body {

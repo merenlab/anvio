@@ -1324,13 +1324,12 @@ class PangenomeGraphUserInterface {
     }
     
     start_draw() {
-        var state = 'default';
         var new_settings_dict = {};
         
         new_settings_dict['condtr'] = parseInt($('#condtr')[0].value);
         new_settings_dict['maxlength'] = parseInt($('#maxlength')[0].value);
         new_settings_dict['groupcompress'] = parseFloat($('#groupcompress')[0].value);
-        new_settings_dict['state'] = state;
+        new_settings_dict['state'] = this.state;
         
         if (JSON.stringify(this.settings_dict) !== JSON.stringify(new_settings_dict)) {
             this.rerun_JSON(new_settings_dict);
@@ -1357,13 +1356,18 @@ class PangenomeGraphUserInterface {
         })
     }
 
-    async hide_tippy(instance) {
+    hide_tippy(instance) {
+        
         if (instance.reference.id.startsWith('GCG_')){
             var element_id = this.group_dict[instance.reference.id][0]
         } else {
             var element_id = instance.reference.id
         }
 
+        $('#number_sgc')[0].innerText = '';
+        $('#number_gc')[0].innerText = '';
+        $('#number_position')[0].innerText = '0';
+        
         for (var source of this.functional_annotation_sources_available) {
             $('#number_' + source)[0].innerText = '';
         }
@@ -1375,16 +1379,16 @@ class PangenomeGraphUserInterface {
         for (var layer of this.layers) {
             $('#number_' + layer)[0].innerText = '0';
         }
-
     }
     
     async show_tippy(instance) {
+
         if (instance.reference.id.startsWith('GCG_')){
             var element_id = this.group_dict[instance.reference.id][0]
         } else {
             var element_id = instance.reference.id
         }
-
+        
         var d = await this.get_gene_cluster_consensus_functions([element_id]);
         for (var source of this.functional_annotation_sources_available) {
 
@@ -1397,7 +1401,6 @@ class PangenomeGraphUserInterface {
                 $('#number_' + source)[0].innerText = '';
             }
         }
-        
         
         for (var genome of this.genomes) {
             if (genome in this.data['nodes'][element_id]['gene_calls']) {
@@ -1416,6 +1419,10 @@ class PangenomeGraphUserInterface {
                 $('#number_' + layer)[0].innerText = '';
             }
         }
+
+        $('#number_sgc')[0].innerText = element_id;
+        $('#number_gc')[0].innerText = this.data['nodes'][element_id]['gene_cluster'];
+        $('#number_position')[0].innerText = parseInt(this.data['nodes'][element_id]['position']);
     }
 
     press_down(instance) {
@@ -1935,6 +1942,43 @@ class PangenomeGraphUserInterface {
     }
     
     initialize_user_interface() {
+        
+        $('#RightOffcanvasBodyTop').append(
+            $('<tr>').append(
+                $('<td class="col-4">').append(
+                    'Synteny gene cluster'
+                )
+            ).append(
+                $('<td class="col-8 text-end" id="number_sgc">').append(
+                    ''
+                )
+            )
+        );
+
+        $('#RightOffcanvasBodyTop').append(
+            $('<tr>').append(
+                $('<td class="col-4">').append(
+                    'Gene cluster'
+                )
+            ).append(
+                $('<td class="col-8 text-end" id="number_gc">').append(
+                    ''
+                )
+            )
+        );
+
+        $('#RightOffcanvasBodyTop').append(
+            $('<tr>').append(
+                $('<td class="col-4">').append(
+                    'Position'
+                )
+            ).append(
+                $('<td class="col-8 text-end" id="number_position">').append(
+                    ''
+                )
+            )
+        );
+        
         for (var layer of this.layers) {
             if ($('#flex' + layer + '').length == 0) {
                 var element = $('<div class="col-12 d-flex mb-1"></div>').append(
@@ -2483,7 +2527,7 @@ class PangenomeGraphUserInterface {
             var context = gene_cluster_context
         }
         
-        var basic_info = {'ID': gene_cluster_id, 'Gene Cluster': gene_cluster_name, 'Contributing Genomes': num_contributing_genomes, 'Position in Graph': position_in_graph}
+        var basic_info = {'Synteny Gene Cluster': gene_cluster_id, 'Gene Cluster': gene_cluster_name, 'Contributing Genomes': num_contributing_genomes, 'Position in Graph': position_in_graph}
         // build the basic information table
         if (add_align == 1) {
             var basic_info_table = `<p class="settings-secondary-header mb-3 mt-3">BASICS</p>`;
@@ -2750,6 +2794,34 @@ class PangenomeGraphUserInterface {
     }
 
     save_state () {
+
+        $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/state/all',
+        success: function(state_list) {
+
+            console.log(state_list);
+            // $('#saveState_list').empty();
+
+            // for (let state_name in state_list) {
+            //     var _select = "";
+            //     if (state_name == current_state_name)
+            //     {
+            //         _select = ' selected="selected"';
+            //     }
+            //     $('#saveState_list').append('<option ' + _select + '>' + state_name + '</option>');
+            // }
+
+            // $('#modSaveState').modal('show');
+            // if ($('#saveState_list').val() === null) {
+            //     $('#saveState_name').val('default');
+            // } else {
+            //     $('#saveState_list').trigger('change');
+            // }
+        }
+    });
+        
         $('#SaveState').modal('show');
     }
 
