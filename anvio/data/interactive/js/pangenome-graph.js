@@ -2449,7 +2449,7 @@ class PangenomeGraphUserInterface {
         }
         
         basic_layer_table += `<tbody>`;
-        basic_layer_table += `<thead class="thead-light"><tr>`;
+        basic_layer_table += `<thead class=""><tr>`;
         for (const [key, value] of Object.entries(basic_info)) {
             basic_layer_table += `<th scope="row">` + key + `</th>`;
         }
@@ -2491,7 +2491,8 @@ class PangenomeGraphUserInterface {
         }
         
         basic_info_table += `<tbody>`;
-        basic_info_table += `<thead class="thead-light"><tr>`;
+        // basic_info_table += `<thead class="thead-light"><tr>`;
+        basic_info_table += `<thead class=""><tr>`;
         for (var [key, value] of Object.entries(basic_info)) {
             basic_info_table += `<th scope="row">` + key + `</th>`;
         }
@@ -2590,7 +2591,7 @@ class PangenomeGraphUserInterface {
     async appendalignment(gene_cluster_id) {
         var alignments_table = `<p class="settings-secondary-header mb-3 mt-3">SEQUENCE ALIGNMENTS</p>`;
         alignments_table += `<div class="scroll-wrapper"><table class="table sortable" gc_id="` + gene_cluster_id + `" id="node_sequence_alignments_table">`;
-        alignments_table += `<thead class="thead-dark gc-table-header"><tr>`;
+        alignments_table += `<thead class="gc-table-header"><tr>`;
         alignments_table += `<th class="position-sticky" style="left:0px; z-index:2;" scope="col">Genome</th>`;
         alignments_table += `<th scope="col">Gene Call</th>`;
         alignments_table += `<th scope="col"><span id="th-sequence">Sequence</span></th>`;
