@@ -1878,6 +1878,9 @@ class PangenomeGraphUserInterface {
 
         this.group_dict = {}
         this.synteny = {}
+
+        this.global_x = 0
+        this.global_y = 0
         
         for(var g in this.genomes) {
             this.synteny[this.genomes[g]] = {}
