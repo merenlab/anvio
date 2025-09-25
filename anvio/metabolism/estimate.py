@@ -1302,7 +1302,14 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                 gene_coverages_in_mod = []
                 gene_detection_in_mod = []
                 for gc in gcids_in_mod:
-                    gc_idx = int(gc)
+                    # the gene caller ids are expected to be integers, with the exception of
+                    # user-provided enzymes-txt files where the gene caller ids can be anything
+                    # so we try to make sure what can be integer is integer, and we don't care
+                    # if this step fails.
+                    try:
+                        gc_idx = int(gc)
+                    except:
+                        pass
                     gene_coverages_in_mod.append(c_dict["genes_to_coverage"][s][gc_idx])
                     gene_detection_in_mod.append(c_dict["genes_to_detection"][s][gc_idx])
 
