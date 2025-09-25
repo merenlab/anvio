@@ -103,10 +103,10 @@
   }
 
   .modal_header {
-    font-variant: small-caps;
-    font-size: x-large;
-    background: linear-gradient(88deg, #f1f8ff, #ffffff);
-    padding-left: 10px;
+    /* font-variant: small-caps; */
+    font-size: large;
+    /* background: linear-gradient(88deg, #f1f8ff, #ffffff); */
+    /* padding-left: 10px; */
     margin-top: 20px;
     margin-bottom: 5px;
   }

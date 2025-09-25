@@ -1357,29 +1357,64 @@ class PangenomeGraphUserInterface {
         })
     }
 
-    hide_tippy(instance) {
+    async hide_tippy(instance) {
         if (instance.reference.id.startsWith('GCG_')){
             var element_id = this.group_dict[instance.reference.id][0]
         } else {
             var element_id = instance.reference.id
         }
-        var gene_calls = Object.keys(this.data['nodes'][element_id]['gene_calls'])
-    
-        for (var gene_call of gene_calls) {
-            $('#number_' + gene_call)[0].innerText = '0';
+
+        for (var source of this.functional_annotation_sources_available) {
+            $('#number_' + source)[0].innerText = '';
         }
+        
+        for (var genome of this.genomes) {
+            $('#number_' + genome)[0].innerText = '0';
+        }
+
+        for (var layer of this.layers) {
+            $('#number_' + layer)[0].innerText = '0';
+        }
+
     }
     
-    show_tippy(instance) {
+    async show_tippy(instance) {
         if (instance.reference.id.startsWith('GCG_')){
             var element_id = this.group_dict[instance.reference.id][0]
         } else {
             var element_id = instance.reference.id
         }
-        var gene_calls = Object.keys(this.data['nodes'][element_id]['gene_calls'])
 
-        for (var gene_call of gene_calls) {
-            $('#number_' + gene_call)[0].innerText = '1';
+        var d = await this.get_gene_cluster_consensus_functions([element_id]);
+        for (var source of this.functional_annotation_sources_available) {
+
+            var gene_cluster_functions = d['data'][element_id]
+            if (source in gene_cluster_functions) {
+                var func = gene_cluster_functions[source]['function']
+                func === undefined | func === null ? func = '' : func = func
+                $('#number_' + source)[0].innerText = func;
+            } else {
+                $('#number_' + source)[0].innerText = '';
+            }
+        }
+        
+        
+        for (var genome of this.genomes) {
+            if (genome in this.data['nodes'][element_id]['gene_calls']) {
+                var gene_call = this.data['nodes'][element_id]['gene_calls'][genome]
+                $('#number_' + genome)[0].innerText = '1';
+            } else {
+                $('#number_' + genome)[0].innerText = '0';
+            }
+        }
+
+        for (var layer of this.layers) {
+            if (layer in this.data['nodes'][element_id]['layer']) {
+                var value = this.data['nodes'][element_id]['layer'][layer]
+                $('#number_' + layer)[0].innerText = value;
+            } else {
+                $('#number_' + layer)[0].innerText = '';
+            }
         }
     }
 
@@ -1914,7 +1949,19 @@ class PangenomeGraphUserInterface {
                         $('<input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="' + layer + '" name="' + layer + '" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">')
                     )
                 );
-        
+
+                $('#RightOffcanvasBodyTop').append(
+                    $('<tr>').append(
+                        $('<td class="col-4">').append(
+                            layer
+                        )
+                    ).append(
+                        $('<td class="col-8 text-end" id="number_' + layer + '">').append(
+                            0
+                        )
+                    )
+                );
+                
                 $('#layers').append(element);
             }
         }
@@ -1948,11 +1995,11 @@ class PangenomeGraphUserInterface {
         
                 $('#RightOffcanvasBodyTop').append(
                     $('<tr>').append(
-                        $('<td class="col-8">').append(
+                        $('<td class="col-4">').append(
                             genome
                         )
                     ).append(
-                        $('<td class="col-4 text-end" id="number_' + genome + '">').append(
+                        $('<td class="col-8 text-end" id="number_' + genome + '">').append(
                             0
                         )
                     )
@@ -2004,6 +2051,18 @@ class PangenomeGraphUserInterface {
                         )
                     ).append(
                         $('<div class="col-2 mb-1"></div>')
+                    )
+                )
+            );
+
+            $('#RightOffcanvasBodyTop').append(
+                $('<tr>').append(
+                    $('<td class="col-4">').append(
+                        annotation_source
+                    )
+                ).append(
+                    $('<td class="col-8 text-end" id="number_' + annotation_source + '">').append(
+                        ''
                     )
                 )
             );
@@ -2227,6 +2286,11 @@ class PangenomeGraphUserInterface {
         $('#AddBin').on("click", this.add_info_to_bin);
         $('#AlignmentDownload').on("click", this.alignment_download);
         $('#InfoDownload').on("click", this.info_download);
+
+        $('#stateload').on("click", this.load_state);
+        $('#statesave').on("click", this.save_state);
+        $('#binload').on("click", this.load_bin);
+        $('#binsave').on("click", this.save_bin);
         
         sortable('#genomecolors', {
             forcePlaceholderSize: true,
@@ -2237,6 +2301,8 @@ class PangenomeGraphUserInterface {
         this.settings_dict['maxlength'] = this.data['states']['maxlength']
         this.settings_dict['groupcompress'] = this.data['states']['groupcompress']
         this.settings_dict['state'] = this.data['meta']['state']
+
+        $("#redraw").removeClass("disabled");
     }
 
     flextree_change(instance) {
@@ -2393,7 +2459,7 @@ class PangenomeGraphUserInterface {
         for (const [key, value] of Object.entries(basic_info)) {
             basic_layer_table += `<td>` + value + `</td>`;
         }
-        basic_layer_table += `</tbody></tr></table>`;
+        basic_layer_table += `</tbody></tr></table><hr>`;
         
         return basic_layer_table;
 
@@ -2435,7 +2501,7 @@ class PangenomeGraphUserInterface {
         for (var [key, value] of Object.entries(basic_info)) {
             basic_info_table += `<td>` + value + `</td>`;
         }
-        basic_info_table += `</tbody></tr></table>`;
+        basic_info_table += `</tbody></tr></table><hr>`;
         
         return basic_info_table;
     }
@@ -2478,7 +2544,7 @@ class PangenomeGraphUserInterface {
             functions_table += `<td>` + func + `</td>`;
             functions_table += `</tr>`;
         }
-        functions_table += `</tbody></tr></table>\n\n`;
+        functions_table += `</tbody></tr></table><hr>`;
     
         return functions_table
     }
@@ -2669,6 +2735,22 @@ class PangenomeGraphUserInterface {
         }
         var blob = new Blob([csv_data]);
         this.download_blob(blob, title + ".fa");
+    }
+
+    save_bin () {
+        $('#SaveBin').modal('show');
+    }
+
+    load_bin () {
+        $('#LoadBin').modal('show');
+    }
+
+    save_state () {
+        $('#SaveState').modal('show');
+    }
+
+    load_state () {
+        $('#LoadState').modal('show');
     }
 }
 

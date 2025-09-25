@@ -103,19 +103,19 @@
                       </li>
                       <div id="nav-bottom">
                           <li class="nav-bottom-alignment">
-                              <a href="" class="navbar-btn d-block glow-on-hover" id="redraw" data-help="draw-button" onclick="return false;">
+                              <a href="" class="navbar-btn d-block glow-on-hover disabled" id="redraw" data-help="draw-button" onclick="return false;">
                                   <i class="icon-unlock bi-pencil fs-2x"></i><span class="d-block"><u>D</u>raw</span>
                               </a>
                           </li>
                           <hr class="nav-bottom-alignment border-color">
                           <li class="nav-bottom-alignment">
                               <p class="side-menu-text">State</p>
-                              <li class="nav-bottom-alignment disabled">
-                                  <a href="#" class="navbar-btn d-block mt-3" onclick="showLoadStateWindow();" data-help="load-state-button">
+                              <li class="nav-bottom-alignment">
+                                  <a href="" class="navbar-btn d-block glow-on-hover" id="stateload" data-help="draw-button" onclick="return false;">
                                       <i class="icon-unlock bi bi-upload fs-2x"></i><span class="d-block">Load</span>
                                   </a>
                               </li>
-                              <li class="nav-bottom-alignment disabled"><a href="#" class="navbar-btn d-block" onclick="showSaveStateWindow();" data-help="save-state-button" disabled-in-read-only="true"><i class="icon-unlock bi bi-download fs-2x"></i><span class="d-block">Save</span> </a></li>
+                              <li class="nav-bottom-alignment"><a href="" class="navbar-btn d-block glow-on-hover" id="statesave" data-help="draw-button" onclick="return false;"><i class="icon-unlock bi bi-download fs-2x"></i><span class="d-block">Save</span> </a></li>
                           </li>
                           <hr class="nav-bottom-alignment border-color">
                           <p class="side-menu-text nav-bottom-alignment">Display</p> 
@@ -587,11 +587,11 @@
                       </button>
                     </div>
                     <div class="col-12 pt-2 d-flex align-items-center justify-content-center">
-                      <button type="button" class="col-3 btn btn-outline-secondary btn-md mr-1 align-items-center justify-content-center" id="binload" disabled>
+                      <button type="button" class="col-3 btn btn-outline-secondary btn-md mr-1 align-items-center justify-content-center" id="binload">
                         <i class="bi bi-arrow-up-square fa-lg bin-icon-size" aria-hidden="true"></i>
                         <span class="font-weight-normal">Load bins</span>
                       </button>
-                      <button type="button" class="col-3 btn btn-outline-secondary btn-md mr-1 align-items-center justify-content-center" id="binsave" disabled>
+                      <button type="button" class="col-3 btn btn-outline-secondary btn-md mr-1 align-items-center justify-content-center" id="binsave">
                         <i class="bi bi-arrow-down-square fa-lg bin-icon-size" aria-hidden="true"></i>
                         <span class="font-weight-normal">Store bins</span>
                       </button>
@@ -619,8 +619,8 @@
                         <table class="table table-striped table-bordered sortable">
                           <thead>
                             <tr>
-                              <th>Genome Name</th>
-                              <th>Occurrence</th>
+                              <th>Item Name</th>
+                              <th>Information</th>
                             </tr>
                           </thead>
                           <tbody id="RightOffcanvasBodyTop" class="sortable">
@@ -756,6 +756,12 @@
     <div class="modal fade" id="InfoModal" aria-hidden="true" aria-labelledby="exampleModalToggleLabel" tabindex="-1">
       <div class="modal-dialog modal-dialog-centered modal-xl">
         <div class="modal-content">
+            <div class="modal-header">
+            <h5 class="modal-title border-bottom-0" style="font-size: x-large;">Synteny gene cluster summary</h5>
+            <!-- <button type="button" class="close d-flex" data-dismiss="modal" aria-label="Close" aria-hidden="true">
+              <i class="bi bi-x-lg"></i>
+            </button> -->
+          </div>
           <div class="modal-body overflow-auto" id="InfoModalBody">
           </div>
           <div class="modal-footer d-flex justify-content-center" id="InfoModalFooter">
@@ -769,22 +775,110 @@
               <button class="btn btn-outline-success" id="AddBin">
                 <i class="bi bi-archive-fill"> Bin Add/Remove </i>
               </button>
+                 <button class="btn btn-outline-danger" data-dismiss="modal" aria-label="Close" aria-hidden="true">
+                  <i class="bi bi-x-lg">Close</i>
+                </button>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="modal fade" id="BinModal" aria-hidden="true" aria-labelledby="exampleModalToggleLabel" tabindex="-1">
-      <div class="modal-dialog modal-dialog-centered modal-xl">
+    <div class="modal fade" id="SaveBin" aria-hidden="true" aria-labelledby="exampleModalToggleLabel" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered modal-xs">
         <div class="modal-content">
-          <!-- <div class="modal-header">
-            <h5 class="modal-title border-bottom-0" id="BinModalTitle">Bin Information</h5>
-            <button type="button" class="close d-flex" data-dismiss="modal" aria-label="Close" aria-hidden="true">
+          <div class="modal-header">
+            <h5 class="modal-title border-bottom-0" style="font-size: large;">Store bin collection</h5>
+            <!-- <button type="button" class="close d-flex" data-dismiss="modal" aria-label="Close" aria-hidden="true">
               <i class="bi bi-x-lg"></i>
-            </button>
-          </div> -->
-          <div class="modal-body overflow-auto" id="BinModalBody">
+            </button> -->
+          </div>
+          <div class="modal-body overflow-auto" id="SaveBinBody">
+          </div>
+            <div class="modal-footer d-flex justify-content-center" id="SaveBinFooter">
+            <div class="d-flex btn-group">
+              <button class="btn btn-outline-success" id="SaveBinButton">
+                <i class="bi bi-download"> Store</i>
+              </button>
+              <button class="btn btn-outline-danger" data-dismiss="modal" aria-label="Close" aria-hidden="true">
+                  <i class="bi bi-x-lg">Close</i>
+                </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+      
+    <div class="modal fade" id="SaveState" aria-hidden="true" aria-labelledby="exampleModalToggleLabel" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered modal-xs">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title border-bottom-0" style="font-size: large;">Store state</h5>
+            <!-- <button type="button" class="close d-flex" data-dismiss="modal" aria-label="Close" aria-hidden="true">
+              <i class="bi bi-x-lg"></i>
+            </button> -->
+          </div>
+             <div class="modal-body overflow-auto" id="SaveStateBody">
+          </div>
+          <div class="modal-footer d-flex justify-content-center" id="SaveStateFooter">
+            <div class="d-flex btn-group">
+              <button class="btn btn-outline-success" id="SaveStateButton">
+                <i class="bi bi-download"> Save</i>
+              </button>
+              <button class="btn btn-outline-danger" data-dismiss="modal" aria-label="Close" aria-hidden="true">
+                  <i class="bi bi-x-lg">Close</i>
+                </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal fade" id="LoadBin" aria-hidden="true" aria-labelledby="exampleModalToggleLabel" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered modal-xs">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title border-bottom-0" style="font-size: large;">Load bin collection</h5>
+            <!-- <button type="button" class="close d-flex" data-dismiss="modal" aria-label="Close" aria-hidden="true">
+              <i class="bi bi-x-lg"></i>
+            </button> -->
+          </div>
+          <div class="modal-body overflow-auto" id="LoadBinBody">
+          </div>
+          <div class="modal-footer d-flex justify-content-center" id="LoadBinFooter">
+            <div class="d-flex btn-group">
+              <button class="btn btn-outline-success" id="LoadBinButton">
+                <i class="bi bi-download"> Store</i>
+              </button>
+              <button class="btn btn-outline-danger" data-dismiss="modal" aria-label="Close" aria-hidden="true">
+                  <i class="bi bi-x-lg">Close</i>
+                </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+      
+    <div class="modal fade" id="LoadState" aria-hidden="true" aria-labelledby="exampleModalToggleLabel" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered modal-xs">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title border-bottom-0" style="font-size: large;">Load state</h5>
+            <!-- <button type="button" class="close d-flex" data-dismiss="modal" aria-label="Close" aria-hidden="true">
+              <i class="bi bi-x-lg"></i>
+            </button> -->
+          </div>
+            <div class="modal-body overflow-auto" id="LoadStateBody">
+          </div>
+          <div class="modal-footer d-flex justify-content-center" id="LoadStateFooter">
+            <div class="d-flex btn-group">
+              <button class="btn btn-outline-success" id="LoadStateButton">
+                <i class="bi bi-download"> Load</i>
+              </button>
+              <button class="btn btn-outline-danger" data-dismiss="modal" aria-label="Close" aria-hidden="true">
+                  <i class="bi bi-x-lg">Close</i>
+                </button>
+            </div>
           </div>
         </div>
       </div>
