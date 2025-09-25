@@ -1253,10 +1253,7 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                 gene_coverages_in_mod = []
                 gene_detection_in_mod = []
                 for gc in gcids_in_mod:
-                    if self.enzymes_of_interest_df is not None:
-                        gc_idx = gc
-                    else:
-                        gc_idx = int(gc)
+                    gc_idx = int(gc)
                     gene_coverages_in_mod.append(c_dict["genes_to_coverage"][s][gc_idx])
                     gene_detection_in_mod.append(c_dict["genes_to_detection"][s][gc_idx])
 

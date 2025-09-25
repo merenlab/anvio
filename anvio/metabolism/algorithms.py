@@ -919,7 +919,7 @@ class KeggEstimationAlgorithms:
         meta_dict_for_bin[mod]["average_coverage_per_sample"] = {}
         meta_dict_for_bin[mod]["average_detection_per_sample"] = {}
 
-        if enzymes_of_interest_df.empty and not profile_db:
+        if enzymes_of_interest_df is None and not profile_db:
             raise ConfigError("The add_module_coverage() function cannot work without a properly initialized "
                               "profile database.")
 
