@@ -181,20 +181,6 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
         if "modules_custom" in self.output_modes and not self.custom_output_headers:
             raise ConfigError("You have requested a 'custom' output mode, but haven't told us what headers to include in that output. "
                               "You should be using the --custom-output-headers flag to do this.")
-        if self.custom_output_headers:
-            if anvio.DEBUG:
-                self.run.info("Custom Output Headers", ", ".join(self.custom_output_headers))
-            illegal_headers = set(self.custom_output_headers).difference(set(self.available_headers.keys()))
-            if illegal_headers:
-                raise ConfigError(f"You have requested some output headers that we cannot handle. The offending ones "
-                                  f"are: {', '.join(illegal_headers)}. Please use the flag --list-available-output-headers to see which ones are acceptable.")
-
-            # check if any headers requested for modules_custom mode are reserved for KOfams mode
-            if "modules_custom" in self.output_modes:
-                for header in self.custom_output_headers:
-                    if self.available_headers[header]['mode_type'] != "modules" and self.available_headers[header]['mode_type'] != "all":
-                        raise ConfigError(f"Oh dear. You requested the 'modules_custom' output mode, but gave us a header ({header}) "
-                                          "that is suitable only for %s mode(s). Not good." % (self.available_headers[header]['mode_type']))
 
         outputs_require_ko_dict = [m for m in self.output_modes if self.available_modes[m]['data_dict'] == 'kofams']
         output_string = ", ".join(outputs_require_ko_dict)
@@ -302,6 +288,21 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                                                        'mode_type': 'modules',
                                                        'description': "Number of copies of each top-level step in the module (the minimum of these is the stepwise module copy number)"
                                                        }
+        # HEADERS SANITY CHECK
+        if self.custom_output_headers:
+            if anvio.DEBUG:
+                self.run.info("Custom Output Headers", ", ".join(self.custom_output_headers))
+            illegal_headers = set(self.custom_output_headers).difference(set(self.available_headers.keys()))
+            if illegal_headers:
+                raise ConfigError(f"You have requested some output headers that we cannot handle. The offending ones "
+                                  f"are: {', '.join(illegal_headers)}. Please use the flag --list-available-output-headers to see which ones are acceptable.")
+
+            # check if any headers requested for modules_custom mode are reserved for KOfams mode
+            if "modules_custom" in self.output_modes:
+                for header in self.custom_output_headers:
+                    if self.available_headers[header]['mode_type'] != "modules" and self.available_headers[header]['mode_type'] != "all":
+                        raise ConfigError(f"Oh dear. You requested the 'modules_custom' output mode, but gave us a header ({header}) "
+                                          "that is suitable only for %s mode(s). Not good." % (self.available_headers[header]['mode_type']))
 
         # LOAD KEGG DATA
         if not self.only_user_modules:
