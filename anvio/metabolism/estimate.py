@@ -164,41 +164,6 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
         if self.pan_db_path:
             utils.is_pan_db_and_genomes_storage_db_compatible(self.pan_db_path, self.genomes_storage_path)
 
-        if self.add_coverage:
-            if self.enzymes_of_interest_df is None:
-                if not self.profile_db_path:
-                    raise ConfigError("Adding coverage values requires a profile database. Please provide one if you can. :)")
-                if utils.is_blank_profile(self.profile_db_path):
-                    raise ConfigError("You have provided a blank profile database, which sadly will not contain any coverage "
-                                      "values, so the --add-coverage flag will not work.")
-            # this function will initialize the profile db if necessary, and will create self.coverage_sample_list
-            self.add_gene_coverage_to_headers_list()
-
-        if self.add_copy_number:
-            self.available_modes["module_paths"]["headers"].extend(["num_complete_copies_of_path"])
-            self.available_modes["module_steps"]["headers"].extend(["step_copy_number"])
-            self.available_modes["modules"]["headers"].extend(["pathwise_copy_number", "stepwise_copy_number", "per_step_copy_numbers"])
-            self.available_headers["num_complete_copies_of_path"] = {'cdict_key': None,
-                                                       'mode_type': 'modules',
-                                                       'description': "Number of complete copies of the path through the module"
-                                                       }
-            self.available_headers["step_copy_number"] = {'cdict_key': None,
-                                                       'mode_type': 'modules',
-                                                       'description': "Number of copies of the step"
-                                                       }
-            self.available_headers["pathwise_copy_number"] = {'cdict_key': None,
-                                                       'mode_type': 'modules',
-                                                       'description': "Pathwise module copy number, as in the maximum number of complete copies considering all the paths of highest completeness"
-                                                       }
-            self.available_headers["stepwise_copy_number"] = {'cdict_key': None,
-                                                       'mode_type': 'modules',
-                                                       'description': "Stepwise module copy number, as in the minimum copy number of all top-level steps in the module"
-                                                       }
-            self.available_headers["per_step_copy_numbers"] = {'cdict_key': None,
-                                                       'mode_type': 'modules',
-                                                       'description': "Number of copies of each top-level step in the module (the minimum of these is the stepwise module copy number)"
-                                                       }
-
         # OUTPUT OPTIONS SANITY CHECKS
         if anvio.DEBUG:
             self.run.info("Output Modes", ", ".join(self.output_modes))
@@ -262,7 +227,6 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
         elif self.enzymes_of_interest_df is not None:
             self.run.info("Enzymes of interest", f"{', '.join(self.enzymes_of_interest_df['enzyme_accession'].tolist())}", quiet=self.quiet)
 
-
         estimation_mode = "Genome (or metagenome assembly)"
         if self.profile_db_path and self.collection_name:
             if not self.metagenome_mode:
@@ -301,6 +265,42 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
         else:
             raise ConfigError("This piece of code ended up at a place it should have never ended up at :( We need attention "
                               "from a programmer here.")
+
+        # UPDATE OUTPUT MODES AND HEADERS ACCORDING TO INPUT OPTIONS
+        if self.add_coverage:
+            if self.enzymes_of_interest_df is None:
+                if not self.profile_db_path:
+                    raise ConfigError("Adding coverage values requires a profile database. Please provide one if you can. :)")
+                if utils.is_blank_profile(self.profile_db_path):
+                    raise ConfigError("You have provided a blank profile database, which sadly will not contain any coverage "
+                                      "values, so the --add-coverage flag will not work.")
+            # this function will initialize the profile db if necessary, and will create self.coverage_sample_list
+            self.add_gene_coverage_to_headers_list()
+
+        if self.add_copy_number:
+            self.available_modes["module_paths"]["headers"].extend(["num_complete_copies_of_path"])
+            self.available_modes["module_steps"]["headers"].extend(["step_copy_number"])
+            self.available_modes["modules"]["headers"].extend(["pathwise_copy_number", "stepwise_copy_number", "per_step_copy_numbers"])
+            self.available_headers["num_complete_copies_of_path"] = {'cdict_key': None,
+                                                       'mode_type': 'modules',
+                                                       'description': "Number of complete copies of the path through the module"
+                                                       }
+            self.available_headers["step_copy_number"] = {'cdict_key': None,
+                                                       'mode_type': 'modules',
+                                                       'description': "Number of copies of the step"
+                                                       }
+            self.available_headers["pathwise_copy_number"] = {'cdict_key': None,
+                                                       'mode_type': 'modules',
+                                                       'description': "Pathwise module copy number, as in the maximum number of complete copies considering all the paths of highest completeness"
+                                                       }
+            self.available_headers["stepwise_copy_number"] = {'cdict_key': None,
+                                                       'mode_type': 'modules',
+                                                       'description': "Stepwise module copy number, as in the minimum copy number of all top-level steps in the module"
+                                                       }
+            self.available_headers["per_step_copy_numbers"] = {'cdict_key': None,
+                                                       'mode_type': 'modules',
+                                                       'description': "Number of copies of each top-level step in the module (the minimum of these is the stepwise module copy number)"
+                                                       }
 
         # LOAD KEGG DATA
         if not self.only_user_modules:
