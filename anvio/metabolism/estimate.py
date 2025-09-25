@@ -171,7 +171,7 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                 if utils.is_blank_profile(self.profile_db_path):
                     raise ConfigError("You have provided a blank profile database, which sadly will not contain any coverage "
                                       "values, so the --add-coverage flag will not work.")
-
+            # this function will initialize the profile db if necessary, and will create self.coverage_sample_list
             self.add_gene_coverage_to_headers_list()
 
         if self.add_copy_number:
@@ -465,6 +465,8 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
 
     def add_gene_coverage_to_headers_list(self):
         """Updates the headers lists for relevant output modes with coverage and detection column headers.
+        
+        Creates the self.coverage_sample_list attribute that will be used downstream for output generation.
 
         If a profile DB was provided, it is initialized in this function in order to get access to the sample names that will
         be part of the available coverage/detection headers.
@@ -472,7 +474,7 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
 
         # obtain list of sample names
         if self.enzymes_of_interest_df is not None: # in this case the input name is already determined by the initialization method
-            samples_list = [self.contigs_db_project_name]
+            self.coverage_sample_list = [self.contigs_db_project_name]
 
         else:
             if not self.profile_db:
@@ -481,7 +483,7 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                 from anvio.dbops import ProfileSuperclass # <- import here to avoid circular import
                 self.profile_db = ProfileSuperclass(self.args)
 
-            samples_list = self.profile_db.p_meta['samples']
+            self.coverage_sample_list = self.profile_db.p_meta['samples']
 
         # obtain lists of all the headers we will need to add.
         # there will be one column per sample for both coverage and detection (for individual genes and for module averages)
@@ -490,7 +492,7 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
         modules_coverage_headers = []
         modules_detection_headers = []
 
-        for s in samples_list:
+        for s in self.coverage_sample_list:
             # we update the available header list so that these additional headers pass the sanity checks
             kofam_hits_coverage_headers.append(s + "_coverage")
             self.available_headers[s + "_coverage"] = {'cdict_key': None,

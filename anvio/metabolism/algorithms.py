@@ -896,11 +896,11 @@ class KeggEstimationAlgorithms:
         return now_complete
 
 
-    def add_module_coverage(self, mod, meta_dict_for_bin, profile_db=None, enzymes_of_interest_df=None, coverage_sample_list=None):
+    def add_module_coverage(self, mod, meta_dict_for_bin, profile_db=None, enzymes_of_interest_df=None):
         """This function updates the metabolism dictionary with coverage values for the given module.
 
-        It must be called after init_gene_coverage() or add_gene_coverage_to_headers_list() so that
-        the self.profile_db attribute is established.
+        For profile DB input, this function must be called after dbaccess.init_gene_coverage() so that the 
+        relevant gene coverage values are initialized.
 
         NEW KEYS ADDED TO METABOLISM COMPLETENESS DICT
         =======
@@ -919,12 +919,19 @@ class KeggEstimationAlgorithms:
         meta_dict_for_bin[mod]["average_coverage_per_sample"] = {}
         meta_dict_for_bin[mod]["average_detection_per_sample"] = {}
 
-        if not enzymes_of_interest_df and not profile_db:
+        if enzymes_of_interest_df.empty and not profile_db:
             raise ConfigError("The add_module_coverage() function cannot work without a properly initialized "
                               "profile database.")
 
         num_genes = len(meta_dict_for_bin[mod]["gene_caller_ids"])
-        for s in coverage_sample_list:
+        if not self.coverage_sample_list:
+            # here we establish the same 'sample list' that we use in estimate.add_gene_coverage_to_headers_list()
+            if profile_db:
+                self.coverage_sample_list = profile_db.p_meta['samples']
+            elif enzymes_of_interest_df:
+                self.coverage_sample_list = [self.contigs_db_project_name] 
+
+        for s in self.coverage_sample_list:
             meta_dict_for_bin[mod]["genes_to_coverage"][s] = {}
             meta_dict_for_bin[mod]["genes_to_detection"][s] = {}
             coverage_sum = 0
