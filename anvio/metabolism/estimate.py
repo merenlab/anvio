@@ -113,10 +113,11 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                     raise ConfigError("Dear programmer, the enzymes dataframe you have sent here includes enzymes with no "
                                       "accession IDs. This is no bueno.")
 
-            if any([not enzyme_accession.startswith('K') for enzyme_accession in self.enzymes_of_interest_df["enzyme_accession"].to_list()]):
+            if not self.user_input_dir and any([not enzyme_accession.startswith('K') for enzyme_accession in self.enzymes_of_interest_df["enzyme_accession"].to_list()]):
                 raise ConfigError("It appears that the list of enzymes this function received includes those that do not look like "
                                   "the kind of enzyme accession IDs anvi'o is used to working with (i.e. K00001, K12345, etc). "
-                                  "Please check your input.")
+                                  "Please check your input. If you are trying to work with user-defined modules containing non-KEGG "
+                                  "enzymes, then you might have forgotten to use the `--user-modules` flag.")
 
         if self.only_user_modules and not self.user_input_dir:
             raise ConfigError("You can only use the flag --only-user-modules if you provide a --user-modules directory.")
