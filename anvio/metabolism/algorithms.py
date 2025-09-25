@@ -1012,7 +1012,8 @@ class KeggEstimationAlgorithms:
                 stepwise_complete_mods.add(mod)
 
             if add_coverage:
-                self.add_module_coverage(mod, metabolism_dict_for_list_of_splits)
+                self.add_module_coverage(mod, metabolism_dict_for_list_of_splits, profile_db=self.profile_db, 
+                                        enzymes_of_interest_df=self.enzymes_of_interest_df)
 
         # go back and adjust completeness/copy number of modules that are defined by other modules
         if mods_def_by_modules:
