@@ -359,7 +359,7 @@ class KeggEstimatorArgs():
 
         self.progress.new("Loading enzymes-txt file...")
         expected_fields = ['gene_id', 'enzyme_accession', 'source']
-        enzyme_df = pd.read_csv(self.enzymes_txt, sep="\t")
+        enzyme_df = pd.read_csv(self.enzymes_txt, sep="\t", index_col=False)
         self.progress.end()
 
         self.run.info("Number of genes loaded from enzymes-txt file", enzyme_df.shape[0])
