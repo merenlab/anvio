@@ -96,7 +96,6 @@
     },
     "anvi_profile": {
         "threads": 3,
-        "--sample-name": "{sample}",
         "--overwrite-output-destinations": true
     },
     "anvi_merge": {
