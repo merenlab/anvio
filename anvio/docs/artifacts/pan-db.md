@@ -12,7 +12,7 @@ While it is possible to read and write a given anvi'o pan database through SQLit
 
 ### Initiate a pan database instance
 
-``` python
+``` pythoN
 import argparse
 
 from anvio.dbops import PanSuperclass
@@ -92,4 +92,15 @@ print(gene_cluster_sequences)
     "Genome_D": {}
   }
 }
+```
+
+### Get metabolic relevance of a list of gene clusters
+
+
+``` python
+gcs = ["GC_00002419", "GC_00002456", "GC_00002454", "GC_00002452", "GC_00002451", "GC_00002450",
+       "GC_00002447", "GC_00002446", "GC_00002445", "GC_00002444", "GC_00002443", "GC_00002442",
+       "GC_00002439", "GC_00002438", "GC_00002437", "GC_00002436", "GC_00002435", "GC_00002434"]
+
+metabolism_d, kofams_d = pan.get_metabolism_estimates_for_a_list_of_gene_clusters(gene_clusters_of_interest=gcs)
 ```

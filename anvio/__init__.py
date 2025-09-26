@@ -3,11 +3,7 @@
 
 """Lots of under-the-rug, operational garbage in here. Run. Run away."""
 
-anvio_version = '8-dev'
-anvio_codename = 'marie' # after Marie Tharp -- see the release notes for details: https://github.com/merenlab/anvio/releases/tag/v8
-
-major_python_version_required = 3
-minor_python_version_required = 10
+from anvio.version import anvio_version, anvio_codename, major_python_version_required, minor_python_version_required, get_versions
 
 import sys
 import platform
@@ -49,12 +45,6 @@ except Exception:
 import os
 import json
 import copy
-
-from tabulate import tabulate
-
-# yes, this library is imported but never used, but don't remove it
-# unless you want to explode `bottle`:
-import pkg_resources
 
 # very important variable to determine which help docs are relevant for
 # this particlar anvi'o environment
@@ -111,6 +101,8 @@ def P(d, dont_exit=False):
 
 def TABULATE(table, header, numalign="right", max_width=0):
     """Encoding-safe `tabulate`"""
+
+    from tabulate import tabulate
 
     tablefmt = "fancy_grid" if sys.stdout.encoding == "UTF-8" else "grid"
     table = tabulate(table, headers=header, tablefmt=tablefmt, numalign=numalign)
@@ -298,13 +290,12 @@ D = {
             ['--prodigal-translation-table'],
             {'metavar': 'INT',
              'default': None,
-             'help': "This is a parameter to pass to the Prodigal for a specific translation table. This parameter "
+             'help': "This is a parameter to pass to the Pyrodigal-gv for a specific translation table. This parameter "
                      "corresponds to the parameter `-g` in Prodigal, the default value of which is 11 (so if you do "
-                     "not set anything, it will be set to 11 in Prodigal runtime. Please refer to the Prodigal "
+                     "not set anything, it will be set to 11 in Pyrodigal-gv runtime. Please refer to the Prodigal "
                      "documentation to determine what is the right translation table for you if you think you need "
                      "it.)"}
                 ),
-
     'skip-gene-calling': (
             ['--skip-gene-calling'],
             {'default': False,
@@ -317,15 +308,22 @@ D = {
             ['--prodigal-single-mode'],
             {'default': False,
              'action': 'store_true',
-             'help': "By default, anvi'o will use prodigal for gene calling (unless you skipped gene calling, or provided "
-                     "anvi'o with external gene calls). One of the flags anvi'o includes in prodigal run is `-p meta`, which "
-                     "optimizes prodigal's ability to identify genes in metagenomic assemblies. Use this flag to run prodigal "
-                     "in 'normal mode'. In some rare cases, for a given set of contigs prodigal will yield a segmentation fault "
-                     "error due to one or more genes in your collections confusing the program when it is used with the "
-                     "`-p meta` flag. While anvi'o developers are not quite sure under what circumstances this happens, we "
-                     "realized that removal of this flag often solves this issue. If you are dealing with such cyrptic errors, "
-                     "the inclusion of `--prodigal-single-mode` will instruct anvi'o to run prodigal without the `-meta` flag, "
-                     "and may resolve this issue for you."}
+             'help': "By default, anvi'o will use pyrodigal-gv for gene calling (unless you skipped gene calling, or provided "
+                     "anvi'o with external gene calls). One of the flags anvi'o includes in pyrodigal-gv run is `-p meta`, which "
+                     "optimizes pyrodigal-gv's ability to identify genes in metagenomic assemblies. In some rare cases, for a "
+                     "given set of contigs pyrodigal-gv will yield a segmentation fault error due to one or more genes in your "
+                     "collections will confuse the program when it is used with the `-p meta` flag. While anvi'o developers "
+                     "are not quite sure under what circumstances this happens, we realized that removal of this flag often "
+                     "solves this issue. If you are dealing with such cyrptic errors, the inclusion of `--skip-prodigal-meta-flag` "
+                     "will instruct anvi'o to run pyrodigal-gv without the `-meta` flag, and may resolve this issue for you."}
+                ),
+    'full-gene-calling-report': (
+            ['--full-gene-calling-report'],
+            {'metavar': 'FILE',
+             'default': None,
+             'help': "When anvi'o is done with gene calling using pyrodigal, it only stores some data about individual gene "
+                     "calls. Using this parameter you can pass an output file to report most comprehensive data on gene calls "
+                     "as a TAB-delimited text file with gene caller ids matching to those that are stored in the contigs-db."}
                 ),
     'remove-partial-hits': (
             ['--remove-partial-hits'],
@@ -437,13 +435,14 @@ D = {
     'gene-caller': (
             ['--gene-caller'],
             {'metavar': 'GENE-CALLER',
-             'default': constants.default_gene_caller,
-             'help': f"The gene caller to utilize. Anvi'o supports multiple gene callers, and some operations (including this one) "
-                     f"requires an explicit mentioning of which one to use. The default {constants.default_gene_caller} is but it "
-                     f"will not be enough if you were experiencing your rebelhood as you should, and have generated your contigs "
-                     f"database with `--external-gene-callers` or something. Also, some HMM collections may add new gene calls "
-                     f"into a given contigs database as an ad-hoc fashion, so if you want to see all the options available to you "
-                     f"in a given contigs database, please run the program `anvi-db-info` and take a look at the output."}
+             'default': None,
+             'help': "The gene caller to utilize. Anvi'o supports multiple gene callers, and some operations (including this one) "
+                     "may require an explicit mentioning of which one to use. The default gene caller is identified automatically "
+                     "in most cases (based on whether the most frequent gene calls match to a known gene caller in anvi'o), but if "
+                     "you have a contigs-db generated with `--external-gene-callers` or something, you may have to pay extra "
+                     "attention here. Also, some HMM collections may add new gene calls into a given contigs-db as an ad-hoc fashion, "
+                     "so if you want to see all the options available to you in a given contigs database, please run the program "
+                     "`anvi-db-info` and take a look at the output."}
                 ),
     'list-gene-callers': (
             ['--list-gene-callers'],
@@ -671,6 +670,14 @@ D = {
              'help': "Saves the occurrence frequency information for functions in genomes in a TAB-delimited format. "
                      "A file name must be provided. To learn more about how the functional occurrence is computed, please "
                      "refer to the tutorial."}
+                ),
+    'qlambda': (
+            ['--qlambda'],
+            {'default': None,
+             'metavar': 'NUM',
+             'type': float,
+             'help': "If you want to set the maximum lambda value for q-value estimation, provide a fraction between "
+                     "0.05 and 1."}
                 ),
     'table': (
             ['--table'],
@@ -930,11 +937,12 @@ D = {
             ['--cog-version'],
             {'default': None,
              'type': str,
-             'help': "COG version. The default is the latest version, which is COG20, meaning that anvi'o will "
-                     "use the NCBI's 2020 release of COGs to setup the database and run it on contigs databases. "
-                     "There is also an older version of COGs from 2014. If you would like anvi'o to work with that "
-                     "one, please use COG14 as a parameter. On a single computer you can have both, and on a single "
-                     "contigs database you can run both. Cool and confusing. The anvi'o way."}
+             'help': "COG version. The default is the latest version, which is COG24, meaning that anvi'o will "
+                     "use the NCBI's 2024 release of COGs to setup the database and run it on contigs databases. "
+                     "Alternatively you can pass any of these as a parameter: 'COG20' (2020 release of the database), "
+                     "or 'COG14' (the 2014 release of the database). You can have multiple databases on your "
+                     "computer, and you can run multiple of them on a single contigs-db file. Cool and confusing. "
+                     "The anvi'o way."}
                 ),
     'pfam-data-dir': (
             ['--pfam-data-dir'],
@@ -3758,6 +3766,172 @@ D = {
              'help': "Specify the structure type to include additional data tables for the Structural Pangenome summary. "
                      "This option allows you to enhance the analysis by integrating specific structural data, "
                      "which can provide deeper insights into the pangenomic relationships among the samples."}
+    'min-codon-filter': (
+            ['--min-codon-filter'],
+            {'choices': ['length', 'remaining', 'both'],
+             'default': 'both',
+             'help': "This argument arises from the ambiguity of filters that remove genes and functions "
+                     "by number of codons (`--gene-min-codons` and `--function-min-codons`) in relation to "
+                     "filters that drop codons (`--exclude/include-amino-acids` and "
+                     "`--pansequence-min-amino-acids`). Genes (and functions) can be filtered by "
+                     "their full length, e.g., genes shorter than 300 codons are ignored. They can also be "
+                     "filtered by the number of codons remaining after dropping codons. The codon length "
+                     "filter followed by dropping codons can result in genes and functions with fewer "
+                     "codons than the original codon threshold -- thus the option of both 'length' and "
+                     "'remaining' filters to ensure that total codon frequencies in the output always "
+                     "meet the minimum codon threshold. 'both' is needed as an option in addition to "
+                     "'remaining' so dynamic codon filtering by `--pansequence-min-amino-acids` operates "
+                     "on genes that passed the first length filter."}
+    ),
+    'pansequence-min-amino-acids': (
+            ['--pansequence-min-amino-acids'],
+            {'nargs': 2,
+             'default': [0, 1.0],
+             'help': "The first value of the argument is a positive integer representing a minimum number "
+                     "of codons encoding an amino acid -- 'min_amino_acids' -- and the second is a number "
+                     "between 0 and 1 representing a fraction of genes -- 'min_gene_fraction'. Remove "
+                     "codons for amino acids (and STP) that are less numerous than 'min_amino_acids' in a "
+                     "'min_gene_fraction' of genes. For example, if 'min_amino_acids' is 5 and "
+                     "'min_gene_fraction' is 0.9, then if there are fewer than 5 codons for an amino "
+                     "acid/STP in ≥90%% of genes, then the columns for these codons are dropped."}
+    ),
+    'sequence-min-amino-acids': (
+            ['--sequence-min-amino-acids'],
+            {'type': int,
+             'metavar': 'INTEGER',
+             'default': 0,
+             'help': "Do not report codons for amino acids (and STP) that are less numerous than the given "
+                     "argument. For example, if the argument is 5, and a gene or function query has 4 "
+                     "codons encoding Asn, 2 AAT and 2 AAC, then a row for this gene in the output table "
+                     "will have missing values in Asn columns. This filter occurs at the end of the "
+                     "analysis before writing results and so does not affect prior calculations."}
+    ),
+    'include-amino-acids': (
+            ['--include-amino-acids'],
+            {'nargs': '+',
+             'metavar': 'AMINO ACID',
+             'help': "This is the complement of `--exclude-amino-acids`. Only codons for the given amino "
+                     "acids are analyzed and reported."}
+    ),
+    'exclude-amino-acids': (
+            ['--exclude-amino-acids'],
+            {'nargs': '+',
+             'metavar': 'AMINO ACID',
+             'help': "Remove codons that decode the given amino acids (use three-letter codes, e.g., Ala, "
+                     "and STP for stop codons). If `--synonymous`, this argument defaults to 'STP Met "
+                     "Trp', and if other amino acids are excluded, for STP, Met, and Trp codons to still "
+                     "be excluded from the output table, they must also be explicitly provided in the "
+                     "argument."}
+        ),
+    'function-min-codons': (
+            ['--function-min-codons'],
+            {'type': int,
+             'metavar': 'INTEGER',
+             'default': 0,
+             'help': "Set the minimum number of codons required in a function. Genes with fewer than "
+                     "`--gene-min-codons` are first removed, and then functional groups of the remaining "
+                     "genes with fewer than `--function-min-codons` are removed. This filter only applies "
+                     "when returning functions."}
+        ),
+    'gene-min-codons': (
+            ['--gene-min-codons'],
+            {'type': int,
+             'metavar': 'INTEGER',
+             'default': 0,
+             'help': "Set the minimum number of codons required in a gene. When functions are returned "
+                     "rather than genes, this filter is applied to genes before grouping them as "
+                     "functions."}
+        ),
+    'relative': (
+            ['--relative'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Return relative frequencies across codons or amino acids in each gene or function."}
+        ),
+    'synonymous': (
+           ['--synonymous'],
+           {'default': False,
+            'action': 'store_true',
+            'help': "Return synonymous (per-amino acid) frequencies among the codons encoding each amino "
+                    "acid in each gene or function."}
+            ),
+    'return-amino-acids': (
+            ['--return-amino-acids'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Return frequencies of the sets of codons encoding the same amino acid."}
+        ),
+    'encodings-txt': (
+            ['--encodings-txt'],
+            {'help': "Changes to the standard genetic code can be provided in this tab-delimited file of "
+                     "two columns. Each entry in the first column is a codon and each entry in the second "
+                     "column is the three-letter code for the decoded amino acid. For example, to recode "
+                     "the stop codon, TGA, as Trp, 'TGA' would be placed in the first column and 'Trp' in "
+                     "the same row of the second. Stop/termination codons are abbreviated 'STP'. This "
+                     "option affects per-amino acid and synonymous codon output (when using "
+                     "`--return-amino-acids` or `--synonymous`)."}
+        ),
+    'sum': (
+            ['--sum'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Sum frequencies across genes, returning a single row for each genome. When functions "
+                     "or function sources are selected, genes are subsetted to those annotated with the "
+                     "requested functions or annotated by the requested sources."}
+        ),
+    'average': (
+            ['--average'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Average frequencies across genes in the genome, returning a single row for each "
+                     "genome. When functions or function sources are selected, genes are subsetted to "
+                     "those annotated with the requested functions or annotated by the requested sources."}
+        ),
+    'function-sources': (
+            ['--function-sources'],
+            {'nargs': '*',
+             'help': "Return frequencies for functions annotated by these sources, e.g., 'KOfam', "
+                     "'KEGG_BRITE', 'COG20_FUNCTION'. When used with certain other options, such as "
+                     "`--sum`, rather than returning statistics for each function, analyzed genes are "
+                     "subsetted to those annotated by the provided sources. If `--function-sources` is "
+                     "used as a flag without any arguments, then every source will be considered."}
+        ),
+    'function-accessions': (
+            ['--function-accessions'],
+            {'nargs': '+',
+             'help': "Return frequencies for functions with these accessions from the source provided in "
+                     "`--function-sources`. To get accessions from multiple sources, instead use "
+                     "`--select-functions-txt`."}
+        ),
+    'function-names': (
+            ['--function-names'],
+            {'nargs': '+',
+             'help': "Return frequencies for functions with these names from the source provided in "
+                     "`--function-sources`. To get function names from multiple sources, instead "
+                     "use `--select-functions-txt`."}
+        ),
+    'select-functions-txt': (
+            ['--select-functions-txt'],
+            {'help': "Selected functions can be listed in this tab-delimited file of three columns. The "
+                     "first column should contain function annotation sources, the second column "
+                     "accessions, and the third function names. An entry in the source column is required "
+                     "in every row, and either an accession or name, or both, should also be in a row. "
+                     "The file should not have a header of column names."}
+        ),
+    'expect-functions': (
+            ['--expect-functions'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "By default, functions provided by `--function-accessions`, `--function-names`, and "
+                     "`--select-functions-txt` need not be annotated in the input genomes. With this flag, "
+                     "an error will be raised if any of the functions are not present in an input genome."}
+        ),
+    'shared-function-sources': (
+            ['--shared-function-sources'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag to exclude function annotation sources that were not run on every "
+                     "input genome."}
         ),
     'report-all-estimates': (
             ['--report-all-estimates'],
@@ -3783,27 +3957,18 @@ def K(param_id, params_dict={}):
 
 # The rest of this file is composed of code that responds to '-v' or '--version' calls from clients,
 # and provides access to the database version numbers for all anvi'o modules.
-
-import anvio.tables as t
-from anvio.terminal import Run
-
-
-run = Run()
-
-
-def set_version():
-    return anvio_version, \
-           anvio_codename, \
-           t.contigs_db_version, \
-           t.pan_db_version, \
-           t.profile_db_version, \
-           t.genes_db_version, \
-           t.auxiliary_data_version, \
-           t.genomes_storage_vesion, \
-           t.structure_db_version, \
-           t.metabolic_modules_db_version, \
-           t.trnaseq_db_version
-
+(__version__,
+ __codename__,
+ __contigs__version__,
+ __profile__version__, \
+ __genes__version__, \
+ __pan__version__, \
+ __auxiliary_data_version__, \
+ __structure__version__, \
+ __genomes_storage_version__ , \
+ __trnaseq__version__, \
+ __workflow_config_version__,
+ __kegg_modules_version__) = get_versions()
 
 def get_version_tuples():
     return [("Anvi'o version", "%s (v%s)" % (__codename__, __version__)),
@@ -3819,30 +3984,20 @@ def get_version_tuples():
 
 
 def print_version():
+    from anvio.terminal import Run
+    run = Run()
     run.info("Anvi'o", "%s (v%s)" % (__codename__, __version__), mc='green')
     run.info("Python", platform.python_version(), mc='cyan', nl_after=1)
     run.info("Profile database", __profile__version__)
     run.info("Contigs database", __contigs__version__)
     run.info("Pan database", __pan__version__)
     run.info("Genome data storage", __genomes_storage_version__)
-    run.info("Auxiliary data storage", __auxiliary_data_version__)
     run.info("Structure database", __structure__version__)
     run.info("Metabolic modules database", __kegg_modules_version__)
-    run.info("tRNA-seq database", __trnaseq__version__, nl_after=1)
-
-
-__version__, \
-__codename__, \
-__contigs__version__, \
-__pan__version__, \
-__profile__version__, \
-__genes__version__, \
-__auxiliary_data_version__, \
-__genomes_storage_version__ , \
-__structure__version__, \
-__kegg_modules_version__, \
-__trnaseq__version__ = set_version()
-
+    run.info("tRNA-seq database", __trnaseq__version__)
+    run.info("Genes database", __genes__version__)
+    run.info("Auxiliary data storage", __auxiliary_data_version__)
+    run.info("Workflow configurations", __workflow_config_version__, nl_after=1)
 
 if '-v' in sys.argv or '--version' in sys.argv:
     print_version()

@@ -489,7 +489,7 @@ class Run:
 
 
     def info_single(self, message, overwrite_verbose=False, mc='yellow', nl_before=0, nl_after=0, cut_after=80, level=1, pretty_indentation=True, progress=None):
-        if isinstance(message, str):
+        if isinstance(message, str) and pretty_indentation:
             message = remove_spaces(message)
 
         if level not in self.single_line_prefixes:
@@ -926,7 +926,7 @@ def time_program(program_method):
     TimeCode_params = {
         'success_msg': '%s took ' % program_name,
         'failure_msg': '%s encountered an error after ' % program_name,
-        'suppress_first': 1, # avoid clutter when program finishes or fails within 3 seconds
+        'suppress_first': 1, # avoid clutter when program finishes or fails within 1 seconds
     }
 
     def wrapper(*args, **kwargs):

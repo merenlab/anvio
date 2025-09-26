@@ -14,6 +14,7 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 from anvio.drivers.hmmer import HMMer
+from anvio.dbops import ContigsDatabase
 from anvio.parsers import parser_modules
 from anvio.tables.genefunctions import TableForGeneFunctions
 
@@ -92,7 +93,7 @@ class CAZymeSetup(object):
         if self.args.cazyme_version:
             self.db_version = self.args.cazyme_version.upper()
         else:
-            self.db_version = 'V11'
+            self.db_version = 'V13'
 
         self.db_url = os.path.join("https://bcb.unl.edu/dbCAN2/download/Databases", f"{self.db_version}", f"dbCAN-HMMdb-{self.db_version}.txt")
 
@@ -100,7 +101,12 @@ class CAZymeSetup(object):
     def is_database_exists(self):
         """Determine if CAZyme database has already been downloaded"""
         if os.path.exists(os.path.join(self.cazyme_data_dir, "CAZyme_HMMs.txt")):
-            raise ConfigError(f"It seems you already have CAZyme database installed in the following directory: {self.cazyme_data_dir}"
+            # Try to read the version information if available
+            version_file = os.path.join(self.cazyme_data_dir, "version.txt")
+            with open(version_file, 'r') as f:
+                existing_version = f.readline().strip()
+
+            raise ConfigError(f"It seems you already have CAZyme database {existing_version} installed in the following directory: {self.cazyme_data_dir}. "
                               f"You can use the flag `--reset` to instruct anvi'o to set everything up from scratch at that location, "
                               f"or you can use the parameter `--cazyme-data-dir` to setup the CAZyme databases in a different directory.")
 
@@ -185,6 +191,7 @@ class CAZyme(object):
         self.hmm_program = A('hmmer_program', null) or 'hmmsearch'
         self.noise_cutoff_terms = A('noise_cutoff_terms', null)
         self.cazyme_data_dir = args.cazyme_data_dir
+        self.just_do_it = A('just_do_it', null)
 
         # load_catalog will populate this
         self.function_catalog = {}
@@ -237,8 +244,37 @@ class CAZyme(object):
                               "'anvi-setup-cazymes --reset' to repeat the setup.")
 
 
+    def check_hash_in_contigs_db(self):
+        """Checks the contigs DB self table to make sure it was not already annotated with CAZymes"""
+
+        contigs_db = ContigsDatabase(self.contigs_db_path)
+        current_cazyme_hash_in_contigs_db = contigs_db.db.get_meta_value('cazyme_db_hash', return_none_if_not_in_table=True)
+        contigs_db.disconnect()
+
+        if current_cazyme_hash_in_contigs_db and not self.just_do_it:
+            raise ConfigError(f"The contigs database {self.contigs_db_path} has already been annotated with CAZyme hits version {self.db_version}. "
+                              f"If you really want to overwrite these annotations with new ones, please re-run the command with the flag --just-do-it. "
+                              f"For those who need this information, the CAZyme database used to annotate this contigs database previously "
+                              f"had the following version/URL hash: {current_cazyme_hash_in_contigs_db}")
+
+
+    def set_hash_in_contigs_db(self):
+        """Modifies the contigs DB self table to indicate which CAZyme database version has been used to annotate it."""
+
+        # Create a hash from the database version and URL for tracking
+        hash_content = f"{self.db_version}_{self.db_url}"
+        cazyme_hash = utils.get_hash_for_list([hash_content])
+
+        contigs_db = ContigsDatabase(self.contigs_db_path)
+        contigs_db.db.set_meta_value('cazyme_db_hash', cazyme_hash)
+        contigs_db.disconnect()
+
+
     def process(self):
         """Search CAZyme HMMs over contigs-db, parse, and filter results"""
+
+        # safety check for previous annotations so that people don't overwrite those if they don't want to
+        self.check_hash_in_contigs_db()
 
         self.run.info("CAZyme database version", f"{self.db_version} (originally from {self.db_url})" )
 
@@ -281,11 +317,17 @@ class CAZyme(object):
         functions_dict = {}
         counter = 0
         for hmm_hit in search_results_dict.values():
+            accession = hmm_hit['gene_name'].removesuffix('.hmm') # removing the .hmm suffix from CAZyme HMM names
+            if hmm_hit['gene_hmm_id'].startswith('PF'): # expaned function string if from PFAM
+               function = f"{accession} ({hmm_hit['gene_hmm_id']})"
+            else:
+               function = hmm_hit['gene_hmm_id']
+
             functions_dict[counter] = {
                 'gene_callers_id': hmm_hit['gene_callers_id'],
                 'source': 'CAZyme',
-                'accession': hmm_hit['gene_hmm_id'],
-                'function': hmm_hit['gene_name'],
+                'accession': accession,
+                'function': function,
                 'e_value': hmm_hit['e_value']
             }
 
@@ -297,6 +339,9 @@ class CAZyme(object):
             self.run.warning("CAZyme class has no hits to process. Returning empty handed, but still adding CAZyme as "
                              "a functional source.")
             gene_function_calls_table.add_empty_sources_to_functional_sources({'CAZyme'})
+
+        # mark contigs db with hash of cazyme database version for tracking
+        self.set_hash_in_contigs_db()
 
         if anvio.DEBUG:
             run.warning("The temp directories, '%s' and '%s' are kept. Please don't forget to clean those up "

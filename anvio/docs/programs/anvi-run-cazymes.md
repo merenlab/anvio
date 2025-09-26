@@ -34,3 +34,32 @@ Use the parameter `--noise-cutoff-terms` to filter out hits. The default value i
 anvi-run-cazymes -c %(contigs-db)s \
                  --noise-cutoff-terms "-E 1e-14"
 {{ codestop }}
+
+## Exploring CAZyme annotations
+
+The dbCAN HMM files provide only limited descriptions of CAZyme protein families and often require additional investigation following annotation. The [dbCAN3](https://bcb.unl.edu/dbCAN2/) database offers several [supplementary files](https://bcb.unl.edu/dbCAN2/download/Databases/) that can support deeper exploration, including:
+
+- **`dbCAN_sub.hmm`** — HMM to classify proteins based on predicted substrate specificity.  
+- **`FamInfo.txt.08022020.xls`** — Reference table summarizing functional details for each CAZyme family.
+
+## Import CAZyme functions from run_dbcan
+
+If anvi'o users are interested in importing more detailed annotations, e.g. substrate level prediction from dbCAN-sub, they should consider using [run_dbcan](https://dbcan.readthedocs.io/en/latest/) from [dbCAN3](https://bcb.unl.edu/dbCAN2/). Here are some quick steps:
+
+Step 1. Extract amino acid sequences from your %(contigs-db)s
+
+{{ codestart }}
+anvi-get-sequences-for-gene-calls -c %(contigs-db)s --get-aa-sequences -o genes.faa
+{{ codestop }}
+
+Step 2. Run dbCAN3 via [run_dbcan](https://dbcan.readthedocs.io/en/latest/) to annotate those amino acid sequences.
+
+Step 3. Create a %(functions-txt)s with CAZyme functions.
+
+The program [run_dbcan](https://dbcan.readthedocs.io/en/latest/) has multiple [output files](https://dbcan.readthedocs.io/en/latest/user_guide/quick_start.html#understanding-the-output) which can be parsed into a %(functions-txt)s, for example, the [overview.txt](https://dbcan.readthedocs.io/en/latest/user_guide/quick_start.html#understanding-the-output). 
+
+Step 4. Import your new CAZyme %(functions-txt)s back into your %(contigs-db)s
+
+{{ codestart }}
+anvi-import-functions -c %(contigs-db)s -i cazyme-functions.txt
+{{ codestop }}

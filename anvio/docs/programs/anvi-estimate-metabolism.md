@@ -123,6 +123,37 @@ anvi-estimate-metabolism --enzymes-txt %(enzymes-txt)s
 
 The program will pretend all of these enzymes are coming from one theoretical 'genome' (though the reality depends on how you defined or obtained the set), so the completion estimates for each metabolic pathway will consider all enzymes in the file. If you want to instead break up your set of enzymes across multiple 'genomes', then you will have to make multiple different input files and run this program on each one.
 
+Just to note, you can also access this functionality programmatically by passing a list of enzymes to the library %(anvi-estimate-metabolism)s relies upon in the following fashion without an %(enzymes-txt)s:
+
+```python
+import pandas as pd
+from types import SimpleNamespace
+
+from anvio.metabolism.estimate import KeggMetabolismEstimator
+
+# define any number of enzymes you are interested in as a pandas
+# dataframe. You can set the 'gene_id' information to anything
+# you like as long as each 'gene_id' is uniuqe (they are not
+# used for anything, but becomes a part of the reporting for you
+# to be able to track things when needed):
+df = pd.DataFrame({
+    "gene_id": [219, 323, 125, 381, 119, 383, 368, 230, 434, 42],
+    "enzyme_accession": ["K21064", "K21064", "K21064", "K20391", "K20385", "K11616", "K02483", "K02483", "K02483", "K01174"],
+    "source": ["KOfam"] * 10
+})
+
+# get an instance of the KEGG metabolism estimator class
+m = KeggMetabolismEstimator(SimpleNamespace(enzymes_of_interest_df=df))
+
+# now you can generate all the standard output files for the specific list of enzymes
+m.estimate_metabolism()
+
+# or recover pruned super dictionaries that will give you everything you need
+# to continue with metabolic estimates for the set of enzymes in your downstream
+# Python code by instructing the function to skip the storage of data, and return
+# pruned superdicts instead:
+kegg_metabolism_superdict, kofam_hits_superdict = m.estimate_metabolism(skip_storing_data=True, return_superdicts=True, prune_superdicts=True)
+```
 
 ## MULTI-MODE: Running metabolism estimation on multiple contigs databases
 

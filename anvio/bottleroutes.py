@@ -193,6 +193,7 @@ class BottleApplication(Bottle):
         self.route('/data/search_items',                       callback=self.search_items_by_name, method='POST')
         self.route('/data/get_taxonomy',                       callback=self.get_taxonomy, method='POST')
         self.route('/data/get_functions_for_gene_clusters',    callback=self.get_functions_for_gene_clusters, method='POST')
+        self.route('/data/get_functions_for_a_collection_of_genes',    callback=self.get_functions_for_a_collection_of_genes, method='POST')
         self.route('/data/get_gene_info/<gene_callers_id>',    callback=self.get_gene_info)
         self.route('/data/get_metabolism',                     callback=self.get_metabolism)
         self.route('/data/get_scale_bar',                      callback=self.get_scale_bar, method='POST')
@@ -1553,24 +1554,67 @@ class BottleApplication(Bottle):
         return json.dumps(output)
 
 
+    def get_functions_for_a_collection_of_genes(self):
+        if not self.interactive.gene_function_calls_initiated:
+            message = "Gene functions seem to have not been initialized, so that button has nothing to show you :/ Please carry on."
+            run.warning(message)
+            return json.dumps({'status': 1, 'message': message})
+
+        gene_caller_ids = json.loads(request.forms.get('gene_caller_ids'))
+
+        # remember, the gene caller ids we get here will all ahve the `g_` prefix (why? because
+        # anvi'o refuses to work with trees where leaf names that are composed of digits only, and
+        # to cluster our genes we had to add `g_` to the beginning of them)
+        gene_caller_ids = [int(g.lstrip('g_')) for g in gene_caller_ids]
+
+        functions = {}
+        for gene_callers_id in gene_caller_ids:
+            if gene_callers_id not in self.interactive.gene_function_calls_dict:
+                functions[gene_callers_id] = {}
+            else:
+                functions[gene_callers_id] = self.interactive.gene_function_calls_dict[gene_callers_id]
+
+        if 'KOfam' in self.interactive.gene_function_call_sources:
+            kegg_metabolism_superdict, _ = self.interactive.get_metabolism_estimates_for_a_list_of_genes(gene_caller_ids)
+        else:
+            kegg_metabolism_superdict, _ = {'user_defined_enzymes': {}}, {}
+
+        payload = {'functions': functions,
+                   'metabolism': kegg_metabolism_superdict['user_defined_enzymes'],
+                   'sources': self.interactive.gene_function_call_sources}
+
+        return json.dumps(payload, default=utils.to_jsonable)
+
+
     def get_functions_for_gene_clusters(self):
         if not len(self.interactive.gene_clusters_function_sources):
             message = "Gene cluster functions seem to have not been initialized, so that button has nothing to show you :/ Please carry on."
             run.warning(message)
             return json.dumps({'status': 1, 'message': message})
 
+
         gene_cluster_names = json.loads(request.forms.get('gene_clusters'))
 
-        d = {}
+        functions = {}
         for gene_cluster_name in gene_cluster_names:
             if gene_cluster_name not in self.interactive.gene_clusters_functions_summary_dict:
                 message = (f"At least one of the gene clusters in your list (e.g., {gene_cluster_name}) is missing in "
                            f"the functions summary dict :/")
                 return json.dumps({'status': 1, 'message': message})
-                
-            d[gene_cluster_name] = self.interactive.gene_clusters_functions_summary_dict[gene_cluster_name]
 
-        return json.dumps({'functions': d, 'sources': list(self.interactive.gene_clusters_function_sources)})
+            functions[gene_cluster_name] = self.interactive.gene_clusters_functions_summary_dict[gene_cluster_name]
+
+        # do the metabolism thing
+        if 'KOfam' in self.interactive.gene_clusters_function_sources:
+            kegg_metabolism_superdict, _ = self.interactive.get_metabolism_estimates_for_a_list_of_gene_clusters(gene_cluster_names)
+        else:
+            kegg_metabolism_superdict, _ = {'user_defined_enzymes': {}}, {}
+
+        payload = {'functions': functions,
+                   'metabolism': kegg_metabolism_superdict['user_defined_enzymes'],
+                   'sources': list(self.interactive.gene_clusters_function_sources)}
+
+        return json.dumps(payload, default=utils.to_jsonable)
 
 
     def get_scale_bar(self):
@@ -1583,5 +1627,5 @@ class BottleApplication(Bottle):
         except Exception as e:
             message = str(e.clear_text()) if hasattr(e, 'clear_text') else str(e)
             return json.dumps({'status': 1, 'message': message})
-            
+
         return json.dumps({'scale_bar_value': total_branch_length})

@@ -29,7 +29,7 @@ anvi-import-state -p PROFILE.db -n default -s P-214-state.json
 INFO "[$TEST] Running the interactive interface (--dry)"
 anvi-interactive -p PROFILE.db -c CONTIGS.db --split-hmm-layers --dry
 INFO "[$TEST] Setting up SCG taxonomy databases"
-anvi-setup-scg-taxonomy --redo-databases $thread_controller
+anvi-setup-scg-taxonomy $thread_controller
 INFO "[$TEST] Running HMMs for Bacterial SCGs"
 anvi-run-hmms -c CONTIGS.db -I Bacteria_71 $thread_controller
 INFO "[$TEST] Running SCG taxonomy"
@@ -53,7 +53,7 @@ anvi-migrate PROFILE.db CONTIGS.db --migrate-quickly
 INFO "[$TEST] Running the interactive interface (--dry)"
 anvi-interactive -p PROFILE.db -c CONTIGS.db --dry
 INFO "[$TEST] Setting up SCG taxonomy databases"
-anvi-setup-scg-taxonomy --redo-databases $thread_controller
+anvi-setup-scg-taxonomy $thread_controller
 INFO "[$TEST] Running HMMs"
 anvi-run-hmms -c CONTIGS.db $thread_controller
 INFO "[$TEST] Estimating genome completeness"

@@ -1240,13 +1240,32 @@ class TableForAminoAcidAdditionalData(AdditionalDataBaseClass):
             return pd.DataFrame({}, columns=('codon_order_in_gene',))
 
         pivot_gene_df = df.pipe(
-            utils.multi_index_pivot,
+            self._multi_index_pivot,
             index=['gene_callers_id', 'codon_order_in_gene'],
             columns='data_key',
             values='data_value'
         ).astype(dtypes).reset_index()
 
         return pivot_gene_df
+
+
+    def _multi_index_pivot(self, df, index = None, columns = None, values = None):
+        # https://github.com/pandas-dev/pandas/issues/23955
+        output_df = df.copy(deep = True)
+        if index is None:
+            names = list(output_df.index.names)
+            output_df = output_df.reset_index()
+        else:
+            names = index
+        output_df = output_df.assign(tuples_index = [tuple(i) for i in output_df[names].values])
+        if isinstance(columns, list):
+            output_df = output_df.assign(tuples_columns = [tuple(i) for i in output_df[columns].values])  # hashable
+            output_df = output_df.pivot(index = 'tuples_index', columns = 'tuples_columns', values = values)
+            output_df.columns = pd.MultiIndex.from_tuples(output_df.columns, names = columns)  # reduced
+        else:
+            output_df = output_df.pivot(index = 'tuples_index', columns = columns, values = values)
+        output_df.index = pd.MultiIndex.from_tuples(output_df.index, names = names)
+        return output_df
 
 
     def get_gene_dataframe(self, gene_callers_id, keys_of_interest=set([]), group_name=None):
