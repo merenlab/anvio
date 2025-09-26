@@ -96,7 +96,7 @@ class ComparePan:
 
         # to be filled from the pan-db
         self.compare_pan_dict = {}
-        
+
         # get compared pan name
         self.compared_pan_name = self.compared_pan.p_meta['project_name']
 
@@ -106,7 +106,7 @@ class ComparePan:
                               "databases and that is a no no.")
 
 
-    def process(self): 
+    def process(self):
         # init the dictionaries self.compare_pan_dict
         self.init_compare_pan()
 
