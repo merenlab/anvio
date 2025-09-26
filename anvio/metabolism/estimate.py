@@ -1273,6 +1273,7 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                     try:
                         gc_idx = int(gc)
                     except:
+                        gc_idx = gc
                         pass
                     gene_coverages_in_mod.append(c_dict["genes_to_coverage"][s][gc_idx])
                     gene_detection_in_mod.append(c_dict["genes_to_detection"][s][gc_idx])
