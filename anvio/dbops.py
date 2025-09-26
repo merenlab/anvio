@@ -2837,8 +2837,13 @@ class PanSuperclass(object):
                 for source in self.gene_clusters_function_sources:
                     function_summary[source] = {'function': set([]), 'accession': set([]), 'heterogeneity': 0}
                 for gc in gene_cluster_dict[GC_source]:
-                    compared_pan.init_gene_clusters_functions_summary_dict(gene_clusters_of_interest = [gc])
-                    function = compared_pan.gene_clusters_functions_summary_dict[gc]
+                    function = None
+                    if GC_source == 'GCs_in_compared_pan':
+                        compared_pan.init_gene_clusters_functions_summary_dict(gene_clusters_of_interest = [gc])
+                        function = compared_pan.gene_clusters_functions_summary_dict[gc]
+                    elif GC_source == 'related_GCs':
+                        function = self.gene_clusters_functions_summary_dict[gc]
+
                     for source, annotation in function.items():
                         func = annotation['function']
                         acc = annotation['accession']
