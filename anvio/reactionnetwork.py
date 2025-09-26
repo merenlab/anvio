@@ -217,23 +217,25 @@ class KO:
         the 'reactions' attribute of the ReactionNetwork containing the KO.
 
     kegg_reaction_aliases : Dict[str, List[str]], dict()
-        KEGG reaction annotations of the KO that alias ModelSEED reactions. A KEGG REACTION ID is
+        KEGG reaction annotations of the KO that alias ModelSEED reactions. Keys are ModelSEED
+        reaction IDs and values are lists of aliased KEGG reaction IDs. A KEGG REACTION ID is
         formatted 'RXXXXX', where each X is a digit, e.g., 'R00001'. For example, KO 'K00003' has
         two KEGG reaction annotations, both of which are associated with ModelSEED reactions via the
-        ModelSEED database: {'R01773': ['rxn01301', 'rxn27933'], 'R01775': ['rxn01302',
-        'rxn27932']}. Note that a ModelSEED reaction may have more KEGG reaction aliases than those
+        ModelSEED database: {'rxn01301': ['R01773'], 'rxn01302': ['R01775'], 'rxn27932': ['R01775'],
+        'rxn27933': ['R01773']}. A ModelSEED reaction may have more KEGG reaction aliases than those
         annotating the KO: all known KEGG reaction aliases of the ModelSEED reaction in the
         ModelSEED database are recorded in the 'kegg_aliases' attribute of a 'ModelSEEDReaction'
         object.
 
     ec_number_aliases : Dict[str, List[str]], dict()
-        EC number annotations of the KO that alias ModelSEED reactions. For example, KO 'K00003' has
-        one EC number annotation, which is associated with ModelSEED reactions via the ModelSEED
-        database: {'1.1.1.3': ['rxn01301', 'rxn01302', 'rxn19904', 'rxn27931', 'rxn27932',
-        'rxn27933', 'rxn33957']}. Note that a ModelSEED reaction may have more EC number aliases
-        than those annotating the KO: all known EC number aliases of the ModelSEED reaction in the
-        ModelSEED database are recorded in the 'ec_number_aliases' attribute of a
-        'ModelSEEDReaction' object.
+        EC number annotations of the KO that alias ModelSEED reactions. Keys are ModelSEED reaction
+        IDs and values are lists of aliased KEGG reaction IDs. For example, KO 'K00003' has one EC
+        number annotation, which is associated with ModelSEED reactions via the ModelSEED database:
+        {'rxn01301': ['1.1.1.3'], 'rxn01302': ['1.1.1.3'], 'rxn19904': ['1.1.1.3'], 'rxn27931':
+        ['1.1.1.3'], 'rxn27932': ['1.1.1.3'], 'rxn27933': ['1.1.1.3'], 'rxn33957': ['1.1.1.3']}.
+        Note that a ModelSEED reaction may have more EC number aliases than those annotating the KO:
+        all known EC number aliases of the ModelSEED reaction in the ModelSEED database are recorded
+        in the 'ec_number_aliases' attribute of a 'ModelSEEDReaction' object.
     """
     id: str = None
     name: str = None
@@ -2471,6 +2473,78 @@ class ReactionNetwork:
 
         return merged_network
 
+    def _merge_two_genome_networks(self, network: GenomicNetwork) -> Tuple[GenomicNetwork, Iterable[str]]:
+        """
+        This method is meant for merging two GenomicNetwork objects coming from different contigs databases.
+        It internally uses the _merge_network() function after modifying the gene caller IDs of one network to
+        prevent overlap with gene caller IDs in the other network. It also adds a 'genomes_of_origin' attribute
+        to each element in the network to track which of the genomes contain the element.
+
+        Parameters
+        ==========
+        network : GenomicNetwork
+            The reaction network loaded from the other contigs database to be merged with the current one.
+
+        Returns
+        =======
+        merged : GenomicNetwork
+            A merged reaction network containing the elements from both genomes' reaction networks.
+        db_names : Iterable[str]
+            A list of the project names stored within each contigs database. The first element is the name
+            associated with the current network, the second is associated with the other network.
+        """
+
+        # first we increase the gene caller IDs in the other network to avoid overlap
+        base_gcid = max(self.genes.keys()) + 1000
+        new_gene_ids = {}
+        for gcid, gene in network.genes.items():
+            new_id = gcid + base_gcid
+            new_gene_ids[new_id] = gene
+            # the following changes the original Gene object and will be reflected in both
+            # the original network and the returned merged network
+            new_gene_ids[new_id].gcid = new_id
+            new_gene_ids[new_id].original_gcid = gcid
+        network.genes = new_gene_ids
+
+        # then we track genomes of origin for each network element
+        db_names = []
+        for db in [self.contigs_db_source_path, network.contigs_db_source_path]:
+            contigs_db = ContigsDatabase(db, run=self.run)
+            db_names.append(contigs_db.meta['project_name'])
+            contigs_db.disconnect()
+        # mark elements coming from the other network
+        for id, obj in network.genes.items():
+            obj.genomes_of_origin = db_names[1]
+        for id, obj in network.kos.items():
+            obj.genomes_of_origin = db_names[1]
+        for id, obj in network.metabolites.items():
+            obj.genomes_of_origin = db_names[1]
+        for id, obj in network.reactions.items():
+            obj.genomes_of_origin = db_names[1]
+        # mark elements coming from the current network
+        for gid, gene in self.genes.items():
+            gene.genomes_of_origin = db_names[0]
+        # for anything that is shared in both networks (not genes), manually add second genome
+        for id, obj in self.kos.items():
+            if id in network.kos:
+                obj.genomes_of_origin = ",".join(db_names)
+            else:
+                obj.genomes_of_origin = db_names[0]
+        for id, obj in self.metabolites.items():
+            if id in network.metabolites:
+                obj.genomes_of_origin = ",".join(db_names)
+            else:
+                obj.genomes_of_origin = db_names[0]
+        for id, obj in self.reactions.items():
+            if id in network.reactions:
+                obj.genomes_of_origin = ",".join(db_names)
+            else:
+                obj.genomes_of_origin = db_names[0]
+
+        merged = self.merge_network(network)
+        assert len(merged.genes) == len(self.genes) + len(network.genes)
+        return merged, db_names
+
     def _get_common_overview_statistics(
         self,
         stats: Union[GenomicNetworkStats, PangenomicNetworkStats]
@@ -2668,6 +2742,59 @@ class ReactionNetwork:
         stats_group['Metabolites consumed or produced by 3+ rxns'] = three_plus_reactions_count
 
         self.progress.end()
+
+    def _get_reaction_to_pathway_map_dict(self, map_ids_to_exclude: set[str] = None,
+            id_selection_prefix: str = None) -> dict[str, set[str]]:
+        """Returns a dictionary mapping KEGG reaction IDs to a list of KEGG Pathway Maps the reaction participates in.
+
+        Parameters
+        ==========
+        map_ids_to_exclude : set[str]
+            A set of pathway map id numbers to exclude from the returned dictionary values
+        id_selection_prefix : str
+            A 2-number prefix for sub-selecting particular pathway map types based on the start of their id numbers.
+            For example, pass "01" to keep global/overview maps, or "00" for regular metabolism maps
+        """
+
+        reaction_pathways = {}
+        for ko in self.kos.values():
+            pathway_ids = set([x[3:] for x in set(ko.pathway_ids)]) # keep on the pathway number, not the `map` prefix
+            for reaction_id in ko.reaction_ids:
+                try:
+                    reaction_pathways[reaction_id].update(pathway_ids)
+                except KeyError:
+                    reaction_pathways[reaction_id] = pathway_ids
+                if map_ids_to_exclude:
+                    reaction_pathways[reaction_id] = reaction_pathways[reaction_id].difference(map_ids_to_exclude)
+                if id_selection_prefix:
+                    reaction_pathways[reaction_id] = set([i for i in reaction_pathways[reaction_id] if i[:2] == id_selection_prefix])
+
+        return reaction_pathways
+
+    def _get_pathway_map_set(self, map_ids_to_exclude: set[str] = None, 
+            id_selection_prefix: str = None) -> set[str]:
+        """Returns a set of KEGG Pathway Maps associated with the KOs in the network.
+        
+        Parameters
+        ==========
+        map_ids_to_exclude : set[str]
+            A set of pathway map id numbers to exclude from the returned dictionary values
+        id_selection_prefix : str
+            A 2-number prefix for sub-selecting particular pathway map types based on the start of their id numbers.
+            For example, pass "01" to keep global/overview maps, or "00" for regular metabolism maps
+        """
+
+        pathway_maps = set()
+        for ko in self.kos.values():
+            maps_of_ko = set([x[3:] for x in set(ko.pathway_ids)])
+            if id_selection_prefix:
+                maps_of_ko = set([i for i in maps_of_ko if i[:2] == id_selection_prefix])
+            pathway_maps.update(maps_of_ko)
+
+        if map_ids_to_exclude:
+            pathway_maps = pathway_maps.difference(map_ids_to_exclude)
+
+        return pathway_maps
 
     def _print_common_overview_statistics(
         self,
@@ -5937,7 +6064,7 @@ class KODatabase:
         while True:
             # Break out of this loop upon confirming that the KEGG release didn't change in the
             # middle of downloading KO files.
-            progress.new(f"Downloading KEGG KO files")
+            progress.new("Downloading KEGG KO files")
             # Get the database version before download.
             progress.update("Database info")
             info_before_path = os.path.join(ko_dir, 'ko_info_before.txt')
@@ -6014,7 +6141,7 @@ class KODatabase:
                     f"'{release_before}' to '{release_after}' while anvi'o was downloading files "
                     "from the KO database. Anvi'o will now attempt to redownload all of the files."
                 )
-        run.info(f"Total number of KOs/entry files", total)
+        run.info("Total number of KOs/entry files", total)
         run.info("KEGG KO database version", release_after)
         run.info("KEGG KO list", list_path)
         run.info("KEGG KO info", info_path)
@@ -6516,7 +6643,7 @@ class Constructor:
 
         # Load the contigs database.
         utils.is_contigs_db(contigs_db)
-        cdb = ContigsDatabase(contigs_db)
+        cdb = ContigsDatabase(contigs_db, run=self.run)
         cdb_db: DB = cdb.db
         sources: List[str] = cdb.meta['gene_function_sources']
         if not sources or not 'KOfam' in sources:
@@ -6526,9 +6653,13 @@ class Constructor:
                 "be constructed from gene KO annotations in the database. "
             )
 
-        # Check that the network stored in the contigs database was made from the same set of KO
-        # gene annotations as is in the database.
+        # Check that there is a network stored in the contigs database AND that it was made from the
+        # same set of KO gene annotations as is in the database.
         stored_hash = cdb_db.get_meta_value('reaction_network_ko_annotations_hash')
+        if not stored_hash:
+            raise ConfigError(f"There does not appear to be a reaction network stored in the contigs "
+                              f"database ({contigs_db}). You can create one by running `anvi-reaction-network`.")
+
         gene_ko_hits_table = cdb_db.get_table_as_dataframe(
             'gene_functions',
             where_clause='source = "KOfam"',
@@ -6539,7 +6670,7 @@ class Constructor:
             if check_gene_annotations:
                 raise ConfigError(
                     "The reaction network stored in the contigs database was made from a different "
-                    "set of KEGG KO gene annotations than is current in the database. There are "
+                    "set of KEGG KO gene annotations than is currently in the database. There are "
                     "two solutions to this problem. First, 'anvi-reaction-network' can be run "
                     "again to overwrite the existing network stored in the database with a new "
                     "network from the new KO gene annotations. Second, 'check_gene_annotations' "
@@ -8622,8 +8753,10 @@ class Constructor:
                     except KeyError:
                         pass
 
-            # Associate the reaction with the KO.
-            ko.reaction_ids.append(modelseed_reaction_id)
+            # Associate the reaction with the KO, if it is not already associated via another KO
+            # KEGG reaction.
+            if modelseed_reaction_id not in ko.reaction_ids:
+                ko.reaction_ids.append(modelseed_reaction_id)
 
             try:
                 modelseed_kegg_alias_tuple = modelseed_kegg_alias_dict[modelseed_reaction_id]
@@ -8747,8 +8880,10 @@ class Constructor:
                     except KeyError:
                         pass
 
-            # Associate the reaction with the KO.
-            ko.reaction_ids.append(modelseed_reaction_id)
+            # Associate the reaction with the KO, if it is not already associated via another KO EC
+            # number.
+            if modelseed_reaction_id not in ko.reaction_ids:
+                ko.reaction_ids.append(modelseed_reaction_id)
 
             try:
                 modelseed_ec_alias_tuple = modelseed_ec_alias_dict[modelseed_reaction_id]
@@ -8781,11 +8916,14 @@ class Constructor:
                 network.modelseed_kegg_aliases[modelseed_reaction_id] = []
 
             if modelseed_reaction_id in ko.ec_number_aliases:
-                # The ModelSEED reaction aliased KEGG reaction(s) refereced by the KO. An empty
+                # The ModelSEED reaction aliased KEGG reaction(s) referenced by the KO. An empty
                 # list was added for the ModelSEED reaction in the following attribute.
                 if DEBUG:
                     assert not ko.ec_number_aliases[modelseed_reaction_id]
-                ko.ec_number_aliases[modelseed_reaction_id] += ec_numbers
+                ko_modelseed_reaction_ec_number_aliases = ko.ec_number_aliases[modelseed_reaction_id]
+                for ec_number in ec_numbers:
+                    if ec_number not in ko_modelseed_reaction_ec_number_aliases:
+                        ko_modelseed_reaction_ec_number_aliases.append(ec_number)
             else:
                 # The ModelSEED reaction did not alias any KEGG reactions referenced by the KO.
                 ko.ec_number_aliases[modelseed_reaction_id] = ec_numbers
@@ -10586,7 +10724,7 @@ def get_chemical_equation(
     ):
         if leftside and coefficient > 0:
             leftside = False
-            equation = equation.rstrip('+ ') + ' '
+            equation = equation[:-2]
             if reaction.reversibility:
                 equation += "<-> "
             else:
@@ -10601,7 +10739,7 @@ def get_chemical_equation(
         else:
             equation += f"{coeff} {compound} [{compartment}] + "
 
-    return equation.rstrip('+ ')
+    return equation[:-3]
 
 def to_lcm_denominator(floats: Iterable[float]) -> Tuple[int]:
     """
