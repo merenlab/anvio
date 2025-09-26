@@ -2748,10 +2748,17 @@ class PanSuperclass(object):
             matches = []
 
             # find a keep non-identical gene clusters
-            for i, v1 in self.gene_clusters.items():
-                for j, v2 in compared_pan.gene_clusters.items():
-                    if v1 == v2:
-                        matches.append(i)
+            for gene_cluster, gene_cluster_dict in self.gene_clusters.items():
+                list_compared_gc = set()
+                for genome, gene_callers_id in gene_cluster_dict.items():
+                    for gene in gene_callers_id:
+                        compared_gene_cluster = compared_pan.gene_callers_id_to_gene_cluster[genome][gene]
+                        list_compared_gc.add(compared_gene_cluster)
+
+                for compared_gene_cluster in list_compared_gc:
+                    compared_gene_cluster_dict = compared_pan.gene_clusters[compared_gene_cluster]
+                    if gene_cluster_dict == compared_gene_cluster_dict:
+                            matches.append(gene_cluster)
 
             # keep only the gene cluster that differ
             for gene_cluster in self.gene_cluster_names:
