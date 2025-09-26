@@ -140,6 +140,12 @@ D = {
              'required': True,
              'help': "Anvi'o pan database"}
                 ),
+    'compared-pan-db': (
+            ['-p2', '--compared-pan-db'],
+            {'metavar': "PAN_DB",
+             'required': True,
+             'help': "Anvi'o pan database"}
+                ),
     'pan-or-profile-db': (
             ['-p', '--pan-or-profile-db'],
             {'metavar': "PAN_OR_PROFILE_DB",
