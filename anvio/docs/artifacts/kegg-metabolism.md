@@ -178,7 +178,7 @@ Here are the descriptions of any new columns not yet discussed in the previous s
 - `enzyme`: an enzyme that was annotated in the contigs database
 - `modules_with_enzyme`: the modules (if any) that this enzyme belongs to
 - `enzyme_definition`: the function of this enzyme (often includes the enzyme name and EC number)
-- `warnings`: when you used the flag `--include-stray-KOs`, this column will tell you if a given annotation was done using the "anvi'o version" of the KO family's pHMM. What this means is that anvi'o created the pHMM out of all KEGG GENES sequences for the KO when %(anvi-setup-kegg-data)s was run. See [this documentation section](https://anvio.org/help/main/programs/anvi-setup-kegg-data/#what-are-stray-kos-and-what-happens-when-i-include-them) for details.
+- `warnings`: when you used the flag `--include-nt-KOs`, this column will tell you if a given annotation was done using the "anvi'o version" of the KO family's pHMM. What this means is that anvi'o created the pHMM out of all KEGG GENES sequences for the KO when %(anvi-setup-kegg-data)s was run. See [this documentation section](https://anvio.org/help/main/programs/anvi-setup-kegg-data/#what-are-nt-kos-and-what-happens-when-i-include-them) for details.
 
 **Coverage and detection values in the output**
 

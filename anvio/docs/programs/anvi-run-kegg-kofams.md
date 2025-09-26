@@ -117,11 +117,11 @@ anvi-run-kegg-kofams -c %(contigs-db)s \
                      --skip-brite-hierarchies
 {{ codestop }}
 
-## Annotate 'Stray KOs'
+## Annotate 'No-threshold KOs'
 
-In every release of KOfam, there are some KO profiles that don't come with predefined bit score thresholds. Normally, we skip annotating these. But if you want to annotate them, first read [this documentation on our strategy for estimating bit score thresholds for stray KOs](https://anvio.org/help/main/programs/anvi-setup-kegg-data/#what-are-stray-kos-and-what-happens-when-i-include-them) so that you understand what is going on, and then run this program with the `--include-stray-KOs` flag:
+In every release of KOfam, there are some KO profiles that don't come with predefined bit score thresholds. Normally, we skip annotating these. But if you want to annotate them, first read [this documentation on our strategy for estimating bit score thresholds for nt-KOs](https://anvio.org/help/main/programs/anvi-setup-kegg-data/#what-are-nt-kos-and-what-happens-when-i-include-them) so that you understand what is going on, and then run this program with the `--include-nt-KOs` flag:
 
 {{ codestart }}
 anvi-run-kegg-kofams -c %(contigs-db)s \
-                     --include-stray-KOs
+                     --include-nt-KOs
 {{ codestop }}

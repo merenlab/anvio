@@ -49,7 +49,7 @@ class KOfamDownload(KeggSetup):
         self.include_stray_kos = True if A('include_stray_KOs') else False
 
         self.run.info_single("Info from KOfam Download")
-        self.run.info("Stray KOs will be processed (`--include-stray-KOs` flag)", self.include_stray_kos)
+        self.run.info("nt-KOs will be processed (`--include-nt-KOs` flag)", self.include_stray_kos)
 
         KeggSetup.__init__(self, self.args, skip_init=self.skip_init)
 
@@ -165,7 +165,7 @@ class KOfamDownload(KeggSetup):
                 else:
                     no_kofam_file_list.append(hmm_file)
 
-        # now we concatenate the orphan and stray KO hmms into the orphan data directory
+        # now we concatenate the orphan and nt-KO hmms into the orphan data directory
         if no_kofam_file_list:
             utils.concatenate_files(no_kofam_path, no_kofam_file_list, remove_concatenated_files=True)
             self.progress.reset()
@@ -179,13 +179,13 @@ class KOfamDownload(KeggSetup):
             for k_path in no_threshold_file_list:
                 k = os.path.basename(k_path)
                 # move individual profiles temporarily to the orphan data dir, so they don't get combined with the regular KOs
-                # but we can still use them later if necessary for --include-stray-KOs
+                # but we can still use them later if necessary for --include-nt-KOs
                 os.rename(k_path, os.path.join(self.orphan_data_dir, f"profiles/{k}"))
             self.progress.reset()
             self.run.warning(f"Please note that while anvi'o was building your databases, she found {len(no_threshold_file_list)} "
                              f"KOfam entries that did not have any threshold to remove weak hits. We have removed those HMM "
                              f"profiles from the final database. You can find them under the directory '{self.orphan_data_dir}'. "
-                             f"If you used the flag --include-stray-KOs, we will estimate their bit score thresholds using KEGG GENES "
+                             f"If you used the flag --include-nt-KOs, we will estimate their bit score thresholds using KEGG GENES "
                              f"data so that you can annotate these KOs downstream if you wish.")
 
         if no_data_file_list:
@@ -520,9 +520,9 @@ class KOfamDownload(KeggSetup):
 
 
     def process_all_stray_kos(self):
-        """This driver function processes each stray KO and creates a file of bit score thresholds for them.
+        """This driver function processes each nt-KO and creates a file of bit score thresholds for them.
 
-        The following steps are run for each stray KO:
+        The following steps are run for each nt-KO:
         1. download of its KO file
         2. identification and download of the KEGG GENES sequences in this family
         3. alignment with `muscle` and `hmmbuild` to create a new model (since KEGG GENES updates faster than KOfam models do)
@@ -531,7 +531,7 @@ class KOfamDownload(KeggSetup):
         """
 
         num_strays = len(self.ko_no_threshold_list)
-        self.run.info("Number of Stray KOs to process", num_strays)
+        self.run.info("Number of nt-KOs to process", num_strays)
 
         self.stray_ko_file_dir = os.path.join(self.orphan_data_dir, "00_STRAY_KO_FILES")
         self.stray_ko_genes_dir = os.path.join(self.orphan_data_dir, "01_STRAY_GENES_FILES")
@@ -545,9 +545,9 @@ class KOfamDownload(KeggSetup):
         ko_files_not_downloaded = self.download_ko_files(self.ko_no_threshold_list, self.stray_ko_file_dir)
 
         ko_files_to_process = list(set(self.ko_no_threshold_list) - set(ko_files_not_downloaded))
-        self.run.info("Number of Stray KO files successfully downloaded", len(ko_files_to_process))
+        self.run.info("Number of nt-KO files successfully downloaded", len(ko_files_to_process))
         if ko_files_not_downloaded:
-            self.run.warning(f"FYI, some stray KOs failed to download from KEGG. We will not estimate their bit score thresholds "
+            self.run.warning(f"FYI, some nt-KOs failed to download from KEGG. We will not estimate their bit score thresholds "
                              f"and you will not be able to annotate them later. Here they are: {', '.join(ko_files_not_downloaded)}")
 
         ko_to_gene_accessions = self.get_kegg_gene_accessions_from_ko_files(ko_files_to_process, self.stray_ko_file_dir)
@@ -562,7 +562,7 @@ class KOfamDownload(KeggSetup):
             self.run.warning(f"FYI, some KEGG GENES files failed to download from KEGG. They will not be used for "
                              f"estimating bit score thresholds. Here they are: {', '.join(kegg_genes_not_downloaded)}")
 
-        self.progress.new("Extracting amino acid sequences for Stray KOs", progress_total_items=len(ko_files_to_process))
+        self.progress.new("Extracting amino acid sequences for nt-KOs", progress_total_items=len(ko_files_to_process))
         ko_to_gene_seqs_list = {} # we'll store the sequences to align with muscle here. yes, we just stored them in a file.
         cur_num = 0
         for k in ko_files_to_process:
@@ -574,7 +574,7 @@ class KOfamDownload(KeggSetup):
             cur_num += 1
         self.progress.end()
 
-        self.progress.new("Aligning genes and creating new HMMs for Stray KOs", progress_total_items=len(ko_files_to_process))
+        self.progress.new("Aligning genes and creating new HMMs for nt-KOs", progress_total_items=len(ko_files_to_process))
         list_of_new_HMMs = []
         hmmbuild_log = os.path.join(self.orphan_data_dir, "hmmbuild.log")
         cur_num = 0
@@ -605,28 +605,28 @@ class KOfamDownload(KeggSetup):
             cur_num += 1
         self.progress.end()
 
-        self.run.info("Number of Stray KOs with new HMMs built by anvi'o to incorporate potentially new KEGG GENES", new_models)
-        self.run.info("Number of Stray KOs using KEGG's original HMM because the family includes only one gene sequence", old_models)
+        self.run.info("Number of nt-KOs with new HMMs built by anvi'o to incorporate potentially new KEGG GENES", new_models)
+        self.run.info("Number of nt-KOs using KEGG's original HMM because the family includes only one gene sequence", old_models)
         if models_without_genes:
-            self.run.warning(f"We weren't able to download any KEGG GENE sequences for some stray KOs, and therefore will not "
+            self.run.warning(f"We weren't able to download any KEGG GENE sequences for some nt-KOs, and therefore will not "
                              f"be able to estimate bit score threshold for these KOs. Here they are: {', '.join(models_without_genes)}")
             self.run.info("Number of KOs without downloaded gene sequences", len(models_without_genes))
             ko_files_to_process = list(set(ko_files_to_process) - set(models_without_genes))
         if kos_with_one_gene:
-            self.run.warning(f"The following stray KOs had exactly one KEGG GENE sequence, so we couldn't build a new HMM for them, "
+            self.run.warning(f"The following nt-KOs had exactly one KEGG GENE sequence, so we couldn't build a new HMM for them, "
                              f"but we also couldn't find their models from KEGG, so we won't estimate bit score thresholds for them: "
                              f"{', '.join(kos_with_one_gene)}")
             self.run.info("Number of KOs without HMMs", len(kos_with_one_gene))
             ko_files_to_process = list(set(ko_files_to_process) - set(kos_with_one_gene))
 
-        self.progress.new('Concatenating new Stray HMM files...')
+        self.progress.new('Concatenating new nt-KO HMM files...')
         utils.concatenate_files(self.stray_ko_hmm_file_path, list_of_new_HMMs, remove_concatenated_files=False)
-        self.progress.update('Running hmmpress on new Stray KO HMMs...')
+        self.progress.update('Running hmmpress on new nt-KO HMMs...')
         self.exec_hmmpress_command_on_ko_file(self.stray_ko_hmm_file_path, os.path.join(self.orphan_data_dir, '00_hmmpress_log.txt'))
         self.progress.end()
-        self.run.info("File storing all new HMMs generated for Stray KOs", self.stray_ko_hmm_file_path)
+        self.run.info("File storing all new HMMs generated for nt-KOs", self.stray_ko_hmm_file_path)
 
-        self.progress.new("Estimating bit score threshold for Stray KOs", progress_total_items=len(ko_files_to_process))
+        self.progress.new("Estimating bit score threshold for nt-KOs", progress_total_items=len(ko_files_to_process))
         threshold_dict = {}
         cur_num = 0
         for k in ko_files_to_process:
@@ -639,8 +639,8 @@ class KOfamDownload(KeggSetup):
             cur_num += 1
         self.progress.end()
 
-        # we need to re-load the ko dictionary so that we have access to the definitions of the stray KOs
-        # cannot do this before this point because the absence of an stray KO from this dict controls whether it is moved to the
+        # we need to re-load the ko dictionary so that we have access to the definitions of the nt-KOs
+        # cannot do this before this point because the absence of an nt-KO from this dict controls whether it is moved to the
         # stray data directory (and we want to keep the strays separate since we process them specially)
         self.setup_ko_dict(exclude_threshold=(not self.include_stray_kos), suppress_warnings=True)
 
@@ -664,7 +664,7 @@ class KOfamDownload(KeggSetup):
             os.remove(hmmbuild_log)
             for d in [self.stray_ko_file_dir, self.stray_ko_genes_dir, self.stray_ko_seqs_dir, self.stray_ko_hmms_dir]:
                 shutil.rmtree(d)
-            self.run.warning("The KO and GENES files downloaded from KEGG for processing the stray KOs, as well as the "
+            self.run.warning("The KO and GENES files downloaded from KEGG for processing the nt-KOs, as well as the "
                              "individual new HMM files that anvi'o generated for these KOs, are now deleted to save space. "
                              "If you want to keep them, next time run the program with `--debug`.")
 
