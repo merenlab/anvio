@@ -3766,6 +3766,7 @@ D = {
              'help': "Specify the structure type to include additional data tables for the Structural Pangenome summary. "
                      "This option allows you to enhance the analysis by integrating specific structural data, "
                      "which can provide deeper insights into the pangenomic relationships among the samples."}
+    ),
     'min-codon-filter': (
             ['--min-codon-filter'],
             {'choices': ['length', 'remaining', 'both'],
