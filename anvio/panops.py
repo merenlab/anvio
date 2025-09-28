@@ -298,11 +298,11 @@ class ComparePan:
             # Add columns for each functional annotation source
             for func_source, func_data in gene_cluster_dict['function'].items():
                 # Convert sets to strings, filter out None
-                function_values = [str(x) for x in func_data['function'] if x is not None]
-                function_str = '!!!'.join(function_values) if function_values else ''
+                function_values = [str(x) for x in func_data['function']]
+                function_str = '!!!'.join(function_values)
 
-                accession_values = [str(x) for x in func_data['accession'] if x is not None]
-                accession_str = '!!!'.join(accession_values) if accession_values else ''
+                accession_values = [str(x) for x in func_data['accession']]
+                accession_str = '!!!'.join(accession_values)
 
                 # Create columns with prefixes
                 row[f'{func_source}_function'] = function_str
