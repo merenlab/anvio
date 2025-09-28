@@ -155,14 +155,14 @@ class ComparePan:
         # keep only the gene cluster that differ
         for gene_cluster in self.pan.gene_cluster_names:
             if gene_cluster not in matches:
-                self.compare_pan_dict[self.compared_pan_name][gene_cluster] = {}
+                self.compare_pan_dict[gene_cluster] = {}
 
 
     def find_corresponding_gene_clusters(self):
         '''For each unique gene cluster, identify the corresponding gene cluster(s) in the compared pan, based on the gene calls content
            Also add info of gene_cluster type'''
 
-        for gene_cluster, gene_cluster_dict in self.compare_pan_dict[self.compared_pan_name].items():
+        for gene_cluster, gene_cluster_dict in self.compare_pan_dict.items():
             gene_cluster_dict['GCs_in_compared_pan'] = []
             #gene_cluster_dict['GCs_type_in_compared_pan'] = []
 
@@ -179,7 +179,7 @@ class ComparePan:
            If combined, then report the other gene clusters from this pan that contributed to the combined cluster'''
 
         # for a fragmentation, just check if the num of GC in other pan is greater than one, and move on.
-        for gene_cluster, gene_cluster_dict in self.compare_pan_dict[self.compared_pan_name].items():
+        for gene_cluster, gene_cluster_dict in self.compare_pan_dict.items():
             if len(gene_cluster_dict['GCs_in_compared_pan']) > 1:
                 gene_cluster_dict['status'] = 'fragmented'
                 continue
@@ -212,9 +212,9 @@ class ComparePan:
 
         # we can immediately init function summary, for the gene clusters of self
         # for the compared pan, we will initiate the dict as we discover the GCs
-        self.pan.init_gene_clusters_functions_summary_dict(gene_clusters_of_interest = self.compare_pan_dict[self.compared_pan_name].keys())
+        self.pan.init_gene_clusters_functions_summary_dict(gene_clusters_of_interest = self.compare_pan_dict.keys())
 
-        for gene_cluster, gene_cluster_dict in self.compare_pan_dict[self.compared_pan_name].items():
+        for gene_cluster, gene_cluster_dict in self.compare_pan_dict.items():
             if gene_cluster_dict['status'] == 'fragmented':
                 GC_source = 'GCs_in_compared_pan'
             elif gene_cluster_dict['status'] == 'combined':
