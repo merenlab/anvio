@@ -82,7 +82,7 @@ class ComparePan:
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.pan_db_path = A('pan_db')
         self.compared_pan_db_path = A('compared_pan_db')
-        self.output_file_prefix = A('output_file_prefix')
+        self.output_file_prefix = A('output_file')
         self.skip_output_files= A('skip_output_files')
 
         # load the first pansuperclass
@@ -122,14 +122,14 @@ class ComparePan:
         # add info to the items additional table
         self.add_comparison_to_items_additional_data()
 
-        # TODO: report a text table. Make it complex.
+        # report text file
+        if not self.skip_output_files:
+            self.store_results_as_txt()
 
 
     def init_compare_pan(self):
         '''Identify and report the unique gene clusters based on the gene call content when compared to another pan.
         Initialized the self.compare_pan_dict'''
-
-        self.compare_pan_dict[self.compared_pan_name] = {}
 
         # check if gene cluster are initialized
         for p in [self.pan, self.compared_pan]:
@@ -276,6 +276,56 @@ class ComparePan:
         # TODO: find how to make them in their own group, wiht a shared color scheme
         items_additional_data_table = TableForItemAdditionalData(self.args, r=terminal.Run(verbose=False))
         items_additional_data_table.add(items_additional_data_dict, items_additional_data_keys, skip_check_names=True)
+
+
+    def store_results_as_txt(self):
+        """Generate text file for the self.compare_pan_dict"""
+        # first we need to flatted the current dict
+        # TODO: maybe I don't need to have such a nested dict in the first place?
+        out_dict = {}
+
+        for gene_cluster, gene_cluster_dict in self.compare_pan_dict.items():
+            status = gene_cluster_dict['status']
+            gcs = ''
+            if status == 'fragmented':
+                gcs = ', '.join(gene_cluster_dict['GCs_in_compared_pan'])
+            elif status == 'combined':
+                gcs = ', '.join(gene_cluster_dict['related_GCs'])
+
+            row = {'status': status,
+                   'associated_GCs': gcs}
+
+            # Add columns for each functional annotation source
+            for func_source, func_data in gene_cluster_dict['function'].items():
+                # Convert sets to strings, filter out None
+                function_values = [str(x) for x in func_data['function'] if x is not None]
+                function_str = '!!!'.join(function_values) if function_values else ''
+
+                accession_values = [str(x) for x in func_data['accession'] if x is not None]
+                accession_str = '!!!'.join(accession_values) if accession_values else ''
+
+                # Create columns with prefixes
+                row[f'{func_source}_function'] = function_str
+                row[f'{func_source}_accession'] = accession_str
+                row[f'{func_source}_heterogeneity'] = func_data['heterogeneity']
+
+            out_dict[gene_cluster] = row
+
+        # We need to generated column order
+        # First we need to get the functional annotation source:
+        first_gc = next(iter(self.compare_pan_dict.values()))
+        function_types = list(first_gc['function'].keys())
+
+        column_order = ['GC_ID', 'status', 'associated_GCs']
+        for func_source in function_types:
+            column_order.extend([
+                f'{func_source}_function',
+                f'{func_source}_accession',
+                f'{func_source}_heterogeneity'
+            ])
+
+        # then we write:
+        utils.store_dict_as_TAB_delimited_file(out_dict, self.output_file_prefix, headers=column_order, key_header='GC_ID', none_value='')
 
 
 class RarefactionAnalysis:
