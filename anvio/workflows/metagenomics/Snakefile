@@ -962,40 +962,46 @@ rule anvi_profile:
 
 
 def input_for_anvi_merge(wildcards):
-    '''
-        Create dictionary as input for rule anvi_merge.
-        The reason we need a function as an input is to allow the user
-        to choose between an option of an "all against all" vs. "normal"
-        modes. See the documentation to learn more about the difference
-        between these modes.
-    '''
+    """
+    Return the list of per-readset PROFILE.db paths that should be merged for this {group}.
 
+    Rules:
+      - If 'all_against_all' is True: merge ALL readsets against this group.
+      - Otherwise: merge only readsets whose (unsuffixed) group matches this group
+        (i.e., the members of the group in normal mode).
+    """
     if M.get_param_value_from_config(['all_against_all']):
-        # If the user specified 'all against all' in the configs file
-        # the end product would be a merge of all samples per group
-        profiles = expand(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/PROFILE.db", sample=list(M.samples_information['sample']), group=wildcards.group)
-
+        member_readsets = M.get_readset_ids()
     else:
-        # The default behaviour is to only merge (and hence map and profile)
-        # together samples that belong to the same group.
-        profiles = expand(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/PROFILE.db", sample=list(M.samples_information[M.samples_information['group'] == wildcards.group]['sample']), group=wildcards.group)
+        member_readsets = M.get_readsets_for_mapping_to_group(wildcards.group)
 
-    return profiles
+    return [dirs_dict["PROFILE_DIR"] + f"/{wildcards.group}/{rs}/PROFILE.db"
+            for rs in member_readsets]
 
 
 def configure_flag_files_for_anvi_merge_optional_inputs(wildcards, flag_file_name, run_flag):
-    '''
-        this function creates the input to anvi_merge rule with
-        regards to percent_of_reads_mapped_imported_flag_input.
-    '''
-    if M.get_param_value_from_config(['all_against_all']):
-        flag_files = expand(os.path.join(dirs_dict["PROFILE_DIR"], "{group}/{sample}", flag_file_name), sample=list(M.samples_information['sample']), group=wildcards.group)
+    """
+    Create the input list for anvi_merge optional flags, e.g.,
+    '{PROFILE_DIR}/{group}/{readset}/import_percent_of_reads_mapped.done'
 
+    In 'all_against_all' mode: include ALL readsets.
+    Otherwise: include only the readsets that map to this {group}.
+    If `run_flag` is False, return the contigs DB path as an ancient placeholder
+    (legacy behavior preserved).
+    """
+    if M.get_param_value_from_config(['all_against_all']):
+        member_readsets = M.get_readset_ids()
     else:
-        flag_files = expand(os.path.join(dirs_dict["PROFILE_DIR"], "{group}/{sample}", flag_file_name), sample=list(M.samples_information[M.samples_information['group'] == wildcards.group]['sample']), group=wildcards.group)
+        member_readsets = M.get_readsets_for_mapping_to_group(wildcards.group)
+
+    flag_files = [
+        os.path.join(dirs_dict["PROFILE_DIR"], f"{wildcards.group}/{rs}", flag_file_name)
+        for rs in member_readsets
+    ]
 
     if not run_flag:
-        flag_files = ancient(dirs_dict["CONTIGS_DIR"] + "/%s-contigs.db" % wildcards.group)
+        # keep legacy 'ancient' fallback (single path) so Snakemake doesn’t require flags
+        flag_files = ancient(dirs_dict["CONTIGS_DIR"] + f"/{wildcards.group}-contigs.db")
 
     return flag_files
 
@@ -1009,31 +1015,23 @@ def create_fake_output_files(_message, output):
 
 
 def remove_empty_profile_databases(profiles, group):
-    '''remove profiles that recruited zero reads from the metagenome.'''
-
     empty_profiles = []
     progress.new("Checking for empty profile databases")
     for p in profiles:
         keys, data = TableForLayerAdditionalData(argparse.Namespace(profile_db=p)).get(['total_reads_mapped'])
-
         if not next(iter(data.values()))['total_reads_mapped']:
-            # this profile is empty so we can't include it in the merged profile.
             empty_profiles.append(p)
-
     profiles = list(set(profiles) - set(empty_profiles))
     progress.end()
 
     if not profiles:
-        # if there are no profiles to merge then notify the user
         run.warning('It seems that all your profiles are empty for the '
-                    'contigs database: %s.db. And so cannot be merged.' \
-                     % group)
+                    'contigs database: %s.db. And so cannot be merged.' % group)
 
     run.info('Number of non-empty profile databases', len(profiles))
     run.info('Number of empty profile databases', len(empty_profiles))
     if len(empty_profiles) > 0:
         run.info('The following databases are empty: ', empty_profiles)
-
     return profiles
 
 
