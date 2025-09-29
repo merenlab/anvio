@@ -649,6 +649,12 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         return self._readsets_by_id
 
 
+    def get_assembly_ids(self):
+        # In assembly mode: these are type-aware group IDs (e.g., G, G_SR, G_LR, S1_SR, ...)
+        # In references mode: whatever self.group_names was set to by the existing logic.
+        return list(self.group_names)
+
+
     def get_lr_files_for_readset(self, readset_id):
         """Return the list of long-read files for a given readset id (type must be LR)."""
         rs = self.readsets_by_id.get(readset_id)
@@ -675,6 +681,41 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         for rs_id in member_readsets:
             files.extend(self.get_lr_files_for_readset(rs_id))
         return files
+
+
+    def get_sr_fastqs_for_group(self, group_id: str, use_filtered: bool = False, zipped: bool | None = None):
+        """
+        Return {'r1': [...], 'r2': [...]} collecting all SR member readsets
+        that contribute to the SR assembly of this group.
+
+        - Fails in references mode (assemblies are off there).
+        - Verifies this group is an SR assembly group.
+        - `use_filtered=False` is recommended for assembly (use QC outputs, not ref-filtered).
+        - `zipped=None` → auto-detect from your run_gzip_fastqs flag.
+        """
+        if self.references_mode:
+            raise ConfigError("get_sr_fastqs_for_group called in references mode.")
+        if self.assembly_types.get(group_id) != 'SR':
+            raise ConfigError(f"Group '{group_id}' is not SR (type={self.assembly_types.get(group_id)})")
+
+        if zipped is None:
+            # defer to your global setting at call-time
+            try:
+                zipped = run_gzip_fastqs
+            except NameError:
+                zipped = True  # sensible default if the flag lives elsewhere
+
+        r1, r2 = [], []
+        member_readsets = self.assembly_members.get(group_id, [])
+        for rs_id in member_readsets:
+            d = self.get_sr_files_for_readset(rs_id)
+            r1.extend(d['r1'])
+            r2.extend(d['r2'])
+
+        if not r1 or not r2:
+            raise ConfigError(f"No SR reads found for group '{group_id}'.")
+
+        return {'r1': r1, 'r2': r2}
 
 
     def get_sr_files_for_readset(self, readset_id):
