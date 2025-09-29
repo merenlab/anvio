@@ -88,8 +88,11 @@ run_gzip_fastqs = M.get_param_value_from_config(['gzip_fastqs', 'run']) == True
 run_import_percent_of_reads_mapped = M.get_param_value_from_config(['import_percent_of_reads_mapped', 'run']) == True
 
 # convenience sets:
+ASSEMBLIES   = M.get_assembly_ids()
 SR_READSETS = M.get_sr_readset_ids()
 LR_READSETS = M.get_lr_readset_ids()
+SR_ASSEMBLIES = [a for a in ASSEMBLIES if getattr(M, 'assembly_types', {}).get(a) == 'SR']
+LR_ASSEMBLIES = [a for a in ASSEMBLIES if getattr(M, 'assembly_types', {}).get(a) == 'LR']
 
 def regex_from_ids(ids):
     # if the list is empty, make it never match to avoid accidental triggering
@@ -98,6 +101,9 @@ def regex_from_ids(ids):
 # will be used as contrained readset's wildcards for either bowtie or minimap2
 SR_RS_RE = regex_from_ids(SR_READSETS)
 LR_RS_RE = regex_from_ids(LR_READSETS)
+# same idea but for assemblies:
+SR_GRP_RE = regex_from_ids(SR_ASSEMBLIES)
+LR_GRP_RE = regex_from_ids(LR_ASSEMBLIES)
 
 ruleorder: import_percent_of_reads_mapped > import_krakenuniq_taxonomy
 
@@ -205,6 +211,8 @@ rule iu_filter_quality_minoche:
     # making the config file as "ancient" so QC wouldn't run just because
     # a new config file was produced.
     input: unpack(lambda wildcards: input_for_qc(wildcards.readset))
+    wildcard_constraints:
+        readset = SR_RS_RE
     output:
         r1 = temp(qc_output_r1) if M.remove_short_reads_based_on_references \
                                 else qc_output_r1,
@@ -486,6 +494,8 @@ rule gzip_fastqs:
 
 if run_idba_ud == True:
     rule idba_ud:
+        wildcard_constraints:
+            group = SR_GRP_RE
         version: 1.0
         log: dirs_dict["LOGS_DIR"] + "/{group}-idba_ud.log"
         input:
@@ -563,6 +573,8 @@ def input_for_metaspades(wildcards):
 
 if M.run_metaspades == True:
     rule metaspades:
+        wildcard_constraints:
+            group = SR_GRP_RE
         version: 1.0
         log: dirs_dict["LOGS_DIR"] + "/{group}-metaspades.log"
         input: unpack(input_for_metaspades)
@@ -609,6 +621,8 @@ if M.get_param_value_from_config(['megahit', 'run']) == True:
             and only the fasta file is kept for later analysis.
         '''
         version: 1.0
+        wildcard_constraints:
+            group = SR_GRP_RE
         log: dirs_dict["LOGS_DIR"] + "/{group}-megahit.log"
         input: unpack(fastq_input_for_assembly)
         params:
@@ -690,6 +704,8 @@ rule bowtie_build:
     """Run bowtie-build on the contigs fasta"""
     # TODO: consider running this as a shadow rule
     version: 1.0
+    wildcard_constraints:
+        readset = SR_RS_RE
     log: dirs_dict["LOGS_DIR"] + "/{group}-bowtie_build.log"
     input: M.get_fasta
     # I touch this file because the files created have different suffix
@@ -722,6 +738,8 @@ rule bowtie:
     log: dirs_dict["LOGS_DIR"] + "/{group}-{sample}-bowtie.log"
     input: unpack(input_for_bowtie)
     # setting the output as temp, since we only want to keep the bam file.
+    wildcard_constraints:
+        readset = SR_RS_RE
     output:
         sam = temp(dirs_dict["MAPPING_DIR"] + "/{group}/{readset}.sam")
     params:
