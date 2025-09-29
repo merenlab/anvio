@@ -509,7 +509,6 @@ rule gzip_fastqs:
     shell: "gzip {input.fastq} >> {log} 2>&1"
 
 
-if run_idba_ud == True:
 if M.get_param_value_from_config(['flye', 'run']) and M.has_lr:
     def flye_read_type():
         flags = ["--pacbio-raw", "--pacbio-corr", "--pacbio-hifi",
@@ -574,6 +573,7 @@ if M.get_param_value_from_config(['flye', 'run']) and M.has_lr:
             """
 
 
+if M.get_param_value_from_config(['idba_ud', 'run']) and M.has_sr:
     rule idba_ud:
         wildcard_constraints:
             group = SR_GRP_RE
@@ -651,8 +651,8 @@ def input_for_metaspades(wildcards):
                            'r2': d['r2']}
     return input_file_dict
 
+if M.get_param_value_from_config(['metaspades','run']) and M.has_sr:
 
-if M.run_metaspades == True:
     rule metaspades:
         wildcard_constraints:
             group = SR_GRP_RE
@@ -693,7 +693,7 @@ if M.run_metaspades == True:
             shell("rm -rf {params.temp_dir}")
 
 
-if M.get_param_value_from_config(['megahit', 'run']) == True:
+if M.get_param_value_from_config(['megahit','run']) and M.has_sr:
     rule megahit:
         '''
             Assembling fastq files using megahit.
