@@ -884,7 +884,7 @@ rule anvi_init_bam:
     """ run anvi-init-bam on RAW bam file to create a bam file ready for anvi-profile"""
     version: 1.0 # later we can decide if we want the version to use the version of anvi'o
     log: dirs_dict["LOGS_DIR"] + "/{group}-{readset}-anvi_init_bam.log"
-    input: rules.samtools_view.output
+    input:  M.dirs_dict["MAPPING_DIR"] + "/{group}/{readset}.sam"
     output:
         bam = dirs_dict["MAPPING_DIR"] + "/{group}/{readset}.bam",
         bai = dirs_dict["MAPPING_DIR"] + "/{group}/{readset}.bam.bai"
