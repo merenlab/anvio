@@ -11,7 +11,7 @@
         "--kmer-size": "",
         "--skip-predict-frame": "",
         "--prodigal-translation-table": "",
-        "threads": 4
+        "threads": ""
     },
     "centrifuge": {
         "threads": 2,
@@ -83,6 +83,8 @@
         "additional_params": "--only-assembler",
         "threads": 7,
         "run": "",
+        "conda_yaml": "",
+        "conda_env": "",
         "use_scaffolds": ""
     },
     "megahit": {
@@ -90,6 +92,8 @@
         "--memory": 0.4,
         "threads": 7,
         "run": "",
+        "conda_yaml": "",
+        "conda_env": "",
         "--min-count": "",
         "--k-min": "",
         "--k-max": "",
@@ -117,6 +121,8 @@
         "--min_contig": 1000,
         "threads": 7,
         "run": "",
+        "conda_yaml": "",
+        "conda_env": "",
         "--mink": "",
         "--maxk": "",
         "--step": "",
@@ -140,7 +146,9 @@
         "run": true,
         "threads": 7,
         "additional_params": "",
-        "--meta": "",
+        "conda_yaml": "",
+        "conda_env": "",
+        "--meta": true,
         "--pacbio-raw": "",
         "--pacbio-corr": "",
         "--pacbio-hifi": true,
@@ -159,7 +167,9 @@
     "hifiasm_meta": {
         "run": false,
         "threads": 7,
-        "additional_params": ""
+        "additional_params": "",
+        "conda_yaml": "",
+        "conda_env": ""
     },
     "iu_filter_quality_minoche": {
         "run": true,
@@ -176,16 +186,22 @@
     },
     "bowtie": {
         "additional_params": "--no-unal",
-        "threads": 3
+        "threads": 3,
+        "conda_yaml": "",
+        "conda_env": ""
     },
     "minimap2_index": {
         "additional_params": "",
+        "conda_yaml": "",
+        "conda_env": "",
         "threads": ""
     },
     "minimap2": {
         "threads": 3,
         "preset": "map-hifi",
-        "additional_params": ""
+        "additional_params": "--secondary-seq",
+        "conda_yaml": "",
+        "conda_env": ""
     },
     "samtools_view": {
         "additional_params": "-F 4",
@@ -298,6 +314,8 @@
         "threads": ""
     },
     "bowtie_build": {
+        "conda_yaml": "",
+        "conda_env": "",
         "additional_params": "",
         "threads": ""
     },
@@ -322,20 +340,20 @@
         "threads": ""
     },
     "references_mode": "",
-    "all_against_all": true,
+    "all_against_all": "",
     "kraken_txt": "",
     "collections_txt": "",
     "output_dirs": {
-        "FASTA_DIR": "02_FASTA-flye",
-        "CONTIGS_DIR": "03_CONTIGS-flye",
-        "QC_DIR": "01_QC",
-        "MAPPING_DIR": "04_MAPPING-flye",
-        "PROFILE_DIR": "05_ANVIO_PROFILE-flye",
-        "MERGE_DIR": "06_MERGED-flye",
-        "TAXONOMY_DIR": "07_TAXONOMY-flye",
-        "SUMMARY_DIR": "08_SUMMARY-flye",
-        "SPLIT_PROFILES_DIR": "09_SPLIT_PROFILES-flye",
-        "LOGS_DIR": "00_LOGS-flye"
+        "FASTA_DIR": "02_FASTA-metaflye",
+        "CONTIGS_DIR": "03_CONTIGS-metaflye",
+        "QC_DIR": "01_QC-metaflye",
+        "MAPPING_DIR": "04_MAPPING-metaflye",
+        "PROFILE_DIR": "05_ANVIO_PROFILE-metaflye",
+        "MERGE_DIR": "06_MERGED-metaflye",
+        "TAXONOMY_DIR": "07_TAXONOMY-metaflye",
+        "SUMMARY_DIR": "08_SUMMARY-metaflye",
+        "SPLIT_PROFILES_DIR": "09_SPLIT_PROFILES-metaflye",
+        "LOGS_DIR": "00_LOGS"
     },
     "max_threads": "",
     "config_version": "3",

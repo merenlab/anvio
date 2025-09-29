@@ -13,54 +13,23 @@ cd $output_dir/workflow_test
 INFO "Creating a default config for metagenomics workflow"
 anvi-run-workflow -w metagenomics --get-default-config default-config.json
 
-INFO "List dependencies for metagenomics workflow with megahit"
-anvi-run-workflow -w metagenomics --config config-megahit.json --list-dependencies
-#
-INFO "Running a dry run in references mode with no qc and no gzip"
-anvi-run-workflow -w metagenomics --config config-references-mode-no-qc-no-gzip-no-groups.json
-anvi-run-workflow -w metagenomics --config config-references-mode-no-qc-no-gzip-no-groups.json --save-workflow-graph
-
-INFO "Running a dry run for metagenomics workflow with megahit"
-anvi-run-workflow -w metagenomics --config config-megahit.json
+INFO "Generate a graph from the megahit workflow"
 anvi-run-workflow -w metagenomics --config config-megahit.json --save-workflow-graph
 
-INFO "Running a dry run for metagenomics workflow with megahit with no qc"
-anvi-run-workflow -w metagenomics --config config-megahit-no-qc-all-against-all.json
-anvi-run-workflow -w metagenomics --config config-megahit-no-qc-all-against-all.json --save-workflow-graph
+INFO "Run with megahit - groups - QC - import Kraken"
+anvi-run-workflow -w metagenomics --config config-megahit.json
 
-INFO "List dependencies for metagenomics workflow in references mode"
-anvi-run-workflow -w metagenomics --config config-references-mode.json --list-dependencies
-
-INFO "Running a dry run in references mode"
-anvi-run-workflow -w metagenomics --config config-references-mode.json
-anvi-run-workflow -w metagenomics --config config-references-mode.json --save-workflow-graph
-
-INFO "List dependencies for metagenomics workflow with idba_ud"
-anvi-run-workflow -w metagenomics --config config-idba_ud.json --list-dependencies
-
-INFO "Running a dry run with idba_ud"
-anvi-run-workflow -w metagenomics --config config-idba_ud.json
-anvi-run-workflow -w metagenomics --config config-idba_ud.json --save-workflow-graph
-
-INFO "Running a dry run with idba_ud with no qc"
-anvi-run-workflow -w metagenomics --config config-idba_ud-no-qc.json --list-dependencies
-
-INFO "Running a dry run with metaspades using scaffolds"
-anvi-run-workflow -w metagenomics --config config-metaspades-no-qc-use-scaffolds.json
-anvi-run-workflow -w metagenomics --config config-metaspades-no-qc-use-scaffolds.json --save-workflow-graph
-anvi-run-workflow -w metagenomics --config config-metaspades-no-qc-use-scaffolds.json --list-dependencies
-
-INFO "Running a dry run with metaspades"
+INFO "Run with metaspades - no groups - no QC - no gzip - use scaffolds"
 anvi-run-workflow -w metagenomics --config config-metaspades.json
-anvi-run-workflow -w metagenomics --config config-metaspades.json --save-workflow-graph
-anvi-run-workflow -w metagenomics --config config-metaspades.json --list-dependencies
 
-INFO "Running with metaflye"
-anvi-run-workflow -w metagenomics --config config-metaflye.json --list-dependencies
-anvi-run-workflow -w metagenomics --config config-metaflye.json --save-workflow-graph
+INFO "Run with idba_ud - all-vs-all - remove SR matching ref - QC"
+anvi-run-workflow -w metagenomics --config config-idba_ud.json
+
+INFO "Run with metaflye - LR only"
 anvi-run-workflow -w metagenomics --config config-metaflye.json
 
-INFO "Running ref-mode with two types of reads"
-anvi-run-workflow -w metagenomics --config config-references-mode-sr-lr.json --list-dependencies
-anvi-run-workflow -w metagenomics --config config-references-mode-sr-lr.json --save-workflow-graph
-anvi-run-workflow -w metagenomics --config config-references-mode-sr-lr.json
+INFO "Run with metaflye and megahit - all-vs-all - SR QC"
+anvi-run-workflow -w metagenomics --config config-mixed-assembly.json
+
+INFO "Run reference-mode with SR and LR - no QC - add collection"
+anvi-run-workflow -w metagenomics --config config-references-mode.json
