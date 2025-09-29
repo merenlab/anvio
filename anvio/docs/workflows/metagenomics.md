@@ -1,4 +1,4 @@
-**The default entering point** to the metagenomics workflow is the raw paired-end sequencing reads for one or more shotgun metagenomes. **The default end point** of the workflow is an anvi'o merged profile database ready for refinement of bins (or whatever it is that you want to do with it), along with an annotated anvi'o contigs database. While these are the default entry and end points, there are many more ways to use the metagenomics workflow that we will demonstrate later.
+**The default entering point** to the metagenomics workflow is the raw sequencing reads for one or more shotgun metagenomes. **The default end point** of the workflow is an anvi'o merged profile database ready for refinement of bins (or whatever it is that you want to do with it), along with an annotated anvi'o contigs database. While these are the default entry and end points, there are many more ways to use the metagenomics workflow that we will demonstrate later.
 
 The workflow includes the following steps (though many are optional and can be skipped by modifying their rules in the workflow configuration file):
 
@@ -6,11 +6,11 @@ The workflow includes the following steps (though many are optional and can be s
 
 2. Taxonomic profiling of short reads using [krakenuniq](https://github.com/fbreitwieser/krakenuniq). These profiles are also imported into individual profile databases, and are available in the merged profile database (for more details about this, refer to the [release notes of anvi'o version 5.1](https://github.com/merenlab/anvio/releases/tag/v5.1)).
 
-2. Individual or combined assembly of quality filtered metagenomic reads using either [megahit](https://github.com/voutcn/megahit), [metaspades](http://cab.spbu.ru/software/spades/), or [idba_ud](https://github.com/loneknightpy/idba).
+2. Individual or combined assembly of quality filtered metagenomic reads using either [megahit](https://github.com/voutcn/megahit), [metaspades](http://cab.spbu.ru/software/spades/), [idba_ud](https://github.com/loneknightpy/idba) or [(meta)Flye](https://github.com/mikolmogorov/Flye) for long-reads.
 
 3. Generating an anvi'o contigs database from assembled contigs using %(anvi-gen-contigs-database)s. This part of the metagenomics workflow is inherited from the contigs workflow, so you know this step also includes the annotation of your contigs database(s) with functions, HMMs, and taxonomy.
 
-4. Mapping short reads from each metagenome to the contigs using [bowtie2](http://bowtie-bio.sourceforge.net/bowtie2/index.shtml), and generating sorted and indexed BAM files.
+4. Mapping short reads from each metagenome to the contigs using [bowtie2](http://bowtie-bio.sourceforge.net/bowtie2/index.shtml), or long-reads with [minimap2](https://github.com/lh3/minimap2), and generating sorted and indexed BAM files.
 
 5. Profiling individual BAM files using %(anvi-profile)s to generate single anvi'o profiles.
 
@@ -20,7 +20,7 @@ The workflow includes the following steps (though many are optional and can be s
 The metagenomics workflow is quite talented and can be run in multiple 'modes'. The following sections will detail different use cases.
 
 {:.warning}
-This documentation page is currently based off of [this old tutorial](https://merenlab.org/2018/07/09/anvio-snakemake-workflows/#metagenomics-workflow). We hope to update it at some point, but this is what we have for now. You will notice that several sections below reference example files and data. If you want to run those examples yourself, you should [click here](https://merenlab.org/2018/07/09/anvio-snakemake-workflows/#mock-data) and follow the instructions to download the mock dataset used in that tutorial.
+This documentation page is partially based off of [this old tutorial](https://merenlab.org/2018/07/09/anvio-snakemake-workflows/#metagenomics-workflow). We hope to update it at some point, but this is what we have for now. You will notice that several sections below reference example files and data. If you want to run those examples yourself, you should [click here](https://merenlab.org/2018/07/09/anvio-snakemake-workflows/#mock-data) and follow the instructions to download the mock dataset used in that tutorial.
 
 
 ### Default mode
@@ -183,7 +183,7 @@ And it should look like this:
 
 [![merged_profile_idba_ud1](../../images/workflows/metagenomics/merged_profile_idba_ud1.png)]( ../../images/workflows/metagenomics/merged_profile_idba_ud1.png){:.center-img .width-50}
 
-Ok, so this looks like a standard merged profile database with two samples. As a bonus, we also added a step to import the number of short reads in each sample ("Total num reads"), and we also used it to calculate the percentage of reads from the sample that have been mapped to the contigs ("Percent Mapped").
+Ok, so this looks like a standard merged profile database with two samples. As a bonus, we also added a step to import the number of reads in each sample ("Total num reads"), and we also used it to calculate the percentage of reads from the sample that have been mapped to the contigs ("Percent Mapped").
 
 This is a bit of an expert knowledge, but if you remember, we had two "groups" in the samples.txt file. Hence, we have two contigs databases for G01 and G02. But one of our groups had only a single sample, there was nothing to merge. Thus, there is no merged profile for G01 at the location you would expect to find it, but instead, there is a README file there:
 
