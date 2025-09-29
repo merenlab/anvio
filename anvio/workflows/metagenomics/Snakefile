@@ -636,22 +636,21 @@ if M.get_param_value_from_config(['idba_ud', 'run']) and M.has_sr:
             shell("rm -rf {params.temp_dir}")
 
 
-def input_for_metaspades(wildcards):
-    '''
-        The purpose of this functino is to figure out whether co-assembly is done.
-        if co-assembly is done then we need to first merge the fastq files
-    '''
-    input_file_dict = {}
-    d = fastq_input_for_assembly(wildcards)
-    if len(d['r1']) > 1:
-        input_file_dict = {'r1': temp(os.path.join(dirs_dict["QC_DIR"], wildcards.group + "-merged_R1.fastq")),\
-                           'r2': temp(os.path.join(dirs_dict["QC_DIR"], wildcards.group + "-merged_R2.fastq"))}
-    else:
-        input_file_dict = {'r1': d['r1'],\
-                           'r2': d['r2']}
-    return input_file_dict
-
 if M.get_param_value_from_config(['metaspades','run']) and M.has_sr:
+    def input_for_metaspades(wildcards):
+        '''
+            The purpose of this functino is to figure out whether co-assembly is done.
+            if co-assembly is done then we need to first merge the fastq files
+        '''
+        input_file_dict = {}
+        d = M.get_sr_fastqs_for_group(wildcards.group)
+        if len(d['r1']) > 1:
+            input_file_dict = {'r1': temp(os.path.join(dirs_dict["QC_DIR"], wildcards.group + "-merged_R1.fastq")),\
+                               'r2': temp(os.path.join(dirs_dict["QC_DIR"], wildcards.group + "-merged_R2.fastq"))}
+        else:
+            input_file_dict = {'r1': d['r1'],\
+                               'r2': d['r2']}
+        return input_file_dict
 
     rule metaspades:
         wildcard_constraints:
