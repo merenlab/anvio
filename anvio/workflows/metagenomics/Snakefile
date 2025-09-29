@@ -893,18 +893,6 @@ rule anvi_init_bam:
     shell: "anvi-init-bam {input} -o {output.bam} -T {threads} >> {log} 2>&1"
 
 
-sample_name = M.get_param_value_from_config(['anvi_profile', '--sample-name'])
-if sample_name != M.default_config['anvi_profile']['--sample-name'] and sample_name is not None:
-    run.warning('You chose to set the "--sample-name" for your profile databases '
-                'in the config file to %s. You are welcomed to do that, but at your own '
-                'risk. Just so you know, by default the sample name would match '
-                'the name defined either in the samples_txt, by choosing to provide '
-                'a different name, it means that all your profile databases would have '
-                'the same name, unless you incloded "{sample}" in the name you provided '
-                'but even then, we did not test that option and we are not sure it would '
-                'work...' % sample_name)
-
-
 def get_cluster_contigs_param(wildcards):
     """ helper function to sort out whether to cluster contigs for a single profile database"""
     if M.get_param_value_from_config(['anvi_profile', '--cluster-contigs']) is not "":
@@ -937,7 +925,7 @@ rule anvi_profile:
     params:
         output_dir = dirs_dict["PROFILE_DIR"] + "/{group}/{readset}",
         cluster_contigs = get_cluster_contigs_param,
-        sample_name = M.get_rule_param("anvi_profile", "--sample-name"),
+        sample_name = lambda wildcards: f'--sample-name "{wildcards.readset}"',
         overwrite_output_destinations = "--overwrite-output-destinations",
         report_variability_full = M.get_rule_param("anvi_profile", "--report-variability-full"),
         skip_SNV_profiling = M.get_rule_param("anvi_profile", "--skip-SNV-profiling"),
