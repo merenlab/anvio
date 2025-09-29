@@ -1351,72 +1351,101 @@ rule import_krakenuniq_taxonomy:
 
 
 rule import_percent_of_reads_mapped:
+    """Mapper-agnostic import of mapping stats into layers (BAM -> flagstat -> import -> export)."""
     version: 1.0
-    log: dirs_dict["LOGS_DIR"] + "/{group}-{sample}-import_percent_of_reads_mapped.log"
+    log:
+        dirs_dict["LOGS_DIR"] + "/{group}-{readset}-import_percent_of_reads_mapped.log"
     input:
-        profile = ancient(os.path.join(dirs_dict["PROFILE_DIR"], "{group}", "{sample}", "PROFILE.db"))
+        bam       = dirs_dict["MAPPING_DIR"] + "/{group}/{readset}.bam",
+        profiledb = dirs_dict["PROFILE_DIR"] + "/{group}/{readset}/PROFILE.db"
     output:
-        flag = touch(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/import_percent_of_reads_mapped.done"),
-        total_num_reads_txt = temp(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/total-num-reads.txt"),
-        layers_additional_data = temp(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/layers-additional-data.txt"),
-        layers_additional_data_updated = temp(dirs_dict["PROFILE_DIR"] + "/{group}/{sample}/layers-additional-data-updated.txt")
-    params:
-        bowtie_log = dirs_dict["LOGS_DIR"] + "/{group}-{sample}-bowtie.log"
-    threads: M.T('import_percent_of_reads_mapped')
-    resources: nodes = M.T('import_percent_of_reads_mapped')
+        # keep legacy filenames/structure
+        done            = dirs_dict["PROFILE_DIR"] + "/{group}/{readset}/import_percent_of_reads_mapped.done",
+        total_reads     = dirs_dict["PROFILE_DIR"] + "/{group}/{readset}/total-num-reads.txt",
+        layers_txt      = dirs_dict["PROFILE_DIR"] + "/{group}/{readset}/layers-additional-data.txt",
+        layers_txt_updated = dirs_dict["PROFILE_DIR"] + "/{group}/{readset}/layers-additional-data-updated.txt"
+    threads: 1
+    resources: nodes = 1
     run:
-        if not filesnpaths.is_file_exists(params.bowtie_log, dont_raise=True):
-            raise ConfigError('We expected to find the log file for bowtie2 here: %s '
-                        'but it is not there. This means we can\'t find out what '
-                        'percentage of short reads mapped to the fasta file. '
-                        'If you are confused, feel free to contact us. '
-                        'To avoid this error you can skip this step by setting the "run" parameter for this rule '
-                        '(import_percent_of_reads_mapped) to "false" in your config file.' % params.bowtie_log)
+        import os, re, subprocess, shutil, tempfile
 
-        else:
-            shell("""
-                    echo -e "sample\ttotal_num_reads" > {output.total_num_reads_txt}
-                    # ok so this whole thing is a terrible hack anyway, so the next two lines
-                    # shouldn't surprise you. Basically printing one line with the sample name
-                    # and the number of reads (which is grepped from the log file)
-                    echo -e "`echo -n "{params.bowtie_log}" | awk 'BEGIN{{FS="-"}}{{printf("%s\t", $2)}}';\
-                            grep 'reads; of these:' {params.bowtie_log} | awk '{{print $1 * 2}}'`" >> {output.total_num_reads_txt}
+        os.makedirs(os.path.dirname(output.done), exist_ok=True)
 
-                    # import this into the profile database. this part is simply
-                    # a 'hack' so we can get a file with both 'mapper reads' and
-                    # 'total reads' columns in the next step.
-                    anvi-import-misc-data {output.total_num_reads_txt} \
-                                          -p {input.profile} \
-                                          -t layers \
-                                          --just-do-it >> {log} 2>&1
+        # 1) samtools flagstat
+        cmd = ["samtools", "flagstat", input.bam]
+        p = subprocess.run(cmd, capture_output=True, text=True)
+        with open(log[0], "a") as L:
+            L.write(" ".join(cmd) + "\n")
+            if p.returncode != 0:
+                L.write(p.stderr)
+                raise WorkflowError("samtools flagstat failed; see log.")
+            L.write(p.stdout)
 
-                    # get the layers additional data table, which has two columns
-                    # now.
-                    anvi-export-misc-data -p {input.profile} \
-                                          -t layers \
-                                          -o {output.layers_additional_data} >> {log} 2>&1
-                  """)
+        # 2) parse totals
+        total = mapped = None
+        pct = None
+        for line in p.stdout.splitlines():
+            m = re.match(r"^\s*(\d+)\s+\+\s+\d+\s+in total", line)
+            if m:
+                total = int(m.group(1))
+            m = re.match(r"^\s*(\d+)\s+\+\s+\d+\s+mapped\s+\(([\d.]+)%", line)
+            if m:
+                mapped = int(m.group(1))
+                try:
+                    pct = float(m.group(2))
+                except ValueError:
+                    pct = None
 
-            additional_data = pd.read_csv(output.layers_additional_data, sep='\t', index_col=None)
-            if 'total_reads_mapped' not in additional_data.columns:
-                raise ConfigError('The layers additional data for %s doesn\'t contain a column '
-                                  '"total_reads_mapped". This is really weird, and we cannot '
-                                  'think of why this happened (maybe you deleted it somehow?). '
-                                  'Feel free to contact an anvio developer in order to troubleshoot '
-                                  'this. Otherwise, if you wish to continue, you can just skip this '
-                                  'step by setting the "run" parameter for the rule import_percent_of_reads_mapped '
-                                  'to "false".' % input.profile)
+        if total is None or mapped is None:
+            raise WorkflowError("Could not parse 'in total' / 'mapped' lines from samtools flagstat output.")
+        if pct is None:
+            pct = (mapped / total * 100.0) if total > 0 else 0.0
 
-            additional_data['percent_mapped'] = 100 * additional_data['total_reads_mapped'] / additional_data['total_num_reads']
-            additional_data.to_csv(output.layers_additional_data_updated, sep='\t', index=False)
+        # 3) write total-num-reads.txt (same header/value style as before)
+        with open(output.total_reads, "w") as f:
+            f.write("sample\ttotal_num_reads\n")
+            f.write(f"{wildcards.readset}\t{total}\n")
 
-            shell("""
-                    # import the new file with three columns
-                    anvi-import-misc-data {output.layers_additional_data_updated} \
-                                          -p {input.profile} \
-                                          -t layers \
-                                          --just-do-it >> {log} 2>&1
-                  """)
+        # 4) import metrics directly into layers (no export-edit-reimport gymnastics)
+        # Build a small TSV with the columns we want to have in layers.
+        with tempfile.TemporaryDirectory() as tmpd:
+            to_import = os.path.join(tmpd, "layers_to_import.tsv")
+            with open(to_import, "w") as f:
+                f.write("sample\ttotal_num_reads\ttotal_reads_mapped\tpercent_mapped\n")
+                f.write(f"{wildcards.readset}\t{total}\t{mapped}\t{pct:.2f}\n")
+
+            # Import into layers for this PROFILE.db
+            cmd = ["anvi-import-misc-data", to_import,
+                   "-p", input.profiledb,
+                   "-t", "layers",
+                   "--just-do-it"]
+            p2 = subprocess.run(cmd, capture_output=True, text=True)
+            with open(log[0], "a") as L:
+                L.write(" ".join(cmd) + "\n")
+                if p2.returncode != 0:
+                    L.write(p2.stderr)
+                    raise WorkflowError("anvi-import-misc-data (layers) failed; see log.")
+                L.write(p2.stdout)
+
+        # 5) export layers so legacy files are produced exactly like before
+        cmd = ["anvi-export-misc-data",
+               "-p", input.profiledb,
+               "-t", "layers",
+               "-o", output.layers_txt]
+        p3 = subprocess.run(cmd, capture_output=True, text=True)
+        with open(log[0], "a") as L:
+            L.write(" ".join(cmd) + "\n")
+            if p3.returncode != 0:
+                L.write(p3.stderr)
+                raise WorkflowError("anvi-export-misc-data (layers) failed; see log.")
+            L.write(p3.stdout)
+
+        # 6) maintain the 'updated' twin file for compatibility (it now matches the export)
+        shutil.copyfile(output.layers_txt, output.layers_txt_updated)
+
+        # 7) done flag
+        with open(output.done, "w") as f:
+            f.write("OK\n")
 
 
 rule anvi_cluster_contigs:
