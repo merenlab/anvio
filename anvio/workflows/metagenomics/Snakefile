@@ -763,73 +763,69 @@ if M.get_param_value_from_config(['megahit','run']) and M.has_sr:
             shell("rm -rf {params.temp_dir}")
 
 
-def build_expected_bowtie_build_output_file(rev=False):
-    """Build string template for the expected output file of bowtie build
+# for bowies, we need to first define a few things:
+# decide bt2 vs bt2l once
+BT2_EXT = "bt2l" if "--large-index" in M.get_param_value_from_config(["bowtie_build", "additional_params"]) else "bt2"
+BT2_PREFIX = os.path.join(dirs_dict["MAPPING_DIR"], "{group}", "{group}-contigs")
 
-    Returns a string such as 'some_dir/{group}/{group}-contigs.rev.{i}.bt2'
-
-    Parameters
-    ==========
-    rev : bool
-        Is it a .rev file?
-    """
-    additional_params = M.get_param_value_from_config(["bowtie_build", "additional_params"])
-    ext_suffix = 'l' if '--large-index' in additional_params else ''
-    prefix = '.rev' if rev else ''
-    return dirs_dict["MAPPING_DIR"] + "/{group}/{group}-contigs" + prefix + '.{i}.bt2' + ext_suffix
+def use_post_ref_filter(wildcards):
+    # If mapping to a reference earmarked for removal, do NOT use filtered SRs.
+    return M.remove_short_reads_based_on_references and (wildcards.group not in M.references_for_removal)
 
 
 rule bowtie_build:
-    """Run bowtie-build on the contigs fasta"""
-    # TODO: consider running this as a shadow rule
+    """Build bowtie2 index for contigs fasta."""
     version: 1.0
     wildcard_constraints:
         readset = SR_RS_RE
     log: dirs_dict["LOGS_DIR"] + "/{group}-bowtie_build.log"
-    input: M.get_fasta
-    # I touch this file because the files created have different suffix
+    input:
+        contigs = M.get_fasta
     output:
-        o1 = expand(build_expected_bowtie_build_output_file(), i=[1,2,3,4], group="{group}"),
-        o2 = expand(build_expected_bowtie_build_output_file(rev=True), i=[1,2], group="{group}")
+        idx = [ BT2_PREFIX + f".{i}.{BT2_EXT}" for i in (1,2,3,4) ] +
+              [ BT2_PREFIX + f".rev.1.{BT2_EXT}", BT2_PREFIX + f".rev.2.{BT2_EXT}" ]
     params:
-        prefix = dirs_dict["MAPPING_DIR"] + "/{group}/{group}-contigs",
+        prefix = BT2_PREFIX,
         additional_params = M.get_param_value_from_config(["bowtie_build", "additional_params"])
     threads: M.T('bowtie_build')
-    resources: nodes = M.T('bowtie_build'),
-    shell: "bowtie2-build {input} {params.prefix} --threads {threads} {params.additional_params} >> {log} 2>&1"
-
-
-def input_for_bowtie(wildcards):
-    '''Creating a dictionary containing the input files for bowtie.'''
-    d = {'build_output': build_expected_bowtie_build_output_file().format(i=1, group=wildcards.group)}
-    if wildcards.group in M.references_for_removal:
-        post_reference_based_short_read_removal = False
-    else:
-        post_reference_based_short_read_removal = M.remove_short_reads_based_on_references
-    # add the fastq files paths to the dictionary:
-    d.update(get_fastq(wildcards.sample, post_reference_based_short_read_removal=post_reference_based_short_read_removal))
-    return d
-
+    resources: nodes = M.T('bowtie_build')
+    shell:
+        r"""
+        mkdir -p "$(dirname {params.prefix})"
+        bowtie2-build --threads {threads} {params.additional_params} \
+            {input.contigs} {params.prefix} >> {log} 2>&1
+        """
 
 rule bowtie:
-    """Run mapping with bowtie2"""
+    """Map SR readsets with bowtie2 (extension handled via get_fastq)."""
     version: 1.0
-    log: dirs_dict["LOGS_DIR"] + "/{group}-{sample}-bowtie.log"
-    input: unpack(input_for_bowtie)
-    # setting the output as temp, since we only want to keep the bam file.
+    log: dirs_dict["LOGS_DIR"] + "/{group}-{readset}-bowtie.log"
     wildcard_constraints:
         readset = SR_RS_RE
+    input:
+        idx = rules.bowtie_build.output,
+        r1  = lambda wildcards: get_fastq(wildcards.readset,
+                                  zipped=run_gzip_fastqs,
+                                  post_reference_based_short_read_removal=use_post_ref_filter(wildcards))['r1'],
+        r2  = lambda wildcards: get_fastq(wildcards.readset,
+                                  zipped=run_gzip_fastqs,
+                                  post_reference_based_short_read_removal=use_post_ref_filter(wildcards))['r2'],
     output:
         sam = temp(dirs_dict["MAPPING_DIR"] + "/{group}/{readset}.sam")
     params:
-        bowtie_build_prefix = rules.bowtie_build.params.prefix,
+        index_prefix = BT2_PREFIX,
         additional_params = M.get_param_value_from_config(["bowtie", "additional_params"])
     threads: M.T('bowtie')
-    resources: nodes = M.T('bowtie'),
+    resources: nodes = M.T('bowtie')
     shell:
+        r"""
+        bowtie2 --threads {threads} \
+                -x {params.index_prefix} \
+                -1 {input.r1} -2 {input.r2} \
+                {params.additional_params} \
+                -S {output.sam} >> {log} 2>&1
         """
-            bowtie2 --threads {threads} -x {params.bowtie_build_prefix} -1 {input.r1} -2 {input.r2} \
-            {params.additional_params} -S {output.sam} >> {log} 2>&1
+
         """
 
 
