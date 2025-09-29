@@ -60,7 +60,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                      'bowtie_build', 'bowtie', 'samtools_view', 'anvi_init_bam', 'idba_ud',\
                      'anvi_profile', 'anvi_merge', 'import_percent_of_reads_mapped', 'anvi_cluster_contigs',\
                      'krakenuniq', 'krakenuniq_mpa_report', 'import_krakenuniq_taxonomy', 'metaspades',\
-                     'flye', 'hifiasm_meta', 'minimap2_index', 'minimap2',\
+                     'flye', 'minimap2_index', 'minimap2',\
                      'remove_short_reads_based_on_references', 'anvi_summarize', 'anvi_split'])
 
         self.general_params.extend(['samples_txt', "references_mode", "all_against_all",\
@@ -102,7 +102,6 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                                    "--min-overlap", "--read-error", "--keep-haplotypes",
                                                    "--no-alt-contigs", "--scaffold", "--polish-target",
                                                    "additional_params", "threads"]
-        rule_acceptable_params_dict['hifiasm_meta'] = ["run", "conda_yaml", "conda_env", "additional_params", "threads"]
         rule_acceptable_params_dict['bowtie'] = ["conda_yaml", "conda_env", "additional_params"]
         rule_acceptable_params_dict['bowtie_build'] = ["conda_yaml", "conda_env", "additional_params"]
         rule_acceptable_params_dict['minimap2_index'] = ["conda_yaml", "conda_env", "additional_params"]
@@ -149,7 +148,6 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                     'megahit': {"--min-contig-len": min_contig_length_for_assembly, "--memory": 0.4, "threads": 7},
                                     'idba_ud': {"--min_contig": min_contig_length_for_assembly, "threads": 7},
                                     'flye': {"run": False, "threads": 7, "additional_params": ""},
-                                    'hifiasm_meta': {"run": False, "threads": 7, "additional_params": ""},
                                     'iu_filter_quality_minoche': {"run": True, "--ignore-deflines": True},
                                     "gzip_fastqs": {"run": True},
                                     "bowtie": {"additional_params": "--no-unal", "threads": 3},
@@ -199,17 +197,15 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                   "megahit, metaspades, idba_ud.")
 
             # LR present → require exactly one LR assembler enabled
-            lr_choices = [bool(self.get_param_value_from_config(['flye', 'run'])),
-                          bool(self.get_param_value_from_config(['hifiasm_meta', 'run'])),]
+            lr_choices = [bool(self.get_param_value_from_config(['flye', 'run']))]
             if self.has_lr and sum(lr_choices) == 0:
                 raise ConfigError("Long-reads detected in samples.txt, but no long-read assembler is enabled "
-                                  "(expected one of: flye, hifiasm_meta).")
+                                  "(expected Flye).")
             if sum(lr_choices) > 1:
-                raise ConfigError("Multiple long-read assemblers are enabled; please enable only one of "
-                                  "flye, hifiasm_meta.")
+                raise ConfigError("Multiple long-read assemblers are enabled; please enable Flye")
 
         # sanity check for conda env: use either conda_yaml or conda_env, not both
-        for tool in ['flye','hifiasm_meta','minimap2','minimap2_index','bowtie_build','bowtie2','megahit','metaspades','idba_ud']:
+        for tool in ['flye','minimap2','minimap2_index','bowtie_build','bowtie2','megahit','metaspades','idba_ud']:
             y = self.get_param_value_from_config([tool, 'conda_yaml'])
             n = self.get_param_value_from_config([tool, 'conda_env'])
             if (y and y.strip()) and (n and n.strip()):
@@ -637,7 +633,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
     def get_assembly_software_list(self):
         """Return two lists of assembler rule names, by read type: (sr_list, lr_list)."""
         sr = ['megahit', 'idba_ud', 'metaspades']
-        lr = ['flye', 'hifiasm_meta']
+        lr = ['flye']
         return sr, lr
 
 
