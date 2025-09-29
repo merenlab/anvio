@@ -164,13 +164,6 @@
         "--scaffold": "",
         "--polish-target": ""
     },
-    "hifiasm_meta": {
-        "run": false,
-        "threads": 7,
-        "additional_params": "",
-        "conda_yaml": "",
-        "conda_env": ""
-    },
     "iu_filter_quality_minoche": {
         "run": true,
         "--ignore-deflines": true,
