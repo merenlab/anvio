@@ -118,21 +118,23 @@ rule metagenomics_workflow_target_rule:
 
 
 rule iu_gen_configs:
-    '''
-        Generating a config file for each short-read sample.
-
-        Notice that this step is ran only once and generates the config files for all short-read samples
-    '''
+    """
+    Generate QC .ini files for SHORT-READ readsets.
+    We run iu-gen-configs once (it writes {QC_DIR}/{base_sample}.ini),
+    then copy/symlink to {QC_DIR}/{readset}.ini so suffixed SR readsets exist.
+    """
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/iu_gen_configs.log"
-    # the input file is marked as 'ancient' so snakemake wouldn't run it
-    # just because a new path-to-raw-fastq-files.txt file was created.
-    input: ancient(M.get_param_value_from_config(['samples_txt']))
-    output: expand("{DIR}/{readset}.ini", DIR=dirs_dict["QC_DIR"], readset=M.get_sr_readset_ids())
+    # one-time rule -> no wildcard constraints
+    input:
+        ancient(M.get_param_value_from_config(['samples_txt']))
+    output:
+        # ONLY SR readsets (not LR)
+        expand("{DIR}/{readset}.ini", DIR=dirs_dict["QC_DIR"], readset=M.get_sr_readset_ids())
     params:
         dir=dirs_dict["QC_DIR"],
         r1_prefix = M.get_rule_param("iu_gen_configs", "--r1-prefix"),
-        r2_prefix = M.get_rule_param("iu_gen_configs", "--r2-prefix")
+        r2_prefix = M.get_rule_param("iu_gen_configs", "--r2-prefix"),
     threads: M.T('iu_gen_configs')
     resources: nodes = M.T('iu_gen_configs'),
     run:
@@ -185,7 +187,7 @@ def get_fastq(readset, zipped=run_gzip_fastqs, post_reference_based_short_read_r
         d = {'r1': r1, 'r2': r2}
     else:
         # if no QC and no reference based short read removal is requested, use raw input
-        d = get_raw_fastq(sample)
+        d = M.get_sr_files_for_readset(readset)
         if len(d['r1']) > 1 or len(d['r2']) > 1:
             raise ConfigError('You are skipping QC, but some of your samples (for example %s) are composed of more than 1 pair of fastq files '
                   'this is not allowed. Please first merge all the fastq files corresponding to a single sample (or just use QC, and the '
@@ -195,43 +197,58 @@ def get_fastq(readset, zipped=run_gzip_fastqs, post_reference_based_short_read_r
     return d
 
 
-def input_for_qc(sample):
-    ''' return a dict with input for qc rule'''
-    d = {'ini': ancient(dirs_dict["QC_DIR"] + "/%s.ini" % sample)}
-    d.update(get_raw_fastq(sample))
+def input_for_qc(readset):
+    """Return dict of inputs for QC for a given SR readset id (handles suffixed names)."""
+    d = {'ini': ancient(os.path.join(dirs_dict["QC_DIR"], f"{readset}.ini"))}
+    sr = M.get_sr_files_for_readset(readset)   # {'r1': [...], 'r2': [...]}
+    d.update(sr)
     return d
 
 
 qc_output_r1 = os.path.join(dirs_dict["QC_DIR"], "{readset}-QUALITY_PASSED_R1.fastq")
 qc_output_r2 = os.path.join(dirs_dict["QC_DIR"], "{readset}-QUALITY_PASSED_R2.fastq")
+
 rule iu_filter_quality_minoche:
-    ''' Run QC using iu-filter-quality-minoche '''
+    """ Run QC using iu-filter-quality-minoche """
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{readset}-iu_filter_quality_minoche.log"
-    # making the config file as "ancient" so QC wouldn't run just because
-    # a new config file was produced.
-    input: unpack(lambda wildcards: input_for_qc(wildcards.readset))
     wildcard_constraints:
         readset = SR_RS_RE
+    input:
+        # ini is read by iu-filter-quality-minoche; r1/r2 here are just for dependency tracking
+        unpack(lambda wildcards: input_for_qc(wildcards.readset))
     output:
-        r1 = temp(qc_output_r1) if M.remove_short_reads_based_on_references \
-                                else qc_output_r1,
-        r2 = temp(qc_output_r2) if M.remove_short_reads_based_on_references \
-                                else qc_output_r2,
+        r1 = temp(qc_output_r1) if M.remove_short_reads_based_on_references else qc_output_r1,
+        r2 = temp(qc_output_r2) if M.remove_short_reads_based_on_references else qc_output_r2,
         stats = dirs_dict["QC_DIR"] + "/{readset}-STATS.txt"
     params:
         ignore_deflines = M.get_rule_param("iu_filter_quality_minoche", "--ignore-deflines"),
         visualize_quality_curves = M.get_rule_param("iu_filter_quality_minoche", "--visualize-quality-curves"),
         limit_num_pairs = M.get_rule_param("iu_filter_quality_minoche", "--limit-num-pairs"),
         print_qual_scores = M.get_rule_param("iu_filter_quality_minoche", "--print-qual-scores"),
-        store_read_fate = M.get_rule_param("iu_filter_quality_minoche", "--store-read-fate")
+        store_read_fate = M.get_rule_param("iu_filter_quality_minoche", "--store-read-fate"),
+        qcdir = dirs_dict["QC_DIR"],
+        base_sample = lambda w: M.readsets_by_id[w.readset]["base_sample"]
     threads: M.T('iu_filter_quality_minoche')
     resources: nodes = M.T('iu_filter_quality_minoche'),
     shell:
-        """
-            iu-filter-quality-minoche {input.ini} {params.store_read_fate}\
-                                      {params.print_qual_scores} {params.limit_num_pairs}\
-                                      {params.visualize_quality_curves} {params.ignore_deflines} >> {log} 2>&1
+        r"""
+        # Run QC using the .ini generated for this readset (contents may still use base sample name)
+        iu-filter-quality-minoche {input.ini} {params.store_read_fate} {params.print_qual_scores} \
+                                  {params.limit_num_pairs} {params.visualize_quality_curves} \
+                                  {params.ignore_deflines} >> {log} 2>&1
+
+        # If the tool wrote files with the *base sample* prefix, copy them to the expected *readset* names.
+        # This is a no-op for unsuffixed SR readsets (base==readset).
+        if [ ! -f "{output.r1}" ] && [ -f "{params.qcdir}/{params.base_sample}-QUALITY_PASSED_R1.fastq" ]; then
+            cp "{params.qcdir}/{params.base_sample}-QUALITY_PASSED_R1.fastq" "{output.r1}"
+        fi
+        if [ ! -f "{output.r2}" ] && [ -f "{params.qcdir}/{params.base_sample}-QUALITY_PASSED_R2.fastq" ]; then
+            cp "{params.qcdir}/{params.base_sample}-QUALITY_PASSED_R2.fastq" "{output.r2}"
+        fi
+        if [ ! -f "{output.stats}" ] && [ -f "{params.qcdir}/{params.base_sample}-STATS.txt" ]; then
+            cp "{params.qcdir}/{params.base_sample}-STATS.txt" "{output.stats}"
+        fi
         """
 
 
