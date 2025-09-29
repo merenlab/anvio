@@ -895,7 +895,7 @@ rule anvi_init_bam:
 
 def get_cluster_contigs_param(wildcards):
     """ helper function to sort out whether to cluster contigs for a single profile database"""
-    if M.get_param_value_from_config(['anvi_profile', '--cluster-contigs']) is not "":
+    if M.get_param_value_from_config(['anvi_profile', '--cluster-contigs']) != "":
         run.warning('You chose to set the value for --cluster-contigs as %s. You can do that if you '
                     'choose to, but just so you know, if you don\'t provide a value then '
                     'the workflow would automatically cluster contigs for profile databases '
