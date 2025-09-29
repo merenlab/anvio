@@ -704,7 +704,9 @@ if M.get_param_value_from_config(['megahit','run']) and M.has_sr:
         wildcard_constraints:
             group = SR_GRP_RE
         log: dirs_dict["LOGS_DIR"] + "/{group}-megahit.log"
-        input: unpack(fastq_input_for_assembly)
+        input:
+            r1 = lambda wildcards: M.get_sr_fastqs_for_group(wildcards.group)['r1'],
+            r2 = lambda wildcards: M.get_sr_fastqs_for_group(wildcards.group)['r2'],
         params:
             temp_dir = dirs_dict["FASTA_DIR"] + "/{group}_TEMP",
             # the minimum length for contigs (smaller contigs will be discarded)
@@ -745,10 +747,7 @@ if M.get_param_value_from_config(['megahit','run']) and M.has_sr:
         # are not retaineded (it is not enough to define the directory as temporary
         # because when failing in the middle of a run, snakemake doesn't delete directories)
         run:
-            r1 = ','.join(input.r1)
-            r2 = ','.join(input.r2)
-
-            cmd = "megahit -1 %s -2 %s " % (r1, r2) + \
+            cmd = "megahit -1 {input.r1} -2 {input.r2} " + \
                 "-o {params.temp_dir} " + \
                 "-t {threads} " + \
                 "{params.min_contig_len} {params.min_count} {params.k_min} " + \
