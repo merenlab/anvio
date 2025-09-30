@@ -274,10 +274,39 @@ class SamplesTxt:
         return rows
 
     @staticmethod
-    def _split_paths(cell):
-        if cell is None:
+    def _split_paths(value):
+        """
+        Accept str (optionally comma-separated), list/tuple/set of strings,
+        or nested mixtures thereof; return a flat list of clean path strings.
+        """
+        if not value:
             return []
-        return [p.strip() for p in str(cell).split(",") if p.strip()]
+
+        # string: split on commas
+        if isinstance(value, str):
+            return [p.strip() for p in value.split(",") if p.strip()]
+
+        # iterables: flatten; also split comma-containing elements
+        if isinstance(value, (list, tuple, set)):
+            out = []
+            for v in value:
+                if not v:
+                    continue
+                if isinstance(v, (list, tuple, set)):
+                    out.extend(SamplesTxt._split_paths(v))
+                else:
+                    s = str(v).strip()
+                    if not s:
+                        continue
+                    if "," in s:
+                        out.extend([p.strip() for p in s.split(",") if p.strip()])
+                    else:
+                        out.append(s)
+            return out
+
+        # fallback: treat as a single scalar path
+        s = str(value).strip()
+        return [s] if s else []
 
     def _normalize_rows(self, raw, first_col):
         data = {}
