@@ -2148,8 +2148,23 @@ class DGR_Finder:
 
         # create primers dictionary
         primers_dict = {}
+
         # initialise the vr contig sequences
         self.init_vr_contigs()
+        sample_names = list(self.samples_txt_dict.keys())
+
+        # Sanity check for samples (move this outside the main loops)
+        sample_names_given = set(sample_names)
+        sample_names_in_snv_table = set(self.snv_panda['sample_id'])
+        samples_missing_in_snv_table = sample_names_given.difference(sample_names_in_snv_table)
+
+        if anvio.DEBUG:
+            self.run.info("Samples given", ", ".join(list(sample_names_given)))
+            self.run.info("Samples in profile.db's nucleotide variability table", ", ".join(list(sample_names_in_snv_table)))
+            self.run.info("Missing samples from profile.db's nucleotide variability table", ", ".join(list(samples_missing_in_snv_table)))
+
+        if sample_names_given == samples_missing_in_snv_table:
+            raise ConfigError(f"Anvi'o is not angry, just disappointed :/ You gave 'anvi-report-dgrs' these samples ({list(sample_names_given)}), but you have none of them in your profile.db.")
 
         for dgr_id, dgr_data in dgrs_dict.items():
             for vr_id, vr_data in dgr_data['VRs'].items():
@@ -2157,12 +2172,13 @@ class DGR_Finder:
                 contig_sequence = self.vr_contig_sequences[vr_contig]['sequence']
                 contig_length = len(contig_sequence)
 
+                # get TR VR sequences
                 VR_sequence = vr_data['VR_sequence']
                 TR_sequence = vr_data['TR_sequence']
                 vr_start = vr_data.get('VR_start_position')
                 vr_end = vr_data.get('VR_end_position')
 
-                # Keep the frame info, but also check reverse flag
+                # keep the frame info, but also check reverse flag
                 VR_frame = vr_data['VR_frame']
 
                 # decide where initial primer comes from
@@ -2177,84 +2193,99 @@ class DGR_Finder:
                         f"for DGR {dgr_id} VR {vr_id}. The initial primer will therefore be non-existent.")
 
                 # which way do we get the primer or skip an initial primer if VR at start/end
-                if (vr_start < self.initial_primer_length and VR_frame == 1) or \
-                (VR_frame == -1 and not vr_end > (contig_length - self.initial_primer_length)):
+                if (vr_start < self.initial_primer_length and VR_frame == 1) or (VR_frame == -1 and not vr_end > (contig_length - self.initial_primer_length)):
                     initial_primer_right = True
 
                 # store the flag in vr_data so we can reuse it later
                 vr_data['initial_primer_right'] = initial_primer_right
 
                 # get initial primer region if allowed
+                vr_initial_primer_region = None
                 if not skip_initial_primer:
                     if initial_primer_right:
                         vr_initial_primer_region = contig_sequence[vr_end : vr_end + self.initial_primer_length]
                     else:
                         vr_initial_primer_region = contig_sequence[vr_start - self.initial_primer_length : vr_start]
 
-                    # store in vr_data so it can be accessed later
-                    vr_data['vr_initial_primer_region'] = vr_initial_primer_region
-
-                # now we need the masked primer sequence # so we need the positions of the VR
-                vr_positions = set(range(vr_start, vr_end))
-                filtered_snvs_table = self.snv_panda[
-                    (self.snv_panda['contig_name'] == vr_contig) &
-                    (self.snv_panda['pos_in_contig'].isin(vr_positions))]
-
-                primer_snv_positions = set(filtered_snvs_table['pos_in_contig'])
-
-                vr_primer_list = []
+                # base primer based on TR VR mismatches and mutagenesis base in the TR sequence
+                base_vr_masked_primer_list = []
                 for i, (tr_base, vr_base) in enumerate(zip(TR_sequence, VR_sequence)):
                     if tr_base == dgr_data['base']:
-                        vr_primer_list.append('.')
+                        base_vr_masked_primer_list.append('.')
                     elif tr_base != vr_base:
-                        vr_primer_list.append('.')
+                        base_vr_masked_primer_list.append('.')
                     else:
-                        vr_primer_list.append(tr_base)
+                        base_vr_masked_primer_list.append(tr_base)
 
-                # apply SNV-based masking
-                for i in range(len(vr_primer_list)):
-                    current_position = vr_start + i
-                    if current_position in primer_snv_positions:
-                        vr_primer_list[i] = '.'
+                base_vr_masked_primer = ''.join(base_vr_masked_primer_list)
 
-                vr_masked_primer = ''.join(vr_primer_list)
+                # initialize dict entry for this VR
+                dgr_vr_key = f"{dgr_id}_{vr_id}_Primer"
+                primers_dict[dgr_vr_key] = {}
 
-                # reverse complement the masked primer if the VR is in reverse frame
-                if VR_frame == -1:
-                    vr_masked_primer = utils.rev_comp(vr_masked_primer)
+                # track if we warned about missing initial primer (warn only once)
+                warned_about_initial_primer = False
 
-                vr_data['vr_masked_primer'] = vr_masked_primer
+                # now create sample-specific primers if we have SNV info
+                for sample_name in sample_names:
+                    if anvio.DEBUG:
+                        self.run.info_single(f"Processing sample {sample_name} for DGR {dgr_id} VR {vr_id}", nl_before=1)
 
-                # combine initial + masked primer
-                if not skip_initial_primer:
+                    # get SNVs for this sample in the VR region
+                    sample_snvs = self.snv_panda[
+                        (self.snv_panda['sample_id'] == sample_name) &
+                        (self.snv_panda['contig_name'] == vr_contig) &
+                        (self.snv_panda['pos_in_contig'] >= vr_start) &
+                        (self.snv_panda['pos_in_contig'] < vr_end)
+                    ]
+                    snv_positions = set(sample_snvs['pos_in_contig'])
+
+                    # apply SNV-based masking
+                    sample_primer_list = list(base_vr_masked_primer)
+                    for pos in snv_positions:
+                        idx = pos - vr_start  # position relative to VR start
+                        if 0 <= idx < len(sample_primer_list):
+                            sample_primer_list[idx] = '.'
+
+                    vr_masked_primer = ''.join(sample_primer_list)
+
+                    # determine if this sample used the original (no-SNV) primer
+                    used_original_primer = (len(snv_positions) == 0)
+
+                    # reverse complement the masked primer if the VR is in reverse frame
+                    if VR_frame == -1:
+                        vr_masked_primer = utils.rev_comp(vr_masked_primer)
+
+                    # combine initial + masked primer
+                    if not skip_initial_primer:
+                        if initial_primer_right:
+                            primer_sequence = vr_masked_primer + vr_initial_primer_region
+                        else:
+                            primer_sequence = vr_initial_primer_region + vr_masked_primer
+                    else:
+                        primer_sequence = vr_masked_primer
+                        if not warned_about_initial_primer:
+                            self.run.warning(
+                                f"Creating primer for DGR {dgr_id} VR {vr_id} without an initial primer region. "
+                                f"Only a masked primer is present, more risky."
+                            )
+                            warned_about_initial_primer = True
+
+                    # cut to correct total length
                     if initial_primer_right:
-                        primer_sequence = vr_masked_primer + vr_initial_primer_region
+                        # cut from the LEFT (keep the right side)
+                        primer_sequence = primer_sequence[-self.whole_primer_length:]
                     else:
-                        primer_sequence = vr_initial_primer_region + vr_masked_primer
-                else:
-                    primer_sequence = vr_masked_primer
-                    self.run.warning(
-                        f"Creating primer for DGR {dgr_id} VR {vr_id} without an initial primer region. "
-                        f"Only a masked primer is present, more risky."
-                    )
+                        # cut from the RIGHT (keep the left side)
+                        primer_sequence = primer_sequence[:self.whole_primer_length]
 
-                # cut to correct total length
-                if initial_primer_right:
-                    # cut from the LEFT (keep the right side)
-                    primer_sequence = primer_sequence[-self.whole_primer_length:]
-                else:
-                    # cut from the RIGHT (keep the left side)
-                    primer_sequence = primer_sequence[:self.whole_primer_length]
-
-                # store full primer sequence
-                vr_data['primer_sequence'] = primer_sequence
-
-                # update primers_dict
-                primers_dict[f"{dgr_id}_{vr_id}_Primer"] = {
-                    'initial_primer_sequence': vr_data.get('vr_initial_primer_region', 'N/A'),
-                    'vr_masked_primer': vr_data['vr_masked_primer'],
-                    'primer_sequence': vr_data['primer_sequence'],
-                    'initial_primer_right': vr_data['initial_primer_right']}
+                    # store sample-specific primer data
+                    primers_dict[dgr_vr_key][sample_name] = {
+                        'used_original_primer': used_original_primer,
+                        'initial_primer_sequence': vr_initial_primer_region if not skip_initial_primer else 'N/A',
+                        'vr_masked_primer': vr_masked_primer,
+                        'primer_sequence': primer_sequence
+                    }
 
         return primers_dict
 
