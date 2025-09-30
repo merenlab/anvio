@@ -2084,11 +2084,13 @@ class DGR_Finder:
                 print('Sample {sample_name} is none, loop will be broken.')
                 break
 
-            # extract sample-specific primers if the flag is set
-            if use_sample_primers and sample_primers_dict:
-                primers_for_sample = sample_primers_dict.get(sample_name, primers_dict)
-            else:
-                primers_for_sample = primers_dict
+            # Extract sample-specific primers from the nested structure
+            # Convert from {primer_name: {sample_name: {data}}}
+            # to {primer_name: {data}} for this specific sample
+            primers_for_sample = {}
+            for primer_name, samples_data in primers_dict.items():
+                if sample_name in samples_data:
+                    primers_for_sample[primer_name] = samples_data[sample_name]
 
             samples_dict_for_sample = {sample_name: samples_dict[sample_name]}
 
