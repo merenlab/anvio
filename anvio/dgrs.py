@@ -238,7 +238,6 @@ class DGR_Finder:
 
         if not self.skip_compute_DGR_variability_profiling and self.samples_txt:
             self.samples_artifact = SamplesTxt(self.samples_txt)
-            #self.raw_r1_r2_reads_are_present = False
 
 
 
