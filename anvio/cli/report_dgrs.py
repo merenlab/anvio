@@ -172,9 +172,6 @@ def get_args():
                     "will skip computing DGR variability profiling, which is an extremely costly step. It may be a good idea "
                     "to first run the workflow without computing activity, take a look at the output files to make sure "
                     "everything looks alright, and then run the workflow without this flag.")
-    groupI.add_argument('--skip-primer-variability', default=False, action="store_true", help="This flag "
-                    "will skip computing primers for your DGR's VRs that contain SNVs in particular samples, which is an "
-                    "extremely costly step. This is useful when your samples have a consensus SNV which is not contained in the reference you are using")
 
     return parser.get_args(parser)
 
