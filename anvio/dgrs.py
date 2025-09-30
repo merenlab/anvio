@@ -2284,7 +2284,6 @@ class DGR_Finder:
 
         # define defaults
         dgrs_dict = self.DGRs_found_dict
-        use_sample_primers = False
 
         if not len(dgrs_dict):
             raise ConfigError("Compute DGR variability profile function speaking: There are no DGRs to compute in-sample variability :/")
@@ -2313,7 +2312,6 @@ class DGR_Finder:
                                 f"useful for anything. Just an FYI. {msg}.", level=0, nl_before=1)
             self.num_threads = num_samples
         else:
-
             self.run.info_single(f"{msg}.", level=0, nl_before=1)
 
         # here we will need to reconstruct a samples_dict and primers_dict to pass to the class
@@ -2367,153 +2365,9 @@ class DGR_Finder:
         # FIRST we need to get the primers sequences!
         primers_dict = self.generate_primers_for_vrs(dgrs_dict)
 
-        if not self.skip_primer_variability:
-            # then define use_sample_primers as True
-            use_sample_primers = True
-
-            # create a sample_primers_dict to store the primers for each sample
-            self.sample_primers_dict = {}
-            sample_names = list(self.samples_txt_dict.keys())
-            profile_db = dbops.ProfileDatabase(self.profile_db_path)
-            snvs_table = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name).sort_values(by=['split_name', 'pos_in_contig'])
-            profile_db.disconnect()
-
-            # sanity check for mismatch between samples given and samples in SNV table
-            sample_names_given = set(sample_names)
-            sample_names_in_snv_table = set(snvs_table['sample_id'])
-            samples_missing_in_snv_table = sample_names_given.difference(sample_names_in_snv_table)
-
-            if anvio.DEBUG:
-                self.run.info("Samples given", ", ".join(list(sample_names_given)))
-                self.run.info("Samples in profile.db's nucleotide variability table", ", ".join(list(sample_names_in_snv_table)))
-                self.run.info("Missing samples from profile.db's nucleotide variability table", ", ".join(list(samples_missing_in_snv_table)))
-
-            if sample_names_given == samples_missing_in_snv_table:
-                raise ConfigError(f"Anvi'o is not angry, just disappointed :/ You gave 'anvi-report-dgrs' these samples ({list(sample_names_given)}), but you have none of them in your profile.db. "
-                                "This is fatal; anvi'o will now quit. Either recreate your profile.db with the samples you would like to search for the DGR VRs variability, "
-                                "or give 'anvi-report-dgrs' the correct samples.")
-
-            # iterate over the samples
-            for sample_name in sample_names:
-                if sample_name not in sample_names_in_snv_table:
-                    self.run.warning(f"Sample {sample_name} is missing from the SNV table, skipping this sample.")
-                    continue  # skip this sample if it's not in the SNV table
-
-                # filter SNVs for the current sample
-                sample_snvs = snvs_table[snvs_table['sample_id'] == sample_name]
-
-                # iterate through DGRs and VRs
-                for dgr_id, dgr_data in dgrs_dict.items():
-                    for vr_key, vr_data in dgr_data['VRs'].items():
-                        vr_id = vr_key
-                        vr_start = vr_data.get('VR_start_position')
-                        vr_end = vr_data.get('VR_end_position')
-                        vr_contig = vr_data.get('VR_contig')
-
-                        # filter SNVs within the primer region for the current VR
-                        primer_snvs = sample_snvs[
-                            (sample_snvs['split_name'].apply(lambda x: x.split('_split')[0]) == vr_contig) &
-                            (sample_snvs['pos_in_contig'] >= vr_start - self.initial_primer_length) &
-                            (sample_snvs['pos_in_contig'] < vr_end + 1)
-                        ]
-
-                        dgr_vr_key = f'{dgr_id}_{vr_key}'
-                        original_primer_key = f'{dgr_id}_{vr_key}_Primer'
-
-                        # make sure dict exists
-                        if dgr_vr_key not in self.sample_primers_dict:
-                            self.sample_primers_dict[dgr_vr_key] = {}
-
-                        if anvio.DEBUG:
-                            self.run.info_single(f"Processing sample {sample_name} for DGR {dgr_id} VR {vr_id}", nl_before=1)
-
-                        if not primer_snvs.empty:
-                            # get original sequences separately
-                            original_initial_primer = primers_dict[original_primer_key]['initial_primer_sequence']
-                            vr_masked_primer = primers_dict[original_primer_key]['vr_masked_primer']
-
-                            # work on a copy of the initial primer sequence only
-                            new_initial_primer = list(original_initial_primer)
-
-                            # vectorized operation to find consensus SNVs and update the primer sequence
-                            consensus_snvs = primer_snvs[
-                                primer_snvs['departure_from_reference'] > 0.5].apply(DGR_Finder.get_consensus_base, axis=1)
-
-                            positions_in_primer = (
-                                (vr_start - self.initial_primer_length)
-                                - primer_snvs[primer_snvs['departure_from_reference'] > 0.5]['pos_in_contig']
-                                - 1)
-
-                            for position, consensus_base in zip(positions_in_primer, consensus_snvs):
-                                if consensus_base and 0 <= position < len(new_initial_primer):
-                                    new_initial_primer[position] = consensus_base
-
-                            # update sample-specific dict entry
-                            self.sample_primers_dict[dgr_vr_key][sample_name] = {
-                                'initial_primer_sequence': ''.join(new_initial_primer),
-                                'vr_masked_primer': vr_masked_primer,
-                                'primer_sequence': ''.join(new_initial_primer) + vr_masked_primer,
-                                'used_original_primer': False,}
-
-                            self.run.info_single(
-                                f"Updated sample {sample_name} primer for {dgr_vr_key}: {''.join(new_initial_primer)}", nl_before=1)
-
-                        else:
-                            # use the original primer sequence since no SNVs were found
-                            original_initial_primer = primers_dict[original_primer_key]['initial_primer_sequence']
-                            vr_masked_primer = primers_dict[original_primer_key]['vr_masked_primer']
-
-                            # update sample-specific dict entry
-                            self.sample_primers_dict[dgr_vr_key][sample_name] = {
-                                'initial_primer_sequence': original_initial_primer,
-                                'vr_masked_primer': vr_masked_primer,
-                                'primer_sequence': original_initial_primer + vr_masked_primer,
-                                'used_original_primer': True,
-                            }
-
-                            self.run.warning(
-                                f"No valid SNVs for primer region in sample {sample_name} for {dgr_vr_key}, "
-                                f"skipping sample consensus."
-                            )
-
-                if anvio.DEBUG:
-                    self.run.info_single(f"Sample {sample_name} processed. Sample-specific primers dict: {self.sample_primers_dict}", nl_before=1)
-
-                # update the sample-specific primers dictionary with the new primer sequence
-                for dgr_vr_key, samples in self.sample_primers_dict.items():
-                    for sample_name, primer_data in samples.items():
-                        primer_key = f"{dgr_vr_key}_Primer"
-                        vr_masked_primer = primers_dict[primer_key]['vr_masked_primer']
-                        primer_data['vr_masked_primer'] = vr_masked_primer
-
-                        # combine the initial primer sequence and vr_masked_primer for each sample
-                        initial_primer = primer_data['initial_primer_sequence']
-                        vr_masked_primer = primer_data['vr_masked_primer']
-                        primer_sequence = initial_primer + vr_masked_primer
-
-                        # add the combined primer sequence to the sample data
-                        primer_data['primer_sequence'] = primer_sequence
-
-                        if anvio.DEBUG:
-                            # print the updated primer sequence for debugging
-                            self.run.info_single(f"Sample: {sample_name}, DGR: {dgr_vr_key}, Primer Sequence: {primer_sequence}", nl_before=1)
-
-            if anvio.DEBUG:
-                self.run.info_single(f"Updated sample primers dictionary: {self.sample_primers_dict}", nl_before=1)
-
-        if not self.skip_primer_variability:
-            self.run.info_single("Primer variability analysis is enabled. Using sample-specific primers.", nl_before=1)
-
-            # ensure `sample_primers_dict` is updated and passed during computation
-            use_sample_primers = True
-
-        if self.skip_primer_variability:
-            self.run.info_single("Skipping primer variability analysis. Using default primers.", nl_before=1)
-            use_sample_primers = False
-
         # output the final primers dictionary
         self.run.info_single("Computing the Variable Regions Primers and creating a 'DGR_Primers_used_for_VR_diversity.tsv' file.", nl_before=1)
-        self.print_primers_dict_to_csv(self.sample_primers_dict if not self.skip_primer_variability else primers_dict)
+        self.print_primers_dict_to_csv(primers_dict)
 
         ##################
         # MULTITHREADING #
@@ -2542,14 +2396,12 @@ class DGR_Finder:
                                                 self.samples_txt_dict,
                                                 primers_dict,
                                                 primer_folder),
-
-                                            kwargs=({'progress': self.progress if self.num_threads == 1 else progress_quiet,
-                                                    'use_sample_primers': use_sample_primers,  # pass flag based on `self.skip_primer_variability`
-                                                    'sample_primers_dict': self.sample_primers_dict if use_sample_primers else None,  # Pass only if needed
+                                            kwargs=({'progress': self.progress if self.num_threads == 1 else progress_quiet
                                                 }))
             workers.append(worker)
             worker.start()
 
+        # monitor progress
         self.progress.new('DGR variability profile', progress_total_items=num_samples)
         if self.num_threads > 1:
             self.progress.update(f"Processing {PL('sample', num_samples)} and {PL('primer', len(primers_dict))} in {PL('thread', self.num_threads)}.")
@@ -2563,6 +2415,7 @@ class DGR_Finder:
                     self.run.info_single(f"Sample {sample_finished_processing} has finished processing.", nl_before=1)
                 num_samples_processed += 1
                 self.progress.increment(increment_to=num_samples_processed)
+
                 if self.num_threads > 1:
                     if num_samples_processed < num_samples:
                         self.progress.update(f"Samples processed: {num_samples_processed} of {num_samples}. Still working ...")
