@@ -26,7 +26,8 @@ from anvio.drivers.blast import BLAST
 from anvio.summaryhtml import SummaryHTMLOutput
 from anvio.sequencefeatures import PrimerSearch
 from anvio.constants import nucleotides
-import anvio.fastalib as fastalib
+from anvio.artifacts.samples_txt import SamplesTxt
+
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2024, the Meren Lab (http://merenlab.org/)"
@@ -235,13 +236,8 @@ class DGR_Finder:
                             "instruct anvi'o where to find the samples.txt that you want to profile are.")
 
         if not self.skip_compute_DGR_variability_profiling and self.samples_txt:
-            self.samples_txt_dict = utils.get_samples_txt_file_as_dict(self.samples_txt)
-            self.raw_r1_r2_reads_are_present = False
-            self.raw_r1_r2_reads_are_present = all('r1' in v and 'r2' in v and isinstance(v['r1'], str) and isinstance(v['r2'], str) and v['r1'] and v['r2'] for v in self.samples_txt_dict.values())
-
-            if not self.raw_r1_r2_reads_are_present and not self.skip_compute_DGR_variability_profiling:
-                    raise ConfigError("You asked anvi'o to calculate DGR profiling variability across samples, but your samples-txt "
-                                    "does not include raw R1/R2 reads :(")
+            self.samples_artifact = SamplesTxt(self.samples_txt)
+            #self.raw_r1_r2_reads_are_present = False
 
 
 
@@ -2055,7 +2051,7 @@ class DGR_Finder:
 
 
     @staticmethod
-    def compute_dgr_variability_profiling_per_vr(input_queue, output_queue, samples_dict, primers_dict, output_directory_path, run=run_quiet, progress=progress_quiet, sample_primers_dict=None, use_sample_primers=False):
+    def compute_dgr_variability_profiling_per_vr(input_queue, output_queue, samples_artifact, primers_dict, output_directory_path, run=run_quiet, progress=progress_quiet, sample_primers_dict=None, use_sample_primers=False):
         """
         Go back to the raw metagenomic reads to compute the variability profiles of the variable regions for each single Sample.
 
@@ -2092,10 +2088,12 @@ class DGR_Finder:
                 if sample_name in samples_data:
                     primers_for_sample[primer_name] = samples_data[sample_name]
 
+            samples_dict = samples_artifact.as_dict()
             samples_dict_for_sample = {sample_name: samples_dict[sample_name]}
+            sample_artifact = SamplesTxt.from_dict(samples_dict_for_sample)
 
             # setup the args object
-            args = argparse.Namespace(samples_dict= samples_dict_for_sample,
+            args = argparse.Namespace(samples_artifact= sample_artifact,
                                     primers_dict= primers_for_sample,
                                     output_dir=output_directory_path,
                                     only_report_primer_matches = True
@@ -2151,20 +2149,19 @@ class DGR_Finder:
 
         # initialise the vr contig sequences
         self.init_vr_contigs()
-        sample_names = list(self.samples_txt_dict.keys())
+        sample_names = set(self.samples_artifact.samples())
 
         # Sanity check for samples (move this outside the main loops)
-        sample_names_given = set(sample_names)
         sample_names_in_snv_table = set(self.snv_panda['sample_id'])
-        samples_missing_in_snv_table = sample_names_given.difference(sample_names_in_snv_table)
+        samples_missing_in_snv_table = sample_names.difference(sample_names_in_snv_table)
 
         if anvio.DEBUG:
-            self.run.info("Samples given", ", ".join(list(sample_names_given)))
+            self.run.info("Samples given", ", ".join(list(sample_names)))
             self.run.info("Samples in profile.db's nucleotide variability table", ", ".join(list(sample_names_in_snv_table)))
             self.run.info("Missing samples from profile.db's nucleotide variability table", ", ".join(list(samples_missing_in_snv_table)))
 
-        if sample_names_given == samples_missing_in_snv_table:
-            raise ConfigError(f"Anvi'o is not angry, just disappointed :/ You gave 'anvi-report-dgrs' these samples ({list(sample_names_given)}), but you have none of them in your profile.db.")
+        if sample_names == samples_missing_in_snv_table:
+            raise ConfigError(f"Anvi'o is not angry, just disappointed :/ You gave 'anvi-report-dgrs' these samples ({list(sample_names)}), but you have none of them in your profile.db.")
 
         for dgr_id, dgr_data in dgrs_dict.items():
             for vr_id, vr_data in dgr_data['VRs'].items():
@@ -2424,7 +2421,7 @@ class DGR_Finder:
             worker = multiprocessing.Process(target=DGR_Finder.compute_dgr_variability_profiling_per_vr,
                                             args=(input_queue,
                                                 output_queue,
-                                                self.samples_txt_dict,
+                                                self.samples_artifact,
                                                 primers_dict,
                                                 primer_folder),
                                             kwargs=({'progress': self.progress if self.num_threads == 1 else progress_quiet
