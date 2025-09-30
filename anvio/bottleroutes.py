@@ -198,8 +198,11 @@ class BottleApplication(Bottle):
         self.route('/data/get_gene_info/<gene_callers_id>',                       callback=self.get_gene_info)
         self.route('/data/get_metabolism',                                        callback=self.get_metabolism)
         self.route('/data/get_scale_bar',                                         callback=self.get_scale_bar, method='POST')
-        self.route('/pangraph/get_pangraph_json_data',                            callback=self.get_pangraph_json_data, method='POST')
-        self.route('/pangraph/initial_pangraph_json_data',                        callback=self.initial_pangraph_json_data, method='POST')
+        self.route('/pangraph/save_pangraph_state',                               callback=self.save_pangraph_state, method='POST')
+        self.route('/pangraph/load_pangraph_state',                               callback=self.load_pangraph_state, method='POST')
+        self.route('/pangraph/get_pangraph_states',                               callback=self.get_pangraph_states)
+        self.route('/pangraph/get_pangraph_json_data',                            callback=self.get_pangraph_json_data)
+        self.route('/pangraph/initial_pangraph_json_data',                        callback=self.initial_pangraph_json_data)
         self.route('/pangraph/rerun_pangraph_json_data',                          callback=self.rerun_pangraph_json_data, method='POST')
         self.route('/pangraph/get_pangraph_synteny_gene_cluster_alignment',       callback=self.get_pangraph_synteny_gene_cluster_alignment, method="POST")
         self.route('/pangraph/get_pangraph_synteny_gene_cluster_function',        callback=self.get_pangraph_synteny_gene_cluster_function, method="POST")
@@ -1587,6 +1590,37 @@ class BottleApplication(Bottle):
             return json.dumps({'status': 1, 'message': message})
 
         return json.dumps({'scale_bar_value': total_branch_length})
+
+
+    def save_pangraph_state(self):
+        try:
+            payload = request.json
+            state_name = payload['state_name']
+            state_dict = payload['state_values']
+            self.interactive.save_state(state_dict, state_name)
+            return(json.dumps({'status': 0}))
+        except:
+            return(json.dumps({'status': 1}))
+
+    def load_pangraph_state(self):
+
+        try:
+            payload = request.json
+            state_name = payload['state_name']
+            self.interactive.load_state(state=state_name, order='default')
+
+            data = self.interactive.get_json()
+            return(json.dumps({'status': 0, 'data': data}))
+        except:
+            return(json.dumps({'status': 1, 'data': ''}))
+        
+
+    def get_pangraph_states(self):
+        try:
+            data = self.interactive.get_states()
+            return(json.dumps({'status': 0, 'data': data}))
+        except:
+            return(json.dumps({'status': 1, 'data': ''}))
 
 
     def get_pangraph_json_data(self):

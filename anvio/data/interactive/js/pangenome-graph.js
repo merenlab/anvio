@@ -85,6 +85,9 @@ class PangenomeGraphUserInterface {
         this.info_download = this.info_download.bind(this);
         this.add_info_to_bin = this.add_info_to_bin.bind(this);
         this.flextree_change = this.flextree_change.bind(this);
+        this.save_state = this.save_state.bind(this);
+        this.load_state = this.load_state.bind(this);
+        this.set_UI_settings = this.set_UI_settings.bind(this);
         
         this.draw_newick = this.draw_newick.bind(this);
         this.generate_svg = this.generate_svg.bind(this);
@@ -1329,25 +1332,24 @@ class PangenomeGraphUserInterface {
         new_settings_dict['condtr'] = parseInt($('#condtr')[0].value);
         new_settings_dict['maxlength'] = parseInt($('#maxlength')[0].value);
         new_settings_dict['groupcompress'] = parseFloat($('#groupcompress')[0].value);
-        new_settings_dict['state'] = this.state;
         
         if (JSON.stringify(this.settings_dict) !== JSON.stringify(new_settings_dict)) {
             this.rerun_JSON(new_settings_dict);
         }
-
-        this.settings_dict = new_settings_dict;
-
+        
         $.ajax({
             url: "/pangraph/get_pangraph_json_data",
-            type: "POST",
+            type: "GET",
             cache: false,
             contentType: "application/json",
             dataType: "json",
             success: (data) => {
+                console.log(data)
                 this.data = data['data'];
                 console.log('JSON loaded.');
                 this.initialize_variables();
                 console.log('Initialized main variables.');
+                this.settings_dict = JSON.parse(JSON.stringify(new_settings_dict));
                 this.main_draw();
             },
             error: (err) => {
@@ -1678,7 +1680,7 @@ class PangenomeGraphUserInterface {
     initialize_JSON() {
         $.ajax({
             url: "/pangraph/initial_pangraph_json_data",
-            type: "POST",
+            type: "GET",
             cache: false,
             contentType: "application/json",
             dataType: "json",
@@ -1689,6 +1691,8 @@ class PangenomeGraphUserInterface {
                 console.log('Initialized main variables.');
                 this.initialize_user_interface();
                 console.log('Initialized user interface values.');
+                this.set_UI_settings();
+                console.log('Load settings.');
             },
             error: (err) => {
                 console.error('Failed to load JSON:', err);
@@ -1940,6 +1944,18 @@ class PangenomeGraphUserInterface {
             }
         }
     }
+
+    set_UI_settings() {
+        for (var [setting, value] of Object.entries(this.data['states'])) {
+            if (typeof value === 'number') {
+                $('#' + setting)[0].value = value;
+            } else if (value == true || value == false) {
+                $('#' + setting).prop('checked', value);
+            } else {
+                $('#' + setting)[0].value = value;
+            }
+        }
+    }
     
     initialize_user_interface() {
         
@@ -1980,7 +1996,7 @@ class PangenomeGraphUserInterface {
         );
         
         for (var layer of this.layers) {
-            if ($('#flex' + layer + '').length == 0) {
+            // if ($('#flex' + layer + '').length == 0) {
                 var element = $('<div class="col-12 d-flex mb-1"></div>').append(
                     $('<div class="col-2 d-flex align-items-center"></div>').append(
                         $('<div class="form-switch d-flex"></div>').append(
@@ -2010,81 +2026,71 @@ class PangenomeGraphUserInterface {
                 );
                 
                 $('#layers').append(element);
-            }
+            // }
         }
 
         $('#title-panel-first-line').text(this.data['meta']['project_name']);
         $('#title-panel-second-line').text('Pangraph Detail');
         
-        if (!$('#genomecolors').children().length) {
-            for (var genome of this.genomes) {  
-                $('#genomecolors').append(
-                    $('<div class="col-12 d-flex mb-1">').append(
-                        $('<div class="col-2 d-flex align-items-center">').append(
-                            $('<div class="form-switch d-flex">').append(
-                                $('<input class="" type="checkbox" id="flex' + genome + '" name="' + genome + '" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top">')
-                            )
-                        )
-                    ).append(
-                        $('<div class="col-7 d-flex align-items-center">').append(
-                            genome
-                        )
-                    ).append(
-                        $('<div class="col-1 d-flex align-items-center">').append(
-                            $('<i class="user-handle bi bi-arrows-expand"></i>')
-                        )
-                    ).append(
-                        $('<div class="d-flex col-2">').append(
-                            $('<input type="color" class="form-control form-control-color flex-fill p-0 border-0" id="' + genome + '" name="' + genome + '" value="#000000" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">')
+        // if (!$('#genomecolors').children().length) {
+        for (var genome of this.genomes) {  
+            $('#genomecolors').append(
+                $('<div class="col-12 d-flex mb-1">').append(
+                    $('<div class="col-2 d-flex align-items-center">').append(
+                        $('<div class="form-switch d-flex">').append(
+                            $('<input class="" type="checkbox" id="flex' + genome + '" name="' + genome + '" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top">')
                         )
                     )
-                );
-        
-                $('#RightOffcanvasBodyTop').append(
-                    $('<tr>').append(
-                        $('<td class="col-4">').append(
-                            genome
-                        )
-                    ).append(
-                        $('<td class="col-8 text-end" id="number_' + genome + '">').append(
-                            0
-                        )
+                ).append(
+                    $('<div class="col-7 d-flex align-items-center">').append(
+                        genome
                     )
-                );
-        
-                if ($('#flex' + genome + 'layer').length == 0) {
-                    var element = $('<div class="col-12 d-flex mb-1"></div>').append(
-                        $('<div class="col-2 d-flex align-items-center"></div>').append(
-                            $('<div class="form-switch d-flex"></div>').append(
-                                $('<input class="" type="checkbox" id="flex' + genome + 'layer" name="flex' + genome + 'layer" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">')
-                            )
-                        )
-                    ).append(
-                        $('<div class="col-8 d-flex align-items-center"></div>').append(
-                            genome
-                        )
-                    ).append(
-                        $('<div class="d-flex col-2"></div>').append(
-                            $('<input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="' + genome + 'layer" name="' + genome + 'layer" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">')
-                        )
-                    );
-        
-                    $('#layers').append(element);
-                }
-            }
+                ).append(
+                    $('<div class="col-1 d-flex align-items-center">').append(
+                        $('<i class="user-handle bi bi-arrows-expand"></i>')
+                    )
+                ).append(
+                    $('<div class="d-flex col-2">').append(
+                        $('<input type="color" class="form-control form-control-color flex-fill p-0 border-0" id="' + genome + '" name="' + genome + '" value="#000000" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">')
+                    )
+                )
+            );
+    
+            $('#RightOffcanvasBodyTop').append(
+                $('<tr>').append(
+                    $('<td class="col-4">').append(
+                        genome
+                    )
+                ).append(
+                    $('<td class="col-8 text-end" id="number_' + genome + '">').append(
+                        0
+                    )
+                )
+            );
+    
+            // if ($('#flex' + genome + 'layer').length == 0) {
+            var element = $('<div class="col-12 d-flex mb-1"></div>').append(
+                $('<div class="col-2 d-flex align-items-center"></div>').append(
+                    $('<div class="form-switch d-flex"></div>').append(
+                        $('<input class="" type="checkbox" id="flex' + genome + 'layer" name="flex' + genome + 'layer" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">')
+                    )
+                )
+            ).append(
+                $('<div class="col-8 d-flex align-items-center"></div>').append(
+                    genome
+                )
+            ).append(
+                $('<div class="d-flex col-2"></div>').append(
+                    $('<input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="' + genome + 'layer" name="' + genome + 'layer" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">')
+                )
+            );
+
+            $('#layers').append(element);
         }
+        // }
+        // }
         
-        for (var [setting, value] of Object.entries(this.data['states'])) {
-            if (typeof value === 'number') {
-                $('#' + setting)[0].value = value;
-            } else if (value == true || value == false) {
-                $('#' + setting).prop('checked', value);
-            } else {
-                $('#' + setting)[0].value = value;
-            }
-        }
-        
-        $('#searchSources').empty();
+        // $('#searchSources').empty();
         for (var annotation_source of this.functional_annotation_sources_available){
             $('#searchSources').append(
                 $('<div class="col-12"></div>').append(
@@ -2115,12 +2121,12 @@ class PangenomeGraphUserInterface {
             );
         }
         
-        $('#expressiondrop').empty();
+        // $('#expressiondrop').empty();
         $('#expressiondrop').append($('<option value="Choose item">Choose item</option>'));
         $('#expressiondrop').append($('<option value="Name">Name</option>'));
         $('#expressiondrop').append($('<option value="Position">Position</option>'));
         
-        $('#filter').empty();
+        // $('#filter').empty();
         $('#filter').append(
             $('<div class="col-12"></div>').append(
                 $('<div class="row align-items-center"></div>').append(
@@ -2152,8 +2158,7 @@ class PangenomeGraphUserInterface {
         );
         
         for (var layer of this.layers) {
-            if ($('#flex' + layer).prop('checked') == true){
-                $('#expressiondrop').append($('<option value="' + layer + '">' + layer + '</option>'));
+            $('#expressiondrop').append($('<option value="' + layer + '">' + layer + '</option>'));
                 $('#filter').append(
                     $('<div class="col-12"></div>').append(
                         $('<div class="row align-items-center"></div>').append(
@@ -2183,48 +2188,47 @@ class PangenomeGraphUserInterface {
                         )
                     )
                 );
-            }
         }
 
         // Initialize main values based on standard settings
         
-        if ($('#flexlinear').prop('checked') == false) {
-            $('#distx').prop('disabled', true);
-            $('#inner').prop('disabled', false);
-        } else {
-            $('#distx').prop('disabled', false);
-            $('#inner').prop('disabled', true);
-        }
+        // if ($('#flexlinear').prop('checked') == false) {
+        //     $('#distx').prop('disabled', true);
+        //     $('#inner').prop('disabled', false);
+        // } else {
+        //     $('#distx').prop('disabled', false);
+        //     $('#inner').prop('disabled', true);
+        // }
         
-        if ($('#flexarrow').prop('checked') == false) {
-            $('#arrow').prop('disabled', true);
-        } else {
-            $('#arrow').prop('disabled', false);
-        }
+        // if ($('#flexarrow').prop('checked') == false) {
+        //     $('#arrow').prop('disabled', true);
+        // } else {
+        //     $('#arrow').prop('disabled', false);
+        // }
         
-        if ($('#flexbackbone').prop('checked') == false) {
-            $('#backbone').prop('disabled', true);
-        } else {
-            $('#backbone').prop('disabled', false);
-        }
+        // if ($('#flexbackbone').prop('checked') == false) {
+        //     $('#backbone').prop('disabled', true);
+        // } else {
+        //     $('#backbone').prop('disabled', false);
+        // }
         
-        if ($('#flexcondtr').prop('checked') == false) {
-            $('#condtr').prop('disabled', true);
-        } else {
-            $('#condtr').prop('disabled', false);
-        }
+        // if ($('#flexcondtr').prop('checked') == false) {
+        //     $('#condtr').prop('disabled', true);
+        // } else {
+        //     $('#condtr').prop('disabled', false);
+        // }
         
-        if ($('#flexmaxlength').prop('checked') == false) {
-            $('#maxlength').prop('disabled', true);
-        } else {
-            $('#maxlength').prop('disabled', false);
-        }
+        // if ($('#flexmaxlength').prop('checked') == false) {
+        //     $('#maxlength').prop('disabled', true);
+        // } else {
+        //     $('#maxlength').prop('disabled', false);
+        // }
         
-        if ($('#flexgroupcompress').prop('checked') == false) {
-            $('#groupcompress').prop('disabled', true);
-        } else {
-            $('#groupcompress').prop('disabled', false);
-        }
+        // if ($('#flexgroupcompress').prop('checked') == false) {
+        //     $('#groupcompress').prop('disabled', true);
+        // } else {
+        //     $('#groupcompress').prop('disabled', false);
+        // }
 
         // Initialize main buttons with anonymous functions
         
@@ -2334,20 +2338,23 @@ class PangenomeGraphUserInterface {
         $('#AlignmentDownload').on("click", this.alignment_download);
         $('#InfoDownload').on("click", this.info_download);
 
-        $('#stateload').on("click", this.load_state);
-        $('#statesave').on("click", this.save_state);
+        $('#stateload').on("click", () => this.state_modal('load'));
+        $('#statesave').on("click", () => this.state_modal('save'));
         $('#binload').on("click", this.load_bin);
         $('#binsave').on("click", this.save_bin);
+
+        $('#savestatebutton').on("click", this.save_state);
+        $('#loadstatebutton').on("click", this.load_state);
         
         sortable('#genomecolors', {
             forcePlaceholderSize: true,
             handle: '.user-handle',
             items: 'div'
         });
-        this.settings_dict['condtr'] = this.data['states']['condtr']
-        this.settings_dict['maxlength'] = this.data['states']['maxlength']
-        this.settings_dict['groupcompress'] = this.data['states']['groupcompress']
-        this.settings_dict['state'] = this.data['meta']['state']
+        this.settings_dict['condtr'] = JSON.parse(JSON.stringify(this.data['states']['condtr']))
+        this.settings_dict['maxlength'] = JSON.parse(JSON.stringify(this.data['states']['maxlength']))
+        this.settings_dict['groupcompress'] = JSON.parse(JSON.stringify(this.data['states']['groupcompress']))
+        this.settings_dict['state'] = JSON.parse(JSON.stringify(this.data['meta']['state']))
 
         $("#redraw").removeClass("disabled");
     }
@@ -2793,40 +2800,100 @@ class PangenomeGraphUserInterface {
         $('#LoadBin').modal('show');
     }
 
+    load_state () {
+        if ($('#loadstatename')[0].value != "") {
+            this.state = $('#loadstatename')[0].value
+
+            var state = {}
+            state['state_name'] = this.state
+    
+            $.ajax({
+                url: "/pangraph/load_pangraph_state",
+                type: "POST",
+                cache: false,
+                contentType: "application/json",
+                dataType: "json",
+                data: JSON.stringify(state),
+                success: (data) => {
+                    this.data = data['data'];
+                    console.log('JSON loaded.');
+                    this.initialize_variables();
+                    console.log('Initialized main variables.');
+                    this.set_UI_settings();      
+                    this.main_draw();
+                },
+                error: (err) => {
+                    console.error('Failed to load JSON:', err);
+                }
+            })
+            
+            $('#loadstatemodal').modal('hide');
+            console.log('Successfully load state.')
+        }
+    }
+    
     save_state () {
+        var new_state = {}
+        
+        for (var [setting, value] of Object.entries(this.data['states'])) {
+            if (typeof value === 'number') {
+                new_state[setting] = Number($('#' + setting)[0].value);
+            } else if (value == true || value == false) {
+                new_state[setting] = $('#' + setting).prop('checked');
+            } else {
+                new_state[setting] = $('#' + setting)[0].value;
+            }
+        }
+
+        var result = {}
+        result['state_name'] = $('#savestatename')[0].value
+        result['state_values'] = new_state
 
         $.ajax({
-        type: 'GET',
-        cache: false,
-        url: '/state/all',
-        success: function(state_list) {
-
-            console.log(state_list);
-            // $('#saveState_list').empty();
-
-            // for (let state_name in state_list) {
-            //     var _select = "";
-            //     if (state_name == current_state_name)
-            //     {
-            //         _select = ' selected="selected"';
-            //     }
-            //     $('#saveState_list').append('<option ' + _select + '>' + state_name + '</option>');
-            // }
-
-            // $('#modSaveState').modal('show');
-            // if ($('#saveState_list').val() === null) {
-            //     $('#saveState_name').val('default');
-            // } else {
-            //     $('#saveState_list').trigger('change');
-            // }
-        }
-    });
+            url: "/pangraph/save_pangraph_state",
+            type: "POST",
+            data: JSON.stringify(result),
+            contentType: "application/json",
+            dataType: "json",
+            error: function(){
+                console.log('Error while attempting to save state.')
+            },
+            success: function(){
+                console.log('Successfully saved state.')
+            }
+        })
         
-        $('#SaveState').modal('show');
+        $('#savestatemodal').modal('hide');
     }
+    
+    state_modal (save_load) {
 
-    load_state () {
-        $('#LoadState').modal('show');
+        $.ajax({
+            type: 'GET',
+            cache: false,
+            url: '/pangraph/get_pangraph_states',
+            success: function(data) {
+
+                $('#' + save_load + 'statelisttab').empty()
+                $('#' + save_load + 'statename')[0].value = ""
+                
+                for (var state_name of data['data']) {
+                    $('#' + save_load + 'statelisttab').append(
+                        $('<a class="list-group-item list-group-item-action" id="list-profile-list" data-toggle="list" href="#list-profile" role="tab" aria-controls="profile">').append(
+                            state_name
+                        )
+                    )
+                }
+    
+                $('#' + save_load + 'statelisttab a').on('click', function (e) {
+                    e.preventDefault()
+                    $(this).tab('show')
+                    $('#' + save_load + 'statename')[0].value = $(this)[0].innerText
+                })
+    
+                $('#' + save_load + 'statemodal').modal('show');
+            }
+        });
     }
 }
 

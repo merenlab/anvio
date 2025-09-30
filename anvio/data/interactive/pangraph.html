@@ -783,6 +783,79 @@
         </div>
       </div>
     </div>
+      
+    <div class="modal fade" id="savestatemodal" aria-hidden="true" aria-labelledby="exampleModalToggleLabel" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal">
+            <div class="modal-content modal-content-small">
+                <div class="modal-header">
+                    <h5 class="modal-title border-bottom-0 settings-header" style="font-size: x-large;">Store state</h5>
+                </div>
+                <div class="modal-body">
+                    <div class="row d-flex grid overflow-auto m-0">
+                        <div class="col-12">
+                            <div class="list-group" id="savestatelisttab" role="tablist" id="list-group">    
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-body">
+                    <div class="row d-flex grid overflow-auto m-0">
+                        <div class="col-12">
+                            <input id="savestatename" class="input-search form-control" value="" data-help="search-value" placeholder="Enter new state name or overwrite an existing one.">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer d-flex justify-content-center">
+                    <div class="d-flex btn-group">
+                        <button class="btn btn-outline-success" id="savestatebutton">
+                            <i class="bi bi-download"> Save</i>
+                        </button>
+                        <button class="btn btn-outline-danger" data-dismiss="modal" aria-label="Close" aria-hidden="true">
+                            <i class="bi bi-x-lg">Close</i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+      
+    <div class="modal fade" id="loadstatemodal" aria-hidden="true" aria-labelledby="exampleModalToggleLabel" tabindex="-1">
+      <div class="modal-dialog modal-dialog-centered modal">
+        <div class="modal-content modal-content-small">
+          <div class="modal-header">
+            <h5 class="modal-title border-bottom-0 settings-header" style="font-size: x-large;">Load state</h5>
+            <!-- <button type="button" class="close d-flex" data-dismiss="modal" aria-label="Close" aria-hidden="true">
+              <i class="bi bi-x-lg"></i>
+            </button> -->
+          </div>
+          <div class="modal-body">
+                    <div class="row d-flex grid overflow-auto m-0">
+                        <div class="col-12">
+                            <div class="list-group" id="loadstatelisttab" role="tablist" id="list-group">    
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            <div class="modal-body">
+                    <div class="row d-flex grid overflow-auto m-0">
+                        <div class="col-12">
+                            <input id="loadstatename" class="input-search form-control" value="" data-help="search-value" placeholder="Choose existing state." disabled>
+                        </div>
+                    </div>
+                </div>
+          <div class="modal-footer d-flex justify-content-center">
+            <div class="d-flex btn-group">
+              <button class="btn btn-outline-success" id="loadstatebutton">
+                <i class="bi bi-download"> Load</i>
+              </button>
+              <button class="btn btn-outline-danger" data-dismiss="modal" aria-label="Close" aria-hidden="true">
+                  <i class="bi bi-x-lg">Close</i>
+                </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <div class="modal fade" id="SaveBin" aria-hidden="true" aria-labelledby="exampleModalToggleLabel" tabindex="-1">
       <div class="modal-dialog modal-dialog-centered modal">
@@ -809,33 +882,6 @@
       </div>
     </div>
       
-    <div class="modal fade" id="SaveState" aria-hidden="true" aria-labelledby="exampleModalToggleLabel" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered modal">
-            <div class="modal-content modal-content-small">
-                <div class="modal-header">
-                    <h5 class="modal-title border-bottom-0 settings-header" style="font-size: x-large;">Store state</h5>
-                </div>
-                <div class="modal-body overflow-auto" id="SaveStateBody">
-                    <div class="col-12 d-flex mb-1">
-                        <div class="col-12 d-flex align-items-center">
-                            <select class="form-select" aria-label="Default select example">
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer d-flex justify-content-center" id="SaveStateFooter">
-                    <div class="d-flex btn-group">
-                        <button class="btn btn-outline-success" id="SaveStateButton">
-                            <i class="bi bi-download"> Save</i>
-                        </button>
-                        <button class="btn btn-outline-danger" data-dismiss="modal" aria-label="Close" aria-hidden="true">
-                            <i class="bi bi-x-lg">Close</i>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <div class="modal fade" id="LoadBin" aria-hidden="true" aria-labelledby="exampleModalToggleLabel" tabindex="-1">
       <div class="modal-dialog modal-dialog-centered modal">
         <div class="modal-content modal-content-small">
@@ -860,32 +906,7 @@
         </div>
       </div>
     </div>
-      
-    <div class="modal fade" id="LoadState" aria-hidden="true" aria-labelledby="exampleModalToggleLabel" tabindex="-1">
-      <div class="modal-dialog modal-dialog-centered modal">
-        <div class="modal-content modal-content-small">
-          <div class="modal-header">
-            <h5 class="modal-title border-bottom-0 settings-header" style="font-size: x-large;">Load state</h5>
-            <!-- <button type="button" class="close d-flex" data-dismiss="modal" aria-label="Close" aria-hidden="true">
-              <i class="bi bi-x-lg"></i>
-            </button> -->
-          </div>
-            <div class="modal-body overflow-auto" id="LoadStateBody">
-          </div>
-          <div class="modal-footer d-flex justify-content-center" id="LoadStateFooter">
-            <div class="d-flex btn-group">
-              <button class="btn btn-outline-success" id="LoadStateButton">
-                <i class="bi bi-download"> Load</i>
-              </button>
-              <button class="btn btn-outline-danger" data-dismiss="modal" aria-label="Close" aria-hidden="true">
-                  <i class="bi bi-x-lg">Close</i>
-                </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
+    
     <div class="modal fade" id="BinAnalyse" aria-hidden="true" aria-labelledby="exampleModalToggleLabel" tabindex="-1">
       <div class="modal-dialog modal-dialog-centered modal-xl">
         <div class="modal-content modal-content-large">

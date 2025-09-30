@@ -13,6 +13,7 @@ import json
 import numpy
 import random
 import argparse
+import datetime
 import textwrap
 import threading
 import itertools
@@ -3554,7 +3555,7 @@ class PanGraphSuperclass(PanSuperclass):
         pan_graph_db.disconnect()
 
         # create an instance of states table
-        self.states_table = TablesForStates(self.pan_graph_db_path)
+        # self.states_table = TablesForStates(self.pan_graph_db_path)
 
         self.progress.end()
 
@@ -3573,6 +3574,18 @@ class PanGraphSuperclass(PanSuperclass):
         F = lambda x: '[YES]' if x else '[NO]'
         self.run.info('Pan Graph DB', 'Initialized: %s (v. %s)' % (self.pan_graph_db_path, anvio.__pan__version__))
 
+
+    def save_state(self, state_dict, state_name):
+        last_modified = datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S")
+        TablesForStates(self.pan_graph_db_path).store_state(state_name, json.dumps(state_dict), last_modified)
+        # self.p_meta['state'] = state_name
+        self.states[state_name] = {'content': json.dumps(state_dict), 'last_modified': last_modified}
+
+
+    def get_states(self):
+        return(list(self.states.keys()))
+
+
     def load_state(self, state='default', order='default'):
 
         args = argparse.Namespace(pan_or_profile_db=self.pan_graph_db_path, target_data_table="layer_orders")
@@ -3587,7 +3600,9 @@ class PanGraphSuperclass(PanSuperclass):
 
         self.p_meta['order'] = order
         self.p_meta['state'] = state
+
         state_dict = json.loads(self.states[state]['content'])
+
         gene_cluster_grouping_threshold = state_dict['condtr']
         max_edge_length_filter = state_dict['maxlength']
         groupcompress = state_dict['groupcompress']
