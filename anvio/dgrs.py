@@ -2901,7 +2901,6 @@ class DGR_Finder:
                 ("Initial Primer Length", self.initial_primer_length or "12"),
                 ("Variable Region Primer Length", self.whole_primer_length or "65"),
                 ("Skip Compute DGR Variability Profiling", self.skip_compute_DGR_variability_profiling or "FALSE"),
-                ("Skip Primer Variability", self.skip_primer_variability or "FALSE")
             ]
 
             csv_writer.writerows(parameters)
