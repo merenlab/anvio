@@ -2592,8 +2592,7 @@ class DGR_Finder:
         Parameters
         ==========
         primers_dict : dict
-            Dictionary of primer metadata. Structure differs depending on `self.skip_primer_variability`.
-
+            Dictionary of primer metadata
         Returns
         =======
         None
@@ -2605,57 +2604,30 @@ class DGR_Finder:
         output_directory_path = self.output_directory
         output_path= os.path.join(output_directory_path, "DGR_Primers_used_for_VR_diversity.tsv")
 
-        if self.skip_primer_variability:
-            # define the header for the TSV file
-            csv_header = ['Primer_ID', 'Used_Original_Primer', 'Initial_Primer', 'Masked_Primer', 'Whole_Primer']
+        # define the header for the TSV file
+        csv_header = ['Primer_ID', 'Sample_ID', 'No_SNV_Primer', 'Initial_Primer', 'Masked_Primer', 'Whole_Primer']
 
-            # open the TSV file in write mode
-            with open(output_path, mode='w', newline='') as file:
-                writer = csv.writer(file, delimiter='\t')
-                writer.writerow(csv_header)  # Write the header row
+        # Open the TSV file in write mode
+        with open(output_path, mode='w', newline='') as file:
+            writer = csv.writer(file, delimiter='\t')
+            writer.writerow(csv_header)  # Write the header row
 
-                # iterate through the dictionary and write each primer's information to the TSV file
-                for primer_name, primer_info in primers_dict.items():
-                    # for skip_primer_variability mode, there's no 'used_original_primer' key
-                    # so we set it to True since we're using original primers
-                    used_original_primer = True
-                    initial_primer = primer_info.get('initial_primer_sequence', '')
-                    masked_primer = primer_info.get('vr_masked_primer', '')
-                    whole_primer = primer_info.get('primer_sequence', '')
+            # iterate through the dictionary and write each primer's information to the TSV file
+            for primer_name, samples in primers_dict.items():
+                for sample_id, primer_info in samples.items():
+                    used_original_primer = primer_info['used_original_primer']
+                    initial_primer = primer_info['initial_primer_sequence']
+                    masked_primer = primer_info['vr_masked_primer']
+                    whole_primer = primer_info['primer_sequence']
 
                     writer.writerow([
-                        primer_name,
-                        used_original_primer,
-                        initial_primer,
-                        masked_primer,
-                        whole_primer
+                    primer_name,
+                    sample_id,
+                    used_original_primer,
+                    initial_primer,
+                    masked_primer,
+                    whole_primer
                     ])
-        else:
-            primers_dict = self.sample_primers_dict
-            # define the header for the TSV file
-            csv_header = ['Primer_ID', 'Sample_ID', 'No_SNV_Primer', 'Initial_Primer', 'Masked_Primer', 'Whole_Primer']
-
-            # Open the TSV file in write mode
-            with open(output_path, mode='w', newline='') as file:
-                writer = csv.writer(file, delimiter='\t')
-                writer.writerow(csv_header)  # Write the header row
-
-                # iterate through the dictionary and write each primer's information to the TSV file
-                for primer_name, samples in primers_dict.items():
-                    for sample_id, primer_info in samples.items():
-                        used_original_primer = primer_info['used_original_primer']
-                        initial_primer = primer_info['initial_primer_sequence']
-                        masked_primer = primer_info['vr_masked_primer']
-                        whole_primer = primer_info['primer_sequence']
-
-                        writer.writerow([
-                        primer_name,
-                        sample_id,
-                        used_original_primer,
-                        initial_primer,
-                        masked_primer,
-                        whole_primer
-                        ])
         return
 
 
