@@ -19,6 +19,7 @@ from anvio.errors import ConfigError
 from anvio.workflows import WorkflowSuperClass
 from anvio.genomedescriptions import GenomeDescriptions
 from anvio.genomedescriptions import MetagenomeDescriptions
+from anvio.artifacts.samples_txt import SamplesTxt
 
 import anvio.constants as constants
 
@@ -180,6 +181,8 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         if not self.hmm_list_path:
             raise ConfigError('Please provide a path to an hmm_list.txt')
 
+        self.run_scg_taxonomy = self.get_param_value_from_config(['anvi_run_scg_taxonomy', 'run'])
+
         self.init_hmm_list_txt()
 
         gene_caller_to_use = self.get_param_value_from_config(['gene_caller_to_use'])
@@ -271,9 +274,11 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         self.AA_mode = self.get_param_value_from_config(['cluster_X_percent_sim_mmseqs', 'AA_mode'])
 
         if self.samples_txt_file:
-            self.sanity_check_samples_txt()
+            # we initialize the samples.txt to run the sanity check before the workflow reaches the
+            # metagenomics workflow rule.
+            self.samples_txt = SamplesTxt(self.samples_txt_file, expected_format="paired_end")
 
-            self.sample_names_for_mapping_list = self.samples_information['sample'].to_list()
+            self.sample_names_for_mapping_list = self.samples_txt.samples()
 
             if self.AA_mode == True:
                 raise ConfigError("You provided a samples.txt so you're in profile mode! Please change AA_mode to false.")
@@ -390,8 +395,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         target_file = os.path.join(self.dirs_dict['MISC_DATA'], "{group}", "{group}_misc.tsv")
         target_files.append(target_file)
 
-        run_scg_taxonomy = self.get_param_value_from_config(["anvi_run_scg_taxonomy", "run"]) == True
-        if run_scg_taxonomy:
+        if self.run_scg_taxonomy:
             target_file = os.path.join(self.dirs_dict['MISC_DATA'], "{group}", "anvi_estimate_scg_taxonomy_for_SCGs.done")
             target_files.append(target_file)
 
@@ -423,6 +427,18 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         # for samples and unique hmm_source, get the input files
         for hmm_source, hmm_name in hmm_source_name:
             input_file = [os.path.join(self.dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], sample_name, hmm_source, hmm_name, f"{sample_name}-{hmm_name}-processed.done") for sample_name in self.names_list]
+            input_files.extend(input_file)
+
+        # you may wonder why do we need the outputs of anvi-run-scg-taxonomy here.
+        # It is for a practical reason: when a snakemake workflow is generating a lot of jobs,
+        # you can use the flag --batch my_rule=n/N to run a subset of jobs at a time. Here,
+        # by adding the output of anvi-run-scg-taxonomy as an input to this rule, you can
+        # use the --batch flag to run until 'combine_sequence_data'. Otherwise, snakemake
+        # will try to run scg taxonomy in the first batch, and basically ruining the purpose
+        # of the --batch flag.
+        # tl;dr: we make the rule 'combine_sequence_data' the bottleneck for the --batch flag
+        if self.run_scg_taxonomy:
+            input_file = [os.path.join(self.dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], sample_name, f"{sample_name}_scg_taxonomy.done") for sample_name in self.names_list]
             input_files.extend(input_file)
 
         return input_files
@@ -494,7 +510,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                     raise ConfigError(f"{hmm_source} is not an 'INTERNAL' hmm source for anvi'o. "
                                       f"Please double check {self.hmm_list_path} to see if you spelled it right or "
                                       f"please checkout the default internal hmms here: https://merenlab.org/software/anvio/help/7/artifacts/hmm-source/#default-hmm-sources")
-                if hmm_name not in constants.default_scgs_for_taxonomy and self.get_param_value_from_config(["anvi_run_scg_taxonomy", "run"]):
+                if hmm_name not in constants.default_scgs_for_taxonomy and self.run_scg_taxonomy:
                     raise ConfigError(f"You asked EcoPhylo to use anvi-estimate-scg-taxonomy but the HMM {hmm_name} in {hmm_source} is not compatible. "
                                       f"You can either turn off anvi-estimate-scg-taxonomy in the config file, or choose a compatible gene in this set: "
                                       f"{constants.default_scgs_for_taxonomy}")
@@ -529,62 +545,8 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         # if groups combine two or more hmm, then anvi-scg-taxonomy is not compatible with the workflow
         # TODO: I hope we can change that in the future, probably by making a contigs.db for the representative sequence,
         # in tree mode or not.
-        if len(unique_group) < len(self.hmm_dict) and self.get_param_value_from_config(["anvi_run_scg_taxonomy", "run"]):
+        if len(unique_group) < len(self.hmm_dict) and self.run_scg_taxonomy:
             raise ConfigError(f"You have one or more 'group' in your HMM list file (or multiple identical entries - but you "
                               f"shouldn't be doing that) and at the moment it is not compatible with anvi-estimate-scg-taxonomy. "
                               f"The good news is that you can turn off anvi-run-scg-taxonmy in your config file.")
 
-
-
-    def sanity_check_samples_txt(self):
-        """This function will sanity check the samples.txt file.
-        This is a redundant sanity check because this is also done in the metagenomics workflow. So why are adding it to the
-        init of the EcoPhylo workflow? The answer... technical debt. Currently, the EcoPhylo workflow does not inherit
-        rules from the metagenomics workflow, but rather, the entire metagenomics workflow (references-mode) is
-        called as a rule itself in the EcoPhylo workflow. So, if the user provides a faulty samples.txt file, the EcoPhylo
-        workflow would run perfectly fine until the metagenomics workflow rule is called leading to a confusing error. Thus,
-        we will check this file before the EcoPhylo workflow is initiated so that the user is warned and the workflow is
-        not exited pre-maturely.
-
-        FIXME: This is a temporary solution and should moved into a utils so it can be shared by all anvio workflows.
-
-        PARAMETERS
-        ==========
-        self.samples_txt_file : str
-            Path to samples.txt file
-        """
-        filesnpaths.is_file_exists(self.samples_txt_file)
-        filesnpaths.is_file_tab_delimited(self.samples_txt_file)
-
-        samples_txt_web_string = "Please read more about the samples.txt file here: https://anvio.org/help/main/artifacts/samples-txt/"
-        try:
-            self.samples_information = pd.read_csv(self.samples_txt_file, sep='\t', index_col=False)
-        except AttributeError as e:
-            raise ConfigError(f"Looks like your samples_txt file, '%s', is not properly formatted. "
-                              f"This is what we know: {self.samples_txt_file}\n samples_txt_web_string")
-
-        if 'sample' not in list(self.samples_information.columns):
-            raise ConfigError(f"Looks like your samples_txt file, '{self.samples_txt_file}', is not properly formatted. "
-                              f"We are not sure what's wrong, but we can't find a column with title 'sample'.{samples_txt_web_string}")
-
-        if len(self.samples_information.index) < 2:
-            raise ConfigError(f"The EcoPhylo workflow uses the metagenomics workflow in references mode. "
-                              f"This means anvi'o needs at least 2 metagenomes in your samples.txt: {self.samples_txt_file} THANKS! {samples_txt_web_string}")
-
-        if len(self.samples_information['sample']) != len(set(self.samples_information['sample'])):
-            raise ConfigError(f"Names of samples in your samples_txt file must be unique. "
-                              f"It looks like some names appear twice in your file: {self.samples_txt_file}")
-
-        if 'r1' not in self.samples_information.columns or 'r2' not in self.samples_information:
-            raise ConfigError(f"Looks like your samples_txt file, '{self.samples_txt_file}', is not properly formatted. "
-                              f"We are not sure what's wrong, but we expected to find columns with "
-                              f"titles 'r1' and 'r2' and we did not find such columns. {samples_txt_web_string}")
-
-        fastq_file_names = list(self.samples_information['r1']) + list(self.samples_information['r2'])
-
-        for s in fastq_file_names:
-            filesnpaths.is_file_exists(s)
-            if not s.endswith('.fastq') and not s.endswith('.fastq.gz'):
-                raise ConfigError(f"anvi'o found that some files in your samples.txt file do not end with either '.fastq' "
-                                  f"or '.fastq.gz'. This is what the downstream processes had to say: '{s}'. "
-                                  f"This makes anvi'o suspicious, double-check columns in your samples.txt: {self.samples_txt_file}. {samples_txt_web_string}")

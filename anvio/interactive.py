@@ -12,7 +12,6 @@ import pandas as pd
 
 import anvio
 import anvio.tables as t
-import anvio.kegg as kegg
 import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.hmmops as hmmops
@@ -32,17 +31,13 @@ from anvio.variabilityops import VariabilitySuper
 from anvio.variabilityops import variability_engines
 from anvio.dbops import get_default_item_order_name
 from anvio.genomedescriptions import AggregateFunctions
+from anvio.tables.collections import TablesForCollections
+from anvio.metabolism.estimate import KeggMetabolismEstimator
 from anvio.errors import ConfigError, RefineError, GenesDBError
 from anvio.clusteringconfuguration import ClusteringConfiguration
 from anvio.dbops import ProfileSuperclass, ContigsSuperclass, PanSuperclass, TablesForStates, ProfileDatabase
-
-from anvio.tables.miscdata import (
-    TableForItemAdditionalData,
-    TableForLayerAdditionalData,
-    TableForLayerOrders,
-    TableForAminoAcidAdditionalData,
-)
-from anvio.tables.collections import TablesForCollections
+from anvio.tables.miscdata import TableForItemAdditionalData, TableForLayerAdditionalData
+from anvio.tables.miscdata import TableForLayerOrders, TableForAminoAcidAdditionalData
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -168,9 +163,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.layers_additional_data_keys, self.layers_additional_data_dict = [], {}
             self.layers_order_data_dict = {}
 
-            run.warning("Most likely the misc data module is complaining about a missing genes database. If that's the case,\
-                         you can ignore it as this will sort itself out in a second (this is a workaround for a design\
-                         bottleneck sadface.png): %s" % e.clear_text(), header="EXCEPTION OMITTED (BUT PROBABLY YOU'RE FINE)", lc='yellow')
+            run.warning("Most likely the misc data module is complaining about a missing genes database. If that's the case, "
+                        "you can ignore it as this will sort itself out in a second (this is a workaround for a design "
+                        "bottleneck sadface.png): %s" % e.clear_text(), header="EXCEPTION OMMITTED (BUT PROBABLY YOU'RE FINE)", lc='yellow')
 
         for group_name in self.layers_additional_data_keys:
             layer_orders = TableForLayerOrders(self.args).update_orders_dict_using_additional_data_dict({},
@@ -213,14 +208,23 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.completeness = Completeness(self.contigs_db_path)
             self.collections.populate_collections_dict(self.contigs_db_path)
 
-            # initialize ContigsSuperclass
-            ContigsSuperclass.__init__(self, self.args)
-            self.init_splits_taxonomy(self.taxonomic_level)
-
             # while we are here, let's make sure we are not working with apples and oranges here if there
             # also a profile-db defined in this context.
             if self.profile_db_path:
-                utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
+                if self.mode == 'codon-frequencies':
+                    if os.path.exists(self.profile_db_path):
+                        raise ConfigError(f"Sorry, in this mode you have to specify a profile-db path for a profile-db "
+                                          f"TO BE generated for you by anvi'o, not a path for one that already exists :( "
+                                          f"It may be the case that you already have used `anvi-display-codon-frequencies` "
+                                          f"with a profile-db PATH to generate the file at '{self.profile_db_path}'. In this "
+                                          f"case, you should use the program `anvi-interactive` to visualize the data stored "
+                                          f"in that file by running `anvi-interactive -p {self.profile_db_path} --manual`")
+                else:
+                    utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
+
+            # initialize ContigsSuperclass because we are normal people with a contigs-db
+            ContigsSuperclass.__init__(self, self.args)
+            self.init_splits_taxonomy(self.taxonomic_level)
         else:
             # Why do we have these here? This question has somewhat a convoluted answer. In the previous
             # iterations of the code, we would initialize the ContigsSuperclass regardless of whether we
@@ -286,6 +290,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.load_trnaseq_mode()
         elif self.mode == 'functional':
             self.load_functional_mode()
+        elif self.mode == 'codon-frequencies':
+            self.load_codon_frequencies_mode()
         elif self.mode == 'pan':
             self.load_pan_mode()
         elif self.mode == 'collection':
@@ -884,6 +890,255 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                   "you have provided does not exist. If you don't care and want to start the "
                                   "interactive inteface with a random split from the profile database, please use "
                                   "the flag `--just-do-it`")
+
+
+    def load_codon_frequencies_mode(self):
+        """An interactive mode that serves to `anvi-display-codon-frequencies`"""
+
+        # some mode specific imports
+        from collections import Counter
+
+        from anvio.dbinfo import DBInfo
+        import anvio.codonusage as codonusage
+
+        # these are all going to be filled later nicely.
+        self.p_meta['item_orders'] = {}
+        self.p_meta['available_item_orders'] = []
+        self.p_meta['default_item_order'] = 'codon_frequencies'
+
+        # these are irrelevant to this mode, but necessary to fill in.
+        self.p_meta['splits_fasta'] = None
+        self.p_meta['output_dir'] = None
+        self.p_meta['views'] = {}
+        self.p_meta['db_type'] = 'profile'
+        self.p_meta['merged'] = True
+        self.p_meta['blank'] = True
+        self.splits_basic_info = {}
+        self.split_sequences = None
+
+        # set an output directory to store not-so-essential output files.
+        output_dir = filesnpaths.get_temp_directory_path()
+
+        J = lambda x: os.path.join(output_dir, x)
+
+        ###################################################################
+        # getting an instance from the codon usage class.
+        # FXIME: the next few lines of code should
+        # not be here and instead handled in the codonusage class.
+        ###################################################################
+        self.args.codon_to_amino_acid = codonusage.get_custom_encodings(self.args.encodings_txt)
+
+        if self.args.include_amino_acids and self.args.exclude_amino_acids:
+            raise ConfigError("Either `--include-amino-acids` or `--exclude-amino-acids` should be given, not both.")
+
+        if self.args.include_amino_acids:
+            self.args.exclude_amino_acids = []
+            for amino_acid in constants.amino_acids:
+                if amino_acid in self.args.include_amino_acids:
+                    continue
+                else:
+                    self.args.exclude_amino_acids.append(amino_acid)
+
+        self.args.pansequence_min_amino_acids = [int(self.args.pansequence_min_amino_acids[0]),
+                                                 float(self.args.pansequence_min_amino_acids[1])]
+
+        # get an instance and start working on real stuff but we have to be careful here. here is the
+        # problem: the self.args may contain a profile-db simply because the user wishes to know where
+        # their profile-db will be generated. but then if we pass that ot the SingleGenomeCodonUsage
+        # class, it will assume that the profile-db is a bona fide profile-db that is meant to
+        # contain profile-db data, rather than a path that leads to an empty file. so here we will
+        # do a good old args switcheroo from the old hacker's guide to the galaxy, and prevent any
+        # unexpected outcomes for young padawans.
+        args_without_profile_db = copy.deepcopy(self.args); args_without_profile_db.profile_db = None
+        single_genome_codon_usage = codonusage.SingleGenomeCodonUsage(args_without_profile_db, run=terminal.Run(verbose=False))
+
+        ###################################################################
+        # collecting some key data to build our interactive objects
+        ###################################################################
+
+        # we will first get the entirety of codon data so we can have some information on
+        # total number of codon and amino acid occurrence across the genome of interest
+        raw_frequency_df = single_genome_codon_usage.get_frequencies()
+        total_counts_per_codon = raw_frequency_df.sum().to_dict()
+        total_counts_per_aa = Counter({})
+        for codon in total_counts_per_codon:
+            aa = constants.codon_to_AA[codon]
+            total_counts_per_aa[aa] += total_counts_per_codon[codon]
+
+        # now get the frequency data considering user parameters
+        output_file = J('condon-frequency-data.txt')
+
+        frequency_df = single_genome_codon_usage.get_frequencies(return_amino_acids=self.args.return_amino_acids,
+                                                                 gene_caller_ids=self.args.gene_caller_ids,
+                                                                 relative=self.args.relative,
+                                                                 synonymous=self.args.synonymous,
+                                                                 sum_genes=self.args.sum,
+                                                                 average_genes=self.args.average,
+                                                                 gene_min_codons=self.args.gene_min_codons,
+                                                                 min_codon_filter=self.args.min_codon_filter,
+                                                                 drop_amino_acids=self.args.exclude_amino_acids,
+                                                                 sequence_min_amino_acids=self.args.sequence_min_amino_acids,
+                                                                 pansequence_min_amino_acids=self.args.pansequence_min_amino_acids,
+                                                                 infinity_to_zero=self.args.infinity_to_zero)
+
+        # Write output tables.
+        frequency_df.to_csv(output_file, sep='\t')
+
+        # get back the data dict with a prefix for visualization purposes.
+        data_dict = utils.get_TAB_delimited_file_as_dictionary(output_file, key_prefix='g_')
+
+        ###################################################################
+        # now we have the user-requested codon frequency information stored
+        # in `data_dict`. this will be the main 'view' of the interactive
+        # interface. here we will gather more additional data about genes
+        ###################################################################
+
+        # initialize functions
+        if not self.skip_init_functions:
+            self.init_functions()
+
+        # setup additional items data -- this is where we will go through every
+        # gene. remember, at this point every gene caller id has a prefix `g_`
+        # to avoid downstream issues, so one of the ways to ensure we keep track of gene calls is to
+        # have an additional data layer with the actual anvi'o gene caller ID information
+        additional_items_data = {}
+
+        # this is an extremely dumb way of doing this, but it is very convenient to
+        # keep track of ribosomal proteins
+        ribosomal_proteins = ["K02946", "K02906", "K02926", "K02930", "K02892", "K02886", "K02965",
+                              "K02890", "K02982", "K02878", "K02904", "K02961", "K02874", "K02895",
+                              "K02987", "K02931", "K02954", "K02994", "K02933", "K02912", "K02885",
+                              "K02881", "K02988", "K02907", "K02876", "K02919", "K02952", "K02948",
+                              "K02986", "K02883", "K02879", "K02871", "K02996", "K02992", "K02950",
+                              "K07590", "K02936", "K02979", "K02896", "K02935", "K02869", "K02864",
+                              "K02863", "K02867", "K02967", "K02956", "K02916", "K02887", "K02914",
+                              "K02939", "K02963", "K02990", "K02888", "K02899", "K02902", "K02913",
+                              "K02911", "K02909", "K02897", "K02959", "K02884", "K02968", "K02945",
+                              "K02970"]
+
+        for gene_call_with_prefix in data_dict:
+            gene_call = int(gene_call_with_prefix.lstrip('g_'))
+
+            if gene_call in self.gene_function_calls_dict and 'KOfam' in self.gene_function_calls_dict[gene_call]:
+                if self.gene_function_calls_dict[gene_call]['KOfam'] and self.gene_function_calls_dict[gene_call]['KOfam'][0] in ribosomal_proteins:
+                    d = {'gene_call': gene_call, 'function_category': 'Ribosomal Proteins'}
+                else:
+                    d = {'gene_call': gene_call, 'function_category': None}
+            else:
+                d = {'gene_call': gene_call, 'function_category': None}
+
+            d['length'] = self.genes_in_contigs_dict[gene_call]['stop'] - self.genes_in_contigs_dict[gene_call]['start']
+            d['direction'] = self.genes_in_contigs_dict[gene_call]['direction']
+
+            additional_items_data[gene_call_with_prefix] = d
+
+        ###################################################################
+        # now we have the user-requested codon frequency information AS WELL
+        # AS some additional information about our genes. time to lear nabout
+        # our codons
+        ###################################################################
+        codons_in_data_dict = next(iter(data_dict.values())).keys()
+        codons_to_display = [codon for codon in constants.coding_codons if codon in codons_in_data_dict]
+
+        # setup additional layer data
+        additional_layers_data = {}
+
+        # some simple stuff
+        for codon in codons_to_display:
+            additional_layers_data[codon] = {'amino_acid': constants.codon_to_AA[codon],
+                                             'codon_frequency': total_counts_per_codon[codon],
+                                             'amino_acid_frequency': total_counts_per_aa[constants.codon_to_AA[codon]]}
+
+        ###################################################################
+        # it is time to work our way through generating interactive interface
+        # related things
+        ###################################################################
+
+        self.p_meta['default_view'] = 'codon_frequencies_view'
+        self.default_view = self.p_meta['default_view']
+
+        # our 'samples', which is an olden way of saying 'layers' in anvi'o lingo, are individual codons we are about to display
+        self.p_meta['samples'] = codons_to_display
+        self.p_meta['sample_id'] = f"CODON FREQUENCIES FOR {DBInfo(self.args.contigs_db).project_name}"
+
+        # setup the views dict
+        self.views = {'codon_frequencies_view': {'header': codons_to_display,
+                                                 'dict': data_dict}}
+
+        # create a new, empty profile database for manual operations unless the user has already
+        # passed a path for one
+        self.profile_db_path = self.profile_db_path if self.profile_db_path else J('profile.db')
+        profile_db = ProfileDatabase(self.profile_db_path)
+        profile_db.create({'db_type': 'profile',
+                           'blank': True,
+                           'merged': True,
+                           'db_variant': 'codon-frequencies',
+                           'description': """This needs some work.""",
+                           'contigs_db_hash': None,
+                           'items_ordered': False,
+                           'samples': ', '.join(self.p_meta['samples']),
+                           'sample_id': self.p_meta['sample_id']})
+
+        # now we start working on our views and item orders.
+        for view in self.views:
+            # first, generate an items order for a given view:
+            items_order = clustering.get_newick_tree_data_for_dict(self.views[view]['dict'], zero_fill_missing=True, distance=self.distance, linkage=self.linkage)
+            item_order_name = f"{view[:-5]}"
+            self.p_meta['available_item_orders'].append(item_order_name)
+            self.p_meta['item_orders'][item_order_name] = {'type': 'newick', 'data': copy.deepcopy(items_order)}
+
+            # then add the items order to the database
+            dbops.add_items_order_to_db(self.profile_db_path, item_order_name, items_order, order_data_type_newick=True,
+                                        distance=self.distance, linkage=self.linkage, make_default=True if view == 'codon_frequencies_view' else False,
+                                        check_names_consistency=False)
+
+            # add vew tables to the database
+            TablesForViews(self.profile_db_path).create_new_view(view_data=self.views[view]['dict'],
+                                                                 table_name=f"{view}",
+                                                                 view_name=f"{view}",
+                                                                 from_matrix_form=True)
+
+        # let's do this here as well so our dicts are not pruned.
+        self.displayed_item_names_ordered = sorted(utils.get_names_order_from_newick_tree(items_order))
+
+        # item additional data into the profile database. please note that right after storing the items
+        # additional data into the newly generated profile-db, we will read the same data back just so they
+        # are accessible to the interactive class to visualize them. this is not quite necessary since we
+        # could in fact buld these two variables from scracth this way, but I like the idea of re-reading
+        # them since if something went wrong with the data the programmer will realize that before the
+        # interactive interface pulls up.
+        args = argparse.Namespace(profile_db=self.profile_db_path, target_data_table="items", just_do_it=True)
+        TableForItemAdditionalData(args, r=terminal.Run(verbose=False)).add(additional_items_data, ['gene_call', 'length', 'direction', 'function_category'], skip_check_names=True)
+        self.items_additional_data_keys, self.items_additional_data_dict = TableForItemAdditionalData(args, r=terminal.Run(verbose=False)).get()
+
+        # layer additional data into the profile database
+        args = argparse.Namespace(profile_db=self.profile_db_path, target_data_table="layers", just_do_it=True)
+        TableForLayerAdditionalData(args, r=terminal.Run(verbose=False)).add(additional_layers_data, ['amino_acid', 'codon_frequency', 'amino_acid_frequency'], skip_check_names=True)
+        layers_additional_data_keys, layers_additional_data_dict = TableForLayerAdditionalData(args, r=terminal.Run(verbose=False)).get()
+        self.layers_additional_data_keys, self.layers_additional_data_dict = {'default': layers_additional_data_keys}, {'default': layers_additional_data_dict}
+
+        # everything we need is in the database now. time to add a mini state:
+        mini_state = open(os.path.join(os.path.dirname(anvio.__file__), 'data/mini-states/display-codons.json')).read()
+        mini_state = mini_state.replace('CODON_FREQ_MAX', str(round(int(max(total_counts_per_codon.values()))))).replace('AA_FREQ_MAX', str(round(int(max(total_counts_per_aa.values())))))
+        TablesForStates(self.profile_db_path).store_state('default', mini_state)
+
+        # create an instance of states table
+        self.states_table = TablesForStates(self.profile_db_path)
+
+        # also populate collections, if there are any
+        self.collections.populate_collections_dict(self.profile_db_path)
+
+        # read description from self table, if it is not available get_description function will return placeholder text
+        self.p_meta['description'] = get_description_in_db(self.profile_db_path)
+
+        self.title = self.args.title or self.p_meta['sample_id']
+
+        run.warning("Your profile database to visualize the codon frequency data is ready, and stored in the "
+                    "output directory shown below. If you store a different state file, or collections into "
+                    "the profil database anvi'o is about to show you, you can always re-visualize the same "
+                    "data by running `anvi-interactive` on that profile database with `--manual` flag.",
+                    header="YOUR PROFILE-DB IS READY", lc="cyan")
+        run.info("Profile database path", self.profile_db_path, nl_after=1)
 
 
     def load_functional_mode(self):
@@ -1639,6 +1894,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                     items[item] = [i for i in items[item] if i in self.split_names_of_interest]
 
                 full_report = [i for i in full_report if i[5] in self.split_names_of_interest]
+        elif self.mode == 'codon-frequencies':
+            items, full_report = ContigsSuperclass.search_for_gene_functions(self, search_terms, verbose=False, requested_sources=requested_sources, genes_as_split_names=True)
         elif self.mode == 'pan':
             items, full_report = PanSuperclass.search_for_gene_functions(self, search_terms, verbose=False, requested_sources=requested_sources)
         else:
@@ -3015,7 +3272,7 @@ class MetabolismInteractive():
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
         self.contigs_db_path = A('contigs_db') #TODO delete if we don't need this
 
-        self.estimator = kegg.KeggMetabolismEstimator(args)
+        self.estimator = KeggMetabolismEstimator(args)
 
 
     def get_metabolism_data(self):
@@ -3164,6 +3421,8 @@ class AdHocRunGenerator:
         self.run = run
         self.progress = progress
 
+        self.profile_db_path = None
+
         self.view_data = view_data
         self.additional_view_data = additional_view_data
         self.samples = samples
@@ -3186,7 +3445,7 @@ class AdHocRunGenerator:
                                "path, or use the bool member 'delete_output_directory_if_exists' to overwrite "
                                "any existing directory.")
 
-        filesnpaths.gen_output_directory(self.output_directory, delete_if_exists=self.delete_output_directory_if_exists)
+        filesnpaths.gen_output_directory(self.output_directory, delete_if_exists=self.delete_output_directory_if_exists, dont_warn=True)
 
 
     def get_output_file_path(self, file_name):
@@ -3211,11 +3470,11 @@ class AdHocRunGenerator:
                 f.write(newick)
 
         # create new profile.db and populate additional data
-        profile_db_path = self.get_output_file_path('profile.db')
-        self.run.info('Profile database', profile_db_path)
+        self.profile_db_path = self.get_output_file_path('profile.db')
+        self.run.info('Profile database', self.profile_db_path)
 
         args = argparse.Namespace()
-        args.profile_db = profile_db_path
+        args.profile_db = self.profile_db_path
         args.manual_mode = True
         args.dry_run = True
         args.view_data = view_data_path
@@ -3223,19 +3482,50 @@ class AdHocRunGenerator:
         args.title = None
         Interactive(args)
 
-        self.populate_additional_data(profile_db_path)
+        self.populate_additional_data()
+
+        self.add_state('default')
 
         self.run.info_single("Good news, your data is ready.", nl_before=1, mc='green')
-        self.run.info_single("Please run 'anvi-interactive --manual -p %s --tree %s --view-data %s'" % (profile_db_path, tree_path, view_data_path), cut_after=200, nl_after=1, mc='green')
+        self.run.info_single("Please run 'anvi-interactive --manual -p %s --tree %s --view-data %s'" % (self.profile_db_path, tree_path, view_data_path), cut_after=0, nl_after=1, mc='green')
 
 
-    def populate_additional_data(self, profile_db_path):
-        table = t.miscdata.TableForItemAdditionalData(argparse.Namespace(profile_db=profile_db_path))
+    def add_state(self, state_name, state_json=None, state_path=None):
+        if not self.profile_db_path:
+            raise ConfigError("You must call `self.generate()` before calling this member function :/")
+
+        if state_json or state_path:
+            t.states.TablesForStates(self.profile_db_path).store_state(state_name, state_json if state_json else open(state_path).read())
+        else:
+            t.states.TablesForStates(self.profile_db_path).store_state('default', '{"version": "3"}')
+
+
+    def add_items_additional_data(self, additional_data, item_names):
+        if not self.profile_db_path:
+            raise ConfigError("You must call `self.generate()` before calling this member function :/")
+
+        table = t.miscdata.TableForItemAdditionalData(argparse.Namespace(profile_db=self.profile_db_path), r=self.run)
+        table.add(additional_data, item_names, skip_check_names=True)
+
+
+    def add_layers_additional_data(self, additional_data, layer_names):
+        if not self.profile_db_path:
+            raise ConfigError("You must call `self.generate()` before calling this member function :/")
+
+        table = t.miscdata.TableForLayerAdditionalData(argparse.Namespace(profile_db=self.profile_db_path), r=self.run)
+        table.add(additional_data, layer_names, skip_check_names=True)
+
+
+    def populate_additional_data(self):
+        if not self.additional_view_data:
+            return
+
+        if not self.profile_db_path:
+            raise ConfigError("You must call `self.generate()` before calling this member function :/")
+
+        table = t.miscdata.TableForItemAdditionalData(argparse.Namespace(profile_db=self.profile_db_path))
         table.add(self.additional_view_data, ['Competing NTs', 'Position in codon', 'Gene callers ID'], skip_check_names=True)
 
-        table = t.miscdata.TableForLayerOrders(argparse.Namespace(profile_db=profile_db_path))
+        table = t.miscdata.TableForLayerOrders(argparse.Namespace(profile_db=self.profile_db_path))
         layer_newick = clustering.get_newick_tree_data_for_dict(self.view_data, transpose=True, distance = self.distance, linkage=self.linkage)
         table.add({'default': {'data_type': 'newick', 'data_value': layer_newick}})
-
-        # put a default state while you're at it
-        t.states.TablesForStates(profile_db_path).store_state('default', '{"version": "3"}')

@@ -39,6 +39,8 @@ $ cat SRA_accession_list.txt
 ERR6450080
 ERR6450081
 SRR5965623
+ERR6450082
+
 """
 
 
@@ -61,7 +63,10 @@ rule prefetch:
         None
 
     Outputs:
-        SRA_TMP: File in the SRA_prefetch directory with the name {accession}.sra or {accession}.sralite
+        prefetch_DONE: the empty marker file {accession}.prefetch.done
+
+        SRA: File in the SRA_prefetch directory with the name {accession}.sra or {accession}.sralite. This file
+        is not used to control the execution of subsequent rules
 
     Params:
         SRA_OUTPUT_DIR: Output directory for the prefetched data
@@ -78,8 +83,6 @@ rule prefetch:
     log: os.path.join(dirs_dict['LOGS_DIR'], "{accession}_prefetch.log")
     input:
     output:
-        SRA_TMP = temp(os.path.join(dirs_dict['SRA_prefetch'], "{accession}", "{accession}.sra")) if remove_tmp
-                  else os.path.join(dirs_dict['SRA_prefetch'], "{accession}", "{accession}.sra"),
         prefetch_DONE = touch(os.path.join(dirs_dict['SRA_prefetch'], "{accession}", "{accession}.prefetch.done"))
     params:
         SRA_OUTPUT_DIR = os.path.join(dirs_dict['SRA_prefetch']),
@@ -88,6 +91,11 @@ rule prefetch:
     run:
         shell("prefetch {wildcards.accession} --output-directory {params.SRA_OUTPUT_DIR} --max-size {params.MAX_SIZE} >> {log} 2>&1")
 
+        sra_file = os.path.join(dirs_dict['SRA_prefetch'], f"{wildcards.accession}", f"{wildcards.accession}.sra")
+        sralite_file = os.path.join(dirs_dict['SRA_prefetch'], f"{wildcards.accession}", f"{wildcards.accession}.sralite")
+        if not os.path.exists(sra_file) and not os.path.exists(sralite_file):
+            raise ConfigError(f"Following the execution of `prefetch` for accession {wildcards.accession}, we could not find either of "
+                              f"the expected output files {sra_file} or {sralite_file}.")
 
 rule check_md5sum:
     """Curl the md5sum file from the SRA FTP site"""
@@ -103,6 +111,15 @@ rule check_md5sum:
         md5sum_DONE = touch(os.path.join(dirs_dict['SRA_prefetch'], "{accession}", "{accession}.md5sum.done"))
     threads: M.T('check_md5sum')
     run:
+        # Identify the correct SRA file from prefetch
+        sralite_file = os.path.join(dirs_dict['SRA_prefetch'], f"{wildcards.accession}", f"{wildcards.accession}.sralite")
+        if not os.path.exists(params.sra_file) and os.path.exists(sralite_file):
+           params.sra_file = sralite_file
+
+        log_path = str(log)
+        with open(log_path, 'w') as log_file:
+            log_file.write(f"Checking MD5sum for file: {params.sra_file}\n")
+
         # Get the md5sum from the SRA FTP site
         shell("curl 'https://locate.ncbi.nlm.nih.gov/sdl/2/retrieve?filetype=run&location-type=forced&location=s3.us-east-1&accept-charges=aws&acc={wildcards.accession}' --output {params.md5sum} >> {log} 2>&1")
 
@@ -114,7 +131,6 @@ rule check_md5sum:
         calculated_md5 = M.calculate_md5(file_path=params.sra_file)
 
         # Compare expected and calculated md5 and log the result
-        log_path = str(log)
         with open(log_path, 'a') as log_file:   
             if calculated_md5 == expected_md5:
                 log_file.write(f"Checksums match: {calculated_md5}\n")
@@ -144,14 +160,14 @@ rule fasterq_dump:
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "{accession}_fasterq_dump.log")
     input: 
-        ancient(rules.check_md5sum.output.md5sum_DONE),
-        sra_file = os.path.join(dirs_dict['SRA_prefetch'], "{accession}", "{accession}.sra")
+        ancient(rules.check_md5sum.output.md5sum_DONE)
     output:
         FASTERQDUMP_DONE = touch(os.path.join(dirs_dict['FASTAS'], "{accession}-fasterq-dump.done")),
         FASTERQDUMP_TEMP = temp(directory("FASTERQDUMP_TEMP/{accession}"))
     params:
         SRA_INPUT_DIR = os.path.join(dirs_dict['SRA_prefetch'], "{accession}"),
-        OUTPUT_DIR = dirs_dict['FASTAS']
+        OUTPUT_DIR = dirs_dict['FASTAS'],
+        FASTERQDUMP_TEMP = temp(os.path.join(os.getcwd(), "FASTERQDUMP_TEMP"))
     threads: M.T('fasterq_dump')
     run:
         shell("fasterq-dump {params.SRA_INPUT_DIR} -t {output.FASTERQDUMP_TEMP} --outdir {params.OUTPUT_DIR} --split-3 --verbose --progress --threads {threads} >> {log} 2>&1")

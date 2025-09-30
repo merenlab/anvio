@@ -19,7 +19,6 @@ from argparse import Namespace
 from itertools import combinations
 from typing import Dict, Iterable, List, Literal, Set, Tuple, Union
 
-import anvio.kegg as kegg
 import anvio.kgml as kgml
 import anvio.utils as utils
 import anvio.dbinfo as dbinfo
@@ -31,6 +30,9 @@ from anvio.errors import ConfigError
 from anvio.genomestorage import GenomeStorage
 from anvio.dbops import ContigsDatabase, PanSuperclass
 from anvio import FORCE_OVERWRITE, QUIET, __version__ as VERSION
+
+from anvio.metabolism.context import KeggContext
+from anvio.metabolism.constants import GLOBAL_MAP_ID_PATTERN, OVERVIEW_MAP_ID_PATTERN
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
@@ -70,7 +72,7 @@ class Mapper:
 
     Attributes
     ==========
-    kegg_context : anvio.kegg.KeggContext
+    kegg_context : anvio.metabolism.context.KeggContext
         This contains anvi'o KEGG database attributes, such as filepaths.
 
     available_pathway_numbers : List[str]
@@ -156,7 +158,7 @@ class Mapper:
         """
         args = Namespace()
         args.kegg_data_dir = kegg_dir
-        self.kegg_context = kegg.KeggContext(args)
+        self.kegg_context = KeggContext(args)
 
         if not os.path.exists(self.kegg_context.kegg_map_image_kgml_file):
             raise ConfigError(
@@ -3138,9 +3140,9 @@ class Mapper:
         # KOs correspond to arrows rather than boxes in global and overview maps.
         is_global_map = False
         is_overview_map = False
-        if re.match(kegg.GLOBAL_MAP_ID_PATTERN, pathway_number):
+        if re.match(GLOBAL_MAP_ID_PATTERN, pathway_number):
             is_global_map = True
-        elif re.match(kegg.OVERVIEW_MAP_ID_PATTERN, pathway_number):
+        elif re.match(OVERVIEW_MAP_ID_PATTERN, pathway_number):
             is_overview_map = True
 
         # A 1x resolution global 'KO' image is used as the base of the drawing, whereas a 2x

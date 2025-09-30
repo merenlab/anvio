@@ -450,7 +450,6 @@ class HMMer:
 
         detected_non_ascii = False
         lines_with_non_ascii = []
-        output_lines = []
 
         def process_batch(line_batch, base_line_number):
             nonlocal detected_non_ascii
@@ -476,16 +475,18 @@ class HMMer:
             for line_bytes in hmm_hits_file:
                 batch.append(line_bytes)
                 if len(batch) >= lines_per_chunk:
-                    output_lines.extend(process_batch(batch, base_line_number))
+                    filtered_lines = process_batch(batch, base_line_number)
+                    if filtered_lines:
+                        with buffer_write_lock:
+                            merged_file_buffer.write("\n".join(filtered_lines) + "\n")
                     base_line_number += len(batch)
                     batch = []
 
             if batch:
                 filtered_lines = process_batch(batch, base_line_number)
                 if filtered_lines:
-                    filtered_text = "\n".join(filtered_lines) + "\n"
                     with buffer_write_lock:
-                        merged_file_buffer.write(filtered_text)
+                        merged_file_buffer.write("\n".join(filtered_lines) + "\n")
 
         # Log warning if non-ASCII characters were detected
         if detected_non_ascii:

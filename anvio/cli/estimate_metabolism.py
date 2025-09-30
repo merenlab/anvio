@@ -4,10 +4,10 @@
 import sys
 
 import anvio
-import anvio.kegg as kegg
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.terminal import time_program
+from anvio.metabolism.estimate import KeggMetabolismEstimator, KeggMetabolismEstimatorMulti
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
@@ -26,9 +26,9 @@ def main():
 
     try:
         if args.metagenomes or args.external_genomes or args.internal_genomes:
-            m = kegg.KeggMetabolismEstimatorMulti(args)
+            m = KeggMetabolismEstimatorMulti(args)
         else:
-            m = kegg.KeggMetabolismEstimator(args)
+            m = KeggMetabolismEstimator(args)
 
         if args.list_available_modes:
             m.list_output_modes()
@@ -117,14 +117,14 @@ def get_args():
     groupC.add_argument(*anvio.A('only-complete'), **anvio.K('only-complete'))
     groupC.add_argument(*anvio.A('add-copy-number'), **anvio.K('add-copy-number'))
     groupC.add_argument(*anvio.A('include-kos-not-in-kofam'), **anvio.K('include-kos-not-in-kofam'))
-    groupC.add_argument(*anvio.A('include-stray-KOs'), **anvio.K('include-stray-KOs', {'help': "'Stray KOs' are what we call KEGG Orthlogs "
+    groupC.add_argument(*anvio.A('include-nt-KOs'), **anvio.K('include-nt-KOs', {'help': "'No-threshold KOs', or 'nt-KOs' are what we call KEGG Orthlogs "
                                                             "that KEGG does not provide a bit score threshold for. Anvi'o can estimate "
                                                             "thresholds (and sometimes updates the HMMs) for these KOs, and you can annotate "
-                                                            "them in your data if you run `anvi-run-kegg-kofams` with the `--include-stray-KOs` "
+                                                            "them in your data if you run `anvi-run-kegg-kofams` with the `--include-nt-KOs` "
                                                             "flag. If you did that, and you now want to include those annotations in metabolism "
                                                             "estimates, then you should apply the same flag here. This is kind of similar to the "
-                                                            "`--include-kos-not-in-kofam` flag, but it applies only to the stray KOs that you can "
-                                                            "annotate with `anvi-run-kegg-kofams --include-stray-KOs`."}))
+                                                            "`--include-kos-not-in-kofam` flag, but it applies only to the nt-KOs that you can "
+                                                            "annotate with `anvi-run-kegg-kofams --include-nt-KOs`."}))
     groupC.add_argument(*anvio.A('ignore-unknown-KOs'), **anvio.K('ignore-unknown-KOs'))
     groupC.add_argument(*anvio.A('exclude-dashed-reactions'), **anvio.K('exclude-dashed-reactions'))
 

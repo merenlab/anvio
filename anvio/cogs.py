@@ -629,6 +629,8 @@ class COGsSetup:
         self.num_threads = A('num_threads') or 1
         self.just_do_it = A('just_do_it')
         self.reset = A('reset')
+        self.dry_run = A('dry_run')
+
         self.COG_data_source = 'unknown'
         self.COG_version = A('cog_version') or 'COG24' # this is where we set the default database version
                                                        # it is dumb, and there is a better way to do it by
@@ -670,6 +672,13 @@ class COGsSetup:
 
         self.cogs_found_in_proteins_fasta = set([])
         self.cogs_found_in_cog_names_file = set([])
+
+        if self.dry_run:
+            self.print_out_source_file_URLs_and_their_target_paths()
+
+            # we're done here .. CIAO
+            import sys
+            sys.exit()
 
 
     def get_formatted_db_paths(self):
@@ -1035,6 +1044,40 @@ class COGsSetup:
                              "generate a search database for them to be used. Keep this in mind for later.")
 
         os.remove(temp_fasta_path)
+
+
+    def print_out_source_file_URLs_and_their_target_paths(self):
+        """Show where the files will be downloaded and where will they go in an ideal world.
+
+        The purpose of this function is the help users what is going to happen if they were to run
+        the program on any comptuer. This is particularly useful when people are on machines that
+        are offline, and they would like to figure out where should they move the raw files for everything
+        to work as expected and without requiring internet connection.
+        """
+
+        self.run.warning(None, header="DRY RUN MODE WILL NOW TELL YOU THINGS AND QUIT", lc='cyan')
+
+        self.run.info_single("The following information will tell you what anvi'o would have done to acquire "
+                             "the raw files from the NCBI to set them up on your computer. Using this information "
+                             "you should be able to download these files, and move them manually to the locations "
+                             "shown below. Please remember that the data shown below will depend on teh COG version "
+                             "of your choosing (or, if you haven't specified any, the default COG version). Before "
+                             "you start following the instructions below, make sure the following directory exists:",
+                             level=0, nl_after=1)
+
+        self.run.info_single(self.raw_NCBI_files_dir, level=2, nl_after=1)
+
+        self.run.info_single("Then execute the following steps like a robot 🤖", level=0, nl_after=1)
+
+        for file_name in self.files:
+            if 'url' in self.files[file_name]:
+                self.run.info("Download this file", self.files[file_name]['url'])
+                self.run.info(" -> and move it here", os.path.join(self.raw_NCBI_files_dir, file_name),
+                              nl_after=1)
+
+        self.run.info_single("Once you have all these files in those locations, `anvi-setup-ncbi-cogs` should not "
+                             "attempt to download anything, but process the existing files at these specific "
+                             "locations to setup NCBI COGs on your system in peace.", level=0, nl_after=1)
 
 
     def get_raw_data(self):
