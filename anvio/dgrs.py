@@ -20,6 +20,7 @@ import anvio.utils as utils
 import anvio.filesnpaths as filesnpaths
 import anvio.tables as t
 import multiprocess as multiprocessing # type: ignore
+import anvio.fastalib as fastalib
 
 from anvio.errors import ConfigError
 from anvio.drivers.blast import BLAST
