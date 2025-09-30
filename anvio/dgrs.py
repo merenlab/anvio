@@ -2307,7 +2307,7 @@ class DGR_Finder:
 
         """
 
-        if self.skip_compute_DGR_variability_profiling or not self.raw_r1_r2_reads_are_present:
+        if self.skip_compute_DGR_variability_profiling:
             return
 
         # define defaults
@@ -2316,7 +2316,7 @@ class DGR_Finder:
         if not len(dgrs_dict):
             raise ConfigError("Compute DGR variability profile function speaking: There are no DGRs to compute in-sample variability :/")
 
-        sample_names = list(self.samples_txt_dict.keys())
+        sample_names = self.samples_artifact.samples()
         num_samples = len(sample_names)
 
         # let the user know what is going on
