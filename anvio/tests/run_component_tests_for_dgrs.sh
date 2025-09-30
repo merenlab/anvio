@@ -104,15 +104,6 @@ anvi-report-dgrs -c 02_CONTIGS/CONTIGS.db \
                 --skip-compute-DGR-variability-profiling \
                 $thread_controller
 
-INFO "Running the full analysis reporting the activity of dgrs"
-anvi-report-dgrs -c 02_CONTIGS/CONTIGS.db \
-                -p 03_PROFILE/PROFILE.db \
-                -I Reverse_Transcriptase \
-                -o DGRS_BASE_ACTIVITY \
-                --parameter-output \
-                --samples-txt samples.txt \
-                --skip-primer-variability \
-                $thread_controller
 
 INFO "Running the full analysis reporting the activity of dgrs and variable primers"
 anvi-report-dgrs -c 02_CONTIGS/CONTIGS.db \
