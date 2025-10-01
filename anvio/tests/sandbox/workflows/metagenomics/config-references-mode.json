@@ -185,8 +185,6 @@
     },
     "minimap2_index": {
         "additional_params": "",
-        "conda_yaml": "",
-        "conda_env": "",
         "threads": ""
     },
     "minimap2": {
@@ -307,8 +305,6 @@
         "threads": ""
     },
     "bowtie_build": {
-        "conda_yaml": "",
-        "conda_env": "",
         "additional_params": "",
         "threads": ""
     },
