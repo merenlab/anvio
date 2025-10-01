@@ -345,6 +345,6 @@
         "LOGS_DIR": "00_LOGS-idba_ud"
     },
     "max_threads": "",
-    "config_version": "3",
+    "config_version": "4",
     "workflow_name": "metagenomics"
 }

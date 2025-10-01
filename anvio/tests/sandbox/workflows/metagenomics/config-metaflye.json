@@ -342,9 +342,9 @@
         "TAXONOMY_DIR": "07_TAXONOMY-metaflye",
         "SUMMARY_DIR": "08_SUMMARY-metaflye",
         "SPLIT_PROFILES_DIR": "09_SPLIT_PROFILES-metaflye",
-        "LOGS_DIR": "00_LOGS"
+        "LOGS_DIR": "00_LOGS-metaflye"
     },
     "max_threads": "",
-    "config_version": "3",
+    "config_version": "4",
     "workflow_name": "metagenomics"
 }

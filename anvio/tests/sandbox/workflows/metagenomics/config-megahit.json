@@ -345,6 +345,6 @@
         "LOGS_DIR": "00_LOGS-megahit"
     },
     "max_threads": "",
-    "config_version": "3",
+    "config_version": "4",
     "workflow_name": "metagenomics"
 }
