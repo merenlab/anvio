@@ -105,6 +105,21 @@ LR_RS_RE = regex_from_ids(LR_READSETS)
 SR_GRP_RE = regex_from_ids(SR_ASSEMBLIES)
 LR_GRP_RE = regex_from_ids(LR_ASSEMBLIES)
 
+
+# conda helper functions:
+def conda_yaml(tool):
+    """Return conda YAML path for a tool ('' if unset). Used in 'conda:' directive."""
+    p = M.get_param_value_from_config([tool, 'conda_yaml'])
+    if not p: return None
+    return os.path.abspath(os.path.expanduser(p))
+
+
+def env_prefix(tool):
+    """Return 'conda run -n <env>' prefix if 'conda_env' is set; else ''."""
+    name = M.get_param_value_from_config([tool, 'conda_env'])
+    return f"conda run -n {name}" if name else ""
+
+
 ruleorder: import_percent_of_reads_mapped > import_krakenuniq_taxonomy
 
 rule metagenomics_workflow_target_rule:
@@ -524,8 +539,7 @@ if M.get_param_value_from_config(['flye', 'run']) and M.has_lr:
         wildcard_constraints:
             group = LR_GRP_RE
         version: 1.0
-        # to be seen...
-        #conda: conda_yaml('flye')   # <-- YAML path from config (used only with --use-conda)
+        conda: conda_yaml('flye')
         log:
             M.dirs_dict["LOGS_DIR"] + "/{group}-flye.log"
         input:
@@ -533,10 +547,9 @@ if M.get_param_value_from_config(['flye', 'run']) and M.has_lr:
         output:
             raw_fasta = M.dirs_dict["FASTA_DIR"] + "/{group}/final.contigs.fa"
         params:
-            # we will see..
-            #env_prefix = lambda w: env_prefix('flye'),
+            env_prefix = lambda wildcards: env_prefix('flye'),
             meta = M.get_rule_param("flye", "--meta"),
-            read_type = lambda w: flye_read_type(),
+            read_type = lambda wildcards: flye_read_type(),
             additional_params = M.get_param_value_from_config(["flye", "additional_params"]),
             outdir = M.dirs_dict["FASTA_DIR"] + "/{group}",
             genome_size = M.get_rule_param("flye", "--genome-size"),
@@ -555,7 +568,7 @@ if M.get_param_value_from_config(['flye', 'run']) and M.has_lr:
             r"""
             mkdir -p {params.outdir}
 
-            flye {params.meta} {params.read_type} {input.reads} \
+            {params.env_prefix} flye {params.meta} {params.read_type} {input.reads} \
                  -o {params.outdir} -t {threads} \
                  {params.genome_size} {params.iterations} {params.min_overlap} {params.read_error} \
                  {params.keep_haplotypes} {params.no_alt_contigs} {params.scaffold} {params.polish_target} \
@@ -578,6 +591,7 @@ if M.get_param_value_from_config(['idba_ud', 'run']) and M.has_sr:
         wildcard_constraints:
             group = SR_GRP_RE
         version: 1.0
+        conda: conda_yaml('idba_ud')
         log: dirs_dict["LOGS_DIR"] + "/{group}-idba_ud.log"
         input:
             fasta = dirs_dict["QC_DIR"] + "/{group}-merged.fa"
@@ -589,6 +603,7 @@ if M.get_param_value_from_config(['idba_ud', 'run']) and M.has_sr:
             raw_contigs_or_scaffold = os.path.join(dirs_dict["FASTA_DIR"], "{group}", "contigs.fa") if M.use_scaffold_from_idba_ud \
                                                else os.path.join(dirs_dict["FASTA_DIR"], "{group}", "scaffolds.fa")
         params:
+            env_prefix = lambda wildcards: env_prefix('idba_ud'),
             temp_dir = temp(dirs_dict["FASTA_DIR"] + "/{group}_TEMP"),
             mink = M.get_rule_param("idba_ud", "--mink"),
             maxk = M.get_rule_param("idba_ud", "--maxk"),
@@ -611,7 +626,7 @@ if M.get_param_value_from_config(['idba_ud', 'run']) and M.has_sr:
         threads: M.T('idba_ud')
         resources: nodes = M.T('idba_ud')
         run:
-            cmd = "idba_ud -o {params.temp_dir} --read {input.fasta} --num_threads {threads} " + \
+            cmd = "{params.env_prefix} idba_ud -o {params.temp_dir} --read {input.fasta} --num_threads {threads} " + \
                   "{params.mink} {params.maxk} {params.step} {params.inner_mink} " + \
                   "{params.inner_step} {params.prefix} {params.min_count} " + \
                   "{params.min_support} {params.seed_kmer} {params.min_contig} " + \
@@ -656,6 +671,7 @@ if M.get_param_value_from_config(['metaspades','run']) and M.has_sr:
         wildcard_constraints:
             group = SR_GRP_RE
         version: 1.0
+        conda: conda_yaml('metaspades')
         log: dirs_dict["LOGS_DIR"] + "/{group}-metaspades.log"
         input: unpack(input_for_metaspades)
         output:
@@ -666,12 +682,13 @@ if M.get_param_value_from_config(['metaspades','run']) and M.has_sr:
             raw_contigs_or_scaffold = os.path.join(dirs_dict["FASTA_DIR"], "{group}", "contigs.fasta") if M.use_scaffold_from_metaspades \
                                                else os.path.join(dirs_dict["FASTA_DIR"], "{group}", "scaffolds.fasta")
         params:
+            env_prefix = lambda wildcards: env_prefix('metaspades'),
             temp_dir = dirs_dict["FASTA_DIR"] + "/{group}_TEMP",
             additional_params = M.get_param_value_from_config(["metaspades", "additional_params"])
         threads: M.T('metaspades')
         resources: nodes = M.T('metaspades')
         run:
-            cmd = "metaspades.py -1 {input.r1} -2 {input.r2} " + \
+            cmd = "{params.env_prefix} metaspades.py -1 {input.r1} -2 {input.r2} " + \
                   "-t {threads} " + \
                   "{params.additional_params} " + \
                   "-o {params.temp_dir} >> {log} 2>&1"
@@ -703,11 +720,13 @@ if M.get_param_value_from_config(['megahit','run']) and M.has_sr:
         version: 1.0
         wildcard_constraints:
             group = SR_GRP_RE
+        conda: conda_yaml('megahit')
         log: dirs_dict["LOGS_DIR"] + "/{group}-megahit.log"
         input:
             r1 = lambda wildcards: M.get_sr_fastqs_for_group(wildcards.group)['r1'],
             r2 = lambda wildcards: M.get_sr_fastqs_for_group(wildcards.group)['r2'],
         params:
+            env_prefix = lambda wildcards: env_prefix('megahit'),
             temp_dir = dirs_dict["FASTA_DIR"] + "/{group}_TEMP",
             # the minimum length for contigs (smaller contigs will be discarded)
             min_contig_len = M.get_rule_param("megahit", "--min-contig-len"),
@@ -750,7 +769,7 @@ if M.get_param_value_from_config(['megahit','run']) and M.has_sr:
             r1 = ','.join(input.r1)
             r2 = ','.join(input.r2)
 
-            cmd = "megahit -1 %s -2 %s " % (r1, r2) + \
+            cmd = "{params.env_prefix} megahit -1 %s -2 %s " % (r1, r2) + \
                 "-o {params.temp_dir} " + \
                 "-t {threads} " + \
                 "{params.min_contig_len} {params.min_count} {params.k_min} " + \
@@ -781,6 +800,7 @@ rule bowtie_build:
     version: 1.0
     wildcard_constraints:
         readset = SR_RS_RE
+    conda: conda_yaml('bowtie')
     log: dirs_dict["LOGS_DIR"] + "/{group}-bowtie_build.log"
     input:
         contigs = M.get_fasta
@@ -788,6 +808,7 @@ rule bowtie_build:
         idx = [ BT2_PREFIX + f".{i}.{BT2_EXT}" for i in (1,2,3,4) ] +
               [ BT2_PREFIX + f".rev.1.{BT2_EXT}", BT2_PREFIX + f".rev.2.{BT2_EXT}" ]
     params:
+        env_prefix = lambda wildcards: env_prefix('bowtie'),
         prefix = BT2_PREFIX,
         additional_params = M.get_param_value_from_config(["bowtie_build", "additional_params"])
     threads: M.T('bowtie_build')
@@ -795,7 +816,7 @@ rule bowtie_build:
     shell:
         r"""
         mkdir -p "$(dirname {params.prefix})"
-        bowtie2-build --threads {threads} {params.additional_params} \
+        {params.env_prefix} bowtie2-build --threads {threads} {params.additional_params} \
             {input.contigs} {params.prefix} >> {log} 2>&1
         """
 
@@ -805,6 +826,7 @@ rule bowtie:
     log: dirs_dict["LOGS_DIR"] + "/{group}-{readset}-bowtie.log"
     wildcard_constraints:
         readset = SR_RS_RE
+    conda: conda_yaml('bowtie')
     input:
         idx = rules.bowtie_build.output,
         r1  = lambda wildcards: get_fastq(wildcards.readset,
@@ -816,13 +838,14 @@ rule bowtie:
     output:
         sam = temp(dirs_dict["MAPPING_DIR"] + "/{group}/{readset}.sam")
     params:
+        env_prefix = lambda wildcards: env_prefix('bowtie'),
         index_prefix = BT2_PREFIX,
         additional_params = M.get_param_value_from_config(["bowtie", "additional_params"])
     threads: M.T('bowtie')
     resources: nodes = M.T('bowtie')
     shell:
         r"""
-        bowtie2 --threads {threads} \
+        {params.env_prefix} bowtie2 --threads {threads} \
                 -x {params.index_prefix} \
                 -1 {input.r1} -2 {input.r2} \
                 {params.additional_params} \
@@ -836,17 +859,19 @@ rule minimap2_index:
         dirs_dict["LOGS_DIR"] + "/{group}-minimap2_index.log"
     wildcard_constraints:
         readset = LR_RS_RE
+    conda: conda_yaml('minimap2')
     input:
         contigs = lambda wildcards: M.get_fasta(wildcards)
     output:
         idx = M.dirs_dict["MAPPING_DIR"] + "/{group}/{group}.mmi"
     params:
+        env_prefix = lambda wildcards: env_prefix('minimap2'),
         additional_params = M.get_param_value_from_config(["minimap2_index", "additional_params"]),
         outdir = M.dirs_dict["MAPPING_DIR"] + "/{group}"
     shell:
         r"""
         mkdir -p {params.outdir}
-        minimap2 -d {output.idx} {params.additional_params} {input.contigs} >> {log} 2>&1
+        {params.env_prefix} minimap2 -d {output.idx} {params.additional_params} {input.contigs} >> {log} 2>&1
         """
 
 
@@ -855,18 +880,20 @@ rule minimap2:
     log: dirs_dict["LOGS_DIR"] + "/{group}-{readset}-minimap2.log"
     wildcard_constraints:
         readset = LR_RS_RE
+    conda: conda_yaml('minimap2')
     input:
         idx = M.dirs_dict["MAPPING_DIR"] + "/{group}/{group}.mmi",
         reads = lambda wildcards: M.get_lr_files_for_readset(wildcards.readset)
     output:
         sam = M.dirs_dict["MAPPING_DIR"] + "/{group}/{readset}.sam"
     params:
+        env_prefix = lambda wildcards: env_prefix('minimap2'),
         preset = M.get_param_value_from_config(["minimap2", "preset"]),
         additional_params = M.get_param_value_from_config(["minimap2", "additional_params"])
     threads: M.T("minimap2")
     shell:
         r"""
-        minimap2 -x {params.preset} -t {threads} -a {params.additional_params} {input.idx} {input.reads} -o {output.sam} 2>> {log}
+        {params.env_prefix} minimap2 -x {params.preset} -t {threads} -a {params.additional_params} {input.idx} {input.reads} -o {output.sam} 2>> {log}
         """
 
 
