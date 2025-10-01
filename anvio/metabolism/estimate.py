@@ -249,6 +249,10 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
             self.contigs_db_project_name = 'user_defined_enzymes'
         elif self.estimate_from_json:
             self.contigs_db_project_name = "json_input"
+        elif self.pan_db_path:
+            from anvio.dbops import PanDatabase # <- import here to avoid circular import
+            pan_db = PanDatabase(self.pan_db_path, run=self.run, progress=self.progress)
+            self.contigs_db_project_name = pan_db.meta['project_name']
         else:
             raise ConfigError("This piece of code ended up at a place it should have never ended up at :( We need attention "
                               "from a programmer here.")
