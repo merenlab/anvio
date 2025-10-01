@@ -917,47 +917,48 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
 
         gc_bins_metabolism_superdict = {}
         gc_bins_ko_superdict = {}
-        num_bins = len(cluster_collection)
+        num_bins = len(self.bin_ids_to_process)
 
         self.progress.new("Estimating metabolism for each bin of gene clusters", progress_total_items=num_bins)
 
         for bin_name, gc_list in cluster_collection.items():
-            self.progress.update("[%d of %d] %s" % (self.progress.progress_current_item + 1, num_bins, bin_name))
+            if bin_name in self.bin_ids_to_process:
+                self.progress.update("[%d of %d] %s" % (self.progress.progress_current_item + 1, num_bins, bin_name))
 
-            enzymes_in_bin = [tpl for tpl in enzyme_cluster_split_contig if tpl[1] in gc_list]
-            metabolism_dict_for_bin, ko_dict_for_bin = self.mark_kos_present_for_list_of_splits(enzymes_in_bin,
-                                                                                                self.all_modules_in_db,
-                                                                                                self.all_kos_in_db,
-                                                                                                self.ko_dict,
-                                                                                                self.stray_ko_dict,
-                                                                                                self.include_stray_kos,
-                                                                                                self.exclude_kos_no_threshold,
-                                                                                                self.ignore_unknown_kos,
-                                                                                                bin_name=bin_name)
+                enzymes_in_bin = [tpl for tpl in enzyme_cluster_split_contig if tpl[1] in gc_list]
+                metabolism_dict_for_bin, ko_dict_for_bin = self.mark_kos_present_for_list_of_splits(enzymes_in_bin,
+                                                                                                    self.all_modules_in_db,
+                                                                                                    self.all_kos_in_db,
+                                                                                                    self.ko_dict,
+                                                                                                    self.stray_ko_dict,
+                                                                                                    self.include_stray_kos,
+                                                                                                    self.exclude_kos_no_threshold,
+                                                                                                    self.ignore_unknown_kos,
+                                                                                                    bin_name=bin_name)
 
-            if not self.store_json_without_estimation:
-                gc_bins_metabolism_superdict[bin_name] = self.estimate_for_list_of_splits(metabolism_dict_for_bin,
-                                                                                          bin_name=bin_name,
-                                                                                          all_modules_in_db=self.all_modules_in_db,
-                                                                                          module_paths_dict=self.module_paths_dict,
-                                                                                          module_completion_threshold=self.module_completion_threshold,
-                                                                                          exclude_dashed_reactions=self.exclude_dashed_reactions,
-                                                                                          add_coverage=self.add_coverage,
-                                                                                          quiet=self.quiet,
-                                                                                          genome_mode=False)
-                single_bin_module_superdict = {bin_name: gc_bins_metabolism_superdict[bin_name]}
-                gc_bins_ko_superdict[bin_name] = ko_dict_for_bin
-            else:
-                gc_bins_metabolism_superdict[bin_name] = metabolism_dict_for_bin
-                single_bin_module_superdict = {bin_name: metabolism_dict_for_bin}
-                gc_bins_ko_superdict[bin_name] = ko_dict_for_bin
+                if not self.store_json_without_estimation:
+                    gc_bins_metabolism_superdict[bin_name] = self.estimate_for_list_of_splits(metabolism_dict_for_bin,
+                                                                                            bin_name=bin_name,
+                                                                                            all_modules_in_db=self.all_modules_in_db,
+                                                                                            module_paths_dict=self.module_paths_dict,
+                                                                                            module_completion_threshold=self.module_completion_threshold,
+                                                                                            exclude_dashed_reactions=self.exclude_dashed_reactions,
+                                                                                            add_coverage=self.add_coverage,
+                                                                                            quiet=self.quiet,
+                                                                                            genome_mode=False)
+                    single_bin_module_superdict = {bin_name: gc_bins_metabolism_superdict[bin_name]}
+                    gc_bins_ko_superdict[bin_name] = ko_dict_for_bin
+                else:
+                    gc_bins_metabolism_superdict[bin_name] = metabolism_dict_for_bin
+                    single_bin_module_superdict = {bin_name: metabolism_dict_for_bin}
+                    gc_bins_ko_superdict[bin_name] = ko_dict_for_bin
 
-            # append individual bin to file
-            single_bin_ko_superdict = {bin_name: ko_dict_for_bin}
-            self.append_kegg_metabolism_superdicts(single_bin_module_superdict, single_bin_ko_superdict)
+                # append individual bin to file
+                single_bin_ko_superdict = {bin_name: ko_dict_for_bin}
+                self.append_kegg_metabolism_superdicts(single_bin_module_superdict, single_bin_ko_superdict)
 
-            self.progress.increment()
-            self.progress.reset()
+                self.progress.increment()
+                self.progress.reset()
 
         self.progress.end()
 
@@ -1057,9 +1058,12 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                                       f"Pan DB. Here are the collections in this database: {c_str}")
                 collection_dict = gene_cluster_collections.get_collection_dict(self.collection_name)
 
+                if not self.bin_ids_to_process:
+                    self.bin_ids_to_process = collection_dict.keys()
                 all_gene_clusters_in_collection = []
                 for bin_name, gene_cluster_list in collection_dict.items():
-                    all_gene_clusters_in_collection += gene_cluster_list
+                    if bin_name in self.bin_ids_to_process:
+                        all_gene_clusters_in_collection += gene_cluster_list
 
                 kofam_hits_info = self.init_hits_for_pangenome(self.pan_db_path, self.genomes_storage_path,
                                                              all_gene_clusters_in_collection, self.annotation_sources_to_use)
