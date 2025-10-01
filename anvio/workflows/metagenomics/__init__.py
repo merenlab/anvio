@@ -103,8 +103,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                                    "--no-alt-contigs", "--scaffold", "--polish-target",
                                                    "additional_params", "threads"]
         rule_acceptable_params_dict['bowtie'] = ["conda_yaml", "conda_env", "additional_params"]
-        rule_acceptable_params_dict['bowtie_build'] = ["conda_yaml", "conda_env", "additional_params"]
-        rule_acceptable_params_dict['minimap2_index'] = ["conda_yaml", "conda_env", "additional_params"]
+        rule_acceptable_params_dict['bowtie_build'] = ["additional_params"]
+        rule_acceptable_params_dict['minimap2_index'] = ["additional_params"]
         rule_acceptable_params_dict['minimap2'] = ["preset","conda_yaml", "conda_env",  "additional_params", "threads"]
         rule_acceptable_params_dict['samtools_view'] = ["additional_params"]
         rule_acceptable_params_dict['anvi_profile'] = ["--overwrite-output-destinations", "--report-variability-full",
@@ -205,7 +205,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                 raise ConfigError("Multiple long-read assemblers are enabled; please enable Flye")
 
         # sanity check for conda env: use either conda_yaml or conda_env, not both
-        for tool in ['flye','minimap2','minimap2_index','bowtie_build','bowtie2','megahit','metaspades','idba_ud']:
+        for tool in ['flye','minimap2','bowtie','megahit','metaspades','idba_ud']:
             y = self.get_param_value_from_config([tool, 'conda_yaml'])
             n = self.get_param_value_from_config([tool, 'conda_env'])
             if (y and y.strip()) and (n and n.strip()):
