@@ -319,12 +319,12 @@ class KeggEstimationAlgorithms:
                     raise ConfigError(f"We cannot find the KEGG enzyme {ko} in the dictionary of enzyme hits, even though this enzyme is "
                                       f"annotated in your data. There are 3 main ways this can happen: (1) you are using --enzymes-txt input "
                                       f"that includes KOs that are different from the set used for annotation with `anvi-run-kegg-kofams`, "
-                                      f"(2) your contigs database was annotated with `anvi-run-kegg-kofams --include-stray-KOs` but you didn't "
-                                      f"use the `--include-stray-KOs` flag for `anvi-estimate-metabolism`, or (3) you imported external annotations "
+                                      f"(2) your contigs database was annotated with `anvi-run-kegg-kofams --include-nt-KOs` but you didn't "
+                                      f"use the `--include-nt-KOs` flag for `anvi-estimate-metabolism`, or (3) you imported external annotations "
                                       f"with the source name `KOfam` that include KOs not in the KEGG data directory currently being used. "
                                       f"You have a few options to get around this error depending on which case applies to your situation. "
                                       f"If this is case (2) and you want to include these enzymes in the analysis, then re-run `anvi-estimate-metabolism` "
-                                      f"with the flag `--include-stray-KOs`. If this is case (1) or (3) and you want to include these enzymes in the "
+                                      f"with the flag `--include-nt-KOs`. If this is case (1) or (3) and you want to include these enzymes in the "
                                       f"analysis, then re-run `anvi-estimate-metabolism` with the flag `--include-kos-not-in-kofam`. And no matter "
                                       f"what the situation is, if you want to IGNORE these unknown annotations for the purposes of estimating "
                                       f"metabolism, you can re-run `anvi-estimate-metablism` with the flag `--ignore-unknown-KOs`. If this message "
@@ -896,11 +896,11 @@ class KeggEstimationAlgorithms:
         return now_complete
 
 
-    def add_module_coverage(self, mod, meta_dict_for_bin, profile_db=None, enzymes_of_interest_df=None, coverage_sample_list=None):
+    def add_module_coverage(self, mod, meta_dict_for_bin, profile_db=None, enzymes_of_interest_df=None):
         """This function updates the metabolism dictionary with coverage values for the given module.
 
-        It must be called after init_gene_coverage() or add_gene_coverage_to_headers_list() so that
-        the self.profile_db attribute is established.
+        For profile DB input, this function must be called after dbaccess.init_gene_coverage() so that the 
+        relevant gene coverage values are initialized.
 
         NEW KEYS ADDED TO METABOLISM COMPLETENESS DICT
         =======
@@ -919,12 +919,19 @@ class KeggEstimationAlgorithms:
         meta_dict_for_bin[mod]["average_coverage_per_sample"] = {}
         meta_dict_for_bin[mod]["average_detection_per_sample"] = {}
 
-        if not enzymes_of_interest_df and not profile_db:
+        if enzymes_of_interest_df is None and not profile_db:
             raise ConfigError("The add_module_coverage() function cannot work without a properly initialized "
                               "profile database.")
 
         num_genes = len(meta_dict_for_bin[mod]["gene_caller_ids"])
-        for s in coverage_sample_list:
+        if not self.coverage_sample_list:
+            # here we establish the same 'sample list' that we use in estimate.add_gene_coverage_to_headers_list()
+            if profile_db:
+                self.coverage_sample_list = profile_db.p_meta['samples']
+            elif enzymes_of_interest_df:
+                self.coverage_sample_list = [self.contigs_db_project_name] 
+
+        for s in self.coverage_sample_list:
             meta_dict_for_bin[mod]["genes_to_coverage"][s] = {}
             meta_dict_for_bin[mod]["genes_to_detection"][s] = {}
             coverage_sum = 0
@@ -1005,7 +1012,8 @@ class KeggEstimationAlgorithms:
                 stepwise_complete_mods.add(mod)
 
             if add_coverage:
-                self.add_module_coverage(mod, metabolism_dict_for_list_of_splits)
+                self.add_module_coverage(mod, metabolism_dict_for_list_of_splits, profile_db=self.profile_db, 
+                                        enzymes_of_interest_df=self.enzymes_of_interest_df)
 
         # go back and adjust completeness/copy number of modules that are defined by other modules
         if mods_def_by_modules:

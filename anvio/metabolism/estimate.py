@@ -113,10 +113,11 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                     raise ConfigError("Dear programmer, the enzymes dataframe you have sent here includes enzymes with no "
                                       "accession IDs. This is no bueno.")
 
-            if any([not enzyme_accession.startswith('K') for enzyme_accession in self.enzymes_of_interest_df["enzyme_accession"].to_list()]):
+            if not self.user_input_dir and any([not enzyme_accession.startswith('K') for enzyme_accession in self.enzymes_of_interest_df["enzyme_accession"].to_list()]):
                 raise ConfigError("It appears that the list of enzymes this function received includes those that do not look like "
                                   "the kind of enzyme accession IDs anvi'o is used to working with (i.e. K00001, K12345, etc). "
-                                  "Please check your input.")
+                                  "Please check your input. If you are trying to work with user-defined modules containing non-KEGG "
+                                  "enzymes, then you might have forgotten to use the `--user-modules` flag.")
 
         if self.only_user_modules and not self.user_input_dir:
             raise ConfigError("You can only use the flag --only-user-modules if you provide a --user-modules directory.")
@@ -163,42 +164,7 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
             utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
         if self.pan_db_path:
             utils.is_pan_db_and_genomes_storage_db_compatible(self.pan_db_path, self.genomes_storage_path)
-
-        if self.add_coverage:
-            if self.enzymes_of_interest_df is None:
-                if not self.profile_db_path:
-                    raise ConfigError("Adding coverage values requires a profile database. Please provide one if you can. :)")
-                if utils.is_blank_profile(self.profile_db_path):
-                    raise ConfigError("You have provided a blank profile database, which sadly will not contain any coverage "
-                                      "values, so the --add-coverage flag will not work.")
-
-            self.add_gene_coverage_to_headers_list()
-
-        if self.add_copy_number:
-            self.available_modes["module_paths"]["headers"].extend(["num_complete_copies_of_path"])
-            self.available_modes["module_steps"]["headers"].extend(["step_copy_number"])
-            self.available_modes["modules"]["headers"].extend(["pathwise_copy_number", "stepwise_copy_number", "per_step_copy_numbers"])
-            self.available_headers["num_complete_copies_of_path"] = {'cdict_key': None,
-                                                       'mode_type': 'modules',
-                                                       'description': "Number of complete copies of the path through the module"
-                                                       }
-            self.available_headers["step_copy_number"] = {'cdict_key': None,
-                                                       'mode_type': 'modules',
-                                                       'description': "Number of copies of the step"
-                                                       }
-            self.available_headers["pathwise_copy_number"] = {'cdict_key': None,
-                                                       'mode_type': 'modules',
-                                                       'description': "Pathwise module copy number, as in the maximum number of complete copies considering all the paths of highest completeness"
-                                                       }
-            self.available_headers["stepwise_copy_number"] = {'cdict_key': None,
-                                                       'mode_type': 'modules',
-                                                       'description': "Stepwise module copy number, as in the minimum copy number of all top-level steps in the module"
-                                                       }
-            self.available_headers["per_step_copy_numbers"] = {'cdict_key': None,
-                                                       'mode_type': 'modules',
-                                                       'description': "Number of copies of each top-level step in the module (the minimum of these is the stepwise module copy number)"
-                                                       }
-
+        
         # OUTPUT OPTIONS SANITY CHECKS
         if anvio.DEBUG:
             self.run.info("Output Modes", ", ".join(self.output_modes))
@@ -215,20 +181,6 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
         if "modules_custom" in self.output_modes and not self.custom_output_headers:
             raise ConfigError("You have requested a 'custom' output mode, but haven't told us what headers to include in that output. "
                               "You should be using the --custom-output-headers flag to do this.")
-        if self.custom_output_headers:
-            if anvio.DEBUG:
-                self.run.info("Custom Output Headers", ", ".join(self.custom_output_headers))
-            illegal_headers = set(self.custom_output_headers).difference(set(self.available_headers.keys()))
-            if illegal_headers:
-                raise ConfigError(f"You have requested some output headers that we cannot handle. The offending ones "
-                                  f"are: {', '.join(illegal_headers)}. Please use the flag --list-available-output-headers to see which ones are acceptable.")
-
-            # check if any headers requested for modules_custom mode are reserved for KOfams mode
-            if "modules_custom" in self.output_modes:
-                for header in self.custom_output_headers:
-                    if self.available_headers[header]['mode_type'] != "modules" and self.available_headers[header]['mode_type'] != "all":
-                        raise ConfigError(f"Oh dear. You requested the 'modules_custom' output mode, but gave us a header ({header}) "
-                                          "that is suitable only for %s mode(s). Not good." % (self.available_headers[header]['mode_type']))
 
         outputs_require_ko_dict = [m for m in self.output_modes if self.available_modes[m]['data_dict'] == 'kofams']
         output_string = ", ".join(outputs_require_ko_dict)
@@ -261,7 +213,6 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
             self.run.info("Enzymes txt file", self.enzymes_txt, quiet=self.quiet)
         elif self.enzymes_of_interest_df is not None:
             self.run.info("Enzymes of interest", f"{', '.join(self.enzymes_of_interest_df['enzyme_accession'].tolist())}", quiet=self.quiet)
-
 
         estimation_mode = "Genome (or metagenome assembly)"
         if self.profile_db_path and self.collection_name:
@@ -296,9 +247,66 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
             self.contigs_db_project_name = os.path.basename(self.enzymes_txt).replace(".", "_")
         elif self.enzymes_of_interest_df is not None:
             self.contigs_db_project_name = 'user_defined_enzymes'
+        elif self.estimate_from_json:
+            self.contigs_db_project_name = "json_input"
+        elif self.pan_db_path:
+            from anvio.dbops import PanDatabase # <- import here to avoid circular import
+            pan_db = PanDatabase(self.pan_db_path, run=self.run, progress=self.progress)
+            self.contigs_db_project_name = pan_db.meta['project_name']
         else:
             raise ConfigError("This piece of code ended up at a place it should have never ended up at :( We need attention "
                               "from a programmer here.")
+
+        # UPDATE OUTPUT MODES AND HEADERS ACCORDING TO INPUT OPTIONS
+        if self.add_coverage:
+            if self.enzymes_of_interest_df is None:
+                if not self.profile_db_path:
+                    raise ConfigError("Adding coverage values requires a profile database. Please provide one if you can. :)")
+                if utils.is_blank_profile(self.profile_db_path):
+                    raise ConfigError("You have provided a blank profile database, which sadly will not contain any coverage "
+                                      "values, so the --add-coverage flag will not work.")
+            # this function will initialize the profile db if necessary, and will create self.coverage_sample_list
+            self.add_gene_coverage_to_headers_list()
+
+        if self.add_copy_number:
+            self.available_modes["module_paths"]["headers"].extend(["num_complete_copies_of_path"])
+            self.available_modes["module_steps"]["headers"].extend(["step_copy_number"])
+            self.available_modes["modules"]["headers"].extend(["pathwise_copy_number", "stepwise_copy_number", "per_step_copy_numbers"])
+            self.available_headers["num_complete_copies_of_path"] = {'cdict_key': None,
+                                                       'mode_type': 'modules',
+                                                       'description': "Number of complete copies of the path through the module"
+                                                       }
+            self.available_headers["step_copy_number"] = {'cdict_key': None,
+                                                       'mode_type': 'modules',
+                                                       'description': "Number of copies of the step"
+                                                       }
+            self.available_headers["pathwise_copy_number"] = {'cdict_key': None,
+                                                       'mode_type': 'modules',
+                                                       'description': "Pathwise module copy number, as in the maximum number of complete copies considering all the paths of highest completeness"
+                                                       }
+            self.available_headers["stepwise_copy_number"] = {'cdict_key': None,
+                                                       'mode_type': 'modules',
+                                                       'description': "Stepwise module copy number, as in the minimum copy number of all top-level steps in the module"
+                                                       }
+            self.available_headers["per_step_copy_numbers"] = {'cdict_key': None,
+                                                       'mode_type': 'modules',
+                                                       'description': "Number of copies of each top-level step in the module (the minimum of these is the stepwise module copy number)"
+                                                       }
+        # HEADERS SANITY CHECK
+        if self.custom_output_headers:
+            if anvio.DEBUG:
+                self.run.info("Custom Output Headers", ", ".join(self.custom_output_headers))
+            illegal_headers = set(self.custom_output_headers).difference(set(self.available_headers.keys()))
+            if illegal_headers:
+                raise ConfigError(f"You have requested some output headers that we cannot handle. The offending ones "
+                                  f"are: {', '.join(illegal_headers)}. Please use the flag --list-available-output-headers to see which ones are acceptable.")
+
+            # check if any headers requested for modules_custom mode are reserved for KOfams mode
+            if "modules_custom" in self.output_modes:
+                for header in self.custom_output_headers:
+                    if self.available_headers[header]['mode_type'] != "modules" and self.available_headers[header]['mode_type'] != "all":
+                        raise ConfigError(f"Oh dear. You requested the 'modules_custom' output mode, but gave us a header ({header}) "
+                                          "that is suitable only for %s mode(s). Not good." % (self.available_headers[header]['mode_type']))
 
         # LOAD KEGG DATA
         if not self.only_user_modules:
@@ -464,13 +472,15 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
     def add_gene_coverage_to_headers_list(self):
         """Updates the headers lists for relevant output modes with coverage and detection column headers.
 
+        Creates the self.coverage_sample_list attribute that will be used downstream for output generation.
+
         If a profile DB was provided, it is initialized in this function in order to get access to the sample names that will
         be part of the available coverage/detection headers.
         """
 
         # obtain list of sample names
         if self.enzymes_of_interest_df is not None: # in this case the input name is already determined by the initialization method
-            samples_list = [self.contigs_db_project_name]
+            self.coverage_sample_list = [self.contigs_db_project_name]
 
         else:
             if not self.profile_db:
@@ -479,7 +489,7 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                 from anvio.dbops import ProfileSuperclass # <- import here to avoid circular import
                 self.profile_db = ProfileSuperclass(self.args)
 
-            samples_list = self.profile_db.p_meta['samples']
+            self.coverage_sample_list = self.profile_db.p_meta['samples']
 
         # obtain lists of all the headers we will need to add.
         # there will be one column per sample for both coverage and detection (for individual genes and for module averages)
@@ -488,7 +498,7 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
         modules_coverage_headers = []
         modules_detection_headers = []
 
-        for s in samples_list:
+        for s in self.coverage_sample_list:
             # we update the available header list so that these additional headers pass the sanity checks
             kofam_hits_coverage_headers.append(s + "_coverage")
             self.available_headers[s + "_coverage"] = {'cdict_key': None,
@@ -1026,6 +1036,17 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                 self.init_data_from_modules_db()
 
             if self.enzymes_of_interest_df is not None:
+                # check and warning for enzymes not in self.all_kos_in_db
+                enzymes_not_in_modules = list(self.enzymes_of_interest_df[~self.enzymes_of_interest_df["enzyme_accession"].isin(self.all_kos_in_db.keys())]['enzyme_accession'].unique())
+                if self.include_stray_kos:
+                    enzymes_not_in_modules = [e for e in enzymes_not_in_modules if e not in self.stray_ko_dict]
+                if enzymes_not_in_modules:
+                    example = enzymes_not_in_modules[0]
+                    self.run.warning(f"FYI, some enzymes in the 'enzyme_accession' column of your input enzymes-txt file do not belong to any "
+                                    f"metabolic modules (that we know about). These enzymes will be ignored for the purposes of estimating module "
+                                    f"completeness, but should still appear in enzyme-related outputs (if those were requested). In case you are "
+                                    f"curious, here is one example: {example}")
+                
                 kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_metabolism_for_enzymes_of_interest()
             elif self.pan_db_path:
                 gene_cluster_collections = ccollections.Collections()
@@ -1073,9 +1094,7 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
 
         # we take care of the JSON output if requested
         if self.write_dict_to_json:
-            self.store_metabolism_superdict_as_json(kegg_metabolism_superdict, self.json_output_file_path + ".json",
-                                                  self.user_input_dir, self.only_user_modules,
-                                                  self.kegg_modules_db_path, self.user_modules_db_path)
+            self.store_metabolism_superdict_as_json(kegg_metabolism_superdict, self.json_output_file_path)
 
         # more housekeeping for outputs
         if not self.multi_mode:
@@ -1251,10 +1270,15 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                 gene_coverages_in_mod = []
                 gene_detection_in_mod = []
                 for gc in gcids_in_mod:
-                    if self.enzymes_of_interest_df is not None:
-                        gc_idx = gc
-                    else:
+                    # the gene caller ids are expected to be integers, with the exception of
+                    # user-provided enzymes-txt files where the gene caller ids can be anything
+                    # so we try to make sure what can be integer is integer, and we don't care
+                    # if this step fails.
+                    try:
                         gc_idx = int(gc)
+                    except:
+                        gc_idx = gc
+                        pass
                     gene_coverages_in_mod.append(c_dict["genes_to_coverage"][s][gc_idx])
                     gene_detection_in_mod.append(c_dict["genes_to_detection"][s][gc_idx])
 

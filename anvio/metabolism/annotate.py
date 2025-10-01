@@ -67,14 +67,14 @@ class RunKOfams(KeggContext):
                          "please do not forget to properly credit this work.", lc='green', header="CITATION")
 
         self.setup_ko_dict() # read the ko_list file into self.ko_dict
-        self.run.info("Stray KOs will be annotated", self.include_stray_kos)
+        self.run.info("nt-KOs will be annotated", self.include_stray_kos)
         if self.include_stray_kos:
             self.setup_stray_ko_dict()
-            self.run.warning("Please note! Because you used the flag `--include-stray-KOs`, anvi'o will annotate "
+            self.run.warning("Please note! Because you used the flag `--include-nt-KOs`, anvi'o will annotate "
                              "your genes with KO models that do not come with a bit score threshold defined by KEGG. "
                              "We have generated new models and estimated rather conservative thresholds for them ourselves. To learn "
                              "how we did that, please read the documentation page for `anvi-setup-kegg-data`: "
-                             "https://anvio.org/help/main/programs/anvi-setup-kegg-data/#what-are-stray-kos-and-what-happens-when-i-include-them")
+                             "https://anvio.org/help/main/programs/anvi-setup-kegg-data/#what-are-nt-kos-and-what-happens-when-i-include-them")
 
         # load existing kegg modules db, if one exists
         if os.path.exists(self.kegg_modules_db_path):
@@ -147,9 +147,9 @@ class RunKOfams(KeggContext):
                               "extremely displeased and unable to function properly. Please refrain from calling this "
                               "function until after setup_ko_dict() has been called.")
         if self.include_stray_kos and not self.stray_ko_dict:
-            raise ConfigError("Oops! The bit score thresholds for stray KOs have not been properly loaded, so "
+            raise ConfigError("Oops! The bit score thresholds for nt-KOs have not been properly loaded, so "
                               "get_annotation_from_ko_dict() is unable to work properly. If you plan to use "
-                              "--include-stray-KOs, then make sure you run the setup_stray_ko_dict() function before "
+                              "--include-nt-KOs, then make sure you run the setup_stray_ko_dict() function before "
                               "calling this one.")
 
         ret_value = None
@@ -251,7 +251,7 @@ class RunKOfams(KeggContext):
                         keep = True
                 else:
                     self.progress.reset()
-                    raise ConfigError(f"The KO noise cutoff dictionary for the stray KO {knum} has a strange score type which "
+                    raise ConfigError(f"The KO noise cutoff dictionary for the nt-KO {knum} has a strange score type which "
                                     f"is unknown to anvi'o: {self.stray_ko_dict[knum]['score_type']}")
             else:
                 raise ConfigError(f"We cannot find KO {knum} in either self.ko_dict or in self.stray_ko_dict. This is likely a "
@@ -422,8 +422,8 @@ class RunKOfams(KeggContext):
                         # we may never access this downstream but let's add to it to be consistent
                         self.gcids_to_functions_dict[gcid] = [next_key]
 
-                        # track how many of stray KOs are added back
-                        if best_hit_label == "Stray KO":
+                        # track how many of nt-KOs are added back
+                        if best_hit_label == "No-threshold KO":
                             num_stray_KOs_added += 1
 
                         # add associated KEGG module information to database
@@ -472,7 +472,7 @@ class RunKOfams(KeggContext):
         self.run.info("Number of decent hits added back after relaxing bitscore threshold", num_annotations_added)
         if self.include_stray_kos:
             self.run.info("... of these, number of regular KOs is", num_annotations_added - num_stray_KOs_added)
-            self.run.info("... of these, number of stray KOs is", num_stray_KOs_added)
+            self.run.info("... of these, number of nt-KOs is", num_stray_KOs_added)
         self.run.info("Total number of hits in annotation dictionary after adding these back", len(self.functions_dict.keys()))
 
 
@@ -608,12 +608,12 @@ class RunKOfams(KeggContext):
         self.run.info("Current number of annotations in functions dictionary", len(self.functions_dict))
 
         if has_stray_hits:
-            self.run.warning('', header='HMM hit parsing for Stray KOs', lc='green')
+            self.run.warning('', header='HMM hit parsing for nt-KOs', lc='green')
             self.run.info("HMM output table", stray_hits_file)
             oparser = parser_modules['search']['hmmer_table_output'](stray_hits_file, alphabet='AA', context='GENE', program=self.hmm_program)
             stray_search_results = oparser.get_search_results()
-            next_key_in_functions_dict = self.parse_kofam_hits(stray_search_results, hits_label = "Stray KO", next_key=next_key_in_functions_dict)
-            super_hits_dict["Stray KO"] = stray_search_results
+            next_key_in_functions_dict = self.parse_kofam_hits(stray_search_results, hits_label = "No-threshold KO", next_key=next_key_in_functions_dict)
+            super_hits_dict["No-threshold KO"] = stray_search_results
             self.run.info("Current number of annotations in functions dictionary", len(self.functions_dict))
 
         if not self.skip_bitscore_heuristic:

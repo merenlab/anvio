@@ -1112,11 +1112,11 @@ D = {
                      "existing data. Good. We can do that if you provide this flag (and hopefully also the --kegg-data-dir "
                      "in which said data is located)."}
              ),
-    'include-stray-KOs': (
-            ['--include-stray-KOs'],
+    'include-nt-KOs': (
+            ['--include-nt-KOs'],
             {'default': False,
              'action': 'store_true',
-             'help': "'Stray KOs' are what we call KEGG Orthlogs that KEGG does not provide a bit score threshold for. "
+             'help': "'No-threshold KOs', or 'nt-KOs' are what we call KEGG Orthlogs that KEGG does not provide a bit score threshold for. "
                      "If you want to include these protein families in your annotations and downstream analyses, then "
                      "you can use this flag. Anvi'o does something very basic to estimate a bit score threshold for "
                      "annotating these KOs, which is (1) to download the KEGG GENES sequences associated with each family, "
@@ -2811,7 +2811,7 @@ D = {
              'help': "By default, we don't include KEGG Ortholog annotations if they are not in KOfam, or if "
                      "the KOfam profile does not have a bitscore threshold with which we can distinguish good hits "
                      "from bad hits (anvi-run-kegg-kofams does not annotate these KOs unless you use the "
-                     "--include-stray-KOs flag). But if you got your annotations outside of anvi'o and you want to "
+                     "--include-nt-KOs flag). But if you got your annotations outside of anvi'o and you want to "
                      "include ALL KOs in your analysis, use this flag to do so. This flag may be especially appropriate "
                      "in the case of enzymes-txt input, though you can use it with all input types."}
                 ),
@@ -3131,10 +3131,10 @@ D = {
     'get-raw-data-as-json': (
             ['--get-raw-data-as-json'],
             {'default': None,
-            'metavar': 'FILENAME_PREFIX',
+            'metavar': 'FILENAME',
             'type': str,
-            'help': "If you want the raw metabolism estimation data dictionary in JSON-format, provide a filename prefix to this argument."
-                    "The program will then output a file with the .json extension containing this data."}
+            'help': "If you want the raw metabolism estimation data dictionary in JSON-format, provide a filename to this argument "
+                    "(ideally with the .json file extension, but you do you)."}
                 ),
     'store-json-without-estimation': (
             ['--store-json-without-estimation'],
