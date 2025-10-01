@@ -7,6 +7,7 @@
 
 import os
 import anvio
+import shutil
 import pandas as pd
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
@@ -212,6 +213,13 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                 raise ConfigError(f"For '{tool}', please set only one of 'conda_yaml' (YAML path) "
                                   f"or 'conda_env' (existing env name), not both.")
 
+        # Ensure selected assemblers and mapper are available (PATH or conda)
+        self.ensure_tool_in_path_or_conda('megahit', 'megahit')
+        self.ensure_tool_in_path_or_conda('metaspades', 'metaspades.py')
+        self.ensure_tool_in_path_or_conda('idba_ud', 'idba_ud')
+        self.ensure_tool_in_path_or_conda('flye', 'flye')
+        self.ensure_tool_in_path_or_conda('bowtie', 'bowtie2')
+        self.ensure_tool_in_path_or_conda('minimap2', 'minimap2')
 
         self.use_scaffold_from_metaspades = self.get_param_value_from_config(['metaspades', 'use_scaffolds'])
         self.use_scaffold_from_idba_ud = self.get_param_value_from_config(['idba_ud', 'use_scaffolds'])
@@ -873,3 +881,23 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
     def get_param_name_for_binning_driver(self, driver):
         return '--additional-params' + '-' + driver
+
+
+    def ensure_tool_in_path_or_conda(self, tool: str, executable: str):
+        """If tool is enabled and no conda is set, ensure one of executable is on PATH."""
+        if not self.get_param_value_from_config([tool, 'run']):
+            return  # tool not requested
+
+        # do we have a conda env/yaml?
+        has_conda_yaml = self.get_param_value_from_config([tool, 'conda_yaml'])
+        has_conda_env = self.get_param_value_from_config([tool, 'conda_env'])
+        print(has_conda_env)
+        if has_conda_yaml or has_conda_env:
+            return  # conda env/yaml will provide the executable
+
+        if not shutil.which(executable):
+            raise ConfigError(
+                f"You enabled '{tool}', but {executable} were found in your $PATH. "
+                f"You can either install it, or set a conda environment via "
+                f"'conda_yaml' or 'conda_env' in your config file."
+            )
