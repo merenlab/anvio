@@ -111,70 +111,136 @@ class SamplesTxt:
         self._check_file_existence_and_identical_pairs()
         self._warn_on_unconventional_fastq_suffixes()
 
-    def as_raw(self):
-        """If constructed from a file, return raw file text; otherwise a synthesized TSV."""
-        if self._source == "path":
+    def as_raw(self, *, absolute_paths: bool = False, base_dir: str | Path | None = None):
+        """
+        If constructed from a file and absolute_paths=False, return raw file text verbatim.
+        Otherwise, synthesize TSV in canonical order (first_col, group, r1, r2, lr, extras...).
+        """
+        if self._source == "path" and not absolute_paths:
             return self._raw_text
 
-        # synthesize TSV in canonical order: first_col, group, r1, r2, lr, extras...
+        base = Path(base_dir) if base_dir is not None else self._default_base_dir()
+
+        # Build header from what we saw/normalized (keep file order & extras)
         cols = [self._first_col, "group", "r1", "r2", "lr"] + list(self._extra_columns)
-        # keep only those that exist anywhere
-        present = [c for c in cols if any(c in row for row in self._raw_rows.values()) or c == self._first_col]
+        present = [c for c in cols if c == self._first_col or any(c in row for row in self._raw_rows.values())]
+
         lines = ["\t".join(present)]
-        for key, row in self._raw_rows.items():
+        for key, original_row in self._raw_rows.items():
+            # Start from normalized info so r1/r2/lr are lists; extras are strings
+            info = self._data.get(str(original_row.get(self._first_col, key)))
+            view = self._path_view_for_info(info, absolute_paths=absolute_paths, base_dir=base)
+
             vals = []
             for c in present:
                 if c == self._first_col:
-                    vals.append(str(row.get(self._first_col, key)))
-                elif c in {"r1","r2","lr"}:
-                    v = row.get(c, "")
-                    # leave as originally provided (string or list → comma-join for display)
-                    if isinstance(v, (list, tuple)):
-                        vals.append(",".join(str(x) for x in v))
-                    else:
-                        vals.append(str(v) if v is not None else "")
+                    vals.append(str(original_row.get(self._first_col, key)))
+                elif c in {"r1", "r2", "lr"}:
+                    vals.append(",".join(view.get(c, [])) if view.get(c) else "")
                 else:
-                    vals.append("" if row.get(c) in (None,) else str(row.get(c)))
+                    # extras or group: use normalized values to avoid None
+                    v = view.get(c)
+                    vals.append("" if v in (None,) else str(v))
             lines.append("\t".join(vals))
         return "\n".join(lines)
 
-    def as_dict(self, include_extras=True):
-        """Return {sample: {'group','r1','r2','lr', [extras...]}}.
 
-        Set include_extras=False to get only the canonical keys.
-        """
+    def as_dict(self, include_extras=True, *, absolute_paths: bool = False, base_dir: str | Path | None = None):
+        """Return {sample: {...}}. Set absolute_paths=True to turn r1/r2/lr into absolute paths."""
+        base = Path(base_dir) if base_dir is not None else self._default_base_dir()
         if include_extras:
-            return self._data
-        # only with classic keys
+            return {
+                s: self._path_view_for_info(info, absolute_paths=absolute_paths, base_dir=base)
+                for s, info in self._data.items()
+            }
+        # or the classic samples-txt columns:
         return {
-            s: {k: v for k, v in info.items() if k in {"group", "r1", "r2", "lr"}}
+            s: {
+                k: v for k, v in self._path_view_for_info(info, absolute_paths=absolute_paths, base_dir=base).items()
+                if k in {"group", "r1", "r2", "lr"}
+            }
             for s, info in self._data.items()
         }
 
-    def as_df(self, include_extras=True):
-        """DataFrame view for downstream code expecting a df."""
+    def as_df(self, include_extras=True, *, absolute_paths: bool = False, base_dir: str | Path | None = None):
+        """DataFrame view. Set absolute_paths=True to emit absolute r1/r2/lr."""
         import pandas as pd
+        base = Path(base_dir) if base_dir is not None else self._default_base_dir()
+
         rows = []
         for s, info in self._data.items():
+            view = self._path_view_for_info(info, absolute_paths=absolute_paths, base_dir=base)
             row = {
                 "sample": s,
-                "group": info.get("group"),
-                "r1": ",".join(info.get("r1", [])) if info.get("r1") else "",
-                "r2": ",".join(info.get("r2", [])) if info.get("r2") else "",
-                "lr": ",".join(info.get("lr", [])) if info.get("lr") else "",
+                "group": view.get("group"),
+                "r1": ",".join(view.get("r1", [])) if view.get("r1") else "",
+                "r2": ",".join(view.get("r2", [])) if view.get("r2") else "",
+                "lr": ",".join(view.get("lr", [])) if view.get("lr") else "",
             }
             if include_extras:
                 for col in self._extra_columns:
-                    row[col] = info.get(col, "")
+                    row[col] = view.get(col, "")
             rows.append(row)
 
         df = pd.DataFrame(rows)
-        base = ["sample", "group", "r1", "r2", "lr"]
-        if include_extras:
-            cols = base + self._extra_columns
-        else:
-            cols = base
+        base_cols = ["sample", "group", "r1", "r2", "lr"]
+        cols = base_cols + (self._extra_columns if include_extras else [])
         return df[[c for c in cols if c in df.columns]]
+
+    def write_tsv(self, out_path: str | Path, *, absolute_paths: bool = True, base_dir: str | Path | None = None, include_extras: bool = True, encoding: str = "utf-8"):
+        """
+        Write a samples-txt TSV to out_path.
+
+        Parameters
+        ----------
+        out_path : str|Path
+            Destination file path; parent dirs will be created.
+        absolute_paths : bool
+            If True, r1/r2/lr values are written as absolute paths (resolved against base_dir).
+            This is recommended when writing into a different directory than the original file.
+        base_dir : str|Path|None
+            Base directory to resolve relative paths when absolute_paths=True.
+            Defaults to the original samples-txt folder (if available) or the CWD.
+        include_extras : bool
+            Controls whether extra columns (beyond group/r1/r2/lr) are included.
+            This only has an effect when the object was constructed from in-memory data
+            or when absolute_paths=True (since we must synthesize the TSV).
+        encoding : str
+            Output file encoding (default 'utf-8').
+        """
+        out_path = Path(out_path)
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+
+        # If we can return verbatim text (constructed from file, no absolute conversion, keep extras),
+        # we can dump the raw text. Otherwise synthesize using as_raw / as_df logic.
+        if self._source == "path" and not absolute_paths and include_extras:
+            text = self._raw_text
+        else:
+            # Synthesize with current column order and optional absolute paths.
+            # as_raw already respects extras present; include_extras toggle affects only df/dict,
+            # but for TSV we keep the discovered extras ordering.
+            text = self.as_raw(absolute_paths=absolute_paths, base_dir=base_dir)
+
+            if not include_extras:
+                # Rebuild text without extras using the dict view (simpler than column surgery).
+                d = self.as_dict(include_extras=False, absolute_paths=absolute_paths, base_dir=base_dir)
+                # Make a compact TSV with only the canonical columns
+                header = [self._first_col, "group", "r1", "r2", "lr"]
+                lines = ["\t".join(header)]
+                for sample, info in d.items():
+                    lines.append("\t".join([
+                        sample,
+                        "" if info.get("group") in (None,) else str(info.get("group")),
+                        ",".join(info.get("r1") or []),
+                        ",".join(info.get("r2") or []),
+                        ",".join(info.get("lr") or []),
+                    ]))
+                text = "\n".join(lines)
+
+        with open(out_path, "w", encoding=encoding) as f:
+            f.write(text)
+        return str(out_path)
+
 
     def extra_columns(self):
         """Return a list of user-supplied extra column names in file order."""
@@ -421,6 +487,38 @@ class SamplesTxt:
                              f"of the expected extensions (which include '.fastq', '.fastq.gz', '.fq', or '.fq.gz'). "
                              f"That's okay, but anvi'o decided that it still should warn you. Here are the first 5 "
                              f"such files that have unconventional extensions: {', '.join(bad[:5])}.")
+
+    def _default_base_dir(self):
+        """Where relative paths should be resolved from by default."""
+        if self._source == "path" and self.artifact_path:
+            return Path(self.artifact_path).resolve().parent
+        return Path.cwd()
+
+    @staticmethod
+    def _resolve_path_like(p, base_dir: Path):
+        """Expand ~ and make absolute relative to base_dir if needed."""
+        if p is None or str(p).strip() == "":
+            return ""
+        pp = Path(str(p)).expanduser()
+        if not pp.is_absolute():
+            pp = (base_dir / pp).resolve()
+        else:
+            pp = pp.resolve()
+        return str(pp)
+
+    def _path_view_for_info(self, info: dict, *, absolute_paths: bool, base_dir: Path):
+        """Return a SHALLOW copy of row dict with r1/r2/lr lists adjusted per absolute_paths."""
+        out = dict(info)  # shallow copy is fine; we'll replace r1/r2/lr
+        if absolute_paths:
+            out["r1"] = [self._resolve_path_like(p, base_dir) for p in (info.get("r1") or [])]
+            out["r2"] = [self._resolve_path_like(p, base_dir) for p in (info.get("r2") or [])]
+            out["lr"] = [self._resolve_path_like(p, base_dir) for p in (info.get("lr") or [])]
+        else:
+            # keep as-is (already normalized to list[str])
+            out["r1"] = list(info.get("r1") or [])
+            out["r2"] = list(info.get("r2") or [])
+            out["lr"] = list(info.get("lr") or [])
+        return out
 
     def samples(self):
         """List of sample names."""
