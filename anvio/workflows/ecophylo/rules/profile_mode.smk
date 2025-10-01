@@ -66,10 +66,7 @@ rule run_metagenomics_workflow:
 
         # Convert r1 and r2 to absolute paths
         samples_txt_new_path = os.path.join(metagenomics_workflow_path, M.samples_txt_file)
-        samples_txt_new = pd.read_csv(M.samples_txt_file, sep='\t', index_col=False)
-        samples_txt_new['r1'] = samples_txt_new['r1'].apply(lambda x: os.path.abspath(str(x)))
-        samples_txt_new['r2'] = samples_txt_new['r2'].apply(lambda x: os.path.abspath(str(x)))
-        samples_txt_new.to_csv(samples_txt_new_path, sep="\t", index=False, header=True)
+        M.samples_txt.write_tsv(samples_txt_new_path, absolute_paths = True)
 
         log_path = os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "00_LOGS")
         log_file = os.path.join(log_path, "run_metagenomics_workflow.log")
