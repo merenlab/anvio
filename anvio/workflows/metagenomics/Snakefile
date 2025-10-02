@@ -885,7 +885,7 @@ rule minimap2:
         idx = M.dirs_dict["MAPPING_DIR"] + "/{group}/{group}.mmi",
         reads = lambda wildcards: M.get_lr_files_for_readset(wildcards.readset)
     output:
-        sam = M.dirs_dict["MAPPING_DIR"] + "/{group}/{readset}.sam"
+        sam = temp(M.dirs_dict["MAPPING_DIR"] + "/{group}/{readset}.sam")
     params:
         env_prefix = lambda wildcards: env_prefix('minimap2'),
         preset = M.get_param_value_from_config(["minimap2", "preset"]),
