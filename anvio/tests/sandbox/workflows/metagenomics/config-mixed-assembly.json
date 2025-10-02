@@ -77,21 +77,21 @@
         "--drop-previous-annotations": "",
         "threads": ""
     },
-    "samples_txt": "samples-no-groups.txt",
+    "samples_txt": "samples-sr-lr.txt",
     "read_type_suffix": "auto",
     "metaspades": {
         "additional_params": "--only-assembler",
         "threads": 7,
-        "run": true,
+        "run": "",
         "conda_yaml": "",
         "conda_env": "",
-        "use_scaffolds": true
+        "use_scaffolds": ""
     },
     "megahit": {
         "--min-contig-len": 1000,
         "--memory": 0.4,
-        "threads": 7,
-        "run": "",
+        "threads": 1,
+        "run": true,
         "conda_yaml": "",
         "conda_env": "",
         "--min-count": "",
@@ -143,21 +143,21 @@
         "use_scaffolds": ""
     },
     "flye": {
-        "run": false,
+        "run": true,
         "threads": 7,
         "additional_params": "",
         "conda_yaml": "",
         "conda_env": "",
-        "--meta": "",
+        "--meta": true,
         "--pacbio-raw": "",
         "--pacbio-corr": "",
-        "--pacbio-hifi": "",
+        "--pacbio-hifi": true,
         "--nano-raw": "",
         "--nano-corr": "",
         "--nano-hq": "",
         "--genome-size": "",
         "--iterations": "",
-        "--min-overlap": "",
+        "--min-overlap": "1000",
         "--read-error": "",
         "--keep-haplotypes": "",
         "--no-alt-contigs": "",
@@ -165,7 +165,7 @@
         "--polish-target": ""
     },
     "iu_filter_quality_minoche": {
-        "run": false,
+        "run": true,
         "--ignore-deflines": true,
         "--visualize-quality-curves": "",
         "--limit-num-pairs": "",
@@ -174,7 +174,7 @@
         "threads": ""
     },
     "gzip_fastqs": {
-        "run": false,
+        "run": true,
         "threads": ""
     },
     "bowtie": {
@@ -329,20 +329,20 @@
         "threads": ""
     },
     "references_mode": "",
-    "all_against_all": "",
+    "all_against_all": true,
     "kraken_txt": "",
     "collections_txt": "",
     "output_dirs": {
-        "FASTA_DIR": "02_FASTA-metaspades",
-        "CONTIGS_DIR": "03_CONTIGS-metaspades",
-        "QC_DIR": "01_QC-metaspades",
-        "MAPPING_DIR": "04_MAPPING-metaspades",
-        "PROFILE_DIR": "05_ANVIO_PROFILE-metaspades",
-        "MERGE_DIR": "06_MERGED-metaspades",
-        "TAXONOMY_DIR": "07_TAXONOMY-metaspades",
-        "SUMMARY_DIR": "08_SUMMARY-metaspades",
-        "SPLIT_PROFILES_DIR": "09_SPLIT_PROFILES-metaspades",
-        "LOGS_DIR": "00_LOGS-metaspades"
+        "FASTA_DIR": "02_FASTA-mixed-assembly",
+        "CONTIGS_DIR": "03_CONTIGS-mixed-assembly",
+        "QC_DIR": "01_QC-mixed-assembly",
+        "MAPPING_DIR": "04_MAPPING-mixed-assembly",
+        "PROFILE_DIR": "05_ANVIO_PROFILE-mixed-assembly",
+        "MERGE_DIR": "06_MERGED-mixed-assembly",
+        "TAXONOMY_DIR": "07_TAXONOMY-mixed-assembly",
+        "SUMMARY_DIR": "08_SUMMARY-mixed-assembly",
+        "SPLIT_PROFILES_DIR": "09_SPLIT_PROFILES-mixed-assembly",
+        "LOGS_DIR": "00_LOGS-mixed-assembly"
     },
     "max_threads": "",
     "config_version": "4",
