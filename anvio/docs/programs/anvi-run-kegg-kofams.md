@@ -19,6 +19,8 @@ For every gene without a KOfam annotation, we examine all the hits with an e-val
 
 Please note that this strategy is just a heuristic. We have tried to pick default parameters that seemed reasonable but by no means have we comprehensively tested and optimized them. This is why X and Y are mutable so that you can explore different values and see how they work for your data. It is always a good idea to double-check your annotations to make sure they are reasonable and as stringent as you'd like them to be. In addition, if you do not feel comfortable using this heuristic at all, you can always turn this behavior off and rely solely on KEGG's bitscore thresholds. :)
 
+![Diagram of the bitscore relaxation heuristic](../../images/kegg-annotation-heuristic.png)
+
 **3) Put annotations in the database**
 In the %(contigs-db)s functions table, annotated KO hits (%(kegg-functions)s) will have the source `KOfam`. If a %(modules-db)s is available, metabolic modules and BRITE functional classifications containing these functions also have entries in the table, with sources labeled `KEGG_Module` and `KEGG_BRITE`. BRITE classification will not occur if %(anvi-setup-kegg-data)s was not set up with BRITE data (see the artifact for that program to see how to include BRITE).
 
