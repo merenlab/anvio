@@ -2402,9 +2402,8 @@ class DGR_Finder:
         ##################
 
         # setup the input/output queues
-        manager = multiprocessing.Manager()
-        input_queue = manager.Queue()
-        output_queue = manager.Queue()
+        input_queue = Queue()
+        output_queue = Queue()
 
         self.dgr_activity = []
         # create directory for Primer matches
