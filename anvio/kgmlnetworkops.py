@@ -179,22 +179,25 @@ class KGMLNetworkWalker:
         alias a large number of reactions of questionable validity for the enzyme.
 
     compound_fate : Literal['consume', 'produce', 'both'], 'consume'
-        Seek chains that consume or produce compounds in the network. If 'consume' or 'produce',
-        only consumption or production chains are sought, respectively. If 'both', both consumption
-        and production chains are sought, yielding pairs of chains, one consumption chain ordered
-        from the first reactant to the last product, and one production chain ordered from the last
-        product to the first reactant. Therefore, chains that only contain reversible reactions are
-        found in both directions with 'both', as the first reactant can be the last product, and the
-        last product can be the first reactant, yielding four chains traversing identical compounds
-        and reactions.
+        Seek chains that consume or produce compounds. If 'consume' or 'produce', only consumption
+        or production chains are sought, respectively. If 'both', both consumption and production
+        chains are sought, yielding pairs of chains, one consumption chain ordered from the first
+        reactant to the last product, and one production chain ordered from the last product to the
+        first reactant. Therefore, chains that only contain reversible reactions are found in both
+        directions with 'both', as the first reactant can be the last product, and the last product
+        can be the first reactant, yielding four chains traversing identical compounds and
+        reactions.
 
     max_reactions : int, None
         Truncate chains at this number of reactions. If None, chains can be continued to
         indeterminate length.
 
     keep_intermediate_chains : bool, False
-        Chains starting from compounds in the network can be subchains of chains from other
-        compounds in the network. If False, such intermediate chains are ignored.
+        If True, reported chains can be intermediate chains, or subchains, of other reported chains,
+        with an intermediate chain being one that is entirely contained in a longer chain. This can
+        cause a very large number of chains to be reported, since every reaction and sequence of
+        reactions within a chain constitutes an intermediate chain. If False, such intermediate
+        chains are ignored.
 
     max_gaps : int, 0
         Chains can contain up to this number of reactions not genomically encoded in the reaction
@@ -206,8 +209,8 @@ class KGMLNetworkWalker:
     allow_alternative_reaction_gaps : bool, False
         If a chain links two compounds by a reaction in the reaction network, and there are other
         "parallel" KGML reactions not in the reaction network that also link the compounds, then
-        treat these parallel reactions as gaps with a value of True. With a value of False, ignore
-        parallel reaction gaps.
+        treat these alternative reactions as gaps with a value of True. With a value of False,
+        ignore parallel reactions not represented in the network.
 
     run : anvio.terminal.Run, anvio.terminal.Run()
         This object prints run information to the terminal.
