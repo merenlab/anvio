@@ -7,7 +7,7 @@ import sys
 import argparse
 import textwrap
 
-from colored import fg, bg, attr
+from colored import fg, attr
 from rich_argparse import RichHelpFormatter
 
 import anvio
@@ -41,7 +41,7 @@ class ArgumentParser(argparse.ArgumentParser):
         self.anvio_allowed_ad_hoc_flags = ['--version', '--debug', '--force', '--fix-sad-tables',
                                            '--quiet', '--no-progress', '--as-markdown', '--display-db-calls',
                                            '--force-use-my-tree', '--force-overwrite', '--tmp-dir',
-                                           '--I-know-this-is-not-a-good-idea']
+                                           '--I-know-this-is-not-a-good-idea', '--include-stray-KOs']
 
 
     def get_anvio_epilogue(self):
@@ -197,7 +197,7 @@ class ArgumentParser(argparse.ArgumentParser):
     def sanity_check(self, args):
         """Simple sanity checks for global arguments"""
 
-        # make sure num threads are not 0 or negative. 
+        # make sure num threads are not 0 or negative.
         if args and 'num_threads' in args:
             try:
                 args.num_threads = int(args.num_threads)
@@ -221,6 +221,15 @@ class ArgumentParser(argparse.ArgumentParser):
         args, unknown = parser.parse_known_args()
 
         self.sanity_check(args)
+
+        # A little historical luggage. We used to have the flag `--include-stray-KOs` in
+        # metabolism framework associated programs such as `anvi-estimate-metabolism` or
+        # `anvi-run-kegg-kofams`. Versions of these programs with this flag ended up in
+        # various publications already, but in the meantime we realized that `--include-nt-KOs`
+        # was a better name for this flag. So, here we are implementing a solution for backwards
+        # compatibility.
+        if '--include-stray-KOs' in unknown:
+            args.include_nt_KOs = True
 
         if auto_fill_anvio_dbs:
             if anvio.DEBUG_AUTO_FILL_ANVIO_DBS:

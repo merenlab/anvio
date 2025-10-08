@@ -59,8 +59,8 @@ class KeggContext(object):
 
         # shared variables for all KEGG subclasses
         self.kofam_hmm_file_path = os.path.join(self.kegg_hmm_data_dir, "Kofam.hmm") # file containing concatenated KOfam hmms
-        self.stray_ko_hmm_file_path = os.path.join(self.orphan_data_dir, "anvio_hmm_profiles_for_stray_KOs.hmm") # anvi'o-generated concatenated hmms for stray KOs
-        self.stray_ko_hmms_from_kegg = os.path.join(self.orphan_data_dir, "hmm_profiles_with_kofams_with_no_threshold.hmm") # original concatentated hmms for stray KOs
+        self.stray_ko_hmm_file_path = os.path.join(self.orphan_data_dir, "anvio_hmm_profiles_for_stray_KOs.hmm") # anvi'o-generated concatenated hmms for nt-KOs
+        self.stray_ko_hmms_from_kegg = os.path.join(self.orphan_data_dir, "hmm_profiles_with_kofams_with_no_threshold.hmm") # original concatentated hmms for nt-KOs
         self.ko_list_file_path = os.path.join(self.kegg_data_dir, "ko_list.txt")
         self.stray_ko_thresholds_file = os.path.join(self.orphan_data_dir, "estimated_thresholds_for_stray_kos.txt")
         self.kegg_module_file = os.path.join(self.kegg_data_dir, "modules.keg")
@@ -116,7 +116,7 @@ class KeggContext(object):
         exclude_threshold : Boolean
             If this is true, we remove KOs without a bitscore threshold from the ko_dict
         suppress_warnings : Boolean
-            If this is true, we don't print the warning message about stray KOs
+            If this is true, we don't print the warning message about nt-KOs
         """
 
         self.ko_dict = utils.get_TAB_delimited_file_as_dictionary(self.ko_list_file_path)
@@ -144,9 +144,9 @@ class KeggContext(object):
 
 
     def setup_stray_ko_dict(self, add_entries_to_regular_ko_dict=False):
-        """This class sets up a dictionary of predicted bit score thresholds for stray KOs, if possible.
+        """This class sets up a dictionary of predicted bit score thresholds for nt-KOs, if possible.
 
-        Those predicted thresholds are generated during `anvi-setup-kegg-data --include-stray-KOs`
+        Those predicted thresholds are generated during `anvi-setup-kegg-data --include-nt-KOs`
         (see KOfamDownload.process_all_stray_kos()), and are stored in a file that looks like this:
 
         knum	threshold	score_type	definition
@@ -162,7 +162,7 @@ class KeggContext(object):
         Parameters
         ==========
         add_entries_to_regular_ko_dict : Boolean
-            If True, we don't create a separate self.stray_ko_dict but instead add the stray KOs to the
+            If True, we don't create a separate self.stray_ko_dict but instead add the nt-KOs to the
             regular self.ko_dict attribute. Useful if you don't need to keep the two sets separate.
         """
 
@@ -175,16 +175,16 @@ class KeggContext(object):
             else:
                 self.stray_ko_dict = utils.get_TAB_delimited_file_as_dictionary(self.stray_ko_thresholds_file)
         else:
-            raise ConfigError(f"You have requested to include stray KO models in your analysis, but anvi'o cannot find the "
+            raise ConfigError(f"You have requested to include nt-KO models in your analysis, but anvi'o cannot find the "
                               f"estimated bit score thresholds for these models. Usually these values are generated when you run "
                               f"`anvi-setup-kegg-data`, and stored at the following path: {self.stray_ko_thresholds_file}. Their "
-                              f"absence in your setup indicates that `anvi-setup-kegg-data` was run without the `--include-stray-KOs` "
+                              f"absence in your setup indicates that `anvi-setup-kegg-data` was run without the `--include-nt-KOs` "
                               f"flag. You have two options. You can either (1) give up on including these models and re-run your "
-                              f"annotation step without the `--include-stray-KOs` flag, or (2) change the KEGG data that you "
+                              f"annotation step without the `--include-nt-KOs` flag, or (2) change the KEGG data that you "
                               f"are using with one that includes score threshold estimations. For the latter, the most straightforward "
-                              f"solution is to rerun `anvi-setup-kegg-data` with `--include-stray-KOs` flag. If you prefer to keep "
+                              f"solution is to rerun `anvi-setup-kegg-data` with `--include-nt-KOs` flag. If you prefer to keep "
                               f"your default KEGG data is, you may consider also including `--kegg-data-dir` parameter to "
-                              f"`anvi-setup-kegg-data` along with `--include-stray-KOs` to create a new copy of your local database "
+                              f"`anvi-setup-kegg-data` along with `--include-nt-KOs` to create a new copy of your local database "
                               f"elsewhere.")
 
 
