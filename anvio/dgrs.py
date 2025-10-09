@@ -750,91 +750,69 @@ class DGR_Finder:
 
 
 
-    def parse_and_process_blast_results(self, root, bin_name, max_percent_identity):
+    def has_repeat(self, seq: str, qseq: str, hseq: str) -> bool:
         """
-        Parse and process BLAST XML results for a single bin or dataset,
-        filtering for mismatched hits below a given percent identity threshold.
-
-        Parameters
-        ==========
-        root : xml.etree.ElementTree.Element
-            Parsed XML root object from a BLAST output file.
-        bin_name : str or None
-            Name of the bin associated with the BLAST search. If None,
-            results are treated as coming from a single dataset.
-        max_percent_identity : float
-            Maximum percent identity allowed for considering a hit as mismatched.
-            Hits with higher identity are ignored.
-
-        Returns
-        =======
+        Check whether a sequence contains tandem repeats or STRs.
+        Returns True if a repeat is found, otherwise False.
         """
 
-        hit_id_counter = 0
+        # here we use pytrf for removing tandem and not exact tandem repeats, this is a python compiled version of tandem repeats finder:
+        # the idea is that there are a lot of false positives found in metagenomic samples that are found with `anvi-report-dgrs` due to
+        # the nature of the two sequences being very similar and we only want those that are similar due to the TR/VR constraints and not
+        # because they are repeated sequences. The first loop uses the approximate repeat finder to search for imperfect tandem repeats
+        # that are above a threshold number of times repeated, by default this is 10.
+        #
+        # The second loop loops for sequential tandem repeats and has the parameter to catch any mono or di motif (so single base, or pair of bases)
+        # that repeats 6 times after each other and default settings for tri=5, tetra=4, penta=4, hexa=4. If any are caught the sequence is removed.
+        #
+        # The third loop for approximate repeat finder works by looking for any repeated motif that is over 4 and under 10 bp long that has a minimum
+        # identity fo up to 1 bp difference. then works out a coverage of how much of the sequence the repeat covers and if it is above the user defined
+        # value or 80% as default then the sequence is removed.
+        # The fourth loop is there because the pytrf code has the quirk that the if you change the min motif to smaller it misses the larger motif repeats,
+        # this loop also has the seed len as 9 not 10 which is the default to remove some more repeats
 
-        for iteration in root.findall(".//Iteration"):
-            for hit in iteration.findall(".//Hit"):
-                for hsp in hit.findall(".//Hsp"):
-                    identical_positions = int(hsp.find('Hsp_identity').text)
-                    alignment_length = int(hsp.find('Hsp_align-len').text)
-                    percentage_identity = (identical_positions / alignment_length) * 100
+        # Only build a new string if needed
+        if "-" in seq:
+            seq = seq.replace("-", "")
 
-                    if percentage_identity < max_percent_identity:
-                        section_id = iteration.find('Iteration_query-def').text
-                        hit_id_counter += 1
+        for atr1 in pytrf.ATRFinder('name', seq):
+            if int(atr1.repeat) > self.numb_imperfect_tandem_repeats:
+                #has_repeat = True
+                if anvio.DEBUG and self.verbose:
+                    self.run.warning(f"Removing the DGR with its VR on this contig: {qseq} and TR on this contig: {hseq}. Found imperfect tandem repeat in the query sequence {seq} with repeat count {atr1.repeat} and motif {atr1.motif}")
+                return True
+
+        #look for tandem homopolymers and 2 base short tandem repeats that are over 4 (so occur 5 times) times in the sequence
+        for ssr in pytrf.STRFinder('name', seq, mono=10, di=5):
+            #if ((len(ssr.motif) == 1) or (len(ssr.motif) == 2)) and ssr.repeat > 6:
+            if ssr:
+                #has_repeat = True
+                if anvio.DEBUG and self.verbose:
+                    self.run.warning(f"Removing the DGR with its VR on this contig: {qseq} and TR on this contig: {hseq}. Found tandem repeat in the query sequence {seq} with repeat count {ssr.repeat} and motif {ssr.motif}")
+                return True
+
+        #look for approximate tandem repeats that in the VR, using a coverage value of the motif length times by the number of repeats
+        # divided by the sequence length
+        for atr in pytrf.ATRFinder('name', seq, min_motif=4, max_motif=10, min_seedrep=2, min_identity=70):
+            coverage = (len(atr.motif)*atr.repeat) / len(seq)
+            if coverage > self.repeat_motif_coverage:
+                if anvio.DEBUG and self.verbose:
+                    self.run.warning(f"Removing the DGR with its VR on this contig: {qseq} and TR on this contig: {hseq}.Found approximate tandem repeat in the query sequence {seq} with repeat count {atr.repeat}, motif {atr.motif} and coverage {coverage}")
+                return True
+
+        # look for approximate tandem repeats that in the VR, using a coverage value of the motif length times by the number of repeats
+        # divided by the sequence length
+        # need to do this for shorter motifs too because pytrf misses them otherwise
+        for atr2 in pytrf.ATRFinder('name', seq, min_motif=3, max_motif=10, min_seedrep=2, min_seedlen=9, min_identity=70):
+            coverage = (len(atr2.motif)*atr2.repeat) / len(seq)
+            if coverage > self.repeat_motif_coverage:
+                if anvio.DEBUG and self.verbose:
+                    self.run.warning(f"Removing the DGR with its VR on this contig: {qseq} and TR on this contig: {hseq}. Found approximate tandem repeat in the query sequence {seq} with repeat count {atr2.repeat}, motif {atr2.motif} and coverage {coverage}")
+                return True
+
+        return False
 
 
-                        hit_identity_unique = '_'.join([section_id, f'_count_{hit_id_counter}'])
-                        pattern = r"start_bp(\d+)_end_bp(\d+)"
-
-                        match = re.search(pattern, section_id)
-                        query_start_position = int(match.group(1))
-
-                        qseq = str(hsp.find('Hsp_qseq').text)
-                        hseq = str(hsp.find('Hsp_hseq').text)
-                        midline = str(hsp.find('Hsp_midline').text)
-
-                        has_repeat = False
-                        # here we use pytrf for removing tandem and not exact tandem repeats, this is a python compiled version of tandem repeats finder:
-                        # the idea is that there are a lot of false positives found in metagenomic samples that are found with `anvi-report-dgrs` due to
-                        # the nature of the two sequences being very similar and we only want those that are similar due to the TR/VR constraints and not
-                        # because they are repeated sequences. The first loop uses the approximate repeat finder to search for imperfect tandem repeats
-                        # that are above a threshold number of times repeated, by default this is 10.
-                        #
-                        # The second loop loops for sequential tandem repeats and has the parameter to catch any mono or di motif (so single base, or pair of bases)
-                        # that repeats 6 times after each other and default settings for tri=5, tetra=4, penta=4, hexa=4. If any are caught the sequence is removed.
-                        #
-                        # The third loop for approximate repeat finder works by looking for any repeated motif that is over 4 and under 10 bp long that has a minimum
-                        # identity fo up to 1 bp difference. then works out a coverage of how much of the sequence the repeat covers and if it is above the user defined
-                        # value or 80% as default then the sequence is removed.
-                        # The fourth loop is there because the pytrf code has the quirk that the if you change the min motif to smaller it misses the larger motif repeats,
-                        # this loop also has the seed len as 9 not 10 which is the default to remove some more repeats
-
-                        for seq in [hseq, qseq]:
-                            #remove - in sequences to remove repeats properly
-                            seq = seq.replace("-", "")
-                            for atr1 in pytrf.ATRFinder('name', seq):
-                                if int(atr1.repeat) > self.numb_imperfect_tandem_repeats:
-                                    has_repeat = True
-                                    if anvio.DEBUG and self.verbose:
-                                        self.run.warning(f"Removing the DGR with its VR on this contig: {qseq} and TR on this contig: {hseq}. Found imperfect tandem repeat in the query sequence {seq} with repeat count {atr1.repeat} and motif {atr1.motif}")
-
-                            #look for tandem homopolymers and 2 base short tandem repeats that are over 4 (so occur 5 times) times in the sequence
-                            for ssr in pytrf.STRFinder('name', seq, mono=10, di=5):
-                                #if ((len(ssr.motif) == 1) or (len(ssr.motif) == 2)) and ssr.repeat > 6:
-                                if ssr:
-                                    has_repeat = True
-                                    if anvio.DEBUG and self.verbose:
-                                        self.run.warning(f"Removing the DGR with its VR on this contig: {qseq} and TR on this contig: {hseq}. Found tandem repeat in the query sequence {seq} with repeat count {ssr.repeat} and motif {ssr.motif}")
-
-                            #look for approximate tandem repeats that in the VR, using a coverage value of the motif length times by the number of repeats
-                            # divided by the sequence length
-                            for atr in pytrf.ATRFinder('name', seq, min_motif=4, max_motif=10, min_seedrep=2, min_identity=70):
-                                coverage = (len(atr.motif)*atr.repeat) / len(seq)
-                                if coverage > self.repeat_motif_coverage:
-                                    has_repeat = True
-                                    if anvio.DEBUG and self.verbose:
-                                        self.run.warning(f"Removing the DGR with its VR on this contig: {qseq} and TR on this contig: {hseq}.Found approximate tandem repeat in the query sequence {seq} with repeat count {atr.repeat}, motif {atr.motif} and coverage {coverage}")
 
     def parse_and_process_blast_results(self, xml_file_path, bin_name, max_percent_identity):
         """
