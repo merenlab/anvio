@@ -2039,8 +2039,14 @@ class DGR_Finder:
 
                 # check if there are surrounding genes for the TR and write them
                 if dgr_id in self.genomic_context_surrounding_dgrs:
+                    # get the context for this DGR
+                    dgr_context = self.genomic_context_surrounding_dgrs[dgr_id]
+
+                    # filter for TR genes (integer keys only, not VR string keys)
+                    tr_genes = {k: v for k, v in dgr_context.items() if isinstance(k, int)}
+
                     # iterate over the gene_callers_id and the associated gene_call dictionary
-                    for gene_callers_id, gene_call in self.genomic_context_surrounding_dgrs[dgr_id].items():
+                    for gene_callers_id, gene_call in tr_genes.items():
                         # ensure the gene_call is a dictionary
                         if isinstance(gene_call, dict):
                             # write gene information to the output, ensuring we access the correct fields
@@ -2081,15 +2087,22 @@ class DGR_Finder:
                     vr_genes_output.write(f"{dgr_id} {vr_id}\tVARIABLE_REGION\t%s\n" % '\t'.join([f"{d[h]}" for h in genes_output_headers]))
 
                     # check if there are surrounding genes for the VR and write them
-                    if vr_id in self.genomic_context_surrounding_dgrs:
-                        for gene_call in self.genomic_context_surrounding_dgrs[vr_id]:
-                            vr_genes_output.write(f"{dgr_id} VR_{vr_id}\tGENE\t%s\n" % '\t'.join([f"{gene_call[h]}" for h in genes_output_headers]))
+                    # VR genes are stored at: self.genomic_context_surrounding_dgrs[dgr_id][vr_id]
+                    if dgr_id in self.genomic_context_surrounding_dgrs and vr_id in self.genomic_context_surrounding_dgrs[dgr_id]:
+                        vr_genes = self.genomic_context_surrounding_dgrs[dgr_id][vr_id]
+
+                        # Iterate over VR genes
+                        for gene_callers_id, gene_call in vr_genes.items():
+                            if isinstance(gene_call, dict):
+                                vr_genes_output.write(f"{dgr_id}_{vr_id}\tGENE\t%s\n" % '\t'.join([f"{gene_call.get(h, '')}" for h in genes_output_headers]))
 
                             if 'functions' in gene_call:
                                 for hit in gene_call['functions']:
                                     vr_functions_output.write(f"{dgr_id} {vr_id}\t{hit['gene_callers_id']}\t{hit['source']}\t{hit['accession'].split('!!!')[0]}\t{hit['function'].split('!!!')[0]}\n")
                             else:
                                 vr_functions_output.write(f"{dgr_id} {vr_id}\t{gene_call['gene_callers_id']}\t\t\t\n")
+                    else:
+                        self.run.info_single(f"No VR genes found for {dgr_id} {vr_id}", nl_before=1)
 
                     self.run.info(f'    Reporting file on gene context for {dgr_id} {vr_id}', vr_genes_output_path)
                     self.run.info(f'    Reporting file on functional context for {dgr_id} {vr_id}', vr_functions_output_path, nl_after=1)
