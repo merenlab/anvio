@@ -7,7 +7,7 @@ from argparse import Namespace
 from typing import Any, Literal, Union
 from dataclasses import dataclass, field
 
-import anvio.kegg as kegg
+import anvio.metabolism.context as kcontext
 import anvio.kgml as kgml
 import anvio.terminal as terminal
 import anvio.reactionnetwork as rn
@@ -121,7 +121,7 @@ class KGMLNetworkWalker:
         file available. Valid pathways are in categories 1.0 - 1.11 as of the March 3, 2025 release
         of KEGG (see https://www.genome.jp/kegg/pathway.html).
 
-    kegg_context : anvio.kegg.KeggContext
+    kegg_context : anvio.metabolism.context.KeggContext
         Contains information on an anvi'o KEGG installation, which is assumed to be at the default
         location. A reaction network stored in the network attribute should be constructed from that
         version of the database.
@@ -271,7 +271,7 @@ class KGMLNetworkWalker:
 
         # Assume that the reaction network was constructed with the KEGG database found at the
         # default anvi'o location.
-        self.kegg_context = kegg.KeggContext(Namespace())
+        self.kegg_context = kcontext.KeggContext(Namespace())
 
         self.run: terminal.Run = A('run', terminal.Run())
 
@@ -401,7 +401,7 @@ class KGMLNetworkWalker:
             self.network_keggcpd_ids_in_pathway = None
 
     @staticmethod
-    def check_pathway_number(kegg_pathway_number: str, kegg_context: kegg.KeggContext) -> bool:
+    def check_pathway_number(kegg_pathway_number: str, kegg_context: kcontext.KeggContext) -> bool:
         """
         Check that the KEGG pathway number has an RN type KGML file available in the anvi'o KEGG
         installation.
@@ -411,7 +411,7 @@ class KGMLNetworkWalker:
         kegg_pathway_number : str
             Numerical ID of a pathway.
 
-        kegg_context : anvio.kegg.KeggContext
+        kegg_context : anvio.metabolism.context.KeggContext
             Contains information on an anvi'o KEGG installation.
 
         Returns
