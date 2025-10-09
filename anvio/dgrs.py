@@ -2017,9 +2017,7 @@ class DGR_Finder:
             dgr_id = dgr_key  # If dgr_key is the dgr_id itself
 
             # create output directory for DGR
-            if dgrs_dict == self.DGRs_found_dict:
-                dgr_directory = os.path.join(self.output_directory, "PER_DGR", dgr_id)
-
+            dgr_directory = os.path.join(self.output_directory, "PER_DGR", dgr_id)
             filesnpaths.gen_output_directory(dgr_directory, delete_if_exists=False)
 
             # TR output paths
