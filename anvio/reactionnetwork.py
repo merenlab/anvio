@@ -217,23 +217,25 @@ class KO:
         the 'reactions' attribute of the ReactionNetwork containing the KO.
 
     kegg_reaction_aliases : Dict[str, List[str]], dict()
-        KEGG reaction annotations of the KO that alias ModelSEED reactions. A KEGG REACTION ID is
+        KEGG reaction annotations of the KO that alias ModelSEED reactions. Keys are ModelSEED
+        reaction IDs and values are lists of aliased KEGG reaction IDs. A KEGG REACTION ID is
         formatted 'RXXXXX', where each X is a digit, e.g., 'R00001'. For example, KO 'K00003' has
         two KEGG reaction annotations, both of which are associated with ModelSEED reactions via the
-        ModelSEED database: {'R01773': ['rxn01301', 'rxn27933'], 'R01775': ['rxn01302',
-        'rxn27932']}. Note that a ModelSEED reaction may have more KEGG reaction aliases than those
+        ModelSEED database: {'rxn01301': ['R01773'], 'rxn01302': ['R01775'], 'rxn27932': ['R01775'],
+        'rxn27933': ['R01773']}. A ModelSEED reaction may have more KEGG reaction aliases than those
         annotating the KO: all known KEGG reaction aliases of the ModelSEED reaction in the
         ModelSEED database are recorded in the 'kegg_aliases' attribute of a 'ModelSEEDReaction'
         object.
 
     ec_number_aliases : Dict[str, List[str]], dict()
-        EC number annotations of the KO that alias ModelSEED reactions. For example, KO 'K00003' has
-        one EC number annotation, which is associated with ModelSEED reactions via the ModelSEED
-        database: {'1.1.1.3': ['rxn01301', 'rxn01302', 'rxn19904', 'rxn27931', 'rxn27932',
-        'rxn27933', 'rxn33957']}. Note that a ModelSEED reaction may have more EC number aliases
-        than those annotating the KO: all known EC number aliases of the ModelSEED reaction in the
-        ModelSEED database are recorded in the 'ec_number_aliases' attribute of a
-        'ModelSEEDReaction' object.
+        EC number annotations of the KO that alias ModelSEED reactions. Keys are ModelSEED reaction
+        IDs and values are lists of aliased KEGG reaction IDs. For example, KO 'K00003' has one EC
+        number annotation, which is associated with ModelSEED reactions via the ModelSEED database:
+        {'rxn01301': ['1.1.1.3'], 'rxn01302': ['1.1.1.3'], 'rxn19904': ['1.1.1.3'], 'rxn27931':
+        ['1.1.1.3'], 'rxn27932': ['1.1.1.3'], 'rxn27933': ['1.1.1.3'], 'rxn33957': ['1.1.1.3']}.
+        Note that a ModelSEED reaction may have more EC number aliases than those annotating the KO:
+        all known EC number aliases of the ModelSEED reaction in the ModelSEED database are recorded
+        in the 'ec_number_aliases' attribute of a 'ModelSEEDReaction' object.
     """
     id: str = None
     name: str = None
@@ -8622,8 +8624,10 @@ class Constructor:
                     except KeyError:
                         pass
 
-            # Associate the reaction with the KO.
-            ko.reaction_ids.append(modelseed_reaction_id)
+            # Associate the reaction with the KO, if it is not already associated via another KO
+            # KEGG reaction.
+            if modelseed_reaction_id not in ko.reaction_ids:
+                ko.reaction_ids.append(modelseed_reaction_id)
 
             try:
                 modelseed_kegg_alias_tuple = modelseed_kegg_alias_dict[modelseed_reaction_id]
@@ -8747,8 +8751,10 @@ class Constructor:
                     except KeyError:
                         pass
 
-            # Associate the reaction with the KO.
-            ko.reaction_ids.append(modelseed_reaction_id)
+            # Associate the reaction with the KO, if it is not already associated via another KO EC
+            # number.
+            if modelseed_reaction_id not in ko.reaction_ids:
+                ko.reaction_ids.append(modelseed_reaction_id)
 
             try:
                 modelseed_ec_alias_tuple = modelseed_ec_alias_dict[modelseed_reaction_id]
@@ -8781,11 +8787,14 @@ class Constructor:
                 network.modelseed_kegg_aliases[modelseed_reaction_id] = []
 
             if modelseed_reaction_id in ko.ec_number_aliases:
-                # The ModelSEED reaction aliased KEGG reaction(s) refereced by the KO. An empty
+                # The ModelSEED reaction aliased KEGG reaction(s) referenced by the KO. An empty
                 # list was added for the ModelSEED reaction in the following attribute.
                 if DEBUG:
                     assert not ko.ec_number_aliases[modelseed_reaction_id]
-                ko.ec_number_aliases[modelseed_reaction_id] += ec_numbers
+                ko_modelseed_reaction_ec_number_aliases = ko.ec_number_aliases[modelseed_reaction_id]
+                for ec_number in ec_numbers:
+                    if ec_number not in ko_modelseed_reaction_ec_number_aliases:
+                        ko_modelseed_reaction_ec_number_aliases.append(ec_number)
             else:
                 # The ModelSEED reaction did not alias any KEGG reactions referenced by the KO.
                 ko.ec_number_aliases[modelseed_reaction_id] = ec_numbers
