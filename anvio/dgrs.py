@@ -276,6 +276,13 @@ class DGR_Finder:
 
     def init_snv_table(self):
         """
+        Initialise the snv table but only the columns that we need.
+
+        Returns
+        =======
+        self.snv_panda : pandas df
+            Dataframe containing all of the snv information
+
         """
         # load SNV data
         profile_db = dbops.ProfileDatabase(self.profile_db_path)
