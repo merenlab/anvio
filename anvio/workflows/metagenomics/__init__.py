@@ -7,6 +7,7 @@
 
 import os
 import anvio
+import shutil
 import pandas as pd
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
@@ -16,6 +17,7 @@ from anvio.drivers import driver_modules
 from anvio.workflows import WorkflowSuperClass
 from anvio.workflows.contigs import ContigsDBWorkflow
 from anvio.errors import ConfigError
+from anvio.artifacts.samples_txt import SamplesTxt
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -38,7 +40,6 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         self.samples_information = {}
         self.kraken_annotation_dict = {}
         self.run_krakenuniq = None
-        self.run_metaspades = None
         self.use_scaffold_from_metaspades = None
         self.use_scaffold_from_idba_ud = None
         self.remove_short_reads_based_on_references = None
@@ -60,10 +61,11 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                      'bowtie_build', 'bowtie', 'samtools_view', 'anvi_init_bam', 'idba_ud',\
                      'anvi_profile', 'anvi_merge', 'import_percent_of_reads_mapped', 'anvi_cluster_contigs',\
                      'krakenuniq', 'krakenuniq_mpa_report', 'import_krakenuniq_taxonomy', 'metaspades',\
+                     'flye', 'minimap2_index', 'minimap2',\
                      'remove_short_reads_based_on_references', 'anvi_summarize', 'anvi_split'])
 
         self.general_params.extend(['samples_txt', "references_mode", "all_against_all",\
-                                    "kraken_txt", "collections_txt"])
+                                    "kraken_txt", "collections_txt", "read_type_suffix"])
 
         rule_acceptable_params_dict = {}
 
@@ -80,8 +82,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
         rule_acceptable_params_dict['anvi_summarize'] = ["additional_params", "run"]
         rule_acceptable_params_dict['anvi_split'] = ["additional_params", "run"]
-        rule_acceptable_params_dict['metaspades'] = ["run", "additional_params", "use_scaffolds"]
-        rule_acceptable_params_dict['megahit'] = ["run", "--min-contig-len", "--min-count", "--k-min",
+        rule_acceptable_params_dict['metaspades'] = ["run", "conda_yaml", "conda_env", "additional_params", "use_scaffolds"]
+        rule_acceptable_params_dict['megahit'] = ["run", "conda_yaml", "conda_env", "--min-contig-len", "--min-count", "--k-min",
                                                   "--k-max", "--k-step", "--k-list",
                                                   "--no-mercy", "--no-bubble", "--merge-level",
                                                   "--prune-level", "--prune-depth", "--low-local-ratio",
@@ -89,16 +91,24 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                                   "--presets", "--memory", "--mem-flag",
                                                   "--use-gpu", "--gpu-mem", "--keep-tmp-files",
                                                   "--tmp-dir", "--continue", "--verbose"]
-        rule_acceptable_params_dict['idba_ud'] = ["run", "--mink", "--maxk", "--step", "--inner_mink",
+        rule_acceptable_params_dict['idba_ud'] = ["run", "conda_yaml", "conda_env", "--mink", "--maxk", "--step", "--inner_mink",
                                                   "--inner_step", "--prefix", "--min_count",
                                                   "--min_support", "--seed_kmer", "--min_contig",
                                                   "--similar", "--max_mismatch", "--min_pairs",
                                                   "--no_bubble", "--no_local", "--no_coverage",
                                                   "--no_correct", "--pre_correction", "use_scaffolds"]
-        rule_acceptable_params_dict['bowtie'] = ["additional_params"]
+        rule_acceptable_params_dict['flye'] = ["run", "conda_yaml", "conda_env", "--meta", "--pacbio-raw", "--pacbio-corr",
+                                                   "--pacbio-hifi", "--nano-raw", "--nano-corr",
+                                                   "--nano-hq", "--genome-size", "--iterations",
+                                                   "--min-overlap", "--read-error", "--keep-haplotypes",
+                                                   "--no-alt-contigs", "--scaffold", "--polish-target",
+                                                   "additional_params", "threads"]
+        rule_acceptable_params_dict['bowtie'] = ["conda_yaml", "conda_env", "additional_params"]
         rule_acceptable_params_dict['bowtie_build'] = ["additional_params"]
+        rule_acceptable_params_dict['minimap2_index'] = ["additional_params"]
+        rule_acceptable_params_dict['minimap2'] = ["preset","conda_yaml", "conda_env",  "additional_params", "threads"]
         rule_acceptable_params_dict['samtools_view'] = ["additional_params"]
-        rule_acceptable_params_dict['anvi_profile'] = ["--overwrite-output-destinations", "--sample-name", "--report-variability-full",
+        rule_acceptable_params_dict['anvi_profile'] = ["--overwrite-output-destinations", "--report-variability-full",
                                                         "--skip-SNV-profiling", "--profile-SCVs", "--description",
                                                         "--skip-hierarchical-clustering", "--distance", "--linkage", "--min-contig-length",
                                                         "--min-mean-coverage", "--min-coverage-for-variability", "--cluster-contigs",
@@ -134,14 +144,18 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                "SPLIT_PROFILES_DIR": "09_SPLIT_PROFILES"})
 
         self.default_config.update({'samples_txt': "samples.txt",
+                                    'read_type_suffix': 'auto',
                                     'metaspades': {"additional_params": "--only-assembler", "threads": 7},
                                     'megahit': {"--min-contig-len": min_contig_length_for_assembly, "--memory": 0.4, "threads": 7},
                                     'idba_ud': {"--min_contig": min_contig_length_for_assembly, "threads": 7},
+                                    'flye': {"run": False, "threads": 7, "additional_params": "", "--meta": True, "--pacbio-hifi": True},
                                     'iu_filter_quality_minoche': {"run": True, "--ignore-deflines": True},
                                     "gzip_fastqs": {"run": True},
                                     "bowtie": {"additional_params": "--no-unal", "threads": 3},
+                                    'minimap2_index': {"additional_params": ""},
+                                    'minimap2': {"threads": 3, "preset": "map-hifi", "additional_params": "--secondary-seq"},
                                     "samtools_view": {"additional_params": "-F 4"},
-                                    "anvi_profile": {"threads": 3, "--sample-name": "{sample}", "--overwrite-output-destinations": True},
+                                    "anvi_profile": {"threads": 3, "--overwrite-output-destinations": True},
                                     "anvi_merge": {"--sample-name": "{group}", "--overwrite-output-destinations": True},
                                     "import_percent_of_reads_mapped": {"run": True},
                                     "krakenuniq": {"threads": 3, "--gzip-compressed": True, "additional_params": ""},
@@ -153,32 +167,60 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         super().init()
 
         # loading the samples.txt file
-        self.samples_txt_file = self.get_param_value_from_config(['samples_txt'])
-
-        if not self.samples_txt_file:
-            if os.path.exists('samples.txt'):
-                self.samples_txt_file = 'samples.txt'
-            else:
-                raise ConfigError("Ehem. Your config file does not include a `samples_txt` directive. "
-                                  "Anvi'o tried to assume that your `samples.txt` may be in your work "
-                                  "directory, but you don't seem to have a `samples.txt` file anywhere "
-                                  "around either. So please add a `samples.txt` directive.")
-
-        filesnpaths.is_file_tab_delimited(self.samples_txt_file)
-        try:
-            # getting the samples information (names, [group], path to r1, path to r2) from samples.txt
-            self.samples_information = pd.read_csv(self.samples_txt_file, sep='\t', index_col=False)
-        except IndexError as e:
-            raise ConfigError("Looks like your samples_txt file, '%s', is not properly formatted. "
-                              "This is what we know: '%s'" % (self.samples_txt_file, e))
-        if 'sample' not in list(self.samples_information.columns):
-            raise ConfigError("Looks like your samples_txt file, '%s', is not properly formatted. "
-                              "We are not sure what's wrong, but we can't find a column with title 'sample'." % self.samples_txt_file)
-
-
+        samples_txt_file = self.get_param_value_from_config(['samples_txt'])
+        self.samples_txt = SamplesTxt(samples_txt_file, expected_format="free")
+        self.samples_information = self.samples_txt.as_df()
         # get a list of the sample names
-        self.sample_names = list(self.samples_information['sample'])
-        self.run_metaspades = self.get_param_value_from_config(['metaspades', 'run'])
+        self.sample_names = self.samples_txt.samples()
+
+        # read type suffix policy for readsets: 'auto' (default) or 'force'
+        read_type_suffix = self.get_param_value_from_config('read_type_suffix') or 'auto'
+
+        # get the readsets, a.k.a. the fundamental unit that will be assembled and/or mapped.
+        self.readsets = self.samples_txt.get_readsets(read_type_suffix=read_type_suffix)
+        self.readset_ids = [rs['id'] for rs in self.readsets]
+
+        # quick flags about data composition
+        self.has_sr = self.samples_txt.has_any_sr()
+        self.has_lr = self.samples_txt.has_any_lr()
+
+        # sanity checks: assemblers required when assembling (not in references mode)
+        if not self.references_mode:
+            # SR present → require exactly one SR assembler enabled
+            sr_choices = [bool(self.get_param_value_from_config(['megahit', 'run'])),
+                          bool(self.get_param_value_from_config(['metaspades', 'run'])),
+                          bool(self.get_param_value_from_config(['idba_ud', 'run'])),]
+            if self.has_sr and sum(sr_choices) == 0:
+                raise ConfigError("Short-reads detected in samples.txt, but no short-read assembler is enabled "
+                                  "(expected one of: megahit, metaspades, idba_ud).")
+            if sum(sr_choices) > 1:
+                raise ConfigError("Multiple short-read assemblers are enabled; please enable only one of "
+                                  "megahit, metaspades, idba_ud.")
+
+            # LR present → require exactly one LR assembler enabled
+            lr_choices = [bool(self.get_param_value_from_config(['flye', 'run']))]
+            if self.has_lr and sum(lr_choices) == 0:
+                raise ConfigError("Long-reads detected in samples.txt, but no long-read assembler is enabled "
+                                  "(expected Flye).")
+            if sum(lr_choices) > 1:
+                raise ConfigError("Multiple long-read assemblers are enabled; please enable Flye")
+
+        # sanity check for conda env: use either conda_yaml or conda_env, not both
+        for tool in ['flye','minimap2','bowtie','megahit','metaspades','idba_ud']:
+            y = self.get_param_value_from_config([tool, 'conda_yaml'])
+            n = self.get_param_value_from_config([tool, 'conda_env'])
+            if (y and y.strip()) and (n and n.strip()):
+                raise ConfigError(f"For '{tool}', please set only one of 'conda_yaml' (YAML path) "
+                                  f"or 'conda_env' (existing env name), not both.")
+
+        # Ensure selected assemblers and mapper are available (PATH or conda)
+        self.ensure_tool_in_path_or_conda('megahit', 'megahit')
+        self.ensure_tool_in_path_or_conda('metaspades', 'metaspades.py')
+        self.ensure_tool_in_path_or_conda('idba_ud', 'idba_ud')
+        self.ensure_tool_in_path_or_conda('flye', 'flye')
+        self.ensure_tool_in_path_or_conda('bowtie', 'bowtie2')
+        self.ensure_tool_in_path_or_conda('minimap2', 'minimap2')
+
         self.use_scaffold_from_metaspades = self.get_param_value_from_config(['metaspades', 'use_scaffolds'])
         self.use_scaffold_from_idba_ud = self.get_param_value_from_config(['idba_ud', 'use_scaffolds'])
         self.run_qc = self.get_param_value_from_config(['iu_filter_quality_minoche', 'run']) == True
@@ -188,8 +230,9 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         self.fasta_txt_file = self.get_param_value_from_config('fasta_txt')
         self.profile_databases = {}
 
-        if len(self.samples_information.index) < 2 and self.references_mode:
-            raise ConfigError("The metagenomics workflow needs to have at least 2 metagenomes in a samples.txt to be in reference mode.")
+        # just some extra checks. TO BE UTLRA-SAFE
+        if len(self.sample_names) < 1:
+            raise WorkflowError("No samples found in samples.txt")
 
         self.references_for_removal_txt = self.get_param_value_from_config(['remove_short_reads_based_on_references',\
                                                                             'references_for_removal_txt'])
@@ -204,18 +247,24 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         elif self.run_split:
             raise ConfigError('If you want to run anvi-split you must provide a collections_txt file')
 
-        self.init_samples_txt()
         self.init_kraken()
-        self.init_refereces_txt()
+        self.init_references_txt()
 
         # Set the PROFILE databases paths variable:
         for group in self.group_names:
-            # we need to use the single profile if the group is of size 1.
-            self.profile_databases[group] = os.path.join(self.dirs_dict["MERGE_DIR"], group, "PROFILE.db") if self.group_sizes[group] > 1 else \
-                                               os.path.join(self.dirs_dict["PROFILE_DIR"],
-                                                            group,
-                                                            self.samples_information.loc[self.samples_information['group']==group,'sample'].values[0],
-                                                            "PROFILE.db")
+            if self.group_sizes[group] > 1:
+                self.profile_databases[group] = os.path.join(self.dirs_dict["MERGE_DIR"], group, "PROFILE.db")
+            else:
+                if not self.references_mode:
+                    # Use the concrete readset id of the single member (e.g., S1 or S3_SR)
+                    member_ids = self.assembly_members.get(group, [])
+                    if not member_ids:
+                        raise ConfigError(f"Internal error: no members recorded for single-member group '{group}'.")
+                    single_member = member_ids[0]
+                else:
+                    # References mode keeps legacy behavior: raw groups map has the sample name
+                    single_member = self.samples_txt.groups()[group][0]
+                self.profile_databases[group] = os.path.join(self.dirs_dict["PROFILE_DIR"], group, single_member, "PROFILE.db")
 
 
     def get_metagenomics_target_files(self):
@@ -273,119 +322,181 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         return flag
 
 
-    def init_refereces_txt(self):
+    def init_references_txt(self):
+        """
+        Initialize grouping and references/assembly identifiers.
+
+        Behavior:
+          - References mode:
+              * Requires fasta_txt to be set and exist.
+              * Group names come from samples.txt groups (if any) and must match fasta names.
+              * If no groups in samples.txt, 'all_against_all' is set True (as before).
+              * Reference IDs remain UNSUFFIXED.
+          - Assembly mode:
+              * If groups present: co-assembly per group.
+              * If no groups: per-sample assembly (group == sample).
+              * Groups are then expanded by read type:
+                  - SR-only  -> G
+                  - LR-only  -> G
+                  - SR+LR    -> G_SR and G_LR
+              * self.assembly_members and self.assembly_types are populated.
+              * Requires anvi_script_reformat_fasta to run.
+          - In both modes:
+              * If all_against_all=True, group_sizes are overridden to len(samples).
+        """
+        # 1) Validate config combo (references_mode vs fasta_txt)
         if self.references_mode:
             if not self.fasta_txt_file:
-                raise ConfigError("In refrences mode, you need to also fill in the `fasta_txt` value in your config file.")
-
+                raise ConfigError("In references mode, you must set 'fasta_txt' in your config.")
             if not filesnpaths.is_file_exists(self.fasta_txt_file, dont_raise=True):
-                raise ConfigError('You know the path you have for `fasta_txt` in your config file? There is no such file on your disk :(')
+                raise ConfigError("The 'fasta_txt' file you provided does not exist.")
+        else:
+            if self.fasta_txt_file:
+                raise ConfigError("To use reference fasta files you must set "
+                                  "'references_mode': true in your config, but you also provided "
+                                  f"fasta_txt: {self.fasta_txt_file}. This is ambiguous.")
 
-        if not self.references_mode:
-            # if it is reference mode then the group names have been assigned in the contigs Snakefile
-            # if it is not reference mode and no groups are supplied in the samples_txt then group names are sample names
-            self.group_names = self.sample_names
-
-        if self.fasta_txt_file and not self.references_mode:
-            raise ConfigError("In order to use reference fasta files you must set "
-                          "\"'references_mode': true\" in your config file, yet "
-                          "you didn't, but at the same time you supplied the following "
-                          "fasta_txt: %s. So we don't know what to do with this "
-                          "fasta_txt" % self.fasta_txt_file)
-
-        # Collecting information regarding groups.
-        if "group" in self.samples_information.columns:
-            # if groups were specified then members of a groups will be co-assembled.
-            self.group_names = list(self.samples_information['group'].unique())
-            # creating a dictionary with groups as keys and number of samples in
-            # the groups as values
-            self.group_sizes = self.samples_information['group'].value_counts().to_dict()
-
-            if self.references_mode:
-                # sanity check to see that groups specified in samples.txt match
-                # the names of fasta.
-                mismatch = set(self.group_names) - set(self.contigs_information.keys())
-                if mismatch:
-                    raise ConfigError("Group names specified in the samples.txt "
-                                      "file must match the names of fasta "
-                                      "in the fasta.txt file. These are the "
-                                      "mismatches: %s" % mismatch)
-                groups_in_contigs_information_but_not_in_samples_txt = set(self.contigs_information.keys()) - set(self.group_names)
-                if groups_in_contigs_information_but_not_in_samples_txt:
-                    run.warning('The following group names appear in your fasta_txt '
-                                'but do not appear in your samples_txt. Maybe this is '
-                                'ok with you, but we thought you should know. This means '
-                                'that the metagenomics workflow will simply ignore these '
-                                'groups.')
-
+        # 2) Establish base groups from samples.txt (group -> members)
+        # If user provided groups, we use them; otherwise, group == sample (per-sample assembly).
+        if self.samples_txt.has_groups():
+            base_group_names = self.samples_txt.group_names() # list of unsuffixed group names
+            base_group_sizes = self.samples_txt.group_sizes() # {group: size}
         else:
             if self.references_mode:
-                # if the user didn't provide a group column in the samples.txt,
-                # in references mode the default is 'all_against_all'.
-                run.warning("No groups were provided in your samples_txt,\
-                             hence 'all_against_all' mode has been automatically\
-                             set to True.")
+                # No groups in samples.txt -> references define the group universe
+                run.warning("No groups were provided in your samples_txt; "
+                            "'all_against_all' mode has been automatically set to True.")
                 self.set_config_param('all_against_all', True)
+                # Use fasta IDs (unsuffixed) as group names
+                base_group_names = list(self.contigs_information.keys())
+                base_group_sizes = dict.fromkeys(base_group_names, 1)
             else:
-                # if no groups were specified then each sample would be assembled
-                # separately
+                # Assembly mode, no groups -> per-sample assembly
                 run.warning("No groups were specified in your samples_txt. This is fine. "
-                            "But we thought you should know. Any assembly will be performed "
-                            "on individual samples (i.e. NO co-assembly).")
+                            "Assemblies will be performed on individual samples (no co-assembly).")
+                # Keep legacy behavior of mirroring a group column from sample
                 self.samples_information['group'] = self.samples_information['sample']
-                self.group_names = list(self.sample_names)
-                self.group_sizes = dict.fromkeys(self.group_names,1)
+                base_group_names = list(self.sample_names)
+                base_group_sizes = dict.fromkeys(base_group_names, 1)
 
+        # Record the base (unsuffixed) groups first; these may be used by references-mode checks.
+        self.group_names = base_group_names
+        self.group_sizes = base_group_sizes
+
+        # 3) References mode: sanity check that groups match fasta names (unsuffixed)
+        if self.references_mode and self.samples_txt.has_groups():
+            # self.contigs_information is expected to be populated from the ContigsDBWorkflow earlier:
+            # keys(self.contigs_information) are the reference IDs.
+            mismatch = set(self.group_names) - set(self.contigs_information.keys())
+            if mismatch:
+                raise ConfigError("Group names specified in samples.txt must match the names "
+                                  f"of fasta in fasta.txt. Mismatches: {mismatch}")
+            extra_refs = set(self.contigs_information.keys()) - set(self.group_names)
+            if extra_refs:
+                run.warning("The following reference IDs appear in fasta_txt but not in samples_txt; "
+                            "they will be ignored by the metagenomics workflow: "
+                            f"{sorted(extra_refs)}")
+
+        # 4) Assembly mode: expand groups by read type (produces type-aware IDs)
+        # (references mode keeps reference IDs UNSUFFIXED)
+        if not self.references_mode:
+            self.expand_groups_by_read_type()  # sets group_names, group_sizes, assembly_members, assembly_types
+
+        # 5) all_against_all: override sizes so downstream uses merged PROFILEs
         if self.get_param_value_from_config('all_against_all'):
-            # in all_against_all, the size of each group is as big as the number
-            # of samples.
-            self.group_sizes = dict.fromkeys(self.group_names,len(self.sample_names))
+            self.group_sizes = dict.fromkeys(self.group_names, len(self.sample_names))
+
+        # 6) Assembly mode requires reformat_fasta (saves assembler output out of tmp)
+        if (not self.references_mode) and not (self.get_param_value_from_config(['anvi_script_reformat_fasta', 'run']) is True):
+            raise ConfigError("You are running the metagenomics workflow in assembly mode. In this mode you can't skip "
+                              "`anvi_script_reformat_fasta`. Please add this rule to your config with `'run': true`.")
 
 
-        if not self.references_mode and not (self.get_param_value_from_config(['anvi_script_reformat_fasta','run']) == True):
-            # in assembly mode (i.e. not in references mode) we always have
-            # to run reformat_fasta. The only reason for this is that
-            # the megahit output is temporary, and if we dont run
-            # reformat_fasta we will delete the output of meghit at the
-            # end of the workflow without saving a copy.
-            raise ConfigError('You seem to be interested in running the metagenomics workflow in assembly mode. '
-                              'In this mode you can\'t skip `anvi_script_reformat_fasta` rule, which means you need '
-                              'to add this rule to your config file with `"run": true` directive for this to work.')
+    def expand_groups_by_read_type(self):
+        """
+        Expand self.group_names/group_sizes into type-aware assemblies for assembly-mode.
+
+        Rules:
+          - If a base group (or sample) has only SR → one assembly (unsuffixed).
+          - If only LR → one assembly (unsuffixed).
+          - If it has both SR and LR members → two assemblies: <group>_SR and <group>_LR.
+        Also computes:
+          - self.assembly_members: {assembly_id: [readset_ids contributing to this assembly]}
+          - self.assembly_types: {assembly_id: 'SR'|'LR'}
+        """
+        if self.references_mode:
+            return
+
+        # Base groups: either user groups or one group per sample
+        if self.samples_txt.has_groups():
+            base_groups = self.samples_txt.groups()   # {group: [base_sample, ...]}
+        else:
+            base_groups = {s: [s] for s in self.sample_names}
+
+        # Fast lookups
+        types_by_sample = self.samples_txt.sample_types()  # {sample:{has_sr:bool,has_lr:bool}}
+        # Map (base_sample, type) -> readset id (respects read_type_suffix setting)
+        rs_map = {(rs['base_sample'], rs['type']): rs['id'] for rs in self.readsets}
+
+        new_group_names = []
+        new_group_sizes = {}
+        assembly_members = {}
+        assembly_types   = {}
+
+        for g, members in base_groups.items():
+            sr_members = [s for s in members if types_by_sample.get(s, {}).get('has_sr')]
+            lr_members = [s for s in members if types_by_sample.get(s, {}).get('has_lr')]
+
+            if sr_members and lr_members:
+                g_sr = f"{g}_SR"
+                g_lr = f"{g}_LR"
+                new_group_names.extend([g_sr, g_lr])
+
+                sr_rs = [rs_map[(s, 'SR')] for s in sr_members]
+                lr_rs = [rs_map[(s, 'LR')] for s in lr_members]
+
+                new_group_sizes[g_sr] = len(sr_members)
+                new_group_sizes[g_lr] = len(lr_members)
+                assembly_members[g_sr] = sr_rs
+                assembly_members[g_lr] = lr_rs
+                assembly_types[g_sr] = 'SR'
+                assembly_types[g_lr] = 'LR'
+
+            elif sr_members:
+                new_group_names.append(g)
+                sr_rs = [rs_map[(s, 'SR')] for s in sr_members]
+                new_group_sizes[g] = len(sr_members)
+                assembly_members[g] = sr_rs
+                assembly_types[g] = 'SR'
+
+            elif lr_members:
+                new_group_names.append(g)
+                lr_rs = [rs_map[(s, 'LR')] for s in lr_members]
+                new_group_sizes[g] = len(lr_members)
+                assembly_members[g] = lr_rs
+                assembly_types[g] = 'LR'
+
+            else:
+                run.warning(f"Group '{g}' has no SR or LR reads; skipping.")
+
+        self.group_names = new_group_names
+        self.group_sizes = new_group_sizes
+        self.assembly_members = assembly_members
+        self.assembly_types = assembly_types
 
 
-    def init_samples_txt(self):
-        if 'sample' not in self.samples_information.columns.values:
-            raise ConfigError("You know what. This '%s' file does not look anything like "
-                              "a samples file." % self.samples_txt_file)
+    def get_readset_ids(self):
+        return list(self.readset_ids)
 
-        if len(self.samples_information['sample']) != len(set(self.samples_information['sample'])):
-            raise ConfigError("Names of samples in your samples_txt file must be unique. "
-                              "It looks like some names appear twice in your file: %s" % self.samples_txt_file)
 
-        for sample in self.samples_information['sample']:
-            try:
-                u.check_sample_id(sample)
-            except ConfigError as e:
-                raise ConfigError("While processing the samples txt file ('%s'), anvi'o ran into the following error: "
-                                  "%s" % (self.samples_txt_file, e))
+    def get_sr_readset_ids(self):
+        """IDs of readsets that are short-read (respecting read_type_suffix policy)."""
+        return [rs['id'] for rs in self.readsets if rs['type'] == 'SR']
 
-        if 'r1' not in self.samples_information.columns or 'r2' not in self.samples_information:
-            raise ConfigError("Looks like your samples_txt file, '%s', is not properly formatted. "
-                              "We are not sure what's wrong, but we expected to find columns with "
-                              "titles 'r1' and 'r2' and we did not find such columns." % self.samples_txt_file)
 
-        fastq_file_names = list(self.samples_information['r1']) + list(self.samples_information['r2'])
-        try:
-            bad_fastq_names = [s for s in fastq_file_names if (not s.endswith('.fastq') and not s.endswith('.fastq.gz'))]
-        except Exception as e:
-            raise ConfigError(f"The format of your samples txt file does not seem to be working for anvi'o. This is "
-                              f"what the downstream processes had to say: '{e}'. Please double-check columns in "
-                              f"your samples txt.")
-        if bad_fastq_names:
-            run.warning("We noticed some of your sequence files in '%s' do not end with either '.fastq' "
-                        "or '.fastq.gz'. That's okay, but anvi'o decided it should warn you. Here are the first "
-                        "5 such files that have unconventional file extensions: %s." \
-                         % (self.samples_txt_file, ', '.join(bad_fastq_names[:5])))
+    def get_lr_readset_ids(self):
+        """IDs of readsets that are long-read (respecting read_type_suffix policy)."""
+        return [rs['id'] for rs in self.readsets if rs['type'] == 'LR']
 
 
     def init_kraken(self):
@@ -528,7 +639,100 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
 
     def get_assembly_software_list(self):
-        return ['megahit', 'idba_ud', 'metaspades']
+        """Return two lists of assembler rule names, by read type: (sr_list, lr_list)."""
+        sr = ['megahit', 'idba_ud', 'metaspades']
+        lr = ['flye']
+        return sr, lr
+
+
+    # Map readset id -> readset dict for quick lookups
+    @property
+    def readsets_by_id(self):
+        if not hasattr(self, '_readsets_by_id'):
+            self._readsets_by_id = {rs['id']: rs for rs in self.readsets}
+        return self._readsets_by_id
+
+
+    def get_assembly_ids(self):
+        # In assembly mode: these are type-aware group IDs (e.g., G, G_SR, G_LR, S1_SR, ...)
+        # In references mode: whatever self.group_names was set to by the existing logic.
+        return list(self.group_names)
+
+
+    def get_lr_files_for_readset(self, readset_id):
+        """Return the list of long-read files for a given readset id (type must be LR)."""
+        rs = self.readsets_by_id.get(readset_id)
+        if not rs:
+            raise ConfigError(f"Unknown readset id: {readset_id}")
+        if rs['type'] != 'LR':
+            raise ConfigError(f"Readset '{readset_id}' is not LR (type={rs['type']})")
+        return list(rs['reads'].get('lr', []))
+
+
+    def get_lr_files_for_group(self, group_id):
+        """
+        Return the concatenated list of long-read files for all LR member readsets
+        contributing to the LR assembly of this group. For single-member groups,
+        this is just that member's LR list.
+        """
+        if self.references_mode:
+            raise ConfigError("get_lr_files_for_group called in references mode.")
+        if self.assembly_types.get(group_id) != 'LR':
+            raise ConfigError(f"Group '{group_id}' is not LR (type={self.assembly_types.get(group_id)})")
+
+        member_readsets = self.assembly_members.get(group_id, [])
+        files = []
+        for rs_id in member_readsets:
+            files.extend(self.get_lr_files_for_readset(rs_id))
+        return files
+
+
+    def get_sr_fastqs_for_group(self, group_id: str, use_filtered: bool = False, zipped: bool | None = None):
+        """
+        Return {'r1': [...], 'r2': [...]} collecting all SR member readsets
+        that contribute to the SR assembly of this group.
+
+        - Fails in references mode (assemblies are off there).
+        - Verifies this group is an SR assembly group.
+        - `use_filtered=False` is recommended for assembly (use QC outputs, not ref-filtered).
+        - `zipped=None` → auto-detect from your run_gzip_fastqs flag.
+        """
+        if self.references_mode:
+            raise ConfigError("get_sr_fastqs_for_group called in references mode.")
+        if self.assembly_types.get(group_id) != 'SR':
+            raise ConfigError(f"Group '{group_id}' is not SR (type={self.assembly_types.get(group_id)})")
+
+        if zipped is None:
+            # defer to your global setting at call-time
+            try:
+                zipped = run_gzip_fastqs
+            except NameError:
+                zipped = True  # sensible default if the flag lives elsewhere
+
+        r1, r2 = [], []
+        member_readsets = self.assembly_members.get(group_id, [])
+        for rs_id in member_readsets:
+            d = self.get_sr_files_for_readset(rs_id)
+            r1.extend(d['r1'])
+            r2.extend(d['r2'])
+
+        if not r1 or not r2:
+            raise ConfigError(f"No SR reads found for group '{group_id}'.")
+
+        return {'r1': r1, 'r2': r2}
+
+
+    def get_sr_files_for_readset(self, readset_id):
+        """Return dict {'r1': [...], 'r2': [...]} for a short-read readset id."""
+        rs = self.readsets_by_id.get(readset_id)
+        if not rs:
+            raise ConfigError(f"Unknown readset id: {readset_id}")
+        if rs['type'] != 'SR':
+            raise ConfigError(f"Readset '{readset_id}' is not SR (type={rs['type']})")
+        return {
+            "r1": list(rs['reads'].get('r1', [])),
+            "r2": list(rs['reads'].get('r2', [])),
+        }
 
 
     def gen_report_with_references_for_removal_info(self, filtered_id_files, output_file_name):
@@ -555,19 +759,50 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
 
     def get_raw_fasta(self, wildcards, remove_gz_suffix=True):
+        """
+        Path to the input FASTA for reformat_fasta.
+
+        Priority:
+          1) If a precomputed raw FASTA exists (written by SR/LR assembler wrappers):
+             {FASTA_DIR}/{group}.raw.fa  -> use it.
+          2) References mode (or references slated for removal): delegate to base logic
+             that reads from self.fasta_information[...] (handles .gz via remove_gz_suffix).
+          3) Assembly mode (SR legacy path): use assembler output at
+             {FASTA_DIR}/{group}/final.contigs.fa
+        """
+        # References-mode / reference-removal path (uses fasta_information)
         if self.references_mode or wildcards.group in self.references_for_removal:
-            # in 'reference mode' the input is the reference fasta
-            contigs = super(MetagenomicsWorkflow, self).get_raw_fasta(wildcards, remove_gz_suffix=remove_gz_suffix)
-        else:
-            # by default the input fasta is the assembly output
-            contigs = self.dirs_dict["FASTA_DIR"] + "/%s/final.contigs.fa" % wildcards.group
-        return contigs
+            return super(MetagenomicsWorkflow, self).get_raw_fasta(
+                wildcards, remove_gz_suffix=remove_gz_suffix)
+
+        # Assembly-mode : assembler's canonical output location
+        return os.path.join(self.dirs_dict["FASTA_DIR"], wildcards.group, "final.contigs.fa")
+
+
+    def get_readsets_for_mapping_to_group(self, group_id: str):
+        """
+        Return the list of readset IDs that should be mapped/profiled for a given assembly/group.
+
+        Rules:
+          - If 'all_against_all' is true: everyone maps to everyone → all readsets.
+          - Else:
+              * Assembly mode with groups: only readsets whose unsuffixed 'group' equals the base group.
+              * References mode with groups: only readsets whose 'group' equals the reference id.
+              * References mode without groups never reaches here (we auto-set all_against_all=True).
+        """
+        if self.get_param_value_from_config('all_against_all'):
+            return [rs['id'] for rs in self.readsets]
+
+        # removes the suffix _SR or _LR if present
+        base = group_id[:-3] if group_id.endswith(("_SR", "_LR")) else group_id
+
+        return [rs['id'] for rs in self.readsets if rs.get('group') == base]
 
 
     def get_target_files_for_anvi_cluster_contigs(self):
         import anvio.workflows as w
         w.D(self.get_param_value_from_config(['anvi_cluster_contigs', 'run']))
-        if self.get_param_value_from_config(['anvi_cluster_contigs', 'run']) is not True:
+        if self.get_param_value_from_config(['anvi_cluster_contigs', 'run']) != True:
             # the user doesn't want to run this
             return
         w.D('hi2')
@@ -646,3 +881,23 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
     def get_param_name_for_binning_driver(self, driver):
         return '--additional-params' + '-' + driver
+
+
+    def ensure_tool_in_path_or_conda(self, tool: str, executable: str):
+        """If tool is enabled and no conda is set, ensure one of executable is on PATH."""
+        if not self.get_param_value_from_config([tool, 'run']):
+            return  # tool not requested
+
+        # do we have a conda env/yaml?
+        has_conda_yaml = self.get_param_value_from_config([tool, 'conda_yaml'])
+        has_conda_env = self.get_param_value_from_config([tool, 'conda_env'])
+        print(has_conda_env)
+        if has_conda_yaml or has_conda_env:
+            return  # conda env/yaml will provide the executable
+
+        if not shutil.which(executable):
+            raise ConfigError(
+                f"You enabled '{tool}', but {executable} were found in your $PATH. "
+                f"You can either install it, or set a conda environment via "
+                f"'conda_yaml' or 'conda_env' in your config file."
+            )

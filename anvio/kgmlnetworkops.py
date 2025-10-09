@@ -179,22 +179,25 @@ class KGMLNetworkWalker:
         alias a large number of reactions of questionable validity for the enzyme.
 
     compound_fate : Literal['consume', 'produce', 'both'], 'consume'
-        Seek chains that consume or produce compounds in the network. If 'consume' or 'produce',
-        only consumption or production chains are sought, respectively. If 'both', both consumption
-        and production chains are sought, yielding pairs of chains, one consumption chain ordered
-        from the first reactant to the last product, and one production chain ordered from the last
-        product to the first reactant. Therefore, chains that only contain reversible reactions are
-        found in both directions with 'both', as the first reactant can be the last product, and the
-        last product can be the first reactant, yielding four chains traversing identical compounds
-        and reactions.
+        Seek chains that consume or produce compounds. If 'consume' or 'produce', only consumption
+        or production chains are sought, respectively. If 'both', both consumption and production
+        chains are sought, yielding pairs of chains, one consumption chain ordered from the first
+        reactant to the last product, and one production chain ordered from the last product to the
+        first reactant. Therefore, chains that only contain reversible reactions are found in both
+        directions with 'both', as the first reactant can be the last product, and the last product
+        can be the first reactant, yielding four chains traversing identical compounds and
+        reactions.
 
     max_reactions : int, None
         Truncate chains at this number of reactions. If None, chains can be continued to
         indeterminate length.
 
     keep_intermediate_chains : bool, False
-        Chains starting from compounds in the network can be subchains of chains from other
-        compounds in the network. If False, such intermediate chains are ignored.
+        If True, reported chains can be intermediate chains, or subchains, of other reported chains,
+        with an intermediate chain being one that is entirely contained in a longer chain. This can
+        cause a very large number of chains to be reported, since every reaction and sequence of
+        reactions within a chain constitutes an intermediate chain. If False, such intermediate
+        chains are ignored.
 
     max_gaps : int, 0
         Chains can contain up to this number of reactions not genomically encoded in the reaction
@@ -206,8 +209,8 @@ class KGMLNetworkWalker:
     allow_alternative_reaction_gaps : bool, False
         If a chain links two compounds by a reaction in the reaction network, and there are other
         "parallel" KGML reactions not in the reaction network that also link the compounds, then
-        treat these parallel reactions as gaps with a value of True. With a value of False, ignore
-        parallel reaction gaps.
+        treat these alternative reactions as gaps with a value of True. With a value of False,
+        ignore parallel reactions not represented in the network.
 
     run : anvio.terminal.Run, anvio.terminal.Run()
         This object prints run information to the terminal.
@@ -360,8 +363,6 @@ class KGMLNetworkWalker:
         self.rn_pathway_keggcpd_ids_in_kgml_reactions = \
             self._get_kgml_reaction_keggcpd_ids_in_pathway()
 
-        self.rn_pathway_kegg_rxn_ids = self._get_kegg_reaction_ids_in_pathway()
-
         # Make attributes storing key reaction network data.
         if self.network:
             self.network_keggrn_id_to_modelseed_reactions: dict[
@@ -427,7 +428,7 @@ class KGMLNetworkWalker:
             kegg_pathway_number=self.kegg_pathway_number, kegg_context=self.kegg_context
         ):
             raise ConfigError(
-                f"The KEGG pathway ({self.kegg_pathway_number}) must have a reaction (RN) type KGML file available in the anvi'o "
+                "The KEGG pathway must have a reaction (RN) type KGML file available in the anvi'o "
                 "KEGG installation. Valid pathways are in categories 1.0 - 1.11 as of the March 3, "
                 "2025 release of KEGG (see https://www.genome.jp/kegg/pathway.html)."
             )
@@ -445,23 +446,6 @@ class KGMLNetworkWalker:
             raise ConfigError(
                 "'compound_fate' must have a value of 'consume', 'produce', or 'both'."
             )
-
-    def _get_kegg_reaction_ids_in_pathway(self) -> list[str]:
-        """
-        Get KEGG Reaction IDs from the pathway KGML reactions.
-
-        Returns
-        =======
-        list[str]
-            KEGG reaction IDs.
-        """
-        rn_pathway_kegg_rxn_ids = []
-        for reaction_uuid in self.kgml_rn_pathway.children['reaction']:
-            kgml_reaction = self.kgml_rn_pathway.uuid_element_lookup[reaction_uuid]
-            names = kgml_reaction.name.split(' ')
-            kegg_reaction_ids = [rid[3:] for rid in names]
-            rn_pathway_kegg_rxn_ids += kegg_reaction_ids
-        return rn_pathway_kegg_rxn_ids
 
     def _get_kgml_reaction_keggcpd_ids_in_pathway(self) -> list[str]:
         """
@@ -491,7 +475,7 @@ class KGMLNetworkWalker:
 
         return rn_pathway_keggcpd_ids_in_kgml_reactions
 
-    def _get_reaction_network_keggcpd_ids_in_pathway(self, enforce_match_to_kgml_reactions: bool = True) -> list[str]:
+    def _get_reaction_network_keggcpd_ids_in_pathway(self) -> list[str]:
         """
         Get KEGG compound IDs in the pathway from the reaction network.
 
@@ -499,14 +483,6 @@ class KGMLNetworkWalker:
         annotations by ModelSEED reactions with KEGG reaction aliases, not EC number aliases, since
         EC numbers associated with KOs can alias a large number of reactions of questionable
         validity for the enzyme.
-
-        Parameters
-        ==========
-        enforce_match_to_kgml_reactions : bool, True
-            If True, the KEGG compounds are required to participate in at least one KEGG reaction
-            that explicitly belongs to the pathway (stored in `self.rn_pathway_kegg_rxn_ids`). This
-            avoids contaminating the list with compounds from other pathways that are associated with
-            a KO participating in multiple pathways (including this one).
 
         Returns
         =======
@@ -522,13 +498,6 @@ class KGMLNetworkWalker:
                 modelseed_reaction = self.network.reactions[modelseed_reaction_id]
                 if not modelseed_reaction.kegg_aliases:
                     continue
-                if enforce_match_to_kgml_reactions:
-                    kegg_rxn_found_in_pathway = False
-                    for kegg_rxn_id in modelseed_reaction.kegg_aliases:
-                        if kegg_rxn_id in self.rn_pathway_kegg_rxn_ids:
-                            kegg_rxn_found_in_pathway = True
-                    if not kegg_rxn_found_in_pathway:
-                        continue
                 for modelseed_compound_id in modelseed_reaction.compound_ids:
                     modelseed_compound = self.network.metabolites[modelseed_compound_id]
                     keggcpd_id_aliases = list(modelseed_compound.kegg_aliases)

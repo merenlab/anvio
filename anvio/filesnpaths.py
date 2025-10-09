@@ -189,8 +189,9 @@ def is_output_file_writable(file_path, ok_if_exists=True):
                                        f"in the matrix: {e}.")
         else:
             raise FilesNPathsError(f"The output file '{file_path}' already exists. Generally speaking anvi'o tries to "
-                                   f"avoid overwriting stuff. But you can always use the flag `--force-overwrite` "
-                                   f"to instruct anvi'o to delete the existing file first.")
+                                   f"avoid overwriting stuff. You can use the flag `--force-overwrite` to instruct "
+                                   f"anvi'o to DELETE the existing target file quietly first, or change your output "
+                                   f"names or prefixes to avoid this error and store the results in new output files.")
 
     return True
 

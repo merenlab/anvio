@@ -12,11 +12,11 @@ import sys
 import os
 
 import anvio
-import anvio.kegg as kegg
 import anvio.utils as utils
 
 from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.metabolism.estimate import module_definition_to_enzyme_accessions
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
@@ -66,7 +66,7 @@ def run_program():
 
     if def_str:
         #sanity check all enzymes from definition are in file
-        enzyme_set = set(kegg.module_definition_to_enzyme_accessions(def_str))
+        enzyme_set = set(module_definition_to_enzyme_accessions(def_str))
         dict_set = set(enzyme_dict.keys())
         missing_enzymes = enzyme_set.difference(dict_set)
         if missing_enzymes:

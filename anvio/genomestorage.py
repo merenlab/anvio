@@ -339,8 +339,7 @@ class GenomeStorage(object):
 
             # prepare some messages for the user
             gene_info = []
-            if num_partial_gene_calls:
-                gene_info.append(f"partial genes: {pp(num_partial_gene_calls)}")
+            gene_info.append(f"partial genes: {pp(num_partial_gene_calls)}")
 
             if num_gene_calls_without_aa_sequence:
                 gene_info.append(f"non-coding genes: {pp(num_gene_calls_without_aa_sequence)}")

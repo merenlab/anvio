@@ -3662,69 +3662,6 @@ def get_bams_and_profiles_txt_as_data(file_path, no_profile_and_bam_column_is_ok
     return contigs_db_path, profiles_and_bams
 
 
-def get_samples_txt_file_as_dict(file_path, run=run, progress=progress):
-    "Samples txt file is a commonly-used anvi'o artifact to describe FASTQ file paths for input samples"
-
-    filesnpaths.is_file_tab_delimited(file_path)
-
-    columns_found = get_columns_of_TAB_delim_file(file_path, include_first_column=True)
-
-    if columns_found[0] == 'sample':
-        expected_columns = ['sample', 'r1', 'r2']
-    elif columns_found[0] == 'name':
-        expected_columns = ['name', 'r1', 'r2']
-    else:
-        raise ConfigError("The first column of any samples-txt must be either `sample` or `name` :/")
-
-    possible_columns = expected_columns + ['group']
-
-    extra_columns = set(columns_found).difference(set(possible_columns))
-
-    if not set(expected_columns).issubset(set(columns_found)):
-        raise ConfigError(f"A samples txt file is supposed to have at least the columns {', '.join(expected_columns)}.")
-
-    if len(extra_columns):
-        run.warning(f"Your samples txt file contains {pluralize('extra column', len(extra_columns))}: "
-                    f"{', '.join(extra_columns)} compared to what is expected of a `samples-txt` file, "
-                    f"which is absolutely fine. You're reading this message becasue anvi'o wanted to "
-                    f"make sure you know that it knows that it is the case. Classic anvi'o virtue "
-                    f"signaling.", lc="yellow")
-
-    samples_txt = get_TAB_delimited_file_as_dictionary(file_path)
-
-    samples_with_missing_files = []
-    samples_with_identical_r1_r2_files = []
-    for sample_name in samples_txt:
-        check_sample_id(sample_name)
-
-        r1_sample_paths = samples_txt[sample_name]['r1'].split(',')
-        r2_sample_paths = samples_txt[sample_name]['r2'].split(',')
-
-        if len(r1_sample_paths) != len(r2_sample_paths):
-            raise ConfigError(f"Uh oh. The sample {sample_name} has a different number of R1 ({len(r1_sample_paths)}) "
-                              f"and R2 ({len(r2_sample_paths)}) paths. Anvi'o expects these to be the same, so please "
-                              f"fix this in your samples-txt file.")
-
-        for path in r1_sample_paths + r2_sample_paths:
-            if not os.path.exists(path):
-                samples_with_missing_files.append(sample_name)
-
-        for i in range(len(r1_sample_paths)):
-            if r1_sample_paths[i] == r2_sample_paths[i]:
-                samples_with_identical_r1_r2_files.append(sample_name)
-
-    if len(samples_with_missing_files):
-        raise ConfigError(f"Bad news. Your samples txt contains {pluralize('sample', len(samples_with_missing_files))} "
-                          f"({', '.join(samples_with_missing_files)}) with missing files (by which we mean that the "
-                          f"r1/r2 paths are there, but the files they point to are not).")
-
-    if len(samples_with_identical_r1_r2_files):
-        raise ConfigError(f"Interesting. Your samples txt contains {pluralize('sample', len(samples_with_missing_files))} "
-                          f"({', '.join(samples_with_identical_r1_r2_files)}) where r1 and r2 file paths are identical. Not OK.")
-
-    return samples_txt
-
-
 def get_primers_txt_file_as_dict(file_path, run=run, progress=progress):
     """Primers-txt is an anvi'o artifact for primer sequencs."""
 
@@ -3820,11 +3757,64 @@ def get_groups_txt_file_as_dict(file_path, run=run, progress=progress, include_m
     return item_to_group_dict, group_to_item_dict
 
 
+def to_jsonable(obj):
+    """Lightweight `default` hook for `json.dumps`.
+
+    Converts a few common non-JSON types to JSON-serializable equivalents and
+    lets the standard encoder handle everything else:
+
+      • set/frozenset → list
+      • numpy.integer → int
+      • numpy.floating → float
+      • numpy.ndarray → list (via `.tolist()`)
+
+    This function is **not recursive**; it is called only for objects the JSON
+    encoder cannot handle on its own. If `obj` isn’t one of the supported
+    types, a `TypeError` is raised (per the `json` default hook contract). The
+    purpose of it is to save our asses when we want to pass large, nested
+    dictionaries with many kinds of different objects to the interactive
+    interface.
+
+    Parameters
+    ==========
+    obj : Any
+        The object handed to the hook by `json.dumps`.
+
+    Returns
+    =======
+    Any
+        A JSON-serializable value (dict, list, str, int, float, bool, or None).
+
+    Notes
+    =====
+    Set ordering is not guaranteed. If you need stable output, convert sets to
+    sorted lists in a wrapper.
+
+    Examples
+    ========
+    >>> d = {...} # some dict of any size and level of nestedness 
+    >>> json.dumps(f, default=utils.to_jsonable)
+    """
+
+    if isinstance(obj, (set, frozenset)):
+        return list(obj)
+
+    try:
+        import numpy as np
+        if isinstance(obj, np.integer):   return int(obj)
+        if isinstance(obj, np.floating):  return float(obj)
+        if isinstance(obj, np.ndarray):   return obj.tolist()
+    except Exception:
+        pass
+
+    raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
+
+
 def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_to_append=None, column_names=None,\
                                         column_mapping=None, indexing_field=0, separator='\t', no_header=False,\
                                         ascii_only=False, only_expected_fields=False, assign_none_for_missing=False,\
                                         none_value=None, empty_header_columns_are_OK=False, return_failed_lines=False,
-                                        ignore_duplicated_keys=False):
+                                        ignore_duplicated_keys=False, key_prefix=None):
     """Takes a file path, returns a dictionary.
 
        - If `return_failed_lines` is True, it the function will not throw an exception, but instead
@@ -3944,6 +3934,9 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
             entry_name = 'line__%09d__' % line_counter
         else:
             entry_name = line_fields[indexing_field]
+
+            if key_prefix:
+                entry_name = key_prefix + entry_name
 
         if entry_name in d and not ignore_duplicated_keys:
             raise ConfigError("The entry name %s appears more than once in the TAB-delimited file '%s'. There may be more "
@@ -4381,10 +4374,13 @@ def get_all_item_names_from_the_database(db_path, run=run):
     all_items = set([])
 
     database = db.DB(db_path, get_required_version_for_db(db_path))
-    db_type = database.get_meta_value('db_type')
+
+    db_type, db_variant = get_db_type_and_variant(db_path)
 
     if db_type == 'profile':
-        if is_blank_profile(db_path):
+        if db_variant == 'codon-frequencies':
+            all_items = set(database.get_single_column_from_table('codon_frequencies_view', 'item'))
+        elif is_blank_profile(db_path):
             run.warning("Someone asked for the split names in a blank profile database. Sadly, anvi'o does not keep track "
                         "of split names in blank profile databases. This function will return an empty set as split names "
                         "to not kill your mojo, but whatever you were trying to do will not work :(")

@@ -75,7 +75,8 @@ dependencies = [
     "pulp==2.7.0",
     "biopython",
     "reportlab",
-    "pymupdf"
+    "pymupdf",
+    "tomli==2.2.1"
 ]
 
 [project.urls]
@@ -118,6 +119,7 @@ Contact = "https://anvio.org/people"
 "anvi-delete-state"                                 = "anvio.cli.delete_state:main"
 "anvi-dereplicate-genomes"                          = "anvio.cli.dereplicate_genomes:main"
 "anvi-display-contigs-stats"                        = "anvio.cli.display_contigs_stats:main"
+"anvi-display-codon-frequencies"                    = "anvio.cli.display_codon_frequencies:main"
 "anvi-display-functions"                            = "anvio.cli.display_functions:main"
 "anvi-display-metabolism"                           = "anvio.cli.display_metabolism:main"
 "anvi-display-pan"                                  = "anvio.cli.display_pan:main"
