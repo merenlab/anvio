@@ -2610,7 +2610,7 @@ class DGR_Finder:
 
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
         self.summary['meta'] = {'summary_type': 'dgrs',
-                                'num_dgrs': len(self.DGRs_found_dict), # len(self.dgrs_in_collections) if self.collections_mode else
+                                'num_dgrs': len(self.DGRs_found_dict),
                                 #'num_samples': len(self.profile_db_paths) if self.collections_mode else len(self.collections_given),
                                 'output_directory': self.output_directory,
                                 'genomic_context_recovered': not self.skip_recovering_genomic_context,
