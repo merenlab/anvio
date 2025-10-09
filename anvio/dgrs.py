@@ -3,7 +3,6 @@
 """A module to find Diversity-Generating Retroelements"""
 
 import re
-import xml.etree.ElementTree as ET
 import csv
 import os
 import shutil
@@ -11,16 +10,16 @@ import argparse
 import copy
 import pytrf # type: ignore
 
-from Bio.Seq import Seq # type: ignore
-
 import anvio
 import anvio.dbops as dbops
 import anvio.terminal as terminal
 import anvio.utils as utils
 import anvio.filesnpaths as filesnpaths
 import anvio.tables as t
-import multiprocess as multiprocessing # type: ignore
 import anvio.fastalib as fastalib
+
+import multiprocess as multiprocessing # type: ignore
+import xml.etree.ElementTree as ET
 
 from anvio.errors import ConfigError
 from anvio.drivers.blast import BLAST
@@ -29,6 +28,8 @@ from anvio.sequencefeatures import PrimerSearch
 from anvio.constants import nucleotides
 from anvio.artifacts.samples_txt import SamplesTxt
 
+from multiprocessing import Queue
+from Bio.Seq import Seq # type: ignore
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2024, the Meren Lab (http://merenlab.org/)"
