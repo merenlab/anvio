@@ -1786,6 +1786,7 @@ class DGR_Finder:
 
             # initialize TR context
             tr_context_genes = {}
+            self.genomic_context_surrounding_dgrs[dgr_id] = {}
 
             is_tr_in_gene = False
 
@@ -1795,69 +1796,73 @@ class DGR_Finder:
 
             gene_calls_in_TR_contig = gene_calls_per_TR_contig[TR_contig_name]
 
-            if not len(gene_calls_in_TR_contig):
+            if not gene_calls_in_TR_contig:
+                # case: TR has no genes
                 trs_with_no_gene_calls_around.add(dgr_id)
                 self.run.info_single(f'No gene calls found around TR {dgr_id}', nl_before=1)
-                continue
+                dgrs_dict[dgr_id]['TR_in_gene'] = False
+                self.genomic_context_surrounding_dgrs[dgr_id]["TR"] = {}  # empty TR context
+            else:
+                # case: TR has genes → process them
+                min_distance_to_TR_start, min_distance_to_TR_end = float('inf'), float('inf')
+                closest_gene_call_to_TR_start, closest_gene_call_to_TR_end = None, None
 
-            # process TR gene calls
-            min_distance_to_TR_start, min_distance_to_TR_end = float('inf'), float('inf')
-            closest_gene_call_to_TR_start, closest_gene_call_to_TR_end = None, None
-            for gene_callers_id, gene_call in gene_calls_in_TR_contig.items():
-                if abs(gene_call['start'] - TR_start) < min_distance_to_TR_start:
-                    closest_gene_call_to_TR_start = gene_callers_id
-                    min_distance_to_TR_start = abs(gene_call['start'] - TR_start)
+                # process TR gene calls
+                for gene_callers_id, gene_call in gene_calls_in_TR_contig.items():
+                    if abs(gene_call['start'] - TR_start) < min_distance_to_TR_start:
+                        closest_gene_call_to_TR_start = gene_callers_id
+                        min_distance_to_TR_start = abs(gene_call['start'] - TR_start)
 
-                if abs(gene_call['start'] - TR_end) < min_distance_to_TR_end:
-                    closest_gene_call_to_TR_end = gene_callers_id
-                    min_distance_to_TR_end = abs(gene_call['start'] - TR_end)
+                    if abs(gene_call['start'] - TR_end) < min_distance_to_TR_end:
+                        closest_gene_call_to_TR_end = gene_callers_id
+                        min_distance_to_TR_end = abs(gene_call['start'] - TR_end)
 
-            TR_range = range(closest_gene_call_to_TR_start - self.num_genes_to_consider_in_context,
-                            closest_gene_call_to_TR_end + self.num_genes_to_consider_in_context)
-            tr_gene_caller_ids_of_interest = [c for c in TR_range if c in gene_calls_in_TR_contig]
+                TR_range = range(closest_gene_call_to_TR_start - self.num_genes_to_consider_in_context,
+                                closest_gene_call_to_TR_end + self.num_genes_to_consider_in_context)
+                tr_gene_caller_ids_of_interest = [c for c in TR_range if c in gene_calls_in_TR_contig]
 
-            for gene_callers_id in tr_gene_caller_ids_of_interest:
-                gene_call = gene_calls_in_TR_contig[gene_callers_id]
-                gene_call['gene_callers_id'] = gene_callers_id
+                for gene_callers_id in tr_gene_caller_ids_of_interest:
+                    gene_call = gene_calls_in_TR_contig[gene_callers_id]
+                    gene_call['gene_callers_id'] = gene_callers_id
 
-                if function_sources_found:
-                    where_clause = '''gene_callers_id IN (%s)''' % (', '.join([f"{str(g)}" for g in tr_gene_caller_ids_of_interest]))
-                    hits = list(contigs_db.db.get_some_rows_from_table_as_dict(t.gene_function_calls_table_name, where_clause=where_clause, error_if_no_data=False).values())
-                    gene_call['functions'] = [h for h in hits if h['gene_callers_id'] == gene_callers_id]
+                    if function_sources_found:
+                        where_clause = '''gene_callers_id IN (%s)''' % (', '.join([f"{str(g)}" for g in tr_gene_caller_ids_of_interest]))
+                        hits = list(contigs_db.db.get_some_rows_from_table_as_dict(t.gene_function_calls_table_name, where_clause=where_clause, error_if_no_data=False).values())
+                        gene_call['functions'] = [h for h in hits if h['gene_callers_id'] == gene_callers_id]
 
-                where_clause = f'''contig == "{TR_contig_name}"'''
-                contig_sequence = contigs_db.db.get_some_rows_from_table_as_dict(t.contig_sequences_table_name, where_clause=where_clause, error_if_no_data=False)
-                dna_sequence = contig_sequence[TR_contig_name]['sequence'][gene_call['start']:gene_call['stop']]
+                    where_clause = f'''contig == "{TR_contig_name}"'''
+                    contig_sequence = contigs_db.db.get_some_rows_from_table_as_dict(t.contig_sequences_table_name, where_clause=where_clause, error_if_no_data=False)
+                    dna_sequence = contig_sequence[TR_contig_name]['sequence'][gene_call['start']:gene_call['stop']]
 
-                # dna_sequence = self.contig_sequences[TR_contig_name]['sequence'][gene_call['start']:gene_call['stop']]
-                rev_compd = None
-                if gene_call['direction'] == 'f':
-                    gene_call['DNA_sequence'] = dna_sequence
-                    rev_compd = False
-                else:
-                    gene_call['DNA_sequence'] = utils.rev_comp(dna_sequence)
-                    rev_compd = True
+                    # dna_sequence = self.contig_sequences[TR_contig_name]['sequence'][gene_call['start']:gene_call['stop']]
+                    rev_compd = None
+                    if gene_call['direction'] == 'f':
+                        gene_call['DNA_sequence'] = dna_sequence
+                        rev_compd = False
+                    else:
+                        gene_call['DNA_sequence'] = utils.rev_comp(dna_sequence)
+                        rev_compd = True
 
-                where_clause = f'''gene_callers_id == {gene_callers_id}'''
-                aa_sequence = contigs_db.db.get_some_rows_from_table_as_dict(t.gene_amino_acid_sequences_table_name, where_clause=where_clause, error_if_no_data=False)
-                gene_call['AA_sequence'] = aa_sequence[gene_callers_id]['sequence']
+                    where_clause = f'''gene_callers_id == {gene_callers_id}'''
+                    aa_sequence = contigs_db.db.get_some_rows_from_table_as_dict(t.gene_amino_acid_sequences_table_name, where_clause=where_clause, error_if_no_data=False)
+                    gene_call['AA_sequence'] = aa_sequence[gene_callers_id]['sequence']
 
-                gene_call['length'] = gene_call['stop'] - gene_call['start']
+                    gene_call['length'] = gene_call['stop'] - gene_call['start']
 
-                header = '|'.join([f"contig:{gene_call['contig']}",
-                                f"start:{gene_call['start']}",
-                                f"stop:{gene_call['stop']}",
-                                f"direction:{gene_call['direction']}",
-                                f"rev_compd:{rev_compd}",
-                                f"length:{gene_call['length']}"])
-                gene_call['header'] = ' '.join([str(gene_callers_id), header])
+                    header = '|'.join([f"contig:{gene_call['contig']}",
+                                    f"start:{gene_call['start']}",
+                                    f"stop:{gene_call['stop']}",
+                                    f"direction:{gene_call['direction']}",
+                                    f"rev_compd:{rev_compd}",
+                                    f"length:{gene_call['length']}"])
+                    gene_call['header'] = ' '.join([str(gene_callers_id), header])
 
-                # store the gene call in the dictionary using gene_callers_id as the key
-                tr_context_genes[gene_callers_id] = gene_call
+                    # store the gene call in the dictionary using gene_callers_id as the key
+                    tr_context_genes[gene_callers_id] = gene_call
 
-                # check if the TR is inside this gene
-                if TR_start >= gene_call['start'] and TR_end <= gene_call['stop']:
-                    is_tr_in_gene = True
+                    # check if the TR is inside this gene
+                    if TR_start >= gene_call['start'] and TR_end <= gene_call['stop']:
+                        is_tr_in_gene = True
 
             # after processing all the gene calls for the TR, add the result to dgrs_dict
             dgrs_dict[dgr_id]['TR_in_gene'] = is_tr_in_gene
@@ -1866,6 +1871,8 @@ class DGR_Finder:
 
             for vr_key, vr_data in dgr_data['VRs'].items():
                 vr_id = vr_key
+
+                VR_contig = vr_data.get('VR_contig')
 
                 self.progress.update(f"{dgr_id} , {vr_id}", increment=True)
 
