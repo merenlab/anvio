@@ -2633,6 +2633,9 @@ class DGR_Finder:
 
             # handle genomic context recovery
             if not self.skip_recovering_genomic_context:
+                # Get the genomic context for this DGR (might be empty if no genes found)
+                dgr_context = self.genomic_context_surrounding_dgrs.get(dgr_id, {})
+
                 # deep copy the genomic context for TR and VR genes
                 tr_genes = {gene_id: gene_info
                     for gene_id, gene_info in self.genomic_context_surrounding_dgrs.get(dgr_id, {}).items()
@@ -2640,9 +2643,18 @@ class DGR_Finder:
 
                 # then we will learn about these so we can transform the coordinates of anything we wish
                 # to display in the output
-                # get the start and stop positions of the first and last genes in tr_genes
-                genomic_context_start_tr = min(gene['start'] for gene in tr_genes.values()) - 100
-                genomic_context_end_tr = max(gene['stop'] for gene in tr_genes.values()) + 100
+                # if we have genes we can display them else not
+                if tr_genes:
+                    # get the start and stop positions of the first and last genes in tr_genes
+                    genomic_context_start_tr = min(gene['start'] for gene in tr_genes.values()) - 100
+                    genomic_context_end_tr = max(gene['stop'] for gene in tr_genes.values()) + 100
+                else:
+                    genomic_context_start_tr = int(dgr_data['TR_start_position']) - 500
+                    genomic_context_end_tr = int(dgr_data['TR_end_position']) + 500
+                    self.run.warning(
+                        f"No TR gene calls found around {dgr_id}. "
+                        f"Using TR coordinates {genomic_context_start_tr}-{genomic_context_end_tr} instead."
+                        )
 
                 # this is our magic number, which is matching to the actual width of the genomic context
                 # display in the static HTML output. we will have to transform start-stop coordinates
@@ -2709,7 +2721,7 @@ class DGR_Finder:
                     self.summary['dgrs'][dgr_id]['dgr_data']['VRs'] = self.summary['dgrs'][dgr_id]['dgr_data'].get('VRs', {})
 
                     # extract VR genes (string keys like 'VR_001')
-                    vr_genes = self.genomic_context_surrounding_dgrs.get(dgr_id, {})[vr_key]
+                    vr_genes = dgr_context.get(vr_key, {})
 
                     # calculate genomic context for VR genes
                     genomic_context_start_vr = min(
@@ -2776,21 +2788,26 @@ class DGR_Finder:
                         gene['VGTRANS'] = gene['VRX'] + gene['VRX'] + gene['VRW'] + gene_arrow_width
                         gene['VRX_VRW'] = gene['VRX'] + gene['VRW'] - 0.5 # <-- minus 0.5 makes the arrow nicely cover the rest of the gene
 
-                    # append transformed VR genes to the summary
-                    self.summary['dgrs'][dgr_id]['vr_genes'][vr_id] = gene
-
-                    # and finally we will store this hot mess in our dictionary
-                    self.summary['dgrs'][dgr_id]['tr_genes'] = tr_genes
+                    # append each transformed VR gene individually to the summary
                     self.summary['dgrs'][dgr_id]['dgr_data']['VRs'][vr_id]['vr_genes'] = vr_genes
 
-                    # also we need the path to the output files
-                    # store output file paths for DGRs and VRs
-                    self.summary['files'][dgr_id] = {
-                        'tr_genes': os.path.join('PER_DGR', dgr_id, 'SURROUNDING-GENES.txt'),
-                        'functions': os.path.join('PER_DGR', dgr_id, 'SURROUNDING-FUNCTIONS.txt'),
-                        'vr_genes': os.path.join('PER_DGR', vr_id, 'SURROUNDING-GENES.txt'),
-                        'vr_functions': os.path.join('PER_DGR', vr_id, 'SURROUNDING-FUNCTIONS.txt')
-                    }
+                    # Store individual VR genes in vr_genes dict (for compatibility)
+                    for gene_id, gene in vr_genes.items():
+                        self.summary['dgrs'][dgr_id]['vr_genes'][gene_id] = gene
+
+                    # Store output file paths for DGRs and VRs
+                    if dgr_id not in self.summary['files']:
+                        self.summary['files'][dgr_id] = {}
+
+                    # Add TR files if TR genes exist
+                    if tr_genes:
+                        self.summary['files'][dgr_id]['tr_genes'] = os.path.join('PER_DGR', dgr_id, 'SURROUNDING-GENES.txt')
+                        self.summary['files'][dgr_id]['functions'] = os.path.join('PER_DGR', dgr_id, 'SURROUNDING-FUNCTIONS.txt')
+
+                    # Add VR files
+                    self.summary['files'][dgr_id][f'{vr_id}_vr_genes'] = os.path.join('PER_DGR', vr_id, 'SURROUNDING-GENES.txt')
+                    self.summary['files'][dgr_id][f'{vr_id}_vr_functions'] = os.path.join('PER_DGR', vr_id, 'SURROUNDING-FUNCTIONS.txt')
+
 
         # ensure the destination directory does not exist before generating the summary HTML
         destination_dir = 'summary_html_output'
