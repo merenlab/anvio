@@ -718,12 +718,8 @@ class DGR_Finder:
                                     "nada, nowt, nothin'! However, you can go back and tinker with the parameters "
                                     "of this tool if you believe this should not be the case. Anvi'o wishes you a nice day :)")
 
-                # parse XML file for the current bin
-                tree = ET.parse(blast_file)
-                root = tree.getroot()
-
                 # process mismatches from this bin
-                self.parse_and_process_blast_results(root, bin_name, max_percent_identity)
+                self.parse_and_process_blast_results(blast_file, bin_name, max_percent_identity)
 
                 # merge results into `merged_mismatch_hits`
                 for hit_identity_unique, hit_data in self.mismatch_hits.items():
