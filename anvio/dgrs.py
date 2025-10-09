@@ -743,12 +743,8 @@ class DGR_Finder:
                                 "nada, nowt, nothin'! However, you can go back and tinker with the parameters "
                                 "of this tool if you believe this should not be the case. Anvi'o wishes you a nice day :)")
 
-            # parse the standard BLAST output
-            tree = ET.parse(self.blast_output)
-            root = tree.getroot()
-
             # process the BLAST output normally
-            self.parse_and_process_blast_results(root, bin_name=None, max_percent_identity=max_percent_identity)
+            self.parse_and_process_blast_results(self.blast_output, bin_name=None, max_percent_identity=max_percent_identity)
 
             return self.mismatch_hits
 
@@ -840,42 +836,101 @@ class DGR_Finder:
                                     if anvio.DEBUG and self.verbose:
                                         self.run.warning(f"Removing the DGR with its VR on this contig: {qseq} and TR on this contig: {hseq}.Found approximate tandem repeat in the query sequence {seq} with repeat count {atr.repeat}, motif {atr.motif} and coverage {coverage}")
 
-                            # look for approximate tandem repeats that in the VR, using a coverage value of the motif length times by the number of repeats
-                            # divided by the sequence length
-                            # need to do this for shorter motifs too because pytrf misses them otherwise
-                            for atr2 in pytrf.ATRFinder('name', seq, min_motif=3, max_motif=10, min_seedrep=2, min_seedlen=9, min_identity=70):
-                                coverage = (len(atr2.motif)*atr2.repeat) / len(seq)
-                                if coverage > self.repeat_motif_coverage:
-                                    has_repeat = True
-                                    if anvio.DEBUG and self.verbose:
-                                        self.run.warning(f"Removing the DGR with its VR on this contig: {qseq} and TR on this contig: {hseq}. Found approximate tandem repeat in the query sequence {seq} with repeat count {atr2.repeat}, motif {atr2.motif} and coverage {coverage}")
+    def parse_and_process_blast_results(self, xml_file_path, bin_name, max_percent_identity):
+        """
+        Parse and process BLAST XML results for a single bin or dataset,
+        filtering for mismatched hits below a given percent identity threshold.
 
-                        if has_repeat:
-                            # breakout of loop (don't add as dgr)
+        Parameters
+        ==========
+        root : xml.etree.ElementTree.Element
+            Parsed XML root object from a BLAST output file.
+        bin_name : str or None
+            Name of the bin associated with the BLAST search. If None,
+            results are treated as coming from a single dataset.
+        max_percent_identity : float
+            Maximum percent identity allowed for considering a hit as mismatched.
+            Hits with higher identity are ignored.
+
+        Returns
+        =======
+        """
+
+        hit_id_counter = 0
+        current_section_id = None
+        current_subject_contig = None
+
+        chars_to_skip = []
+        if self.skip_Ns:
+            chars_to_skip.append('N')
+        if self.skip_dashes:
+            chars_to_skip.append('-')
+
+        # iterate over XML HSPs one by one
+        # Use iterparse with start/end events for better context tracking
+        context = ET.iterparse(xml_file_path, events=("start", "end"))
+        try:
+            for event,elem in context:
+                if event == "end":
+        #for event, elem in ET.iterparse(self.blast_output, events=("end",)):
+
+                    # Track the current iteration (query)
+                    if elem.tag == "Iteration_query-def":
+                        current_section_id = elem.text
+                        elem.clear()
+                        continue
+
+                    # Track the current hit (subject)
+                    if elem.tag == "Hit_def":
+                        current_subject_contig = elem.text
+                        elem.clear()
+                        continue
+
+                    if elem.tag != "Hsp":
+                        continue
+
+                    if elem.tag == "Hsp":
+                        identical_positions = int(elem.find('Hsp_identity').text)
+                        alignment_length = int(elem.find('Hsp_align-len').text)
+                        percentage_identity = (identical_positions / alignment_length) * 100
+
+                        if percentage_identity >= max_percent_identity:
+                            elem.clear()
                             continue
 
-                        subject_genome_start_position = min(
-                            [int(hsp.find('Hsp_hit-from').text) - 1, int(hsp.find('Hsp_hit-to').text)])
-                        subject_genome_end_position = max(
-                            [int(hsp.find('Hsp_hit-from').text) - 1, int(hsp.find('Hsp_hit-to').text)])
-                        query_genome_start_position = query_start_position + min(
-                            [int(hsp.find('Hsp_query-from').text) - 1, int(hsp.find('Hsp_query-to').text)])
-                        query_genome_end_position = query_start_position + max(
-                            [int(hsp.find('Hsp_query-from').text) - 1, int(hsp.find('Hsp_query-to').text)])
-                        query_frame = str(hsp.find('Hsp_query-frame').text)
-                        subject_frame = str(hsp.find('Hsp_hit-frame').text)
+                        # Get parent Iteration and Hit elements
+                        section_id = current_section_id
+                        hit_id_counter += 1
+                        hit_identity_unique = f"{section_id}_count_{hit_id_counter}"
+
+                        # Extract start position from section_id
+                        match = re.search(r"start_bp(\d+)_end_bp(\d+)", section_id)
+                        query_start_position = int(match.group(1)) if match else 0
+
+                        qseq = str(elem.find('Hsp_qseq').text)
+                        hseq = str(elem.find('Hsp_hseq').text)
+                        midline = str(elem.find('Hsp_midline').text)
+
+                        if self.has_repeat(qseq, qseq, hseq) or self.has_repeat(hseq, qseq, hseq):
+                            elem.clear()
+                            continue
+
+                        subject_genome_start_position = min(int(elem.find('Hsp_hit-from').text) - 1,
+                                                            int(elem.find('Hsp_hit-to').text))
+                        subject_genome_end_position = max(int(elem.find('Hsp_hit-from').text) - 1,
+                                                        int(elem.find('Hsp_hit-to').text))
+                        query_genome_start_position = query_start_position + min(int(elem.find('Hsp_query-from').text) - 1,
+                                                                                int(elem.find('Hsp_query-to').text))
+                        query_genome_end_position = query_start_position + max(int(elem.find('Hsp_query-from').text) - 1,
+                                                                            int(elem.find('Hsp_query-to').text))
+                        query_frame = str(elem.find('Hsp_query-frame').text)
+                        subject_frame = str(elem.find('Hsp_hit-frame').text)
 
                         query_mismatch_positions = []
                         all_possible_characters = set(qseq + hseq)
 
                         query_mismatch_counts = {char: 0 for char in all_possible_characters}
                         subject_mismatch_counts = {char: 0 for char in all_possible_characters}
-
-                        chars_to_skip = []
-                        if self.skip_Ns:
-                            chars_to_skip.append('N')
-                        if self.skip_dashes:
-                            chars_to_skip.append('-')
 
                         for idx in range(len(qseq)):
                             if qseq[idx] in chars_to_skip or hseq[idx] in chars_to_skip:
@@ -886,7 +941,7 @@ class DGR_Finder:
                                 subject_mismatch_counts[hseq[idx]] += 1
 
                         query_contig = section_id.split('_section', 1)[0]
-                        subject_contig = hit.find('Hit_def').text
+                        subject_contig = current_subject_contig
 
                         self.mismatch_hits[hit_identity_unique] = {
                             'bin': bin_name if bin_name else "N/A",
@@ -906,6 +961,17 @@ class DGR_Finder:
                             'query_frame': query_frame,
                             'subject_frame': subject_frame
                         }
+
+                        # Free memory for this element
+                        elem.clear()
+
+                    # Clear other elements we don't need
+                    elif elem.tag not in ("Iteration", "Hit", "BlastOutput"):
+                        elem.clear()
+
+        finally:
+            # Ensure cleanup
+            del context
 
 
 
