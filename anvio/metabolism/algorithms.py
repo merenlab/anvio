@@ -18,10 +18,10 @@ from anvio.metabolism.constants import STRAY_KO_ANVIO_SUFFIX
 class KeggEstimationAlgorithms:
     """Core estimation algorithms for KEGG metabolism."""
 
-    def __init__(self, run=terminal.Run(), progress=terminal.Progress()):
+    def __init__(self, run=terminal.Run(), progress=terminal.Progress(), add_copy_number=False):
         self.run = run
         self.progress = progress
-
+        self.add_copy_number = add_copy_number
 
     def split_module_path_into_individual_essential_components(self, path):
         """Given a list of atomic steps in a module, this function returns a list of each essential individual enzyme.

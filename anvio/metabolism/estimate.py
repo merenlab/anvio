@@ -67,7 +67,7 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
         # INIT BASE CLASSES
         KeggEstimatorArgs.__init__(self, self.args)
         KeggDataLoader.__init__(self, self.args, self.run, self.progress)
-        KeggEstimationAlgorithms.__init__(self, self.run, self.progress)
+        KeggEstimationAlgorithms.__init__(self, self.run, self.progress, add_copy_number=self.add_copy_number)
 
         self.name_header = None
         if self.metagenome_mode:
