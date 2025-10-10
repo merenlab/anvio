@@ -20,7 +20,7 @@ __resources__ = [("A tutorial on using this program to access NCBI genomes for '
 __description__ = ("This script takes the 'metadata' output of the program `ncbi-genome-download` (see "
                    "[https://github.com/kblin/ncbi-genome-download](https://github.com/kblin/ncbi-genome-download) for details), and processes each "
                    "GenBank file found in the metadata file to generate a FASTA file, as well as genes "
-                   "and functions files for each entry. Plus, it autmatically generates a FASTA TXT "
+                   "and functions files for each entry. Plus, it automatically generates a FASTA TXT "
                    "file descriptor for anvi'o snakemake workflows. So it is a multi-talented program "
                    "like that")
 
@@ -60,7 +60,7 @@ def get_args():
     groupC.add_argument('-E', '--exclude-gene-calls-from-fasta-txt', required=False, help="This flag will exclude\
                         the external gene calls and functions from the fasta.txt file. Files for external gene calls\
                         and functions according to the information stored in GenBank file, but they will simply\
-                        not be included in your fasta.txt file. By doing so you will *gurantee* that when you use\
+                        not be included in your fasta.txt file. By doing so you will *guarantee* that when you use\
                         this file from within a workflow, anvi'o wil use its default gene caller to identify genes.", action='store_true')
 
     return parser.get_args(parser)
