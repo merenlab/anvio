@@ -1,4 +1,4 @@
-%(anvi-predict-metabolic-exchanges)s uses the metabolic capacity encoded in two genomes to predict which metabolites could be exchanged between two organisms, and which metabolites are unique to one of the organisms. The output files produced by the program are described in %{metabolite-exchange-predictions}s.
+%(anvi-predict-metabolic-exchanges)s uses the metabolic capacity encoded in two genomes to predict which metabolites could be exchanged between two organisms, and which metabolites are unique to one of the organisms. The output files produced by the program are described in %(metabolite-exchange-predictions)s.
 
 By leveraging the %(reaction-network)s infrastructure of anvi'o, the program examines the overlap between the metabolic reactions that each of the two organisms can catalyze and identifies which metabolic compounds fall into one of the following categories:
 
@@ -40,7 +40,7 @@ anvi-predict-metabolic-exchanges -c1 %(contigs-db)s -c2 %(contigs-db)s \
                                  -O ANY_PREFIX
 {{ codestop }}
 
-The %{metabolite-exchange-predictions}s output file names will start using the prefix you provided.
+The %(metabolite-exchange-predictions)s output file names will start using the prefix you provided.
 
 ### MULTI-MODE: Running on multiple pairs of genomes
 
@@ -60,11 +60,11 @@ anvi-predict-metabolic-exchanges -e %(external-genomes)s \
 
 **Specific pairwise comparisons**
 
-If you only want to predict exchanges between specific pairs of genomes, then you can enumerate those pairs in a %{genome-pairs}s file and provide that to the program (in addition to the %(external-genomes)s file).
+If you only want to predict exchanges between specific pairs of genomes, then you can enumerate those pairs in a %(genome-pairs)s file and provide that to the program (in addition to the %(external-genomes)s file).
 
 {{ codestart }}
 anvi-predict-metabolic-exchanges -e %(external-genomes)s \
-                                 --genome-pairs-txt %{genome-pairs}s \
+                                 --genome-pairs-txt %(genome-pairs)s \
                                  -O ANY_PREFIX \
                                  --num-threads 1
 {{ codestop }}
@@ -91,12 +91,12 @@ anvi-predict-metabolic-exchanges -c1 %(contigs-db)s -c2 %(contigs-db)s \
 
 If you do this, you will get an output file listing the amino acid compounds that were deemed equivalent, so you can make sure you agree with them.
 
-If you want to specify a custom set of equivalent compound IDs, you can instead provide an %{equivalent-compounds-txt}s file to the `--custom-equivalent-compounds-file` parameter:
+If you want to specify a custom set of equivalent compound IDs, you can instead provide an %(equivalent-compounds-txt)s file to the `--custom-equivalent-compounds-file` parameter:
 
 {{ codestart }}
 anvi-predict-metabolic-exchanges -c1 %(contigs-db)s -c2 %(contigs-db)s \
                                  -O ANY_PREFIX \
-                                 --custom-equivalent-compounds-file %{equivalent-compounds-txt}s
+                                 --custom-equivalent-compounds-file %(equivalent-compounds-txt)s
 {{ codestop }}
 
 ### Using only one prediction method
