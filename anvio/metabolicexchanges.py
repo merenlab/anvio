@@ -471,6 +471,8 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                     walker.compound_fate = 'consume'
                     consumption_chains = walker.get_chains()
                     output_queue.put((map_id, genome, production_chains, consumption_chains))
+                if anvio.DEBUG:
+                    self.run.info_single(f"Successfully finished map {map_id}")
             except Exception as e: # send the error back to the main thread
                 output_queue.put((e, map_id, genome))
         # this function will be killed by the parent process eventually
