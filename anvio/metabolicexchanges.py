@@ -462,6 +462,8 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         while True:
             try:
                 map_id = pathway_map_queue.get(block=True)
+                if anvio.DEBUG:
+                    self.run.info_single(f"A worker thread is walking over map {map_id}")
                 for genome in self.genomes_to_compare:
                     wargs = self.get_args_for_pathway_walker(self.genomes_to_compare[genome]['network'], map_id, fate='produce', gaps=self.maximum_gaps)
                     walker = nw.KGMLNetworkWalker(wargs)
