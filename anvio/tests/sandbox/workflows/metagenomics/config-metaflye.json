@@ -11,7 +11,7 @@
         "--kmer-size": "",
         "--skip-predict-frame": "",
         "--prodigal-translation-table": "",
-        "threads": 4
+        "threads": ""
     },
     "centrifuge": {
         "threads": 2,
@@ -77,15 +77,15 @@
         "--drop-previous-annotations": "",
         "threads": ""
     },
-    "samples_txt": "samples-no-groups.txt",
+    "samples_txt": "samples-lr.txt",
     "read_type_suffix": "auto",
     "metaspades": {
         "additional_params": "--only-assembler",
         "threads": 7,
-        "run": true,
+        "run": "",
         "conda_yaml": "",
         "conda_env": "",
-        "use_scaffolds": true
+        "use_scaffolds": ""
     },
     "megahit": {
         "--min-contig-len": 1000,
@@ -143,21 +143,21 @@
         "use_scaffolds": ""
     },
     "flye": {
-        "run": false,
+        "run": true,
         "threads": 7,
         "additional_params": "",
         "conda_yaml": "",
         "conda_env": "",
-        "--meta": "",
+        "--meta": true,
         "--pacbio-raw": "",
         "--pacbio-corr": "",
-        "--pacbio-hifi": "",
+        "--pacbio-hifi": true,
         "--nano-raw": "",
         "--nano-corr": "",
         "--nano-hq": "",
         "--genome-size": "",
         "--iterations": "",
-        "--min-overlap": "",
+        "--min-overlap": "1000",
         "--read-error": "",
         "--keep-haplotypes": "",
         "--no-alt-contigs": "",
@@ -165,7 +165,7 @@
         "--polish-target": ""
     },
     "iu_filter_quality_minoche": {
-        "run": false,
+        "run": true,
         "--ignore-deflines": true,
         "--visualize-quality-curves": "",
         "--limit-num-pairs": "",
@@ -174,7 +174,7 @@
         "threads": ""
     },
     "gzip_fastqs": {
-        "run": false,
+        "run": true,
         "threads": ""
     },
     "bowtie": {
@@ -333,16 +333,16 @@
     "kraken_txt": "",
     "collections_txt": "",
     "output_dirs": {
-        "FASTA_DIR": "02_FASTA-metaspades",
-        "CONTIGS_DIR": "03_CONTIGS-metaspades",
-        "QC_DIR": "01_QC-metaspades",
-        "MAPPING_DIR": "04_MAPPING-metaspades",
-        "PROFILE_DIR": "05_ANVIO_PROFILE-metaspades",
-        "MERGE_DIR": "06_MERGED-metaspades",
-        "TAXONOMY_DIR": "07_TAXONOMY-metaspades",
-        "SUMMARY_DIR": "08_SUMMARY-metaspades",
-        "SPLIT_PROFILES_DIR": "09_SPLIT_PROFILES-metaspades",
-        "LOGS_DIR": "00_LOGS-metaspades"
+        "FASTA_DIR": "02_FASTA-metaflye",
+        "CONTIGS_DIR": "03_CONTIGS-metaflye",
+        "QC_DIR": "01_QC-metaflye",
+        "MAPPING_DIR": "04_MAPPING-metaflye",
+        "PROFILE_DIR": "05_ANVIO_PROFILE-metaflye",
+        "MERGE_DIR": "06_MERGED-metaflye",
+        "TAXONOMY_DIR": "07_TAXONOMY-metaflye",
+        "SUMMARY_DIR": "08_SUMMARY-metaflye",
+        "SPLIT_PROFILES_DIR": "09_SPLIT_PROFILES-metaflye",
+        "LOGS_DIR": "00_LOGS-metaflye"
     },
     "max_threads": "",
     "config_version": "4",

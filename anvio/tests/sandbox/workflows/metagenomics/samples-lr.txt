@@ -1,0 +1,3 @@
+sample	lr
+sample_01	three_samples_example/sample-01-LR.fastq.gz
+sample_02	three_samples_example/sample-02-LR.fastq.gz
