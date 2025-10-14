@@ -12,6 +12,8 @@ import pandas as pd
 import networkx as nx
 import itertools as it
 import matplotlib.pyplot as plt
+from collections import Counter
+from statistics import mean, multimode
 
 from scipy.spatial.distance import squareform
 from scipy.cluster.hierarchy import linkage, dendrogram, to_tree
@@ -224,6 +226,21 @@ class PangenomeGraphManager():
             return(False)
 
 
+    def merge_dict_list(self, dict1, dict2):
+
+        merged_dict = {}
+
+        for key in set(dict1) | set(dict2):
+            merged_dict[key] = []
+
+            if key in dict1:
+                merged_dict[key].extend(dict1[key])
+
+            if key in dict2:
+                merged_dict[key].extend(dict2[key])
+        return(merged_dict)
+
+
     def summarize(self):
         """This is the main summary function for pangenome graphs. Input is the self
 
@@ -256,24 +273,40 @@ class PangenomeGraphManager():
             core_position_max = max(core_positions)
 
             overlap = [i for i in range(all_positions_min, core_position_min)] + [i for i in range(core_position_max+1, all_positions_max+1)]
-            regions_dict |= {pos:0 for pos in overlap}
+            regions_dict |= {pos: 0 for pos in overlap}
             regions_id = 1
 
             # print(overlap)
 
-            regions_dict |= {pos:-1 for pos in core_positions}
+            # regions_dict |= {pos:-1 for pos in core_positions}
 
             core_positions_pairs = map(tuple, zip(core_positions, core_positions[1:]))
         else:
             regions_id = 0
             core_positions_pairs = [(all_positions_min, all_positions_max)]
 
-        for (i,j) in core_positions_pairs:
+        core_chain = []
+        for (i, j) in core_positions_pairs:
             if i != j-1:
-                regions_dict |= {i: regions_id for i in range(i+1,j)}
+
+                core_chain += [i]
+                regions_dict |= {m: regions_id for m in core_chain}
                 regions_id += 1
 
-        # print(regions_dict)
+                regions_dict |= {k: regions_id for k in range(i+1, j)}
+                regions_id += 1
+
+                if j == core_positions[-1]:
+                    core_chain = [j]
+                else:
+                    core_chain = []
+            else:
+                core_chain += [i]
+
+                if j == core_positions[-1]:
+                    core_chain += [j]
+
+        regions_dict |= {n: regions_id for n in core_chain}
 
         regions_info_dict = {}
         node_regions_dict = {}
@@ -297,65 +330,77 @@ class PangenomeGraphManager():
                 else:
                     regions_info_dict[region_id] += [(node_x_position, node_y_position, node, genomes)]
 
-        # print(regions_info_dict)
         # print(node_regions_dict)
         # all_ghost_max_y_positions = {}
 
         # TODO height depends on the position of empty edges (should be fixed already)
         i = 0
         regions_summary_dict = {}
-        for region_id, values_list in regions_info_dict.items():
-            if region_id != -1:
-                region_x_positions = [item[0] for item in values_list]
-                region_y_positions = [item[1] for item in values_list]
+        for region_id, values_list in dict(sorted(regions_info_dict.items())).items():
 
-                genomes_sets = [item[3] for item in values_list]
-                genomes_involved = set(it.chain(*genomes_sets))
-                weight = len(genomes_involved)
+            genomes_sets = [item[3] for item in values_list]
+            genomes_involved = set(it.chain(*genomes_sets))
 
-                region_x_positions_min = min(region_x_positions)
-                region_x_positions_max = max(region_x_positions)
+            weight = len(genomes_involved)
 
-                length = region_x_positions_max - region_x_positions_min + 1
-                quantity = len(values_list)
-                height = len(set(region_y_positions))
-                max_density = (height*length)
+            nodes_sets = [item[2] for item in values_list]
+            nodes_involved = set(nodes_sets)
 
-                if height <= 1:
-                    if weight < len(genome_names)*0.5:
-                        motif = 'INS'
-                    elif weight == len(genome_names)*0.5:
-                        motif = 'INDEL'
-                    else:
-                        motif = 'DEL'
-                else:
-                    motif = 'HVR'
+            diversity = len(set([item.rsplit('_', 1)[0] for item in nodes_involved]))
+            region_x_positions = [item[0] for item in values_list]
+            # region_y_positions = [item[1] for item in values_list]
 
-                regions_summary_dict[i] = {
-                    'region_id': region_id,
-                    'height': height,
-                    'length': length,
-                    'weight': weight,
-                    'motif': motif,
-                    'x_min': region_x_positions_min,
-                    'x_max': region_x_positions_max,
-                    'quantity': len(values_list),
-                    'density': quantity/max_density if max_density != 0 else 0
-                }
-                i += 1
+            region_x_positions_min = min(region_x_positions)
+            region_x_positions_max = max(region_x_positions)
+
+            if region_x_positions_min in set(core_positions) and region_x_positions_max in set(core_positions):
+                complexity = 1
+            elif region_x_positions_min not in set(core_positions) and region_x_positions_max not in set(core_positions):
+
+                prior_core_region_id = regions_dict[region_x_positions_min - 1]
+                prior_core_region = regions_info_dict[prior_core_region_id]
+
+                predecessor = [item[2] for item in prior_core_region if item[0] == region_x_positions_min - 1][0]
+
+                complexity = sum([len(list(self.graph.successors(node))) - 1 for node in nodes_sets + [predecessor]]) + 1
             else:
-                regions_summary_dict[i] = {
-                    'region_id': -1,
-                    'height': 1,
-                    'length': -1,
-                    'weight': len(genome_names),
-                    'motif': 'BB',
-                    'x_min': -1,
-                    'x_max': -1,
-                    'quantity': -1,
-                    'density': 1.0
-                }
-                i += 1
+                print('Summary error.')
+
+            genome_occurences = list(it.chain(*genomes_sets))
+            # genome_max = max(genome_occurences, key=genome_occurences.count)
+            # expansion = genome_occurences.count(genome_max)
+
+            counts = Counter(genome_occurences)
+            genome_counts = {item: counts.get(item, 0) for item in genome_names}
+
+            values = list(genome_counts.values())
+            max_expansion = max(values)
+            min_expansion = min(values)
+            mean_expansion = round(mean(values), 3)
+            mode = ", ".join(str(num) for num in multimode(values))
+
+            if complexity == 1:
+                motif = 'BB'
+            elif complexity == 2:
+                motif = 'INDEL'
+            else:
+                motif = 'HVR'
+
+            regions_summary_dict[i] = {
+                'region_id': region_id,
+                'motif': motif,
+                'x_min': region_x_positions_min,
+                'x_max': region_x_positions_max,
+                'quantity': len(values_list),
+                'complexity': complexity,
+                'max_expansion': max_expansion,
+                'min_expansion': min_expansion,
+                'mean_expansion': mean_expansion,
+                'mode_expansion': mode,
+                'diversity': diversity,
+                'weight': weight
+            }
+            i += 1
 
         i = 0
         gene_calls_dict = {}
