@@ -89,6 +89,17 @@ anvi-predict-metabolic-exchanges -c1 B_thetaiotamicron_VPI-5482.db \
                                  --exclude-pathway-maps 00470,00195,00542,00190,00541,00543,00511
 SHOW_FILE B_vs_P-potentially-exchanged-compounds.txt
 
+INFO "Single genome pair comparison with --include-pathway-maps"
+anvi-predict-metabolic-exchanges -c1 B_thetaiotamicron_VPI-5482.db \
+                                 -c2 P_marinus_CCMP1375.db \
+                                 --kegg-data-dir $kegg_data_dir \
+                                 --modelseed-data-dir $modelseed_dir \
+                                 $thread_controller \
+                                 -O B_vs_P \
+                                 --force-overwrite \
+                                 --include-pathway-maps 00760,00670
+SHOW_FILE B_vs_P-potentially-exchanged-compounds.txt
+
 INFO "Single genome pair comparison with --no-pathway-walk"
 anvi-predict-metabolic-exchanges -c1 B_thetaiotamicron_VPI-5482.db \
                                  -c2 P_marinus_CCMP1375.db \
