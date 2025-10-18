@@ -760,7 +760,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                     if genome_dict[g]['consume']: # if this is not None, there is at least one production chain
                         genomes_consume.add(g)
 
-        prod, cons = self.producer_consumer_decision_tree(genomes_produce, genomes_consume)
+        prod, cons = self.producer_consumer_decision_tree(deepcopy(genomes_produce), deepcopy(genomes_consume))
 
         return prod, cons, genomes_produce, genomes_consume
 
@@ -1005,23 +1005,26 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
 
             producer,consumer,all_prod,all_cons = self.predict_exchange_from_pathway_walk(compound_reaction_chains)
             compound_name = self.merged.metabolites[compound_id].modelseed_name
+            producer_names = ",".join([self.genomes_to_compare[producer]['name'] for producer in all_prod])
+            consumer_names = ",".join([self.genomes_to_compare[consumer]['name'] for consumer in all_cons])
+            all_genome_names = ",".join([self.genomes_to_compare[x]['name'] for x in all_prod.union(all_cons) if x])
             if producer or consumer:
                 producer_name = self.genomes_to_compare[producer]['name'] if producer else None
                 consumer_name = self.genomes_to_compare[consumer]['name'] if consumer else None
                 if producer == consumer or (not producer) or (not consumer): # unique to one genome
                     unique_compounds[compound_id] = {'compound_name': compound_name,
-                                                    'genomes': ",".join([x for x in set([producer_name,consumer_name]) if x]),
-                                                    'produced_by': producer_name,
-                                                    'consumed_by': consumer_name,
+                                                    'genomes': all_genome_names if all_genome_names else None,
+                                                    'produced_by': producer_names if producer_names else None,
+                                                    'consumed_by': consumer_names if consumer_names else None,
                                                     'prediction_method': 'Pathway_Map_Walk',
                                                     'equivalent_compound_id': eq_comp,
                                                     }
                     add_reactions_to_dict_for_compound_pathway_walk(unique_compounds[compound_id])
                 else: # potentially-exchanged
                     potentially_exchanged_compounds[compound_id] = {'compound_name': compound_name,
-                                                                    'genomes': ",".join([producer_name,consumer_name]),
-                                                                    'produced_by': producer_name,
-                                                                    'consumed_by': consumer_name,
+                                                                    'genomes': all_genome_names if all_genome_names else None,
+                                                                    'produced_by': producer_names if producer_names else None,
+                                                                    'consumed_by': consumer_names if consumer_names else None,
                                                                     'prediction_method': 'Pathway_Map_Walk',
                                                                     'equivalent_compound_id': eq_comp,
                                                                     }
@@ -1140,9 +1143,6 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                     potentially_exchanged_compounds[compound_id]['consumption_chain_pathway_map'] = reported_map_posterior
             else: # no prediction for this compound
                 if self.report_compounds_with_no_prediction:
-                    producer_names = ",".join([self.genomes_to_compare[producer]['name'] for producer in all_prod])
-                    consumer_names = ",".join([self.genomes_to_compare[consumer]['name'] for consumer in all_cons])
-                    all_genome_names = ",".join([self.genomes_to_compare[x]['name'] for x in all_prod.union(all_cons) if x])
                     no_prediction_compounds[compound_id] = {'compound_name': compound_name,
                                                             'genomes': all_genome_names if all_genome_names else None,
                                                             'produced_by': producer_names if producer_names else None,
@@ -1248,24 +1248,27 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                     compound_dict[f"production_rxn_eqs_{genome_name}"] = " / ".join(prod_rxn_eqs) if len(prod_rxn_eqs) else None
                     compound_dict[f"consumption_rxn_eqs_{genome_name}"] = " / ".join(cons_rxn_eqs) if len(cons_rxn_eqs) else None
 
-            producer,consumer = self.producer_consumer_decision_tree(genomes_produce, genomes_consume)
+            producer,consumer = self.producer_consumer_decision_tree(deepcopy(genomes_produce), deepcopy(genomes_consume))
+            producer_names = ",".join([self.genomes_to_compare[producer]['name'] for producer in genomes_produce])
+            consumer_names = ",".join([self.genomes_to_compare[consumer]['name'] for consumer in genomes_consume])
+            all_genome_names = ",".join([self.genomes_to_compare[x]['name'] for x in genomes_produce.union(genomes_consume) if x])
             if producer or consumer:
                 producer_name = self.genomes_to_compare[producer]['name'] if producer else None
                 consumer_name = self.genomes_to_compare[consumer]['name'] if consumer else None
                 if producer == consumer or (not producer) or (not consumer): # unique to one genome
                     unique_compounds[compound_id] = {'compound_name': compound_name,
-                                                    'genomes': ",".join([x for x in set([producer_name,consumer_name])if x]),
-                                                    'produced_by': producer_name,
-                                                    'consumed_by': consumer_name,
+                                                    'genomes': all_genome_names,
+                                                    'produced_by': producer_names,
+                                                    'consumed_by': consumer_names,
                                                     'prediction_method': 'Reaction_Network_Subset',
                                                     'equivalent_compound_id': eq_comp,
                                                     }
                     add_reactions_to_dict_for_compound_reaction_network(unique_compounds[compound_id])
                 else: # potentially-exchanged
                     potentially_exchanged_compounds[compound_id] = {'compound_name': compound_name,
-                                                                    'genomes': ",".join([producer_name,consumer_name]),
-                                                                    'produced_by': producer_name,
-                                                                    'consumed_by': consumer_name,
+                                                                    'genomes': all_genome_names,
+                                                                    'produced_by': producer_names,
+                                                                    'consumed_by': consumer_names,
                                                                     'prediction_method': 'Reaction_Network_Subset',
                                                                     'equivalent_compound_id': eq_comp,
                                                                     }
@@ -1283,9 +1286,6 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                     potentially_exchanged_compounds[compound_id]['consumption_chain_pathway_map'] = None
             else: # no prediction for this compound. 
                 if self.report_compounds_with_no_prediction:
-                    producer_names = ",".join([self.genomes_to_compare[producer]['name'] for producer in genomes_produce])
-                    consumer_names = ",".join([self.genomes_to_compare[consumer]['name'] for consumer in genomes_consume])
-                    all_genome_names = ",".join([self.genomes_to_compare[x]['name'] for x in genomes_produce.union(genomes_consume) if x])
                     no_prediction_compounds[compound_id] = {'compound_name': compound_name,
                                                         'genomes': all_genome_names if all_genome_names else None,
                                                         'produced_by': producer_names if producer_names else None,
