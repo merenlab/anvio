@@ -531,7 +531,7 @@ class DGR_Finder:
         blast.blast(outputfmt='5', word_size=self.word_size)
 
         self.blast_output = blast_output_path
-        return
+        return blast_output_path
 
 
 
