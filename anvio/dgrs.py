@@ -573,24 +573,45 @@ class DGR_Finder:
 
         self.bin_names_list = list(bin_splits_dict.keys())
 
+        # Initialize blast_output to None
+        self.blast_output = None
+        successful_bins = []
+        skipped_bins = []
+
         # process each bin
         for bin_name, bin_splits_list in bin_splits_dict.items():
-            self.run.info_single(f"Processing bin: {bin_name} ", nl_before=1)
-            sample_id_list, bin_contig_sequences = self.load_data_and_setup(bin_splits_list)
-
-            # update target file path to be bin-specific
-            self.target_file_path = os.path.join(self.temp_dir, f"bin_{bin_name}_reference_sequences.fasta")
+            self.run.info_single(f"Processing bin: {bin_name}", nl_before=1)
 
             try:
+                sample_id_list, bin_contig_sequences = self.load_data_and_setup(bin_splits_list)
+
+                # update target file path to be bin-specific
+                self.target_file_path = os.path.join(self.temp_dir, f"bin_{bin_name}_reference_sequences.fasta")
+
                 contig_records = self.find_snv_clusters(sample_id_list, bin_contig_sequences)
-                blast_output = self.run_blast(contig_records, f"bin_{bin_name}_subsequences.fasta", bin_contig_sequences)
-                self.run.info_single(f"Completed BLAST for bin: {bin_name}, output: {blast_output}", nl_before=1)
+                blast_output_path = self.run_blast(contig_records, f"bin_{bin_name}_subsequences.fasta", bin_contig_sequences)
+
+                successful_bins.append(bin_name)
+                self.run.info_single(f"Completed BLAST for bin: {bin_name}, output: {blast_output_path}", nl_before=1)
+
             except ConfigError as e:
                 self.run.warning(f"Skipping bin {bin_name}: {str(e)}", nl_before=1)
+                skipped_bins.append(bin_name)
                 continue
             except Exception as e:
                 self.run.warning(f"Error processing bin {bin_name}: {str(e)}", nl_before=1)
+                skipped_bins.append(bin_name)
                 continue
+
+        # Check if any bins were successfully processed
+        if not successful_bins:
+            raise ConfigError(f"No bins in collection '{self.collections_given}' could be processed successfully. "
+                            f"All {len(skipped_bins)} bins were skipped. "
+                            f"Common causes: sequences too short for word_size={self.word_size}, "
+                            f"insufficient SNV density, or BLAST failures.")
+
+        self.run.info_single(f"Successfully processed {len(successful_bins)}/{len(bin_splits_dict)} bins. "
+                            f"Skipped {len(skipped_bins)} bins.", nl_before=1)
 
         # return the last successful blast output (maintains original behavior)
         return self.blast_output
