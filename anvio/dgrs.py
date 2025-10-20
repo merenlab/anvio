@@ -494,6 +494,7 @@ class DGR_Finder:
         # write sequences to FASTA
         query_fasta_path = os.path.join(self.temp_dir, output_filename)
         query_fasta = fastalib.FastaOutput(query_fasta_path)
+
         for seq_id, seq in contig_records.items():
             query_fasta.write_id(seq_id)
             query_fasta.write_seq(seq)
