@@ -903,8 +903,8 @@ rule minimap2:
 rule samtools_view:
     """ sort sam file with samtools and create a RAW.bam file"""
     version: 1.0
-    input: rules.bowtie.output.sam
     log: dirs_dict["LOGS_DIR"] + "/{group}-{readset}-samtools_view.log"
+    input:  M.dirs_dict["MAPPING_DIR"] + "/{group}/{readset}.sam"
     params: additional_params = M.get_param_value_from_config(["samtools_view", "additional_params"])
     # output as temp. we only keep the final bam file
     output: temp(dirs_dict["MAPPING_DIR"] + "/{group}/{readset}-RAW.bam")
@@ -917,7 +917,7 @@ rule anvi_init_bam:
     """ run anvi-init-bam on RAW bam file to create a bam file ready for anvi-profile"""
     version: 1.0 # later we can decide if we want the version to use the version of anvi'o
     log: dirs_dict["LOGS_DIR"] + "/{group}-{readset}-anvi_init_bam.log"
-    input:  M.dirs_dict["MAPPING_DIR"] + "/{group}/{readset}.sam"
+    input:  M.dirs_dict["MAPPING_DIR"] + "/{group}/{readset}-RAW.bam"
     output:
         bam = dirs_dict["MAPPING_DIR"] + "/{group}/{readset}.bam",
         bai = dirs_dict["MAPPING_DIR"] + "/{group}/{readset}.bam.bai"
