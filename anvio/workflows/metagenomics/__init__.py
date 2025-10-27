@@ -262,8 +262,16 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                         raise ConfigError(f"Internal error: no members recorded for single-member group '{group}'.")
                     single_member = member_ids[0]
                 else:
-                    # References mode keeps legacy behavior: raw groups map has the sample name
-                    single_member = self.samples_txt.groups()[group][0]
+                    # References mode: either we have one or more group with a single sample:
+                    if self.samples_txt.has_groups():
+                        single_member = self.samples_txt.groups()[group][0]
+                    # or we have a single sample
+                    elif len(self.samples_txt.samples()) == 1:
+                        single_member = self.samples_txt.samples()[0]
+                    else:
+                        raise ConfigError("Anvi'o (and Florian) has no idea how you got there. We were expecting "
+                                          "a single sample in your samples-txt. Please reach out to a developer.")
+
                 self.profile_databases[group] = os.path.join(self.dirs_dict["PROFILE_DIR"], group, single_member, "PROFILE.db")
 
 
