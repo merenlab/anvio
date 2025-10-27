@@ -77,7 +77,7 @@
         "--drop-previous-annotations": "",
         "threads": ""
     },
-    "samples_txt": "samples-sr-lr.txt",
+    "samples_txt": "samples-one-sample.txt",
     "read_type_suffix": "auto",
     "metaspades": {
         "additional_params": "--only-assembler",
@@ -333,16 +333,16 @@
     "kraken_txt": "",
     "collections_txt": "collections.txt",
     "output_dirs": {
-        "FASTA_DIR": "02_FASTA-references-mode",
-        "CONTIGS_DIR": "03_CONTIGS-references-mode",
-        "QC_DIR": "01_QC-references-mode",
-        "MAPPING_DIR": "04_MAPPING-references-mode",
-        "PROFILE_DIR": "05_ANVIO_PROFILE-references-mode",
-        "MERGE_DIR": "06_MERGED-references-mode",
-        "TAXONOMY_DIR": "07_TAXONOMY-references-mode",
-        "SUMMARY_DIR": "08_SUMMARY-references-mode",
-        "SPLIT_PROFILES_DIR": "09_SPLIT_PROFILES-references-mode",
-        "LOGS_DIR": "00_LOGS-references-mode"
+        "FASTA_DIR": "02_FASTA-references-mode-one-sample",
+        "CONTIGS_DIR": "03_CONTIGS-references-mode-one-sample",
+        "QC_DIR": "01_QC-references-mode-one-sample",
+        "MAPPING_DIR": "04_MAPPING-references-mode-one-sample",
+        "PROFILE_DIR": "05_ANVIO_PROFILE-references-mode-one-sample",
+        "MERGE_DIR": "06_MERGED-references-mode-one-sample",
+        "TAXONOMY_DIR": "07_TAXONOMY-references-mode-one-sample",
+        "SUMMARY_DIR": "08_SUMMARY-references-mode-one-sample",
+        "SPLIT_PROFILES_DIR": "09_SPLIT_PROFILES-references-mode-one-sample",
+        "LOGS_DIR": "00_LOGS-references-mode-one-sample"
     },
     "max_threads": "",
     "config_version": "4",
