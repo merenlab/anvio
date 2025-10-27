@@ -581,6 +581,11 @@ class SamplesTxt:
         """A row has long-reads if lr is provided."""
         return bool(info.get("lr"))
 
+    @staticmethod
+    def _is_single_end_sr(info: dict) -> bool:
+        """A row is single-end SR if it has r1 and no r2 (lr may or may not exist)."""
+        return bool(info.get("r1")) and not bool(info.get("r2"))
+
     def has_any_sr(self) -> bool:
         """Return True if at least one sample row has short-reads."""
         return any(self._has_sr(info) for info in self._data.values())
@@ -588,6 +593,10 @@ class SamplesTxt:
     def has_any_lr(self) -> bool:
         """Return True if at least one sample row has long-reads."""
         return any(self._has_lr(info) for info in self._data.values())
+
+    def has_any_single_end_sr(self) -> bool:
+        """Return True if at least one sample has SR with no R2 (i.e., single-end)."""
+        return any(self._is_single_end_sr(info) for info in self._data.values())
 
     def sample_types(self) -> dict:
         """
