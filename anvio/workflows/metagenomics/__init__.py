@@ -184,6 +184,11 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         self.has_sr = self.samples_txt.has_any_sr()
         self.has_lr = self.samples_txt.has_any_lr()
 
+        # for now, single-end short-reads are not compatible with the workflow
+        if self.samples_txt.has_any_single_end_sr():
+            raise ConfigError("It looks like you have single-end short-reads in your samples-txt file and "
+                              "unfortunately the metagenomics workflow only handles paired-end read for now.")
+
         # sanity checks: assemblers required when assembling (not in references mode)
         if not self.references_mode:
             # SR present → require exactly one SR assembler enabled
