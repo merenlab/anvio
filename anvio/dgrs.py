@@ -71,6 +71,7 @@ class DGR_Finder:
         self.departure_from_reference_percentage = A('departure_from_reference_percentage')
         self.gene_caller_to_consider_in_context = A('gene_caller') or 'prodigal'
         self.min_range_size = A('minimum_range_size')
+        self.minimum_snv_density = A('minimum_snv_density') or 0.2
         self.hmm = A('hmm_usage')
         self.discovery_mode = A('discovery_mode')
         self.output_directory = A('output_dir') or 'DGR-OUTPUT'
@@ -100,6 +101,7 @@ class DGR_Finder:
         self.run.info('Skip "N" characters', self.skip_Ns)
         self.run.info('Skip "-" characters', self.skip_dashes)
         self.run.info('Discovery mode', self.discovery_mode)
+        self.run.info('minimum_snv_density', self.minimum_snv_density)
         self.run.info('Number of Mismatches', self.number_of_mismatches)
         self.run.info('Percentage of Mismatching Bases', self.percentage_mismatch)
         if self.only_a_bases:
@@ -396,11 +398,22 @@ class DGR_Finder:
                     if distance <= self.max_dist_bw_snvs:
                         range_end = next_pos
 
-                    if (range_end - range_start) < self.min_range_size:
+                    snv_cluster_length = int(range_end - range_start)
+                    if snv_cluster_length < self.min_range_size:
                         continue
-                    else:
+
+                    # check the snv density
+                    numb_snvs = len([pos for pos in pos_list if range_start <= pos <= range_end])
+                    snv_density = numb_snvs/snv_cluster_length
+
+                    if snv_density > self.minimum_snv_density:
+                        print(snv_density)
+
+                        #add buffer length
                         window_start = range_start - self.variable_buffer_length
                         window_end = range_end + self.variable_buffer_length
+                    else:
+                        continue
 
                     contig_len = len(contig_sequences[contig_name]['sequence'])
 
