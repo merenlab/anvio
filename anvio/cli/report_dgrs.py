@@ -93,6 +93,18 @@ def get_args():
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': True}))
     groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': True})) #ADD THAT HAS TO BE MERGED_DB, unless have
 
+    groupE = parser.add_argument_group('CONTIGS AND PROFILE DB INPUT ARGUMENTS', "Options for using the Contigs.db and Profile.db input for this program")
+    groupE.add_argument("-I","--hmm-usage", required = True, help="The name of the HMM run with your Contigs.db, ideally the 'Reverse_Transcriptase' HMM, or your own HMM of reverse transcriptases "
+                        "(type: 6 clades of DGR Retroelements from doi.org/10.1038/s41467-021-23402-7 including other known reverse transcriptases). You can "
+                        "provide a comma-separated list of names for multiple profiles (but in that case don't put a space between each profile name). As a "
+                        f"reminder here is the list of anvi'o installed profiles available to you: {available_hmm_sources_pretty}. This option is mandatory "
+                        "for reporting DGRs, however anvi'o does not want to tell you what to do, so please proceed",type=str, default = None)
+    groupE.add_argument(*anvio.A('gene-caller'), **anvio.K('gene-caller', {'help': "The gene caller to show gene calls if you are using a contigs.db. This is used to tell the program that you want to find the genes that your Variable Regions occurred in."}))
+
+    groupG = parser.add_argument_group('COLLECTIONS MODE', "Options for collections mode. This is when you want to restrict your search to an individual collection, where anvi'o will look in bins for DGRs, importantly working using contigs not splits.")
+    groupG.add_argument("--collections-mode", help="The flag to use that searches through specified splits that are in the collection that is specified with the '-C / --collection' flag.", action = "store_true")
+    groupG.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'help':"The name of the singular collection that you want to search for DGRs in"}))
+
     groupJ = parser.add_argument_group('SNV CLUSTER LOCATOR PARAMETERS', "Options for adjusting how to locate clusters of SNVs")
     groupJ.add_argument("-d","--departure-from-reference-percentage", help="Minimum departure from reference to consider a SNV. Default is 0.1", type=float, default=0.1)
     groupJ.add_argument("--minimum-snv-density", help="The minimum percentage of SNVs over a SNV cluster needed for it to be valid, think about it as in the number of SNVs over the length of a possible VR, Default = 0.2", type=float, default=0.2)
@@ -106,8 +118,6 @@ def get_args():
     groupC = parser.add_argument_group('LOCATING VR OPTIONS', "Options for the fine tuning this program's location of variable regions'")
     groupC.add_argument("--skip-Ns", help="Skip 'N' bases when searching for mismatches", action = 'store_true', default=True)
     groupC.add_argument("--skip-dashes", help="Skip '-' bases when searching for mismatches", action = 'store_true',default=True)
-    groupC.add_argument(*anvio.A('gene-caller'), **anvio.K('gene-caller', {'help': "The gene caller to show gene calls if you are using a contigs.db. This is used to tell the program"
-                                                                            " that you want to find the genes that your Variable Regions occurred in."}))
     groupC.add_argument("--discovery-mode", help="By default, anvi'o uses SNVs occurring in the first and second codon position of ORF to identify DGRs. "
                         "This constraint allows for a fast search and more reliable results. If you feel daring, you can use this flag and let anvi'o use "
                         "ANY SNVs to identify regions of interest for the VR/TR search.", action = "store_true", default=False)
@@ -124,38 +134,17 @@ def get_args():
     groupD.add_argument("--snv-matching-proportion", help="A blanket proportion of SNVs allowed in matching bases of the TR and VR. If there are more than 30 SNVs in the VR then 30%% of these can be in matching positions, if there are less than 30 SNVs then 25%% of these can be in matching positions. This is a conservative approach based on short-read metagenomes, that can be changed here.", type=float, metavar="FLOAT")
     groupD.add_argument("--snv-codon-position", help="The maximum percentage of SNVs that are allowed in the 3rd codon position of the variable region.", type=float, default=0.33, metavar="FLOAT")
 
-    groupE = parser.add_argument_group('CONTIGS AND PROFILE DB INPUT ARGUMENTS', "Options for using the Contigs.db and Profile.db input for this program")
-    groupE.add_argument("-s","--distance-between-snv", help="Length of bp between SNVs for them to be added to the high SNV density window. Default = 5 ", type=int, default=8, metavar="INT")
-    groupE.add_argument("-r","--minimum-range-size", help="Minimum length of SNVs window. Default = 5", type=int, default=5, metavar="INT")
-    groupE.add_argument("--variable-buffer-length", help="Length of bp added to your high SNV density 'window'. Default = 35", type=int, default=35)
-    groupE.add_argument("-d","--departure-from-reference-percentage", help="Minimum departure from reference to consider a SNV. Default is 0.1", type=float, default=0.1)
-    groupE.add_argument("-I","--hmm-usage", required = True, help="The name of the HMM run with your Contigs.db, ideally the 'Reverse_Transcriptase' HMM, or your own HMM of reverse transcriptases "
-                        "(type: 6 clades of DGR Retroelements from doi.org/10.1038/s41467-021-23402-7 including other known reverse transcriptases). You can "
-                        "provide a comma-separated list of names for multiple profiles (but in that case don't put a space between each profile name). As a "
-                        f"reminder here is the list of anvi'o installed profiles available to you: {available_hmm_sources_pretty}. This option is mandatory "
-                        "for reporting DGRs, however anvi'o does not want to tell you what to do, so please proceed",type=str, default = None)
-
     groupF = parser.add_argument_group('OUTPUT DIRECTORY', "Where to put all the output files.")
     groupF.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
     groupF.add_argument("--parameter-output", help="Add this flag if you want to output the parameters and their values you have input in a csv file", action="store_true")
     groupF.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
 
-    groupG = parser.add_argument_group('COLLECTIONS MODE', "Options for collections mode. This is when you want to restrict your search to an individual collection, where anvi'o will look in bins for DGRs, importantly working using contigs not splits.")
-    groupG.add_argument("--collections-mode", help="The flag to use that searches through specified splits that are in the collection that is specified with the '-C / --collection' flag.", action = "store_true")
-    groupG.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'help':"The name of the singular collection that you want to search for DGRs in"}))
-
     groupH = parser.add_argument_group('REPORTING GENOMIC CONTEXT AROUND DGRS',
-                    "Once the DGRs are computed, anvi'o can go back to contigs where they are "
-                    "found, and for each DGR site report the surrounding genes and their functions as flat "
+                    "Once the DGRs are computed, anvi'o can go back to contigs where they are found, and for each DGR site report the surrounding genes and their functions as flat "
                     "text files in the output directory so you can actually take quick look at them.")
-    groupH.add_argument('--skip-recovering-genomic-context', default=False, action="store_true", help="Of course "
-                    "you can skip this step because why should anyone have nice things.")
-    groupH.add_argument('--num-genes-to-consider-in-context', default=3, type=int, help="With this parameter you "
-                    "can adjust the number of genes anvi'o should consider to characterize the genomic context "
-                    "surrounding DGRs. If you set nothing here, anvi'o will go 3 genes upstream from each DGRs "
-                    "VR and 3 genes downstream of each VR. If there are not "
-                    "enough genes in the contig given the position of either of the VRs, anvio' will "
-                    "report whatever it can.", metavar="INT")
+    groupH.add_argument('--skip-recovering-genomic-context', default=False, action="store_true", help="Of course you can skip this step because why should anyone have nice things.")
+    groupH.add_argument('--num-genes-to-consider-in-context', default=3, type=int, help="With this parameter you can adjust the number of genes anvi'o should consider to characterize the genomic context "
+                    "surrounding DGRs. If you set nothing here, anvi'o will go 3 genes upstream from each DGRs VR and 3 genes downstream of each VR. If there are not enough genes in the contig given the position of either of the VRs, anvio' will report whatever it can.", metavar="INT")
 
     groupI = parser.add_argument_group('COMPUTING VARIABLE REGION VARIABILITY PROFILING', "What is the "
                     "proportion of variable regions represented across samples? A multi million question "
