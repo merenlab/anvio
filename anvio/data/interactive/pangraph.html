@@ -149,9 +149,9 @@
 
                     <div class="row align-items-center">
                       <div class="col-12 d-flex mb-1">
-                        <div class="col-2">
+                        <div class="col-1">
                         </div>
-                        <div class="col-8 d-flex align-items-center">
+                        <div class="col-9 d-flex align-items-center">
                           Color core 
                         </div>
                         <div class="d-flex col-2">
@@ -159,9 +159,9 @@
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
-                        <div class="col-2">
+                        <div class="col-1">
                         </div>
-                        <div class="col-8 d-flex align-items-center">
+                        <div class="col-9 d-flex align-items-center">
                           Color accessory 
                         </div>
                         <div class="d-flex col-2">
@@ -169,9 +169,9 @@
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
-                        <div class="col-2">
+                        <div class="col-1">
                         </div>
-                        <div class="col-8 d-flex align-items-center">
+                        <div class="col-9 d-flex align-items-center">
                           Color paralog 
                         </div>
                         <div class="d-flex col-2">
@@ -179,9 +179,9 @@
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
-                        <div class="col-2">
+                        <div class="col-1">
                         </div>
-                        <div class="col-8 d-flex align-items-center">
+                        <div class="col-9 d-flex align-items-center">
                           Color trna 
                         </div>
                         <div class="d-flex col-2">
@@ -189,9 +189,9 @@
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
-                        <div class="col-2">
+                        <div class="col-1">
                         </div>
-                        <div class="col-8 d-flex align-items-center">
+                        <div class="col-9 d-flex align-items-center">
                           Color singleton 
                         </div>
                         <div class="d-flex col-2">
@@ -199,9 +199,9 @@
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
-                        <div class="col-2">
+                        <div class="col-1">
                         </div>
-                        <div class="col-8 d-flex align-items-center">
+                        <div class="col-9 d-flex align-items-center">
                           Color rearranged 
                         </div>
                         <div class="d-flex col-2">
@@ -209,9 +209,9 @@
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
-                        <div class="col-2">
+                        <div class="col-1">
                         </div>
-                        <div class="col-8 d-flex align-items-center">
+                        <div class="col-9 d-flex align-items-center">
                           Color layers 
                         </div>
                         <div class="d-flex col-2">
@@ -219,49 +219,26 @@
                         </div>
                       </div>
 
-                      <div class="col-12 d-flex mb-1">
-                        <div class="col-2">
-                        </div>
-                        <div class="col-8 d-flex align-items-center">
-                          Color backbone 
-                        </div>
-                        <div class="d-flex col-2">
-                          <input type="color" class="form-control form-control-color flex-fill p-0 border-0" id=back_color name=back_color value="#000000" aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
-                        </div>
-                      </div>
-
-                      <div class="col-12 d-flex mb-1">
-                        <div class="col-2">
-                        </div>
-                        <div class="col-8 d-flex align-items-center">
-                          Color non-backbone
-                        </div>
-                        <div class="d-flex col-2">
-                          <input type="color" class="form-control form-control-color flex-fill p-0 border-0" id=non_back_color name=non_back_color value="#000000" aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
-                        </div>
-                      </div>
-                      
-
                       <div class="col-12 d-flex mb-1 py-1">      
-                        <div class="col-2 d-flex align-items-center">
+                        <div class="col-1 d-flex align-items-center">
                           <input type="checkbox" id="flexsaturation" name="flexsaturation" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top" checked>
                         </div>
-                        <div class="col-10 d-flex align-items-center">
+                        <div class="col-11 d-flex align-items-center">
                           Saturation by significance
                         </div>
                       </div>                
                     </div>
 
-                    <span class="settings-secondary-header mb-3 mt-3">Layers</span>
+                    <span class="settings-secondary-header mb-3 mt-3">Static Layers</span>
 
-                    <div id="layers" class="row align-items-center">
+                    <div id="global_layers" class="row align-items-center">
                       <div class="col-12 d-flex mb-1">
-                        <div class="col-2 d-flex align-items-center">
+                        <div class="col-1 d-flex align-items-center">
                           <div class="form-switch d-flex">
                             <input class="" type="checkbox" id="flexarrow" name="flexarrow" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top" checked>
                           </div>
                         </div>
-                        <div class="col-8 d-flex align-items-center">
+                        <div class="col-9 d-flex align-items-center">
                           Orientation arrow
                         </div>
                         <div class="d-flex col-2">
@@ -269,18 +246,35 @@
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
-                        <div class="col-2 d-flex align-items-center">
+                        <div class="col-1 d-flex align-items-center">
                           <div class="form-switch d-flex">
-                            <input class="" type="checkbox" id="flexbackbone" name="flexbackbone" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top" checked>
+                            <input class="" type="checkbox" id="flexglobalbackbone" name="flexglobalbackbone" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top" checked>
                           </div>
                         </div>
-                        <div class="col-8 d-flex align-items-center">
+                        <div class="col-5 d-flex align-items-center">
                           Backbone/non-backbone
                         </div>
                         <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="backbone" name="backbone" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <input type="color" class="form-control form-control-color flex-fill p-0 border-0" id=back_color name=back_color value="#000000" aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                        </div>
+                      
+                        <div class="d-flex col-2">
+                          <input type="color" class="form-control form-control-color flex-fill p-0 border-0" id=non_back_color name=non_back_color value="#000000" aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                        </div>
+                        <div class="d-flex col-2">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="globalbackbone" name="globalbackbone" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
                         </div>
                       </div>
+                    </div>
+
+                    <span class="settings-secondary-header mb-3 mt-3">Local Layers</span>
+
+                    <div id="local_layers" class="row align-items-center">
+                    </div>
+
+                    <span class="settings-secondary-header mb-3 mt-3">Genome Tracks</span>
+
+                    <div id="genome_tracks" class="row align-items-center">
                     </div>
                     
                     <span class="settings-secondary-header mb-3 mt-3">Phylogenie</span>
@@ -288,17 +282,17 @@
                     <div class="row align-items-center">
 
                       <div class="col-12 d-flex mb-1 py-1">      
-                        <div class="col-2 d-flex align-items-center">
+                        <div class="col-1 d-flex align-items-center">
                           <input type="checkbox" id="flextree" name="flextree" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">
                         </div>
-                        <div class="col-10 d-flex align-items-center">
+                        <div class="col-11 d-flex align-items-center">
                           Show phylogenic tree
                         </div>
                       </div>      
                       <div class="col-12 d-flex mb-1">
-                        <div class="col-2 d-flex align-items-center">
+                        <div class="col-1 d-flex align-items-center">
                         </div>
-                        <div class="col-8 d-flex align-items-center">
+                        <div class="col-9 d-flex align-items-center">
                           Tree length
                         </div>
                         <div class="d-flex col-2">
@@ -306,9 +300,9 @@
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
-                        <div class="col-2 d-flex align-items-center">
+                        <div class="col-1 d-flex align-items-center">
                         </div>
-                        <div class="col-8 d-flex align-items-center">
+                        <div class="col-9 d-flex align-items-center">
                           Tree offset
                         </div>
                         <div class="d-flex col-2">
@@ -316,9 +310,9 @@
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
-                        <div class="col-2 d-flex align-items-center">
+                        <div class="col-1 d-flex align-items-center">
                         </div>
-                        <div class="col-8 d-flex align-items-center">
+                        <div class="col-9 d-flex align-items-center">
                           Tree line thickness
                         </div>
                         <div class="d-flex col-2">
@@ -331,9 +325,9 @@
 
                     <div class="row align-items-center mb-3">
                       <div class="col-12 d-flex mb-1">
-                        <div class="col-2">
+                        <div class="col-1">
                         </div>
-                        <div class="col-8 d-flex align-items-center">
+                        <div class="col-9 d-flex align-items-center">
                           Node x-distance
                         </div>
                         <div class="d-flex col-2">
@@ -341,9 +335,9 @@
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
-                        <div class="col-2">
+                        <div class="col-1">
                         </div>
-                        <div class="col-8 d-flex align-items-center">
+                        <div class="col-9 d-flex align-items-center">
                           Node y-distance
                         </div>
                         <div class="d-flex col-2">
@@ -351,9 +345,9 @@
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
-                        <div class="col-2">
+                        <div class="col-1">
                         </div>
-                        <div class="col-8 d-flex align-items-center">
+                        <div class="col-9 d-flex align-items-center">
                           Node radius
                         </div>
                         <div class="d-flex col-2">
@@ -361,9 +355,9 @@
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
-                        <div class="col-2">
+                        <div class="col-1">
                         </div>
-                        <div class="col-8 d-flex align-items-center">
+                        <div class="col-9 d-flex align-items-center">
                           Node line thickness
                         </div>
                         <div class="d-flex col-2">
@@ -371,9 +365,9 @@
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
-                        <div class="col-2">
+                        <div class="col-1">
                         </div>
-                        <div class="col-8 d-flex align-items-center">
+                        <div class="col-9 d-flex align-items-center">
                           Edge thickness
                         </div>
                         <div class="d-flex col-2">
@@ -386,17 +380,17 @@
 
                     <div class="row align-items-center mb-3">
                       <div class="col-12 d-flex mb-1 py-1">      
-                        <div class="col-2 d-flex align-items-center">
+                        <div class="col-1 d-flex align-items-center">
                           <input type="checkbox" id="flexlinear" name="flexlinear" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">
                         </div>
-                        <div class="col-10 d-flex align-items-center">
+                        <div class="col-11 d-flex align-items-center">
                           Linear graph layout
                         </div>
                       </div>      
                       <div class="col-12 d-flex mb-1">
-                        <div class="col-2">
+                        <div class="col-1">
                         </div>
-                        <div class="col-8 d-flex align-items-center">
+                        <div class="col-9 d-flex align-items-center">
                           Line graph thickness
                         </div>
                         <div class="d-flex col-2">
@@ -404,9 +398,9 @@
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
-                        <div class="col-2 d-flex align-items-center">
+                        <div class="col-1 d-flex align-items-center">
                         </div>
-                        <div class="col-8 d-flex align-items-center">
+                        <div class="col-9 d-flex align-items-center">
                           Label size
                         </div>
                         <div class="d-flex col-2">
@@ -414,9 +408,9 @@
                         </div>
                       </div>
                     <div class="col-12 d-flex mb-1">
-                        <div class="col-2 d-flex align-items-center">
+                        <div class="col-1 d-flex align-items-center">
                         </div>
-                        <div class="col-8 d-flex align-items-center">
+                        <div class="col-9 d-flex align-items-center">
                           Label offset
                         </div>
                         <div class="d-flex col-2">
@@ -424,9 +418,9 @@
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
-                        <div class="col-2 d-flex align-items-center">
+                        <div class="col-1 d-flex align-items-center">
                         </div>
-                        <div class="col-8 d-flex align-items-center">
+                        <div class="col-9 d-flex align-items-center">
                           Search hit size
                         </div>
                         <div class="d-flex col-2">
@@ -434,9 +428,9 @@
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
-                        <div class="col-2 d-flex align-items-center">
+                        <div class="col-1 d-flex align-items-center">
                         </div>
-                        <div class="col-8 d-flex align-items-center">
+                        <div class="col-9 d-flex align-items-center">
                           Inner layer margin
                         </div>
                         <div class="d-flex col-2">
@@ -444,9 +438,9 @@
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
-                        <div class="col-2 d-flex align-items-center">
+                        <div class="col-1 d-flex align-items-center">
                         </div>
-                        <div class="col-8 d-flex align-items-center">
+                        <div class="col-9 d-flex align-items-center">
                           Outer layer margin
                         </div>
                         <div class="d-flex col-2">
@@ -454,9 +448,9 @@
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
-                        <div class="col-2 d-flex align-items-center">
+                        <div class="col-1 d-flex align-items-center">
                         </div>
-                        <div class="col-8 d-flex align-items-center">
+                        <div class="col-9 d-flex align-items-center">
                           Additional inner radius
                         </div>
                         <div class="d-flex col-2">
@@ -464,9 +458,9 @@
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
-                        <div class="col-2">
+                        <div class="col-1">
                         </div>
-                        <div class="col-8 d-flex align-items-center">
+                        <div class="col-9 d-flex align-items-center">
                           Pangenome Graph start angle
                         </div>
                         <div class="d-flex col-2">
@@ -474,9 +468,9 @@
                         </div>
                       </div>
                     <div class="col-12 d-flex mb-1">
-                        <div class="col-2">
+                        <div class="col-1">
                         </div>
-                        <div class="col-8 d-flex align-items-center">
+                        <div class="col-9 d-flex align-items-center">
                           Pangenome Graph end angle
                         </div>
                         <div class="d-flex col-2">
@@ -484,9 +478,9 @@
                         </div>
                       </div>
                     <div class="col-12 d-flex mb-1">
-                        <div class="col-2">
+                        <div class="col-1">
                         </div>
-                        <div class="col-8 d-flex align-items-center">
+                        <div class="col-9 d-flex align-items-center">
                           Number position annotations
                         </div>
                         <div class="d-flex col-2">
@@ -498,12 +492,12 @@
                     <span class="settings-secondary-header mb-3 mt-3">Graph</span>
                     <div class="row align-items-center">
                       <div class="col-12 d-flex mb-1">
-                        <div class="col-2 d-flex align-items-center">
+                        <div class="col-1 d-flex align-items-center">
                           <div class="form-switch d-flex">
                             <input class="" type="checkbox" id="flexcondtr" name="flexcondtr" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top" checked>
                           </div>
                         </div>
-                        <div class="col-8 d-flex align-items-center">
+                        <div class="col-9 d-flex align-items-center">
                           Merge nodes into groups
                         </div>
                         <div class="d-flex col-2">
@@ -511,12 +505,12 @@
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
-                        <div class="col-2 d-flex align-items-center">
+                        <div class="col-1 d-flex align-items-center">
                           <div class="form-switch d-flex">
                             <input class="" type="checkbox" id="flexmaxlength" name="flexmaxlength" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top" checked>
                           </div>
                         </div>
-                        <div class="col-8 d-flex align-items-center">
+                        <div class="col-9 d-flex align-items-center">
                           Allowed max edge length
                         </div>
                         <div class="d-flex col-2">
@@ -524,12 +518,12 @@
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
-                        <div class="col-2 d-flex align-items-center">
+                        <div class="col-1 d-flex align-items-center">
                           <div class="form-switch d-flex">
                             <input class="" type="checkbox" id="flexgroupcompress" name="flexgroupcompress" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top" checked>
                           </div>
                         </div>
-                        <div class="col-8 d-flex align-items-center">
+                        <div class="col-9 d-flex align-items-center">
                           Group size compression
                         </div>
                         <div class="col-2 d-flex">
@@ -558,10 +552,10 @@
                       <div class="row grid align-items-center" id="bingrid">
                         <div class="col-12" id="bin_1_grid">
                           <div class="row align-items-center">
-                            <div class="col-2">
+                            <div class="col-1">
                               <input type="radio" name="binradio" id="bin_1_radio" bin_id="bin_1" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top" checked>
                             </div>
-                            <div class="col-6">
+                            <div class="col-7">
                               <input type="text" class="form-control flex-fill p-0 border-0" style= "background-color: #e9ecef;" value="Bin_1" id="bin_1_name" aria-describedby="">
                             </div>
                             <div class="d-flex col-2">

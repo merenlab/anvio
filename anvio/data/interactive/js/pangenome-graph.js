@@ -220,9 +220,9 @@ class PangenomeGraphUserInterface {
             }
         }
         
-        if ($('#flexbackbone').prop('checked') == true){
+        if ($('#flexglobalbackbone').prop('checked') == true){
         //TEST BACKBONE NON BACKBONE LAYER
-            var back_width = parseFloat($('#backbone')[0].value);
+            var back_width = parseFloat($('#globalbackbone')[0].value);
             
             var layer_width = back_width
             var layer_middle_start = current_middle_stop + inner_margin
@@ -652,7 +652,7 @@ class PangenomeGraphUserInterface {
         var time = end - start;
         console.log('SVG drawing lines', time, 'ms.')
         
-        var backbone_pos = [];
+        var globalbackbone_pos = [];
         
         var start = new Date().getTime();
         var global_values = []
@@ -671,7 +671,7 @@ class PangenomeGraphUserInterface {
                 var node_type = node['type']
                 
                 if (node['layer']['backbone'] == true) {
-                    backbone_pos.push(k_x)
+                    globalbackbone_pos.push(k_x)
                 }
             
                 if (!node_group) {
@@ -754,9 +754,17 @@ class PangenomeGraphUserInterface {
                 
                     if ($('#flex' + layer_name).prop('checked') == true){
                 
-                        var value = node['layer'][layer_name]
-                        var max = this.layers_max[layer_name]
-                        var min = this.layers_min[layer_name]
+                        var value = node['layer'][layer_name] 
+                        var max = parseFloat($('#' + layer_name + '_max')[0].value);
+                        var min = parseFloat($('#' + layer_name + '_min')[0].value);
+
+                        if (value < min) {
+                            value = min
+                        }
+                        
+                        if (value > max) {
+                            value = max
+                        }
                         
                         var [layer_width, layer_start, layer_stop] = outer_layers[layer_name]
                         var k_y_size = sum_middle_layer + k_y * node_distance_y
@@ -775,18 +783,18 @@ class PangenomeGraphUserInterface {
         
         global_values.push(k_x)
         
-        if ($('#flexbackbone').prop('checked') == true){
+        if ($('#flexglobalbackbone').prop('checked') == true){
             var k_x = 0
             while (k_x <= this.global_x) {
         
-                var [backbone_size, backbone_start, backbone_stop] = middle_layers['back_vs_non_back']
+                var [globalbackbone_size, globalbackbone_start, globalbackbone_stop] = middle_layers['back_vs_non_back']
         
                 var i_x = k_x - 0.5
-                var i_y = backbone_start
+                var i_y = globalbackbone_start
                 var j_x = k_x + 0.5
-                var j_y = backbone_stop
+                var j_y = globalbackbone_stop
                 
-                if (backbone_pos.includes(k_x)) {
+                if (globalbackbone_pos.includes(k_x)) {
                     var color = back_color
                 } else {
                     var color = non_back_color
@@ -1344,7 +1352,6 @@ class PangenomeGraphUserInterface {
             contentType: "application/json",
             dataType: "json",
             success: (data) => {
-                console.log(data)
                 this.data = data['data'];
                 console.log('JSON loaded.');
                 this.initialize_variables();
@@ -1883,7 +1890,8 @@ class PangenomeGraphUserInterface {
     initialize_variables() {
         this.nodes = this.data['nodes'];
         this.edges = this.data['edges'];
-        this.layers = this.data['meta']['layers'].filter(item => item !== 'backbone');
+        // this.layers = this.data['meta']['layers'].filter(item => item !== 'backbone');
+        this.layers = this.data['meta']['layers'];
         this.genomes = this.data['meta']['genome_names'];
         this.functional_annotation_sources_available = this.data['meta']['gene_function_sources'];
 
@@ -1955,6 +1963,14 @@ class PangenomeGraphUserInterface {
                 $('#' + setting)[0].value = value;
             }
         }
+
+        for(var [layer, max_value] of Object.entries(this.layers_max)) {
+            $('#' + layer + '_max')[0].value = max_value;
+        }
+
+        for(var [layer, min_value] of Object.entries(this.layers_min)) {
+            $('#' + layer + '_min')[0].value = min_value;
+        }
     }
     
     initialize_user_interface() {
@@ -1998,14 +2014,22 @@ class PangenomeGraphUserInterface {
         for (var layer of this.layers) {
             // if ($('#flex' + layer + '').length == 0) {
                 var element = $('<div class="col-12 d-flex mb-1"></div>').append(
-                    $('<div class="col-2 d-flex align-items-center"></div>').append(
+                    $('<div class="col-1 d-flex align-items-center"></div>').append(
                         $('<div class="form-switch d-flex"></div>').append(
                             $('<input class="" type="checkbox" id="flex' + layer + '" name="flex' + layer + '" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip">')
                         )
                     )
                 ).append(
-                    $('<div class="col-8 d-flex align-items-center"></div>').append(
+                    $('<div class="col-5 d-flex align-items-center"></div>').append(
                         layer
+                    )
+                ).append(
+                    $('<div class="d-flex col-2"></div>').append(
+                        $('<input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="' + layer + '_min" name="' + layer + '_min" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">')
+                    )
+                ).append(
+                    $('<div class="d-flex col-2"></div>').append(
+                        $('<input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="' + layer + '_max" name="' + layer + '_max" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">')
                     )
                 ).append(
                     $('<div class="d-flex col-2"></div>').append(
@@ -2025,7 +2049,7 @@ class PangenomeGraphUserInterface {
                     )
                 );
                 
-                $('#layers').append(element);
+                $('#local_layers').append(element);
             // }
         }
 
@@ -2036,13 +2060,13 @@ class PangenomeGraphUserInterface {
         for (var genome of this.genomes) {  
             $('#genomecolors').append(
                 $('<div class="col-12 d-flex mb-1">').append(
-                    $('<div class="col-2 d-flex align-items-center">').append(
+                    $('<div class="col-1 d-flex align-items-center">').append(
                         $('<div class="form-switch d-flex">').append(
                             $('<input class="" type="checkbox" id="flex' + genome + '" name="' + genome + '" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top">')
                         )
                     )
                 ).append(
-                    $('<div class="col-7 d-flex align-items-center">').append(
+                    $('<div class="col-8 d-flex align-items-center">').append(
                         genome
                     )
                 ).append(
@@ -2070,13 +2094,13 @@ class PangenomeGraphUserInterface {
     
             // if ($('#flex' + genome + 'layer').length == 0) {
             var element = $('<div class="col-12 d-flex mb-1"></div>').append(
-                $('<div class="col-2 d-flex align-items-center"></div>').append(
+                $('<div class="col-1 d-flex align-items-center"></div>').append(
                     $('<div class="form-switch d-flex"></div>').append(
                         $('<input class="" type="checkbox" id="flex' + genome + 'layer" name="flex' + genome + 'layer" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">')
                     )
                 )
             ).append(
-                $('<div class="col-8 d-flex align-items-center"></div>').append(
+                $('<div class="col-9 d-flex align-items-center"></div>').append(
                     genome
                 )
             ).append(
@@ -2085,7 +2109,7 @@ class PangenomeGraphUserInterface {
                 )
             );
 
-            $('#layers').append(element);
+            $('#genome_tracks').append(element);
         }
         // }
         // }
@@ -2242,13 +2266,13 @@ class PangenomeGraphUserInterface {
             }
         })
         
-        $('#flexbackbone').change(function() {
+        $('#flexglobalbackbone').change(function() {
             if ($(this).prop('checked') == true){
-                $('#backbone')[0].value = 100;
-                $('#backbone').prop('disabled', false);
+                $('#globalbackbone')[0].value = 100;
+                $('#globalbackbone').prop('disabled', false);
             } else {
-                $('#backbone')[0].value = 0;
-                $('#backbone').prop('disabled', true);
+                $('#globalbackbone')[0].value = 0;
+                $('#globalbackbone').prop('disabled', true);
             }
         })
         
