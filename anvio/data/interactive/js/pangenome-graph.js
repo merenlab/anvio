@@ -2512,10 +2512,10 @@ class PangenomeGraphUserInterface {
         var layers = Object.keys(this.data['meta']['layers'])
         var basic_info = {}
         
-        for (var layer_name of layers) {
-            if ($('#flex' + layer_name).prop('checked') == true){
-                basic_info[layer_name] = this.data['nodes'][gene_cluster_id]['layer'][layer_name]
-            }
+        for (var layer_name of this.layers) {
+            // if ($('#flex' + layer_name).prop('checked') == true){
+            basic_info[layer_name] = this.data['nodes'][gene_cluster_id]['layer'][layer_name]
+            // }
         }
         
         if (add_align == 1) {
