@@ -2526,18 +2526,20 @@ class PangenomeGraphUserInterface {
             basic_layer_table += `<table class="table table-striped table-bordered sortable">`;
         }
         
-        basic_layer_table += `<tbody>`;
-        basic_layer_table += `<thead class=""><tr>`;
-        for (const [key, value] of Object.entries(basic_info)) {
-            basic_layer_table += `<th scope="row">` + key + `</th>`;
-        }
-        basic_layer_table += `</tr></thead><tbody>`;
+        basic_layer_table += `<thead><tr>`;
         
-        basic_layer_table += `<tbody><tr>`;
+        basic_layer_table += `<th scope="col">Item</th>`;
+        basic_layer_table += `<th scope="col">Value</th>`;
+        
+        basic_layer_table += `</tr></thead>`;
+        basic_layer_table += `<tbody>`;
         for (const [key, value] of Object.entries(basic_info)) {
+            basic_layer_table += `<tr>`
+            basic_layer_table += `<td>` + key + `</td>`;
             basic_layer_table += `<td>` + value + `</td>`;
+            basic_layer_table += `</tr>`;
         }
-        basic_layer_table += `</tbody></tr></table>`;
+        basic_layer_table += `</tbody></table>`;
         
         return basic_layer_table;
 
@@ -2568,19 +2570,18 @@ class PangenomeGraphUserInterface {
             basic_info_table += `<table class="table table-striped table-bordered sortable">`;
         }
         
-        basic_info_table += `<tbody>`;
         // basic_info_table += `<thead class="thead-light"><tr>`;
-        basic_info_table += `<thead class=""><tr>`;
+        basic_info_table += `<thead><tr>`;
         for (var [key, value] of Object.entries(basic_info)) {
             basic_info_table += `<th scope="row">` + key + `</th>`;
         }
-        basic_info_table += `</tr></thead><tbody>`;
-        
-        basic_info_table += `<tbody><tr>`;
+        basic_info_table += `</tr></thead>`;
+        basic_info_table += `<tbody>`;
+        basic_info_table += `<tr>`;
         for (var [key, value] of Object.entries(basic_info)) {
             basic_info_table += `<td>` + value + `</td>`;
         }
-        basic_info_table += `</tbody></tr></table>`;
+        basic_info_table += `</tr></tbody></table>`;
         
         return basic_info_table;
     }
@@ -2589,10 +2590,10 @@ class PangenomeGraphUserInterface {
         
         if (add_align == 1) {
           var functions_table = `<p class="settings-secondary-header mb-3 mt-3">CONSENSUS FUNCTIONAL ANNOTATIONS</p>`;
-          functions_table += `<table class="table table-striped sortable" gc_id="` + gene_cluster_id + `" id="node_functions_table">`;
+          functions_table += `<table class="table table-striped table-bordered sortable" gc_id="` + gene_cluster_id + `" id="node_functions_table">`;
         } else {
           var functions_table = ''
-          functions_table += `<table class="table table-striped sortable">`;
+          functions_table += `<table class="table table-striped table-bordered sortable">`;
         }
         functions_table += `<thead><tr>`;
         functions_table += `<th scope="col">Source</th>`;
@@ -2623,7 +2624,7 @@ class PangenomeGraphUserInterface {
             functions_table += `<td>` + func + `</td>`;
             functions_table += `</tr>`;
         }
-        functions_table += `</tbody></tr></table>`;
+        functions_table += `</tbody></table>`;
     
         return functions_table
     }
