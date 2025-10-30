@@ -827,7 +827,7 @@ class GenbankToAnvio:
                 end = location[1] # end coordinate
 
                 # setting direction to "f" or "r":
-                if gene.strand == 1:
+                if gene.location.strand == 1:
                     direction="f"
                 else:
                     direction="r"
