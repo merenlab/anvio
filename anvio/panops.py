@@ -1417,8 +1417,20 @@ class PangenomeGraph():
         region_sides_df, nodes_df, gene_calls_df = self.pangenome_graph.summarize()
         additional_info = pd.merge(region_sides_df.reset_index(drop=False), nodes_df.reset_index(drop=False), how="left", on="region_id").set_index('syn_cluster')
 
+        # for item, data in self.pangenome_graph.graph.nodes(data='layer'):
+        #     print(item, data)
+
         for index, line in additional_info.iterrows():
-            self.pangenome_graph.graph.nodes()[index]['layer']['backbone'] = True if line["motif"] == "BB" else False
+            # print(index, line["motif"])
+            if line["motif"] == "BB":
+                # print('yes')
+                self.pangenome_graph.graph.nodes[index]['layer'] = self.pangenome_graph.graph.nodes[index]['layer'] | {'backbone': 1}
+            else:
+                # print('no')
+                self.pangenome_graph.graph.nodes[index]['layer'] = self.pangenome_graph.graph.nodes[index]['layer'] | {'backbone': 0}
+
+        # for item, data in self.pangenome_graph.graph.nodes(data='layer'):
+        #     print(item, data)
 
         gene_calls_df.to_csv(os.path.join(self.output_dir, 'gene_calls_df.tsv'), sep='\t')
         region_sides_df.to_csv(os.path.join(self.output_dir, 'region_sides_df.tsv'), sep='\t')
@@ -1806,6 +1818,7 @@ class PangenomeGraph():
         self.import_values = import_values_found
 
         number_gene_calls = {}
+        layers_data = {}
         for genome, genome_group in self.pangenome_data_df.groupby(["genome"]):
             extra_connections = []
 
@@ -1839,16 +1852,44 @@ class PangenomeGraph():
                                 'gene_calls': {genome: gene_caller_id_i},
                                 'synteny': {genome: synteny_i},
                                 'type': syn_cluster_type_i,
-                                'layer': group[self.import_values].loc[index_i].to_dict() if self.import_values else {}
+                                # 'layer': group[self.import_values].loc[index_i].to_dict() if self.import_values else {}
                             }
+
+                            layer_group_i = group[self.import_values].loc[index_i].to_dict()
+
+                            if 'start' in layer_group_i and 'stop' in layer_group_i:
+                                layer_group_i['length'] = abs(layer_group_i['stop'] - layer_group_i['start'])
+
+                            for layer, value in layer_group_i.items():
+                                if syn_cluster_i not in layers_data:
+                                    layers_data[syn_cluster_i] = {layer: [value]}
+                                else:
+                                    if layer not in layers_data[syn_cluster_i]:
+                                        layers_data[syn_cluster_i][layer] = [value]
+                                    else:
+                                        layers_data[syn_cluster_i][layer] += [value]
 
                             node_attributes_j = {
                                 'gene_cluster': gene_cluster_j,
                                 'gene_calls': {genome: gene_caller_id_j},
                                 'synteny': {genome: synteny_j},
                                 'type': syn_cluster_type_j,
-                                'layer': group[self.import_values].loc[index_j].to_dict() if self.import_values else {}
+                                # 'layer': group[self.import_values].loc[index_j].to_dict() if self.import_values else {}
                             }
+
+                            layer_group_j = group[self.import_values].loc[index_i].to_dict()
+
+                            if 'start' in layer_group_j and 'stop' in layer_group_j:
+                                layer_group_j['length'] = abs(layer_group_j['stop'] - layer_group_j['start'])
+
+                            for layer, value in layer_group_j.items():
+                                if syn_cluster_j not in layers_data:
+                                    layers_data[syn_cluster_j] = {layer: [value]}
+                                else:
+                                    if layer not in layers_data[syn_cluster_j]:
+                                        layers_data[syn_cluster_j][layer] = [value]
+                                    else:
+                                        layers_data[syn_cluster_j][layer] += [value]
 
                             edge_attributes = {
                                 'weight': 1.0 + add_weight,
@@ -1867,8 +1908,22 @@ class PangenomeGraph():
                             'gene_calls': {genome: gene_caller_id_i},
                             'synteny': {genome: synteny_i},
                             'type': syn_cluster_type_i,
-                            'layer': group[self.import_values].loc[index_i].to_dict() if self.import_values else {}
+                            # 'layer': group[self.import_values].loc[index_i].to_dict() if self.import_values else {}
                         }
+
+                        layer_group_i = group[self.import_values].loc[index_i].to_dict()
+
+                        if 'start' in layer_group_i and 'stop' in layer_group_i:
+                                layer_group_i['length'] = abs(layer_group_i['stop'] - layer_group_i['start'])
+
+                        for layer, value in layer_group_i.items():
+                            if syn_cluster_i not in layers_data:
+                                layers_data[syn_cluster_i] = {layer: [value]}
+                            else:
+                                if layer not in layers_data[syn_cluster_i]:
+                                    layers_data[syn_cluster_i][layer] = [value]
+                                else:
+                                    layers_data[syn_cluster_i][layer] += [value]
 
                         self.pangenome_graph.add_node_to_graph(syn_cluster_i, node_attributes_i)
 
@@ -1897,6 +1952,13 @@ class PangenomeGraph():
 
                     if extra_connections_syn_i != extra_connections_syn_j:
                         self.pangenome_graph.add_edge_to_graph(extra_connections_syn_i, extra_connections_syn_j, edge_attributes)
+
+        for syn_cluster, layer_data in layers_data.items():
+
+            # print(syn_cluster, layer_data)
+
+            for layer, value_list in layer_data.items():
+                self.pangenome_graph.graph.nodes[syn_cluster]['layer'] = self.pangenome_graph.graph.nodes[syn_cluster]['layer'] | {layer: sum(value_list) / len(value_list)}
 
         for genome in number_gene_calls:
             self.run.info_single(f"Added {number_gene_calls[genome]} gene calls from {genome}.")

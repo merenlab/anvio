@@ -670,7 +670,7 @@ class PangenomeGraphUserInterface {
                 var node_group = node['group']
                 var node_type = node['type']
                 
-                if (node['layer']['backbone'] == true) {
+                if (node['layer']['backbone'] == 1) {
                     globalbackbone_pos.push(k_x)
                 }
             

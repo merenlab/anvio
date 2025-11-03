@@ -330,7 +330,6 @@ class PangenomeGraphManager():
                 else:
                     regions_info_dict[region_id] += [(node_x_position, node_y_position, node, genomes)]
 
-        # print(node_regions_dict)
         # all_ghost_max_y_positions = {}
 
         # TODO height depends on the position of empty edges (should be fixed already)
