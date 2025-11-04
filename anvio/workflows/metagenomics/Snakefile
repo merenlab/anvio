@@ -981,7 +981,7 @@ def input_for_anvi_merge(wildcards):
 def configure_flag_files_for_anvi_merge_optional_inputs(wildcards, flag_file_name, run_flag):
     """
     Create the input list for anvi_merge optional flags, e.g.,
-    '{PROFILE_DIR}/{group}/{readset}/import_percent_of_reads_mapped.done'
+    '{PROFILE_DIR}/{group}/{readset}/layers-additional-data.txt'
 
     In 'all_against_all' mode: include ALL readsets.
     Otherwise: include only the readsets that map to this {group}.
@@ -1040,7 +1040,7 @@ rule gen_readme_file_for_unmerged_groups:
     input:
         contigs = ancient(M.get_contigs_db_path()),
         profiles = input_for_anvi_merge,
-        percent_of_reads_mapped_imported_flag = lambda wildcards: configure_flag_files_for_anvi_merge_optional_inputs(wildcards, 'import_percent_of_reads_mapped.done', run_import_percent_of_reads_mapped),
+        percent_of_reads_mapped_imported_flag = lambda wildcards: configure_flag_files_for_anvi_merge_optional_inputs(wildcards, 'layers-additional-data.txt', run_import_percent_of_reads_mapped),
         kraken_flag = lambda wildcards: configure_flag_files_for_anvi_merge_optional_inputs(wildcards, "import_krakenuniq_taxonomy.done", M.run_krakenuniq)
     output: os.path.join(M.dirs_dict["MERGE_DIR"], "{group}", "README.txt")
     params:
@@ -1072,7 +1072,7 @@ rule anvi_merge:
         # marking the contigs.db as ancient in order to ignore timestamps.
         contigs = ancient(M.get_contigs_db_path()),
         profiles = input_for_anvi_merge,
-        percent_of_reads_mapped_imported_flag = lambda wildcards: configure_flag_files_for_anvi_merge_optional_inputs(wildcards, 'import_percent_of_reads_mapped.done', run_import_percent_of_reads_mapped),
+        percent_of_reads_mapped_imported_flag = lambda wildcards: configure_flag_files_for_anvi_merge_optional_inputs(wildcards, 'layers-additional-data.txt', run_import_percent_of_reads_mapped),
         kraken_flag = lambda wildcards: configure_flag_files_for_anvi_merge_optional_inputs(wildcards, "import_krakenuniq_taxonomy.done", M.run_krakenuniq)
     output:
         profile = dirs_dict["MERGE_DIR"] + "/{group}/PROFILE.db",
@@ -1326,7 +1326,7 @@ def input_for_import_krakenuniq_taxonomy(wildcards):
     if run_import_percent_of_reads_mapped:
         # we include percent_of_reads_mapped_imported_flag as input here so that kraken and import_percent_of_reads_mapped will never run in parallel.
         # If they run in parallel it could cause trouble as they will try to write to the profile database at the same time. very bad.
-        D['percent_of_reads_mapped_imported_flag'] = os.path.join(dirs_dict["PROFILE_DIR"], wildcards.group, wildcards.readset, "import_percent_of_reads_mapped.done"),
+        D['percent_of_reads_mapped_imported_flag'] = os.path.join(dirs_dict["PROFILE_DIR"], wildcards.group, wildcards.readset, "layers-additional-data.txt"),
     return D
 
 
@@ -1386,101 +1386,52 @@ rule count_reads_in_fastq:
 
 
 rule import_percent_of_reads_mapped:
-    """Mapper-agnostic import of mapping stats into layers (BAM -> flagstat -> import -> export)."""
+    """Mapper-agnostic import of mapping stats into layers."""
     version: 1.0
     log:
         dirs_dict["LOGS_DIR"] + "/{group}-{readset}-import_percent_of_reads_mapped.log"
     input:
-        bam       = dirs_dict["MAPPING_DIR"] + "/{group}/{readset}.bam",
+        total_reads = dirs_dict["QC_DIR"] + "/{readset}-total_num_reads.txt",
         profiledb = dirs_dict["PROFILE_DIR"] + "/{group}/{readset}/PROFILE.db"
     output:
-        # keep legacy filenames/structure
-        done            = dirs_dict["PROFILE_DIR"] + "/{group}/{readset}/import_percent_of_reads_mapped.done",
-        total_reads     = dirs_dict["PROFILE_DIR"] + "/{group}/{readset}/total-num-reads.txt",
-        layers_txt      = dirs_dict["PROFILE_DIR"] + "/{group}/{readset}/layers-additional-data.txt",
-        layers_txt_updated = dirs_dict["PROFILE_DIR"] + "/{group}/{readset}/layers-additional-data-updated.txt"
+        layers_txt = dirs_dict["PROFILE_DIR"] + "/{group}/{readset}/layers-additional-data.txt",
+    params:
+        bam = dirs_dict["MAPPING_DIR"] + "/{group}/{readset}.bam",
     threads: 1
     resources: nodes = 1
     run:
-        import os, re, subprocess, shutil, tempfile
+        import subprocess, shlex
 
-        os.makedirs(os.path.dirname(output.done), exist_ok=True)
+        # read total number of reads from the counted file
+        with open(input.total_reads) as f:
+            reads_total = int(f.read().strip() or 0)
 
-        # 1) samtools flagstat
-        cmd = ["samtools", "flagstat", input.bam]
-        p = subprocess.run(cmd, capture_output=True, text=True)
-        with open(log[0], "a") as L:
-            L.write(" ".join(cmd) + "\n")
-            if p.returncode != 0:
-                L.write(p.stderr)
-                raise WorkflowError("samtools flagstat failed; see log.")
-            L.write(p.stdout)
 
-        # 2) parse totals
-        total = mapped = None
-        pct = None
-        for line in p.stdout.splitlines():
-            m = re.match(r"^\s*(\d+)\s+\+\s+\d+\s+in total", line)
-            if m:
-                total = int(m.group(1))
-            m = re.match(r"^\s*(\d+)\s+\+\s+\d+\s+mapped\s+\(([\d.]+)%", line)
-            if m:
-                mapped = int(m.group(1))
-                try:
-                    pct = float(m.group(2))
-                except ValueError:
-                    pct = None
+        # If you are familiar with the anvi'o profiler, you may know that it report the number of
+        # reads mapped already. Should we use that number? Not really. That number is the total count of
+        # reads included in the bam, including secondary mapping which is not unusual in long-reads mapping.
+        # So we go back to the bam, get the number of unique reads mapping (count the primary mappings).
+        # And we will import it as total_unique_reads_mapped.
+        # primary mapped reads: exclude unmapped(0x4), secondary(0x100), supplementary(0x800)
+        # 0x904 = 2308
+        cmd_mapped = f"samtools view -c -F 2308 {shlex.quote(params.bam)}"
+        mapped_out = subprocess.check_output(cmd_mapped, shell=True, text=True, stderr=subprocess.PIPE)
+        reads_mapped = int(mapped_out.strip() or 0)
 
-        if total is None or mapped is None:
-            raise WorkflowError("Could not parse 'in total' / 'mapped' lines from samtools flagstat output.")
-        if pct is None:
-            pct = (mapped / total * 100.0) if total > 0 else 0.0
+        # now the percent
+        pct = (100 * reads_mapped / reads_total) if reads_total > 0 else 0
 
-        # 3) write total-num-reads.txt (same header/value style as before)
-        with open(output.total_reads, "w") as f:
-            f.write("sample\ttotal_num_reads\n")
-            f.write(f"{wildcards.readset}\t{total}\n")
+        # write a tsv:
+        with open(output.layers_txt, "w") as f:
+            f.write("layers\ttotal_num_reads\ttotal_unique_reads_mapped\tpercent_mapped\n")
+            f.write(f"{wildcards.readset}\t{reads_total}\t{reads_mapped}\t{pct:.2f}\n")
 
-        # 4) import metrics directly into layers (no export-edit-reimport gymnastics)
-        # Build a small TSV with the columns we want to have in layers.
-        with tempfile.TemporaryDirectory() as tmpd:
-            to_import = os.path.join(tmpd, "layers_to_import.tsv")
-            with open(to_import, "w") as f:
-                f.write("sample\ttotal_num_reads\ttotal_reads_mapped\tpercent_mapped\n")
-                f.write(f"{wildcards.readset}\t{total}\t{mapped}\t{pct:.2f}\n")
-
-            # Import into layers for this PROFILE.db
-            cmd = ["anvi-import-misc-data", to_import,
-                   "-p", input.profiledb,
-                   "-t", "layers",
-                   "--just-do-it"]
-            p2 = subprocess.run(cmd, capture_output=True, text=True)
-            with open(log[0], "a") as L:
-                L.write(" ".join(cmd) + "\n")
-                if p2.returncode != 0:
-                    L.write(p2.stderr)
-                    raise WorkflowError("anvi-import-misc-data (layers) failed; see log.")
-                L.write(p2.stdout)
-
-        # 5) export layers so legacy files are produced exactly like before
-        cmd = ["anvi-export-misc-data",
-               "-p", input.profiledb,
-               "-t", "layers",
-               "-o", output.layers_txt]
-        p3 = subprocess.run(cmd, capture_output=True, text=True)
-        with open(log[0], "a") as L:
-            L.write(" ".join(cmd) + "\n")
-            if p3.returncode != 0:
-                L.write(p3.stderr)
-                raise WorkflowError("anvi-export-misc-data (layers) failed; see log.")
-            L.write(p3.stdout)
-
-        # 6) maintain the 'updated' twin file for compatibility (it now matches the export)
-        shutil.copyfile(output.layers_txt, output.layers_txt_updated)
-
-        # 7) done flag
-        with open(output.done, "w") as f:
-            f.write("OK\n")
+        # import into layers for this PROFILE.db
+        shell(
+            "anvi-import-misc-data {output.layers_txt} "
+            "-p {input.profiledb} "
+            "--target-data-table layers >> {log} 2>&1"
+        )
 
 
 rule anvi_cluster_contigs:
