@@ -264,7 +264,7 @@ def input_for_remove_short_reads_based_on_references(wildcards):
     d = {}
     d['bam'] = expand(os.path.join(dirs_dict["MAPPING_DIR"], "{group}", "{readset}.bam"), \
                       group=list(M.references_for_removal.keys()), readset=wildcards.readset)
-    d.update(get_fastq(wildcards.readset, post_reference_based_short_read_removal=False))
+    d.update(M.get_fastq(wildcards.readset, pre_ref_removal=True))
     return d
 
 
@@ -400,27 +400,10 @@ rule gen_qc_report:
         u.store_dict_as_TAB_delimited_file(report_dict, output[0], headers= ["sample"] + report_column_headers)
 
 
-def fastq_input_for_assembly(wildcards):
-    ''' Creating a dictionary containing the path to input fastq file.
-        The reason we can't use get_fastq is because we need to get
-        the fastq files for all samples that belong to a group, and
-        get_fastq only gives the pair of fastq file for one sample
-    '''
-    samples = list(M.samples_information[M.samples_information["group"] == wildcards.group]["sample"])
-    r1 = []
-    r2 = []
-    for sample in samples:
-        d = get_fastq(sample)
-        r1.append(d['r1'])
-        r2.append(d['r2'])
-
-    return {'r1': r1, 'r2': r2}
-
-
 rule merge_fastas_for_co_assembly:
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{group}-merge_fastas_for_co_assembly.log"
-    input: unpack(fastq_input_for_assembly)
+    input: unpack(lambda wildcards: M.get_sr_fastqs_for_group(wildcards.group))
     output: temp(dirs_dict["QC_DIR"] + "/{group}-merged.fa")
     threads: M.T('merge_fastas_for_co_assembly')
     resources: nodes = M.T('merge_fastas_for_co_assembly')
@@ -455,7 +438,7 @@ rule merge_fastas_for_co_assembly:
 rule merge_fastqs_for_co_assembly:
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{group}-merge_fastqs_for_co_assembly.log"
-    input: unpack(fastq_input_for_assembly)
+    input: unpack(lambda wildcards: M.get_sr_fastqs_for_group(wildcards.group))
     output:
         r1 = temp(os.path.join(dirs_dict["QC_DIR"], "{group}-merged_R1.fastq")),
         r2 = temp(os.path.join(dirs_dict["QC_DIR"], "{group}-merged_R2.fastq"))
@@ -757,7 +740,7 @@ BT2_PREFIX = os.path.join(dirs_dict["MAPPING_DIR"], "{group}", "{group}-contigs"
 
 def use_post_ref_filter(wildcards):
     # If mapping to a reference earmarked for removal, do NOT use filtered SRs.
-    return M.remove_short_reads_based_on_references and (wildcards.group not in M.references_for_removal)
+    return M.remove_short_reads_based_on_references and (wildcards.group in M.references_for_removal)
 
 
 rule bowtie_build:
@@ -794,15 +777,14 @@ rule bowtie:
     conda: conda_yaml('bowtie')
     input:
         idx = rules.bowtie_build.output,
-        r1  = lambda wildcards: get_fastq(wildcards.readset,
-                                  zipped=run_gzip_fastqs,
-                                  post_reference_based_short_read_removal=use_post_ref_filter(wildcards))['r1'],
-        r2  = lambda wildcards: get_fastq(wildcards.readset,
-                                  zipped=run_gzip_fastqs,
-                                  post_reference_based_short_read_removal=use_post_ref_filter(wildcards))['r2'],
+        r1  = lambda wildcards: M.get_fastq(wildcards.readset, pre_ref_removal=use_post_ref_filter(wildcards))['r1'],
+        r2  = lambda wildcards: M.get_fastq(wildcards.readset, pre_ref_removal=use_post_ref_filter(wildcards))['r2'],
     output:
         sam = temp(dirs_dict["MAPPING_DIR"] + "/{group}/{readset}.sam")
     params:
+        # we need comma-separated list of r1 and r2
+        r1 = lambda wildcards, input: ','.join(input.r1),
+        r2 = lambda wildcards, input: ','.join(input.r2),
         env_prefix = lambda wildcards: env_prefix('bowtie'),
         index_prefix = BT2_PREFIX,
         additional_params = M.get_param_value_from_config(["bowtie", "additional_params"])
@@ -812,7 +794,7 @@ rule bowtie:
         r"""
         {params.env_prefix} bowtie2 --threads {threads} \
                 -x {params.index_prefix} \
-                -1 {input.r1} -2 {input.r2} \
+                -1 {params.r1} -2 {params.r2} \
                 {params.additional_params} \
                 -S {output.sam} >> {log} 2>&1
         """
@@ -850,7 +832,7 @@ rule minimap2:
     conda: conda_yaml('minimap2')
     input:
         idx = M.dirs_dict["MAPPING_DIR"] + "/{group}/{group}.mmi",
-        reads = lambda wildcards: M.get_lr_files_for_readset(wildcards.readset)
+        reads = lambda wildcards: M.get_fastq(wildcards.readset)['lr']
     output:
         sam = temp(M.dirs_dict["MAPPING_DIR"] + "/{group}/{readset}.sam")
     params:
@@ -1269,7 +1251,7 @@ rule dummy_rule_for_anvi_summarize:
 rule krakenuniq:
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{readset}-krakenuniq.log"
-    input: unpack(lambda wildcards: get_fastq(wildcards.readset))
+    input: unpack(lambda wildcards: M.get_fastq(wildcards.readset))
     output:
         raw = os.path.join(dirs_dict["TAXONOMY_DIR"], "{readset}.krakenuniq"),
         tsv = os.path.join(dirs_dict["TAXONOMY_DIR"], "{readset}-krakenuniq-report.tsv")
