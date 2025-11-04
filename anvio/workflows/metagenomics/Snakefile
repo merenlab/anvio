@@ -1348,6 +1348,42 @@ rule import_krakenuniq_taxonomy:
                                             {params.min_abundance} >> {log} 2>&1
         """
 
+rule count_reads_in_fastq:
+    """Count the reads in fastq(s) per readset. Used later for computing
+    the percent of reads mapping"""
+    version: 1.0
+    log:
+        dirs_dict["LOGS_DIR"] + "/{readset}-count_reads_in_fastq.log"
+    input:
+        unpack(lambda wildcards: M.get_fastq(wildcards.readset)),
+    output:
+        txt = dirs_dict["QC_DIR"] + "/{readset}-total_num_reads.txt"
+    threads: 1
+    resources: nodes = 1
+    run:
+        import subprocess, shlex, os
+
+        os.makedirs(dirs_dict["QC_DIR"], exist_ok=True)
+
+        fastq_files = []
+        for k in ("lr", "r1", "r2"):
+            # cannot do 'if k in input', so using hasattr
+            if hasattr(input, k):
+                fastq_files.extend(input[k])
+
+        # count the reads
+        reads_total = 0
+        for fastq in fastq_files:
+            if fastq.endswith(".gz"):
+                cmd = f"gunzip -c {shlex.quote(fastq)} | awk 'END{{print NR/4}}'"
+            else:
+                cmd = f"awk 'END{{print NR/4}}' {shlex.quote(fastq)}"
+            out = subprocess.check_output(cmd, shell=True, text=True, stderr=subprocess.PIPE)
+            reads_total += int(float(out.strip() or 0))
+
+        with open(output.txt, "w") as f:
+            f.write(f"{reads_total}\n")
+
 
 rule import_percent_of_reads_mapped:
     """Mapper-agnostic import of mapping stats into layers (BAM -> flagstat -> import -> export)."""
