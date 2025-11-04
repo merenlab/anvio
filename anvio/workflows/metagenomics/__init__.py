@@ -792,6 +792,46 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         return os.path.join(self.dirs_dict["FASTA_DIR"], wildcards.group, "final.contigs.fa")
 
 
+    def get_fastq(self, readset, pre_ref_removal=False):
+        """
+        A single function that returns the fastq for either long or short reads.
+        These readset are the one passed to the mapper (and more): it will be the QCed version of the SR,
+        if QC is enable.
+        """
+        post_ref_removal = False
+        if not pre_ref_removal:
+            post_ref_removal = self.remove_short_reads_based_on_references
+
+        zipped = self.get_param_value_from_config(['gzip_fastqs', 'run']) == True
+
+        rs = self.readsets_by_id.get(readset)
+
+        # if SR:
+        if rs['type'] == 'SR':
+            fastq_label = "-QUALITY_PASSED"
+            if post_ref_removal:
+                fastq_label = "-FILTERED"
+
+            if post_ref_removal or self.run_qc:
+                # by default, use the output of the reference based short read removal
+                if zipped:
+                    r1 = os.path.join(self.dirs_dict["QC_DIR"], readset + fastq_label + "_R1.fastq.gz")
+                    r2 = os.path.join(self.dirs_dict["QC_DIR"], readset + fastq_label + "_R2.fastq.gz")
+                else:
+                    r1 = os.path.join(self.dirs_dict["QC_DIR"], readset + fastq_label + "_R1.fastq")
+                    r2 = os.path.join(self.dirs_dict["QC_DIR"], readset + fastq_label + "_R2.fastq")
+                d = {'r1': [r1], 'r2':[r2]}
+            else:
+                # if no QC and no reference based short read removal is requested, use raw input
+                d = self.get_sr_files_for_readset(readset)
+            return d
+
+        # if LR, no QC or removal based on reference (yet)
+        if rs['type'] == 'LR':
+            d = {'lr': self.get_lr_files_for_readset(readset)}
+            return d
+
+
     def get_readsets_for_mapping_to_group(self, group_id: str):
         """
         Return the list of readset IDs that should be mapped/profiled for a given assembly/group.
