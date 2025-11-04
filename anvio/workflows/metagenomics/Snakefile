@@ -232,32 +232,48 @@ rule iu_filter_quality_minoche:
         """
 
 
-def need_to_uncompress_fastqs(r1, r2):
+def need_to_uncompress_fastqs(r1_list, r2_list):
     # Checking if any of the input files are compressed
     # this should only happen if QC is not performed in this snakemake session
     # because if QC is performed in this session then the output of iu-filter-quality-minoche
     # is not compressed and snakemake will schedule fq2fa rule before gzip rule
-    files_that_end_with_gz = [f for f in [r1, r2] if f.endswith('.gz')]
-    if len(files_that_end_with_gz) == 1:
-        raise ConfigError("Something seems very bad: one of the pair fastq files "
-                          "is compressed and the other one is not. This is the "
-                          "compressed one: %s" % files_that_end_with_gz[0])
-    elif len(files_that_end_with_gz) == 2:
-        run.warning("The following fastq files are compressed and will now "
-                    "be uncompressed using gunzip: %s." % files_that_end_with_gz)
-        return True
-    return False
+    pair_flags = []
+    for i, (r1, r2) in enumerate(zip(r1_list, r2_list)):
+        gz1, gz2 = r1.endswith(".gz"), r2.endswith(".gz")
+        if gz1 != gz2:
+            raise ConfigError(f"Something seems very bad: one of the pair fastq files "
+                              f"is compressed and the other one is not: {r1} vs {r2}")
+        pair_flags.append(gz1)
+    any_gz = any(pair_flags)
+    all_gz = all(pair_flags)
+    if any_gz and not all_gz:
+            raise ConfigError("Mixed of compressed/uncompressed set of r1 and r2 fastq files. "
+                              "Make sure they are uniform.")
+    return all_gz # True > need to gunzip all
 
 
-def uncompress_fastqs_if_needed(r1, r2, log):
-    if need_to_uncompress_fastqs(r1, r2):
-        r1_unzipped = r1.replace('.fastq.gz', '_temp.fastq')
-        r2_unzipped = r2.replace('.fastq.gz', '_temp.fastq')
-        shell("gunzip < %s > %s 2>> %s" % (r1, r1_unzipped, log))
-        shell("gunzip < %s > %s 2>> %s" % (r2, r2_unzipped, log))
-        r1 = r1_unzipped
-        r2 = r2_unzipped
-    return r1, r2
+def uncompress_fastqs_if_needed(r1_list, r2_list, log):
+    did_unzip = False
+    out1, out2 = [], []
+    if need_to_uncompress_fastqs(r1_list, r2_list):
+        did_unzip = True
+        for r1, r2 in zip(r1_list, r2_list):
+            r1_unzipped = r1.replace('.fastq.gz', '_temp.fastq')
+            r2_unzipped = r2.replace('.fastq.gz', '_temp.fastq')
+            shell("gunzip < %s > %s 2>> %s" % (r1, r1_unzipped, log))
+            shell("gunzip < %s > %s 2>> %s" % (r2, r2_unzipped, log))
+            out1.append(r1_unzipped)
+            out2.append(r2_unzipped)
+    else:
+        out1, out2 = r1_list, r2_list
+    return out1, out2, did_unzip
+
+
+def concatenate_fastqs(inputs, dest, log):
+    if len(inputs) == 1:
+        return inputs[0]  # nothing to do
+    shell("cat {files} > {dest} 2>> {log}".format(files=" ".join(inputs), dest=dest))
+    return dest
 
 
 def input_for_remove_short_reads_based_on_references(wildcards):
@@ -301,8 +317,12 @@ rule remove_short_reads_based_on_references:
                 f.write("%s\n" % item)
         if M.remove_short_reads_based_on_references:
             if ids_to_remove:
-                need_to_uncompress = need_to_uncompress_fastqs(input.r1, input.r2)
-                r1, r2 = uncompress_fastqs_if_needed(input.r1, input.r2, log)
+                r1_list, r2_list, did_unzip = uncompress_fastqs_if_needed(input.r1, input.r2, log)
+
+                # concatenate the r1 and r2 files:
+                r1 = concatenate_fastqs(r1_list, os.path.join(dirs_dict["QC_DIR"], f"{wildcards.readset}_R1_concat.temp.fastq"), log)
+                r2 = concatenate_fastqs(r2_list, os.path.join(dirs_dict["QC_DIR"], f"{wildcards.readset}_R2_concat.temp.fastq"), log)
+
                 # remove ids
                 intermediate_fastq = {"1": r1, "2": r2}
                 output_fastq_files = {'remove': {'1': output.remove1, '2': output.remove2},\
@@ -319,8 +339,10 @@ rule remove_short_reads_based_on_references:
                         shell("rm %s.survived" % intermediate_fastq[i])
                     else:
                         shell("mv %s.survived %s" % (intermediate_fastq[i], output_fastq_files['keep'][i]))
-                if need_to_uncompress:
-                    shell('rm %s %s' % (r1, r2))
+                if did_unzip or r1.endswith(".temp.fastq"):
+                    shell("rm -f {r1}")
+                if did_unzip or r2.endswith(".temp.fastq"):
+                    shell("rm -f {r2}")
             else:
                 # No reads from this sample were mapped to references so we will just:
                 # change the name of the input fastq to the expected output fastq
@@ -411,10 +433,9 @@ rule merge_fastas_for_co_assembly:
         concatenate = False
         if len(input.r1) > 1:
             concatenate = True
-        for r1, r2 in zip(input.r1, input.r2):
-            need_to_uncompress = need_to_uncompress_fastqs(r1, r2)
-            r1, r2 = uncompress_fastqs_if_needed(r1, r2, log)
 
+        r1_list, r2_list, did_unzip = uncompress_fastqs_if_needed(input.r1, input.r2, log)
+        for r1, r2 in zip(r1_list, r2_list):
             # run fq2fa
             prefix1 = os.path.basename(r1).split('.fastq')[0]
             prefix2 = os.path.basename(r2).split('.fastq')[0]
@@ -422,7 +443,7 @@ rule merge_fastas_for_co_assembly:
             fq2fa_output = os.path.join(dirs_dict["QC_DIR"], temp_merged_name)
             shell("fq2fa --merge %s %s %s >> %s 2>&1" % (r1, r2, fq2fa_output, log))
 
-            if need_to_uncompress:
+            if did_unzip:
                 # if we had to unzip the fastq files then now we delete the unzipped file
                 shell("rm %s %s 2>>%s" % (r1, r2, log))
 
@@ -445,15 +466,13 @@ rule merge_fastqs_for_co_assembly:
     threads: M.T('merge_fastqs_for_co_assembly')
     resources: nodes = M.T('merge_fastqs_for_co_assembly')
     run:
-        for r1, r2 in zip(input.r1, input.r2):
-            need_to_uncompress = need_to_uncompress_fastqs(r1, r2)
-            r1, r2 = uncompress_fastqs_if_needed(r1, r2, log)
-
+        r1_list, r2_list, did_unzip = uncompress_fastqs_if_needed(input.r1, input.r2, log)
+        for r1, r2 in zip(r1_list, r2_list):
             # concatenate
             shell("cat %s >> %s 2>>%s" % (r1, output.r1, log))
             shell("cat %s >> %s 2>>%s" % (r2, output.r2, log))
 
-            if need_to_uncompress:
+            if did_unzip:
                 # if we had to unzip the fastq files then now we delete the unzipped file
                 shell("rm %s %s 2>>%s" % (r1, r2, log))
 
