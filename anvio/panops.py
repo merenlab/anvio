@@ -280,13 +280,11 @@ class ComparePan:
 
         for gene_cluster in self.pan.gene_cluster_names:
             summary = {}
-            gene_cluster_data = self.compare_pan_dict.get(self.compared_pan_name, {}).get(gene_cluster)
+            gene_cluster_data = self.compare_pan_dict.get(gene_cluster)
 
             if gene_cluster_data is None:
                 # Fill all keys with None or NA if GC is missing
-                summary[f"{self.compared_pan_name}_status"] = None
-                for source in self.pan.gene_clusters_function_sources:
-                    summary[f"{self.compared_pan_name}_{source}"] = None
+                summary.update({k: None for k in items_additional_data_keys})
             else:
                 summary[f"{self.compared_pan_name}_status"] = gene_cluster_data.get("status")
 
