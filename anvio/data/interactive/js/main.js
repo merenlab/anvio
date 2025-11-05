@@ -475,6 +475,13 @@ function switchUserInterfaceMode(project, title) {
         $('#len_title').hide();
     }
 
+    if (mode == 'gene') {
+        $('#completion_title').attr('title', 'Genes Selected').html('Genes Selected');
+        $('#redundancy_title').hide();
+        $('#splits_title').hide();
+        $('#len_title').hide();
+    }
+
     if (server_mode) {
         $('.server-mode').show();
         $('#multiUser').show();
