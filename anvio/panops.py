@@ -110,6 +110,12 @@ class ComparePan:
         # init the dictionaries self.compare_pan_dict
         self.init_compare_pan()
 
+        # if no differences, let's stop here
+        if not self.compare_pan_dict:
+            raise ConfigError("Anvi'o have not found any differences in the composition of the gene clusters "
+                              "for both pan-db. Nothing to compare. BYE.")
+            return
+
         # find corresponding gene clusters in compared pan
         self.find_corresponding_gene_clusters()
 
