@@ -28,8 +28,8 @@ DOWNLOAD_MODES = {'KOfam': {'description': 'only KOfam annotation models (HMMs).
                                                            'definition': anvio.K('only-download')},
                                           'only-processing': {'flags': anvio.A('only-processing'),
                                                            'definition': anvio.K('only-processing')},
-                                          'include-stray-KOs': {'flags': anvio.A('include-stray-KOs'),
-                                                           'definition': anvio.K('include-stray-KOs')}
+                                          'include-nt-KOs': {'flags': anvio.A('include-nt-KOs'),
+                                                           'definition': anvio.K('include-nt-KOs')}
                                           }
                             },
                 'modules': {'description': 'metabolic pathways from the KEGG MODULES database and BRITE hierarchies. Use this mode AND "KOfam" '

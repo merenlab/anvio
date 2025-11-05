@@ -44,7 +44,7 @@ def get_args():
     groupO.add_argument(*anvio.A('kegg-data-dir'), **anvio.K('kegg-data-dir'))
     groupO.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     groupO.add_argument(*anvio.A('hmmer-program'), **anvio.K('hmmer-program'))
-    groupO.add_argument(*anvio.A('include-stray-KOs'), **anvio.K('include-stray-KOs'))
+    groupO.add_argument(*anvio.A('include-nt-KOs'), **anvio.K('include-nt-KOs'))
     groupO.add_argument(*anvio.A('keep-all-hits'), **anvio.K('keep-all-hits'))
     groupO.add_argument(*anvio.A('log-bitscores'), **anvio.K('log-bitscores'))
     groupO.add_argument(*anvio.A('skip-brite-hierarchies'), **anvio.K('skip-brite-hierarchies'))

@@ -762,9 +762,14 @@ class GenbankToAnvio:
             if not len(genes):
                 continue
 
-            # do we have AA sequences in this?
-            if 'translation' in genes[0].qualifiers:
-                aa_sequences_present = True
+            # do we have AA sequences in this? we will go through all genes in case
+            # the first one happens to not have a translated sequence but the next
+            # but some others do
+            for gene in genes:
+                if 'translation' in gene.qualifiers:
+                    aa_sequences_present = True
+                    break
+
 
             if aa_sequences_present and self.omit_aa_sequences_column:
                 aa_sequences_present = False
@@ -827,7 +832,7 @@ class GenbankToAnvio:
                 end = location[1] # end coordinate
 
                 # setting direction to "f" or "r":
-                if gene.strand == 1:
+                if gene.location.strand == 1:
                     direction="f"
                 else:
                     direction="r"

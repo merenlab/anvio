@@ -276,7 +276,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         if self.samples_txt_file:
             # we initialize the samples.txt to run the sanity check before the workflow reaches the
             # metagenomics workflow rule.
-            self.samples_txt = SamplesTxt(self.samples_txt_file, expected_format="paired_end")
+            self.samples_txt = SamplesTxt(self.samples_txt_file, expected_format="free")
 
             self.sample_names_for_mapping_list = self.samples_txt.samples()
 

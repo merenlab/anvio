@@ -1,7 +1,7 @@
 %(anvi-setup-kegg-data)s downloads and organizes data from KEGG for use by other programs, namely %(anvi-run-kegg-kofams)s, %(anvi-estimate-metabolism)s and %(anvi-reaction-network)s. Depending on what download mode you choose, it can download and setup one or more of the following:
 
 - HMM profiles from the [KOfam](https://academic.oup.com/bioinformatics/article/36/7/2251/5631907) database
-  - with [an _(optional)_ step](#what-are-stray-kos-and-what-happens-when-i-include-them) to create new HMMs and estimate bit score thresholds for any 'stray KOs' without a KEGG-provided bit score threshold
+  - with [an _(optional)_ step](#what-are-nt-kos-and-what-happens-when-i-include-them) to create new HMMs and estimate bit score thresholds for any 'nt-KOs' without a KEGG-provided bit score threshold
 - metabolic pathway information from [KEGG MODULES](https://www.genome.jp/kegg/module.html)
 - functional classification information from [KEGG BRITE](https://www.genome.jp/kegg/brite.html)
 - protein family information of the [KEGG Orthology database](https://www.genome.jp/kegg/ko.html)
@@ -75,7 +75,7 @@ Not sure what KEGG snapshots are available for you to request? Well, you could c
 anvi-setup-kegg-data --kegg-snapshot hahaha
 {{ codestop }}
 
-Note that the latter method only shows you the date that each available snapshot was created. If you need more details about what types of data is included in each snapshot, you should look at the YAML file, which annotates each snapshot with a bit more detail. For example, the following entry does not contain metabolic modeling data (now obsolete as of anvi'o `v8.0-dev`), models/thresholds for 'stray KOs', binary relations files needed for reaction networks, or maps used for pathway visualization:
+Note that the latter method only shows you the date that each available snapshot was created. If you need more details about what types of data is included in each snapshot, you should look at the YAML file, which annotates each snapshot with a bit more detail. For example, the following entry does not contain metabolic modeling data (now obsolete as of anvi'o `v8.0-dev`), models/thresholds for 'nt-KOs', binary relations files needed for reaction networks, or maps used for pathway visualization:
 
 ```
 v2023-09-18:
@@ -84,7 +84,7 @@ v2023-09-18:
     hash: a2b5bde358bb
     modules_db_version: 4
     no_modeling_data: True
-    no_stray_KOs: True
+    no_nt_KOs: True
     no_binary_relations: True
     no_maps: True
 ```
@@ -103,20 +103,20 @@ Please note that this will download all the KEGG data (ie, `--mode all` is the d
 
 KOfam profiles are downloadable from KEGG's [FTP site](ftp://ftp.genome.jp/pub/db/kofam/) and all other KEGG data is accessible as flat text files through their [API](https://www.kegg.jp/kegg/rest/keggapi.html). When you run this program it will first get all the files that it needs from these sources, and then it will process them by doing the following:
 
-- determine if any KOfam profiles are missing bitscore thresholds (we call these "stray KOs"), and remove those from the standard profile location so that they are not used for annotation (if you want to see these, you will find them in the `orphan_data` folder in your KEGG data directory)
+- determine if any KOfam profiles are missing bitscore thresholds (we call these "nt-KOs"), and remove those from the standard profile location so that they are not used for annotation (if you want to see these, you will find them in the `orphan_data` folder in your KEGG data directory)
 - concatenate all remaining KOfam profiles into one file and run `hmmpress` on them
-- if the `--include-stray-KOs` flag is used, process the stray KO models as detailed in [this section](#what-are-stray-kos-and-what-happens-when-i-include-them)
+- if the `--include-nt-KOs` flag is used, process the nt-KO models as detailed in [this section](#what-are-nt-kos-and-what-happens-when-i-include-them)
 - parse the flat text file for each KEGG module and the JSON file for each BRITE hierarchy
 - store the MODULE and BRITE information in the %(modules-db)s
 - parse the flat text files from KEGG Orthology and organize these into a table for metabolic modeling
 
 An important thing to note about this option is that it has rigid expectations for the format of the KEGG data that it works with. Future updates to KEGG may break things such that the data can no longer be directly obtained from KEGG or properly processed. In the sad event that this happens, you will have to download KEGG from one of our archives instead.
 
-### What are 'stray KOs' and what happens when I include them?
+### What are 'nt-KOs' and what happens when I include them?
 
-"Stray KOs" are what we call KOfam models that don't come with a bit score threshold defined by KEGG. As described in the [Aramaki et al. 2020 paper](https://doi.org/10.1093/bioinformatics/btz859), KEGG Ortholog families that have _less than 3 non-redundant sequences_ don't go through the workflow for estimating bit score thresholds. We normally avoid using these models for annotation, because without a bit score threshold, we don't have a way to distinguish between good and bad matches to the model. This is why these KOfams are removed from the set of regular profiles that is used by %(anvi-run-kegg-kofams)s.
+"No-threshold KOs", or "nt-KOs", are what we call KOfam models that don't come with a bit score threshold defined by KEGG. As described in the [Aramaki et al. 2020 paper](https://doi.org/10.1093/bioinformatics/btz859), KEGG Ortholog families that have _less than 3 non-redundant sequences_ don't go through the workflow for estimating bit score thresholds. We normally avoid using these models for annotation, because without a bit score threshold, we don't have a way to distinguish between good and bad matches to the model. This is why these KOfams are removed from the set of regular profiles that is used by %(anvi-run-kegg-kofams)s.
 
-However, in early 2024 we came up with a strategy to estimate bit score thresholds for these models so that they could be used for annotation and downstream analyses via the `--include-stray-KOs` flag. If you add this flag to your `anvi-setup-kegg-data` command, this is what will happen to each stray KO that doesn't yet have a bit score threshold:
+However, in early 2024 we came up with a strategy to estimate bit score thresholds for these models so that they could be used for annotation and downstream analyses via the `--include-nt-KOs` flag. If you add this flag to your `anvi-setup-kegg-data` command, this is what will happen to each nt-KO that doesn't yet have a bit score threshold:
 
 - download its KEGG Orthology file and parse it to obtain a list of KEGG GENE sequences that belong to this KO family
 - download the KEGG GENE file for each of these and parse them to get the amino acid sequences
@@ -129,17 +129,17 @@ When this is complete for every KO, the program saves the estimated bit score th
 
 Astute readers will notice that this process is similar to half of the workflow that KEGG uses to estimate bit scores on the larger KO families; that is, we use the 'positive' matches of the model against the gene sequences used to create it to find the minimum bit score that is required to annotate these orthologous sequences. For the sake of time and computational resources, we skip [KEGG's more rigorous process](https://doi.org/10.1093/bioinformatics/btz859) of dividing the 'positive' set into 3 random groups (which cannot be done anyway with these small families, otherwise KEGG would have done it for us already) and of including a 'negative' set of sequences that aren't orthologous to refine the bit score threshold.
 
-Our resulting bit score thresholds are not perfect, but they are rather conservative and should mostly avoid the introduction of garbage annotations with these models downstream. Still, we always encourage caution and oversight of your data/results, especially if you decide to use these downstream (which you can do by using the `--include-stray-KOs` flag with %(anvi-run-kegg-kofams)s and %(anvi-estimate-metabolism)s). :)
+Our resulting bit score thresholds are not perfect, but they are rather conservative and should mostly avoid the introduction of garbage annotations with these models downstream. Still, we always encourage caution and oversight of your data/results, especially if you decide to use these downstream (which you can do by using the `--include-nt-KOs` flag with %(anvi-run-kegg-kofams)s and %(anvi-estimate-metabolism)s). :)
 
 {:.notice}
-If you want to download a snapshot of KEGG data that includes these stray KOs processed and ready to use for annotation and beyond, you should check the `anvio/anvio/data/misc/KEGG-SNAPSHOTS.yaml` file in your anvi'o directory to see which ones have this data. Look for entries that _do not_ have `no_stray_KOs: True`.
+If you want to download a snapshot of KEGG data that includes these nt-KOs processed and ready to use for annotation and beyond, you should check the `anvio/anvio/data/misc/KEGG-SNAPSHOTS.yaml` file in your anvi'o directory to see which ones have this data. Look for entries that _do not_ have `no_nt_KOs: True`.
 
 
 **Why do we create new HMMs for some of these KOs?**
 
 While testing our approach of setting the minimum 'positive' bit score to be a model's threshold, we realized that the KEGG ORTHOLOGY and KEGG GENES databases are updated far more often than the KOfam models. This causes some KOfam models to be out-of-date relative to the family of orthologs that the model is meant to represent -- that is, a KOfam profile doesn't necessarily include all of the sequences from KEGG GENES that are assigned to this KO family. This violates our assumption that every gene sequence in the family is a 'positive' match to the model. Newer sequences can still match to the model, but often with rather low bit scores, which then become the minimum score that is used to set the model's threshold. And those low thresholds can cause false positive annotations.
 
-To circumvent this issue, we decided to remake models for any stray KO that could have sequences that aren't yet incorporated into the KO's HMM; that is, any stray KO with more than one gene sequence in the family. By doing this, we ensure that each gene sequence actually represents a 'positive' match to the model, and we can estimate thresholds that are conservative enough to avoid garbage annotations.
+To circumvent this issue, we decided to remake models for any nt-KO that could have sequences that aren't yet incorporated into the KO's HMM; that is, any nt-KO with more than one gene sequence in the family. By doing this, we ensure that each gene sequence actually represents a 'positive' match to the model, and we can estimate thresholds that are conservative enough to avoid garbage annotations.
 
 We clearly name the new HMMs by appending `"_anvio_version"` to the end of the KO identifier; for example, `K21692_anvio_version`. These names will be used for any annotations taken from these modified profiles. So if you don't see `"_anvio_version"` at the end of the function accession, you can be confident that the original KEGG KOfam profile was used.
 
@@ -239,7 +239,7 @@ Periodically (especially before releasing a new version of anvi'o), we want to a
 
 Available KEGG snapshots are stored in the anvi'o code repository in `anvio/data/misc/KEGG-SNAPSHOTS.yaml`. To add a new snapshot, you first need to create one by downloading and processing the data from KEGG, testing to make sure it works, and then updating this file. Here are the steps:
 
-1. Download the latest data directly from KEGG by running `anvi-setup-kegg-data -D --include-stray-KOs --kegg-data-dir ./KEGG -T 5`. This will create the new KEGG data folder with its %(modules-db)s in your current working directory. Make sure you use the exact folder name of `./KEGG`, because that is what anvi'o expects to find when it unpacks a KEGG snapshot. You may want to reduce or increase the number of threads (`-T`) according to your available compute resources.
+1. Download the latest data directly from KEGG by running `anvi-setup-kegg-data -D --include-nt-KOs --kegg-data-dir ./KEGG -T 5`. This will create the new KEGG data folder with its %(modules-db)s in your current working directory. Make sure you use the exact folder name of `./KEGG`, because that is what anvi'o expects to find when it unpacks a KEGG snapshot. You may want to reduce or increase the number of threads (`-T`) according to your available compute resources.
 2. Get the hash value and version info from the MODULES.db by running `anvi-db-info ./KEGG/MODULES.db`.
 3. Archive the KEGG data directory by running `tar -czvf KEGG_build_YYYY-MM-DD_HASH.tar.gz ./KEGG`. Please remember to replace YYYY-MM-DD with the current date and replace HASH with the MODULES.db hash value obtained in step 2. This convention makes it easier to distinguish between KEGG snapshots by simply looking at the file name.
 4. Test that setup works with this archive by running `anvi-setup-kegg-data --kegg-archive KEGG_build_YYYY-MM-DD_HASH.tar.gz --kegg-data-dir TEST_NEW_KEGG_ARCHIVE`.
