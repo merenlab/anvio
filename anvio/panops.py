@@ -105,6 +105,23 @@ class ComparePan:
             raise ConfigError("You are trying to compare to pan databases made from different genomes storage "
                               "databases and that is a no no.")
 
+        # check if we have the same number of genes between the two pan.
+        # it is possible that some genes are discarded because of e-values threshold in the
+        # diamond step, or if the user provided user-defined gene-cluster with missing genes.
+        # The pan-db does not mind having less genes than what's in the genomes-storage, but at this time,
+        # we don't have a way to compare pan with a different gene content.
+        pan_num_genes = self.pan.p_meta['num_genes_in_gene_clusters']
+        compared_pan_num_genes = self.compared_pan.p_meta['num_genes_in_gene_clusters']
+        if pan_num_genes != compared_pan_num_genes:
+            raise ConfigError(f"You are trying to compare to pan database that have a different number of genes, "
+                              f"even though they were made using the same genomes-storage-db. There are {pan_num_genes} "
+                              f"genes in {A('pan_db')} and {compared_pan_num_genes} in {A('compared_pan_db')}. That's "
+                              f"quite unexpected (or maybe not to you), but you cannot compare pan that don't have the same gene content. "
+                              f"To help you understand how that is possible, here are a couple of possible reasons: 1) genes "
+                              f"were discarded in the making of the pangenome because of e-value threshold at the diamond/blastp "
+                              f"stage (the reciprocal blast evalue was too low, could happen for low complexity protein sequence), "
+                              f"2) you used user-defined gene-clusters that did not include all genes, 3) ????")
+
 
     def process(self):
         # init the dictionaries self.compare_pan_dict
