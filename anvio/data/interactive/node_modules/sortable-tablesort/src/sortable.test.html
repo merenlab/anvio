@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>sortable test</title>
+    <link rel="stylesheet" type="text/css" href="../example.css" />
+  </head>
+  <body>
+    <h1>sortable test</h1>
+
+    <h2>Basic test</h2>
+    <table class="sortable">
+      <thead>
+        <tr>
+          <th><span>Role</span></th>
+          <th>Name</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Genius</td>
+          <td>Rick</td>
+        </tr>
+        <tr>
+          <td><a href="javascript:alert('Inline javascript works!');">Sidekick</a></td>
+          <td><a id="morty" href="#">Morty</a></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Tiebreaker</h2>
+    <table class="sortable asc">
+      <thead>
+        <tr>
+          <th>Month</th>
+          <th data-sort-tbr="0">Year</th>
+          <th>Day</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>07</td>
+          <td>2010</td>
+          <td>25</td>
+        </tr>
+        <tr>
+          <td>11</td>
+          <td>2010</td>
+          <td>12</td>
+        </tr>
+        <tr>
+          <td>04</td>
+          <td>2010</td>
+          <td>25</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Colspans</h2>
+
+    <table class="sortable">
+      <thead>
+        <tr>
+          <th colspan="2">nums + chars</th>
+          <th data-sort-col="2">CHARS</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>333</td>
+          <td>222</td>
+          <td>BB</td>
+        </tr>
+        <tr>
+          <td>1</td>
+          <td>111</td>
+          <td>CCC</td>
+        </tr>
+        <tr>
+          <td>22</td>
+          <td>333</td>
+          <td>A</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Empty/null sorted last</h2>
+
+    <table class="sortable n-last lefty">
+      <thead>
+        <tr>
+          <th>Text</th>
+          <th class="indicator-left">Number</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>jkl</td>
+          <td>0.4</td>
+        </tr>
+        <tr>
+          <td>abc</td>
+          <td>0</td>
+        </tr>
+        <tr>
+          <td>should be sorted</td>
+          <td data-sort="">last</td>
+        </tr>
+        <tr>
+          <td>def</td>
+          <td>0.2</td>
+        </tr>
+      </tbody>
+    </table>
+    <h2>class="no-sort"</h2>
+    <table class="sortable">
+      <thead>
+        <tr>
+          <th>Role</th>
+          <th class="no-sort">Name</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Genius</td>
+          <td>Rick</td>
+        </tr>
+        <tr>
+          <td>Sidekick</td>
+          <td>Morty</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>numeric sorting</h2>
+    <table class="sortable">
+      <thead>
+        <tr>
+          <th>Role</th>
+          <th>Time</th>
+          <th>Amount</th>
+          <th>Number</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Genius</td>
+          <td>12:00:12</td>
+          <td>$18.49</td>
+          <td>2.49</td>
+        </tr>
+        <tr>
+          <td>Sidekick</td>
+          <td>12:22:11</td>
+          <td>$2.49</td>
+          <td>18.49</td>
+        </tr>
+        <tr>
+          <td>Butler</td>
+          <td>12:22:05</td>
+          <td>$1.96</td>
+          <td>1.96</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>Ascending sort</h2>
+
+    <table class="sortable asc">
+      <thead>
+        <tr>
+          <th><span>Role</span></th>
+          <th>Name</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Genius</td>
+          <td>Rick</td>
+        </tr>
+        <tr>
+          <td><a href="javascript:alert('Inline javascript works!');">Sidekick</a></td>
+          <td><a id="morty" href="#">Morty</a></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <script>
+      document.getElementById('morty').addEventListener('click', function (e) {
+        e.preventDefault()
+        alert('event listeners also work!')
+      })
+    </script>
+
+    <script src="../sortable.js"></script>
+    <script src="../sortable.a11y.js"></script>
+  </body>
+</html>

@@ -1,0 +1,46 @@
+@import 'sortable-base.scss';
+
+.sortable {
+  --stripe-color: #e4e4e4;
+  --th-color: #fff;
+  --th-bg: #808080;
+  --td-color: #000;
+  --td-on-stripe-color: #000;
+
+  border-spacing: 0;
+
+  tbody {
+    tr {
+      &:nth-child(odd) {
+        background-color: var(--stripe-color);
+        color: var(--td-on-stripe-color);
+      }
+    }
+  }
+  thead {
+    th {
+      background: var(--th-bg);
+      color: var(--th-color);
+      font-weight: normal;
+      text-align: left;
+      text-transform: capitalize;
+      vertical-align: baseline;
+      white-space: nowrap;
+    }
+  }
+  td {
+    color: var(--td-color);
+  }
+  td,
+  th {
+    padding: 10px;
+
+    &:first-child {
+      border-top-left-radius: 4px;
+    }
+
+    &:last-child {
+      border-top-right-radius: 4px;
+    }
+  }
+}

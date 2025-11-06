@@ -1,0 +1,109 @@
+{
+  "name": "html5sortable",
+  "main": "dist/html5sortable.js",
+  "file": "src/html5sortable.ts",
+  "files": [
+    "src/types/*.d.ts",
+    "src/*.ts",
+    "dist/*.js"
+  ],
+  "dest": "dist",
+  "version": "0.13.3",
+  "license": "MIT",
+  "description": "VanillaJS sortable lists and grids using native HTML5 drag and drop API.",
+  "author": {
+    "name": "Lukas Oppermann",
+    "email": "lukas@vea.re",
+    "url": "http://vea.re"
+  },
+  "keywords": [
+    "sortable",
+    "html5",
+    "drag and drop"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "http://github.com/lukasoppermann/html5sortable"
+  },
+  "bugs": {
+    "url": "http://github.com/lukasoppermann/html5sortable/issues"
+  },
+  "devDependencies": {
+    "@babel/plugin-proposal-class-properties": "^7.14.5",
+    "@babel/plugin-syntax-class-properties": "^7.12.13",
+    "@types/jest": "^26.0.23",
+    "@typescript-eslint/eslint-plugin": "^4.28.1",
+    "@typescript-eslint/parser": "^4.28.1",
+    "eslint": "^7.4.0",
+    "jest": "^24.9.0",
+    "rollup": "^2.52.3",
+    "rollup-plugin-strip-code": "^0.2.7",
+    "rollup-plugin-typescript": "^1.0.1",
+    "rollup-plugin-uglify": "^6.0.4",
+    "rollup-watch": "^4.3.1",
+    "snazzy": "^9.0.0",
+    "standard": "^16.0.3",
+    "ts-jest": "^24.3.0",
+    "typescript": "^4.0.3",
+    "typescript-eslint-parser": "^22.0.0"
+  },
+  "jest": {
+    "collectCoverage": false,
+    "collectCoverageFrom": [
+      "src/*.ts"
+    ],
+    "notify": true,
+    "moduleFileExtensions": [
+      "ts",
+      "js"
+    ],
+    "transform": {
+      "^.+\\.ts?$": "ts-jest"
+    },
+    "testMatch": [
+      "**/__tests__/**/*.test.(ts|js)"
+    ],
+    "globals": {
+      "ts-jest": {
+        "diagnostics": false,
+        "babelConfig": {
+          "plugins": [
+            "@babel/plugin-proposal-class-properties"
+          ]
+        }
+      }
+    }
+  },
+  "babel": {
+    "plugins": [
+      "@babel/plugin-proposal-class-properties"
+    ]
+  },
+  "standard": {
+    "globals": [
+      "HTMLElement",
+      "configuration",
+      "Event",
+      "sortable",
+      "offsetObject",
+      "serializedItem",
+      "Store"
+    ],
+    "parser": "@typescript-eslint/parser",
+    "plugins": [
+      "@typescript-eslint"
+    ]
+  },
+  "scripts": {
+    "jest": "jest",
+    "test": "jest --coverage && npm run standard",
+    "coverage": "jest --coverage && npm run standard",
+    "build": "rollup -c && cp $npm_package_main docs/html5sortable.js",
+    "release": "sh make-release.sh",
+    "standard": "standard 'src/*.ts' '__tests__/*.ts' | snazzy",
+    "github-build": "npm run cover && npm run standard",
+    "cover": "jest --coverage",
+    "postversion": "npm run release",
+    "tsc": "tsc ./src/*.ts --pretty --diagnostics --noEmit --watch"
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "name": "sortable-tablesort",
+  "version": "3.2.2",
+  "description": "A tiny, Vanilla/Plain JavaScript table sorter",
+  "author": "Jonas Earendel",
+  "license": "Unlicense",
+  "homepage": "https://github.com/tofsjonas/sortable",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tofsjonas/sortable.git"
+  },
+  "main": "sortable.min.js",
+  "module": "sortable.min.js",
+  "style": "sortable.min.css",
+  "sass": "src/sortable.scss",
+  "keywords": [
+    "sort",
+    "html",
+    "table",
+    "plain",
+    "vanilla",
+    "javascript"
+  ],
+  "scripts": {
+    "build": "npm run compile && npm run sass",
+    "compile": "npm run compile:sortable && npm run compile:a11y",
+    "compile:a11y": "google-closure-compiler --js=./sortable.a11y.js --js_output_file=./sortable.a11y.min.js",
+    "compile:sortable": "google-closure-compiler --js=./sortable.js --js_output_file=./sortable.min.js",
+    "dev": "rollup --config --watch --environment NODE_ENV:development --bundleConfigAsCjs",
+    "lint": "eslint src/sortable.ts",
+    "prepare": "node ./scripts/prepare.js",
+    "pre-push": "npm run build && npm run lint && npm run test && npm run test:min",
+    "sass": "npm run sass:dist && npm run sass:dist:minify",
+    "sass:dist": "sass src/sortable.scss:sortable.css src/example.scss:example.css src/sortable-base.scss:sortable-base.css",
+    "sass:dist:minify": "sass src/sortable.scss:sortable.min.css src/example.scss:example.min.css src/sortable-base.scss:sortable-base.min.css --style compressed",
+    "test": "jest",
+    "test:min": "cross-env USE_MINIFIED=true jest",
+    "test:watch": "jest --watchAll"
+  },
+  "files": [
+    "./src",
+    "./sortable*.*",
+    "./CHANGELOG.md"
+  ],
+  "devDependencies": {
+    "@babel/core": "^7.23.3",
+    "@babel/preset-env": "^7.23.3",
+    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-typescript": "^11.1.5",
+    "@testing-library/dom": "^9.3.3",
+    "@testing-library/jest-dom": "^6.1.4",
+    "@typescript-eslint/eslint-plugin": "^6.11.0",
+    "@typescript-eslint/parser": "^6.11.0",
+    "babel-jest": "^29.7.0",
+    "cross-env": "^7.0.3",
+    "eslint": "^8.53.0",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-prettier": "^5.0.1",
+    "google-closure-compiler": "^20230802.0.0",
+    "husky": "^8.0.3",
+    "jest": "^29.7.0",
+    "jsdom": "^22.1.0",
+    "prettier": "^3.1.0",
+    "rollup": "^4.4.1",
+    "sass": "^1.69.5",
+    "typescript": "^5.2.2"
+  }
+}

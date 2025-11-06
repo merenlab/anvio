@@ -1,0 +1,47 @@
+@import 'sortable.scss';
+body {
+  font-size: 14px;
+}
+
+p {
+  line-height: 1.7em;
+}
+
+code {
+  font-family: monospace;
+  background: #eee;
+  padding: 5px;
+  border-radius: 2px;
+}
+
+* {
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans',
+    'Droid Sans', 'Helvetica Neue', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.sortable:nth-of-type(4) th:nth-child(7),
+thead th.no-sort {
+  background: pink !important;
+  color: red !important;
+}
+
+.sortable:nth-of-type(4) th:nth-child(7) {
+  pointer-events: none;
+  &::after {
+    color: red;
+    content: '(also not sortable)';
+    font-size: 0.9em;
+    display: block;
+  }
+}
+
+.lefty {
+  td:nth-child(2),
+  th:nth-child(2) {
+    width: 80px;
+    text-align: right;
+  }
+}
