@@ -11,8 +11,7 @@ import anvio
 from anvio.errors import ConfigError
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -448,7 +447,8 @@ class ProcessIndelCounts(object):
                     cov = (self.coverage[pos] + self.coverage[pos+1])/2
             else:
                 # The coverage is the average of the NT coverages that the deletion occurs over
-                cov = np.mean(self.coverage[pos:pos+indel['length']])
+                # plus the number of reads that have the deletion at that position
+                cov = np.mean(self.coverage[pos:pos+indel['length']]) + indel['count']
 
             # Filter the entry if need be
             if cov < self.min_coverage_for_variability:

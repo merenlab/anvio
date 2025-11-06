@@ -12,8 +12,7 @@ import numpy as np
 import pandas as pd
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -79,7 +78,7 @@ class HMMERStandardOutput(object):
     If you're confused about the meaning of these columns, please see starting from page 32
     of the HMMER guide http://eddylab.org/software/hmmer/Userguide.pdf. There you will be able
     to with relative ease correlate the column names in these tables to what is described
-    meticulously in the tutorial. For example, `best_dom_bias` refers to the the 'bias (best 1
+    meticulously in the tutorial. For example, `best_dom_bias` refers to the 'bias (best 1
     domain)' column.
 
     (3) ali_info is a nested dictionary that can be used to access on a per-hit basis which residues

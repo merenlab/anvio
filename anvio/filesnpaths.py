@@ -5,7 +5,6 @@
 import os
 import json
 import time
-import pysam
 import shutil
 import tarfile
 import tempfile
@@ -19,11 +18,8 @@ from anvio.terminal import Progress
 from anvio.terminal import SuppressAllOutput
 from anvio.errors import FilesNPathsError
 
-with SuppressAllOutput():
-    from ete3 import Tree
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -36,7 +32,26 @@ allowed_chars = constants.allowed_chars.replace('.', '').replace('-', '')
 is_bad_column_name = lambda col: len([char for char in col if char not in allowed_chars])
 
 
+def is_gene_clusters_txt(file_path):
+    is_file_tab_delimited(file_path)
+
+    header_proper = ['genome_name', 'gene_caller_id', 'gene_cluster_name']
+
+    with open(file_path, 'r') as input_file:
+        header = input_file.readline().strip().split('\t')
+
+    if sorted(header_proper) != sorted(header):
+        raise FilesNPathsError(f"The file '{file_path}' does not seem to contain the column headers anvi'o "
+                               f"expects to find in a proper gene-clusters-txt file :/ Please check the artifact "
+                               f"documentation online.")
+
+    return True
+
+
 def is_proper_newick(newick_data, dont_raise=False, names_with_only_digits_ok=False):
+
+    with SuppressAllOutput():
+        from ete3 import Tree
     try:
         tree = Tree(newick_data, format=1)
 
@@ -73,7 +88,7 @@ def is_proper_external_gene_calls_file(file_path):
     headers_proper = ['gene_callers_id', 'contig', 'start', 'stop', 'direction', 'partial', 'call_type', 'source', 'version', 'aa_sequence']
     call_types_allowed = set(list(constants.gene_call_types.values()))
 
-    with open(file_path, 'rU') as input_file:
+    with open(file_path, 'r') as input_file:
         headers = input_file.readline().strip().split('\t')
 
         if len(headers) == 10:
@@ -89,6 +104,15 @@ def is_proper_external_gene_calls_file(file_path):
         if len(missing_headers):
             raise FilesNPathsError("The headers in your external gene calls file looks wrong :/ Here is how "
                                    "your header line should look like (the `aa_sequence` is optional): '%s'." % ', '.join(headers_proper))
+
+        for i,h in enumerate(headers_proper):
+            if not has_aa_sequences and i == 9:
+                break
+            if headers[i] != h:
+                raise FilesNPathsError(f"The headers in your external gene calls file are out of order, so we can't associate each line's fields " 
+                                       f"to the right data type. Please re-order the columns to match this order: \"{', '.join(headers_proper)}. "
+                                       f"Anvi'o is sorry to make you jump through these hoops, but promises that it is the best way for more "
+                                       f"efficient processing of your data.")
 
         while 1:
             line = input_file.readline()
@@ -165,8 +189,9 @@ def is_output_file_writable(file_path, ok_if_exists=True):
                                        f"in the matrix: {e}.")
         else:
             raise FilesNPathsError(f"The output file '{file_path}' already exists. Generally speaking anvi'o tries to "
-                                   f"avoid overwriting stuff. But you can always use the flag `--force-overwrite` "
-                                   f"to instruct anvi'o to delete the existing file first.")
+                                   f"avoid overwriting stuff. You can use the flag `--force-overwrite` to instruct "
+                                   f"anvi'o to DELETE the existing target file quietly first, or change your output "
+                                   f"names or prefixes to avoid this error and store the results in new output files.")
 
     return True
 
@@ -196,7 +221,7 @@ def is_file_empty(file_path):
 
 def is_file_tab_delimited(file_path, separator='\t', expected_number_of_fields=None, dont_raise=False):
     is_file_exists(file_path)
-    f = open(file_path, 'rU')
+    f = open(file_path, 'r')
 
     try:
         while True:
@@ -246,7 +271,7 @@ def is_file_json_formatted(file_path):
     is_file_exists(file_path)
 
     try:
-        json.load(open(file_path, 'rU'))
+        json.load(open(file_path, 'r'))
     except ValueError as e:
         raise FilesNPathsError("File '%s' does not seem to be a properly formatted JSON "
                            "file ('%s', cries the library)." % (file_path, e))
@@ -272,7 +297,7 @@ def is_file_plain_text(file_path, dont_raise=False):
     is_file_exists(file_path)
 
     try:
-        open(os.path.abspath(file_path), 'rU').read(512)
+        open(os.path.abspath(file_path), 'r').read(512)
     except IsADirectoryError:
         if dont_raise:
             return False
@@ -305,8 +330,10 @@ def is_file_bam_file(file_path, dont_raise=False, ok_if_not_indexed=False):
 
     is_file_exists(file_path)
 
+    from pysam import AlignmentFile
+
     try:
-        bam_file = pysam.AlignmentFile(file_path, "rb")
+        bam_file = AlignmentFile(file_path, "rb")
     except Exception as e:
         if dont_raise:
             return False
@@ -538,6 +565,7 @@ class AppendableFile:
             self.keys_order = kwargs['keys_order'] if 'keys_order' in kwargs else None
             self.header_item_conversion_dict = kwargs['header_item_conversion_dict'] if 'header_item_conversion_dict' in kwargs else None
             self.do_not_write_key_column = kwargs['do_not_write_key_column'] if 'do_not_write_key_column' in kwargs else False
+            self.none_value = kwargs['none_value'] if 'none_value' in kwargs else None
 
             self.append_dict_to_file(data, self.file_handle)
         elif isinstance(data, str):
@@ -569,7 +597,8 @@ class AppendableFile:
             utils.store_dict_as_TAB_delimited_file(dict_to_append, None, headers=self.headers, file_obj=file_handle, \
                                                     key_header=self.key_header, keys_order=self.keys_order, \
                                                     header_item_conversion_dict=self.header_item_conversion_dict, \
-                                                    do_not_close_file_obj=True, do_not_write_key_column=self.do_not_write_key_column)
+                                                    do_not_close_file_obj=True, do_not_write_key_column=self.do_not_write_key_column, \
+                                                    none_value=self.none_value)
         else:
             # if dictionary is empty, just return
             if not dict_to_append:

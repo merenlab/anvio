@@ -1,6 +1,6 @@
 A tRNA-seq profile database is a **%(profile-db)s variant containing tRNA seed coverage information from one or more samples**.
 
-This database is created by the program, %(anvi-merge-trnaseq)s, which is part of the %(trnaseq-workflow)s. This program also creates a %(trnaseq-contigs-db)s.
+This database is created by the program, %(anvi-merge-trnaseq)s, which is part of the [trnaseq-workflow](../../workflows/trnaseq/). This program also creates a %(trnaseq-contigs-db)s.
 
 ## Specific and nonspecific coverage
 

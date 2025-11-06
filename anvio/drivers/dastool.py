@@ -12,8 +12,7 @@ import anvio.ccollections as ccollections
 from anvio.errors import ConfigError
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2019, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -138,8 +137,13 @@ class DAS_Tool:
         output_file_name = 'OUTPUT_DASTool_scaffolds2bin.txt'
         output_file_path = J(output_file_name)
         if not os.path.exists(output_file_path):
-            raise ConfigError("One of the critical output files is missing ('%s'). Please take a look at the "
-                              "log file: %s" % (output_file_name, log_file_path))
+            # if this output file is missing, we may find the other one
+            # perhaps
+            output_file_name = 'OUTPUT_DASTool_contig2bin.tsv'
+            output_file_path = J(output_file_name)
+            if not os.path.exists(output_file_path):
+                raise ConfigError("One of the critical output files is missing ('%s'). Please take a look at the "
+                                  "log file: %s" % (output_file_name, log_file_path))
 
         clusters = {}
         with open(output_file_path, 'r') as f:

@@ -24,8 +24,7 @@ from anvio.taxonomyops import AccessionIdToTaxonomy
 from anvio.taxonomyops import TaxonomyEstimatorSingle
 from anvio.taxonomyops import PopulateContigsDatabaseWithTaxonomy
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"

@@ -29,8 +29,7 @@ progress = terminal.Progress()
 pp = terminal.pretty_print
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -1189,8 +1188,6 @@ class GetReadsFromBAM:
                             read_DIRECTION = 'R1' if read.is_read1 else 'R2'
                             mate_DIRECTION = 'R2' if read_DIRECTION == 'R1' else 'R1'
 
-                            counter_for_unknown_mate = unknown_mate_defline_to_counter[defline]
-
                             # rev_comp either R1 or R2 to match the original short reads orientation
                             if read.is_reverse:
                                 short_reads_dict[mate_DIRECTION][counter] = D(unknown_mate_tracker_dict[defline]['seq'])
@@ -1391,6 +1388,16 @@ class ReadsMappingToARange:
 
         for input_bam_path in input_bam_paths:
             bam_file_object = BAMFileObject(input_bam_path)
+
+            if contig_name not in bam_file_object.references:
+                progress.reset()
+                raise ConfigError(f"Contig name '{contig_name}' is not represented in the BAM file at '{input_bam_path}'. "
+                                  f"Anvi'o is unable to make a intelligent guess regarding how did you end up here, but "
+                                  f"the only way for this to happen is that either (1) you have a contigs database that "
+                                  f"contains more contig names than the FASTA file you have used for the read recruitment "
+                                  f"that gave you this BAM file, or (2) the settings you have used with the read recruitment "
+                                  f"tool in fact did not report results for some contigs :/ Either way. There is no where "
+                                  f"to go from here :(")
 
             sample_id = filesnpaths.get_name_from_file_path(input_bam_path)
 

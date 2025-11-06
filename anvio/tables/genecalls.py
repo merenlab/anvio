@@ -18,8 +18,7 @@ from anvio.tables.tableops import Table
 from anvio.errors import ConfigError
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -279,8 +278,6 @@ class TablesForGeneCalls(Table):
                 if len(amino_acid_sequences[gene_callers_id]):
                     gene_caller_ids_with_user_provided_amino_acid_sequences.add(gene_callers_id)
 
-                    gene_length = gene_calls_dict[gene_callers_id]['stop'] - gene_calls_dict[gene_callers_id]['start']
-                    estimated_length_for_aa = gene_length / 3
                     user_provided_aa_length = len(amino_acid_sequences[gene_callers_id])
 
                     # there is already a sanity check for htis, but one can't be too careful
@@ -288,11 +285,21 @@ class TablesForGeneCalls(Table):
                         raise ConfigError("You have provided an amino acid sequence for at least one gene call in your external gene calls "
                                            "(%d) file that was not marked as CODING type :(" % gene_callers_id)
 
-                    if user_provided_aa_length > estimated_length_for_aa:
-                        raise ConfigError("Bad news :( There seems to be at least one gene call in your external gene calls file "
-                                          "that has an aminio acid sequence that is longer than the expected length of it given the "
-                                          "start/stop positions of the gene call. This is certainly true for gene call number %d "
-                                          "but anvi'o doesn't know if there are more of these in your file or not :/" % gene_callers_id)
+                    # when the user provides aa sequences in external gene calls file, the lenght of a given aa sequence
+                    # may sometimes differ from the estimated lenght of the aa sequence solely based on the gene call itself.
+                    # while this may be due to a user error, which was the intention of the code below to catch that, it can
+                    # also be the case due to biology, especially for eukaryotic gene calls. anvi'o does not have a way to deal
+                    # with eukaryotic gene calls with introns and exons as of 2024, and after https://github.com/merenlab/anvio/issues/2310
+                    # it became clear that it is best to comment out this check so that when users who study eukaryotic genomes
+                    # provide aa sequences, anvi'o does not expect them to be identical in lenght to the gene call itself.
+                    #
+                    #gene_length = gene_calls_dict[gene_callers_id]['stop'] - gene_calls_dict[gene_callers_id]['start']
+                    #estimated_length_for_aa = gene_length / 3
+                    #if user_provided_aa_length > estimated_length_for_aa:
+                    #    raise ConfigError("Bad news :( There seems to be at least one gene call in your external gene calls file "
+                    #                      "that has an aminio acid sequence that is longer than the expected length of it given the "
+                    #                      "start/stop positions of the gene call. This is certainly true for gene call number %d "
+                    #                      "but anvi'o doesn't know if there are more of these in your file or not :/" % gene_callers_id)
 
             self.run.warning("Anvi'o found amino acid sequences in your external gene calls file that match to %d of %d gene "
                              "in it and will use these amino acid sequences for everything." % (len(amino_acid_sequences), len(gene_calls_dict)))
@@ -465,7 +472,7 @@ class TablesForGeneCalls(Table):
         return gene_call
 
 
-    def call_genes_and_populate_genes_in_contigs_table(self, gene_caller='prodigal'):
+    def call_genes_and_populate_genes_in_contigs_table(self, gene_caller='pyrodigal-gv'):
         Table.__init__(self, self.db_path, anvio.__contigs__version__, self.run, self.progress, simple=True)
 
         # get gene calls and amino acid sequences
@@ -478,13 +485,13 @@ class TablesForGeneCalls(Table):
         self.populate_genes_in_contigs_table(gene_calls_dict, amino_acid_sequences)
 
 
-    def run_gene_caller(self, gene_caller='prodigal'):
+    def run_gene_caller(self, gene_caller):
         """Runs gene caller, and returns gene_calls_dict, and amino acid sequences."""
         remove_fasta_after_processing = False
 
         if not self.contigs_fasta:
             self.contigs_fasta = filesnpaths.get_temp_file_path()
-            utils.export_sequences_from_contigs_db(self.contigs_db_path,
+            utils.export_sequences_from_contigs_db(self.db_path,
                                                    output_file_path=self.contigs_fasta,
                                                    run=self.run)
             remove_fasta_after_processing = True
@@ -495,7 +502,18 @@ class TablesForGeneCalls(Table):
 
         gene_caller = genecalling.GeneCaller(self.contigs_fasta, gene_caller=gene_caller, args=self.args, debug=self.debug)
 
-        gene_calls_dict, amino_acid_sequences = gene_caller.process()
+        try:
+            gene_calls_dict, amino_acid_sequences = gene_caller.process()
+        except Exception as e:
+            self.run.warning("There was a problem with your gene calling. Anvi'o will now remove the residual contigs-db file. Please "
+                             "find the actual error message below. If you need more details, re-run your command with `--debug` parameter.",
+                             header="💀 GENE CALLING STEP FAILED 💀")
+
+            # remove the unfinished contigs-db file
+            os.remove(self.db_path)
+
+            # show the user the actual error from down below
+            raise ConfigError(f"{e}")
 
         if not self.debug and remove_fasta_after_processing:
             os.remove(self.contigs_fasta)

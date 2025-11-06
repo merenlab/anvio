@@ -14,17 +14,16 @@ ANVIO_WORKFLOWS = {
         "artifacts_accepted": ['fasta-txt'],
         "anvio_workflows_inherited": [],
         "third_party_programs_used": [
-            ('Gene calling', ['prodigal']),
+            ('Gene calling', ['pyrodigal-gv']),
             ('HMM search', ['HMMER']),
             ('Gene taxonomy', ['krakenuniq', 'centrifuge']),
             ('Sequence search against various databases', ['DIAMOND'])
             ],
         "one_sentence_summary": "From FASTA files to annotated anvi'o contigs databases",
-        "one_paragraph_summary": ("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor "
-            "incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco "
-            "laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate "
-            "velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, "
-            "sunt in culpa qui officia deserunt mollit anim id est laborum")
+        "one_paragraph_summary": ("This workflow is useful for converting a bunch of genomes into an anvi'o-compatible "
+            "format. It generates contigs databases from each input FASTA file, and subsequently runs a variety of "
+            "annotation programs of your choice to populate these databases with some useful information for your downstream "
+            "work (i.e. functions, single-copy-core genes, taxonomy, etc).")
     },
 
     "metagenomics": {
@@ -36,17 +35,19 @@ ANVIO_WORKFLOWS = {
             ('Quality control of short reads', ['illumina-utils']),
             ('Assembly', ['IDBA-UD', 'metaSPAdes', 'MEGAHIT']),
             ('BAM file manipulations', ['samtools']),
-            ('Gene calling', ['prodigal']),
+            ('Gene calling', ['pyrodigal-gv']),
             ('HMM search', ['HMMER']),
             ('Gene taxonomy', ['krakenuniq', 'centrifuge']),
             ('Read recruitment', ['Bowtie2'])
             ],
         "one_sentence_summary": "From FASTA and/or FASTQ files to anvi'o contigs and profile databases",
-        "one_paragraph_summary": ("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor "
-            "incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco "
-            "laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate "
-            "velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, "
-            "sunt in culpa qui officia deserunt mollit anim id est laborum")
+        "one_paragraph_summary": ("This workflow is for anyone who wants to do some high-throughput read recruitment. "
+            "It has a few different modes depending on your input data. By default, it works with metagenomic short reads "
+            "and will assemble those, use the assembly as a reference for read-recruitment, and create databases ready for "
+            "anvi-interactive (i.e. for binning). If you don't need to assemble anything, you can also just give this "
+            "program a set of reference contigs for read-recruitment. Regardless, you'll end up with at least one "
+            "contigs database + merged profile database pair. Oh, and since this workflow internally uses the contigs "
+            "workflow, you can optionally run annotation programs on your contigs database as well.")
     },
     "ecophylo": {
         "authors": ['mschecht'],
@@ -63,13 +64,49 @@ ANVIO_WORKFLOWS = {
             ('Search for homologous sequences', ['HMMER'])
             ],
         "one_sentence_summary": "Co-characterize the biogeography and phylogeny of any protein",
-        "one_paragraph_summary": ("The ecophylo workflow explores the **eco**logical and **phylo**genetic relationships between individual genes and environments. "
+        "one_paragraph_summary": ("The ecophylo workflow explores the **eco**logical and **phylo**genetic relationships between a gene family and the environment. "
             "Briefly, the workflow extracts a target gene from any set of FASTA files (e.g., isolate genomes, [MAGs](https://anvio.org/vocabulary/#metagenome-assembled-genome-mag), "
-            "[SAGs](https://anvio.org/vocabulary/#single-amplified-genome-sag), or simply assembled metagenomes) "
+            "[SAGs](https://anvio.org/vocabulary/#single-amplified-genome-sag), or simply [assembled metagenomes](https://anvio.org/vocabulary/#de-novo-assembly)) "
             "using a user-defined [HMM](https://anvio.org/vocabulary/#hidden-markov-models-hmms), and offers an integrated access "
             "to the phylogenetics of matching genes, and their distribution across environments.")
     },
+    "trnaseq": {
+        "authors": ['semiller10'],
+        "artifacts_accepted": ['samples-txt'],
+        "artifacts_produced": ['trnaseq-db', 'trnaseq-contigs-db', 'trnaseq-profile-db', 'trnaseq-seed-txt', 'modifications-txt'],
+        "anvio_workflows_inherited": [],
+        "third_party_programs_used": [
+            ('QC and merging of tRNA transcripts', ['illumina-utils']),
+            ('Mapping transcripts to tRNA seeds', ['Bowtie2'])
+            ],
+        "one_sentence_summary": "Process transfer RNA transcripts from tRNA-seq datasets",
+        "one_paragraph_summary": ("The trnaseq workflow takes in raw paired-end sequencing data generated from trna-seq libraries (i.e., the direct sequencing of "
+            "transfer RNA transcripts from cultures or environmental samples), and processes these data to identify tRNA sequences and their structural features, "
+            "predict chemical modification sites and modification fractions across samples, assign taxonomy to tRNA transcript seeds, and generate tables and summary "
+            "data for downstream analyses. The tRNA-seq resources in anvi'o are operational, however, they are experimental. If you have datasets that are suitable "
+            "for analysis, pelase consider getting in touch with us first.")
+    },
+
+    "sra-download": {
+        "authors": ['mschecht'],
+        "artifacts_accepted": [],
+        "artifacts_produced": ['paired-end-fastq', 'samples-txt'],
+        "anvio_workflows_inherited": [],
+        "third_party_programs_used": [
+            ('Downloads SRA accessions', ['prefetch']),
+            ('Extracts FASTQ files from SRA accessions', ['fasterq-dump']),
+            ('Compresses FASTQ files in parallel', ['pigz']),
+            ],
+        "one_sentence_summary": "Download, verify, extract, and gzip paired-end FASTQ files automatically from the NCBI short-read archive (SRA)",
+        "one_paragraph_summary": ("The sra-download workflow automatizes the process of downloading paired-end FASTQ files "
+            "for a given list of SRA-accessions using [NCBI sra-tools wiki](https://github.com/ncbi/sra-tools/wiki/08.-prefetch-and-fasterq-dump) "
+            "then gzips them using [pigz](https://zlib.net/pigz/).")
+    },
 }
+
+# Make usernames lowercase as in GitHub
+for a in ANVIO_WORKFLOWS:
+    ANVIO_WORKFLOWS[a]["authors"] = [n.lower() for n in ANVIO_WORKFLOWS[a]["authors"]]
 
 # the purpose of this variable is to have a list of third-party programs used from
 # within anvi'o workflows.
@@ -79,7 +116,7 @@ THIRD_PARTY_PROGRAMS = {
     'metaSPAdes': {'link': "https://cab.spbu.ru/software/meta-spades/"},
     'MEGAHIT': {'link': 'https://github.com/voutcn/megahit'},
     'samtools': {'link': 'http://www.htslib.org/'},
-    'prodigal': {'link': 'https://github.com/hyattpd/Prodigal'},
+    'pyrodigal-gv': {'link': 'https://github.com/althonos/pyrodigal-gv'},
     'HMMER': {'link': 'http://hmmer.org/'},
     'Bowtie2': {'link': 'https://github.com/BenLangmead/bowtie2'},
     'krakenuniq': {'link': 'https://github.com/fbreitwieser/krakenuniq'},
@@ -89,7 +126,10 @@ THIRD_PARTY_PROGRAMS = {
     'muscle': {'link': 'http://www.drive5.com/muscle/'},
     'FastTree': {'link': 'http://www.microbesonline.org/fasttree/'},
     'IQ-TREE': {'link': 'https://github.com/Cibiv/IQ-TREE'},
-    'trimal': {'link': 'https://github.com/inab/trimal'}
+    'trimal': {'link': 'https://github.com/inab/trimal'},
+    'pigz': {'link': 'https://zlib.net/pigz/'},
+    'prefetch': {'link': 'https://github.com/ncbi/sra-tools'},
+    'fasterq-dump': {'link': 'https://github.com/ncbi/sra-tools'}
     }
 
 # the purpose of dictionaries in this module is to describes all anvi'o items and concepts
@@ -185,6 +225,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "paired-end-fastq": {
+        "name": "SHORT READS",
+        "type": "FASTQ",
+        "provided_by_anvio": True,
+        "provided_by_user": True
+    },
     "genes-fasta": {
         "name": "GENES",
         "type": "FASTA",
@@ -275,6 +321,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": True
     },
+    "reaction-ref-data": {
+        "name": "REACTION REFERENCE DATA",
+        "type": "DB",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "single-profile-db": {
         "name": "SINGLE PROFILE",
         "type": "DB",
@@ -329,11 +381,23 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user":True
     },
+    "pfam-accession": {
+        "name": "PFAM ACCESSION",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
+    "hmm-file": {
+        "name": "HMM MODEL FILE",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
     "hmm-source": {
         "name": "HMM SOURCE",
         "type": "HMM",
         "provided_by_anvio": False,
-        "provided_by_user":True
+        "provided_by_user": True
     },
     "hmm-hits": {
         "name": "HMM PROFILE",
@@ -355,6 +419,12 @@ ANVIO_ARTIFACTS ={
     },
     "pfams-data": {
         "name": "PFAMs DATA",
+        "type": "DATA",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "cazyme-data": {
+        "name": "CAZymes HMM DATA",
         "type": "DATA",
         "provided_by_anvio": True,
         "provided_by_user": False
@@ -530,6 +600,24 @@ ANVIO_ARTIFACTS ={
     "hmm-hits-across-genomes-txt": {
         "name": "HMM HITS ACROSS GENOMES",
         "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "reaction-network": {
+        "name": "REACTION NETWORK",
+        "type": "CONCEPT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "reaction-network-json": {
+        "name": "REACTION NETWORK JSON",
+        "type": "JSON",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "kegg-pathway-map": {
+        "name": "KEGG PATHWAY MAP",
+        "type": "DISPLAY",
         "provided_by_anvio": True,
         "provided_by_user": False
     },
@@ -767,12 +855,6 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": False,
         "provided_by_user": True
     },
-    "genes-stats": {
-        "name": "GENE STATS",
-        "type": "STATS",
-        "provided_by_anvio": True,
-        "provided_by_user": False
-    },
     "vcf": {
         "name": "VCF",
         "type": "TXT",
@@ -827,42 +909,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": False,
         "provided_by_user": True
     },
-    "contigs-workflow": {
-        "name": "CONTIGS WORKFLOW",
+    "workflow": {
+        "name": "ANVIO SNAKEMAKE WORKFLOW",
         "type": "WORKFLOW",
         "provided_by_anvio": True,
         "provided_by_user": False
     },
-    "metagenomics-workflow": {
-        "name": "METAGENOMICS WORKFLOW",
-        "type": "WORKFLOW",
-        "provided_by_anvio": True,
-        "provided_by_user": False
-    },
-    "pangenomics-workflow": {
-        "name": "PANGENOMICS WORKFLOW",
-        "type": "WORKFLOW",
-        "provided_by_anvio": True,
-        "provided_by_user": False
-    },
-    "phylogenomics-workflow": {
-        "name": "PHYLOGENOMICS WORKFLOW",
-        "type": "WORKFLOW",
-        "provided_by_anvio": True,
-        "provided_by_user": False
-    },
-    "trnaseq-workflow": {
-        "name": "TRNASEQ WORKFLOW",
-        "type": "WORKFLOW",
-        "provided_by_anvio": True,
-        "provided_by_user": False
-    },
-    "ecophylo-workflow": {
-        "name": "ECOPHYLO WORKFLOW",
-        "type": "WORKFLOW",
-        "provided_by_anvio": True,
-        "provided_by_user": False
-},
     "contig-inspection" : {
         "name" : "CONTIG INSPECTION",
         "type" : "DISPLAY",
@@ -874,6 +926,18 @@ ANVIO_ARTIFACTS ={
         "type" : "DISPLAY",
         "provided_by_anvio" : True,
         "provided_by_user" : False
+    },
+    "gene-clusters": {
+        "name": "GENE CLUSTERS",
+        "type": "CONCEPT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "gene-clusters-txt": {
+        "name": "GENE CLUSTERS TXT",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": True
     },
     "enzymes-txt": {
         "name": "ENZYMES TXT",
@@ -892,5 +956,35 @@ ANVIO_ARTIFACTS ={
         "type": "CONCEPT",
         "provided_by_anvio": True,
         "provided_by_user": False
-    }
+    },
+    "contig-rename-report-txt": {
+        "name": "CONTIG RENAME REPORT TXT",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "rarefaction-curves": {
+        "name": "RAREFACTION CURVES",
+        "type": "SVG",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "metabolite-exchange-predictions": {
+        "name": "PREDICTED METABOLITE EXCHANGES",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "equivalent-compounds-txt": {
+        "name": "EQUIVALENT COMPOUNDS",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": True
+    },
+    "genome-pairs": {
+        "name": "GENOME PAIRS",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
 }

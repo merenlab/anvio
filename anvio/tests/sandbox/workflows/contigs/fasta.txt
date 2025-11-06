@@ -1,4 +1,4 @@
 name	path
-s01	01.fa.gz
-s02	02.fa
-s03	03.fa
+E_faecalis_6240	E_faecalis_6240.fa.gz
+E_faecalis_6255	E_faecalis_6255.fa
+E_faecalis_6512	E_faecalis_6512.fa

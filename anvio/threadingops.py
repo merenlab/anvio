@@ -24,8 +24,7 @@ from collections import UserDict
 from threading import Thread
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2020, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -357,7 +356,7 @@ class ThreadedProdigalRunner(ThreadedCommandRunner):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
 
         required_args = ['input_file_path', 'collated_output_file_paths', 'number_of_splits', 'log_file_path',
-                         'installed_version', 'parser']
+                         'installed_version', 'parser', 'prodigal_single_mode']
 
         # Check that the required arguments are present.
         for arg in required_args:
@@ -370,6 +369,7 @@ class ThreadedProdigalRunner(ThreadedCommandRunner):
                          log_file_path=A('log_file_path'),
                          logger=A('logger'))
 
+        self.prodigal_single_mode = A('prodigal_single_mode')
         self.installed_version = A('installed_version')
         self.parser = A('parser')
 
@@ -379,6 +379,7 @@ class ThreadedProdigalRunner(ThreadedCommandRunner):
             translation_table = str(translation_table)
 
         self.translation_table = translation_table
+
 
     # Implement the abstract methods
     #
@@ -394,12 +395,13 @@ class ThreadedProdigalRunner(ThreadedCommandRunner):
         """
         # Todo: probably should move this check into the constructor.
         if self.number_of_splits <= 0:
-            ValueError(f'number_of_splits muts be > 0.  Got {self.number_of_splits}')
+            raise ValueError(f'number_of_splits must be > 0.  Got {self.number_of_splits}')
 
         # Todo are there errors to catch here?
         self.input_file_splits = utils.split_fasta(self.input_file_path, parts=self.number_of_splits, shuffle=True)
 
         return State(input_file_splits=self.input_file_splits)
+
 
     def _make_commands(self):
         """Make commands and store them in `self.commands`.
@@ -445,8 +447,14 @@ class ThreadedProdigalRunner(ThreadedCommandRunner):
                         "you are reading this message, then please contact an anvi'o developer."
                         % str(self.translation_table))
             else:
-                # Use 'meta' mode if no translation tables are given.
-                command.extend(['-p', 'meta'])
+                if self.prodigal_single_mode:
+                    # the user explicitly requested to not use the `-p meta` flag to run
+                    # prodigal (the default procedure is single, so prodigal will fall back
+                    # to 'single' mode in this case)
+                    pass
+                else:
+                    # Use 'meta' mode if no translation tables are given.
+                    command.extend(['-p', 'meta'])
 
             self.commands.append(command)
 
@@ -463,7 +471,7 @@ class ThreadedProdigalRunner(ThreadedCommandRunner):
         # Check that the proper keyword arguments are given.
         for key in ['peptide_path', 'gff_path']:
             if key not in self.output_file_split_paths:
-                ValueError(f"kwargs should have the key '{key}', but it is missing.")
+                raise ValueError(f"kwargs should have the key '{key}', but it is missing.")
 
         peptide_paths = self.output_file_split_paths['peptide_path']
         gff_paths = self.output_file_split_paths['gff_path']

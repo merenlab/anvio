@@ -9,7 +9,9 @@ Please note that the examples below show only KEGG data, but user-defined metabo
 
 ## Long-format output modes
 
-The long-format output option produces tab-delimited files. Different output "modes" will result in output files with different information.
+The long-format output option produces tab-delimited files. Different output "modes" will result in output files with different information. You can use the `--list-available-modes` parameter to see which modes are implemented in your version of anvi'o. 
+
+Some of these modes are customizable, such that you can select which columns of information to include in the output with the flag `--custom-output-headers`. Use the `--list-available-output-headers` parameter to see what kinds of information you can choose from.
 
 ### 'Modules' Mode
 
@@ -55,6 +57,18 @@ If you use the flag `--add-coverage` and provide a profile database, additional 
 | 3.0,5.0,10.0,2.0 | 5.0 | 1.0,1.0,1.0,1.0 | 1.0 |
 
 In this mock example, the module in this row has four gene calls in it. The `SAMPLE_1_gene_coverages` column lists the mean coverage of each of those genes in SAMPLE_1 (in the same order as the gene calls are listed in the `gene_caller_ids_in_module` column), and the `SAMPLE_1_avg_coverage` column holds the average of these values. As you probably expected, the `detection` columns are similarly defined, except that they contain detection values instead of coverage.
+
+**Pathway substrates, products, and intermediates**
+
+To add information about molecular compounds that are relevant to each metabolic pathway, you can customize the `modules mode` output. Here is an example command to do that:
+
+{{ codestart }}
+anvi-estimate-metabolism -c %(contigs-db)s \
+                         --output-modes modules_custom \
+                         --custom-output-headers module,module_name,module_substrates,module_intermediates,module_products,pathwise_module_completeness,stepwise_module_completeness
+{{ codestop }}
+
+The resulting output file will have a column for each item in the `--custom-output-headers` list, including one each for the substrates (input compounds), products (output compounds) and intermediates.
 
 {:.warning}
 The 'hits_in_modules' output mode has been deprecated as of anvi'o `v7.1-dev`. If you have one of these output files and need information about it, you should look in the documentation pages for anvi'o `v7`. If you would like to obtain a similar output, the closest available is 'module_paths' mode.
@@ -152,18 +166,19 @@ The 'hits' output file will have the suffix `hits.txt`. Unlike the previous mode
 
 Here is an example of this output mode (also from the Infant Gut dataset):
 
-enzyme | genome_name | db_name | gene_caller_id | contig | modules_with_enzyme | enzyme_definition
-|:--|:--|:--|:--|:--|:--|:--|
-K25026 | Enterococcus_faecalis_6240 | E_faecalis_6240 | 1608 | Enterococcus_faecalis_6240_contig_00003_chromosome | M00001,M00549,M00909 | glucokinase [EC:2.7.1.2]
-K01810 | Enterococcus_faecalis_6240 | E_faecalis_6240 | 600 | Enterococcus_faecalis_6240_contig_00003_chromosome | M00001,M00004,M00892,M00909 | glucose-6-phosphate isomerase [EC:5.3.1.9]
-K00850 | Enterococcus_faecalis_6240 | E_faecalis_6240 | 225 | Enterococcus_faecalis_6240_contig_00003_chromosome | M00001,M00345 | 6-phosphofructokinase 1 [EC:2.7.1.11]
-(...) |(...)|(...)|(...)|(...)|(...)|(...)|
+enzyme | genome_name | db_name | gene_caller_id | contig | modules_with_enzyme | enzyme_definition | warnings
+|:--|:--|:--|:--|:--|:--|:--|:--|
+K25026 | Enterococcus_faecalis_6240 | E_faecalis_6240 | 1608 | Enterococcus_faecalis_6240_contig_00003_chromosome | M00001,M00549,M00909 | glucokinase [EC:2.7.1.2] | None
+K01810 | Enterococcus_faecalis_6240 | E_faecalis_6240 | 600 | Enterococcus_faecalis_6240_contig_00003_chromosome | M00001,M00004,M00892,M00909 | glucose-6-phosphate isomerase [EC:5.3.1.9] | None
+K00850 | Enterococcus_faecalis_6240 | E_faecalis_6240 | 225 | Enterococcus_faecalis_6240_contig_00003_chromosome | M00001,M00345 | 6-phosphofructokinase 1 [EC:2.7.1.11] | None
+(...) |(...)|(...)|(...)|(...)|(...)|(...)|(...)|
 
 Here are the descriptions of any new columns not yet discussed in the previous sections:
 
 - `enzyme`: an enzyme that was annotated in the contigs database
 - `modules_with_enzyme`: the modules (if any) that this enzyme belongs to
 - `enzyme_definition`: the function of this enzyme (often includes the enzyme name and EC number)
+- `warnings`: when you used the flag `--include-nt-KOs`, this column will tell you if a given annotation was done using the "anvi'o version" of the KO family's pHMM. What this means is that anvi'o created the pHMM out of all KEGG GENES sequences for the KO when %(anvi-setup-kegg-data)s was run. See [this documentation section](https://anvio.org/help/main/programs/anvi-setup-kegg-data/#what-are-nt-kos-and-what-happens-when-i-include-them) for details.
 
 **Coverage and detection values in the output**
 

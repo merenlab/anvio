@@ -24,8 +24,7 @@ from anvio.tables.miscdata import TableForLayerOrders, TableForLayerAdditionalDa
 from anvio.tables.views import TablesForViews
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -334,7 +333,7 @@ class MultipleRuns:
         # do we have a description file?
         if self.description_file_path:
             filesnpaths.is_file_plain_text(self.description_file_path)
-            self.description = open(os.path.abspath(self.description_file_path), 'rU').read()
+            self.description = open(os.path.abspath(self.description_file_path), 'r').read()
 
 
     def set_sample_id(self):

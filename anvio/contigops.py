@@ -25,8 +25,7 @@ from anvio.errors import ConfigError
 from anvio.variability import VariablityTestFactory, ProcessNucleotideCounts, ProcessCodonCounts, ProcessIndelCounts
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = ["Mike Lee", "Faruk Uzun"]
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -177,7 +176,8 @@ class Split:
 
 class Auxiliary:
     def __init__(self, split, min_coverage_for_variability=10, report_variability_full=False,
-                 profile_SCVs=False, skip_INDEL_profiling=False, skip_SNV_profiling=False, min_percent_identity=None):
+                 profile_SCVs=False, skip_INDEL_profiling=False, skip_SNV_profiling=False,
+                 min_percent_identity=None, skip_edges=0):
 
         if anvio.DEBUG:
             self.run = terminal.Run()
@@ -190,6 +190,7 @@ class Auxiliary:
         self.profile_SCVs = profile_SCVs
         self.skip_INDEL_profiling = skip_INDEL_profiling
         self.report_variability_full = report_variability_full
+        self.skip_edges = skip_edges
 
         # used during array processing
         self.nt_to_array_index = {nt: i for i, nt in enumerate(constants.nucleotides)}
@@ -482,6 +483,14 @@ class Auxiliary:
         read_count = 0
         for read in read_iterator(self.split.parent, self.split.start, self.split.end, **kwargs):
             aligned_sequence_as_ord, reference_positions = read.get_aligned_sequence_and_reference_positions()
+
+            # if the user is asking some nucleotides to be excluded from the calculation of
+            # single-nucleotide variants due to DNA damage or other reasons, don't take them
+            # into consideration:
+            if self.skip_edges > 0:
+                aligned_sequence_as_ord = aligned_sequence_as_ord[self.skip_edges:-self.skip_edges]
+                reference_positions = reference_positions[self.skip_edges:-self.skip_edges]
+
             aligned_sequence_as_index = utils.nt_seq_to_nt_num_array(aligned_sequence_as_ord, is_ord=True)
             reference_positions_in_split = reference_positions - self.split.start
 
@@ -524,7 +533,8 @@ class Auxiliary:
 
             read_count += 1
 
-        if anvio.DEBUG: self.run.info_single('Done SNVs for %s (%d reads processed)' % (self.split.name, read_count), nl_before=0, nl_after=0)
+        if anvio.DEBUG:
+            self.run.info_single('Done SNVs for %s (%d reads processed)' % (self.split.name, read_count), nl_before=0, nl_after=0)
 
         split_as_index = utils.nt_seq_to_nt_num_array(self.split.sequence)
         nt_profile = ProcessNucleotideCounts(
@@ -553,8 +563,9 @@ class Auxiliary:
         self.split.num_INDEL_entries = len(self.split.INDEL_profiles)
         self.variation_density = self.split.num_SNV_entries * 1000.0 / self.split.length
 
-        if anvio.DEBUG: self.run.info_single('%d SNVs to report' % (self.split.num_SNV_entries), nl_before=0, nl_after=0, level=2)
-        if anvio.DEBUG: self.run.info_single('%d INDELs to report' % (self.split.num_INDEL_entries), nl_before=0, nl_after=0, level=2)
+        if anvio.DEBUG:
+            self.run.info_single('%d SNVs to report' % (self.split.num_SNV_entries), nl_before=0, nl_after=0, level=2)
+            self.run.info_single('%d INDELs to report' % (self.split.num_INDEL_entries), nl_before=0, nl_after=0, level=2)
 
 
 class GenbankToAnvioWrapper:
@@ -751,9 +762,14 @@ class GenbankToAnvio:
             if not len(genes):
                 continue
 
-            # do we have AA sequences in this?
-            if 'translation' in genes[0].qualifiers:
-                aa_sequences_present = True
+            # do we have AA sequences in this? we will go through all genes in case
+            # the first one happens to not have a translated sequence but the next
+            # but some others do
+            for gene in genes:
+                if 'translation' in gene.qualifiers:
+                    aa_sequences_present = True
+                    break
+
 
             if aa_sequences_present and self.omit_aa_sequences_column:
                 aa_sequences_present = False
@@ -763,8 +779,12 @@ class GenbankToAnvio:
 
         # The main loop to go through all records forreals.
         for genbank_record in self.get_genbank_file_object():
-            num_genbank_records_processed += 1
-            output_fasta[genbank_record.name] = str(genbank_record.seq)
+            if genbank_record.name in output_fasta:
+                raise ConfigError("Anvi'o is not able to convert this GenBank file because it contains sequences with identical "
+                                   "locus names :/. An example is locus '%s'." % genbank_record.name)
+            else:
+                num_genbank_records_processed += 1
+                output_fasta[genbank_record.name] = str(genbank_record.seq)
 
             genes = [gene for gene in genbank_record.features if gene.type =="CDS"] # focusing on features annotated as "CDS" by NCBI's PGAP
 
@@ -812,12 +832,12 @@ class GenbankToAnvio:
                 end = location[1] # end coordinate
 
                 # setting direction to "f" or "r":
-                if gene.strand == 1:
+                if gene.location.strand == 1:
                     direction="f"
                 else:
                     direction="r"
 
-                # for accession, storing protein id if it has one, else the the locus tag, else "None"
+                # for accession, storing protein id if it has one, else the locus tag, else "None"
                 if "protein_id" in gene.qualifiers:
                     accession = gene.qualifiers["protein_id"][0]
                 elif "locus_tag" in gene.qualifiers:

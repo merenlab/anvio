@@ -1,6 +1,6 @@
 This file describes all of the gene calls contained in a %(contigs-db)s from a specified list of sources. It is the output of %(anvi-export-gene-calls)s. 
 
-For each gene identified, this file provides various information, including the caller ID, [start and stop position](http://merenlab.org/software/anvio/help/artifacts/external-gene-calls/#gene-startstop-positions), direction, whether or not the gene is partial, the [call type](http://merenlab.org/software/anvio/help/artifacts/external-gene-calls/#call-type), source and version (if available ), and the amino acid sequence. 
+For each gene identified, this file provides various information, including the caller ID, [start and stop position](https://anvio.org/help/main/artifacts/external-gene-calls/#gene-startstop-positions), direction, whether or not the gene is partial, the [call type](https://anvio.org/help/main/artifacts/external-gene-calls/#call-type), source and version (if available ), and the amino acid sequence. 
 
 {:.notice}
 Want more information? This file is in the same format as an %(external-gene-calls)s, so check out that page. 

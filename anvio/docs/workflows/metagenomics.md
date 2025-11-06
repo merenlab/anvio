@@ -1,30 +1,33 @@
-**The default entering point** to the metagenomics workflow is the raw paired-end sequencing reads for one or more shotgun metagenomes. **The default end point** of the workflow is an anvi'o merged profile database ready for refinement of bins (or whatever it is that you want to do with it), along with an annotated anvi'o contigs database. While these are the default entry and end points, there are many more ways to use the metagenomic workflow that we will demonstrate later.
+**The default entering point** to the metagenomics workflow is the raw sequencing reads for one or more shotgun metagenomes. **The default end point** of the workflow is an anvi'o merged profile database ready for refinement of bins (or whatever it is that you want to do with it), along with an annotated anvi'o contigs database. While these are the default entry and end points, there are many more ways to use the metagenomics workflow that we will demonstrate later.
 
-The workflow includes the following steps:
+The workflow includes the following steps (though many are optional and can be skipped by modifying their rules in the workflow configuration file):
 
 1. Quality control of metagenomic short reads using [illumina-utils](https://github.com/merenlab/illumina-utils/), and generating a comprehensive final report for the results of this step (so you have your Supplementary Table 1 ready).
 
-2. Taxonomical profiling of short reads using [krakenuniq](https://github.com/fbreitwieser/krakenuniq). These profiles are also imported into individual profile databases, and are available in the merged profile database (for more details about this, refer to the [release notes of anvi'o version 5.1](https://github.com/merenlab/anvio/releases/tag/v5.1)).
+2. Taxonomic profiling of short reads using [krakenuniq](https://github.com/fbreitwieser/krakenuniq). These profiles are also imported into individual profile databases, and are available in the merged profile database (for more details about this, refer to the [release notes of anvi'o version 5.1](https://github.com/merenlab/anvio/releases/tag/v5.1)).
 
-2. Individual or combined assembly of quality filtered metagenomic reads using either [megahit](https://github.com/voutcn/megahit), [metaspades](http://cab.spbu.ru/software/spades/), or [idba_ud](https://github.com/loneknightpy/idba).
+2. Individual or combined assembly of quality filtered metagenomic reads using either [megahit](https://github.com/voutcn/megahit), [metaspades](http://cab.spbu.ru/software/spades/), [idba_ud](https://github.com/loneknightpy/idba) or [(meta)Flye](https://github.com/mikolmogorov/Flye) for long-reads.
 
 3. Generating an anvi'o contigs database from assembled contigs using %(anvi-gen-contigs-database)s. This part of the metagenomics workflow is inherited from the contigs workflow, so you know this step also includes the annotation of your contigs database(s) with functions, HMMs, and taxonomy.
 
-4. Mapping short reads from each metagenome to the contigs using [bowtie2](http://bowtie-bio.sourceforge.net/bowtie2/index.shtml), and generating sorted and indexed BAM files.
+4. Mapping short reads from each metagenome to the contigs using [bowtie2](http://bowtie-bio.sourceforge.net/bowtie2/index.shtml), or long-reads with [minimap2](https://github.com/lh3/minimap2), and generating sorted and indexed BAM files.
 
 5. Profiling individual BAM files using %(anvi-profile)s to generate single anvi'o profiles.
 
 6. Merging resulting single anvi'o profiles using %(anvi-merge)s.
 
 
-The metagenomic workflow is quite talented and can be run in multiple 'modes'. The following sections will detail different use cases.
+The metagenomics workflow is quite talented and can be run in multiple 'modes'. The following sections will detail different use cases.
+
+{:.warning}
+This documentation page is partially based off of [this old tutorial](https://merenlab.org/2018/07/09/anvio-snakemake-workflows/#metagenomics-workflow). We hope to update it at some point, but this is what we have for now. You will notice that several sections below reference example files and data. If you want to run those examples yourself, you should [click here](https://merenlab.org/2018/07/09/anvio-snakemake-workflows/#mock-data) and follow the instructions to download the mock dataset used in that tutorial.
 
 
 ### Default mode
 
 As mentioned above, the standard usage of this workflow is meant to go through all the steps from raw reads to having a merged profile database (or databases) ready for binning.
 
-All you need is a bunch of FASTQ files, and a `samples.txt` file. Here, we will go through a mock example with three small metagenomes. These metagenomes were made by choosing a small number of reads from three [HMP](https://www.hmpdacc.org/) metagenomes (these reads were not chosen randomly, for more details, [ask Alon](mailto:alon.shaiber@gmail.com)). In your working directory you have the following `samples.txt` file:
+All you need is a bunch of FASTQ files, and a %(samples-txt)s file. Here, we will go through a mock example with three small metagenomes. These metagenomes were made by choosing a small number of reads from three [HMP](https://www.hmpdacc.org/) metagenomes (these reads were not chosen randomly, for more details, [ask Alon](mailto:alon.shaiber@gmail.com)). In your working directory you have the following `samples.txt` file:
 
 ```bash
 $ column -t samples.txt
@@ -34,9 +37,9 @@ sample_02  G02    three_samples_example/sample-02-R1.fastq.gz  three_samples_exa
 sample_03  G02    three_samples_example/sample-03-R1.fastq.gz  three_samples_example/sample-03-R2.fastq.gz
 ```
 
-As previous chapters clarified, this is the file that describes our 'groups' and locations of raw paired-end reads for each sample. The default name for your `samples_txt` file is `samples.txt`, but you can use a different name by specifying it in the config file (see below).
+This is the file that describes our 'groups' and locations of raw paired-end reads for each sample. The default name for your %(samples-txt)s file is `samples.txt`, but you can use a different name by specifying it in the config file (see below).
 
-In your working directory there is a config file `config-idba_ud.json`; let's take a look at it.
+In your working directory there is a config file called `config-idba_ud.json`; let's take a look at it.
 
 ```json
 {
@@ -180,7 +183,7 @@ And it should look like this:
 
 [![merged_profile_idba_ud1](../../images/workflows/metagenomics/merged_profile_idba_ud1.png)]( ../../images/workflows/metagenomics/merged_profile_idba_ud1.png){:.center-img .width-50}
 
-Ok, so this looks like a standard merged profile database with two samples. As a bonus, we also added a step to import the number of short reads in each sample ("Total num reads"), and we also used it to calculate the percentage of reads from the sample that have been mapped to the contigs ("Percent Mapped").
+Ok, so this looks like a standard merged profile database with two samples. As a bonus, we also added a step to import the number of reads in each sample ("Total num reads"), and we also used it to calculate the percentage of reads from the sample that have been mapped to the contigs ("Percent Mapped").
 
 This is a bit of an expert knowledge, but if you remember, we had two "groups" in the samples.txt file. Hence, we have two contigs databases for G01 and G02. But one of our groups had only a single sample, there was nothing to merge. Thus, there is no merged profile for G01 at the location you would expect to find it, but instead, there is a README file there:
 
@@ -554,7 +557,7 @@ If you need something, send your question to us and we will do our best to add t
 
 ### Is it possible to just do QC and then stop?
 
-If you only want to qc your files and then compress them (and not do anything else), simply invoke the workflow with the following command:
+If you only want to QC your files and then compress them (and not do anything else), simply invoke the workflow with the following command:
 
 ```
 anvi-run-workflow -w metagenomics \
@@ -574,6 +577,53 @@ Yes! In "reference mode", you may choose to skip this step, and keep your origin
 ```
 
 In assembly mode, this rule is always executed.
+
+### How can I use an existing contigs-db in references mode?
+
+This is relevant if you already have a %(contigs-db)s, and all you want to do is to recruit reads from a bunch of metagenomes.
+
+This is done through 'references mode', but as you see in the relevant section, this mode asks yo to provide a %(fasta-txt)s, from which it generates %(contigs-db)s files for your references. What if you have your own contigs database, and you do not want to generate a new one? You can achieve that and make snakemake skip the creation of a new contigs database by putting the existing one at the place it is expected to be created. This is an example directory structure you should aim for before starting the workflow:
+
+```
+├── 03_CONTIGS
+│   ├── anvi_run_hmms-EXAMPLE.done
+│   ├── anvi_run_ncbi_cogs-EXAMPLE.done
+│   ├── anvi_run_scg_taxonomy-EXAMPLE.done
+│   ├── EXAMPLE-annotate_contigs_database.done
+│   └── EXAMPLE-contigs.db
+├── config.json
+├── contigs.fa
+├── fasta.txt
+└── samples.txt
+```
+
+where,
+
+* `03_CONTIGS` is the directory name defined in your config.json file to store contigs databases (`03_CONTIGS` is already the default directory name, so name it as such if you didn't change anything in the config.json).
+* The `.done` files in `03_CONTIGS` instrcuts anvi'o to not re-run those jobs on the existing contigs databse. Add them with `touch` or remove as necessary.
+* `config.json` is yor configuration where you have at least the following entries:
+
+```
+    (...)
+    "fasta_txt": "fasta.txt",
+    "samples_txt": "samples.txt",
+    "references_mode": true,
+    (...)
+```
+
+* `contigs.fa` is the output of %(anvi-export-contigs)s run on your %(contigs-db)s in `03_CONTIGS`.
+
+* `fasta.txt` is your %(fasta-txt)s that contains a single entry with name `EXAMPLE` and should look exactly like this:
+
+  |**name**|**path**|
+  |:--|:--|
+  |EXAMPLE|contigs.fa|
+
+  Please note: when you change `EXAMPLE` to something more meaningful, you will have to replace `EXAMPLE` with the same name in every other file in the list above.
+
+* `samples.txt` is your good old %(samples-txt)s that contains your metagenomes with which the read recruitment will be conducted.
+
+EASY PEASY.
 
 ### What's going on behind the scenes before we run IDBA-UD?
 

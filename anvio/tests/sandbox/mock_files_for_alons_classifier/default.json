@@ -12,7 +12,6 @@
     "outer-ring-height": "60",
     "outer-ring-margin": "30",
     "edge-normalization": false,
-    "custom-layer-margin": true,
     "show-grid-for-bins": false,
     "grid-color": "#FFFFFF",
     "grid-width": "1",
