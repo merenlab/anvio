@@ -7,7 +7,7 @@ anvi-export-gene-calls -c %(contigs-db)s \
                        --list-gene-callers
 {{ codestop }}
 
-Running this will export all of your gene calls identified by the gene caller [prodigal](https://github.com/hyattpd/Prodigal) (assuming it is in your %(contigs-db)s:
+Running this will export all of your gene calls identified by the gene caller [pyrodigal-gv](https://github.com/althonos/pyrodigal-gv) (assuming it is in your %(contigs-db)s:
 
 {{ codestart }}
 anvi-export-gene-calls -c %(contigs-db)s \

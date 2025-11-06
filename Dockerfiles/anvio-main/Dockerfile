@@ -12,7 +12,7 @@
 #
 
 FROM continuumio/miniconda3:4.11.0
-ENV ANVIO_VERSION "7.1_main_0522"
+ENV ANVIO_VERSION "8"
 
 SHELL ["/bin/bash", "--login", "-c"]
 
@@ -21,7 +21,7 @@ RUN conda config --env --add channels conda-forge
 
 # Create a conda environment for anvi'o, activate it, and make sure it will
 # always be activated
-RUN conda create -n anvioenv python=3.7
+RUN conda create -n anvioenv python=3.10
 RUN conda init bash
 RUN conda activate anvioenv
 RUN echo "conda activate anvioenv" >> ~/.bashrc
@@ -43,23 +43,29 @@ RUN conda install -y nano
 RUN conda install -y -c conda-forge mamba
 
 # Setup the environment
-RUN mamba install -y -c bioconda -c conda-forge python=3.7 \
-        sqlite prodigal idba mcl muscle=3.8.1551 hmmer diamond \
-        blast megahit spades bowtie2 tbb=2020.3 bwa graphviz \
-        "samtools >=1.9" trimal iqtree trnascan-se fasttree vmatch \
-        r-base r-tidyverse r-optparse r-stringi r-magrittr
+RUN mamba install -y -c conda-forge -c bioconda python=3.10 \
+        sqlite prodigal idba mcl muscle=3.8.1551 famsa hmmer diamond \
+        blast megahit spades bowtie2 bwa graphviz "samtools>=1.9" \
+        trimal iqtree trnascan-se fasttree vmatch r-base r-tidyverse \
+        r-optparse r-stringi r-magrittr bioconductor-qvalue meme ghostscript
 
 # try this, too. it may also fail to install. which is OK:
 RUN mamba install -y -c bioconda fastani
 
-# install qvalue
-RUN Rscript -e 'install.packages("BiocManager", repos="https://cran.rstudio.com"); BiocManager::install("qvalue")'
+RUN wget -qO- "https://cmake.org/files/v3.23/cmake-3.23.1-linux-"$(uname -m)".tar.gz" | tar --strip-components=1 -xz -C /usr/local
+
+#GCC compiler
+RUN apt-get update && \
+    apt-get -y install gcc mono-mcs && \
+    rm -rf /var/lib/apt/lists/*
 
 # Install anvi'o from pip
-RUN pip install git+https://github.com/merenlab/anvio.git
+RUN curl -L https://github.com/merenlab/anvio/releases/download/v8/anvio-8.tar.gz \
+        --output anvio-8.tar.gz
+RUN pip install anvio-8.tar.gz
 
-# Install METABAT and DAS_TOOL
-RUN conda install metabat2 das_tool
+# Install METABAT and DAS_TOOL 
+#RUN mamba install metabat2 das_tool
 
 # Install CONCOCT
 RUN apt-get update && apt-get install -qq build-essential libgsl0-dev bedtools mummer samtools perl libssl-dev

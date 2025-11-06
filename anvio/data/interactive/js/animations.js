@@ -28,42 +28,90 @@ function toggleLeftPanel() {
 
     is_left_panel_sliding = true;
 
+    // Temporarily disable SVG interactions for performance
+    const svgContainer = document.getElementById('svgbox');
+    if (svgContainer) {
+        svgContainer.style.pointerEvents = 'none';
+    }
+
     if ($('#panel-left').is(':visible')) {
-        var animation_frame = function(){
-            if (ANIMATIONS_ENABLED && $('#panel-left')[0].getBoundingClientRect().right > 0) {
-                $('#panel-left').css('left', parseInt($('#panel-left').css('left')) - SLIDE_STEP_SIZE);
-                $('#toggle-panel-left').css('left', $('#sidebar')[0].getBoundingClientRect().right + 'px');
-                setTimeout(animation_frame, SLIDE_INTERVAL);
+        // Hide panel ensure clean transition
+        $('#panel-left').css('transition', 'left 0.3s ease-out');
+
+        // Use requestAnimationFrame to ensure smooth start
+        requestAnimationFrame(() => {
+            $('#panel-left').css('left', '-490px');
+        });
+
+        $('#toggle-panel-left').css('left', '');
+        $('#toggle-panel-left').removeClass('toggle-panel-left-pos');
+        $('#toggle-panel-left-inner').html('&#9658;');
+
+        // Clean up after animation
+        setTimeout(() => {
+            $('#panel-left').hide();
+            $('#panel-left').css({
+                'transition': '',
+                'left': '0px'
+            });
+            if (svgContainer) {
+                svgContainer.style.pointerEvents = '';
             }
-            else {
-                $('#panel-left').hide();
-                $('#toggle-panel-left').css('left', '');
-                $('#toggle-panel-left').removeClass('toggle-panel-left-pos');
-                $('#toggle-panel-left-inner').html('&#9658;');
-                is_left_panel_sliding = false;
-            }
-        };
-        animation_frame();
+            is_left_panel_sliding = false;
+        }, 320); // extra wait to ensure animation completes before changing CSS props mid animation
+
     } else {
-        $('#panel-left').show();
-        var animation_frame = function(){
-            if (ANIMATIONS_ENABLED && $('#panel-left')[0].getBoundingClientRect().left < 0) {
-                $('#panel-left').css('left', parseInt($('#panel-left').css('left')) + SLIDE_STEP_SIZE);
-                $('#toggle-panel-left').css('left', $('#sidebar')[0].getBoundingClientRect().right + 'px');
-                setTimeout(animation_frame, SLIDE_INTERVAL);
-            }
-            else {
+        // Show panel - ensure clean transition
+        $('#panel-left').css('left', '-490px').show();
+
+        // Force reflow to ensure initial position is applied
+        $('#panel-left')[0].offsetHeight;
+
+        // Add transition and animate in separate steps
+        $('#panel-left').css('transition', 'left 0.3s ease-out');
+
+        // Use requestAnimationFrame for smooth animation start
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {  // Double RAF for extra smoothness
                 $('#panel-left').css('left', '0px');
-                $('#toggle-panel-left').css('left', '');
-                $('#toggle-panel-left').addClass('toggle-panel-left-pos');
-                $('#toggle-panel-left-inner').html("&#9664;");
-                is_left_panel_sliding = false;
+            });
+        });
+
+        $('#toggle-panel-left').css('left', '');
+        $('#toggle-panel-left').addClass('toggle-panel-left-pos');
+        $('#toggle-panel-left-inner').html("&#9664;");
+
+        // Clean up after animation
+        setTimeout(() => {
+            $('#panel-left').css('transition', '');
+            if (svgContainer) {
+                svgContainer.style.pointerEvents = '';
             }
-        };
-        animation_frame();
+            is_left_panel_sliding = false;
+        }, 320); // extra wait to ensure animation completes before changing CSS props mid animation
     }
 }
 
+function switchNavigationTabs(tab_number) {
+    if ($('#panel-left').is(':visible')) {
+        $('a').each(function(){
+            if (tab_number){
+                $(tab_number).addClass('active');
+                $(tab_number).tab('show');
+            }
+            if ($(this).prop('href') == window.location.href) {
+                $(this).addClass('active');
+                $(this).parents('li').addClass('active');
+            } else
+            {
+              $(this).removeClass('active');
+              $(this).parents('li').removeClass('active');
+            }
+        });
+    }
+}
+
+// Outdated with new UI but lets keep it for future development
 function toggleRightPanel(name) {
     ['#mouse_hover_panel', '#description-panel', '#news-panel'].forEach(function(right_panel) {
         if (right_panel == name)

@@ -53,8 +53,7 @@ from anvio.summaryhtml import SummaryHTMLOutput, humanize_n, pretty
 from anvio.tables.miscdata import TableForLayerAdditionalData, MiscDataTableFactory
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -94,6 +93,7 @@ class ArgsTemplateForSummarizerClass:
         self.debug = None
         self.quick_summary = False
         self.init_gene_coverages = False
+        self.calculate_Q2Q3_carefully = False
         self.skip_check_collection_name = False
         self.skip_init_functions = False
         self.cog_data_dir = None
@@ -134,6 +134,7 @@ class SummarizerSuperClass(object):
         self.skip_check_collection_name = A('skip_check_collection_name')
         self.skip_init_functions = A('skip_init_functions')
         self.init_gene_coverages = A('init_gene_coverages')
+        self.calculate_Q2Q3_carefully = A('calculate_Q2Q3_carefully')
         self.output_directory = A('output_dir')
         self.quick = A('quick_summary')
         self.debug = A('debug')
@@ -323,6 +324,8 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         '''
         A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
         output_file_path = A('output_file')
+        qlambda = A('qlambda')
+
         tmp_functional_occurrence_file = filesnpaths.get_temp_file_path()
 
         enrichment_file_path = output_file_path
@@ -340,7 +343,8 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         self.functional_occurrence_stats()
 
         # run enrichment script. this uses the output saved from the previous step.
-        enrichment_stats = utils.run_functional_enrichment_stats(tmp_functional_occurrence_file, output_file_path, run=self.run, progress=self.progress)
+        enrichment_stats = utils.run_functional_enrichment_stats(tmp_functional_occurrence_file, output_file_path,
+                                                                qlambda=qlambda, run=self.run, progress=self.progress)
 
         return enrichment_stats
 
@@ -718,7 +722,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
 
     def init(self):
         # init profile data for colletion.
-        self.collection_dict, self.bins_info_dict = self.init_collection_profile(self.collection_name)
+        self.collection_dict, self.bins_info_dict = self.init_collection_profile(self.collection_name, calculate_Q2Q3_carefully=self.calculate_Q2Q3_carefully)
 
         # let bin names known to all
         self.bin_ids = list(self.collection_profile.keys())
@@ -776,7 +780,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
             try:
                 markdown = mistune.create_markdown(escape=False)
             except Exception as e:
-                self.run.warning(f"Well :( Anvi'o failed to initialize `mistune`. This is the the error "
+                self.run.warning(f"Well :( Anvi'o failed to initialize `mistune`. This is the error "
                                   f"we got from the downstream library: '{e}'. Probably this needs a developer "
                                   f"to take a look. Meanwhile, we are turning off the rendering of markdown "
                                   f"descriptions. Things will look ugly in some places in the interface and "
@@ -976,7 +980,7 @@ class ContigSummarizer(SummarizerSuperClass):
         """
 
         if not gene_caller_to_use:
-            gene_caller_to_use = constants.default_gene_caller
+            gene_caller_to_use = utils.get_default_gene_caller(self.contigs_db_path)
 
         args = argparse.Namespace(contigs_db=self.contigs_db_path)
 
@@ -1104,8 +1108,9 @@ class ContigSummarizer(SummarizerSuperClass):
 
     def get_summary_dict_for_assembly(self, gene_caller_to_use=None):
         """Returns a simple summary dict for a given contigs database"""
+
         if not gene_caller_to_use:
-            gene_caller_to_use = constants.default_gene_caller
+            gene_caller_to_use = utils.get_default_gene_caller(self.contigs_db_path)
 
         self.progress.new('Generating contigs db summary')
 
@@ -1122,7 +1127,7 @@ class ContigSummarizer(SummarizerSuperClass):
         num_contigs = len(contig_lengths)
 
         self.progress.update('Figuring out HMM hits in %s ...' % self.contigs_db_path)
-        hmm = hmmops.SequencesForHMMHits(self.contigs_db_path)
+        hmm = hmmops.SequencesForHMMHits(self.contigs_db_path, run=self.run)
 
         self.progress.update('Summarizing %s ...' % self.contigs_db_path)
         summary = {}
@@ -1656,9 +1661,10 @@ class Bin:
                 if self.summary.reformat_contig_names:
                     reformatted_contig_name = '%s_contig_%06d' % (self.bin_id, contig_name_counter)
                     self.contig_name_conversion_dict[contig_name] = {'reformatted_contig_name': reformatted_contig_name}
-                    contig_name = reformatted_contig_name
+                else:
+                    reformatted_contig_name = contig_name
 
-                fasta_id = contig_name + appendix
+                fasta_id = reformatted_contig_name + appendix
                 self.contig_lengths.append(len(sequence))
 
                 output += '>%s\n' % fasta_id

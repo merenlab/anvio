@@ -15,10 +15,10 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
+from anvio.version import versions_for_db_types
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -31,7 +31,7 @@ run = terminal.Run()
 progress = terminal.Progress()
 r = errors.remove_spaces
 
-workflow_config_version = anvio.tables.versions_for_db_types['config']
+workflow_config_version = versions_for_db_types['config']
 
 class WorkflowSuperClass:
     def __init__(self):
@@ -283,6 +283,10 @@ class WorkflowSuperClass:
                     '--configfile',
                     self.args.config_file]
 
+        # if any conda yaml is provided for a rule, then add '--use-conda' to the snakemake command:
+        if any(isinstance(v, dict) and v.get('conda_yaml') for v in (self.config or {}).values()):
+            sys.argv.append('--use-conda')
+
         if self.additional_params:
             sys.argv.extend(self.additional_params)
 
@@ -322,6 +326,10 @@ class WorkflowSuperClass:
         args = ['snakemake', '--snakefile', get_workflow_snake_file_path(self.name), \
                 '--configfile', self.config_file, '--dryrun', '--quiet']
 
+        # if any conda yaml is provided for a rule, then add '--use-conda' to the snakemake command:
+        if any(isinstance(v, dict) and v.get('conda_yaml') for v in (self.config or {}).values()):
+            args.append('--use-conda')
+
         if self.save_workflow_graph:
             args.extend(['--dag'])
 
@@ -333,7 +341,7 @@ class WorkflowSuperClass:
         # we are (it still may be better to do it elsewhere more appropriate .. so
         # we can look more decent or whatever):
         if self.save_workflow_graph:
-            lines = open(log_file_path, 'rU').readlines()
+            lines = open(log_file_path, 'r').readlines()
 
             try:
                 line_of_interest = [line_no for line_no in range(0, len(lines)) if lines[line_no].startswith('digraph')][0]
@@ -776,13 +784,15 @@ def get_workflow_module_dict():
     from anvio.workflows.phylogenomics import PhylogenomicsWorkflow
     from anvio.workflows.trnaseq import TRNASeqWorkflow
     from anvio.workflows.ecophylo import EcoPhyloWorkflow
+    from anvio.workflows.sra_download import SRADownloadWorkflow
 
     workflows_dict = {'contigs': ContigsDBWorkflow,
                       'metagenomics': MetagenomicsWorkflow,
                       'pangenomics': PangenomicsWorkflow,
                       'phylogenomics': PhylogenomicsWorkflow,
                       'trnaseq': TRNASeqWorkflow,
-                      'ecophylo': EcoPhyloWorkflow}
+                      'ecophylo': EcoPhyloWorkflow,
+                      'sra_download': SRADownloadWorkflow}
 
     return workflows_dict
 

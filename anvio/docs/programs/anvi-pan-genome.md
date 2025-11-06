@@ -16,11 +16,32 @@ If it runs without errors, you're golden. If not, please consult with the most u
 
 The program %(anvi-pan-genome)s performs three major things for its user:
 
-* Calculates the similarity between the all gene amino acid seqeunces found in genomes described in your %(genomes-storage-db)s using [DIAMOND](https://www.wsi.uni-tuebingen.de/lehrstuehle/algorithms-in-bioinformatics/software/diamond/). You have some options. Although, (1) you can use the NCBI's BLAST program [`blastp`](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE=Proteins) instead of DIAMOND using the `--use-ncbi-blast` flag, (2) instead of analyzing all genomes you can focus a subset using the `--genome-names` parameter, and (3) exclude genes that are partial from your analysis using the flag `--exclude-partial-gene-calls` if you think you must.
+1. Calculates the similarity between the all gene amino acid seqeunces found in genomes described in your %(genomes-storage-db)s using [DIAMOND](https://www.wsi.uni-tuebingen.de/lehrstuehle/algorithms-in-bioinformatics/software/diamond/). You have some options. Although, (1) you can use the NCBI's BLAST program [`blastp`](https://blast.ncbi.nlm.nih.gov/Blast.cgi?PAGE=Proteins) instead of DIAMOND using the `--use-ncbi-blast` flag, (2) instead of analyzing all genomes you can focus a subset using the `--genome-names` parameter, and (3) exclude genes that are partial from your analysis using the flag `--exclude-partial-gene-calls` if you think you must.
 
-* Resolves gene clusters using the BLAST results via the [MCL](http://micans.org/mcl/) algorithm after discarding weak hits from the search results using the `--minbit` heuristic (inspired by the workflow implemented by ITEP ([Benedict et al., 2014](https://bmcgenomics.biomedcentral.com/articles/10.1186/1471-2164-15-8)).
+2. Resolves gene clusters using the BLAST results via the [MCL](http://micans.org/mcl/) algorithm after discarding weak hits from the search results using the `--minbit` heuristic (inspired by the workflow implemented by ITEP ([Benedict et al., 2014](https://bmcgenomics.biomedcentral.com/articles/10.1186/1471-2164-15-8)).
 
-* Perform post-analyses of resulting gene clusters for downstream analyses and visualization (including aligning amino acid sequences in each cluster, computing functional and geometric homogeneity indices, and computing a hierarchical clustering of gene clusters in preparation for the visualization of the pangenome using the program %(anvi-display-pan)s.
+3. Performs additional analyses of gene clusters for downstream analyses and visualization tasks. These analyses include,
+
+    * Multiple sequnce alignment of amino acid sequences in each gene cluster,
+    * Computation of [functional and geometric homogeneity indices](https://merenlab.org/2016/11/08/pangenomics-v2/#functional-and-geometric-homogeneity-estimates-in-anvio),
+    * Computation of average amino-acid identity (AAI) within each gene cluster,
+    * Hierarchical clustering analysis of gene clusters based on their distribution across genomes, and genomes based on their sharing of the gene pool.
+
+The basic command line to run a pangenomic analysis that will do all the step above will look like the following:
+
+{{ codestart }}
+anvi-pan-genome --genomes-storage %(genomes-storage-db)s \
+                --project-name PROJECT_NAME
+{{ codestop }}
+
+But it is also possible for power users to initiate the anvi'o pangenomcs workflow with user defined gene clusters, which means it would be possible to visualize the pangenomic analyses performed by other tools in anvi'o. In this case, only the third step is performed with already established gene clusters:
+
+{{ codestart }}
+anvi-pan-genome --genomes-storage %(genomes-storage-db)s \
+                --project-name PROJECT_NAME \
+                --gene-clusters-txt %(gene-clusters-txt)s
+{{ codestop }}
+
 
 ### The 'additional parameters' mechanism for power users
 

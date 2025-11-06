@@ -15,8 +15,7 @@ from anvio.errors import ConfigError
 from anvio.tables.tableops import Table
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -32,7 +31,7 @@ P = terminal.pluralize
 
 
 class TablesForCollections(Table):
-    """Populates the collections_* tables, where collections of bins of contigs and splits are kept"""
+    """Populates the collections_* tables, where collections of bins of contigs and items are kept"""
     def __init__(self, db_path, run=run, progress=progress):
         self.db_path = db_path
         self.version = utils.get_required_version_for_db(db_path)
@@ -63,7 +62,7 @@ class TablesForCollections(Table):
 
 
     def refresh_collections_info_table(self, collection_name):
-        """For a given collection, re-read most up-to-date information from the collection splits table and update collections info table"""
+        """For a given collection, re-read most up-to-date information from the collection items table and update collections info table"""
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
         collection_names_in_db = database.get_single_column_from_table(t.collections_splits_table_name, 'collection_name', unique=True)
@@ -148,13 +147,13 @@ class TablesForCollections(Table):
             splits_only_in_db = [c for c in self.splits_info if c not in splits_in_collection_dict]
 
             if len(splits_only_in_collection_dict):
-                self.run.warning(f"{len(splits_only_in_collection_dict)} of {len(splits_in_collection_dict)} splits found in "
+                self.run.warning(f"{len(splits_only_in_collection_dict)} of {len(splits_in_collection_dict)} items found in "
                                  f"collection '{collection_name}' are not known to the contigs database. This may be OK, but "
                                  f"you must be the judge of it. If this surprises you, please use caution and make sure all "
                                  f"is fine before going forward with you analysis.")
 
             if len(splits_only_in_db):
-                self.run.warning('%d of %d splits found in the database were missing from the "%s" results. If this '
+                self.run.warning('%d of %d items found in the database were missing from the "%s" results. If this '
                                          'does not make any sense, please make sure you know why before going any further.'\
                                                 % (len(splits_only_in_db), len(self.splits_info), collection_name))
 
@@ -177,7 +176,7 @@ class TablesForCollections(Table):
             bin_report_msg = f"Here is a list of the first {P('bin name', num_bins_to_report)} in this collection: {', '.join(bins_to_report)}."
 
         if drop_collection:
-            self.run.info('Collections', f"The collection '{collection_name}' that describes {P('split', num_splits)} in {P('bin', num_bins)} was successfully "
+            self.run.info('Collections', f"The collection '{collection_name}' that describes {P('item', num_splits)} in {P('bin', num_bins)} was successfully "
                                          f"added to the to the database at '{self.db_path}'. {bin_report_msg}", mc='green')
         else:
             self.run.info('Collections', f"The existing collection '{collection_name}' updated and {P('split', num_splits)} in {P('bin', num_bins)} were successfully "
@@ -210,8 +209,17 @@ class TablesForCollections(Table):
         return db_entries_for_contigs
 
 
-    def add_default_collection_to_db(self, contigs_db_path=None, collection_name="DEFAULT", bin_name="EVERYTHING"):
-        """A helper function to add a default collection to a given database that describes all items in a single bin"""
+    def add_default_collection_to_db(self, contigs_db_path=None, collection_name="DEFAULT", bin_name="EVERYTHING", bin_each_item_separately=False):
+        """A helper function to add a default collection.
+
+        This function will either add a collection to a given database that describes all items
+        in it in a single bin, or each item in it in a separate bin.
+        """
+
+        if bin_each_item_separately:
+            run.warning("Since you passed the flag '--bin-each-item-separately', anvi'o will create a separate bin for each "
+                        "item in your database. This is likely a very bad idea, but anvi'o trusts that you know what you are "
+                        "doing.")
 
         utils.is_pan_or_profile_db(self.db_path)
 
@@ -224,7 +232,7 @@ class TablesForCollections(Table):
                                   "which case things will likely work.")
             else:
                 utils.is_profile_db_and_contigs_db_compatible(self.db_path, contigs_db_path)
-                contigs_db = db.DB(contigs_db_path, t.contigs_db_version)
+                contigs_db = db.DB(contigs_db_path, anvio.__contigs__version__)
                 all_items = contigs_db.get_single_column_from_table(t.splits_info_table_name, 'split')
                 contigs_db.disconnect()
         else:
@@ -237,4 +245,13 @@ class TablesForCollections(Table):
 
             all_items = utils.get_all_item_names_from_the_database(self.db_path)
 
-        self.append(collection_name, {bin_name: all_items})
+        bins = {}
+        if bin_each_item_separately:
+            counter = 1
+            for item in all_items:
+                bins[f"BIN_{counter:07}"] = {item}
+                counter += 1
+        else:
+            bins = {bin_name: all_items}
+
+        self.append(collection_name, bins)

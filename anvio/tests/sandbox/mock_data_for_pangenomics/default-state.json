@@ -12,7 +12,6 @@
     "outer-ring-height": "120",
     "outer-ring-margin": "30",
     "edge-normalization": false,
-    "custom-layer-margin": true,
     "show-grid-for-bins": true,
     "show-shade-for-bins": false,
     "shade-fill-opacity": "0.15",

@@ -11,8 +11,7 @@ from collections import Counter
 
 import anvio
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __maintainer__ = "A. Murat Eren"
@@ -43,28 +42,29 @@ clustering_configs_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/clu
 clustering_configs = {}
 
 default_scgs_taxonomy_data_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/SCG_TAXONOMY')
-default_scgs_for_taxonomy = ['Ribosomal_S2',
-                             'Ribosomal_S3_C',
-                             'Ribosomal_S6',
-                             'Ribosomal_S7',
-                             'Ribosomal_S8',
-                             'Ribosomal_S9',
-                             'Ribosomal_S11',
-                             'Ribosomal_S20p',
-                             'Ribosomal_L1',
-                             'Ribosomal_L2',
-                             'Ribosomal_L3',
-                             'Ribosomal_L4',
-                             'Ribosomal_L6',
-                             'Ribosomal_L9_C',
+default_scgs_for_taxonomy = ['Ribosomal_L1',
                              'Ribosomal_L13',
+                             'Ribosomal_L14',
                              'Ribosomal_L16',
                              'Ribosomal_L17',
+                             'Ribosomal_L19',
+                             'Ribosomal_L2',
                              'Ribosomal_L20',
                              'Ribosomal_L21p',
                              'Ribosomal_L22',
-                             'ribosomal_L24',
-                             'Ribosomal_L27A']
+                             'Ribosomal_L27A',
+                             'Ribosomal_L3',
+                             'Ribosomal_L4',
+                             'Ribosomal_L5',
+                             'Ribosomal_S11',
+                             'Ribosomal_S15',
+                             'Ribosomal_S16',
+                             'Ribosomal_S2',
+                             'Ribosomal_S6',
+                             'Ribosomal_S7',
+                             'Ribosomal_S8',
+                             'Ribosomal_S9']
+
 default_hmm_source_for_scg_taxonomy = set(["Bacteria_71"])
 
 default_trna_taxonomy_data_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/TRNA_TAXONOMY')
@@ -114,7 +114,8 @@ merged_default = "tnf-cov"
 pan_default = "presence-absence"
 trnaseq_default = "cov"
 
-default_gene_caller = "prodigal"
+legacy_default_gene_caller = "prodigal"
+default_gene_callers = ['pyrodigal-gv', legacy_default_gene_caller]
 
 # see https://github.com/merenlab/anvio/issues/1358
 gene_call_types = {'CODING': 1,
@@ -166,6 +167,8 @@ fetch_filters = {None                 : None,
                  'double-reverses'    : lambda x: x.is_paired and x.is_reverse and x.mate_is_reverse and not x.mate_is_unmapped and x.reference_name == x.next_reference_name,
                  'inversions'         : lambda x: (x.is_paired and not x.is_reverse and not x.mate_is_reverse and not x.mate_is_unmapped and x.reference_name == x.next_reference_name and (abs(x.tlen) < 2000)) or \
                                                   (x.is_paired and x.is_reverse and x.mate_is_reverse and not x.mate_is_unmapped and x.reference_name == x.next_reference_name and (abs(x.tlen) < 2000)),
+                 'distant-inversions'  : lambda x: (x.is_paired and not x.is_reverse and not x.mate_is_reverse and not x.mate_is_unmapped and x.reference_name == x.next_reference_name) or \
+                                                  (x.is_paired and x.is_reverse and x.mate_is_reverse and not x.mate_is_unmapped and x.reference_name == x.next_reference_name),
                  'single-mapped-reads': lambda x: x.mate_is_unmapped,
                  'distant-pairs-1K'   : lambda x: x.is_paired and not x.mate_is_unmapped and abs(x.tlen) > 1000}
 
@@ -350,7 +353,15 @@ AA_to_single_letter_code = Counter({'Ala': 'A', 'Arg': 'R', 'Asn': 'N', 'Asp': '
                                     'Ser': 'S', 'Thr': 'T', 'Trp': 'W', 'Tyr': 'Y',
                                     'Val': 'V'})
 
+AA_to_full_name = Counter({'Ala': 'Alanine', 'Arg': 'Arginine', 'Asn': 'Asparagine', 'Asp': 'Aspartate',
+                                    'Cys': 'Cysteine', 'Gln': 'Glutamine', 'Glu': 'Glutamic Acid', 'Gly': 'Glycine',
+                                    'His': 'Histidine', 'Ile': 'Isoleucine', 'Leu': 'Leucine', 'Lys': 'Lysine',
+                                    'Met': 'Methionine', 'Phe': 'Phenylalanine', 'Pro': 'Proline',
+                                    'Ser': 'Serine', 'Thr': 'Threonine', 'Trp': 'Tryptophan', 'Tyr': 'Tyrosine',
+                                    'Val': 'Valine'})
+
 amino_acids = sorted(list(AA_to_single_letter_code.keys()))
+amino_acids_long = sorted(list(AA_to_full_name.values()))
 
 # Standard genetic code (translation table 1 at the following link)
 # https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi?chapter=cgencodes

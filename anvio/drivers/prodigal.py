@@ -17,8 +17,7 @@ from anvio.errors import ConfigError
 
 from anvio.threadingops import ThreadedProdigalRunner
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -35,10 +34,10 @@ class Prodigal:
         self.progress = progress
         self.run = run
         self.args = args
-
         A = lambda x: (args.__dict__[x] if x in args.__dict__ else None) if args else None
         self.prodigal_translation_table = A('prodigal_translation_table')
         self.num_threads = A('num_threads')
+        self.prodigal_single_mode = A('prodigal_single_mode')
 
         self.run.info('Num threads for gene calling', self.num_threads)
 
@@ -46,7 +45,7 @@ class Prodigal:
         self.installed_version = None
         self.available_parsers = {'v2.6.3': self.__parser_1,
                                   'v2.6.2': self.__parser_1,
-                                  'v2.60': self.__parser_1}
+                                  'v2.6.0': self.__parser_1}
 
         self.check_version()
 
@@ -89,6 +88,7 @@ class Prodigal:
 
         return hit
 
+
     def check_version(self):
         """checks the installed version of prodigal, sets the parser"""
 
@@ -105,6 +105,7 @@ class Prodigal:
         self.installed_version = version_found
         self.parser = self.available_parsers[version_found]
 
+
     def process(self, fasta_file_path, output_dir):
         """Take the fasta file, run prodigal on it, and make sense of the output
 
@@ -116,15 +117,16 @@ class Prodigal:
         self.genes_in_contigs = os.path.join(output_dir, 'contigs.genes')
         self.amino_acid_sequences_in_contigs = os.path.join(output_dir, 'contigs.amino_acid_sequences')
 
-        # Put some nice logging info.
-        self.run.warning('', header='Finding ORFs in contigs', lc='green')
-        self.run.info('Genes', self.genes_in_contigs)
-        self.run.info('Amino acid sequences', self.amino_acid_sequences_in_contigs)
-        self.run.info('Log file', log_file_path)
-
         self.run.warning("Anvi'o will use 'prodigal' by Hyatt et al (doi:10.1186/1471-2105-11-119) to identify open "
                          "reading frames in your data. When you publish your findings, please do not forget to "
                          "properly credit their work.", lc='green', header="CITATION")
+
+        # Put some nice logging info.
+        self.run.warning('', header='Finding ORFs in contigs using prodigal', lc='green')
+        self.run.info('Procedure', 'single' if self.prodigal_single_mode else 'meta')
+        self.run.info('Genes', self.genes_in_contigs)
+        self.run.info('Amino acid sequences', self.amino_acid_sequences_in_contigs)
+        self.run.info('Log file', log_file_path)
 
         self.progress.new('Processing')
         self.progress.update(f"Identifying ORFs using {terminal.pluralize('thread', self.num_threads)}.")
@@ -153,7 +155,8 @@ class Prodigal:
                                   logger=terminal.Logger(progress=self.progress, run=self.run),
                                   installed_version=self.installed_version,
                                   parser=self.parser,
-                                  translation_table=self.prodigal_translation_table)
+                                  translation_table=self.prodigal_translation_table,
+                                  prodigal_single_mode=self.prodigal_single_mode)
 
         prodigal_runner = ThreadedProdigalRunner(args)
 

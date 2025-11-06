@@ -32,8 +32,7 @@ from anvio.errors import ConfigError
 from anvio.tables.miscdata import TableForAminoAcidAdditionalData
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = ['Alon Shaiber']
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -764,7 +763,7 @@ class VariabilitySuper(VariabilityFilter, object):
             filesnpaths.is_file_tab_delimited(self.genes_of_interest_path, expected_number_of_fields=1)
 
             try:
-                self.gene_caller_ids = [int(g.strip()) for g in open(self.genes_of_interest_path, 'rU').readlines()]
+                self.gene_caller_ids = [int(g.strip()) for g in open(self.genes_of_interest_path, 'r').readlines()]
             except:
                 raise ConfigError("The gene caller ids anvi'o found in that file does not seem like gene caller "
                                   "ids anvi'o would use. There is something wrong here :(")
@@ -789,9 +788,13 @@ class VariabilitySuper(VariabilityFilter, object):
 
         if retain_counts:
             freq_columns = [x + '_freq' for x in self.items]
-            self.data[freq_columns] = self.data[self.items].divide(self.data['coverage'], axis = 0)
+            self.data.loc[:, freq_columns] = self.data.loc[:, self.items].divide(self.data['coverage'], axis=0)
         else:
-            self.data[self.items] = self.data[self.items].divide(self.data['coverage'], axis = 0)
+            # Ensure we are working with a copy to avoid modifying the original DataFrame in place
+            self.data = self.data.copy()
+            
+            # Convert counts to frequencies in place
+            self.data.loc[:, self.items] = self.data.loc[:, self.items].divide(self.data['coverage'], axis=0)
 
 
     def convert_frequencies_to_counts(self):
@@ -1983,11 +1986,13 @@ class VariabilitySuper(VariabilityFilter, object):
         for split_name in self.splits_of_interest:
             entry_ids = self.split_name_to_genes_in_splits_entry_ids[split_name]
             for entry_id in entry_ids:
-                gene_cov_dict.update(profile_super.get_gene_level_coverage_stats(
+                gene_cov_stats, falied_gene_calls = profile_super.get_gene_level_coverage_stats(
                     self.genes_in_splits[entry_id]['split'],
                     self,
                     gene_caller_ids_of_interest = set([self.genes_in_splits[entry_id]['gene_callers_id']])
-                ))
+                )
+
+                gene_cov_dict.update(gene_cov_stats)
 
         gene_coverage_columns = ['gene_coverage',
                                  'non_outlier_gene_coverage',
@@ -2525,7 +2530,7 @@ class AminoAcidsEngine(dbops.ContigsSuperclass, VariabilitySuper, WrapperForFanc
         self.data['departure_from_reference'] = self.data.apply(lambda entry: 1.0 - entry[entry["reference"]] / entry["coverage"], axis=1)
 
         # This filters out positions that were variable as codons, but are non-varying as amino acids
-        smallest_float = np.finfo(np.float).eps
+        smallest_float = np.finfo(np.float_).eps
         self.filter_data(criterion='departure_from_reference', min_filter=smallest_float, min_condition=True)
 
 
@@ -3458,7 +3463,7 @@ def _calculate_synonymous_fraction(counts_array, comparison_array, coverage, cod
 
         if cov <= 0 or comp < 0:
             # No sense talking about synonymity relative to a stop codon or codon containing N,
-            # or deal with positions with no sensible coverage. See the the following issue
+            # or deal with positions with no sensible coverage. See the following issue
             # for the details of what made `cov <= 0` necessary: https://github.com/merenlab/anvio/issues/1948
             num_nonsyns.append(0)
             num_syns.append(0)

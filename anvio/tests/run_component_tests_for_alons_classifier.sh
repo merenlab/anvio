@@ -2,7 +2,7 @@
 source 00.sh
 
 # Setup #############################
-SETUP_WITH_OUTPUT_DIR $1 $2
+SETUP_WITH_OUTPUT_DIR $1 $2 $3
 #####################################
 
 # Setting the folder where the files are
@@ -17,13 +17,13 @@ do
 done
 
 INFO "Generating the TEST contigs database"
-anvi-gen-contigs-database -f $files/TEST.fa -o $output_dir/CONTIGS.db
+anvi-gen-contigs-database -f $files/TEST.fa -o $output_dir/CONTIGS.db $thread_controller
 
 # profiling generates individual directiorues uner $output_dir directory for each sample.
 for f in 41 62 74 75 79 94
 do
     INFO "Profiling sample SAMPLE-$f"
-    anvi-profile -i $output_dir/HMP00$f.bam -o $output_dir/HMP00$f -c $output_dir/CONTIGS.db --skip-SNV-profiling
+    anvi-profile -i $output_dir/HMP00$f.bam -o $output_dir/HMP00$f -c $output_dir/CONTIGS.db --skip-SNV-profiling $thread_controller
     echo
 done
 

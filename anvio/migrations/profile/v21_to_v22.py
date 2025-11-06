@@ -77,7 +77,7 @@ def migrate(db_path):
         entries = []
         for sample_name in sample_names_in_db:
             for split_name in split_names_in_db:
-                entries.append((split_name, sample_name, convert_numpy_array_to_binary_blob(fp['/data/coverages/%s/%s' % (split_name, sample_name)].value),))
+                entries.append((split_name, sample_name, convert_numpy_array_to_binary_blob(fp['/data/coverages/%s/%s' % (split_name, sample_name)][()]),))
 
             counter += 1
             progress.update('sample %d of %d ...' % (counter, total))

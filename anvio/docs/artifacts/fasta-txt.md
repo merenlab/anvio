@@ -1,7 +1,5 @@
 This is a file used by %(anvi-run-workflow)s that lists the name and path of all of the input %(fasta)s files.
 
-As of now, this file is used in the %(contigs-workflow)s, %(pangenomics-workflow)s, and [the reference mode](https://merenlab.org/2018/07/09/anvio-snakemake-workflows/#references-mode) of the %(metagenomics-workflow)s.
-
 In its simplest form, a %(fasta-txt)s is a TAB-delmited file with two columns for `name` and `path`. Here is an example:
 
 |name|path|

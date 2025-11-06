@@ -54,7 +54,8 @@ function getUrlVars() {
 $(document).ready(function() {
   $(window).on('click', function (e) {
     //did not click a popover toggle or popover
-    if ($(e.target).data('toggle') !== 'popover'
+    if (!$(e.target).is('[data-toggle="popover"]') 
+        && !$(e.target).closest('.popover').length
         && $(e.target).parents('.popover.in').length === 0) {
         $('.popover').popover('hide');
     }
@@ -63,6 +64,7 @@ $(document).ready(function() {
 
 
 function get_gene_functions_table_html(gene){
+
     functions_table_html =  '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span>';
     functions_table_html += '<h2>Gene Call</h2>';
     functions_table_html += '<table class="table table-striped" style="width: 100%; text-align: center;">';
@@ -79,22 +81,76 @@ function get_gene_functions_table_html(gene){
                           + '</td><td>' + gene.percentage_in_split.toFixed(2) + '%'
                           + '</td></tr></tbody></table>';
 
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="show_sequence(' + gene.gene_callers_id + ');">DNA</button> ';
+    functions_table_html += '<div class="row">'
+    functions_table_html += '<div class="col-xs-1">'
+    functions_table_html += '<button type="button" class="btn btn-outline-secondary btn-sm ml-3 mr-1" onClick="show_sequence(' + gene.gene_callers_id + ');">DNA</button> ';
+    functions_table_html += '</div>'
+    functions_table_html += '<div class="col-xs-1">'
 
     if(gene.call_type == 1)
-        functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="show_aa_sequence(' + gene.gene_callers_id + ');">AA</button> ';
+        functions_table_html += '<button type="button" class="btn btn-outline-secondary btn-sm " onClick="show_aa_sequence(' + gene.gene_callers_id + ');">AA</button> ';
     else
-        functions_table_html += '<button type="button" class="btn btn-default btn-sm" disabled>Get AA seq</button> ';
+        functions_table_html += '<button type="button" class="btn btn-outline-secondary btn-sm" disabled>AA</button> ';
+    functions_table_html += '</div>'
 
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="get_sequence_and_blast(' + gene.gene_callers_id + ', \'blastn\', \'nr\', \'gene\');">blastn @ nr</button> ';
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="get_sequence_and_blast(' + gene.gene_callers_id + ', \'blastn\', \'refseq_genomic\', \'gene\');">blastn @ refseq_genomic</button> ';
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="get_sequence_and_blast(' + gene.gene_callers_id + ', \'blastx\', \'nr\', \'gene\');">blastx @ nr</button> ';
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="get_sequence_and_blast(' + gene.gene_callers_id + ', \'blastx\', \'refseq_genomic\', \'gene\');">blastx @ refseq_genomic</button> ';
+    //Blast search button created here
+    functions_table_html += `<div class="col-xs-1 dp-button"> \
+    <div class="dropdown"> \
+      <button id="dLabel" role="button" data-toggle="dropdown" class="btn btn-outline-secondary btn-sm" data-target="#" href="#"> \
+                BLAST SEARCH <span class="caret"></span> \
+            </button> \
+      <ul class="dropdown-menu multi-level fa-ul blast-dropdown-btn p-3" role="menu" aria-labelledby="dropdownMenu"> \
+        <li class="dropdown-submenu text-secondary"> \
+          <a class="sublink" tabindex="-1" href="#">Nucleotide <span></span> Nucleotide</a> \
+          <ul class="dropdown-menu text-secondary ml-3 mb-3">`;
+    functions_table_html += '<li><a class="sublink-db" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id + ', \'blastn\', \'nr\', \'gene\');">nr/nt</a></li> ';
+    functions_table_html += '<li><a class="sublink-db" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'blastn\', \'refseq_select\', \'gene\');">refseq_select</a></li> ';
+    functions_table_html += '<li><a class="sublink-db" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'blastn\', \'refseq_rna\', \'gene\');">refseq_rna</a></li>'; 
+    functions_table_html += '</ul></li>';
+
+    if(gene.call_type == 1){
+
+      functions_table_html += '<li class="dropdown-submenu text-secondary"> <a class="sublink" tabindex="-1" href="#">Trans. Nucleotide <span></span> Protein</a><ul class="dropdown-menu text-secondary ml-3 mb-3">';
+      functions_table_html += '<li><a class="sublink-db" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id + ', \'blastx\', \'nr\', \'gene\');">nr</a></li> ';
+      functions_table_html += '<li><a class="sublink-db" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'blastx\', \'refseq_select\', \'gene\');">refseq_select</a></li> ';
+      functions_table_html += '<li><a class="sublink-db" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'blastx\', \'refseq_protein\', \'gene\');">refseq_protein</a></li>'; 
+      functions_table_html += '</ul> </li>';
+
+      functions_table_html += `<li class="dropdown-submenu text-secondary"> \
+      <a class="sublink" tabindex="-1" href="#"> Protein <span></span> Protein </a> \
+        <ul class="dropdown-menu text-secondary ml-3 mb-3">`;
+
+      functions_table_html += '<li><a class="sublink-db" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id + ', \'blastp\', \'nr\', \'gene\');">nr</a></li> ';
+      functions_table_html += '<li><a class="sublink-db" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'blastp\', \'refseq_select\', \'gene\');">refseq_select</a></li> ';
+      functions_table_html += '<li><a class="sublink-db" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'blastp\', \'refseq_protein\', \'gene\');">refseq_protein</a></li>'; 
+
+      functions_table_html += `</ul> \
+      </li> \
+      <li class="dropdown-submenu text-secondary"> \
+      <a class="sublink" tabindex="-1" href="#"> Protein <span></span> Trans. Nucleotide </a> \
+        <ul class="dropdown-menu text-secondary ml-3 mb-3">`;
+
+      functions_table_html += '<li><a class="sublink-db" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id + ', \'tblastn\', \'nr\', \'gene\');">nr/nt</a></li> ';
+      functions_table_html += '<li><a class="sublink-db" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'tblastn\', \'refseq_select\', \'gene\');">refseq_select</a></li> ';
+      functions_table_html += '<li><a class="sublink-db" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'tblastn\', \'refseq_rna\', \'gene\');">refseq_rna</a></li>'; 
+      functions_table_html += '</ul> </li>';
+      functions_table_html += `<li class="dropdown-submenu text-secondary"> \
+      <a class="sublink" tabindex="-1" href="#"> Trans. Nucleotide <span></span> Trans. Nucleotide </a> \
+      <ul class="dropdown-menu text-secondary ml-3 mb-3">`;
+
+      functions_table_html += '<li><a class="sublink-db" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id + ', \'tblastx\', \'nr\', \'gene\');">nr</a></li> ';
+      functions_table_html += '<li><a class="sublink-db" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'tblastx\', \'refseq_select\', \'gene\');">refseq_select</a></li> ';
+      functions_table_html += '<li><a class="sublink-db" href="#" onClick="search_gene_sequence_in_remote_dbs(' + gene.gene_callers_id +', \'tblastx\', \'refseq_rna\', \'gene\');">refseq_rna</a></li>'; 
+      functions_table_html += '</ul></li></ul> ';
+    }
+    functions_table_html += '</div></div>';
+    functions_table_html += '<div class="col-xs-1 dp-button"> <a class="btn btn-outline-secondary btn-sm" href="#" onClick="search_protein_structure_in_alphafold(' + gene.gene_callers_id + ', \'gene\');">Alphafold Search</a></div>' ;
+    functions_table_html += '</div>';
 
     if(!gene.functions)
         return functions_table_html;
 
-    functions_table_html += '<h2>Annotations</h2>';
+    functions_table_html += '<h2 class="col-12">Annotations</h2>';
     functions_table_html += '<table class="table table-striped">';
     functions_table_html += '<thead><th>Source</th>';
     functions_table_html += '<th>Accession</th>';
@@ -157,17 +213,17 @@ function get_gene_functions_table_html_for_pan(gene_callers_id, genome_name){
                           + '</td></tr></tbody></table>';
     functions_table_html += '<textarea id="aa_sequence_fasta" style="display: none;">' + aa_sequence_fasta + '</textarea>';
     functions_table_html += '<textarea id="dna_sequence_fasta" style="display: none;">' + dna_sequence_fasta + '</textarea>';
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="show_sequence_modal(\'AA Sequence\', $(\'#aa_sequence_fasta\').val());">Get AA sequence</button> ';
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="show_sequence_modal(\'DNA Sequence\', $(\'#dna_sequence_fasta\').val());">Get DNA sequence</button> ';
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="fire_up_ncbi_blast($(\'#aa_sequence_fasta\').val(), \'tblastn\', \'nr\', \'gene\');">tblastn @ nr</button> ';
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="fire_up_ncbi_blast($(\'#aa_sequence_fasta\').val(), \'tblastn\', \'refseq_genomic\', \'gene\');">tblastn @ refseq_genomic</button> ';
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="fire_up_ncbi_blast($(\'#aa_sequence_fasta\').val(), \'blastp\', \'nr\', \'gene\');">blastp @ nr</button> ';
-    functions_table_html += '<button type="button" class="btn btn-default btn-sm" onClick="fire_up_ncbi_blast($(\'#aa_sequence_fasta\').val(), \'blastp\', \'refseq_genomic\', \'gene\');">blastp @ refseq_genomic</button> ';
+    functions_table_html += '<button type="button" class="btn btn-outline-secondary btn-sm" onClick="show_sequence_modal(\'AA Sequence\', $(\'#aa_sequence_fasta\').val());">Get AA sequence</button> ';
+    functions_table_html += '<button type="button" class="btn btn-outline-secondary btn-sm" onClick="show_sequence_modal(\'DNA Sequence\', $(\'#dna_sequence_fasta\').val());">Get DNA sequence</button> ';
+    functions_table_html += '<button type="button" class="btn btn-outline-secondary btn-sm" onClick="fire_up_ncbi_blast($(\'#aa_sequence_fasta\').val(), \'tblastn\', \'nr\', \'gene\');">tblastn @ nr</button> ';
+    functions_table_html += '<button type="button" class="btn btn-outline-secondary btn-sm" onClick="fire_up_ncbi_blast($(\'#aa_sequence_fasta\').val(), \'tblastn\', \'refseq_genomic\', \'gene\');">tblastn @ refseq_genomic</button> ';
+    functions_table_html += '<button type="button" class="btn btn-outline-secondary btn-sm" onClick="fire_up_ncbi_blast($(\'#aa_sequence_fasta\').val(), \'blastp\', \'nr\', \'gene\');">blastp @ nr</button> ';
+    functions_table_html += '<button type="button" class="btn btn-outline-secondary btn-sm" onClick="fire_up_ncbi_blast($(\'#aa_sequence_fasta\').val(), \'blastp\', \'refseq_genomic\', \'gene\');">blastp @ refseq_genomic</button> ';
 
     if(!gene.functions)
         return functions_table_html;
 
-    functions_table_html += '<h2>Annotations</h2>';
+    functions_table_html += '<h2 class="col-12">Annotations</h2>';
     functions_table_html += '<table class="table table-striped">';
     functions_table_html += '<thead><th>Source</th>';
     functions_table_html += '<th>Accession</th>';
@@ -204,14 +260,14 @@ function show_sequence_modal(title, content) {
       <div class="modal-dialog"> \
           <div class="modal-content"> \
               <div class="modal-header"> \
-                  <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button> \
                   <h4 class="modal-title">' + title + '</h4> \
+                  <button class="close" data-dismiss="modal" type="button"><span>&times;</span></button> \
               </div> \
               <div class="modal-body"> \
-                      <textarea class="form-control" style="width: 100%; height: 100%; font-family: monospace;" rows="16" onclick="$(this).select();" readonly>' + (content.startsWith('>') ? content : '>' + content) + '</textarea> \
+                      <textarea class="form-control" style="width: 100%; height: 100%; font-family: "Roboto", Helvetica, Arial;" rows="16" onclick="$(this).select();" readonly>' + (content.startsWith('>') ? content : '>' + content) + '</textarea> \
               </div> \
               <div class="modal-footer"> \
-                  <button class="btn btn-default" data-dismiss="modal" type="button">Close</button> \
+                  <button class="btn btn-outline-secondary" data-dismiss="modal" type="button">Close</button> \
               </div> \
           </div> \
       </div> \
@@ -292,7 +348,6 @@ function drawArrows(_start, _stop, colortype, gene_offset_y, color_genes=null) {
 
 
       let category = getCagForType(gene.functions, colortype);
-      category = getCleanCagCode(category);
 
       if(!category) {
         category = "None";
@@ -325,7 +380,14 @@ function drawArrows(_start, _stop, colortype, gene_offset_y, color_genes=null) {
       }
 
       // M10 15 l20 0
-      let color = $('#picker_' + category).length > 0 ? $('#picker_' + category).attr('color') : $('#picker_Other').attr('color');
+      let color;
+      if(category == gene.gene_callers_id) {
+        // highlighted gene id
+        color = state['highlight-genes'][category];
+      } else {
+        let prop = colortype.toLowerCase() + '-colors';
+        color = state[prop][category] ? state[prop][category] : "#808080";
+      }
       path = paths.append('svg:path')
            .attr('id', 'gene_' + gene.gene_callers_id)
            .attr('d', 'M' + start +' '+ y +' l'+ stop +' 0')
@@ -336,7 +398,7 @@ function drawArrows(_start, _stop, colortype, gene_offset_y, color_genes=null) {
 
              if ((gene.direction == 'r' && gene.start_in_split > _start) ||
                  (gene.direction == 'f' && gene.stop_in_split  < _stop)) {
-                   return 'url(#arrow_' + category + ')';
+                   return 'url(#arrow_' + getCleanCagCode(category) + ')';
                  }
 
               return '';
@@ -352,25 +414,24 @@ function drawArrows(_start, _stop, colortype, gene_offset_y, color_genes=null) {
         toggleGeneIDColor(gene.gene_callers_id);
       });
     });
-    $('[data-toggle="popover"]').popover({"html": true, "trigger": "click", "container": "body", "viewport": "body", "placement": "top"});
-
-    // workaround for known popover bug
-    // source: https://stackoverflow.com/questions/32581987/need-click-twice-after-hide-a-shown-bootstrap-popover
-    $('body').on('hidden.bs.popover', function (e) {
-      $(e.target).data("bs.popover").inState.click = false;
-    });
+    $('[data-toggle="popover"]').popover({html: true, sanitize: false, "trigger": "click", "container": "body", "viewport": "body", "placement": "top" });
 
     $('[data-toggle="popover"]').on('shown.bs.popover', function (e) {
-      var popover = $(e.target).data("bs.popover").$tip;
+      var popover = $(e.target).data("bs.popover").tip;
+      $(popover).addClass('d-block');
 
-      if ($(popover).css('top').charAt(0) === '-') {
-        $(popover).css('top', '0px');
-      }
+      // update popover position before scrolling
+      $(popover).popover('update');
 
-      if ($(popover).css('left').charAt(0) === '-') {
-        $(popover).css('left', '0px');
-      }
+      $('div').on('scroll', function () {
+        var $container = $(this);
+        $(this).find('.popover').each(function () {
+            $(this).css({
+                top: - $container.scrollTop()
+            });
+        });
     });
+  });
 }
 
 function getGeneEndpts(_start, _stop) {
@@ -414,6 +475,7 @@ function getCustomColorDict(fn_type, cags=null, order=null) {
   if(cags.includes("Other")) out["Other"] = "#FFFFFF";
   if(cags.includes("None")) out["None"] = "#808080";
   delete out["undefined"];
+  delete out[null];
   return out;
 }
 

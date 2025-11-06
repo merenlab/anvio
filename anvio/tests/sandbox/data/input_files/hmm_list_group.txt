@@ -1,0 +1,3 @@
+name	source	path	group
+Ribosomal_L16	Bacteria_71	INTERNAL	Ribosomal_L16
+Ribosomal_L16	Archaea_76	INTERNAL	Ribosomal_L16

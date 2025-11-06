@@ -2,7 +2,7 @@
 source 00.sh
 
 # Setup #############################
-SETUP_WITH_OUTPUT_DIR $1 $2
+SETUP_WITH_OUTPUT_DIR $1 $2 $3
 #####################################
 
 INFO "Writing tRNA feature parameterization file"
@@ -22,7 +22,8 @@ do
                      -o ${output_dir}/${sample}_${split} \
                      --treatment ${split} \
                      --write-checkpoints \
-                     --skip-fasta-check
+                     --skip-fasta-check \
+                     $thread_controller
         echo
     done
 done
@@ -36,11 +37,13 @@ anvi-merge-trnaseq ${output_dir}/S01_untreated/S01_untreated-TRNASEQ.db \
                    -n TEST_EXPERIMENT \
                    --max-reported-trna-seeds 1000 \
                    --preferred-treatment demethylase \
-                   --nonspecific-output nonspecific_db,combined_db,summed_db
+                   --nonspecific-output nonspecific_db,combined_db,summed_db \
+                   $thread_controller
 
 INFO "Assigning taxonomy to tRNA seeds"
 anvi-run-trna-taxonomy -c ${output_dir}/CONVERTED/CONTIGS.db \
-                       --all-hits-output-file ${output_dir}/CONVERTED/TAXONOMY-HITS.txt
+                       --all-hits-output-file ${output_dir}/CONVERTED/TAXONOMY-HITS.txt \
+                       $thread_controller
 
 INFO "Firing up the interactive interface with the \"combined\" profile database"
 anvi-interactive -p ${output_dir}/CONVERTED/COMBINED_COVERAGE/PROFILE.db \

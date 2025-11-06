@@ -20,11 +20,11 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
+from anvio.artifacts.samples_txt import SamplesTxt
 import IlluminaUtils.lib.fastqlib as u
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2021, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -59,7 +59,7 @@ class PrimerSearch:
             raise ConfigError("You can't ask anvi'o to report only primer matches AND only remainders "
                               "at the same time. Please take a look at the help menu.")
 
-        if not (A('samples_dict') or A('samples_txt')):
+        if not (A('samples_artifact') or A('samples_txt')):
             raise ConfigError("This class is being initialized incorrectly :/ The `args` object must either include "
                               "path for a `samples-txt` file through `samples_txt` parameter, or a dictionary for "
                               "a samples dictionary through `samples_dict` parameter. See online help for more.")
@@ -70,11 +70,10 @@ class PrimerSearch:
                               "a primers dictionary through `primers_dict` parameter. See online help for more.")
 
         if self.samples_txt:
-            self.samples_dict = utils.get_samples_txt_file_as_dict(self.samples_txt, run=run)
+            self.samples_dict = SamplesTxt(self.samples_txt, expected_format='free', run=self.run).as_dict()
         else:
-            self.samples_dict = A('samples_dict')
-            if not isinstance(self.samples_dict, dict):
-                raise ConfigError("The `primers_dict` parameter must be a literal dictionary.")
+            samples_artifact = A('samples_artifact')
+            self.samples_dict = samples_artifact.as_dict()
 
         if self.primers_file_path:
             self.primers_dict = utils.get_primers_txt_file_as_dict(self.primers_file_path)
@@ -174,69 +173,69 @@ class PrimerSearch:
 
         # go through
         removed_due_to_remainder_length = 0
-        for pair in ['r1', 'r2']:
-            input_fastq_file_path = sample_dict[pair]
-            input_fastq = u.FastQSource(input_fastq_file_path, compressed=input_fastq_file_path.endswith('.gz'))
+        for reads_type in ['r1', 'r2', 'lr']:
+            for input_fastq_file_path in sample_dict.get(reads_type, []):
+                input_fastq = u.FastQSource(input_fastq_file_path, compressed=input_fastq_file_path.endswith('.gz'))
 
-            while input_fastq.next(raw=True) and (sample_stats['hits'] < self.stop_after if self.stop_after else True):
-                sample_stats['reads'] += 1
+                while input_fastq.next(raw=True) and (sample_stats['hits'] < self.stop_after if self.stop_after else True):
+                    sample_stats['reads'] += 1
 
-                if sample_stats['reads'] % 10000 == 0:
-                    self.progress.update(f"{sample_name} ({self.stats['sample_counter']} of {len(self.samples_dict)}) / {pair} / Reads: {pp(sample_stats['reads'])} / Hits: {pp(sample_stats['hits'])} (in RC: {pp(sample_stats['hits_in_rc'])})")
+                    if sample_stats['reads'] % 10000 == 0:
+                        self.progress.update(f"{sample_name} ({self.stats['sample_counter']} of {len(self.samples_dict)}) / {reads_type} / Reads: {pp(sample_stats['reads'])} / Hits: {pp(sample_stats['hits'])} (in RC: {pp(sample_stats['hits_in_rc'])})")
 
-                found_in_RC = False
+                    found_in_RC = False
 
-                for primer_name in primers_dict:
-                    v = primers_dict[primer_name]
-                    seq = input_fastq.entry.sequence
-                    primer_sequence = v['primer_sequence']
-                    match = re.search(primer_sequence, seq)
-
-                    if not match:
-                        # no match here. but how about the the reverse complement of it?
-                        seq = utils.rev_comp(seq)
-
+                    for primer_name in primers_dict:
+                        v = primers_dict[primer_name]
+                        seq = input_fastq.entry.sequence
+                        primer_sequence = v['primer_sequence']
                         match = re.search(primer_sequence, seq)
 
-                        if match:
-                            # aha. the reverse complement sequence that carries our match found.
-                            # will continue as if nothing happened
-                            sample_stats['hits_in_rc'] += 1
-                            found_in_RC = True
+                        if not match:
+                            # no match here. but how about the reverse complement of it?
+                            seq = utils.rev_comp(seq)
 
-                    if not match:
-                        continue
+                            match = re.search(primer_sequence, seq)
 
-                    sample_stats['primers'][primer_name]['raw_hits'] += 1
+                            if match:
+                                # aha. the reverse complement sequence that carries our match found.
+                                # will continue as if nothing happened
+                                sample_stats['hits_in_rc'] += 1
+                                found_in_RC = True
 
-                    if len(seq) - match.end() < self.min_remainder_length:
-                        removed_due_to_remainder_length += 1
-                        continue
+                        if not match:
+                            continue
 
-                    v['matching_sequences'].append((match.start(), match.end(), seq), )
+                        sample_stats['primers'][primer_name]['raw_hits'] += 1
 
-                    sample_stats['hits'] += 1
-                    sample_stats['primers'][primer_name]['final_hits'] += 1
-                    sample_dict['hits'][primer_name] += 1
+                        if len(seq) - match.end() < self.min_remainder_length:
+                            removed_due_to_remainder_length += 1
+                            continue
 
-                    if anvio.DEBUG:
-                        self.progress.end()
-                        print("\n%s -- %s -- %s| %s [%s] %s" % (sample_name, pair, 'RC ' if found_in_RC else '   ', seq[:match.start()], primer_sequence, seq[match.end():]))
-                        self.progress.new("Tick tock")
-                        self.progress.update(f"{sample_name} ({self.stats['sample_counter']} of {len(self.samples_dict)}) / {pair} / Reads: {pp(sample_stats['reads'])} / Hits: {pp(sample_stats['hits'])} (in RC: {pp(sample_stats['hits_in_rc'])})")
+                        v['matching_sequences'].append((match.start(), match.end(), seq), )
 
-            self.stats['total_read_counter'] += sample_stats['reads']
-            self.stats['total_hits'] += sample_stats['hits']
+                        sample_stats['hits'] += 1
+                        sample_stats['primers'][primer_name]['final_hits'] += 1
+                        sample_dict['hits'][primer_name] += 1
 
-            # calculate and store stats for primer hits
-            for primer_name in primers_dict:
-                matching_sequence_hits = primers_dict[primer_name]['matching_sequences']
-                seq_lengths_after_match = [len(sequence[end:]) for start, end, sequence in matching_sequence_hits]
+                        if anvio.DEBUG:
+                            self.progress.end()
+                            print("\n%s -- %s -- %s| %s [%s] %s" % (sample_name, reads_type, 'RC ' if found_in_RC else '   ', seq[:match.start()], primer_sequence, seq[match.end():]))
+                            self.progress.new("Tick tock")
+                            self.progress.update(f"{sample_name} ({self.stats['sample_counter']} of {len(self.samples_dict)}) / {reads_type} / Reads: {pp(sample_stats['reads'])} / Hits: {pp(sample_stats['hits'])} (in RC: {pp(sample_stats['hits_in_rc'])})")
 
-                if len(seq_lengths_after_match):
-                    sample_stats['primers'][primer_name]['shortest_seq_length_after_match'] = min(seq_lengths_after_match)
-                    sample_stats['primers'][primer_name]['longest_remainder_length'] = max(seq_lengths_after_match)
-                    sample_stats['primers'][primer_name]['avg_remainder_length'] = sum(seq_lengths_after_match) / len(seq_lengths_after_match)
+                self.stats['total_read_counter'] += sample_stats['reads']
+                self.stats['total_hits'] += sample_stats['hits']
+
+                # calculate and store stats for primer hits
+                for primer_name in primers_dict:
+                    matching_sequence_hits = primers_dict[primer_name]['matching_sequences']
+                    seq_lengths_after_match = [len(sequence[end:]) for start, end, sequence in matching_sequence_hits]
+
+                    if len(seq_lengths_after_match):
+                        sample_stats['primers'][primer_name]['shortest_seq_length_after_match'] = min(seq_lengths_after_match)
+                        sample_stats['primers'][primer_name]['longest_remainder_length'] = max(seq_lengths_after_match)
+                        sample_stats['primers'][primer_name]['avg_remainder_length'] = sum(seq_lengths_after_match) / len(seq_lengths_after_match)
 
         self.progress.end()
 
@@ -628,6 +627,9 @@ class Palindromes:
             # as a function of the sequence length
             method = self.palindrome_search_algorithms['BLAST'] if len(sequence) >= 5000 else self.palindrome_search_algorithms['numba']
 
+        # make sure the sequence is uppercase:
+        sequence = sequence.upper()
+
         # get palindromes found in the sequence
         palindromes = method(sequence, **kwargs)
 
@@ -694,7 +696,7 @@ class Palindromes:
                                     -word_size {self.blast_word_size} \
                                     -strand minus"""
 
-        p = subprocess.Popen(search_command, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.STDOUT, shell=True, executable='/bin/bash')
+        p = subprocess.Popen(search_command, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.DEVNULL, shell=True, executable='/bin/bash')
         BLAST_output = p.communicate()[0]
 
         # parse the BLAST XML output

@@ -1,0 +1,3 @@
+genome_1	genome_2
+P_marinus	S_islandicus
+B_thetaiotamicron	S_islandicus

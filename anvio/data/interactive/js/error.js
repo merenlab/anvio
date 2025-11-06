@@ -16,8 +16,8 @@ let ERROR_COUNT = 0
 const issueCategories = [
     {
         'category' : 'Dependencies failed to load',
-        'content' : `This can occur when git submodules that Anvi'o relies on fail to load. If you are tracking the main development branch of Anvi'o,
-        try running <b> git submodule update --init </b>`
+        'content' : `This can occur when npm packages that Anvi'o relies on fail to load. 
+        Try running <b> npm install </b> in the <b>anvio/data/interactive</b> directory.`
     },
     {
         'category' : 'ReferenceError - ___ is not defined',

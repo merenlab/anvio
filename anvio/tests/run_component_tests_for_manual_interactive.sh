@@ -3,7 +3,7 @@ source 00.sh
 set -e
 
 # Setup #############################
-SETUP_WITH_OUTPUT_DIR $1 $2
+SETUP_WITH_OUTPUT_DIR $1 $2 $3
 #####################################
 
 for f in fasta.fa view_data.txt additional_view_data.txt samples-information.txt samples-order.txt

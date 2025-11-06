@@ -13,8 +13,7 @@ import numpy as np
 import pandas as pd
 
 
-__author__ = "Developers of anvi'o (see AUTHORS.txt)"
-__copyright__ = "Copyleft 2015-2018, the Meren Lab (http://merenlab.org/)"
+__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
@@ -80,7 +79,7 @@ class HMMERStandardOutput(object):
     If you're confused about the meaning of these columns, please see starting from page 32
     of the HMMER guide http://eddylab.org/software/hmmer/Userguide.pdf. There you will be able
     to with relative ease correlate the column names in these tables to what is described
-    meticulously in the tutorial. For example, `best_dom_bias` refers to the the 'bias (best 1
+    meticulously in the tutorial. For example, `best_dom_bias` refers to the 'bias (best 1
     domain)' column.
 
     (3) ali_info is a nested dictionary that can be used to access on a per-hit basis which residues
@@ -543,7 +542,14 @@ class HMMERTableOutput(Parser):
         self.run = run
 
         if self.context == "GENE":
-            col_info = self.get_col_info_for_GENE_context()
+            if self.alphabet == 'AA':
+                col_info = self.get_col_info_for_GENE_AA_context()
+            else:
+                # this is a relatively recent addition to accommodate for GENE context using
+                # the DNA alphabet for HMM searches. for details, please see the issue
+                # https://github.com/merenlab/anvio/issues/2089. special thanks go to
+                # Gio Kanaan for providing a test dataset to address the problem.
+                col_info = self.get_col_info_for_GENE_DNA_context()
         elif self.context == "CONTIG" and (self.alphabet == "DNA" or self.alphabet == "RNA"):
             col_info = self.get_col_info_for_CONTIG_context()
         elif self.context == "DOMAIN" and self.alphabet == "AA":
@@ -585,8 +591,8 @@ class HMMERTableOutput(Parser):
         Parser.__init__(self, self.program, [fixed_hmmer_table_txt], files_expected, files_structure)
 
 
-    def get_col_info_for_GENE_context(self):
-        """Get column names and types for GENE context
+    def get_col_info_for_GENE_AA_context(self):
+        """Get column names and types for GENE context for AA alphabet
 
         See class docstring for details of the fields for AA sequence search, and DNA sequence search.
         """
@@ -603,7 +609,7 @@ class HMMERTableOutput(Parser):
                 ('e_value', float),         # e-value (full sequence)
                 ('bit_score', float),       # score (full sequence)
                 ('bias', str),              # bias (full sequence)
-                ('dom_e_value', str),       # e-value (best 1 domain)
+                ('dom_e_value', float),       # e-value (best 1 domain)
                 ('dom_bit_score', float),   # score (best 1 domain)
                 ('dom_bias', str),          # bias (best 1 domain)
                 ('dom_exp', str),           # exp (domain number estimation)
@@ -629,7 +635,7 @@ class HMMERTableOutput(Parser):
                 ('e_value', float),         # e-value (full sequence)
                 ('bit_score', float),       # score (full sequence)
                 ('bias', str),              # bias (full sequence)
-                ('dom_e_value', str),       # e-value (best 1 domain)
+                ('dom_e_value', float),       # e-value (best 1 domain)
                 ('dom_bit_score', float),   # score (best 1 domain)
                 ('dom_bias', str),          # bias (best 1 domain)
                 ('dom_exp', str),           # exp (domain number estimation)
@@ -650,8 +656,38 @@ class HMMERTableOutput(Parser):
         return list(zip(*col_info))
 
 
+    def get_col_info_for_GENE_DNA_context(self):
+        """Get column names and types for GENE context for DNA alphabet
+
+        See class docstring for details of the fields for AA sequence search, and DNA sequence search.
+        """
+
+        # target name        accession  query name           accession  hmmfrom hmm to alifrom  ali to envfrom  env to  modlen strand   E-value  score  bias  description of target
+        #------------------- ---------- -------------------- ---------- ------- ------- ------- ------- ------- ------- ------- ------ --------- ------ ----- ---------------------
+        col_info = [
+            ('gene_name', str),         # target name
+            ('gene_hmm_id', str),       # accession
+            ('gene_callers_id', int),   # query name
+            ('gene_call_acc', str),     # accession
+            ('hmm_from', int),          # hmmfrom
+            ('hmm_to', int),            # hmm to
+            ('alignment_from', int),    # alifrom
+            ('alignment_to', int),      # ali to
+            ('envelope_from', int),     # envfrom
+            ('envelope_to', int),       # env to
+            ('seq_len', str),           # modlen
+            ('strand', str),            # strand
+            ('e_value', float),         # E-value
+            ('score', str),             # score
+            ('bias', str),              # bias
+            ('description', str)        # description of target
+        ]
+
+        return list(zip(*col_info))
+
+
     def get_col_info_for_CONTIG_context(self):
-        """Get column names and types for GENE context
+        """Get column names and types for CONTIG context
 
         See class docstring for details of the fields for AA sequence search, and DNA sequence search.
         """
@@ -824,7 +860,8 @@ class HMMERTableOutput(Parser):
                                  'gene_callers_id': hit['gene_callers_id'],
                                  'e_value': hit['e_value'],
                                  'bit_score': hit['bit_score'],
-                                 'domain_bit_score': hit['dom_bit_score']}
+                                 'domain_bit_score': hit['dom_bit_score'],
+                                 'domain_e_value': hit['dom_e_value'] if 'dom_e_value' in hit else None}
                     else:
                         num_hits_removed += 1
 
@@ -836,13 +873,23 @@ class HMMERTableOutput(Parser):
                                      "is going to fail in order to avoid adding many garbage hits to your database.")
 
                 else:
-                    entry = {'entry_id': entry_id,
-                             'gene_name': hit['gene_name'],
-                             'gene_hmm_id': hit['gene_hmm_id'],
-                             'gene_callers_id': hit['gene_callers_id'],
-                             'e_value': hit['e_value'],
-                             'bit_score': hit['bit_score'],
-                             'domain_bit_score': hit['dom_bit_score']}
+                    if self.alphabet == 'DNA':
+                        entry = {'entry_id': entry_id,
+                                 'gene_name': hit['gene_name'],
+                                 'gene_hmm_id': hit['gene_hmm_id'],
+                                 'gene_callers_id': hit['gene_callers_id'],
+                                 'start': hit['alignment_from'],
+                                 'stop': hit['alignment_to'],
+                                 'e_value': hit['e_value']}
+                    else:
+                        entry = {'entry_id': entry_id,
+                                 'gene_name': hit['gene_name'],
+                                 'gene_hmm_id': hit['gene_hmm_id'],
+                                 'gene_callers_id': hit['gene_callers_id'],
+                                 'e_value': hit['e_value'],
+                                 'bit_score': hit['bit_score'],
+                                 'domain_bit_score': hit['dom_bit_score'],
+                                 'domain_e_value': hit['dom_e_value'] if 'dom_e_value' in hit else None}
 
             elif self.context == 'CONTIG' and (self.alphabet == 'DNA' or self.alphabet == 'RNA'):
                 entry = {'entry_id': entry_id,

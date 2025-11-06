@@ -27,6 +27,7 @@ You can use it with a single source of genomes:
 {{ codestart }}
 anvi-compute-functional-enrichment-across-genomes -i %(internal-genomes)s \
                                                   -o %(functional-enrichment-txt)s \
+                                                  -G %(groups-txt)s \
                                                   --annotation-source FUNCTION_SOURCE
 {{ codestop }}
 
@@ -35,6 +36,7 @@ or many:
 {{ codestart }}
 anvi-compute-functional-enrichment-across-genomes -i %(internal-genomes)s\
                                                   -e %(external-genomes)s \
+                                                  -G %(groups-txt)s \
                                                   -g %(genomes-storage-db)s \
                                                   -o %(functional-enrichment-txt)s \
                                                   --annotation-source FUNCTION_SOURCE
@@ -46,6 +48,7 @@ You can get a tab-delimited matrix describing the occurrence (counts) of each fu
 
 {{ codestart }}
 anvi-compute-functional-enrichment-across-genomes -i %(internal-genomes)s \
+                                                  -G %(groups-txt)s \
                                                   -o %(functional-enrichment-txt)s \
                                                   --annotation-source FUNCTION_SOURCE
                                                   --functional-occurrence-table-output FUNC_OCCURRENCE.TXT

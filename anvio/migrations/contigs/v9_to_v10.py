@@ -62,7 +62,7 @@ def migrate(db_path):
 
     entries = []
     for contig_name in contig_names_in_db:
-        entries.append((contig_name, convert_numpy_array_to_binary_blob(fp['/data/nt_position_info/%s' % (contig_name)].value),))
+        entries.append((contig_name, convert_numpy_array_to_binary_blob(fp['/data/nt_position_info/%s' % (contig_name)][()]),))
 
         counter += 1
         progress.update('contig %d of %d ...' % (counter, total))

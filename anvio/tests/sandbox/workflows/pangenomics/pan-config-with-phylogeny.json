@@ -35,7 +35,7 @@
         "PAN_DIR": "03_PAN_FIVE_PAN",
         "LOGS_DIR": "00_LOGS_FIVE_PAN"
     },
-    "config_version": "2",
+    "config_version": "3",
     "anvi_gen_contigs_database": {
         "--project-name": "{group}"
     },
