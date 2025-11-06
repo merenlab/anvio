@@ -974,5 +974,23 @@ ANVIO_ARTIFACTS ={
         "type": "SVG",
         "provided_by_anvio": True,
         "provided_by_user": False
-    }
+    },
+    "metabolite-exchange-predictions": {
+        "name": "PREDICTED METABOLITE EXCHANGES",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "equivalent-compounds-txt": {
+        "name": "EQUIVALENT COMPOUNDS",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": True
+    },
+    "genome-pairs": {
+        "name": "GENOME PAIRS",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
 }

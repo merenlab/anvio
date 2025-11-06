@@ -19,8 +19,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren', 'semiller10']
-__requires__ = ['contigs-db', 'profile-db', 'collection', 'bin']
-__provides__ = ['interactive', 'svg']
+__requires__ = ['contigs-db']
+__provides__ = ['interactive', 'svg', 'profile-db']
 __description__ = ("Display codon frequency statistics across genes in a given genome in the anvi'o interactive interface.")
 
 
@@ -58,8 +58,6 @@ def get_args():
         "across genes in a single genome. It could also be a bin stored in a collection.")
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
     groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
-    groupA.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
-    groupA.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
     groupA.add_argument(
         '--gene-caller-ids', type=int, nargs='+', help="Select genes by ID, space-separated.")
 
