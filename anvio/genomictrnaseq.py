@@ -302,7 +302,7 @@ class Integrator(object):
         self.genomic_profile_db_path = A('profile_db')
         self.collection_name = A('collection_name')
         self.bin_id = A('bin_id')
-        self.bin_ids_file = A('bin_ids_file')
+        self.bin_ids_path = A('bin_ids_file')
 
         self.internal_genomes_path = A('internal_genomes')
         self.external_genomes_path = A('external_genomes')
