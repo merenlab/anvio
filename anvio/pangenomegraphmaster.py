@@ -7,6 +7,7 @@
 """
 
 import os
+import math
 import numpy as np
 import pandas as pd
 import networkx as nx
@@ -411,8 +412,40 @@ class PangenomeGraphManager():
         gene_calls_df = pd.DataFrame.from_dict(gene_calls_dict, orient='index').set_index(['genome', 'gene_caller_id'])
         nodes_df = pd.DataFrame.from_dict(node_regions_dict, orient='index').set_index('syn_cluster')
         region_sides_df = pd.DataFrame.from_dict(regions_summary_dict, orient='index').set_index('region_id')
+        region_sides_df['composite_variability_score'] = region_sides_df.apply(PangenomeGraphManager.composite_variability_score(region_sides_df), axis=1)
 
         return(region_sides_df, nodes_df, gene_calls_df)
+
+
+    @staticmethod
+    def composite_variability_score(df):
+
+        C_min = df['complexity'].min()
+        C_max = df['complexity'].max()
+        E_min = df['max_expansion'].min()
+        E_max = df['max_expansion'].max()
+        D_min = df['diversity'].min()
+        D_max = df['diversity'].max()
+        W_median = df['weight'].median()
+
+        def func(row):
+
+            C = row['complexity']
+            E = row['max_expansion']
+            D = row['diversity']
+            W = row['weight']
+
+            C_norm = (C - C_min) / (C_max - C_min)
+            E_norm = (E - E_min) / (E_max - E_min)
+            D_norm = (D - D_min) / (D_max - D_min)
+
+            e_value = math.e
+            W_f = 1 - e_value**(-W/W_median)
+
+            CGVS = (C_norm * E_norm * D_norm)**(1/3) * W_f
+
+            return(CGVS)
+        return(func)
 
 
     def reverse_edges(self, changed_edges):

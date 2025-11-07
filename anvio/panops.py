@@ -1436,14 +1436,14 @@ class PangenomeGraph():
         region_sides_df.to_csv(os.path.join(self.output_dir, 'region_sides_df.tsv'), sep='\t')
         nodes_df.to_csv(os.path.join(self.output_dir, 'nodes_df.tsv'), sep='\t')
 
-        X = len(set(nodes_df.reset_index().query('region_id == -1')['x'].tolist())) / len(set(nodes_df.reset_index()['x'].tolist()))
-        A = len(set(nodes_df.reset_index().query('region_id == -1')['syn_cluster'].tolist())) / len(set(nodes_df.reset_index()['syn_cluster'].tolist()))
-        complexity_value = 1 - (X + A) / 2
+        # X = len(set(nodes_df.reset_index().query('region_id == -1')['x'].tolist())) / len(set(nodes_df.reset_index()['x'].tolist()))
+        # A = len(set(nodes_df.reset_index().query('region_id == -1')['syn_cluster'].tolist())) / len(set(nodes_df.reset_index()['syn_cluster'].tolist()))
+        # complexity_value = 1 - (X + A) / 2
 
-        with open(os.path.join(self.output_dir, 'complexity_value.txt'), 'w') as file:
-            file.write(str(complexity_value))
+        # with open(os.path.join(self.output_dir, 'complexity_value.txt'), 'w') as file:
+        #     file.write(str(complexity_value))
 
-        self.run.info_single(f"Pangenome graph complexity is {round(complexity_value, 3)}.")
+        # self.run.info_single(f"Pangenome graph complexity is {round(complexity_value, 3)}.")
         self.run.info_single(f"Exported gene calls table to {os.path.join(self.output_dir, 'gene_calls_df.tsv')}.")
         self.run.info_single(f"Exported region table to {os.path.join(self.output_dir, 'region_sides_df.tsv')}.")
         self.run.info_single(f"Exported nodes table to {os.path.join(self.output_dir, 'nodes_df.tsv')}.")
