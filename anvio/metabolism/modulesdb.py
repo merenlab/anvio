@@ -722,7 +722,7 @@ class ModulesDatabase(KeggContext):
         return module_dictionary
 
 
-    def get_data_value_entries_for_module_by_data_name(self, module_num, data_name):
+    def get_data_value_entries_for_module_by_data_name(self, module_num, data_name, raise_error_if_no_data=True):
         """This function returns data_value elements from the modules table for the specified module and data_name pair.
 
         All elements corresponding to the pair (ie, M00001 and ORTHOLOGY) will be returned.
@@ -735,6 +735,8 @@ class ModulesDatabase(KeggContext):
             the module to fetch data for
         data_name : str
             which data_name field we want
+        raise_error_if_no_data : bool
+            whether to quit all things if we don't get what we want
 
         RETURNS
         =======
@@ -742,8 +744,9 @@ class ModulesDatabase(KeggContext):
             the data_values corresponding to the module/data_name pair
         """
 
-        where_clause_string = "module = '%s'" % (module_num)
-        dict_from_mod_table = self.db.get_some_rows_from_table_as_dict(self.module_table_name, where_clause_string, row_num_as_key=True)
+        where_clause_string = f"module = '{module_num}' and data_name = '{data_name}'"
+        dict_from_mod_table = self.db.get_some_rows_from_table_as_dict(self.module_table_name, where_clause_string, row_num_as_key=True,
+                                                                error_if_no_data=raise_error_if_no_data)
         # the returned dictionary is keyed by an arbitrary integer, and each value is a dict containing one row from the modules table
         # ex of one row in this dict: 0: {'module': 'M00001', 'data_name': 'ENTRY', 'data_value': 'M00001', 'data_definition': 'Pathway', 'line': 1}
         data_values_to_ret = []
@@ -752,14 +755,14 @@ class ModulesDatabase(KeggContext):
                 data_values_to_ret.append(dict_from_mod_table[key]['data_value'])
 
         if not data_values_to_ret:
-            self.run.warning("Just so you know, we tried to fetch data from the Modules database for the data_name field %s "
-                             "and module %s, but didn't come up with anything, so an empty list is being returned. This may "
-                             "cause errors down the line, and if so we're very sorry for that.")
+            self.run.warning(f"Just so you know, we tried to fetch data values from the modules database for the data_name field {data_name} "
+                             f"and module {module_num}, but didn't come up with anything, so an empty list is being returned. This may "
+                             f"cause errors down the line, and if so we're very sorry for that.")
 
         return data_values_to_ret
 
 
-    def get_data_definition_entries_for_module_by_data_name(self, module_num, data_name):
+    def get_data_definition_entries_for_module_by_data_name(self, module_num, data_name, raise_error_if_no_data=True):
         """This function returns data_definition elements from the modules table for the specified module and data_name pair.
 
         All elements corresponding to the pair (ie, M00001 and ORTHOLOGY) will be returned.
@@ -772,6 +775,8 @@ class ModulesDatabase(KeggContext):
             the module to fetch data for
         data_name : str
             which data_name field we want
+        raise_error_if_no_data : bool
+            whether to quit all things if we don't get what we want
 
         RETURNS
         =======
@@ -779,8 +784,9 @@ class ModulesDatabase(KeggContext):
             the data_definitions corresponding to the module/data_name pair
         """
 
-        where_clause_string = "module = '%s'" % (module_num)
-        dict_from_mod_table = self.db.get_some_rows_from_table_as_dict(self.module_table_name, where_clause_string, row_num_as_key=True)
+        where_clause_string = f"module = '{module_num}' and data_name = '{data_name}'" 
+        dict_from_mod_table = self.db.get_some_rows_from_table_as_dict(self.module_table_name, where_clause_string, row_num_as_key=True,
+                                                                error_if_no_data=raise_error_if_no_data)
 
         data_defs_to_ret = []
         for key in dict_from_mod_table.keys():
@@ -788,9 +794,9 @@ class ModulesDatabase(KeggContext):
                 data_defs_to_ret.append(dict_from_mod_table[key]['data_definition'])
 
         if not data_defs_to_ret and anvio.DEBUG:
-            self.run.warning("Just so you know, we tried to fetch data definitions from the Modules database for the data_name field %s "
-                             "and module %s, but didn't come up with anything, so an empty list is being returned. This may "
-                             "cause errors down the line, and if so we're very sorry for that.")
+            self.run.warning(f"Just so you know, we tried to fetch data definitions from the modules database for the data_name field {data_name} "
+                             f"and module {module_num}, but didn't come up with anything, so an empty list is being returned. This may "
+                             f"cause errors down the line, and if so we're very sorry for that.")
 
         return data_defs_to_ret
 
