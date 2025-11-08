@@ -1096,6 +1096,10 @@ class ModulesDatabase(KeggContext):
         compound_to_name_dict = self.get_compound_dict_for_module(mnum)
         substrate_compounds, intermediate_compounds, product_compounds = self.get_kegg_module_compound_lists(mnum)
 
+        if not compound_to_name_dict and anvio.DEBUG:
+            self.run.warning(f"No COMPOUND entries were found for module {mnum}, so the corresponding lists of "
+                             f"substrates/products will likely be empty. Just so you are prepared.")
+
         substrate_name_list = [compound_to_name_dict[c] for c in substrate_compounds]
         intermediate_name_list = [compound_to_name_dict[c] for c in intermediate_compounds]
         product_name_list = [compound_to_name_dict[c] for c in product_compounds]
