@@ -406,7 +406,8 @@ class ModulesDatabase(KeggContext):
                         # there is one situation in which we want to ignore the entry, and that is Modules appearing in the ORTHOLOGY category, like so:
                         # (M00531  Assimilatory nitrate reduction, nitrate => ammonia)
                         # as of September 2025, we also want to ignore COMPLETE entries, which are really long lists of organisms that have the module
-                        # complete and we just don't care about that info to justify the additional space it takes in the database
+                        # complete and we just don't care about that info to justify the additional space it takes in the database --
+                        # see https://github.com/merenlab/anvio/issues/2491 for context and more details:
                         if not (name == "ORTHOLOGY" and val[0] == '(') and not (name == 'COMPLETE'):
                             # append_and_store will collect db entries and store every 10000 at a time
                             mod_table.append_and_store(self.db, mnum, name, val, definition, line)
