@@ -1000,6 +1000,11 @@ class ModulesDatabase(KeggContext):
         Note that this function refers to compounds by their KEGG identifier (format is 'C#####' where # is a digit).
         A separate function is used to convert these lists to human-readable compound names.
 
+        PARAMETERS
+        ==========
+        mnum : str
+            module number to get compounds for
+
         RETURNS
         =======
         substrates : list
@@ -1010,9 +1015,8 @@ class ModulesDatabase(KeggContext):
             Compunds that are only outputs from the module's metabolic pathway
         """
 
-        reactions_list = self.get_data_definition_entries_for_module_by_data_name(mnum, "REACTION")
-        if not reactions_list:
-            if anvio.DEBUG:
+        reactions_list = self.get_data_definition_entries_for_module_by_data_name(mnum, "REACTION", raise_error_if_no_data=False)
+        if not reactions_list and anvio.DEBUG:
                 self.run.warning(f"No REACTION entries found for module {mnum}, so no compounds will be returned by "
                                  "get_kegg_module_compound_lists()")
 
