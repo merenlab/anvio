@@ -760,10 +760,10 @@ class DB:
 
     def get_table_structure(self, table_name):
         self.is_table_exists(table_name)
-        
+
         response = self._exec('PRAGMA TABLE_INFO(%s)' % table_name)
         results = self._fetchall(response, table_name)
-        
+
         return [t[1] for t in results]
 
 
