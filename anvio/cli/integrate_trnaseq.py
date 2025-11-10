@@ -201,7 +201,7 @@ def sanity_check(args):
     # The following are checks on combinations of genomic inputs.
     if ((args.internal_genomes or args.external_genomes) and
         (args.contigs_db or args.profile_db or args.collection_name or
-         args.bin_id or args.bin_ids_file or args.gene_caller_ids)):
+         args.bin_id or args.bin_ids_file)):
         raise ConfigError(
             "`--internal-genomes` and `--external-genomes` cannot be used with other genomic input "
             "arguments.")
