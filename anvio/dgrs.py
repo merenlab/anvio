@@ -946,8 +946,8 @@ class DGR_Finder:
                                                                                 int(elem.find('Hsp_query-to').text))
                         query_genome_end_position = query_start_position + max(int(elem.find('Hsp_query-from').text) - 1,
                                                                             int(elem.find('Hsp_query-to').text))
-                        query_frame = str(elem.find('Hsp_query-frame').text)
-                        subject_frame = str(elem.find('Hsp_hit-frame').text)
+                        query_frame = int(elem.find('Hsp_query-frame').text)
+                        subject_frame = int(elem.find('Hsp_hit-frame').text)
 
                         query_mismatch_positions = []
                         all_possible_characters = set(qseq + hseq)
