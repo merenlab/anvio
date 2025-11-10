@@ -730,14 +730,14 @@ class DGR_Finder:
 
         # if collections_mode is enabled, process multiple bins separately
         if self.collections_mode:
-            self.merged_mismatch_hits = {}  # Store combined results
+            self.merged_mismatch_hits = defaultdict(lambda: defaultdict(dict))
 
             tmp_directory_path = self.temp_dir
 
             for bin_name in self.bin_names_list:
 
                 # reset mismatch hits for each bin
-                self.mismatch_hits = {}
+                self.mismatch_hits = defaultdict(lambda: defaultdict(dict))
 
                 blast_file = os.path.join(
                     tmp_directory_path,
@@ -758,8 +758,9 @@ class DGR_Finder:
                 self.parse_and_process_blast_results(blast_file, bin_name, max_percent_identity)
 
                 # merge results into `merged_mismatch_hits`
-                for hit_identity_unique, hit_data in self.mismatch_hits.items():
-                    self.merged_mismatch_hits.setdefault(hit_identity_unique, []).append(hit_data)
+                for section_id, hits_dict in self.mismatch_hits.items():
+                    for hit_id, hit_data in hits_dict.items():
+                        self.merged_mismatch_hits[section_id][hit_id] = hit_data
 
             self.run.info_single(f"Total unique mismatches: {len(self.merged_mismatch_hits)}", nl_before=1)
             return self.merged_mismatch_hits
