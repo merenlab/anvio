@@ -1221,6 +1221,96 @@ class DGR_Finder:
 
         """
 
+        num_DGR = 0
+
+        # possible DGR dictionary
+        self.DGRs_found_dict = {}
+
+        # yes this warning is in the wrong place but I would rather have it here than in the process blast func
+        if self.only_a_bases:
+                # this is here so that every potential VR doesn't get a new warning and clog up the terminal
+                self.run.warning("Just a note to say that we are only looking for DGRs that have A bases as their site of mutagenesis.",
+                                header="Searching for only A mutagenesis based DGRs")
+
+        if self.collections_mode:
+            hits_item = self.merged_mismatch_hits
+        else:
+            hits_item = self.mismatch_hits
+
+        for section_id, hits_dict in hits_item.items():
+            # ensure hits_dict is a mapping of hit_id -> hit_data
+            if isinstance(hits_dict, list):
+                hits_dict = {f"hit_{i+1}": h for i, h in enumerate(hits_dict)}
+
+            # create grouping dict for this section
+            hits_by_query = defaultdict(list)
+
+            # populate hits_by_query
+            for hit_id, hit_data in hits_dict.items():
+                # defensive: skip non-dicts
+                if not isinstance(hit_data, dict):
+                    continue
+                query_section = hit_data.get('query_section')
+                if query_section is None:
+                    # if no query_section, skip or decide appropriate fallback
+                    continue
+                hits_by_query[query_section].append(hit_data)
+
+            # now filter per query_section
+            for query_section, query_hits in hits_by_query.items():
+
+                # if only one hit, keep it
+                if len(query_hits) == 1:
+                    best_hit = query_hits[0]
+                    best_amongst_multiple_TRs_for_one_VR = False
+                else:
+                    best_amongst_multiple_TRs_for_one_VR = True
+                    # if not only_a_bases, but some hits have base == 'A', filter for those
+                    if not self.only_a_bases:
+                        a_hits = [h for h in query_hits if h.get('base') == 'A']
+                        if a_hits:
+                            query_hits = a_hits
+
+                    # sort hits by your ranking criteria
+                    # (negative for longest alignment first, others ascending)
+                    query_hits.sort(
+                        key=lambda h: (
+                            -h.get('alignment_length', 0),
+                            h.get('numb_of_SNVs', float('inf')),
+                            h.get('numb_of_snv_in_matches_not_mutagen_base', float('inf')),
+                            h.get('numb_snvs_in_3rd_codon_pos', float('inf')),
+                        )
+                    )
+
+                    print(query_hits)
+
+                best_hit = query_hits[0]
+
+                # unpack dict
+                query_section = best_hit['query_section']
+                bin = best_hit['bin']
+                subject_genome_start_position = best_hit['subject_genome_start_position']
+                subject_genome_end_position = best_hit['subject_genome_end_position']
+                TR_sequence = Seq(best_hit['hit_seq'])
+                midline = best_hit['midline']
+                VR_sequence = Seq(best_hit['query_seq'])
+                query_genome_start_position = best_hit['query_genome_start_position']
+                query_genome_end_position = best_hit['query_genome_end_position']
+                VR_frame = int(best_hit['query_frame'])
+                TR_frame = int(best_hit['subject_frame'])
+                query_contig = best_hit['query_contig']
+                subject_contig = best_hit['subject_contig']
+                is_reverse_complement = best_hit['is_reverse_complement']
+                base = best_hit['base']
+                is_reverse_complement = best_hit['is_reverse_complement']
+                numb_of_snv_in_matches_not_mutagen_base= best_hit['numb_of_snv_in_matches_not_mutagen_base']
+                numb_of_SNVs= best_hit['numb_of_SNVs']
+                DGR_looks_snv_false = best_hit['DGR_looks_false']
+                snv_at_3_codon_over_a_third = best_hit['snv_at_3_codon_over_a_third']
+                numb_of_mismatches = best_hit['numb_of_mismatches']
+                percentage_of_mismatches = best_hit['percentage_of_mismatches']
+                mismatch_pos_contig_relative = best_hit['mismatch_pos_contig_relative']
+                snv_VR_positions = best_hit['snv_VR_positions']
 
                         # need to check if the new TR you're looping through exists in the DGR_found_dict, see if position overlap
                         if not self.DGRs_found_dict:
