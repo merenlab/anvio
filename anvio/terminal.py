@@ -398,6 +398,7 @@ class Run:
             self.log(line)
 
         if (self.verbose and not quiet) or (overwrite_verbose and not anvio.QUIET):
+            clear_progress_line()
             try:
                 sys.stderr.write(line)
             except:
@@ -484,7 +485,6 @@ class Run:
             if progress.msg and progress.pid:
                 progress.update(progress.msg)
         else:
-            clear_progress_line()
             self.write(info_line, quiet=quiet, overwrite_verbose=overwrite_verbose)
 
 
@@ -512,7 +512,6 @@ class Run:
             if progress.msg and progress.pid:
                 progress.update(progress.msg)
         else:
-            clear_progress_line()
             self.write(message_line, overwrite_verbose=overwrite_verbose)
 
 
@@ -534,7 +533,6 @@ class Run:
             if progress.msg and progress.pid:
                 progress.update(progress.msg)
         else:
-            clear_progress_line()
             self.write((header_line + message_line) if message else header_line, overwrite_verbose=overwrite_verbose)
 
 

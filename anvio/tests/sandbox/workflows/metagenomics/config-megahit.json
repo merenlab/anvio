@@ -1,13 +1,40 @@
 {
+    "fasta_txt": "",
+    "anvi_gen_contigs_database": {
+        "--project-name": "{group}",
+        "--description": "",
+        "--skip-gene-calling": "",
+        "--ignore-internal-stop-codons": "",
+        "--skip-mindful-splitting": "",
+        "--contigs-fasta": "",
+        "--split-length": "",
+        "--kmer-size": "",
+        "--skip-predict-frame": "",
+        "--prodigal-translation-table": "",
+        "threads": 4
+    },
     "centrifuge": {
-        "threads": 5,
-        "run": false
+        "threads": 2,
+        "run": "",
+        "db": ""
     },
     "anvi_run_hmms": {
         "run": true,
-        "threads": 20,
+        "threads": 5,
+        "--also-scan-trnas": true,
         "--installed-hmm-profile": "",
-        "--hmm-profile-dir": ""
+        "--hmm-profile-dir": "",
+        "--add-to-functions-table": "",
+        "--just-do-it": ""
+    },
+    "anvi_run_kegg_kofams": {
+        "run": true,
+        "threads": 4,
+        "--kegg-data-dir": "",
+        "--hmmer-program": "",
+        "--keep-all-hits": "",
+        "--log-bitscores": "",
+        "--just-do-it": ""
     },
     "anvi_run_ncbi_cogs": {
         "run": true,
@@ -16,12 +43,57 @@
         "--temporary-dir-path": "",
         "--search-with": ""
     },
+    "anvi_run_scg_taxonomy": {
+        "run": true,
+        "threads": 6,
+        "--scgs-taxonomy-data-dir": ""
+    },
+    "anvi_run_trna_scan": {
+        "run": false,
+        "threads": 6,
+        "--trna-cutoff-score": ""
+    },
+    "anvi_script_reformat_fasta": {
+        "run": true,
+        "--prefix": "{group}",
+        "--simplify-names": true,
+        "--keep-ids": "",
+        "--exclude-ids": "",
+        "--min-len": "",
+        "--seq-type": "",
+        "threads": ""
+    },
+    "emapper": {
+        "--database": "bact",
+        "--usemem": true,
+        "--override": true,
+        "path_to_emapper_dir": "",
+        "threads": ""
+    },
+    "anvi_script_run_eggnog_mapper": {
+        "--use-version": "0.12.6",
+        "run": "",
+        "--cog-data-dir": "",
+        "--drop-previous-annotations": "",
+        "threads": ""
+    },
     "samples_txt": "samples.txt",
+    "read_type_suffix": "auto",
+    "metaspades": {
+        "additional_params": "--only-assembler",
+        "threads": 7,
+        "run": "",
+        "conda_yaml": "",
+        "conda_env": "",
+        "use_scaffolds": ""
+    },
     "megahit": {
         "--min-contig-len": 1000,
-        "--memory": 1000000.0,
-        "threads": 11,
+        "--memory": 0.4,
+        "threads": 1,
         "run": true,
+        "conda_yaml": "",
+        "conda_env": "",
         "--min-count": "",
         "--k-min": "",
         "--k-max": "",
@@ -45,80 +117,234 @@
         "--continue": "",
         "--verbose": ""
     },
-    "workflow_name": "metagenomics",
-    "output_dirs": {
-        "FASTA_DIR": "02_FASTA_megahit",
-        "CONTIGS_DIR": "03_CONTIGS_megahit",
-        "QC_DIR": "01_QC_megahit",
-        "MAPPING_DIR": "04_MAPPING_megahit",
-        "PROFILE_DIR": "05_ANVIO_PROFILE_megahit",
-        "MERGE_DIR": "06_MERGED_megahit",
-        "LOGS_DIR": "00_LOGS_megahit"
-    },
-    "config_version": "3",
-    "anvi_gen_contigs_database": {
-        "--project-name": "{group}"
-    },
-    "anvi_run_scg_taxonomy": {
-        "run": true,
-        "threads": 6
-    },
-    "anvi_script_reformat_fasta": {
-        "run": true,
-        "--prefix": "{group}",
-        "--simplify-names": true
-    },
-    "emapper": {
-        "--database": "bact",
-        "--usemem": true,
-        "--override": true
-    },
-    "anvi_script_run_eggnog_mapper": {
-        "--use-version": "0.12.6"
-    },
-    "metaspades": {
-        "additional_params": "--only-assembler",
-        "threads": 7
-    },
     "idba_ud": {
         "--min_contig": 1000,
-        "threads": 7
+        "threads": 7,
+        "run": "",
+        "conda_yaml": "",
+        "conda_env": "",
+        "--mink": "",
+        "--maxk": "",
+        "--step": "",
+        "--inner_mink": "",
+        "--inner_step": "",
+        "--prefix": "",
+        "--min_count": "",
+        "--min_support": "",
+        "--seed_kmer": "",
+        "--similar": "",
+        "--max_mismatch": "",
+        "--min_pairs": "",
+        "--no_bubble": "",
+        "--no_local": "",
+        "--no_coverage": "",
+        "--no_correct": "",
+        "--pre_correction": "",
+        "use_scaffolds": ""
+    },
+    "flye": {
+        "run": false,
+        "threads": 7,
+        "additional_params": "",
+        "conda_yaml": "",
+        "conda_env": "",
+        "--meta": "",
+        "--pacbio-raw": "",
+        "--pacbio-corr": "",
+        "--pacbio-hifi": "",
+        "--nano-raw": "",
+        "--nano-corr": "",
+        "--nano-hq": "",
+        "--genome-size": "",
+        "--iterations": "",
+        "--min-overlap": "",
+        "--read-error": "",
+        "--keep-haplotypes": "",
+        "--no-alt-contigs": "",
+        "--scaffold": "",
+        "--polish-target": ""
     },
     "iu_filter_quality_minoche": {
         "run": true,
-        "--ignore-deflines": true
+        "--ignore-deflines": true,
+        "--visualize-quality-curves": "",
+        "--limit-num-pairs": "",
+        "--print-qual-scores": "",
+        "--store-read-fate": "",
+        "threads": ""
     },
     "gzip_fastqs": {
-        "run": true
+        "run": true,
+        "threads": ""
     },
     "bowtie": {
         "additional_params": "--no-unal",
-        "threads": 3
+        "threads": 3,
+        "conda_yaml": "",
+        "conda_env": ""
+    },
+    "minimap2_index": {
+        "additional_params": "",
+        "threads": ""
+    },
+    "minimap2": {
+        "threads": 3,
+        "preset": "map-hifi",
+        "additional_params": "--secondary-seq",
+        "conda_yaml": "",
+        "conda_env": ""
     },
     "samtools_view": {
-        "additional_params": "-F 4"
+        "additional_params": "-F 4",
+        "threads": ""
     },
     "anvi_profile": {
         "threads": 3,
-        "--sample-name": "{sample}",
-        "--overwrite-output-destinations": true
+        "--overwrite-output-destinations": true,
+        "--report-variability-full": "",
+        "--skip-SNV-profiling": "",
+        "--profile-SCVs": "",
+        "--description": "",
+        "--skip-hierarchical-clustering": "",
+        "--distance": "",
+        "--linkage": "",
+        "--min-contig-length": "",
+        "--min-mean-coverage": "",
+        "--min-coverage-for-variability": "",
+        "--cluster-contigs": "",
+        "--contigs-of-interest": "",
+        "--queue-size": "",
+        "--write-buffer-size-per-thread": "",
+        "--fetch-filter": "",
+        "--min-percent-identity": "",
+        "--max-contig-length": ""
     },
     "anvi_merge": {
         "--sample-name": "{group}",
-        "--overwrite-output-destinations": true
+        "--overwrite-output-destinations": true,
+        "--description": "",
+        "--skip-hierarchical-clustering": "",
+        "--enforce-hierarchical-clustering": "",
+        "--distance": "",
+        "--linkage": "",
+        "threads": ""
     },
     "import_percent_of_reads_mapped": {
-        "run": true
+        "run": true,
+        "threads": ""
     },
     "krakenuniq": {
         "threads": 3,
         "--gzip-compressed": true,
-        "additional_params": ""
+        "additional_params": "",
+        "run": "",
+        "--db": ""
     },
     "remove_short_reads_based_on_references": {
-        "delimiter-for-iu-remove-ids-from-fastq": " "
+        "delimiter-for-iu-remove-ids-from-fastq": " ",
+        "dont_remove_just_map": "",
+        "references_for_removal_txt": "",
+        "threads": ""
     },
     "anvi_cluster_contigs": {
-        "--collection-name": "{driver}"
-    }
+        "--collection-name": "{driver}",
+        "run": "",
+        "--driver": "",
+        "--just-do-it": "",
+        "--additional-params-concoct": "",
+        "--additional-params-metabat2": "",
+        "--additional-params-maxbin2": "",
+        "--additional-params-dastool": "",
+        "--additional-params-binsanity": "",
+        "threads": ""
+    },
+    "gen_external_genome_file": {
+        "threads": ""
+    },
+    "export_gene_calls_for_centrifuge": {
+        "threads": ""
+    },
+    "anvi_import_taxonomy_for_genes": {
+        "threads": ""
+    },
+    "annotate_contigs_database": {
+        "threads": ""
+    },
+    "anvi_get_sequences_for_gene_calls": {
+        "threads": ""
+    },
+    "gunzip_fasta": {
+        "threads": ""
+    },
+    "reformat_external_gene_calls_table": {
+        "threads": ""
+    },
+    "reformat_external_functions": {
+        "threads": ""
+    },
+    "import_external_functions": {
+        "threads": ""
+    },
+    "anvi_run_pfams": {
+        "run": "",
+        "--pfam-data-dir": "",
+        "threads": ""
+    },
+    "iu_gen_configs": {
+        "--r1-prefix": "",
+        "--r2-prefix": "",
+        "threads": ""
+    },
+    "gen_qc_report": {
+        "threads": ""
+    },
+    "merge_fastqs_for_co_assembly": {
+        "threads": ""
+    },
+    "merge_fastas_for_co_assembly": {
+        "threads": ""
+    },
+    "bowtie_build": {
+        "additional_params": "",
+        "threads": ""
+    },
+    "anvi_init_bam": {
+        "threads": ""
+    },
+    "krakenuniq_mpa_report": {
+        "threads": ""
+    },
+    "import_krakenuniq_taxonomy": {
+        "--min-abundance": "",
+        "threads": ""
+    },
+    "anvi_summarize": {
+        "additional_params": "",
+        "run": "",
+        "threads": ""
+    },
+    "anvi_split": {
+        "additional_params": "",
+        "run": "",
+        "threads": ""
+    },
+    "references_mode": false,
+    "all_against_all": false,
+    "kraken_txt": "kraken.txt",
+    "collections_txt": "",
+    "output_dirs": {
+        "FASTA_DIR": "02_FASTA-megahit",
+        "CONTIGS_DIR": "03_CONTIGS-megahit",
+        "QC_DIR": "01_QC-megahit",
+        "MAPPING_DIR": "04_MAPPING-megahit",
+        "PROFILE_DIR": "05_ANVIO_PROFILE-megahit",
+        "MERGE_DIR": "06_MERGED-megahit",
+        "TAXONOMY_DIR": "07_TAXONOMY-megahit",
+        "SUMMARY_DIR": "08_SUMMARY-megahit",
+        "SPLIT_PROFILES_DIR": "09_SPLIT_PROFILES-megahit",
+        "LOGS_DIR": "00_LOGS-megahit"
+    },
+    "max_threads": "",
+    "config_version": "4",
+    "workflow_name": "metagenomics"
 }

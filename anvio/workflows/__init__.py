@@ -283,6 +283,10 @@ class WorkflowSuperClass:
                     '--configfile',
                     self.args.config_file]
 
+        # if any conda yaml is provided for a rule, then add '--use-conda' to the snakemake command:
+        if any(isinstance(v, dict) and v.get('conda_yaml') for v in (self.config or {}).values()):
+            sys.argv.append('--use-conda')
+
         if self.additional_params:
             sys.argv.extend(self.additional_params)
 
@@ -321,6 +325,10 @@ class WorkflowSuperClass:
         self.progress.update('Quick dry run for an initial sanity check ...')
         args = ['snakemake', '--snakefile', get_workflow_snake_file_path(self.name), \
                 '--configfile', self.config_file, '--dryrun', '--quiet']
+
+        # if any conda yaml is provided for a rule, then add '--use-conda' to the snakemake command:
+        if any(isinstance(v, dict) and v.get('conda_yaml') for v in (self.config or {}).values()):
+            args.append('--use-conda')
 
         if self.save_workflow_graph:
             args.extend(['--dag'])

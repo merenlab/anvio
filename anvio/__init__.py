@@ -6,6 +6,7 @@
 from anvio.version import anvio_version, anvio_codename, major_python_version_required, minor_python_version_required, get_versions
 
 import sys
+import inspect
 import platform
 
 # make sure anvi'o runs in the right Python environment:
@@ -96,6 +97,59 @@ def P(d, dont_exit=False):
     print(json.dumps(d, indent=2))
 
     if not dont_exit:
+        sys.exit()
+
+
+def SHOW_CALLER(context="", and_exit=False, show_full_paths=False):
+    """Helper function to debug where a given line in the code was called from.
+
+    Simply include anvio.SHOW_CALLER() anywhere in the code, and follow the printed
+    debug information.
+
+    For instance, if I add the following line to the `__init__()` function in
+    `ContigsDatabase` class in `dbops.py`,
+
+    >>> anvio.SHOW_CALLER(context="contigs-db generation", and_exit=True, show_full_paths=True)
+
+    Then running `anvi-gen-contigs-db` on any FASTA file will print the
+    following debug output and exit (as per `and_exit=True`):
+
+        Reached 'contigs-db generation' from  '/Users/meren/github/anvio/anvio/cli/gen_contigs_database.py:31' that implements 'main()'
+
+    Since this function is using `print()` statements, neither Run or Progress
+    configurations, nor context reached through multi-threading can stop it :)
+    """
+
+    # Go up the stack: 0=get_caller_info, 1=Progress method, 2=actual caller
+    frame = inspect.currentframe()
+
+    if context:
+        context = f"Reached '{context}' from "
+    else:
+        context = "Reached here from "
+
+    try:
+        # skip our own frame and the Progress method frame
+        caller_frame = frame.f_back.f_back
+        if caller_frame:
+            filename = caller_frame.f_code.co_filename
+            line_number = caller_frame.f_lineno
+            function_name = caller_frame.f_code.co_name
+
+            if show_full_paths:
+                pass
+            else:
+                # get just the filename without full path for cleaner output
+                filename = os.path.basename(filename)
+
+            print(f"{context} '{filename}:{line_number}' that implements '{function_name}()'")
+        else:
+            print("{context} an unresolvable context :/")
+    finally:
+        # avoid reference cycles
+        del frame
+
+    if and_exit:
         sys.exit()
 
 
@@ -2579,8 +2633,8 @@ D = {
                      "should be listed within curly brackets, which will be evaluated in contex. Anything outside "
                      "of curly brackets will be kept as is. For instance, if you would like your defline to have "
                      "the gene caller ID after the contig name in which it occurs, you can use this template: "
-                     "'{contig_name}_{gene_caller_id}', and your defline will look like '>XXX_182'. In most cases "
-                     "'{gene_caller_id}' will serve as the default defline format if this parameters is not used. "
+                     "'{contig_name}_{gene_callers_id}', and your defline will look like '>XXX_182'. In most cases "
+                     "'{gene_callers_id}' will serve as the default defline format if this parameters is not used. "
                      "See more examples in online help."}
                 ),
     'report-extended-deflines': (
@@ -3344,6 +3398,105 @@ D = {
                     "is present in a sample or not. To make it use stepwise completeness instead, provide this "
                     "flag. Confused? Don't worry. Check out the online documentation for a discussion on "
                     "pathwise vs stepwise completeness."}
+                ),
+    'use-equivalent-amino-acids': (
+            ['--use-equivalent-amino-acids'], 
+            {'default': False,
+             'action': 'store_true',
+             'required': False, 
+             'help': "Some amino acid metabolic interactions can be missed because there are different "
+                     "compound IDs in the ModelSEED database for L- and non-stereo-specific versions of amino acids (like "
+                     "'Valine' vs 'L-Valine'. If you choose this option, anvi'o will find these pairs of equivalent amino acid "
+                     "compounds and use them interchangeably for identifying potential interactions. You will get an output file "
+                     "showing you which compounds were considered equivalent, so that you can complain if you don't agree with them."}
+                ),
+     'custom-equivalent-compounds-file': (
+            ['--custom-equivalent-compounds-file'], 
+            {'default': False,
+             'metavar': 'FILE',
+             'required': False, 
+             'help': "If you have your own set of equivalent ModelSEED compound IDs, you can make sure "
+                     "we use them by providing them in a tab-delimited file to this parameter. The file should have at least the following "
+                     "columns: 'compound_id' and 'equivalent_id'. Note that this option is not compatible with --use-equivalent-amino-acids, "
+                     "so if you want amino acid equivalents to be used, include them in this file."}
+                ),
+    'maximum-gaps': (
+            ['--maximum-gaps'], 
+            {'default': 0,
+             'type': int,
+             'metavar': 'INT',
+             'required': False, 
+             'help': "We'll look for the longest chain of reactions surrounding each potentially-exchanged "
+                     "metabolite to help rank the output by likelihood of the interaction. This parameter allows "
+                     "you to choose how many gaps there can be in the chain on either side of the metabolite in "
+                     "the network. Very conservatively set to 0, as in no gaps allowed."}
+                ),
+    'add-reactions-to-output': (
+            ['--add-reactions-to-output'], 
+            {'default': False,
+             'action': 'store_true',
+             'required': False, 
+             'help': "Do you want relevant reaction IDs and chemical equations to be added to the output? Use this flag."}
+                ),
+    'report-compounds-with-no-prediction': (
+            ['--report-compounds-with-no-prediction'], 
+            {'default': False,
+             'action': 'store_true',
+             'required': False, 
+             'help': "By default, metabolic compounds that are not predicted to be either potentially-exchanged or "
+                     "unique will not be present in the output files of this program. If you want to see what those are, "
+                     "then you can use this flag to get an additional output file listing the compounds for which there "
+                     "is no prediction. This option may significantly increase the memory usage of the program, but on the "
+                     "plus side, you can haz moar data. Brought to you by the anvi'o Hall of Fame for Long Parameter Names."}
+                ),
+    'no-pathway-walk': (
+            ['--no-pathway-walk'], 
+            {'default': False,
+             'action': 'store_true',
+             'required': False, 
+             'help': "Skip walking KEGG Pathway Maps and instead predict exchanges entirely from the reaction network. "
+                     "This is not recommended, since Pathway Maps are much more curated and lead to more accurate predictions. "
+                     "But they also could be time-consuming, so, you do you, I guess."}
+                ),
+    'pathway-walk-only': (
+            ['--pathway-walk-only'], 
+            {'default': False,
+             'action': 'store_true',
+             'required': False, 
+             'help': "ONLY use KEGG Pathway Map walks to predict exchanges. That is, don't predict anything from the "
+                     "reaction network alone -- these predictions are less confident anyway. The downside is that "
+                     "you'll miss any predictions for compounds not in Pathway Maps."}
+                ),
+    'exclude-pathway-maps': (
+            ['--exclude-pathway-maps'],
+            {'metavar': 'PATHWAY MAP ID[S]',
+             'default': None,
+             'help': "Exclude certain KEGG Pathway Maps from the Pathway Map Walk prediction strategy. You can specify "
+                     "one or more maps by providing their map IDs (just the number, no prefix, as in '00470') in a "
+                     "comma-separated list (e.g., '--exclude-pathway-maps 00470,00195,00542'). The default behavior is to "
+                     "process all regular (prefix '00') Pathway Maps that have a Reaction (RN) type KGML file available. "
+                     "Note that we don't do any sanity checks to ensure that the map IDs you provide are real map IDs, so you "
+                     "will need to double check them yourself (if you provide a fake ID, it will not lead to exclusion of anything). "
+                     "Incompatible with --include-pathway-maps."}
+                ),
+    'include-pathway-maps': (
+            ['--include-pathway-maps'],
+            {'metavar': 'PATHWAY MAP ID[S]',
+             'default': None,
+             'help': "Include specific KEGG Pathway Maps from the Pathway Map Walk prediction strategy. You can specify "
+                     "one or more maps by providing their map IDs (just the number, no prefix, as in '00470') in a "
+                     "comma-separated list (e.g., '--include-pathway-maps 00470,00195,00542'). The default behavior is to "
+                     "process all regular (prefix '00') Pathway Maps that have a Reaction (RN) type KGML file available. "
+                     "Incompatible with --exclude-pathway-maps."}
+                ),
+    'genome-pairs-txt': (
+            ['--genome-pairs-txt'],
+            {'metavar': 'FILE_PATH',
+             'help': "A two-column TAB-delimited flat text file that lists specific pairs of genomes to be compared. "
+                     "The header of the first column should be 'genome_1', and the header of the second column should "
+                     "be 'genome_2'. Each non-header line of the file should describe two genome names, where the names "
+                     "match one of the external or internal genomes provided to this program via the `--external-genomes` "
+                     "or `--internal-genomes` parameters."}
                 ),
     'trnaseq-fasta': (
             ['-f', '--trnaseq-fasta'],

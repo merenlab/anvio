@@ -18,10 +18,10 @@ from anvio.metabolism.constants import STRAY_KO_ANVIO_SUFFIX
 class KeggEstimationAlgorithms:
     """Core estimation algorithms for KEGG metabolism."""
 
-    def __init__(self, run=terminal.Run(), progress=terminal.Progress()):
+    def __init__(self, run=terminal.Run(), progress=terminal.Progress(), add_copy_number=False):
         self.run = run
         self.progress = progress
-
+        self.add_copy_number = add_copy_number
 
     def split_module_path_into_individual_essential_components(self, path):
         """Given a list of atomic steps in a module, this function returns a list of each essential individual enzyme.
@@ -1525,7 +1525,7 @@ class KeggEstimationAlgorithms:
         for key in meta_dict_for_bin[mnum]["top_level_step_info"]:
             if not meta_dict_for_bin[mnum]["top_level_step_info"][key]["includes_modules"]:
                 step_string = meta_dict_for_bin[mnum]["top_level_step_info"][key]["step_definition"]
-                enzyme_hits_dict = self.get_dereplicated_enzyme_hits_for_step_in_module(meta_dict_for_bin[mnum], step_string, mnum)
+                enzyme_hits_dict = self.get_dereplicated_enzyme_hits_for_step_in_module(meta_dict_for_bin[mnum], step_string, mnum, add_copy_number=self.add_copy_number)
 
                 step_copy_num = self.get_step_copy_number(step_string, enzyme_hits_dict, all_modules_in_db, exclude_dashed_reactions)
                 meta_dict_for_bin[mnum]["top_level_step_info"][key]["copy_number"] = step_copy_num
