@@ -1812,8 +1812,7 @@ class DGR_Finder:
             "distance_to_HMM", "HMM_gene_name", "HMM_direction", "HMM_start",
             "HMM_stop", "HMM_gene_callers_id", "DGR_looks_snv_false", "snv_at_3_codon_over_a_third",
             "numb_of_snv_in_matches_not_mutagen_base", "numb_of_mismatches", "numb_of_SNVs",
-            "VR_TR_mismatch_positions", "snv_VR_positions"
-        ]
+            "VR_TR_mismatch_positions", "snv_VR_positions", "best_amongst_multiple_TRs_for_one_VR"]
 
         # check if either dictionary is empty or lacks meaningful keys
         if not any(dgrs_dict.values()):
@@ -1842,7 +1841,8 @@ class DGR_Finder:
                         tr["HMM_gene_name"], tr["HMM_direction"], tr["HMM_start"],
                         tr["HMM_stop"], tr["HMM_gene_callers_id"], vr_data["DGR_looks_snv_false"],
                         vr_data["snv_at_3_codon_over_a_third"], vr_data["numb_of_snv_in_matches_not_mutagen_base"],
-                        vr_data["numb_of_mismatches"], vr_data["numb_of_SNVs"], vr_data["VR_TR_mismatch_positions"], vr_data["snv_VR_positions"]
+                        vr_data["numb_of_mismatches"], vr_data["numb_of_SNVs"], vr_data["VR_TR_mismatch_positions"],
+                        vr_data["snv_VR_positions"], vr_data["best_amongst_multiple_TRs_for_one_VR"]
                     ]
                     csv_writer.writerow(csv_row)
         return
