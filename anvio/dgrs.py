@@ -276,31 +276,6 @@ class DGR_Finder:
 
 
 
-    def init_snv_table(self):
-        """
-        Initialise the snv table but only the columns that we need.
-
-        Returns
-        =======
-        self.snv_panda : pandas df
-            Dataframe containing all of the snv information
-
-        """
-        # load SNV data
-        profile_db = dbops.ProfileDatabase(self.profile_db_path)
-        self.snv_panda = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name, columns_of_interest=['sample_id','split_name',  'pos_in_contig','base_pos_in_codon','departure_from_reference','reference']).sort_values(by=['split_name', 'pos_in_contig'])
-        self.snv_panda['contig_name'] = self.snv_panda['split_name'].apply(lambda x: x.split('_split_')[0])
-        profile_db.disconnect()
-
-        # apply SNV filters
-        if self.discovery_mode:
-            self.run.info_single("Running discovery mode. Search for SNVs in all possible locations. You go Dora the explorer!")
-            self.snv_panda = self.snv_panda.query("departure_from_reference >= @self.departure_from_reference_percentage")
-        else:
-            self.snv_panda = self.snv_panda.query("departure_from_reference >= @self.departure_from_reference_percentage and base_pos_in_codon in (1, 2)")
-
-
-
     def load_data_and_setup(self, bin_splits_list=None):
         """
         Load contig sequences and SNV data from databases, apply filtering,
@@ -336,6 +311,31 @@ class DGR_Finder:
         sample_id_list = list(set(self.snv_panda.sample_id.unique()))
 
         return sample_id_list, contig_sequences
+
+
+
+    def init_snv_table(self):
+        """
+        Initialise the snv table but only the columns that we need.
+
+        Returns
+        =======
+        self.snv_panda : pandas df
+            Dataframe containing all of the snv information
+
+        """
+        # load SNV data
+        profile_db = dbops.ProfileDatabase(self.profile_db_path)
+        self.snv_panda = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name, columns_of_interest=['sample_id','split_name',  'pos_in_contig','base_pos_in_codon','departure_from_reference','reference']).sort_values(by=['split_name', 'pos_in_contig'])
+        self.snv_panda['contig_name'] = self.snv_panda['split_name'].apply(lambda x: x.split('_split_')[0])
+        profile_db.disconnect()
+
+        # apply SNV filters
+        if self.discovery_mode:
+            self.run.info_single("Running discovery mode. Search for SNVs in all possible locations. You go Dora the explorer!")
+            self.snv_panda = self.snv_panda.query("departure_from_reference >= @self.departure_from_reference_percentage")
+        else:
+            self.snv_panda = self.snv_panda.query("departure_from_reference >= @self.departure_from_reference_percentage and base_pos_in_codon in (1, 2)")
 
 
 
