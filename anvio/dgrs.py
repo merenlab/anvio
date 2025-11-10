@@ -886,20 +886,20 @@ class DGR_Finder:
             chars_to_skip.append('-')
 
         # iterate over XML HSPs one by one
-        # Use iterparse with start/end events for better context tracking
+        # use iterparse with start/end events for better context tracking
         context = ET.iterparse(xml_file_path, events=("start", "end"))
         try:
             for event,elem in context:
                 if event == "end":
         #for event, elem in ET.iterparse(self.blast_output, events=("end",)):
 
-                    # Track the current iteration (query)
+                    # track the current iteration (query)
                     if elem.tag == "Iteration_query-def":
                         current_section_id = elem.text
                         elem.clear()
                         continue
 
-                    # Track the current hit (subject)
+                    # track the current hit (subject)
                     if elem.tag == "Hit_def":
                         current_subject_contig = elem.text
                         elem.clear()
@@ -917,12 +917,12 @@ class DGR_Finder:
                             elem.clear()
                             continue
 
-                        # Get parent Iteration and Hit elements
+                        # get parent Iteration and Hit elements
                         section_id = current_section_id
                         hit_id_counter += 1
                         hit_identity_unique = f"{section_id}_count_{hit_id_counter}"
 
-                        # Extract start position from section_id
+                        # extract start position from section_id
                         match = re.search(r"start_bp(\d+)_end_bp(\d+)", section_id)
                         query_start_position = int(match.group(1)) if match else 0
 
@@ -930,6 +930,7 @@ class DGR_Finder:
                         hseq = str(elem.find('Hsp_hseq').text)
                         midline = str(elem.find('Hsp_midline').text)
 
+                        # check for imperfect repeats, mono- di-mers, tandem repeats
                         if self.has_repeat(qseq, qseq, hseq) or self.has_repeat(hseq, qseq, hseq):
                             elem.clear()
                             continue
