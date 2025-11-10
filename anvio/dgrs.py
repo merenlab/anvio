@@ -1198,20 +1198,29 @@ class DGR_Finder:
             del context
 
 
-                            # if reverse complemented, treat 'T' as 'A'
-                            if is_reverse_complement:
-                                all_mismatches_are_A = all(base in ('A', 'T') for base in nonzero_mismatch_bases)
-                            else:
-                                all_mismatches_are_A = all(base == 'A' for base in nonzero_mismatch_bases)
 
-                            # skip if any mismatching base is not valid
-                            if not all_mismatches_are_A:
-                                continue
+    def filter_for_best_VR_TR(self):
+        #NOTE: need to check this code to clean up and maybe put into one function to remove redundancy - Iva offered to help :)
+        # We did this on 21.05.2024, created functions add_new_DGR and update_existing_DGR
+        #NOTE: the arguments for add_new_DGR and update_existing_DGR that are based on the query and subject genome are positional, so they need
+        # to be in the same place as those function deal with whether these are TR or VR. BUT the frame argument is not positional and you need
+        # to change that based on whether it is in the query or subject. YES it is gross, but if it works, it works.
 
-                        # here we dont add VR candidates based on SNV parameters.
-                        # skip DGR if flagged due to SNV-based filters
-                        if DGR_looks_snv_false or snv_at_3_codon_over_a_third:
-                            continue
+        """
+        This function takes the hits of the BLASTn and chooses one singular hit that qualifies as a TR VR pair based on the filters for template and variable regions. So that each VR has one TR.
+
+        Parameters
+        ==========
+        mismatch_hits : dict
+            A dictionary of all of the BLASTn hits that are less than 100%
+
+        Returns
+        =======
+        DGRs_found_dict : dict
+            A dictionary containing the template and variable regions
+
+        """
+
 
                         # need to check if the new TR you're looping through exists in the DGR_found_dict, see if position overlap
                         if not self.DGRs_found_dict:
