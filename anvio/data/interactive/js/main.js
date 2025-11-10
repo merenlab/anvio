@@ -47,7 +47,11 @@ var categorical_data_colors = {};
 var categorical_stats = {};
 var stack_bar_colors = {};
 var stack_bar_stats = {};
+
 var legends = [];
+const MAX_LEGEND_ITEMS = 30; // if a legend has more than this many items,
+                             // there is no need to create individual color control
+                             // elements. thats what this is for.
 
 var layerdata_title = {};
 var empty_tooltip = "";
@@ -773,9 +777,10 @@ function buildLegendTables() {
         }
 
         let names;
-        if (Object.keys(categorical_stats[pindex]).length > 20) {
+        const catCount = Object.keys(categorical_stats[pindex]).length;
+        if (catCount > MAX_LEGEND_ITEMS) {
             toastr_warn_flag = true;
-            names = false;
+            names = null;  // collapsed mode
         } else {
             names = Object.keys(categorical_stats[pindex]).sort(function(a,b) {
                 return categorical_stats[pindex][b] - categorical_stats[pindex][a];
@@ -791,7 +796,8 @@ function buildLegendTables() {
             'key': pindex,
             'item_names': names,
             'item_keys': names,
-            'stats': categorical_stats[pindex]
+            'stats': categorical_stats[pindex],
+            'total_items': catCount
         });
     }
 
@@ -803,6 +809,11 @@ function buildLegendTables() {
 
         let layer_name = getLayerName(pindex);
         let names = (layer_name.indexOf('!') > -1) ? layer_name.split('!')[1].split(';') : layer_name.split(';');
+        const sbCount = names.length;
+        if (sbCount > MAX_LEGEND_ITEMS) {
+            toastr_warn_flag = true;
+            names = null;  // collapsed mode
+        }
         let pretty_name = getLayerName(pindex);
         pretty_name = (pretty_name.indexOf('!') > -1) ? pretty_name.split('!')[0] : pretty_name;
 
@@ -812,7 +823,8 @@ function buildLegendTables() {
             'key': pindex,
             'item_names': names,
             'item_keys': names,
-            'stats': stack_bar_stats[pindex]
+            'stats': stack_bar_stats[pindex],
+            'total_items': sbCount
         });
     }
 
@@ -828,6 +840,11 @@ function buildLegendTables() {
             }
 
             let names = Object.keys(samples_categorical_colors[group][sample]);
+            const sampCatCount = names.length;
+            if (sampCatCount > MAX_LEGEND_ITEMS) {
+                toastr_warn_flag = true;
+                names = null;
+            }
 
             legends.push({
                 'name': group + ' :: ' + getPrettyName(sample),
@@ -836,7 +853,8 @@ function buildLegendTables() {
                 'key': sample,
                 'item_names': names,
                 'item_keys': names,
-                'stats': samples_categorical_stats[group][sample]
+                'stats': samples_categorical_stats[group][sample],
+                'total_items': sampCatCount
             });
         }
     }
@@ -853,6 +871,11 @@ function buildLegendTables() {
             }
 
             let names = (sample.indexOf('!') > -1) ? sample.split('!')[1].split(';') : sample.split(';');
+            const sampSbCount = names.length;
+            if (sampSbCount > MAX_LEGEND_ITEMS) {
+                toastr_warn_flag = true;
+                names = null;
+            }
             let pretty_name = (sample.indexOf('!') > -1) ? sample.split('!')[0] : sample;
 
             legends.push({
@@ -862,7 +885,8 @@ function buildLegendTables() {
                 'key': sample,
                 'item_names': names,
                 'item_keys': names,
-                'stats': samples_stack_bar_stats[group][sample]
+                'stats': samples_stack_bar_stats[group][sample],
+                'total_items': sampSbCount
             });
         }
     }
@@ -894,10 +918,12 @@ function buildLegendTables() {
         if (!legends[i]['item_names']){
             const currentColors = categorical_data_colors[legend['key']] || {};
             const defaultColor = Object.values(currentColors)[0] || '#FFFFFF';
+            const total = legend.total_items || 0;
 
             template += `
                 <p style="background: #f3f3f3; border-radius: 3px; padding: 10px; font-style: italic;">
-                Use the table below to set colors for your categories in the layer <b>${legend['name']}</b>. Here you can (1) use the input box below to type in the name of a category
+                <b>Heads up:</b> <b>${legend['name']}</b> has <b>${total}</b> categories, so we didn’t render them all.
+                Use the tools below to set colors efficiently. You can (1) use the input box to type a category name
                 and choose a color from the color picker to set a single color, (2) use the color picker in the second row to set each category to the same color, or (3) use the
                 button in the third row to randomly assign colors to each category.</p>
                 <div>
@@ -972,7 +998,10 @@ function buildLegendTables() {
         template = template + '<div style="clear: both; display:block;"></div>';
         $('#legend_settings').append(template + '</div></div>');
 
-        createLegendColorPanel(i); // this fills legend_content_X
+        // consider MAX_LEGEND_ITEMS, and only render per-item rows when under the cap
+        if (legends[i]['item_names'] && legends[i]['item_names'].length <= MAX_LEGEND_ITEMS) {
+            createLegendColorPanel(i);
+        }
     }
 
     // Initialize colorpickers
@@ -1084,58 +1113,105 @@ function batchColor(legend_id) {
     createLegendColorPanel(legend_id);
 }
 
+
 function createLegendColorPanel(legend_id) {
-    var legend = legends[legend_id];
-    var template = '';
+    const legend = legends[legend_id];
+    const container = document.getElementById('legend_content_' + legend_id);
+    if (!container) return;
 
-    for (var j = 0; j < legend['item_names'].length; j++) {
-
-        var _name = legend['item_names'][j];
-
-        if (legend.hasOwnProperty('group')) {
-            var _color = window[legend['source']][legend['group']][legend['key']][legend['item_keys'][j]];
-        } else {
-            var _color = window[legend['source']][legend['key']][legend['item_keys'][j]];
-        }
-
-        if (legend.hasOwnProperty('stats') && legend['stats'][_name] == 0) {
-            continue;
-        }
-
-        if (legend['source'].indexOf('stack') > -1) {
-            _name = _name.replace('Unknown_t_', '').replace('_', ' ') + ' <span title="' + legend['stats'][_name] + '">(Total: ' + readableNumber(legend['stats'][_name]) + ')</span>';
-        } else {
-            _name = _name + ' (' + legend['stats'][_name] + ')';
-        }
-
-        template = template + '<div style="float: left; width: 50%; display: inline-block; padding: 3px 5px;">' +
-                                '<div class="colorpicker-base legendcolorpicker" color="' + _color + '"' +
-                                'style="margin-right: 5px; background-color: ' + _color + '"' +
-                                'callback_source="' + legend['source'] + '"' +
-                                'callback_group="' + ((typeof legend['group'] !== 'undefined') ? legend['group'] : '') + '"' +
-                                'callback_pindex="' + legend['key'] + '"' +
-                                'callback_name="' + legend['item_keys'][j] + '"' +
-                               '></div>' + _name + '</div>';
+    // Also skip if this legend is collapsed or oversized
+    if (!legend.item_names || legend.item_names.length > MAX_LEGEND_ITEMS) {
+        container.replaceChildren(); // ensure empty
+        return;
     }
 
-    $('#legend_content_' + legend_id).empty();
-    $('#legend_content_' + legend_id).html(template);
+    // For those that remain, build DOM nodes (we used to generate a giant HTML string,
+    // and we later replaced that with this approach after Jarrod Scott (@jarrodscott)
+    // reported this: https://github.com/merenlab/anvio/issues/2493)
+    const frag = document.createDocumentFragment();
 
-    $('.legendcolorpicker').colpick({
+    for (let j = 0; j < legend.item_names.length; j++) {
+        const originalName = legend.item_names[j];
+        const itemKey = legend.item_keys[j];
+
+        // Get color safely
+        let color;
+        try {
+            color = legend.hasOwnProperty('group')
+                ? window[legend.source][legend.group][legend.key][itemKey]
+                : window[legend.source][legend.key][itemKey];
+        } catch (e) {
+            color = '#999'; // fallback to avoid undefined causing visual issues
+        }
+
+        const count = legend.stats ? legend.stats[originalName] : undefined;
+
+        if (legend.hasOwnProperty('stats') && count === 0) continue;
+
+        // Outer wrapper
+        const outer = document.createElement('div');
+        outer.style.cssText = 'float:left;width:50%;display:inline-block;padding:3px 5px;';
+
+        // Color swatch
+        const swatch = document.createElement('div');
+        swatch.className = 'colorpicker-base legendcolorpicker';
+        swatch.setAttribute('color', color);
+        swatch.style.marginRight = '5px';
+        swatch.style.backgroundColor = color;
+        swatch.setAttribute('callback_source', legend.source);
+        swatch.setAttribute('callback_group', legend.group ?? '');
+        swatch.setAttribute('callback_pindex', legend.key);
+        swatch.setAttribute('callback_name', itemKey);
+
+        // Label text (as nodes, not HTML)
+        const labelSpan = document.createElement('span');
+        if (legend.source.indexOf('stack') > -1) {
+            const cleaned =
+                String(originalName).replace('Unknown_t_', '').replace('_', ' ');
+            labelSpan.appendChild(document.createTextNode(cleaned + ' '));
+            const total = document.createElement('span');
+            total.title = String(count);
+            total.appendChild(
+                document.createTextNode('(Total: ' + readableNumber(count) + ')')
+            );
+            labelSpan.appendChild(total);
+        } else {
+            labelSpan.appendChild(
+                document.createTextNode(String(originalName) + ' (' + count + ')')
+            );
+        }
+
+        // Assemble
+        outer.appendChild(swatch);
+        outer.appendChild(labelSpan);
+        frag.appendChild(outer);
+    }
+
+    // Replace content in one go (no innerHTML strings)
+    container.replaceChildren(frag);
+
+    // Initialize color pickers on just this container for efficiency
+    $(container).find('.legendcolorpicker').colpick({
         layout: 'hex',
         submit: 0,
         colorScheme: 'light',
-        onChange: function(hsb, hex, rgb, el, bySetColor) {
-            $(el).css('background-color', '#' + hex);
-            $(el).attr('color', '#' + hex);
+        onChange: function (hsb, hex, rgb, el) {
+            const hexColor = '#' + hex;
+            $(el).css('background-color', hexColor).attr('color', hexColor);
             if (el.getAttribute('callback_group') !== '') {
-                window[el.getAttribute('callback_source')][el.getAttribute('callback_group')][el.getAttribute('callback_pindex')][el.getAttribute('callback_name')] = '#' + hex;
+                window[el.getAttribute('callback_source')]
+                    [el.getAttribute('callback_group')]
+                    [el.getAttribute('callback_pindex')]
+                    [el.getAttribute('callback_name')] = hexColor;
             } else {
-                window[el.getAttribute('callback_source')][el.getAttribute('callback_pindex')][el.getAttribute('callback_name')] = '#' + hex;
+                window[el.getAttribute('callback_source')]
+                    [el.getAttribute('callback_pindex')]
+                    [el.getAttribute('callback_name')] = hexColor;
             }
         }
     });
 }
+
 
 function orderLegend(legend_id, type) {
     if (type == 'alphabetical') {
