@@ -3021,7 +3021,7 @@ class DGR_Finder:
         self.sanity_check()
         self.get_blast_results()
         self.process_blast_results()
-        self.filter_for_TR_VR()
+        self.filter_for_best_VR_TR()
         if args.parameter_output:
             self.run.info_single("Writing to Parameters used file.", nl_before=1)
             self.parameter_output_sheet()
