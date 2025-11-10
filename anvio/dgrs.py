@@ -1312,61 +1312,187 @@ class DGR_Finder:
                 mismatch_pos_contig_relative = best_hit['mismatch_pos_contig_relative']
                 snv_VR_positions = best_hit['snv_VR_positions']
 
-                        # need to check if the new TR you're looping through exists in the DGR_found_dict, see if position overlap
-                        if not self.DGRs_found_dict:
-                            # add first DGR
-                            num_DGR += 1
-                            self.run.warning(f"Adding new DGR {num_DGR} in the bin: {bin}, the VR is on this contig: {query_contig}", header="NEW DGR", lc='yellow')
-                            self.add_new_DGR(num_DGR, bin, TR_sequence, query_genome_start_position, query_genome_end_position, query_contig,
-                                        base, is_reverse_complement, TR_frame, VR_sequence, VR_frame, subject_genome_start_position, subject_genome_end_position,
-                                        subject_contig, midline, percentage_of_mismatches, DGR_looks_snv_false, snv_at_3_codon_over_a_third, mismatch_pos_contig_relative,
-                                        snv_VR_positions, numb_of_snv_in_matches_not_mutagen_base, numb_of_mismatches, numb_of_SNVs)
-                        else:
-                            was_added = False
-                            for dgr in self.DGRs_found_dict:
-                                if self.DGRs_found_dict[dgr]['TR_contig'] == subject_contig and self.range_overlapping(subject_genome_start_position,
-                                                                                                                subject_genome_end_position,
-                                                                                                                self.DGRs_found_dict[dgr]['TR_start_position'],
-                                                                                                                self.DGRs_found_dict[dgr]['TR_end_position']):
-                                    was_added = True
-                                    #TODO can rename consensus_TR
-                                    self.update_existing_DGR(dgr, bin, TR_frame, VR_sequence, VR_frame, TR_sequence, midline, percentage_of_mismatches, is_reverse_complement, query_genome_start_position,
-                                                    query_genome_end_position, query_contig, subject_genome_start_position, subject_genome_end_position,
-                                                    subject_contig, DGR_looks_snv_false, snv_at_3_codon_over_a_third, mismatch_pos_contig_relative, snv_VR_positions,
-                                                    numb_of_snv_in_matches_not_mutagen_base, numb_of_mismatches, numb_of_SNVs)
-                                    break
-                            if not was_added:
-                                # add new TR and its first VR
-                                self.run.warning(f"Adding new DGR {num_DGR} in the bin: {bin}, the VR is on this contig: {query_contig}", header="NEW DGR", lc='yellow')
-                                num_DGR += 1
-                                self.add_new_DGR(num_DGR,
-                                                bin,
-                                                TR_sequence,
-                                                query_genome_start_position,
-                                                query_genome_end_position,
-                                                query_contig,
-                                                base,
-                                                is_reverse_complement,
-                                                TR_frame,
-                                                VR_sequence,
-                                                VR_frame,
-                                                subject_genome_start_position, subject_genome_end_position,
-                                                subject_contig,
-                                                midline,
-                                                percentage_of_mismatches,
-                                                DGR_looks_snv_false,
-                                                snv_at_3_codon_over_a_third, mismatch_pos_contig_relative,
-                                                snv_VR_positions, numb_of_snv_in_matches_not_mutagen_base, numb_of_mismatches,
-                                                numb_of_SNVs)
-                    else:
-                        if anvio.DEBUG and self.verbose:
-                                        self.run.warning(f"Removing a candidate DGR {sequence_component} with a VR on this contig: {query_contig} and TR here: {subject_contig}. This is the letter: {letter}, count:{count}. This is based on the percentage of mismatches ({percentage_of_mismatches:.2%}) and or the number of mismatches ({mismatch_length_bp}). Defaults are: percentage_mismatch={self.percentage_mismatch:.2%} and number_of_mismatches={self.number_of_mismatches}.", header="DGR REMOVED", lc='yellow')
+                # need to check if the new TR you're looping through exists in the DGR_found_dict, see if position overlap
+                if not self.DGRs_found_dict:
+                    # add first DGR
+                    num_DGR += 1
+                    self.run.warning(f"Adding new DGR {num_DGR} in the bin: {bin}, the VR is on this contig: {query_contig}", header="NEW DGR", lc='yellow')
+                    self.add_new_DGR(num_DGR, bin, TR_sequence, query_genome_start_position, query_genome_end_position, query_contig,
+                                base, is_reverse_complement, TR_frame, VR_sequence, VR_frame, subject_genome_start_position, subject_genome_end_position,
+                                subject_contig, midline, percentage_of_mismatches, DGR_looks_snv_false, snv_at_3_codon_over_a_third, mismatch_pos_contig_relative,
+                                snv_VR_positions, numb_of_snv_in_matches_not_mutagen_base, numb_of_mismatches, numb_of_SNVs, best_amongst_multiple_TRs_for_one_VR)
+                else:
+                    was_added = False
+                    for dgr in self.DGRs_found_dict:
+                        if self.DGRs_found_dict[dgr]['TR_contig'] == subject_contig and self.range_overlapping(subject_genome_start_position,
+                                                                                                        subject_genome_end_position,
+                                                                                                        self.DGRs_found_dict[dgr]['TR_start_position'],
+                                                                                                        self.DGRs_found_dict[dgr]['TR_end_position']):
+                            was_added = True
+                            #TODO can rename consensus_TR
+                            self.update_existing_DGR(dgr, bin, TR_frame, VR_sequence, VR_frame, TR_sequence, midline, percentage_of_mismatches, is_reverse_complement, query_genome_start_position,
+                                            query_genome_end_position, query_contig, subject_genome_start_position, subject_genome_end_position,
+                                            subject_contig, DGR_looks_snv_false, snv_at_3_codon_over_a_third, mismatch_pos_contig_relative, snv_VR_positions,
+                                            numb_of_snv_in_matches_not_mutagen_base, numb_of_mismatches, numb_of_SNVs, best_amongst_multiple_TRs_for_one_VR)
+                            break
+                    if not was_added:
+                        # add new TR and its first VR
+                        self.run.warning(f"Adding new DGR {num_DGR} in the bin: {bin}, the VR is on this contig: {query_contig}", header="NEW DGR", lc='yellow')
+                        num_DGR += 1
+                        self.add_new_DGR(num_DGR,
+                                        bin,
+                                        TR_sequence,
+                                        query_genome_start_position,
+                                        query_genome_end_position,
+                                        query_contig,
+                                        base,
+                                        is_reverse_complement,
+                                        TR_frame,
+                                        VR_sequence,
+                                        VR_frame,
+                                        subject_genome_start_position, subject_genome_end_position,
+                                        subject_contig,
+                                        midline,
+                                        percentage_of_mismatches,
+                                        DGR_looks_snv_false,
+                                        snv_at_3_codon_over_a_third, mismatch_pos_contig_relative,
+                                        snv_VR_positions, numb_of_snv_in_matches_not_mutagen_base, numb_of_mismatches,
+                                        numb_of_SNVs, best_amongst_multiple_TRs_for_one_VR)
+
         if anvio.DEBUG:
             self.run.warning(f"The temp directory, '{self.temp_dir}', is kept. Don't forget to clean it up later!", header="Debug")
         else:
             self.run.info_single("Cleaning up the temp directory (use `--debug` to keep it for testing purposes)", nl_before=1)
             shutil.rmtree(self.temp_dir)
         return
+
+
+
+    def add_new_DGR(self, DGR_number, bin, TR_sequence, query_genome_start_position, query_genome_end_position, query_contig, base,
+                    is_reverse_complement, TR_frame, VR_sequence, VR_frame, subject_genome_start_position, subject_genome_end_position, subject_contig, midline,
+                    percentage_of_mismatches, DGR_looks_snv_false, snv_at_3_codon_over_a_third, mismatch_pos_contig_relative, snv_VR_positions,
+                    numb_of_snv_in_matches_not_mutagen_base, numb_of_mismatches, numb_of_SNVs, best_amongst_multiple_TRs_for_one_VR):
+        """
+        This function is adding the DGRs that are found initially to the DGRs_found_dict.
+
+        This is to remove redundancy from the previous function when everything was in 'filter_for_TR_VR', now it should be easier to read and edit this code.
+
+        Parameters
+        ==========
+        (a lot)
+        all of the input arguments from the BLASTn output : dict keys (different types listed below)
+            DGR_number : integer argument
+            TR_is_query, is_reverse_complement : boolean
+            TR_sequence, query_contig, base, VR_sequence, subject_contig : string
+            query_genome_start_position, query_genome_end_position, subject_genome_start_position, subject_genome_end_position : integer (bp position)
+            midline : character with defined spacing
+            percentage_of_mismatches : float
+                Keys of a dictionary containing all of the BLASTn hits that are less than 100%
+
+        Returns
+        =======
+        DGRs_found_dict : dict
+            A dictionary containing the template and variable regions and the corresponding info for those regions
+        """
+
+        DGR_key = f'DGR_{DGR_number:03d}'
+        self.DGRs_found_dict[DGR_key] = {}
+        # TR stuff
+        self.DGRs_found_dict[DGR_key]['TR_sequence'] = TR_sequence
+        self.DGRs_found_dict[DGR_key]['base'] = base
+        self.DGRs_found_dict[DGR_key]['TR_bin'] = bin
+        self.DGRs_found_dict[DGR_key]['TR_start_position'] = subject_genome_start_position
+        self.DGRs_found_dict[DGR_key]['TR_end_position'] = subject_genome_end_position
+        self.DGRs_found_dict[DGR_key]['TR_contig'] = subject_contig
+        self.DGRs_found_dict[DGR_key]['TR_sequence_found'] = 'subject'
+
+        # VR stuff
+        self.DGRs_found_dict[DGR_key]['VRs'] = {'VR_001':{}}
+        self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['VR_sequence'] = VR_sequence
+        self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['midline'] = midline
+        self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['percentage_of_mismatches'] = percentage_of_mismatches
+        self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['VR_frame'] = VR_frame
+        self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['VR_bin'] = bin
+        self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['VR_start_position'] = query_genome_start_position
+        self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['VR_end_position'] =   query_genome_end_position
+        self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['VR_contig'] = query_contig
+        self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['VR_sequence_found'] = 'query'
+        self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['DGR_looks_snv_false'] = DGR_looks_snv_false
+        self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['snv_at_3_codon_over_a_third'] = snv_at_3_codon_over_a_third
+        self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['VR_TR_mismatch_positions'] = mismatch_pos_contig_relative
+        self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['snv_VR_positions'] = snv_VR_positions
+        self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['numb_of_snv_in_matches_not_mutagen_base']= numb_of_snv_in_matches_not_mutagen_base
+        self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['numb_of_mismatches']= numb_of_mismatches
+        self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['numb_of_SNVs']= numb_of_SNVs
+        self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['best_amongst_multiple_TRs_for_one_VR'] = best_amongst_multiple_TRs_for_one_VR
+
+        self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['TR_start_position'] = subject_genome_start_position
+        self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['TR_end_position'] = subject_genome_end_position
+        self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['TR_sequence'] = TR_sequence
+        self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['TR_reverse_complement'] = is_reverse_complement
+        self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['TR_frame'] = TR_frame
+
+
+
+    def update_existing_DGR(self, existing_DGR_key, bin, TR_frame, VR_sequence, VR_frame, TR_sequence, midline, percentage_of_mismatches, is_reverse_complement,
+                            query_genome_start_position, query_genome_end_position, query_contig, subject_genome_start_position, subject_genome_end_position,
+                            subject_contig, DGR_looks_snv_false, snv_at_3_codon_over_a_third, mismatch_pos_contig_relative, snv_VR_positions,
+                            numb_of_snv_in_matches_not_mutagen_base, numb_of_mismatches, numb_of_SNVs, best_amongst_multiple_TRs_for_one_VR):
+        """
+        This function is updating the DGRs in the DGRs_found_dict with those DGRs that overlap each other.
+
+        This is to remove redundancy from the previous function when everything was in 'filter_for_TR_VR', now it should be easier to read and edit this code.
+
+        Parameters
+        ==========
+        (a lot)
+        all of the input arguments from the BLASTn output : dict keys (different types listed below)
+            existing_DGR_key : integer argument
+            TR_is_query, is_reverse_complement : boolean
+            TR_sequence, query_contig, base, VR_sequence, subject_contig : string
+            query_genome_start_position, query_genome_end_position, subject_genome_start_position, subject_genome_end_position : integer (bp position)
+            midline : character with defined spacing
+            percentage_of_mismatches : float
+                Keys of a dictionary containing all of the BLASTn hits that are less than 100%
+
+        Returns
+        =======
+        DGRs_found_dict : dict
+            A dictionary containing the template and variable regions and the corresponding info for those regions
+        """
+
+        if existing_DGR_key not in self.DGRs_found_dict:
+            raise KeyError(f"Existing DGR key {existing_DGR_key} not found in DGRs_found_dict")
+
+        num_VR = len(self.DGRs_found_dict[existing_DGR_key]['VRs']) + 1
+        new_VR_key = f'VR_{num_VR:03d}'
+        self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key] = {}
+        self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['VR_sequence'] = VR_sequence
+        self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['VR_bin'] = bin
+        self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['TR_sequence'] = TR_sequence
+        self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['midline'] = midline
+        self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['percentage_of_mismatches'] = percentage_of_mismatches
+        self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['VR_frame'] = VR_frame
+        self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['VR_start_position'] = query_genome_start_position
+        self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['VR_end_position'] = query_genome_end_position
+        self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['VR_contig'] = query_contig
+        self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['VR_sequence_found'] = 'query'
+
+        self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['TR_reverse_complement'] = is_reverse_complement
+        self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['TR_frame'] = TR_frame
+        self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['TR_start_position'] = subject_genome_start_position
+        self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['TR_end_position'] = subject_genome_end_position
+        self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['DGR_looks_snv_false'] = DGR_looks_snv_false
+        self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['snv_at_3_codon_over_a_third'] = snv_at_3_codon_over_a_third
+        self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['VR_TR_mismatch_positions'] = mismatch_pos_contig_relative
+        self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['snv_VR_positions'] = snv_VR_positions
+        self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['numb_of_snv_in_matches_not_mutagen_base']= numb_of_snv_in_matches_not_mutagen_base
+        self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['numb_of_mismatches']= numb_of_mismatches
+        self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['numb_of_SNVs']= numb_of_SNVs
+        self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['best_amongst_multiple_TRs_for_one_VR'] = best_amongst_multiple_TRs_for_one_VR
+
+        self.DGRs_found_dict[existing_DGR_key]['TR_start_position'] = min(subject_genome_start_position, self.DGRs_found_dict[existing_DGR_key]['TR_start_position'])
+        self.DGRs_found_dict[existing_DGR_key]['TR_end_position'] = max(subject_genome_end_position, self.DGRs_found_dict[existing_DGR_key]['TR_end_position'])
 
 
 
