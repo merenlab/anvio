@@ -1175,8 +1175,10 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
         self.progress.end()
 
         if not item_sequences_dict:
-            self.run.warning(f"This contigs database contains no {self._SOURCE_DATA} sequences that are used by the "
-                             f"anvi'o taxonomy headquarters in Lausanne. Somewhat disappointing but totally OK.")
+            raise ConfigError(f"This contigs database contains no {self._SOURCE_DATA} sequences that are used by the "
+                              f"anvi'o taxonomy headquarters in Lausanne. As a result, anvi'o cannot populate any "
+                              f"taxonomy information in this case :/ You could fix that by running the anvi'o program "
+                              f"`anvi-run-hmms` on this database first.")
 
             # even if there are no SCGs to use for taxonomy later, we did attempt ot populate the
             # contigs database, so we shall note that in the self table to make sure the error from

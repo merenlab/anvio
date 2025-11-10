@@ -119,12 +119,20 @@ v2025-02-04:
     modules_db_version: 4
     no_maps: True
 
+# warning! the modules DB in this snapshot is much larger than usual and hence much slower to access
+# expect delays in programs that access the modules DB when you use this snapshot
+# see https://github.com/merenlab/anvio/issues/2491 for details
 v2025-08-07:
     url: https://figshare.com/ndownloader/files/57008792
     archive_name: KEGG_build_2025-08-07_66e53d49e65a.tar.gz
     hash: 66e53d49e65a
     modules_db_version: 4
 
+v2025-11-07:
+    url: https://figshare.com/ndownloader/files/59407568
+    archive_name: KEGG_build_2025-11-07_68221bd12b30.tar.gz
+    hash: 68221bd12b30
+    modules_db_version: 4
 
 # How to add a new KEGG snapshot to this file:
 # 1. download the latest data directly from KEGG by running
@@ -139,7 +147,7 @@ v2025-08-07:
 #    `anvi-setup-kegg-data --kegg-archive KEGG_build_YYYY-MM-DD_HASH.tar.gz --kegg-data-dir TEST_NEW_KEGG_ARCHIVE`
 # 5. Upload the .tar.gz archive to figshare and get the download url
 # 6. Finally, add an entry to the bottom of this file with the url, archive name, and MODULES.db hash and version. 
-#    You should also update the default self.target_snapshot variable in kegg.py to point to this 
+#    You should also update the default self.target_snapshot variable in metabolism/setup.py to point to this 
 #    latest version that you have added.
 # 7. Test it by running `anvi-setup-kegg-data --kegg-data-dir TEST_NEW_KEGG` (you don't need to run the full thing, 
 #    just long enough to see that the correct snapshot is being downloaded), and if it works you are done :)
