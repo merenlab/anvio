@@ -312,6 +312,7 @@ class TRNATaxonomyArgs(object):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.output_file_path = A('output_file')
         self.fasta_file_path = A('fasta_file')
+        self.sequences_file_path_prefix = A('report_trna_sequences_file_prefix')
         self.sequence = A('dna_sequence')
         self.per_anticodon_output_file = A('per_anticodon_output_file')
         self.all_hits_output_file_path = A('all_hits_output_file')
@@ -332,6 +333,7 @@ class TRNATaxonomyArgs(object):
             # very cute. we shall make that happen.
             self.metagenomes = None
             self.output_file_path = None
+            self.sequences_file_path_prefix = None
             self.output_file_prefix = None
             self.matrix_format = None
             self.raw_output = None
