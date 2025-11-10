@@ -30,6 +30,7 @@ from anvio.artifacts.samples_txt import SamplesTxt
 
 from multiprocessing import Queue
 from Bio.Seq import Seq # type: ignore
+from collections import defaultdict
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2024, the Meren Lab (http://merenlab.org/)"
