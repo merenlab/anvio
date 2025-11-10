@@ -849,13 +849,21 @@ class DGR_Finder:
 
     def parse_and_process_blast_results(self, xml_file_path, bin_name, max_percent_identity):
         """
-        Parse and process BLAST XML results for a single bin or dataset,
-        filtering for mismatched hits below a given percent identity threshold.
+        Parse and process BLAST XML results for a single bin or dataset.
+        This function does a lot of filtering for HSP (children of hits) and query matches to make sure that the query matches typical VR features and that the HSP matches the TR characteristics.
+        Filtering for mismatched hits below 100% identity.
+        Filters out highly repeated sequences, both query and hit sequences.
+        Filters based on the number of mismatches and those mismatches largely come from one base type via a given percent identity threshold.
+        Checks that the mismatches of the query (VR) are from more than a required number of bases.
+        Optional only A base mismatches for the TR OR checks that the mismatching bases in the TR largely come from less than the given number of base types.
+        Filters for pairs that have less than 33% of the SNVs coming from the 3rd codon base position
+        Filters for pairs that have under a percentage threshold of SNVs coming from the non mutagenesis base
+
 
         Parameters
         ==========
-        root : xml.etree.ElementTree.Element
-            Parsed XML root object from a BLAST output file.
+        xml_file_path : str
+            Path to BLAST XML output file.
         bin_name : str or None
             Name of the bin associated with the BLAST search. If None,
             results are treated as coming from a single dataset.
