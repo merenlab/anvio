@@ -691,8 +691,6 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                             entry.append(matching_gc)
                         else:
                             entry.append('')
-                    else:
-                        continue
 
                     # populate the entry with item aditional data
                     for items_additional_data_key in self.items_additional_data_keys:
