@@ -10,6 +10,7 @@
         <meta name="google" value="notranslate">
         <link rel="stylesheet" type="text/css" href="css/loading.css" />
         <link rel="stylesheet" href="./node_modules/bootstrap/dist/css/bootstrap.css" />
+        <link rel="stylesheet" href="./node_modules/bootstrap-icons/font/bootstrap-icons.min.css" />
         <link rel="stylesheet" type="text/css" href="css/geneclusters.css" />
         <link rel="stylesheet" href="./node_modules/toastr/build/toastr.min.css" type="text/css" />
         <link href='https://fonts.googleapis.com/css?family=Lato:300,700' rel='stylesheet' type='text/css' />
@@ -40,18 +41,44 @@
 
             <section class="main">
                 <div id="display-controls">
-                    Wrap: <input type="text" id="wrap_length" value="1042" size="5" onchange="createDisplay(); "/>
-                          <input type="button" value="-" onclick="increaseVal('wrap_length', -5); createDisplay();" />
-                          <input type="button" value="+" onclick="increaseVal('wrap_length', 5); createDisplay();" />
-                          <span style="display: inline-block; width: 20px;">&nbsp;</span>
-                    Font Size: <input type="text" id="font_size" value="12" size="5" onchange="createDisplay(); "/>
-                          <input type="button" value="-" onclick="increaseVal('font_size', -1); createDisplay();" />
-                          <input type="button" value="+" onclick="increaseVal('font_size', 1); createDisplay();" />
-                          <input type="button" value="Color Settings" onclick="$('#display-conservation-controls').toggle(); " />
+                    <span class="display-text">Wrap:</span>
+                    <input type="text"  class="btn btn-outline-secondary btn-sm" id="wrap_length" value="1042" size="4" onchange="createDisplay(); "/>
+                    <input type="button" class="btn btn-outline-secondary btn-sm" value="-" onclick="increaseVal('wrap_length', -5); createDisplay();" />
+                    <input type="button" class="btn btn-outline-secondary btn-sm" value="+" onclick="increaseVal('wrap_length', 5); createDisplay();" />
+                    <span style="display: inline-block; width: 20px;">&nbsp;</span>
+                    <span class="display-text">Font Size:</span>  
+                    <input type="text" class="btn btn-outline-secondary btn-sm" id="font_size" value="12" size="2" onchange="createDisplay(); "/>
+                    <input type="button" class="btn btn-outline-secondary btn-sm" value="-" onclick="increaseVal('font_size', -1); createDisplay();" />
+                    <input type="button" class="btn btn-outline-secondary btn-sm" value="+" onclick="increaseVal('font_size', 1); createDisplay();" />
+                    <input type="button" class="btn btn-outline-secondary btn-sm" value="Color Settings" onclick="$('#display-conservation-controls').toggle(); " />
+                    <input type="button" class="btn btn-outline-secondary btn-sm" value="Filter" onclick="$('#display-search-controls').toggle();" />
                 </div>
 
                 <div class="d-flex justify-content-center">
                     <div class="col-6" id="display-conservation-controls" style="display: none"></div>
+                </div>
+                <div class="d-flex justify-content-center align-items-center">
+                    <div class="col-4" id="display-search-controls" style="display: none">
+                        <div class="d-flex justify-content-center">
+                            <div class="d-flex">
+                                <div class="d-flex justify-content-center align-items-center mr-3">
+                                    <span type="button" class="btn btn-link" data-toggle="modal" data-target="#infoModal" data-help="info">
+                                        <span id="info-icon" class="bi bi-info-circle" aria-hidden="true"></span>
+                                    </span>
+                                </div>
+                                <div class="d-flex">
+                                    <div class="input-group">
+                                        <span class="input-group-text" style="cursor: pointer;" onclick="filterGenome();">
+                                          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
+                                                <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001q.044.06.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1 1 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0"></path>
+                                          </svg>
+                                        </span>
+                                        <input type="text" id="filter-genome" class="form-control d-flex" placeholder="Filter Genomes" onchange="filterGenome(); "/>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div id="display-gcc-acc" class="d-flex justify-content-center">
                     <div id="display-gcc-inner-div">
@@ -80,5 +107,30 @@
                 $('#' + id).val(Math.max(1,parseInt($('#' + id).val()) + delta));
             }
         </script>
+
+        <!-- Searc GC Modal -->
+        <div class="modal fade" id="infoModal" tabindex="-1" role="dialog" aria-labelledby="infoModalLabel" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h4 class="modal-title" id="infoModalLabel">Genome Search</h4>
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <p>To use the genome search, you can enter one or more genome names separated by commas. For example:</p>
+                        <ul>
+                            <li>Single entry: <code>GENOME_NAME1</code></li>
+                            <li>Multiple entries: <code>GENOME_NAME1, GENOME_NAME2</code></li>
+                        </ul>
+                        <p>This allows you to search for specific genomes in the dataset.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </body>
 </html>

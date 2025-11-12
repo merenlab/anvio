@@ -1927,6 +1927,9 @@ class PanSuperclass(object):
         self.views = {}
         self.collection_profile = {}
 
+        self.gc_tracker = {}
+        self.gc_psgc_associations = {}
+
         # the following two are initialized via `init_items_additional_data()` and use information
         # stored in item additional data tables in the pan database
         self.items_additional_data_dict = None
@@ -2721,6 +2724,52 @@ class PanSuperclass(object):
         self.functions_initialized = True
 
         self.progress.end()
+
+
+    def init_gc_tracker(self):
+        """Initializes the gc_tracker dictionary from the pan database.
+        
+        The structure of the dictionary is:
+        {
+            gene_caller_id: {
+                'gene_cluster_id': str,
+                'genome_name': str,
+                'alignment_summary': str
+            }
+        }
+        """
+        pan_db = PanDatabase(self.pan_db_path)
+
+        gc_tracker_data = pan_db.db.get_table_as_dict('gc_tracker')
+
+        gene_entries = {}
+        for entry in gc_tracker_data.values():
+            gene_caller_id = entry['gene_caller_id']
+            if gene_caller_id not in gene_entries:
+                gene_entries[gene_caller_id] = []
+            gene_entries[gene_caller_id].append({'gene_cluster_id': entry['gene_cluster_id'],'genome_name': entry['genome_name'],'alignment_summary': entry['alignment_summary']})
+
+        self.gc_tracker = gene_entries
+
+        pan_db.disconnect()
+
+
+    def init_gc_psgc_associations(self):
+        """Initializes the gc_psgc_associations dictionary from the pan database.
+        
+        The structure of the dictionary is:
+        {
+            gene_cluster_id: protein_structure_informed_gene_cluster_id
+        }
+        """
+        pan_db = PanDatabase(self.pan_db_path)
+
+        associations_data = pan_db.db.get_table_as_dict('gc_psgc_associations')
+
+        for gc_id, entry in associations_data.items():
+            self.gc_psgc_associations[gc_id] = entry['protein_structure_informed_gene_cluster_id']
+
+        pan_db.disconnect()
 
 
     def init_items_additional_data(self):
@@ -4687,8 +4736,9 @@ class PanDatabase:
     """To create an empty pan database, and/or access to one."""
     def __init__(self, db_path, run=run, progress=progress, quiet=True):
         self.db = None
-        self.db_path = db_path
         self.db_type = 'pan'
+        self.db_variant = None
+        self.db_path = db_path
 
         self.run = run
         self.progress = progress
@@ -4721,15 +4771,16 @@ class PanDatabase:
         self.internal_genomes = [s.strip() for s in self.meta['internal_genome_names'].split(',')]
         self.external_genomes = [s.strip() for s in self.meta['external_genome_names'].split(',')]
         self.genomes = self.internal_genomes + self.external_genomes
+        self.db_variant = self.meta['db_variant']
 
         # open the database
         self.db = db.DB(self.db_path, anvio.__pan__version__)
 
-        self.run.info('Pan database', 'An existing database, %s, has been initiated.' % self.db_path, quiet=self.quiet)
-        self.run.info('Genomes', '%d found' % len(self.genomes), quiet=self.quiet)
+        self.run.info(f'Pan database ({self.db_variant})', f'An existing database, {self.db_path}, has been initiated.', quiet=self.quiet)
+        self.run.info('Genomes', f'{len(self.genomes)} found', quiet=self.quiet)
 
 
-    def touch(self):
+    def touch(self, db_variant=constants.pangenome_mode_default):
         is_db_ok_to_create(self.db_path, self.db_type)
 
         self.db = db.DB(self.db_path, anvio.__pan__version__, new_database=True)
@@ -4739,6 +4790,11 @@ class PanDatabase:
         self.db.create_table(t.pan_reaction_network_reactions_table_name, t.pan_reaction_network_reactions_table_structure, t.pan_reaction_network_reactions_table_types)
         self.db.create_table(t.pan_reaction_network_metabolites_table_name, t.pan_reaction_network_metabolites_table_structure, t.pan_reaction_network_metabolites_table_types)
         self.db.create_table(t.pan_reaction_network_kegg_table_name, t.pan_reaction_network_kegg_table_structure, t.pan_reaction_network_kegg_table_types)
+
+        # these are the ones only necessary when the db_variant is structure-informed
+        if db_variant == constants.PAN_STRUCTURE_MODE:
+            self.db.create_table(t.pan_gc_psgc_associations_table_name, t.pan_gc_psgc_associations_table_structure, t.pan_gc_psgc_associations_table_types)
+            self.db.create_table(t.pan_gc_tracker_table_name, t.pan_gc_tracker_table_structure, t.pan_gc_tracker_table_types)
 
         # creating empty default tables for standard anvi'o pan dbs
         self.db.create_table(t.item_additional_data_table_name, t.item_additional_data_table_structure, t.item_additional_data_table_types)
@@ -4756,8 +4812,8 @@ class PanDatabase:
         return self.db
 
 
-    def create(self, meta_values={}):
-        self.touch()
+    def create(self, meta_values={}, db_variant=constants.pangenome_mode_default):
+        self.touch(db_variant=db_variant)
 
         for key in meta_values:
             self.db.set_meta_value(key, meta_values[key])
@@ -4766,10 +4822,11 @@ class PanDatabase:
 
         # know thyself
         self.db.set_meta_value('db_type', 'pan')
+        self.db.set_meta_value('db_variant', db_variant)
 
         self.disconnect()
 
-        self.run.info('Pan database', 'A new database, %s, has been created.' % (self.db_path), quiet=self.quiet)
+        self.run.info(f'Pan database ({db_variant})', 'A new database, %s, has been created.' % (self.db_path), quiet=self.quiet)
 
 
     def disconnect(self):
