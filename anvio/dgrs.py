@@ -2486,6 +2486,53 @@ class DGR_Finder:
 
 
 
+    def populate_dgrs_dict_from_input_file(self):
+            """Get the DGRs from a previously generated output file"""
+
+            dgrs_dict = utils.get_TAB_delimited_file_as_dictionary(self.pre_computed_dgrs_path)
+            print(dgrs_dict)
+
+            self.DGRs_found_dict = {}
+
+            for dgr_id, row in dgrs_dict.items():
+                # Ensure DGR key exists
+                if dgr_id not in self.DGRs_found_dict:
+                    self.DGRs_found_dict[dgr_id] = {
+                        'VRs': {}
+                    }
+
+                # extract TR fields
+                tr_fields = ['TR_sequence', 'Base', 'Reverse Complemented_from_BLAST',
+                            'TR_start_position', 'TR_end_position', 'TR_bin',
+                            'TR_contig', 'HMM_gene_callers_id', 'distance_to_HMM',
+                            'HMM_start', 'HMM_stop', 'HMM_direction', 'HMM_source',
+                            'HMM_gene_name']
+
+                for field, converter in self.essential_keys_to_describe_dgrs:
+                    if field in tr_fields:
+                        self.DGRs_found_dict[dgr_id][field] = converter(row.get(field, None))
+
+                # build VR structure
+                vr_id = row.get('VR', 'VR_001')
+                if vr_id not in self.DGRs_found_dict[dgr_id]['VRs']:
+                    self.DGRs_found_dict[dgr_id]['VRs'][vr_id] = {}
+
+                vr_fields = ['VR_sequence', 'Midline', 'Mismatch %', 'VR_start_position',
+                            'VR_end_position', 'VR_bin', 'VR_contig', 'VR_frame_reported',
+                            'TR_start_position', 'TR_end_position', 'TR_sequence',
+                            'TR_frame_Reported', 'DGR_looks_snv_false',
+                            'snv_at_3_codon_over_a_third', 'VR_TR_mismatch_positions',
+                            'snv_VR_positions', 'numb_of_snv_in_matches_not_mutagen_base',
+                            'numb_of_mismatches', 'numb_of_SNVs',
+                            'best_amongst_multiple_TRs_for_one_VR']
+
+                for field, converter in self.essential_keys_to_describe_dgrs:
+                    if field in vr_fields:
+                        self.DGRs_found_dict[dgr_id]['VRs'][vr_id][field] = converter(row.get(field, None))
+
+
+
+
     def compute_dgr_variability_profiling(self):
         """
         Go back to the raw metagenomic reads to compute the variability profiles of the variable regions
