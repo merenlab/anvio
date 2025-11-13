@@ -1303,7 +1303,6 @@ class DGR_Finder:
                 subject_contig = best_hit['subject_contig']
                 is_reverse_complement = best_hit['is_reverse_complement']
                 base = best_hit['base']
-                is_reverse_complement = best_hit['is_reverse_complement']
                 numb_of_snv_in_matches_not_mutagen_base= best_hit['numb_of_snv_in_matches_not_mutagen_base']
                 numb_of_SNVs= best_hit['numb_of_SNVs']
                 DGR_looks_snv_false = best_hit['DGR_looks_false']
