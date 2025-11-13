@@ -1785,7 +1785,7 @@ class DGR_Finder:
 
 
 
-    def create_found_tr_vr_csv(self):
+    def create_found_tr_vr_tsv(self):
         """
         This function creates a tsv tabular format of the template and variable regions that are found from this tool.
 
