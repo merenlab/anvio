@@ -3028,7 +3028,7 @@ class DGR_Finder:
         self.get_hmm_info()
         self.recover_genomic_context_surrounding_dgrs()
         self.report_genomic_context_surrounding_dgrs()
-        self.create_found_tr_vr_csv()
+        self.create_found_tr_vr_tsv()
         self.compute_dgr_variability_profiling()
         self.process_dgr_data_for_HTML_summary()
         return
