@@ -1152,8 +1152,8 @@ class DGR_Finder:
                                     hit_data = {
                                         'bin': bin_name if bin_name else "N/A",
                                         'query_section': section_id,
-                                        'query_seq': qseq,
-                                        'hit_seq': hseq,
+                                        'query_seq': query_sequence,
+                                        'hit_seq': hit_sequence,
                                         'midline': midline,
                                         'query_contig': query_contig,
                                         'subject_contig': subject_contig,
