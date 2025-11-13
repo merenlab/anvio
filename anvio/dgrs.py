@@ -1689,7 +1689,7 @@ class DGR_Finder:
         if len(dgrs_dict) == 0:
             return
 
-        self.run.info_single("Computing the closest HMMs to the Template Regions and printing them in your output csv.", nl_before=1)
+        self.run.info_single("Computing the closest HMMs to the Template Regions and printing them in your output tsv.", nl_before=1)
 
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
 
