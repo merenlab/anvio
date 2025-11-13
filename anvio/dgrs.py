@@ -988,17 +988,17 @@ class DGR_Finder:
                                         base = 'A'
                                         is_reverse_complement = True
                                         # query_frame is the VR frame
-                                        query_frame = original_query_frame * -1
+                                        new_query_frame = original_query_frame * -1
                                         # subject_frame is the TR frame
-                                        hit_frame = original_subject_frame * -1
+                                        new_subject_frame = original_subject_frame * -1
                                     else:
                                         hit_sequence = str(hseq)
                                         query_sequence = str(qseq)
                                         midline = original_midline
                                         base = letter
                                         is_reverse_complement = False
-                                        query_frame = original_query_frame
-                                        hit_frame = original_subject_frame
+                                        new_query_frame = original_query_frame
+                                        new_subject_frame = original_subject_frame
 
                                     # to test for VR diversity of base types in the sequence
                                     non_zero_bases = sum(1 for count in query_mismatch_counts.values() if count > 0)
@@ -1165,8 +1165,8 @@ class DGR_Finder:
                                         'alignment_length': alignment_length,
                                         'query_genome_start_position': query_genome_start_position,
                                         'query_genome_end_position': query_genome_end_position,
-                                        'query_frame': query_frame,
-                                        'subject_frame': hit_frame,
+                                        'query_frame': new_query_frame,
+                                        'subject_frame': new_subject_frame,
                                         'hsp_count_for_query': hsp_per_query[current_section_id],
                                         'base': base,
                                         'is_reverse_complement': is_reverse_complement,
