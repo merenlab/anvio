@@ -3029,6 +3029,8 @@ class DGR_Finder:
         self.recover_genomic_context_surrounding_dgrs()
         self.report_genomic_context_surrounding_dgrs()
         self.create_found_tr_vr_tsv()
+        if self.pre_computed_dgrs_path:
+            self.populate_dgrs_dict_from_input_file()
         self.compute_dgr_variability_profiling()
         self.process_dgr_data_for_HTML_summary()
         return
