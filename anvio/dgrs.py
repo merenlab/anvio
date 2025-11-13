@@ -2108,7 +2108,7 @@ class DGR_Finder:
 
     def report_genomic_context_surrounding_dgrs(self):
         """
-        Reports two long-format output files for genes and functions around inversion
+        Reports two long-format output files for genes and functions around each DGR element
         STOLEN (modified) FROM INVERSIONS CODE (line 1925)
         Generate per-DGR reports of genes and annotated functions surrounding TR and VRs.
 
