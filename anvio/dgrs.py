@@ -134,6 +134,22 @@ class DGR_Finder:
             self.run.info('Initial Primer Length', self.initial_primer_length)
             self.run.info('Variable Region Primer Length', self.whole_primer_length)
 
+        # these are the keys we are interested in finding in input files offered to reconstruct
+        # DGR profiles via the --pre-computed-dgrs flag. NOTE that these keys are not ALL
+        # keys that are used to build dgr profiles in the code, this way, the user can
+        # attempt to characterize the activity of dgrs found in a single sample if they wish:
+        self.essential_keys_to_describe_dgrs = [('DGR', str), ('VR', str), ('VR_contig', str), ('VR_frame_reported', int),
+                                                ('VR_sequence', str), ('Midline', str), ('VR_start_position', int),
+                                                ('VR_end_position', int), ('VR_bin', str), ('Mismatch %', float),
+                                                ('TR_contig', str), ('TR_frame_Reported', int), ('TR_sequence', str),
+                                                ('Base', str), ('Reverse Complemented_from_BLAST', bool), ('TR_start_position', int),
+                                                ('TR_end_position', int), ('TR_bin', str), ('TR_in_gene', bool), ('HMM_source', str),
+                                                ('distance_to_HMM', int), ('HMM_gene_name', str), ('HMM_direction', str), ('HMM_start', int),
+                                                ('HMM_stop', int), ('HMM_gene_callers_id', int), ('DGR_looks_snv_false', bool),
+                                                ('snv_at_3_codon_over_a_third', bool), ('numb_of_snv_in_matches_not_mutagen_base', list),
+                                                ('numb_of_mismatches', int), ('numb_of_SNVs', int), ('VR_TR_mismatch_positions', list),
+                                                ('snv_VR_positions', list), ('best_amongst_multiple_TRs_for_one_VR', bool)]
+
 
 
     def sanity_check(self):
