@@ -85,6 +85,7 @@ class DGR_Finder:
         self.samples_txt = A('samples_txt')
         self.whole_primer_length = A('whole_primer_length') or 65
         self.skip_compute_DGR_variability_profiling = A('skip_compute_DGR_variability_profiling')
+        self.pre_computed_dgrs_path = A('pre_computed_dgrs_path')
         self.initial_primer_length = A('initial_variable_primer_length') or  12 #TODO test different values for this. If Illumina reads are 250 bases then depends on length of VR
         self.numb_imperfect_tandem_repeats = A('numb_imperfect_tandem_repeats') or 10
         self.repeat_motif_coverage = A('repeat_motif_coverage') or 0.8
