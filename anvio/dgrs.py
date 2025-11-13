@@ -2373,7 +2373,7 @@ class DGR_Finder:
                 vr_start = vr_data.get('VR_start_position')
                 vr_end = vr_data.get('VR_end_position')
 
-                # keep the frame info, but also check reverse flag
+                # keep the frame info
                 VR_frame = vr_data['VR_frame']
 
                 # decide where initial primer comes from
