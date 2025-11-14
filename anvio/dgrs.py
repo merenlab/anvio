@@ -144,7 +144,7 @@ class DGR_Finder:
                                                 ('TR_contig', str), ('TR_frame_Reported', int), ('TR_sequence', str),
                                                 ('Base', str), ('Reverse Complemented_from_BLAST', bool), ('TR_start_position', int),
                                                 ('TR_end_position', int), ('TR_bin', str), ('TR_in_gene', bool), ('HMM_source', str),
-                                                ('distance_to_HMM', int), ('HMM_gene_name', str), ('HMM_direction', str), ('HMM_start', int),
+                                                ('distance_to_HMM', float), ('HMM_gene_name', str), ('HMM_direction', str), ('HMM_start', int),
                                                 ('HMM_stop', int), ('HMM_gene_callers_id', int), ('DGR_looks_snv_false', bool),
                                                 ('snv_at_3_codon_over_a_third', bool), ('numb_of_snv_in_matches_not_mutagen_base', list),
                                                 ('numb_of_mismatches', int), ('numb_of_SNVs', int), ('VR_TR_mismatch_positions', list),
