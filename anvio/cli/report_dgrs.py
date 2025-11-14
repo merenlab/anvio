@@ -169,6 +169,17 @@ def get_args():
                     "to first run the workflow without computing activity, take a look at the output files to make sure "
                     "everything looks alright, and then run the workflow without this flag.")
 
+    groupK = parser.add_argument_group('CALCULATE ACTIVITY FROM KNOWN DGRS?', "This input option is ONLY relevant to those who have "
+                    "already run the entire workflow and have their dgrs output file (i.e., 'DGRs_found.tsv'). This input option will "
+                    "use the existing dgrs reported in the input file and recalculate the dgr activity output. It is "
+                    "a great way to calculate dgrs or refine them from a smaller set of genomes / metagenomes, and scale "
+                    "up the characterizations of their activity to thousands of metagenomes quickly (*cough* cheater *cough*). "
+                    "Please note that if you use this flag, most other options EXCEPT those that are listed below 'COMPUTING VARIABLE "
+                    "REGION VARIABILITY PROFILING' will be irrelevant AND the flag for discovery-mode needs activating if the DGRs were found with this flag "
+                    "or else we will only compute primers based on 1st and 2nd codon positions, so you can skip all and take a look at the parameters there. "
+                    "Remember you need a samples-txt to compute DGR activity in those samples.")
+    groupK.add_argument(*anvio.A('pre-computed-dgrs'), **anvio.K('pre-computed-dgrs'))
+
     return parser.get_args(parser)
 
 
