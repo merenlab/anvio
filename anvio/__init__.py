@@ -486,6 +486,11 @@ D = {
              'help': "A TAB-delimited file that lists sample-specific or consensus inversions identified by the program "
                      "`anvi-report-inversions`."}
                 ),
+    'pre-computed-dgrs': (
+            ['--pre-computed-dgrs'],
+            {'metavar': 'DGRS-FILE',
+             'help': "A TAB-delimited file that lists DGRs identified by the program `anvi-report-dgrs`."}
+                ),
     'gene-caller': (
             ['--gene-caller'],
             {'metavar': 'GENE-CALLER',
