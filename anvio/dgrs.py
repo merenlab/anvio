@@ -2615,6 +2615,20 @@ class DGR_Finder:
 
 
 
+    def safe_convert(self, value, converter, field_name='', dgr_id='', vr_id=''):
+        """
+        A very small helper function for empty fields in tab-delimited
+        """
+        if value in [None, '', 'N/A']:
+            return None
+
+        try:
+            return converter(value)
+        except Exception as e:
+            self.run.warning(f"Could not convert field '{field_name}' for DGR '{dgr_id}', VR '{vr_id}': {e}", header="NONE INPUT IN DGRS OUTPUT")
+            return None
+
+
 
     def compute_dgr_variability_profiling(self):
         """
