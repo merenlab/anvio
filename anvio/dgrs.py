@@ -3162,6 +3162,21 @@ class DGR_Finder:
             Command-line arguments controlling optional outputs.
         """
         self.sanity_check()
+
+        # do we have a previously computed list of dgrs to focus for dgr activity calculations?
+        if self.pre_computed_dgrs_path:
+            self.run.warning("Anvi'o is taking a shortcut to calculate DGR activity using the DGRs you have "
+                            "provided in the 'pre computed dgrs' file. There is nothing for you to be concerned about "
+                            "-- except the fact that some very fancy coding is at play here and catastrophic failures "
+                            "are not a remote possibility. Still, anvi'o prints this message in green for positive "
+                            "vibes 🥲", header="🌈 PRE-COMPUTED DGRS FOUND 🌈", lc="green")
+
+            self.populate_dgrs_dict_from_input_file()
+            self.compute_dgr_variability_profiling()
+
+            # WE'RE DOnE HERE. DoNe.
+            return
+
         self.get_blast_results()
         self.process_blast_results()
         self.filter_for_best_VR_TR()
@@ -3173,8 +3188,6 @@ class DGR_Finder:
         self.recover_genomic_context_surrounding_dgrs()
         self.report_genomic_context_surrounding_dgrs()
         self.create_found_tr_vr_tsv()
-        if self.pre_computed_dgrs_path:
-            self.populate_dgrs_dict_from_input_file()
         self.compute_dgr_variability_profiling()
         self.process_dgr_data_for_HTML_summary()
         return
