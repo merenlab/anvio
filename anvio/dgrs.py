@@ -2311,8 +2311,8 @@ class DGR_Finder:
                 print('Sample {sample_name} is none, loop will be broken.')
                 break
 
-            # Extract sample-specific primers from the nested structure
-            # Convert from {primer_name: {sample_name: {data}}}
+            # extract sample-specific primers from the nested structure
+            # convert from {primer_name: {sample_name: {data}}}
             # to {primer_name: {data}} for this specific sample
             primers_for_sample = {}
             for primer_name, samples_data in primers_dict.items():
