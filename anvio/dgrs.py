@@ -1855,9 +1855,9 @@ class DGR_Finder:
             return
 
         # open the TSV file and write headers and rows
-        with open(output_path_dgrs, 'w', newline='') as csvfile:
-            csv_writer = csv.writer(csvfile, delimiter='\t')
-            csv_writer.writerow(headers)
+        with open(output_path_dgrs, 'w', encoding='utf-8', newline='\n') as f:
+            # Write header line
+            f.write('\t'.join(headers) + '\n')
 
             for dgr, tr in dgrs_dict.items():
                 for vr, vr_data in tr['VRs'].items():
@@ -1877,7 +1877,7 @@ class DGR_Finder:
                         vr_data["numb_of_mismatches"], vr_data["numb_of_SNVs"], vr_data["VR_TR_mismatch_positions"],
                         vr_data["snv_VR_positions"], vr_data["best_amongst_multiple_TRs_for_one_VR"]
                     ]
-                    csv_writer.writerow(csv_row)
+                    f.write('\t'.join(map(str, csv_row)) + '\n')
         return
 
 
