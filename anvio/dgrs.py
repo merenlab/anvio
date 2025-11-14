@@ -2523,48 +2523,95 @@ class DGR_Finder:
 
 
     def populate_dgrs_dict_from_input_file(self):
-            """Get the DGRs from a previously generated output file"""
+        """
+        Get the DGRs from a previously generated output file and populate the self.DGRs_found_dict with proper formatting.
 
-            dgrs_dict = utils.get_TAB_delimited_file_as_dictionary(self.pre_computed_dgrs_path)
-            print(dgrs_dict)
+        Parameters
+        ==========
+        DGRs_found_tsv : tsv
+            A tsv generated from `anvi-report-dgrs` containing all associated information about the template and variable regions
 
-            self.DGRs_found_dict = {}
+        Returns
+        =======
+        dgrs_dict : nested dict
+            A self.DGRs_found_dict that has all the information associated with the DGRs
+        """
 
-            for dgr_id, row in dgrs_dict.items():
-                # Ensure DGR key exists
-                if dgr_id not in self.DGRs_found_dict:
-                    self.DGRs_found_dict[dgr_id] = {
-                        'VRs': {}
-                    }
+        dgrs_dict = utils.get_TAB_delimited_file_as_dictionary(
+            self.pre_computed_dgrs_path,
+            ignore_duplicated_keys=True
+        )
 
-                # extract TR fields
-                tr_fields = ['TR_sequence', 'Base', 'Reverse Complemented_from_BLAST',
-                            'TR_start_position', 'TR_end_position', 'TR_bin',
-                            'TR_contig', 'HMM_gene_callers_id', 'distance_to_HMM',
-                            'HMM_start', 'HMM_stop', 'HMM_direction', 'HMM_source',
-                            'HMM_gene_name']
+        self.DGRs_found_dict = {}
 
-                for field, converter in self.essential_keys_to_describe_dgrs:
-                    if field in tr_fields:
-                        self.DGRs_found_dict[dgr_id][field] = converter(row.get(field, None))
+        for dgr_id, row in dgrs_dict.items():
 
-                # build VR structure
-                vr_id = row.get('VR', 'VR_001')
-                if vr_id not in self.DGRs_found_dict[dgr_id]['VRs']:
-                    self.DGRs_found_dict[dgr_id]['VRs'][vr_id] = {}
+            # ---- SKIP EMPTY ROWS ----
+            if all(v in [None, '', 'N/A'] for v in row.values()):
+                continue
 
-                vr_fields = ['VR_sequence', 'Midline', 'Mismatch %', 'VR_start_position',
-                            'VR_end_position', 'VR_bin', 'VR_contig', 'VR_frame_reported',
-                            'TR_start_position', 'TR_end_position', 'TR_sequence',
-                            'TR_frame_Reported', 'DGR_looks_snv_false',
-                            'snv_at_3_codon_over_a_third', 'VR_TR_mismatch_positions',
-                            'snv_VR_positions', 'numb_of_snv_in_matches_not_mutagen_base',
-                            'numb_of_mismatches', 'numb_of_SNVs',
-                            'best_amongst_multiple_TRs_for_one_VR']
+            # Ensure DGR slot exists
+            if dgr_id not in self.DGRs_found_dict:
+                self.DGRs_found_dict[dgr_id] = {'VRs': {}}
 
-                for field, converter in self.essential_keys_to_describe_dgrs:
-                    if field in vr_fields:
-                        self.DGRs_found_dict[dgr_id]['VRs'][vr_id][field] = converter(row.get(field, None))
+            # TR fields
+            tr_fields = [
+                'TR_sequence', 'Base', 'Reverse Complemented_from_BLAST',
+                'TR_start_position', 'TR_end_position', 'TR_bin',
+                'TR_contig', 'HMM_gene_callers_id', 'distance_to_HMM',
+                'HMM_start', 'HMM_stop', 'HMM_direction', 'HMM_source',
+                'HMM_gene_name'
+            ]
+
+            # Add TR fields that have valid values
+            for field, converter in self.essential_keys_to_describe_dgrs:
+                if field in tr_fields:
+                    raw_value = row.get(field)
+                    if raw_value not in [None, '', 'N/A']:   # skip empty fields
+                        converted = self.safe_convert(
+                            raw_value, converter,
+                            field_name=field,
+                            dgr_id=dgr_id
+                        )
+                        if converted is not None:
+                            if field == 'Base':
+                                target_field = 'base'
+                            else:
+                                target_field = field
+                            self.DGRs_found_dict[dgr_id][target_field] = converted
+
+            # VR identification
+            vr_id = row.get('VR', 'VR_001')
+            if vr_id not in self.DGRs_found_dict[dgr_id]['VRs']:
+                self.DGRs_found_dict[dgr_id]['VRs'][vr_id] = {}
+
+            # VR fields
+            vr_fields = [
+                'VR_sequence', 'Midline', 'Mismatch %', 'VR_start_position',
+                'VR_end_position', 'VR_bin', 'VR_contig', 'VR_frame_reported',
+                'TR_start_position', 'TR_end_position', 'TR_sequence',
+                'TR_frame_Reported', 'DGR_looks_snv_false',
+                'snv_at_3_codon_over_a_third', 'VR_TR_mismatch_positions',
+                'snv_VR_positions', 'numb_of_snv_in_matches_not_mutagen_base',
+                'numb_of_mismatches', 'numb_of_SNVs',
+                'best_amongst_multiple_TRs_for_one_VR'
+            ]
+
+            # Add VR fields that have valid values
+            for field, converter in self.essential_keys_to_describe_dgrs:
+                if field in vr_fields:
+                    raw = row.get(field)
+                    if raw not in [None, '', 'N/A']:
+                        converted = self.safe_convert(raw, converter, field_name=field, dgr_id=dgr_id, vr_id=vr_id)
+
+                        if converted is not None:
+                            # rename VR_frame_reported → VR_frame
+                            if field == 'VR_frame_reported':
+                                target_field = 'VR_frame'
+                            else:
+                                target_field = field
+
+                            self.DGRs_found_dict[dgr_id]['VRs'][vr_id][target_field] = converted
 
 
 
