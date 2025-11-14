@@ -162,6 +162,8 @@ Bins.prototype._generateBinTemplate = function(binData) {
         template += this._getPanModeColumns(id, binData);
     } else if (mode === 'codon-frequencies') {
         template += this._getCodonFrequencyColumns(id, binData);
+    } else if (mode === 'gene') {
+        template += this._getGeneModeColumns(id, binData);
     } else {
         template += this._getDefaultModeColumns(id, binData);
     }
@@ -197,6 +199,19 @@ Bins.prototype._getPanModeColumns = function(id, binData) {
         </td>
         <td data-value="${binData.num_gene_calls}" class="num-gene-calls">
             <input type="button" value="${binData.num_gene_calls}">
+        </td>`;
+};
+
+/**
+ * Get gene mode columns
+ * @private
+ */
+Bins.prototype._getGeneModeColumns = function(id, binData) {
+    return `
+        <td data-value="${binData.contig_count}" class="num-items">
+            <input type="button" value="${binData.contig_count}"
+                   title="Click for contig names"
+                   onclick="showGeneFunctions(${id});">
         </td>`;
 };
 
