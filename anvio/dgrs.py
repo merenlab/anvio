@@ -2382,6 +2382,9 @@ class DGR_Finder:
         self.init_vr_contigs()
         sample_names = set(self.samples_artifact.samples())
 
+        if self.pre_computed_dgrs_path:
+            self.init_snv_table()
+
         # Sanity check for samples (move this outside the main loops)
         sample_names_in_snv_table = set(self.snv_panda['sample_id'])
         samples_missing_in_snv_table = sample_names.difference(sample_names_in_snv_table)
