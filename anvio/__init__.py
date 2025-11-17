@@ -2633,8 +2633,8 @@ D = {
                      "should be listed within curly brackets, which will be evaluated in contex. Anything outside "
                      "of curly brackets will be kept as is. For instance, if you would like your defline to have "
                      "the gene caller ID after the contig name in which it occurs, you can use this template: "
-                     "'{contig_name}_{gene_caller_id}', and your defline will look like '>XXX_182'. In most cases "
-                     "'{gene_caller_id}' will serve as the default defline format if this parameters is not used. "
+                     "'{contig_name}_{gene_callers_id}', and your defline will look like '>XXX_182'. In most cases "
+                     "'{gene_callers_id}' will serve as the default defline format if this parameters is not used. "
                      "See more examples in online help."}
                 ),
     'report-extended-deflines': (
