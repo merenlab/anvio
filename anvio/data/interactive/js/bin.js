@@ -26,7 +26,7 @@ const MAX_HISTORY_SIZE = 50;
 const BIN_DEFAULTS = {
     PREFIX: 'Bin_',
     DEFAULT_VALUES: {
-        contig_count: 0,
+        item_count: 0,
         contig_length: 'N/A',
         num_gene_clusters: '---',
         num_gene_calls: '---',
@@ -208,8 +208,8 @@ Bins.prototype._getPanModeColumns = function(id, binData) {
  */
 Bins.prototype._getGeneModeColumns = function(id, binData) {
     return `
-        <td data-value="${binData.contig_count}" class="num-items">
-            <input type="button" value="${binData.contig_count}"
+        <td data-value="${binData.item_count}" class="num-items">
+            <input type="button" value="${binData.item_count}"
                    title="Click for contig names"
                    onclick="showGeneFunctions(${id});">
         </td>`;
@@ -221,8 +221,8 @@ Bins.prototype._getGeneModeColumns = function(id, binData) {
  */
 Bins.prototype._getCodonFrequencyColumns = function(id, binData) {
     return `
-        <td data-value="${binData.contig_count}" class="num-items">
-            <input type="button" value="${binData.contig_count}"
+        <td data-value="${binData.item_count}" class="num-items">
+            <input type="button" value="${binData.item_count}"
                    title="Click for contig names"
                    onclick="showGeneFunctions(${id});">
         </td>`;
@@ -234,8 +234,8 @@ Bins.prototype._getCodonFrequencyColumns = function(id, binData) {
  */
 Bins.prototype._getDefaultModeColumns = function(id, binData) {
     return `
-        <td data-value="${binData.contig_count}" class="num-items">
-            <input type="button" value="${binData.contig_count}"
+        <td data-value="${binData.item_count}" class="num-items">
+            <input type="button" value="${binData.item_count}"
                    title="Click for contig names"
                    onclick="showContigNames(${id});">
         </td>

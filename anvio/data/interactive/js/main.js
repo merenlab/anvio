@@ -438,7 +438,7 @@ function switchUserInterfaceMode(project, title) {
     if (mode == 'pan') {
         $('#completion_title').attr('title', 'Gene Clusters').html('Gene Clusters');
         $('#redundancy_title').attr('title', 'Gene Calls').html('Gene Calls');
-        $('#splits_title').hide();
+        $('#items_title').hide();
         $('#len_title').hide();
         $('.gene-filters-not-available-message').hide();
         $('.pan-filters button,input:checkbox').removeAttr('disabled')
@@ -472,17 +472,21 @@ function switchUserInterfaceMode(project, title) {
         })
     }
 
+    if (mode == 'full') {
+        $('#items_title').html('Contigs');
+    }
+
     if (mode == 'codon-frequencies') {
         $('#completion_title').attr('title', 'Genes Selected').html('Genes Selected');
         $('#redundancy_title').hide();
-        $('#splits_title').hide();
+        $('#items_title').hide();
         $('#len_title').hide();
     }
 
     if (mode == 'gene') {
         $('#completion_title').attr('title', 'Genes Selected').html('Genes Selected');
         $('#redundancy_title').hide();
-        $('#splits_title').hide();
+        $('#items_title').hide();
         $('#len_title').hide();
     }
 
