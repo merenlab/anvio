@@ -883,12 +883,29 @@ Bins.prototype._updateDefaultModeStatistics = function(bin_id) {
     let num_items = 0;
     let length_sum = 0;
 
+    // Track unique un-split labels
+    const uniqueBaseName = new Set();
+    let hasSplits = false;
+
     for (const node of this.selections[bin_id].values()) {
         if (node.IsLeaf()) {
-            num_items++;
-            length_sum += parseInt(item_lengths[node.label]) || 0;
+            let label = node.label;
+            let baseName = label;
+
+            // Detect "_split_" and extract base label
+            const splitIndex = label.indexOf("_split_");
+            if (splitIndex !== -1) {
+                hasSplits = true;
+                baseName = label.substring(0, splitIndex);
+            }
+
+            uniqueBaseName.add(baseName);
+            length_sum += parseInt(item_lengths[baseName] || item_lengths[label]) || 0;
         }
     }
+
+    // If split labels exist, count unique bases; otherwise count leaves normally
+    num_items = hasSplits ? uniqueBaseName.size : uniqueBaseName.size;
 
     const bin_row = this.container.querySelector(`tr[bin-id="${bin_id}"]`);
 
