@@ -237,7 +237,7 @@ Bins.prototype._getDefaultModeColumns = function(id, binData) {
         <td data-value="${binData.item_count}" class="num-items">
             <input type="button" value="${binData.item_count}"
                    title="Click for contig names"
-                   onclick="showContigNames(${id});">
+                   onclick="showGeneFunctionsInSplits(${id});">
         </td>
         <td data-value="${binData.contig_length}" class="length-sum">
             <span>${binData.contig_length}</span>

@@ -2118,7 +2118,25 @@ const FUNCTION_CONFIGS = {
             const result = getPrettyFunctionsString(d[function_source]?.function);
             return (Array.isArray(result) && result.length === 1 && result[0] === '-') ? 'N/A' : (result || 'N/A');
         }
+    },
+    genes_in_splits: {
+        url: '/data/get_functions_for_genes_in_splits',
+        dataKey: 'genes_in_splits',
+        itemLabel: 'genes encoded in splits',
+        itemIdLabel: 'Split',
+        metabolismDescription: 'Metabolic module involvement of genes encoded in splits. The table below shows which metabolic modules the genes in this bin are involved in. The completion scores show that for each metabolic module, what percentage of the module is represented by the genes encoded by splits in the bin. A single gene may be involved in multiple metabolic modules since that how metabolism rolls.',
+        functionsDescription: 'Gene functions. The table below shows the functional annotation of each gene by each function annotation source available in the contigs-db.',
+        dialogFunction: 'showGeneFunctionsInSplitsSummaryTableDialog',
+        getAccessionString: (d, function_source) => {
+            const result = getPrettyFunctionsString(d[function_source]?.accession, function_source);
+            return (Array.isArray(result) && result.length === 1 && result[0] === '-') ? 'N/A' : (result || 'N/A');
+        },
+        getFunctionString: (d, function_source) => {
+            const result = getPrettyFunctionsString(d[function_source]?.function);
+            return (Array.isArray(result) && result.length === 1 && result[0] === '-') ? 'N/A' : (result || 'N/A');
+        }
     }
+
 };
 
 // Shared function that handles both genes and gene clusters
@@ -2151,8 +2169,13 @@ function showItemFunctions(bin_id, config, updateOnly = false) {
             // Call the appropriate dialog function
             if (config.dialogFunction === 'showGeneFunctionsSummaryTableDialog') {
                 showGeneFunctionsSummaryTableDialog(dialogTitle, content);
-            } else {
+            } else if (config.dialogFunction === 'showGeneFunctionsInSplitsSummaryTableDialog') {
+                showGeneFunctionsInSplitsSummaryTableDialog(dialogTitle, content);
+            } else if (config.dialogFunction === 'showGeneClusterFunctionsSummaryTableDialog') {
                 showGeneClusterFunctionsSummaryTableDialog(dialogTitle, content);
+            } else {
+                toastr.error('Unknown dialog function specified.', "The anvi'o headquarters is confused");
+                return;
             }
 
             // Setup filtering after dialog is shown
@@ -2543,6 +2566,9 @@ function showGeneClusterDetails(bin_id, updateOnly) {
     showItemFunctions(bin_id, FUNCTION_CONFIGS.gene_clusters, updateOnly);
 }
 
+function showGeneFunctionsInSplits(bin_id, updateOnly) {
+    showItemFunctions(bin_id, FUNCTION_CONFIGS.genes_in_splits, updateOnly);
+}
 
 function showRedundants(bin_id, updateOnly) {
     if (typeof updateOnly === 'undefined')
