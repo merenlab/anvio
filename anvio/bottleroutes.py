@@ -192,6 +192,7 @@ class BottleApplication(Bottle):
         self.route('/data/get_additional_gc_data/<gc_id>/<gc_key>',    callback=self.get_additional_gc_data, method='POST')
         self.route('/data/search_items',                       callback=self.search_items_by_name, method='POST')
         self.route('/data/get_taxonomy',                       callback=self.get_taxonomy, method='POST')
+        self.route('/data/get_functions_for_genes_in_splits',  callback=self.get_functions_for_genes_in_splits, method='POST')
         self.route('/data/get_functions_for_gene_clusters',    callback=self.get_functions_for_gene_clusters, method='POST')
         self.route('/data/get_functions_for_a_collection_of_genes',    callback=self.get_functions_for_a_collection_of_genes, method='POST')
         self.route('/data/get_gene_info/<gene_callers_id>',    callback=self.get_gene_info)
@@ -1562,6 +1563,35 @@ class BottleApplication(Bottle):
         payload = {'functions': functions,
                    'metabolism': kegg_metabolism_superdict['user_defined_enzymes'],
                    'sources': list(self.interactive.gene_clusters_function_sources)}
+
+        return json.dumps(payload, default=utils.to_jsonable)
+
+
+    def get_functions_for_genes_in_splits(self):
+        if not self.interactive.gene_function_calls_initiated:
+            message = "Gene functions seem to have not been initialized, so that button has nothing to show you :/ Please carry on."
+            run.warning(message)
+            return json.dumps({'status': 1, 'message': message})
+
+        gene_caller_ids = list(range(0, 50)) # FIXME: YOU NEEDED TO GO HOME, BUT YOU NEXT TIME YOU
+                                             #        WORK ON THIS, YOU WILL GET THEM FROM SPLIT NAMES TXHBAI
+
+        # Learn about the functions and metabolism relevance of these genes
+        functions = {}
+        for gene_callers_id in gene_caller_ids:
+            if gene_callers_id not in self.interactive.gene_function_calls_dict:
+                functions[gene_callers_id] = {}
+            else:
+                functions[gene_callers_id] = self.interactive.gene_function_calls_dict[gene_callers_id]
+
+        if 'KOfam' in self.interactive.gene_function_call_sources:
+            kegg_metabolism_superdict, _ = self.interactive.get_metabolism_estimates_for_a_list_of_genes(gene_caller_ids)
+        else:
+            kegg_metabolism_superdict, _ = {'user_defined_enzymes': {}}, {}
+
+        payload = {'functions': functions,
+                   'metabolism': kegg_metabolism_superdict['user_defined_enzymes'],
+                   'sources': self.interactive.gene_function_call_sources}
 
         return json.dumps(payload, default=utils.to_jsonable)
 
