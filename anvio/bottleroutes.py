@@ -1542,7 +1542,6 @@ class BottleApplication(Bottle):
             run.warning(message)
             return json.dumps({'status': 1, 'message': message})
 
-
         gene_cluster_names = json.loads(request.forms.get('gene_clusters'))
 
         functions = {}
@@ -1573,25 +1572,33 @@ class BottleApplication(Bottle):
             run.warning(message)
             return json.dumps({'status': 1, 'message': message})
 
-        gene_caller_ids = list(range(0, 50)) # FIXME: YOU NEEDED TO GO HOME, BUT YOU NEXT TIME YOU
-                                             #        WORK ON THIS, YOU WILL GET THEM FROM SPLIT NAMES TXHBAI
+        # Learn split names like a normal human
+        split_names = json.loads(request.forms.get('split_names'))
 
-        # Learn about the functions and metabolism relevance of these genes
-        functions = {}
-        for gene_callers_id in gene_caller_ids:
-            if gene_callers_id not in self.interactive.gene_function_calls_dict:
-                functions[gene_callers_id] = {}
-            else:
-                functions[gene_callers_id] = self.interactive.gene_function_calls_dict[gene_callers_id]
+        if not len(split_names):
+            message = "Some snafu happened and a function was called without its required input lol."
+            run.warning(message)
+            return json.dumps({'status': 1, 'message': message})
+
+        # Get gene calls from split names (but only if they are 'call_type' of 1)
+        gene_caller_ids = set()
+        contig_names = set()
+        for split_name in split_names:
+            for gene_caller_id in self.interactive.split_name_to_genes_in_splits_entry_ids[split_name]:
+                if gene_caller_id in self.interactive.genes_in_contigs_dict and self.interactive.genes_in_contigs_dict[gene_caller_id]['call_type'] == 1:
+                    gene_caller_ids.add(gene_caller_id)
+                    contig_names.add(self.interactive.splits_basic_info[split_name]['parent'])
 
         if 'KOfam' in self.interactive.gene_function_call_sources:
-            kegg_metabolism_superdict, _ = self.interactive.get_metabolism_estimates_for_a_list_of_genes(gene_caller_ids)
+            kegg_metabolism_superdict, _ = self.interactive.get_metabolism_estimates_for_a_list_of_genes(list(gene_caller_ids))
         else:
             kegg_metabolism_superdict, _ = {'user_defined_enzymes': {}}, {}
 
-        payload = {'functions': functions,
+        payload = {'functions': {},
                    'metabolism': kegg_metabolism_superdict['user_defined_enzymes'],
-                   'sources': self.interactive.gene_function_call_sources}
+                   'sources': self.interactive.gene_function_call_sources,
+                   'split_names': split_names,
+                   'contig_names': contig_names}
 
         return json.dumps(payload, default=utils.to_jsonable)
 
