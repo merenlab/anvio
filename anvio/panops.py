@@ -1413,7 +1413,10 @@ class PangenomeGraph():
         self.run.warning(None, header="Generate pangenome graph summary tables", lc="green")
 
         node_positions, edge_positions, node_groups = TopologicalLayout().run_synteny_layout_algorithm(F=self.pangenome_graph.graph)
+
         self.pangenome_graph.set_node_positions(node_positions)
+        self.pangenome_graph.set_edge_positions(edge_positions)
+
         region_sides_df, nodes_df, gene_calls_df = self.pangenome_graph.summarize()
         additional_info = pd.merge(region_sides_df.reset_index(drop=False), nodes_df.reset_index(drop=False), how="left", on="region_id").set_index('syn_cluster')
 

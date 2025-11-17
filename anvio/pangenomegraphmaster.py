@@ -265,9 +265,40 @@ class PangenomeGraphManager():
         all_positions_min = min(all_positions)
         all_positions_max = max(all_positions)
 
+        regions_dict = {}
+        edge_pos_dict = {}
+        core_pos_num_y = {}
+        for edge_i, edge_j, data in self.graph.edges(data=True):
+
+            position_tuples = []
+            edge_i_x, edge_i_y = self.graph.nodes[edge_i]['position']
+            edge_j_x, edge_j_y = self.graph.nodes[edge_j]['position']
+
+            position_tuples += [(edge_i_x, edge_i_y)]
+            position_tuples += [(edge_j_x, edge_j_y)]
+
+            for route_x, route_y in data['route']:
+                position_tuples += [(route_x, route_y)]
+
+            for pos_x, pos_y in position_tuples:
+                if pos_x not in edge_pos_dict:
+                    edge_pos_dict[pos_x] = set([pos_y])
+                else:
+                    edge_pos_dict[pos_x].add(pos_y)
+
         core_positions = sorted(set([data['position'][0] for node, data in self.graph.nodes(data=True) if len(data['gene_calls'].keys()) == len(genome_names)]))
 
-        regions_dict = {}
+        for core_position in core_positions:
+            core_pos_num_y[core_position] = len(edge_pos_dict[core_position])
+
+        core_pos_num_y_values = list(core_pos_num_y.values())
+        mode_position = max(set(core_pos_num_y_values), key=core_pos_num_y_values.count)
+
+        for core_position, num_y_positions in core_pos_num_y.items():
+            if num_y_positions > mode_position:
+                if core_position in core_positions:
+                    core_positions.remove(core_position)
+                    self.run.info_single(f"Position {core_position} is probably falsely annotated as core and might be a rearranged synteny gene cluster")
 
         if core_positions:
             core_position_min = min(core_positions)
@@ -395,8 +426,8 @@ class PangenomeGraphManager():
                 'complexity': complexity,
                 'max_expansion': max_expansion,
                 'min_expansion': min_expansion,
-                'mean_expansion': mean_expansion,
-                'mode_expansion': mode,
+                # 'mean_expansion': mean_expansion,
+                # 'mode_expansion': mode,
                 'diversity': diversity,
                 'weight': weight
             }
@@ -444,7 +475,7 @@ class PangenomeGraphManager():
 
             CGVS = (C_norm * E_norm * D_norm)**(1/3) * W_f
 
-            return(CGVS)
+            return(round(CGVS, 3))
         return(func)
 
 
