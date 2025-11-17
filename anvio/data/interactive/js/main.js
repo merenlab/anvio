@@ -2265,7 +2265,17 @@ function buildMetabolismTable(response, config, fmtPct) {
         })
         .forEach((moduleId) => {
             const m = metabolism[moduleId] || {};
-            const genes = Array.isArray(m.gene_caller_ids) ? m.gene_caller_ids.join(', ') : 'NA';
+
+            // Sort genes numerically (even if they are strings)
+            const genes = Array.isArray(m.gene_caller_ids)
+              ? [...m.gene_caller_ids]                 // copy so we don't mutate original
+                  .map(String)                         // make sure everything is a string
+                  .sort((a, b) =>
+                    a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })
+                  )
+                  .join(", ")
+              : "NA";
+
             const pathwayPct = fmtPct(m.pathwise_percent_complete);
             const stepwisePct = fmtPct(m.stepwise_completeness);
             const moduleName = m.NAME ?? 'NA';
@@ -2278,7 +2288,12 @@ function buildMetabolismTable(response, config, fmtPct) {
                     <td style="padding-left: 20px;">
                        <b>${moduleId}</b>${badge}<br />
                        - Module function: ${moduleName}<br />
-                       - Module class: ${moduleClass.split(";").map((p,i,a)=> i===a.length-1 ? `<b>${p.trim()}</b>` : p).join("; ")}
+                       - Module class: ${
+                         moduleClass
+                           .split(";")
+                           .map((p,i,a)=> i===a.length-1 ? `<b>${p.trim()}</b>` : p)
+                           .join("; ")
+                       }
                     </td>
                     <td style="text-align: center; vertical-align: middle;">${pathwayPct}</td>
                     <td style="text-align: center; vertical-align: middle;">${stepwisePct}</td>
