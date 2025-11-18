@@ -2214,9 +2214,9 @@ function buildContigAndSplitNamesTable(response, config) {
     const splitNames = response && response.split_names;
 
     let contigAndSplitNamesContent = `
-        <p style="font-size: large; border-bottom: 1px solid black; background: #f5f5dc9c;">Contig Names</p>
+        <p style="font-size: large; border-bottom: 1px solid black; background: #f5f5dc9c;">Contig Names (${response.contig_names.length})</p>
         <p style="margin-bottom: 35px;">${response.contig_names.join(', ')}</p>
-        <p style="font-size: large; border-bottom: 1px solid black; background: #f5f5dc9c;">Split Names</p>
+        <p style="font-size: large; border-bottom: 1px solid black; background: #f5f5dc9c;">Split Names (${response.split_names.length})</p>
         <p style="margin-bottom: 35px;">${response.split_names.join(', ')}</p>
     `;
 
