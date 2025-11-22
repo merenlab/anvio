@@ -438,7 +438,7 @@ function switchUserInterfaceMode(project, title) {
     if (mode == 'pan') {
         $('#completion_title').attr('title', 'Gene Clusters').html('Gene Clusters');
         $('#redundancy_title').attr('title', 'Gene Calls').html('Gene Calls');
-        $('#splits_title').hide();
+        $('#items_title').hide();
         $('#len_title').hide();
         $('.gene-filters-not-available-message').hide();
         $('.pan-filters button,input:checkbox').removeAttr('disabled')
@@ -472,10 +472,21 @@ function switchUserInterfaceMode(project, title) {
         })
     }
 
+    if (mode == 'full') {
+        $('#items_title').html('Contigs');
+    }
+
     if (mode == 'codon-frequencies') {
         $('#completion_title').attr('title', 'Genes Selected').html('Genes Selected');
         $('#redundancy_title').hide();
-        $('#splits_title').hide();
+        $('#items_title').hide();
+        $('#len_title').hide();
+    }
+
+    if (mode == 'gene') {
+        $('#completion_title').attr('title', 'Genes Selected').html('Genes Selected');
+        $('#redundancy_title').hide();
+        $('#items_title').hide();
         $('#len_title').hide();
     }
 
@@ -2107,7 +2118,25 @@ const FUNCTION_CONFIGS = {
             const result = getPrettyFunctionsString(d[function_source]?.function);
             return (Array.isArray(result) && result.length === 1 && result[0] === '-') ? 'N/A' : (result || 'N/A');
         }
+    },
+    genes_in_splits: {
+        url: '/data/get_functions_for_genes_in_splits',
+        dataKey: 'split_names',
+        itemLabel: 'splits',
+        itemIdLabel: 'Split',
+        metabolismDescription: 'Metabolic module involvement of genes encoded in splits. The table below shows which metabolic modules the genes in this bin are involved in. The completion scores show that for each metabolic module, what percentage of the module is represented by the genes encoded by splits in the bin. A single gene may be involved in multiple metabolic modules since that how metabolism rolls.',
+        functionsDescription: 'Gene functions. The table below shows the functional annotation of each gene by each function annotation source available in the contigs-db.',
+        dialogFunction: 'showGeneFunctionsInSplitsSummaryTableDialog',
+        getAccessionString: (d, function_source) => {
+            const result = getPrettyFunctionsString(d[function_source]?.accession, function_source);
+            return (Array.isArray(result) && result.length === 1 && result[0] === '-') ? 'N/A' : (result || 'N/A');
+        },
+        getFunctionString: (d, function_source) => {
+            const result = getPrettyFunctionsString(d[function_source]?.function);
+            return (Array.isArray(result) && result.length === 1 && result[0] === '-') ? 'N/A' : (result || 'N/A');
+        }
     }
+
 };
 
 // Shared function that handles both genes and gene clusters
@@ -2135,13 +2164,20 @@ function showItemFunctions(bin_id, config, updateOnly = false) {
             }
 
             const content = buildFunctionsContent(response, config);
-            const dialogTitle = `A summary of functions for ${bin_info['items'].length} ${config.itemLabel} in "${bin_info['bin_name']}".`;
 
             // Call the appropriate dialog function
             if (config.dialogFunction === 'showGeneFunctionsSummaryTableDialog') {
+                const dialogTitle = `A summary of functions for ${bin_info['items'].length} ${config.itemLabel} in "${bin_info['bin_name']}".`;
                 showGeneFunctionsSummaryTableDialog(dialogTitle, content);
-            } else {
+            } else if (config.dialogFunction === 'showGeneFunctionsInSplitsSummaryTableDialog') {
+                const dialogTitle = `Some useful data for ${bin_info['items'].length} ${config.itemLabel} in "${bin_info['bin_name']}".`;
+                showGeneFunctionsInSplitsSummaryTableDialog(dialogTitle, content);
+            } else if (config.dialogFunction === 'showGeneClusterFunctionsSummaryTableDialog') {
+                const dialogTitle = `A summary of functions for ${bin_info['items'].length} ${config.itemLabel} in "${bin_info['bin_name']}".`;
                 showGeneClusterFunctionsSummaryTableDialog(dialogTitle, content);
+            } else {
+                toastr.error('Unknown dialog function specified.', "The anvi'o headquarters is confused");
+                return;
             }
 
             // Setup filtering after dialog is shown
@@ -2155,24 +2191,38 @@ function buildFunctionsContent(response, config) {
     const fmtPct = (v) => (typeof v === 'number' && !isNaN(v)) ? (v * 100).toFixed(1) + '%' : 'NA';
     let content = '';
 
+    // If we are in full mode, show contig and split names
+    if (config.dialogFunction === 'showGeneFunctionsInSplitsSummaryTableDialog') {
+        content += buildContigAndSplitNamesTable(response, config);
+    }
+
     // Build metabolism summary table if present
     content += buildMetabolismTable(response, config, fmtPct);
 
+    // Fancy spacer
     content += '<hr style="margin: 30px !important;">';
-
-    content += `
-        <p style="font-size: large; border-bottom: 1px solid black; background: #ffe4c478;">Functions per ${config.itemLabel}</p>
-
-        <p>${config.functionsDescription}</p>`;
-
-    // Build filter controls
-    content += buildFilterControls(response['sources'], response['functions'], config);
 
     // Build functions table
     content += buildFunctionsTable(response, config);
 
     return content;
 }
+
+// Shared function to build metabolism table
+function buildContigAndSplitNamesTable(response, config) {
+    const contigNames = response && response.contig_names;
+    const splitNames = response && response.split_names;
+
+    let contigAndSplitNamesContent = `
+        <p style="font-size: large; border-bottom: 1px solid black; background: #f5f5dc9c;">Contig Names (${response.contig_names.length})</p>
+        <p style="margin-bottom: 35px;">${response.contig_names.join(', ')}</p>
+        <p style="font-size: large; border-bottom: 1px solid black; background: #f5f5dc9c;">Split Names (${response.split_names.length})</p>
+        <p style="margin-bottom: 35px;">${response.split_names.join(', ')}</p>
+    `;
+
+    return contigAndSplitNamesContent;
+}
+
 
 // Shared function to build metabolism table
 function buildMetabolismTable(response, config, fmtPct) {
@@ -2195,7 +2245,7 @@ function buildMetabolismTable(response, config, fmtPct) {
                     <th>Metabolic module</th>
                     <th style="text-align: center;">Contribution to pathway completeness</th>
                     <th style="text-align: center;">Contribution to Stepwise completeness</th>
-                    <th style="text-align: center;">${config.itemLabel === 'genes' ? 'Gene calls' : 'Gene clusters'} involved</th>
+                    <th style="text-align: center;">${config.itemLabel === 'gene clusters' ? 'Gene clusters' : 'Gene calls'} involved</th>
                 </tr>
             </thead>
             <tbody>`;
@@ -2215,7 +2265,17 @@ function buildMetabolismTable(response, config, fmtPct) {
         })
         .forEach((moduleId) => {
             const m = metabolism[moduleId] || {};
-            const genes = Array.isArray(m.gene_caller_ids) ? m.gene_caller_ids.join(', ') : 'NA';
+
+            // Sort genes numerically (even if they are strings)
+            const genes = Array.isArray(m.gene_caller_ids)
+              ? [...m.gene_caller_ids]                 // copy so we don't mutate original
+                  .map(String)                         // make sure everything is a string
+                  .sort((a, b) =>
+                    a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })
+                  )
+                  .join(", ")
+              : "NA";
+
             const pathwayPct = fmtPct(m.pathwise_percent_complete);
             const stepwisePct = fmtPct(m.stepwise_completeness);
             const moduleName = m.NAME ?? 'NA';
@@ -2228,7 +2288,12 @@ function buildMetabolismTable(response, config, fmtPct) {
                     <td style="padding-left: 20px;">
                        <b>${moduleId}</b>${badge}<br />
                        - Module function: ${moduleName}<br />
-                       - Module class: ${moduleClass.split(";").map((p,i,a)=> i===a.length-1 ? `<b>${p.trim()}</b>` : p).join("; ")}
+                       - Module class: ${
+                         moduleClass
+                           .split(";")
+                           .map((p,i,a)=> i===a.length-1 ? `<b>${p.trim()}</b>` : p)
+                           .join("; ")
+                       }
                     </td>
                     <td style="text-align: center; vertical-align: middle;">${pathwayPct}</td>
                     <td style="text-align: center; vertical-align: middle;">${stepwisePct}</td>
@@ -2304,7 +2369,18 @@ function buildFilterControls(sources, functions, config) {
 
 // Shared function to build functions table
 function buildFunctionsTable(response, config) {
+    // If we are in full mode, we don't show functions
+    if (config.dialogFunction === 'showGeneFunctionsInSplitsSummaryTableDialog')
+        return "";
+
     let content = `
+        <p style="font-size: large; border-bottom: 1px solid black; background: #ffe4c478;">Functions per ${config.itemLabel}</p>
+
+        <p>${config.functionsDescription}</p>`;
+
+    content += buildFilterControls(response['sources'], response['functions'], config);
+
+    content += `
         <table class="table" id="itemFunctionsTable" style="width: 95%; margin-left: 10px; table-layout: fixed;">
            <thead class="thead-light">
            <tr>
@@ -2532,6 +2608,9 @@ function showGeneClusterDetails(bin_id, updateOnly) {
     showItemFunctions(bin_id, FUNCTION_CONFIGS.gene_clusters, updateOnly);
 }
 
+function showGeneFunctionsInSplits(bin_id, updateOnly) {
+    showItemFunctions(bin_id, FUNCTION_CONFIGS.genes_in_splits, updateOnly);
+}
 
 function showRedundants(bin_id, updateOnly) {
     if (typeof updateOnly === 'undefined')
