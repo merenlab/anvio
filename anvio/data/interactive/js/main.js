@@ -87,14 +87,20 @@ var min_branch_support_value_seen = null;
 var multiple_support_value_seen = false;
 
 var request_prefix = getParameterByName('request_prefix');
+
+var structure_pan_mode = false;
 //---------------------------------------------------------
 //  Init
 //---------------------------------------------------------
 
 $(window).resize(function() {
      // get current client size
-    VIEWER_WIDTH = document.getElementById('svg').clientWidth || document.getElementById('svg').width.baseVal.value;
-    VIEWER_HEIGHT = document.getElementById('svg').clientHeight || document.getElementById('svg').height.baseVal.value;
+    var svgElement = document.getElementById('svg');
+    
+    if (svgElement) {
+        VIEWER_WIDTH = svgElement.clientWidth || (svgElement.width && svgElement.width.baseVal.value) || 0;
+        VIEWER_HEIGHT = svgElement.clientHeight || (svgElement.height && svgElement.height.baseVal.value) || 0;
+    }
 });
 
 $(document).ready(function() {
@@ -230,6 +236,8 @@ function initData() {
             ANVIO_VERSION = response.version;
             mode = response.mode;
             server_mode = response.server_mode;
+            item_lengths = response.item_lengths;
+
             switchUserInterfaceMode(response.project, response.title);
             setupDescriptionPanel(response.description);
 
@@ -261,8 +269,6 @@ function initData() {
 
                 $('[disabled-in-read-only=true]').addClass('disabled').prop('disabled', true);
             }
-
-            item_lengths = response.item_lengths;
 
             var default_tree  = response.item_orders[0];
             var default_order = response.item_orders[1];
@@ -430,8 +436,6 @@ function switchUserInterfaceMode(project, title) {
     // hide all mode dependent divs:
     $('.full-mode, .pan-mode, .collection-mode, .manual-mode, .server-mode, .refine-mode').hide();
 
-    console.log("The running mode for the interface: " + mode);
-
     $('.' + mode + '-mode').show();
     $('<b title="This info shows your anvio mode" class="title-mode">' + mode + ' mode' + '<b/>').appendTo('#title-panel');
 
@@ -470,6 +474,14 @@ function switchUserInterfaceMode(project, title) {
                 }
             }
         })
+
+        // Manipulate the UI elements for the structure pan mode
+        // Structure pan is also pan mode but with a different data structure
+        if (Object.keys(item_lengths).some(key => key.startsWith("PSGC"))) {
+            structure_pan_mode = true;
+            $('#search-gc-filters-mode').text('Search PSGC using filters');
+            $('.title-mode').text('structure pan mode');
+        }
     }
 
     if (mode == 'codon-frequencies') {
@@ -1422,13 +1434,13 @@ function buildLayersTable(order, settings)
                 var norm = (mode == 'full') ? 'log' : 'none';
             }
 
-            var template = '<tr class="sortable">' +
+            var template = '<tr>' +
                 '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
                 '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
                 '<td>n/a</td>' +
                 '<td>n/a</td>' +
                 '<td>' +
-                '    <select id="normalization{id}" onChange="clearMinMax(this);" class="normalization">' +
+                '    <select id="normalization{id}" onChange="clearMinMax(this);" style="width: 50px;" class="type type_multiple form-control form-control-sm col-12 select-sm normalization">' +
                 '        <option value="none"{option-none}>none</option>' +
                 '        <option value="sqrt"{option-sqrt}>sqrt</option>' +
                 '        <option value="log"{option-log}>log</option>' +
@@ -2078,6 +2090,26 @@ function showCompleteness(bin_id, updateOnly) {
 }
 
 
+function getGCInPSGCInformation(gene_cluster_name) {
+    return $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/data/get_psgc_type_data/' + gene_cluster_name
+    }).then(function(psgc_response) {
+        if (psgc_response && psgc_response.data) {
+            // Check if the response is empty
+            const hasValidData = Object.keys(psgc_response.data).some(key => {
+                return Object.keys(psgc_response.data[key]).length > 0;
+            });
+            if (hasValidData) {
+                mode = 'structure';
+                return psgc_response.data;
+            }
+        }
+    });
+}
+
+
 // Shared configuration objects for the two function types
 const FUNCTION_CONFIGS = {
     individual_genes: {
@@ -2140,7 +2172,27 @@ function showItemFunctions(bin_id, config, updateOnly = false) {
             // Call the appropriate dialog function
             if (config.dialogFunction === 'showGeneFunctionsSummaryTableDialog') {
                 showGeneFunctionsSummaryTableDialog(dialogTitle, content);
+            // Your addition for structure mode: fetch PSGC info per GC and append
+            } else if (mode === 'structure') {
+                // run the per-GC fetches, append blocks, then show dialog
+                let additionalDataPromises = Object.keys(response['functions']).map(gene_cluster_name => {
+                    return getGCInPSGCInformation(gene_cluster_name).then(result => {
+                        if (!content.includes("Gene Clusters Occur in Protein Structure Informed Gene Clusters")) {
+                            content += `<div class="mt-5 mb-5 font-italic">
+                                            Gene Clusters Occur in Protein Structure Informed Gene Clusters
+                                        </div>`;
+                        }
+                        content += formatGenericData(result);
+                    });
+                });
+
+                mode = temp_mode;
+
+                Promise.all(additionalDataPromises).then(() => {
+                    showGeneClusterFunctionsSummaryTableDialog(dialogTitle, content);
+                });
             } else {
+                // non-structure: behave like master
                 showGeneClusterFunctionsSummaryTableDialog(dialogTitle, content);
             }
 
@@ -2148,6 +2200,43 @@ function showItemFunctions(bin_id, config, updateOnly = false) {
             setTimeout(() => setupItemTableFiltering(), 100);
         }
     });
+}
+
+function formatGenericData(data) {
+    if(mode === 'structure'){
+        let formattedString = `
+            <div class="row">
+                <div class="col-12">
+                    <table class="table table-striped psgc-table">
+                            <tr>
+                                <th>PSGC ID</th>
+                                <th>Gene Cluster</th>
+                                <th>Type</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+
+        for (const [psgcId, value] of Object.entries(data)) {
+            if (typeof value === 'object' && value !== null) {
+                for (const [geneClusterId, type] of Object.entries(value)) {
+                    formattedString += `
+                        <tr>
+                            <td class="col-4">${psgcId}</td>
+                            <td class="col-4">${geneClusterId}</td>
+                            <td class="col-4">${type}</td>
+                        </tr>`;
+                }
+            }
+        }
+
+        formattedString += `
+                </tbody>
+            </table>
+            </div>
+        </div>`;
+
+        return formattedString;
+    }
 }
 
 // Shared function to build the content HTML
@@ -2619,7 +2708,7 @@ async function exportSvg(dontDownload) {
                 'color': $('#bin_color_' + bin_id).attr('color'),
             };
 
-            if (mode == 'pan') {
+            if (mode == 'pan' || mode === 'structure') {
                 var geneClustersElement = $(bin).find('.num-gene-clusters');
                 if (geneClustersElement.length > 0) {
                     _bin_info['gene_clusters'] = geneClustersElement.attr('data-value');

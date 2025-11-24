@@ -100,6 +100,7 @@ class ArgsTemplateForSummarizerClass:
         self.output_dir = filesnpaths.get_temp_directory_path()
         self.report_aa_seqs_for_gene_calls = False
         self.reformat_contig_names = False
+        self.init_pan_mode = False
 
 
 class SummarizerSuperClass(object):
@@ -264,6 +265,29 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         self.cog_functions_are_called = 'COG_FUNCTION' in self.gene_clusters_function_sources
         self.cog_categories_are_called = 'COG_CATEGORY' in self.gene_clusters_function_sources
 
+        self.STRUCTURE_MODE = False if not hasattr(self.args, 'init_pan_mode') or self.args.init_pan_mode != constants.pangenome_modes_available[1] else True
+
+        self.summary = {}
+        self.summary['basics_pretty'] = {}
+
+
+    def add_structure_data_tables(self):
+        """Add additional data tables from the pan database and return the data."""
+        from anvio.dbops import PanDatabase
+        pan_db = PanDatabase(self.pan_db_path)
+
+        gc_tracker_data = pan_db.db.get_table_as_dict('gc_tracker')
+
+        gc_tracker = []
+        for entry in gc_tracker_data.values():
+            gene_caller_id = entry['gene_caller_id']
+            gene_cluster_id = entry['gene_cluster_id']
+            genome_name = entry['genome_name']
+            alignment_summary = entry['alignment_summary']
+            
+            gc_tracker.append((gene_caller_id, gene_cluster_id, genome_name, alignment_summary))
+
+        return gc_tracker
 
     def get_occurrence_of_functions_in_pangenome(self, gene_clusters_functions_summary_dict):
         """
@@ -603,6 +627,10 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
     def generate_gene_clusters_file(self, collection_dict, compress_output=True):
         """Generates the gene summary file"""
 
+        # Add data tables if STRUCTURE_MODE is True
+        if self.STRUCTURE_MODE:
+            gc_tracker_data = self.add_structure_data_tables()
+
         # generate a dict of gene cluster ~ bin id relationships
         gene_cluster_name_to_bin_name= dict(list(zip(self.gene_clusters_in_pan_db_but_not_binned, [None] * len(self.gene_clusters_in_pan_db_but_not_binned))))
         for bin_id in collection_dict:
@@ -616,6 +644,9 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
 
         # standard headers
         header = ['unique_id', 'gene_cluster_id', 'bin_name', 'genome_name', 'gene_callers_id']
+
+        if self.STRUCTURE_MODE:
+            header.append('gc_tracker')
 
         # extend the header with items additional data keys
         for items_additional_data_key in self.items_additional_data_keys:
@@ -647,6 +678,19 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
             for genome_name in self.gene_clusters[gene_cluster_name]:
                 for gene_caller_id in self.gene_clusters[gene_cluster_name][genome_name]:
                     entry = [unique_id, gene_cluster_name, gene_cluster_name_to_bin_name[gene_cluster_name], genome_name, gene_caller_id]
+
+                    if self.STRUCTURE_MODE:
+                        matching_gc = None
+                        for tracker_entry in gc_tracker_data:
+                            if (int(tracker_entry[0]) == int(gene_caller_id) and 
+                                str(tracker_entry[2]) == str(genome_name)):
+                                matching_gc = tracker_entry[1]
+                                break
+
+                        if matching_gc:
+                            entry.append(matching_gc)
+                        else:
+                            entry.append('')
 
                     # populate the entry with item aditional data
                     for items_additional_data_key in self.items_additional_data_keys:

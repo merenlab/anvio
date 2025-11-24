@@ -32,7 +32,9 @@ var total;
 
 var state;
 var gene_cluster_data;
-
+var psgc_data = null;
+var mode = null;
+var filter_genome = [];
 
 function loadAll() {
     $.ajaxPrefilter(function(options) {
@@ -86,7 +88,8 @@ function loadAll() {
             if(previous_gene_cluster_name)
                 prev_str = '<a onclick="localStorage.state = JSON.stringify(state);" href="' + generate_inspect_link({'type': 'geneclusters', 'item_name': previous_gene_cluster_name, 'show_snvs': false}) +'" '+target_str+'>&lt;&lt;&lt; prev | </a>';
 
-            document.getElementById("header").innerHTML = "<strong>" + gene_cluster_name + "</strong> with " + gene_caller_ids.length + " genes detailed <br /><small><small>" + prev_str + position + next_str + "</small></small>";
+            const headerContent = `<strong>${gene_cluster_name}</strong> with ${gene_caller_ids.length} genes detailed <br /><small><small>${prev_str} ${position} ${next_str}</small></small>`;
+            document.getElementById("header").innerHTML = headerContent;
 
             if (typeof localStorage.state === 'undefined')
             {
@@ -110,7 +113,7 @@ async function loadGCAdditionalData(gc_id, gc_key, gc_key_short) {
         });
         if (response['status'] === 0) {
             var newThHeader = $('<th>').text(gc_key_short);
-            var newThData = $('<th>').text((response.gene_cluster_data).toFixed(2));
+            var newThData = $('<th>').text(gc_key === 'num_genes_in_gene_cluster' || gc_key === 'num_genomes_gene_cluster_has_hits' ? Math.round(response.gene_cluster_data): (response.gene_cluster_data).toFixed(2));
 
             var gc_title_list = {
                 combined_homogeneity_index: "Combined Homogeneity Index",
@@ -147,6 +150,17 @@ async function createDisplay(display_table){
 
     var svg = document.getElementById('svg');
     var table = document.getElementById('gc-acc-main');
+
+    try {
+        psgc_data =await loadPSGCData(gene_cluster_data.gene_cluster_name);
+        
+        if (psgc_data) {
+            mode = 'structure';
+            gc_type_in_psgc = await loadGCTypeInPSGCData(gene_cluster_data.gene_cluster_name);
+        }
+    } catch (error) {
+        console.error('Error loading PSGC data:', error);
+    }
 
     // clear content
     while (svg.firstChild) {
@@ -191,6 +205,9 @@ async function createDisplay(display_table){
     }
 
     var max_length = maxLength(acid_sequences);
+    var max_allowed_wrap = Math.min(max_length, 1042);
+    sequence_wrap = Math.min(sequence_wrap, max_allowed_wrap);
+    $('#wrap_length').val(sequence_wrap);
     var all_positions = [];
 
     for (var i=0; i < max_length; i++) {
@@ -202,19 +219,17 @@ async function createDisplay(display_table){
     }
     var coded_positions = determineColor(all_positions);
 
-    while (true)
-    {
-        ignoreTable = true;
+    while (offset < max_length) {
         var fragment = document.createDocumentFragment();
-        for (var layer_id = 0; layer_id < state['layer-order'].length; layer_id++)
-        {
+        for (var layer_id = 0; layer_id < state['layer-order'].length; layer_id++) {
             var layer = state['layer-order'][layer_id];
 
             if (state['layers'][layer]['height'] == 0)
                 continue;
 
-            if (gene_cluster_data.genomes.indexOf(layer) === -1)
+            if (gene_cluster_data.genomes.indexOf(layer) === -1 || (filter_genome.length > 0 && !filter_genome.includes(layer) && !filter_genome.some(term => layer.includes(term)))) {
                 continue;
+            }
 
             var rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
             rect.setAttribute('x', 0);
@@ -235,8 +250,14 @@ async function createDisplay(display_table){
             text.appendChild(document.createTextNode(layer));
             fragment.appendChild(text);
 
-            sub_y_cord = y_cord + 5;
-	         gene_cluster_data.gene_caller_ids_in_genomes[layer].forEach(function (caller_id) {
+            if (navigator.userAgent.indexOf("Firefox") !== -1) {
+                // Firefox uses a different baseline for text
+                sub_y_cord = y_cord + (sequence_font_size * 1.5);
+            } else {
+                sub_y_cord = y_cord + 5;
+            }
+
+            gene_cluster_data.gene_caller_ids_in_genomes[layer].forEach(function (caller_id) {
                 sequence = gene_cluster_data.aa_sequences_in_gene_cluster[layer][caller_id];
                 var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                 text.setAttribute('x', 0);
@@ -259,46 +280,105 @@ async function createDisplay(display_table){
                 text.appendChild(document.createTextNode(caller_id));
                 fragment.appendChild(text);
 
+                if (mode === 'structure') {
+                    let gc_id = '';
+
+                    if (psgc_data && Object.keys(psgc_data).length > 0) {
+                        for (var psgc_id in psgc_data) {
+                            var matchingGene = psgc_data[psgc_id].find(gene => 
+                                gene.gene_callers_id === caller_id
+                            );
+
+                            if (matchingGene) {
+                                gc_id = matchingGene.gene_cluster_id;
+                                break;
+                            }
+                        }
+                    }
+
+                    // Get the type indicator [A] || [C] || [S] if type data is available
+                    let type_indicator = '';
+                    let type_class = '';
+                    if (gc_type_in_psgc) {
+                        for (let psgc_id in gc_type_in_psgc) {
+                            const type = gc_type_in_psgc[psgc_id][gc_id];
+
+                            if (type === 'core') {
+                                type_indicator = 'C';
+                                type_class = 'type-core';
+                            }
+                            else if (type === 'accessory') {
+                                type_indicator = 'A';
+                                type_class = 'type-accessory';
+                            }
+                            else if (type === 'singleton') {
+                                type_indicator = 'S';
+                                type_class = 'type-singleton';
+                            }
+
+                            break;
+                        }
+                    }
+
+                    var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    text.setAttribute('x', 0);
+                    text.setAttribute('y', sub_y_cord);
+                    text.setAttribute('font-size', sequence_font_size);
+                    text.setAttribute('style', 'alignment-baseline:text-before-edge; cursor: pointer;');
+                    text.setAttribute('class', 'callerTitle gcName');
+                    text.setAttribute('gc-caller-id', gc_id);
+                    text.setAttribute('genome-name', layer);
+                    text.setAttribute('data-toggle', 'popover');
+                    text.onclick = function(event) {
+                        var obj = event.target;
+                        if (!obj.getAttribute('data-content')) {
+                            obj.setAttribute('data-content', get_gene_functions_table_html_for_structure(psgc_data, gc_id) + '');
+                        }
+                    };
+
+                    text.appendChild(document.createTextNode(gc_id));
+
+                    if (type_indicator) {
+                        var typeSpan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
+                        typeSpan.setAttribute('class', type_class);
+                        typeSpan.setAttribute('style', 'alignment-baseline:text-before-edge; cursor: text;');
+                        typeSpan.setAttribute('dy', '0');
+                        typeSpan.appendChild(document.createTextNode(' [' + type_indicator + ']'));
+                        text.appendChild(typeSpan);
+                    }
+                    fragment.appendChild(text);
+                }
+
                 var text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
                 text.setAttribute('x', 0);
                 text.setAttribute('y', sub_y_cord);
                 text.setAttribute('font-size', sequence_font_size);
-                text.setAttribute('font-family',"monospace");
+                text.setAttribute('font-family', "monospace");
                 text.setAttribute('font-weight', '100');
                 text.setAttribute('style', 'alignment-baseline:text-before-edge');
                 text.setAttribute('class', 'sequence');
 
                 _sequence = sequence.substr(offset, sequence_wrap);
-                for (var _letter_index=0; _letter_index < _sequence.length; _letter_index++) {
-                    var tspan = document.createElementNS('http://www.w3.org/2000/svg', 'tspan');
-                    var index = _letter_index+offset;
+                var tspanContent = '';
+                for (var _letter_index = 0; _letter_index < _sequence.length; _letter_index++) {
+                    var index = _letter_index + offset;
                     var num = order[caller_id];
                     var acid = _sequence[_letter_index];
                     var dict = coded_positions[index][num];
-                    tspan.setAttribute('fill', dict[acid]);
-                    tspan.style.fontWeight = 'bold';
-                    tspan.appendChild(document.createTextNode(acid));
-		            tspan.setAttribute('style', 'alignment-baseline:text-before-edge');
-                    text.appendChild(tspan);
-                }
 
+                    tspanContent += `<tspan fill="${dict[acid]}" style="alignment-baseline:text-before-edge;">${acid}</tspan>`;
+                }
+                text.innerHTML = tspanContent;
                 fragment.appendChild(text);
 
                 sub_y_cord = sub_y_cord + sequence_font_size * 1.5;
 
-                if (offset < sequence.length) {
-                    ignoreTable = false;
-                }
             });
 
             y_cord = y_cord + parseFloat(rect.getAttribute('height')) + 5;
 
         }
-        if (ignoreTable) {
-            break;
-        } else {
-            svg.appendChild(fragment);
-        }
+        svg.appendChild(fragment);
         offset += sequence_wrap;
         y_cord = y_cord + 15;
     }
@@ -336,24 +416,42 @@ function calculateLayout() {
     $('.callerTitle').attr('x', max_genome_title_width + (HORIZONTAL_PADDING * 2));
 
     var max_caller_width = 0;
-    $('.callerTitle').each(function(i, d) {
+    $('.callerTitle:not(.gcName)').each(function(i, d) {
         dwidth = d.getBBox().width;
         if (dwidth > max_caller_width) {
             max_caller_width = dwidth;
         };
     });
 
-    $('.sequence').attr('x', max_genome_title_width + max_caller_width + (HORIZONTAL_PADDING * 3));
+    var max_gc_name_width = 0;
+    var sequence_start_x;
 
-    var max_sequence_width = 0;
-    $('.sequence').each(function(i, d) {
-        dwidth = d.getBBox().width;
-        if (dwidth > max_sequence_width) {
-            max_sequence_width = dwidth;
-        };
-    });
+    if (mode === 'structure') {
+        $('.gcName').attr('x', max_genome_title_width + max_caller_width + (HORIZONTAL_PADDING * 3));
+        $('.gcName').each(function(i, d) {
+            dwidth = d.getBBox().width;
+            if (dwidth > max_gc_name_width) {
+                max_gc_name_width = dwidth;
+            };
+        });
+        sequence_start_x = max_genome_title_width + max_caller_width + max_gc_name_width + (HORIZONTAL_PADDING * 4);
+        $('.sequence').attr('x', sequence_start_x);
+    } else {
+        sequence_start_x = max_genome_title_width + max_caller_width + (HORIZONTAL_PADDING * 3);
+        $('.sequence').attr('x', sequence_start_x);
+    }
 
-    $('.sequenceBackground').attr('width', max_caller_width + max_sequence_width + (HORIZONTAL_PADDING * 3));
+    var wrap_length = parseInt($('#wrap_length').val());
+    var font_size = parseInt($('#font_size').val());
+
+    var max_sequence_width = wrap_length * (font_size * 0.6);
+
+    var total_width = max_caller_width + max_sequence_width;
+    if (mode === 'structure') {
+        total_width += max_gc_name_width + HORIZONTAL_PADDING;
+    }
+
+    $('.sequenceBackground').attr('width', total_width + (HORIZONTAL_PADDING * 3));
 
     bbox = svg.getBBox();
     svg.setAttribute('width', bbox.width);
@@ -380,4 +478,104 @@ function scrollTableRight() {
         left: 100,
         behavior: 'smooth'
     });
+}
+
+async function loadPSGCData(psgc_name) {
+    try {        
+        var response = await $.ajax({
+            type: 'GET',
+            cache: false,
+            url: '/data/get_psgc_data/' + psgc_name
+        });
+
+        if (typeof response === 'string') {
+            response = JSON.parse(response);
+        }
+
+        if (response.status === 0 && response.data) {
+            return response.data;
+        } else {
+            console.error('Error response:', response.message);
+            return null;
+        }
+    } catch (error) {
+        console.error('Error in loadPSGCData:', error);
+    }
+}
+
+async function loadGCTypeInPSGCData(psgc_name) {
+    try {
+        const response = await $.ajax({
+            type: 'GET',
+            cache: false,
+            url: '/data/get_psgc_type_data/' + psgc_name
+        });
+
+        if (response.status === 0 && response.data) {
+            return response.data;
+        } else {
+            console.error('Error response from type data:', response.message);
+            return null;
+        }
+    } catch (error) {
+        console.error('Error in loadPSGCTypeData:', error);
+        return null;
+    }
+}
+
+function get_gene_functions_table_html_for_structure(psgc_data, selected_gc_id) {
+    for (const psgc_id in psgc_data) {
+        var genes = psgc_data[psgc_id].filter(gene => 
+            gene.gene_cluster_id === selected_gc_id
+        );
+
+        if (genes && genes.length > 0) {
+            let functions_table_html = '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span>';
+
+            let gc_type = 'Unknown';
+            if (gc_type_in_psgc) {
+                for (let psgc_id in gc_type_in_psgc) {
+                    if (gc_type_in_psgc[psgc_id][selected_gc_id]) {
+                        gc_type = gc_type_in_psgc[psgc_id][selected_gc_id].charAt(0).toUpperCase() + gc_type_in_psgc[psgc_id][selected_gc_id].slice(1);
+                        break;
+                    }
+                }
+            }
+
+            functions_table_html += '<h2>Gene Cluster Information</h2>';
+            functions_table_html += '<table class="table table-striped" style="width: 100%; text-align: center;">';
+            functions_table_html += '<tbody>';
+            functions_table_html += '<tr><th style="text-align: center;">Gene Cluster ID</th><td>' + selected_gc_id + '</td></tr>';
+            functions_table_html += '<tr><th style="text-align: center;">Gene Cluster Type</th><td style="background: #F3F3F3;">' + gc_type + '</td></tr>';
+            functions_table_html += '</tbody></table>';
+
+            functions_table_html += '<h3>Genes in this cluster</h3>';
+            functions_table_html += '<div style="max-height: 400px; overflow-y: auto;">';
+            functions_table_html += '<table class="table table-striped" style="width: 100%;">';
+            functions_table_html += '<thead><tr>' + '<th>Gene Caller ID</th>' + '<th>Genome Name</th>' + '<th>Alignment Summary</th>' + '</tr></thead>';
+            functions_table_html += '<tbody>';
+
+            genes.forEach(gene => {
+                functions_table_html += '<tr>' +
+                    '<td>' + gene.gene_callers_id + '</td>' +
+                    '<td>' + gene.genome_name + '</td>' +
+                    '<td><div style="max-width: 200px; overflow-x: auto;"><code>' + 
+                        (gene.alignment_summary || 'No alignment data') + '</code></div></td>' +
+                    '</tr>';
+            });
+
+            functions_table_html += '</tbody></table>';
+            functions_table_html += '</div>';
+
+            return functions_table_html;
+        }
+    }
+
+    return '<p>No gene information available</p>';
+}
+
+function filterGenome() {
+    const input = $('#filter-genome').val();
+    filter_genome = input.split(',').map(item => item.trim()).filter(item => item);
+    createDisplay(false);
 }

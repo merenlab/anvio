@@ -347,6 +347,17 @@ function write_mouse_table(content, item_name, layer_name, layer_id, stackbar_la
         $('#cell_layer_name').html('');
     }
 
+    const jsonRegex = /{[^}]+}/g;
+    content = content.replace(jsonRegex, (match) => {
+        try {
+            const jsonString = match.replace(/'/g, '"');
+            const parsedContent = JSON.parse(jsonString);
+            return Object.entries(parsedContent).map(([key, value]) => `<b>${key}:</b> ${value}`).join('<br>');
+        } catch (e) {
+            return match;
+        }
+    });
+
     $('#tooltip_content').html(content);
 
     if ($('#tooltip_content').height() + 300 > $(window).height()) {

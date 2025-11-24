@@ -534,6 +534,48 @@ var named_layers = {
         'norm': 'none',
         'pretty_name': '_',
     },
+    'gene_types!core': {
+        'height': 200,
+        'color': '#440000',
+        'norm': 'none',
+        'min': 0,
+        'max': 100,
+        'max_disabled': false,
+        'min_disabled': false,
+        'pretty_name': 'Gene Types',
+        'type': 'bar'
+    },
+    'gene_types!singleton': {
+        'height': 200,
+        'color': '#440000',
+        'norm': 'none',
+        'min': 0,
+        'max': 100,
+        'max_disabled': false,
+        'min_disabled': false,
+        'pretty_name': 'Gene Types',
+        'type': 'bar'
+    },
+    'gene_types!accessory': {
+        'height': 200,
+        'color': '#440000',
+        'norm': 'none',
+        'min': 0,
+        'max': 100,
+        'max_disabled': false,
+        'min_disabled': false,
+        'pretty_name': 'Gene Types',
+        'type': 'bar'
+    },
+    'psgc_composition': {
+        'type': 'bar',
+        'pretty_name': 'Gene Types in PSGC'
+    },
+    'number_gc_in_psgc': {
+        'height': 200,
+        'color': '#ffa60d',
+        'pretty_name': 'Num GC in PSGC'
+    },
 };
 
 named_category_colors = {
@@ -577,6 +619,12 @@ pretty_names = {
 };
 
 function getPrettyLayerTitle(layer_title) {
+    if (layer_title.indexOf('!') > -1 )
+    {
+        layer_title = layer_title.split('!')[0];
+    }
+
+
     if (layer_title in named_layers && 'pretty_name' in named_layers[layer_title]) {
         layer_title = named_layers[layer_title]['pretty_name'];
     } else if(layer_title.substring(0, 5) == "hmmx_") {
@@ -585,11 +633,6 @@ function getPrettyLayerTitle(layer_title) {
         layer_title = layer_title.replace(/hmms_/g, "").replace(/_/g, " ");
     } else {
         layer_title = layer_title.replace(/_/g, " ");
-    }
-
-    if (layer_title.indexOf('!') > -1 )
-    {
-        layer_title = layer_title.split('!')[0];
     }
 
     return layer_title;

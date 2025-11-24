@@ -329,6 +329,7 @@ function initializeCheckBoxes(){
 
     var all = document.createElement("button");
     all.innerHTML = "Check All";
+    all.className = "btn btn-outline-secondary btn-sm";
     all.style = "margin-right:20px;"
     all.onclick  = (function() {
         for (i = 0; i < labels.length; i++){
@@ -341,6 +342,7 @@ function initializeCheckBoxes(){
 
     var none = document.createElement("button")
     none.innerHTML = "Uncheck All"
+    none.className = "btn btn-outline-secondary btn-sm";
     none.onclick  = (function() {
         for (i = 0; i < labels.length; i++){
             var letter = String(labels[i]);
