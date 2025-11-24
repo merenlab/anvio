@@ -205,6 +205,9 @@ async function createDisplay(display_table){
     }
 
     var max_length = maxLength(acid_sequences);
+    var max_allowed_wrap = Math.min(max_length, 1042);
+    sequence_wrap = Math.min(sequence_wrap, max_allowed_wrap);
+    $('#wrap_length').val(sequence_wrap);
     var all_positions = [];
 
     for (var i=0; i < max_length; i++) {
@@ -216,8 +219,7 @@ async function createDisplay(display_table){
     }
     var coded_positions = determineColor(all_positions);
 
-    // Ensure this loop is only called once
-    if (!window.hasRunLayerLoop) {
+    while (offset < max_length) {
         var fragment = document.createDocumentFragment();
         for (var layer_id = 0; layer_id < state['layer-order'].length; layer_id++) {
             var layer = state['layer-order'][layer_id];
