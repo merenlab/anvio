@@ -314,7 +314,13 @@ class ComparePan:
             items_additional_data_dict[gene_cluster] = summary
 
         # everything to the items additional table:
-        # TODO: find how to make them in their own group, wiht a shared color scheme
+        # TODO: we need to better handle group for layers. As far as I understand, I can make groups for
+        # item_additiona_table, but only 'default' is shown. A group could have a default spacing to the rest of the
+        # layers. It if becomes available one day, here is how making a group would look like:
+        #comparison_group_name = f"compare_pan_{self.compared_pan_name}"
+        #args_with_group = argparse.Namespace(**{**vars(self.args), 'target_data_group': comparison_group_name})
+        #items_additional_data_table = TableForItemAdditionalData(args_with_group, r=terminal.Run(verbose=True))
+        # instead we have:
         items_additional_data_table = TableForItemAdditionalData(self.args, r=terminal.Run(verbose=False))
         items_additional_data_table.add(items_additional_data_dict, items_additional_data_keys, skip_check_names=True)
 
