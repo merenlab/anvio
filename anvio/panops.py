@@ -113,14 +113,10 @@ class ComparePan:
         pan_num_genes = self.pan.p_meta['num_genes_in_gene_clusters']
         compared_pan_num_genes = self.compared_pan.p_meta['num_genes_in_gene_clusters']
         if pan_num_genes != compared_pan_num_genes:
-            raise ConfigError(f"You are trying to compare to pan database that have a different number of genes, "
-                              f"even though they were made using the same genomes-storage-db. There are {pan_num_genes} "
-                              f"genes in {A('pan_db')} and {compared_pan_num_genes} in {A('compared_pan_db')}. That's "
-                              f"quite unexpected (or maybe not to you), but you cannot compare pan that don't have the same gene content. "
-                              f"To help you understand how that is possible, here are a couple of possible reasons: 1) genes "
-                              f"were discarded in the making of the pangenome because of e-value threshold at the diamond/blastp "
-                              f"stage (the reciprocal blast evalue was too low, could happen for low complexity protein sequence), "
-                              f"2) you used user-defined gene-clusters that did not include all genes, 3) ????")
+            self.run.warning(f"You are comparing pan databases with different numbers of genes "
+                             f"({pan_num_genes} in {A('pan_db')} vs {compared_pan_num_genes} in {A('compared_pan_db')}). "
+                             f"anvi'o will continue because the genomes storage hash matches; gene clusters with missing "
+                             f"genes will be reported so you know which ones were affected.")
 
 
     def process(self):
@@ -162,23 +158,35 @@ class ComparePan:
         # list of maching gene clusters
         matches = []
 
+        # track missing genes to report later
+        missing_genes_by_gc = {}
+
         # find a keep non-identical gene clusters
         for gene_cluster, gene_cluster_dict in self.pan.gene_clusters.items():
             list_compared_gc = set()
+            missing_gene_calls = False
             for genome, gene_callers_id in gene_cluster_dict.items():
                 for gene in gene_callers_id:
-                    compared_gene_cluster = self.compared_pan.gene_callers_id_to_gene_cluster[genome][gene]
-                    list_compared_gc.add(compared_gene_cluster)
+                    try:
+                        compared_gene_cluster = self.compared_pan.gene_callers_id_to_gene_cluster[genome][gene]
+                        list_compared_gc.add(compared_gene_cluster)
+                    except KeyError:
+                        missing_gene_calls = True
+                        missing_genes_by_gc.setdefault(gene_cluster, {}).setdefault(genome, []).append(gene)
+                        continue
 
-            for compared_gene_cluster in list_compared_gc:
-                compared_gene_cluster_dict = self.compared_pan.gene_clusters[compared_gene_cluster]
-                if gene_cluster_dict == compared_gene_cluster_dict:
-                        matches.append(gene_cluster)
+            if not missing_gene_calls:
+                for compared_gene_cluster in list_compared_gc:
+                    compared_gene_cluster_dict = self.compared_pan.gene_clusters[compared_gene_cluster]
+                    if gene_cluster_dict == compared_gene_cluster_dict:
+                            matches.append(gene_cluster)
 
         # keep only the gene cluster that differ
         for gene_cluster in self.pan.gene_cluster_names:
             if gene_cluster not in matches:
                 self.compare_pan_dict[gene_cluster] = {}
+                if gene_cluster in missing_genes_by_gc:
+                    self.compare_pan_dict[gene_cluster]['missing_genes'] = missing_genes_by_gc[gene_cluster]
 
 
     def find_corresponding_gene_clusters(self):
@@ -187,14 +195,21 @@ class ComparePan:
 
         for gene_cluster, gene_cluster_dict in self.compare_pan_dict.items():
             gene_cluster_dict['GCs_in_compared_pan'] = []
+            missing_genes = gene_cluster_dict.get('missing_genes', {})
             #gene_cluster_dict['GCs_type_in_compared_pan'] = []
 
             # the code loops through each gene call & genome, looks for the corresponding GC in the other pan
             for genome, gene_callers_id in self.pan.gene_clusters[gene_cluster].items():
                 for gene in gene_callers_id:
-                    corresponding_gene_cluster = self.compared_pan.gene_callers_id_to_gene_cluster[genome][gene]
+                    try:
+                        corresponding_gene_cluster = self.compared_pan.gene_callers_id_to_gene_cluster[genome][gene]
+                    except KeyError:
+                        missing_genes.setdefault(genome, []).append(gene)
+                        continue
                     if corresponding_gene_cluster not in gene_cluster_dict['GCs_in_compared_pan']:
                         gene_cluster_dict['GCs_in_compared_pan'].append(corresponding_gene_cluster)
+            if missing_genes:
+                gene_cluster_dict['missing_genes'] = missing_genes
 
 
     def detect_fragmentation_combination(self):
@@ -203,6 +218,10 @@ class ComparePan:
 
         # for a fragmentation, just check if the num of GC in other pan is greater than one, and move on.
         for gene_cluster, gene_cluster_dict in self.compare_pan_dict.items():
+            if gene_cluster_dict.get('missing_genes'):
+                gene_cluster_dict['status'] = 'missing_genes'
+                continue
+
             if len(gene_cluster_dict['GCs_in_compared_pan']) > 1:
                 gene_cluster_dict['status'] = 'fragmented'
                 continue
@@ -221,9 +240,8 @@ class ComparePan:
                 gene_cluster_dict['status'] = 'combined'
                 gene_cluster_dict['related_GCs'] = list_gene_clusters
             else:
-                raise ConfigError("Anvi'o was comparing two pangenomes and something went quite wrong when parsing "
-                                  "the unique gene clusters. I know this message is not very helpful, but you should "
-                                  "never EVER see it ANYWAY.")
+                # No extra contributing GC found; the difference is due to missing genes in the compared pan.
+                gene_cluster_dict['status'] = 'missing_genes'
 
 
     def add_function_summary_to_compare(self):
@@ -242,6 +260,8 @@ class ComparePan:
                 GC_source = 'GCs_in_compared_pan'
             elif gene_cluster_dict['status'] == 'combined':
                 GC_source = 'related_GCs'
+            elif gene_cluster_dict['status'] == 'missing_genes':
+                GC_source = 'GCs_in_compared_pan'
             else:
                 raise ConfigError("SOMEONE added an illegal value to the 'status' entry in self.compare_pan_dict. "
                                   "Very illegal. Here is the culprit value: '%s'" % gene_cluster_dict['status'])
@@ -312,6 +332,8 @@ class ComparePan:
                 gcs = ', '.join(gene_cluster_dict['GCs_in_compared_pan'])
             elif status == 'combined':
                 gcs = ', '.join(gene_cluster_dict['related_GCs'])
+            elif status == 'missing_genes':
+                gcs = ', '.join(gene_cluster_dict.get('GCs_in_compared_pan', []))
 
             row = {'status': status,
                    'associated_GCs': gcs}
