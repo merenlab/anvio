@@ -64,7 +64,7 @@ def get_args():
                         "histogram for the template length distribution across ALL contigs in a given BAM "
                         "file")
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
 
 if __name__ == '__main__':
