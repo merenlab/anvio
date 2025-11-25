@@ -200,7 +200,7 @@ class PairedEndTemplateDist:
         self.run.info_single("All the data are ready for plotting, if you are lucky, you "
                              "should see a histogram of tlen distributions below.", nl_after=1)
 
-        plt.clp()
+        plt.clc()
         plt.title(f"The overall distribution of pair1 and pair2 distances in {os.path.basename(self.bam_file_path)}")
         plt.xlabel("Template length")
         plt.ylabel("Frequency")
