@@ -12,6 +12,7 @@ import hashlib
 
 from numba import jit
 from collections import Counter
+from dataclasses import dataclass, field
 
 import anvio
 import anvio.tables as t
@@ -1450,7 +1451,577 @@ class ReadsMappingToARange:
         self.run.info('output_file', output_file_path)
 
 
-# The below functions are helpers of the Read class which exist outside the class because they are
+@dataclass
+class CircularityResult:
+    """Results from circularity prediction for a single contig.
+
+    Attributes
+    ----------
+    contig_name : str
+        Name of the analyzed contig.
+
+    status : str
+        Classification result: 'circular', 'linear', or 'indeterminate'.
+
+    confidence : float
+        Score from 0.0 to 1.0 representing the strength of evidence for circularity.
+        Computed as min(1.0, supporting_rf_pairs / expected_rf_pairs).
+
+    observed_rf_pairs : int
+        Total number of RF-oriented read pairs found on this contig.
+
+    supporting_rf_pairs : int
+        Number of RF pairs whose circular insert size falls within the expected
+        insert size distribution (i.e., plausible junction-spanning pairs).
+
+    expected_rf_pairs : float
+        Expected number of RF pairs if the contig were circular, derived from
+        FR pair count and the geometry of insert size vs contig length.
+
+    num_fr_pairs : int
+        Number of FR (forward-reverse) pairs used to estimate coverage.
+
+    contig_length : int
+        Length of the contig in base pairs.
+
+    flags : list of str
+        Warning flags for edge cases (e.g., low coverage, short contig).
+    """
+
+    contig_name: str
+    status: str
+    confidence: float
+    observed_rf_pairs: int
+    supporting_rf_pairs: int
+    expected_rf_pairs: float
+    num_fr_pairs: int
+    contig_length: int
+    flags: list = field(default_factory=list)
+
+    def __repr__(self):
+        flag_str = f", flags={self.flags}" if self.flags else ""
+        return (
+            f"CircularityResult(contig='{self.contig_name}', status='{self.status}', "
+            f"confidence={self.confidence:.3f}, supporting_rf={self.supporting_rf_pairs}, "
+            f"expected_rf={self.expected_rf_pairs:.1f}{flag_str})"
+        )
+
+
+class CircularityPredictor:
+    """Predicts contig circularity from paired-end read mapping patterns.
+
+    This class analyzes BAM alignments to determine whether contigs represent circular
+    DNA molecules. It first computes global insert size statistics from FR (forward-reverse)
+    read pairs across the entire BAM file, then uses these to evaluate whether RF
+    (reverse-forward) pairs on individual contigs are consistent with a circular junction.
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Arguments namespace containing at minimum 'bam_file'. Optional arguments include:
+          - max_num_pairs_for_is_est: Maximum FR pairs to sample for insert size estimation (default: 100000)
+          - min_pairs_for_stats: Minimum FR pairs required for statistics (default: 1000)
+          - insert_tolerance_factor: MADs from median for valid circular insert (default: 3.0)
+          - min_supporting_pairs: Absolute minimum RF pairs to call circular (default: 5)
+          - expected_fraction_threshold: Minimum fraction of expected RF pairs (default: 0.3)
+          - confidence_threshold: Minimum confidence to call circular (default: 0.5)
+
+    run : terminal.Run
+        Anvi'o Run object for logging.
+
+    progress : terminal.Progress
+        Anvi'o Progress object for progress bars.
+
+    Attributes
+    ----------
+    median_insert_size : float or None
+        Median insert size computed from FR pairs. None until `process()` is called.
+
+    mad_insert_size : float or None
+        Median absolute deviation of insert sizes. None until `process()` is called.
+
+    Examples
+    --------
+    >>> import argparse
+    >>> args = argparse.Namespace(bam_file='metagenome.bam')
+    >>> predictor = CircularityPredictor(args)
+    >>> predictor.process()
+    >>> result = predictor.predict('contig_00042')
+    >>> print(result.status, result.confidence)
+    """
+
+    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.bam_file_path = A('bam_file')
+
+        # Parameters for insert size estimation
+        self.max_num_pairs_for_is_est = A('max_num_pairs_for_is_est') or 100000
+        self.min_pairs_for_stats = A('min_pairs_for_stats') or 1000
+
+        # Parameters for circularity prediction
+        self.insert_tolerance_factor = A('insert_tolerance_factor') or 3.0
+        self.min_supporting_pairs = A('min_supporting_pairs') or 5
+        self.expected_fraction_threshold = A('expected_fraction_threshold') or 0.3
+        self.confidence_threshold = A('confidence_threshold') or 0.5
+
+        # Will be populated by process()
+        self.median_insert_size = None
+        self.mad_insert_size = None
+        self.bam = None
+        self.contig_lengths = {}
+
+        # Sanity checks
+        if not self.bam_file_path:
+            raise ConfigError("CircularityPredictor :: You must provide a BAM file path via `args.bam_file`.")
+
+        filesnpaths.is_file_bam_file(self.bam_file_path)
+
+
+    def process(self):
+        """Compute global insert size statistics from the BAM file.
+
+        This method iterates through properly-paired FR reads across all contigs and
+        collects insert sizes to compute the median and MAD (median absolute deviation).
+        These statistics are stored as instance attributes and used by `predict()`.
+
+        This method must be called before `predict()`.
+
+        Raises
+        ------
+        ConfigError
+            If fewer than `min_pairs_for_stats` FR pairs are found in the BAM file.
+        """
+
+        self.run.info('BAM file', self.bam_file_path)
+
+        self.bam = BAMFileObject(self.bam_file_path)
+
+        # Store contig lengths for later use
+        self.contig_lengths = dict(zip(self.bam.references, self.bam.lengths))
+
+        self.run.info('Number of contigs', len(self.contig_lengths))
+        self.run.info('Sample size for insert estimation', self.max_num_pairs_for_is_est)
+
+        self._compute_insert_size_stats()
+
+        self.run.info('Median insert size', f'{self.median_insert_size:.1f}')
+        self.run.info('MAD insert size', f'{self.mad_insert_size:.1f}', nl_after=1)
+
+
+    def _compute_insert_size_stats(self):
+        """Compute median and MAD of insert sizes from FR pairs across the BAM.
+
+        Iterates through properly-paired FR reads and collects insert sizes until
+        `max_num_pairs_for_is_est` pairs are collected or all reads are exhausted.
+        """
+
+        num_pairs_processed = 0
+        insert_sizes = []
+
+        self.progress.new('Computing insert size statistics')
+        self.progress.update('Sampling FR pairs across all contigs...')
+
+        for contig_name in self.bam.references:
+
+            if num_pairs_processed >= self.max_num_pairs_for_is_est:
+                break
+
+            for read in self.bam.fetch_only(contig_name):
+                if not self._is_valid_fr_pair(read):
+                    continue
+
+                insert_size = abs(read.template_length)
+                if insert_size > 0:
+                    num_pairs_processed += 1
+                    insert_sizes.append(insert_size)
+
+                    if num_pairs_processed >= self.max_num_pairs_for_is_est:
+                        break
+
+        self.progress.end()
+
+        if len(insert_sizes) < self.min_pairs_for_stats:
+            raise ConfigError(
+                f"CircularityPredictor :: Found only {len(insert_sizes):,} FR pairs, but need at least "
+                f"{self.min_pairs_for_stats:,} for reliable insert size estimation. This BAM file may not "
+                f"contain paired-end reads, or the reads may not be properly paired."
+            )
+
+        insert_sizes = np.array(insert_sizes)
+        self.median_insert_size = float(np.median(insert_sizes))
+        self.mad_insert_size = self._compute_mad(insert_sizes)
+
+        self.run.info('FR pairs sampled', f'{len(insert_sizes):,}')
+
+
+    def _compute_mad(self, values):
+        """Compute the Median Absolute Deviation (MAD) of an array.
+
+        MAD is a robust measure of dispersion that is less sensitive to outliers
+        than standard deviation.
+
+        Parameters
+        ----------
+        values : np.ndarray
+            Array of numeric values.
+
+        Returns
+        -------
+        float
+            The MAD value. Returns 1.0 if MAD would be zero (to avoid division issues).
+        """
+
+        median = np.median(values)
+        mad = float(np.median(np.abs(values - median)))
+
+        # Guard against MAD of zero (highly uniform library)
+        if mad == 0:
+            return 1.0
+
+        return mad
+
+
+    def predict(self, contig_name):
+        """Predict whether a contig is circular based on RF pair evidence.
+
+        For each RF (reverse-forward) pair on the contig, computes the "circular
+        insert size"—the distance the reads would span if the contig were circular
+        and linearized at an arbitrary point. RF pairs with circular insert sizes
+        matching the expected distribution (within tolerance) are counted as
+        supporting evidence for circularity.
+
+        Parameters
+        ----------
+        contig_name : str
+            Name of the contig to analyze (must exist in BAM header).
+
+        Returns
+        -------
+        CircularityResult
+            Dataclass containing status, confidence, counts, and any warning flags.
+
+        Raises
+        ------
+        ConfigError
+            If `process()` has not been called, or if the contig is not found.
+        """
+
+        if self.median_insert_size is None or self.mad_insert_size is None:
+            raise ConfigError(
+                "CircularityPredictor :: Insert size statistics not computed. "
+                "You must call process() before predict()."
+            )
+
+        if contig_name not in self.contig_lengths:
+            raise ConfigError(f"CircularityPredictor :: Contig '{contig_name}' not found in BAM header. "
+                              f"Available contigs: {len(self.contig_lengths):,}")
+
+        flags = []
+        M = self.median_insert_size
+        MAD = self.mad_insert_size
+        L = self.contig_lengths[contig_name]
+
+        # Edge case: contig too short for meaningful analysis
+        if L < 2 * M:
+            flags.append(f"contig_shorter_than_2x_insert_size (L={L:,}, 2M={2*M:,.0f})")
+            return CircularityResult(contig_name=contig_name,
+                                     status='indeterminate',
+                                     confidence=0.0,
+                                     observed_rf_pairs=0,
+                                     supporting_rf_pairs=0,
+                                     expected_rf_pairs=0.0,
+                                     num_fr_pairs=0,
+                                     contig_length=L,
+                                     flags=flags)
+
+        # Collect read pairs mapping to this contig
+        fr_count = 0
+        rf_pairs = []  # List of (left_end, right_start) tuples
+
+        for read in self.bam.fetch_only(contig_name):
+            if not self._is_valid_primary_read(read):
+                continue
+
+            # Only process each pair once (when we see the leftmost read)
+            if read.reference_start > read.next_reference_start:
+                continue
+
+            # Both reads must be on the same contig
+            if read.reference_name != read.next_reference_name:
+                continue
+
+            orientation = self._get_pair_orientation(read)
+
+            if orientation == 'FR':
+                fr_count += 1
+
+            elif orientation == 'RF':
+                # Left read is reverse-oriented, ends at reference_end
+                # Right read (mate) is forward-oriented, starts at next_reference_start
+                left_end = read.reference_end
+                right_start = read.next_reference_start
+                rf_pairs.append((left_end, right_start))
+
+        # Calculate expected RF pairs if circular
+        # E[RF] ≈ N_FR × M / (L - M)
+        if fr_count == 0:
+            flags.append("no_fr_pairs_on_contig")
+            return CircularityResult(contig_name=contig_name,
+                                     status='indeterminate',
+                                     confidence=0.0,
+                                     observed_rf_pairs=len(rf_pairs),
+                                     supporting_rf_pairs=0,
+                                     expected_rf_pairs=0.0,
+                                     num_fr_pairs=0,
+                                     contig_length=L,
+                                     flags=flags)
+
+        expected_rf = fr_count * M / (L - M)
+
+        # Count RF pairs with plausible circular insert sizes
+        tolerance = self.insert_tolerance_factor * MAD
+        supporting_rf = 0
+
+        for left_end, right_start in rf_pairs:
+            # Circular insert: distance walking "around" the circle
+            circular_insert = left_end + (L - right_start)
+
+            if abs(circular_insert - M) <= tolerance:
+                supporting_rf += 1
+
+        # Compute confidence score
+        if len(rf_pairs) > 0:
+            confidence = supporting_rf / len(rf_pairs)
+        else:
+            confidence = 0.0
+
+        # Compute supporting fraction: of observed RF pairs, how many support circularity?
+        if len(rf_pairs) > 0:
+            supporting_fraction = supporting_rf / len(rf_pairs)
+        else:
+            supporting_fraction = 0.0
+
+        # Dynamic minimum threshold: need both absolute and relative evidence
+        min_required = max(self.min_supporting_pairs, self.expected_fraction_threshold * expected_rf)
+
+        # Add diagnostic flags for edge cases
+        if fr_count < 100:
+            flags.append(f"low_fr_coverage (n={fr_count})")
+
+        if expected_rf < self.min_supporting_pairs:
+            flags.append(f"low_expected_rf_pairs (expected={expected_rf:.1f})")
+
+        # Make the classification decision
+        if supporting_rf >= min_required and confidence >= self.confidence_threshold:
+            status = 'circular'
+        elif supporting_rf >= self.min_supporting_pairs and supporting_fraction >= 0.8:
+            # Strong evidence: most observed RF pairs have correct circular insert size
+            status = 'circular'
+        elif len(rf_pairs) == 0 and fr_count >= 100:
+            # No RF pairs at all with decent coverage suggests linear
+            status = 'linear'
+        elif supporting_rf < min_required and confidence < self.confidence_threshold:
+            status = 'linear'
+        else:
+            status = 'indeterminate'
+            flags.append("ambiguous_evidence")
+
+        return CircularityResult(contig_name=contig_name,
+                                 status=status,
+                                 confidence=confidence,
+                                 observed_rf_pairs=len(rf_pairs),
+                                 supporting_rf_pairs=supporting_rf,
+                                 expected_rf_pairs=expected_rf,
+                                 num_fr_pairs=fr_count,
+                                 contig_length=L,
+                                 flags=flags)
+
+
+    def diagnose(self, contig_name):
+        """Return diagnostic information about RF pairs for a contig (when you silly shit).
+
+        Useful for understanding why a contig with many RF pairs might have low circularity confidence. Here is an example:
+
+        >>> from anvio.bamops import CircularityPredictor
+        >>> import argparse
+        >>> args = argparse.Namespace(bam_file='HADS_20210819_H1030_MGX_STO1_035.bam')
+        >>> predictor = CircularityPredictor(args)
+        >>> predictor.process()
+        >>> for contig in ['STO1_000000177209', 'STO1_000000417019', 'STO1_000000433561', 'STO1_000000494581']:
+        >>>     print(f"Contig: {contig}")
+        >>>     print('-' * 80)
+        >>>     diag = predictor.diagnose(i)
+        >>>     for k, v in diag.items():
+        >>>         print(f"{k}: {v}")
+        >>>     print("\n\n")
+
+        """
+        if self.median_insert_size is None:
+            raise ConfigError("CircularityPredictor speaking. Insert size statistics are not computed :/ You must call "
+                              "`process()` before `diagnose()`.")
+
+        M = self.median_insert_size
+        MAD = self.mad_insert_size
+        L = self.contig_lengths[contig_name]
+        tolerance = self.insert_tolerance_factor * MAD
+
+        rf_pairs = []
+        for read in self.bam.fetch_only(contig_name):
+            if not self._is_valid_primary_read(read):
+                continue
+            if read.reference_start > read.next_reference_start:
+                continue
+            if read.reference_name != read.next_reference_name:
+                continue
+
+            if self._get_pair_orientation(read) == 'RF':
+                left_end = read.reference_end
+                right_start = read.next_reference_start
+                rf_pairs.append((left_end, right_start))
+
+        circular_inserts = [left_end + (L - right_start) for left_end, right_start in rf_pairs]
+
+        if not circular_inserts:
+            return {'contig_name': contig_name, 'num_rf_pairs': 0}
+
+        ci = np.array(circular_inserts)
+
+        d = {'contig_name': contig_name,
+             'contig_length': L,
+             'median_insert_size': M,
+             'mad_insert_size': MAD,
+             'tolerance': tolerance,
+             'expected_range': (M - tolerance, M + tolerance),
+             'num_rf_pairs': len(rf_pairs),
+             'circular_insert_min': int(ci.min()),
+             'circular_insert_max': int(ci.max()),
+             'circular_insert_median': float(np.median(ci)),
+             'circular_insert_mean': float(np.mean(ci)),
+             'num_below_range': int(np.sum(ci < M - tolerance)),
+             'num_above_range': int(np.sum(ci > M + tolerance))}
+
+        return d
+
+
+    def predict_all(self, min_contig_length=None, output_file=None):
+        """Predict circularity for ALL contigs in the BAM file.
+
+        Parameters
+        ----------
+        min_contig_length : int, optional
+            If provided, skip contigs shorter than this length.
+
+        output_file : str, optional
+            If provided, write results to this path as a TAB-delimited file.
+
+        Returns
+        -------
+        list of CircularityResult
+            Results for all analyzed contigs.
+        """
+
+        if self.median_insert_size is None:
+            raise ConfigError("CircularityPredictor speaking. Insert size statistics are not computed :/ You must call "
+                              "`process()` before `diagnose()`.")
+
+        if output_file:
+            filesnpaths.is_output_file_writable(output_file)
+
+        results = []
+        contigs_to_analyze = [name for name, length in self.contig_lengths.items() if min_contig_length is None or length >= min_contig_length]
+
+        self.progress.new('Predicting circularity', progress_total_items=len(contigs_to_analyze))
+
+        for contig_name in contigs_to_analyze:
+            self.progress.increment()
+
+            if self.progress.progress_current_item % 250 == 0:
+                self.progress.update(f'... {contig_name} ...')
+
+            result = self.predict(contig_name)
+            results.append(result)
+
+        self.progress.end()
+
+        # Summary statistics
+        circular_count = sum(1 for r in results if r.status == 'circular')
+        linear_count = sum(1 for r in results if r.status == 'linear')
+        indeterminate_count = sum(1 for r in results if r.status == 'indeterminate')
+
+        self.run.info('Contigs analyzed', len(results))
+        self.run.info('Predicted circular', circular_count)
+        self.run.info('Predicted linear', linear_count)
+        self.run.info('Indeterminate', indeterminate_count)
+
+        if output_file:
+            # generate an output dict dict
+            output_dict = {}
+            for r in results:
+                output_dict[r.contig_name] = {'status': r.status,
+                                              'confidence': f'{r.confidence:.4f}',
+                                              'contig_length': r.contig_length,
+                                              'num_fr_pairs': r.num_fr_pairs,
+                                              'observed_rf_pairs': r.observed_rf_pairs,
+                                              'supporting_rf_pairs': r.supporting_rf_pairs,
+                                              'expected_rf_pairs': f'{r.expected_rf_pairs:.2f}',
+                                              'flags': ';'.join(r.flags) if r.flags else '',}
+
+            # Store the output
+            headers = ['contig', 'status', 'confidence', 'contig_length', 'num_fr_pairs', 'observed_rf_pairs', 'supporting_rf_pairs', 'expected_rf_pairs', 'flags']
+            utils.store_dict_as_TAB_delimited_file(output_dict, output_file, headers=headers)
+            self.run.info('Output file', output_file, nl_after=1)
+
+        return results
+
+
+    def _is_valid_fr_pair(self, read):
+        """Check if read is the forward member of a valid FR pair."""
+        return (not read.is_unmapped
+                and not read.mate_is_unmapped
+                and not read.is_secondary
+                and not read.is_supplementary
+                and read.is_proper_pair
+                and not read.is_reverse          # This read is forward
+                and read.mate_is_reverse         # Mate is reverse
+                and read.template_length > 0)    # Forward read has positive TLEN
+
+
+    def _is_valid_primary_read(self, read):
+        """Check if read is a valid primary alignment with a mapped mate."""
+
+        return (not read.is_unmapped and not read.mate_is_unmapped and not read.is_secondary and not read.is_supplementary)
+
+
+    def _get_pair_orientation(self, read):
+        """Determine the orientation of a read pair.
+
+        Assumes `read` is the leftmost of the pair (by reference_start).
+
+        Returns
+        -------
+        str
+            'FR' if forward-reverse (normal), 'RF' if reverse-forward (junction-spanning),
+            'FF' or 'RR' for same-strand pairs.
+        """
+
+        left_is_reverse = read.is_reverse
+        right_is_reverse = read.mate_is_reverse
+
+        if not left_is_reverse and right_is_reverse:
+            return 'FR'
+        elif left_is_reverse and not right_is_reverse:
+            return 'RF'
+        elif not left_is_reverse and not right_is_reverse:
+            return 'FF'
+        else:
+            return 'RR'
+
+
+# The functions below are helpers of the Read class which exist outside the class because they are
 # just-in-time compiled (very very fast) with numba, which has poor support for in-class methods
 
 @jit(nopython=True)
