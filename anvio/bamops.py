@@ -1463,9 +1463,10 @@ class CircularityResult:
     status : str
         Classification result: 'circular', 'linear', or 'indeterminate'.
 
-    confidence : float
+    circularity_support : float
         Score from 0.0 to 1.0 representing the strength of evidence for circularity.
-        Computed as min(1.0, supporting_rf_pairs / expected_rf_pairs).
+        Computed as supporting_rf_pairs / observed_rf_pairs.
+
 
     observed_rf_pairs : int
         Total number of RF-oriented read pairs found on this contig.
@@ -1490,7 +1491,7 @@ class CircularityResult:
 
     contig_name: str
     status: str
-    confidence: float
+    circularity_support: float
     observed_rf_pairs: int
     supporting_rf_pairs: int
     expected_rf_pairs: float
@@ -1500,11 +1501,10 @@ class CircularityResult:
 
     def __repr__(self):
         flag_str = f", flags={self.flags}" if self.flags else ""
-        return (
-            f"CircularityResult(contig='{self.contig_name}', status='{self.status}', "
-            f"confidence={self.confidence:.3f}, supporting_rf={self.supporting_rf_pairs}, "
-            f"expected_rf={self.expected_rf_pairs:.1f}{flag_str})"
-        )
+        return (f"CircularityResult(contig='{self.contig_name}', status='{self.status}', "
+                f"circularity_support={self.circularity_support:.3f}, edge_coherence={self.edge_coherence:.3f}, "
+                f"supporting_rf={self.supporting_rf_pairs}, "
+                f"expected_rf={self.expected_rf_pairs:.1f}{flag_str})")
 
 
 class CircularityPredictor:
@@ -1524,7 +1524,7 @@ class CircularityPredictor:
           - insert_tolerance_factor: MADs from median for valid circular insert (default: 3.0)
           - min_supporting_pairs: Absolute minimum RF pairs to call circular (default: 5)
           - expected_fraction_threshold: Minimum fraction of expected RF pairs (default: 0.3)
-          - confidence_threshold: Minimum confidence to call circular (default: 0.5)
+          - circularity_confidence_threshold: Minimum confidence to call circular (default: 0.5)
 
     run : terminal.Run
         Anvi'o Run object for logging.
@@ -1547,7 +1547,7 @@ class CircularityPredictor:
     >>> predictor = CircularityPredictor(args)
     >>> predictor.process()
     >>> result = predictor.predict('contig_00042')
-    >>> print(result.status, result.confidence)
+    >>> print(result.status, result.circularity_support)
     """
 
     def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
@@ -1566,7 +1566,7 @@ class CircularityPredictor:
         self.insert_tolerance_factor = A('insert_tolerance_factor') or 3.0
         self.min_supporting_pairs = A('min_supporting_pairs') or 5
         self.expected_fraction_threshold = A('expected_fraction_threshold') or 0.3
-        self.confidence_threshold = A('confidence_threshold') or 0.5
+        self.circularity_confidence_threshold = A('circularity_confidence_threshold') or 0.5
 
         # Will be populated by process()
         self.median_insert_size = None
@@ -1709,7 +1709,7 @@ class CircularityPredictor:
         Returns
         -------
         CircularityResult
-            Dataclass containing status, confidence, counts, and any warning flags.
+            Dataclass containing status, circularity_support, edge coherence, counts, and any warning flags.
 
         Raises
         ------
@@ -1733,7 +1733,7 @@ class CircularityPredictor:
             flags.append(f"contig_shorter_than_2x_insert_size (L={L:,}, 2M={2*M:,.0f})")
             return CircularityResult(contig_name=contig_name,
                                      status='indeterminate',
-                                     confidence=0.0,
+                                     circularity_support=0.0,
                                      observed_rf_pairs=0,
                                      supporting_rf_pairs=0,
                                      expected_rf_pairs=0.0,
@@ -1775,7 +1775,7 @@ class CircularityPredictor:
             flags.append("no_fr_pairs_on_contig")
             return CircularityResult(contig_name=contig_name,
                                      status='indeterminate',
-                                     confidence=0.0,
+                                     circularity_support=0.0,
                                      observed_rf_pairs=len(rf_pairs),
                                      supporting_rf_pairs=0,
                                      expected_rf_pairs=0.0,
@@ -1796,11 +1796,11 @@ class CircularityPredictor:
             if abs(circular_insert - M) <= tolerance:
                 supporting_rf += 1
 
-        # Compute confidence score
+        # Compute circularity support score
         if len(rf_pairs) > 0:
-            confidence = supporting_rf / len(rf_pairs)
+            circularity_support = supporting_rf / len(rf_pairs)
         else:
-            confidence = 0.0
+            circularity_support = 0.0
 
         # Compute supporting fraction: of observed RF pairs, how many support circularity?
         if len(rf_pairs) > 0:
@@ -1819,7 +1819,7 @@ class CircularityPredictor:
             flags.append(f"low_expected_rf_pairs (expected={expected_rf:.1f})")
 
         # Make the classification decision
-        if supporting_rf >= min_required and confidence >= self.confidence_threshold:
+        if supporting_rf >= min_required and circularity_support >= self.circularity_confidence_threshold:
             status = 'circular'
         elif supporting_rf >= self.min_supporting_pairs and supporting_fraction >= 0.8:
             # Strong evidence: most observed RF pairs have correct circular insert size
@@ -1827,7 +1827,7 @@ class CircularityPredictor:
         elif len(rf_pairs) == 0 and fr_count >= 100:
             # No RF pairs at all with decent coverage suggests linear
             status = 'linear'
-        elif supporting_rf < min_required and confidence < self.confidence_threshold:
+        elif supporting_rf < min_required and circularity_support < self.circularity_confidence_threshold:
             status = 'linear'
         else:
             status = 'indeterminate'
@@ -1835,7 +1835,7 @@ class CircularityPredictor:
 
         return CircularityResult(contig_name=contig_name,
                                  status=status,
-                                 confidence=confidence,
+                                 circularity_support=circularity_support,
                                  observed_rf_pairs=len(rf_pairs),
                                  supporting_rf_pairs=supporting_rf,
                                  expected_rf_pairs=expected_rf,
@@ -1847,7 +1847,7 @@ class CircularityPredictor:
     def diagnose(self, contig_name):
         """Return diagnostic information about RF pairs for a contig (when you silly shit).
 
-        Useful for understanding why a contig with many RF pairs might have low circularity confidence. Here is an example:
+        Useful for understanding why a contig with many RF pairs might have low circularity supprt. Here is an example:
 
         >>> from anvio.bamops import CircularityPredictor
         >>> import argparse
@@ -1962,7 +1962,7 @@ class CircularityPredictor:
             output_dict = {}
             for r in results:
                 output_dict[r.contig_name] = {'status': r.status,
-                                              'confidence': f'{r.confidence:.4f}',
+                                              'circularity_support': f'{r.circularity_support:.4f}',
                                               'contig_length': r.contig_length,
                                               'num_fr_pairs': r.num_fr_pairs,
                                               'observed_rf_pairs': r.observed_rf_pairs,
@@ -1971,7 +1971,8 @@ class CircularityPredictor:
                                               'flags': ';'.join(r.flags) if r.flags else '',}
 
             # Store the output
-            headers = ['contig', 'status', 'confidence', 'contig_length', 'num_fr_pairs', 'observed_rf_pairs', 'supporting_rf_pairs', 'expected_rf_pairs', 'flags']
+            headers = ['contig', 'status', 'circularity_support', 'edge_coherence', 'contig_length', 'num_fr_pairs', 'num_edge_reads',
+                       'num_edge_reads_incoherent', 'observed_rf_pairs', 'supporting_rf_pairs', 'expected_rf_pairs', 'flags']
             utils.store_dict_as_TAB_delimited_file(output_dict, output_file, headers=headers)
             self.run.info('Output file', output_file, nl_after=1)
 
