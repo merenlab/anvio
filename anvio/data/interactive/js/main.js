@@ -2096,6 +2096,7 @@ const FUNCTION_CONFIGS = {
         dataKey: 'gene_caller_ids',
         itemLabel: 'genes',
         itemIdLabel: 'Gene call',
+        loadingMessage: 'Fetching gene functions...',
         metabolismDescription: 'Gene metabolic module involvement. A table that shows which metabolic modules the genes in particular bin are involved. The completion scores show that for each metabolic module, what percentage of the module is represented by the genes in the bin. A single gene may be involved in multiple metabolic modules since that how metabolism rolls.',
         functionsDescription: 'Gene functions. The table below shows the functional annotation of each gene by each function annotation source available in the contigs-db.',
         dialogFunction: 'showGeneFunctionsSummaryTableDialog',
@@ -2107,6 +2108,7 @@ const FUNCTION_CONFIGS = {
         dataKey: 'gene_clusters',
         itemLabel: 'gene clusters',
         itemIdLabel: 'Gene cluster',
+        loadingMessage: 'Fetching gene cluster functions...',
         metabolismDescription: 'Gene cluster metabolic module involvement. The table below shows which metabolic modules the gene clusters in this bin are involved in. The completion scores show that for each metabolic module, what percentage of the module is represented by the gene clusters in the bin. A single gene cluster may be involved in multiple metabolic modules since that how metabolism rolls.',
         functionsDescription: 'Gene cluster functions. The table below shows the functional annotation of each gene cluster by each function annotation source available in the contigs-db.',
         dialogFunction: 'showGeneClusterFunctionsSummaryTableDialog',
@@ -2124,6 +2126,7 @@ const FUNCTION_CONFIGS = {
         dataKey: 'split_names',
         itemLabel: 'splits',
         itemIdLabel: 'Split',
+        loadingMessage: 'Fetching functions for genes in splits...',
         metabolismDescription: 'Metabolic module involvement of genes encoded in splits. The table below shows which metabolic modules the genes in this bin are involved in. The completion scores show that for each metabolic module, what percentage of the module is represented by the genes encoded by splits in the bin. A single gene may be involved in multiple metabolic modules since that how metabolism rolls.',
         functionsDescription: 'Gene functions. The table below shows the functional annotation of each gene by each function annotation source available in the contigs-db.',
         dialogFunction: 'showGeneFunctionsInSplitsSummaryTableDialog',
@@ -2139,6 +2142,9 @@ const FUNCTION_CONFIGS = {
 
 };
 
+// Track ongoing function lookups to prevent duplicate requests and show progress.
+const ITEM_FUNCTION_REQUESTS_IN_FLIGHT = new Set();
+
 // Shared function that handles both genes and gene clusters
 function showItemFunctions(bin_id, config, updateOnly = false) {
     const binNameElement = $('#bin_name_' + bin_id);
@@ -2146,6 +2152,19 @@ function showItemFunctions(bin_id, config, updateOnly = false) {
 
     if (updateOnly && !checkObjectExists('#modal' + title.hashCode()))
         return;
+
+    const requestKey = `${config.dialogFunction}:${bin_id}`;
+    if (ITEM_FUNCTION_REQUESTS_IN_FLIGHT.has(requestKey)) {
+        return;
+    }
+
+    const finishRequest = () => {
+        ITEM_FUNCTION_REQUESTS_IN_FLIGHT.delete(requestKey);
+        waitingDialog.hide();
+    };
+
+    ITEM_FUNCTION_REQUESTS_IN_FLIGHT.add(requestKey);
+    waitingDialog.show(config.loadingMessage || 'Fetching functions...', { dialogSize: 'sm' });
 
     let bin_info = bins.ExportBin(bin_id);
 
@@ -2159,29 +2178,42 @@ function showItemFunctions(bin_id, config, updateOnly = false) {
         data: ajaxData,
         success: (response) => {
             if (response.hasOwnProperty('status') && response.status != 0) {
+                finishRequest();
                 toastr.error('"' + response.message + '", the server said.', "The anvi'o headquarters is upset");
                 return;
             }
 
-            const content = buildFunctionsContent(response, config);
+            try {
+                const content = buildFunctionsContent(response, config);
 
-            // Call the appropriate dialog function
-            if (config.dialogFunction === 'showGeneFunctionsSummaryTableDialog') {
-                const dialogTitle = `A summary of functions for ${bin_info['items'].length} ${config.itemLabel} in "${bin_info['bin_name']}".`;
-                showGeneFunctionsSummaryTableDialog(dialogTitle, content);
-            } else if (config.dialogFunction === 'showGeneFunctionsInSplitsSummaryTableDialog') {
-                const dialogTitle = `Some useful data for ${bin_info['items'].length} ${config.itemLabel} in "${bin_info['bin_name']}".`;
-                showGeneFunctionsInSplitsSummaryTableDialog(dialogTitle, content);
-            } else if (config.dialogFunction === 'showGeneClusterFunctionsSummaryTableDialog') {
-                const dialogTitle = `A summary of functions for ${bin_info['items'].length} ${config.itemLabel} in "${bin_info['bin_name']}".`;
-                showGeneClusterFunctionsSummaryTableDialog(dialogTitle, content);
-            } else {
-                toastr.error('Unknown dialog function specified.', "The anvi'o headquarters is confused");
-                return;
+                finishRequest();
+
+                // Call the appropriate dialog function
+                if (config.dialogFunction === 'showGeneFunctionsSummaryTableDialog') {
+                    const dialogTitle = `A summary of functions for ${bin_info['items'].length} ${config.itemLabel} in "${bin_info['bin_name']}".`;
+                    showGeneFunctionsSummaryTableDialog(dialogTitle, content);
+                } else if (config.dialogFunction === 'showGeneFunctionsInSplitsSummaryTableDialog') {
+                    const dialogTitle = `Some useful data for ${bin_info['items'].length} ${config.itemLabel} in "${bin_info['bin_name']}".`;
+                    showGeneFunctionsInSplitsSummaryTableDialog(dialogTitle, content);
+                } else if (config.dialogFunction === 'showGeneClusterFunctionsSummaryTableDialog') {
+                    const dialogTitle = `A summary of functions for ${bin_info['items'].length} ${config.itemLabel} in "${bin_info['bin_name']}".`;
+                    showGeneClusterFunctionsSummaryTableDialog(dialogTitle, content);
+                } else {
+                    toastr.error('Unknown dialog function specified.', "The anvi'o headquarters is confused");
+                    return;
+                }
+
+                // Setup filtering after dialog is shown
+                setTimeout(() => setupItemTableFiltering(), 100);
+            } catch (err) {
+                finishRequest();
+                console.error('Error preparing functions dialog', err);
+                toastr.error('Something went wrong while preparing the functions table.', "The anvi'o headquarters is upset");
             }
-
-            // Setup filtering after dialog is shown
-            setTimeout(() => setupItemTableFiltering(), 100);
+        },
+        error: () => {
+            finishRequest();
+            toastr.error('Failed to fetch functions for this bin. Please try again.', "The anvi'o headquarters is upset");
         }
     });
 }

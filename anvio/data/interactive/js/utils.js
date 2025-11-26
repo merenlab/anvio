@@ -513,12 +513,31 @@ function _createModalDialog(options) {
         </div>`;
 
     $('body').append(template);
-    $(`#modal${randomID}`)
+
+    const $modal = $(`#modal${randomID}`);
+    const escHandlerNamespace = `keydown.modalClose${randomID}`;
+
+    const escHandler = (event) => {
+        if (event.key === 'Escape') {
+            $modal.modal('hide');
+        }
+    };
+
+    $modal
         .modal({ show: true, backdrop: true, keyboard: true })
+        .on('click', function(event) {
+            // Close when the click is on the backdrop (outside the dialog)
+            if ($(event.target).is(this)) {
+                $(this).modal('hide');
+            }
+        })
         .find('.modal-dialog')
         .draggable({ handle: '.modal-header' });
 
-    $(`#modal${randomID}`).on('hidden.bs.modal', function() {
+    $(document).on(escHandlerNamespace, escHandler);
+
+    $modal.on('hidden.bs.modal', function() {
+        $(document).off(escHandlerNamespace, escHandler);
         $(this).remove();
     });
 }
