@@ -1453,7 +1453,8 @@ class ReadsMappingToARange:
 
 @dataclass
 class CircularityResult:
-    """Results from circularity prediction for a single contig.
+    """
+    Results from circularity prediction for a single contig.
 
     Attributes
     ----------
@@ -1467,6 +1468,12 @@ class CircularityResult:
         Score from 0.0 to 1.0 representing the strength of evidence for circularity.
         Computed as supporting_rf_pairs / observed_rf_pairs.
 
+    edge_coherence : float
+        Fraction of edge-mapping reads whose mates also map to the same contig.
+        High values suggest that the vast majority of paired-end reads mapping
+        to the contig map together on it, low values suggest there are many
+        pairs where only one of the reads map to this contig (which is a good
+        indication of fragmentation).
 
     observed_rf_pairs : int
         Total number of RF-oriented read pairs found on this contig.
@@ -1482,6 +1489,12 @@ class CircularityResult:
     num_fr_pairs : int
         Number of FR (forward-reverse) pairs used to estimate coverage.
 
+    num_edge_reads : int
+        Number of reads mapping within M bp of contig edges.
+
+    num_edge_reads_incoherent : int
+        Number of edge reads whose mate maps to a different contig.
+
     contig_length : int
         Length of the contig in base pairs.
 
@@ -1492,10 +1505,13 @@ class CircularityResult:
     contig_name: str
     status: str
     circularity_support: float
+    edge_coherence: float
     observed_rf_pairs: int
     supporting_rf_pairs: int
     expected_rf_pairs: float
     num_fr_pairs: int
+    num_edge_reads: int
+    num_edge_reads_incoherent: int
     contig_length: int
     flags: list = field(default_factory=list)
 
@@ -1693,13 +1709,18 @@ class CircularityPredictor:
 
 
     def predict(self, contig_name):
-        """Predict whether a contig is circular based on RF pair evidence.
+        """
+        Predict whether a contig is circular based on RF pair evidence.
 
         For each RF (reverse-forward) pair on the contig, computes the "circular
         insert size"—the distance the reads would span if the contig were circular
         and linearized at an arbitrary point. RF pairs with circular insert sizes
         matching the expected distribution (within tolerance) are counted as
         supporting evidence for circularity.
+
+        Additionally computes an edge coherence score for linear contigs based on
+        whether reads near contig edges have mates mapping to the same contig
+        (complete linear) or elsewhere (fragmented).
 
         Parameters
         ----------
@@ -1716,7 +1737,6 @@ class CircularityPredictor:
         ConfigError
             If `process()` has not been called, or if the contig is not found.
         """
-
         self._sanity_check_insert_size()
 
         if contig_name not in self.contig_lengths:
@@ -1734,26 +1754,52 @@ class CircularityPredictor:
             return CircularityResult(contig_name=contig_name,
                                      status='indeterminate',
                                      circularity_support=0.0,
+                                     edge_coherence=0.0,
                                      observed_rf_pairs=0,
                                      supporting_rf_pairs=0,
                                      expected_rf_pairs=0.0,
                                      num_fr_pairs=0,
+                                     num_edge_reads=0,
+                                     num_edge_reads_incoherent=0,
                                      contig_length=L,
                                      flags=flags)
+
+        # Define edge zones: within M bp of contig start or end
+        edge_zone_start = M
+        edge_zone_end = L - M
 
         # Collect read pairs mapping to this contig
         fr_count = 0
         rf_pairs = []  # List of (left_end, right_start) tuples
 
+        # Track edge reads for edge coherence calculation
+        num_edge_reads = 0
+        num_edge_reads_incoherent = 0
+
         for read in self.bam.fetch_only(contig_name):
-            if not self._is_valid_primary_read(read):
+            # Basic validity: mapped, primary alignment (but don't require mate to be mapped yet)
+            if read.is_unmapped or read.is_secondary or read.is_supplementary:
+                continue
+
+            # Check if this read is in an edge zone (for edge coherence calculation)
+            read_in_edge_zone = (read.reference_start < edge_zone_start or 
+                                read.reference_start >= edge_zone_end)
+
+            if read_in_edge_zone:
+                num_edge_reads += 1
+                # Mate is incoherent if unmapped OR maps to different contig
+                if read.mate_is_unmapped or read.reference_name != read.next_reference_name:
+                    num_edge_reads_incoherent += 1
+
+            # For FR/RF classification, we need both reads mapped to same contig
+            if read.mate_is_unmapped:
                 continue
 
             # Only process each pair once (when we see the leftmost read)
             if read.reference_start > read.next_reference_start:
                 continue
 
-            # Both reads must be on the same contig
+            # Both reads must be on the same contig for FR/RF classification
             if read.reference_name != read.next_reference_name:
                 continue
 
@@ -1763,11 +1809,15 @@ class CircularityPredictor:
                 fr_count += 1
 
             elif orientation == 'RF':
-                # Left read is reverse-oriented, ends at reference_end
-                # Right read (mate) is forward-oriented, starts at next_reference_start
                 left_end = read.reference_end
                 right_start = read.next_reference_start
                 rf_pairs.append((left_end, right_start))
+
+        # Compute edge coherence score
+        if num_edge_reads > 0:
+            edge_coherence = 1.0 - (num_edge_reads_incoherent / num_edge_reads)
+        else:
+            edge_coherence = 0.0
 
         # Calculate expected RF pairs if circular
         # E[RF] ≈ N_FR × M / (L - M)
@@ -1776,10 +1826,13 @@ class CircularityPredictor:
             return CircularityResult(contig_name=contig_name,
                                      status='indeterminate',
                                      circularity_support=0.0,
+                                     edge_coherence=edge_coherence,
                                      observed_rf_pairs=len(rf_pairs),
                                      supporting_rf_pairs=0,
                                      expected_rf_pairs=0.0,
                                      num_fr_pairs=0,
+                                     num_edge_reads=num_edge_reads,
+                                     num_edge_reads_incoherent=num_edge_reads_incoherent,
                                      contig_length=L,
                                      flags=flags)
 
@@ -1818,6 +1871,9 @@ class CircularityPredictor:
         if expected_rf < self.min_supporting_pairs:
             flags.append(f"low_expected_rf_pairs (expected={expected_rf:.1f})")
 
+        if num_edge_reads < 20:
+            flags.append(f"low_edge_coverage (n={num_edge_reads})")
+
         # Make the classification decision
         if supporting_rf >= min_required and circularity_support >= self.circularity_confidence_threshold:
             status = 'circular'
@@ -1836,10 +1892,13 @@ class CircularityPredictor:
         return CircularityResult(contig_name=contig_name,
                                  status=status,
                                  circularity_support=circularity_support,
+                                 edge_coherence=edge_coherence,
                                  observed_rf_pairs=len(rf_pairs),
                                  supporting_rf_pairs=supporting_rf,
                                  expected_rf_pairs=expected_rf,
                                  num_fr_pairs=fr_count,
+                                 num_edge_reads=num_edge_reads,
+                                 num_edge_reads_incoherent=num_edge_reads_incoherent,
                                  contig_length=L,
                                  flags=flags)
 
@@ -1963,12 +2022,16 @@ class CircularityPredictor:
             for r in results:
                 output_dict[r.contig_name] = {'status': r.status,
                                               'circularity_support': f'{r.circularity_support:.4f}',
+                                              'edge_coherence': f'{r.edge_coherence:.4f}',
                                               'contig_length': r.contig_length,
                                               'num_fr_pairs': r.num_fr_pairs,
+                                              'num_edge_reads': r.num_edge_reads,
+                                              'num_edge_reads_incoherent': r.num_edge_reads_incoherent,
                                               'observed_rf_pairs': r.observed_rf_pairs,
                                               'supporting_rf_pairs': r.supporting_rf_pairs,
                                               'expected_rf_pairs': f'{r.expected_rf_pairs:.2f}',
-                                              'flags': ';'.join(r.flags) if r.flags else '',}
+                                              'flags': ';'.join(r.flags) if r.flags else ''}
+
 
             # Store the output
             headers = ['contig', 'status', 'circularity_support', 'edge_coherence', 'contig_length', 'num_fr_pairs', 'num_edge_reads',
