@@ -957,6 +957,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "contig-circularity-report-txt": {
+        "name": "CIRCULARITY REPORT TXT",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "rarefaction-curves": {
         "name": "RAREFACTION CURVES",
         "type": "SVG",
