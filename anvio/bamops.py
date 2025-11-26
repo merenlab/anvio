@@ -1453,8 +1453,7 @@ class ReadsMappingToARange:
 
 @dataclass
 class CircularityResult:
-    """
-    Results from circularity prediction for a single contig.
+    """Results from circularity prediction for a single contig.
 
     Attributes
     ----------
