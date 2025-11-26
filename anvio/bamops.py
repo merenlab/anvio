@@ -1685,6 +1685,13 @@ class CircularityPredictor:
         return mad
 
 
+    def _sanity_check_insert_size(self):
+        """Make sure insert size stats have been computed in places they are needed."""
+        if self.median_insert_size is None or self.mad_insert_size is None:
+            raise ConfigError("CircularityPredictor speaking. Insert size statistics are not computed :/ You must call "
+                              "`process()` before `diagnose()`.")
+
+
     def predict(self, contig_name):
         """Predict whether a contig is circular based on RF pair evidence.
 
@@ -1710,11 +1717,7 @@ class CircularityPredictor:
             If `process()` has not been called, or if the contig is not found.
         """
 
-        if self.median_insert_size is None or self.mad_insert_size is None:
-            raise ConfigError(
-                "CircularityPredictor :: Insert size statistics not computed. "
-                "You must call process() before predict()."
-            )
+        self._sanity_check_insert_size()
 
         if contig_name not in self.contig_lengths:
             raise ConfigError(f"CircularityPredictor :: Contig '{contig_name}' not found in BAM header. "
@@ -1860,9 +1863,8 @@ class CircularityPredictor:
         >>>     print("\n\n")
 
         """
-        if self.median_insert_size is None:
-            raise ConfigError("CircularityPredictor speaking. Insert size statistics are not computed :/ You must call "
-                              "`process()` before `diagnose()`.")
+
+        self._sanity_check_insert_size()
 
         M = self.median_insert_size
         MAD = self.mad_insert_size
@@ -1924,9 +1926,7 @@ class CircularityPredictor:
             Results for all analyzed contigs.
         """
 
-        if self.median_insert_size is None:
-            raise ConfigError("CircularityPredictor speaking. Insert size statistics are not computed :/ You must call "
-                              "`process()` before `diagnose()`.")
+        self._sanity_check_insert_size()
 
         if output_file:
             filesnpaths.is_output_file_writable(output_file)
