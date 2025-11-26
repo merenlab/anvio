@@ -424,12 +424,12 @@ class AnvioPrograms(AnvioAuthors):
 
 
 class Program:
-    def __init__(self, program_name, program_path, r=terminal.Run(), p=terminal.Progress()):
+    def __init__(self, program_name, program_path=None, r=terminal.Run(), p=terminal.Progress()):
         self.run = r
         self.progress = p
 
         self.name = program_name
-        self.program_path = program_path
+        self.program_path = program_path or self.get_program_path(self.name)
         self.usage = None
 
         self.meta_info = {
@@ -465,6 +465,50 @@ class Program:
 
         self.module = self.load_as_module(self.program_path)
         self.get_meta_info()
+
+
+    @staticmethod
+    def get_program_path(program_name):
+        """Locate a program file by name using project entry points."""
+        try:
+            import tomllib  # Python 3.11+
+        except ImportError:
+            try:
+                import tomli as tomllib  # pragma: no cover
+            except ImportError:
+                raise ConfigError("Program cannot be initialized from name because neither `tomllib` nor "
+                                  "`tomli` is available to read pyproject.toml :/")
+
+        anvio_dir = os.path.dirname(anvio.__file__)
+        pyproject_path = os.path.join(os.path.dirname(anvio_dir), 'pyproject.toml')
+
+        if not os.path.exists(pyproject_path):
+            raise ConfigError("The pyproject.toml for the anvi'o package is missing, so Program.from_name "
+                              "cannot resolve the file path for '%s'." % program_name)
+
+        with open(pyproject_path, 'rb') as f:
+            pyproject_data = tomllib.load(f)
+
+        entry_points = pyproject_data.get('project', {}).get('scripts', {})
+        if program_name in entry_points:
+            entry_point = entry_points[program_name]
+            program_relative_path = entry_point.split(':')[0].replace('.', '/') + '.py'
+            program_path = os.path.abspath(os.path.join(anvio_dir, '..', program_relative_path))
+        else:
+            non_python_scripts = pyproject_data.get('tool', {}).get('setuptools', {}).get('script-files', [])
+            program_path = None
+            for script in non_python_scripts:
+                if os.path.basename(script) == program_name:
+                    program_path = os.path.abspath(os.path.join(anvio_dir, '..', script))
+                    break
+
+        if not program_path:
+            raise ConfigError(f"Program '{program_name}' was not found among entry points in pyproject.toml :/")
+
+        if not os.path.exists(program_path):
+            raise ConfigError(f"Program '{program_name}' was mapped to '{program_path}', but that path does not exist :(")
+
+        return program_path
 
 
     def get_meta_info(self):
@@ -1308,5 +1352,4 @@ class ProgramsVignette(AnvioPrograms):
         open(self.output_file_path, 'w').write(SummaryHTMLOutput(vignette, r=run, p=progress).render())
 
         run.info('Output file', os.path.abspath(self.output_file_path))
-
 
