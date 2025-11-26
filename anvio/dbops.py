@@ -427,10 +427,11 @@ class ContigsSuperclass(object):
 
         for entry_id in self.genes_in_splits:
             split_name = self.genes_in_splits[entry_id]['split']
+            gene_callers_id = self.genes_in_splits[entry_id]['gene_callers_id']
             if split_name in split_name_to_genes_in_splits_entry_ids:
-                split_name_to_genes_in_splits_entry_ids[split_name].add(entry_id)
+                split_name_to_genes_in_splits_entry_ids[split_name].add(gene_callers_id)
             else:
-                split_name_to_genes_in_splits_entry_ids[split_name] = set([entry_id])
+                split_name_to_genes_in_splits_entry_ids[split_name] = set([gene_callers_id])
 
         for split_name in self.splits_basic_info:
             if split_name not in split_name_to_genes_in_splits_entry_ids:
