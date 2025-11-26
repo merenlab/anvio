@@ -26,7 +26,7 @@ const MAX_HISTORY_SIZE = 50;
 const BIN_DEFAULTS = {
     PREFIX: 'Bin_',
     DEFAULT_VALUES: {
-        contig_count: 0,
+        item_count: 0,
         contig_length: 'N/A',
         num_gene_clusters: '---',
         num_gene_calls: '---',
@@ -162,6 +162,8 @@ Bins.prototype._generateBinTemplate = function(binData) {
         template += this._getPanModeColumns(id, binData);
     } else if (mode === 'codon-frequencies') {
         template += this._getCodonFrequencyColumns(id, binData);
+    } else if (mode === 'gene') {
+        template += this._getGeneModeColumns(id, binData);
     } else {
         template += this._getDefaultModeColumns(id, binData);
     }
@@ -201,13 +203,26 @@ Bins.prototype._getPanModeColumns = function(id, binData) {
 };
 
 /**
+ * Get gene mode columns
+ * @private
+ */
+Bins.prototype._getGeneModeColumns = function(id, binData) {
+    return `
+        <td data-value="${binData.item_count}" class="num-items">
+            <input type="button" value="${binData.item_count}"
+                   title="Click for contig names"
+                   onclick="showGeneFunctions(${id});">
+        </td>`;
+};
+
+/**
  * Get codon frequency mode columns
  * @private
  */
 Bins.prototype._getCodonFrequencyColumns = function(id, binData) {
     return `
-        <td data-value="${binData.contig_count}" class="num-items">
-            <input type="button" value="${binData.contig_count}"
+        <td data-value="${binData.item_count}" class="num-items">
+            <input type="button" value="${binData.item_count}"
                    title="Click for contig names"
                    onclick="showGeneFunctions(${id});">
         </td>`;
@@ -219,10 +234,10 @@ Bins.prototype._getCodonFrequencyColumns = function(id, binData) {
  */
 Bins.prototype._getDefaultModeColumns = function(id, binData) {
     return `
-        <td data-value="${binData.contig_count}" class="num-items">
-            <input type="button" value="${binData.contig_count}"
+        <td data-value="${binData.item_count}" class="num-items">
+            <input type="button" value="${binData.item_count}"
                    title="Click for contig names"
-                   onclick="showContigNames(${id});">
+                   onclick="showGeneFunctionsInSplits(${id});">
         </td>
         <td data-value="${binData.contig_length}" class="length-sum">
             <span>${binData.contig_length}</span>
@@ -868,12 +883,29 @@ Bins.prototype._updateDefaultModeStatistics = function(bin_id) {
     let num_items = 0;
     let length_sum = 0;
 
+    // Track unique un-split labels
+    const uniqueBaseName = new Set();
+    let hasSplits = false;
+
     for (const node of this.selections[bin_id].values()) {
         if (node.IsLeaf()) {
-            num_items++;
-            length_sum += parseInt(item_lengths[node.label]) || 0;
+            let label = node.label;
+            let baseName = label;
+
+            // Detect "_split_" and extract base label
+            const splitIndex = label.indexOf("_split_");
+            if (splitIndex !== -1) {
+                hasSplits = true;
+                baseName = label.substring(0, splitIndex);
+            }
+
+            uniqueBaseName.add(baseName);
+            length_sum += parseInt(item_lengths[baseName] || item_lengths[label]) || 0;
         }
     }
+
+    // If split labels exist, count unique bases; otherwise count leaves normally
+    num_items = hasSplits ? uniqueBaseName.size : uniqueBaseName.size;
 
     const bin_row = this.container.querySelector(`tr[bin-id="${bin_id}"]`);
 
