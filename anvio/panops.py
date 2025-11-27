@@ -155,9 +155,21 @@ class ComparePan:
             if not p.gene_clusters_initialized:
                 p.init_gene_clusters()
 
-        # list of maching gene clusters
-        matches = []
+        # Normalize cluster dict for stable comparison
+        def normalize_cluster_dict(d):
+            return {
+                genome: tuple(sorted(genes))
+                for genome, genes in sorted(d.items())
+            }
 
+        # Pre-normalize compared pan clusters for fast lookup
+        normalized_compared = {
+            gc_name: normalize_cluster_dict(gc_dict)
+            for gc_name, gc_dict in self.compared_pan.gene_clusters.items()
+        }
+
+        # list of matching gene clusters
+        matches = set()
         # track missing genes to report later
         missing_genes_by_gc = {}
 
@@ -175,11 +187,17 @@ class ComparePan:
                         missing_genes_by_gc.setdefault(gene_cluster, {}).setdefault(genome, []).append(gene)
                         continue
 
-            if not missing_gene_calls:
-                for compared_gene_cluster in list_compared_gc:
-                    compared_gene_cluster_dict = self.compared_pan.gene_clusters[compared_gene_cluster]
-                    if gene_cluster_dict == compared_gene_cluster_dict:
-                            matches.append(gene_cluster)
+            if missing_gene_calls:
+                # clusters with missing genes automatically counted as "differ"
+                continue
+
+            # Normalize this cluster
+            norm_gc = normalize_cluster_dict(gene_cluster_dict)
+
+            for compared_gene_cluster in list_compared_gc:
+                if compared_gene_cluster in normalized_compared and norm_gc == normalized_compared[compared_gene_cluster]:
+                    matches.add(gene_cluster)
+                    break  # No need to check more
 
         # keep only the gene cluster that differ
         for gene_cluster in self.pan.gene_cluster_names:
@@ -240,8 +258,11 @@ class ComparePan:
                 gene_cluster_dict['status'] = 'combined'
                 gene_cluster_dict['related_GCs'] = list_gene_clusters
             else:
-                # No extra contributing GC found; the difference is due to missing genes in the compared pan.
-                gene_cluster_dict['status'] = 'missing_genes'
+                # Something has gone wrong, your gene cluster does not seems to be different
+                raise ConfigError(f"Something as gone wrong, anvi'o though that {gene_cluster} was different in the "
+                                  f"compared pangenome, but if you reached that part of the code it means that anvi'o "
+                                  f"was not able to identify why it was different (fragmentation, combination, missing "
+                                  f"genes). That's very bad and you should reach out to a developer.")
 
 
     def add_function_summary_to_compare(self):
