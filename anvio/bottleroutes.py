@@ -1584,7 +1584,8 @@ class BottleApplication(Bottle):
         gene_caller_ids = set()
         contig_names = set()
         for split_name in split_names:
-            for gene_caller_id in self.interactive.split_name_to_genes_in_splits_entry_ids[split_name]:
+            for entry_id in self.interactive.split_name_to_genes_in_splits_entry_ids[split_name]:
+                gene_caller_id = self.interactive.genes_in_splits[entry_id]['gene_callers_id']
                 if gene_caller_id in self.interactive.genes_in_contigs_dict and self.interactive.genes_in_contigs_dict[gene_caller_id]['call_type'] == 1:
                     gene_caller_ids.add(gene_caller_id)
                     contig_names.add(self.interactive.splits_basic_info[split_name]['parent'])
