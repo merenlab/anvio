@@ -1539,7 +1539,7 @@ class CircularityPredictor:
           - insert_tolerance_factor: MADs from median for valid circular insert (default: 3.0)
           - min_supporting_pairs: Absolute minimum RF pairs to call circular (default: 5)
           - expected_fraction_threshold: Minimum fraction of expected RF pairs (default: 0.3)
-          - circularity_confidence_threshold: Minimum confidence to call circular (default: 0.5)
+          - circularity_support_threshold: Minimum support to call circular (default: 0.5)
 
     run : terminal.Run
         Anvi'o Run object for logging.
@@ -1581,7 +1581,7 @@ class CircularityPredictor:
         self.insert_tolerance_factor = A('insert_tolerance_factor') or 3.0
         self.min_supporting_pairs = A('min_supporting_pairs') or 5
         self.expected_fraction_threshold = A('expected_fraction_threshold') or 0.3
-        self.circularity_confidence_threshold = A('circularity_confidence_threshold') or 0.5
+        self.circularity_support_threshold = A('circularity_support_threshold') or 0.5
 
         # Will be populated by process()
         self.median_insert_size = None
@@ -1874,7 +1874,7 @@ class CircularityPredictor:
             flags.append(f"low_edge_coverage (n={num_edge_reads})")
 
         # Make the classification decision
-        if supporting_rf >= min_required and circularity_support >= self.circularity_confidence_threshold:
+        if supporting_rf >= min_required and circularity_support >= self.circularity_support_threshold:
             status = 'circular'
         elif supporting_rf >= self.min_supporting_pairs and supporting_fraction >= 0.8:
             # Strong evidence: most observed RF pairs have correct circular insert size
@@ -1882,7 +1882,7 @@ class CircularityPredictor:
         elif len(rf_pairs) == 0 and fr_count >= 100:
             # No RF pairs at all with decent coverage suggests linear
             status = 'linear'
-        elif supporting_rf < min_required and circularity_support < self.circularity_confidence_threshold:
+        elif supporting_rf < min_required and circularity_support < self.circularity_support_threshold:
             status = 'linear'
         else:
             status = 'indeterminate'
