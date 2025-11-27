@@ -50,7 +50,7 @@ The program will report a TAB-delimited output file with the following format:
 
 ## Histogram
 
-If you run the program with the flag `--plot`, it will attempt to plot a histogram for all contigs in the BAM file.
+If you run the program with the flag `--plot-data`, it will attempt to plot a histogram for all contigs in the BAM file.
 
 {:.warning}
 The plotting function requires an additional Python library, [plotext](https://github.com/piccolomo/plotext), to be installed. While it is not a part of the default anvi'o distirbution, you can install it in your environment by running `pip install plotext`.
@@ -58,10 +58,8 @@ The plotting function requires an additional Python library, [plotext](https://g
 Here is an example run:
 
 ```
-anvi-get-tlen-dist-from-bam CP_R03_CDI_C_07_POST.bam \
-                            --plot \
-                            --max-template-length-to-consider 5000 \
-                            --min-template-length-frequency 2500
+anvi-get-tlen-dist-from-bam C09F039427B4.bam \
+                            --plot-data
 ```
 
 And the result in the terminal:
@@ -69,5 +67,3 @@ And the result in the terminal:
 [![Example output](../../images/anvi-get-tlen-dist-from-bam.png){:.center-img}](../../images/anvi-get-tlen-dist-from-bam.png)
 
 The histogram may require additional filters to avoid skewed displays due to outliers. The parameters `--max-template-length-to-consider` and/or `--min-template-length-frequency` may be useful for such adjustments. Please see the help menu for their details.
-
-The best practice is likely to run the program without any of these parameters and without the `--plot` flag to generate a comprehensive TAB-delimited report, and then use the `--plot` flag to visualize trends.
