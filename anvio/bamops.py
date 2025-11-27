@@ -2213,17 +2213,13 @@ def _trim(cigartuples, cigar_consumption, query_sequence, reference_sequence, re
 
     ref_positions_trimmed = 0
     read_positions_trimmed = 0
-    terminate_next = False
 
     count = 0
     for i in range(cigartuples.shape[0]):
         operation, length = cigartuples[i, :]
         consumes_read, consumes_ref = cigar_consumption[operation, :]
 
-        if consumes_ref and consumes_read:
-            if terminate_next:
-                break
-
+        if consumes_ref:
             remaining = trim_by - ref_positions_trimmed
 
             if length > remaining:
@@ -2232,20 +2228,20 @@ def _trim(cigartuples, cigar_consumption, query_sequence, reference_sequence, re
                 # truncated length
                 cigartuples[count, 1] = length - remaining
                 ref_positions_trimmed += remaining
-                read_positions_trimmed += remaining
+                if consumes_read:
+                    read_positions_trimmed += remaining
                 break
 
             ref_positions_trimmed += length
-            read_positions_trimmed += length
-
-        elif consumes_ref:
-            ref_positions_trimmed += length
+            if consumes_read:
+                read_positions_trimmed += length
 
         elif consumes_read:
+            # this operation does not consume ref so it does not contribute to trim_by
+            # but if we met our ref trim target, we should stop
+            if ref_positions_trimmed >= trim_by:
+                break
             read_positions_trimmed += length
-
-        if ref_positions_trimmed >= trim_by:
-            terminate_next = True
 
         count += 1
 
