@@ -1863,7 +1863,8 @@ class Pangenome(object):
         gene_cluster_representatives_FASTA_path = self.get_output_file_path('gene-cluster-representatives-aa.fa')
         with open(gene_cluster_representatives_FASTA_path, 'w') as output:
             for gc_name in gene_cluster_representatives:
-                output.write(f">{gc_name}\n{gene_cluster_representatives[gc_name]['sequence']}\n")
+                sequence = gene_cluster_representatives[gc_name]['sequence'].replace('-', '')
+                output.write(f">{gc_name}\n{sequence}\n")
 
         # get foldseek search results (please NOTE that if there is a user-provided search output, we utilize that here)
         if not self.foldseek_search_results_output_file:
