@@ -2111,8 +2111,19 @@ class PanSuperclass(object):
         """Simple AAI calculator for sequences in a gene cluster"""
 
         def calculate_sequence_identity(s1, s2):
-            matches = sum(r1 == r2 for r1, r2 in zip(s1, s2))
-            identity = matches / len(s1)
+            matches = 0
+            comparable_positions = 0
+            for r1, r2 in zip(s1, s2):
+                if r1 == '-' and r2 == '-':
+                    continue
+                comparable_positions += 1
+                if r1 == r2:
+                    matches +=1
+            # Handle edge case where there are no comparable positions
+            if comparable_positions == 0:
+                return None
+
+            identity = matches / comparable_position
             return identity
 
         # turn the sequences dict into a more useful format for this
@@ -2130,13 +2141,16 @@ class PanSuperclass(object):
         # get all pairs of sequences
         pairs_of_sequences = list(itertools.combinations(d.keys(), 2))
 
-        # FIXME: we need a smart strategy here to deal with gaps, but meren is old and it is 11pm.
-
         # calculate pairwise identities
         identities = []
         for s1, s2 in pairs_of_sequences:
             identity = calculate_sequence_identity(d[s1], d[s2])
-            identities.append(identity)
+            if identity is not None:
+                identities.append(identity)
+
+        # Handle case where no valid comparisons exist
+        if not identities:
+            return (0.0, 0.0, 0.0)
 
         # calculate AAI values
         AAI_min = min(identities)
