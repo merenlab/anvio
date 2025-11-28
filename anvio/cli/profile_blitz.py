@@ -16,7 +16,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
 __provides__ = ["bam-stats-txt"]
-__requires__ = ["bam-file", "contigs-db"]
+__requires__ = ["bam-file", "contigs-db", "collection-txt"]
 __description__ = ("FAST profiling of BAM files to get contig- or gene-level coverage and detection stats. "
                    "Unlike `anvi-profile`, which is another anvi'o program that can profile BAM files, this "
                    "program is designed to be very quick and only report long-format files for various "
@@ -57,9 +57,14 @@ def get_args():
                         "a huge file for large contigs databases lol :(")}))
     groupB.add_argument(*anvio.A('gene-caller'), **anvio.K('gene-caller'))
 
-    groupC = parser.add_argument_group('OUTPUT', "How do you want to store your output data.")
-    groupC.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
-    groupC.add_argument(*anvio.A('report-minimal'), **anvio.K('report-minimal', {'help': "Using this flag, you can "
+    groupC = parser.add_argument_group('COLLECTION', "Report genome/bin-level stats instead of per-contig stats")
+    groupC.add_argument('-C', '--collection-txt', default=None, help="Provide an anvi'o collection-txt artifact "
+        "that associates each contig with a bin/genome. When a collection-txt is provided, anvi'o will report "
+        "coverage and detection metrics per bin/genome rather than per contig.")
+
+    groupD = parser.add_argument_group('OUTPUT', "How do you want to store your output data.")
+    groupD.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True}))
+    groupD.add_argument(*anvio.A('report-minimal'), **anvio.K('report-minimal', {'help': "Using this flag, you can "
                         "ask anvi'o to report minimum amount of data about your genes or contigs (such as mean "
                         "coverage and detection) rather than a full blown output file with as much information as "
                         "anvi'o can offer (such as, mean coverage, detection, Q2Q3 coverage, standard deviation of "
@@ -72,4 +77,3 @@ def get_args():
 
 if __name__ == '__main__':
     main()
-
