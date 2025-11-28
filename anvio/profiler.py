@@ -67,6 +67,7 @@ class BAMProfilerQuick:
         self.gene_level_stats = A('gene_mode')
         self.gene_caller = A('gene_caller')
         self.report_minimal = A('report_minimal')
+        self.collection_txt_path = A('collection_txt')
 
         if not self.gene_caller:
             self.gene_caller = utils.get_default_gene_caller(self.contigs_db_path)
@@ -82,6 +83,8 @@ class BAMProfilerQuick:
         # to be filled later if necessary
         self.contigs_basic_info = {}
         self.gene_calls_per_contig = {}
+        self.collection_bins = OrderedDict()
+        self.contig_names_to_process = []
 
 
     def sanity_check(self):
@@ -97,6 +100,11 @@ class BAMProfilerQuick:
             raise ConfigError("Please provide an output file path.")
 
         filesnpaths.is_output_file_writable(self.output_file_path, ok_if_exists=False)
+        if self.collection_txt_path:
+            if self.gene_level_stats:
+                raise ConfigError("The flag `--collection-txt` is only available when reporting contig-level "
+                                  "stats. Please drop --gene-mode or skip the collection.")
+            filesnpaths.is_file_plain_text(self.collection_txt_path)
 
         # find all the bad BAM files
         self.progress.new("Sanity checking BAM files")
@@ -146,6 +154,11 @@ class BAMProfilerQuick:
 
         contigs_db.disconnect()
 
+        self.contig_names_to_process = list(self.contigs_basic_info.keys())
+
+        if self.collection_txt_path:
+            self.init_collection_bins()
+
         if self.gene_level_stats:
             self.recover_gene_data()
 
@@ -176,15 +189,117 @@ class BAMProfilerQuick:
         contigs_db.disconnect()
 
 
+    def init_collection_bins(self):
+        """Load contig-to-bin mappings from a collection TXT and precompute bin metadata.
+
+        The standard collection TXT has two columns (contig name, bin name). Here we validate
+        that every contig listed exists in the contigs database and compute per-bin length and
+        GC-content so downstream coverage summaries can operate at the bin/genome level.
+        """
+
+        collection_entries = utils.get_TAB_delimited_file_as_dictionary(self.collection_txt_path,
+                                                                        no_header=True,
+                                                                        column_names=['contig', 'bin'])
+
+        self.collection_bins = OrderedDict()
+        contig_to_bin = {}
+        bins = OrderedDict()
+        missing_contigs = set([])
+
+        for contig_name, entry in collection_entries.items():
+            bin_name = entry['bin']
+
+            if contig_name in contig_to_bin:
+                raise ConfigError(f"The contig '{contig_name}' appears more than once in the collection-txt. "
+                                  f"Each contig can only belong to a single bin for `anvi-profile-blitz`.")
+            contig_to_bin[contig_name] = bin_name
+
+            if contig_name not in self.contigs_basic_info:
+                missing_contigs.add(contig_name)
+                continue
+
+            if bin_name not in bins:
+                bins[bin_name] = []
+            bins[bin_name].append(contig_name)
+
+        if missing_contigs:
+            missing_contigs = sorted(list(missing_contigs))
+            missing_contig_examples = "', '".join(missing_contigs[:5])
+            if len(missing_contigs) > 5:
+                missing_contig_examples += f"', and {len(missing_contigs) - 5} more"
+            raise ConfigError(f"The collection-txt lists contigs that are not present in your contigs database :/ "
+                              f"Here is an example: '{missing_contig_examples}'). Someone's gotta do something "
+                              f"about it.")
+
+        if not len(bins):
+            raise ConfigError("None of the contigs listed in your collection-txt are present in the contigs database o_O "
+                              "There is nothing to report (apart from this).")
+
+        for bin_name, contigs in bins.items():
+            bin_length = 0
+            weighted_gc = 0
+
+            for contig_name in contigs:
+                contig_length = int(self.contigs_basic_info[contig_name]['length'])
+                gc_content = float(self.contigs_basic_info[contig_name]['gc_content'])
+                bin_length += contig_length
+                weighted_gc += gc_content * contig_length
+
+            gc_content = (weighted_gc / bin_length) if bin_length else 0
+
+            self.collection_bins[bin_name] = {'contigs': contigs,
+                                              'length': bin_length,
+                                              'gc_content': gc_content}
+
+        self.contig_names_to_process = [contig for data in self.collection_bins.values() for contig in data['contigs']]
+
+        self.run.info('Collection', self.collection_txt_path)
+        self.run.info('Bins in collection', len(self.collection_bins))
+        self.run.info('Contigs in collection', len(self.contig_names_to_process))
+        if len(self.contig_names_to_process) < len(self.contigs_basic_info):
+            self.run.info('Contigs ignored (not in collection)', len(self.contigs_basic_info) - len(self.contig_names_to_process))
+
+
+    def summarize_bin_coverages(self, coverage_arrays):
+        """Concatenate contig coverages so bin metrics rely on nucleotide-level values.
+
+        Bin-level detection and coverage can not be inferred from per-contig averages, so we
+        stitch all contig coverage arrays together and let downstream statistics treat the bin
+        as a single genome.
+        """
+        if not len(coverage_arrays):
+            return None
+
+        return np.concatenate(coverage_arrays)
+
+
+    def _update_progress(self, mem_tracker, mem_usage, mem_diff, bam_index, contig_index, num_contigs, total_num_bam_files):
+        if contig_index == 1 or contig_index % 100 == 0:
+            if mem_tracker.measure():
+                mem_usage = mem_tracker.get_last()
+                mem_diff = mem_tracker.get_last_diff()
+
+            self.progress.increment(increment_to=((bam_index * num_contigs) + contig_index))
+            self.progress.update(f"BAM {bam_index + 1}/{pp(total_num_bam_files)} :: CONTIG {pp(contig_index)}/"
+                                 f"{pp(num_contigs)} :: MEMORY 🧠 {mem_usage} ({mem_diff})")
+
+        return mem_usage, mem_diff
+
+
     def report_stats(self):
         """Iterates through bam files, reports contigs stats"""
 
+        contig_names = self.contig_names_to_process if len(self.contig_names_to_process) else list(self.contigs_basic_info.keys())
+        num_contigs = len(contig_names)
+
+        if not num_contigs:
+            raise ConfigError("There are no contigs to profile. Please check your inputs.")
+
         # the total number of items we will process is equal to the number of contigs that will
         # have to be processed for each BAM file
-        total_num_items = len(self.bam_file_paths) * len(self.contigs_basic_info)
+        total_num_items = len(self.bam_file_paths) * num_contigs
         total_num_bam_files = len(self.bam_file_paths)
-        contig_names = list(self.contigs_basic_info.keys())
-        num_contigs = len(self.contigs_basic_info)
+        reporting_bins = len(self.collection_bins) > 0
 
         self.progress.new("Bleep bloop", progress_total_items=total_num_items)
         self.progress.update('...')
@@ -193,7 +308,12 @@ class BAMProfilerQuick:
         mem_usage, mem_diff = mem_tracker.start()
 
         with open(self.output_file_path, 'w') as output:
-            if self.report_minimal and not self.gene_level_stats:
+            if reporting_bins:
+                if self.report_minimal:
+                    header = ['bin', 'sample', 'length', 'gc_content', 'num_mapped_reads', 'detection', 'mean_cov']
+                else:
+                    header = ['bin', 'sample', 'length', 'gc_content', 'num_mapped_reads', 'detection', 'mean_cov', 'q2q3_cov', 'median_cov', 'min_cov', 'max_cov', 'std_cov']
+            elif self.report_minimal and not self.gene_level_stats:
                 header = ['contig', 'sample', 'length', 'gc_content', 'num_mapped_reads', 'detection', 'mean_cov']
             elif not self.report_minimal and not self.gene_level_stats:
                 header = ['contig', 'sample', 'length', 'gc_content', 'num_mapped_reads', 'detection', 'mean_cov', 'q2q3_cov', 'median_cov', 'min_cov', 'max_cov', 'std_cov']
@@ -210,96 +330,139 @@ class BAMProfilerQuick:
                 bam = bamops.BAMFileObject(bam_file_path, 'rb')
                 bam_file_name = os.path.splitext(os.path.basename(bam_file_path))[0]
 
-                for j in range(0, num_contigs):
-                    contig_name = contig_names[j]
+                contigs_processed = 0
 
-                    if j - 1 == 0 or j % 100 == 0:
+                if reporting_bins:
+                    for bin_name, bin_data in self.collection_bins.items():
+                        bin_coverages = []
+                        bin_num_reads = 0
 
-                        if mem_tracker.measure():
-                            mem_usage = mem_tracker.get_last()
-                            mem_diff = mem_tracker.get_last_diff()
+                        for contig_name in bin_data['contigs']:
+                            contigs_processed += 1
+                            mem_usage, mem_diff = self._update_progress(mem_tracker, mem_usage, mem_diff, i, contigs_processed, num_contigs, total_num_bam_files)
 
-                        self.progress.increment(increment_to=((i * num_contigs) + j))
-                        self.progress.update(f"BAM {i+1}/{pp(total_num_bam_files)} :: CONTIG {pp(j)}/{pp(num_contigs)} :: MEMORY 🧠 {mem_usage} ({mem_diff})")
+                            c = bamops.Coverage()
 
-                    c = bamops.Coverage()
+                            try:
+                                c.run(bam, contig_name, read_iterator='fetch', skip_coverage_stats=True)
+                            except:
+                                continue
 
-                    try:
-                        c.run(bam, contig_name, read_iterator='fetch', skip_coverage_stats=True)
-                    except:
-                        continue
+                            bin_coverages.append(c.c)
+                            bin_num_reads += c.num_reads
 
-                    if self.report_minimal and not self.gene_level_stats:
-                        # we are in contigs mode, and want a minimal report
-                        mean = np.mean(c.c)
-                        detection = np.sum(c.c > 0) / len(c.c)
-                        output.write(f"{contig_name}\t"
-                                     f"{bam_file_name}\t"
-                                     f"{self.contigs_basic_info[contig_name]['length']}\t"
-                                     f"{float(self.contigs_basic_info[contig_name]['gc_content']):.3}\t"
-                                     f"{c.num_reads}\t"
-                                     f"{detection:.4}\t"
-                                     f"{mean:.4}\n")
-                    elif not self.report_minimal and not self.gene_level_stats:
-                        # we are in contigs mode, but want an extended report
-                        C = utils.CoverageStats(c.c, skip_outliers=True)
-                        output.write(f"{contig_name}\t"
-                                     f"{bam_file_name}\t"
-                                     f"{self.contigs_basic_info[contig_name]['length']}\t"
-                                     f"{float(self.contigs_basic_info[contig_name]['gc_content']):.3}\t"
-                                     f"{c.num_reads}\t"
-                                     f"{C.detection:.4}\t"
-                                     f"{C.mean:.4}\t"
-                                     f"{C.mean_Q2Q3:.4}\t"
-                                     f"{C.median}\t"
-                                     f"{C.min}\t"
-                                     f"{C.max}\t"
-                                     f"{C.std:.4}\n")
-                    elif self.gene_level_stats:
-                        # we are in gene mode!
-                        if 'gene_caller_ids' not in self.contigs_basic_info[contig_name]:
-                            # this means we don't have a gene call in this contig. Long hair don't
-                            # care. MOVING ON.
+                        combined_coverage = self.summarize_bin_coverages(bin_coverages)
+
+                        if combined_coverage is None or not len(combined_coverage):
                             continue
 
-                        for gene_callers_id in self.contigs_basic_info[contig_name]['gene_caller_ids']:
-                            g = self.genes_in_contigs[gene_callers_id]
-                            gc = c.c[g['start']:g['stop']]
+                        if self.report_minimal:
+                            mean = np.mean(combined_coverage)
+                            detection = np.sum(combined_coverage > 0) / len(combined_coverage)
+                            output.write(f"{bin_name}\t"
+                                         f"{bam_file_name}\t"
+                                         f"{bin_data['length']}\t"
+                                         f"{float(bin_data['gc_content']):.3}\t"
+                                         f"{bin_num_reads}\t"
+                                         f"{detection:.4}\t"
+                                         f"{mean:.4}\n")
+                        else:
+                            C = utils.CoverageStats(combined_coverage, skip_outliers=True)
+                            output.write(f"{bin_name}\t"
+                                         f"{bam_file_name}\t"
+                                         f"{bin_data['length']}\t"
+                                         f"{float(bin_data['gc_content']):.3}\t"
+                                         f"{bin_num_reads}\t"
+                                         f"{C.detection:.4}\t"
+                                         f"{C.mean:.4}\t"
+                                         f"{C.mean_Q2Q3:.4}\t"
+                                         f"{C.median}\t"
+                                         f"{C.min}\t"
+                                         f"{C.max}\t"
+                                         f"{C.std:.4}\n")
+                else:
+                    for contig_name in contig_names:
+                        contigs_processed += 1
+                        mem_usage, mem_diff = self._update_progress(mem_tracker, mem_usage, mem_diff, i, contigs_processed, num_contigs, total_num_bam_files)
 
-                            if self.report_minimal:
-                                # we want a minimal report
-                                mean = np.mean(gc)
-                                detection = np.sum(gc > 0) / len(gc)
-                                output.write(f"{gene_callers_id}\t"
-                                             f"{contig_name}\t"
-                                             f"{bam_file_name}\t"
-                                             f"{g['stop'] - g['start']}\t"
-                                             f"{detection:.4}\t"
-                                             f"{mean:.4}\n")
-                            else:
-                                # calculate the total number of reads mapping to the gene:
-                                num_mapped_reads_to_gene = 0
-                                for r in bam.fetch_only(contig_name, start=g['start'], end=g['stop']):
-                                    num_mapped_reads_to_gene += 1
+                        c = bamops.Coverage()
 
-                                # get coverage stats:
-                                GC = utils.CoverageStats(gc, skip_outliers=True)
+                        try:
+                            c.run(bam, contig_name, read_iterator='fetch', skip_coverage_stats=True)
+                        except:
+                            continue
 
-                                # write everything out:
-                                output.write(f"{gene_callers_id}\t"
-                                             f"{contig_name}\t"
-                                             f"{bam_file_name}\t"
-                                             f"{g['stop'] - g['start']}\t"
-                                             f"{num_mapped_reads_to_gene}\t"
-                                             f"{GC.detection:.4}\t"
-                                             f"{GC.mean:.4}\t"
-                                             f"{GC.mean_Q2Q3:.4}\t"
-                                             f"{GC.median}\t"
-                                             f"{GC.min}\t"
-                                             f"{GC.max}\t"
-                                             f"{GC.std:.4}\n")
-                    else:
-                        raise ConfigError("We need an adult :(")
+                        if self.report_minimal and not self.gene_level_stats:
+                            # we are in contigs mode, and want a minimal report
+                            mean = np.mean(c.c)
+                            detection = np.sum(c.c > 0) / len(c.c)
+                            output.write(f"{contig_name}\t"
+                                         f"{bam_file_name}\t"
+                                         f"{self.contigs_basic_info[contig_name]['length']}\t"
+                                         f"{float(self.contigs_basic_info[contig_name]['gc_content']):.3}\t"
+                                         f"{c.num_reads}\t"
+                                         f"{detection:.4}\t"
+                                         f"{mean:.4}\n")
+                        elif not self.report_minimal and not self.gene_level_stats:
+                            # we are in contigs mode, but want an extended report
+                            C = utils.CoverageStats(c.c, skip_outliers=True)
+                            output.write(f"{contig_name}\t"
+                                         f"{bam_file_name}\t"
+                                         f"{self.contigs_basic_info[contig_name]['length']}\t"
+                                         f"{float(self.contigs_basic_info[contig_name]['gc_content']):.3}\t"
+                                         f"{c.num_reads}\t"
+                                         f"{C.detection:.4}\t"
+                                         f"{C.mean:.4}\t"
+                                         f"{C.mean_Q2Q3:.4}\t"
+                                         f"{C.median}\t"
+                                         f"{C.min}\t"
+                                         f"{C.max}\t"
+                                         f"{C.std:.4}\n")
+                        elif self.gene_level_stats:
+                            # we are in gene mode!
+                            if 'gene_caller_ids' not in self.contigs_basic_info[contig_name]:
+                                # this means we don't have a gene call in this contig. Long hair don't
+                                # care. MOVING ON.
+                                continue
+
+                            for gene_callers_id in self.contigs_basic_info[contig_name]['gene_caller_ids']:
+                                g = self.genes_in_contigs[gene_callers_id]
+                                gc = c.c[g['start']:g['stop']]
+
+                                if self.report_minimal:
+                                    # we want a minimal report
+                                    mean = np.mean(gc)
+                                    detection = np.sum(gc > 0) / len(gc)
+                                    output.write(f"{gene_callers_id}\t"
+                                                 f"{contig_name}\t"
+                                                 f"{bam_file_name}\t"
+                                                 f"{g['stop'] - g['start']}\t"
+                                                 f"{detection:.4}\t"
+                                                 f"{mean:.4}\n")
+                                else:
+                                    # calculate the total number of reads mapping to the gene:
+                                    num_mapped_reads_to_gene = 0
+                                    for r in bam.fetch_only(contig_name, start=g['start'], end=g['stop']):
+                                        num_mapped_reads_to_gene += 1
+
+                                    # get coverage stats:
+                                    GC = utils.CoverageStats(gc, skip_outliers=True)
+
+                                    # write everything out:
+                                    output.write(f"{gene_callers_id}\t"
+                                                 f"{contig_name}\t"
+                                                 f"{bam_file_name}\t"
+                                                 f"{g['stop'] - g['start']}\t"
+                                                 f"{num_mapped_reads_to_gene}\t"
+                                                 f"{GC.detection:.4}\t"
+                                                 f"{GC.mean:.4}\t"
+                                                 f"{GC.mean_Q2Q3:.4}\t"
+                                                 f"{GC.median}\t"
+                                                 f"{GC.min}\t"
+                                                 f"{GC.max}\t"
+                                                 f"{GC.std:.4}\n")
+                        else:
+                            raise ConfigError("We need an adult :(")
 
                 bam.close()
 
