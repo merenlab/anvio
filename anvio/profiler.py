@@ -236,7 +236,7 @@ class BAMProfilerQuick:
                         output.write(f"{contig_name}\t"
                                      f"{bam_file_name}\t"
                                      f"{self.contigs_basic_info[contig_name]['length']}\t"
-                                     f"{self.contigs_basic_info[contig_name]['gc_content']:.3}\t"
+                                     f"{float(self.contigs_basic_info[contig_name]['gc_content']):.3}\t"
                                      f"{c.num_reads}\t"
                                      f"{detection:.4}\t"
                                      f"{mean:.4}\n")
@@ -246,7 +246,7 @@ class BAMProfilerQuick:
                         output.write(f"{contig_name}\t"
                                      f"{bam_file_name}\t"
                                      f"{self.contigs_basic_info[contig_name]['length']}\t"
-                                     f"{self.contigs_basic_info[contig_name]['gc_content']:.3}\t"
+                                     f"{float(self.contigs_basic_info[contig_name]['gc_content']):.3}\t"
                                      f"{c.num_reads}\t"
                                      f"{C.detection:.4}\t"
                                      f"{C.mean:.4}\t"
