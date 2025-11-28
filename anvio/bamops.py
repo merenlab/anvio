@@ -2033,8 +2033,9 @@ class CircularityPredictor:
 
 
             # Store the output
-            headers = ['contig', 'status', 'circularity_support', 'edge_coherence', 'contig_length', 'num_fr_pairs', 'num_edge_reads',
-                       'num_edge_reads_incoherent', 'observed_rf_pairs', 'supporting_rf_pairs', 'expected_rf_pairs', 'flags']
+            headers = ['contig', 'contig_length', 'status', 'circularity_support', 'edge_coherence',
+                       'num_fr_pairs', 'expected_rf_pairs', 'observed_rf_pairs', 'supporting_rf_pairs',
+                       'num_edge_reads', 'num_edge_reads_incoherent', 'flags']
             utils.store_dict_as_TAB_delimited_file(output_dict, output_file, headers=headers)
             self.run.info('Output file', output_file, nl_after=1)
 
