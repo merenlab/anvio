@@ -17,12 +17,12 @@ __version__ = anvio.__version__
 __authors__ = ['meren']
 __provides__ = ["bam-stats-txt"]
 __requires__ = ["bam-file", "contigs-db", "collection-txt"]
-__description__ = ("FAST profiling of BAM files to get contig- or gene-level coverage and detection stats. "
-                   "Unlike `anvi-profile`, which is another anvi'o program that can profile BAM files, this "
-                   "program is designed to be very quick and only report long-format files for various "
-                   "read recruitment statistics per item. Plase also see the program "
-                   "`anvi-script-get-coverage-from-bam` for recovery of data from BAM files without an "
-                   "anvi'o contigs database")
+__description__ = ("FAST profiling of BAM files to get gene-, contig-, or genome-level coverage and "
+                   "detection stats. Unlike `anvi-profile`, which is another anvi'o program that can "
+                   "profile BAM files, this program is designed to be very quick and only report "
+                   "long-format files for various read recruitment statistics per item. Plase also see "
+                   "the program `anvi-script-get-coverage-from-bam` for recovery of data from BAM files "
+                   "without an anvi'o contigs database")
 
 
 @terminal.time_program
