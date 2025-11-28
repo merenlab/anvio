@@ -359,8 +359,13 @@ class BAMProfilerQuick:
         contigs_processed = 0
 
         for bin_name, bin_data in self.collection_bins.items():
-            bin_coverages = []
             bin_num_reads = 0
+            total_positions = 0
+            total_cov = 0
+            total_detected_positions = 0
+
+            combined_coverage = None
+            cursor = 0
 
             for contig_name in bin_data['contigs']:
                 contigs_processed += 1
@@ -370,13 +375,41 @@ class BAMProfilerQuick:
                 if coverage_obj is None:
                     continue
 
-                bin_coverages.append(coverage_obj.c)
                 bin_num_reads += coverage_obj.num_reads
 
-            combined_coverage = self.summarize_bin_coverages(bin_coverages)
+                # this part of the code could be written in a much more easy-to-read fashion. but it is the
+                # way it is just to achieve maximum memory use efficiency .. especially in minimal mode.
+                # when --report-minimal is used in collection mode, the coverages will  accumulate on the fly,
+                # so per-bin nucleotide arrays will not be kept in memory. and for full reports, bin coverages
+                # are written into a single preallocated numpy array per bin (without any concatenation as
+                # data accummulates) which reduces peak RAM. while this code makes sure minimal mode is as
+                # fast and as memory-efficient as possible, the full bin mode will still needs one combined
+                # coverage array per bin to compute detection and quantiles, but at least it avoids
+                # double-buffering overhead during copy :/
+                if self.report_minimal:
+                    total_positions += len(coverage_obj.c)
+                    total_cov += np.sum(coverage_obj.c)
+                    total_detected_positions += np.count_nonzero(coverage_obj.c)
+                else:
+                    if combined_coverage is None:
+                        combined_coverage = np.empty(bin_data['length'], dtype=coverage_obj.c.dtype)
 
-            if combined_coverage is None or not len(combined_coverage):
+                    combined_coverage[cursor:cursor + len(coverage_obj.c)] = coverage_obj.c
+                    cursor += len(coverage_obj.c)
+
+            if self.report_minimal:
+                if not total_positions:
+                    continue
+
+                mean = total_cov / total_positions
+                detection = total_detected_positions / total_positions
+                self._write_bin_stats_minimal(output, bin_name, bam_file_name, bin_data, mean, detection, bin_num_reads)
                 continue
+
+            if combined_coverage is None or cursor == 0:
+                continue
+
+            combined_coverage = combined_coverage[:cursor]
 
             self._write_bin_stats(output, bin_name, bam_file_name, bin_data, combined_coverage, bin_num_reads)
 
@@ -448,13 +481,7 @@ class BAMProfilerQuick:
         if self.report_minimal:
             mean = np.mean(coverage_array)
             detection = np.sum(coverage_array > 0) / len(coverage_array)
-            output.write(f"{bin_name}\t"
-                         f"{bam_file_name}\t"
-                         f"{bin_data['length']}\t"
-                         f"{float(bin_data['gc_content']):.3}\t"
-                         f"{num_reads}\t"
-                         f"{detection:.4}\t"
-                         f"{mean:.4}\n")
+            self._write_bin_stats_minimal(output, bin_name, bam_file_name, bin_data, mean, detection, num_reads)
         else:
             C = utils.CoverageStats(coverage_array, skip_outliers=True)
             output.write(f"{bin_name}\t"
@@ -469,6 +496,16 @@ class BAMProfilerQuick:
                          f"{C.min}\t"
                          f"{C.max}\t"
                          f"{C.std:.4}\n")
+
+
+    def _write_bin_stats_minimal(self, output, bin_name, bam_file_name, bin_data, mean, detection, num_reads):
+        output.write(f"{bin_name}\t"
+                     f"{bam_file_name}\t"
+                     f"{bin_data['length']}\t"
+                     f"{float(bin_data['gc_content']):.3}\t"
+                     f"{num_reads}\t"
+                     f"{detection:.4}\t"
+                     f"{mean:.4}\n")
 
 
     def _write_contig_stats(self, output, contig_name, bam_file_name, coverage_obj):
