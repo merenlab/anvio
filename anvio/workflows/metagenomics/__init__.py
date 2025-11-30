@@ -184,6 +184,11 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         self.has_sr = self.samples_txt.has_any_sr()
         self.has_lr = self.samples_txt.has_any_lr()
 
+        # for now, single-end short-reads are not compatible with the workflow
+        if self.samples_txt.has_any_single_end_sr():
+            raise ConfigError("It looks like you have single-end short-reads in your samples-txt file and "
+                              "unfortunately the metagenomics workflow only handles paired-end read for now.")
+
         # sanity checks: assemblers required when assembling (not in references mode)
         if not self.references_mode:
             # SR present → require exactly one SR assembler enabled
@@ -262,8 +267,16 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                         raise ConfigError(f"Internal error: no members recorded for single-member group '{group}'.")
                     single_member = member_ids[0]
                 else:
-                    # References mode keeps legacy behavior: raw groups map has the sample name
-                    single_member = self.samples_txt.groups()[group][0]
+                    # References mode: either we have one or more group with a single sample:
+                    if self.samples_txt.has_groups():
+                        single_member = self.samples_txt.groups()[group][0]
+                    # or we have a single sample
+                    elif len(self.samples_txt.samples()) == 1:
+                        single_member = self.samples_txt.samples()[0]
+                    else:
+                        raise ConfigError("Anvi'o (and Florian) has no idea how you got there. We were expecting "
+                                          "a single sample in your samples-txt. Please reach out to a developer.")
+
                 self.profile_databases[group] = os.path.join(self.dirs_dict["PROFILE_DIR"], group, single_member, "PROFILE.db")
 
 
@@ -777,6 +790,46 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
         # Assembly-mode : assembler's canonical output location
         return os.path.join(self.dirs_dict["FASTA_DIR"], wildcards.group, "final.contigs.fa")
+
+
+    def get_fastq(self, readset, pre_ref_removal=False):
+        """
+        A single function that returns the fastq for either long or short reads.
+        These readset are the one passed to the mapper (and more): it will be the QCed version of the SR,
+        if QC is enable.
+        """
+        post_ref_removal = False
+        if not pre_ref_removal:
+            post_ref_removal = self.remove_short_reads_based_on_references
+
+        zipped = self.get_param_value_from_config(['gzip_fastqs', 'run']) == True
+
+        rs = self.readsets_by_id.get(readset)
+
+        # if SR:
+        if rs['type'] == 'SR':
+            fastq_label = "-QUALITY_PASSED"
+            if post_ref_removal:
+                fastq_label = "-FILTERED"
+
+            if post_ref_removal or self.run_qc:
+                # by default, use the output of the reference based short read removal
+                if zipped:
+                    r1 = os.path.join(self.dirs_dict["QC_DIR"], readset + fastq_label + "_R1.fastq.gz")
+                    r2 = os.path.join(self.dirs_dict["QC_DIR"], readset + fastq_label + "_R2.fastq.gz")
+                else:
+                    r1 = os.path.join(self.dirs_dict["QC_DIR"], readset + fastq_label + "_R1.fastq")
+                    r2 = os.path.join(self.dirs_dict["QC_DIR"], readset + fastq_label + "_R2.fastq")
+                d = {'r1': [r1], 'r2':[r2]}
+            else:
+                # if no QC and no reference based short read removal is requested, use raw input
+                d = self.get_sr_files_for_readset(readset)
+            return d
+
+        # if LR, no QC or removal based on reference (yet)
+        if rs['type'] == 'LR':
+            d = {'lr': self.get_lr_files_for_readset(readset)}
+            return d
 
 
     def get_readsets_for_mapping_to_group(self, group_id: str):

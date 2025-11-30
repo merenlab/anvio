@@ -58,9 +58,23 @@ anvi-profile-blitz %(bam-file)s \
                    -o OUTPUT.txt
 {{ codestop }}
 
+### Genome/bin mode via collections
+
+If you have a %(collection-txt)s, you can summarize coverage/detection statistics per bin/genome instead of per contig.
+
+{{ codestart }}
+anvi-profile-blitz %(bam-file)s \
+                   -c %(contigs-db)s \
+                   -C %(collection-txt)s \
+                   -o OUTPUT.txt
+{{ codestop }}
+
+{:.note}
+Bin-level detection and coverage are computed by treating all contigs in a bin as a single genome (nucleotide arrays are concatenated under the hood). With `--report-minimal`, these statistics are streamed to keep memory usage close to contig mode even for large bins.
+
 ### Genes mode, default output
 
-Profile genes, produce a default output:
+Instead of contigs, profile genes, produce a default output:
 
 {{ codestart }}
 anvi-profile-blitz %(bam-file)s \
@@ -69,18 +83,7 @@ anvi-profile-blitz %(bam-file)s \
                    -o OUTPUT.txt
 {{ codestop }}
 
-### Genes mode, minimal output
-
-Profile genes, produce a default output:
-
-{{ codestart }}
-anvi-profile-blitz %(bam-file)s \
-                   -c %(contigs-db)s \
-                   --gene-mode \
-                   --report-minimal \
-                   -o OUTPUT.txt
-{{ codestop }}
-
+`--report-minimal` will behave the same, and produce minimal output.
 
 ## Performance
 

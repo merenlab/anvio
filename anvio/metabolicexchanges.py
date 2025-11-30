@@ -59,18 +59,29 @@ class ExchangePredictorArgs():
         self.no_pathway_walk = A('no_pathway_walk')
         self.pathway_walk_only = A('pathway_walk_only')
 
-        # this class can either receive the exclude_pathway_maps attribute as a string (from the client program)
+        # this class can either receive the in/exclude_pathway_maps attributes as a string (from the client program)
         # or as a set (when initializing it directly in Python, as is done in the MultiPredictor class)
         if A('exclude_pathway_maps') and type(A('exclude_pathway_maps')) is str:
             self.exclude_pathway_maps = set(A('exclude_pathway_maps').split(','))
             n = len(self.exclude_pathway_maps)
-            run.info_single(f"You told anvi'o to exclude the following {P('Pathway Map', n)} from the Pathway Map Walk "
+            run.info_single(f"You told anvi'o to EXCLUDE the following {P('Pathway Map', n)} from the Pathway Map Walk "
                             f"prediction strategy: {', '.join(list(self.exclude_pathway_maps))}. If these are real map IDs, "
                             f"the corresponding maps will not be processed.")
         elif A('exclude_pathway_maps') and type(A('exclude_pathway_maps')) is set:
             self.exclude_pathway_maps = A('exclude_pathway_maps')
         else:
             self.exclude_pathway_maps = set([])
+
+        if A('include_pathway_maps') and type(A('include_pathway_maps')) is str:
+            self.include_pathway_maps = set(A('include_pathway_maps').split(','))
+            n = len(self.include_pathway_maps)
+            run.info_single(f"You told anvi'o to INCLUDE the following {P('Pathway Map', n)} from the Pathway Map Walk "
+                            f"prediction strategy: {', '.join(list(self.include_pathway_maps))}. If these are real map IDs, "
+                            f"the corresponding maps are the only ones that will be processed.")
+        elif A('include_pathway_maps') and type(A('include_pathway_maps')) is set:
+            self.include_pathway_maps = A('include_pathway_maps')
+        else:
+            self.include_pathway_maps = set([])
 
         self.sanity_check_args()
 
@@ -106,6 +117,8 @@ class ExchangePredictorArgs():
                         "AA equivalents file, and modify from there)")
         if self.no_pathway_walk and self.pathway_walk_only:
             raise ConfigError("The parameters --no-pathway-walk and --pathway-walk-only are mutually exclusive.")
+        if self.exclude_pathway_maps and self.include_pathway_maps:
+            raise ConfigError("One cannot simply use both --include-pathway-maps and --exclude-pathway-maps.")
 
     def setup_output_for_appending(self):
         """Initializes and returns a dictionary of AppendableFile objects, one for each output type"""
@@ -165,10 +178,11 @@ class ExchangePredictorArgs():
             if mode == 'compounds-with-no-prediction':
                 header_list = base_header
             
-            if mode == 'evidence':
-                file_obj.append(output_dicts[mode], do_not_write_key_column=True, none_value="None")
-            else:
-                file_obj.append(output_dicts[mode], headers=header_list, key_header='compound_id', none_value="None")
+            if len(output_dicts[mode]):
+                if mode == 'evidence':
+                    file_obj.append(output_dicts[mode], do_not_write_key_column=True, none_value="None")
+                else:
+                    file_obj.append(output_dicts[mode], headers=header_list, key_header='compound_id', none_value="None")
 
     def remove_partial_output_files(self):
         """This function can be used to delete partial output files when things are interrupted."""
@@ -254,6 +268,14 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         self.map_kegg_ids_to_modelseed_ids()
         self.map_kegg_ids_to_compound_names()
         self.all_pathway_maps = self.merged._get_pathway_map_set(map_ids_to_exclude=self.exclude_pathway_maps, id_selection_prefix = "00")
+        if self.include_pathway_maps:
+            bad_ids = [map_id for map_id in self.include_pathway_maps if map_id not in self.all_pathway_maps]
+            if bad_ids:
+                n = len(bad_ids)
+                raise ConfigError(f"You provided some Pathway Map IDs to include, but {n} {P('was', n, alt='were')} "
+                                  f"not in our list of available maps for the input organisms. Here {P('is', n, alt='are')} "
+                                  f"the affected map {P('ID', n, alt='IDs')} so you can remove them: {', '.join(bad_ids)}")
+            self.all_pathway_maps = self.include_pathway_maps
         # this will store the output of the KEGG Pathway Map walks
         # Dictionary structure: {compound_id (modelseed ID): {pathway_id: {organism_id: {fate: [chains]}}}}
         self.compound_to_pathway_walk_chains = {}
@@ -297,6 +319,14 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
 
         if not self.pathway_walk_only:
             # STEP 3: PREDICT EXCHANGES using reaction network
+            if not self.no_pathway_walk:
+                self.run.warning("Just FYI, any compounds not in the Pathway Maps processed above will now be processed "
+                                 "using the Reaction Network Subset approach. Your choice of Pathway Maps thus affects "
+                                 "which compounds will get predictions in this stage. If you included only specific maps "
+                                 "with --include-pathway-maps, the set will be much larger than if you included all Pathway "
+                                 "Maps (the default). And if you excluded certain maps with --exclude-pathway-maps, the set "
+                                 "will be smaller than if you included all Pathway Maps.")
+
             self.run.warning("", header="REACTION NETWORK SUBSET OUTPUT", lc='cyan')
             self.run.info("Number of compounds will be processed by Reaction Network Subset", len(compounds_not_in_maps))
             pot_exchanged_rn, uniq_rn, no_prediction_rn = self.predict_from_reaction_network(compounds_not_in_maps)
@@ -462,6 +492,8 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         while True:
             try:
                 map_id = pathway_map_queue.get(block=True)
+                if anvio.DEBUG:
+                    self.run.info_single(f"A worker thread is walking over map {map_id}")
                 for genome in self.genomes_to_compare:
                     wargs = self.get_args_for_pathway_walker(self.genomes_to_compare[genome]['network'], map_id, fate='produce', gaps=self.maximum_gaps)
                     walker = nw.KGMLNetworkWalker(wargs)
@@ -469,6 +501,8 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                     walker.compound_fate = 'consume'
                     consumption_chains = walker.get_chains()
                     output_queue.put((map_id, genome, production_chains, consumption_chains))
+                if anvio.DEBUG:
+                    self.run.info_single(f"Successfully finished map {map_id}")
             except Exception as e: # send the error back to the main thread
                 output_queue.put((e, map_id, genome))
         # this function will be killed by the parent process eventually
@@ -726,7 +760,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                     if genome_dict[g]['consume']: # if this is not None, there is at least one production chain
                         genomes_consume.add(g)
 
-        prod, cons = self.producer_consumer_decision_tree(genomes_produce, genomes_consume)
+        prod, cons = self.producer_consumer_decision_tree(deepcopy(genomes_produce), deepcopy(genomes_consume))
 
         return prod, cons, genomes_produce, genomes_consume
 
@@ -971,23 +1005,26 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
 
             producer,consumer,all_prod,all_cons = self.predict_exchange_from_pathway_walk(compound_reaction_chains)
             compound_name = self.merged.metabolites[compound_id].modelseed_name
+            producer_names = ",".join([self.genomes_to_compare[producer]['name'] for producer in all_prod])
+            consumer_names = ",".join([self.genomes_to_compare[consumer]['name'] for consumer in all_cons])
+            all_genome_names = ",".join([self.genomes_to_compare[x]['name'] for x in all_prod.union(all_cons) if x])
             if producer or consumer:
                 producer_name = self.genomes_to_compare[producer]['name'] if producer else None
                 consumer_name = self.genomes_to_compare[consumer]['name'] if consumer else None
                 if producer == consumer or (not producer) or (not consumer): # unique to one genome
                     unique_compounds[compound_id] = {'compound_name': compound_name,
-                                                    'genomes': ",".join([x for x in set([producer_name,consumer_name]) if x]),
-                                                    'produced_by': producer_name,
-                                                    'consumed_by': consumer_name,
+                                                    'genomes': all_genome_names if all_genome_names else None,
+                                                    'produced_by': producer_names if producer_names else None,
+                                                    'consumed_by': consumer_names if consumer_names else None,
                                                     'prediction_method': 'Pathway_Map_Walk',
                                                     'equivalent_compound_id': eq_comp,
                                                     }
                     add_reactions_to_dict_for_compound_pathway_walk(unique_compounds[compound_id])
                 else: # potentially-exchanged
                     potentially_exchanged_compounds[compound_id] = {'compound_name': compound_name,
-                                                                    'genomes': ",".join([producer_name,consumer_name]),
-                                                                    'produced_by': producer_name,
-                                                                    'consumed_by': consumer_name,
+                                                                    'genomes': all_genome_names if all_genome_names else None,
+                                                                    'produced_by': producer_names if producer_names else None,
+                                                                    'consumed_by': consumer_names if consumer_names else None,
                                                                     'prediction_method': 'Pathway_Map_Walk',
                                                                     'equivalent_compound_id': eq_comp,
                                                                     }
@@ -1106,9 +1143,6 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                     potentially_exchanged_compounds[compound_id]['consumption_chain_pathway_map'] = reported_map_posterior
             else: # no prediction for this compound
                 if self.report_compounds_with_no_prediction:
-                    producer_names = ",".join([self.genomes_to_compare[producer]['name'] for producer in all_prod])
-                    consumer_names = ",".join([self.genomes_to_compare[consumer]['name'] for consumer in all_cons])
-                    all_genome_names = ",".join([self.genomes_to_compare[x]['name'] for x in all_prod.union(all_cons) if x])
                     no_prediction_compounds[compound_id] = {'compound_name': compound_name,
                                                             'genomes': all_genome_names if all_genome_names else None,
                                                             'produced_by': producer_names if producer_names else None,
@@ -1125,7 +1159,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         self.progress.end()
         self.run.info("Number of exchanged compounds predicted from KEGG Pathway Map walks", len(potentially_exchanged_compounds))
         self.run.info("Number of unique compounds predicted from KEGG Pathway Map walks", len(unique_compounds))
-        self.run.info("Number of compounds with no prediction KEGG Pathway Map walks", len(no_prediction_compounds))
+        self.run.info("Number of compounds with no prediction from KEGG Pathway Map walks", len(no_prediction_compounds))
         self.run.info("Number of equivalent compound IDs (that we skipped processing twice) in KEGG Pathway Map walks", num_skipped)
 
         return potentially_exchanged_compounds, unique_compounds, pathway_walk_evidence, no_prediction_compounds
@@ -1214,24 +1248,27 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                     compound_dict[f"production_rxn_eqs_{genome_name}"] = " / ".join(prod_rxn_eqs) if len(prod_rxn_eqs) else None
                     compound_dict[f"consumption_rxn_eqs_{genome_name}"] = " / ".join(cons_rxn_eqs) if len(cons_rxn_eqs) else None
 
-            producer,consumer = self.producer_consumer_decision_tree(genomes_produce, genomes_consume)
+            producer,consumer = self.producer_consumer_decision_tree(deepcopy(genomes_produce), deepcopy(genomes_consume))
+            producer_names = ",".join([self.genomes_to_compare[producer]['name'] for producer in genomes_produce])
+            consumer_names = ",".join([self.genomes_to_compare[consumer]['name'] for consumer in genomes_consume])
+            all_genome_names = ",".join([self.genomes_to_compare[x]['name'] for x in genomes_produce.union(genomes_consume) if x])
             if producer or consumer:
                 producer_name = self.genomes_to_compare[producer]['name'] if producer else None
                 consumer_name = self.genomes_to_compare[consumer]['name'] if consumer else None
                 if producer == consumer or (not producer) or (not consumer): # unique to one genome
                     unique_compounds[compound_id] = {'compound_name': compound_name,
-                                                    'genomes': ",".join([x for x in set([producer_name,consumer_name])if x]),
-                                                    'produced_by': producer_name,
-                                                    'consumed_by': consumer_name,
+                                                    'genomes': all_genome_names,
+                                                    'produced_by': producer_names,
+                                                    'consumed_by': consumer_names,
                                                     'prediction_method': 'Reaction_Network_Subset',
                                                     'equivalent_compound_id': eq_comp,
                                                     }
                     add_reactions_to_dict_for_compound_reaction_network(unique_compounds[compound_id])
                 else: # potentially-exchanged
                     potentially_exchanged_compounds[compound_id] = {'compound_name': compound_name,
-                                                                    'genomes': ",".join([producer_name,consumer_name]),
-                                                                    'produced_by': producer_name,
-                                                                    'consumed_by': consumer_name,
+                                                                    'genomes': all_genome_names,
+                                                                    'produced_by': producer_names,
+                                                                    'consumed_by': consumer_names,
                                                                     'prediction_method': 'Reaction_Network_Subset',
                                                                     'equivalent_compound_id': eq_comp,
                                                                     }
@@ -1249,9 +1286,6 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                     potentially_exchanged_compounds[compound_id]['consumption_chain_pathway_map'] = None
             else: # no prediction for this compound. 
                 if self.report_compounds_with_no_prediction:
-                    producer_names = ",".join([self.genomes_to_compare[producer]['name'] for producer in genomes_produce])
-                    consumer_names = ",".join([self.genomes_to_compare[consumer]['name'] for consumer in genomes_consume])
-                    all_genome_names = ",".join([self.genomes_to_compare[x]['name'] for x in genomes_produce.union(genomes_consume) if x])
                     no_prediction_compounds[compound_id] = {'compound_name': compound_name,
                                                         'genomes': all_genome_names if all_genome_names else None,
                                                         'produced_by': producer_names if producer_names else None,

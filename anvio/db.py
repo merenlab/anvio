@@ -761,9 +761,10 @@ class DB:
     def get_table_structure(self, table_name):
         self.is_table_exists(table_name)
 
-        response = self._exec('''SELECT * FROM %s''' % table_name)
+        response = self._exec('PRAGMA TABLE_INFO(%s)' % table_name)
+        results = self._fetchall(response, table_name)
 
-        return [t[0] for t in response.description]
+        return [t[1] for t in results]
 
 
     def get_table_as_list_of_tuples(self, table_name, table_structure=None):

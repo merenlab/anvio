@@ -33,3 +33,6 @@ anvi-run-workflow -w metagenomics --config config-mixed-assembly.json
 
 INFO "Run reference-mode with SR and LR - no QC - add collection"
 anvi-run-workflow -w metagenomics --config config-references-mode.json
+
+INFO "Run reference-mode with one sample - no QC"
+anvi-run-workflow -w metagenomics --config config-references-mode-one-sample.json
