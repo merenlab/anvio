@@ -2167,6 +2167,11 @@ function showItemFunctions(bin_id, config, updateOnly = false) {
         return;
     }
 
+    if (!bin_info.items || bin_info.items.length === 0) {
+        toastr.warning('There are no items in this bin yet, so there is nothing to show.', "The anvi'o headquarters has a note");
+        return;
+    }
+
     if (!functions_available) {
         toastr.warning('No functions, so anvi\'o will show you item names instead.', "Trivial anvi'o headquarters memo");
 
