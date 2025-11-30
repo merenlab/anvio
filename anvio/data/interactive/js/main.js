@@ -2284,8 +2284,8 @@ function buildCopyableNamesSection(label, items, options = {}) {
     const copyReadyNames = safeItems.join(copySeparator);
 
     const header = `
-        <div style="font-size: large; border-bottom: 1px solid black; background: ${background}; display: flex; align-items: center; gap: 12px; padding: 6px 10px; margin: 0 0 10px 0; border-radius: 2px; width: 100%; box-sizing: border-box;">
-            <span>${headerText}</span>
+        <div class="bin-modal-header" style="background: ${background};">
+            <span style="font-size: large;">${headerText}</span>
             <button class="btn btn-primary btn-sm"
                 onclick='copyTextWithFeedback(this, ${JSON.stringify(copyReadyNames)})'>Copy to Clipboard</button>
             <span class="copy-feedback" style="min-width: 14px; font-size: 0.9em; line-height: 1;"></span>
@@ -2332,7 +2332,7 @@ function buildItemNamesContent(items, config) {
                       Functions are not initialized for this project, but here are the item names
                       in this bin so you have something to look at :)
                    </p>`
-                : `<p style="margin: 10px 0 20px 0;">&nbsp;</p>`;
+                : ``;
 
             return `
                 ${note}
@@ -2394,7 +2394,7 @@ function buildMetabolismTable(response, config, fmtPct) {
     const metabolism = response && response.metabolism;
 
     let metabolismContent = `
-        <p style="font-size: large; border-bottom: 1px solid black; background: #f5f5dc9c;">Metabolic module involvement</p>
+        <p class="bin-modal-header" style="background: #f5f5dc9c">Metabolic module involvement</p>
     `;
 
     if (!metabolism || typeof metabolism !== 'object' || !Object.keys(metabolism).length) {
@@ -2544,8 +2544,8 @@ function buildFunctionsTable(response, config) {
         : '';
 
     let content = `
-        <div style="font-size: large; border-bottom: 1px solid black; background: #ffe4c478; display: flex; align-items: center; gap: 12px; padding: 6px 10px; margin: 0 0 10px 0; border-radius: 2px; width: 100%; box-sizing: border-box;">
-            <span>Functions per ${config.itemLabel}</span>
+        <div class="bin-modal-header" style="background: #ffe4c478;">
+            <span style="font-size: large;">Functions per ${config.itemLabel}</span>
             ${copyButton}
         </div>
 
