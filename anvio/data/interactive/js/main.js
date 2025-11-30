@@ -2247,57 +2247,94 @@ function showItemFunctions(bin_id, config, updateOnly = false) {
     });
 }
 
-// Fallback content when functions are unavailable (or when we are in manual mode).
-function buildItemNamesContent(items, config) {
+// Copy helper for reusable "copy names" buttons with lightweight feedback.
+function copyTextWithFeedback(btn, text) {
+    if (typeof text !== 'string' || !text.length) {
+        return;
+    }
+
+    navigator.clipboard.writeText(text)
+        .then(function () {
+            const icon = btn.nextElementSibling;
+            if (!icon) return;
+            icon.textContent = "✔";
+            icon.style.color = "green";
+            icon.style.marginLeft = "4px";
+            setTimeout(function () { icon.textContent = ""; }, 2000);
+        })
+        .catch(function (err) {
+            console.error("Copy failed", err);
+        });
+}
+
+// Generic builder for a copy-enabled names section.
+function buildCopyableNamesSection(label, items, options = {}) {
     const safeItems = Array.isArray(items) ? items : [];
-    const listItems = safeItems.length
-        ? safeItems.map((name) => `<li style="word-break: break-word;">${name}</li>`).join('')
-        : '<li>No items found.</li>';
+    const headerText = `${label} (${safeItems.length})`;
+    const background = options.background || '#ffe4c478';
+    const marginBottom = options.marginBottom || '20px';
+    const copySeparator = options.copySeparator || '\n';
+    const contentRenderer = options.contentRenderer;
 
-    // Text to copy
-    const copyReadyItemNames = safeItems.join('\n');
+    const copyReadyNames = safeItems.join(copySeparator);
 
-    const itemLabelTitle = config.itemLabel.charAt(0).toUpperCase() + config.itemLabel.slice(1);
-    const headerText = `${itemLabelTitle} (${safeItems.length})`;
-
-    // Header with button to copy names to memory
-    let content = `
-        <div style="font-size: large; border-bottom: 1px solid black; background: #ffe4c478; display: flex; align-items: center; gap: 12px; /* Space between text and button */ padding: 6px 10px;">
+    const header = `
+        <div style="font-size: large; border-bottom: 1px solid black; background: ${background}; display: flex; align-items: center; gap: 12px; padding: 6px 10px; margin: 0 0 10px 0; border-radius: 2px; width: 100%; box-sizing: border-box;">
             <span>${headerText}</span>
-
             <button class="btn btn-primary btn-sm"
-                onclick='(function(btn){
-                    navigator.clipboard.writeText(${JSON.stringify(copyReadyItemNames)})
-                        .then(function () {
-                            var icon = btn.nextElementSibling;
-                            icon.textContent = "✔";
-                            icon.style.color = "green";
-                            icon.style.marginLeft = "4px";
-                            setTimeout(function () { icon.textContent = ""; }, 2000);
-                        })
-                        .catch(function (err) {
-                            console.error("Copy failed", err);
-                        });
-                })(this);'>Copy all names to clipboard?</button>
-
-            <span></span>
+                onclick='copyTextWithFeedback(this, ${JSON.stringify(copyReadyNames)})'>Copy to Clipboard</button>
+            <span class="copy-feedback" style="min-width: 14px; font-size: 0.9em; line-height: 1;"></span>
         </div>
     `;
 
-    // Optional message for non-manual mode
-    if (mode !== "manual") {
-        content += `<p style="margin: 10px 0 20px 0;">
+    const body = typeof contentRenderer === 'function'
+        ? contentRenderer(safeItems)
+        : `<p style="margin-bottom: ${marginBottom};">${safeItems.join(', ') || 'No items found.'}</p>`;
+
+    return header + body;
+}
+
+// Small helper to render a copy button with inline feedback.
+function buildCopyButton(label, items) {
+    const safeItems = Array.isArray(items) ? items : [];
+    const copyText = safeItems.join('\n');
+
+    return `
+        <button class="btn btn-primary btn-sm"
+            style="margin-left: 12px;"
+            title="Copy ${label}"
+            onclick='copyTextWithFeedback(this, ${JSON.stringify(copyText)})'>
+            Copy ${label}
+        </button>
+        <span class="copy-feedback" style="min-width: 14px; font-size: 0.9em; line-height: 1;"></span>
+    `;
+}
+
+// Fallback content when functions are unavailable (or when we are in manual mode).
+function buildItemNamesContent(items, config) {
+    const safeItems = Array.isArray(items) ? items : [];
+    const itemLabelTitle = config.itemLabel.charAt(0).toUpperCase() + config.itemLabel.slice(1);
+
+    return buildCopyableNamesSection(itemLabelTitle, safeItems, {
+        background: '#ffe4c478',
+        contentRenderer: (names) => {
+            const listItems = names.length
+                ? names.map((name) => `<li style="word-break: break-word;">${name}</li>`).join('')
+                : '<li>No items found.</li>';
+
+            const note = (mode !== "manual")
+                ? `<p style="margin: 10px 0 20px 0;">
                       Functions are not initialized for this project, but here are the item names
-                      in this bin so you have something to look at :)</p>
-        `;
-    } else {
-        content += `<p style="margin: 10px 0 20px 0;">&nbsp;</p>`;
-    }
+                      in this bin so you have something to look at :)
+                   </p>`
+                : `<p style="margin: 10px 0 20px 0;">&nbsp;</p>`;
 
-    // List of items
-    content += `<ul style="max-height: 60vh; overflow-y: auto; padding-left: 25px; margin-bottom: 0;">${listItems}</ul>`;
-
-    return content;
+            return `
+                ${note}
+                <ul style="max-height: 60vh; overflow-y: auto; padding-left: 25px; margin-bottom: 0;">${listItems}</ul>
+            `;
+        }
+    });
 }
 
 // Shared function to build the content HTML
@@ -2327,12 +2364,21 @@ function buildContigAndSplitNamesTable(response, config) {
     const contigNames = response && response.contig_names;
     const splitNames = response && response.split_names;
 
-    let contigAndSplitNamesContent = `
-        <p style="font-size: large; border-bottom: 1px solid black; background: #f5f5dc9c;">Contig Names (${response.contig_names.length})</p>
-        <p style="margin-bottom: 35px;">${response.contig_names.join(', ')}</p>
-        <p style="font-size: large; border-bottom: 1px solid black; background: #f5f5dc9c;">Split Names (${response.split_names.length})</p>
-        <p style="margin-bottom: 35px;">${response.split_names.join(', ')}</p>
-    `;
+    let contigAndSplitNamesContent = '';
+
+    contigAndSplitNamesContent += buildCopyableNamesSection('Contig Names', contigNames, {
+        background: '#f5f5dc9c',
+        marginBottom: '35px',
+        copySeparator: '\n',
+        contentRenderer: (names) => `<p style="margin-bottom: 35px;">${(names || []).join(', ')}</p>`
+    });
+
+    contigAndSplitNamesContent += buildCopyableNamesSection('Split Names', splitNames, {
+        background: '#f5f5dc9c',
+        marginBottom: '35px',
+        copySeparator: '\n',
+        contentRenderer: (names) => `<p style="margin-bottom: 35px;">${(names || []).join(', ')}</p>`
+    });
 
     return contigAndSplitNamesContent;
 }
@@ -2487,8 +2533,16 @@ function buildFunctionsTable(response, config) {
     if (config.dialogFunction === 'showGeneFunctionsInSplitsSummaryTableDialog')
         return "";
 
+    const itemIds = Object.keys(response['functions'] || {});
+    const copyButton = (config.itemLabel === 'gene clusters')
+        ? buildCopyButton('gene cluster names', itemIds)
+        : '';
+
     let content = `
-        <p style="font-size: large; border-bottom: 1px solid black; background: #ffe4c478;">Functions per ${config.itemLabel}</p>
+        <div style="font-size: large; border-bottom: 1px solid black; background: #ffe4c478; display: flex; align-items: center; gap: 12px; padding: 6px 10px; margin: 0 0 10px 0; border-radius: 2px; width: 100%; box-sizing: border-box;">
+            <span>Functions per ${config.itemLabel}</span>
+            ${copyButton}
+        </div>
 
         <p>${config.functionsDescription}</p>`;
 
