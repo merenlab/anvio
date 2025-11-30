@@ -2254,26 +2254,48 @@ function buildItemNamesContent(items, config) {
         ? safeItems.map((name) => `<li style="word-break: break-word;">${name}</li>`).join('')
         : '<li>No items found.</li>';
 
-    let content = `
-        <p style="font-size: large; border-bottom: 1px solid black; background: #ffe4c478;">
-        `;
+    // Text to copy
+    const copyReadyItemNames = safeItems.join('\n');
 
-    if (mode == "manual"){
-        content += `
-            ${config.itemLabel.charAt(0).toUpperCase() + config.itemLabel.slice(1)} (${safeItems.length})
+    const itemLabelTitle = config.itemLabel.charAt(0).toUpperCase() + config.itemLabel.slice(1);
+    const headerText = `${itemLabelTitle} (${safeItems.length})`;
+
+    // Header with button to copy names to memory
+    let content = `
+        <div style="font-size: large; border-bottom: 1px solid black; background: #ffe4c478; display: flex; align-items: center; gap: 12px; /* Space between text and button */ padding: 6px 10px;">
+            <span>${headerText}</span>
+
+            <button class="btn btn-primary btn-sm"
+                onclick='(function(btn){
+                    navigator.clipboard.writeText(${JSON.stringify(copyReadyItemNames)})
+                        .then(function () {
+                            var icon = btn.nextElementSibling;
+                            icon.textContent = "✔";
+                            icon.style.color = "green";
+                            icon.style.marginLeft = "4px";
+                            setTimeout(function () { icon.textContent = ""; }, 2000);
+                        })
+                        .catch(function (err) {
+                            console.error("Copy failed", err);
+                        });
+                })(this);'>Copy all names to clipboard?</button>
+
+            <span></span>
+        </div>
+    `;
+
+    // Optional message for non-manual mode
+    if (mode !== "manual") {
+        content += `<p style="margin: 10px 0 20px 0;">
+                      Functions are not initialized for this project, but here are the item names
+                      in this bin so you have something to look at :)</p>
         `;
     } else {
-        content += `
-            ${config.itemLabel.charAt(0).toUpperCase() + config.itemLabel.slice(1)} (${safeItems.length})
-            <p style="margin-bottom: 20px;">Functions are not initialized for this project, but here are the item names in this bin so you have something to look at :)</p>
-        `;
+        content += `<p style="margin: 10px 0 20px 0;">&nbsp;</p>`;
     }
 
-    content += `
-                <ul style="max-height: 60vh; overflow-y: auto; padding-left: 25px; margin-bottom: 0;">
-                    ${listItems}
-                </ul>
-            `;
+    // List of items
+    content += `<ul style="max-height: 60vh; overflow-y: auto; padding-left: 25px; margin-bottom: 0;">${listItems}</ul>`;
 
     return content;
 }
