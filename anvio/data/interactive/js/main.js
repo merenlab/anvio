@@ -80,7 +80,7 @@ var inspection_available = false;
 var sequences_available = false;
 var load_full_state = false;
 var bbox;
-var functions_initialized = true;
+var functions_available = false;
 
 var a_display_is_drawn = false;
 var max_branch_support_value_seen = null;
@@ -255,7 +255,7 @@ function initData() {
                 toastr.info("No sequence data is available. Some menu items will be disabled.");
             }
 
-            functions_initialized = response.functions_initialized;
+            functions_available = (response.functions_sources ?? []).length > 0;
 
             if (response.read_only)
             {
@@ -2167,7 +2167,7 @@ function showItemFunctions(bin_id, config, updateOnly = false) {
         return;
     }
 
-    if (!functions_initialized) {
+    if (!functions_available) {
         toastr.warning('No functions, so anvi\'o will show you item names instead.', "Trivial anvi'o headquarters memo");
 
         let fallbackTitle;
