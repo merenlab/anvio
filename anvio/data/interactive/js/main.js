@@ -80,6 +80,7 @@ var inspection_available = false;
 var sequences_available = false;
 var load_full_state = false;
 var bbox;
+var functions_initialized = true;
 
 var a_display_is_drawn = false;
 var max_branch_support_value_seen = null;
@@ -253,6 +254,8 @@ function initData() {
             if(!response.sequences_available && mode != "collection" && mode != "pan"){
                 toastr.info("No sequence data is available. Some menu items will be disabled.");
             }
+
+            functions_initialized = response.functions_initialized;
 
             if (response.read_only)
             {
@@ -2158,6 +2161,34 @@ function showItemFunctions(bin_id, config, updateOnly = false) {
         return;
     }
 
+    const bin_info = bins.ExportBin(bin_id);
+
+    if (!bin_info) {
+        return;
+    }
+
+    if (!functions_initialized) {
+        toastr.warning('No functions, so anvi\'o will show you item names instead.', "Trivial anvi'o headquarters memo");
+
+        let fallbackTitle;
+
+        if (mode == "manual"){
+            fallbackTitle = `Items in "${bin_info['bin_name']}".`;
+        } else {
+            fallbackTitle = `Item names for ${bin_info['items'].length} ${config.itemLabel} in "${bin_info['bin_name']}".`;
+        }
+
+        const fallbackContent = buildItemNamesContent(bin_info['items'], config);
+
+        _createModalDialog({
+            title: fallbackTitle,
+            content: fallbackContent,
+            modalClass: 'itemNamesDialog',
+            dialogClass: 'item-names-modal-dialog'
+        });
+        return;
+    }
+
     const finishRequest = () => {
         ITEM_FUNCTION_REQUESTS_IN_FLIGHT.delete(requestKey);
         waitingDialog.hide();
@@ -2165,8 +2196,6 @@ function showItemFunctions(bin_id, config, updateOnly = false) {
 
     ITEM_FUNCTION_REQUESTS_IN_FLIGHT.add(requestKey);
     waitingDialog.show(config.loadingMessage || 'Fetching functions...', { dialogSize: 'sm' });
-
-    let bin_info = bins.ExportBin(bin_id);
 
     // Prepare AJAX data based on config
     let ajaxData = {};
@@ -2216,6 +2245,37 @@ function showItemFunctions(bin_id, config, updateOnly = false) {
             toastr.error('Failed to fetch functions for this bin. Please try again.', "The anvi'o headquarters is upset");
         }
     });
+}
+
+// Fallback content when functions are unavailable (or when we are in manual mode).
+function buildItemNamesContent(items, config) {
+    const safeItems = Array.isArray(items) ? items : [];
+    const listItems = safeItems.length
+        ? safeItems.map((name) => `<li style="word-break: break-word;">${name}</li>`).join('')
+        : '<li>No items found.</li>';
+
+    let content = `
+        <p style="font-size: large; border-bottom: 1px solid black; background: #ffe4c478;">
+        `;
+
+    if (mode == "manual"){
+        content += `
+            ${config.itemLabel.charAt(0).toUpperCase() + config.itemLabel.slice(1)} (${safeItems.length})
+        `;
+    } else {
+        content += `
+            ${config.itemLabel.charAt(0).toUpperCase() + config.itemLabel.slice(1)} (${safeItems.length})
+            <p style="margin-bottom: 20px;">Functions are not initialized for this project, but here are the item names in this bin so you have something to look at :)</p>
+        `;
+    }
+
+    content += `
+                <ul style="max-height: 60vh; overflow-y: auto; padding-left: 25px; margin-bottom: 0;">
+                    ${listItems}
+                </ul>
+            `;
+
+    return content;
 }
 
 // Shared function to build the content HTML
