@@ -66,6 +66,8 @@ class BAMProfilerQuick:
         self.output_file_path = A('output_file')
         self.gene_level_stats = A('gene_mode')
         self.gene_caller = A('gene_caller')
+        self.gene_caller_ids = A('gene_caller_ids')
+        self.genes_of_interest_file = A('genes_of_interest')
         self.report_minimal = A('report_minimal')
         self.collection_txt_path = A('collection_txt')
 
@@ -79,7 +81,13 @@ class BAMProfilerQuick:
         self.run.info('Num BAM files', len(self.bam_file_paths))
         self.run.info('Reporting', 'MINIMAL' if self.report_minimal else 'EVERYTHING', mc="red" if self.report_minimal else "green")
 
-
+        # if requested, load genes of interest
+        self.gene_ids_of_interest = set([])
+        if self.genes_of_interest_file:
+            self.gene_ids_of_interest = set(int(g.strip()) for g in open(self.genes_of_interest_file, 'r').readlines())
+        elif self.gene_caller_ids:
+            self.gene_ids_of_interest = set(int(g) for g in self.gene_caller_ids.split(','))
+        
         # to be filled later if necessary
         self.contigs_basic_info = {}
         self.gene_calls_per_contig = {}
@@ -105,6 +113,15 @@ class BAMProfilerQuick:
                 raise ConfigError("The flag `--collection-txt` is only available when reporting contig-level "
                                   "stats. Please drop --gene-mode or skip the collection.")
             filesnpaths.is_file_plain_text(self.collection_txt_path)
+
+        if not self.gene_level_stats and (self.gene_caller_ids or self.genes_of_interest_file):
+            raise ConfigError("You requested genes of interest but not --gene-mode, which doesn't make sense. So "
+                              "we are stopping you right here, just to make sure you know what you be doin'")
+        if self.gene_caller_ids and self.genes_of_interest_file:
+            raise ConfigError("The parameter --gene-caller-ids is not compatible with --genes-of-interest. "
+                              "Please provide only one.")
+        elif self.genes_of_interest_file:
+            filesnpaths.is_file_exists(self.genes_of_interest_file)
 
         # find all the bad BAM files
         self.progress.new("Sanity checking BAM files")

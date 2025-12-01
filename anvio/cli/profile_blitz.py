@@ -56,6 +56,8 @@ def get_args():
                         "and report coverage and detection stats for each gene. Brace yourself for "
                         "a huge file for large contigs databases lol :(")}))
     groupB.add_argument(*anvio.A('gene-caller'), **anvio.K('gene-caller'))
+    groupB.add_argument(*anvio.A('gene-caller-ids'), **anvio.K('gene-caller-ids'))
+    groupB.add_argument(*anvio.A('genes-of-interest'), **anvio.K('genes-of-interest'))
 
     groupC = parser.add_argument_group('COLLECTION', "Report genome/bin-level stats instead of per-contig stats")
     groupC.add_argument('-C', '--collection-txt', default=None, help="Provide an anvi'o collection-txt artifact "
