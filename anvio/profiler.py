@@ -141,7 +141,7 @@ class BAMProfilerQuick:
 
             if not genes_are_called:
                 raise ConfigError("There are no gene calls in this contigs database :/ You can't use the flag "
-                                  "`--report-gene-level-stats`. Yes.")
+                                  "`--gene-mode`. Yes.")
 
             gene_callers = [tpl[0] for tpl in gene_callers_list]
             if self.gene_caller not in gene_callers:
