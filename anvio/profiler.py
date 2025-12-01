@@ -163,6 +163,8 @@ class BAMProfilerQuick:
         if self.gene_level_stats:
             self.run.info("Gene caller", self.gene_caller)
             self.run.info("Number of genes", pp([tpl[1] for tpl in contigs_db.meta['gene_callers'] if tpl[0] == self.gene_caller][0]))
+            self.run.info("Gene caller IDs of interest", "ALL GENES" if not self.gene_ids_of_interest else ",".join([str(i) for i in self.gene_ids_of_interest]))
+
 
         self.progress.new('Reading data into memory')
         self.progress.update('Contigs basic info table ...')
