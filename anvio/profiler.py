@@ -206,9 +206,11 @@ class BAMProfilerQuick:
 
         # and then update contigs basic info to easily track gene calls in a given contig
         # for reporting purposes
+        contigs_with_genes = set()
         self.progress.update('Updating contigs basic info ...')
         for gene_callers_id in self.genes_in_contigs:
             contig_name = self.genes_in_contigs[gene_callers_id]['contig']
+            contigs_with_genes.add(contig_name)
 
             if 'gene_caller_ids' not in self.contigs_basic_info[contig_name]:
                 self.contigs_basic_info[contig_name]['gene_caller_ids'] = set([gene_callers_id])
@@ -218,6 +220,11 @@ class BAMProfilerQuick:
         self.progress.end()
 
         contigs_db.disconnect()
+
+        self.contig_names_to_process = list(contigs_with_genes)
+        self.run.info('Contigs with gene calls', len(self.contig_names_to_process))
+        if len(self.contig_names_to_process) < len(self.contigs_basic_info):
+            self.run.info('Contigs ignored (no genes)', len(self.contigs_basic_info) - len(self.contig_names_to_process))
 
 
     def init_collection_bins(self):
