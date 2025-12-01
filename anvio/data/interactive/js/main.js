@@ -80,6 +80,7 @@ var inspection_available = false;
 var sequences_available = false;
 var load_full_state = false;
 var bbox;
+var functions_available = false;
 
 var a_display_is_drawn = false;
 var max_branch_support_value_seen = null;
@@ -253,6 +254,8 @@ function initData() {
             if(!response.sequences_available && mode != "collection" && mode != "pan"){
                 toastr.info("No sequence data is available. Some menu items will be disabled.");
             }
+
+            functions_available = (response.functions_sources ?? []).length > 0;
 
             if (response.read_only)
             {
@@ -2158,6 +2161,39 @@ function showItemFunctions(bin_id, config, updateOnly = false) {
         return;
     }
 
+    const bin_info = bins.ExportBin(bin_id);
+
+    if (!bin_info) {
+        return;
+    }
+
+    if (!bin_info.items || bin_info.items.length === 0) {
+        toastr.warning('There are no items in this bin yet, so there is nothing to show.', "The anvi'o headquarters has a note");
+        return;
+    }
+
+    if (!functions_available) {
+        toastr.warning('No functions, so anvi\'o will show you item names instead.', "Trivial anvi'o headquarters memo");
+
+        let fallbackTitle;
+
+        if (mode == "manual"){
+            fallbackTitle = `Items in "${bin_info['bin_name']}".`;
+        } else {
+            fallbackTitle = `Item names for ${bin_info['items'].length} ${config.itemLabel} in "${bin_info['bin_name']}".`;
+        }
+
+        const fallbackContent = buildItemNamesContent(bin_info['items'], config);
+
+        _createModalDialog({
+            title: fallbackTitle,
+            content: fallbackContent,
+            modalClass: 'itemNamesDialog',
+            dialogClass: 'item-names-modal-dialog'
+        });
+        return;
+    }
+
     const finishRequest = () => {
         ITEM_FUNCTION_REQUESTS_IN_FLIGHT.delete(requestKey);
         waitingDialog.hide();
@@ -2165,8 +2201,6 @@ function showItemFunctions(bin_id, config, updateOnly = false) {
 
     ITEM_FUNCTION_REQUESTS_IN_FLIGHT.add(requestKey);
     waitingDialog.show(config.loadingMessage || 'Fetching functions...', { dialogSize: 'sm' });
-
-    let bin_info = bins.ExportBin(bin_id);
 
     // Prepare AJAX data based on config
     let ajaxData = {};
@@ -2218,6 +2252,96 @@ function showItemFunctions(bin_id, config, updateOnly = false) {
     });
 }
 
+// Copy helper for reusable "copy names" buttons with lightweight feedback.
+function copyTextWithFeedback(btn, text) {
+    if (typeof text !== 'string' || !text.length) {
+        return;
+    }
+
+    navigator.clipboard.writeText(text)
+        .then(function () {
+            const icon = btn.nextElementSibling;
+            if (!icon) return;
+            icon.textContent = "✔";
+            icon.style.color = "green";
+            icon.style.marginLeft = "4px";
+            setTimeout(function () { icon.textContent = ""; }, 2000);
+        })
+        .catch(function (err) {
+            console.error("Copy failed", err);
+        });
+}
+
+// Generic builder for a copy-enabled names section.
+function buildCopyableNamesSection(label, items, options = {}) {
+    const safeItems = Array.isArray(items) ? items : [];
+    const headerText = `${label} (${safeItems.length})`;
+    const background = options.background || '#ffe4c478';
+    const marginBottom = options.marginBottom || '20px';
+    const copySeparator = options.copySeparator || '\n';
+    const contentRenderer = options.contentRenderer;
+
+    const copyReadyNames = safeItems.join(copySeparator);
+
+    const header = `
+        <div class="bin-modal-header" style="background: ${background};">
+            <span style="font-size: large;">${headerText}</span>
+            <button class="btn btn-primary btn-sm"
+                onclick='copyTextWithFeedback(this, ${JSON.stringify(copyReadyNames)})'>Copy to Clipboard</button>
+            <span class="copy-feedback" style="min-width: 14px; font-size: 0.9em; line-height: 1;"></span>
+        </div>
+    `;
+
+    const body = typeof contentRenderer === 'function'
+        ? contentRenderer(safeItems)
+        : `<p style="margin-bottom: ${marginBottom};">${safeItems.join(', ') || 'No items found.'}</p>`;
+
+    return header + body;
+}
+
+// Small helper to render a copy button with inline feedback.
+function buildCopyButton(label, items) {
+    const safeItems = Array.isArray(items) ? items : [];
+    const copyText = safeItems.join('\n');
+
+    return `
+        <button class="btn btn-primary btn-sm"
+            style="margin-left: 12px;"
+            title="Copy ${label}"
+            onclick='copyTextWithFeedback(this, ${JSON.stringify(copyText)})'>
+            Copy ${label}
+        </button>
+        <span class="copy-feedback" style="min-width: 14px; font-size: 0.9em; line-height: 1;"></span>
+    `;
+}
+
+// Fallback content when functions are unavailable (or when we are in manual mode).
+function buildItemNamesContent(items, config) {
+    const safeItems = Array.isArray(items) ? items : [];
+    const itemLabelTitle = config.itemLabel.charAt(0).toUpperCase() + config.itemLabel.slice(1);
+
+    return buildCopyableNamesSection(itemLabelTitle, safeItems, {
+        background: '#ffe4c478',
+        contentRenderer: (names) => {
+            const listItems = names.length
+                ? names.map((name) => `<li style="word-break: break-word;">${name}</li>`).join('')
+                : '<li>No items found.</li>';
+
+            const note = (mode !== "manual")
+                ? `<p style="margin: 10px 0 20px 0;">
+                      Functions are not initialized for this project, but here are the item names
+                      in this bin so you have something to look at :)
+                   </p>`
+                : ``;
+
+            return `
+                ${note}
+                <ul style="max-height: 60vh; overflow-y: auto; padding-left: 25px; margin-bottom: 0;">${listItems}</ul>
+            `;
+        }
+    });
+}
+
 // Shared function to build the content HTML
 function buildFunctionsContent(response, config) {
     const fmtPct = (v) => (typeof v === 'number' && !isNaN(v)) ? (v * 100).toFixed(1) + '%' : 'NA';
@@ -2245,12 +2369,21 @@ function buildContigAndSplitNamesTable(response, config) {
     const contigNames = response && response.contig_names;
     const splitNames = response && response.split_names;
 
-    let contigAndSplitNamesContent = `
-        <p style="font-size: large; border-bottom: 1px solid black; background: #f5f5dc9c;">Contig Names (${response.contig_names.length})</p>
-        <p style="margin-bottom: 35px;">${response.contig_names.join(', ')}</p>
-        <p style="font-size: large; border-bottom: 1px solid black; background: #f5f5dc9c;">Split Names (${response.split_names.length})</p>
-        <p style="margin-bottom: 35px;">${response.split_names.join(', ')}</p>
-    `;
+    let contigAndSplitNamesContent = '';
+
+    contigAndSplitNamesContent += buildCopyableNamesSection('Contig Names', contigNames, {
+        background: '#f5f5dc9c',
+        marginBottom: '35px',
+        copySeparator: '\n',
+        contentRenderer: (names) => `<p style="margin-bottom: 35px;">${(names || []).join(', ')}</p>`
+    });
+
+    contigAndSplitNamesContent += buildCopyableNamesSection('Split Names', splitNames, {
+        background: '#f5f5dc9c',
+        marginBottom: '35px',
+        copySeparator: '\n',
+        contentRenderer: (names) => `<p style="margin-bottom: 35px;">${(names || []).join(', ')}</p>`
+    });
 
     return contigAndSplitNamesContent;
 }
@@ -2261,7 +2394,7 @@ function buildMetabolismTable(response, config, fmtPct) {
     const metabolism = response && response.metabolism;
 
     let metabolismContent = `
-        <p style="font-size: large; border-bottom: 1px solid black; background: #f5f5dc9c;">Metabolic module involvement</p>
+        <p class="bin-modal-header" style="background: #f5f5dc9c">Metabolic module involvement</p>
     `;
 
     if (!metabolism || typeof metabolism !== 'object' || !Object.keys(metabolism).length) {
@@ -2405,8 +2538,16 @@ function buildFunctionsTable(response, config) {
     if (config.dialogFunction === 'showGeneFunctionsInSplitsSummaryTableDialog')
         return "";
 
+    const itemIds = Object.keys(response['functions'] || {});
+    const copyButton = (config.itemLabel === 'gene clusters')
+        ? buildCopyButton('gene cluster names', itemIds)
+        : '';
+
     let content = `
-        <p style="font-size: large; border-bottom: 1px solid black; background: #ffe4c478;">Functions per ${config.itemLabel}</p>
+        <div class="bin-modal-header" style="background: #ffe4c478;">
+            <span style="font-size: large;">Functions per ${config.itemLabel}</span>
+            ${copyButton}
+        </div>
 
         <p>${config.functionsDescription}</p>`;
 

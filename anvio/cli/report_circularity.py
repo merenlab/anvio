@@ -59,7 +59,7 @@ def get_args():
                         help="Absolute minimum number of RF pairs required to call a contig circular (default: 5).")
     groupB.add_argument('--expected-fraction-threshold', type=float, default=None,
                         help="Minimum fraction of expected RF pairs to call a contig circular (default: 0.3).")
-    groupB.add_argument('--circularity-confidence-threshold', type=float, default=None,
+    groupB.add_argument('--circularity-support-threshold', type=float, default=None,
                         help="Minimum circularity support value to call a contig circular (default: 0.5).")
     groupB.add_argument('--min-contig-length', type=int, default=None,
                         help="Only evaluate contigs at least this long (default: evaluate all contigs).")
