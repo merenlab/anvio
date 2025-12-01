@@ -188,7 +188,21 @@ class BAMProfilerQuick:
         self.progress.new('Reading data into memory')
         self.progress.update('Gene calls table ...')
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
-        self.genes_in_contigs = contigs_db.db.get_some_rows_from_table_as_dict(t.genes_in_contigs_table_name, where_clause=f"source == '{self.gene_caller}'", error_if_no_data=True)
+        genes_where_clause = f"source == '{self.gene_caller}'"
+        if self.gene_ids_of_interest:
+            genes_where_clause += f" and gene_callers_id in ({', '.join([str(g) for g in self.gene_ids_of_interest])})" 
+        self.genes_in_contigs = contigs_db.db.get_some_rows_from_table_as_dict(t.genes_in_contigs_table_name, where_clause=genes_where_clause, error_if_no_data=True)
+
+        # little sanity check to make sure we got all the gene calls the user asked for
+        if self.gene_ids_of_interest:
+            missing_ids = [str(g) for g in self.gene_ids_of_interest if g not in self.genes_in_contigs]
+            if missing_ids:
+                self.progress.reset()
+                raise ConfigError(f"Some of the gene caller IDs you requested were not found in the contigs database. "
+                                  f"As this could be Very Bad News depending on what you are doing, we'll stop the show "
+                                  f"here and give you a chance to double check those genes (and remove them from your list "
+                                  f"of genes of interest, if you find that they actually aren't the IDs you were looking for). "
+                                  f"Here are the affected gene caller IDs: {', '.join(missing_ids)}")
 
         # and then update contigs basic info to easily track gene calls in a given contig
         # for reporting purposes
