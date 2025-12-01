@@ -84,9 +84,14 @@ class BAMProfilerQuick:
         # if requested, load genes of interest
         self.gene_ids_of_interest = set([])
         if self.genes_of_interest_file:
-            self.gene_ids_of_interest = set(int(g.strip()) for g in open(self.genes_of_interest_file, 'r').readlines())
+            id_list = [g.strip() for g in open(self.genes_of_interest_file, 'r').readlines()]
         elif self.gene_caller_ids:
-            self.gene_ids_of_interest = set(int(g) for g in self.gene_caller_ids.split(','))
+            id_list = self.gene_caller_ids.split(',')
+        nonnumeric = [i for i in id_list if not i.isnumeric()]
+        self.gene_ids_of_interest = set(int(i) for i in id_list if i not in nonnumeric)
+        if nonnumeric:
+            raise ConfigError("Some of the gene caller IDs you requested do not look like gene caller IDs. Here they are "
+                             f"so you can remove them from your request: {', '.join(nonnumeric)}")
         
         # to be filled later if necessary
         self.contigs_basic_info = {}
