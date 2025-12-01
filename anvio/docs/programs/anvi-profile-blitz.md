@@ -85,6 +85,29 @@ anvi-profile-blitz %(bam-file)s \
 
 `--report-minimal` will behave the same, and produce minimal output.
 
+### Genes mode, on a subset of genes
+
+You don't want to profile all genes in your %(contigs-db)s? Then you should tell anvi'o which specific genes you are interested in by either providing a comma-separated list of gene-caller IDs:
+
+{{ codestart }}
+# the following will profile 4 specific gene calls
+anvi-profile-blitz %(bam-file)s \
+                   -c %(contigs-db)s \
+                   --gene-mode \
+                   -o OUTPUT.txt \
+                   --gene-caller-ids 5,13,74,203
+{{ codestop }}
+
+_Or_ by providing a %(genes-of-interest-txt)s file:
+
+{{ codestart }}
+anvi-profile-blitz %(bam-file)s \
+                   -c %(contigs-db)s \
+                   --gene-mode \
+                   -o OUTPUT.txt \
+                   --genes-of-interest %(genes-of-interest-txt)s
+{{ codestop }}
+
 ## Performance
 
 The memory use will be correlated linaerly with the size of the %(contigs-db)s, but once everything is loaded, the memory usage will not increase substantially over time.
