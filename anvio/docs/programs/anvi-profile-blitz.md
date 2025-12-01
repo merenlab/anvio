@@ -1,4 +1,4 @@
-This program **produces a %(bam-stats-txt)s from one or more %(bam-file)s given a %(contigs-db)s**. It is designed to serve people who only need to process read recruitment data stored in a %(bam-file)s to recover coverage and detection statistics as well as the number of reads mapped reads (along with other statistics) for their genes and/or contigs. It will report what's going on nicely with memory usage information and estimated time of completion:
+This program **produces a %(bam-stats-txt)s from one or more %(bam-file)s given a %(contigs-db)s**. It is designed to serve people who only need to process read recruitment data stored in a %(bam-file)s to recover coverage and detection statistics as well as the number of mapped reads (along with other statistics) for their genes, contigs, and/or genomes. It will report what's going on nicely with memory usage information and estimated time of completion:
 
 [![anvi-profile-blitz](../../images/anvi-profile-blitz.png){:.center-img}](../../images/anvi-profile-blitz.png)
 
@@ -6,7 +6,7 @@ There are other programs in anvi'o software ecosystem that are similar to this o
 
 * %(anvi-profile)s also takes a %(bam-file)s and profiles it. **They both require a %(contigs-db)s**. But while %(anvi-profile)s produces a %(single-profile-db)s for downstream analyses in anvi'o, %(anvi-profile-blitz)s produces text files for downstream analyses by the user (via R, Python, or other solutions). In contrast to %(anvi-profile)s, %(anvi-profile-blitz)s is orders of magnitude faster with similar memory usage.
 
-* %(anvi-script-get-coverage-from-bam)s also takes a %(bam-file)s and profiles it. **They both produce text output files.** But while %(anvi-script-get-coverage-from-bam)s does not require a %(contigs-db)s, %(anvi-profile-blitz)s requires one to work. They will both run very rapidly, %(anvi-script-get-coverage-from-bam)s will work with much smaller amount of memory.
+* %(anvi-script-get-coverage-from-bam)s also takes a %(bam-file)s and profiles it. **They both produce text output files.** But while %(anvi-script-get-coverage-from-bam)s does not require a %(contigs-db)s, %(anvi-profile-blitz)s requires one to work. They will both run very rapidly, %(anvi-script-get-coverage-from-bam)s will work with a much smaller amount of memory.
 
 ## Output files
 
@@ -17,7 +17,7 @@ For output file formats, please see %(bam-stats-txt)s.
 You can use this program with one or more BAM files to recover minimal or extended statistics for contigs or genes in a %(contigs-db)s.
 
 {:.warning}
-Since the program will not be able to ensure the %(contigs-db)s was generated from the same %(contigs-fasta)s that was used for read recruitment that resulted in %(bam-file)ss for analysis, you can make serious mistakes unless you mix up your workflow and start profiling BAM files that have nothing to do with a %(contigs-db)s. If you make a mistake like that, in the best case scenario you will get an empty output file because the program will skip all contigs with non-matching name. In the worst case scenario you will get a file if some names in %(contigs-db)s incorrectly matches to some names in the %(bam-file)s. While this warning may be confusing, you can avoid all these if you use the SAME FASTA FILE both as reference for read recruitment and as input for %(anvi-gen-contigs-database)s.
+Since the program will not be able to ensure the %(contigs-db)s was generated from the same %(contigs-fasta)s that was used for read recruitment that resulted in %(bam-file)ss for analysis, you can make serious mistakes if you mix up your workflow and start profiling BAM files that have nothing to do with a %(contigs-db)s. If you make a mistake like that, in the best case scenario you will get an empty output file because the program will skip all contigs with non-matching name. In the worst case scenario you will get a file if some names in %(contigs-db)s incorrectly matches to some names in the %(bam-file)s. While this warning may be confusing, you can avoid all these if you use the SAME FASTA FILE both as reference for read recruitment and as input for %(anvi-gen-contigs-database)s.
 
 ### Contigs mode, default output
 
@@ -84,6 +84,29 @@ anvi-profile-blitz %(bam-file)s \
 {{ codestop }}
 
 `--report-minimal` will behave the same, and produce minimal output.
+
+### Genes mode, on a subset of genes
+
+You don't want to profile all genes in your %(contigs-db)s? Then you should tell anvi'o which specific genes you are interested in by either providing a comma-separated list of gene-caller IDs:
+
+{{ codestart }}
+# the following will profile 4 specific gene calls
+anvi-profile-blitz %(bam-file)s \
+                   -c %(contigs-db)s \
+                   --gene-mode \
+                   -o OUTPUT.txt \
+                   --gene-caller-ids 5,13,74,203
+{{ codestop }}
+
+_Or_ by providing a %(genes-of-interest-txt)s file:
+
+{{ codestart }}
+anvi-profile-blitz %(bam-file)s \
+                   -c %(contigs-db)s \
+                   --gene-mode \
+                   -o OUTPUT.txt \
+                   --genes-of-interest %(genes-of-interest-txt)s
+{{ codestop }}
 
 ## Performance
 

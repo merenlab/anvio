@@ -66,6 +66,8 @@ class BAMProfilerQuick:
         self.output_file_path = A('output_file')
         self.gene_level_stats = A('gene_mode')
         self.gene_caller = A('gene_caller')
+        self.gene_caller_ids = A('gene_caller_ids')
+        self.genes_of_interest_file = A('genes_of_interest')
         self.report_minimal = A('report_minimal')
         self.collection_txt_path = A('collection_txt')
 
@@ -79,7 +81,18 @@ class BAMProfilerQuick:
         self.run.info('Num BAM files', len(self.bam_file_paths))
         self.run.info('Reporting', 'MINIMAL' if self.report_minimal else 'EVERYTHING', mc="red" if self.report_minimal else "green")
 
-
+        # if requested, load genes of interest
+        self.gene_ids_of_interest = set([])
+        if self.genes_of_interest_file:
+            id_list = [g.strip() for g in open(self.genes_of_interest_file, 'r').readlines()]
+        elif self.gene_caller_ids:
+            id_list = self.gene_caller_ids.split(',')
+        nonnumeric = [i for i in id_list if not i.isnumeric()]
+        self.gene_ids_of_interest = set(int(i) for i in id_list if i not in nonnumeric)
+        if nonnumeric:
+            raise ConfigError("Some of the gene caller IDs you requested do not look like gene caller IDs. Here they are "
+                             f"so you can remove them from your request: {', '.join(nonnumeric)}")
+        
         # to be filled later if necessary
         self.contigs_basic_info = {}
         self.gene_calls_per_contig = {}
@@ -106,6 +119,15 @@ class BAMProfilerQuick:
                                   "stats. Please drop --gene-mode or skip the collection.")
             filesnpaths.is_file_plain_text(self.collection_txt_path)
 
+        if not self.gene_level_stats and (self.gene_caller_ids or self.genes_of_interest_file):
+            raise ConfigError("You requested genes of interest but not --gene-mode, which doesn't make sense. So "
+                              "we are stopping you right here, just to make sure you know what you be doin'")
+        if self.gene_caller_ids and self.genes_of_interest_file:
+            raise ConfigError("The parameter --gene-caller-ids is not compatible with --genes-of-interest. "
+                              "Please provide only one.")
+        elif self.genes_of_interest_file:
+            filesnpaths.is_file_exists(self.genes_of_interest_file)
+
         # find all the bad BAM files
         self.progress.new("Sanity checking BAM files")
         self.progress.update('...')
@@ -124,7 +146,7 @@ class BAMProfilerQuick:
 
             if not genes_are_called:
                 raise ConfigError("There are no gene calls in this contigs database :/ You can't use the flag "
-                                  "`--report-gene-level-stats`. Yes.")
+                                  "`--gene-mode`. Yes.")
 
             gene_callers = [tpl[0] for tpl in gene_callers_list]
             if self.gene_caller not in gene_callers:
@@ -146,6 +168,8 @@ class BAMProfilerQuick:
         if self.gene_level_stats:
             self.run.info("Gene caller", self.gene_caller)
             self.run.info("Number of genes", pp([tpl[1] for tpl in contigs_db.meta['gene_callers'] if tpl[0] == self.gene_caller][0]))
+            self.run.info("Gene caller IDs of interest", "ALL GENES" if not self.gene_ids_of_interest else ",".join([str(i) for i in self.gene_ids_of_interest]))
+
 
         self.progress.new('Reading data into memory')
         self.progress.update('Contigs basic info table ...')
@@ -171,13 +195,29 @@ class BAMProfilerQuick:
         self.progress.new('Reading data into memory')
         self.progress.update('Gene calls table ...')
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
-        self.genes_in_contigs = contigs_db.db.get_some_rows_from_table_as_dict(t.genes_in_contigs_table_name, where_clause=f"source == '{self.gene_caller}'", error_if_no_data=True)
+        genes_where_clause = f"source == '{self.gene_caller}'"
+        if self.gene_ids_of_interest:
+            genes_where_clause += f" and gene_callers_id in ({', '.join([str(g) for g in self.gene_ids_of_interest])})" 
+        self.genes_in_contigs = contigs_db.db.get_some_rows_from_table_as_dict(t.genes_in_contigs_table_name, where_clause=genes_where_clause, error_if_no_data=True)
+
+        # little sanity check to make sure we got all the gene calls the user asked for
+        if self.gene_ids_of_interest:
+            missing_ids = [str(g) for g in self.gene_ids_of_interest if g not in self.genes_in_contigs]
+            if missing_ids:
+                self.progress.reset()
+                raise ConfigError(f"Some of the gene caller IDs you requested were not found in the contigs database. "
+                                  f"As this could be Very Bad News depending on what you are doing, we'll stop the show "
+                                  f"here and give you a chance to double check those genes (and remove them from your list "
+                                  f"of genes of interest, if you find that they actually aren't the IDs you were looking for). "
+                                  f"Here are the affected gene caller IDs: {', '.join(missing_ids)}")
 
         # and then update contigs basic info to easily track gene calls in a given contig
         # for reporting purposes
+        contigs_with_genes = set()
         self.progress.update('Updating contigs basic info ...')
         for gene_callers_id in self.genes_in_contigs:
             contig_name = self.genes_in_contigs[gene_callers_id]['contig']
+            contigs_with_genes.add(contig_name)
 
             if 'gene_caller_ids' not in self.contigs_basic_info[contig_name]:
                 self.contigs_basic_info[contig_name]['gene_caller_ids'] = set([gene_callers_id])
@@ -187,6 +227,11 @@ class BAMProfilerQuick:
         self.progress.end()
 
         contigs_db.disconnect()
+
+        self.contig_names_to_process = list(contigs_with_genes)
+        self.run.info('Contigs with gene calls', len(self.contig_names_to_process))
+        if len(self.contig_names_to_process) < len(self.contigs_basic_info):
+            self.run.info('Contigs ignored (no genes)', len(self.contigs_basic_info) - len(self.contig_names_to_process))
 
 
     def init_collection_bins(self):

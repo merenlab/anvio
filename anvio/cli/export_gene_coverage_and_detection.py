@@ -19,7 +19,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
 __provides__ = ["coverages-txt", "detection-txt"]
-__requires__ = ["profile-db", "contigs-db"]
+__requires__ = ["profile-db", "contigs-db", "genes-of-interest-txt"]
 __description__ = ("Export gene coverage and detection data for all genes associated with "
                    "contigs described in a profile database")
 
