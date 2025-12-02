@@ -1087,6 +1087,9 @@ class SingleGenomeCodonUsage(object):
             brite_missing_keys = set(
                 [('KEGG_BRITE', function_name) for function_name in set(brite_missing_keys)])
 
+
+            raise
+            # FIXME: The select_keys issue below
             if len(gene_nonbrite_df) > 0:
                 nonbrite_select_keys, nonbrite_missing_keys = select_keys(
                     gene_nonbrite_df, nonbrite_requested_keys)
