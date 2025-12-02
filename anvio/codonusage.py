@@ -2725,7 +2725,7 @@ def write_split_codon_output(codon_frequency_df,
     else:
         derived_output_paths_message = ""
     if invalid_derived_output_paths or not is_given_output_path_valid:
-        if is_given_output_path_valid is 1:
+        if is_given_output_path_valid == 1:
             # Derived output paths were invalid, and raw affinities were written to the input
             # output file.
             os.remove(output_path)
