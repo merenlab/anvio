@@ -839,7 +839,7 @@ class DGR_Finder:
         # The fourth loop is there because the pytrf code has the quirk that the if you change the min motif to smaller it misses the larger motif repeats,
         # this loop also has the seed len as 9 not 10 which is the default to remove some more repeats
 
-        # Only build a new string if needed
+        # only build a new string if needed
         if "-" in seq:
             seq = seq.replace("-", "")
 
