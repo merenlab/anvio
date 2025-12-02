@@ -17,7 +17,6 @@ import anvio.terminal as terminal
 from anvio.programs import Program
 from anvio.errors import ConfigError
 from anvio.dbinfo import FindAnvioDBs
-from anvio.utils import is_program_exists as get_program_path
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -85,7 +84,7 @@ class ArgumentParser(argparse.ArgumentParser):
 
         requires_and_provides_statements = []
 
-        program = Program(get_program_path(self.prog))
+        program = Program(self.prog)
         requires = [v.id for v in program.meta_info['requires']['value']]
         provides = [v.id for v in program.meta_info['provides']['value']]
 

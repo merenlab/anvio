@@ -34,7 +34,7 @@ class RunKOfams(KeggContext):
         self.contigs_db_path = A('contigs_db')
         self.num_threads = A('num_threads')
         self.hmm_program = A('hmmer_program') or 'hmmsearch'
-        self.include_stray_kos = True if A('include_stray_KOs') else False
+        self.include_stray_kos = True if A('include_nt_KOs') else False
         self.keep_all_hits = True if A('keep_all_hits') else False
         self.log_bitscores = True if A('log_bitscores') else False
         self.skip_bitscore_heuristic = True if A('skip_bitscore_heuristic') else False

@@ -47,7 +47,11 @@ var categorical_data_colors = {};
 var categorical_stats = {};
 var stack_bar_colors = {};
 var stack_bar_stats = {};
+
 var legends = [];
+const MAX_LEGEND_ITEMS = 30; // if a legend has more than this many items,
+                             // there is no need to create individual color control
+                             // elements. thats what this is for.
 
 var layerdata_title = {};
 var empty_tooltip = "";
@@ -76,6 +80,7 @@ var inspection_available = false;
 var sequences_available = false;
 var load_full_state = false;
 var bbox;
+var functions_available = false;
 
 var a_display_is_drawn = false;
 var max_branch_support_value_seen = null;
@@ -249,6 +254,8 @@ function initData() {
             if(!response.sequences_available && mode != "collection" && mode != "pan"){
                 toastr.info("No sequence data is available. Some menu items will be disabled.");
             }
+
+            functions_available = (response.functions_sources ?? []).length > 0;
 
             if (response.read_only)
             {
@@ -434,7 +441,7 @@ function switchUserInterfaceMode(project, title) {
     if (mode == 'pan') {
         $('#completion_title').attr('title', 'Gene Clusters').html('Gene Clusters');
         $('#redundancy_title').attr('title', 'Gene Calls').html('Gene Calls');
-        $('#splits_title').hide();
+        $('#items_title').hide();
         $('#len_title').hide();
         $('.gene-filters-not-available-message').hide();
         $('.pan-filters button,input:checkbox').removeAttr('disabled')
@@ -468,10 +475,21 @@ function switchUserInterfaceMode(project, title) {
         })
     }
 
+    if (mode == 'full') {
+        $('#items_title').html('Contigs');
+    }
+
     if (mode == 'codon-frequencies') {
         $('#completion_title').attr('title', 'Genes Selected').html('Genes Selected');
         $('#redundancy_title').hide();
-        $('#splits_title').hide();
+        $('#items_title').hide();
+        $('#len_title').hide();
+    }
+
+    if (mode == 'gene') {
+        $('#completion_title').attr('title', 'Genes Selected').html('Genes Selected');
+        $('#redundancy_title').hide();
+        $('#items_title').hide();
         $('#len_title').hide();
     }
 
@@ -773,9 +791,10 @@ function buildLegendTables() {
         }
 
         let names;
-        if (Object.keys(categorical_stats[pindex]).length > 20) {
+        const catCount = Object.keys(categorical_stats[pindex]).length;
+        if (catCount > MAX_LEGEND_ITEMS) {
             toastr_warn_flag = true;
-            names = false;
+            names = null;  // collapsed mode
         } else {
             names = Object.keys(categorical_stats[pindex]).sort(function(a,b) {
                 return categorical_stats[pindex][b] - categorical_stats[pindex][a];
@@ -791,7 +810,8 @@ function buildLegendTables() {
             'key': pindex,
             'item_names': names,
             'item_keys': names,
-            'stats': categorical_stats[pindex]
+            'stats': categorical_stats[pindex],
+            'total_items': catCount
         });
     }
 
@@ -803,6 +823,11 @@ function buildLegendTables() {
 
         let layer_name = getLayerName(pindex);
         let names = (layer_name.indexOf('!') > -1) ? layer_name.split('!')[1].split(';') : layer_name.split(';');
+        const sbCount = names.length;
+        if (sbCount > MAX_LEGEND_ITEMS) {
+            toastr_warn_flag = true;
+            names = null;  // collapsed mode
+        }
         let pretty_name = getLayerName(pindex);
         pretty_name = (pretty_name.indexOf('!') > -1) ? pretty_name.split('!')[0] : pretty_name;
 
@@ -812,7 +837,8 @@ function buildLegendTables() {
             'key': pindex,
             'item_names': names,
             'item_keys': names,
-            'stats': stack_bar_stats[pindex]
+            'stats': stack_bar_stats[pindex],
+            'total_items': sbCount
         });
     }
 
@@ -828,6 +854,11 @@ function buildLegendTables() {
             }
 
             let names = Object.keys(samples_categorical_colors[group][sample]);
+            const sampCatCount = names.length;
+            if (sampCatCount > MAX_LEGEND_ITEMS) {
+                toastr_warn_flag = true;
+                names = null;
+            }
 
             legends.push({
                 'name': group + ' :: ' + getPrettyName(sample),
@@ -836,7 +867,8 @@ function buildLegendTables() {
                 'key': sample,
                 'item_names': names,
                 'item_keys': names,
-                'stats': samples_categorical_stats[group][sample]
+                'stats': samples_categorical_stats[group][sample],
+                'total_items': sampCatCount
             });
         }
     }
@@ -853,6 +885,11 @@ function buildLegendTables() {
             }
 
             let names = (sample.indexOf('!') > -1) ? sample.split('!')[1].split(';') : sample.split(';');
+            const sampSbCount = names.length;
+            if (sampSbCount > MAX_LEGEND_ITEMS) {
+                toastr_warn_flag = true;
+                names = null;
+            }
             let pretty_name = (sample.indexOf('!') > -1) ? sample.split('!')[0] : sample;
 
             legends.push({
@@ -862,7 +899,8 @@ function buildLegendTables() {
                 'key': sample,
                 'item_names': names,
                 'item_keys': names,
-                'stats': samples_stack_bar_stats[group][sample]
+                'stats': samples_stack_bar_stats[group][sample],
+                'total_items': sampSbCount
             });
         }
     }
@@ -894,10 +932,12 @@ function buildLegendTables() {
         if (!legends[i]['item_names']){
             const currentColors = categorical_data_colors[legend['key']] || {};
             const defaultColor = Object.values(currentColors)[0] || '#FFFFFF';
+            const total = legend.total_items || 0;
 
             template += `
                 <p style="background: #f3f3f3; border-radius: 3px; padding: 10px; font-style: italic;">
-                Use the table below to set colors for your categories in the layer <b>${legend['name']}</b>. Here you can (1) use the input box below to type in the name of a category
+                <b>Heads up:</b> <b>${legend['name']}</b> has <b>${total}</b> categories, so we didn’t render them all.
+                Use the tools below to set colors efficiently. You can (1) use the input box to type a category name
                 and choose a color from the color picker to set a single color, (2) use the color picker in the second row to set each category to the same color, or (3) use the
                 button in the third row to randomly assign colors to each category.</p>
                 <div>
@@ -972,7 +1012,10 @@ function buildLegendTables() {
         template = template + '<div style="clear: both; display:block;"></div>';
         $('#legend_settings').append(template + '</div></div>');
 
-        createLegendColorPanel(i); // this fills legend_content_X
+        // consider MAX_LEGEND_ITEMS, and only render per-item rows when under the cap
+        if (legends[i]['item_names'] && legends[i]['item_names'].length <= MAX_LEGEND_ITEMS) {
+            createLegendColorPanel(i);
+        }
     }
 
     // Initialize colorpickers
@@ -1084,58 +1127,105 @@ function batchColor(legend_id) {
     createLegendColorPanel(legend_id);
 }
 
+
 function createLegendColorPanel(legend_id) {
-    var legend = legends[legend_id];
-    var template = '';
+    const legend = legends[legend_id];
+    const container = document.getElementById('legend_content_' + legend_id);
+    if (!container) return;
 
-    for (var j = 0; j < legend['item_names'].length; j++) {
-
-        var _name = legend['item_names'][j];
-
-        if (legend.hasOwnProperty('group')) {
-            var _color = window[legend['source']][legend['group']][legend['key']][legend['item_keys'][j]];
-        } else {
-            var _color = window[legend['source']][legend['key']][legend['item_keys'][j]];
-        }
-
-        if (legend.hasOwnProperty('stats') && legend['stats'][_name] == 0) {
-            continue;
-        }
-
-        if (legend['source'].indexOf('stack') > -1) {
-            _name = _name.replace('Unknown_t_', '').replace('_', ' ') + ' <span title="' + legend['stats'][_name] + '">(Total: ' + readableNumber(legend['stats'][_name]) + ')</span>';
-        } else {
-            _name = _name + ' (' + legend['stats'][_name] + ')';
-        }
-
-        template = template + '<div style="float: left; width: 50%; display: inline-block; padding: 3px 5px;">' +
-                                '<div class="colorpicker-base legendcolorpicker" color="' + _color + '"' +
-                                'style="margin-right: 5px; background-color: ' + _color + '"' +
-                                'callback_source="' + legend['source'] + '"' +
-                                'callback_group="' + ((typeof legend['group'] !== 'undefined') ? legend['group'] : '') + '"' +
-                                'callback_pindex="' + legend['key'] + '"' +
-                                'callback_name="' + legend['item_keys'][j] + '"' +
-                               '></div>' + _name + '</div>';
+    // Also skip if this legend is collapsed or oversized
+    if (!legend.item_names || legend.item_names.length > MAX_LEGEND_ITEMS) {
+        container.replaceChildren(); // ensure empty
+        return;
     }
 
-    $('#legend_content_' + legend_id).empty();
-    $('#legend_content_' + legend_id).html(template);
+    // For those that remain, build DOM nodes (we used to generate a giant HTML string,
+    // and we later replaced that with this approach after Jarrod Scott (@jarrodscott)
+    // reported this: https://github.com/merenlab/anvio/issues/2493)
+    const frag = document.createDocumentFragment();
 
-    $('.legendcolorpicker').colpick({
+    for (let j = 0; j < legend.item_names.length; j++) {
+        const originalName = legend.item_names[j];
+        const itemKey = legend.item_keys[j];
+
+        // Get color safely
+        let color;
+        try {
+            color = legend.hasOwnProperty('group')
+                ? window[legend.source][legend.group][legend.key][itemKey]
+                : window[legend.source][legend.key][itemKey];
+        } catch (e) {
+            color = '#999'; // fallback to avoid undefined causing visual issues
+        }
+
+        const count = legend.stats ? legend.stats[originalName] : undefined;
+
+        if (legend.hasOwnProperty('stats') && count === 0) continue;
+
+        // Outer wrapper
+        const outer = document.createElement('div');
+        outer.style.cssText = 'float:left;width:50%;display:inline-block;padding:3px 5px;';
+
+        // Color swatch
+        const swatch = document.createElement('div');
+        swatch.className = 'colorpicker-base legendcolorpicker';
+        swatch.setAttribute('color', color);
+        swatch.style.marginRight = '5px';
+        swatch.style.backgroundColor = color;
+        swatch.setAttribute('callback_source', legend.source);
+        swatch.setAttribute('callback_group', legend.group ?? '');
+        swatch.setAttribute('callback_pindex', legend.key);
+        swatch.setAttribute('callback_name', itemKey);
+
+        // Label text (as nodes, not HTML)
+        const labelSpan = document.createElement('span');
+        if (legend.source.indexOf('stack') > -1) {
+            const cleaned =
+                String(originalName).replace('Unknown_t_', '').replace('_', ' ');
+            labelSpan.appendChild(document.createTextNode(cleaned + ' '));
+            const total = document.createElement('span');
+            total.title = String(count);
+            total.appendChild(
+                document.createTextNode('(Total: ' + readableNumber(count) + ')')
+            );
+            labelSpan.appendChild(total);
+        } else {
+            labelSpan.appendChild(
+                document.createTextNode(String(originalName) + ' (' + count + ')')
+            );
+        }
+
+        // Assemble
+        outer.appendChild(swatch);
+        outer.appendChild(labelSpan);
+        frag.appendChild(outer);
+    }
+
+    // Replace content in one go (no innerHTML strings)
+    container.replaceChildren(frag);
+
+    // Initialize color pickers on just this container for efficiency
+    $(container).find('.legendcolorpicker').colpick({
         layout: 'hex',
         submit: 0,
         colorScheme: 'light',
-        onChange: function(hsb, hex, rgb, el, bySetColor) {
-            $(el).css('background-color', '#' + hex);
-            $(el).attr('color', '#' + hex);
+        onChange: function (hsb, hex, rgb, el) {
+            const hexColor = '#' + hex;
+            $(el).css('background-color', hexColor).attr('color', hexColor);
             if (el.getAttribute('callback_group') !== '') {
-                window[el.getAttribute('callback_source')][el.getAttribute('callback_group')][el.getAttribute('callback_pindex')][el.getAttribute('callback_name')] = '#' + hex;
+                window[el.getAttribute('callback_source')]
+                    [el.getAttribute('callback_group')]
+                    [el.getAttribute('callback_pindex')]
+                    [el.getAttribute('callback_name')] = hexColor;
             } else {
-                window[el.getAttribute('callback_source')][el.getAttribute('callback_pindex')][el.getAttribute('callback_name')] = '#' + hex;
+                window[el.getAttribute('callback_source')]
+                    [el.getAttribute('callback_pindex')]
+                    [el.getAttribute('callback_name')] = hexColor;
             }
         }
     });
 }
+
 
 function orderLegend(legend_id, type) {
     if (type == 'alphabetical') {
@@ -2009,6 +2099,7 @@ const FUNCTION_CONFIGS = {
         dataKey: 'gene_caller_ids',
         itemLabel: 'genes',
         itemIdLabel: 'Gene call',
+        loadingMessage: 'Fetching gene functions...',
         metabolismDescription: 'Gene metabolic module involvement. A table that shows which metabolic modules the genes in particular bin are involved. The completion scores show that for each metabolic module, what percentage of the module is represented by the genes in the bin. A single gene may be involved in multiple metabolic modules since that how metabolism rolls.',
         functionsDescription: 'Gene functions. The table below shows the functional annotation of each gene by each function annotation source available in the contigs-db.',
         dialogFunction: 'showGeneFunctionsSummaryTableDialog',
@@ -2020,6 +2111,7 @@ const FUNCTION_CONFIGS = {
         dataKey: 'gene_clusters',
         itemLabel: 'gene clusters',
         itemIdLabel: 'Gene cluster',
+        loadingMessage: 'Fetching gene cluster functions...',
         metabolismDescription: 'Gene cluster metabolic module involvement. The table below shows which metabolic modules the gene clusters in this bin are involved in. The completion scores show that for each metabolic module, what percentage of the module is represented by the gene clusters in the bin. A single gene cluster may be involved in multiple metabolic modules since that how metabolism rolls.',
         functionsDescription: 'Gene cluster functions. The table below shows the functional annotation of each gene cluster by each function annotation source available in the contigs-db.',
         dialogFunction: 'showGeneClusterFunctionsSummaryTableDialog',
@@ -2031,8 +2123,30 @@ const FUNCTION_CONFIGS = {
             const result = getPrettyFunctionsString(d[function_source]?.function);
             return (Array.isArray(result) && result.length === 1 && result[0] === '-') ? 'N/A' : (result || 'N/A');
         }
+    },
+    genes_in_splits: {
+        url: '/data/get_functions_for_genes_in_splits',
+        dataKey: 'split_names',
+        itemLabel: 'splits',
+        itemIdLabel: 'Split',
+        loadingMessage: 'Fetching functions for genes in splits...',
+        metabolismDescription: 'Metabolic module involvement of genes encoded in splits. The table below shows which metabolic modules the genes in this bin are involved in. The completion scores show that for each metabolic module, what percentage of the module is represented by the genes encoded by splits in the bin. A single gene may be involved in multiple metabolic modules since that how metabolism rolls.',
+        functionsDescription: 'Gene functions. The table below shows the functional annotation of each gene by each function annotation source available in the contigs-db.',
+        dialogFunction: 'showGeneFunctionsInSplitsSummaryTableDialog',
+        getAccessionString: (d, function_source) => {
+            const result = getPrettyFunctionsString(d[function_source]?.accession, function_source);
+            return (Array.isArray(result) && result.length === 1 && result[0] === '-') ? 'N/A' : (result || 'N/A');
+        },
+        getFunctionString: (d, function_source) => {
+            const result = getPrettyFunctionsString(d[function_source]?.function);
+            return (Array.isArray(result) && result.length === 1 && result[0] === '-') ? 'N/A' : (result || 'N/A');
+        }
     }
+
 };
+
+// Track ongoing function lookups to prevent duplicate requests and show progress.
+const ITEM_FUNCTION_REQUESTS_IN_FLIGHT = new Set();
 
 // Shared function that handles both genes and gene clusters
 function showItemFunctions(bin_id, config, updateOnly = false) {
@@ -2042,7 +2156,51 @@ function showItemFunctions(bin_id, config, updateOnly = false) {
     if (updateOnly && !checkObjectExists('#modal' + title.hashCode()))
         return;
 
-    let bin_info = bins.ExportBin(bin_id);
+    const requestKey = `${config.dialogFunction}:${bin_id}`;
+    if (ITEM_FUNCTION_REQUESTS_IN_FLIGHT.has(requestKey)) {
+        return;
+    }
+
+    const bin_info = bins.ExportBin(bin_id);
+
+    if (!bin_info) {
+        return;
+    }
+
+    if (!bin_info.items || bin_info.items.length === 0) {
+        toastr.warning('There are no items in this bin yet, so there is nothing to show.', "The anvi'o headquarters has a note");
+        return;
+    }
+
+    if (!functions_available) {
+        toastr.warning('No functions, so anvi\'o will show you item names instead.', "Trivial anvi'o headquarters memo");
+
+        let fallbackTitle;
+
+        if (mode == "manual"){
+            fallbackTitle = `Items in "${bin_info['bin_name']}".`;
+        } else {
+            fallbackTitle = `Item names for ${bin_info['items'].length} ${config.itemLabel} in "${bin_info['bin_name']}".`;
+        }
+
+        const fallbackContent = buildItemNamesContent(bin_info['items'], config);
+
+        _createModalDialog({
+            title: fallbackTitle,
+            content: fallbackContent,
+            modalClass: 'itemNamesDialog',
+            dialogClass: 'item-names-modal-dialog'
+        });
+        return;
+    }
+
+    const finishRequest = () => {
+        ITEM_FUNCTION_REQUESTS_IN_FLIGHT.delete(requestKey);
+        waitingDialog.hide();
+    };
+
+    ITEM_FUNCTION_REQUESTS_IN_FLIGHT.add(requestKey);
+    waitingDialog.show(config.loadingMessage || 'Fetching functions...', { dialogSize: 'sm' });
 
     // Prepare AJAX data based on config
     let ajaxData = {};
@@ -2054,22 +2212,132 @@ function showItemFunctions(bin_id, config, updateOnly = false) {
         data: ajaxData,
         success: (response) => {
             if (response.hasOwnProperty('status') && response.status != 0) {
+                finishRequest();
                 toastr.error('"' + response.message + '", the server said.', "The anvi'o headquarters is upset");
                 return;
             }
 
-            const content = buildFunctionsContent(response, config);
-            const dialogTitle = `A summary of functions for ${bin_info['items'].length} ${config.itemLabel} in "${bin_info['bin_name']}".`;
+            try {
+                const content = buildFunctionsContent(response, config);
 
-            // Call the appropriate dialog function
-            if (config.dialogFunction === 'showGeneFunctionsSummaryTableDialog') {
-                showGeneFunctionsSummaryTableDialog(dialogTitle, content);
-            } else {
-                showGeneClusterFunctionsSummaryTableDialog(dialogTitle, content);
+                finishRequest();
+
+                // Call the appropriate dialog function
+                if (config.dialogFunction === 'showGeneFunctionsSummaryTableDialog') {
+                    const dialogTitle = `A summary of functions for ${bin_info['items'].length} ${config.itemLabel} in "${bin_info['bin_name']}".`;
+                    showGeneFunctionsSummaryTableDialog(dialogTitle, content);
+                } else if (config.dialogFunction === 'showGeneFunctionsInSplitsSummaryTableDialog') {
+                    const dialogTitle = `Some useful data for ${bin_info['items'].length} ${config.itemLabel} in "${bin_info['bin_name']}".`;
+                    showGeneFunctionsInSplitsSummaryTableDialog(dialogTitle, content);
+                } else if (config.dialogFunction === 'showGeneClusterFunctionsSummaryTableDialog') {
+                    const dialogTitle = `A summary of functions for ${bin_info['items'].length} ${config.itemLabel} in "${bin_info['bin_name']}".`;
+                    showGeneClusterFunctionsSummaryTableDialog(dialogTitle, content);
+                } else {
+                    toastr.error('Unknown dialog function specified.', "The anvi'o headquarters is confused");
+                    return;
+                }
+
+                // Setup filtering after dialog is shown
+                setTimeout(() => setupItemTableFiltering(), 100);
+            } catch (err) {
+                finishRequest();
+                console.error('Error preparing functions dialog', err);
+                toastr.error('Something went wrong while preparing the functions table.', "The anvi'o headquarters is upset");
             }
+        },
+        error: () => {
+            finishRequest();
+            toastr.error('Failed to fetch functions for this bin. Please try again.', "The anvi'o headquarters is upset");
+        }
+    });
+}
 
-            // Setup filtering after dialog is shown
-            setTimeout(() => setupItemTableFiltering(), 100);
+// Copy helper for reusable "copy names" buttons with lightweight feedback.
+function copyTextWithFeedback(btn, text) {
+    if (typeof text !== 'string' || !text.length) {
+        return;
+    }
+
+    navigator.clipboard.writeText(text)
+        .then(function () {
+            const icon = btn.nextElementSibling;
+            if (!icon) return;
+            icon.textContent = "✔";
+            icon.style.color = "green";
+            icon.style.marginLeft = "4px";
+            setTimeout(function () { icon.textContent = ""; }, 2000);
+        })
+        .catch(function (err) {
+            console.error("Copy failed", err);
+        });
+}
+
+// Generic builder for a copy-enabled names section.
+function buildCopyableNamesSection(label, items, options = {}) {
+    const safeItems = Array.isArray(items) ? items : [];
+    const headerText = `${label} (${safeItems.length})`;
+    const background = options.background || '#ffe4c478';
+    const marginBottom = options.marginBottom || '20px';
+    const copySeparator = options.copySeparator || '\n';
+    const contentRenderer = options.contentRenderer;
+
+    const copyReadyNames = safeItems.join(copySeparator);
+
+    const header = `
+        <div class="bin-modal-header" style="background: ${background};">
+            <span style="font-size: large;">${headerText}</span>
+            <button class="btn btn-primary btn-sm"
+                onclick='copyTextWithFeedback(this, ${JSON.stringify(copyReadyNames)})'>Copy to Clipboard</button>
+            <span class="copy-feedback" style="min-width: 14px; font-size: 0.9em; line-height: 1;"></span>
+        </div>
+    `;
+
+    const body = typeof contentRenderer === 'function'
+        ? contentRenderer(safeItems)
+        : `<p style="margin-bottom: ${marginBottom};">${safeItems.join(', ') || 'No items found.'}</p>`;
+
+    return header + body;
+}
+
+// Small helper to render a copy button with inline feedback.
+function buildCopyButton(label, items) {
+    const safeItems = Array.isArray(items) ? items : [];
+    const copyText = safeItems.join('\n');
+
+    return `
+        <button class="btn btn-primary btn-sm"
+            style="margin-left: 12px;"
+            title="Copy ${label}"
+            onclick='copyTextWithFeedback(this, ${JSON.stringify(copyText)})'>
+            Copy ${label}
+        </button>
+        <span class="copy-feedback" style="min-width: 14px; font-size: 0.9em; line-height: 1;"></span>
+    `;
+}
+
+// Fallback content when functions are unavailable (or when we are in manual mode).
+function buildItemNamesContent(items, config) {
+    const safeItems = Array.isArray(items) ? items : [];
+    const itemLabelTitle = config.itemLabel.charAt(0).toUpperCase() + config.itemLabel.slice(1);
+
+    return buildCopyableNamesSection(itemLabelTitle, safeItems, {
+        background: '#ffe4c478',
+        contentRenderer: (names) => {
+            const listItems = names.length
+                ? names.map((name) => `<li style="word-break: break-word;">${name}</li>`).join('')
+                : '<li>No items found.</li>';
+
+            const note = (mode !== "manual")
+                ? `<p style="margin: 10px 0 20px 0;">
+                      Functions are not initialized for this project, but here are the item names
+                      in this bin so you have something to look at :)
+                   </p>`
+                : ``;
+
+            return `
+                ${note}
+                <ul style="max-height: 60vh; overflow-y: auto; padding-left: 25px; margin-bottom: 0;">${listItems}</ul>
+            `;
         }
     });
 }
@@ -2079,18 +2347,16 @@ function buildFunctionsContent(response, config) {
     const fmtPct = (v) => (typeof v === 'number' && !isNaN(v)) ? (v * 100).toFixed(1) + '%' : 'NA';
     let content = '';
 
+    // If we are in full mode, show contig and split names
+    if (config.dialogFunction === 'showGeneFunctionsInSplitsSummaryTableDialog') {
+        content += buildContigAndSplitNamesTable(response, config);
+    }
+
     // Build metabolism summary table if present
     content += buildMetabolismTable(response, config, fmtPct);
 
+    // Fancy spacer
     content += '<hr style="margin: 30px !important;">';
-
-    content += `
-        <p style="font-size: large; border-bottom: 1px solid black; background: #ffe4c478;">Functions per ${config.itemLabel}</p>
-
-        <p>${config.functionsDescription}</p>`;
-
-    // Build filter controls
-    content += buildFilterControls(response['sources'], response['functions'], config);
 
     // Build functions table
     content += buildFunctionsTable(response, config);
@@ -2099,11 +2365,36 @@ function buildFunctionsContent(response, config) {
 }
 
 // Shared function to build metabolism table
+function buildContigAndSplitNamesTable(response, config) {
+    const contigNames = response && response.contig_names;
+    const splitNames = response && response.split_names;
+
+    let contigAndSplitNamesContent = '';
+
+    contigAndSplitNamesContent += buildCopyableNamesSection('Contig Names', contigNames, {
+        background: '#f5f5dc9c',
+        marginBottom: '35px',
+        copySeparator: '\n',
+        contentRenderer: (names) => `<p style="margin-bottom: 35px;">${(names || []).join(', ')}</p>`
+    });
+
+    contigAndSplitNamesContent += buildCopyableNamesSection('Split Names', splitNames, {
+        background: '#f5f5dc9c',
+        marginBottom: '35px',
+        copySeparator: '\n',
+        contentRenderer: (names) => `<p style="margin-bottom: 35px;">${(names || []).join(', ')}</p>`
+    });
+
+    return contigAndSplitNamesContent;
+}
+
+
+// Shared function to build metabolism table
 function buildMetabolismTable(response, config, fmtPct) {
     const metabolism = response && response.metabolism;
 
     let metabolismContent = `
-        <p style="font-size: large; border-bottom: 1px solid black; background: #f5f5dc9c;">Metabolic module involvement</p>
+        <p class="bin-modal-header" style="background: #f5f5dc9c">Metabolic module involvement</p>
     `;
 
     if (!metabolism || typeof metabolism !== 'object' || !Object.keys(metabolism).length) {
@@ -2119,7 +2410,7 @@ function buildMetabolismTable(response, config, fmtPct) {
                     <th>Metabolic module</th>
                     <th style="text-align: center;">Contribution to pathway completeness</th>
                     <th style="text-align: center;">Contribution to Stepwise completeness</th>
-                    <th style="text-align: center;">${config.itemLabel === 'genes' ? 'Gene calls' : 'Gene clusters'} involved</th>
+                    <th style="text-align: center;">${config.itemLabel === 'gene clusters' ? 'Gene clusters' : 'Gene calls'} involved</th>
                 </tr>
             </thead>
             <tbody>`;
@@ -2139,7 +2430,17 @@ function buildMetabolismTable(response, config, fmtPct) {
         })
         .forEach((moduleId) => {
             const m = metabolism[moduleId] || {};
-            const genes = Array.isArray(m.gene_caller_ids) ? m.gene_caller_ids.join(', ') : 'NA';
+
+            // Sort genes numerically (even if they are strings)
+            const genes = Array.isArray(m.gene_caller_ids)
+              ? [...m.gene_caller_ids]                 // copy so we don't mutate original
+                  .map(String)                         // make sure everything is a string
+                  .sort((a, b) =>
+                    a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })
+                  )
+                  .join(", ")
+              : "NA";
+
             const pathwayPct = fmtPct(m.pathwise_percent_complete);
             const stepwisePct = fmtPct(m.stepwise_completeness);
             const moduleName = m.NAME ?? 'NA';
@@ -2152,7 +2453,12 @@ function buildMetabolismTable(response, config, fmtPct) {
                     <td style="padding-left: 20px;">
                        <b>${moduleId}</b>${badge}<br />
                        - Module function: ${moduleName}<br />
-                       - Module class: ${moduleClass.split(";").map((p,i,a)=> i===a.length-1 ? `<b>${p.trim()}</b>` : p).join("; ")}
+                       - Module class: ${
+                         moduleClass
+                           .split(";")
+                           .map((p,i,a)=> i===a.length-1 ? `<b>${p.trim()}</b>` : p)
+                           .join("; ")
+                       }
                     </td>
                     <td style="text-align: center; vertical-align: middle;">${pathwayPct}</td>
                     <td style="text-align: center; vertical-align: middle;">${stepwisePct}</td>
@@ -2228,7 +2534,26 @@ function buildFilterControls(sources, functions, config) {
 
 // Shared function to build functions table
 function buildFunctionsTable(response, config) {
+    // If we are in full mode, we don't show functions
+    if (config.dialogFunction === 'showGeneFunctionsInSplitsSummaryTableDialog')
+        return "";
+
+    const itemIds = Object.keys(response['functions'] || {});
+    const copyButton = (config.itemLabel === 'gene clusters')
+        ? buildCopyButton('gene cluster names', itemIds)
+        : '';
+
     let content = `
+        <div class="bin-modal-header" style="background: #ffe4c478;">
+            <span style="font-size: large;">Functions per ${config.itemLabel}</span>
+            ${copyButton}
+        </div>
+
+        <p>${config.functionsDescription}</p>`;
+
+    content += buildFilterControls(response['sources'], response['functions'], config);
+
+    content += `
         <table class="table" id="itemFunctionsTable" style="width: 95%; margin-left: 10px; table-layout: fixed;">
            <thead class="thead-light">
            <tr>
@@ -2456,6 +2781,9 @@ function showGeneClusterDetails(bin_id, updateOnly) {
     showItemFunctions(bin_id, FUNCTION_CONFIGS.gene_clusters, updateOnly);
 }
 
+function showGeneFunctionsInSplits(bin_id, updateOnly) {
+    showItemFunctions(bin_id, FUNCTION_CONFIGS.genes_in_splits, updateOnly);
+}
 
 function showRedundants(bin_id, updateOnly) {
     if (typeof updateOnly === 'undefined')

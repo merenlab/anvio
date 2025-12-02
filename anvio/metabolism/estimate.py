@@ -310,11 +310,12 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
 
         # LOAD KEGG DATA
         if not self.only_user_modules:
-            # citation output for KEGG data
-            if not self.quiet:
-                self.run.warning("Anvi'o will reconstruct metabolism for modules in the KEGG MODULE database, as described in "
-                                 "Kanehisa and Goto et al (doi:10.1093/nar/gkr988). When you publish your findings, "
-                                 "please do not forget to properly credit this work.", lc='green', header="CITATION")
+            # check for kegg modules db
+            if not os.path.exists(self.kegg_modules_db_path):
+                raise ConfigError(f"It appears that a KEGG modules database ({self.kegg_modules_db_path}) does not exist in the provided data directory. "
+                                  f"Perhaps you need to specify a different data directory using --kegg-data-dir. Or perhaps you didn't run "
+                                  f"`anvi-setup-kegg-data`, though we are not sure how you got to this point in that case."
+                                  f"But fine. Hopefully you now know what you need to do to make this message go away.")
 
             # init the enzyme accession to function definition dictionary
             # (henceforth referred to as the KO dict, even though it doesn't only contain KOs for user data)
@@ -323,12 +324,11 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                 self.setup_stray_ko_dict(add_entries_to_regular_ko_dict=False)
             annotation_source_set = set(['KOfam'])
 
-            # check for kegg modules db
-            if not os.path.exists(self.kegg_modules_db_path):
-                raise ConfigError(f"It appears that a KEGG modules database ({self.kegg_modules_db_path}) does not exist in the provided data directory. "
-                                  f"Perhaps you need to specify a different data directory using --kegg-data-dir. Or perhaps you didn't run "
-                                  f"`anvi-setup-kegg-data`, though we are not sure how you got to this point in that case."
-                                  f"But fine. Hopefully you now know what you need to do to make this message go away.")
+            # citation output for KEGG data
+            if not self.quiet:
+                self.run.warning("Anvi'o will reconstruct metabolism for modules in the KEGG MODULE database, as described in "
+                                 "Kanehisa and Goto et al (doi:10.1093/nar/gkr988). When you publish your findings, "
+                                 "please do not forget to properly credit this work.", lc='green', header="CITATION")
 
             if self.contigs_db_path:
                 # sanity check that contigs db was annotated with same version of MODULES.db that will be used for metabolism estimation
