@@ -83,6 +83,7 @@ class BAMProfilerQuick:
 
         # if requested, load genes of interest
         self.gene_ids_of_interest = set([])
+        id_list = []
         if self.genes_of_interest_file:
             id_list = [g.strip() for g in open(self.genes_of_interest_file, 'r').readlines()]
         elif self.gene_caller_ids:
