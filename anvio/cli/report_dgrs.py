@@ -123,6 +123,7 @@ def get_args():
                         "ANY SNVs to identify regions of interest for the VR/TR search.", action = "store_true", default=False)
 
     groupD = parser.add_argument_group('FILTER BLAST RESULTS FOR TR/VRS', "Parameters for refining how stringent your search for template and variable regions is")
+    groupD.add_argument("--repeat-threshold", help="This is ho repeated a VR or TR sequence can be after being masked by [pytantan](https://doi.org/10.1093/nar/gkq1212). The default is 50%.", type=float, default=0.5)
     groupD.add_argument("--num-imperfect-tandem-repeats", help="Number of imperfect tandem repeats from the BLAST search in both the TR and VR regions, this is computed using [pytrf](https://github.com/lmdu/pytrf). The default is 10", type=int, default=10)
     groupD.add_argument("--repeat-motif-coverage", help="Defines the coverage threshold for imperfect repeat motifs in the VR sequence. This is calculated as (motif length × number of repeats) / total VR sequence length. Imperfect tandem repeats from the BLAST search are computed using [pytrf](https://github.com/lmdu/pytrf). The default is 0.8", default=0.8)
     groupD.add_argument("-m","--percentage-mismatch", help="The percentage of mismatching bases in the template region that are one 'type' of base. Has to be between 0.5 and 1.00. Default = 0.8", type=my_float_range, default=0.8)
