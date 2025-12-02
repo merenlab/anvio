@@ -8,7 +8,7 @@ import os
 import shutil
 import argparse
 import copy
-import pytrf # type: ignore
+import pytantan
 
 import anvio
 import anvio.dbops as dbops
