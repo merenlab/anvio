@@ -73,6 +73,7 @@ class DGR_Finder:
         self.gene_caller_to_consider_in_context = A('gene_caller') or 'prodigal'
         self.min_range_size = A('minimum_range_size')
         self.minimum_snv_density = A('minimum_snv_density') or 0.2
+        self.repeat_threshold = A('repeat_threshold') or 0.5
         self.hmm = A('hmm_usage')
         self.discovery_mode = A('discovery_mode')
         self.output_directory = A('output_dir') or 'DGR-OUTPUT'
