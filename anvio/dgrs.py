@@ -2563,7 +2563,7 @@ class DGR_Finder:
 
         for dgr_id, row in dgrs_dict.items():
 
-            # ---- SKIP EMPTY ROWS ----
+            # skip empty rows
             if all(v in [None, '', 'N/A'] for v in row.values()):
                 continue
 
