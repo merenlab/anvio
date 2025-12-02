@@ -513,12 +513,31 @@ function _createModalDialog(options) {
         </div>`;
 
     $('body').append(template);
-    $(`#modal${randomID}`)
+
+    const $modal = $(`#modal${randomID}`);
+    const escHandlerNamespace = `keydown.modalClose${randomID}`;
+
+    const escHandler = (event) => {
+        if (event.key === 'Escape') {
+            $modal.modal('hide');
+        }
+    };
+
+    $modal
         .modal({ show: true, backdrop: true, keyboard: true })
+        .on('click', function(event) {
+            // Close when the click is on the backdrop (outside the dialog)
+            if ($(event.target).is(this)) {
+                $(this).modal('hide');
+            }
+        })
         .find('.modal-dialog')
         .draggable({ handle: '.modal-header' });
 
-    $(`#modal${randomID}`).on('hidden.bs.modal', function() {
+    $(document).on(escHandlerNamespace, escHandler);
+
+    $modal.on('hidden.bs.modal', function() {
+        $(document).off(escHandlerNamespace, escHandler);
         $(this).remove();
     });
 }
@@ -578,6 +597,29 @@ function showGeneClusterFunctionsSummaryTableDialog(title, content) {
         content,
         modalClass: 'geneClusterFunctionsSummaryDialog',
         dialogClass: 'gene-cluster-functions-modal-dialog',
+        noteHTML
+    });
+}
+
+/**
+ * Show gene functions in splits summary table dialog
+ * @param {string} title - Dialog title
+ * @param {string} content - Dialog content HTML
+ */
+function showGeneFunctionsInSplitsSummaryTableDialog(title, content) {
+    const noteHTML = `Tables below show the functions associated with the genes in splits in this bin, and their
+                      involvement in metabolic modules, if any.
+
+                      Please note that this is just a quick view of the functions associated with your genes.
+                      A much more appropriate way to summarize this information is to use the program
+                      <a href="http://merenlab.org/software/anvio/help/programs/anvi-summarize/" target="_blank">
+                      anvi-summarize</a> when applicable, and inspect the resulting TAB-delimited output file.`;
+
+    _createModalDialog({
+        title,
+        content,
+        modalClass: 'geneFunctionsInSplitsSummaryDialog',
+        dialogClass: 'gene-function-in-splits-modal-dialog',
         noteHTML
     });
 }
