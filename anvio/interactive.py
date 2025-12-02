@@ -950,7 +950,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # do a good old args switcheroo from the old hacker's guide to the galaxy, and prevent any
         # unexpected outcomes for young padawans.
         args_without_profile_db = copy.deepcopy(self.args); args_without_profile_db.profile_db = None
-        single_genome_codon_usage = codonusage.SingleGenomeCodonUsage(args_without_profile_db, run=terminal.Run(verbose=False))
+        single_genome_codon_usage = codonusage.SingleGenomeCodonUsage(args_without_profile_db, r=terminal.Run(verbose=False))
 
         ###################################################################
         # collecting some key data to build our interactive objects
