@@ -859,15 +859,40 @@ class DGR_Finder:
                     self.run.warning(f"Removing the candidate DGR with its VR on this contig: {qseq} and TR on this contig: {hseq}. This is because of repeats found in the sequence by pytantan.")
             return True
 
-        # look for approximate tandem repeats that in the VR, using a coverage value of the motif length times by the number of repeats
-        # divided by the sequence length
-        # need to do this for shorter motifs too because pytrf misses them otherwise
-        for atr2 in pytrf.ATRFinder('name', seq, min_motif=3, max_motif=10, min_seedrep=2, min_seedlen=9, min_identity=70):
-            coverage = (len(atr2.motif)*atr2.repeat) / len(seq)
-            if coverage > self.repeat_motif_coverage:
-                if anvio.DEBUG and self.verbose:
-                    self.run.warning(f"Removing the DGR with its VR on this contig: {qseq} and TR on this contig: {hseq}. Found approximate tandem repeat in the query sequence {seq} with repeat count {atr2.repeat}, motif {atr2.motif} and coverage {coverage}")
-                return True
+        # for atr1 in pytrf.ATRFinder('name', seq):
+        #     if int(atr1.repeat) > self.numb_imperfect_tandem_repeats:
+        #         #has_repeat = True
+        #         if anvio.DEBUG and self.verbose:
+        #             self.run.warning(f"Removing the DGR with its VR on this contig: {qseq} and TR on this contig: {hseq}. Found imperfect tandem repeat in the query sequence {seq} with repeat count {atr1.repeat} and motif {atr1.motif}")
+        #         return True
+
+        # #look for tandem homopolymers and 2 base short tandem repeats that are over 4 (so occur 5 times) times in the sequence
+        # for ssr in pytrf.STRFinder('name', seq, mono=10, di=5):
+        #     #if ((len(ssr.motif) == 1) or (len(ssr.motif) == 2)) and ssr.repeat > 6:
+        #     if ssr:
+        #         #has_repeat = True
+        #         if anvio.DEBUG and self.verbose:
+        #             self.run.warning(f"Removing the DGR with its VR on this contig: {qseq} and TR on this contig: {hseq}. Found tandem repeat in the query sequence {seq} with repeat count {ssr.repeat} and motif {ssr.motif}")
+        #         return True
+
+        # #look for approximate tandem repeats that in the VR, using a coverage value of the motif length times by the number of repeats
+        # # divided by the sequence length
+        # for atr in pytrf.ATRFinder('name', seq, min_motif=4, max_motif=10, min_seedrep=2, min_identity=70):
+        #     coverage = (len(atr.motif)*atr.repeat) / len(seq)
+        #     if coverage > self.repeat_motif_coverage:
+        #         if anvio.DEBUG and self.verbose:
+        #             self.run.warning(f"Removing the DGR with its VR on this contig: {qseq} and TR on this contig: {hseq}.Found approximate tandem repeat in the query sequence {seq} with repeat count {atr.repeat}, motif {atr.motif} and coverage {coverage}")
+        #         return True
+
+        # # look for approximate tandem repeats that in the VR, using a coverage value of the motif length times by the number of repeats
+        # # divided by the sequence length
+        # # need to do this for shorter motifs too because pytrf misses them otherwise
+        # for atr2 in pytrf.ATRFinder('name', seq, min_motif=3, max_motif=10, min_seedrep=2, min_seedlen=9, min_identity=70):
+        #     coverage = (len(atr2.motif)*atr2.repeat) / len(seq)
+        #     if coverage > self.repeat_motif_coverage:
+        #         if anvio.DEBUG and self.verbose:
+        #             self.run.warning(f"Removing the DGR with its VR on this contig: {qseq} and TR on this contig: {hseq}. Found approximate tandem repeat in the query sequence {seq} with repeat count {atr2.repeat}, motif {atr2.motif} and coverage {coverage}")
+        #         return True
 
         return False
 
