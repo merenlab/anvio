@@ -2123,7 +2123,7 @@ class PanSuperclass(object):
             if comparable_positions == 0:
                 return None
 
-            identity = matches / comparable_position
+            identity = matches / comparable_positions
             return identity
 
         # turn the sequences dict into a more useful format for this
