@@ -500,20 +500,20 @@ class CoverageStats:
     """
 
     def __init__(self, coverage, skip_outliers=False):
-        self.min = np.amin(coverage)
-        self.max = np.amax(coverage)
-        self.median = np.median(coverage)
-        self.mean = np.mean(coverage)
-        self.std = np.std(coverage)
-        self.detection = np.sum(coverage > 0) / len(coverage)
+        self.min: float = np.amin(coverage)
+        self.max: float = np.amax(coverage)
+        self.median: float = np.median(coverage)
+        self.mean: float = np.mean(coverage)
+        self.std: float = np.std(coverage)
+        self.detection: float = np.sum(coverage > 0) / len(coverage)
 
         if coverage.size < 4:
-            self.mean_Q2Q3 = self.mean
+            self.mean_Q2Q3: float = self.mean
         else:
             sorted_c = np.sort(coverage)
             Q = int(coverage.size * 0.25)
             Q2Q3 = sorted_c[Q:-Q]
-            self.mean_Q2Q3 = np.mean(Q2Q3)
+            self.mean_Q2Q3: float = np.mean(Q2Q3)
 
         if skip_outliers:
             self.is_outlier = None

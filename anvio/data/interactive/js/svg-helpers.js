@@ -75,19 +75,35 @@ function drawLegend() {
     var top = top + line_height * 3;
     var _top = top;
 
-    for (var i=0; i < legends.length; i++)
-    {
+    for (var i = 0; i < legends.length; i++) {
         var bin_id = 'legend_' + i;
         createBin('legend_group', bin_id);
         var legend = legends[i];
 
+        // Go through collapsed or empty legends and render a compact line and skip items here:
+        if (!legend || !Array.isArray(legend.item_names) || legend.item_names.length === 0) {
+            var collapsedNote = (legend && typeof legend.total_items === 'number')
+                ? ' (' + legend.total_items + ' categories; collapsed)'
+                : ' (collapsed)';
+            // draw the legend name (with note) on the left column
+            drawText(bin_id, {
+                'x': left - line_height,
+                'y': (_top + top + line_height) / 2
+            }, (legend && legend['name'] ? legend['name'] : 'Legend') + collapsedNote, 2 * line_height + 'px', 'right');
+
+            _top = _top + 3 * line_height + gap;
+            top = _top;
+            _left = left;
+            continue;
+        }
+
+        // Now go through regular legends and render each item here:
         for (var j = 0; j < legend['item_names'].length; j++) {
             var _name = legend['item_names'][j];
-            if (legend.hasOwnProperty('stats') && legend['stats'][_name] == 0)
+            if (legend.hasOwnProperty('stats') && legend['stats'] && legend['stats'][_name] == 0)
                 continue;
 
-            if (_left > line_end)
-            {
+            if (_left > line_end) {
                 _left = left;
                 _top = _top + line_height + gap;
             }
@@ -101,33 +117,28 @@ function drawLegend() {
 
             var rect = drawRectangle(bin_id, _left, _top, line_height, line_height, color, 1, 'black',
                 null,
-                function() {
-                    // mouseenter
-                    $(this).css('stroke-width', '2');
-                },
-                function() {
-                    // mouseleave
-                    $(this).css('stroke-width', '1');
-                });
+                function () { $(this).css('stroke-width', '2'); },
+                function () { $(this).css('stroke-width', '1'); }
+            );
 
             _left += line_height + gap;
 
-            if (legend.hasOwnProperty('stats'))
-            {
+            if (legend.hasOwnProperty('stats') && legend['stats']) {
                 _name = ((_name == 'null' || _name == '') ? 'None' : _name) + ' (' + legend['stats'][_name] + ')';
             }
 
             var text = drawText(bin_id, {
                 'x': _left,
-                'y': _top + (line_height * 3/4)
+                'y': _top + (line_height * 3 / 4)
             }, _name, line_height + 'px', 'left', '#000000', 'baseline');
 
             _left += text.getBBox().width + gap;
         }
+
         drawText(bin_id, {
             'x': left - line_height,
             'y': (_top + top + line_height) / 2
-        }, legend['name'], 2*line_height + 'px', 'right');
+        }, legend['name'], 2 * line_height + 'px', 'right');
 
         _top = _top + 3 * line_height + gap;
         top = _top;
