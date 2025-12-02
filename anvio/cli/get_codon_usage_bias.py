@@ -130,7 +130,7 @@ def run_program():
     # Get CUB tables. Separate tables are produced for each combination of input genome and CUB
     # metric.
     if args.internal_genomes or args.external_genomes:
-        multigenome_codon_usage = codonusage.MultiGenomeCodonUsage(args, run=run)
+        multigenome_codon_usage = codonusage.MultiGenomeCodonUsage(args, r=run)
         output_paths = []
         # The keys are CUB metrics in the returned dict. Write files as results for each genome are
         # yielded.
@@ -185,7 +185,7 @@ def run_program():
                 cub_df.to_csv(output_path, sep='\t')
                 run.info("CUB table output", output_path, nl_after=2)
     else:
-        single_genome_codon_usage = codonusage.SingleGenomeCodonUsage(args, run=run)
+        single_genome_codon_usage = codonusage.SingleGenomeCodonUsage(args, r=run)
         # The keys are CUB metrics in the returned dict.
         cub_table_dict = single_genome_codon_usage.get_codon_usage_bias(
             metrics=args.metrics,
