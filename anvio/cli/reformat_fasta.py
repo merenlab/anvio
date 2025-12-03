@@ -188,7 +188,7 @@ def plot_length_histogram(lengths, run, bin_count=None):
                     "the plotting services. Is ok tho.", header="NO PLOT FOR YOU :(")
         return
 
-
+@terminal.time_program
 def main():
     try:
         run_program()
