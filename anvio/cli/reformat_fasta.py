@@ -146,13 +146,14 @@ def plot_length_histogram(lengths, run, bin_count=None):
         # size the plot to the terminal width if possible
         try:
             term_cols = shutil.get_terminal_size().columns
-            plt.plotsize(term_cols, int(20 * 1.5))
+            plt.plotsize(term_cols, int(24))
         except Exception:
-            plt.plotsize(terminal.Run().width, int(20 * 1.5))
+            plt.plotsize(terminal.Run().width, int(24))
 
         plt.show()
 
         # now log-scale view
+        print()
         plt.clear_figure()
         plt.canvas_color('black')
         plt.axes_color('black')
@@ -173,9 +174,9 @@ def plot_length_histogram(lengths, run, bin_count=None):
         # size the plot to the terminal width if possible
         try:
             term_cols = shutil.get_terminal_size().columns
-            plt.plotsize(term_cols, int(20 * 1.5))
+            plt.plotsize(term_cols, int(24))
         except Exception:
-            plt.plotsize(terminal.Run().width, int(20 * 1.5))
+            plt.plotsize(terminal.Run().width, int(24))
     except Exception as e:
         run.warning(f"Something bad happen when anvi'o atempted to plot the length distribution :/ "
                     f"The error message from the library was: \"{e}\".", header="NO PLOT FOR YOU :(")
