@@ -2127,34 +2127,42 @@ def _vectorize_read(cigartuples, query_sequence, reference_sequence, reference_s
     v = np.full((size, 4), -1, dtype=np.int32)
 
     count = 0
-    ref_consumed = 0
+    ref_pos = 0       # position on the reference genome (for column 0)
+    ref_seq_idx = 0   # index into reference_sequence array (for column 3)
     read_consumed = 0
+
     for i in range(cigartuples.shape[0]):
         operation, length = cigartuples[i, :]
         consumes_read, consumes_ref = cigar_consumption[operation, :]
 
         if consumes_read and consumes_ref:
-            v[count:(count + length), 0] = np.arange(ref_consumed + reference_start, ref_consumed + reference_start + length)
+            v[count:(count + length), 0] = np.arange(ref_pos + reference_start, ref_pos + reference_start + length)
             v[count:(count + length), 1] = query_sequence[read_consumed:(read_consumed + length)]
-            v[count:(count + length), 3] = reference_sequence[ref_consumed:(ref_consumed + length)]
+            v[count:(count + length), 3] = reference_sequence[ref_seq_idx:(ref_seq_idx + length)]
             v[count:(count + length), 2] = 0
 
             read_consumed += length
-            ref_consumed += length
+            ref_pos += length
+            ref_seq_idx += length
 
         elif consumes_read:
-            v[count:(count + length), 0] = ref_consumed + reference_start - 1
+            v[count:(count + length), 0] = ref_pos + reference_start - 1
             v[count:(count + length), 1] = query_sequence[read_consumed:(read_consumed + length)]
             v[count:(count + length), 2] = 1
 
             read_consumed += length
 
         elif consumes_ref:
-            v[count:(count + length), 0] = np.arange(ref_consumed + reference_start, ref_consumed + reference_start + length)
-            v[count:(count + length), 3] = reference_sequence[ref_consumed:(ref_consumed + length)]
+            v[count:(count + length), 0] = np.arange(ref_pos + reference_start, ref_pos + reference_start + length)
             v[count:(count + length), 2] = 2
 
-            ref_consumed += length
+            # Only fetch reference bases for deletions (op=2), not skips (op=3)
+            if operation == 2:  # Deletion
+                v[count:(count + length), 3] = reference_sequence[ref_seq_idx:(ref_seq_idx + length)]
+                ref_seq_idx += length
+            # For N (op=3), leave column 3 as -1 (already initialized)
+
+            ref_pos += length
 
         count += length
 
