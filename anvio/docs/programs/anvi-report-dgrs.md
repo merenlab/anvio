@@ -1,9 +1,16 @@
-## Usage 
+## Usage
 This program locates diversity-generating retroelements (DGRs for short - to save words and typing) within read mapped metagenomic or genomic samples.
 
-In brief, the tool first searches for the variable regions of the DGR, by locating areas of high SNV density which are deemed as possible variable regions. These SNVs should by default occur in the 1st and 2nd codon base positions so that they are within an ORF. Next we search for the template regions associated with those possible variable regions, by BLASTn'ing the genome against itself to locate regions of similarity other than the disparity in the Adenine bases. Finally, the tool then locates a reverse transcriptase, this works by locating the nearest reverse transcriptase to each template region via a homoligcal HMM search. 
+In brief, the tool first searches for the variable regions of the DGR, by locating areas of high SNV density which are deemed as possible variable regions. These SNVs should by default occur in the 1st and 2nd codon base positions so that they are within an ORF. Next we search for the template regions associated with those possible variable regions, by BLASTn'ing the genome against itself to locate regions of similarity other than the disparity in the Adenine bases. Finally, the tool then locates a reverse transcriptase, this works by locating the nearest reverse transcriptase to each template region via a homological HMM search.
 
-### Our philosophy for finding DGRs 
+### First thing's first what are diversity-generating retroelements?
+Diversity-generating retroelements (DGRs) are molecular evolutionary mechanisms which facilitate rapid microbial adaptation to environmental changes. DGRs are capable of changing the protein expression of open reading frames in which they act in, by generating site-specific nucleotide variability in the hypermutated target genes via non-synonymous changes.
+
+DGRs are widespread across bacteria, archaea, and many viruses, and have been identified in more than 90 environmental contexts. This widespread mechanisms are composed of three essential elements: the **template region** (TR), **variable region** (VR), and an error-prone **reverse transcriptase** (RT). The TR and VR are nearly identical sequences of the same length, differing only at positions subject to mutagenesis. This controlled divergence generates a repertoire of protein variants, enhancing an organism’s adaptability and functional potential.
+
+ The template region, which are often encoded in non-coding DNA regions, are used as the template for error-prone reverse transcription. Reverse transcription produces cDNA, which is then inserted into an open reading frame, with the adenine site mutagenesis, known now as the variable region. A single template region can be associated with multiple variable regions, allowing  multiple proteins of similar functions to diversify as a result of one system. Template and variable regions can be distally located to one another, and their the specifics of the mechanisms structure can also vary between organisms.
+
+### Our philosophy for finding DGRs
 Locating the template and variable region first is an integral philosophy for locating DGRs without relying on reverse transcriptase homology. In fact, the reverse transcriptase is not a requirement for the reporting of a DGR.
 
 Another integral part of this tool, is that it relies on SNVs in the variable region and therefore, only locates DGRs that are active within the sample, a [reverse weeping angel](https://en.wikipedia.org/wiki/Weeping_Angel) indeed she cannot locate inactive DGRs.
@@ -12,7 +19,7 @@ Another integral part of this tool, is that it relies on SNVs in the variable re
 Before you run this program you need to run locate the reverse transcriptases for the DGRs in your sample/s. You can do this via the anvi'o own reverse transcriptase collection which is compsed of the [Roux et al., 2021](https://doi.org/10.1038/s41467-021-23402-7), alongside 4 Pfam general RT HMMs: PF00078/RVT_1 Reverse transcriptase (RNA-dependent DNA polymerase), PF07727/RVT_2 reversevtranscriptase (RNA-dependent DNA polymerase), PF13456/RVT_3 reverse transcriptase-like – found in plants, PF13655/RVT_N N-terminal domain of reverse transcriptase (do i cite simon and zimmerly 2008 here??).
 
 {{ codestart }}
-anvi-run-hmms -c contigs.db  -i Reverse_Transcriptase 
+anvi-run-hmms -c contigs.db  -i Reverse_Transcriptase
 {{ codestop }}
 
 You can of course create your own HMM and use that instead, who is anvi'o to tell you what to do?
@@ -20,54 +27,80 @@ You can of course create your own HMM and use that instead, who is anvi'o to tel
 ### Essential inputs for searching for DGRs
 If you want to see more diversity then your %(single-profile-db) needs to be a %(merged-profile-db) so you can look at activity across samples
 
-* %(contigs-db) 
+* %(contigs-db)
 * ideally a merged %(profile.db) - we don't discriminate against singles here either
 * %(hmm-usage)
 
 Here is an example of the standard command you could use with default parameters:
 
 {{ codestart }}
-anvi-report-dgrs -c contigs.db -p profile.db -i Reverse_Transcriptase -o dgrs-output 
+
+anvi-report-dgrs -c contigs.db -p profile.db -I Reverse_Transcriptase -o dgrs-output --skip-compute-DGR-variability-profiling
+
+{{ codestop }}
+
+You can also run the program and compute the activity of the DGR in your samples (explained under the header: **Computing DGR variability profiling**) for this you will need the samples that your want to look for the activity across and for this anvi'o needs to know the location of these samples via a %{samples-txt}.
+
+{{ codestart }}
+
+anvi-report-dgrs -c contigs.db -p profile.db -I Reverse_Transcriptase -o dgrs-output --samples-txt samples.txt
+
 {{ codestop }}
 
 ### Identifying putative variable regions
-The tool bases the location of the variable regions on the principle that at the mutagenesis positions of the variable region there will be SNVs, these clusters of dense SNVs are located. The identification of these SNVs is tunable through multiple parameters. `--departure-from-reference-percentage`is the minimum departure from reference for the tool to count a SNV. The tool locates a SNV and then walks along to the next SNV the '--distance-between-snv' controls this length. These are then passed through a `--minimum-snv-density` threshold and a `--minimum-range-size`. Then any of these overlapping SNV clusters are merged together and a `--variable-buffer-length` is added to each side of a high-SNV region.
 
+The tool bases the location of the variable regions on the principle that at the mutagenesis positions of the variable region there will be SNVs, these clusters of dense SNVs are located. The identification of these SNVs is tunable through multiple parameters. `--departure-from-reference-percentage`is the minimum departure from reference for the tool to count a SNV. The tool locates a SNV and then walks along to the next SNV the '--distance-between-snv' controls this length. These are then passed through a `--minimum-snv-density` threshold and a `--minimum-range-size`. Then any of these overlapping SNV clusters are merged together and a `--variable-buffer-length` is added to each side of a high-SNV region.
 
 ### Locating template regions
 
-Once we have located the putative variable region sequences, we need to confirm that there is a template region in the sample, or else it is jsut an area with a lot of SNVs. For this we use BLASTn to BLAST the putative variable regions back across the metagenomic sample to find areas which match the characteristics of a template and variable region pair.
+Once we have located the putative variable region sequences, we need to confirm that there is a template region in the sample, or else it is just an area with a lot of SNVs. For this we use BLASTn to BLAST the putative variable regions back across the metagenomic sample to find areas which match the characteristics of a template and variable region pair.
 
-Then we check that these are truly a template and variable region pair. For that they have to have a `--number-of-mismatches` and those mismatches have to mainly be from one type of base (previously DGRs have only been reports to be adenine based specific for this use the flag `--only-a-bases`). The flag `--percentage-mismatch` looks at the percentage of mismatches that comes from one base type in the template region. 
+Then we check that these are truly a template and variable region pair. For that they have to have a `--number-of-mismatches` and those mismatches have to mainly be from one type of base (previously DGRs have only been reports to be adenine based specific for this use the flag `--only-a-bases`). The flag `--percentage-mismatch` looks at the percentage of mismatches that comes from one base type in the template region.
 
 ### Confirming DGRs
 
-Due to the very complex nature of metagenomic samples anvi'o has a number of different ways to ensure that we are truly finding a DGR pair and not jsut two random sequences in the sample that match at almost every position. Having said that it is always a good idea to double check the results yourself.
+Due to the very complex nature of metagenomic samples anvi'o has a number of different ways to ensure that we are truly finding a DGR pair and not just two random sequences in the sample that match at almost every position. Having said that it is always a good idea to double check the results yourself.
 
-We also check that there are multiple base types on both of the regions to ensure that they are diverse this can be changed with `--min-base-types-vr` and `--min-base-types-tr`. 
+The sequences that are found can be rather short in length and heavily repeated. In order to avoid heavily repeated sequences being found as false positives we use the python compiled version of [tantan](https://doi.org/10.1093/nar/gkq1212) to remove sequences that are over a `--repeat-threshold` of the fraction of that sequence that is repeated. We also check that there are multiple base types on both of the regions to ensure that they are diverse this can be changed with `--min-base-types-vr` and `--min-base-types-tr`.
 
-At this point, the algorithm has no concept of the strand in which the regions were found on, therefore, if the mutagenesis base that is on the template region is thymine, this is reverse complemented and saves in the output information table. 
+At this point, the algorithm has no concept of the strand in which the regions were found on, therefore, if the mutagenesis base is thymine, this is reverse complemented to be adenine and saves in the output information table.
 
-`anvi-report-dgrs` only searches for active DGRs, therefore we search based on SNVs, as we expect these to be located in the mismatching positions of the TR and VR, over the VR due to the diversification. We then also look at the SNV profiles over the VR, here we check for two main SNV related things. The first being that the SNVs have to come from the majority of the first and second codon positions as such random logic that less than a third of the SNVs would be from the 3rd codon position. This is therefore reported in the output as _insert-param-name-here_ 
+`anvi-report-dgrs` only searches for active DGRs, the search is based on SNVs, as we expect these to be located in the mismatching positions of the TR and VR which are presumed to correspond to the mutagenesis base. Due to this logic, we check for two main SNV related things. The first being that the SNVs have to come from the majority of the first and second codon positions as such random logic that less than a third of the SNVs would be from the 3rd codon position, variable with the flag `----snv-codon-position`. This is therefore reported in the output as `snv_at_3_codon_over_a_third`.
 
-The second is that because we expect the places of the mismatches in the VR to be the sites of diversification, we therefore want to check that the majority of the SNVs are also at those positions, meaning that it is unexpected for SNVs to be over matching positions other than the site of mutagenesis. Of course other reasons for DGR spurious SNVs to occur over a VR due to populations variances and such. Therefore, the tool checks for SNVs in matches that are not over the mutagenesis base type matches, so in the case of adenine it would search for SNVs in matches of the VR that occur over the T, G, C bases. This is also then reported, so that the user can investigate more closely and decide on thresholds themselves.
+The second SNV related check performed is a result of expecting the places of the mismatches in the VR to be the sites of diversification, we therefore want to check that the majority of the SNVs are also at those positions, meaning that it is unexpected for SNVs to be over matching positions other than the site of mutagenesis. Of course other reasons for DGR spurious SNVs to occur over a VR due to populations variances and such. Therefore, the tool checks for SNVs in matches that are not over the mutagenesis base type matches, so in the case of adenine it would search for SNVs in matches of the VR that occur over the T, G, C bases. This is also then reported, so that the user can investigate more closely and decide on thresholds themselves using the flag `----snv-matching-proportion`.
+
+## Locating associated Reverse Transcriptases
 
 
-### Output
+### Reporting genomic context around DGRs
+
+By default because anvi'o uses [Prodigal](https://github.com/hyattpd/Prodigal) for gene prediction curing the generation of your %{contigs-db}, unless you have stated otherwise. Therefore, for this to work, you need to have the same gene prediction tool ``--gene_caller_to_consider_in_context`
 
 
-Need a dgrs.txt output directory help 
-### DGRs_found 
-table example photo 
+example pic of table
 
-### Genes_VRs act_within
-example pic of table 
-note somewhere that !!! is a splitter for there being more than one function or accession associated with a gene
+
+
+NB: "!!!" is a splitter for there being more than one function or accession associated with a gene
+
+### TSV output
+
+
+Need a dgrs.txt output directory help
+
+### HTML output
+
+### DGRs_found
+table example photo
+
+
+
+### Computing DGR variability profiling
+
 
 NB: These next steps are not within anvi'o directly. You will need to [install](https://merenlab.org/2014/08/16/installing-the-oligotyping-pipeline/) [oligotyping](https://merenlab.org/software/oligotyping/) to do this process.
 
-### Profiling VR diversity
-(NB: only works with short reads)
+
 Visualising the variability of the variable regions produced in the context of your samples
 The user give the tools samples that were used to create the Profile.db, where they also have a samples.txt with paths to the short reads of these samples, obviously, also need the fastq files of the short reads.
 
@@ -76,17 +109,20 @@ All VRs are forced to be on the forward strand, this includes reverse complement
 #### Creating different primers for every sample
 
 ## Power Users:
-#### Discovery mode 
-Default use of the program is that it will locate SNVs based on their codon position so they need to be in ORFs and the SNVs are limited to the first and second codon position. 
+#### Discovery mode
+Default use of the program is that it will locate SNVs based on their codon position so they need to be in ORFs and the SNVs are limited to the first and second codon position.
 
-Discovery mode however, places no limits on where the SNVs are located. This allows for a much broader search area of investigation and goes against some of the known features of DGRs. 
+Discovery mode however, places no limits on where the SNVs are located. This allows for a much broader search area of investigation and goes against some of the known features of DGRs.
 
-#### Collections mode 
+#### Collections mode
 Searching for DGRs in metagenomes. Uses collections, more specifically the bins in the specified collection by the user and checks that the TR and VRs are found in the same bin. Because in theory the bins should each be one sample ('species' [notice the quotation marks]), therefore you could give the program a metagenome as long as you have binned groups.
 
-Can specify a specific collection with the flag `-C` and then the program will only look through that specific collection for DGRs. 
+Can specify a specific collection with the flag `-C` and then the program will only look through that specific collection for DGRs.
 
-## A list of all of the changeable parameters:
+## Changeable parameters:
+
+There are many ways to alter the behavioral specifics of this programme. You can find some commonly adjusted parameters below. For a full list of parameters, check the program help (-h) output.
+
 
 #### BLASTn Arguments
 - Step: The length of base pairs you would like to cut your genome/sequence into. Default = 100 (This is only for fasta file mode)
