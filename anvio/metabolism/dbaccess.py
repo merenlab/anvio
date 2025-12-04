@@ -458,7 +458,7 @@ class KeggDataLoader(KeggContext):
                 splits_missing_in_profile_db = split_names_in_contigs_db.difference(split_names_in_profile_db)
 
                 if len(splits_missing_in_profile_db):
-                    min_contig_length_in_profile_db = pp(int(DBInfo('PROFILE.db', expecting='profile').get_self_table()['min_contig_length']))
+                    min_contig_length_in_profile_db = pp(int(DBInfo(profile_db_path, expecting='profile').get_self_table()['min_contig_length']))
                     num_splits_contig = pp(len(split_names_in_contigs_db))
                     num_splits_profile = pp(len(split_names_in_profile_db))
                     num_missing = pp(len(splits_missing_in_profile_db))

@@ -20,7 +20,7 @@ __resources__ = [("A conceptual tutorial on the structural biology capabilities 
                   "http://merenlab.org/2018/09/04/structural-biology-with-anvio/"),
                  ("A practical tutorial section in the infant gut tutorial",
                   "http://merenlab.org/tutorials/infant-gut/#chapter-vii-linking-genomic-heterogeneity-to-protein-structures")]
-__requires__ = ['contigs-db', 'pdb-db']
+__requires__ = ['contigs-db', 'pdb-db', 'genes-of-interest-txt']
 __provides__ = ['structure-db']
 __description__ = ("Creates a database of protein structures. Predict protein structures using "
                    "template-based homology modelling of genes in your contigs database, or import "

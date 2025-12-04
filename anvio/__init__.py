@@ -1601,7 +1601,8 @@ D = {
             ['--gene-caller-ids'],
             {'metavar': 'GENE_CALLER_IDS',
              'type': str,
-             'help': "Gene caller ids. Multiple of them can be declared separated by a delimiter (the default is a comma). "
+             'help': "Gene caller ids to focus on. Multiple of them can be declared separated by a delimiter (the default is a comma, "
+                     "and if there is no option to change the delimiter, you must use a comma)."
                      "In anvi-gen-variability-profile, if you declare nothing you will get all genes matching your other "
                      "filtering criteria. In other programs, you may get everything, nothing, or an error. It really depends "
                      "on the situation. Fortunately, mistakes are cheap, so it's worth a try."}
