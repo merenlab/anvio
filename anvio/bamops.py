@@ -2226,6 +2226,7 @@ def _trim(cigartuples, cigar_consumption, query_sequence, reference_sequence, re
     cigartuples = cigartuples[::-1, :] if side == 1 else cigartuples
 
     ref_positions_trimmed = 0
+    ref_bases_trimmed = 0  # only counts bases actually in reference_sequence
     read_positions_trimmed = 0
 
     count = 0
@@ -2242,11 +2243,17 @@ def _trim(cigartuples, cigar_consumption, query_sequence, reference_sequence, re
                 # truncated length
                 cigartuples[count, 1] = length - remaining
                 ref_positions_trimmed += remaining
+                # Only count bases for non-N operations (N is op 3)
+                if operation != 3:
+                    ref_bases_trimmed += remaining
                 if consumes_read:
                     read_positions_trimmed += remaining
                 break
 
             ref_positions_trimmed += length
+            # Only count bases for non-N operations
+            if operation != 3:
+                ref_bases_trimmed += length
             if consumes_read:
                 read_positions_trimmed += length
 
@@ -2263,13 +2270,17 @@ def _trim(cigartuples, cigar_consumption, query_sequence, reference_sequence, re
 
     if side == 1:
         cigartuples = cigartuples[::-1]
-        query_sequence = query_sequence[:-read_positions_trimmed]
-        reference_sequence = reference_sequence[:-ref_positions_trimmed]
+        if read_positions_trimmed > 0:
+            query_sequence = query_sequence[:-read_positions_trimmed]
+        if ref_bases_trimmed > 0:
+            reference_sequence = reference_sequence[:-ref_bases_trimmed]
         reference_end -= ref_positions_trimmed
     else:
         cigartuples = cigartuples
-        query_sequence = query_sequence[read_positions_trimmed:]
-        reference_sequence = reference_sequence[ref_positions_trimmed:]
+        if read_positions_trimmed > 0:
+            query_sequence = query_sequence[read_positions_trimmed:]
+        if ref_bases_trimmed > 0:
+            reference_sequence = reference_sequence[ref_bases_trimmed:]
         reference_start += ref_positions_trimmed
 
     return cigartuples, query_sequence, reference_sequence, reference_start, reference_end
