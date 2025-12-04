@@ -407,7 +407,12 @@ class Read:
         if read.has_tag('MD'):
             self.reference_sequence = np.frombuffer(read.get_reference_sequence().upper().encode('ascii'), np.uint8)
         else:
-            self.reference_sequence = np.array([ord('N')] * (self.reference_end - self.reference_start))
+            # Calculate reference sequence length excluding N operations (skipped regions)
+            ref_seq_length = self.reference_end - self.reference_start
+            for op, length in read.cigartuples:
+                if op == 3:  # N operation (skipped region)
+                    ref_seq_length -= length
+            self.reference_sequence = np.array([ord('N')] * ref_seq_length)
 
         # See self.vectorize
         self.v = None
