@@ -2,8 +2,11 @@
 # -*- coding: utf-8
 
 import sys
+import math
 import shutil
+import statistics
 
+import numpy as np
 import pandas as pd
 
 import anvio
@@ -14,6 +17,7 @@ import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
+
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
@@ -26,6 +30,166 @@ __description__ =  ("Reformat FASTA file (remove contigs based on length, or bas
                     "deflines, and/or generate an output with simpler names)")
 
 
+run = terminal.Run()
+progress = terminal.Progress()
+pp = terminal.pretty_print
+P = terminal.pluralize
+
+def get_L50(contig_lengths):
+    """Return the number of contigs that together make up half of the assembly length."""
+    half = sum(contig_lengths) / 2.0
+    cumulative = 0
+
+    for index, length in enumerate(sorted(contig_lengths, reverse=True), 1):
+        cumulative += length
+        if cumulative >= half:
+            return index
+
+
+def summarize_fasta(contigs_fasta, ignore_empty_sequences):
+    """Collect simple stats for a FASTA file."""
+    fasta = u.SequenceSource(contigs_fasta)
+    lengths = []
+    num_entries = 0
+    num_empty = 0
+
+    progress.new("Reading FASTA for stats")
+    progress.update("Learning the total number of sequences ...")
+    total = utils.get_num_sequences_in_fasta(contigs_fasta)
+
+    progress.progress_total_items = total
+    progress.update(f"Scanning {utils.human_readable_number(total)} entries ...")
+
+    while next(fasta):
+        num_entries += 1
+        seq = fasta.seq
+        seq_len = len(seq)
+
+        if not seq_len:
+            num_empty += 1
+            continue
+
+        lengths.append(seq_len)
+
+        progress.increment()
+
+        if progress.progress_current_item % 100 == 0:
+            progress.update(f"{pp(progress.progress_current_item)} of {pp(progress.progress_total_items)}")
+
+    fasta.close()
+
+    progress.end()
+
+    if num_empty and not ignore_empty_sequences:
+        raise ConfigError(f"We have a problem, Houston. Of the total {num_entries} entries "
+                          f"in your FASTA file, {num_empty} {terminal.pluralize('has', num_empty, alt='have' )} "
+                          f"no sequences (i.e., they're blank). You have two options: either (1) use the "
+                          f"flag `--ignore-empty-seqeunces` so anvi'o can ignore these FASTA entries, or "
+                          f"(2) go back to your FASTA file and figure out why they are empty.")
+
+    total_length = sum(lengths)
+
+    stats = {
+        'num_entries': num_entries,
+        'num_empty': num_empty,
+        'num_sequences': len(lengths),
+        'total_length': total_length,
+        'lengths': lengths,
+        'min_length': min(lengths) if lengths else None,
+        'max_length': max(lengths) if lengths else None,
+        'mean_length': statistics.mean(lengths) if lengths else None,
+        'median_length': statistics.median(lengths) if lengths else None,
+        'n50': utils.get_N50(lengths) if lengths else None,
+        'l50': get_L50(lengths) if lengths else None,
+    }
+
+    return stats
+
+
+def plot_length_histogram(lengths, run, bin_count=None):
+    if anvio.QUIET:
+        return
+
+    try:
+        import plotext as plt
+    except Exception:
+        run.warning("You don't have the `plotext` library to plot data :/ You can "
+                    "install it by running `pip install plotext` in your anvi'o "
+                    "environment.", header="NO PLOT FOR YOU :(")
+        return
+
+    try:
+        bin_count = bin_count or max(10, min(60, int(math.sqrt(len(lengths)))))
+
+        plt.clear_figure()
+        plt.canvas_color('black')
+        plt.axes_color('black')
+        plt.ticks_color('white')
+        plt.title("Contig length distribution")
+        plt.xlabel("Contig length (bp)")
+        plt.ylabel("Frequency")
+
+        if not lengths:
+            run.warning("No sequences with positive length to plot.", header="NO PLOT FOR YOU :(")
+            return
+
+        # first, linear histogram
+        upper = max(lengths)
+        counts_lin, edges_lin = np.histogram(lengths, bins=bin_count, range=(0, upper))
+        centers_lin = (edges_lin[:-1] + edges_lin[1:]) / 2.0
+        plt.bar(centers_lin, counts_lin)
+        tick_positions = np.linspace(edges_lin[0], edges_lin[-1], num=min(6, len(edges_lin)))
+        tick_labels = [utils.human_readable_number(tp, decimals=1) for tp in tick_positions]
+        plt.xticks(tick_positions.tolist(), tick_labels)
+        plt.xlabel("Contig length (bp)")
+
+        # size the plot to the terminal width if possible
+        try:
+            term_cols = shutil.get_terminal_size().columns
+            plt.plotsize(term_cols, int(24))
+        except Exception:
+            plt.plotsize(terminal.Run().width, int(24))
+
+        plt.show()
+
+        # now log-scale view
+        print()
+        plt.clear_figure()
+        plt.canvas_color('black')
+        plt.axes_color('black')
+        plt.ticks_color('white')
+
+        lengths_arr = np.array(lengths, dtype=float)
+        log_lengths = np.log10(lengths_arr)
+
+        counts_log, edges_log = np.histogram(log_lengths, bins=bin_count)
+        centers_log = (edges_log[:-1] + edges_log[1:]) / 2.0
+        plt.bar(centers_log, counts_log)
+
+        tick_positions = np.linspace(edges_log[0], edges_log[-1], num=min(6, len(edges_log)))
+        tick_labels = [utils.human_readable_number(10 ** tp, decimals=1) for tp in tick_positions]
+        plt.xticks(tick_positions.tolist(), tick_labels)
+        plt.xlabel("Contig length (bp, log scale)")
+
+        # size the plot to the terminal width if possible
+        try:
+            term_cols = shutil.get_terminal_size().columns
+            plt.plotsize(term_cols, int(24))
+        except Exception:
+            plt.plotsize(terminal.Run().width, int(24))
+    except Exception as e:
+        run.warning(f"Something bad happen when anvi'o atempted to plot the length distribution :/ "
+                    f"The error message from the library was: \"{e}\".", header="NO PLOT FOR YOU :(")
+        return
+
+    try:
+        plt.show()
+    except OSError:
+        run.warning("Redirecting things into files and working with funny TTYs confuse "
+                    "the plotting services. Is ok tho.", header="NO PLOT FOR YOU :(")
+        return
+
+@terminal.time_program
 def main():
     try:
         run_program()
@@ -39,30 +203,27 @@ def main():
 
 def run_program():
     args = get_args()
-    run = terminal.Run()
-    pp = terminal.pretty_print
-    P = terminal.pluralize
 
     if args.keep_ids and args.exclude_ids:
         raise ConfigError("You can't use`--exclude-ids and --keep-ids together :/")
 
-    if args.exact_length and args.min_len:
+    if args.exact_length and args.min_len and not args.stats_only:
         raise ConfigError(f"You can't ask your reads to be an exact lenght of {args.exact_length} "
                           f"and longer than {args.min_len} at the same time. It just doesn't make "
                           f"any sense and that's why.")
 
-    if args.output_file == args.contigs_fasta:
+    if not args.stats_only and args.output_file == args.contigs_fasta:
         raise ConfigError("You can't set the same path for both your input file name and output "
                           "file name. It makes no sense UNLESS you wish to 'overwrite' your input "
                           "file in-place. But anvi'o not only has a flag for that (`--overwrite-input`) "
                           "but also has means to track those who do not read the help menu for "
                           "programs. Just so you know.")
 
-    if args.output_file and args.overwrite_input:
+    if not args.stats_only and args.output_file and args.overwrite_input:
         raise ConfigError("You can't ask anvi'o to overwrite your input file, and also provide an "
                           "output file name at the same time.")
 
-    if not args.overwrite_input and not args.output_file:
+    if not args.stats_only and not args.overwrite_input and not args.output_file:
         raise ConfigError("You have not provided an output file name. If you are feeling extra "
                           "adventurous today and would like anvi'o to overwrite your input file "
                           "you must use the `--overwrite` flag.")
@@ -70,12 +231,41 @@ def run_program():
     # if the user wants to overwrite the input file, we will do it by first
     # setting the output file path to a temp file, and then moving it on
     # top of the input file, overwriting it forever.
-    if args.overwrite_input:
+    if args.overwrite_input and not args.stats_only:
        args.output_file = filesnpaths.get_temp_file_path()
        if args.contigs_fasta.endswith(".gz"):
             args.output_file += ".gz"
 
     filesnpaths.is_file_fasta_formatted(args.contigs_fasta)
+
+    if args.stats_only:
+        run.info('Input', args.contigs_fasta)
+
+        stats = summarize_fasta(args.contigs_fasta, args.ignore_empty_sequences)
+
+        run.warning(None, header='FASTA STATS', lc="cyan")
+        run.info('FASTA entries parsed', utils.human_readable_number(stats['num_entries']))
+        if stats['num_empty']:
+            run.info('Entries with no sequence', f"{pp(stats['num_empty'])} (ignored for stats)", mc='yellow')
+        run.info('Contigs considered', utils.human_readable_number(stats['num_sequences']))
+        run.info('Total length (bp)', utils.human_readable_number(stats['total_length']))
+
+        if not stats['lengths']:
+            run.info_single("Anvi'o could not find any sequences with positive length to report on :/", nl_after=1)
+            return
+
+        run.info('Min contig length', utils.human_readable_number(stats['min_length']))
+        run.info('Max contig length', utils.human_readable_number(stats['max_length']))
+        run.info('Mean contig length', f"{utils.human_readable_number(stats['mean_length'])}")
+        run.info('Median contig length', f"{utils.human_readable_number(stats['median_length'])}")
+        run.info('N50', pp(stats['n50']))
+        run.info('L50', pp(stats['l50']))
+
+        run.info_single("Attempting to render a histogram for contig lengths below.", nl_before=1, nl_after=1)
+        plot_length_histogram(stats['lengths'], run, args.length_histogram_bins)
+
+        return
+
     filesnpaths.is_output_file_writable(args.output_file)
 
     if not args.ignore_empty_sequences:
@@ -325,6 +515,15 @@ def get_args():
                         help=("If your FASTA file contains entries with no sequences, you will either have to ask anvi'o "
                               "to ignore them, or go back to your file and figure out why it is the case (because you will "
                               "certainly get an error somewhere during the process)."))
+
+    groupE = parser.add_argument_group('UTILITY: FASTA STATS')
+    groupE.add_argument('--stats-only', default=False, action="store_true",
+                        help="Skip all reformatting operations and instead report basic statistics about the input FASTA "
+                             "file (total sequences, min/max/mean lengths, N50, GC content, etc.) without writing a new "
+                             "file.")
+    groupE.add_argument('--length-histogram-bins', type=int, nargs='?', const=None, default=None, metavar='INT',
+                        help="Number of bins for the length histogram shown with --stats-only. If you omit a value, anvi'o "
+                             "chooses a reasonable one based on the number of sequences.")
     return parser.get_args(parser)
 
 

@@ -47,7 +47,7 @@ try:
     from anvio.sequence import Composition
     from anvio.version import versions_for_db_types
     from anvio.errors import ConfigError, FilesNPathsError
-    from anvio.terminal import Run, Progress, SuppressAllOutput, get_date, TimeCode, pluralize
+    from anvio.terminal import Run, Progress, SuppressAllOutput, get_date, TimeCode
 except ModuleNotFoundError as e:
     # Extract just the module name from "No module named 'modulename'"
     module_name = str(e).split("'")[1] if "'" in str(e) else str(e)
@@ -291,6 +291,31 @@ def human_readable_file_size(nbytes):
         i += 1
     f = ('%.2f' % nbytes).rstrip('0').rstrip('.')
     return '%s %s' % (f, suffixes[i])
+
+
+def human_readable_number(value, decimals=2, suffixes=None):
+    """Return a compact string for large numbers (e.g., 12340 -> 12.3K)."""
+
+    suffixes = suffixes or ['', 'K', 'M', 'G', 'T', 'P']
+
+    try:
+        num = float(value)
+    except (TypeError, ValueError):
+        return str(value)
+
+    negative = num < 0
+    num = abs(num)
+
+    if num == 0:
+        return '0'
+
+    i = 0
+    while num >= 1000 and i < len(suffixes) - 1:
+        num /= 1000.0
+        i += 1
+
+    fmt = f"{{:.{decimals}f}}".format(num).rstrip('0').rstrip('.')
+    return f"{'-' if negative else ''}{fmt}{suffixes[i]}"
 
 
 def get_port_num(port_num = 0, ip='0.0.0.0', run=run):
