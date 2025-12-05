@@ -20,7 +20,7 @@ Another integral part of this tool, is that it relies on SNVs in the variable re
 Before you run this program you need to run locate the reverse transcriptases for the DGRs in your sample/s. You can do this via the anvi'o own reverse transcriptase collection which is compsed of the [Roux et al., 2021](https://doi.org/10.1038/s41467-021-23402-7), alongside 4 Pfam general RT HMMs: PF00078/RVT_1 Reverse transcriptase (RNA-dependent DNA polymerase), PF07727/RVT_2 reversevtranscriptase (RNA-dependent DNA polymerase), PF13456/RVT_3 reverse transcriptase-like – found in plants, PF13655/RVT_N N-terminal domain of reverse transcriptase (do i cite simon and zimmerly 2008 here??).
 
 {{ codestart }}
-anvi-run-hmms -c contigs.db  -i Reverse_Transcriptase
+anvi-run-hmms -c contigs.db  -I Reverse_Transcriptase
 {{ codestop }}
 
 You can of course create your own HMM and use that instead, who is anvi'o to tell you what to do?
