@@ -85,8 +85,8 @@ class PrimerSearch:
         if self.only_report_primer_matches:
             self.min_remainder_length = 0
 
-        if self.output_directory_path:
-            filesnpaths.check_output_directory(self.output_directory_path)
+        if self.output_directory_path and os.path.exists(self.output_directory_path):
+            filesnpaths.is_output_dir_writable(self.output_directory_path)
 
 
         self.reads_are_processed = False
@@ -144,7 +144,7 @@ class PrimerSearch:
         sample_dict : dict
             A dictionary that holds `hits` for each primer.
         primers_dict : dict
-            A dictionary that holds `matching_seqeunces` for each primer
+            A dictionary that holds `matching_sequences` for each primer
         """
 
         if sample_name not in self.samples_dict:
@@ -242,8 +242,12 @@ class PrimerSearch:
         return sample_dict, primers_dict
 
 
-    def process(self):
-        """Processes everything."""
+    def process(self, return_dicts = False):
+        """Processes everything.
+        Parameters
+        =======
+        return_dicts : boolean
+            If you want this function to return the sample_dict and the primers_dict then set this to true."""
 
 
         for sample_name in self.samples_dict:
@@ -252,11 +256,14 @@ class PrimerSearch:
             if self.output_directory_path:
                 self.store_sequences(sample_name, sample_dict, primers_dict)
 
+            self.reads_are_processed = True
+
+            if return_dicts:
+                return sample_dict, primers_dict
             # call Batman
             del sample_dict
             del primers_dict
 
-        self.reads_are_processed = True
 
 
     def print_summary(self):
@@ -301,7 +308,7 @@ class PrimerSearch:
             It can be one of the following: 'remainders', 'primer_match', 'trimmed', 'gapped'. Remainders are the downstream
             sequences after primer match, excluding the primer sequence. Primer matches are the primer-matching part of the
             match sequences (useful if one is working with degenerate primers and wishes to see the diversity of matching
-            seqeunces). Trimmed sequences are trimmed to the shortest length (and include primer match). Gapped sequences
+            sequences). Trimmed sequences are trimmed to the shortest length (and include primer match). Gapped sequences
             are not trimmed, but shorter ones are padded with gaps.
 
         Returns
@@ -369,6 +376,7 @@ class PrimerSearch:
             for primer_name in primers_dict:
                 remainder_sequences = self.get_sequences(primer_name, primers_dict, target='remainders')
                 output_file_path = os.path.join(self.output_directory_path, '%s-%s-REMAINDERS.fa' % (sample_name, primer_name))
+                filesnpaths.is_output_file_writable(output_file_path, ok_if_exists=False)
                 with open(output_file_path, 'w') as output:
                     counter = 1
                     for sequence in remainder_sequences:
@@ -386,6 +394,7 @@ class PrimerSearch:
             primer_matching_sequences = self.get_sequences(primer_name, primers_dict, target='primer_match')
 
             output_file_path = os.path.join(self.output_directory_path, '%s-%s-PRIMER-MATCHES.fa' % (sample_name, primer_name))
+            filesnpaths.is_output_file_writable(output_file_path, ok_if_exists=False)
             with open(output_file_path, 'w') as output:
                 counter = 1
                 for sequence in primer_matching_sequences:
@@ -402,6 +411,7 @@ class PrimerSearch:
         self.progress.update('...')
         for primer_name in self.primers_dict:
             trimmed_output_file_path = os.path.join(self.output_directory_path, '%s-%s-HITS-TRIMMED.fa' % (sample_name, primer_name))
+            filesnpaths.is_output_file_writable(trimmed_output_file_path, ok_if_exists=False)
             sequences = self.get_sequences(primer_name, primers_dict, target='trimmed')
             with open(trimmed_output_file_path, 'w') as trimmed:
                 counter = 1
@@ -410,6 +420,7 @@ class PrimerSearch:
                     counter += 1
 
             gapped_output_file_path = os.path.join(self.output_directory_path, '%s-%s-HITS-WITH-GAPS.fa' % (sample_name, primer_name))
+            filesnpaths.is_output_file_writable(gapped_output_file_path, ok_if_exists=False)
             sequences = self.get_sequences(primer_name, primers_dict, target='gapped')
             with open(gapped_output_file_path, 'w') as gapped:
                 counter = 1
@@ -522,7 +533,7 @@ class Palindromes:
                               "class, not both :/")
 
         if self.min_mismatch_distance_to_first_base < 1:
-            raise ConfigError("The minimum mismatch thistance to the first base from either of the palindrome "
+            raise ConfigError("The minimum mismatch distance to the first base from either of the palindrome "
                               "must be greater than 0.")
 
         if self.output_file_path:
@@ -616,14 +627,14 @@ class Palindromes:
                 friendly_sequence_name = f"The sequence '{sequence_name}'"
             self.run.warning(f"{friendly_sequence_name} is only {sequence_length} nts long, and so it is too "
                              f"short to find any palindromes in it that are at least {self.min_palindrome_length} nts with "
-                             f"{self.min_distance} nucleoties in between :/ Anvi'o will most likely skip it.")
+                             f"{self.min_distance} nucleotides in between :/ Anvi'o will most likely skip it.")
 
         # determine which palindrome search algorithm to use.
         if self.palindrome_search_algorithm:
             # which means the search algorithm is set by the user:
             method = self.palindrome_search_algorithms[self.palindrome_search_algorithm]
         else:
-            # which means we are going to dynamically determine which algorith to use
+            # which means we are going to dynamically determine which algorithm to use
             # as a function of the sequence length
             method = self.palindrome_search_algorithms['BLAST'] if len(sequence) >= 5000 else self.palindrome_search_algorithms['numba']
 
@@ -676,8 +687,8 @@ class Palindromes:
                              f"in a sequence that is {pp(len(sequence))} nts long. If your palindrome search takes a VERY long time "
                              f"you may want to go for longer palindromes by setting a different `--min-palindrome-length` parameter "
                              f"and by increasing the BLAST word size using `--blast-word-size` parameter (please read the help menu first). "
-                             f"This part of the code does not know if you have many more seqeunces to search, but anvi'o will not "
-                             f"continue displaying this warning for additional seqeunces to minimize redundant informatio in your "
+                             f"This part of the code does not know if you have many more sequences to search, but anvi'o will not "
+                             f"continue displaying this warning for additional sequences to minimize redundant information in your "
                              f"log files (because despite the popular belief anvi'o can actually sometimes be like nice and all).",
                              header="ONE-TIME PERFORMANCE WARNING")
             self.user_is_warned_for_potential_performance_issues = True
@@ -724,7 +735,7 @@ class Palindromes:
                     #
                     # where you indeed have a proper palindrome here. the start and end of both sequences of this
                     # palindrome will be the same: TCGA (3:7) :: TCGA (3:7). In this case, we can't simply calculate
-                    # 'distance' by substracting the start of the second sequence from the end of the first, OR we
+                    # 'distance' by subtracting the start of the second sequence from the end of the first, OR we
                     # can't simply remove it from our consideration because p.second_start - p.first_end is a negative
                     # value.
                     #
@@ -949,7 +960,7 @@ class Palindromes:
         # `-` are not allowed by any means, so they are ignored.
         #
         # A single pass of this algorithm over a `s` to
-        # identify sections of it with allowed number of mismathces
+        # identify sections of it with allowed number of mismatches
         # will not give an opportunity to identify longest possible
         # stretches of palindromic sequences. however, a moving
         # start position WILL consider all combinations of substrings,
@@ -964,7 +975,7 @@ class Palindromes:
         # every matching stretch that contains an acceptable number of
         # mismatches. For instance, for a max mismatch requirement of two,
         # the iterations over `s` will identify start-end positions that
-        # will yeild the following substrings:
+        # will yield the following substrings:
         #
         # >>>  s: ooxooooooooooooooooxoooxoxxoxxoxoooooooooxoxxoxooooooooo--ooo-o-xoxoooxoooooooooooooooooo
         #
