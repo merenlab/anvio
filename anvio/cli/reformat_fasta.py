@@ -106,7 +106,7 @@ def summarize_fasta(contigs_fasta, ignore_empty_sequences):
     return stats
 
 
-def plot_length_histogram(lengths, run, bin_count=None):
+def plot_length_histogram(lengths, run, bin_count=None, height=None):
     if anvio.QUIET:
         return
 
@@ -120,6 +120,7 @@ def plot_length_histogram(lengths, run, bin_count=None):
 
     try:
         bin_count = bin_count or max(10, min(60, int(math.sqrt(len(lengths)))))
+        height = max(10, int(height)) if height is not None else 24
 
         plt.clear_figure()
         plt.canvas_color('black')
@@ -146,9 +147,9 @@ def plot_length_histogram(lengths, run, bin_count=None):
         # size the plot to the terminal width if possible
         try:
             term_cols = shutil.get_terminal_size().columns
-            plt.plotsize(term_cols, int(24))
+            plt.plotsize(term_cols, height)
         except Exception:
-            plt.plotsize(terminal.Run().width, int(24))
+            plt.plotsize(terminal.Run().width, height)
 
         plt.show()
 
@@ -174,9 +175,9 @@ def plot_length_histogram(lengths, run, bin_count=None):
         # size the plot to the terminal width if possible
         try:
             term_cols = shutil.get_terminal_size().columns
-            plt.plotsize(term_cols, int(24))
+            plt.plotsize(term_cols, height)
         except Exception:
-            plt.plotsize(terminal.Run().width, int(24))
+            plt.plotsize(terminal.Run().width, height)
     except Exception as e:
         run.warning(f"Something bad happen when anvi'o atempted to plot the length distribution :/ "
                     f"The error message from the library was: \"{e}\".", header="NO PLOT FOR YOU :(")
@@ -271,7 +272,7 @@ def run_program():
         run.info('L50', pp(stats['l50']))
 
         run.info_single("Attempting to render a histogram for contig lengths below.", nl_before=1, nl_after=1)
-        plot_length_histogram(stats['lengths'], run, args.length_histogram_bins)
+        plot_length_histogram(stats['lengths'], run, args.length_histogram_bins, args.length_histogram_height)
 
         return
 
@@ -546,6 +547,9 @@ def get_args():
     groupE.add_argument('--length-histogram-bins', type=int, nargs='?', const=None, default=None, metavar='INT',
                         help="Number of bins for the length histogram shown with --stats-only. If you omit a value, anvi'o "
                              "chooses a reasonable one based on the number of sequences.")
+    groupE.add_argument('--length-histogram-height', type=int, nargs='?', const=None, default=None, metavar='INT',
+                        help="Height (rows) for the length histograms shown with --stats-only. Defaults to 24 rows if not "
+                             "provided.")
     return parser.get_args(parser)
 
 
