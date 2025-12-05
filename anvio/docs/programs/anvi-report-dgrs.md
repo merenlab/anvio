@@ -13,7 +13,7 @@ DGRs are widespread across bacteria, archaea, and many viruses, and have been id
 ### Our philosophy for finding DGRs
 Locating the template and variable region first is an integral philosophy for locating DGRs without relying on reverse transcriptase homology. In fact, the reverse transcriptase is not a requirement for the reporting of a DGR.
 
-Another integral part of this tool, is that it relies on SNVs in the variable region and therefore, only locates DGRs that are active within the sample, a [reverse weeping angel](https://en.wikipedia.org/wiki/Weeping_Angel) indeed she cannot locate inactive DGRs.
+Another integral part of this tool, is that it relies on SNVs in the variable region and therefore, only locates DGRs that are active within the sample, much like a [weeping angel](https://en.wikipedia.org/wiki/Weeping_Angel) cannot attack what doesn't move, anvi'o cannot locate inactive DGRs.
 
 ### Pre-requisites for running this programme
 
@@ -92,6 +92,7 @@ Of course it is possible to also skip this step entirely in case you somehow hav
 
 ### TSV output
 
+The main output fo th etool is a table formatted in a TSV, called DGR-OUTPUT_DGRs_found.tsv. 
 
 Need a dgrs.txt output directory help
 
