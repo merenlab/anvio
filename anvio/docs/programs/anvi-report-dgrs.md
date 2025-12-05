@@ -74,7 +74,7 @@ At this point, the algorithm has no concept of the strand in which the regions w
 
 The second SNV related check performed is a result of expecting the places of the mismatches in the VR to be the sites of diversification, we therefore want to check that the majority of the SNVs are also at those positions, meaning that it is unexpected for SNVs to be over matching positions other than the site of mutagenesis. Of course other reasons for DGR spurious SNVs to occur over a VR due to populations variances and such. Therefore, the tool checks for SNVs in matches that are not over the mutagenesis base type matches, so in the case of adenine it would search for SNVs in matches of the VR that occur over the T, G, C bases. This is also then reported, so that the user can investigate more closely and decide on thresholds themselves using the flag `----snv-matching-proportion`.
 
-## Locating associated Reverse Transcriptases
+### Locating associated Reverse Transcriptases
 
 Next, the tool then locates a reverse transcriptase, this works by locating the nearest reverse transcriptase to each template region. these reverse transcriptases are annotated via a HMM annotation when you run `anvi-run-hmms` on your %{contigs-db}.
 
