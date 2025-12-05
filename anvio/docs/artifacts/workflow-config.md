@@ -1,4 +1,4 @@
-A `JSON`-formated configuration file that describes steps and parameters to be considered by an anvio %(workflow)s.
+A `JSON`-formatted configuration file that describes steps and parameters to be considered by an anvio %(workflow)s.
 
 You can create a default config file for a given workflow using the following command:
 
