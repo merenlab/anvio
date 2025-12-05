@@ -1,9 +1,11 @@
 ## Usage
+
 This program locates diversity-generating retroelements (DGRs for short - to save words and typing) within read mapped metagenomic or genomic samples.
 
 In brief, the tool first searches for the variable regions of the DGR, by locating areas of high SNV density which are deemed as possible variable regions. These SNVs should by default occur in the 1st and 2nd codon base positions so that they are within an ORF. Next we search for the template regions associated with those possible variable regions, by BLASTn'ing the genome against itself to locate regions of similarity other than the disparity in the Adenine bases. Finally, the tool then locates a reverse transcriptase, this works by locating the nearest reverse transcriptase to each template region via a homological HMM search.
 
 ### First thing's first what are diversity-generating retroelements?
+
 Diversity-generating retroelements (DGRs) are molecular evolutionary mechanisms which facilitate rapid microbial adaptation to environmental changes. DGRs are capable of changing the protein expression of open reading frames in which they act in, by generating site-specific nucleotide variability in the hypermutated target genes via non-synonymous changes.
 
 DGRs are widespread across bacteria, archaea, and many viruses, and have been identified in more than 90 environmental contexts. This widespread mechanisms are composed of three essential elements: the **template region** (TR), **variable region** (VR), and an error-prone **reverse transcriptase** (RT). The TR and VR are nearly identical sequences of the same length, differing only at positions subject to mutagenesis. This controlled divergence generates a repertoire of protein variants, enhancing an organism’s adaptability and functional potential.
@@ -11,6 +13,7 @@ DGRs are widespread across bacteria, archaea, and many viruses, and have been id
  The template region, which are often encoded in non-coding DNA regions, are used as the template for error-prone reverse transcription. Reverse transcription produces cDNA, which is then inserted into an open reading frame, with the adenine site mutagenesis, known now as the variable region. A single template region can be associated with multiple variable regions, allowing  multiple proteins of similar functions to diversify as a result of one system. Template and variable regions can be distally located to one another, and their the specifics of the mechanisms structure can also vary between organisms.
 
 ### Our philosophy for finding DGRs
+
 Locating the template and variable region first is an integral philosophy for locating DGRs without relying on reverse transcriptase homology. In fact, the reverse transcriptase is not a requirement for the reporting of a DGR.
 
 Another integral part of this tool, is that it relies on SNVs in the variable region and therefore, only locates DGRs that are active within the sample, much like a [weeping angel](https://en.wikipedia.org/wiki/Weeping_Angel) cannot attack what doesn't move, anvi'o cannot locate inactive DGRs.
@@ -115,8 +118,9 @@ The main output of the tool is a table formatted in a TSV, called DGR-OUTPUT_DGR
 
 ### HTML output
 
-### DGRs_found
-table example photo
+
+
+
 
 
 
@@ -157,137 +161,128 @@ Can specify a specific collection with the flag `-C` and then the program will o
 There are many ways to alter the behavioral specifics of this programme. You can find some commonly adjusted parameters below. For a full list of parameters, check the program help (-h) output.
 
 
-#### BLASTn Arguments
-- Step: The length of base pairs you would like to cut your genome/sequence into. Default = 100 (This is only for fasta file mode)
-- Word Size: BLASTn word size parameter. Default = 8
 
-#### Locating VR Arguments:
- - skip-Ns: Skip 'N' bases when searching for mismatches
- - skip-dashes: Skip '-' bases when searching for mismatches
- - gene caller: The gene caller to show gene calls if you are using a contigs.db. This is used to tell the program that you want to find the genes that your Variable Regions occurred in.
-INPUT DATA
 
-contigs-db (required): Input Contigs.db.
+#### INPUT DATA
 
-profile-db (required): Input Profile.db, preferably a merged profile database.
+`--contigs-db` (required): Input Contigs.db.
 
-CONTIGS AND PROFILE DB INPUT ARGUMENTS
+`--profile-db` (required): Input Profile.db, preferably a merged profile database.
 
-hmm-usage (required):
+#### CONTIGS AND PROFILE DB INPUT ARGUMENTS
+
+`--hmm-usage` (required):
 The name of the HMM profile run on your Contigs.db (e.g., Reverse_Transcriptase or a custom set).
 Accepts comma-separated list without spaces.
-Available profiles: {available_hmm_sources_pretty}.
 
-gene-caller:
+`--gene-caller`:
 Gene caller to use for locating genes that contain Variable Regions.
 
-COLLECTIONS MODE
+#### COLLECTIONS MODE
 
-collections-mode:
+`--collections-mode`:
 Enable searching only within a specified collection.
 
-collection-name:
+`--collection-name`:
 Name of the collection (single) to restrict the search to.
 
-SNV CLUSTER LOCATOR PARAMETERS
+#### SNV CLUSTER LOCATOR PARAMETERS
 
-departure-from-reference-percentage:
+`--departure-from-reference-percentage`:
 Minimum departure from reference to count an SNV. Default = 0.1.
 
-minimum-snv-density:
+`--minimum-snv-density`:
 Minimum proportion of SNVs over the VR window. Default = 0.2.
 
-distance-between-snv:
+`--distance-between-snv`:
 Max bp distance between SNVs for joining them into a window. Default = 8.
 
-minimum-range-size:
+`--minimum-range-size`:
 Minimum size of the SNV window. Default = 5.
 
-variable-buffer-length:
+`--variable-buffer-length`:
 bp added to each side of a high-SNV region. Default = 35.
 
-BLASTn ARGUMENTS
+#### BLASTn Arguments
+`--step`: The length of base pairs you would like to cut your genome/sequence into. Default = 100 (This is only for fasta file mode)
+`--word-size`: BLASTn word size parameter. Default = 8
 
-word-size:
-BLASTn word size. Default = 8.
-
-LOCATING VR OPTIONS
-
-skip-Ns: Skip 'N' bases when searching for mismatches. (default: True)
-
-skip-dashes: Skip '-' bases when searching for mismatches. (default: True)
-
-discovery-mode:
+#### Locating VR Arguments:
+`--skip-Ns`: Skip 'N' bases when searching for mismatches
+`--skip-dashes`: Skip '-' bases when searching for mismatches
+`--discovery-mode`:
 Use all SNVs (not only codon positions 1 & 2) to find candidate VRs.
 More sensitive but less conservative. (default: False)
 
-FILTER BLAST RESULTS FOR TR/VRs
+#### FILTER BLAST RESULTS FOR TR/VRs
 
-repeat-threshold:
+`--repeat-threshold`:
 Max allowed proportion of masked sequence (pytantan). Default = 0.5.
 
-num-imperfect-tandem-repeats:
+`--num-imperfect-tandem-repeats`:
 Max number of imperfect repeats in TR/VR (pytrf). Default = 10.
 
-repeat-motif-coverage:
+`--repeat-motif-coverage`:
 Coverage threshold of imperfect repeat motifs. Default = 0.8.
 
-percentage-mismatch:
+`--percentage-mismatch`:
 Proportion of mismatching bases in TR (0.5–1.0). Default = 0.8.
 
-number-of-mismatches:
+`--number-of-mismatches`:
 Number of same-type mismatching bases in TR. Default = 7.
 
-only-a-bases:
+`--only-a-bases`:
 Only allow mismatches arising from A bases in the TR.
 
-min-mismatching-base-types-vr:
+`--min-mismatching-base-types-vr`:
 Minimum different mismatch base types in the VR. Default = 2.
 
-min-base-types-tr:
+`--min-base-types-tr`:
 Minimum base types in the TR. Default = 2.
 
-min-base-types-vr:
+`--min-base-types-vr`:
 Minimum base types in the VR. Default = 2.
 
-snv-matching-proportion:
+`--snv-matching-proportion`:
 Maximum allowed proportion of SNVs that match TR base positions.
 
-snv-codon-position:
+`--snv-codon-position`:
 Max fraction of SNVs allowed in 3rd codon position. Default = 0.33.
 
-OUTPUT DIRECTORY
+#### OUTPUT DIRECTORY
 
-output-dir: Directory to place all outputs.
+`--output-dir`: Directory to place all outputs.
 
-parameter-output: Output a CSV file of all parameters supplied.
+`--parameter-output`: Output a TSV file of all parameters supplied.
 
-overwrite-output-destinations: Allow overwriting existing outputs.
+`--overwrite-output-destinations`: Allow overwriting existing outputs.
 
-REPORTING GENOMIC CONTEXT AROUND DGRs
+#### REPORTING GENOMIC CONTEXT AROUND DGRs
 
-skip-recovering-genomic-context:
+`--skip-recovering-genomic-context`:
 Skip collecting surrounding gene context.
 
-num-genes-to-consider-in-context:
+`--num-genes-to-consider-in-context`:
 Number of upstream/downstream genes to include. Default = 3.
 
 COMPUTING VARIABLE REGION VARIABILITY PROFILING
 
-samples-txt:
+`--samples-txt`:
 Input file containing r1 and r2 short-read paths used for the merged profile.
 
-initial-variable-primer-length:
+`--initial-variable-primer-length`:
 Length of the primer segment immediately before the VR. Default = 12 bp.
 
-whole-primer-length:
+`--whole-primer-length`:
 Total length of the designed in-silico primer for VR mapping. Default = 65 bp.
 
-skip-compute-DGR-variability-profiling:
+`--skip-compute-DGR-variability-profiling`:
 Skip the computationally heavy DGR activity analysis.
 
-CALCULATE ACTIVITY FROM KNOWN DGRs
+#### CALCULATE ACTIVITY FROM KNOWN DGRs
 
-pre-computed-dgrs:
+`--pre-computed-dgrs`:
 Use existing DGRs_found.tsv to recalculate DGR activity.
 (Most other parameters become irrelevant except the VR-profiling ones.)
+
+NB: This help file was written by a Brit please don't mind any none USA spellings I have missed or extra "u"s. Thank you.
