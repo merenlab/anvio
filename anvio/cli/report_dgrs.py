@@ -145,7 +145,7 @@ def get_args():
                     "text files in the output directory so you can actually take quick look at them.")
     groupH.add_argument('--skip-recovering-genomic-context', default=False, action="store_true", help="Of course you can skip this step because why should anyone have nice things.")
     groupH.add_argument('--num-genes-to-consider-in-context', default=3, type=int, help="With this parameter you can adjust the number of genes anvi'o should consider to characterize the genomic context "
-                    "surrounding DGRs. If you set nothing here, anvi'o will go 3 genes upstream from each DGRs VR and 3 genes downstream of each VR. If there are not enough genes in the contig given the position of either of the VRs, anvio' will report whatever it can.", metavar="INT")
+                    "surrounding DGRs. If you set nothing here, anvi'o will go 3 genes upstream and downstream from each DGRs VR. If there are not enough genes in the contig given the position of either of the VRs, anvio' will report whatever it can.", metavar="INT")
 
     groupI = parser.add_argument_group('COMPUTING VARIABLE REGION VARIABILITY PROFILING', "What is the "
                     "proportion of variable regions represented across samples? A multi million question "
