@@ -106,7 +106,7 @@ def summarize_fasta(contigs_fasta, ignore_empty_sequences):
     return stats
 
 
-def plot_length_histogram(lengths, run, bin_count=None):
+def plot_length_histogram(lengths, run, bin_count=None, height=None):
     if anvio.QUIET:
         return
 
@@ -120,6 +120,7 @@ def plot_length_histogram(lengths, run, bin_count=None):
 
     try:
         bin_count = bin_count or max(10, min(60, int(math.sqrt(len(lengths)))))
+        height = max(10, int(height)) if height is not None else 24
 
         plt.clear_figure()
         plt.canvas_color('black')
@@ -146,9 +147,9 @@ def plot_length_histogram(lengths, run, bin_count=None):
         # size the plot to the terminal width if possible
         try:
             term_cols = shutil.get_terminal_size().columns
-            plt.plotsize(term_cols, int(24))
+            plt.plotsize(term_cols, height)
         except Exception:
-            plt.plotsize(terminal.Run().width, int(24))
+            plt.plotsize(terminal.Run().width, height)
 
         plt.show()
 
@@ -174,9 +175,9 @@ def plot_length_histogram(lengths, run, bin_count=None):
         # size the plot to the terminal width if possible
         try:
             term_cols = shutil.get_terminal_size().columns
-            plt.plotsize(term_cols, int(24))
+            plt.plotsize(term_cols, height)
         except Exception:
-            plt.plotsize(terminal.Run().width, int(24))
+            plt.plotsize(terminal.Run().width, height)
     except Exception as e:
         run.warning(f"Something bad happen when anvi'o atempted to plot the length distribution :/ "
                     f"The error message from the library was: \"{e}\".", header="NO PLOT FOR YOU :(")
@@ -207,10 +208,19 @@ def run_program():
     if args.keep_ids and args.exclude_ids:
         raise ConfigError("You can't use`--exclude-ids and --keep-ids together :/")
 
-    if args.exact_length and args.min_len and not args.stats_only:
+    if args.exact_length and (args.min_len or args.max_len is not None) and not args.stats_only:
+        conflicting_expectations = []
+        if args.min_len:
+            conflicting_expectations.append(f"longer than {args.min_len}")
+        if args.max_len is not None:
+            conflicting_expectations.append(f"shorter than {args.max_len}")
+
+        conflict_text = ' and '.join(conflicting_expectations) if len(conflicting_expectations) <= 2 else \
+                        ', '.join(conflicting_expectations[:-1]) + f", and {conflicting_expectations[-1]}"
+
         raise ConfigError(f"You can't ask your reads to be an exact lenght of {args.exact_length} "
-                          f"and longer than {args.min_len} at the same time. It just doesn't make "
-                          f"any sense and that's why.")
+                          f"and {conflict_text} at the same time. "
+                          f"It just doesn't make any sense and that's why.")
 
     if not args.stats_only and args.output_file == args.contigs_fasta:
         raise ConfigError("You can't set the same path for both your input file name and output "
@@ -262,7 +272,7 @@ def run_program():
         run.info('L50', pp(stats['l50']))
 
         run.info_single("Attempting to render a histogram for contig lengths below.", nl_before=1, nl_after=1)
-        plot_length_histogram(stats['lengths'], run, args.length_histogram_bins)
+        plot_length_histogram(stats['lengths'], run, args.length_histogram_bins, args.length_histogram_height)
 
         return
 
@@ -379,6 +389,10 @@ def run_program():
             total_num_nucleotides_removed += l
             total_num_contigs_removed += 1
             continue
+        elif args.max_len is not None and length > args.max_len:
+            total_num_nucleotides_removed += l
+            total_num_contigs_removed += 1
+            continue
 
         num_gaps = fasta.seq.count('-')
         if args.export_gap_counts_table:
@@ -429,7 +443,11 @@ def run_program():
     run.warning(None, header='WHAT WAS ASKED', lc="cyan")
     run.info('Simplify deflines?', "Yes" if args.simplify_names else "No")
     run.info('Add prefix to sequence names?', f"Yes, add '{args.prefix}'" if args.prefix else "No")
-    run.info('Exact length of contigs to keep', args.exact_length, mc="red") if args.exact_length else run.info("Minimum length of contigs to keep", args.min_len)
+    if args.exact_length:
+        run.info('Exact length of contigs to keep', args.exact_length, mc="red")
+    else:
+        run.info("Minimum length of contigs to keep", args.min_len)
+        run.info("Maximum length of contigs to keep", args.max_len if args.max_len is not None else "No limit")
     run.info('Max % gaps allowed', '%.2f%%' % args.max_percentage_gaps)
     run.info('Max num gaps allowed', args.max_gaps)
     run.info('Exclude specific sequences?', f"Yes, those listed in {args.exclude_ids}" if args.exclude_ids else "No")
@@ -483,10 +501,15 @@ def get_args():
                         help="Minimum length of contigs to keep (contigs shorter than this value\
                               will not be included in the output file). The default is %(default)d,\
                               so nothing will be removed if you do not declare a minimum size.")
+    groupD.add_argument('-L', '--max-len', type=int, default=None, metavar='INT',
+                        help="Maximum length of contigs to keep (contigs longer than this value \
+                              will not be included in the output file). If omitted, no upper bound \
+                              is enforced.")
     groupD.add_argument('--exact-length', type=int, default=None, metavar='INT',
                         help="Exact lenght of the sequences you wish to keep from a FASTA fille. Why \
                               would anyone need that? Anvi'o does not know. But there you have it. This \
-                              parameter is indeed incompatible with a lot of others, such as `--min-len`.")
+                              parameter is indeed incompatible with a lot of others, such as `--min-len` \
+                              or `--max-len`.")
     groupD.add_argument('--max-percentage-gaps', type=float, default=100, metavar='PERCENTAGE',
                         help="Maximum fraction of gaps in a sequence (any sequence with \
                               more gaps will be removed from the output FASTA file). The \
@@ -524,6 +547,9 @@ def get_args():
     groupE.add_argument('--length-histogram-bins', type=int, nargs='?', const=None, default=None, metavar='INT',
                         help="Number of bins for the length histogram shown with --stats-only. If you omit a value, anvi'o "
                              "chooses a reasonable one based on the number of sequences.")
+    groupE.add_argument('--length-histogram-height', type=int, nargs='?', const=None, default=None, metavar='INT',
+                        help="Height (rows) for the length histograms shown with --stats-only. Defaults to 24 rows if not "
+                             "provided.")
     return parser.get_args(parser)
 
 
