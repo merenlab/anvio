@@ -8,7 +8,20 @@ A simpe program to perform a combination of simple operations on a FASTA file in
 * Enforcing a sequence type and to replace any character with `N` for nucleotide sequences that are not A, C, T, or G, or to replace any character with `X` for amino acid sequences if the character does not match any of the single-letter amino acid characters (useuful to make sure the input file conforms the expectations of that input file type (i.e., all DNA sequences, or all AA sequences, etc)).
 
 {:.notice}
-This program can work with compressed input FASTA files (i.e., the file name ends with a `.gz` extention) and will report a compressed output FASTA file (i.e., if the output file name ends with a `.gz` extension).
+This program can work with compressed input FASTA files (i.e., the file name ends with a `.gz` extention) and will report a compressed output FASTA file (i.e., if the output file name ends with a `.gz` extension). It will just take awfully long time to run as it will have to decompress and recompress the file on the fly. But hey, you will have all the storage place you need to protect protected, right?
+
+### Stats-only mode
+
+If you only want to take a quick look at FASTA-level summary statistics without writing a new file, you can ask the program to skip all reformatting steps and don't change anything in the FASTA file with the `--stats-only` flag:
+
+{{ codestart }}
+anvi-script-reformat-fasta %(fasta)s \
+                           --stats-only
+{{ codestop }}
+
+Which will report entry counts, length totals, min/max/mean/median lengths, and N50/L50, and render length histograms in the terminal (anvi'o will pick a bin count for these histograms, but you can also set a specific number using the `--length-histogram-bins` parameter).
+
+[![Example stats-only output](../../images/anvi-script-reformat-fasta-stats.png){:.center-img}](../../images/anvi-script-reformat-fasta-stats.png)
 
 ### Renaming / simplifying sequence deflines
 
