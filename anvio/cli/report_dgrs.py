@@ -137,7 +137,7 @@ def get_args():
 
     groupF = parser.add_argument_group('OUTPUT DIRECTORY', "Where to put all the output files.")
     groupF.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
-    groupF.add_argument("--parameter-output", help="Add this flag if you want to output the parameters and their values you have input in a csv file", action="store_true")
+    groupF.add_argument("--parameter-output", help="Add this flag if you want to output the parameters and their values you have input into a tsv file", action="store_true")
     groupF.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
 
     groupH = parser.add_argument_group('REPORTING GENOMIC CONTEXT AROUND DGRS',
