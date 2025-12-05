@@ -73,7 +73,15 @@ The second SNV related check performed is a result of expecting the places of th
 
 ## Locating associated Reverse Transcriptases
 
+Next, the tool then locates a reverse transcriptase, this works by locating the nearest reverse transcriptase to each template region. these reverse transcriptases are annotated via a HMM annotation when you run `anvi-run-hmms` on your %{contigs-db}.
 
+{{ codestart }}
+anvi-run-hmms -c contigs.db  -i Reverse_Transcriptase
+{{ codestop }}
+
+Because the tool relies on the **reverse transcriptase** being on the same contig as a **template region**, these are not always found or associated with a found TR/VR pair. Therefore, a reverse transciptase is not a critical factor for the determinance of a DGR.
+
+The user can of course run another HMM that has reverse transcriptases by creating a new HMM collection via a [user-defined HMM source](https://anvio.org/help/main/artifacts/hmm-source/), and then running this with your %(contigs-db) and then `anvi-report-dgrs`.
 
 ### Reporting genomic context around DGRs
 
