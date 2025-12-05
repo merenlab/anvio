@@ -133,6 +133,14 @@ All VRs are forced to be on the forward strand, this includes reverse complement
 
 #### Creating different primers for every sample
 
+
+
+### Parameter output tsv
+
+In order to keep track of the parameters you have run with each iteration fo the tool. We have handily made a flag `--parameter-output` which compiles all the parameters the tool uses and tells you the values you entered for each of them. Like so
+
+**NB: ADD A PARAMETER OUTPUT TSV HERE THAT IS COMPELTE FROM TEH SELF TEST SUITE DGRS**
+
 ## Power Users:
 #### Discovery mode
 Default use of the program is that it will locate SNVs based on their codon position so they need to be in ORFs and the SNVs are limited to the first and second codon position.
