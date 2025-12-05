@@ -44,7 +44,7 @@ anvi-report-dgrs -c contigs.db -p profile.db -I Reverse_Transcriptase -o dgrs-ou
 
 {{ codestop }}
 
-You can also run the program and compute the activity of the DGR in your samples (explained under the header: **Computing DGR variability profiling**) for this you will need the samples that your want to look for the activity across and for this anvi'o needs to know the location of these samples via a %{samples-txt}.
+You can also run the program and compute the activity of the DGR in your samples explained under the header: [Computing DGR variability profiling](#computing-dgr-variability-profiling) for this you will need the samples that your want to look for the activity across and for this anvi'o needs to know the location of these samples via a %{samples-txt}.
 
 {{ codestart }}
 
