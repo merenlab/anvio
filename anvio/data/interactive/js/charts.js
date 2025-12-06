@@ -1421,6 +1421,10 @@ function loadOrderingAdditionalData(order) {
             collapsedNodes = orders_additional['collapsedNodes'];
         }
     }
+
+    if (typeof refreshCollapsedNodesTable === 'function') {
+        refreshCollapsedNodesTable();
+    }
 }
 
 function saveState()

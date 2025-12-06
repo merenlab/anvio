@@ -552,6 +552,7 @@ td > input[type='checkbox'] {
     border-color: var(--black);
     width: 16px;
     height: 16px;
+    vertical-align: middle;
 }
 
 .btn-group > .colorpicker-base {
@@ -663,6 +664,12 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 #search-results-table > tbody > tr > td { padding: 5px; word-break: break-all; }
 #search-results-table tbody tr td:first-child  { border-right: 2px solid rgb(230, 230, 230); }
 #search-results-table thead tr th:first-child  { border-right: 2px solid rgb(230, 230, 230); }
+
+#collapsed_nodes_panel table td,
+#collapsed_nodes_panel table th {
+    vertical-align: middle;
+    font-size: 10px;
+}
 
 #divzoom {
     position: absolute;

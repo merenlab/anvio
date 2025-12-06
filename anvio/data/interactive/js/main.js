@@ -1241,6 +1241,229 @@ function orderLegend(legend_id, type) {
     createLegendColorPanel(legend_id);
 }
 
+function isCollapsedLabelTaken(label, skipIndex) {
+    if (!label) {
+        return false;
+    }
+
+    if (drawer && drawer.tree && drawer.tree.label_to_leaves && drawer.tree.label_to_leaves.hasOwnProperty(label)) {
+        return true;
+    }
+
+    for (let i = 0; i < collapsedNodes.length; i++) {
+        if (i === skipIndex) {
+            continue;
+        }
+
+        if (collapsedNodes[i]['label'] === label) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function markCollapsedNodesChanged(redraw=false) {
+    $('#tree_modified_warning').show();
+    $('#btn_draw_tree').addClass('glowingbutton');
+    $('#draw-btn').addClass('glowingbutton');
+
+    if (redraw) {
+        drawTree();
+    }
+}
+
+function sanitizeCollapsedNodes() {
+    for (let i = 0; i < collapsedNodes.length; i++) {
+        let node = collapsedNodes[i];
+        node.size = (typeof node.size !== 'undefined' && node.size !== null && node.size !== '') ? node.size : 0.25;
+
+        let fs = parseFloat(node.font_size);
+        node.font_size = (isNaN(fs) || fs <= 0) ? 100 : fs;
+
+        node.color = node.color || '#888888';
+    }
+}
+
+function buildTreeForCollapsedCount() {
+    if (typeof Tree === 'undefined' || !clusteringData) {
+        return null;
+    }
+
+    try {
+        let t = new Tree();
+        t.Parse(String(clusteringData).trim(), drawer && drawer.settings ? drawer.settings['edge-normalization'] : false);
+        if (t.error != 0) {
+            return null;
+        }
+        return t;
+    } catch (e) {
+        console.warn('Failed to build tree for collapsed-node counting', e);
+        return '?';
+    }
+}
+
+function getCollapsedNodeItemCount(collapse_attributes, tree_for_counting) {
+    const tree = tree_for_counting || (drawer && drawer.tree);
+
+    if (!tree) {
+        return '?';
+    }
+
+    const left_most = tree.label_to_leaves[collapse_attributes['left_most']];
+    const right_most = tree.label_to_leaves[collapse_attributes['right_most']];
+
+    if (!left_most || !right_most) {
+        return '?';
+    }
+
+    const cnode = tree.FindLowestCommonAncestor(left_most, right_most);
+    if (!cnode) {
+        return '?';
+    }
+
+    let count = 0;
+    const iterator = new PreorderIterator(cnode);
+    let q = iterator.Begin();
+    while (q) {
+        if (q.IsLeaf()) {
+            count++;
+        }
+        q = iterator.Next();
+    }
+
+    return count;
+}
+
+function refreshCollapsedNodesTable() {
+    const container = document.getElementById('collapsed_nodes_panel');
+    const wrapper = document.getElementById('collapsed_nodes_wrapper');
+
+    if (!container || !wrapper) {
+        return;
+    }
+
+    sanitizeCollapsedNodes();
+
+    container.innerHTML = '';
+
+    if (!collapsedNodes.length) {
+        wrapper.style.display = 'none';
+        return;
+    }
+
+    wrapper.style.display = 'block';
+
+    const table = document.createElement('table');
+    table.setAttribute('class', 'table table-sm table-striped mb-1');
+
+    const thead = document.createElement('thead');
+    thead.innerHTML = '<tr><th></th><th></th><th>Label</th><th>Font</th><th>Size</th><th>Num Items</th></tr>';
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+
+    const tree_for_counting = buildTreeForCollapsedCount();
+
+    collapsedNodes.forEach((node, idx) => {
+        const row = document.createElement('tr');
+
+        const actionCell = document.createElement('td');
+        const removeBtn = document.createElement('button');
+        removeBtn.setAttribute('class', 'btn btn-link p-0 m-0');
+        removeBtn.setAttribute('aria-label', 'Remove collapsed node');
+        removeBtn.innerHTML = '<i class="bi bi-trash-fill"></i>';
+        removeBtn.addEventListener('click', () => {
+            collapsedNodes.splice(idx, 1);
+            refreshCollapsedNodesTable();
+            markCollapsedNodesChanged();
+        });
+        actionCell.appendChild(removeBtn);
+        row.appendChild(actionCell);
+
+        const colorCell = document.createElement('td');
+        const colorDiv = document.createElement('div');
+        const colorValue = node.color || '#888888';
+        colorDiv.setAttribute('class', 'colorpicker colorpicker-base collapsed-colorpicker');
+        colorDiv.setAttribute('data-index', idx);
+        colorDiv.setAttribute('color', colorValue);
+        colorDiv.style.backgroundColor = colorValue;
+        colorDiv.style.cursor = 'pointer';
+        colorCell.appendChild(colorDiv);
+        row.appendChild(colorCell);
+
+        const labelCell = document.createElement('td');
+        labelCell.style.width = '200px';
+        const labelInput = document.createElement('input');
+        labelInput.type = 'text';
+        labelInput.value = node.label || `Collapsed Node ${idx + 1}`;
+        labelInput.className = 'form-control form-control-sm';
+        labelInput.addEventListener('change', () => {
+            if (isCollapsedLabelTaken(labelInput.value, idx)) {
+                toastr.warning('This label already exists in the tree.', 'Collapsed nodes');
+                labelInput.value = node.label;
+                return;
+            }
+            node.label = labelInput.value;
+            markCollapsedNodesChanged();
+        });
+        labelCell.appendChild(labelInput);
+        row.appendChild(labelCell);
+
+        const fontCell = document.createElement('td');
+        const fontInput = document.createElement('input');
+        fontInput.type = 'text';
+        fontInput.value = node.font_size || 0;
+        fontInput.className = 'form-control form-control-sm';
+        fontInput.style.width = '32px';
+        fontInput.addEventListener('change', () => {
+            const value = fontInput.value === '' ? 0 : fontInput.value;
+            node.font_size = value;
+            markCollapsedNodesChanged();
+        });
+        fontCell.appendChild(fontInput);
+        row.appendChild(fontCell);
+
+        const sizeCell = document.createElement('td');
+        const sizeInput = document.createElement('input');
+        sizeInput.type = 'text';
+        sizeInput.value = node.size || 0.25;
+        sizeInput.className = 'form-control form-control-sm';
+        sizeInput.style.width = '32px';
+        sizeInput.addEventListener('change', () => {
+            node.size = sizeInput.value;
+            markCollapsedNodesChanged();
+        });
+        sizeCell.appendChild(sizeInput);
+        row.appendChild(sizeCell);
+
+        const countCell = document.createElement('td');
+        countCell.textContent = getCollapsedNodeItemCount(node, tree_for_counting);
+        countCell.style.textAlign = 'center';
+        row.appendChild(countCell);
+
+        tbody.appendChild(row);
+    });
+
+    table.appendChild(tbody);
+    container.appendChild(table);
+
+    $(container).find('.collapsed-colorpicker').colpick({
+        layout: 'hex',
+        submit: 0,
+        colorScheme: 'light',
+        onChange: function(hsb, hex, rgb, el, bySetColor) {
+            const color = '#' + hex;
+            const index = parseInt(el.getAttribute('data-index'));
+            collapsedNodes[index].color = color;
+            $(el).css('background-color', color).attr('color', color);
+            if (!bySetColor) {
+                markCollapsedNodesChanged();
+            }
+        }
+    });
+}
+
 function loadOrderingAdditionalData(order) {
     collapsedNodes = [];
 
@@ -1261,6 +1484,9 @@ function loadOrderingAdditionalData(order) {
             collapsedNodes = orders_additional['collapsedNodes'];
         }
     }
+
+    sanitizeCollapsedNodes();
+    refreshCollapsedNodesTable();
 }
 
 function onTreeClusteringChange() {
@@ -1895,7 +2121,8 @@ function drawTree() {
     var settings = serializeSettings();
     tree_type = settings['tree-type'];
 
-    $('#btn_draw_tree').removeClass('glowing-button');
+    $('#btn_draw_tree').removeClass('glowingbutton');
+    $('#draw-btn').removeClass('glowingbutton');
     $('#draw_delta_time').html('');
     $('#btn_draw_tree').prop('disabled', true);
     $('#bin_settings_tab').removeClass("disabled"); // enable bins tab
@@ -1922,6 +2149,7 @@ function drawTree() {
                 try {
                     drawer = new Drawer(settings);
                     drawer.draw();
+                    refreshCollapsedNodesTable();
                 }
                 catch (error) {
                     let issue_title = encodeURIComponent("Interactive interface, " + error);
@@ -3814,6 +4042,7 @@ function restoreOriginalTree(type) {
      .then(
         function() {
             collapsedNodes = [];
+            refreshCollapsedNodesTable();
             $('#tree_modified_warning').hide();
             drawTree();
         }
