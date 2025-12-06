@@ -1247,11 +1247,17 @@ function loadOrderingAdditionalData(order) {
     if (order.hasOwnProperty('additional')) {
         let orders_additional = order['additional'];
 
-        if (typeof orders_additional === 'string') {
-            orders_additional = JSON.parse(orders_additional);
+        try {
+            // Additional data may arrive as JSON, a JSON-encoded string, or double-encoded
+            while (typeof orders_additional === 'string') {
+                orders_additional = JSON.parse(orders_additional);
+            }
+        } catch (error) {
+            console.warn('Failed to parse additional order data', error, orders_additional);
+            orders_additional = {};
         }
 
-        if (orders_additional.hasOwnProperty('collapsedNodes')) {
+        if (orders_additional && orders_additional.hasOwnProperty('collapsedNodes')) {
             collapsedNodes = orders_additional['collapsedNodes'];
         }
     }
