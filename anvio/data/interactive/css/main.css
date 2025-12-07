@@ -977,6 +977,31 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     padding-left: 5px;
 }
 
+#tree-settings .menu-padding,
+#tree-settings .input-dropdown,
+#tree-settings .input-align{
+    width: 100%;
+    max-width: 100%;
+}
+
+#table_layers_container table{
+    width: 100%;
+}
+
+#table_layers thead td,
+#table_layers tbody td{
+    width: auto;
+}
+
+#table_samples_container table{
+    width: 100%;
+}
+
+#table_samples thead td,
+#table_samples tbody td{
+    width: auto;
+}
+
 .chart-icon-padding{
     padding: 0;
 }
