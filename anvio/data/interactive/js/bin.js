@@ -48,6 +48,8 @@ const BIN_DEFAULTS = {
     }
 };
 
+const TAXONOMY_LEVEL_ORDER = ["t_species", "t_genus", "t_family", "t_order", "t_class", "t_phylum", "t_domain"];
+
 const TRANSACTION_TYPES = {
     APPEND_NODE: 'AppendNode',
     REMOVE_NODE: 'RemoveNode',
@@ -1110,7 +1112,6 @@ Bins.prototype._processTaxonomyData = function(bin_id, bin_name, data) {
 
     if (!data.hasOwnProperty(bin_name)) return;
 
-    const taxonomyLevels = ["t_domain", "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"];
     const taxonomyLabel = this.container.querySelector(`span.taxonomy-name-label[bin-id="${bin_id}"]`);
 
     if (!taxonomyLabel) return;
