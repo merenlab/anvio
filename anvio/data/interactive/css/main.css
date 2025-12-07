@@ -651,6 +651,11 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 }
 
 #estimate-taxonomy-check {
+    margin-bottom: 6px;
+    margin-top: 6px;
+}
+
+#taxonomy-ops-wrapper {
     background: #e7f3381a;
     padding: 3px 6px 5px 10px;
     border: 1px dashed #a9a9a9;
