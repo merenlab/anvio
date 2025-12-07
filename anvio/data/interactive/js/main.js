@@ -3808,6 +3808,15 @@ function processState(state_name, state) {
         $('#estimate_taxonomy').prop('checked', state['estimate-taxonomy']).trigger('change');
     }
 
+    if (state.hasOwnProperty('taxonomy-label-level')) {
+        $(`input[name="taxonomy_label_level"][value="${state['taxonomy-label-level']}"]`).prop('checked', true);
+    }
+
+    if (state.hasOwnProperty('use-taxonomy-bin-labels')) {
+        $('#use_taxonomy_bin_labels').prop('checked', state['use-taxonomy-bin-labels']);
+        toggleTaxonomyLabeling();
+    }
+
     if (state.hasOwnProperty('show-grid-for-bins')) {
         $('#show_grid_for_bins').prop('checked', state['show-grid-for-bins']).trigger('change');
     }
