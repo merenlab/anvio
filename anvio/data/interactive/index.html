@@ -13,7 +13,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="./node_modules/bootstrap/dist/css/bootstrap.css" />
     <link rel="stylesheet" href="lib/colpick/colpick.css" type="text/css" />
-    
+
     <!-- Import packages from node_modules -->
     <link rel="stylesheet" href="./node_modules/bootstrap-icons/font/bootstrap-icons.min.css" />
     <link rel="stylesheet" href="./node_modules/toastr/build/toastr.min.css" type="text/css" />
@@ -34,7 +34,7 @@
     <script type="text/javascript" src="./node_modules/jquery-ui/ui/widgets/resizable.js" onerror='alertDependencyError("jquery-core")'></script>
     <script type="text/javascript" src="./node_modules/jquery-ui/ui/widgets/sortable.js" onerror='alertDependencyError("jquery-sortable")'></script>
     <script type="text/javascript" src="./node_modules/jquery-ui/ui/position.js" onerror='alertDependencyError("jquery-position")'></script>
-    
+
     <script type="text/javascript" src="lib/jquery-svgpan/jquery-svgpan.js" onerror='alertDependencyError("jquery-svg")'></script>
     <script type="text/javascript" src="./node_modules/html5sortable/dist/html5sortable.min.js" onerror='alertDependencyError("html5sortable")'></script>
     <script type="text/javascript" src="./node_modules/randomcolor/randomColor.js" onerror='alertDependencyError("random-color")'></script>
@@ -179,7 +179,7 @@
                                     <li class="nav-bottom-alignment"><a href="#" class="navbar-btn d-block" onclick="showSaveStateWindow();" data-help="save-state-button" disabled-in-read-only="true"><i class="icon-unlock bi bi-download fs-2x"></i><span class="d-block">Save</span> </a></li>
                                 </li>
                                 <hr class="nav-bottom-alignment border-color">
-                                <p class="side-menu-text nav-bottom-alignment">Display</p> 
+                                <p class="side-menu-text nav-bottom-alignment">Display</p>
                                 <li class="nav-bottom-alignment">
                                     <a href="#" class="navbar-btn d-block" onclick="exportSvg();" data-help="save-svg">
                                         <i class="icon-unlock bi bi-images fs-2x"></i><span class="d-block">Export</span>
@@ -199,10 +199,10 @@
                     <div role="tabpanel" class="tab-pane fade show active" id="tree_settings">
                         <div id="tree-settings" class="form-horizontal">
                             <span id="toggle-chevron-item" class="settings-header btn d-flex chart-icon-padding align-items-center" data-toggle="collapse" href="#item-collapse-main" role="button" aria-expanded="true" aria-controls="item-collapse-option" onclick="$('#toggle-chevron-item').children('i').toggleClass('bi-chevron-up bi-chevron-down');">
-                                <img src="images/item-chart.svg" alt="Item Icon"/> 
+                                <img src="images/item-chart.svg" alt="Item Icon"/>
                                 Items
                                 <i class="text-secondary ml-1 d-flex pt-1 align-items-center bi bi-chevron-down"></i>
-                            </span> 
+                            </span>
                             <div class="collapse multi-collapse show" id="item-collapse-main">
                                     <div class="ml-2" id="items-data-section">
                                         <div class="form-group form-margin">
@@ -235,7 +235,7 @@
                                                 <div class="col-10 menu-padding">
                                                     <select id="views_container" class="form-control" onchange="onViewChange();"></select>
                                                 </div>
-                                        </div>        
+                                        </div>
                                         <div class="form-group form-margin manual-mode">
                                             <label class="settings-label" for="scale_container" data-help="scale">Scale</label>
                                             <div class="menu-padding">
@@ -259,7 +259,7 @@
                             </div>
                             <div class="ml-2">
                                     <span class="settings-secondary-header">Display</span>
-    
+
                                     <div id="table_layers_container" class="mt-3">
                                         <table id="table_layers">
                                             <thead>
@@ -342,10 +342,10 @@
                                                 <button type="button" class="btn btn-outline-secondary btn-sm pan-mode" onclick="showGeneratePhylogeneticTreeWindow();" style="margin-top: 8px;" ><span class="bi bi-plus" aria-hidden="true"></span>Generate new phylogenetic tree</button>
                                             </div>
                                     </div>
-                                    
+
                                     <span class="settings-secondary-header">Layer Groups</span>
                                     <div id="sample_groups_container" class="row mt-3 ml-1">
-        
+
                                     </div>
                                     <div class="clearfix"></div>
                                     <span class="settings-secondary-header">Display</span>
@@ -522,9 +522,9 @@
                                             <div id="inverse_color" onchange="emit('bin-settings-changed')" style="display: none !important; margin-left: 5px;" class="colorpicker colorpicker-width" style="background-color: #000" color="#000"></div>
                                             <div style="display: none !important;" id="inverse_color_input">
                                                 <div class="inverse_details d-flex">
-                                                    <span class="pt-1">Opacity:</span>        
+                                                    <span class="pt-1">Opacity:</span>
                                                     <input class="form-control input-xs col-5 ml-3" type="number" min="0.0" max="1.0" step='0.1' value="0.1" id="inverse_fill_opacity" name="checkbox" onchange="emit('bin-settings-changed')">
-                                                </div> 
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -1250,12 +1250,12 @@
                             <div class="col-md-8">Number of Splits:</div><div class="col-md-4">n/a</div>
                             <div class="col-md-8">Number of Bins:</div><div class="col-md-4">n/a</div>
                     </div>
-                    <div class="modal-title col-md-5" id="init_gene_modal"> 
+                    <div class="modal-title col-md-5" id="init_gene_modal">
                         <hr>
                         <div class="d-flex align-item-center justify-content-center">
                             <label class="d-flex">
-                                <input class="d-flex" id="init-gene-checkbox" type="checkbox" />   
-                                <span class="d-flex">init gene coverages</span>                     
+                                <input class="d-flex" id="init-gene-checkbox" type="checkbox" />
+                                <span class="d-flex">init gene coverages</span>
                             </label>
                         </div>
                     </div>
