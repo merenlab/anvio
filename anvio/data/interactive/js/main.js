@@ -4324,6 +4324,44 @@ function toggleTaxonomyEstimation() {
     }
 }
 
+function updateTaxonomyLabelingVisibility() {
+    const estimationChecked = $('#estimate_taxonomy').is(':checked');
+    const hasTaxonomyData = (bins && typeof bins.HasTaxonomyData === 'function') ? bins.HasTaxonomyData() : false;
+
+    if (estimationChecked && hasTaxonomyData) {
+        $('#taxonomy-labeling-container').show();
+    } else {
+        if ($('#use_taxonomy_bin_labels').is(':checked') && bins) {
+            bins.DisableTaxonomyLabeling();
+        }
+        $('#use_taxonomy_bin_labels').prop('checked', false);
+        $('#taxonomy-label-levels').hide();
+        $('#taxonomy-labeling-container').hide();
+    }
+}
+
+function toggleTaxonomyLabeling() {
+    const shouldAssignLabels = $('#use_taxonomy_bin_labels').is(':checked');
+
+    if (shouldAssignLabels) {
+        $('#taxonomy-label-levels').show();
+        if (bins) {
+            bins.EnableTaxonomyLabeling();
+            bins.ApplyTaxonomyLabels();
+        }
+    } else {
+        $('#taxonomy-label-levels').hide();
+        if (bins) {
+            bins.DisableTaxonomyLabeling();
+        }
+    }
+}
+
+function onTaxonomyLabelLevelChange() {
+    if (!bins) return;
+    bins.ApplyTaxonomyLabels();
+}
+
 function ShadowBoxSelection(type) {
         var result = document.getElementById('result-box');
         if (type == "search_contigs"){
