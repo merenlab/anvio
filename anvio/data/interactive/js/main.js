@@ -4325,6 +4325,16 @@ function toggleTaxonomyEstimation() {
         });
     }
 
+    if (!is_checked) {
+        $('#use_taxonomy_bin_labels').prop('checked', false);
+        $('#taxonomy-label-levels').hide();
+        if (bins) {
+            bins.DisableTaxonomyLabeling();
+        }
+    }
+
+    updateTaxonomyLabelingVisibility();
+
     /*
         loadState/processState triggers onchange event of inputs
         which causes problem when state is loaded before bins initialized
