@@ -1989,6 +1989,8 @@ function serializeSettings(use_layer_names) {
     state['bin-labels-font-size'] = $('#bin_labels_font_size').val();
     state['autorotate-bin-labels'] = $('#autorotate_bin_labels').is(':checked');
     state['estimate-taxonomy'] = $('#estimate_taxonomy').is(':checked');
+    state['use-taxonomy-bin-labels'] = $('#use_taxonomy_bin_labels').is(':checked');
+    state['taxonomy-label-level'] = $('input[name="taxonomy_label_level"]:checked').val();
     state['bin-labels-angle'] = $('#bin_labels_angle').val();
     state['background-opacity'] = $('#background_opacity').val();
     state['max-font-size-label'] = $('#max_font_size_label').val();
