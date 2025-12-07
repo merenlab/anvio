@@ -1393,7 +1393,7 @@ function refreshCollapsedNodesTable() {
         row.appendChild(colorCell);
 
         const labelCell = document.createElement('td');
-        labelCell.style.width = '200px';
+        labelCell.style.width = '267px';
         const labelInput = document.createElement('input');
         labelInput.type = 'text';
         labelInput.value = node.label || `Collapsed Node ${idx + 1}`;
@@ -1415,7 +1415,7 @@ function refreshCollapsedNodesTable() {
         fontInput.type = 'text';
         fontInput.value = node.font_size || 0;
         fontInput.className = 'form-control form-control-sm';
-        fontInput.style.width = '32px';
+        fontInput.style.width = '40px';
         fontInput.addEventListener('change', () => {
             const value = fontInput.value === '' ? 0 : fontInput.value;
             node.font_size = value;
@@ -1429,7 +1429,7 @@ function refreshCollapsedNodesTable() {
         sizeInput.type = 'text';
         sizeInput.value = node.size || 0.25;
         sizeInput.className = 'form-control form-control-sm';
-        sizeInput.style.width = '32px';
+        sizeInput.style.width = '40px';
         sizeInput.addEventListener('change', () => {
             node.size = sizeInput.value;
             markCollapsedNodesChanged();
