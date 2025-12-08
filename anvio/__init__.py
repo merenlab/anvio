@@ -2677,6 +2677,13 @@ D = {
             ['-I', '--installed-hmm-profile'],
             {'metavar': 'HMM PROFILE NAME(S)'}
                 ),
+    'list-miscellaneous-models': (
+            ['--list-miscellaneous-models'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "List the miscellaneous HMM profiles that are shipped with anvi'o but not run by default, "
+                     "including their categories, notes, and full paths to use with '-H'."}
+                ),
     'hmmer-output-dir': (
             ['--hmmer-output-dir'],
             {'metavar': 'OUTPUT DIRECTORY PATH',
