@@ -1331,6 +1331,16 @@ D = {
                      "the gene names that appear multiple times, and remove all but the one with the lowest e-value. Good "
                      "for whenever you really need to get only a single copy of single-copy core genes from a genome bin."}
                 ),
+    'return-best-hit-per-contig': (
+            ['--return-best-hit-per-contig'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Similar to `--return-best-hit`, but resolves ties at the contig level. If a contig has multiple hits "
+                     "for the same gene name and HMM source, only the hit with the lowest e-value will be kept. Please be "
+                     "CAREFUL using this flag, as it may remove legitimate copies of genes that are meant to be multi-copy, "
+                     "such as transfer RNAs, etc, and its behavior will be dependent on the nature of the HMM source being used."
+             }
+                ),
     'return-all-function-hits-for-each-gene': (
             ['--return-all-function-hits-for-each-gene'],
             {'default': False,
