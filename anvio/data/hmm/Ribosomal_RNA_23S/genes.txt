@@ -1,3 +1,0 @@
-gene	accession	hmmsource
-23S_rRNA_bac	None	barrnap
-23S_rRNA_arc	None	barrnap
