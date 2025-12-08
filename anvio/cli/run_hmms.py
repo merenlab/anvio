@@ -59,6 +59,11 @@ def run_program():
 
     # then check whether we are going to use the default HMM profiles, or run it for a new one.
     sources = {}
+    if args.miscellaneous_model:
+        if args.hmm_profile_dir:
+            raise ConfigError("You selected a miscellaneous model and also provided --hmm-profile-dir. Please choose only one.")
+        args.hmm_profile_dir = misc_hmm_data.resolve_miscellaneous_model(args.miscellaneous_model, run)
+
     if args.hmm_profile_dir and args.installed_hmm_profile:
         raise ConfigError("You must select either an installed HMM profile, or provide a path for a profile directory. "
                           "But not both :/")
@@ -128,6 +133,7 @@ def get_args():
                                                       "default anvi'o HMM profiles rather than running them all, this is "
                                                       "your stop.")
     groupB.add_argument(*anvio.A('hmm-profile-dir'), **anvio.K('hmm-profile-dir'))
+    groupB.add_argument(*anvio.A('miscellaneous-model'), **anvio.K('miscellaneous-model'))
     groupB.add_argument(*anvio.A('installed-hmm-profile'), **anvio.K('installed-hmm-profile',
                             {'help': f"When you run this program without any parameter, it will run all {len(available_hmm_sources)} "
                                      f"HMM profiles installed on your system. Using this parameter, you can instruct anvi'o to run "
