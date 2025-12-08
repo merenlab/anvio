@@ -54,7 +54,7 @@ class SequencesForHMMHits:
                                   'e_value': None,
                                   'start': None,
                                   'stop': None,
-                                  'length': None} 
+                                  'length': None}
 
 
         if defline_format:
@@ -275,7 +275,7 @@ class SequencesForHMMHits:
 
     def get_gene_hit_counts_per_hmm_source(self, sources=None, dont_include_models_with_multiple_domain_hits=False):
         """This function returns a 2-level dictionary mapping genes to their number of HMM hits.
-        
+
         The outer dictionary is keyed by HMM source and the inner dictionary is keyed by gene name.
 
         PARAMETERS
@@ -283,8 +283,8 @@ class SequencesForHMMHits:
         sources : list of str
             A list of HMM sources to count hits for. If not provided, will use all possible sources in the HMM hits table
         dont_include_models_with_multiple_domain_hits : Boolean
-            A flag variable to control whether we return counts for models that belong to multple HMM sources. This is 
-            relevant to the NumGenomesEstimator class, in which case we need to remove any genes that have hits from multiple 
+            A flag variable to control whether we return counts for models that belong to multple HMM sources. This is
+            relevant to the NumGenomesEstimator class, in which case we need to remove any genes that have hits from multiple
             single-copy core gene domains to avoid double-counting. See https://github.com/merenlab/anvio/issues/2231 for details
         """
 
@@ -329,7 +329,7 @@ class SequencesForHMMHits:
                             models_to_remove[s].update(m_set)
                         else:
                             models_to_remove[s] = m_set
-            
+
             # inform the user what is going on
             num_models_affected = 0
             num_model_strs = []
@@ -344,7 +344,7 @@ class SequencesForHMMHits:
                              f"to be removed from our counts, more specifically: {', '.join(num_model_strs)}. You can "
                              f"run this program with the `--debug` flag if you want to see a list of the models that we "
                              f"will ignore from each HMM source.")
-        
+
         gene_hit_counts = {}
         for source in sources:
             gene_hit_counts[source] = {}
@@ -357,7 +357,7 @@ class SequencesForHMMHits:
                 # avoid counting the problematic models
                 if (not dont_include_models_with_multiple_domain_hits) or (source not in models_to_remove) or (name not in models_to_remove[source]):
                     gene_hit_counts[source][name] = 0
-        
+
         for entry in hmm_hits:
             source    = entry['source']
             gene_name = entry['gene_name'].strip()
