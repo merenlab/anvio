@@ -574,6 +574,43 @@ class SequencesForHMMHits:
         return hmm_sequences_dict_for_splits
 
 
+    def filter_hmm_sequences_dict_for_contigs_to_keep_only_best_hits(self, hmm_sequences_dict_for_splits):
+        """This takes the output of `get_sequences_dict_for_hmm_hits_in_splits`, and goes through every hit\
+           to identify for each contig hits with the same gene name and source. If there are multiple gene\
+           names and source on a contig, removes every other except the one with the smallest e-value."""
+
+        hits_per_contig = {}
+
+        for hit_unique_id, hit in hmm_sequences_dict_for_splits.items():
+            contig = hit['contig']
+            source = hit['source']
+            gene_name = hit['gene_name']
+
+            if contig not in hits_per_contig:
+                hits_per_contig[contig] = {}
+
+            if source not in hits_per_contig[contig]:
+                hits_per_contig[contig][source] = {}
+
+            if gene_name not in hits_per_contig[contig][source]:
+                hits_per_contig[contig][source][gene_name] = []
+
+            hits_per_contig[contig][source][gene_name].append((hit['e_value'], hit_unique_id))
+
+        hit_unique_ids_to_remove = set([])
+
+        for contig in hits_per_contig:
+            for source in hits_per_contig[contig]:
+                for gene_name, hits in hits_per_contig[contig][source].items():
+                    if len(hits) > 1:
+                        hit_unique_ids_to_remove.update([t[1] for t in sorted(hits)][1:])
+
+        for hit_unique_id in hit_unique_ids_to_remove:
+            hmm_sequences_dict_for_splits.pop(hit_unique_id)
+
+        return hmm_sequences_dict_for_splits
+
+
     def get_gene_num_occurrences_across_bins(self, hmm_sequences_dict_for_splits):
         """Get a dictionary of gene names and their number of occurrences across all bins"""
 
