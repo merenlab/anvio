@@ -34,7 +34,7 @@ def display_miscellaneous_models(run=None):
     misc_sources = miscellaneous_hmm_sources
     misc_dir = os.path.abspath(os.path.dirname(__file__))
 
-    run.warning(None, header='Miscallenous HMM models', lc='green')
+    run.warning(None, header='Miscellaneous HMM models', lc='green')
     run.info_single("These models are not run by default, but shipped with anvi'o due to their "
                     "relevance. If you wish to run any of these models on your contigs-db file, "
                     "You can simply copy-paste the full path shown below after the `-H` paramter.",
