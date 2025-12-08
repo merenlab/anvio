@@ -1120,9 +1120,40 @@ class ContigSummarizer(SummarizerSuperClass):
         c = ContigsSuperclass(argparse.Namespace(contigs_db=self.contigs_db_path), r=run, p=progress)
 
         self.progress.update('Recovering info about %s ...' % self.contigs_db_path)
-        num_genes = len([True for v in c.genes_in_contigs_dict.values() if v['source'] == gene_caller_to_use])
         project_name = c.a_meta['project_name']
-        contig_lengths = sorted([e['length'] for e in c.contigs_basic_info.values()], reverse=True)
+
+        ######################################################################################################
+        # Here we are doing something we generally avoid doing in anvi'o. Please read the next few lines
+        # carefully :) The purpose of this section is to learn the gene and contig lenghts wihtout reading
+        # the entirety of genes and contigs tables in a given contigs-db file (since they can be huge, and
+        # reading them fully just to get counts and lengths can be quite wasteful and slow).
+        ######################################################################################################
+        # import things that are only relevant for this context where we will
+        # use the power of direct access to contigs-db tables to avoid long wait times
+        # when we just need simple summaries of the contigs-db contents.
+        import anvio.db as db
+        import anvio.tables as t
+
+        # open contigs-db directly
+        contigs_db = db.DB(self.contigs_db_path, anvio.__contigs__version__, run=run, progress=progress)
+        try:
+            # get the gene count for the gene caller of interest.
+            where_clause = f"source = '{gene_caller_to_use}'"
+            num_genes = contigs_db.get_row_counts_from_table(t.genes_in_contigs_table_name, where_clause=where_clause)
+
+            # get contig lenghts without reading the entire contigs table
+            contig_lengths = [row[1] for row in contigs_db.get_some_columns_from_table(t.contigs_info_table_name, 'contig,length')]
+        except Exception as e:
+            raise ConfigError(f"Something went wrong when anvi'o was trying to access the contigs-db tables sneakily :/ Here "
+                              f"is the error we got from the database engine: '{e}'. If you are seeing this message, please let "
+                              f"an anvi'o developer know about it. Sorry & Thanks!")
+        finally:
+            contigs_db.disconnect()
+        ######################################################################################################
+        # End of the sneaky contigs-db access
+        ######################################################################################################
+
+        contig_lengths = sorted(contig_lengths, reverse=True)
         total_length = sum(contig_lengths)
         num_contigs = len(contig_lengths)
 
