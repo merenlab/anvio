@@ -1127,7 +1127,8 @@ class ContigSummarizer(SummarizerSuperClass):
         num_contigs = len(contig_lengths)
 
         self.progress.update('Figuring out HMM hits in %s ...' % self.contigs_db_path)
-        hmm = hmmops.SequencesForHMMHits(self.contigs_db_path, run=self.run)
+        # contig stats only need HMM counts, so skip expensive sequence recovery
+        hmm = hmmops.SequencesForHMMHits(self.contigs_db_path, run=self.run, load_sequences=False)
 
         self.progress.update('Summarizing %s ...' % self.contigs_db_path)
         summary = {}
