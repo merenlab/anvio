@@ -10,6 +10,7 @@ import anvio.terminal as terminal
 
 with terminal.SuppressAllOutput():
     import anvio.data.hmm as hmm_data
+    import anvio.data.misc.HMM as misc_hmm_data
 
 available_hmm_sources = list(hmm_data.sources.keys())
 
@@ -47,6 +48,14 @@ def run_program():
     args = get_args()
     run = terminal.Run()
     P = terminal.pluralize
+
+    if not args.list_miscellaneous_models and not args.contigs_db:
+        raise ConfigError("You must provide a contigs database with '-c' / '--contigs-db'. "
+                          "If you only wish to list miscellaneous models, use '--list-miscellaneous-models'.")
+
+    if args.list_miscellaneous_models:
+        misc_hmm_data.display_miscellaneous_models(run)
+        return
 
     # then check whether we are going to use the default HMM profiles, or run it for a new one.
     sources = {}
@@ -113,7 +122,7 @@ def get_args():
 
 
     groupA = parser.add_argument_group("DB", "An anvi'o contigs database to populate with HMM hits")
-    groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
 
     groupB = parser.add_argument_group("HMM OPTIONS", "If you have your own HMMs, or if you would like to run only a set of "
                                                       "default anvi'o HMM profiles rather than running them all, this is "
@@ -128,6 +137,7 @@ def get_args():
                                      f"{available_hmm_sources_pretty}."}))
     groupB.add_argument(*anvio.A('hmmer-output-dir'), **anvio.K('hmmer-output-dir'))
     groupB.add_argument(*anvio.A('domain-hits-table'), **anvio.K('domain-hits-table'))
+    groupB.add_argument(*anvio.A('list-miscellaneous-models'), **anvio.K('list-miscellaneous-models'))
     groupC = parser.add_argument_group("tRNAs", "Through this program you can also scan Transfer RNA sequences in your "
                                                 "contigs database for free (instead of running `anvi-scan-trnas` later).")
     groupC.add_argument(*anvio.A('also-scan-trnas'), **anvio.K('also-scan-trnas'))
