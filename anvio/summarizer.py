@@ -47,7 +47,7 @@ import anvio.completeness as completeness
 import anvio.taxonomyops.scg as scgtaxonomyops
 
 from anvio.errors import ConfigError
-from anvio.dbops import DatabasesMetaclass, ContigsSuperclass, PanSuperclass
+from anvio.dbops import DatabasesMetaclass, ContigsDatabase, ContigsSuperclass, PanSuperclass
 from anvio.hmmops import SequencesForHMMHits
 from anvio.summaryhtml import SummaryHTMLOutput, humanize_n, pretty
 from anvio.tables.miscdata import TableForLayerAdditionalData, MiscDataTableFactory
@@ -1109,18 +1109,14 @@ class ContigSummarizer(SummarizerSuperClass):
     def get_summary_dict_for_assembly(self, gene_caller_to_use=None):
         """Returns a simple summary dict for a given contigs database"""
 
+        self.progress.new('Contigs-db summary in progress')
         if not gene_caller_to_use:
+            self.progress.update(f"Figuring out the gene caller to use for '{self.contigs_db_path}'")
             gene_caller_to_use = utils.get_default_gene_caller(self.contigs_db_path)
 
-        self.progress.new('Generating contigs db summary')
 
-        self.progress.update('Initiating contigs super for %s ...' % self.contigs_db_path)
         run, progress = terminal.Run(), terminal.Progress()
         run.verbose, progress.verbose = False, False
-        c = ContigsSuperclass(argparse.Namespace(contigs_db=self.contigs_db_path), r=run, p=progress)
-
-        self.progress.update('Recovering info about %s ...' % self.contigs_db_path)
-        project_name = c.a_meta['project_name']
 
         ######################################################################################################
         # Here we are doing something we generally avoid doing in anvi'o. Please read the next few lines
@@ -1135,16 +1131,22 @@ class ContigSummarizer(SummarizerSuperClass):
         import anvio.tables as t
 
         # open contigs-db directly
-        contigs_db = db.DB(self.contigs_db_path, anvio.__contigs__version__, run=run, progress=progress)
+        contigs_db = ContigsDatabase(self.contigs_db_path, run=run, progress=progress)
         try:
+            # learn the project name
+            self.progress.update('Learning the project name ...')
+            project_name = contigs_db.meta['project_name']
+
             # get the gene count for the gene caller of interest.
+            self.progress.update(f'Getting {project_name} gene counts for {gene_caller_to_use} ...')
             where_clause = f"source = '{gene_caller_to_use}'"
-            num_genes = contigs_db.get_row_counts_from_table(t.genes_in_contigs_table_name, where_clause=where_clause)
+            num_genes = contigs_db.db.get_row_counts_from_table(t.genes_in_contigs_table_name, where_clause=where_clause)
 
             # get contig lenghts without reading the entire contigs table
-            contig_lengths = [row[1] for row in contigs_db.get_some_columns_from_table(t.contigs_info_table_name, 'contig,length')]
+            self.progress.update(f'Getting {project_name} contig lengths ...')
+            contig_lengths = [row[1] for row in contigs_db.db.get_some_columns_from_table(t.contigs_info_table_name, 'contig,length')]
         except Exception as e:
-            raise ConfigError(f"Something went wrong when anvi'o was trying to access the contigs-db tables sneakily :/ Here "
+            raise ConfigError(f"Something went wrong when anvi'o was trying to access {project_name} tables sneakily :/ Here "
                               f"is the error we got from the database engine: '{e}'. If you are seeing this message, please let "
                               f"an anvi'o developer know about it. Sorry & Thanks!")
         finally:
@@ -1157,11 +1159,11 @@ class ContigSummarizer(SummarizerSuperClass):
         total_length = sum(contig_lengths)
         num_contigs = len(contig_lengths)
 
-        self.progress.update('Figuring out HMM hits in %s ...' % self.contigs_db_path)
+        self.progress.update(f'Figuring out {project_name} HMM hits ...')
         # contig stats only need HMM counts, so skip expensive sequence recovery
         hmm = hmmops.SequencesForHMMHits(self.contigs_db_path, run=self.run, load_sequences=False)
 
-        self.progress.update('Summarizing %s ...' % self.contigs_db_path)
+        self.progress.update(f'Summarizing everything for {project_name} ...')
         summary = {}
         summary['project_name'] = project_name
         summary['total_length'] = total_length
