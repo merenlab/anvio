@@ -126,12 +126,12 @@ At the top of this page, you will find general information like the number of di
 
 Every DGR then has its own section with information about the TR and VR sequences, the mismatches as well as the genomic context surround these regions and possible the reverse transcriptase information as well - if this is known.
 
+# TODO: this is too large max file size is 100MB!
+
 
 ## Computing DGR variability profiling
 
-
 NB: These next steps are not within anvi'o directly. You will need to [install](https://merenlab.org/2014/08/16/installing-the-oligotyping-pipeline/) [oligotyping](https://merenlab.org/software/oligotyping/) to do this process.
-
 
 Visualising the variability of the variable regions produced in the context of your samples
 The user give the tools samples that were used to create the Profile.db, where they also have a samples.txt with paths to the short reads of these samples, obviously, also need the fastq files of the short reads.
@@ -150,21 +150,24 @@ In order to keep track of the parameters you have run with each iteration fo the
 
 ## Power Users:
 #### Discovery mode
-Default use of the program is that it will locate SNVs based on their codon position so they need to be in ORFs and the SNVs are limited to the first and second codon position.
 
-Discovery mode however, places no limits on where the SNVs are located. This allows for a much broader search area of investigation and goes against some of the known features of DGRs.
+Default use of the program is that it will locate SNVs based on their codon position so they need to be in ORFs and the SNVs are limited to the first and second codon position. Discovery mode however, places no limits on where the SNVs are located. This allows for a much broader search area of investigation and goes against some of the known features of DGRs.
 
 #### Collections mode
-Searching for DGRs in metagenomes. Uses collections, more specifically the bins in the specified collection by the user and checks that the TR and VRs are found in the same bin. Because in theory the bins should each be one sample ('species' [notice the quotation marks]), therefore you could give the program a metagenome as long as you have binned groups.
 
-Can specify a specific collection with the flag `-C` and then the program will only look through that specific collection for DGRs.
+This is exactly what is says on the tin, and uses %(collection)s, more specifically the bins in the specified collection by the user and checks that the TR and VRs are found in the same %(bin). Because in theory the bins should each be one sample ('species' [notice the quotation marks]), therefore you could give the program a metagenome as long as you have binned groups. This can be useful to only search through various groups of contigs.
+
+You can specify a specific collection with the flag `-C` and then the program will only look through that specific collection for DGRs.
+
+{{ codestart }}
+
+anvi-report-dgrs -c contigs.db -p profile.db -I Reverse_Transcriptase -o dgrs-output --collections-mode -collection-name collection --skip-compute-DGR-variability-profiling
+
+{{ codestop }}
 
 ## Changeable parameters:
 
 There are many ways to alter the behavioral specifics of this programme. You can find some commonly adjusted parameters below. For a full list of parameters, check the program help (-h) output.
-
-
-
 
 #### INPUT DATA
 
@@ -288,4 +291,4 @@ Skip the computationally heavy DGR activity analysis.
 Use existing DGRs_found.tsv to recalculate DGR activity.
 (Most other parameters become irrelevant except the VR-profiling ones.)
 
-NB: This help file was written by a Brit please don't mind any none USA spellings I have missed or extra "u"s. Thank you.
+NB: This help file was written by a Brit please don't mind any none USA spellings I have missed, or added an extra "u"s. Thank you.
