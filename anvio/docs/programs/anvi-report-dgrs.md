@@ -118,13 +118,16 @@ The main output of the tool is a table formatted in a TSV, called DGR-OUTPUT_DGR
 
 ### HTML output
 
+Another output of interest is `index.html` which is a static html page with all the information about each DGR.
+
+At the top of this page, you will find general information like the number of diversity-generating retroelements found and link to some tab-delimited files that summarize all DGRs:
+
+![html header](../../images/anvi-report-dgrs-01.png)
+
+Every DGR then has its own section with information about the TR and VR sequences, the mismatches as well as the genomic context surround these regions and possible the reverse transcriptase information as well - if this is known.
 
 
-
-
-
-
-### Computing DGR variability profiling
+## Computing DGR variability profiling
 
 
 NB: These next steps are not within anvi'o directly. You will need to [install](https://merenlab.org/2014/08/16/installing-the-oligotyping-pipeline/) [oligotyping](https://merenlab.org/software/oligotyping/) to do this process.
