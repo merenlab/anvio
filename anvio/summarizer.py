@@ -1142,6 +1142,11 @@ class ContigSummarizer(SummarizerSuperClass):
             where_clause = f"source = '{gene_caller_to_use}'"
             num_genes = contigs_db.db.get_row_counts_from_table(t.genes_in_contigs_table_name, where_clause=where_clause)
 
+            # get gene lengths for stats
+            self.progress.update(f'Getting {project_name} gene lengths ...')
+            gene_coords = contigs_db.db.get_some_columns_from_table(t.genes_in_contigs_table_name, 'start,stop', where_clause=where_clause)
+            gene_lengths = [row[1] - row[0] for row in gene_coords]
+
             # get contig lenghts without reading the entire contigs table
             self.progress.update(f'Getting {project_name} contig lengths ...')
             contig_lengths = [row[1] for row in contigs_db.db.get_some_columns_from_table(t.contigs_info_table_name, 'contig,length')]
@@ -1158,6 +1163,15 @@ class ContigSummarizer(SummarizerSuperClass):
         contig_lengths = sorted(contig_lengths, reverse=True)
         total_length = sum(contig_lengths)
         num_contigs = len(contig_lengths)
+        contig_length_trimmed_mean = self.get_trimmed_mean(contig_lengths, fraction=0.1)
+
+        if gene_lengths:
+            avg_gene_length = numpy.mean(gene_lengths)
+            min_gene_length = min(gene_lengths)
+            max_gene_length = max(gene_lengths)
+            trimmed_mean_gene_length = self.get_trimmed_mean(gene_lengths, fraction=0.1)
+        else:
+            avg_gene_length = min_gene_length = max_gene_length = trimmed_mean_gene_length = 0
 
         self.progress.update(f'Figuring out {project_name} HMM hits ...')
         # contig stats only need HMM counts, so skip expensive sequence recovery
@@ -1168,8 +1182,13 @@ class ContigSummarizer(SummarizerSuperClass):
         summary['project_name'] = project_name
         summary['total_length'] = total_length
         summary['num_genes'] = num_genes
+        summary['avg_gene_length'] = avg_gene_length
+        summary['avg_gene_length_trimmed_10pct'] = trimmed_mean_gene_length
+        summary['min_gene_length'] = min_gene_length
+        summary['max_gene_length'] = max_gene_length
         summary['gene_caller'] = gene_caller_to_use
         summary['num_contigs'] = num_contigs
+        summary['contig_length_trimmed_mean_10pct'] = contig_length_trimmed_mean
         summary['n_values'] = self.calculate_N_values(contig_lengths, total_length, N=100)
         summary['contig_lengths'] = contig_lengths
         summary['gene_hit_counts_per_hmm_source'] = hmm.get_gene_hit_counts_per_hmm_source()
@@ -1200,6 +1219,24 @@ class ContigSummarizer(SummarizerSuperClass):
                 contigs_index += 1
 
         return results
+
+
+    def get_trimmed_mean(self, values, fraction=0.1):
+        """Return two-sided trimmed mean for a list of numeric values."""
+        if not values:
+            return 0
+
+        values = sorted(values)
+        trim = int(len(values) * fraction)
+        if trim == 0:
+            core = values
+        else:
+            core = values[trim:-trim] if trim < len(values) else []
+
+        if not core:
+            return 0
+
+        return sum(core) / float(len(core))
 
 
 class PanBin:
