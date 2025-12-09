@@ -10,9 +10,9 @@ miscellaneous_hmm_sources = {
             'DNA_Polymerase_Type_B': {'path': J('POLYMERASES/DNA_Polymerase_Type_B'),
                                       'info': 'A universal gene that is shared across all domains of life and viruses.'},
             'RNA_Polymerase_Type_A': {'path': J('POLYMERASES/RNA_Polymerase_Type_A'),
-                                      'info': "Just like the DNA_Polymerase_Type_B, but easier to assemble from metagenomes compared to it (Meren's personal observation -- a grain of salt may be appropriate here)."},
+                                      'info': "Just like the DNA_Polymerase_Type_B, but easier to assemble from metagenomes (Meren's personal observation -- a grain of salt may be appropriate here)."},
             'RNA_Polymerase_Type_B': {'path': J('POLYMERASES/RNA_Polymerase_Type_B'),
-                                      'info': 'Just like the RNA_Polymerase_Type_B, but different (often assemble poorly compared to RNA_Polymerase_Type_A -- very volatile insights here, so do your own research (but not like that)).'},
+                                      'info': 'Just like the RNA_Polymerase_Type_A, but often assembles poorly -- very volatile insights here, so do your own research (but not like that).'},
         },
         'rRNAs': {
             'Ribosomal_RNA_5S':  {'path': J('rRNAs/Ribosomal_RNA_5S'),
@@ -20,9 +20,9 @@ miscellaneous_hmm_sources = {
             'Ribosomal_RNA_12S': {'path': J('rRNAs/Ribosomal_RNA_12S'),
                                   'info': 'Just like the rRNA 5S. Bad model. Needs fixing.'},
             'Ribosomal_RNA_23S': {'path': J('rRNAs/Ribosomal_RNA_23S'),
-                                  'info': 'rRNA 23S. The subunit that is commonly found in Bacteria and Archaea. It works, but does not compete well with its cousin, 16S rRNA model.'},
+                                  'info': 'rRNA 23S. The subunit that is commonly found in Bacteria and Archaea. It works, but does not compete well with its cousin, the 16S rRNA model.'},
             'Ribosomal_RNA_28S': {'path': J('rRNAs/Ribosomal_RNA_28S'),
-                                  'info': 'rRNA 28S. The subunit that is commonly found in Eukaryotic genomes. This model works, but does not compete well with its cousin, 18S rRNA model.'},
+                                  'info': 'rRNA 28S. The subunit that is commonly found in Eukaryotic genomes. This model works, but does not compete well with its cousin, the 18S rRNA model.'},
         },
 }
 
