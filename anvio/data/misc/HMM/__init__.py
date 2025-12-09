@@ -36,7 +36,8 @@ def display_miscellaneous_models(run=None):
     run.warning(None, header='Miscellaneous HMM models', lc='green')
     run.info_single("These models are not run by default, but shipped with anvi'o due to their "
                     "relevance. If you wish to run any of these models on your contigs-db file, "
-                    "You can simply copy-paste the full path shown below after the `-H` paramter.",
+                    "you can simply follow the example commands shown after each model (note that "
+                    "the -H flag requires you to copy-paste the full path to the model).",
                     nl_after=1, level=0)
 
     for category in sorted(miscellaneous_hmm_sources.keys()):
