@@ -55,7 +55,7 @@ class SequencesForHMMHits:
                                   'e_value': None,
                                   'start': None,
                                   'stop': None,
-                                  'length': None} 
+                                  'length': None}
 
 
         if defline_format:
@@ -295,8 +295,8 @@ class SequencesForHMMHits:
         sources : list of str
             A list of HMM sources to count hits for. If not provided, will use all possible sources in the HMM hits table
         dont_include_models_with_multiple_domain_hits : Boolean
-            A flag variable to control whether we return counts for models that belong to multple HMM sources. This is 
-            relevant to the NumGenomesEstimator class, in which case we need to remove any genes that have hits from multiple 
+            A flag variable to control whether we return counts for models that belong to multple HMM sources. This is
+            relevant to the NumGenomesEstimator class, in which case we need to remove any genes that have hits from multiple
             single-copy core gene domains to avoid double-counting. See https://github.com/merenlab/anvio/issues/2231 for details
         """
 
@@ -341,7 +341,7 @@ class SequencesForHMMHits:
                             models_to_remove[s].update(m_set)
                         else:
                             models_to_remove[s] = m_set
-            
+
             # inform the user what is going on
             num_models_affected = 0
             num_model_strs = []
@@ -356,7 +356,7 @@ class SequencesForHMMHits:
                              f"to be removed from our counts, more specifically: {', '.join(num_model_strs)}. You can "
                              f"run this program with the `--debug` flag if you want to see a list of the models that we "
                              f"will ignore from each HMM source.")
-        
+
         gene_hit_counts = {}
         for source in sources:
             gene_hit_counts[source] = {}
@@ -369,7 +369,7 @@ class SequencesForHMMHits:
                 # avoid counting the problematic models
                 if (not dont_include_models_with_multiple_domain_hits) or (source not in models_to_remove) or (name not in models_to_remove[source]):
                     gene_hit_counts[source][name] = 0
-        
+
         for entry in hmm_hits:
             source    = entry['source']
             gene_name = entry['gene_name'].strip()
@@ -579,6 +579,43 @@ class SequencesForHMMHits:
                         # so we will sort from small e_value to big, and add unique ids to the list of shit ids to
                         # remove them from the dictionary we got.
                         hit_unique_ids_to_remove.update([t[1] for t in sorted(d[bin_name][hmm_source][gene_name])[1:]])
+
+        for hit_unique_id in hit_unique_ids_to_remove:
+            hmm_sequences_dict_for_splits.pop(hit_unique_id)
+
+        return hmm_sequences_dict_for_splits
+
+
+    def filter_hmm_sequences_dict_for_contigs_to_keep_only_best_hits(self, hmm_sequences_dict_for_splits):
+        """This takes the output of `get_sequences_dict_for_hmm_hits_in_splits`, and goes through every hit\
+           to identify for each contig hits with the same gene name and source. If there are multiple gene\
+           names and source on a contig, removes every other except the one with the smallest e-value."""
+
+        hits_per_contig = {}
+
+        for hit_unique_id, hit in hmm_sequences_dict_for_splits.items():
+            contig = hit['contig']
+            source = hit['source']
+            gene_name = hit['gene_name']
+
+            if contig not in hits_per_contig:
+                hits_per_contig[contig] = {}
+
+            if source not in hits_per_contig[contig]:
+                hits_per_contig[contig][source] = {}
+
+            if gene_name not in hits_per_contig[contig][source]:
+                hits_per_contig[contig][source][gene_name] = []
+
+            hits_per_contig[contig][source][gene_name].append((hit['e_value'], hit_unique_id))
+
+        hit_unique_ids_to_remove = set([])
+
+        for contig in hits_per_contig:
+            for source in hits_per_contig[contig]:
+                for gene_name, hits in hits_per_contig[contig][source].items():
+                    if len(hits) > 1:
+                        hit_unique_ids_to_remove.update([t[1] for t in sorted(hits)][1:])
 
         for hit_unique_id in hit_unique_ids_to_remove:
             hmm_sequences_dict_for_splits.pop(hit_unique_id)
