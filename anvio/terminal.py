@@ -553,7 +553,7 @@ class Run:
             message = remove_spaces(message)
 
         message_line = ''
-        header_line = c("%s\n%s\n%s\n" % (('\n' * nl_before), header,
+        header_line = c("%s\n%s\n%s\n" % (('\n' * nl_before), bold(header),
                                           '=' * (self.width + 2)), lc)
         if raw:
             message_line = c("%s\n\n%s" % ((message), '\n' * nl_after), lc)
