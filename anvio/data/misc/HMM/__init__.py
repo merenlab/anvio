@@ -27,6 +27,8 @@ miscellaneous_hmm_sources = {
 }
 
 def display_miscellaneous_models(run=None):
+    from anvio.terminal import bold, underline
+
     if not run:
         from anvio.terminal import Run
         run = Run()
@@ -41,12 +43,12 @@ def display_miscellaneous_models(run=None):
                     nl_after=1, level=0)
 
     for category, models in miscellaneous_hmm_sources.items():
-        run.info_single(f"{category} ({len(models)} available)", mc='blue', nl_after=1)
+        run.info_single(f"{bold(category)} ({len(models)} available)", mc='blue', nl_after=1)
         for model_name, model_data in models.items():
             model_path = os.path.abspath(model_data.get('path', ''))
             model_info = model_data.get('info', '')
 
-            run.info_single(f"{model_name}. {model_info if model_info else ''} Please use either of these options "
+            run.info_single(f"{bold(model_name)}. {model_info if model_info else ''} Please use either of these options "
                             f"to run this model on your contigs-db:", level=2)
             run.info_single(f"          anvi-run-hmms -c contigs-db -H {model_path}", mc='red', level=0, cut_after=0, nl_before=1, pretty_indentation=False)
             run.info_single(f"          anvi-run-hmms -c contigs-db -M {model_name}", mc='red', level=0, cut_after=0, nl_after=1, pretty_indentation=False)
