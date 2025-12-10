@@ -43,6 +43,12 @@ mc_color_dict = {'Yes': 'green',
                  'No': 'red',
                  'False': 'red'}
 
+# simple emphasis without dropping existing colors
+ANSI_BOLD = '\033[1m'
+ANSI_BOLD_OFF = '\033[22m'
+ANSI_UNDERLINE = '\033[4m'
+ANSI_UNDERLINE_OFF = '\033[24m'
+
 
 class SuppressAllOutput(object):
     def __enter__(self):
@@ -68,6 +74,33 @@ def remove_spaces(text):
             break
 
     return text
+
+
+def emphasize(text, bold=False, underline=False):
+    """Lightweight emphasis for terminal output that plays nicely with existing colors."""
+    if not sys.stdout.isatty():
+        return text
+
+    prefix = ''
+    suffix = ''
+
+    if bold:
+        prefix += ANSI_BOLD
+        suffix = ANSI_BOLD_OFF + suffix
+
+    if underline:
+        prefix += ANSI_UNDERLINE
+        suffix = ANSI_UNDERLINE_OFF + suffix
+
+    return f"{prefix}{text}{suffix}"
+
+
+def bold(text):
+    return emphasize(text, bold=True)
+
+
+def underline(text):
+    return emphasize(text, underline=True)
 
 
 def pluralize(word, number, sfp="s", sfs=None, pfs=None, alt=None):
