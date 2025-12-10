@@ -2673,9 +2673,22 @@ D = {
                      "This way you can run HMM profiles that are not included in anvi'o. See the online "
                      "to find out about the specifics of this directory structure ."}
                 ),
+    'miscellaneous-model': (
+            ['-M', '--miscellaneous-model'],
+            {'metavar': 'CATEGORY:MODEL',
+             'help': "Use a miscellaneous HMM model installed with anvi'o by its key. See '--list-miscellaneous-models' "
+                     "for available options."}
+                ),
     'installed-hmm-profile': (
             ['-I', '--installed-hmm-profile'],
             {'metavar': 'HMM PROFILE NAME(S)'}
+                ),
+    'list-miscellaneous-models': (
+            ['--list-miscellaneous-models'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "List the miscellaneous HMM profiles that are shipped with anvi'o but not run by default, "
+                     "including their categories, notes, and full paths to use with '-H'."}
                 ),
     'hmmer-output-dir': (
             ['--hmmer-output-dir'],
