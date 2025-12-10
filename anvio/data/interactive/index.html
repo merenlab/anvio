@@ -845,11 +845,47 @@
                         <div id="bin-settings" class="form-horizontal mt-3">
                             <div class="panel-body">
 
-                                <div class="form-group form-margin full-mode refine-mode mt-3">
-                                    <p id="estimate-taxonomy-check" class="d-flex">
+                                <div class="form-group form-margin full-mode refine-mode mt-3" id="taxonomy-ops-wrapper">
+                                    <div id="estimate-taxonomy-check" class="d-flex">
                                         <input type="checkbox" id="estimate_taxonomy" value="value" onclick="this.onchange();" onchange="toggleTaxonomyEstimation();">
                                         <span class="ml-1" for="estimate_taxonomy">Realtime taxonomy estimation for bins (whenever possible).</span>
-                                    </p>
+                                    </div>
+                                    <div class="mt-2" id="taxonomy-labeling-container" style="display: none;">
+                                        <p class="d-flex mb-1">
+                                            <input type="checkbox" id="use_taxonomy_bin_labels" onclick="toggleTaxonomyLabeling();">
+                                            <span class="ml-1" for="use_taxonomy_bin_labels">Use taxonomy to assign bin labels</span>
+                                        </p>
+                                        <div id="taxonomy-label-levels" class="ml-4" style="display: none;">
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="radio" name="taxonomy_label_level" id="taxonomy_label_best" value="best" checked onclick="onTaxonomyLabelLevelChange();">
+                                                <label class="form-check-label" for="taxonomy_label_best">Best</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="radio" name="taxonomy_label_level" id="taxonomy_label_phylum" value="phylum" onclick="onTaxonomyLabelLevelChange();">
+                                                <label class="form-check-label" for="taxonomy_label_phylum">Phylum</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="radio" name="taxonomy_label_level" id="taxonomy_label_class" value="class" onclick="onTaxonomyLabelLevelChange();">
+                                                <label class="form-check-label" for="taxonomy_label_class">Class</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="radio" name="taxonomy_label_level" id="taxonomy_label_order" value="order" onclick="onTaxonomyLabelLevelChange();">
+                                                <label class="form-check-label" for="taxonomy_label_order">Order</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="radio" name="taxonomy_label_level" id="taxonomy_label_family" value="family" onclick="onTaxonomyLabelLevelChange();">
+                                                <label class="form-check-label" for="taxonomy_label_family">Family</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="radio" name="taxonomy_label_level" id="taxonomy_label_genus" value="genus" onclick="onTaxonomyLabelLevelChange();">
+                                                <label class="form-check-label" for="taxonomy_label_genus">Genus</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="radio" name="taxonomy_label_level" id="taxonomy_label_species" value="species" onclick="onTaxonomyLabelLevelChange();">
+                                                <label class="form-check-label" for="taxonomy_label_species">Species</label>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <table class="table" id="bins-table">

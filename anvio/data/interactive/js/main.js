@@ -1989,6 +1989,8 @@ function serializeSettings(use_layer_names) {
     state['bin-labels-font-size'] = $('#bin_labels_font_size').val();
     state['autorotate-bin-labels'] = $('#autorotate_bin_labels').is(':checked');
     state['estimate-taxonomy'] = $('#estimate_taxonomy').is(':checked');
+    state['use-taxonomy-bin-labels'] = $('#use_taxonomy_bin_labels').is(':checked');
+    state['taxonomy-label-level'] = $('input[name="taxonomy_label_level"]:checked').val();
     state['bin-labels-angle'] = $('#bin_labels_angle').val();
     state['background-opacity'] = $('#background_opacity').val();
     state['max-font-size-label'] = $('#max_font_size_label').val();
@@ -3806,6 +3808,15 @@ function processState(state_name, state) {
         $('#estimate_taxonomy').prop('checked', state['estimate-taxonomy']).trigger('change');
     }
 
+    if (state.hasOwnProperty('taxonomy-label-level')) {
+        $(`input[name="taxonomy_label_level"][value="${state['taxonomy-label-level']}"]`).prop('checked', true);
+    }
+
+    if (state.hasOwnProperty('use-taxonomy-bin-labels')) {
+        $('#use_taxonomy_bin_labels').prop('checked', state['use-taxonomy-bin-labels']);
+        toggleTaxonomyLabeling();
+    }
+
     if (state.hasOwnProperty('show-grid-for-bins')) {
         $('#show_grid_for_bins').prop('checked', state['show-grid-for-bins']).trigger('change');
     }
@@ -4314,6 +4325,16 @@ function toggleTaxonomyEstimation() {
         });
     }
 
+    if (!is_checked) {
+        $('#use_taxonomy_bin_labels').prop('checked', false);
+        $('#taxonomy-label-levels').hide();
+        if (bins) {
+            bins.DisableTaxonomyLabeling();
+        }
+    }
+
+    updateTaxonomyLabelingVisibility();
+
     /*
         loadState/processState triggers onchange event of inputs
         which causes problem when state is loaded before bins initialized
@@ -4322,6 +4343,44 @@ function toggleTaxonomyEstimation() {
     if (bins) {
         bins.UpdateBinsWindow();
     }
+}
+
+function updateTaxonomyLabelingVisibility() {
+    const estimationChecked = $('#estimate_taxonomy').is(':checked');
+    const hasTaxonomyData = (bins && typeof bins.HasTaxonomyData === 'function') ? bins.HasTaxonomyData() : false;
+
+    if (estimationChecked && hasTaxonomyData) {
+        $('#taxonomy-labeling-container').show();
+    } else {
+        if ($('#use_taxonomy_bin_labels').is(':checked') && bins) {
+            bins.DisableTaxonomyLabeling();
+        }
+        $('#use_taxonomy_bin_labels').prop('checked', false);
+        $('#taxonomy-label-levels').hide();
+        $('#taxonomy-labeling-container').hide();
+    }
+}
+
+function toggleTaxonomyLabeling() {
+    const shouldAssignLabels = $('#use_taxonomy_bin_labels').is(':checked');
+
+    if (shouldAssignLabels) {
+        $('#taxonomy-label-levels').show();
+        if (bins) {
+            bins.EnableTaxonomyLabeling();
+            bins.ApplyTaxonomyLabels();
+        }
+    } else {
+        $('#taxonomy-label-levels').hide();
+        if (bins) {
+            bins.DisableTaxonomyLabeling();
+        }
+    }
+}
+
+function onTaxonomyLabelLevelChange() {
+    if (!bins) return;
+    bins.ApplyTaxonomyLabels();
 }
 
 function ShadowBoxSelection(type) {
