@@ -79,7 +79,7 @@ The second SNV related check performed is a result of expecting the places of th
 Next, the tool then locates a reverse transcriptase, this works by locating the nearest reverse transcriptase to each template region. these reverse transcriptases are annotated via a HMM annotation when you run `anvi-run-hmms` on your %{contigs-db}.
 
 {{ codestart }}
-anvi-run-hmms -c contigs.db  -i Reverse_Transcriptase
+anvi-run-hmms -c contigs.db  -I Reverse_Transcriptase
 {{ codestop }}
 
 Because the tool relies on the **reverse transcriptase** being on the same contig as a **template region**, these are not always found or associated with a found TR/VR pair. Therefore, a reverse transciptase is not a critical factor for the determinance of a DGR.
@@ -131,16 +131,79 @@ Every DGR then has its own section with information about the TR and VR sequence
 
 ## Computing DGR variability profiling
 
-NB: These next steps are not within anvi'o directly. You will need to [install](https://merenlab.org/2014/08/16/installing-the-oligotyping-pipeline/) [oligotyping](https://merenlab.org/software/oligotyping/) to do this process.
+This section explains how `anvi-report-dgrs` can locate the proportions of the different varaible regions that are expressed (is this the correct word?) across samples of a known variable region.
+
+The user gives the tool samples that were used to create the %(profile-db), where they also have a %(samples-txt) with paths to the short reads of these samples, obviously, you also need the fastq files of the short reads.
+
+This works via the variable regions being masked at the sites of mutagenesis in the template region as well as any mismatches between the two regions, this creates what is called an anchor primer. There is then an initial primer region that is by default 12 bp in front of the start of the variable region the direction of which is dependent on the strand orientation fo the variable region. These primers are then made sample specific based on the presence of SNVs in each sample.
+
+{{ codestart }}
+
+anvi-report-dgrs -c contigs.db -p profile.db -I Reverse_Transcriptase  -o dgr-output --samples-txt samples.txt
+
+{{ codestop }}
+
+### Computing DGR varaibilty profiling using previously computed diversity-generating retroelements
+
+It is possible to tell anvi'o to use a previously reported DGRs. This is computed bypassing `anvi-report-dgrs`a tsv output that is formatted in the same way as %(dgr-output-tsv), or from a previous run using the flag `--pre-computed-dgrs`
+
+{{ codestart }}
+
+anvi-report-dgrs -c contigs.db -p profile.db -I Reverse_Transcriptase --pre-computed-dgrs dgrs-output -o activity-calculations --samples-txt samples.txt
+
+{{ codestop }}
+
+### Creating different primers for every sample
+
+Once DGRs have been identified, this step goes back to the raw metagenomic reads to measure in-sample activity of each Variable Region (VR).
+It does so by:
+Generating sample-specific primers for every VR, using TR–VR alignments and sample SNVs.
+Searching all short reads of each sample for evidence of the VR’s activity.
+Producing primer-match files and a summary table for downstream analysis.
+
+This is an optional section that can be retroactively run with a standard %(DGR-output-tsv) file and the %(samples-txt). A %(samples-txt) is needed for the tool to search for the variable region primers against the short reads FASTQ files.
+
+This step can take a long time for many samples, because the program evaluates every VR primer against every short read.
+
+For each DGR, every VR is assigned its own primer.
+Each primer is composed of two parts
+1. Initial primer region (default length: 12 bp)
+This is the sequence immediately upstream or downstream of the VR depending on the VR’s strand and position in the contig.
+If the VR is too close to a contig edge, this region may not exist.
+The software automatically detects this and falls back to a masked-primer-only approach.
+2. Masked VR primer
+The VR and TR alignments determine which positions are variable:
+Positions where:
+TR contains the mutagenic base, or
+TR ≠ VR
+→ become "." (masked/uninformative).
+All other positions:
+→ use the TR base as an “anchor”.
+3. Sample-specific masking from SNVs
+For each sample:
+The program reads SNVs found inside the VR region.
+Any position containing an SNV is masked (".").
+This produces one primer per sample per VR, reflecting actual in-sample variability.
+4. Strand orientation
+If the VR is on a reverse frame, the final primer is reverse-complemented.
+5. Primer length enforcement
+Finally, primers are trimmed to the tool’s total primer length requirement, keeping either left or right side depending on orientation.
+
+### Outputs of computing variability profiling:
+
+#### Primers used tsv
+
+DGR_Primers_used_for_VR_diversity.tsv
+
+#### PRIMER_MATCHES/ directory
+
+This folder contains the raw evidence used to infer VR activity. For each sample a fasta file is generated listing primer hits across all VRs
+
+### Visualising the diversity of the variable regions across different samples
+
+NB: This step is not within anvi'o directly. You will need to [install](https://merenlab.org/2014/08/16/installing-the-oligotyping-pipeline/) [oligotyping](https://merenlab.org/software/oligotyping/) to do this process.
 
 Visualising the variability of the variable regions produced in the context of your samples
-The user give the tools samples that were used to create the Profile.db, where they also have a samples.txt with paths to the short reads of these samples, obviously, also need the fastq files of the short reads.
-
-All VRs are forced to be on the forward strand, this includes reverse complementing them to fit this narrative. There is then an initial primer region that is by default 12 bp in front of the start of the VR.
-
-#### Creating different primers for every sample
-
-
 
 ### Parameter output tsv
 
