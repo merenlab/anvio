@@ -73,7 +73,7 @@ def summarize_fasta(contigs_fasta, ignore_empty_sequences):
 
         progress.increment()
 
-        if progress.progress_current_item % 100 == 0:
+        if progress.progress_current_item % 5000 == 0:
             progress.update(f"{pp(progress.progress_current_item)} of {pp(progress.progress_total_items)}")
 
     fasta.close()
