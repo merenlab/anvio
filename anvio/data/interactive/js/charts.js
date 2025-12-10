@@ -88,19 +88,16 @@ function loadAll() {
     highlight_gene = getParameterByName('highlight_gene') === 'true';
     gene_mode = getParameterByName('gene_mode') === 'true';
 
-    if (typeof localStorage.state === 'undefined') {
-        state = {
-            snvs_enabled: false,
-            show_highlights: true
-        };
-    } else {
-        state = JSON.parse(localStorage.state);
+    state = typeof localStorage.state === 'undefined' ? {} : JSON.parse(localStorage.state);
+
+    // Give URL parameter priority so `anvi-inspect` can force SNVs on initial load.
+    const showSnvsParam = getParameterByName('show_snvs');
+    if (showSnvsParam !== null && showSnvsParam !== '') {
+        state['snvs_enabled'] = showSnvsParam === 'true';
+    } else if (state['snvs_enabled'] == null) {
+        state['snvs_enabled'] = false;
     }
 
-    // Ensure state properties are defined
-    if (state['snvs_enabled'] == null) {
-        state['snvs_enabled'] = getParameterByName('show_snvs') === 'true';
-    }
     if (state['show_highlights'] == null) {
         state['show_highlights'] = true;
     }
@@ -116,6 +113,15 @@ function loadAll() {
             success: function(response) {
                 info("Received split data from the server");
                 state = response['state'];
+
+                // Initialize SNV visibility before processing variability so maxVariability is computed correctly.
+                const showSnvsParam = getParameterByName('show_snvs');
+                if (showSnvsParam !== null && showSnvsParam !== '') {
+                    state['snvs_enabled'] = showSnvsParam === 'true';
+                } else if (state['snvs_enabled'] == null) {
+                    state['snvs_enabled'] = false;
+                }
+
                 page_header = response.title;
                 layers = response.layers;
                 coverage = response.coverage;
