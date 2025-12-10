@@ -40,15 +40,13 @@ def display_miscellaneous_models(run=None):
                     "the -H flag requires you to copy-paste the full path to the model).",
                     nl_after=1, level=0)
 
-    for category in sorted(miscellaneous_hmm_sources.keys()):
-        models = miscellaneous_hmm_sources[category]
+    for category, models in miscellaneous_hmm_sources.items():
         run.info_single(f"{category} ({len(models)} available)", mc='blue', nl_after=1)
-        for model_name in sorted(models.keys()):
-            model_data = models[model_name]
+        for model_name, model_data in models.items():
             model_path = os.path.abspath(model_data.get('path', ''))
             model_info = model_data.get('info', '')
 
-            run.info_single(f"'{model_name}'. {model_info if model_info else ''} Please use either of these options "
+            run.info_single(f"{model_name}. {model_info if model_info else ''} Please use either of these options "
                             f"to run this model on your contigs-db:", level=2)
             run.info_single(f"          anvi-run-hmms -c contigs-db -H {model_path}", mc='red', level=0, cut_after=0, nl_before=1, pretty_indentation=False)
             run.info_single(f"          anvi-run-hmms -c contigs-db -M {model_name}", mc='red', level=0, cut_after=0, nl_after=1, pretty_indentation=False)
