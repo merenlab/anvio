@@ -25,9 +25,10 @@ P = terminal.pluralize
 
 
 class SequencesForHMMHits:
-    def __init__(self, contigs_db_path, sources=set([]), split_names_of_interest=set([]), init=True, run=run, progress=progress, bin_name=None, defline_format=None):
+    def __init__(self, contigs_db_path, sources=set([]), split_names_of_interest=set([]), init=True, run=run, progress=progress, bin_name=None, defline_format=None, load_sequences=True):
         self.run = run
         self.progress = progress
+        self.load_sequences = load_sequences
 
         if not isinstance(sources, type(set([]))):
             raise ConfigError("'sources' variable has to be a set instance.")
@@ -202,6 +203,17 @@ class SequencesForHMMHits:
             return
 
         gene_caller_ids_of_interest = set([e['gene_callers_id'] for e in self.hmm_hits.values()])
+
+        if not self.load_sequences:
+            self.progress.end()
+            contigs_db.disconnect()
+
+            self.run.warning("The programmer asked this class to be initiated without HMM hit sequences, and thus "
+                             "it is prematurely (but not dishonorably) returning what it knows about the HMM "
+                             "collections stored in {contigs_db_path}.")
+
+            return
+
         where_clause_for_genes = "gene_callers_id in (%s)" % ', '.join(['%d' % g for g in gene_caller_ids_of_interest])
 
         self.progress.update('Recovering split and contig names for %d genes' % (len(gene_caller_ids_of_interest)))

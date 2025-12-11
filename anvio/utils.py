@@ -2286,14 +2286,9 @@ def get_default_gene_caller(contigs_db_path):
 
     is_contigs_db(contigs_db_path)
 
-    contigs_db = db.DB(contigs_db_path, anvio.__contigs__version__)
+    contigs_db = db.DB(contigs_db_path, anvio.__contigs__version__, read_only=True)
 
-    gene_call_sources_in_contigs_db = contigs_db.get_single_column_from_table(t.genes_in_contigs_table_name, 'source')
-
-    try:
-        most_frequent_gene_caller = Counter(gene_call_sources_in_contigs_db).most_common(1)[0][0]
-    except IndexError:
-        most_frequent_gene_caller = None
+    most_frequent_gene_caller = contigs_db.get_most_frequent_value_from_table(t.genes_in_contigs_table_name, 'source')
 
     contigs_db.disconnect()
 

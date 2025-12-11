@@ -47,7 +47,7 @@ import anvio.completeness as completeness
 import anvio.taxonomyops.scg as scgtaxonomyops
 
 from anvio.errors import ConfigError
-from anvio.dbops import DatabasesMetaclass, ContigsSuperclass, PanSuperclass
+from anvio.dbops import DatabasesMetaclass, ContigsDatabase, ContigsSuperclass, PanSuperclass
 from anvio.hmmops import SequencesForHMMHits
 from anvio.summaryhtml import SummaryHTMLOutput, humanize_n, pretty
 from anvio.tables.miscdata import TableForLayerAdditionalData, MiscDataTableFactory
@@ -1109,33 +1109,86 @@ class ContigSummarizer(SummarizerSuperClass):
     def get_summary_dict_for_assembly(self, gene_caller_to_use=None):
         """Returns a simple summary dict for a given contigs database"""
 
+        self.progress.new('Contigs-db summary in progress')
         if not gene_caller_to_use:
+            self.progress.update(f"Figuring out the gene caller to use for '{self.contigs_db_path}'")
             gene_caller_to_use = utils.get_default_gene_caller(self.contigs_db_path)
 
-        self.progress.new('Generating contigs db summary')
 
-        self.progress.update('Initiating contigs super for %s ...' % self.contigs_db_path)
         run, progress = terminal.Run(), terminal.Progress()
         run.verbose, progress.verbose = False, False
-        c = ContigsSuperclass(argparse.Namespace(contigs_db=self.contigs_db_path), r=run, p=progress)
 
-        self.progress.update('Recovering info about %s ...' % self.contigs_db_path)
-        num_genes = len([True for v in c.genes_in_contigs_dict.values() if v['source'] == gene_caller_to_use])
-        project_name = c.a_meta['project_name']
-        contig_lengths = sorted([e['length'] for e in c.contigs_basic_info.values()], reverse=True)
+        ######################################################################################################
+        # Here we are doing something we generally avoid doing in anvi'o. Please read the next few lines
+        # carefully :) The purpose of this section is to learn the gene and contig lenghts wihtout reading
+        # the entirety of genes and contigs tables in a given contigs-db file (since they can be huge, and
+        # reading them fully just to get counts and lengths can be quite wasteful and slow).
+        ######################################################################################################
+        # import things that are only relevant for this context where we will
+        # use the power of direct access to contigs-db tables to avoid long wait times
+        # when we just need simple summaries of the contigs-db contents.
+        import anvio.db as db
+        import anvio.tables as t
+
+        # open contigs-db directly
+        contigs_db = ContigsDatabase(self.contigs_db_path, run=run, progress=progress)
+        try:
+            # learn the project name
+            self.progress.update('Learning the project name ...')
+            project_name = contigs_db.meta['project_name']
+
+            # get the gene count for the gene caller of interest.
+            self.progress.update(f'Getting {project_name} gene counts for {gene_caller_to_use} ...')
+            where_clause = f"source = '{gene_caller_to_use}'"
+            num_genes = contigs_db.db.get_row_counts_from_table(t.genes_in_contigs_table_name, where_clause=where_clause)
+
+            # get gene lengths for stats
+            self.progress.update(f'Getting {project_name} gene lengths ...')
+            gene_coords = contigs_db.db.get_some_columns_from_table(t.genes_in_contigs_table_name, 'start,stop', where_clause=where_clause)
+            gene_lengths = [row[1] - row[0] for row in gene_coords]
+
+            # get contig lenghts without reading the entire contigs table
+            self.progress.update(f'Getting {project_name} contig lengths ...')
+            contig_lengths = [row[1] for row in contigs_db.db.get_some_columns_from_table(t.contigs_info_table_name, 'contig,length')]
+        except Exception as e:
+            raise ConfigError(f"Something went wrong when anvi'o was trying to access {project_name} tables sneakily :/ Here "
+                              f"is the error we got from the database engine: '{e}'. If you are seeing this message, please let "
+                              f"an anvi'o developer know about it. Sorry & Thanks!")
+        finally:
+            contigs_db.disconnect()
+        ######################################################################################################
+        # End of the sneaky contigs-db access
+        ######################################################################################################
+
+        contig_lengths = sorted(contig_lengths, reverse=True)
         total_length = sum(contig_lengths)
         num_contigs = len(contig_lengths)
+        contig_length_trimmed_mean = self.get_trimmed_mean(contig_lengths, fraction=0.1)
 
-        self.progress.update('Figuring out HMM hits in %s ...' % self.contigs_db_path)
-        hmm = hmmops.SequencesForHMMHits(self.contigs_db_path, run=self.run)
+        if gene_lengths:
+            avg_gene_length = numpy.mean(gene_lengths)
+            min_gene_length = min(gene_lengths)
+            max_gene_length = max(gene_lengths)
+            trimmed_mean_gene_length = self.get_trimmed_mean(gene_lengths, fraction=0.1)
+        else:
+            avg_gene_length = min_gene_length = max_gene_length = trimmed_mean_gene_length = 0
 
-        self.progress.update('Summarizing %s ...' % self.contigs_db_path)
+        self.progress.update(f'Figuring out {project_name} HMM hits ...')
+        # contig stats only need HMM counts, so skip expensive sequence recovery
+        hmm = hmmops.SequencesForHMMHits(self.contigs_db_path, run=self.run, load_sequences=False)
+
+        self.progress.update(f'Summarizing everything for {project_name} ...')
         summary = {}
         summary['project_name'] = project_name
         summary['total_length'] = total_length
         summary['num_genes'] = num_genes
+        summary['avg_gene_length'] = avg_gene_length
+        summary['avg_gene_length_trimmed_10pct'] = trimmed_mean_gene_length
+        summary['min_gene_length'] = min_gene_length
+        summary['max_gene_length'] = max_gene_length
         summary['gene_caller'] = gene_caller_to_use
         summary['num_contigs'] = num_contigs
+        summary['contig_length_trimmed_mean_10pct'] = contig_length_trimmed_mean
         summary['n_values'] = self.calculate_N_values(contig_lengths, total_length, N=100)
         summary['contig_lengths'] = contig_lengths
         summary['gene_hit_counts_per_hmm_source'] = hmm.get_gene_hit_counts_per_hmm_source()
@@ -1166,6 +1219,24 @@ class ContigSummarizer(SummarizerSuperClass):
                 contigs_index += 1
 
         return results
+
+
+    def get_trimmed_mean(self, values, fraction=0.1):
+        """Return two-sided trimmed mean for a list of numeric values."""
+        if not values:
+            return 0
+
+        values = sorted(values)
+        trim = int(len(values) * fraction)
+        if trim == 0:
+            core = values
+        else:
+            core = values[trim:-trim] if trim < len(values) else []
+
+        if not core:
+            return 0
+
+        return sum(core) / float(len(core))
 
 
 class PanBin:

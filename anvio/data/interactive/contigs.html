@@ -209,8 +209,10 @@
 
         function create_table() {
             var table_str = "";
-            table_str += create_table_header('Contigs Stats');
+            table_str += create_table_header('Contig Stats');
             table_str += array_to_table(tables['basic_stats'], 'No Basic Stats Found');
+            table_str += create_table_header('Gene Stats');
+            table_str += array_to_table(tables['gene_stats'] || [], 'No Gene Stats Found');
             table_str += create_table_header('Raw number of HMM Hits');
             table_str += array_to_table(tables['hmm'], '<i>HMMs were not run</i>');
             table_str += create_table_header('Approx. number of genomes <a href="https://anvio.org/help/main/programs/anvi-display-contigs-stats/#how-do-we-predict-the-number-of-genomes">[?]</a>');
