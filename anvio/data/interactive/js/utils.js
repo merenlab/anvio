@@ -517,6 +517,12 @@ function _createModalDialog(options) {
     const $modal = $(`#modal${randomID}`);
     const escHandlerNamespace = `keydown.modalClose${randomID}`;
 
+    // If a lingering waiting dialog is still around, clear it before/when this modal shows.
+    if (typeof hideWaitingDialogSafely === 'function') {
+        hideWaitingDialogSafely();
+        $modal.on('shown.bs.modal', hideWaitingDialogSafely);
+    }
+
     const escHandler = (event) => {
         if (event.key === 'Escape') {
             $modal.modal('hide');

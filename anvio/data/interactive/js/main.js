@@ -2381,6 +2381,32 @@ const FUNCTION_CONFIGS = {
 
 };
 
+// CSS hooks for the waiting dialog so we can clean it up robustly
+const WAITING_DIALOG_CLASS = 'anvio-waiting-dialog';
+const WAITING_BACKDROP_CLASS = 'anvio-waiting-backdrop';
+
+// Ensure the waiting dialog and its backdrop disappear even if Bootstrap gets confused.
+function hideWaitingDialogSafely() {
+    try {
+        waitingDialog.hide();
+    } catch (err) {
+        console.error('Failed to hide waiting dialog', err);
+    }
+
+    try {
+        $(`.${WAITING_DIALOG_CLASS}`).modal('hide');
+        $(`.${WAITING_DIALOG_CLASS}`).remove();
+        $(`.${WAITING_BACKDROP_CLASS}`).remove();
+        if ($('.modal.show').length === 0) {
+            // No modal is visible, so we can safely clear any stray backdrops/body class.
+            $('.modal-backdrop').remove();
+            $('body').removeClass('modal-open');
+        }
+    } catch (err) {
+        console.error('Failed to clean waiting dialog remnants', err);
+    }
+}
+
 // Track ongoing function lookups to prevent duplicate requests and show progress.
 const ITEM_FUNCTION_REQUESTS_IN_FLIGHT = new Set();
 
@@ -2430,13 +2456,29 @@ function showItemFunctions(bin_id, config, updateOnly = false) {
         return;
     }
 
+    let requestFinished = false;
     const finishRequest = () => {
+        if (requestFinished) {
+            return;
+        }
+
+        requestFinished = true;
         ITEM_FUNCTION_REQUESTS_IN_FLIGHT.delete(requestKey);
-        waitingDialog.hide();
+        hideWaitingDialogSafely();
     };
 
     ITEM_FUNCTION_REQUESTS_IN_FLIGHT.add(requestKey);
-    waitingDialog.show(config.loadingMessage || 'Fetching functions...', { dialogSize: 'sm' });
+    waitingDialog.show(config.loadingMessage || 'Fetching functions...', {
+        dialogSize: 'sm',
+        onShow: function() {
+            const $waiting = $('.modal').filter(function() {
+                return $(this).find('.progress.progress-striped.active').length > 0;
+            }).last();
+
+            $waiting.addClass(WAITING_DIALOG_CLASS);
+            $('.modal-backdrop').last().addClass(WAITING_BACKDROP_CLASS);
+        }
+    });
 
     // Prepare AJAX data based on config
     let ajaxData = {};
@@ -2447,7 +2489,10 @@ function showItemFunctions(bin_id, config, updateOnly = false) {
         url: config.url,
         data: ajaxData,
         success: (response) => {
-            if (response.hasOwnProperty('status') && response.status != 0) {
+            const hasErrorStatus = response && typeof response === 'object' &&
+                                   response.hasOwnProperty('status') && response.status != 0;
+
+            if (hasErrorStatus) {
                 finishRequest();
                 toastr.error('"' + response.message + '", the server said.', "The anvi'o headquarters is upset");
                 return;
@@ -2484,7 +2529,8 @@ function showItemFunctions(bin_id, config, updateOnly = false) {
         error: () => {
             finishRequest();
             toastr.error('Failed to fetch functions for this bin. Please try again.', "The anvi'o headquarters is upset");
-        }
+        },
+        complete: finishRequest
     });
 }
 
