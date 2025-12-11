@@ -340,9 +340,9 @@ function loadAll() {
                                 // In this case there is no state, and no other data to be read from, and we
                                 // fail to show SNVs and INDELs even when they are there, which is not the best
                                 // behavior here. leaving this here so we remember:
-                                
+
                                 if (!response || response.length < 2) {
-                                    toastr.error("Invalid response received from the server.");
+                                   // We didn't get what we expect -- let's go back?
                                     return;
                                 }
 
