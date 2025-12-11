@@ -2,7 +2,7 @@ This is the output of %(anvi-report-inversions)s.
 
 ### Per sample inversion report table
 
-%(anvi-report-inversions)s searches for inversions in every single sample at a time and thus genereates a TAB-delimited table for every sample: `INVERSIONS-IN-SAMPLE_01.txt`, `INVERSIONS-IN-SAMPLE_02`, ...
+%(anvi-report-inversions)s searches for inversions in every single sample at a time and thus generates a TAB-delimited table for every sample: `INVERSIONS-IN-SAMPLE_01.txt`, `INVERSIONS-IN-SAMPLE_02`, ...
 
 Here is an example output:
 
@@ -16,20 +16,20 @@ These tables contains the following columns:
 * Entry ID made with the contig's name and the start and stop position of the stretch
 * The contig's name
 * The first palindrome sequence
-* The aligment midline
+* The alignment midline
 * The second palindrome sequence
 * The start and stop position of the first and second palindrome sequence
 * The number of mismatches
 * The number of gaps
 * The length of the palindrome sequence
-* The distance between the first and second palindrome seqeuences, i.e. the size of the inversion
+* The distance between the first and second palindrome sequences, i.e. the size of the inversion
 * The number of samples in which it was detected and confirmed
 * The in silico primers used to compute the inversion's activity, for the first and second palindrome
 * The oligo corresponding to the reference sequence
 
 ### Inversions consensus table
 
-Anvi'o eventually create a consensus table with all the unique inversions found accross all your samples in a file called `INVERSIONS-CONSENSUS.txt`. This table has the same format as the individual sample outputs, with the 'entry ID' replaced by a unique inversion ID. It also has column reporting the samples where the inversion was detected.
+Anvi'o eventually create a consensus table with all the unique inversions found across all your samples in a file called `INVERSIONS-CONSENSUS.txt`. This table has the same format as the individual sample outputs, with the 'entry ID' replaced by a unique inversion ID. It also has column reporting the samples where the inversion was detected.
 
 The table should look like this:
 
@@ -55,7 +55,7 @@ Another default output table is named `ALL-STRETCHES-CONSIDERED.txt` and it repo
 
 If the user enable the reporting of the genomic context, two addition TAB-delimited tables are generated: `INVERSIONS-CONSENSUS-SURROUNDING-GENES.txt` and `INVERSIONS-CONSENSUS-SURROUNDING-FUNCTIONS.txt`.
 
-The first table report the gene calls surrounging every inversion when possible:
+The first table report the gene calls surrounding every inversion when possible:
 
 |**inversion_id**|**entry_type**|**gene_callers_id**|**start**|**stop**|**direction**|**partial**|**call_type**|**source**|**version**|**contig**|
 |:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|

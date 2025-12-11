@@ -4,7 +4,7 @@ This file format has its own [Wikipedia page](https://en.wikipedia.org/wiki/Prot
 
 The header describes the title (if one exists), the type of data (denoted by `EXPDTA`), and any free-form annotations (denoted by `REMARK` ). In Anvi'o, these are primarily MODELLER information calculated when you ran %(anvi-gen-structure-database)s. 
 
-Most of the data will describe the position of individual atoms (denoted by `ATOM`) in your protein, where columns 6, 7, and 8 describe the three dimensional coordinate of the atom. The rest of the columns describe information like what position that atom is in the amno acid. 
+Most of the data will describe the position of individual atoms (denoted by `ATOM`) in your protein, where columns 6, 7, and 8 describe the three dimensional coordinate of the atom. The rest of the columns describe information like what position that atom is in the amino acid. 
 
 `TER` statements separate independent chains from each other.
 

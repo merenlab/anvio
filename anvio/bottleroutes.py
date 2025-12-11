@@ -193,6 +193,7 @@ class BottleApplication(Bottle):
         self.route('/data/get_additional_gc_data/<gc_id>/<gc_key>',               callback=self.get_additional_gc_data, method='POST')
         self.route('/data/search_items',                                          callback=self.search_items_by_name, method='POST')
         self.route('/data/get_taxonomy',                                          callback=self.get_taxonomy, method='POST')
+        self.route('/data/get_functions_for_genes_in_splits',                     callback=self.get_functions_for_genes_in_splits, method='POST')
         self.route('/data/get_functions_for_gene_clusters',                       callback=self.get_functions_for_gene_clusters, method='POST')
         self.route('/data/get_functions_for_a_collection_of_genes',               callback=self.get_functions_for_a_collection_of_genes, method='POST')
         self.route('/data/get_gene_info/<gene_callers_id>',                       callback=self.get_gene_info)
@@ -377,7 +378,7 @@ class BottleApplication(Bottle):
                         item_lengths[gene_cluster] += len(self.interactive.gene_clusters[gene_cluster][genome])
 
             functions_sources = []
-            if self.interactive.mode == 'full' or self.interactive.mode == 'gene' or self.interactive.mode == 'refine':
+            if self.interactive.mode in ['full', 'gene', 'refine', 'codon-frequencies']:
                 functions_sources = list(self.interactive.gene_function_call_sources)
             elif self.interactive.mode == 'pan':
                 functions_sources = list(self.interactive.gene_clusters_function_sources)
@@ -1553,7 +1554,6 @@ class BottleApplication(Bottle):
             run.warning(message)
             return json.dumps({'status': 1, 'message': message})
 
-
         gene_cluster_names = json.loads(request.forms.get('gene_clusters'))
 
         functions = {}
@@ -1574,6 +1574,44 @@ class BottleApplication(Bottle):
         payload = {'functions': functions,
                    'metabolism': kegg_metabolism_superdict['user_defined_enzymes'],
                    'sources': list(self.interactive.gene_clusters_function_sources)}
+
+        return json.dumps(payload, default=utils.to_jsonable)
+
+
+    def get_functions_for_genes_in_splits(self):
+        if not self.interactive.gene_function_calls_initiated:
+            message = "Gene functions seem to have not been initialized, so that button has nothing to show you :/ Please carry on."
+            run.warning(message)
+            return json.dumps({'status': 1, 'message': message})
+
+        # Learn split names like a normal human
+        split_names = json.loads(request.forms.get('split_names'))
+
+        if not len(split_names):
+            message = "Some snafu happened and a function was called without its required input lol."
+            run.warning(message)
+            return json.dumps({'status': 1, 'message': message})
+
+        # Get gene calls from split names (but only if they are 'call_type' of 1)
+        gene_caller_ids = set()
+        contig_names = set()
+        for split_name in split_names:
+            for entry_id in self.interactive.split_name_to_genes_in_splits_entry_ids[split_name]:
+                gene_caller_id = self.interactive.genes_in_splits[entry_id]['gene_callers_id']
+                if gene_caller_id in self.interactive.genes_in_contigs_dict and self.interactive.genes_in_contigs_dict[gene_caller_id]['call_type'] == 1:
+                    gene_caller_ids.add(gene_caller_id)
+                    contig_names.add(self.interactive.splits_basic_info[split_name]['parent'])
+
+        if 'KOfam' in self.interactive.gene_function_call_sources:
+            kegg_metabolism_superdict, _ = self.interactive.get_metabolism_estimates_for_a_list_of_genes(list(gene_caller_ids))
+        else:
+            kegg_metabolism_superdict, _ = {'user_defined_enzymes': {}}, {}
+
+        payload = {'functions': {},
+                   'metabolism': kegg_metabolism_superdict['user_defined_enzymes'],
+                   'sources': self.interactive.gene_function_call_sources,
+                   'split_names': split_names,
+                   'contig_names': contig_names}
 
         return json.dumps(payload, default=utils.to_jsonable)
 
@@ -1613,7 +1651,7 @@ class BottleApplication(Bottle):
             return(json.dumps({'status': 0, 'data': data}))
         except:
             return(json.dumps({'status': 1, 'data': ''}))
-        
+
 
     def get_pangraph_states(self):
         try:
@@ -1657,7 +1695,7 @@ class BottleApplication(Bottle):
         try:
             payload = request.json
             synteny_gene_clusters = payload['synteny_gene_clusters']
-    
+
             data = self.interactive.get_sequences_for_synteny_gene_clusters(gene_cluster_names=set(synteny_gene_clusters))
             return(json.dumps({'status': 0, 'data': data}))
         except:

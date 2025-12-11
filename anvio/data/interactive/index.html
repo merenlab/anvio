@@ -13,7 +13,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="stylesheet" href="./node_modules/bootstrap/dist/css/bootstrap.css" />
     <link rel="stylesheet" href="lib/colpick/colpick.css" type="text/css" />
-    
+
     <!-- Import packages from node_modules -->
     <link rel="stylesheet" href="./node_modules/bootstrap-icons/font/bootstrap-icons.min.css" />
     <link rel="stylesheet" href="./node_modules/toastr/build/toastr.min.css" type="text/css" />
@@ -34,7 +34,7 @@
     <script type="text/javascript" src="./node_modules/jquery-ui/ui/widgets/resizable.js" onerror='alertDependencyError("jquery-core")'></script>
     <script type="text/javascript" src="./node_modules/jquery-ui/ui/widgets/sortable.js" onerror='alertDependencyError("jquery-sortable")'></script>
     <script type="text/javascript" src="./node_modules/jquery-ui/ui/position.js" onerror='alertDependencyError("jquery-position")'></script>
-    
+
     <script type="text/javascript" src="lib/jquery-svgpan/jquery-svgpan.js" onerror='alertDependencyError("jquery-svg")'></script>
     <script type="text/javascript" src="./node_modules/html5sortable/dist/html5sortable.min.js" onerror='alertDependencyError("html5sortable")'></script>
     <script type="text/javascript" src="./node_modules/randomcolor/randomColor.js" onerror='alertDependencyError("random-color")'></script>
@@ -179,7 +179,7 @@
                                     <li class="nav-bottom-alignment"><a href="#" class="navbar-btn d-block" onclick="showSaveStateWindow();" data-help="save-state-button" disabled-in-read-only="true"><i class="icon-unlock bi bi-download fs-2x"></i><span class="d-block">Save</span> </a></li>
                                 </li>
                                 <hr class="nav-bottom-alignment border-color">
-                                <p class="side-menu-text nav-bottom-alignment">Display</p> 
+                                <p class="side-menu-text nav-bottom-alignment">Display</p>
                                 <li class="nav-bottom-alignment">
                                     <a href="#" class="navbar-btn d-block" onclick="exportSvg();" data-help="save-svg">
                                         <i class="icon-unlock bi bi-images fs-2x"></i><span class="d-block">Export</span>
@@ -199,10 +199,10 @@
                     <div role="tabpanel" class="tab-pane fade show active" id="tree_settings">
                         <div id="tree-settings" class="form-horizontal">
                             <span id="toggle-chevron-item" class="settings-header btn d-flex chart-icon-padding align-items-center" data-toggle="collapse" href="#item-collapse-main" role="button" aria-expanded="true" aria-controls="item-collapse-option" onclick="$('#toggle-chevron-item').children('i').toggleClass('bi-chevron-up bi-chevron-down');">
-                                <img src="images/item-chart.svg" alt="Item Icon"/> 
+                                <img src="images/item-chart.svg" alt="Item Icon"/>
                                 Items
                                 <i class="text-secondary ml-1 d-flex pt-1 align-items-center bi bi-chevron-down"></i>
-                            </span> 
+                            </span>
                             <div class="collapse multi-collapse show" id="item-collapse-main">
                                     <div class="ml-2" id="items-data-section">
                                         <div class="form-group form-margin">
@@ -226,12 +226,16 @@
                                                     </div>
                                                 </div>
                                         </div>
+                                        <div class="form-group form-margin" id="collapsed_nodes_wrapper" style="display: none;">
+                                                <label class="settings-label" for="collapsed_nodes_panel">Collapsed nodes</label>
+                                                <div class="col-10 menu-padding" id="collapsed_nodes_panel"></div>
+                                        </div>
                                         <div class="form-group form-margin">
                                                 <label class="settings-label" for="views_container" data-help="view">Data</label>
                                                 <div class="col-10 menu-padding">
                                                     <select id="views_container" class="form-control" onchange="onViewChange();"></select>
                                                 </div>
-                                        </div>        
+                                        </div>
                                         <div class="form-group form-margin manual-mode">
                                             <label class="settings-label" for="scale_container" data-help="scale">Scale</label>
                                             <div class="menu-padding">
@@ -255,7 +259,7 @@
                             </div>
                             <div class="ml-2">
                                     <span class="settings-secondary-header">Display</span>
-    
+
                                     <div id="table_layers_container" class="mt-3">
                                         <table id="table_layers">
                                             <thead>
@@ -338,10 +342,10 @@
                                                 <button type="button" class="btn btn-outline-secondary btn-sm pan-mode" onclick="showGeneratePhylogeneticTreeWindow();" style="margin-top: 8px;" ><span class="bi bi-plus" aria-hidden="true"></span>Generate new phylogenetic tree</button>
                                             </div>
                                     </div>
-                                    
+
                                     <span class="settings-secondary-header">Layer Groups</span>
                                     <div id="sample_groups_container" class="row mt-3 ml-1">
-        
+
                                     </div>
                                     <div class="clearfix"></div>
                                     <span class="settings-secondary-header">Display</span>
@@ -518,9 +522,9 @@
                                             <div id="inverse_color" onchange="emit('bin-settings-changed')" style="display: none !important; margin-left: 5px;" class="colorpicker colorpicker-width" style="background-color: #000" color="#000"></div>
                                             <div style="display: none !important;" id="inverse_color_input">
                                                 <div class="inverse_details d-flex">
-                                                    <span class="pt-1">Opacity:</span>        
+                                                    <span class="pt-1">Opacity:</span>
                                                     <input class="form-control input-xs col-5 ml-3" type="number" min="0.0" max="1.0" step='0.1' value="0.1" id="inverse_fill_opacity" name="checkbox" onchange="emit('bin-settings-changed')">
-                                                </div> 
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -841,11 +845,47 @@
                         <div id="bin-settings" class="form-horizontal mt-3">
                             <div class="panel-body">
 
-                                <div class="form-group form-margin full-mode refine-mode mt-3">
-                                    <p id="estimate-taxonomy-check" class="d-flex">
+                                <div class="form-group form-margin full-mode refine-mode mt-3" id="taxonomy-ops-wrapper">
+                                    <div id="estimate-taxonomy-check" class="d-flex">
                                         <input type="checkbox" id="estimate_taxonomy" value="value" onclick="this.onchange();" onchange="toggleTaxonomyEstimation();">
                                         <span class="ml-1" for="estimate_taxonomy">Realtime taxonomy estimation for bins (whenever possible).</span>
-                                    </p>
+                                    </div>
+                                    <div class="mt-2" id="taxonomy-labeling-container" style="display: none;">
+                                        <p class="d-flex mb-1">
+                                            <input type="checkbox" id="use_taxonomy_bin_labels" onclick="toggleTaxonomyLabeling();">
+                                            <span class="ml-1" for="use_taxonomy_bin_labels">Use taxonomy to assign bin labels</span>
+                                        </p>
+                                        <div id="taxonomy-label-levels" class="ml-4" style="display: none;">
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="radio" name="taxonomy_label_level" id="taxonomy_label_best" value="best" checked onclick="onTaxonomyLabelLevelChange();">
+                                                <label class="form-check-label" for="taxonomy_label_best">Best</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="radio" name="taxonomy_label_level" id="taxonomy_label_phylum" value="phylum" onclick="onTaxonomyLabelLevelChange();">
+                                                <label class="form-check-label" for="taxonomy_label_phylum">Phylum</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="radio" name="taxonomy_label_level" id="taxonomy_label_class" value="class" onclick="onTaxonomyLabelLevelChange();">
+                                                <label class="form-check-label" for="taxonomy_label_class">Class</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="radio" name="taxonomy_label_level" id="taxonomy_label_order" value="order" onclick="onTaxonomyLabelLevelChange();">
+                                                <label class="form-check-label" for="taxonomy_label_order">Order</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="radio" name="taxonomy_label_level" id="taxonomy_label_family" value="family" onclick="onTaxonomyLabelLevelChange();">
+                                                <label class="form-check-label" for="taxonomy_label_family">Family</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="radio" name="taxonomy_label_level" id="taxonomy_label_genus" value="genus" onclick="onTaxonomyLabelLevelChange();">
+                                                <label class="form-check-label" for="taxonomy_label_genus">Genus</label>
+                                            </div>
+                                            <div class="form-check form-check-inline">
+                                                <input class="form-check-input" type="radio" name="taxonomy_label_level" id="taxonomy_label_species" value="species" onclick="onTaxonomyLabelLevelChange();">
+                                                <label class="form-check-label" for="taxonomy_label_species">Species</label>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <table class="table" id="bins-table">
@@ -854,7 +894,7 @@
                                             <th data-defaultsort='disabled'><span class="new-bin-icon bi bi-plus-circle-fill fa-lg" aria-hidden="true" alt="Add bins" title="Add bins" onClick="bins.NewBin();"></span></th>
                                             <th class="text-center"></th>
                                             <th>Name</th>
-                                            <th id="splits_title">Splits</th>
+                                            <th id="items_title">Items</th>
                                             <th id="len_title">Len</th>
                                             <th id="completion_title" title="Completion">Comp.</th>
                                             <th id="redundancy_title" title="Redundancy">Red.</th>
@@ -1246,12 +1286,12 @@
                             <div class="col-md-8">Number of Splits:</div><div class="col-md-4">n/a</div>
                             <div class="col-md-8">Number of Bins:</div><div class="col-md-4">n/a</div>
                     </div>
-                    <div class="modal-title col-md-5" id="init_gene_modal"> 
+                    <div class="modal-title col-md-5" id="init_gene_modal">
                         <hr>
                         <div class="d-flex align-item-center justify-content-center">
                             <label class="d-flex">
-                                <input class="d-flex" id="init-gene-checkbox" type="checkbox" />   
-                                <span class="d-flex">init gene coverages</span>                     
+                                <input class="d-flex" id="init-gene-checkbox" type="checkbox" />
+                                <span class="d-flex">init gene coverages</span>
                             </label>
                         </div>
                     </div>

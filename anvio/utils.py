@@ -47,7 +47,7 @@ try:
     from anvio.sequence import Composition
     from anvio.version import versions_for_db_types
     from anvio.errors import ConfigError, FilesNPathsError
-    from anvio.terminal import Run, Progress, SuppressAllOutput, get_date, TimeCode, pluralize
+    from anvio.terminal import Run, Progress, SuppressAllOutput, get_date, TimeCode
 except ModuleNotFoundError as e:
     # Extract just the module name from "No module named 'modulename'"
     module_name = str(e).split("'")[1] if "'" in str(e) else str(e)
@@ -293,6 +293,31 @@ def human_readable_file_size(nbytes):
     return '%s %s' % (f, suffixes[i])
 
 
+def human_readable_number(value, decimals=2, suffixes=None):
+    """Return a compact string for large numbers (e.g., 12340 -> 12.3K)."""
+
+    suffixes = suffixes or ['', 'K', 'M', 'G', 'T', 'P']
+
+    try:
+        num = float(value)
+    except (TypeError, ValueError):
+        return str(value)
+
+    negative = num < 0
+    num = abs(num)
+
+    if num == 0:
+        return '0'
+
+    i = 0
+    while num >= 1000 and i < len(suffixes) - 1:
+        num /= 1000.0
+        i += 1
+
+    fmt = f"{{:.{decimals}f}}".format(num).rstrip('0').rstrip('.')
+    return f"{'-' if negative else ''}{fmt}{suffixes[i]}"
+
+
 def get_port_num(port_num = 0, ip='0.0.0.0', run=run):
     """Get a port number for the `ip` address."""
 
@@ -500,20 +525,20 @@ class CoverageStats:
     """
 
     def __init__(self, coverage, skip_outliers=False):
-        self.min = np.amin(coverage)
-        self.max = np.amax(coverage)
-        self.median = np.median(coverage)
-        self.mean = np.mean(coverage)
-        self.std = np.std(coverage)
-        self.detection = np.sum(coverage > 0) / len(coverage)
+        self.min: float = np.amin(coverage)
+        self.max: float = np.amax(coverage)
+        self.median: float = np.median(coverage)
+        self.mean: float = np.mean(coverage)
+        self.std: float = np.std(coverage)
+        self.detection: float = np.sum(coverage > 0) / len(coverage)
 
         if coverage.size < 4:
-            self.mean_Q2Q3 = self.mean
+            self.mean_Q2Q3: float = self.mean
         else:
             sorted_c = np.sort(coverage)
             Q = int(coverage.size * 0.25)
             Q2Q3 = sorted_c[Q:-Q]
-            self.mean_Q2Q3 = np.mean(Q2Q3)
+            self.mean_Q2Q3: float = np.mean(Q2Q3)
 
         if skip_outliers:
             self.is_outlier = None
@@ -2261,14 +2286,9 @@ def get_default_gene_caller(contigs_db_path):
 
     is_contigs_db(contigs_db_path)
 
-    contigs_db = db.DB(contigs_db_path, anvio.__contigs__version__)
+    contigs_db = db.DB(contigs_db_path, anvio.__contigs__version__, read_only=True)
 
-    gene_call_sources_in_contigs_db = contigs_db.get_single_column_from_table(t.genes_in_contigs_table_name, 'source')
-
-    try:
-        most_frequent_gene_caller = Counter(gene_call_sources_in_contigs_db).most_common(1)[0][0]
-    except IndexError:
-        most_frequent_gene_caller = None
+    most_frequent_gene_caller = contigs_db.get_most_frequent_value_from_table(t.genes_in_contigs_table_name, 'source')
 
     contigs_db.disconnect()
 

@@ -23,12 +23,12 @@ In which,
 
 * `sequence_name` is the sequence name on which a given palindrome was found.
 * `length` is the length of the palindrome.
-* `distance` is the number of nucleotides between the location of the palindromic sequences in the larger seqeunce.
+* `distance` is the number of nucleotides between the location of the palindromic sequences in the larger sequence.
 * `num_mismatches` is the number of actual nucleotides in the palindrome sequence that did not match to its counterpart when the sequence was reverse-complemented.
 * `first_start` is the start position of the first palindrome in the reference sequence.
 * `first_end` is the end position of the first palindrome.
 * `second_start` and `second_end` are just like `first_start` and `first_end` but for the second sequence. For perfect palindromes (i.e., palindromes with zero distance), these values will be identical to their counterparts in the first sequence.
-* `first_sequence` and `second_sequence` are the actual nucleotide sequences of both. They will be identical if number of mismatches are zero. Please note that only the reverse complement of the `second_sequence` will be found in the reference sequnce.
+* `first_sequence` and `second_sequence` are the actual nucleotide sequences of both. They will be identical if number of mismatches are zero. Please note that only the reverse complement of the `second_sequence` will be found in the reference sequence.
 * `midline` an array of letters that are composed of `|` and `x` characters that show where the matching and mismatching nucleotides were (if any).
 
 **Please note** that the `sequence_name` column may not have unique sequence names if multiple palindromes found on the same sequence (which almost certainly be the case for most searches on circular genomes).

@@ -66,7 +66,7 @@ class KeggEstimatorArgs():
         self.add_coverage = True if A('add_coverage') else False
         self.add_copy_number = True if A('add_copy_number') else False
         self.exclude_kos_no_threshold = False if A('include_kos_not_in_kofam') else True
-        self.include_stray_kos = True if A('include_stray_KOs') else False
+        self.include_stray_kos = True if A('include_nt_KOs') else False
         self.ignore_unknown_kos = True if A('ignore_unknown_KOs') else False
         self.exclude_dashed_reactions = True if A('exclude_dashed_reactions') else False
         self.module_specific_matrices = A('module_specific_matrices') or None
@@ -458,7 +458,7 @@ class KeggDataLoader(KeggContext):
                 splits_missing_in_profile_db = split_names_in_contigs_db.difference(split_names_in_profile_db)
 
                 if len(splits_missing_in_profile_db):
-                    min_contig_length_in_profile_db = pp(int(DBInfo('PROFILE.db', expecting='profile').get_self_table()['min_contig_length']))
+                    min_contig_length_in_profile_db = pp(int(DBInfo(profile_db_path, expecting='profile').get_self_table()['min_contig_length']))
                     num_splits_contig = pp(len(split_names_in_contigs_db))
                     num_splits_profile = pp(len(split_names_in_profile_db))
                     num_missing = pp(len(splits_missing_in_profile_db))

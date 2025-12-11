@@ -381,6 +381,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user":True
     },
+    "genes-of-interest-txt": {
+        "name": "GENES OF INTEREST",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
     "pfam-accession": {
         "name": "PFAM ACCESSION",
         "type": "TXT",
@@ -965,6 +971,12 @@ ANVIO_ARTIFACTS ={
     },
     "contig-rename-report-txt": {
         "name": "CONTIG RENAME REPORT TXT",
+        "type": "TXT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "contig-circularity-report-txt": {
+        "name": "CIRCULARITY REPORT TXT",
         "type": "TXT",
         "provided_by_anvio": True,
         "provided_by_user": False

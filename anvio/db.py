@@ -738,6 +738,27 @@ class DB:
         return results
 
 
+    def get_most_frequent_value_from_table(self, table_name, column_name, where_clause=None):
+        """Return the most frequent value for `column_name` in `table_name`.
+
+        Uses SQL aggregation to avoid pulling the entire column into memory.
+        """
+        self.is_table_exists(table_name)
+
+        if where_clause:
+            where_clause = where_clause.replace('"', "'")
+            query = '''SELECT %s, COUNT(*) as cnt FROM %s WHERE %s GROUP BY %s ORDER BY cnt DESC LIMIT 1''' % \
+                        (column_name, table_name, where_clause, column_name)
+        else:
+            query = '''SELECT %s, COUNT(*) as cnt FROM %s GROUP BY %s ORDER BY cnt DESC LIMIT 1''' % \
+                        (column_name, table_name, column_name)
+
+        response = self._exec(query)
+        results = self._fetchall(response, table_name)
+
+        return results[0][0] if len(results) else None
+
+
     def get_table_column_types(self, table_name):
         self.is_table_exists(table_name)
 
@@ -761,9 +782,10 @@ class DB:
     def get_table_structure(self, table_name):
         self.is_table_exists(table_name)
 
-        response = self._exec('''SELECT * FROM %s''' % table_name)
+        response = self._exec('PRAGMA TABLE_INFO(%s)' % table_name)
+        results = self._fetchall(response, table_name)
 
-        return [t[0] for t in response.description]
+        return [t[1] for t in results]
 
 
     def get_table_as_list_of_tuples(self, table_name, table_structure=None):
