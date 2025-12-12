@@ -88,19 +88,16 @@ function loadAll() {
     highlight_gene = getParameterByName('highlight_gene') === 'true';
     gene_mode = getParameterByName('gene_mode') === 'true';
 
-    if (typeof localStorage.state === 'undefined') {
-        state = {
-            snvs_enabled: false,
-            show_highlights: true
-        };
-    } else {
-        state = JSON.parse(localStorage.state);
+    state = typeof localStorage.state === 'undefined' ? {} : JSON.parse(localStorage.state);
+
+    // Give URL parameter priority so `anvi-inspect` can force SNVs on initial load.
+    const showSnvsParam = getParameterByName('show_snvs');
+    if (showSnvsParam !== null && showSnvsParam !== '') {
+        state['snvs_enabled'] = showSnvsParam === 'true';
+    } else if (state['snvs_enabled'] == null) {
+        state['snvs_enabled'] = false;
     }
 
-    // Ensure state properties are defined
-    if (state['snvs_enabled'] == null) {
-        state['snvs_enabled'] = getParameterByName('show_snvs') === 'true';
-    }
     if (state['show_highlights'] == null) {
         state['show_highlights'] = true;
     }
@@ -116,6 +113,15 @@ function loadAll() {
             success: function(response) {
                 info("Received split data from the server");
                 state = response['state'];
+
+                // Initialize SNV visibility before processing variability so maxVariability is computed correctly.
+                const showSnvsParam = getParameterByName('show_snvs');
+                if (showSnvsParam !== null && showSnvsParam !== '') {
+                    state['snvs_enabled'] = showSnvsParam === 'true';
+                } else if (state['snvs_enabled'] == null) {
+                    state['snvs_enabled'] = false;
+                }
+
                 page_header = response.title;
                 layers = response.layers;
                 coverage = response.coverage;
@@ -334,9 +340,9 @@ function loadAll() {
                                 // In this case there is no state, and no other data to be read from, and we
                                 // fail to show SNVs and INDELs even when they are there, which is not the best
                                 // behavior here. leaving this here so we remember:
-                                
+
                                 if (!response || response.length < 2) {
-                                    toastr.error("Invalid response received from the server.");
+                                   // We didn't get what we expect -- let's go back?
                                     return;
                                 }
 
@@ -1407,13 +1413,23 @@ function loadOrderingAdditionalData(order) {
     if (order.hasOwnProperty('additional')) {
         let orders_additional = order['additional'];
 
-        if (typeof orders_additional === 'string') {
-            orders_additional = JSON.parse(orders_additional);
+        try {
+            // Additional data may arrive as JSON, a JSON-encoded string, or double-encoded
+            while (typeof orders_additional === 'string') {
+                orders_additional = JSON.parse(orders_additional);
+            }
+        } catch (error) {
+            console.warn('Failed to parse additional order data', error, orders_additional);
+            orders_additional = {};
         }
 
-        if (orders_additional.hasOwnProperty('collapsedNodes')) {
+        if (orders_additional && orders_additional.hasOwnProperty('collapsedNodes')) {
             collapsedNodes = orders_additional['collapsedNodes'];
         }
+    }
+
+    if (typeof refreshCollapsedNodesTable === 'function') {
+        refreshCollapsedNodesTable();
     }
 }
 

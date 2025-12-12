@@ -48,6 +48,8 @@ const BIN_DEFAULTS = {
     }
 };
 
+const TAXONOMY_LEVEL_ORDER = ["t_species", "t_genus", "t_family", "t_order", "t_class", "t_phylum", "t_domain"];
+
 const TRANSACTION_TYPES = {
     APPEND_NODE: 'AppendNode',
     REMOVE_NODE: 'RemoveNode',
@@ -77,6 +79,9 @@ function Bins(prefix, container) {
         'taxonomy': {}
     };
 
+    this.manualBinNamesBackup = null;
+    this.taxonomyLabelingEnabled = false;
+
     this.keepHistory = false;
     this.allowRedraw = true;
 
@@ -104,8 +109,17 @@ Bins.prototype.NewBin = function(id, binState) {
     this.container.insertAdjacentHTML('beforeend', template);
     this.SelectLastRadio();
 
+    if (this.taxonomyLabelingEnabled) {
+        this.manualBinNamesBackup = this.manualBinNamesBackup || {};
+        this.manualBinNamesBackup[binData.id] = binData.name;
+    }
+
     this._initializeColorPicker(binData.id);
     this._recordBinCreation(binData);
+
+    if (this.taxonomyLabelingEnabled) {
+        this.ApplyTaxonomyLabels();
+    }
 };
 
 /**
@@ -343,8 +357,16 @@ Bins.prototype.DeleteBin = function(bin_id, show_confirm = true) {
     this._clearBinSelections(bin_id);
     this.PushHistory(transaction);
     this._removeBinFromDOM(bin_id);
+    delete this.cache['taxonomy'][bin_id];
+    delete this.cache['completeness'][bin_id];
+
+    if (this.manualBinNamesBackup && this.manualBinNamesBackup.hasOwnProperty(bin_id)) {
+        delete this.manualBinNamesBackup[bin_id];
+    }
+
     this._ensureAtLeastOneBin();
     this.RedrawBins();
+    updateTaxonomyLabelingVisibility();
 };
 
 /**
@@ -1110,23 +1132,207 @@ Bins.prototype._processTaxonomyData = function(bin_id, bin_name, data) {
 
     if (!data.hasOwnProperty(bin_name)) return;
 
-    const taxonomyLevels = ["t_domain", "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"];
+    this.cache['taxonomy'][bin_id] = data[bin_name];
+
     const taxonomyLabel = this.container.querySelector(`span.taxonomy-name-label[bin-id="${bin_id}"]`);
 
-    if (!taxonomyLabel) return;
+    if (!taxonomyLabel) {
+        updateTaxonomyLabelingVisibility();
+        return;
+    }
 
-    // Default to unknown
-    taxonomyLabel.innerHTML = " (?) Unknown";
+    const consensus = data[bin_name]['consensus_taxonomy'] || {};
+    taxonomyLabel.innerHTML = this._getTaxonomyDisplayLabel(consensus);
 
-    // Find the most specific taxonomy level
-    for (let i = taxonomyLevels.length - 1; i >= 0; i--) {
-        const level = taxonomyLevels[i];
-        const taxonomyValue = data[bin_name]['consensus_taxonomy'][level];
+    if (this.taxonomyLabelingEnabled) {
+        this.ApplyTaxonomyLabels();
+    }
 
-        if (taxonomyValue !== null) {
+    updateTaxonomyLabelingVisibility();
+};
+
+/**
+ * Build taxonomy label text for UI
+ * @private
+ */
+Bins.prototype._getTaxonomyDisplayLabel = function(consensus) {
+    let label = " (?) Unknown";
+
+    for (const level of TAXONOMY_LEVEL_ORDER) {
+        const taxonomyValue = consensus[level];
+
+        if (taxonomyValue !== null && typeof taxonomyValue !== 'undefined') {
             const levelLabel = level.split('_')[1][0];
-            taxonomyLabel.innerHTML = ` (${levelLabel}) ${taxonomyValue.replace('_', ' ')}`;
+            label = ` (${levelLabel}) ${taxonomyValue.replace('_', ' ')}`;
             break;
+        }
+    }
+
+    return label;
+};
+
+// ============================================================================
+// Taxonomy-driven labels
+// ============================================================================
+
+/**
+ * Check whether any taxonomy data is available
+ * @returns {boolean}
+ */
+Bins.prototype.HasTaxonomyData = function() {
+    return Object.keys(this.cache['taxonomy']).length > 0;
+};
+
+/**
+ * Enable taxonomy-driven labeling and snapshot current names
+ */
+Bins.prototype.EnableTaxonomyLabeling = function() {
+    this.taxonomyLabelingEnabled = true;
+    this.manualBinNamesBackup = this._captureManualBinNames();
+};
+
+/**
+ * Disable taxonomy-driven labeling and restore original names
+ */
+Bins.prototype.DisableTaxonomyLabeling = function() {
+    this.taxonomyLabelingEnabled = false;
+    if (this.manualBinNamesBackup) {
+        this._restoreManualBinNames();
+    }
+    this.manualBinNamesBackup = null;
+};
+
+/**
+ * Apply taxonomy-based labels according to the selected level
+ * @param {string} selectedLevel - taxonomy level (best, phylum, ..., species)
+ */
+Bins.prototype.ApplyTaxonomyLabels = function(selectedLevel) {
+    if (!this.taxonomyLabelingEnabled) return;
+
+    const level = selectedLevel || $('input[name="taxonomy_label_level"]:checked').val() || 'best';
+    const binRows = Array.from(this.container.querySelectorAll('tr.bin-row')).sort(
+        (a, b) => parseInt(a.getAttribute('bin-id')) - parseInt(b.getAttribute('bin-id'))
+    );
+
+    const labelCounts = {};
+
+    binRows.forEach((row) => {
+        const bin_id = parseInt(row.getAttribute('bin-id'));
+        this._ensureManualNameBackupForBin(bin_id);
+
+        const baseLabel = this._getTaxonomyBaseLabel(bin_id, level);
+        labelCounts[baseLabel] = (labelCounts[baseLabel] || 0) + 1;
+        const suffix = String(labelCounts[baseLabel]).padStart(3, '0');
+        this._setBinName(bin_id, `${baseLabel}_${suffix}`);
+    });
+
+    emit('bin-settings-changed');
+};
+
+/**
+ * Capture current bin names for restoration
+ * @private
+ */
+Bins.prototype._captureManualBinNames = function() {
+    const names = {};
+    const binRows = this.container.querySelectorAll('tr.bin-row');
+
+    binRows.forEach((row) => {
+        const bin_id = row.getAttribute('bin-id');
+        const input = row.querySelector('.bin-name');
+        names[bin_id] = input ? input.value : `${this.prefix}${parseInt(bin_id) + 1}`;
+    });
+
+    return names;
+};
+
+/**
+ * Restore bin names from snapshot or fall back to defaults
+ * @private
+ */
+Bins.prototype._restoreManualBinNames = function() {
+    const binRows = this.container.querySelectorAll('tr.bin-row');
+
+    binRows.forEach((row) => {
+        const bin_id = row.getAttribute('bin-id');
+        const fallback = `${this.prefix}${parseInt(bin_id) + 1}`;
+        const targetName = (this.manualBinNamesBackup && this.manualBinNamesBackup.hasOwnProperty(bin_id))
+            ? this.manualBinNamesBackup[bin_id]
+            : fallback;
+        this._setBinName(bin_id, targetName);
+    });
+
+    emit('bin-settings-changed');
+};
+
+/**
+ * Ensure manual name snapshot exists for a bin
+ * @private
+ */
+Bins.prototype._ensureManualNameBackupForBin = function(bin_id) {
+    if (!this.manualBinNamesBackup) {
+        this.manualBinNamesBackup = {};
+    }
+
+    if (!this.manualBinNamesBackup.hasOwnProperty(bin_id)) {
+        const currentName = $(`#bin_name_${bin_id}`).val();
+        this.manualBinNamesBackup[bin_id] = currentName || `${this.prefix}${parseInt(bin_id) + 1}`;
+    }
+};
+
+/**
+ * Compute base taxonomy label for a bin with fallbacks
+ * @private
+ */
+Bins.prototype._getTaxonomyBaseLabel = function(bin_id, selectedLevel) {
+    const taxonomyData = this.cache['taxonomy'][bin_id];
+    if (!taxonomyData || !taxonomyData.consensus_taxonomy) {
+        return 'Unknown';
+    }
+
+    const consensus = taxonomyData.consensus_taxonomy;
+    const levelKey = selectedLevel === 'best' ? null : `t_${selectedLevel}`;
+    const startIndex = levelKey ? Math.max(TAXONOMY_LEVEL_ORDER.indexOf(levelKey), 0) : 0;
+
+    for (let i = startIndex; i < TAXONOMY_LEVEL_ORDER.length; i++) {
+        const level = TAXONOMY_LEVEL_ORDER[i];
+        const value = consensus[level];
+
+        if (value !== null && typeof value !== 'undefined') {
+            const needsUnknownPrefix = (selectedLevel !== 'best') && (level !== levelKey);
+            const baseLabel = needsUnknownPrefix ? `Unknown_${value}` : value;
+            const sanitizedLabel = this._sanitizeTaxonomyLabel(baseLabel);
+
+            if (sanitizedLabel) {
+                return sanitizedLabel;
+            }
+        }
+    }
+
+    return 'Unknown';
+};
+
+/**
+ * Clean taxonomy strings for bin labels
+ * @private
+ */
+Bins.prototype._sanitizeTaxonomyLabel = function(label) {
+    if (!label) return null;
+    const cleaned = label.replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+    return cleaned || null;
+};
+
+/**
+ * Update bin name field and its data attributes
+ * @private
+ */
+Bins.prototype._setBinName = function(bin_id, name) {
+    const input = document.getElementById(`bin_name_${bin_id}`);
+
+    if (input) {
+        input.value = name;
+        if (input.parentNode) {
+            input.parentNode.setAttribute('data-value', name);
         }
     }
 };
@@ -1234,6 +1440,9 @@ Bins.prototype._clearAllBins = function() {
     this.selections = {};
     this.container.innerHTML = '';
     this.history = [];
+    this.cache = { 'completeness': {}, 'taxonomy': {} };
+    this.manualBinNamesBackup = this.taxonomyLabelingEnabled ? {} : null;
+    updateTaxonomyLabelingVisibility();
 };
 
 /**

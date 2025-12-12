@@ -260,6 +260,16 @@ def run_program():
             if(gene_names):
                 gene_names = [g for g in gene_names if g not in genes_removed]
 
+    if args.return_best_hit_per_contig:
+        run.warning("You requested only the best hits to be reported per contig, which means, if, say, there are more than one "
+                    "RecA hits on the same contig for a given HMM source, only the one with the lowest e-value will be kept, "
+                    "and others will be removed from your final results.")
+
+        hmm_sequences_dict = s.filter_hmm_sequences_dict_for_contigs_to_keep_only_best_hits(hmm_sequences_dict)
+        CHK()
+
+        run.info('Filtered hits', '%d hits remain after keeping best hits per contig' % (len(hmm_sequences_dict)))
+
     if args.return_best_hit:
         run.warning("You requested only the best hits to be reported, which means, if, say, there are more than one RecA "
                     "hits in a bin for a given HMM source, only the one with the lowest e-value will be kept, and others "
@@ -376,6 +386,7 @@ def get_args():
 
     groupH = parser.add_argument_group('OPTIONAL', "Everything is optional, but some options are more optional than others.")
     groupH.add_argument(*anvio.A('return-best-hit'), **anvio.K('return-best-hit'))
+    groupH.add_argument(*anvio.A('return-best-hit-per-contig'), **anvio.K('return-best-hit-per-contig'))
     groupH.add_argument(*anvio.A('ignore-genes-longer-than'), **anvio.K('ignore-genes-longer-than'))
     groupH.add_argument(*anvio.A('unique-genes'), **anvio.K('unique-genes'))
     groupH.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))

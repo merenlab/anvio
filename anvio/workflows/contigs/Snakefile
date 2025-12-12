@@ -120,13 +120,15 @@ rule anvi_script_reformat_fasta:
     params:
         prefix = "{group}",
         min_len = M.get_rule_param("anvi_script_reformat_fasta", "--min-len"),
+        max_len = M.get_rule_param("anvi_script_reformat_fasta", "--max-len"),
         seq_type = M.get_rule_param("anvi_script_reformat_fasta", "--seq-type"),
     threads: M.T('anvi_script_reformat_fasta')
     resources: nodes = M.T('anvi_script_reformat_fasta'),
     shell: w.r("""anvi-script-reformat-fasta {input} \
                                              -o {output.contigs} \
                                              {params.seq_type} \
-                                             {params.min_len} >> {log} 2>&1""")
+                                             {params.min_len} \
+                                             {params.max_len} >> {log} 2>&1""")
 
 
 rule reformat_external_gene_calls_table:

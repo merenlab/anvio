@@ -258,3 +258,30 @@
       inst: Max-Planck Institute for Terrestrial Microbiology
       inst_link: mpi-marburg.mpg.de/
       current: true
+
+- github: MariaAVC
+  name: María Alejandra Valdez Cabrera 
+  web: https://mariaavc.github.io/ 
+  email: mariavc@uw.edu
+  git_records:
+    - mariavc@uw.edu
+  avatar: MariaAVC.png
+  bio: "Mathematical statistician developing methods for complex data structures arising in health and biological sciences"
+  affiliations:
+    - title: Post-Doctoral researcher
+      inst: Department of Biostatistics, University of Washington
+      inst_link: https://www.biostat.washington.edu/
+      current: true
+
+- github: svteichman
+  name: Sarah Teichman
+  email: teichs@uw.edu
+  git_records:
+    - teichs@uw.edu
+  avatar: svteichman.png
+  bio: "Biostatistician interested in differential abundance methodology and statistical education" 
+  affiliations:
+    - title: Research Scientist
+      inst: Department of Biostatistics, University of Washington
+      inst_link: https://www.biostat.washington.edu/
+

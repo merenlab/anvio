@@ -1,6 +1,6 @@
 A pan-db is an anvi’o database that contains **key information associated with your gene clusters**. This is vital for its pangenomic analysis, hence the name. If you want to learn more about the pangenomic workflow in Anvi'o, it has [its own tutorial here](http://merenlab.org/2016/11/08/pangenomics-v2/).
 
-This is the output of the program %(anvi-pan-genome)s, which can be run after you've created a %(genomes-storage-db)s with the genomes you want to analyze. That script does the brunt of the pangenomic analysis; it caluclates the similarity between all of the genes in your genomes-storage-db, clusters them and organizes the final clusters. All of the results of that analysis are stored in a pan-db.
+This is the output of the program %(anvi-pan-genome)s, which can be run after you've created a %(genomes-storage-db)s with the genomes you want to analyze. That script does the brunt of the pangenomic analysis; it calculates the similarity between all of the genes in your genomes-storage-db, clusters them and organizes the final clusters. All of the results of that analysis are stored in a pan-db.
 
 You can use a pan database to run a variety of pangenomic analyses, including %(anvi-compute-genome-similarity)s, %(anvi-analyze-synteny)s, and %(anvi-compute-functional-enrichment-in-pan)s. You can also view and interact with the data in a pan-db using %(anvi-display-pan)s. 
 
@@ -27,7 +27,7 @@ pan_db = PanSuperclass(args)
 
 Once an instance from `PanSuperclass` is initiated, the following member function will give access to gene clusters:
 
-``` pyton
+``` python
 pan_db.init_gene_clusters()
 print(pan_db.gene_clusters)
 ```

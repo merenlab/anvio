@@ -1,23 +1,23 @@
-This program **helps you make sense of contigs in one or more %(contigs-db)ss**.
+This program **helps you make sense of contigs in one or more %(contigs-db)s files**, summarizing contig lengths, gene lengths, HMM hits, and single-copy core gene (SCG) based genome estimates.
 
 ### Working with single or multiple contigs databases
 
 You can use this program on a single contigs database the following way:
 
 {{ codestart }}
-anvi-display-contigs-stats CONTIGS-01.db
+anvi-display-contigs-stats A.db
 {{ codestop }}
 
 Alternatively, you may use it to compare multiple contigs databases:
 
 {{ codestart }}
-anvi-display-contigs-stats CONTIGS-01.db \
-                           CONTIGS-02.db \
+anvi-display-contigs-stats A.db \
+                           B.db \
                            (...)
-                           CONTIGS-XX.db
+                           X.db
 {{ codestop }}
 
-If you are comparing multiple, each contigs databse will become an individual column in all outputs.
+If you are comparing multiple, each contigs databse will become an individual column in all outputs (columns are labeled with the `project_name` stored in each %(contigs-db)s).
 
 ### Interactive output
 
@@ -27,7 +27,17 @@ If you run this program on an anvi'o contigs database with default parameters,
 anvi-display-contigs-stats %(contigs-db)s
 {{ codestop }}
 
-it will open an interactive interface that looks like this:
+it will open an interactive interface that displays all the summary data. Here is an example with a few %(contigs-db)s files and the output it displays:
+
+{{ codestart }}
+anvi-display-contigs-stats A.db \
+                           B.db \
+                           C.db \
+                           D.db \
+                           H.db \
+                           I.db
+{{ codestop }}
+
 
 ![An example of the anvi'o interface for contigs stats](../../images/contigs-stats-interface-example.png)
 
@@ -35,19 +45,27 @@ At the top of the page are two graphs:
 
 * The bars in the top graph represent every integer N and L statistic from 1 to 100. The y-axis is the respective N length and the x-axis is the percentage of the total dataset looked at (the exact L and N values can be seen by hovering over each bar). In other words, if you had sorted your contigs by length (from longest to shortest), and walked through each one, every time you had seen another 1 percent of your total dataset, you would add a bar to the graph showing the number of contigs that you had seen (the L statistic) and the length of the one you were looking at at the moment (the N statistic).
 
-* The lower part of the graph tells you about which HMM hits your contigs database has. Each column is a gene in a specific %(hmm-source)s, and the graph tells you how many hits each gene has in your data. (Hover your mouse over the graph to see the specifics of each gene.) The sidebar shows you how many of the genes in this graph were seen exactly that many times. For example, in the graph above, for the Bacteria_71 %(hmm-source)s, a lot of genes were detected 9-11 times, so those bars are longer. This helps you estimate about how many of these genomes there are in your contigs database (so here, there is likely around 9-11 bacteria genomes in this contigs database). See the section about [predicting number of genomes](#how-do-we-predict-the-number-of-genomes) for more details.
+* The lower part of the graph tells you about which HMM hits your contigs database has. Each column is a gene in a specific %(hmm-source)s, and the graph tells you how many hits each gene has in your data. (Hover your mouse over the graph to see the specifics of each gene.) The sidebar shows you how many of the genes in this graph were seen exactly that many times. The distribution of SCGs offers an estimate about the number of genomes that are present in this sample that made it all the way to the end of the assembly. Based on this information, and given the data shown in the figure above, one should expect to recover around 1,500 bacterial genomes, 30 archaeal genomes, and no eukaryotic genome from the assembly of sample `A`. See the section about [predicting number of genomes](#how-do-we-predict-the-number-of-genomes) for more details.
 
-Below the graphs are the **contigs stats** which are displayed in the following order:
+Below the graphs are the **contigs stats**, reported in this order:
 
-- The total length of your contigs in nucleotides
-- The number of contigs in your database
-- The number of contigs that are of varying lengths. (for example "Num Contigs > 2.5 kb" gives you the number of contigs that are longer than 2500 base pairs)
-- The length of the longest and shortest contig in your database in nucleotides
-- The number of genes in your contigs (as predicted by [Prodigal](https://github.com/hyattpd/Prodigal))
-- L50, L75, L90: If you ordered the contigs in your database from longest to shortest, these stats describe the *number of contigs* you would need to go through before you had looked at a certain percent of a genome. For example, L50 describes the number of contigs you would have to go through before you reached 50 percent of the entire dataset.
-- N50, N75, N90:  If you ordered the contigs in your database from longest to shortest, these stats describe the *length of the contig* you would be looking when you had looked at a certain percent of a genome. For example, N50 describes the length of contig you would be on when you reached 50 percent of the entire genome length.
-- The number of HMM hits in your contigs. This goes through every %(hmm-source)s and gives the number of hits its genes had in all of your contigs. Basically, this is the number of hits that is given in the lower graph at the top of the page.
-- The number of genomes that anvi'o predicts are in your sample, based on how many hits the single-copy core genes got from the various %(hmm-source)ss. See the section about [predicting number of genomes](#how-do-we-predict-the-number-of-genomes) below.
+* **Basic contig stats**
+  - Total Length (nucleotides)
+  - Num Contigs
+  - Num Contigs > 100 kb / 50 kb / 20 kb / 10 kb / 5 kb / 2.5 kb
+  - Longest Contig / Shortest Contig (nucleotides)
+  - Mean Contig Length (trim 10%%): two-sided 10%% trimmed mean of contig lengths to down-weight extremes
+  - L50 / L75 / L90: number of contigs required to cover 50/75/90%% of the assembly when sorted by length
+  - N50 / N75 / N90: contig length at the 50/75/90%% mark of the assembly when sorted by length
+* **Gene stats** (using the default gene caller recorded in the %(contigs-db)s, e.g., Prodigal or pyrodigal-gv)
+  - Num Genes
+  - Avg Gene Length
+  - Avg Gene Length (trim 10%%): two-sided 10%% trimmed mean of gene lengths
+  - Min Gene Length / Max Gene Length
+* **HMM hits**
+  - For every %(hmm-source)s found in the %(contigs-db)s (including SCG sets and other sources such as `Ribosomal_RNAs`), the total number of hits; `n/a` is shown for contigs databases where a source is missing.
+* **SCG-based estimates for number of populations**
+  - For each %(hmm-source)s used for SCGs (for example `Bacteria_71`, `Archaea_76`, `Protista_83`), the predicted number of genomes. See [predicting number of genomes](#how-do-we-predict-the-number-of-genomes).
 
 #### How do we predict the number of genomes?
 
@@ -82,7 +100,7 @@ If you want some additional context, this method was originally described in [th
 
 ### Text output
 
-If you wish to report %(contigs-db)s stats as a supplementary table, a text output will be much more appropriate. If you add the flag `--report-as-text` anvi'o will not attempt to initiate an interactive interface, and instead will report the stats as a TAB-delmited file:
+If you wish to report %(contigs-db)s stats as a supplementary table, a text output will be much more appropriate. If you add the flag `--report-as-text` anvi'o will not attempt to initiate an interactive interface, and instead will report the stats as a TAB-delmited file. The table contains the rows listed above (basic contig stats, gene stats, HMM hits, and SCG-based genome estimates) in the same order:
 
 {{ codestart }}
 anvi-display-contigs-stats %(contigs-db)s \
@@ -90,7 +108,7 @@ anvi-display-contigs-stats %(contigs-db)s \
                           -o OUTPUT_FILE_NAME.txt
 {{ codestop }}
 
-There is also another flag you can add to get the output formatted as markdown, which makes it easier to copy-paste to GitHub or other markdown-friendly services. This is how you get a markdown output instead:
+There is also another flag you can add to get the output formatted as markdown (`--as-markdown`), which makes it easier to copy-paste to GitHub or other markdown-friendly services. This is how you get a markdown output instead:
 
 {{ codestart }}
 anvi-display-contigs-stats %(contigs-db)s \
@@ -99,39 +117,49 @@ anvi-display-contigs-stats %(contigs-db)s \
                           -o OUTPUT_FILE_NAME.md
 {{ codestop }}
 
-Here is an example output:
+Here is an example excerpt from a markdown-formatted report (numbers are from a single run and shown only to illustrate structure):
 
-contigs_db|oral_HMW_4_1|oral_HMW_4_2|oral_HMW_4_1_SS|oral_HMW_4_2_SS
---|--|--|--|--
-Total Length|531641122|759470437|306115616|288581831
-Num Contigs|468071|1007070|104273|148873
-Num Contigs > 5 kb|19626|24042|25014|20711
-Num Contigs > 10 kb|6403|8936|3531|2831
-Num Contigs > 20 kb|1269|2294|300|407
-Num Contigs > 50 kb|34|95|3|10
-Num Contigs > 100 kb|0|0|0|0
-Longest Contig|73029|92515|57337|63976
-Shortest Contig|56|51|80|85
-Num Genes (prodigal)|676577|994050|350657|327423
-L50|38513|62126|17459|17161
-L75|143030|328008|33063|35530
-L90|301803|670992|53293|70806
-N50|2810|1929|6106|5594
-N75|686|410|3536|2422
-N90|394|275|1360|640
-Archaea_76|1594|1697|930|805
-Protista_83|6|1|1|0
-Ribosomal_RNAs|901|1107|723|647
-Bacteria_71|2893|3131|1696|1441
-archaea (Archaea_76)|0|0|0|0
-eukarya (Protista_83)|0|0|0|0
-bacteria (Bacteria_71)|33|26|20|18
+||**`A`**|**`B`**|**`C`**|**`D`**|**`H`**|**`I`**|
+|:--|:--|:--|:--|:--|:--|:--|
+|Total Length|5747428710|4481865631|7234715430|4279426713|5129708529|5538888058|
+|Num Contigs|187938|174549|231236|130052|201889|207768|
+|Num Contigs > 100 kb|5716|3330|6938|4605|3385|4328|
+|Num Contigs > 50 kb|19157|12848|25123|14142|13723|15809|
+|Num Contigs > 20 kb|93053|75234|125814|61939|87667|90509|
+|Num Contigs > 10 kb|171706|154977|215106|117645|181195|183506|
+|Num Contigs > 5 kb|187448|173850|230546|129702|200903|206274|
+|Num Contigs > 2.5 kb|187938|174549|231234|130051|201888|207768|
+|Longest Contig|4098864|2443875|4239191|5922001|4180701|4037354|
+|Shortest Contig|3040|2548|1776|1217|1092|2829|
+|Mean Contig Length (trim 10%%)|22166.90|19993.67|23463.96|21949.06|20017.19|20193.47|
+|L50|33401|37525|44702|18318|45228|41620|
+|L75|87499|87145|111234|55335|103190|101106|
+|L90|136328|130024|169718|91311|151730|152691|
+|N50|36060|28646|36088|42550|27609|30066|
+|N75|20791|18308|21621|21516|18252|18744|
+|N90|14773|13176|15672|14631|13503|13548|
+|Num Genes|6610990|4825470|7354355|4716548|5706502|6338677|
+|Avg Gene Length|799.52|854.62|880.09|838.65|817.23|798.82|
+|Avg Gene Length (trim 10%%)|715.05|759.31|779.88|753.48|711.29|704.34|
+|Min Gene Length|60|60|60|60|60|60|
+|Max Gene Length|58464|68517|72867|66381|76293|52899|
+|Archaea_76|119701|87059|108961|84365|94398|107056|
+|Bacteria_71|243439|170803|190890|173842|165695|210866|
+|HMM_DNApolB|1058|579|824|692|1897|1663|
+|PFAM_Ribonucleotide_reductase_barrel_domain|5196|3775|4536|3540|5560|5583|
+|Protista_83|11617|8939|13233|7687|10098|10089|
+|RNA_Polymerase_Type_A|3739|2571|n/a|n/a|n/a|n/a|
+|Ribosomal_RNA_16S|3285|2382|2839|2458|2110|2571|
+|Ribosomal_RNA_18S|47|21|28|17|31|21|
+|bacteria (Bacteria_71)|1584|1062|2636|1263|1321|1374|
+|archaea (Archaea_76)|28|63|294|0|215|69|
+|eukarya (Protista_83)|0|2|0|1|6|4|
 
 You can easily convert the markdown output into PDF or HTML pages using [pandoc](https://pandoc.org/). For instance running the following command in the previous output,
 
 ```
 pandoc -V geometry:landscape \
-       OUTPUT_FILE_NAME.md
+       OUTPUT_FILE_NAME.md \
        -o OUTPUT_FILE_NAME.pdf
 ```
 
