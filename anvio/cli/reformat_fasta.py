@@ -178,9 +178,9 @@ def plot_length_histogram(lengths, run, bin_count=None, height=None):
             peak_height = counts_log[peak_idx]
             peak_length = utils.human_readable_number(10 ** peak_center, decimals=1)
 
-            plt.plot([peak_center, peak_center], [0, peak_height], color='red', label='peak')
+            plt.plot([peak_center, peak_center], [0, peak_height], color='red')
             tick_positions = np.append(tick_positions, peak_center)
-            tick_labels.append(f"{peak_length} (peak)")
+            tick_labels.append(f"{peak_length}")
 
             order = np.argsort(tick_positions)
             tick_positions = tick_positions[order]
