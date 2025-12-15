@@ -266,7 +266,6 @@ class DGR_Finder:
             filesnpaths.is_file_tab_delimited(self.pre_computed_dgrs_path)
 
             columns = utils.get_columns_of_TAB_delim_file(self.pre_computed_dgrs_path, include_first_column=True)
-            print(repr(columns[0]))
             # Find missing essential keys
             missing_keys = [k[0] for k in self.essential_keys_to_describe_dgrs if k[0] not in columns]
 
@@ -1332,8 +1331,6 @@ class DGR_Finder:
                         )
                     )
 
-                    print(query_hits)
-
                 best_hit = query_hits[0]
 
                 # unpack dict
@@ -2324,7 +2321,6 @@ class DGR_Finder:
         while True:
             sample_name = input_queue.get(True)
             if sample_name is None:
-                print('Sample {sample_name} is none, loop will be broken.')
                 break
 
             # extract sample-specific primers from the nested structure
