@@ -1755,6 +1755,8 @@ class DGR_Finder:
 
         self.run.info_single("Computing the closest HMMs to the Template Regions and printing them in your output tsv.", nl_before=1)
 
+        dgrs_without_rt = set()
+
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
 
         self.hmm_hits_in_splits_dict = contigs_db.db.get_table_as_dict(t.hmm_hits_splits_table_name)
@@ -1821,10 +1823,12 @@ class DGR_Finder:
                         closest_distances['distance'] = distance
 
             if not HMM_found:
-                self.run.warning(f"No HMM Reverse Transcriptase was found for {DGR_id}. This does not affect the "
-                                "outcome of the tool, other than meaning that there is no RT found on the same contig "
-                                "as the Template Region meaning it might be a good idea to manually inspect your data "
-                                "to see if any RT's are present.", header="NO REVERSE TRANSCRIPTASE HMMs")
+                dgrs_without_rt.add(DGR_id)
+                if anvio.DEBUG:
+                    self.run.warning(f"No HMM Reverse Transcriptase was found for {DGR_id}. This does not affect the "
+                                    "outcome of the tool, other than meaning that there is no RT found on the same contig "
+                                    "as the Template Region meaning it might be a good idea to manually inspect your data "
+                                    "to see if any RT's are present.", header="NO REVERSE TRANSCRIPTASE HMMs")
 
                 HMM_gene_callers_id = ''
                 DGR_info['HMM_gene_callers_id'] = ''
@@ -1845,6 +1849,14 @@ class DGR_Finder:
                 DGR_info['HMM_source'] = found_HMMS_dict[HMM_gene_callers_id]['HMM_source']
                 DGR_info['HMM_gene_name'] = found_HMMS_dict[HMM_gene_callers_id]['gene_name']
                 DGR_info['HMM_gene_source'] = found_HMMS_dict[HMM_gene_callers_id]['Gene_annotation_source']
+
+        # summary of DGRs without RT
+        if dgrs_without_rt:
+            self.run.warning(f"{PL('DGR', len(dgrs_without_rt))} had no Reverse Transcriptase HMM on the same contig "
+                            f"as the Template Region: {', '.join(sorted(dgrs_without_rt))}. This does not affect the "
+                            "outcome of the tool, but you may want to manually inspect your data.",
+                            header="NO REVERSE TRANSCRIPTASE HMMs")
+
         return
 
 
