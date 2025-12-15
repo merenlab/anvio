@@ -59,7 +59,6 @@ class DGR_Finder:
         self.word_size = A('word_size')
         self.skip_Ns = A('skip_Ns')
         self.skip_dashes = A('skip_dashes')
-        self.num_threads = A('num-threads')
         self.number_of_mismatches = A('number_of_mismatches')
         self.percentage_mismatch = A('percentage_mismatch')
         self.min_mismatching_base_types_vr = A('min_mismatching_base_types_vr') or 2
