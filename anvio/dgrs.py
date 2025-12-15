@@ -416,7 +416,9 @@ class DGR_Finder:
                     self.all_possible_windows[contig_name] = []
 
                 # get list of pos within that split
-                for i in range(len(pos_list) - 1):
+                i = 0
+                while i < len(pos_list) - 1:
+                    num_snvs_in_cluster = 1
                     current_pos = pos_list[i]
                     next_pos = pos_list[i + 1]
                     distance = next_pos - current_pos
@@ -426,20 +428,23 @@ class DGR_Finder:
                     while i + 1 < len(pos_list) and distance <= self.max_dist_bw_snvs:
                         i += 1
                         current_pos = pos_list[i]
+                        range_end = current_pos
+                        num_snvs_in_cluster += 1
                         if i + 1 < len(pos_list):
                             next_pos = pos_list[i + 1]
                             distance = next_pos - current_pos
-                            range_end = current_pos
-                    if distance <= self.max_dist_bw_snvs:
-                        range_end = next_pos
+                        else:
+                            break
+
+                    # move to next unprocessed position
+                    i += 1
 
                     snv_cluster_length = int(range_end - range_start)
                     if snv_cluster_length < self.min_range_size:
                         continue
 
                     # check the snv density
-                    numb_snvs = len([pos for pos in pos_list if range_start <= pos <= range_end])
-                    snv_density = numb_snvs/snv_cluster_length
+                    snv_density = num_snvs_in_cluster/snv_cluster_length
 
                     if snv_density > self.minimum_snv_density:
                         if anvio.DEBUG:
