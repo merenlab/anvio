@@ -448,9 +448,6 @@ class DGR_Finder:
                     snv_density = num_snvs_in_cluster/snv_cluster_length
 
                     if snv_density > self.minimum_snv_density:
-                        if anvio.DEBUG:
-                            self.run.warning(f"Removing putative VR because the SNV density is over the threshold, this putative VR is at a density of {snv_density} over the SNV high density region. Please feel free to adjust parameters as you see fit, we hope this means something to you.")
-
                         #add buffer length
                         window_start = range_start - self.variable_buffer_length
                         window_end = range_end + self.variable_buffer_length
