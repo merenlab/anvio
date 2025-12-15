@@ -1274,6 +1274,7 @@ class DGR_Finder:
         """
 
         num_DGR = 0
+        bins_with_dgrs = set()
 
         # possible DGR dictionary
         self.DGRs_found_dict = {}
@@ -1365,7 +1366,9 @@ class DGR_Finder:
                 if not self.DGRs_found_dict:
                     # add first DGR
                     num_DGR += 1
-                    self.run.warning(f"Adding new DGR {num_DGR} in the bin: {bin}, the VR is on this contig: {query_contig}", header="NEW DGR", lc='yellow')
+                    if anvio.DEBUG:
+                        self.run.warning(f"Adding new DGR {num_DGR} in the bin: {bin}, the VR is on this contig: {query_contig}", header="NEW DGR", lc='yellow')
+                    bins_with_dgrs.add(bin)
                     self.add_new_DGR(num_DGR, bin, TR_sequence, query_genome_start_position, query_genome_end_position, query_contig,
                                 base, is_reverse_complement, TR_frame, VR_sequence, VR_frame, subject_genome_start_position, subject_genome_end_position,
                                 subject_contig, midline, percentage_of_mismatches, DGR_looks_snv_false, snv_at_3_codon_over_a_third, mismatch_pos_contig_relative,
@@ -1387,7 +1390,9 @@ class DGR_Finder:
                     if not was_added:
                         # add new TR and its first VR
                         num_DGR += 1
-                        self.run.warning(f"Adding new DGR {num_DGR} in the bin: {bin}, the VR is on this contig: {query_contig}", header="NEW DGR", lc='yellow')
+                        if anvio.DEBUG:
+                            self.run.warning(f"Adding new DGR {num_DGR} in the bin: {bin}, the VR is on this contig: {query_contig}", header="NEW DGR", lc='yellow')
+                        bins_with_dgrs.add(bin)
                         self.add_new_DGR(num_DGR,
                                         bin,
                                         TR_sequence,
@@ -1407,6 +1412,16 @@ class DGR_Finder:
                                         snv_at_3_codon_over_a_third, mismatch_pos_contig_relative,
                                         snv_VR_positions, numb_of_snv_in_matches_not_mutagen_base, numb_of_mismatches,
                                         numb_of_SNVs, best_amongst_multiple_TRs_for_one_VR)
+
+        # summary of DGRs found
+        if num_DGR > 0:
+            if self.collections_mode:
+                self.run.warning(f"Anvi'o found {PL('DGR', num_DGR)} across {PL('bin', len(bins_with_dgrs))}. "
+                                "This is very exciting and you should celebrate.",
+                                header="DGRs FOUND 🎉", lc='green')
+            else:
+                self.run.warning(f"Anvi'o found {PL('DGR', num_DGR)}. This is very exciting and you should celebrate.",
+                                header="DGRs FOUND 🎉", lc='green')
 
         if anvio.DEBUG:
             self.run.warning(f"The temp directory, '{self.temp_dir}', is kept. Don't forget to clean it up later!", header="Debug")
