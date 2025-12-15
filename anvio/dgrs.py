@@ -788,7 +788,7 @@ class DGR_Finder:
                     self.run.warning(f"Warning: BLAST output file for {bin_name} not found. Skipping...")
                     continue
 
-                if os.stat(f"{self.blast_output}").st_size == 0:
+                if os.stat(blast_file).st_size == 0:
                     self.run.warning("No DGR like sequences are being found via BLAST.", header="NO DGRS FOUND")
                     raise ConfigError("Therefore, we will exit here because anvi'o has found no DGRs in your data, "
                                     "nada, nowt, nothin'! However, you can go back and tinker with the parameters "
