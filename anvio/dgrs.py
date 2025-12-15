@@ -1974,7 +1974,6 @@ class DGR_Finder:
             if not gene_calls_in_TR_contig:
                 # case: TR has no genes
                 trs_with_no_gene_calls_around.add(dgr_id)
-                self.run.info_single(f'No gene calls found around TR {dgr_id}', nl_before=1)
                 dgrs_dict[dgr_id]['TR_in_gene'] = False
                 self.genomic_context_surrounding_dgrs[dgr_id]["TR"] = {}  # empty TR context
             else:
@@ -2066,7 +2065,6 @@ class DGR_Finder:
 
                 if not len(gene_calls_in_VR_contig):
                     vrs_with_no_gene_calls_around.add(vr_id)
-                    self.run.info_single(f'No gene calls found around DGR {dgr_id} VR {vr_id}', nl_before=1)
                     continue
 
                 min_distance_to_VR_start, min_distance_to_VR_end = float('inf'), float('inf')
