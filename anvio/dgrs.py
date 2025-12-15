@@ -3008,15 +3008,19 @@ class DGR_Finder:
                     vr_genes = dgr_context.get(vr_key, {})
 
                     # calculate genomic context for VR genes
-                    genomic_context_start_vr = min(
-                        vr_genes[gene]['start']
-                        for gene in vr_genes
-                    ) - 100
+                    if vr_genes:
+                        genomic_context_start_vr = min(
+                            vr_genes[gene]['start']
+                            for gene in vr_genes
+                        ) - 100
 
-                    genomic_context_end_vr = max(
-                        vr_genes[gene]['stop']
-                        for gene in vr_genes
-                    ) + 100
+                        genomic_context_end_vr = max(
+                            vr_genes[gene]['stop']
+                            for gene in vr_genes
+                        ) + 100
+                    else:
+                        genomic_context_start_vr = int(vr_data['VR_start_position']) - 500
+                        genomic_context_end_vr = int(vr_data['VR_end_position']) + 500
 
                     # transform coordinates for VR data
                     vr_start = (int(vr_data['VR_start_position']) - genomic_context_start_vr) / (genomic_context_end_vr - genomic_context_start_vr) * new_context_length
