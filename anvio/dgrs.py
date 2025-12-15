@@ -1384,8 +1384,8 @@ class DGR_Finder:
                             break
                     if not was_added:
                         # add new TR and its first VR
-                        self.run.warning(f"Adding new DGR {num_DGR} in the bin: {bin}, the VR is on this contig: {query_contig}", header="NEW DGR", lc='yellow')
                         num_DGR += 1
+                        self.run.warning(f"Adding new DGR {num_DGR} in the bin: {bin}, the VR is on this contig: {query_contig}", header="NEW DGR", lc='yellow')
                         self.add_new_DGR(num_DGR,
                                         bin,
                                         TR_sequence,
