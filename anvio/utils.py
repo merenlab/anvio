@@ -4311,17 +4311,17 @@ def sanity_check_hmm_model(model_path, genes, require_ACC_lines=False):
                 model_num_to_details[model_number]['acc'] = name
 
     if len(accession_ids_in_model) != len(set(accession_ids_in_model)):
-        raise ConfigError("Accession IDs in your HMM model should be unique, however, the `genes.hmm.gz` "
-                          "file for `%s` seems to have the same accession ID (the line that starts with `ACC`) "
-                          "more than once :(" % (os.path.abspath(model_path).split('/')[-2]))
+        raise ConfigError(f"Accession IDs in your HMM model should be unique, however, the `genes.hmm.gz` "
+                          f"file for `{os.path.abspath(model_path).split('/')[-2]}` seems to have the same accession ID "
+                          f"(the line that starts with `ACC`) more than once :(")
 
     if len(gene_names.difference(genes_in_model)):
-        raise ConfigError("Some gene names in genes.txt file does not seem to be appear in genes.hmm.gz. "
-                          "Here is a list of missing gene names: %s" % ', '.join(list(genes.difference(genes_in_model))))
+        raise ConfigError(f"Some gene names in the genes.txt file do not seem to appear in genes.hmm.gz. "
+                          f"Here is a list of missing gene names: {', '.join(list(gene_names.difference(genes_in_model)))}")
 
     if len(genes_in_model.difference(gene_names)):
-        raise ConfigError("Some gene names in genes.hmm.gz file does not seem to be appear in genes.txt. "
-                          "Here is a list of missing gene names: %s" % ', '.join(list(genes_in_model.difference(genes))))
+        raise ConfigError(f"Some gene names in the genes.hmm.gz file do not seem to appear in genes.txt. "
+                          f"Here is a list of the extra gene names: {', '.join(list(genes_in_model.difference(gene_names)))}")
     
     if require_ACC_lines:
         models_no_acc = [(num, model_num_to_details[num]['name']) for num in model_num_to_details if not model_num_to_details[num]['acc']]
