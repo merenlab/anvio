@@ -244,7 +244,7 @@ class DGR_Finder:
                                     f"Here are the sources of your genes: {unique_sources_list}.")
             contigs_db.disconnect()
 
-        html_files_exist = any(file.endswith('.html') for file in os.listdir(output_dir) if os.path.isfile(os.path.join(output_dir, file)))
+        html_files_exist = any(file.endswith('.html') for file in os.listdir(self.output_directory) if os.path.isfile(os.path.join(self.output_directory, file)))
         if html_files_exist:
             raise ConfigError("Files with .html suffix exist in the directory. Please delete them before rerunning and we will keep calm and carry on. (later this will delete them for you)")
 
