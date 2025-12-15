@@ -4289,7 +4289,7 @@ def check_misc_data_keys_for_format(data_keys_list):
 
 
 def sanity_check_hmm_model(model_path, genes, require_ACC_lines=False):
-    genes = set(genes)
+    gene_names = set(genes.keys())
     genes_in_model = set([])
     accession_ids_in_model = []
 
@@ -4315,11 +4315,11 @@ def sanity_check_hmm_model(model_path, genes, require_ACC_lines=False):
                           "file for `%s` seems to have the same accession ID (the line that starts with `ACC`) "
                           "more than once :(" % (os.path.abspath(model_path).split('/')[-2]))
 
-    if len(genes.difference(genes_in_model)):
+    if len(gene_names.difference(genes_in_model)):
         raise ConfigError("Some gene names in genes.txt file does not seem to be appear in genes.hmm.gz. "
                           "Here is a list of missing gene names: %s" % ', '.join(list(genes.difference(genes_in_model))))
 
-    if len(genes_in_model.difference(genes)):
+    if len(genes_in_model.difference(gene_names)):
         raise ConfigError("Some gene names in genes.hmm.gz file does not seem to be appear in genes.txt. "
                           "Here is a list of missing gene names: %s" % ', '.join(list(genes_in_model.difference(genes))))
     
@@ -4331,6 +4331,14 @@ def sanity_check_hmm_model(model_path, genes, require_ACC_lines=False):
                               f"in the HMMER output or stored into your database, so we recommend updating these models to have "
                               f"the `ACC` line. Here is the name of each model with a missing accession, as well as its order in "
                               f"the genes.hmm file: {', '.join([f'{name} (model {num} in file)' for (num, name) in models_no_acc])}")
+
+        for n, model in model_num_to_details.items():
+            name = model['name']
+            acc = model['acc']
+            if genes[name]['accession'] != acc:
+                raise ConfigError(f"Your HMM model for the gene named {name} was supposed to have an accession value of "
+                                  f"'{genes[name]['accession']}' according to the genes.txt file, but the `ACC` listed for "
+                                  f"this model in genes.hmm.gz is {acc} instead. Please fix the mismatch.")
 
 
 def sanity_check_pfam_accessions(pfam_accession_ids):
