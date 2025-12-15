@@ -1134,7 +1134,6 @@ class DGR_Finder:
                                         # apply threshold of 66% because we want less than a third of snvs to be at the third codon position
                                         is_3_over_a_third = percent_3 > (self.snv_codon_position * 100)
                                         if is_3_over_a_third:
-                                            self.run.info_single(f"3rd codon position is over a third of the total VR SNVs, so we remove you. {percent_3}", nl_before=1)
                                             snv_at_3_codon_over_a_third = True
                                             if anvio.DEBUG:
                                                 self.run.warning(f"Skipping candidate DGR due to SNV filters. One with a VR on this contig: {query_contig}. Specifically, in this case the candidate DGR has a high "
