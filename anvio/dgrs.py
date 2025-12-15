@@ -1166,6 +1166,7 @@ class DGR_Finder:
                                         numb_of_SNVs = len(snv_VR_positions)
 
                                         # report proportion of non-mutagenesis SNVs vs all SNVs
+                                        prop_non_mutagen_snv = 0
                                         if numb_of_SNVs > 0:
                                             prop_non_mutagen_snv = numb_of_snv_in_matches_not_mutagen_base/numb_of_SNVs
 
