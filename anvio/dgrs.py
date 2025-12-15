@@ -108,7 +108,7 @@ class DGR_Finder:
         self.run.info('Number of Mismatches', self.number_of_mismatches)
         self.run.info('Percentage of Mismatching Bases', self.percentage_mismatch)
         if self.only_a_bases:
-            self,run.info('only A base mismatches', self.only_a_bases)
+            self.run.info('only A base mismatches', self.only_a_bases)
         self.run.info('Minimum Mismatching Base Types in VR', self.min_mismatching_base_types_vr)
         self.run.info('Minimum Base Types in VR', self.min_base_types_vr)
         self.run.info('Minimum Base Types in VR', self.min_base_types_tr)
