@@ -2126,9 +2126,14 @@ class DGR_Finder:
         self.run.info_single('Completed recovering genomic context surrounding the DGRs', nl_before=1)
 
         if len(self.genomic_context_surrounding_dgrs) > 0:
-            self.run.info(f"[Genomic Context] Searched for {PL('DGR', len(dgrs_dict))}",
-                        f"Recovered for {PL('TR', len(self.genomic_context_surrounding_dgrs[dgr_id]))}",
-                        f"And recovered for {PL('VR', len(self.genomic_context_surrounding_dgrs[dgr_id][vr_id]))}",
+            # count total VRs with context recovered across all DGRs
+            total_vrs_with_context = sum(
+                len([k for k in dgr_context.keys() if isinstance(k, str)])
+                for dgr_context in self.genomic_context_surrounding_dgrs.values()
+            )
+            self.run.info(f"[Genomic Context] Searched {PL('DGR', len(dgrs_dict))}",
+                        f"recovered TR context for {PL('DGR', len(self.genomic_context_surrounding_dgrs))}",
+                        f"and VR context for {PL('VR', total_vrs_with_context)}",
                         nl_before=1,
                         lc="yellow")
 
