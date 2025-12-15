@@ -4135,10 +4135,18 @@ def get_pruned_HMM_hits_dict(hmm_hits_dict):
     return hmm_hits_dict
 
 
-def get_HMM_sources_dictionary(source_dirs=[]):
+def get_HMM_sources_dictionary(source_dirs=[], check_for_ACC_lines_in_HMM=False):
     """An anvi'o HMM source directory importer.
 
-       The directory must have five files:
+       Parameters
+       ==========
+       source_dirs : list
+            Paths to each directory of HMMs
+       check_for_ACC_lines_in_HMM : bool
+            If True, this function will throw an error if it finds any model without an `ACC`
+            line in the genes.hmm.gz file
+    
+       Each input 'source' directory must have five files:
 
        - genes.hmm.gz: compressed HMM for each gene.
        - genes.txt: three column file lists all gene names appear in the genes.hmm.gz, accession numbers if there
@@ -4222,7 +4230,7 @@ def get_HMM_sources_dictionary(source_dirs=[]):
 
         genes = get_TAB_delimited_file_as_dictionary(os.path.join(source, 'genes.txt'), column_names=['gene', 'accession', 'hmmsource'])
 
-        sanity_check_hmm_model(os.path.join(source, 'genes.hmm.gz'), genes)
+        sanity_check_hmm_model(os.path.join(source, 'genes.hmm.gz'), genes, require_ACC_lines=check_for_ACC_lines_in_HMM)
 
         sources[os.path.basename(source)] = {'ref': ref,
                                              'kind': kind,
@@ -4280,17 +4288,27 @@ def check_misc_data_keys_for_format(data_keys_list):
                                              ', '.join(['"%s"' % k for k in new_rule_compatible_data_keys])))
 
 
-def sanity_check_hmm_model(model_path, genes):
+def sanity_check_hmm_model(model_path, genes, require_ACC_lines=False):
     genes = set(genes)
     genes_in_model = set([])
     accession_ids_in_model = []
 
+    model_num_to_details = {}
+    model_number = 0
+
     with gzip.open(model_path, 'rt', encoding='utf-8') as f:
         for line in f:
+            if line.startswith('HMMER3/f'):
+                model_number += 1
+                model_num_to_details[model_number] = {'name': None, 'acc': None}
             if line.startswith('NAME'):
-                genes_in_model.add(line.split()[1])
+                name = line.split()[1]
+                genes_in_model.add(name)
+                model_num_to_details[model_number]['name'] = name
             if line.startswith('ACC'):
-                accession_ids_in_model.append(line.split()[1])
+                acc = line.split()[1]
+                accession_ids_in_model.append(acc)
+                model_num_to_details[model_number]['acc'] = name
 
     if len(accession_ids_in_model) != len(set(accession_ids_in_model)):
         raise ConfigError("Accession IDs in your HMM model should be unique, however, the `genes.hmm.gz` "
@@ -4304,6 +4322,15 @@ def sanity_check_hmm_model(model_path, genes):
     if len(genes_in_model.difference(genes)):
         raise ConfigError("Some gene names in genes.hmm.gz file does not seem to be appear in genes.txt. "
                           "Here is a list of missing gene names: %s" % ', '.join(list(genes_in_model.difference(genes))))
+    
+    if require_ACC_lines:
+        models_no_acc = [(num, model_num_to_details[num]['name']) for num in model_num_to_details]
+        if models_no_acc:
+            raise ConfigError(f"At least one of the models in your genes.hmm file does not have an `ACC` line describing its "
+                              f"accession. This can cause problems downstream as no accession for the model will be reported "
+                              f"in the HMMER output or stored into your database, so we recommend updating these models to have "
+                              f"the `ACC` line. Here is the name of each model with a missing accession, as well as its order in "
+                              f"the genes.hmm file: {', '.join([f'{name} (model {num} in file)' for (num, name) in models_no_acc])}")
 
 
 def sanity_check_pfam_accessions(pfam_accession_ids):
