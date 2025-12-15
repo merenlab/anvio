@@ -4324,9 +4324,9 @@ def sanity_check_hmm_model(model_path, genes, require_ACC_lines=False):
                           "Here is a list of missing gene names: %s" % ', '.join(list(genes_in_model.difference(genes))))
     
     if require_ACC_lines:
-        models_no_acc = [(num, model_num_to_details[num]['name']) for num in model_num_to_details]
+        models_no_acc = [(num, model_num_to_details[num]['name']) for num in model_num_to_details if not model_num_to_details[num]['acc']]
         if models_no_acc:
-            raise ConfigError(f"At least one of the models in your genes.hmm file does not have an `ACC` line describing its "
+            raise ConfigError(f"At least one of the models in your genes.hmm.gz file does not have an `ACC` line describing its "
                               f"accession. This can cause problems downstream as no accession for the model will be reported "
                               f"in the HMMER output or stored into your database, so we recommend updating these models to have "
                               f"the `ACC` line. Here is the name of each model with a missing accession, as well as its order in "
