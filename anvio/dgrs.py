@@ -1129,7 +1129,7 @@ class DGR_Finder:
                                         count_3 = codon_pos_sorted.get(3, 0)
 
                                         total = count_1 + count_2 + count_3
-                                        percent_3 = count_3 / total * 100
+                                        percent_3 = (count_3 / total * 100) if total > 0 else 0
 
                                         # apply threshold of 66% because we want less than a third of snvs to be at the third codon position
                                         is_3_over_a_third = percent_3 > (self.snv_codon_position * 100)
