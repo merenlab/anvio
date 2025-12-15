@@ -1199,11 +1199,6 @@ class DGR_Finder:
                                     if DGR_looks_snv_false or snv_at_3_codon_over_a_third:
                                         continue
 
-                                    # track HSP count per query (section)
-                                    if not hasattr(self, "hsp_per_query"):
-                                        hsp_per_query = defaultdict(int)
-                                    hsp_per_query[current_section_id] += 1
-
                                     hit_data = {
                                         'bin': bin_name if bin_name else "N/A",
                                         'query_section': section_id,
@@ -1222,7 +1217,6 @@ class DGR_Finder:
                                         'query_genome_end_position': query_genome_end_position,
                                         'query_frame': new_query_frame,
                                         'subject_frame': new_subject_frame,
-                                        'hsp_count_for_query': hsp_per_query[current_section_id],
                                         'base': base,
                                         'is_reverse_complement': is_reverse_complement,
                                         'numb_of_snv_in_matches_not_mutagen_base': numb_of_snv_in_matches_not_mutagen_base,
