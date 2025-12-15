@@ -844,6 +844,10 @@ class DGR_Finder:
         if "-" in seq:
             seq = seq.replace("-", "")
 
+        # guard against empty sequence after removing dashes
+        if not seq:
+            return False
+
         # using pytantan (https://doi.org/10.1093/nar/gkq1212) as a repeat finder
         # historically we used pytrf (https://doi.org/10.1186/s12859-025-06168-3)
 
