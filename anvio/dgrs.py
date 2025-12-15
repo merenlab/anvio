@@ -2063,7 +2063,7 @@ class DGR_Finder:
 
                 VR_contig = vr_data.get('VR_contig')
 
-                self.progress.update(f"{dgr_id} , {vr_id}", increment=True)
+                self.progress.update(f"{dgr_id} / {vr_id}")
 
                 VR_contig = vr_data.get('VR_contig')
                 VR_start = vr_data.get('VR_start_position')
