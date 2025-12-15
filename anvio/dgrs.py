@@ -218,20 +218,21 @@ class DGR_Finder:
             for i in self.hmm:
                 if i not in self.hmms_provided:
                     bad_hmm.append(i)
-                if bad_hmm == ['Reverse_Transcriptase']:
+
+            if bad_hmm == ['Reverse_Transcriptase']:
+                raise ConfigError("The classic reverse transcriptase HMM has not been run with these contigs. "
+                                    "Please run 'anvi-run-hmms' with the '-I' flag and the 'Reverse_Transcriptase' HMM, "
+                                    f"so that anvi'o knows where there are Reverse Transcriptases in your {self.contigs_db_path}.")
+            elif len(bad_hmm) > 0:
+                if 'Reverse_Transcriptase' in bad_hmm:
                     raise ConfigError("The classic reverse transcriptase HMM has not been run with these contigs. "
-                                        "Please run 'anvi-run-hmms' with the '-I' flag and the 'Reverse_Transcriptase' HMM, "
-                                        f"so that anvi'o knows where there are Reverse Transcriptases in your {self.contigs_db_path}.")
-                elif len(bad_hmm)>0:
-                    if 'Reverse_Transcriptase' in bad_hmm:
-                        raise ConfigError("The classic reverse transcriptase HMM has not been run with these contigs. "
-                                        "Please run 'anvi-run-hmms' with the '-I' flag and the 'Reverse_Transcriptase' HMM, "
-                                        f"so that anvi'o knows where there are Reverse Transcriptases in your {self.contigs_db_path}. "
-                                        f"Also you don't have these HMMs you requested: {bad_hmm} in {self.hmms_provided}")
-                    else:
-                        raise ConfigError(f"You requested these HMMs to be searched through: {bad_hmm} in these HMMs {self.hmms_provided} "
-                                        f"that are in your {self.contigs_db_path}. The HMMs you give 'anvi-report-dgrs' need to be in your "
-                                        "contigs.db.")
+                                    "Please run 'anvi-run-hmms' with the '-I' flag and the 'Reverse_Transcriptase' HMM, "
+                                    f"so that anvi'o knows where there are Reverse Transcriptases in your {self.contigs_db_path}. "
+                                    f"Also you don't have these HMMs you requested: {bad_hmm} in {self.hmms_provided}")
+                else:
+                    raise ConfigError(f"You requested these HMMs to be searched through: {bad_hmm} in these HMMs {self.hmms_provided} "
+                                    f"that are in your {self.contigs_db_path}. The HMMs you give 'anvi-report-dgrs' need to be in your "
+                                    "contigs.db.")
 
             if self.gene_caller_to_consider_in_context:
                 genes_in_contigs_dict = contigs_db.db.get_table_as_dict(t.genes_in_contigs_table_name)
