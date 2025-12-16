@@ -2734,8 +2734,10 @@ class DGR_Finder:
         try:
             return converter(value)
         except Exception as e:
-            self.run.warning(f"Could not convert field '{field_name}' for DGR '{dgr_id}', VR '{vr_id}': {e}", header="NONE INPUT IN DGRS OUTPUT")
-            return None
+            vr_info = f", VR '{vr_id}'" if vr_id else ""
+            raise ConfigError(f"Could not convert field '{field_name}' for DGR '{dgr_id}'{vr_info}: {e}. "
+                             f"Your pre-computed DGR input file '{self.pre_computed_dgrs_path}' appears to have "
+                             "malformed data. Please check the file format and try again.")
 
 
 
