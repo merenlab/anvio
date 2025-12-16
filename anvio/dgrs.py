@@ -3130,7 +3130,6 @@ class DGR_Finder:
         # engage the proletariat, our hard-working wage-earner class
         workers = []
         for i in range(self.num_threads):
-            self.run.info_single(f"Starting worker {i}", nl_before=1)
             worker = multiprocessing.Process(target=DGR_Finder.compute_dgr_variability_profiling_per_vr,
                                             args=(input_queue,
                                                 output_queue,
