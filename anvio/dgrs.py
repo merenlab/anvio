@@ -345,7 +345,7 @@ class DGR_Finder:
         else:
             self.split_names_unique = utils.get_all_item_names_from_the_database(self.profile_db_path)
 
-        sample_id_list = list(set(self.snv_panda.sample_id.unique()))
+        sample_id_list = self.snv_panda.sample_id.unique().tolist()
 
         return sample_id_list, contig_sequences
 
