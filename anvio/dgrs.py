@@ -2258,6 +2258,7 @@ class DGR_Finder:
         num_tr_reports = 0
         num_vr_reports = 0
         vrs_without_genes = set()
+        unexpected_gene_calls = []
 
         # process each DGR and its VRs
         for dgr_key, dgr_data in dgrs_dict.items():
@@ -2308,8 +2309,13 @@ class DGR_Finder:
                                 # write placeholder if no functions are found
                                 tr_functions_output.write(f"{dgr_id}_TR\t{gene_call.get('gene_callers_id', '')}\t\t\t\n")
                         else:
-                            # log if gene_call is not a dictionary
-                            self.run.info_single(f"Unexpected type for gene_call: {gene_call} (expected dict but got {type(gene_call)})", nl_before=1)
+                            # track unexpected gene_call types (should be dict)
+                            unexpected_gene_calls.append((dgr_id, gene_callers_id, type(gene_call).__name__))
+                            if len(unexpected_gene_calls) == 1:
+                                self.run.warning(f"Unexpected data type encountered for gene_call (expected dict, got {type(gene_call).__name__}). "
+                                                "This is highly unusual and may indicate data corruption. "
+                                                "Will continue processing but please check your data.",
+                                                header="UNEXPECTED DATA TYPE")
 
                 # log information about the reporting files
                 num_tr_reports += 1
@@ -2367,6 +2373,9 @@ class DGR_Finder:
         if vrs_without_genes:
             self.run.warning(f"{PL('VR', len(vrs_without_genes))} had no surrounding genes: {', '.join(sorted(vrs_without_genes))}",
                             header="VRs WITHOUT SURROUNDING GENES")
+        if len(unexpected_gene_calls) > 1:
+            self.run.warning(f"Encountered {len(unexpected_gene_calls)} gene calls with unexpected data types in total.",
+                            header="UNEXPECTED DATA TYPE SUMMARY")
 
 
     # function to get the consensus base
