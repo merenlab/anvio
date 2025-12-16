@@ -975,6 +975,11 @@ class DGR_Finder:
         if not hasattr(self, 'mismatch_hits') or not isinstance(self.mismatch_hits, defaultdict):
             self.mismatch_hits = defaultdict(lambda: defaultdict(dict))
 
+        # === PRE-INDEX SNV DATA BY CONTIG (query once, use many times) ===
+        # Instead of filtering the entire DataFrame for each HSP, we group by contig once
+        # and then do O(1) dict lookups + filter only that contig's SNVs
+        snv_by_contig = {contig: group for contig, group in self.snv_panda.groupby('contig_name')}
+
         chars_to_skip = []
         if self.skip_Ns:
             chars_to_skip.append('N')
@@ -1142,8 +1147,13 @@ class DGR_Finder:
                                     # Could at creating  thresholds - for populations etc
 
                                     # subset snv df by query contig (vr contig) and VR range
-                                    matching_snv_rows = self.snv_panda[(self.snv_panda['contig_name'] == query_contig) &
-                                    (self.snv_panda['pos_in_contig'].between(query_genome_start_position, query_genome_end_position))]
+                                    # Use pre-indexed dict for O(1) contig lookup, then filter only that contig's SNVs
+                                    contig_snvs = snv_by_contig.get(query_contig)
+                                    if contig_snvs is not None:
+                                        matching_snv_rows = contig_snvs[contig_snvs['pos_in_contig'].between(
+                                            query_genome_start_position, query_genome_end_position)]
+                                    else:
+                                        matching_snv_rows = self.snv_panda.iloc[0:0]  # empty DataFrame with same structure
 
                                     # make snv vr positions a list so we can print it in the output
                                     snv_VR_positions = sorted(set(matching_snv_rows['pos_in_contig'].to_list()))
