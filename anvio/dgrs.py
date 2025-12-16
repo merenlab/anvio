@@ -776,6 +776,10 @@ class DGR_Finder:
             If no  BLAST output then exit
         """
 
+        # tracking for SNV filter summary
+        self.snv_filter_codon_removals = 0
+        self.snv_filter_mutagen_removals = 0
+
         # if collections_mode is enabled, process multiple bins separately
         if self.collections_mode:
             self.merged_mismatch_hits = defaultdict(lambda: defaultdict(dict))
@@ -811,6 +815,16 @@ class DGR_Finder:
                         self.merged_mismatch_hits[section_id][hit_id] = hit_data
 
             self.run.info_single(f"Total unique mismatches: {len(self.merged_mismatch_hits)}", nl_before=1)
+
+            # SNV filter summary
+            total_snv_removals = self.snv_filter_codon_removals + self.snv_filter_mutagen_removals
+            if total_snv_removals > 0:
+                self.run.warning(f"{PL('candidate DGR', total_snv_removals)} removed by SNV filters: "
+                                f"{self.snv_filter_codon_removals} due to third codon position, "
+                                f"{self.snv_filter_mutagen_removals} due to non-mutagenesis base SNVs. "
+                                "Use '--debug' to see individual removals.",
+                                header="SNV FILTER SUMMARY")
+
             return self.merged_mismatch_hits
 
         # run in normal none collections mode
@@ -826,6 +840,15 @@ class DGR_Finder:
 
             # process the BLAST output normally
             self.parse_and_process_blast_results(self.blast_output, bin_name=None, max_percent_identity=max_percent_identity)
+
+            # SNV filter summary
+            total_snv_removals = self.snv_filter_codon_removals + self.snv_filter_mutagen_removals
+            if total_snv_removals > 0:
+                self.run.warning(f"{PL('candidate DGR', total_snv_removals)} removed by SNV filters: "
+                                f"{self.snv_filter_codon_removals} due to third codon position, "
+                                f"{self.snv_filter_mutagen_removals} due to non-mutagenesis base SNVs. "
+                                "Use '--debug' to see individual removals.",
+                                header="SNV FILTER SUMMARY")
 
             return self.mismatch_hits
 
@@ -1147,6 +1170,7 @@ class DGR_Finder:
                                         is_3_over_a_third = percent_3 > (self.snv_codon_position * 100)
                                         if is_3_over_a_third:
                                             snv_at_3_codon_over_a_third = True
+                                            self.snv_filter_codon_removals += 1
                                             if anvio.DEBUG:
                                                 self.run.warning(f"Skipping candidate DGR due to SNV filters. One with a VR on this contig: {query_contig}. Specifically, in this case the candidate DGR has a high "
                                                             "likelihood of being a false positive due to the fact that there are a high proportion of SNVs that are coming "
@@ -1200,13 +1224,15 @@ class DGR_Finder:
                                         # evaluate
                                         if prop_non_mutagen_snv >= max_allowed_bad_snv_fraction:
                                             DGR_looks_snv_false = True
-                                            self.run.warning("Skipping candidate DGR due to SNV filters. Specifically, in this case the candidate DGR has a high "
-                                                        "likelihood of being a false positive due to the fact that there are a high proportion of SNVs that are coming "
-                                                        f"from the non mismatching or mutagenesis bases which is where the SNVs are expected to be. There are this many SNVs total: {numb_of_SNVs} of which "
-                                                        f"{numb_of_snv_in_matches_not_mutagen_base} are in matching positions of the TR and VR (the proportion is therefore: {prop_non_mutagen_snv:.2%}). "
-                                                        "The cut off for these SNVs is proportional to the total number of SNVs in the VR if there are >30 than 30%% SNVs in matching positions are allowed, "
-                                                        "if less than 30 SNVs than 25%% are allowed, this is by default. If you think that this is incorrect please change the '--snv-matching-proportion' parameter "
-                                                        "to give it a blanket value, this is what we found to be most effective based on our short read metagenome testing.", header="WARNING: DGR REMOVED", lc='yellow')
+                                            self.snv_filter_mutagen_removals += 1
+                                            if anvio.DEBUG:
+                                                self.run.warning("Skipping candidate DGR due to SNV filters. Specifically, in this case the candidate DGR has a high "
+                                                            "likelihood of being a false positive due to the fact that there are a high proportion of SNVs that are coming "
+                                                            f"from the non mismatching or mutagenesis bases which is where the SNVs are expected to be. There are this many SNVs total: {numb_of_SNVs} of which "
+                                                            f"{numb_of_snv_in_matches_not_mutagen_base} are in matching positions of the TR and VR (the proportion is therefore: {prop_non_mutagen_snv:.2%}). "
+                                                            "The cut off for these SNVs is proportional to the total number of SNVs in the VR if there are >30 than 30%% SNVs in matching positions are allowed, "
+                                                            "if less than 30 SNVs than 25%% are allowed, this is by default. If you think that this is incorrect please change the '--snv-matching-proportion' parameter "
+                                                            "to give it a blanket value, this is what we found to be most effective based on our short read metagenome testing.", header="WARNING: DGR REMOVED", lc='yellow')
 
                                     # here we dont add VR candidates based on SNV parameters.
                                     # skip DGR if flagged due to SNV-based filters
