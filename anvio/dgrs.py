@@ -2275,13 +2275,17 @@ class DGR_Finder:
 
                 # process TR gene calls
                 for gene_callers_id, gene_call in gene_calls_in_TR_contig.items():
-                    if abs(gene_call['start'] - TR_start) < min_distance_to_TR_start:
-                        closest_gene_call_to_TR_start = gene_callers_id
-                        min_distance_to_TR_start = abs(gene_call['start'] - TR_start)
+                    # cache distance calculations to avoid redundant abs() calls
+                    dist_to_start = abs(gene_call['start'] - TR_start)
+                    dist_to_end = abs(gene_call['start'] - TR_end)
 
-                    if abs(gene_call['start'] - TR_end) < min_distance_to_TR_end:
+                    if dist_to_start < min_distance_to_TR_start:
+                        closest_gene_call_to_TR_start = gene_callers_id
+                        min_distance_to_TR_start = dist_to_start
+
+                    if dist_to_end < min_distance_to_TR_end:
                         closest_gene_call_to_TR_end = gene_callers_id
-                        min_distance_to_TR_end = abs(gene_call['start'] - TR_end)
+                        min_distance_to_TR_end = dist_to_end
 
                 TR_range = range(closest_gene_call_to_TR_start - self.num_genes_to_consider_in_context,
                                 closest_gene_call_to_TR_end + self.num_genes_to_consider_in_context)
@@ -2379,13 +2383,17 @@ class DGR_Finder:
                 min_distance_to_VR_start, min_distance_to_VR_end = float('inf'), float('inf')
                 closest_gene_call_to_VR_start, closest_gene_call_to_VR_end = None, None
                 for gene_callers_id, gene_call in gene_calls_in_VR_contig.items():
-                    if abs(gene_call['start'] - VR_start) < min_distance_to_VR_start:
-                        closest_gene_call_to_VR_start = gene_callers_id
-                        min_distance_to_VR_start = abs(gene_call['start'] - VR_start)
+                    # cache distance calculations to avoid redundant abs() calls
+                    dist_to_start = abs(gene_call['start'] - VR_start)
+                    dist_to_end = abs(gene_call['start'] - VR_end)
 
-                    if abs(gene_call['start'] - VR_end) < min_distance_to_VR_end:
+                    if dist_to_start < min_distance_to_VR_start:
+                        closest_gene_call_to_VR_start = gene_callers_id
+                        min_distance_to_VR_start = dist_to_start
+
+                    if dist_to_end < min_distance_to_VR_end:
                         closest_gene_call_to_VR_end = gene_callers_id
-                        min_distance_to_VR_end = abs(gene_call['start'] - VR_end)
+                        min_distance_to_VR_end = dist_to_end
 
                 VR_range = range(closest_gene_call_to_VR_start - self.num_genes_to_consider_in_context,
                                 closest_gene_call_to_VR_end + self.num_genes_to_consider_in_context)
