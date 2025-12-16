@@ -45,6 +45,9 @@ PL = terminal.pluralize
 run_quiet = terminal.Run(verbose=False)
 progress_quiet = terminal.Progress(verbose=False)
 
+# pre-compiled regex for extracting start/end positions from section IDs (used in BLAST parsing loop)
+SECTION_ID_PATTERN = re.compile(r"start_bp(\d+)_end_bp(\d+)")
+
 class DGR_Finder:
     def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
         self.args = args
@@ -1234,8 +1237,8 @@ class DGR_Finder:
                         hit_id_counter += 1
                         hit_identity_unique = f"{section_id}_count_{hit_id_counter}"
 
-                        # extract start position from section_id
-                        match = re.search(r"start_bp(\d+)_end_bp(\d+)", section_id)
+                        # extract start position from section_id (using pre-compiled regex)
+                        match = SECTION_ID_PATTERN.search(section_id)
                         query_start_position = int(match.group(1)) if match else 0
 
                         qseq = str(elem.find('Hsp_qseq').text)
