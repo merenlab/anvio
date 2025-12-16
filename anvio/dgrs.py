@@ -1241,23 +1241,25 @@ class DGR_Finder:
                         match = SECTION_ID_PATTERN.search(section_id)
                         query_start_position = int(match.group(1)) if match else 0
 
-                        qseq = str(elem.find('Hsp_qseq').text)
-                        hseq = str(elem.find('Hsp_hseq').text)
-                        midline = str(elem.find('Hsp_midline').text)
+                        qseq = elem.find('Hsp_qseq').text
+                        hseq = elem.find('Hsp_hseq').text
+                        midline = elem.find('Hsp_midline').text
 
                         # check for imperfect repeats, mono- di-mers, tandem repeats
                         if self.has_repeat(qseq, qseq, hseq) or self.has_repeat(hseq, qseq, hseq):
                             elem.clear()
                             continue
 
-                        subject_genome_start_position = min(int(elem.find('Hsp_hit-from').text) - 1,
-                                                            int(elem.find('Hsp_hit-to').text))
-                        subject_genome_end_position = max(int(elem.find('Hsp_hit-from').text) - 1,
-                                                        int(elem.find('Hsp_hit-to').text))
-                        query_genome_start_position = query_start_position + min(int(elem.find('Hsp_query-from').text) - 1,
-                                                                                int(elem.find('Hsp_query-to').text))
-                        query_genome_end_position = query_start_position + max(int(elem.find('Hsp_query-from').text) - 1,
-                                                                            int(elem.find('Hsp_query-to').text))
+                        # cache XML element values to avoid redundant tree traversals
+                        hit_from = int(elem.find('Hsp_hit-from').text)
+                        hit_to = int(elem.find('Hsp_hit-to').text)
+                        query_from = int(elem.find('Hsp_query-from').text)
+                        query_to = int(elem.find('Hsp_query-to').text)
+
+                        subject_genome_start_position = min(hit_from - 1, hit_to)
+                        subject_genome_end_position = max(hit_from - 1, hit_to)
+                        query_genome_start_position = query_start_position + min(query_from - 1, query_to)
+                        query_genome_end_position = query_start_position + max(query_from - 1, query_to)
                         query_frame = int(elem.find('Hsp_query-frame').text)
                         subject_frame = int(elem.find('Hsp_hit-frame').text)
 
