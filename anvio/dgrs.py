@@ -463,36 +463,23 @@ class DGR_Finder:
                     self.all_possible_windows[contig_name].append((window_start, window_end))
 
         all_merged_snv_windows = {} # this dictionary will be filled up with the merged window list for each contig
-        # loop to merge overlaps within a given contig
+
+        # merge overlapping windows using standard interval merging algorithm: O(n log n)
+        # Key insight: once sorted by start, we only need to check overlap with the LAST merged window
         for contig_name, window_list in self.all_possible_windows.items():
-            # before we check overlaps, we need to sort the list of windows within each contig by the 'start' position (at index 0)
-            sorted_windows_in_contig = sorted(window_list, key=lambda x: x[0]) # this list is like the old variable 'all_entries'
-            # at this point, sorted_windows_in_contig contains (start, stop) tuples in order of 'start'
+            # sort by start position - O(n log n)
+            sorted_windows = sorted(window_list, key=lambda x: x[0])
 
+            # single-pass merge - O(n)
             merged_windows_in_contig = []
-            while 1:
-                if not len(sorted_windows_in_contig):
-                    break
-
-                entry = sorted_windows_in_contig.pop(0)
-                overlapping_entries = [entry]
-                start, end = entry
-                matching_entries_indices = []
-
-                for i in range(0, len(sorted_windows_in_contig)):
-                    n_start, n_end = sorted_windows_in_contig[i]
-                    if self.range_overlapping(start, end, n_start, n_end):
-                        matching_entries_indices.append(i)
-                        start = min(start, n_start)
-                        end = max(end, n_end)
-
-                # remove each overlapping window from the list and simultaneously add to list of overlapping entries
-                # we do this in backwards order so that pop() doesn't change the indices we need to remove
-                for i in sorted(matching_entries_indices, reverse=True):
-                    overlapping_entries.append(sorted_windows_in_contig.pop(i))
-
-                merged_ranges = self.combine_ranges(overlapping_entries)
-                merged_windows_in_contig.append(merged_ranges)
+            for start, end in sorted_windows:
+                if merged_windows_in_contig and start <= merged_windows_in_contig[-1][1]:
+                    # current window overlaps with last merged window - extend it
+                    prev_start, prev_end = merged_windows_in_contig[-1]
+                    merged_windows_in_contig[-1] = (prev_start, max(prev_end, end))
+                else:
+                    # no overlap - start a new merged window
+                    merged_windows_in_contig.append((start, end))
 
             all_merged_snv_windows[contig_name] = merged_windows_in_contig
 
