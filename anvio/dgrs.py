@@ -364,7 +364,7 @@ class DGR_Finder:
         # load SNV data
         profile_db = dbops.ProfileDatabase(self.profile_db_path)
         self.snv_panda = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name, columns_of_interest=['sample_id','split_name',  'pos_in_contig','base_pos_in_codon','departure_from_reference','reference']).sort_values(by=['split_name', 'pos_in_contig'])
-        self.snv_panda['contig_name'] = self.snv_panda['split_name'].apply(lambda x: x.split('_split_')[0])
+        self.snv_panda['contig_name'] = self.snv_panda['split_name'].str.split('_split_').str[0]
         profile_db.disconnect()
 
         # apply SNV filters
