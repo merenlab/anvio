@@ -585,10 +585,158 @@ class DGR_Finder:
 
 
 
+    @staticmethod
+    def process_bin_worker(input_queue, output_queue, config, snv_panda_records, contigs_db_path, profile_db_path):
+        """
+        Worker function for parallel bin processing. Processes bins from input_queue
+        and puts results in output_queue.
+
+        This is a static method to work with multiprocessing - all needed data is passed
+        explicitly rather than through self.
+        """
+        import pandas as pd
+
+        # reconstruct snv_panda from records
+        snv_panda = pd.DataFrame.from_records(snv_panda_records)
+
+        while True:
+            bin_name, bin_splits_list = input_queue.get(True)
+
+            try:
+                # === load_data_and_setup logic ===
+                contigs_db = dbops.ContigsDatabase(contigs_db_path, run=run_quiet, progress=progress_quiet)
+                contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
+                contigs_db.disconnect()
+
+                split_names_unique = bin_splits_list
+                bin_contigs = [split.split('_split_')[0] for split in bin_splits_list]
+                bin_contig_sequences = {contig: contig_sequences[contig]
+                                        for contig in bin_contigs if contig in contig_sequences}
+
+                sample_id_list = list(set(snv_panda.sample_id.unique()))
+
+                # === find_snv_clusters logic ===
+                all_possible_windows = {}
+                grouped = snv_panda.groupby(['split_name', 'sample_id'])
+
+                for (split, sample), group in grouped:
+                    if split in split_names_unique and sample in sample_id_list:
+                        if group.shape[0] == 0:
+                            continue
+
+                        contig_name = group.contig_name.unique()[0]
+                        pos_list = group.pos_in_contig.to_list()
+
+                        if contig_name not in all_possible_windows:
+                            all_possible_windows[contig_name] = []
+
+                        i = 0
+                        while i < len(pos_list) - 1:
+                            num_snvs_in_cluster = 1
+                            current_pos = pos_list[i]
+                            next_pos = pos_list[i + 1]
+                            distance = next_pos - current_pos
+                            range_start = current_pos
+                            range_end = current_pos
+
+                            while i + 1 < len(pos_list) and distance <= config['max_dist_bw_snvs']:
+                                i += 1
+                                current_pos = pos_list[i]
+                                range_end = current_pos
+                                num_snvs_in_cluster += 1
+                                if i + 1 < len(pos_list):
+                                    next_pos = pos_list[i + 1]
+                                    distance = next_pos - current_pos
+                                else:
+                                    break
+
+                            i += 1
+
+                            snv_cluster_length = int(range_end - range_start)
+                            if snv_cluster_length < config['min_range_size']:
+                                continue
+
+                            snv_density = num_snvs_in_cluster / snv_cluster_length
+
+                            if snv_density > config['minimum_snv_density']:
+                                window_start = range_start - config['variable_buffer_length']
+                                window_end = range_end + config['variable_buffer_length']
+                            else:
+                                continue
+
+                            contig_len = len(bin_contig_sequences[contig_name]['sequence'])
+
+                            if window_start < 0:
+                                window_start = 0
+                            if window_end > contig_len:
+                                window_end = contig_len
+
+                            all_possible_windows[contig_name].append((window_start, window_end))
+
+                # merge overlapping windows
+                all_merged_snv_windows = {}
+                for contig_name, window_list in all_possible_windows.items():
+                    sorted_windows = sorted(window_list, key=lambda x: x[0])
+                    merged_windows = []
+
+                    for window in sorted_windows:
+                        if merged_windows and window[0] <= merged_windows[-1][1]:
+                            merged_windows[-1] = (merged_windows[-1][0], max(merged_windows[-1][1], window[1]))
+                        else:
+                            merged_windows.append(window)
+
+                    all_merged_snv_windows[contig_name] = merged_windows
+
+                # extract subsequences
+                contig_records = {}
+                for contig_name in all_merged_snv_windows.keys():
+                    contig_sequence = bin_contig_sequences[contig_name]['sequence']
+                    for i, (start, end) in enumerate(all_merged_snv_windows[contig_name]):
+                        section_sequence = contig_sequence[start:end]
+                        section_name = f"{contig_name}_section{i}_start_bp{start}_end_bp{end}"
+                        contig_records[section_name] = section_sequence
+
+                if not contig_records:
+                    output_queue.put((bin_name, False, None, "No SNV clusters found"))
+                    continue
+
+                # === run_blast logic ===
+                query_fasta_path = os.path.join(config['temp_dir'], f"bin_{bin_name}_subsequences.fasta")
+                query_fasta = fastalib.FastaOutput(query_fasta_path)
+                for name, seq in contig_records.items():
+                    query_fasta.write_id(name)
+                    query_fasta.write_seq(seq)
+                query_fasta.close()
+
+                target_file_path = os.path.join(config['temp_dir'], f"bin_{bin_name}_reference_sequences.fasta")
+                target_fasta = fastalib.FastaOutput(target_file_path)
+                for name, sequence in bin_contig_sequences.items():
+                    target_fasta.write_id(name)
+                    target_fasta.write_seq(sequence['sequence'])
+                target_fasta.close()
+
+                blast_output_path = os.path.join(config['temp_dir'],
+                                                  f"blast_output_for_bin_{bin_name}_wordsize_{config['word_size']}.xml")
+
+                blast = BLAST(query_fasta_path, target_fasta=target_file_path, search_program='blastn',
+                              output_file=blast_output_path, additional_params='-dust no', num_threads=1)
+                blast.evalue = 10
+                blast.makedb(dbtype='nucl')
+                blast.blast(outputfmt='5', word_size=config['word_size'])
+
+                output_queue.put((bin_name, True, blast_output_path, None))
+
+            except Exception as e:
+                output_queue.put((bin_name, False, None, str(e)))
+
+
     def process_collections_mode(self):
         """
         Process contigs in collections mode by running BLASTn separately
         for each bin in the collection.
+
+        If num_bins > num_threads: process bins in parallel (each BLAST uses 1 thread)
+        If num_bins <= num_threads: process bins sequentially (each BLAST uses all threads)
 
         Parameters
         ==========
@@ -622,38 +770,114 @@ class DGR_Finder:
             bin_splits_dict[bin_name].append(split)
 
         self.bin_names_list = list(bin_splits_dict.keys())
+        num_bins = len(bin_splits_dict)
 
         # Initialize blast_output to None
         self.blast_output = None
         successful_bins = []
         skipped_bins = {}  # bin_name -> error message
 
-        # process each bin with progress bar
-        num_bins = len(bin_splits_dict)
-        self.progress.new('Processing bins for BLAST', progress_total_items=num_bins)
+        # === DECIDE: PARALLEL vs SEQUENTIAL ===
+        use_parallel = num_bins > self.num_threads and self.num_threads > 1
 
-        for bin_name, bin_splits_list in bin_splits_dict.items():
-            self.progress.update(f"{bin_name}", increment=True)
+        if use_parallel:
+            # === PARALLEL BIN PROCESSING ===
+            self.run.info_single(f"Processing {num_bins} bins in parallel using {self.num_threads} threads "
+                                f"(each BLAST uses 1 thread).", nl_before=1)
 
-            try:
-                sample_id_list, bin_contig_sequences = self.load_data_and_setup(bin_splits_list)
+            # prepare config dict for workers
+            config = {
+                'temp_dir': self.temp_dir,
+                'word_size': self.word_size,
+                'max_dist_bw_snvs': self.max_dist_bw_snvs,
+                'min_range_size': self.min_range_size,
+                'minimum_snv_density': self.minimum_snv_density,
+                'variable_buffer_length': self.variable_buffer_length,
+            }
 
-                # update target file path to be bin-specific
-                self.target_file_path = os.path.join(self.temp_dir, f"bin_{bin_name}_reference_sequences.fasta")
+            # convert snv_panda to records for pickling
+            snv_panda_records = self.snv_panda.to_dict('records')
 
-                contig_records = self.find_snv_clusters(sample_id_list, bin_contig_sequences)
-                blast_output_path = self.run_blast(contig_records, f"bin_{bin_name}_subsequences.fasta", bin_contig_sequences)
+            # setup queues
+            input_queue = Queue()
+            output_queue = Queue()
 
-                successful_bins.append(bin_name)
+            # put all bins in input queue
+            for bin_name, bin_splits_list in bin_splits_dict.items():
+                input_queue.put((bin_name, bin_splits_list))
 
-            except ConfigError as e:
-                skipped_bins[bin_name] = str(e)
-                continue
-            except Exception as e:
-                skipped_bins[bin_name] = str(e)
-                continue
+            # start workers
+            workers = []
+            for i in range(self.num_threads):
+                worker = multiprocessing.Process(
+                    target=DGR_Finder.process_bin_worker,
+                    args=(input_queue, output_queue, config, snv_panda_records,
+                          self.contigs_db_path, self.profile_db_path))
+                workers.append(worker)
+                worker.start()
 
-        self.progress.end()
+            # monitor progress
+            self.progress.new('Processing bins for BLAST (parallel)', progress_total_items=num_bins)
+            self.progress.update(f"Processing {num_bins} bins across {self.num_threads} workers...")
+
+            bins_processed = 0
+            while bins_processed < num_bins:
+                try:
+                    bin_name, success, blast_path, error_msg = output_queue.get()
+                    bins_processed += 1
+                    self.progress.increment(increment_to=bins_processed)
+
+                    if success:
+                        successful_bins.append(bin_name)
+                        self.blast_output = blast_path
+                    else:
+                        skipped_bins[bin_name] = error_msg
+
+                    if bins_processed < num_bins:
+                        self.progress.update(f"Processed {bins_processed}/{num_bins} bins...")
+                    else:
+                        self.progress.update("All done!")
+
+                except KeyboardInterrupt:
+                    self.run.info_single("Received kill signal, terminating workers...", nl_before=1)
+                    break
+
+            self.progress.end()
+
+            # terminate workers
+            for worker in workers:
+                worker.terminate()
+
+        else:
+            # === SEQUENTIAL BIN PROCESSING (original behavior) ===
+            if self.num_threads > 1:
+                self.run.info_single(f"Processing {num_bins} bins sequentially "
+                                    f"(each BLAST uses {self.num_threads} threads).", nl_before=1)
+
+            self.progress.new('Processing bins for BLAST', progress_total_items=num_bins)
+
+            for bin_name, bin_splits_list in bin_splits_dict.items():
+                self.progress.update(f"{bin_name}", increment=True)
+
+                try:
+                    sample_id_list, bin_contig_sequences = self.load_data_and_setup(bin_splits_list)
+
+                    # update target file path to be bin-specific
+                    self.target_file_path = os.path.join(self.temp_dir, f"bin_{bin_name}_reference_sequences.fasta")
+
+                    contig_records = self.find_snv_clusters(sample_id_list, bin_contig_sequences)
+                    blast_output_path = self.run_blast(contig_records, f"bin_{bin_name}_subsequences.fasta", bin_contig_sequences)
+
+                    successful_bins.append(bin_name)
+
+                except ConfigError as e:
+                    skipped_bins[bin_name] = str(e)
+                    continue
+                except Exception as e:
+                    skipped_bins[bin_name] = str(e)
+                    continue
+
+            self.progress.end()
 
         # Check if any bins were successfully processed
         if not successful_bins:
