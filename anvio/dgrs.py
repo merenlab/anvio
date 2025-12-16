@@ -3006,6 +3006,9 @@ class DGR_Finder:
 
         dgrs_dict = self.DGRs_found_dict
 
+        # track DGRs without TR gene context
+        dgrs_without_tr_genes = []
+
         for dgr_key, dgr_data in dgrs_dict.items():
             # assuming dgr_key itself is the dgr_id or a dictionary containing it
             dgr_id = dgr_key
@@ -3032,10 +3035,12 @@ class DGR_Finder:
                 else:
                     genomic_context_start_tr = int(dgr_data['TR_start_position']) - 500
                     genomic_context_end_tr = int(dgr_data['TR_end_position']) + 500
-                    self.run.warning(
-                        f"No TR gene calls found around {dgr_id}. "
-                        f"Using TR coordinates {genomic_context_start_tr}-{genomic_context_end_tr} instead."
-                        )
+                    dgrs_without_tr_genes.append(dgr_id)
+                    if anvio.DEBUG:
+                        self.run.warning(
+                            f"No TR gene calls found around {dgr_id}. "
+                            f"Using TR coordinates {genomic_context_start_tr}-{genomic_context_end_tr} instead."
+                            )
 
                 # this is our magic number, which is matching to the actual width of the genomic context
                 # display in the static HTML output. we will have to transform start-stop coordinates
@@ -3193,6 +3198,13 @@ class DGR_Finder:
                     self.summary['files'][dgr_id][f'{vr_id}_vr_genes'] = os.path.join('PER_DGR', vr_id, 'SURROUNDING-GENES.txt')
                     self.summary['files'][dgr_id][f'{vr_id}_vr_functions'] = os.path.join('PER_DGR', vr_id, 'SURROUNDING-FUNCTIONS.txt')
 
+
+        # summary of DGRs without TR gene context
+        if dgrs_without_tr_genes:
+            self.run.warning(f"{PL('DGR', len(dgrs_without_tr_genes))} had no gene calls around their Template Region "
+                            f"(using TR coordinates as fallback): {', '.join(dgrs_without_tr_genes)}. "
+                            "Use '--debug' to see individual messages.",
+                            header="DGRs WITHOUT TR GENE CONTEXT")
 
         # ensure the destination directory does not exist before generating the summary HTML
         destination_dir = 'summary_html_output'
