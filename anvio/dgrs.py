@@ -1949,7 +1949,8 @@ class DGR_Finder:
             return
 
         output_directory_path = self.output_directory
-        output_path_for_genes_found = os.path.join(output_directory_path, f"{self.output_directory}_DGR_genes_found.tsv")
+        output_prefix = os.path.basename(self.output_directory)
+        output_path_for_genes_found = os.path.join(output_directory_path, f"{output_prefix}_DGR_genes_found.tsv")
 
         # define the header for the TSV file
         csv_header = ['DGR_ID', 'VR_ID', 'Contig', 'Start', 'Stop', 'Direction', 'Partial', 'Call_Type', 'Gene_Caller_Source', 'Version', 'Gene_Caller_ID', 'DNA_Sequence', 'AA_Sequence', 'Length', 'Gene_Functions', 'Gene_Function_Source', 'Gene_Function_Accession']
@@ -2139,9 +2140,10 @@ class DGR_Finder:
 
         """
         output_directory_path = self.output_directory
+        output_prefix = os.path.basename(self.output_directory)
 
         dgrs_dict = self.DGRs_found_dict
-        output_path_dgrs = os.path.join(output_directory_path, f"{self.output_directory}_DGRs_found.tsv")
+        output_path_dgrs = os.path.join(output_directory_path, f"{output_prefix}_DGRs_found.tsv")
         headers = [
             "DGR", "VR", "VR_contig", "VR_frame_reported", "VR_sequence", "Midline",
             "VR_start_position", "VR_end_position", "VR_bin", "Mismatch %",
