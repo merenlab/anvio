@@ -626,11 +626,14 @@ class DGR_Finder:
         # Initialize blast_output to None
         self.blast_output = None
         successful_bins = []
-        skipped_bins = []
+        skipped_bins = {}  # bin_name -> error message
 
-        # process each bin
+        # process each bin with progress bar
+        num_bins = len(bin_splits_dict)
+        self.progress.new('Processing bins for BLAST', progress_total_items=num_bins)
+
         for bin_name, bin_splits_list in bin_splits_dict.items():
-            self.run.info_single(f"Processing bin: {bin_name}", nl_before=1)
+            self.progress.update(f"{bin_name}", increment=True)
 
             try:
                 sample_id_list, bin_contig_sequences = self.load_data_and_setup(bin_splits_list)
@@ -642,16 +645,15 @@ class DGR_Finder:
                 blast_output_path = self.run_blast(contig_records, f"bin_{bin_name}_subsequences.fasta", bin_contig_sequences)
 
                 successful_bins.append(bin_name)
-                self.run.info_single(f"Completed BLAST for bin: {bin_name}, output: {blast_output_path}", nl_before=1)
 
             except ConfigError as e:
-                self.run.warning(f"Skipping bin {bin_name}: {str(e)}", nl_before=1)
-                skipped_bins.append(bin_name)
+                skipped_bins[bin_name] = str(e)
                 continue
             except Exception as e:
-                self.run.warning(f"Error processing bin {bin_name}: {str(e)}", nl_before=1)
-                skipped_bins.append(bin_name)
+                skipped_bins[bin_name] = str(e)
                 continue
+
+        self.progress.end()
 
         # Check if any bins were successfully processed
         if not successful_bins:
@@ -660,8 +662,18 @@ class DGR_Finder:
                             f"Common causes: sequences too short for word_size={self.word_size}, "
                             f"insufficient SNV density, or BLAST failures.")
 
-        self.run.info_single(f"Successfully processed {len(successful_bins)}/{len(bin_splits_dict)} bins. "
-                            f"Skipped {len(skipped_bins)} bins.", nl_before=1)
+        # summary message
+        self.run.info_single(f"Processed {PL('bin', num_bins)}: {len(successful_bins)} successful, "
+                            f"{len(skipped_bins)} skipped.", nl_before=1)
+
+        # report skipped bins if any
+        if skipped_bins:
+            self.run.warning(f"{PL('bin', len(skipped_bins))} skipped during BLAST: {', '.join(skipped_bins.keys())}. "
+                           "Use '--debug' to see detailed error messages.",
+                           header="BINS SKIPPED")
+            if anvio.DEBUG:
+                for bin_name, error_msg in skipped_bins.items():
+                    self.run.info_single(f"  {bin_name}: {error_msg}")
 
         # return the last successful blast output (maintains original behavior)
         return self.blast_output
