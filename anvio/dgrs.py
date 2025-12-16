@@ -2216,6 +2216,11 @@ class DGR_Finder:
         genes_output_headers = ["gene_callers_id", "start", "stop", "direction", "partial", "call_type", "source", "version", "contig"]
         functions_output_headers = ["gene_callers_id", "source", 'accession', 'function']
 
+        # tracking for summary
+        num_tr_reports = 0
+        num_vr_reports = 0
+        vrs_without_genes = set()
+
         # process each DGR and its VRs
         for dgr_key, dgr_data in dgrs_dict.items():
             # assuming dgr_key itself is the dgr_id or a dictionary containing it
@@ -2269,8 +2274,10 @@ class DGR_Finder:
                             self.run.info_single(f"Unexpected type for gene_call: {gene_call} (expected dict but got {type(gene_call)})", nl_before=1)
 
                 # log information about the reporting files
-                self.run.info(f"Reporting file on gene context for {dgr_id} TR", tr_genes_output_path)
-                self.run.info(f"Reporting file on functional context for {dgr_id} TR", tr_functions_output_path, nl_after=1)
+                num_tr_reports += 1
+                if anvio.DEBUG:
+                    self.run.info(f"Reporting file on gene context for {dgr_id} TR", tr_genes_output_path)
+                    self.run.info(f"Reporting file on functional context for {dgr_id} TR", tr_functions_output_path, nl_after=1)
 
             # fill in non-empty data for each VR in the DGR and insert it:
             for vr_key, vr_data in dgr_data['VRs'].items():
@@ -2307,11 +2314,21 @@ class DGR_Finder:
                             else:
                                 vr_functions_output.write(f"{dgr_id} {vr_id}\t{gene_call['gene_callers_id']}\t\t\t\n")
                     else:
-                        self.run.info_single(f"No VR genes found for {dgr_id} {vr_id}", nl_before=1)
+                        vrs_without_genes.add(f"{dgr_id}_{vr_id}")
+                        if anvio.DEBUG:
+                            self.run.info_single(f"No VR genes found for {dgr_id} {vr_id}", nl_before=1)
 
-                    self.run.info(f'    Reporting file on gene context for {dgr_id} {vr_id}', vr_genes_output_path)
-                    self.run.info(f'    Reporting file on functional context for {dgr_id} {vr_id}', vr_functions_output_path, nl_after=1)
+                    num_vr_reports += 1
+                    if anvio.DEBUG:
+                        self.run.info(f'    Reporting file on gene context for {dgr_id} {vr_id}', vr_genes_output_path)
+                        self.run.info(f'    Reporting file on functional context for {dgr_id} {vr_id}', vr_functions_output_path, nl_after=1)
 
+        # summary of genomic context reporting
+        self.run.info_single(f"Genomic context reports generated for {PL('TR', num_tr_reports)} and {PL('VR', num_vr_reports)} "
+                             f"in '{self.output_directory}/PER_DGR/'", nl_before=1)
+        if vrs_without_genes:
+            self.run.warning(f"{PL('VR', len(vrs_without_genes))} had no surrounding genes: {', '.join(sorted(vrs_without_genes))}",
+                            header="VRs WITHOUT SURROUNDING GENES")
 
 
     # function to get the consensus base
