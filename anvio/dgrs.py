@@ -1264,10 +1264,9 @@ class DGR_Finder:
                         subject_frame = int(elem.find('Hsp_hit-frame').text)
 
                         query_mismatch_positions = []
-                        all_possible_characters = set(qseq + hseq)
-
-                        query_mismatch_counts = {char: 0 for char in all_possible_characters}
-                        subject_mismatch_counts = {char: 0 for char in all_possible_characters}
+                        # use defaultdict for lazy initialization - only creates entries for actual mismatches
+                        query_mismatch_counts = defaultdict(int)
+                        subject_mismatch_counts = defaultdict(int)
 
                         for idx in range(len(qseq)):
                             if qseq[idx] in chars_to_skip or hseq[idx] in chars_to_skip:
