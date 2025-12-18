@@ -58,30 +58,60 @@ def get_args():
                                 "may be useful for developers for debugging purposes) or you can ask anvi'o to skip adding the results "
                                 "to the pan-db.")
     groupB.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
-    groupB.add_argument('--output-synteny-gene-cluster-dendrogram', default=False, action="store_true", help="Description.")
+    groupB.add_argument('--output-synteny-gene-cluster-dendrogram', default=False, action="store_true", help="Write a dendrogram (.svg) "
+                                "and distance matrix (.tsv) for each split SynGC to the output directory (for debugging "
+                                "the paralog splitter).")
 
-    groupC = parser.add_argument_group('DETAILS OF GRAPH COMPUTATION', "Variables that will influence the computation of the graph, the organization "
-                                "of the gene clusters, and edges between them.")
+    groupC = parser.add_argument_group('GRAPH BUILDING & SPLITTING', "Controls how SynGC are generated and filtered.")
 
-    groupC.add_argument('--circularize', default=False, action="store_true", help = "WARNING: Only useable on single contig genomes.")
-    groupC.add_argument('--just-do-it', default=False, action="store_true", help = "Description.")
-    groupC.add_argument('--project-name', default=None, help = "Description.")
-    groupC.add_argument('--load-state', default='default', type=str, help="Description.")
-    groupC.add_argument('--import-values', default='start,stop,partial,call_type', type=str, help = "Description.")
-    groupC.add_argument('--priority-genome', default='', type=str, help = "Description.")
-    groupC.add_argument('--min-contig-chain', default=5, type=int, help = "Description.")
-    groupC.add_argument('--max-edge-length-filter', default=-1, type=int, help = "Description.")
-    groupC.add_argument('--gene-cluster-grouping-threshold', default=-1, type=int, help = "Description.")
-    groupC.add_argument('--grouping-compression', default=1.0, type=float, help = "Description.")
-    groupC.add_argument('--start-gene', default='RecA/RadA', type=str, help = "Description.")
-    groupC.add_argument('--start-column', default='COG24_FUNCTION_TEXT', type=str, help = "Description.")
-    groupC.add_argument('--alpha', default=0.5, type=float, help = "Description.")
-    groupC.add_argument('--n', default=50, type=int, help = "Description.")
-    groupC.add_argument('--beta', default=0.5, type=float, help = "Description.")
-    groupC.add_argument('--gamma', default=0.25, type=float, help = "Description.")
-    groupC.add_argument('--delta', default=0.75, type=float, help = "Description.")
-    groupC.add_argument('--inversion-aware', default=False, action="store_true", help = "Description.")
-    groupC.add_argument('--min-k', default=1, type=int, help = "Description.")
+    groupC.add_argument('--circularize', default=False, action="store_true", help = "Connect contig ends back to starts "
+                    "(only sensible for single-contig/circular genomes); can add cycles otherwise.")
+    groupC.add_argument('--min-contig-chain', default=5, type=int, help = "Skip contigs with fewer than this many SynGCs "
+                    "(filters very short/fragmented contigs).")
+    groupC.add_argument('--min-k', default=1, type=int, help = "Minimum k-mer window size around each gene before splitting paralogs "
+                    "(will auto-increase until each k-mer is genome-unique; raise to demand more context).")
+    groupC.add_argument('--alpha', default=0.5, type=float, help = "Global context similarity cutoff (single-copy-core flank similarity "
+                    "must be >= alpha to be considered same context; lower alpha merges more, higher splits more).")
+    groupC.add_argument('--n', default=50, type=int, help = "Max number of single-copy-core neighbors to scan on each side when scoring "
+                    "context similarity (0 disables global-context filtering).")
+    groupC.add_argument('--beta', default=0.5, type=float, help = "Penalty weight for orientation mismatches in local k-mer comparisons "
+                    "(higher beta penalizes strand flips more).")
+    groupC.add_argument('--gamma', default=0.25, type=float, help = "Penalty weight for gaps/contig-edge markers in local k-mer comparisons "
+                    "(higher gamma penalizes contig ends/missing neighbors more).")
+    groupC.add_argument('--delta', default=0.75, type=float, help = "Maximum allowed distance for k-mer similarity "
+                    "(values above delta are treated as mismatches; raise to be more permissive).")
+    groupC.add_argument('--inversion-aware', default=False, action="store_true", help = "Also compare reversed k-mers, allowing inverted "
+                    "contexts to cluster together (helps when inversions are common 🤞).")
+
+    groupD = parser.add_argument_group('ANCHORING & PRIORITY', "Choose a reference genome or anchor gene for layout.")
+
+    groupD.add_argument('--priority-genome', default='', type=str, help = "Genome name to prioritize when building edges "
+                    "(its path gets extra weight so layout favors its ordering).")
+    groupD.add_argument('--start-gene', default='RecA/RadA', type=str, help = "Regex/text to pick a SynGC as the "
+                    "starting node for layout (looked up in --start-column; helpful to anchor the graph).")
+    groupD.add_argument('--start-column', default='COG24_FUNCTION_TEXT', type=str, help = "Annotation column to search for --start-gene.")
+
+    groupE = parser.add_argument_group('LAYOUT & SIMPLIFICATION', "Controls how the graph is compressed and long edges are filtered.")
+
+    groupE.add_argument('--gene-cluster-grouping-threshold', default=-1, type=int, help = "Compress linear chains of nodes of "
+                    "this length or longer into groups (-1 disables grouping; useful to simplify long conserved runs).")
+    groupE.add_argument('--grouping-compression', default=1.0, type=float, help = "Compression factor for grouped chains "
+                    "(1.0 = no compression; lower values squeeze grouped nodes closer in the layout).")
+    groupE.add_argument('--max-edge-length-filter', default=-1, type=int, help = "Remove edges longer than this length threshold "
+                    "after layout (-1 disables filtering; lower values prune long jumps/repeats).")
+
+    groupF = parser.add_argument_group('METADATA & LAYERS', "Display and metadata options for the resulting pan-graph.")
+
+    groupF.add_argument('--project-name', default=None, help = "Optional name stored in the pan-graph-db metadata (for display/export).")
+    groupF.add_argument('--load-state', default='default', type=str, help="Initial display state name to store/use in the pan-graph-db.")
+    groupF.add_argument('--import-values', default='start,stop,partial,call_type', type=str, help = "Comma-separated "
+                    "numeric columns from the pangenome table to copy as node layers (e.g., start, stop, partial); "
+                    "non-numeric/missing columns are ignored.")
+
+    groupG = parser.add_argument_group('ROBUSTNESS & DEBUGGING', "Controls safety checks and noisy-data handling.")
+
+    groupG.add_argument('--just-do-it', default=False, action="store_true", help = "Bypass safety checks (e.g., "
+                    "over-splitting) and continue even when warnings would normally abort; use to diagnose tough datasets.")
 
     return parser.get_args(parser)
 
