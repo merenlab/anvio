@@ -492,8 +492,9 @@ class DGR_Finder:
                 # contig_records.append(SeqRecord(section_sequence, id=section_id, description=""))
 
         if len(contig_records) == 0:
-            self.run.warning(f"No sequences with SNVs were found with the parameters minimum distance between SNVs:{self.max_dist_bw_snvs} "
-                            f"and range size of SNVs:{self.min_range_size}, this means there are no variable region candidates for a blast search"
+            self.run.warning(f"No sequences with SNVs were found with the parameters window size:{self.snv_window_size}bp, "
+                            f"step size:{self.snv_window_step}bp, and minimum SNV density:{self.minimum_snv_density}. "
+                            f"This means there are no variable region candidates for a BLAST search"
                             , header="NO SEQUENCES WITH SUBSTANTIAL SNVS FOUND")
             raise ConfigError("Therefore, we will exit here because anvi'o has nothing to search for DGRs in, "
                             "nada, nowt, nothin'! However, you can go back and tinker with the parameters "
@@ -764,8 +765,8 @@ class DGR_Finder:
             config = {
                 'temp_dir': self.temp_dir,
                 'word_size': self.word_size,
-                'max_dist_bw_snvs': self.max_dist_bw_snvs,
-                'min_range_size': self.min_range_size,
+                'snv_window_size': self.snv_window_size,
+                'snv_window_step': self.snv_window_step,
                 'minimum_snv_density': self.minimum_snv_density,
                 'variable_buffer_length': self.variable_buffer_length,
             }
@@ -3502,17 +3503,17 @@ class DGR_Finder:
                 ("Number of Mismatches", self.number_of_mismatches if self.number_of_mismatches else "7"),
                 ("Percentage of Mismatches", self.percentage_mismatch if self.percentage_mismatch else "0.8"),
                 ("Only A Bases", self.only_a_bases or "FALSE"),
-                ("Minimum Range Size", self.min_range_size if self.min_range_size else "5"),
+                ("SNV Window Size", self.snv_window_size if self.snv_window_size else "50"),
+                ("SNV Window Step", self.snv_window_step if self.snv_window_step else "10"),
                 ("Minimum Mismatching Base Types in VR", self.min_base_types_vr if self.min_base_types_vr else "2"),
                 ("Minimum Base Types in VR", self.min_base_types_vr if self.min_base_types_vr else "2"),
                 ("Minimum Base Types in TR", self.min_base_types_tr if self.min_base_types_tr else "2"),
                 ("Number of imperfect tandem repeats", self.numb_imperfect_tandem_repeats or "10"),
                 ("Repeat motif coverage", self.repeat_motif_coverage or "0.8"),
-                ("Distance between SNVs", self.max_dist_bw_snvs if self.max_dist_bw_snvs else "8"),
                 ("Variable Buffer Length", self.variable_buffer_length if self.variable_buffer_length else "35"),
                 ("SNV Matching Proportion", self.snv_matching_proportion or "0.25/0.30"),
                 ("SNV Codon Position", self.snv_codon_position or "0.33"),
-                ("SNV Density", self.minimum_snv_density or "0.2"),
+                ("SNV Density", self.minimum_snv_density or "0.1"),
                 ("Gene caller", self.gene_caller_to_consider_in_context if self.gene_caller_to_consider_in_context else "prodigal"),
                 ("Number of genes to consider in context", self.num_genes_to_consider_in_context or "3"),
                 ("Skip Recovering Genomic Context", self.skip_recovering_genomic_context or "FALSE"),
