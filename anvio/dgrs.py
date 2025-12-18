@@ -578,6 +578,7 @@ class DGR_Finder:
         explicitly rather than through self.
         """
         import pandas as pd
+        import bisect
 
         # reconstruct snv_panda from records
         snv_panda = pd.DataFrame.from_records(snv_panda_records)
@@ -613,48 +614,39 @@ class DGR_Finder:
                         if contig_name not in all_possible_windows:
                             all_possible_windows[contig_name] = []
 
-                        i = 0
-                        while i < len(pos_list) - 1:
-                            num_snvs_in_cluster = 1
-                            current_pos = pos_list[i]
-                            next_pos = pos_list[i + 1]
-                            distance = next_pos - current_pos
-                            range_start = current_pos
-                            range_end = current_pos
+                        # Sort positions for efficient binary search
+                        sorted_pos = sorted(pos_list)
 
-                            while i + 1 < len(pos_list) and distance <= config['max_dist_bw_snvs']:
-                                i += 1
-                                current_pos = pos_list[i]
-                                range_end = current_pos
-                                num_snvs_in_cluster += 1
-                                if i + 1 < len(pos_list):
-                                    next_pos = pos_list[i + 1]
-                                    distance = next_pos - current_pos
-                                else:
-                                    break
+                        if not sorted_pos:
+                            continue
 
-                            i += 1
+                        # Determine the range to scan with sliding windows
+                        min_pos = sorted_pos[0]
+                        max_pos = sorted_pos[-1]
+                        contig_len = len(bin_contig_sequences[contig_name]['sequence'])
 
-                            snv_cluster_length = int(range_end - range_start)
-                            if snv_cluster_length < config['min_range_size']:
-                                continue
+                        window_start_range = max(0, min_pos - config['snv_window_size'])
+                        window_end_range = min(max_pos, contig_len - config['snv_window_size'])
 
-                            snv_density = num_snvs_in_cluster / snv_cluster_length
+                        # Slide the window across the region
+                        window_pos = window_start_range
+                        while window_pos <= window_end_range:
+                            window_end = window_pos + config['snv_window_size']
 
-                            if snv_density > config['minimum_snv_density']:
-                                window_start = range_start - config['variable_buffer_length']
-                                window_end = range_end + config['variable_buffer_length']
-                            else:
-                                continue
+                            # Use binary search to count SNVs in window
+                            left_idx = bisect.bisect_left(sorted_pos, window_pos)
+                            right_idx = bisect.bisect_left(sorted_pos, window_end)
+                            snv_count = right_idx - left_idx
 
-                            contig_len = len(bin_contig_sequences[contig_name]['sequence'])
+                            # Calculate density
+                            snv_density = snv_count / config['snv_window_size']
 
-                            if window_start < 0:
-                                window_start = 0
-                            if window_end > contig_len:
-                                window_end = contig_len
+                            if snv_density >= config['minimum_snv_density']:
+                                buffered_start = max(0, window_pos - config['variable_buffer_length'])
+                                buffered_end = min(contig_len, window_end + config['variable_buffer_length'])
+                                all_possible_windows[contig_name].append((buffered_start, buffered_end))
 
-                            all_possible_windows[contig_name].append((window_start, window_end))
+                            window_pos += config['snv_window_step']
 
                 # merge overlapping windows
                 all_merged_snv_windows = {}
