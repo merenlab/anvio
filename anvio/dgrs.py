@@ -180,12 +180,12 @@ class DGR_Finder:
                             "or rerun with the flag `--just-do-it` (which will overwrite your directory. You have been warned).")
 
         if (self.contigs_db_path and self.profile_db_path) and not self.hmm:
-            raise ConfigError("Just so you know in order to report a DGR you need to have Reverse Transcriptases "
-                            "annotated or else you are not finding DGRs. If you would like to do this please run "
-                            "your 'contigs.db' with `anvi-run-hmms -I Reverse_Transcriptase` (type: 6 clades of DGR "
-                            "Retroelements from doi.org/10.1038/s41467-021-23402-7 including other known reverse "
-                            "transcriptases). Then re-run `anvi-report-dgrs` with the `--hmm-usage` flag. This is "
-                            "one option, but you can use other HMM profiles if you like.")
+            # Set default HMM to Reverse_Transcriptase
+            self.hmm = ['Reverse_Transcriptase']
+            self.run.warning("No HMM source was specified with `--hmm-usage`. Anvi'o will use the default "
+                           "'Reverse_Transcriptase' HMM to identify DGRs. If you haven't run this HMM yet, "
+                           "please run `anvi-run-hmms -I Reverse_Transcriptase` on your contigs database first.",
+                           header="USING DEFAULT HMM")
 
         if int(self.word_size) < 0:
             raise ConfigError('The word size value you are trying to input should be positive integer.')

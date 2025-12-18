@@ -94,11 +94,12 @@ def get_args():
     groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': True})) #ADD THAT HAS TO BE MERGED_DB, unless have
 
     groupE = parser.add_argument_group('CONTIGS AND PROFILE DB INPUT ARGUMENTS', "Options for using the Contigs.db and Profile.db input for this program")
-    groupE.add_argument("-I","--hmm-usage", required = True, help="The name of the HMM run with your Contigs.db, ideally the 'Reverse_Transcriptase' HMM, or your own HMM of reverse transcriptases "
-                        "(type: 6 clades of DGR Retroelements from doi.org/10.1038/s41467-021-23402-7 including other known reverse transcriptases). You can "
-                        "provide a comma-separated list of names for multiple profiles (but in that case don't put a space between each profile name). As a "
-                        f"reminder here is the list of anvi'o installed profiles available to you: {available_hmm_sources_pretty}. This option is mandatory "
-                        "for reporting DGRs, however anvi'o does not want to tell you what to do, so please proceed",type=str, default = None)
+    groupE.add_argument("-I","--hmm-usage", required = False, help="The name of the HMM run with your Contigs.db. If not provided, "
+                        "anvi'o will use the 'Reverse_Transcriptase' HMM by default (type: 6 clades of DGR Retroelements from "
+                        "doi.org/10.1038/s41467-021-23402-7 including other known reverse transcriptases). You can provide a "
+                        "comma-separated list of names for multiple profiles (but in that case don't put a space between each "
+                        f"profile name). As a reminder here is the list of anvi'o installed profiles available to you: {available_hmm_sources_pretty}.",
+                        type=str, default = None)
     groupE.add_argument(*anvio.A('gene-caller'), **anvio.K('gene-caller', {'help': "The gene caller to show gene calls if you are using a contigs.db. This is used to tell the program that you want to find the genes that your Variable Regions occurred in."}))
 
     groupG = parser.add_argument_group('COLLECTIONS MODE', "Options for collections mode. This is when you want to restrict your search to an individual collection, where anvi'o will look in bins for DGRs, importantly working using contigs not splits.")
