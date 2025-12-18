@@ -614,9 +614,20 @@ class SyntenyGeneCluster():
         
         if len(pangenome_data_df["syn_cluster"].unique()) > 2 * len(pangenome_data_df["gene_cluster"].unique()):
             if self.just_do_it:
-                self.run.info_single("We wanted to inform you, that the number of gene to syn clusters doesn't really line up but you choosed just-do-it so either you hate us, yourself, or you are very sure about what you are doint. GOOD LUCK")
+                self.run.info_single("We wanted to inform you that the number of gene to syn clusters doesn't really line "
+                                     "up but since you asked anvi'o to --just-do-it anyway, we will continue here with the "
+                                     "assumption that it is not that you either you hate us or yourself, but you do know "
+                                     "what you are doing. We still wish you GOOD LUCK!")
             else:
-                raise ConfigError("We are sorry to inform you, that the number of gene to syn clusters doesn't really line up something might have gone wrong.")
+                raise ConfigError("We are sorry to inform you that the number of gene to syn clusters does not line up. "
+                                  "This can happen if you are working with genomes that contain a VERY large number of "
+                                  "repeats and/or paralogous genes that force over-splitting of the graph context. You "
+                                  "can try increasing --min-k, lowering --alpha/--n, or by enabling "
+                                  "--inversion-aware processing of the graph. Alternatively, you may also rerun the "
+                                  "program with the flag --just-do-it, but please note that the graph building can "
+                                  "still fail to converge to a DAG if context remains too noisy despite your "
+                                  "fine-tuning efforts. By continuing with this advice you are required to not blame "
+                                  "us if you get an error after a long wait.")
 
         pangenome_data_df.set_index('position').to_csv(os.path.join(self.output_dir, 'synteny_cluster.tsv'), sep='\t')
         self.run.info_single(f"Exported mining table to {os.path.join(self.output_dir, 'synteny_cluster.tsv')}.")
