@@ -8,6 +8,7 @@ import os
 import shutil
 import argparse
 import copy
+import bisect
 import pytantan
 
 import anvio
@@ -69,12 +70,12 @@ class DGR_Finder:
         self.min_base_types_tr = A('min_base_types_tr') or 2
         self.only_a_bases =A('only_a_bases')
         self.temp_dir = A('temp_dir') or filesnpaths.get_temp_directory_path()
-        self.max_dist_bw_snvs = A('distance_between_snv') or 8
         self.variable_buffer_length = A('variable_buffer_length')
         self.departure_from_reference_percentage = A('departure_from_reference_percentage')
         self.gene_caller_to_consider_in_context = A('gene_caller') or 'prodigal'
-        self.min_range_size = A('minimum_range_size')
-        self.minimum_snv_density = A('minimum_snv_density') or 0.2
+        self.snv_window_size = A('snv_window_size') or 50
+        self.snv_window_step = A('snv_window_step') or 10
+        self.minimum_snv_density = A('minimum_snv_density') or 0.1
         self.repeat_threshold = A('repeat_threshold') or 0.5
         self.hmm = A('hmm_usage')
         self.discovery_mode = A('discovery_mode')
@@ -122,8 +123,8 @@ class DGR_Finder:
         self.run.info('Gene Caller Provided', self.gene_caller_to_consider_in_context)
         self.run.info('Contigs.db', self.contigs_db_path)
         self.run.info('Profile.db', self.profile_db_path)
-        self.run.info('Maximum distance between SNVs', self.max_dist_bw_snvs)
-        self.run.info('Minimum length of SNV window', self.min_range_size)
+        self.run.info('SNV window size', self.snv_window_size)
+        self.run.info('SNV window step', self.snv_window_step)
         self.run.info('Variable buffer length', self.variable_buffer_length)
         self.run.info('Departure from reference percentage', self.departure_from_reference_percentage)
         if self.snv_matching_proportion:
@@ -414,56 +415,48 @@ class DGR_Finder:
                 pos_list = group.pos_in_contig.to_list()
 
                 if contig_name not in self.all_possible_windows:
-                    # if not, initialize it with an empty dictionary
+                    # if not, initialize it with an empty list
                     self.all_possible_windows[contig_name] = []
 
-                # get list of pos within that split
-                i = 0
-                while i < len(pos_list) - 1:
-                    num_snvs_in_cluster = 1
-                    current_pos = pos_list[i]
-                    next_pos = pos_list[i + 1]
-                    distance = next_pos - current_pos
-                    range_start = current_pos
-                    range_end = current_pos
+                # Sort positions for efficient binary search when counting SNVs in windows
+                sorted_pos = sorted(pos_list)
 
-                    while i + 1 < len(pos_list) and distance <= self.max_dist_bw_snvs:
-                        i += 1
-                        current_pos = pos_list[i]
-                        range_end = current_pos
-                        num_snvs_in_cluster += 1
-                        if i + 1 < len(pos_list):
-                            next_pos = pos_list[i + 1]
-                            distance = next_pos - current_pos
-                        else:
-                            break
+                if not sorted_pos:
+                    continue
 
-                    # move to next unprocessed position
-                    i += 1
+                # Determine the range we need to scan with sliding windows
+                min_pos = sorted_pos[0]
+                max_pos = sorted_pos[-1]
+                contig_len = len(contig_sequences[contig_name]['sequence'])
 
-                    snv_cluster_length = int(range_end - range_start)
-                    if snv_cluster_length < self.min_range_size:
-                        continue
+                # Start scanning from before the first SNV (to catch edge cases)
+                # End at the last SNV position (windows starting after won't capture it)
+                window_start_range = max(0, min_pos - self.snv_window_size)
+                window_end_range = min(max_pos, contig_len - self.snv_window_size)
 
-                    # check the snv density
-                    snv_density = num_snvs_in_cluster/snv_cluster_length
+                # Slide the window across the region
+                window_pos = window_start_range
+                while window_pos <= window_end_range:
+                    window_end = window_pos + self.snv_window_size
 
-                    if snv_density > self.minimum_snv_density:
-                        #add buffer length
-                        window_start = range_start - self.variable_buffer_length
-                        window_end = range_end + self.variable_buffer_length
-                    else:
-                        continue
+                    # Use binary search to count SNVs in window [window_pos, window_end)
+                    # bisect_left returns the index where window_pos would be inserted
+                    # This gives us O(log n) lookup instead of O(n)
+                    left_idx = bisect.bisect_left(sorted_pos, window_pos)
+                    right_idx = bisect.bisect_left(sorted_pos, window_end)
+                    snv_count = right_idx - left_idx
 
-                    contig_len = len(contig_sequences[contig_name]['sequence'])
+                    # Calculate density as SNVs per window size (fixed denominator now)
+                    snv_density = snv_count / self.snv_window_size
 
-                    if window_start <0:
-                        window_start = 0
-                    if window_end > contig_len:
-                        window_end = contig_len
+                    if snv_density >= self.minimum_snv_density:
+                        # Add buffer around the window
+                        buffered_start = max(0, window_pos - self.variable_buffer_length)
+                        buffered_end = min(contig_len, window_end + self.variable_buffer_length)
+                        self.all_possible_windows[contig_name].append((buffered_start, buffered_end))
 
-                    # add the window to the contig's list
-                    self.all_possible_windows[contig_name].append((window_start, window_end))
+                    # Move window by step size
+                    window_pos += self.snv_window_step
 
         all_merged_snv_windows = {} # this dictionary will be filled up with the merged window list for each contig
 
