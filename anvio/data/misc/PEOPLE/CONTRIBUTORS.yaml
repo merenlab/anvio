@@ -285,3 +285,30 @@
       inst: Department of Biostatistics, University of Washington
       inst_link: https://www.biostat.washington.edu/
 
+- github: tucker4
+  name: Sarah Tucker
+  web: https://sarahjtucker.com/
+  avatar: tucker4.jpeg
+  email: stucker@mbl.edu
+  git_records:
+    - tucker4@hawaii.edu
+  linkedin: sarah-j-tucker-0a9591a2
+  orcid: 0000-0003-0541-0853
+  bio: "I am a marine microbiologist interested in the genomic, metabolic, and physiological diversity of microorganisms and how this diversity impacts ecological interactions and ocean processes."
+  intellectual-contributions:
+    - contribution: "Collaborated on the development of anvi'o tools to implement protein structure-informed pangenomes, analyze transfer RNA transcripts, and reconstruct pangenome graphs."
+  affiliations:
+    - title: Post-doctoral scientist
+      inst: Josephine Bay Paul Center for Comparative Molecular Biology and Evolution, Marine Biological Laboratory
+      inst_link: https://www.mbl.edu/research/research-centers/josephine-bay-paul-center
+      current: true
+    - title: Fellow
+      inst: Simons Postdoctoral Fellowship in Marine Microbial Ecology
+      inst_link: https://www.simonsfoundation.org/grant/simons-postdoctoral-fellowships-in-marine-microbial-ecology/
+      current: true
+    - title: Fellow
+      inst: John A. Knauss Marine Policy Fellowship Program
+      inst_link: https://seagrant.noaa.gov/knauss-fellowship-program/
+    - title: PhD Student
+      inst: Hawaiʻi Institute of Marine Biology, University of Hawaiʻi at Mānoa
+      inst_link: https://www.himb.hawaii.edu/

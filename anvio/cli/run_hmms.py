@@ -70,7 +70,7 @@ def run_program():
     elif args.hmm_profile_dir:
         if not os.path.exists(args.hmm_profile_dir):
             raise ConfigError('No such file or directory: "%s"' % args.hmm_profile_dir)
-        sources = utils.get_HMM_sources_dictionary([args.hmm_profile_dir])
+        sources = utils.get_HMM_sources_dictionary([args.hmm_profile_dir], check_for_ACC_lines_in_HMM=args.add_to_functions_table)
         run.info('HMM profiles', '%d source%s been loaded: %s' % (len(sources),
                                                           's' if len(sources) > 1 else '',
                                                           ', '.join(['%s (%d genes)' % (s, len(sources[s]['genes']))\

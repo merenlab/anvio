@@ -54,6 +54,9 @@ Anvi'o will expect the HMM source directory to contain six files (see this for [
 * **target.txt**: A file that specifies the target *alphabet* and  *context* that defines how HMMs should be searched (this is a function of the HMM source that is used). The proper notation is 'alphabet:context'. Alphabet can be `AA`, `DNA`, or `RNA`. Context can be `GENE` or `CONTIG`. The content of this file should be any combination of one alphabet and one context term. For instance, if the content of this file is `AA:GENE`, anvi'o will search genes amino acid sequences, and so on. An exception is `AA:CONTIG`, which is an improper target since anvi'o can't translate contigs to amino acid sequences. See [this](https://github.com/meren/anvio/pull/402) for more details. Please note that HMMs that target `DNA:CONTIG` will result in new gene calls in the contigs database to describe their hits.
 * **noise_cutoff_terms.txt**: A file to specify how to deal with noise. [See this comment](https://github.com/merenlab/anvio/issues/498#issuecomment-362115921) for more information on the contents of this file.
 
+{:.notice}
+_A special note for people who want to create models for use with `anvi-run-hmms --add-to-functions-table`:_ Please make sure that each model in your genes.hmm.gz file contains an accession line (starts with `ACC`) in its header.
+
 
 ### Creating anvi'o HMM sources from ad hoc PFAM accessions
 
