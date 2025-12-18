@@ -80,7 +80,7 @@ def get_args():
     groupC.add_argument('--beta', default=0.5, type=float, help = "Description.")
     groupC.add_argument('--gamma', default=0.25, type=float, help = "Description.")
     groupC.add_argument('--delta', default=0.75, type=float, help = "Description.")
-    groupC.add_argument('--inversion-aware', default=False, type=bool, help = "Description.")
+    groupC.add_argument('--inversion-aware', default=False, action="store_true", help = "Description.")
     groupC.add_argument('--min-k', default=1, type=int, help = "Description.")
 
     return parser.get_args(parser)
