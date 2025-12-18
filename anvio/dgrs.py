@@ -538,6 +538,12 @@ class DGR_Finder:
             query_fasta.write_seq(seq)
         query_fasta.close()
 
+        # Summarize potential VR candidates before BLAST
+        num_sequences = len(contig_records)
+        total_bp = sum(len(seq) for seq in contig_records.values())
+        self.run.info_single(f"Identified {num_sequences} potential VR candidate region(s) "
+                            f"({total_bp:,} bp total) for BLAST search.", nl_before=1)
+
         self.run.info('Temporary (SNV window) query input for blast', query_fasta_path)
 
         #  export target sequences
