@@ -193,6 +193,21 @@ class DGR_Finder:
         if self.variable_buffer_length < 0:
             raise ConfigError('The variable buffer length value you are trying to input should be positive integer.')
 
+        if self.snv_window_size <= 0:
+            raise ConfigError('The SNV window size must be a positive integer.')
+
+        if self.snv_window_step <= 0:
+            raise ConfigError('The SNV window step must be a positive integer.')
+
+        if not (0 < self.initial_mismatch_bias_threshold <= 1):
+            raise ConfigError('The initial mismatch bias threshold must be between 0 and 1 (exclusive of 0).')
+
+        if not (0 < self.trimmed_mismatch_bias_threshold <= 1):
+            raise ConfigError('The trimmed mismatch bias threshold must be between 0 and 1 (exclusive of 0).')
+
+        if self.minimum_vr_length <= 0:
+            raise ConfigError('The minimum VR length must be a positive integer.')
+
         if self.departure_from_reference_percentage < 0:
             raise ConfigError('The departure from reference percentage value you are trying to input should be a positive decimal number.')
 
