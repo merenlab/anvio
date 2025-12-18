@@ -388,12 +388,15 @@ class PangenomeGraphManager():
                 complexity = 1
             elif region_x_positions_min not in set(core_positions) and region_x_positions_max not in set(core_positions):
 
-                prior_core_region_id = regions_dict[region_x_positions_min - 1]
-                prior_core_region = regions_info_dict[prior_core_region_id]
+                if region_x_positions_min != 0:
+                    prior_core_region_id = regions_dict[region_x_positions_min - 1]
+                    prior_core_region = regions_info_dict[prior_core_region_id]
 
-                predecessor = [item[2] for item in prior_core_region if item[0] == region_x_positions_min - 1][0]
+                    predecessor = [item[2] for item in prior_core_region if item[0] == region_x_positions_min - 1][0]
 
-                complexity = sum([len(list(self.graph.successors(node))) - 1 for node in nodes_sets + [predecessor]]) + 1
+                    complexity = sum([len(list(self.graph.successors(node))) - 1 for node in nodes_sets + [predecessor]]) + 1
+                else:
+                    complexity = -1
             else:
                 print('Summary error.')
 
