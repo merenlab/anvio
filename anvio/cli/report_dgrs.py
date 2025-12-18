@@ -108,8 +108,8 @@ def get_args():
     groupJ = parser.add_argument_group('SNV CLUSTER LOCATOR PARAMETERS', "Options for adjusting how to locate clusters of SNVs")
     groupJ.add_argument("-d","--departure-from-reference-percentage", help="Minimum departure from reference to consider a SNV. Default is 0.1", type=float, default=0.1)
     groupJ.add_argument("--minimum-snv-density", help="The minimum percentage of SNVs over a SNV cluster needed for it to be valid, think about it as in the number of SNVs over the length of a possible VR, Default = 0.2", type=float, default=0.2)
-    groupJ.add_argument("-s","--distance-between-snv", help="Length of bp between SNVs for them to be added to the high SNV density window. Default = 8", type=int, default=8, metavar="INT")
-    groupJ.add_argument("-r","--minimum-range-size", help="Minimum length of SNVs window. Default = 5", type=int, default=5, metavar="INT")
+    groupJ.add_argument("-w","--snv-window-size", help="Size of sliding window in bp for SNV density calculation. Default = 50", type=int, default=50, metavar="INT")
+    groupJ.add_argument("--snv-window-step", help="Step size in bp for sliding window movement. Default = 10", type=int, default=10, metavar="INT")
     groupJ.add_argument("--variable-buffer-length", help="Length of bp added to your high SNV density 'window'. Default = 35", type=int, default=35)
 
     groupB = parser.add_argument_group('BLASTN ARGUMENTS', "BLASTn parameters for potential Template and Variable Region search")
