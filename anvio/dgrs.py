@@ -205,6 +205,11 @@ class DGR_Finder:
         if not (0 < self.trimmed_mismatch_bias_threshold <= 1):
             raise ConfigError('The trimmed mismatch bias threshold must be between 0 and 1 (exclusive of 0).')
 
+        if self.initial_mismatch_bias_threshold > self.trimmed_mismatch_bias_threshold:
+            raise ConfigError(f'The initial mismatch bias threshold ({self.initial_mismatch_bias_threshold}) should not be '
+                            f'greater than the trimmed threshold ({self.trimmed_mismatch_bias_threshold}). '
+                            f'The initial filter should be more permissive than the trimmed filter.')
+
         if self.minimum_vr_length <= 0:
             raise ConfigError('The minimum VR length must be a positive integer.')
 
