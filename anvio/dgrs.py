@@ -70,7 +70,7 @@ class DGR_Finder:
         self.min_mismatching_base_types_vr = A('min_mismatching_base_types_vr') or 2
         self.min_base_types_vr = A('min_base_types_vr') or 2
         self.min_base_types_tr = A('min_base_types_tr') or 2
-        self.only_a_bases =A('only_a_bases')
+        self.allow_any_base = A('allow_any_base')
         self.temp_dir = A('temp_dir') or filesnpaths.get_temp_directory_path()
         self.variable_buffer_length = A('variable_buffer_length')
         self.departure_from_reference_percentage = A('departure_from_reference_percentage')
@@ -114,8 +114,8 @@ class DGR_Finder:
         self.run.info('Initial mismatch bias threshold', self.initial_mismatch_bias_threshold)
         self.run.info('Trimmed mismatch bias threshold', self.trimmed_mismatch_bias_threshold)
         self.run.info('Minimum VR length after trimming', self.minimum_vr_length)
-        if self.only_a_bases:
-            self.run.info('only A base mismatches', self.only_a_bases)
+        if self.allow_any_base:
+            self.run.info('Allow any dominant base', self.allow_any_base)
         self.run.info('Minimum Mismatching Base Types in VR', self.min_mismatching_base_types_vr)
         self.run.info('Minimum Base Types in VR', self.min_base_types_vr)
         self.run.info('Minimum Base Types in VR', self.min_base_types_tr)
@@ -1491,8 +1491,9 @@ class DGR_Finder:
                         if len(query_unique_bases) <= self.min_base_types_vr:
                             continue
 
-                        # if only a bases then check here or else check the diversity of the hit (TR) bases is below the threshold
-                        if self.only_a_bases:
+                        # By default (conservative), filter for A-base mutagenesis only.
+                        # If --allow-any-base is set, check TR diversity instead.
+                        if not self.allow_any_base:
                             # filter out bases with count > 0 before checking
                             nonzero_mismatch_bases = [b for b, cnt in subject_mismatch_counts.items() if cnt > 0]
 
@@ -1506,7 +1507,7 @@ class DGR_Finder:
                             if not all_mismatches_are_A:
                                 continue
                         else:
-                            # test for TR diversity of base types in the sequence
+                            # --allow-any-base mode: test for TR diversity of base types in the sequence
                             # count the distinct base types in the sequence
                             hit_unique_bases = set(hit_sequence) - {"-", "N"}
 
@@ -1704,11 +1705,11 @@ class DGR_Finder:
         # possible DGR dictionary
         self.DGRs_found_dict = {}
 
-        # yes this warning is in the wrong place but I would rather have it here than in the process blast func
-        if self.only_a_bases:
-                # this is here so that every potential VR doesn't get a new warning and clog up the terminal
-                self.run.warning("Just a note to say that we are only looking for DGRs that have A bases as their site of mutagenesis.",
-                                header="Searching for only A mutagenesis based DGRs")
+        # Display warning if running in permissive mode
+        if self.allow_any_base:
+                self.run.warning("You are using --allow-any-base, which reports DGRs with any dominant base (not just A). "
+                                "This may include non-canonical DGRs or false positives. Review results carefully.",
+                                header="PERMISSIVE MODE: Allowing any dominant base")
 
         if self.collections_mode:
             hits_item = self.merged_mismatch_hits
@@ -1743,8 +1744,8 @@ class DGR_Finder:
                     best_amongst_multiple_TRs_for_one_VR = False
                 else:
                     best_amongst_multiple_TRs_for_one_VR = True
-                    # if not only_a_bases, but some hits have base == 'A', filter for those
-                    if not self.only_a_bases:
+                    # Default: prefer A-based hits when multiple TRs match one VR
+                    if not self.allow_any_base:
                         a_hits = [h for h in query_hits if h.get('base') == 'A']
                         if a_hits:
                             query_hits = a_hits
@@ -3680,7 +3681,7 @@ class DGR_Finder:
                 ("Initial Mismatch Bias Threshold", self.initial_mismatch_bias_threshold if self.initial_mismatch_bias_threshold else "0.6"),
                 ("Trimmed Mismatch Bias Threshold", self.trimmed_mismatch_bias_threshold if self.trimmed_mismatch_bias_threshold else "0.95"),
                 ("Minimum VR Length", self.minimum_vr_length if self.minimum_vr_length else "50"),
-                ("Only A Bases", self.only_a_bases or "FALSE"),
+                ("Allow Any Base", self.allow_any_base or "FALSE"),
                 ("SNV Window Size", self.snv_window_size if self.snv_window_size else "50"),
                 ("SNV Window Step", self.snv_window_step if self.snv_window_step else "10"),
                 ("Minimum Mismatching Base Types in VR", self.min_base_types_vr if self.min_base_types_vr else "2"),

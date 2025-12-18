@@ -131,7 +131,9 @@ def get_args():
     groupD.add_argument("--trimmed-mismatch-bias-threshold", help="Minimum fraction of mismatches to dominant base required in the trimmed optimal window. This is the second stage that finds the best region within each BLAST hit. Default = 0.95", type=float, default=0.95, metavar="FLOAT")
     groupD.add_argument("--minimum-vr-length", help="Minimum length in bp for a valid VR/TR region after trimming. Default = 50", type=int, default=50, metavar="INT")
     groupD.add_argument("-n","--number-of-mismatches", help="Minimum number of mismatches required in the TR/VR alignment. Default = 7", type=int, default=7, metavar="INT")
-    groupD.add_argument("--only-a-bases",help="This flag looks for DGRs that only have mismatches from the A base in the TR.",default=False, action="store_true")
+    groupD.add_argument("--allow-any-base", help="By default, anvi'o only reports DGRs with A-base mutagenesis (the canonical mechanism). "
+                        "Use this flag to also report DGRs with other dominant bases (C, G, or T). This is useful for exploratory "
+                        "analysis but may include false positives.", default=False, action="store_true")
     groupD.add_argument("--min-mismatching-base-types-vr", help="The minimum number of mismatching base 'types' in the variable region, to ensure the variable region has multiple bases present. Has to be an integer between 1 and 4. (NB if 1 then has no variety in the mismatching bases). Default = 2", type=int, default=2, metavar="INT")
     groupD.add_argument("--min-base-types-tr", help="The minimum number of base 'types' in the template region, to ensure the variable region has multiple bases present. Has to be an integer between 1 and 4. (NB if 1 then has no variety in the mismatching bases). Default = 2", type=int, default=2, metavar="INT")
     groupD.add_argument("--min-base-types-vr", help="The minimum number of base 'types' in the variable region, to ensure the variable region has multiple bases present. Has to be an integer between 1 and 4. (NB if 1 then has no variety in the mismatching bases). Default = 2", type=int, default=2, metavar="INT")
