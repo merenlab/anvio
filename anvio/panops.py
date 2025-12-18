@@ -1966,6 +1966,12 @@ class PangenomeGraph():
         for genome in number_gene_calls:
             self.run.info_single(f"Added {number_gene_calls[genome]} gene calls from {genome}.")
 
+        # variable to track nodes with differing alignment lengths
+        diff_len_nodes = []
+        # variable to track nodes with no alignments at all (which may happen as a function of
+        # how the original pangenome was computed)
+        no_alignment_nodes = []
+
         for node, data in self.pangenome_graph.graph.nodes(data=True):
             node_alignment_summaries = {}
             node_alignment_lengths = []
@@ -1998,18 +2004,48 @@ class PangenomeGraph():
 
                     node_alignments[genome_name] = alignment
 
-            if len(set(node_alignment_lengths)) != 1:
-                raise ConfigError("Your alignments have a different length? Oh boy that's not something we like.")
+            valid_alignment_lengths = {l for l in node_alignment_lengths if l > 0}
+            if not valid_alignment_lengths:
+                data['alignment'] = {genome_name: '' for genome_name in node_alignments.keys()}
+                if len(node_alignments) > 1:
+                    no_alignment_nodes.append(node)
+                continue
 
-            cleaned_alignments = {genome_name: '' for genome_name in node_alignments.keys()}
+            alignment_length = max(valid_alignment_lengths)
+            if len(valid_alignment_lengths) != 1:
+                diff_len_nodes.append(node)
 
-            for i in range(0, node_alignment_lengths[0]):
-                summary_code_list = [alignment[i] for genome_name, alignment in node_alignments.items()]
+            # poor man's resolution to alignment issues: pad shorter alignments with gaps so all strings have the same length :(
+            padded_alignments = {genome_name: alignment.ljust(alignment_length, '-') for genome_name, alignment in node_alignments.items()}
+            cleaned_alignments = {genome_name: '' for genome_name in padded_alignments.keys()}
+
+            for i in range(alignment_length):
+                summary_code_list = [alignment[i] for alignment in padded_alignments.values()]
                 if not all(a == '-' for a in summary_code_list):
-                    for genome_name, alignment in node_alignments.items():
+                    for genome_name, alignment in padded_alignments.items():
                         cleaned_alignments[genome_name] += alignment[i]
 
             data['alignment'] = {genome_name: utils.summarize_alignment(alignment) if alignment else '' for genome_name, alignment in cleaned_alignments.items()}
+
+        # keep the user posted
+        if diff_len_nodes:
+            examples = ", ".join(diff_len_nodes[:10])
+            more = "" if len(diff_len_nodes) <= 10 else ", ..."
+            self.run.warning(f"Alignments have differing lengths for {len(diff_len_nodes)} SynGCs(s) (e.g., {examples}{more}). "
+                             f"This can happen for some gene clusters if the alignment step failed for them during the generation "
+                             f"of the input pangenome due to excessive number of genes or un-alignable sequences coming together "
+                             f"in gene clusters (such as due to user-defined GCs, or predicted protein structure-infrmed GC "
+                             f"formations where sequences could be so far from one another). The pangenome graph code simpply "
+                             f"padded the shorter sequences in such unfortunate SynGCs for you with gap characters to continue "
+                             f"the downstream processing of your data. This should not affect anything apart from the fact that "
+                             f"the padding strategy may lead to some undesireable (or even misleading) visualization of SynGC "
+                             f"sequence content in later stages of your analysis.")
+
+        if no_alignment_nodes:
+            examples = ", ".join(no_alignment_nodes[:10])
+            more = "" if len(no_alignment_nodes) <= 10 else ", ..."
+            self.run.warning(f"No alignments found for {len(no_alignment_nodes)} multi-gene syn cluster(s) (e.g., {examples}{more}). "
+                             f"Storing empty alignments and continuing.")
 
         edge_id = 0
         for edge_i, edge_j, data in self.pangenome_graph.graph.edges(data=True):
