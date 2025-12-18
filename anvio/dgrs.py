@@ -64,7 +64,9 @@ class DGR_Finder:
         self.skip_Ns = A('skip_Ns')
         self.skip_dashes = A('skip_dashes')
         self.number_of_mismatches = A('number_of_mismatches')
-        self.percentage_mismatch = A('percentage_mismatch')
+        self.initial_mismatch_bias_threshold = A('initial_mismatch_bias_threshold') or 0.6
+        self.trimmed_mismatch_bias_threshold = A('trimmed_mismatch_bias_threshold') or 0.95
+        self.minimum_vr_length = A('minimum_vr_length') or 50
         self.min_mismatching_base_types_vr = A('min_mismatching_base_types_vr') or 2
         self.min_base_types_vr = A('min_base_types_vr') or 2
         self.min_base_types_tr = A('min_base_types_tr') or 2
@@ -109,7 +111,9 @@ class DGR_Finder:
         self.run.info('Discovery mode', self.discovery_mode)
         self.run.info('minimum_snv_density', self.minimum_snv_density)
         self.run.info('Number of Mismatches', self.number_of_mismatches)
-        self.run.info('Percentage of Mismatching Bases', self.percentage_mismatch)
+        self.run.info('Initial mismatch bias threshold', self.initial_mismatch_bias_threshold)
+        self.run.info('Trimmed mismatch bias threshold', self.trimmed_mismatch_bias_threshold)
+        self.run.info('Minimum VR length after trimming', self.minimum_vr_length)
         if self.only_a_bases:
             self.run.info('only A base mismatches', self.only_a_bases)
         self.run.info('Minimum Mismatching Base Types in VR', self.min_mismatching_base_types_vr)
@@ -3640,7 +3644,9 @@ class DGR_Finder:
                 ("Skip 'Ns'", self.skip_Ns if self.skip_Ns else "FALSE"),
                 ("Skip '-'", self.skip_dashes if self.skip_dashes else "FALSE"),
                 ("Number of Mismatches", self.number_of_mismatches if self.number_of_mismatches else "7"),
-                ("Percentage of Mismatches", self.percentage_mismatch if self.percentage_mismatch else "0.8"),
+                ("Initial Mismatch Bias Threshold", self.initial_mismatch_bias_threshold if self.initial_mismatch_bias_threshold else "0.6"),
+                ("Trimmed Mismatch Bias Threshold", self.trimmed_mismatch_bias_threshold if self.trimmed_mismatch_bias_threshold else "0.95"),
+                ("Minimum VR Length", self.minimum_vr_length if self.minimum_vr_length else "50"),
                 ("Only A Bases", self.only_a_bases or "FALSE"),
                 ("SNV Window Size", self.snv_window_size if self.snv_window_size else "50"),
                 ("SNV Window Step", self.snv_window_step if self.snv_window_step else "10"),
