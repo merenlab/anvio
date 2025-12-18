@@ -1416,6 +1416,13 @@ class DGR_Finder:
                         trimmed_hseq = hseq[trim_start:trim_end]
                         trimmed_midline = midline[trim_start:trim_end]
 
+                        # Second repeat check: trimming may have concentrated repeats
+                        # that were diluted in the original alignment
+                        if self.has_repeat(trimmed_qseq, trimmed_qseq, trimmed_hseq) or \
+                           self.has_repeat(trimmed_hseq, trimmed_qseq, trimmed_hseq):
+                            elem.clear()
+                            continue
+
                         # Recalculate mismatch counts for trimmed region
                         query_mismatch_counts = defaultdict(int)
                         subject_mismatch_counts = defaultdict(int)
