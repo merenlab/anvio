@@ -377,7 +377,8 @@ class PangenomeGraphManager():
             nodes_sets = [item[2] for item in values_list]
             nodes_involved = set(nodes_sets)
 
-            diversity = len(set([item.rsplit('_', 1)[0] for item in nodes_involved]))
+            # diversity = len(set([item.rsplit('_', 1)[0] for item in nodes_involved]))
+
             region_x_positions = [item[0] for item in values_list]
             # region_y_positions = [item[1] for item in values_list]
 
@@ -407,6 +408,19 @@ class PangenomeGraphManager():
             counts = Counter(genome_occurences)
             genome_counts = {item: counts.get(item, 0) for item in genome_names}
 
+            K = len(nodes_sets)
+            T = len(genome_occurences)
+
+            if K < 2:
+                diversity = 0
+            else:
+                shannon_sum = 0
+                for genome_set in genomes_sets:
+                    n_i = len(genome_set)
+                    p_i = n_i / T
+                    shannon_sum += p_i * math.log(p_i)
+                diversity = ((-1) * shannon_sum) / math.log(K)
+
             values = list(genome_counts.values())
             max_expansion = max(values)
             min_expansion = min(values)
@@ -425,12 +439,11 @@ class PangenomeGraphManager():
                 'motif': motif,
                 'x_min': region_x_positions_min,
                 'x_max': region_x_positions_max,
-                'quantity': len(values_list),
-                'complexity': complexity,
+                'num_gene_clusters': K,
+                'num_gene_calls': T,
+                'complexity': complexity / weight,
                 'max_expansion': max_expansion,
                 'min_expansion': min_expansion,
-                # 'mean_expansion': mean_expansion,
-                # 'mode_expansion': mode,
                 'diversity': diversity,
                 'weight': weight
             }
@@ -462,23 +475,25 @@ class PangenomeGraphManager():
         D_max = df['diversity'].max()
         W_median = df['weight'].median()
 
+        def log_min_max_normalize(X, X_min, X_max):
+            X_norm = (math.log(1 + X) - math.log(1 + X_min)) / (math.log(1 + X_max) - math.log(1 + X_min))
+            return(X_norm)
+
         def func(row):
 
             C = row['complexity']
             E = row['max_expansion']
-            D = row['diversity']
             W = row['weight']
+            D = row['diversity']
 
-            C_norm = (C - C_min) / (C_max - C_min)
-            E_norm = (E - E_min) / (E_max - E_min)
-            D_norm = (D - D_min) / (D_max - D_min)
+            C_norm = log_min_max_normalize(C, C_min, C_max)
+            E_norm = log_min_max_normalize(E, E_min, E_max)
 
-            e_value = math.e
-            W_f = 1 - e_value**(-W/W_median)
+            W_f = 1 - math.e**(-W/W_median)
 
-            CGVS = (C_norm * E_norm * D_norm)**(1/3) * W_f
+            CVS = (C_norm * E_norm * D)**(1/3) * W_f
 
-            return(round(CGVS, 3))
+            return(round(CVS, 3))
         return(func)
 
 

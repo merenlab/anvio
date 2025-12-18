@@ -445,6 +445,15 @@ class TablesForHMMHits(Table):
                 hit['accession'] = hit['gene_hmm_id']
                 hit['function'] = hit['gene_name']
 
+                if hit['accession'] == "-":
+                    run.warning(f"Heads up. While processing a hit to the HMM with the function '{hit['function']}', "
+                                f"we noticed that the accession value for this hit in the HMMER output table was blank "
+                                f"('-'). This usually happens because the model is missing an `ACC` line. We are sorry "
+                                f"that things got all the way to this point before we realized something was wrong. We "
+                                f"will add the hit to the gene functions table regardless, but just keep in mind that "
+                                f"some downstream programs that rely on accession numbers will not be able to work with "
+                                f"these annotations as-is (unless you redo them with proper accession-labeling in the HMM files).")
+
             gene_function_calls_table.create(search_results_dict)
         else:
             self.run.warning("There are no hits to add to the database. Returning empty handed, "

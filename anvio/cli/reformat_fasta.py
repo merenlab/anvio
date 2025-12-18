@@ -169,6 +169,23 @@ def plot_length_histogram(lengths, run, bin_count=None, height=None):
 
         tick_positions = np.linspace(edges_log[0], edges_log[-1], num=min(6, len(edges_log)))
         tick_labels = [utils.human_readable_number(10 ** tp, decimals=1) for tp in tick_positions]
+
+        # In the log-scale we shall highlight the peak count in the histogram with a red guide line
+        # and an explicit x-axis label so the user can see the lenght of the contigs there.
+        if len(counts_log):
+            peak_idx = int(np.argmax(counts_log))
+            peak_center = centers_log[peak_idx]
+            peak_height = counts_log[peak_idx]
+            peak_length = utils.human_readable_number(10 ** peak_center, decimals=1)
+
+            plt.plot([peak_center, peak_center], [0, peak_height], color='red')
+            tick_positions = np.append(tick_positions, peak_center)
+            tick_labels.append(f"{peak_length}")
+
+            order = np.argsort(tick_positions)
+            tick_positions = tick_positions[order]
+            tick_labels = [tick_labels[i] for i in order]
+
         plt.xticks(tick_positions.tolist(), tick_labels)
         plt.xlabel("Contig length (bp, log scale)")
 
