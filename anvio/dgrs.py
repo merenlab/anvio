@@ -1139,6 +1139,91 @@ class DGR_Finder:
         return False
 
 
+    def find_optimal_mismatch_window(self, qseq, hseq, chars_to_skip, threshold, min_length):
+        """
+        Find the longest contiguous window where >= threshold fraction of mismatches
+        are to the dominant base on the subject (TR) side.
+
+        This implements the "optimal window trimming" algorithm to recover precise VR/TR
+        boundaries from BLAST alignments that may have over-extended.
+
+        Parameters
+        ==========
+        qseq : str
+            Query sequence (VR) from BLAST alignment.
+        hseq : str
+            Hit/subject sequence (TR) from BLAST alignment.
+        chars_to_skip : set
+            Characters to ignore when counting mismatches (e.g., {'N', '-'}).
+        threshold : float
+            Minimum fraction of mismatches that must be to dominant base (e.g., 0.95).
+        min_length : int
+            Minimum length of the trimmed alignment.
+
+        Returns
+        =======
+        tuple or None
+            (trim_start, trim_end, dominant_base) if valid window found, None otherwise.
+            trim_start and trim_end are indices into the alignment (0-based, end exclusive).
+        """
+        # First, identify all mismatch positions and what base they are on TR side
+        mismatch_positions = []  # List of (position, tr_base)
+        for idx in range(len(qseq)):
+            if qseq[idx] in chars_to_skip or hseq[idx] in chars_to_skip:
+                continue
+            if qseq[idx] != hseq[idx]:
+                mismatch_positions.append((idx, hseq[idx]))
+
+        if len(mismatch_positions) < 2:
+            # Not enough mismatches to trim
+            return None
+
+        # Find the dominant base (most frequent on TR side)
+        base_counts = defaultdict(int)
+        for _, tr_base in mismatch_positions:
+            base_counts[tr_base] += 1
+
+        dominant_base = max(base_counts, key=base_counts.get)
+
+        # Create binary array: 1 if mismatch is to dominant base, 0 otherwise
+        # We work in "mismatch space" - positions refer to indices in mismatch_positions
+        is_dominant = [1 if tr_base == dominant_base else 0 for _, tr_base in mismatch_positions]
+
+        n_mismatches = len(mismatch_positions)
+
+        # Build prefix sums for efficient window queries
+        # prefix_dominant[i] = count of dominant mismatches in positions [0, i)
+        # prefix_total[i] = i (total mismatches in positions [0, i))
+        prefix_dominant = [0] * (n_mismatches + 1)
+        for i in range(n_mismatches):
+            prefix_dominant[i + 1] = prefix_dominant[i] + is_dominant[i]
+
+        # Find longest window [i, j) where dominant_count / total_count >= threshold
+        best_start = None
+        best_end = None
+        best_length = 0
+
+        for i in range(n_mismatches):
+            for j in range(i + 1, n_mismatches + 1):
+                total_count = j - i
+                dominant_count = prefix_dominant[j] - prefix_dominant[i]
+
+                if total_count > 0 and dominant_count / total_count >= threshold:
+                    # Get alignment positions for this window
+                    align_start = mismatch_positions[i][0]
+                    align_end = mismatch_positions[j - 1][0] + 1  # +1 to include last position
+
+                    window_length = align_end - align_start
+
+                    if window_length >= min_length and window_length > best_length:
+                        best_start = align_start
+                        best_end = align_end
+                        best_length = window_length
+
+        if best_start is not None:
+            return (best_start, best_end, dominant_base)
+        return None
+
 
     def parse_and_process_blast_results(self, xml_file_path, bin_name, max_percent_identity):
         """
