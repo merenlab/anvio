@@ -283,11 +283,16 @@ class DGR_Finder:
         if self.whole_primer_length <= 0:
                 raise ConfigError("The whole primer length is set to a negative value or zero. This is not allowed. Please set the whole primer length to a positive value.")
 
-        if not self.skip_compute_DGR_variability_profiling and not self.samples_txt:
-            raise ConfigError("No samples.txt declared and no skip-compute-DGR-variability-profiling or pre-computed-dgrs flag used. Either use the skip profiling flag, add a precomputed output of "
-                            "`anvi-report-dgrs` or instruct anvi'o where to find the samples.txt that you want to profile are.")
-
-        if not self.skip_compute_DGR_variability_profiling and self.samples_txt:
+        if not self.samples_txt:
+            # No samples.txt provided - skip variability profiling automatically
+            self.skip_compute_DGR_variability_profiling = True
+            self.run.warning("No samples.txt was provided, and THAT IS FINE. Anvi'o will skip computing DGR variability "
+                           "profiling. If you want to compute variability profiling later, you can re-run the program "
+                           "with a samples.txt file and use the `--pre-computed-dgrs` flag pointing to the DGRs_found.tsv "
+                           "output from this run, so anvi'o only computes the variability profiling step.",
+                           header="SKIPPING VARIABILITY PROFILING")
+        elif not self.skip_compute_DGR_variability_profiling:
+            # samples.txt provided and user wants variability profiling
             self.samples_artifact = SamplesTxt(self.samples_txt)
 
         if self.pre_computed_dgrs_path:
