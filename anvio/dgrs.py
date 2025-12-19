@@ -134,7 +134,7 @@ class DGR_Finder:
         self.run.info('Departure from reference percentage', self.departure_from_reference_percentage)
         if self.snv_matching_proportion:
             self.run.info('SNV matching proportion', self.snv_matching_proportion)
-        self.run.info('HMM(s) Provided', ", ".join(self.hmm))
+        self.run.info('HMM(s) Provided', ", ".join(self.hmm) if self.hmm else "(will use default: Reverse_Transcriptase)")
         if not self.skip_recovering_genomic_context:
             self.run.info('Number of genes to consider in context', self.num_genes_to_consider_in_context)
         # computing variability profiling for every VR in every DGR by searching through raw reads?
