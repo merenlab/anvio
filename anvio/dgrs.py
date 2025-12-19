@@ -9,6 +9,7 @@ import shutil
 import argparse
 import copy
 import bisect
+import time
 import pytantan
 
 import anvio
@@ -328,8 +329,15 @@ class DGR_Finder:
         # setup
         self.target_file_path = os.path.join(self.temp_dir, "reference_sequences.fasta")
         self.run.info('Temporary (contig) reference input for blast', self.target_file_path)
+
+        # Initialize timing dict for sub-steps
+        self.blast_timings = {}
+
         # initialise the SNV table
+        t = time.time()
         self.init_snv_table()
+        self.blast_timings['Loading SNVs'] = time.time() - t
+
         if self.collections_mode:
             self.run.info_single("Collections mode activated. Get ready to see as many BLASTn as bins in your collection. Big things be happenin'.", nl_before=1)
             return self.process_collections_mode()
@@ -929,9 +937,19 @@ class DGR_Finder:
             If no valid SNV clusters are found.
         """
 
+        t = time.time()
         sample_id_list, contig_sequences = self.load_data_and_setup()
+        self.blast_timings['Loading contigs'] = time.time() - t
+
+        t = time.time()
         contig_records = self.find_snv_clusters(sample_id_list, contig_sequences)
-        return self.run_blast(contig_records, "potential_dgrs.fasta", contig_sequences)
+        self.blast_timings['Finding SNV clusters'] = time.time() - t
+
+        t = time.time()
+        result = self.run_blast(contig_records, "potential_dgrs.fasta", contig_sequences)
+        self.blast_timings['Running BLAST'] = time.time() - t
+
+        return result
 
 
 
@@ -3724,6 +3742,10 @@ class DGR_Finder:
         args : argparse.Namespace
             Command-line arguments controlling optional outputs.
         """
+        # Track timing for each major step
+        timings = {}
+        total_start = time.time()
+
         self.sanity_check()
 
         # do we have a previously computed list of dgrs to focus for dgr activity calculations?
@@ -3740,17 +3762,32 @@ class DGR_Finder:
             # WE'RE DOnE HERE. DoNe.
             return
 
-        self.get_blast_results()
-        self.process_blast_results()
-        self.filter_for_best_VR_TR()
+        t = time.time(); self.get_blast_results(); timings['BLAST search (total)'] = time.time() - t
+        t = time.time(); self.process_blast_results(); timings['Parsing BLAST results'] = time.time() - t
+        t = time.time(); self.filter_for_best_VR_TR(); timings['Filtering VR/TR'] = time.time() - t
         if args.parameter_output:
             self.run.info_single("Writing to Parameters used file.", nl_before=1)
             self.parameter_output_sheet()
-        self.get_gene_info()
-        self.get_hmm_info()
-        self.recover_genomic_context_surrounding_dgrs()
-        self.report_genomic_context_surrounding_dgrs()
-        self.create_found_tr_vr_tsv()
-        self.compute_dgr_variability_profiling()
-        self.process_dgr_data_for_HTML_summary()
+        t = time.time(); self.get_gene_info(); timings['Getting gene info'] = time.time() - t
+        t = time.time(); self.get_hmm_info(); timings['Getting HMM info'] = time.time() - t
+        t = time.time(); self.recover_genomic_context_surrounding_dgrs(); timings['Recovering genomic context'] = time.time() - t
+        t = time.time(); self.report_genomic_context_surrounding_dgrs(); timings['Reporting genomic context'] = time.time() - t
+        t = time.time(); self.create_found_tr_vr_tsv(); timings['Creating output TSV'] = time.time() - t
+        t = time.time(); self.compute_dgr_variability_profiling(); timings['Computing variability profiling'] = time.time() - t
+        t = time.time(); self.process_dgr_data_for_HTML_summary(); timings['Processing HTML summary'] = time.time() - t
+
+        total_time = time.time() - total_start
+
+        # Report timing summary
+        self.run.warning(None, header="TIMING SUMMARY", lc="cyan")
+
+        # Report BLAST sub-timings if available
+        if hasattr(self, 'blast_timings'):
+            for step, duration in self.blast_timings.items():
+                self.run.info(f"  {step}", f"{duration:.1f}s")
+
+        for step, duration in timings.items():
+            self.run.info(step, f"{duration:.1f}s")
+        self.run.info("TOTAL", f"{total_time:.1f}s", mc="green")
+
         return
