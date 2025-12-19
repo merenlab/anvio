@@ -10,6 +10,7 @@ import argparse
 import copy
 import bisect
 import time
+import numpy as np
 import pytantan
 
 import anvio
@@ -1313,10 +1314,17 @@ class DGR_Finder:
         if not hasattr(self, 'mismatch_hits') or not isinstance(self.mismatch_hits, defaultdict):
             self.mismatch_hits = defaultdict(lambda: defaultdict(dict))
 
-        # === PRE-INDEX SNV DATA BY CONTIG (query once, use many times) ===
-        # Instead of filtering the entire DataFrame for each HSP, we group by contig once
-        # and then do O(1) dict lookups + filter only that contig's SNVs
-        snv_by_contig = {contig: group for contig, group in self.snv_panda.groupby('contig_name')}
+        # === PRE-INDEX SNV DATA BY CONTIG AS SORTED NUMPY ARRAYS ===
+        # Using sorted arrays enables O(log n) binary search for range queries
+        # instead of O(n) pandas filtering per HSP
+        snv_index = {}
+        for contig, group in self.snv_panda.groupby('contig_name'):
+            sorted_group = group.sort_values('pos_in_contig')
+            snv_index[contig] = {
+                'positions': sorted_group['pos_in_contig'].values,
+                'codon_pos': sorted_group['base_pos_in_codon'].values,
+                'reference': sorted_group['reference'].values
+            }
 
         chars_to_skip = []
         if self.skip_Ns:
