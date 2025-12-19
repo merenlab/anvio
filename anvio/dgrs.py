@@ -1314,6 +1314,15 @@ class DGR_Finder:
         if not hasattr(self, 'mismatch_hits') or not isinstance(self.mismatch_hits, defaultdict):
             self.mismatch_hits = defaultdict(lambda: defaultdict(dict))
 
+        # === TIMING: Initialize cumulative timers for parsing sub-operations ===
+        t_snv_indexing = time.time()
+        timing_has_repeat = 0.0
+        timing_optimal_window = 0.0
+        timing_snv_lookup = 0.0
+        timing_snv_filtering = 0.0
+        timing_xml_extract = 0.0
+        hsp_count = 0
+
         # === PRE-INDEX SNV DATA BY CONTIG AS SORTED NUMPY ARRAYS ===
         # Using sorted arrays enables O(log n) binary search for range queries
         # instead of O(n) pandas filtering per HSP
@@ -1325,6 +1334,7 @@ class DGR_Finder:
                 'codon_pos': sorted_group['base_pos_in_codon'].values,
                 'reference': sorted_group['reference'].values
             }
+        timing_snv_indexing = time.time() - t_snv_indexing
 
         chars_to_skip = []
         if self.skip_Ns:
@@ -1367,18 +1377,24 @@ class DGR_Finder:
                         # get parent Iteration and Hit elements
                         section_id = current_section_id
                         hit_id_counter += 1
+                        hsp_count += 1
                         hit_identity_unique = f"{section_id}_count_{hit_id_counter}"
 
                         # extract start position from section_id (using pre-compiled regex)
                         match = SECTION_ID_PATTERN.search(section_id)
                         query_start_position = int(match.group(1)) if match else 0
 
+                        t0 = time.time()
                         qseq = elem.find('Hsp_qseq').text
                         hseq = elem.find('Hsp_hseq').text
                         midline = elem.find('Hsp_midline').text
+                        timing_xml_extract += time.time() - t0
 
                         # check for imperfect repeats, mono- di-mers, tandem repeats
-                        if self.has_repeat(qseq, qseq, hseq) or self.has_repeat(hseq, qseq, hseq):
+                        t0 = time.time()
+                        has_repeat_result = self.has_repeat(qseq, qseq, hseq) or self.has_repeat(hseq, qseq, hseq)
+                        timing_has_repeat += time.time() - t0
+                        if has_repeat_result:
                             elem.clear()
                             continue
 
@@ -1430,11 +1446,13 @@ class DGR_Finder:
 
                         # Stage 2: Optimal window trimming
                         # Find the longest region where >= 95% of mismatches are to dominant base
+                        t0 = time.time()
                         trim_result = self.find_optimal_mismatch_window(
                             qseq, hseq, chars_to_skip,
                             self.trimmed_mismatch_bias_threshold,
                             self.minimum_vr_length
                         )
+                        timing_optimal_window += time.time() - t0
 
                         if trim_result is None:
                             # No valid trimmed window found
@@ -1559,6 +1577,7 @@ class DGR_Finder:
                         # Could at creating  thresholds - for populations etc
 
                         # subset snv by query contig (vr contig) and VR range using binary search
+                        t0 = time.time()
                         contig_data = snv_index.get(query_contig)
                         if contig_data is not None:
                             positions = contig_data['positions']
@@ -1576,6 +1595,7 @@ class DGR_Finder:
                         # make snv vr positions a list so we can print it in the output
                         # (already sorted, use dict.fromkeys to remove duplicates while preserving order)
                         snv_VR_positions = list(dict.fromkeys(snv_positions))
+                        timing_snv_lookup += time.time() - t0
 
                         # currently position of mismatches is relative to the VR needs to be relative to the contig so that they match the vr snv ones
                         mismatch_pos_contig_relative = [x + query_genome_start_position for x in query_mismatch_positions]
@@ -1627,12 +1647,14 @@ class DGR_Finder:
 
                             # subset VR snv, by matches in VR and TR *AND* reference in VR being mutagenesis base (usually A)
                             # Create set for O(1) lookup instead of pandas .isin()
+                            t0 = time.time()
                             mismatch_pos_set = set(mismatch_pos_contig_relative)
                             # Boolean mask: position not in mismatches AND reference != letter_to_skip
                             mask = np.array([pos not in mismatch_pos_set and ref != letter_to_skip
                                            for pos, ref in zip(snv_positions, snv_reference)])
                             # this needs to be a set of the position in contig so that there are not multiple reported
                             numb_of_snv_in_matches_not_mutagen_base = len(set(snv_positions[mask]))
+                            timing_snv_filtering += time.time() - t0
                             numb_of_mismatches = len(query_mismatch_positions)
                             numb_of_SNVs = len(snv_VR_positions)
 
@@ -1716,6 +1738,15 @@ class DGR_Finder:
             # ensure cleanup
             del context
 
+        # === TIMING REPORT for parse_and_process_blast_results ===
+        self.run.warning(None, header="BLAST PARSING TIMING BREAKDOWN", lc="cyan")
+        self.run.info("HSPs processed", f"{hsp_count:,}")
+        self.run.info("SNV pre-indexing", f"{timing_snv_indexing:.1f}s")
+        self.run.info("XML sequence extraction", f"{timing_xml_extract:.1f}s")
+        self.run.info("has_repeat() checks", f"{timing_has_repeat:.1f}s")
+        self.run.info("find_optimal_mismatch_window()", f"{timing_optimal_window:.1f}s")
+        self.run.info("SNV binary search lookup", f"{timing_snv_lookup:.1f}s")
+        self.run.info("SNV filtering", f"{timing_snv_filtering:.1f}s")
 
 
     def filter_for_best_VR_TR(self):
