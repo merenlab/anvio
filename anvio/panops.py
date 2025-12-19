@@ -1395,6 +1395,8 @@ class PangenomeGraph():
         self.priority_genome = A('priority_genome')
         self.load_state = A('load_state')
         self.import_values = A('import_values').split(',') if A('import_values') else []
+        self.max_num_paralogs = A('max_num_paralogs')
+        self.max_num_paralogs_per_genome = A('max_num_paralogs_per_genome')
 
         # STANDARD CLASS VARIABLES
         self.version = anvio.__pangraph__version__
@@ -1407,6 +1409,70 @@ class PangenomeGraph():
         self.meta = {}
         self.bins = {}
         self.states = {}
+
+
+    def identify_high_paralog_gene_clusters(self, max_num_paralogs, max_num_paralogs_per_genome):
+        """Identify gene clusters with excessive paralogs, and filter them if the user asks for it.
+
+        Filtering of genes is done based on two criteria: (1) total occurrences across all genomes
+        (max_num_paralogs), or (2) num ccurrences in any single genome (max_num_paralogs_per_genome),
+        and returns gene cluster IDs that should be excluded from graph building
+        """
+        if max_num_paralogs == -1 and max_num_paralogs_per_genome == -1:
+            return set()  # No filtering
+
+        high_paralog_clusters = set()
+
+        # Count total occurrences and per-genome occurrences
+        gene_cluster_total_counts = {}
+        gene_cluster_genome_counts = {}  # {gene_cluster: {genome: count}}
+
+        for index, row in self.pangenome_data_df.iterrows():
+            gc = row['gene_cluster']
+            genome = row['genome']
+
+            # Total count
+            gene_cluster_total_counts[gc] = gene_cluster_total_counts.get(gc, 0) + 1
+
+            # Per-genome count
+            if gc not in gene_cluster_genome_counts:
+                gene_cluster_genome_counts[gc] = {}
+            gene_cluster_genome_counts[gc][genome] = \
+                gene_cluster_genome_counts[gc].get(genome, 0) + 1
+
+        # Apply total threshold
+        if max_num_paralogs != -1:
+            filtered_by_total = {gc for gc, count in gene_cluster_total_counts.items()
+                                if count > max_num_paralogs}
+            high_paralog_clusters.update(filtered_by_total)
+
+            if filtered_by_total:
+                self.run.warning(f"Filtering {len(filtered_by_total)} gene clusters "
+                               f"with >{max_num_paralogs} total paralogs across all genomes")
+                for gc in sorted(filtered_by_total):
+                    count = gene_cluster_total_counts[gc]
+                    self.run.info_single(f"  {gc}: {count} total occurrences")
+
+        # Apply per-genome threshold
+        if max_num_paralogs_per_genome != -1:
+            filtered_by_genome = set()
+            for gc, genome_counts in gene_cluster_genome_counts.items():
+                max_in_genome = max(genome_counts.values())
+                if max_in_genome > max_num_paralogs_per_genome:
+                    filtered_by_genome.add(gc)
+
+            high_paralog_clusters.update(filtered_by_genome)
+
+            if filtered_by_genome:
+                self.run.warning(f"Filtering {len(filtered_by_genome)} gene clusters "
+                               f"with >{max_num_paralogs_per_genome} paralogs in any single genome")
+                for gc in sorted(filtered_by_genome):
+                    max_count = max(gene_cluster_genome_counts[gc].values())
+                    genome_with_max = [g for g, c in gene_cluster_genome_counts[gc].items()
+                                      if c == max_count][0]
+                    self.run.info_single(f"  {gc}: {max_count} occurrences in {genome_with_max}")
+
+        return high_paralog_clusters
 
 
     def summarize_pangenome_graph(self):
@@ -1819,6 +1885,36 @@ class PangenomeGraph():
                     self.run.info_single(f"Column {value} not found in the pangenome.")
 
         self.import_values = import_values_found
+
+        # Identify high-paralog gene clusters to filter
+        high_paralog_gene_clusters = self.identify_high_paralog_gene_clusters(
+            self.max_num_paralogs,
+            self.max_num_paralogs_per_genome
+        )
+
+        # Filter pangenome_data_df to remove high-paralog gene clusters
+        if high_paralog_gene_clusters:
+            original_gene_count = len(self.pangenome_data_df)
+            self.pangenome_data_df = self.pangenome_data_df[
+                ~self.pangenome_data_df['gene_cluster'].isin(high_paralog_gene_clusters)
+            ]
+            filtered_gene_count = original_gene_count - len(self.pangenome_data_df)
+            self.run.info_single(f"Removed {filtered_gene_count} gene calls from {len(high_paralog_gene_clusters)} "
+                               f"high-paralog gene clusters")
+
+            # Reassign sequential positions for each genome-contig group
+            # This closes gaps left by filtered genes
+            reassigned_rows = []
+            for (genome, contig), group in self.pangenome_data_df.groupby(['genome', 'contig']):
+                group = group.sort_values('position')
+                group = group.copy()
+                # Reassign position to be sequential (0, 1, 2, 3, ...)
+                group['position'] = range(len(group))
+                reassigned_rows.append(group)
+
+            if reassigned_rows:
+                self.pangenome_data_df = pd.concat(reassigned_rows, ignore_index=True)
+                self.run.info_single(f"Reassigned sequential positions for all genome-contig groups")
 
         number_gene_calls = {}
         layers_data = {}
