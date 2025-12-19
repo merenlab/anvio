@@ -1558,17 +1558,24 @@ class DGR_Finder:
                         # Currently the code (30.04.2025) adds a column to the DGR_looks_snv_false if there is ONE single SNV at a non-mutagenesis match site.
                         # Could at creating  thresholds - for populations etc
 
-                        # subset snv df by query contig (vr contig) and VR range
-                        # Use pre-indexed dict for O(1) contig lookup, then filter only that contig's SNVs
-                        contig_snvs = snv_by_contig.get(query_contig)
-                        if contig_snvs is not None:
-                            matching_snv_rows = contig_snvs[contig_snvs['pos_in_contig'].between(
-                                query_genome_start_position, query_genome_end_position)]
+                        # subset snv by query contig (vr contig) and VR range using binary search
+                        contig_data = snv_index.get(query_contig)
+                        if contig_data is not None:
+                            positions = contig_data['positions']
+                            left_idx = bisect.bisect_left(positions, query_genome_start_position)
+                            right_idx = bisect.bisect_right(positions, query_genome_end_position)
+                            # Slice all arrays to matching range
+                            snv_positions = positions[left_idx:right_idx]
+                            snv_codon_pos = contig_data['codon_pos'][left_idx:right_idx]
+                            snv_reference = contig_data['reference'][left_idx:right_idx]
                         else:
-                            matching_snv_rows = self.snv_panda.iloc[0:0]  # empty DataFrame with same structure
+                            snv_positions = np.array([], dtype=int)
+                            snv_codon_pos = np.array([], dtype=int)
+                            snv_reference = np.array([], dtype=object)
 
                         # make snv vr positions a list so we can print it in the output
-                        snv_VR_positions = sorted(set(matching_snv_rows['pos_in_contig'].to_list()))
+                        # (already sorted, use dict.fromkeys to remove duplicates while preserving order)
+                        snv_VR_positions = list(dict.fromkeys(snv_positions))
 
                         # currently position of mismatches is relative to the VR needs to be relative to the contig so that they match the vr snv ones
                         mismatch_pos_contig_relative = [x + query_genome_start_position for x in query_mismatch_positions]
