@@ -1625,10 +1625,14 @@ class DGR_Finder:
                                 elif letter_to_skip == "N":
                                     letter_to_skip = "N"
 
-                            # subset VR snv df, by matches in VR and TR *AND* reference in VR being mutagenesis base (usually A)
-                            snv_in_matches_not_mutagen_base = matching_snv_rows[~matching_snv_rows['pos_in_contig'].isin(mismatch_pos_contig_relative) & (matching_snv_rows['reference'] != letter_to_skip)]
+                            # subset VR snv, by matches in VR and TR *AND* reference in VR being mutagenesis base (usually A)
+                            # Create set for O(1) lookup instead of pandas .isin()
+                            mismatch_pos_set = set(mismatch_pos_contig_relative)
+                            # Boolean mask: position not in mismatches AND reference != letter_to_skip
+                            mask = np.array([pos not in mismatch_pos_set and ref != letter_to_skip
+                                           for pos, ref in zip(snv_positions, snv_reference)])
                             # this needs to be a set of the position in contig so that there are not multiple reported
-                            numb_of_snv_in_matches_not_mutagen_base = len(set(snv_in_matches_not_mutagen_base['pos_in_contig']))
+                            numb_of_snv_in_matches_not_mutagen_base = len(set(snv_positions[mask]))
                             numb_of_mismatches = len(query_mismatch_positions)
                             numb_of_SNVs = len(snv_VR_positions)
 
