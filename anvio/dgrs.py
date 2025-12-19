@@ -1139,16 +1139,11 @@ class DGR_Finder:
 
         # using pytantan (https://doi.org/10.1093/nar/gkq1212) as a repeat finder
         # historically we used pytrf (https://doi.org/10.1186/s12859-025-06168-3)
-
-        # show citation notice only once
-        if not getattr(self, '_pytantan_citation_shown', False):
-            self.run.warning("Anvi'o will now review the candidate DGRs for repeated sequences with the "
-                            "python wrapped tantan repeat finder. DOI: https://doi.org/10.1093/nar/gkq1212",
-                            lc='green', header="CITATION")
-            self._pytantan_citation_shown = True
+        # citation notice is shown once at the start of parse_and_process_blast_results()
 
         masked_seq = pytantan.mask_repeats(seq)
-        num_masked = sum(1 for c in masked_seq if c.islower())
+        # Count lowercase (masked) characters - str.count() is C-optimized
+        num_masked = sum(masked_seq.count(c) for c in 'acgtn')
         frac_masked = num_masked / len(masked_seq)
         if frac_masked > self.repeat_threshold:
             if anvio.DEBUG and self.verbose:
@@ -1313,6 +1308,11 @@ class DGR_Finder:
 
         if not hasattr(self, 'mismatch_hits') or not isinstance(self.mismatch_hits, defaultdict):
             self.mismatch_hits = defaultdict(lambda: defaultdict(dict))
+
+        # Show pytantan citation once before processing
+        self.run.warning("Anvi'o will now review the candidate DGRs for repeated sequences with the "
+                        "python wrapped tantan repeat finder. DOI: https://doi.org/10.1093/nar/gkq1212",
+                        lc='green', header="CITATION")
 
         # === TIMING: Initialize cumulative timers for parsing sub-operations ===
         t_snv_indexing = time.time()
