@@ -9,7 +9,6 @@ import shutil
 import argparse
 import copy
 import bisect
-import time
 import numpy as np
 import pytantan
 
@@ -336,13 +335,8 @@ class DGR_Finder:
         self.target_file_path = os.path.join(self.temp_dir, "reference_sequences.fasta")
         self.run.info('Temporary (contig) reference input for blast', self.target_file_path)
 
-        # Initialize timing dict for sub-steps
-        self.blast_timings = {}
-
         # initialise the SNV table
-        t = time.time()
         self.init_snv_table()
-        self.blast_timings['Loading SNVs'] = time.time() - t
 
         if self.collections_mode:
             self.run.info_single("Collections mode activated. Get ready to see as many BLASTn as bins in your collection. Big things be happenin'.", nl_before=1)
@@ -943,17 +937,9 @@ class DGR_Finder:
             If no valid SNV clusters are found.
         """
 
-        t = time.time()
         sample_id_list, contig_sequences = self.load_data_and_setup()
-        self.blast_timings['Loading contigs'] = time.time() - t
-
-        t = time.time()
         contig_records = self.find_snv_clusters(sample_id_list, contig_sequences)
-        self.blast_timings['Finding SNV clusters'] = time.time() - t
-
-        t = time.time()
         result = self.run_blast(contig_records, "potential_dgrs.fasta", contig_sequences)
-        self.blast_timings['Running BLAST'] = time.time() - t
 
         return result
 
@@ -1314,15 +1300,6 @@ class DGR_Finder:
                         "python wrapped tantan repeat finder. DOI: https://doi.org/10.1093/nar/gkq1212",
                         lc='green', header="CITATION")
 
-        # === TIMING: Initialize cumulative timers for parsing sub-operations ===
-        t_snv_indexing = time.time()
-        timing_has_repeat = 0.0
-        timing_optimal_window = 0.0
-        timing_snv_lookup = 0.0
-        timing_snv_filtering = 0.0
-        timing_xml_extract = 0.0
-        hsp_count = 0
-
         # === PRE-INDEX SNV DATA BY CONTIG AS SORTED NUMPY ARRAYS ===
         # Using sorted arrays enables O(log n) binary search for range queries
         # instead of O(n) pandas filtering per HSP
@@ -1334,7 +1311,6 @@ class DGR_Finder:
                 'codon_pos': sorted_group['base_pos_in_codon'].values,
                 'reference': sorted_group['reference'].values
             }
-        timing_snv_indexing = time.time() - t_snv_indexing
 
         chars_to_skip = []
         if self.skip_Ns:
@@ -1377,23 +1353,18 @@ class DGR_Finder:
                         # get parent Iteration and Hit elements
                         section_id = current_section_id
                         hit_id_counter += 1
-                        hsp_count += 1
                         hit_identity_unique = f"{section_id}_count_{hit_id_counter}"
 
                         # extract start position from section_id (using pre-compiled regex)
                         match = SECTION_ID_PATTERN.search(section_id)
                         query_start_position = int(match.group(1)) if match else 0
 
-                        t0 = time.time()
                         qseq = elem.find('Hsp_qseq').text
                         hseq = elem.find('Hsp_hseq').text
                         midline = elem.find('Hsp_midline').text
-                        timing_xml_extract += time.time() - t0
 
                         # check for imperfect repeats, mono- di-mers, tandem repeats
-                        t0 = time.time()
                         has_repeat_result = self.has_repeat(qseq, qseq, hseq) or self.has_repeat(hseq, qseq, hseq)
-                        timing_has_repeat += time.time() - t0
                         if has_repeat_result:
                             elem.clear()
                             continue
@@ -1446,13 +1417,11 @@ class DGR_Finder:
 
                         # Stage 2: Optimal window trimming
                         # Find the longest region where >= 95% of mismatches are to dominant base
-                        t0 = time.time()
                         trim_result = self.find_optimal_mismatch_window(
                             qseq, hseq, chars_to_skip,
                             self.trimmed_mismatch_bias_threshold,
                             self.minimum_vr_length
                         )
-                        timing_optimal_window += time.time() - t0
 
                         if trim_result is None:
                             # No valid trimmed window found
@@ -1577,7 +1546,6 @@ class DGR_Finder:
                         # Could at creating  thresholds - for populations etc
 
                         # subset snv by query contig (vr contig) and VR range using binary search
-                        t0 = time.time()
                         contig_data = snv_index.get(query_contig)
                         if contig_data is not None:
                             positions = contig_data['positions']
@@ -1595,7 +1563,6 @@ class DGR_Finder:
                         # make snv vr positions a list so we can print it in the output
                         # (already sorted, use dict.fromkeys to remove duplicates while preserving order)
                         snv_VR_positions = list(dict.fromkeys(snv_positions))
-                        timing_snv_lookup += time.time() - t0
 
                         # currently position of mismatches is relative to the VR needs to be relative to the contig so that they match the vr snv ones
                         mismatch_pos_contig_relative = [x + query_genome_start_position for x in query_mismatch_positions]
@@ -1647,14 +1614,12 @@ class DGR_Finder:
 
                             # subset VR snv, by matches in VR and TR *AND* reference in VR being mutagenesis base (usually A)
                             # Create set for O(1) lookup instead of pandas .isin()
-                            t0 = time.time()
                             mismatch_pos_set = set(mismatch_pos_contig_relative)
                             # Boolean mask: position not in mismatches AND reference != letter_to_skip
                             mask = np.array([pos not in mismatch_pos_set and ref != letter_to_skip
                                            for pos, ref in zip(snv_positions, snv_reference)])
                             # this needs to be a set of the position in contig so that there are not multiple reported
                             numb_of_snv_in_matches_not_mutagen_base = len(set(snv_positions[mask]))
-                            timing_snv_filtering += time.time() - t0
                             numb_of_mismatches = len(query_mismatch_positions)
                             numb_of_SNVs = len(snv_VR_positions)
 
@@ -1737,16 +1702,6 @@ class DGR_Finder:
         finally:
             # ensure cleanup
             del context
-
-        # === TIMING REPORT for parse_and_process_blast_results ===
-        self.run.warning(None, header="BLAST PARSING TIMING BREAKDOWN", lc="cyan")
-        self.run.info("HSPs processed", f"{hsp_count:,}")
-        self.run.info("SNV pre-indexing", f"{timing_snv_indexing:.1f}s")
-        self.run.info("XML sequence extraction", f"{timing_xml_extract:.1f}s")
-        self.run.info("has_repeat() checks", f"{timing_has_repeat:.1f}s")
-        self.run.info("find_optimal_mismatch_window()", f"{timing_optimal_window:.1f}s")
-        self.run.info("SNV binary search lookup", f"{timing_snv_lookup:.1f}s")
-        self.run.info("SNV filtering", f"{timing_snv_filtering:.1f}s")
 
 
     def filter_for_best_VR_TR(self):
@@ -3796,10 +3751,6 @@ class DGR_Finder:
         args : argparse.Namespace
             Command-line arguments controlling optional outputs.
         """
-        # Track timing for each major step
-        timings = {}
-        total_start = time.time()
-
         self.sanity_check()
 
         # do we have a previously computed list of dgrs to focus for dgr activity calculations?
@@ -3816,32 +3767,18 @@ class DGR_Finder:
             # WE'RE DOnE HERE. DoNe.
             return
 
-        t = time.time(); self.get_blast_results(); timings['BLAST search (total)'] = time.time() - t
-        t = time.time(); self.process_blast_results(); timings['Parsing BLAST results'] = time.time() - t
-        t = time.time(); self.filter_for_best_VR_TR(); timings['Filtering VR/TR'] = time.time() - t
+        self.get_blast_results()
+        self.process_blast_results()
+        self.filter_for_best_VR_TR()
         if args.parameter_output:
             self.run.info_single("Writing to Parameters used file.", nl_before=1)
             self.parameter_output_sheet()
-        t = time.time(); self.get_gene_info(); timings['Getting gene info'] = time.time() - t
-        t = time.time(); self.get_hmm_info(); timings['Getting HMM info'] = time.time() - t
-        t = time.time(); self.recover_genomic_context_surrounding_dgrs(); timings['Recovering genomic context'] = time.time() - t
-        t = time.time(); self.report_genomic_context_surrounding_dgrs(); timings['Reporting genomic context'] = time.time() - t
-        t = time.time(); self.create_found_tr_vr_tsv(); timings['Creating output TSV'] = time.time() - t
-        t = time.time(); self.compute_dgr_variability_profiling(); timings['Computing variability profiling'] = time.time() - t
-        t = time.time(); self.process_dgr_data_for_HTML_summary(); timings['Processing HTML summary'] = time.time() - t
-
-        total_time = time.time() - total_start
-
-        # Report timing summary
-        self.run.warning(None, header="TIMING SUMMARY", lc="cyan")
-
-        # Report BLAST sub-timings if available
-        if hasattr(self, 'blast_timings'):
-            for step, duration in self.blast_timings.items():
-                self.run.info(f"  {step}", f"{duration:.1f}s")
-
-        for step, duration in timings.items():
-            self.run.info(step, f"{duration:.1f}s")
-        self.run.info("TOTAL", f"{total_time:.1f}s", mc="green")
+        self.get_gene_info()
+        self.get_hmm_info()
+        self.recover_genomic_context_surrounding_dgrs()
+        self.report_genomic_context_surrounding_dgrs()
+        self.create_found_tr_vr_tsv()
+        self.compute_dgr_variability_profiling()
+        self.process_dgr_data_for_HTML_summary()
 
         return
