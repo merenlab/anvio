@@ -1580,17 +1580,16 @@ class DGR_Finder:
                         # currently position of mismatches is relative to the VR needs to be relative to the contig so that they match the vr snv ones
                         mismatch_pos_contig_relative = [x + query_genome_start_position for x in query_mismatch_positions]
 
-                        if matching_snv_rows.empty:
+                        if len(snv_positions) == 0:
                             # skip because you are useless to us
                             # i.e. there are no SNVs in the VR)
                             continue
                         else:
                             # first check majority of SNVs come from 1&2 codon pos
-                            # get the counts of the snv codon positions
-                            codon_pos_sorted = matching_snv_rows['base_pos_in_codon'].value_counts()
-                            count_1 = codon_pos_sorted.get(1, 0)
-                            count_2 = codon_pos_sorted.get(2, 0)
-                            count_3 = codon_pos_sorted.get(3, 0)
+                            # get the counts of the snv codon positions using numpy
+                            count_1 = np.sum(snv_codon_pos == 1)
+                            count_2 = np.sum(snv_codon_pos == 2)
+                            count_3 = np.sum(snv_codon_pos == 3)
 
                             total = count_1 + count_2 + count_3
                             percent_3 = (count_3 / total * 100) if total > 0 else 0
