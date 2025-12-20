@@ -434,14 +434,24 @@ class GenomeReorienter:
                 self.run.warning(f"Temp directory kept for debugging: {temp_dir}")
 
 
-    def _minimap2_align(self, ref_fa, qry_fa):
+    def _minimap2_align(self, ref_fa, qry_fa, find_all_alignments=False):
         cmd = ["minimap2",
                "-x",
                self.minimap2_preset,
                "-t",
-               str(self.threads),
-               ref_fa,
-               qry_fa]
+               str(self.threads)]
+
+        # When finding the optimal reference start, we want ALL possible alignments
+        # to find truly conserved regions, not just the best alignment
+        if find_all_alignments:
+            cmd.extend([
+                "--secondary=yes",  # Output secondary alignments
+                "-N", "100",        # Output up to 100 secondary alignments
+                "-p", "0.5"         # Report secondary alignments with score >= 50% of primary
+            ])
+
+        cmd.extend([ref_fa, qry_fa])
+
         self.log_run.info_single(f"Running minimap2: {' '.join(cmd)}", level=2)
         stdout = utils.run_command_and_get_output(cmd, raise_on_error=True)
         return self._read_paf(stdout.splitlines())
@@ -751,12 +761,14 @@ class GenomeReorienter:
             query_path = entry['path']
 
             self.progress.update(f"Aligning {genome_name} ({genome_counter}/{total_genomes})")
-            self.log_run.info_single(f"Aligning {genome_name} to find coverage", level=2)
-            paf_recs = self._minimap2_align(self.reference_path, query_path)
+            self.log_run.info_single(f"Aligning {genome_name} to find coverage (including secondary alignments)", level=2)
+            paf_recs = self._minimap2_align(self.reference_path, query_path, find_all_alignments=True)
 
-            # Mark bins covered by primary alignments
-            primaries = [r for r in paf_recs if r.is_primary]
-            for rec in primaries:
+            # Mark bins covered by ALL alignments (primary + secondary)
+            # This gives us a true picture of all conserved regions, not just the "best" alignment
+            self.log_run.info_single(f"Found {len(paf_recs)} alignments (primary + secondary) for {genome_name}", level=2)
+
+            for rec in paf_recs:
                 # Calculate which bins this alignment overlaps
                 start_bin = rec.tstart // bin_size
                 end_bin = min(rec.tend // bin_size, num_bins - 1)
