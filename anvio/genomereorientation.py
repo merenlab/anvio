@@ -678,12 +678,19 @@ class GenomeReorienter:
         # Get reference length
         ref_len = self._get_total_length(self.reference_path)
 
-        # Initialize coverage array: for each position, track SET of genomes that cover it
-        coverage = [set() for _ in range(ref_len)]
+        # Use binning to reduce memory and computational overhead
+        # Since we use a 1000bp window anyway, we don't need single-base resolution
+        bin_size = 1000  # 1kb bins
+        num_bins = (ref_len + bin_size - 1) // bin_size  # Ceiling division
+
+        # Initialize coverage bins: for each bin, track SET of genomes that cover it
+        coverage_bins = [set() for _ in range(num_bins)]
 
         self.run.warning(None, header="FINDING OPTIMAL REFERENCE START")
         self.run.info("Reference genome", self.reference_name)
         self.run.info("Reference length", f"{ref_len:,} bp")
+        self.run.info("Bin size for coverage", f"{bin_size:,} bp")
+        self.run.info("Number of bins", f"{num_bins:,}")
 
         total_genomes = len([g for g in self.genomes.keys() if g != self.reference_name])
         if total_genomes == 0:
@@ -704,12 +711,16 @@ class GenomeReorienter:
             self.log_run.info_single(f"Aligning {genome_name} to find coverage", level=2)
             paf_recs = self._minimap2_align(self.reference_path, query_path)
 
-            # Mark positions covered by primary alignments
+            # Mark bins covered by primary alignments
             primaries = [r for r in paf_recs if r.is_primary]
             for rec in primaries:
-                for pos in range(rec.tstart, rec.tend):
-                    if pos < ref_len:
-                        coverage[pos].add(genome_name)
+                # Calculate which bins this alignment overlaps
+                start_bin = rec.tstart // bin_size
+                end_bin = min(rec.tend // bin_size, num_bins - 1)
+
+                # Mark all bins in this range as covered by this genome
+                for bin_idx in range(start_bin, end_bin + 1):
+                    coverage_bins[bin_idx].add(genome_name)
 
             self.progress.increment()
 
@@ -721,28 +732,36 @@ class GenomeReorienter:
         if window_size < 100:
             window_size = min(100, ref_len)
 
-        self.progress.new("Finding optimal start position", progress_total_items=ref_len)
+        # Convert window size to number of bins
+        window_bins = max(1, window_size // bin_size)
+
+        self.progress.new("Finding optimal start position", progress_total_items=num_bins)
         best_score = -1
         best_position = 0
         best_window_genomes = set()
 
-        for i in range(ref_len):
-            if i % 10000 == 0:  # Update every 10k positions to avoid too many updates
-                self.progress.update(f"Scanning position {i:,} / {ref_len:,}")
-                self.progress.increment(increment_to=i)
+        # Search at bin resolution rather than base-pair resolution
+        for bin_idx in range(num_bins):
+            if bin_idx % 10 == 0:  # Update every 10 bins
+                self.progress.update(f"Scanning bin {bin_idx:,} / {num_bins:,}")
+                self.progress.increment(increment_to=bin_idx)
 
-            # Calculate average coverage in a window around this position
-            # Coverage = number of unique genomes covering each position
+            # Calculate coverage in a window of bins around this bin
+            # Coverage = number of unique genomes covering the bins in the window
             window_genomes = set()
-            for offset in range(-window_size // 2, window_size // 2):
-                pos = (i + offset) % ref_len  # Circular genome
-                window_genomes.update(coverage[pos])
+            for offset in range(-window_bins // 2, window_bins // 2):
+                bin_pos = (bin_idx + offset) % num_bins  # Circular genome
+                window_genomes.update(coverage_bins[bin_pos])
 
             avg_coverage = len(window_genomes)
 
             if avg_coverage > best_score:
                 best_score = avg_coverage
-                best_position = i
+                # Convert bin index back to position (use middle of bin)
+                best_position = bin_idx * bin_size + bin_size // 2
+                # Make sure we don't go past the reference length
+                if best_position >= ref_len:
+                    best_position = bin_idx * bin_size
                 best_window_genomes = window_genomes.copy()
 
                 # Early termination: if all genomes cover this position, we can't do better. Even though
