@@ -3,6 +3,7 @@
 """Reorient circular genomes to match a reference genome coordinate system."""
 
 import os
+import gzip
 import shutil
 
 from pathlib import Path
@@ -13,6 +14,8 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.drivers.prodigal import Prodigal
+from anvio.drivers.hmmer import HMMer
 
 
 __copyright__ = "Copyleft 2015-2025, The Anvi'o Project (http://anvio.org/)"
@@ -64,20 +67,28 @@ class GenomeReorienter:
         self.run = run
         self.progress = progress
 
+        # Get all the things
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+
         # We need these two for this to work.
         filesnpaths.is_program_exists("minimap2", advice_if_not_exists="You should be able to install it in your "
                                       "environment using 'conda install -c bioconda minimap2'.")
         filesnpaths.is_program_exists("seqkit", advice_if_not_exists="You should be able to install it in your "
                                       "environment using 'conda install -c bioconda seqkit'.")
 
-        # Get all the things
-        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        # If user wants to use DnaA for reference orientation, check dependencies
+        if A('use_dnaa_for_reference_orientation'):
+            filesnpaths.is_program_exists("prodigal", advice_if_not_exists="You should be able to install it in your "
+                                          "environment using 'conda install -c bioconda prodigal'.")
+            filesnpaths.is_program_exists("hmmsearch", advice_if_not_exists="You should be able to install it in your "
+                                          "environment using 'conda install -c bioconda hmmer'.")
         self.fasta_txt = os.path.abspath(A('fasta_txt'))
         self.reference_name = A('reference')
         self.output_dir = os.path.abspath(A('output_dir'))
         self.threads = A('threads') or 1
         self.minimap2_preset = A('minimap2_preset') or "asm5"
         self.near_start_bp = A('near_start_bp') or 10000
+        self.use_dnaa_for_reference_orientation = A('use_dnaa_for_reference_orientation') or False
 
         # If the user wants extensive logging, we will take care of it through
         # terminal.Run:
@@ -96,8 +107,30 @@ class GenomeReorienter:
         reference_was_user_specified = self.reference_name is not None
         self.select_reference_genome()
 
-        # If reference was auto-selected, find the optimal starting position
-        if not reference_was_user_specified:
+        # Decide how to orient the reference
+        if self.use_dnaa_for_reference_orientation:
+            # Use DnaA gene to orient the reference
+            dnaa_position = self._find_dnaa_gene_position()
+            if dnaa_position is not None and dnaa_position != 0:
+                self.run.warning(None, header="ROTATING REFERENCE TO DnaA POSITION")
+                self.run.info("Rotating reference by", f"{dnaa_position:,} bp")
+                self.run.info("Reason", "Aligning genome to DnaA gene (origin of replication)")
+
+                # Create a rotated version of the reference
+                temp_dir = filesnpaths.get_temp_directory_path()
+                rotated_ref = os.path.join(temp_dir, f"{self.reference_name}_rotated_dnaa.fa")
+                self._seqkit_rotate(self.reference_path, dnaa_position + 1, rotated_ref)
+
+                # Update reference path to the rotated version
+                self.reference_path = rotated_ref
+                self.run.info("Rotated reference", rotated_ref, nl_after=1)
+            elif dnaa_position == 0:
+                self.run.info("Reference rotation", "Not needed (DnaA gene is already at position 0)", nl_after=1)
+            else:
+                self.run.warning("DnaA gene not found. Will proceed without rotating the reference.", nl_after=1)
+
+        # If reference was auto-selected and not using DnaA, find the optimal starting position
+        elif not reference_was_user_specified:
             result = self._find_optimal_reference_start()
             if result:
                 optimal_position, genomes_covering, total_genomes = result
@@ -130,7 +163,9 @@ class GenomeReorienter:
         shutil.copyfile(self.reference_path, reference_output_path)
 
         rotation_msg = "Copied reference genome without reorientation."
-        if not reference_was_user_specified:
+        if self.use_dnaa_for_reference_orientation:
+            rotation_msg = "Reference genome (rotated to DnaA gene position)."
+        elif not reference_was_user_specified:
             rotation_msg = "Reference genome (possibly rotated to optimal start position)."
 
         results = [ReorientationResult(self.reference_name, "reference",
@@ -221,10 +256,18 @@ class GenomeReorienter:
         if failures:
             raise ConfigError("Reorientation finished with failures. Please review the log output for details.")
 
-        self.run.warning("Anvi'o used `minimap2` by Li (doi:10.1093/bioinformatics/bty191) to rapidly align genomes "
-                         "and `seqkit` by Shen et al (doi:10.1371/journal.pone.0163962) to rotate and reverse/complement "
-                         "large sequences. If you publish your findings, please do not forget to properly credit the "
-                         "authors of these tools.", lc='cyan', header="CITATION")
+        citation_msg = ("Anvi'o used `minimap2` by Li (doi:10.1093/bioinformatics/bty191) to rapidly align genomes "
+                       "and `seqkit` by Shen et al (doi:10.1371/journal.pone.0163962) to rotate and reverse/complement "
+                       "large sequences.")
+
+        if self.use_dnaa_for_reference_orientation:
+            citation_msg += (" Additionally, `prodigal` by Hyatt et al (doi:10.1186/1471-2105-11-119) was used for gene "
+                           "calling and `HMMER` by Eddy (doi:10.1371/journal.pcbi.1002195) was used to identify the DnaA "
+                           "gene for reference orientation.")
+
+        citation_msg += " If you publish your findings, please do not forget to properly credit the authors of these tools."
+
+        self.run.warning(citation_msg, lc='cyan', header="CITATION")
 
         return results
 
@@ -784,6 +827,141 @@ class GenomeReorienter:
         self.run.info("Genomes covering this position", f"{genomes_covering}/{total_genomes} ({coverage_pct:.1f}%)")
 
         return best_position, genomes_covering, total_genomes
+
+
+    def _find_dnaa_gene_position(self):
+        """Find the DnaA gene in the reference genome using HMM search.
+
+        Returns the start position of the DnaA gene, or None if not found.
+        """
+        import argparse
+
+        self.run.warning(None, header="FINDING DnaA GENE IN REFERENCE")
+        self.run.info("Reference genome", self.reference_name)
+
+        # Create temporary directory for gene calling and HMM search
+        temp_dir = filesnpaths.get_temp_directory_path()
+
+        try:
+            # Step 1: Call genes using Prodigal
+            self.run.info("Step 1", "Calling genes with Prodigal")
+
+            # Create args for Prodigal
+            prodigal_args = argparse.Namespace(
+                num_threads=1,  # Prodigal is single-threaded
+                prodigal_translation_table=11,  # Standard bacterial code
+                prodigal_single_mode=True  # Use single mode for single circular genome
+            )
+
+            prodigal = Prodigal(args=prodigal_args, run=self.log_run, progress=self.progress)
+            gene_calls_dict, aa_sequences_dict = prodigal.process(self.reference_path, temp_dir)
+
+            if not aa_sequences_dict:
+                self.run.warning("Prodigal did not find any genes in the reference genome. DnaA orientation will be skipped.")
+                return None
+
+            self.run.info("Genes called", f"{len(gene_calls_dict)}")
+
+            # Step 2: Write amino acid sequences to FASTA
+            aa_fasta_path = os.path.join(temp_dir, "genes.faa")
+            with open(aa_fasta_path, 'w') as f:
+                for gene_id, seq in aa_sequences_dict.items():
+                    f.write(f">{gene_id}\n{seq}\n")
+
+            # Step 3: Prepare HMM files
+            self.run.info("Step 2", "Searching for DnaA gene using HMM")
+
+            # Path to DnaA HMM directory
+            dnaa_hmm_dir = os.path.join(os.path.dirname(anvio.__file__),
+                                         'data', 'misc', 'HMM', 'ANCHORS', 'Bac_DnaA_C')
+
+            if not os.path.exists(dnaa_hmm_dir):
+                raise ConfigError(f"DnaA HMM directory not found at {dnaa_hmm_dir}")
+
+            # Decompress the HMM file if needed
+            hmm_gz_path = os.path.join(dnaa_hmm_dir, 'genes.hmm.gz')
+            hmm_path = os.path.join(temp_dir, 'Bac_DnaA_C.hmm')
+
+            with gzip.open(hmm_gz_path, 'rb') as f_in:
+                with open(hmm_path, 'wb') as f_out:
+                    shutil.copyfileobj(f_in, f_out)
+
+            # Press the HMM file
+            utils.run_command(['hmmpress', hmm_path], log_file_path=os.path.join(temp_dir, 'hmmpress.log'))
+
+            # Step 4: Run hmmsearch
+            hmmer_dir = temp_dir
+            target_files = {'AA:GENE': aa_fasta_path}
+
+            hmmer = HMMer(target_files, num_threads_to_use=1, program_to_use='hmmsearch',
+                         run=self.log_run, progress=self.progress)
+
+            table_output = hmmer.run_hmmer(
+                source='DnaA',
+                alphabet='AA',
+                context='GENE',
+                kind='Bac_DnaA_C',
+                domain=None,
+                num_genes_in_model=1,
+                hmm=hmm_path,
+                ref='Pfam',
+                noise_cutoff_terms='--cut_ga',
+                desired_output='table',
+                hmmer_output_dir=hmmer_dir
+            )
+
+            # Step 5: Parse results
+            if not table_output or not os.path.exists(table_output):
+                self.run.warning("No DnaA gene found in the reference genome. DnaA orientation will be skipped.")
+                return None
+
+            # Parse the table output
+            hits = []
+            with open(table_output, 'r') as f:
+                for line in f:
+                    if line.startswith('#') or not line.strip():
+                        continue
+                    fields = line.strip().split()
+                    if len(fields) >= 19:
+                        gene_callers_id = int(fields[0])
+                        bit_score = float(fields[5])
+                        e_value = float(fields[4])
+                        hits.append({
+                            'gene_callers_id': gene_callers_id,
+                            'bit_score': bit_score,
+                            'e_value': e_value
+                        })
+
+            if not hits:
+                self.run.warning("No DnaA gene found in the reference genome. DnaA orientation will be skipped.")
+                return None
+
+            # Get the best hit (highest bit score)
+            best_hit = max(hits, key=lambda x: x['bit_score'])
+            gene_id = best_hit['gene_callers_id']
+
+            # Get the gene position from the gene calls
+            if gene_id not in gene_calls_dict:
+                self.run.warning(f"Gene {gene_id} not found in gene calls. DnaA orientation will be skipped.")
+                return None
+
+            gene_info = gene_calls_dict[gene_id]
+            dnaa_start = gene_info['start']
+            dnaa_stop = gene_info['stop']
+
+            self.run.info("DnaA gene found", f"Gene {gene_id}")
+            self.run.info("DnaA location", f"{dnaa_start:,} - {dnaa_stop:,} bp")
+            self.run.info("DnaA bit score", f"{best_hit['bit_score']:.1f}")
+            self.run.info("DnaA e-value", f"{best_hit['e_value']:.2e}", nl_after=1)
+
+            return dnaa_start
+
+        finally:
+            # Clean up temporary directory
+            if not anvio.DEBUG:
+                shutil.rmtree(temp_dir)
+            else:
+                self.run.warning(f"Temp directory kept for debugging: {temp_dir}")
 
 
     def select_reference_genome(self):
