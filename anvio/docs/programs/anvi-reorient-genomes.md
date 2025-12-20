@@ -1,29 +1,56 @@
-%(anvi-reorient-genomes)s aligns circular genomes in a %(fasta-txt)s to a chosen reference genome, rotates and/or reverse-complements them to synchronize their arbitrary circulizarization beginnings with the reference, and generates new 'reoriented %(fasta)s files' for downstream use. By doing so, it maximizes the gene order across genomes, so that downstream analyses that rely on synteny can have easier time.
+%(anvi-reorient-genomes)s aligns circular genomes listed in a %(fasta-txt)s to a chosen reference genome, rotates and/or reverse-complements them to synchronize their arbitrary circulizarization beginnings with the reference, and generates new 'reoriented %(fasta)s files' for downstream use. By doing so, it maximizes the gene order across genomes, so that downstream analyses that rely on synteny can have easier time.
 
-It reports (1) alignment quality between each pair of genomes (coverage between the two genomes and very crappy approximate ANI that no one should trust), (2) what actions were taken to reach a consensus (reverse-complement, rotations, etc), and (3) a final determination of the level of trust for outcomes. The program also prints out simple dotplots to visualize the final alignment of each genome to the reference.
+It reports (1) alignment quality between each pair of genomes (coverage between the two genomes and very crappy approximate ANI that no one should trust), (2) what actions were taken to reach a consensus (reverse-complement, rotations, etc), and (3) a final determination of the level of trust one should have for outcomes. The program also prints out simple dotplots to visualize the final alignment of each genome to the reference.
 
-The default usage is simple:
+The default usage is simple, which will simply instruct anvi'o to **take care of everything *de novo***,
 
 {{ codestart }}
 %(anvi-reorient-genomes)s --fasta-txt %(fasta-txt)s \
                            --output-dir REORIENTED-FASTA-FILES/
 {{ codestop }}
 
-In this use case, **the program will auto-select the longest genome as reference**, and it will then *intelligently* find and rotate to an optimal starting position that is conserved across most of the input genomes mentioned in the %(fasta-txt)s file. It is intelligent becasue this step will ensure that all genomes will start at a biologically meaningful position rather than an arbitrary coordinate. %(anvi-reorient-genomes)s does it by first aligning each genome to the reference, and then using a 10,000 nt sliding window to search for a region that is shared between all genomes in a greedy fashion (once it finds a region that works for all genomes, it stops).
-
-{:.notice}
-Please note that when a reference genome is chosen automatically, the program may end up rotating the automatically chosen reference genome to a more meaningful and conserved start position to maximize agreements across all genomes.
-
-Another option is to **declare a reference genome** to be used to orient all others:
+Another option is to tell anvi'o to **use a specific genome as reference** to to orient all others:
 
 {{ codestart }}
 anvi-reorient-genomes --fasta-txt %(fasta-txt)s \
                       --reference REF-GENOME-NAME \
                       --output-dir REORIENTED-FASTA-FILES/
-                      --threads 8
 {{ codestop }}
 
-If you have a reference genome that you trust (downlodaded from a reliable source or manually set the starting point using the DnaA gene yourself or something to that effect), you can ask the program to use that as a reference. In which case the program will not be tinkering with the reference, and do its best to match every other genome to it.
+Or one can ask anvi'o to **first use the DnaA gene to orient the reference** before orienting all others:
+
+{{ codestart }}
+anvi-reorient-genomes --fasta-txt %(fasta-txt)s \
+                      --use-dnaa-for-reference-orientation \
+                      --output-dir REORIENTED-FASTA-FILES/
+{{ codestop }}
+
+### De novo identification of orientation
+
+{:.notice}
+TL;DR: Best for any set of highly similar circular genomes (viral, plasmids, bacteria without clear DnaA, etc). Uses secondary alignments from `minimap2` to find the most conserved position across all genomes in a data-driven manner.
+
+If the user does not explicitly mention a reference genome, **the program will auto-select the longest genome as reference**, and it will first rotate the reference genome to an optimal starting position that is conserved across most of the input genomes mentioned in the %(fasta-txt)s file in a *mindful* fashion. It is 'mindful' because %(anvi-reorient-genomes)s does this step by first aligning each genome to the reference **using all possible good alignments (primary + secondary alignments)** to get a true picture of conserved regions across all genomes, and then using a 1,000 bp sliding window to search for a region that is shared between all genomes in a greedy fashion (once it finds a region that works for all genomes, it stops).
+
+{:.notice}
+Please note that when a reference genome is chosen automatically, the program will likely end up rotating the automatically chosen reference genome to a more meaningful and conserved start position to maximize agreements across all genomes.
+
+If you have a reference genome that you trust (downloaded from a reliable source or manually circularized), you can ask the program to use that as a reference. In which case the program will not be tinkering with the reference, and do its best to match every other genome to it.
+
+### Using DnaA gene for biologically meaningful orientation
+
+{:.notice}
+TL;DR: Best for any highly similar set of **bacterial genomes**. If DnaA is not found in the reference, the program will issue a warning and proceed without rotating the reference.
+
+For **bacterial genomes**, you can use the `--use-dnaa-for-reference-orientation` flag to orient the reference genome based on the DnaA gene, which typically marks the origin of replication:
+
+{{ codestart }}
+anvi-reorient-genomes --fasta-txt %(fasta-txt)s \
+                      --use-dnaa-for-reference-orientation \
+                      --output-dir REORIENTED-FASTA-FILES/
+{{ codestop }}
+
+This approach will use `prodigal` to call genes in the reference genome, use `hmmsearch` with the Bac_DnaA_C HMM profile from Pfam to identify the DnaA gene, rotate the reference to start at the DnaA gene position, then align all other genomes to this DnaA-oriented reference.
 
 For the most up-to-date list of parameters and their default values, please see the help menu on your terminal.
 
@@ -149,7 +176,10 @@ Here is a more detailed description of what is going on behind the scenes when y
 
 1. **Parse inputs and pick a reference**. Reads %(fasta-txt)s, and if `--reference` is not set, the program picks the longest genome. All FASTAs are sanity-checked (existence, FASTA format, single contig).
 
-2. **Find optimal starting position (when reference is auto-selected)**. If you don't specify `--reference`, all genomes are considered to find the most conserved position in the reference genome. It aligns each genome to the reference, builds a coverage map showing which positions are covered by how many genomes, and identifies the position with maximum coverage (stopping early if it finds 100%% coverage). The reference is then rotated to start at this optimal position, ensuring all genomes will start at a biologically meaningful, conserved region.
+2. **Determine reference orientation**. The program uses one of three strategies to orient the reference genome:
+   - **DnaA-based orientation** (if `--use-dnaa-for-reference-orientation` is set): Calls genes with `prodigal`, searches for the DnaA gene using `hmmsearch` with the Bac_DnaA_C HMM profile, and rotates the reference to start at the DnaA gene position. This provides biologically meaningful orientation for bacterial genomes.
+   - **De novo optimal position** (if reference is auto-selected without DnaA flag): Aligns each genome to the reference using minimap2 with `--secondary=yes -N 100 -p 0.5` to capture **all possible good alignments** (not just the best one). Builds a coverage map using 1,000 bp bins showing which positions are covered by alignments from each genome. Identifies the position with maximum coverage across all genomes (stopping early if it finds 100%% coverage). The reference is then rotated to start at this optimal position, ensuring all genomes will start at a conserved region that is genuinely shared across the dataset.
+   - **User-specified reference** (if `--reference` is set): Uses the reference genome as-is without rotation.
 
 3. **Initial alignment (reference vs query)**. Runs `minimap2` (preset `asm5`, with as many threads as you asked for using `--threads`) to align each query to the reference and identifies a primary anchor near reference position 0. If the anchor is on `-` strand, the query is reverse-complemented. The query is rotated so that reference position 0 maps onto the query (first snap).
 
@@ -172,13 +202,15 @@ Here is a more detailed description of what is going on behind the scenes when y
 
 * **Interpreting trust labels**: Low coverage (either genome covered <50%%) yields `NOT TRUSTWORTHY`. This often means the genome is too divergent or structurally different to reorient confidently. Check the dotplot and stats before using such outputs. Genomes with `TRUSTWORTHY` labels and matching start positions are safe for downstream comparative analyses.
 
-* **Auto-selected reference and optimal start**: When you don't specify `--reference`, the program finds and rotates to a conserved position across your genomes. This is especially useful for sets of closely related genomes where you want them all to start at a biologically meaningful position (like the beginning of a conserved gene). If you want a specific genome or starting position, use `--reference` to override this behavior.
+* **Auto-selected reference and optimal start**: When you don't specify `--reference`, the program finds and rotates to a conserved position across your genomes using secondary alignments to capture all conserved regions (not just the single best alignment). This is especially useful for sets of closely related genomes where you want them all to start at a biologically meaningful position. For bacterial genomes, consider using `--use-dnaa-for-reference-orientation` for even more consistent results based on the replication origin. If you want a specific genome or starting position, use `--reference` to override this behavior.
 
-* **Approximate ANI**: This is quite a garbage number at this point, and it is no one's fault. When `minimap2` emits `dv`, ANI is computed as `(1 - dv) x 100`. Otherwise it falls back to `nmatch/alen × 100`. So treat it as a quick proxy, not an accurate ANI calculation. It is not the purpose here.
+* **DnaA-based orientation benefits**: When working with bacterial genomes, the `--use-dnaa-for-reference-orientation` flag typically produces highly consistent alignments (e.g., all genomes starting within a few base pairs of each other) because it uses biological knowledge (the replication origin) rather than purely sequence-based heuristics. This can be particularly valuable for downstream synteny analyses or when comparing gene order across closely related strains.
+
+* **Approximate ANI**: This is quite a garbage number at this point, and it is no one's fault. When `minimap2` emits `dv`, ANI is computed as `(1 - dv) x 100`. Otherwise it falls back to `nmatch/alen x 100`. So treat it as a quick proxy, not an accurate ANI calculation. It is not the purpose here.
 
 * **Circular ambiguity**: Circular genomes can align equally well at different offsets. The program applies multiple snaps and iterative corrections to align reference position 0 to query position 0, but in highly repetitive cases the true biological origin may still be ambiguous.
 
-* **Runtime**: Each query triggers several `minimap2` runs and `seqkit` rotations, so it can take some time to converge. Then the optimal start finding step (when auto-selecting reference) adds an initial survey phase. But it takes no more than 30 seconds on a laptop computer to align 30 SAR11 genomes, so it is not that bad all things considered.
+* **Runtime**: Each query triggers several `minimap2` runs and `seqkit` rotations, so it can take some time to converge. The optimal start finding step (when auto-selecting reference) adds an initial survey phase that uses secondary alignments for more accurate conserved region detection. The `--use-dnaa-for-reference-orientation` flag adds gene calling and HMM search overhead (a few seconds for a typical bacterial genome). Overall, it takes no more than 30 seconds on a laptop computer to align 30 SAR11 genomes using the de novo approach, and slightly longer with DnaA-based orientation.
 
 {:.notice}
 YES. We will make it also work for MAGs and fragmented genomes. One step at a time.
