@@ -51,6 +51,12 @@ def get_args():
                                          "total length. This mirrors how anvi'o tools often prioritize more complete assemblies.")
     groupRef.add_argument('--reference', required=False,
                           help="Genome name in fasta-txt to use as the reference orientation. If omitted, auto-selection applies.")
+    groupRef.add_argument('--use-dnaa-for-reference-orientation', action='store_true',
+                          help="Use DnaA gene location to orient the reference genome. The program will identify the DnaA "
+                               "gene using an HMM profile (Bac_DnaA_C from Pfam), and rotate the reference to start near "
+                               "the DnaA gene, which typically marks the origin of replication in bacterial genomes. This "
+                               "option is useful for bacterial genomes but may not work well for plasmids or viral genomes "
+                               "without DnaA.")
 
     groupB = parser.add_argument_group('ADVANCED')
     groupB.add_argument('--threads', type=int, default=1,
