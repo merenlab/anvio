@@ -82,6 +82,9 @@ class GenomeReorienter:
         self.minimap2_preset = A('minimap2_preset') or "asm5"
         self.near_start_bp = A('near_start_bp') or 10000
         self.use_dnaa_for_reference_orientation = A('use_dnaa_for_reference_orientation') or False
+        self.scaffold_fragmented = A('scaffold_fragmented') or False
+        self.min_contig_length = A('min_contig_length') or 1000
+
         # Visualization parameters
         self.skip_visualizing_alignments = A('skip_visualizing_alignments') or False
         self.plot_width = A('plot_width')  # None means auto-detect terminal width

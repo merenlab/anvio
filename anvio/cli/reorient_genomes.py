@@ -58,6 +58,20 @@ def get_args():
                                "option is useful for bacterial genomes but may not work well for plasmids or viral genomes "
                                "without DnaA.")
 
+    groupScaffold = parser.add_argument_group('SCAFFOLDING OPTIONS',
+                                              "These options control how multi-contig (fragmented) genomes are ordered "
+                                              "and oriented relative to the reference. Single-contig genomes are always "
+                                              "processed using the circular reorientation workflow.")
+    groupScaffold.add_argument('--scaffold-fragmented', action='store_true',
+                               help="Insert N characters between ordered contigs to represent missing sequence. "
+                                    "The number of Ns inserted equals the gap size on the reference (distance between "
+                                    "consecutive contig alignments minus any overlap). Without this flag, contigs are "
+                                    "simply concatenated in order without gap padding.")
+    groupScaffold.add_argument('--min-contig-length', type=int, default=1000,
+                               help="Minimum contig length (in bp) to include in scaffolding. Contigs shorter than "
+                                    "this threshold are excluded from alignment and will not appear in output. "
+                                    "Default: %(default)s bp.")
+
     groupViz = parser.add_argument_group('VISUALIZATION',
                                          "By default, the program will generate synteny ribbon plots showing "
                                          "alignment patterns between the reference and each query genome before "
