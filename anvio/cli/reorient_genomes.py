@@ -17,8 +17,8 @@ __version__ = anvio.__version__
 __authors__ = ['meren']
 __requires__ = ['fasta-txt']
 __provides__ = ['fasta']
-__description__ = ("Reorient circular genomes in a fasta-txt so their coordinates match a chosen reference genome "
-                   "using minimap2 + seqkit rotation.")
+__description__ = ("Reorient circular genomes and scaffold fragmented genomes in a fasta-txt so their coordinates "
+                   "match a chosen reference genome using minimap2 alignment and seqkit manipulation.")
 
 
 @terminal.time_program
