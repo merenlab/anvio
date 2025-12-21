@@ -82,6 +82,10 @@ class GenomeReorienter:
         self.minimap2_preset = A('minimap2_preset') or "asm5"
         self.near_start_bp = A('near_start_bp') or 10000
         self.use_dnaa_for_reference_orientation = A('use_dnaa_for_reference_orientation') or False
+        # Visualization parameters
+        self.skip_visualizing_alignments = A('skip_visualizing_alignments') or False
+        self.plot_width = A('plot_width')  # None means auto-detect terminal width
+        self.plot_height = A('plot_height') or 20
 
         # If the user wants extensive logging, we will take care of it through
         # terminal.Run:
@@ -614,18 +618,20 @@ class GenomeReorienter:
         num_failed = len(trust_counts["FAILED"])
 
         if num_not_trustworthy or num_failed:
+            review_msg = "the alignment plots above and " if not self.skip_visualizing_alignments else ""
             final_text = (f"Your genome reorientation task considered {num_reoriented} genomes and {num_reference} "
                           f"reference. Some outcomes are not trustworthy (low alignment coverage can lead to unreliable "
-                          f"orientation). Please review the dotplots above and the summary below to decide which FASTA "
+                          f"orientation). Please review {review_msg}the summary below to decide which FASTA "
                           f"files to use downstream.")
         elif num_somewhat:
+            review_msg = "the alignment plots and " if not self.skip_visualizing_alignments else ""
             final_text = (f"Your genome reorientation task considered {num_reoriented} genomes and {num_reference} "
-                          f"reference. Some outcomes are only somewhat OK; check the dotplots and stats below before "
+                          f"reference. Some outcomes are only somewhat OK; check {review_msg}stats below before "
                           f"using them downstream.")
         else:
+            review_msg = "A quick glance at the alignment plots above is still recommended before downstream analyses." if not self.skip_visualizing_alignments else ""
             final_text = (f"Your genome reorientation task for {num_reoriented} genomes and {num_reference} reference "
-                          f"is complete. All outcomes look trustworthy based on alignment coverage. A quick glance at "
-                          f"the dotplots above is still recommended before downstream analyses.")
+                          f"is complete. All outcomes look trustworthy based on alignment coverage. {review_msg}")
 
         self.run.warning(final_text, header="FINAL REPORT")
 
@@ -660,11 +666,12 @@ class GenomeReorienter:
         return None
 
 
-    def _plot_dotplot(self, recs, genome_name, label):
+    def _plot_synteny_ribbons(self, recs, genome_name, label):
+        """Plot synteny-style ribbons showing alignment blocks between reference and query."""
         try:
             import plotext as plt
         except ImportError:
-            self.run.warning(f"plotext is not available; skipping dotplot for '{genome_name}'.")
+            self.run.warning(f"plotext is not available; skipping alignment plot for '{genome_name}'.")
             return
 
         primaries = [r for r in recs if r.is_primary]
@@ -672,47 +679,139 @@ class GenomeReorienter:
             self.run.warning(f"No primary alignments to plot for '{genome_name}'.")
             return
 
-        primaries = sorted(primaries, key=lambda r: r.aligned_bases, reverse=True)[:500]
+        # Sort by alignment size and take top alignments for clarity
+        primaries = sorted(primaries, key=lambda r: r.aligned_bases, reverse=True)[:30]
 
-        plus_x, plus_y, minus_x, minus_y = [], [], [], []
-        for r in primaries:
-            ref_mid = (r.tstart + r.tend) / 2.0
-            qry_mid = (r.qstart + r.qend) / 2.0
-            if r.strand == '+':
-                plus_x.append(ref_mid)
-                plus_y.append(qry_mid)
-            else:
-                minus_x.append(ref_mid)
-                minus_y.append(r.qlen - qry_mid)
+        ref_len = primaries[0].tlen
+
+        # Check if we have multiple contigs (different qnames)
+        unique_qnames = list(set([r.qname for r in primaries]))
+        has_multiple_contigs = len(unique_qnames) > 1
+
+        # Calculate offsets for multi-contig genomes to avoid overlap
+        contig_offsets = {}
+        total_query_span = 0
+
+        if has_multiple_contigs:
+            # Group records by contig and calculate offsets
+            contig_groups = {}
+            for r in primaries:
+                if r.qname not in contig_groups:
+                    contig_groups[r.qname] = []
+                contig_groups[r.qname].append(r)
+
+            # Sort contigs by their position on reference (for better visual flow)
+            sorted_contigs = sorted(contig_groups.keys(),
+                                   key=lambda qn: min(r.tstart for r in contig_groups[qn]))
+
+            current_offset = 0
+            gap_size = 50000  # 50kb gap between contigs for visualization
+
+            for qname in sorted_contigs:
+                contig_offsets[qname] = current_offset
+                contig_len = contig_groups[qname][0].qlen
+                current_offset += contig_len + gap_size
+
+            total_query_span = current_offset - gap_size  # Remove last gap
+        else:
+            # Single contig case
+            qry_len = primaries[0].qlen
+            total_query_span = qry_len
+            contig_offsets[primaries[0].qname] = 0
+
+        # Get plot dimensions - use user-specified or defaults
+        plot_width = self.plot_width if self.plot_width else terminal.get_terminal_width()
+        plot_height = self.plot_height
 
         plt.clf()
-        plt.plotsize(80, 20)
+        plt.plotsize(plot_width, plot_height)
         plt.theme("dark")
-        if plus_x:
-            plt.scatter(plus_x, plus_y, label='+ strand', color='lightgreen')
-        if minus_x:
-            plt.scatter(minus_x, minus_y, label='- strand', color='orange')
-        # draw reference diagonal for visual guide
-        ref_len = primaries[0].tlen
-        qry_len = primaries[0].qlen
-        diag_len = min(ref_len, qry_len)
-        plt.plot([0, diag_len], [0, diag_len], color='gray')
-        plt.xlabel("Reference start")
-        plt.ylabel("Query start")
-        plt.title(f"{label}: {genome_name} vs {self.reference_name}")
+
+        # Define y-coordinates for reference and query tracks
+        ref_y = 2.0
+        qry_y = 0.0
+
+        # Draw alignment ribbons connecting reference to query first
+        for r in primaries:
+            ref_start = r.tstart
+            ref_end = r.tend
+
+            # Apply offset for this contig
+            offset = contig_offsets[r.qname]
+
+            if r.strand == '+':
+                # Forward strand: connect in same direction
+                qry_start = r.qstart + offset
+                qry_end = r.qend + offset
+                color = 'green'
+            else:
+                # Reverse strand: connect in opposite direction (shows inversion)
+                qry_start = r.qend + offset
+                qry_end = r.qstart + offset
+                color = 'red'
+
+            # Draw left edge of ribbon (alignment start) - use braille for vertical lines
+            plt.plot([ref_start, qry_start], [ref_y, qry_y], color=color, marker='braille')
+
+            # Draw right edge of ribbon (alignment end) - use braille for vertical lines
+            plt.plot([ref_end, qry_end], [ref_y, qry_y], color=color, marker='braille')
+
+            # Draw top and bottom edges of the alignment block - keep solid for horizontal bars
+            plt.plot([ref_start, ref_end], [ref_y, ref_y], color=color)
+            plt.plot([qry_start, qry_end], [qry_y, qry_y], color=color)
+
+        # Draw genome lines AFTER alignment ribbons so they appear continuous on top
+        # Draw reference genome line (top) - always continuous
+        plt.plot([0, ref_len], [ref_y, ref_y], color='white')
+
+        # Draw query genome line (bottom) - color-coded by contig type
+        if has_multiple_contigs:
+            # Draw individual segments for each contig with color coding
+            contig_groups = {}
+            contig_strands = {}
+            for r in primaries:
+                if r.qname not in contig_groups:
+                    contig_groups[r.qname] = r.qlen
+                    contig_strands[r.qname] = r.strand
+
+            for qname, qlen in contig_groups.items():
+                offset = contig_offsets[qname]
+
+                # Determine color based on contig type
+                if '_wrapPart' in qname:
+                    # Wrapped-around contigs are green
+                    segment_color = 'green'
+                elif contig_strands[qname] == '-':
+                    # Reverse-complemented contigs are red
+                    segment_color = 'red'
+                else:
+                    # Forward strand, non-wrapped contigs are white
+                    segment_color = 'white'
+
+                plt.plot([offset, offset + qlen], [qry_y, qry_y], color=segment_color)
+        else:
+            # Single contig - determine color
+            strand = primaries[0].strand
+            segment_color = 'red' if strand == '-' else 'white'
+            plt.plot([0, total_query_span], [qry_y, qry_y], color=segment_color)
+
+        # Format the plot
+        contig_info = f" ({len(unique_qnames)} contigs)" if has_multiple_contigs else ""
+        plt.title(f"{label}: {genome_name}{contig_info} ↔ {self.reference_name} (green=forward, red=reverse)")
+        plt.xlabel("Genome position (bp)")
+        plt.ylim(-0.1, 2.1)
+
+        # Set y-axis labels
+        plt.yticks([0, 2], [f"{genome_name} [Q]", f"{self.reference_name} [R]"])
+
+        # Set x-axis with human-readable numbers
         try:
-            plt.xlim(0, ref_len)
-            plt.ylim(0, qry_len)
-            x_ticks = [0, ref_len * 0.25, ref_len * 0.5, ref_len * 0.75, ref_len]
-            y_ticks = [0, qry_len * 0.25, qry_len * 0.5, qry_len * 0.75, qry_len]
+            max_len = max(ref_len, total_query_span)
+            x_ticks = [0, max_len * 0.25, max_len * 0.5, max_len * 0.75, max_len]
             plt.xticks(x_ticks, [utils.human_readable_number(x, decimals=1) for x in x_ticks])
-            plt.yticks(y_ticks, [utils.human_readable_number(y, decimals=1) for y in y_ticks])
         except Exception:
             pass
-        try:
-            plt.legend(True)
-        except Exception:
-            pass
+
         plt.show()
 
 
