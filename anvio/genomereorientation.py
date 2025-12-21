@@ -198,47 +198,6 @@ class GenomeReorienter:
                 elif best_alignment.aligned_bases > 0:
                     approx_ani = (best_alignment.nmatch / float(best_alignment.aligned_bases)) * 100
                 else:
-                    approx_ani = 0
-
-                cov_q = 0
-                cov_t = 0
-                if best_alignment.qlen and best_alignment.tlen:
-                    cov_q_raw = (best_alignment.aligned_bases / float(best_alignment.qlen)) * 100
-                    cov_t_raw = (best_alignment.aligned_bases / float(best_alignment.tlen)) * 100
-                    cov_q = min(cov_q_raw, 100)
-                    cov_t = min(cov_t_raw, 100)
-
-                avg_cov = (cov_q + cov_t) / 2.0
-                if avg_cov < 50:
-                    trust_label = "NOT TRUSTWORTHY"
-                    trust_color = "red"
-                elif avg_cov < 90:
-                    trust_label = "SOMEWHAT OK"
-                    trust_color = "yellow"
-                else:
-                    trust_label = "TRUSTWORTHY"
-                    trust_color = "green"
-
-                message = (f"Final alignment strand={best_alignment.strand} "
-                           f"qstart={best_alignment.qstart} tstart={best_alignment.tstart} "
-                           f"alen={best_alignment.aligned_bases} "
-                           f"approx_ani={approx_ani:.1f}%")
-
-                self.progress.clear()
-                self.run.info("Orientation outcome", trust_label, mc=trust_color)
-                self.run.info("Applied actions", ", ".join(actions))
-                self.run.info("Output FASTA", output_path)
-                self.run.info("Final alignment strand", best_alignment.strand)
-                self.run.info("Start in query", best_alignment.qstart)
-                self.run.info("Start in reference", best_alignment.tstart)
-                self.run.info("Query length", best_alignment.qlen)
-                self.run.info("Reference length", best_alignment.tlen)
-                self.run.info("Aligned length", best_alignment.aligned_bases)
-                self.run.info("Query coverage by alignment", f"{cov_q:.1f}%")
-                self.run.info("Reference coverage by alignment", f"{cov_t:.1f}%")
-                self.run.info("Approx ANI to reference", f"{approx_ani:.1f}%", nl_after=1)
-                results.append(ReorientationResult(genome_name, "ok", message, output_path, trust=trust_label))
-                self._plot_dotplot(paf_final, genome_name, label="After reorientation")
             except (ConfigError, FilesNPathsError, RuntimeError) as e:
                 self.progress.clear()
                 self.run.info(f"{genome_name} reorientation", f"failed ({e})", mc="red")
