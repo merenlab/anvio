@@ -1103,19 +1103,19 @@ class GenomeReorienter:
         self.run.info("Trustworthy", len(trustworthy_list))
         for name, path in trustworthy_list:
             color = "cyan" if (name, path) in trust_counts["REFERENCE"] else "green"
-            self.run.info_single(f"{name} -> {path}", mc=color, level=2)
+            self.run.info_single(f"{name} -> {path}", mc=color, level=2, cut_after=0)
 
         self.run.info("Somewhat OK", len(trust_counts["SOMEWHAT OK"]), nl_before=1)
         for name, path in trust_counts["SOMEWHAT OK"]:
-            self.run.info_single(f"{name} -> {path}", mc="yellow", level=2)
+            self.run.info_single(f"{name} -> {path}", mc="yellow", level=2, cut_after=0)
 
         self.run.info("Not trustworthy", len(trust_counts["NOT TRUSTWORTHY"]), nl_before=1)
         for name, path in trust_counts["NOT TRUSTWORTHY"]:
-            self.run.info_single(f"{name} -> {path}", mc="red", level=2)
+            self.run.info_single(f"{name} -> {path}", mc="red", level=2, cut_after=0)
 
         self.run.info("Failed", len(trust_counts["FAILED"]), nl_before=1)
         for name, path in trust_counts["FAILED"]:
-            self.run.info_single(f"{name} -> {path}", mc="red", level=2)
+            self.run.info_single(f"{name} -> {path}", mc="red", level=2, cut_after=0)
 
 
     def _get_dv_from_tags(self, tags):
