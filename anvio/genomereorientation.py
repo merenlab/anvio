@@ -189,15 +189,19 @@ class GenomeReorienter:
 
             fasta_path = entry["path"]
             output_path = self._output_path_for(genome_name)
+            num_contigs = entry['num_contigs']
 
             try:
-                best_alignment, paf_final, _, actions = self._reorient_single(fasta_path, output_path, genome_name)
-                diff = self._get_dv_from_tags(best_alignment.tags)
-                if diff is not None:
-                    approx_ani = (1 - diff) * 100
-                elif best_alignment.aligned_bases > 0:
-                    approx_ani = (best_alignment.nmatch / float(best_alignment.aligned_bases)) * 100
+                if num_contigs == 1:
+                    # We're working with a ircular genome
+                    best_alignment, paf_final, paf_initial, actions = self._process_circular(fasta_path, output_path, genome_name)
+                    result = self._report_and_visualize_circular_genome(genome_name, output_path, best_alignment, paf_final, paf_initial, actions, fasta_path)
+                    results.append(result)
                 else:
+                    # We're working with a fragmented genome
+                    result_data = self._process_fragmented(fasta_path, output_path, genome_name, num_contigs)
+                    result = self._report_and_visualize_fragmented_genome(genome_name, output_path, result_data, fasta_path)
+                    results.append(result)
             except (ConfigError, FilesNPathsError, RuntimeError) as e:
                 self.progress.clear()
                 self.run.info(f"{genome_name} reorientation", f"failed ({e})", mc="red")
