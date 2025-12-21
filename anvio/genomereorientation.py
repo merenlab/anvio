@@ -290,11 +290,16 @@ class GenomeReorienter:
             filesnpaths.is_file_fasta_formatted(genome_path)
 
             num_sequences = utils.get_num_sequences_in_fasta(genome_path)
-            if num_sequences != 1:
-                raise ConfigError(f"The FASTA for '{genome_name}' must contain exactly one sequence (found {num_sequences}). "
-                                  "Anvi'o currently expects circular single-contig genomes here.")
-
+            self.genomes[genome_name]['num_contigs'] = num_sequences
             self.genomes[genome_name]['path'] = genome_path
+
+        # Validate reference is single-contig if user-specified
+        if self.reference_name:
+            ref_contigs = self.genomes[self.reference_name]['num_contigs']
+            if ref_contigs != 1:
+                raise ConfigError(f"Reference genome '{self.reference_name}' must be a single-contig "
+                                  f"circular genome, but it has {ref_contigs} contigs. Please choose a "
+                                  f"different reference or let anvi'o auto-select one.")
 
         self.output_dir = filesnpaths.check_output_directory(self.output_dir, ok_if_exists=False)
 
