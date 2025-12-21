@@ -58,87 +58,17 @@ For the most up-to-date list of parameters and their default values, please see 
 
 Outputs in the terminal will help you figure out what is going on, so please keep an eye on them. 
 
-Here is an example output for a genome that nicely aligned to the reference:
+Here is an example output for two circular genomes where the query nicely aligned to the reference (the alignment plots always show before and after the alignment):
 
-```
-REORIENTING HIMB1559 (10 OF 26 TOTAL)
-===============================================
-Orientation outcome ..........................: TRUSTWORTHY
-Applied actions ..............................: reverse-complemented query (pass1 anchor '-'), rotated 793356 bp (pass1 snap), rotated 1388641 bp (pass2 snap), rotated 1 bp (snap-to-ref0 anchor), rotated 3246 bp (final snap to ref0)
-Output FASTA .................................: /path/to/HIMB1559.fa
-Final alignment strand .......................: +
-Start in query ...............................: 61
-Start in reference ...........................: 61
-Query length .................................: 1,489,298
-Reference length .............................: 1,538,266
-Aligned length ...............................: 1,521,299
-Query coverage by alignment ..................: 100.0%%
-Reference coverage by alignment ..............: 98.9%%
-Approx ANI to reference ......................: 100.0%%
-
-                       After reorientation: HIMB1559 vs HIMB1506
-      ┌────────────────────────────────────────────────────────────────────────┐
-  1.5M┤ ▞▞ + strand                                                       ▄▄▘  │
-      │                                                              ▄▄▞▀▀     │
-      │                                                         ▗▄▞▀▀          │
-  1.1M┤                                                    ▗▄▄▀▀▘              │
-      │                                                ▄▄▀▀▘                   │
-      │                                           ▄▄▞▀▀                        │
-      │                                      ▗▄▞▀▀                             │
-744.6K┤                                 ▗▄▄▀▀▘                                 │
-      │                             ▄▄▀▀▘                                      │
-      │                        ▄▄▞▀▀                                           │
-372.3K┤                   ▗▄▞▀▀                                                │
-      │              ▗▄▄▀▀▘                                                    │
-      │          ▄▄▀▀▘                                                         │
-      │     ▄▄▞▀▀                                                              │
-     0┤▄▄▞▀▀                                                                   │
-      └┬─────────────────┬─────────────────┬────────────────┬─────────────────┬┘
-       0              384.6K            769.1K            1.2M             1.5M
-Query start                         Reference start
-```
+![](../../images/anvi-reorient-genomes-circular.png)
 
 The fact that 'Start in query' and 'Start in reference' is identical is great news, and shows that the program was able to set a start position that works perfectly. The high coverage alignment between the two is also great as it shows that you brough together genomes that are quite closely related. The approximate ANI says 100%%, and it is not to be trusted. For instance, the true ANI between these two genomes in this example is about 93%%. But since we are cutting corners using the `minimap2` aligned bits between the two, we really really overestimate the ANI value. It is useful, but please don't rely on the apprximate ANI reported here for anything serious.
 
-In contrast to that example, here is a terminal output for an alignment attempt that did not work so well:
+---
 
-```
-REORIENTING M (5 OF 5 TOTAL)
-===============================================
-Orientation outcome ..........................: NOT TRUSTWORTHY
-Applied actions ..............................: reverse-complemented query (pass1 anchor '-'), rotated 2481312 bp (pass1 snap), rotated 1107466 bp (pass2 snap), rotated 1 bp (snap-to-ref0 anchor), rotated 1913130 bp (final snap to ref0)
-Output FASTA .................................: /path/to/M.fa
-Final alignment strand .......................: -
-Start in query ...............................: 2,322,697
-Start in reference ...........................: 518,631
-Query length .................................: 3,035,044
-Reference length .............................: 3,469,552
-Aligned length ...............................: 231,049
-Query coverage by alignment ..................: 7.6%%
-Reference coverage by alignment ..............: 6.7%%
-Approx ANI to reference ......................: 94.6%%
+Here is another example for two circular genomes where the query did not aligned well to the reference, which means, the reorientation is highly unreliable:
 
-                              After reorientation: M vs D
-      ┌────────────────────────────────────────────────────────────────────────┐
-    3M┤ ▞▞ + strand ▝       ▖▖   ▖ ▘        ▘     ▗ ▗ ▝▖      ▗▗▗  ▗▄▞▘▗▗     ▝│
-      │ ▞▞ - strand   ▝   ▝      ▗  ▘▝▘      ▞▀  ▗ ▘▝  ▖  ▖  ▘ ▗▄▞▀▘        ▘  │
-      │ ▝ ▝   ▐ ▗  ▗   ▖  ▝  ▖ ▖     ▖▝    ▝   ▘ ▘  ▘▗ ▘ ▝ ▄▄▀▀▘▗ ▚▄           │
-  2.3M┤▗                    ▖       ▗                 ▗▄▄▀▀ ▗  ▗        ▘ ▖    │
-      │   ▖  ▖▖           ▖▗▗  ▝ ▝▘ ▗            ▗▗▄▞▀▘▞       ▝ ▘▘     ▝    ▖ │
-      │ ▝  ▟  ▘    ▝▘▗    ▝   ▗ ▘▘           ▝▄▄▀▀▘▝    ▘         ▘   ▝    ▗   │
-      │   ▖▝▝▌ ▝ ▖  ▛▘▄▝▖▘▝ ▘     ▘ ▝▖ ▘ ▗▄▄▀▀▘▗ ▗ ▄▗    ▌    ▀▀ ▞▘     ▚  ▝▗  │
-  1.5M┤      ▝                 ▝   ▘ ▗▄▞▀▘               ▘                     │
-      │▗▗  ▖    ▘  ▝ ▗▗      ▗ ▗ ▄▄▞▀▘        ▘   ▜ ▘▝          ▖ ▝  ▖ ▗    ▗  │
-      │ ▖▖ ▀  ▝▐▖▐    ▝   ▗  ▄▄▀▀ ▗▝▖ ▘    ▝     ▗▗    ▗ ▗  ▌     ▝        ▗ ▗▘│
-758.8K┤    ▘▀▝▘ ▘     ▝▘▗▄▞▀▀  ▖  ▗▌▘ ▝   ▗ ▝▝      ▌▗     ▄ ▖    ▝          ▝ │
-      │            ▗▄▄▞▀▘ ▝▀ ▀   ▝           ▝        ▝                      ▝ │
-      │▗ ▗▖    ▗▄▄▀▀    ▗ ▐   ▝  ▘▝ ▗▖    ▗▝   ▘ ▖▝ ▄▖ ▗  ▝     ▞▘▗▗  ▘  ▗▖   ▘│
-      │ ▗  ▗▄▞▀▀ ▘ ▝ ▝ ▝    ▖▛▚ ▖          ▖ ▞▘▖ ▖ ▖  ▀   ▌ ▝ ▀▗▘▖▖         ▘ ▖│
-     0┤▄▄▞▀▘▘ ▝ ▗    ▘▗      ▛ ▘ ▖  ▀▝▘   ▝ ▖ ▝▝  ▗              ▖     ▝▖ ▖▘▖  │
-      └┬─────────────────┬─────────────────┬────────────────┬─────────────────┬┘
-       0              867.4K             1.7M             2.6M             3.5M
-Query start                         Reference start
-```
+![](../../images/anvi-reorient-genomes-miserable.png)
 
 The program will give you something to read and think about at the very end:
 
@@ -149,26 +79,40 @@ FINAL REPORT
 ===============================================
 Your genome reorientation task considered 5 genomes and 1 reference. Some
 outcomes are not trustworthy (low alignment coverage can lead to unreliable
-orientation). Please review the dotplots above and the summary below to decide
-which FASTA files to use downstream.
+orientation). Please review the alignment plots above and the summary below to
+decide which FASTA files to use downstream.
 
 Trustworthy ..................................: 1
-    - D -> /path/to/D.fa
+    - d -> /Users/meren/sandbox/miserable-genomes/reoriented/d.fa
 
 Somewhat OK ..................................: 1
-    - G -> /path/to/G.fa
+    - g -> /Users/meren/sandbox/miserable-genomes/reoriented/g.fa
 
 Not trustworthy ..............................: 4
-    - C -> /path/to/C.fa
-    - B -> /path/to/B.fa
-    - F -> /path/to/F.fa
-    - M -> /path/to/M.fa
+    - c -> /Users/meren/sandbox/miserable-genomes/reoriented/c.fa
+    - b -> /Users/meren/sandbox/miserable-genomes/reoriented/b.fa
+    - f -> /Users/meren/sandbox/miserable-genomes/reoriented/f.fa
+    - m -> /Users/meren/sandbox/miserable-genomes/reoriented/m.fa
 
 Failed .......................................: 0
 
-✓ reorient_genomes.py took 0:00:18.481794
+✓ reorient_genomes.py took 0:00:15.245738
 ```
 
+---
+
+Here is a final example of re-orienting contigs in a fragmented genome using a reference:
+
+![](../../images/anvi-reorient-genomes-scaffolds.png)
+
+Where each contig was nicely turned around, and ordered in the final FASTA file to follow the right order that matches to the genomic context of the reference.
+
+If you wanted, you could use the flag `--scaffold-fragmented` and make anvi'o produce a single contig FASTA file where 'missing' content in the query genome is filled with `N` bases to create your own 'complete genome' to prank your microbiologist colleagues:
+
+![](../../images/anvi-reorient-genomes-scaffolds-scaffolded.png)
+
+{:.warning}
+Please don't do it, though -- don't 'scaffold' your MAGs based on a reference and then submit them to databases as single-contig genomes. Procedure above is excellent to have gene synteny preserved despite the missing content, but that is about it.
 
 ### What the program does
 
