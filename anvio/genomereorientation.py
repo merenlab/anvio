@@ -307,7 +307,129 @@ class GenomeReorienter:
         return os.path.join(self.output_dir, f"{genome_name}{suffix}")
 
 
-    def _reorient_single(self, query_fa, output_path, genome_name):
+    def _report_and_visualize_circular_genome(self, genome_name, output_path, best_alignment, paf_final, paf_initial, actions, fasta_path):
+        """Report statistics and visualize circular genome reorientation results."""
+        # Quality assessment for circular genomes
+        diff = self._get_dv_from_tags(best_alignment.tags)
+        if diff is not None:
+            approx_ani = (1 - diff) * 100
+        elif best_alignment.aligned_bases > 0:
+            approx_ani = (best_alignment.nmatch / float(best_alignment.aligned_bases)) * 100
+        else:
+            approx_ani = 0
+
+        cov_q = 0
+        cov_t = 0
+        if best_alignment.qlen and best_alignment.tlen:
+            cov_q_raw = (best_alignment.aligned_bases / float(best_alignment.qlen)) * 100
+            cov_t_raw = (best_alignment.aligned_bases / float(best_alignment.tlen)) * 100
+            cov_q = min(cov_q_raw, 100)
+            cov_t = min(cov_t_raw, 100)
+
+        avg_cov = (cov_q + cov_t) / 2.0
+        if avg_cov < 50:
+            trust_label = "NOT TRUSTWORTHY"
+            trust_color = "red"
+        elif avg_cov < 90:
+            trust_label = "SOMEWHAT OK"
+            trust_color = "yellow"
+        else:
+            trust_label = "TRUSTWORTHY"
+            trust_color = "green"
+
+        message = (f"Final alignment strand={best_alignment.strand} "
+                   f"qstart={best_alignment.qstart} tstart={best_alignment.tstart} "
+                   f"alen={best_alignment.aligned_bases} "
+                   f"approx_ani={approx_ani:.1f}%")
+
+        self.progress.clear()
+        self.run.info("Orientation outcome", trust_label, mc=trust_color)
+        self.run.info("Applied actions", "")
+        for action in actions:
+            self.run.info_single(action, level=2)
+        self.run.info("Output FASTA", output_path)
+        self.run.info("Final alignment strand", best_alignment.strand)
+        self.run.info("Start in query", best_alignment.qstart)
+        self.run.info("Start in reference", best_alignment.tstart)
+        self.run.info("Query length", best_alignment.qlen)
+        self.run.info("Reference length", best_alignment.tlen)
+        self.run.info("Aligned length", best_alignment.aligned_bases)
+        self.run.info("Query coverage by alignment", f"{cov_q:.1f}%")
+        self.run.info("Reference coverage by alignment", f"{cov_t:.1f}%")
+        self.run.info("Approx ANI to reference", f"{approx_ani:.1f}%", nl_after=1)
+
+        # Show before and after visualizations
+        if not self.skip_visualizing_alignments:
+            self.run.info_single("Before reorientation", nl_after=1)
+            self._plot_synteny_ribbons(paf_initial, genome_name, label="Before reorientation")
+            self.run.info_single("After reorientation", nl_before=1, nl_after=1)
+            self._plot_synteny_ribbons(paf_final, genome_name, label="After reorientation")
+
+        return ReorientationResult(genome_name, "ok", message, output_path, trust=trust_label)
+
+
+    def _report_and_visualize_fragmented_genome(self, genome_name, output_path, result_data, fasta_path):
+        """Report statistics and visualize fragmented genome reorientation results."""
+        # Quality assessment for fragmented genomes
+        ref_cov = result_data['reference_coverage_pct']
+        avg_ani = result_data['avg_ani']
+        num_aligned = result_data['num_contigs_aligned']
+        num_total = result_data['num_contigs_processed']
+
+        # Trust criteria for fragmented genomes
+        aligned_pct = (num_aligned / num_total) * 100 if num_total > 0 else 0
+
+        if ref_cov < 50 or aligned_pct < 50:
+            trust_label = "NOT TRUSTWORTHY"
+            trust_color = "red"
+        elif ref_cov < 70 or aligned_pct < 80 or avg_ani < 95:
+            trust_label = "SOMEWHAT OK"
+            trust_color = "yellow"
+        else:
+            trust_label = "TRUSTWORTHY"
+            trust_color = "green"
+
+        message = (f"Scaffolded {num_aligned}/{num_total} contigs, "
+                   f"ref_coverage={ref_cov:.1f}%, avg_ani={avg_ani:.1f}%")
+
+        # Report fragmented genome-specific metrics
+        self.progress.clear()
+        self.run.info("Scaffolding outcome", trust_label, mc=trust_color)
+        self.run.info("Applied actions", "")
+        self.run.info_single(result_data['actions_summary'], level=2)
+        self.run.info("Output FASTA", output_path)
+        self.run.info("Contigs processed", num_total)
+        self.run.info("Contigs aligned", num_aligned)
+        self.run.info("Contigs unaligned", result_data['num_contigs_unaligned'])
+        self.run.info("Reference coverage", f"{ref_cov:.1f}%")
+        self.run.info("Average ANI", f"{avg_ani:.1f}%")
+        self.run.info("Total gaps", len(result_data['gaps']))
+        self.run.info("Total gap size", f"{result_data['total_gap_size']:,} bp", nl_after=1)
+
+        # Generate alignment plots showing before and after reorientation
+        if not self.skip_visualizing_alignments:
+            self.progress.update(f"{genome_name}: Generating alignment plots")
+            try:
+                # Before
+                initial_paf = self._minimap2_align(self.reference_path, fasta_path)
+                if initial_paf:
+                    self.progress.reset()
+                    self.run.info_single("Before reorientation", nl_after=1)
+                    self._plot_synteny_ribbons(initial_paf, genome_name, label="Before reorientation")
+
+                # After
+                reoriented_paf = self._minimap2_align(self.reference_path, output_path)
+                if reoriented_paf:
+                    self.progress.reset()
+                    self.run.info_single("After reorientation", nl_before=1, nl_after=1)
+                    self._plot_synteny_ribbons(reoriented_paf, genome_name, label="After reorientation")
+            except Exception as e:
+                self.log_run.info_single(f"Could not generate alignment plots: {e}", level=2)
+
+        return ReorientationResult(genome_name, "ok", message, output_path, trust=trust_label)
+
+
+    def _process_circular(self, query_fa, output_path, genome_name):
         temp_dir = filesnpaths.get_temp_directory_path()
         self.log_run.info_single(f"Working directory for intermediates: {temp_dir}", level=2)
 
