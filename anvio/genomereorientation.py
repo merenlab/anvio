@@ -281,6 +281,9 @@ class GenomeReorienter:
         if self.threads < 1:
             raise ConfigError("Number of threads must be a positive integer.")
 
+        if self.min_contig_length < 0:
+            raise ConfigError("--min-contig-length must be a non-negative integer.")
+
 
     def _output_path_for(self, genome_name):
         suffix = Path(self.genomes[genome_name]['path']).suffix or ".fa"
