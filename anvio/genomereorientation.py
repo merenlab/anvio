@@ -431,6 +431,348 @@ class GenomeReorienter:
                 self.run.warning(f"Temp directory kept for debugging: {temp_dir}")
 
 
+    def _process_fragmented(self, query_fa, output_path, genome_name, num_contigs):
+        """
+        Reorient contigs in a fragmented genome by aligning them to reference.
+
+        Workflow:
+        1. Read and filter contigs by min_contig_length
+        2. Align each contig independently to reference
+        3. Order contigs by reference position (tstart)
+        4. Orient contigs (reverse-complement - strand)
+        5. Calculate gaps between consecutive contigs
+        6. Write output FASTA (with optional N-padding)
+        7. Calculate quality metrics
+
+        Returns dict with reorientation results and metrics.
+        """
+        temp_dir = filesnpaths.get_temp_directory_path()
+        self.log_run.info_single(f"Reorienting {genome_name} ({num_contigs} contigs)", level=2)
+
+        try:
+            # Step 1: Read and filter contigs
+            contigs = []
+            fasta = utils.u.SequenceSource(query_fa)
+            while next(fasta):
+                contig_len = len(fasta.seq)
+                if contig_len >= self.min_contig_length:
+                    contigs.append({
+                        'id': fasta.id,
+                        'seq': fasta.seq,
+                        'length': contig_len
+                    })
+                else:
+                    self.log_run.info_single(
+                        f"Filtered '{fasta.id}' (length={contig_len} < {self.min_contig_length})",
+                        level=2)
+            fasta.close()
+
+            num_contigs_after_filter = len(contigs)
+            if num_contigs_after_filter == 0:
+                raise ConfigError("No contigs remain after length filtering")
+
+            self.log_run.info_single(
+                f"Contigs after filter: {num_contigs_after_filter}/{num_contigs}", level=2)
+
+            # Step 2: Align each contig to reference
+            self.progress.update(f"{genome_name}: Aligning {num_contigs_after_filter} contigs")
+            contig_alignments = {}
+            ref_length = self._get_total_length(self.reference_path)
+            num_wrap_around_contigs = 0
+
+            for idx, contig in enumerate(contigs):
+                # Write contig to temp file
+                temp_contig_fa = os.path.join(temp_dir, f"contig_{idx}.fa")
+                with open(temp_contig_fa, 'w') as f:
+                    f.write(f">{contig['id']}\n{contig['seq']}\n")
+
+                # Align to reference
+                try:
+                    paf_records = self._minimap2_align(self.reference_path, temp_contig_fa)
+
+                    if not paf_records:
+                        self.log_run.info_single(f"'{contig['id']}': no alignment", level=2)
+                        continue
+
+                    # Check for wrap-around: contig spans the circularization point
+                    # This happens when we have alignments at both ends of the reference
+                    wrap_around_detected = False
+
+                    if len(paf_records) >= 2:
+                        # Sort alignments by reference start position
+                        sorted_aligns = sorted(paf_records, key=lambda r: r.tstart)
+
+                        # Check if we have alignment near start AND near end of reference
+                        # Near start: tstart < 10% of ref_length
+                        # Near end: tstart > 90% of ref_length
+                        near_start = [a for a in sorted_aligns if a.tstart < ref_length * 0.1]
+                        near_end = [a for a in sorted_aligns if a.tstart > ref_length * 0.9]
+
+                        if near_start and near_end:
+                            # Likely wrap-around: check if alignments together cover most of contig
+                            total_aligned = sum(a.aligned_bases for a in paf_records)
+                            if total_aligned > contig['length'] * 0.7:  # At least 70% of contig aligned
+                                wrap_around_detected = True
+                                num_wrap_around_contigs += 1
+
+                                # Get the two main alignments (one near end, one near start)
+                                end_align = max(near_end, key=lambda r: r.aligned_bases)
+                                start_align = max(near_start, key=lambda r: r.aligned_bases)
+
+                                self.log_run.info_single(
+                                    f"'{contig['id']}': WRAP-AROUND detected! Splitting into 2 parts", level=2)
+                                self.log_run.info_single(
+                                    f"  Part 1 (end): ref[{end_align.tstart}:{end_align.tend}] "
+                                    f"qry[{end_align.qstart}:{end_align.qend}] strand={end_align.strand}", level=2)
+                                self.log_run.info_single(
+                                    f"  Part 2 (start): ref[{start_align.tstart}:{start_align.tend}] "
+                                    f"qry[{start_align.qstart}:{start_align.qend}] strand={start_align.strand}", level=2)
+
+                                # Extract the two parts of the contig based on query positions
+                                # Note: Need to handle strand orientation
+                                if end_align.strand == '+':
+                                    # Forward strand: extract by query positions directly
+                                    part1_seq = contig['seq'][end_align.qstart:end_align.qend]
+                                else:
+                                    # Reverse strand: query positions are on RC, need to extract and RC
+                                    part1_seq = contig['seq'][end_align.qstart:end_align.qend]
+
+                                if start_align.strand == '+':
+                                    part2_seq = contig['seq'][start_align.qstart:start_align.qend]
+                                else:
+                                    part2_seq = contig['seq'][start_align.qstart:start_align.qend]
+
+                                # Create two contig entries
+                                part1_id = f"{contig['id']}_wrapPart1"
+                                part2_id = f"{contig['id']}_wrapPart2"
+
+                                contig_alignments[part1_id] = {
+                                    'contig_data': {
+                                        'id': part1_id,
+                                        'seq': part1_seq,
+                                        'length': len(part1_seq),
+                                        'original_id': contig['id']
+                                    },
+                                    'alignment': end_align
+                                }
+
+                                contig_alignments[part2_id] = {
+                                    'contig_data': {
+                                        'id': part2_id,
+                                        'seq': part2_seq,
+                                        'length': len(part2_seq),
+                                        'original_id': contig['id']
+                                    },
+                                    'alignment': start_align
+                                }
+
+                    # If not wrap-around, process normally
+                    if not wrap_around_detected:
+                        primaries = [r for r in paf_records if r.is_primary]
+
+                        if primaries:
+                            # Select best primary alignment
+                            best = max(primaries, key=lambda r: (r.aligned_bases, r.mapq, r.nmatch))
+                            contig_alignments[contig['id']] = {
+                                'contig_data': contig,
+                                'alignment': best
+                            }
+                            self.log_run.info_single(
+                                f"'{contig['id']}': ref[{best.tstart}:{best.tend}] "
+                                f"strand={best.strand} alen={best.aligned_bases}", level=2)
+                        else:
+                            self.log_run.info_single(f"'{contig['id']}': no primary alignment", level=2)
+
+                except RuntimeError as e:
+                    self.log_run.info_single(f"'{contig['id']}': alignment failed ({e})", level=2)
+
+            # Count unique original contigs that aligned
+            # (accounting for split wrap-around contigs)
+            aligned_original_contigs = set()
+            for contig_id, info in contig_alignments.items():
+                original_id = info['contig_data'].get('original_id', info['contig_data']['id'])
+                aligned_original_contigs.add(original_id)
+
+            num_aligned_original = len(aligned_original_contigs)
+            num_unaligned = num_contigs_after_filter - num_aligned_original
+            num_alignment_pieces = len(contig_alignments)  # Total pieces (including split contigs)
+
+            self.log_run.info_single(
+                f"Alignment summary: {num_aligned_original} contigs aligned "
+                f"({num_alignment_pieces} pieces total, {num_wrap_around_contigs} split for wrap-around)",
+                level=2)
+
+            if num_aligned_original == 0:
+                raise ConfigError("No contigs aligned to reference")
+
+            # Step 3: Order contigs by reference position
+            ordered_contig_ids = sorted(
+                contig_alignments.keys(),
+                key=lambda cid: (
+                    contig_alignments[cid]['alignment'].tstart,
+                    -contig_alignments[cid]['alignment'].aligned_bases,
+                    -contig_alignments[cid]['alignment'].mapq
+                )
+            )
+
+            # Step 4: Orient contigs and calculate gaps
+            gaps = []
+            oriented_contigs = []
+
+            for idx, contig_id in enumerate(ordered_contig_ids):
+                contig_info = contig_alignments[contig_id]
+                contig_data = contig_info['contig_data']
+                alignment = contig_info['alignment']
+
+                # Orient based on strand
+                if alignment.strand == '-':
+                    temp_in = os.path.join(temp_dir, f"orient_in_{idx}.fa")
+                    temp_out = os.path.join(temp_dir, f"orient_out_{idx}.fa")
+                    with open(temp_in, 'w') as f:
+                        f.write(f">{contig_data['id']}\n{contig_data['seq']}\n")
+
+                    self._seqkit_reverse_complement(temp_in, temp_out)
+
+                    rc_fasta = utils.u.SequenceSource(temp_out)
+                    next(rc_fasta)
+                    oriented_seq = rc_fasta.seq
+                    rc_fasta.close()
+
+                    self.log_run.info_single(f"Reverse-complemented '{contig_id}'", level=2)
+                else:
+                    oriented_seq = contig_data['seq']
+
+                oriented_contigs.append({
+                    'id': contig_id,
+                    'seq': oriented_seq,
+                    'ref_start': alignment.tstart,
+                    'ref_end': alignment.tend
+                })
+
+                # Calculate gap to next contig
+                if idx < len(ordered_contig_ids) - 1:
+                    next_contig_id = ordered_contig_ids[idx + 1]
+                    next_alignment = contig_alignments[next_contig_id]['alignment']
+
+                    gap_start = alignment.tend
+                    gap_end = next_alignment.tstart
+
+                    if gap_end > gap_start:
+                        gap_size = gap_end - gap_start
+                        gaps.append({
+                            'after_contig': contig_id,
+                            'gap_size': gap_size,
+                            'ref_start': gap_start,
+                            'ref_end': gap_end
+                        })
+                        self.log_run.info_single(
+                            f"Gap: {gap_size} bp between '{contig_id}' and '{next_contig_id}'",
+                            level=2)
+                    elif gap_end < gap_start:
+                        overlap_size = gap_start - gap_end
+                        self.log_run.info_single(
+                            f"WARNING: {overlap_size} bp overlap between '{contig_id}' "
+                            f"and '{next_contig_id}'", level=2)
+                        gaps.append({
+                            'after_contig': contig_id,
+                            'gap_size': 0,
+                            'overlap': overlap_size
+                        })
+
+            # Step 5: Write output FASTA
+            self.progress.update(f"{genome_name}: Writing reoriented output")
+
+            # We will do it differently depending on user's wishes
+            if self.scaffold_fragmented:
+                # Write as a single concatenated sequence with N-padding
+                scaffold_sequence = []
+                for idx, contig_info in enumerate(oriented_contigs):
+                    scaffold_sequence.append(contig_info['seq'])
+
+                    # Add gap padding between contigs
+                    if idx < len(gaps):
+                        gap_info = gaps[idx]
+                        if 'overlap' not in gap_info and gap_info['gap_size'] > 0:
+                            num_ns = min(gap_info['gap_size'], 100000)  # Cap at 100kb
+                            scaffold_sequence.append('N' * num_ns)
+
+                # Write as single sequence
+                full_scaffold = ''.join(scaffold_sequence)
+                with open(output_path, 'w') as out_fa:
+                    out_fa.write(f">{genome_name}_scaffolded\n")
+                    # Write in 80-character lines
+                    for i in range(0, len(full_scaffold), 80):
+                        out_fa.write(full_scaffold[i:i+80] + '\n')
+            else:
+                # Write as separate contigs (ordered and oriented)
+                with open(output_path, 'w') as out_fa:
+                    for idx, contig_info in enumerate(oriented_contigs):
+                        out_fa.write(f">{contig_info['id']}\n")
+                        # Write in 80-character lines
+                        seq = contig_info['seq']
+                        for i in range(0, len(seq), 80):
+                            out_fa.write(seq[i:i+80] + '\n')
+
+            # Step 6: Calculate quality metrics
+            total_gap_size = sum(g['gap_size'] for g in gaps if 'overlap' not in g)
+
+            # Reference coverage
+            ref_covered_regions = [(contig_alignments[cid]['alignment'].tstart,
+                                    contig_alignments[cid]['alignment'].tend)
+                                   for cid in ordered_contig_ids]
+            ref_covered_regions.sort()
+
+            # Merge overlapping intervals
+            merged_regions = [ref_covered_regions[0]]
+            for start, end in ref_covered_regions[1:]:
+                if start <= merged_regions[-1][1]:
+                    merged_regions[-1] = (merged_regions[-1][0], max(merged_regions[-1][1], end))
+                else:
+                    merged_regions.append((start, end))
+
+            total_covered_bases = sum(end - start for start, end in merged_regions)
+            ref_length = self._get_total_length(self.reference_path)
+            reference_coverage_pct = (total_covered_bases / ref_length) * 100
+
+            # Average ANI
+            ani_values = []
+            for contig_id in ordered_contig_ids:
+                alignment = contig_alignments[contig_id]['alignment']
+                diff = self._get_dv_from_tags(alignment.tags)
+                if diff is not None:
+                    ani = (1 - diff) * 100
+                elif alignment.aligned_bases > 0:
+                    ani = (alignment.nmatch / float(alignment.aligned_bases)) * 100
+                else:
+                    ani = 0
+                ani_values.append(ani)
+
+            avg_ani = sum(ani_values) / len(ani_values) if ani_values else 0.0
+
+            actions_summary = f"ordered {num_aligned_original} contigs by reference position"
+            if num_wrap_around_contigs > 0:
+                actions_summary += f" ({num_wrap_around_contigs} split for wrap-around)"
+            if self.scaffold_fragmented:
+                actions_summary += f", inserted {total_gap_size:,} bp of N-padding"
+
+            # Return results
+            return {
+                'num_contigs_processed': num_contigs_after_filter,
+                'num_contigs_aligned': num_aligned_original,
+                'num_contigs_unaligned': num_unaligned,
+                'reference_coverage_pct': reference_coverage_pct,
+                'gaps': gaps,
+                'total_gap_size': total_gap_size,
+                'avg_ani': avg_ani,
+                'actions_summary': actions_summary,
+                'num_wrap_around_contigs': num_wrap_around_contigs
+            }
+
+        finally:
+            if not anvio.DEBUG:
+                shutil.rmtree(temp_dir)
+
+
     def _minimap2_align(self, ref_fa, qry_fa, find_all_alignments=False):
         cmd = ["minimap2",
                "-x",
