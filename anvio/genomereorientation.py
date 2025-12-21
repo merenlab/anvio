@@ -67,21 +67,14 @@ class GenomeReorienter:
         self.run = run
         self.progress = progress
 
-        # Get all the things
-        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-
         # We need these two for this to work.
         filesnpaths.is_program_exists("minimap2", advice_if_not_exists="You should be able to install it in your "
                                       "environment using 'conda install -c bioconda minimap2'.")
         filesnpaths.is_program_exists("seqkit", advice_if_not_exists="You should be able to install it in your "
                                       "environment using 'conda install -c bioconda seqkit'.")
 
-        # If user wants to use DnaA for reference orientation, check dependencies
-        if A('use_dnaa_for_reference_orientation'):
-            filesnpaths.is_program_exists("prodigal", advice_if_not_exists="You should be able to install it in your "
-                                          "environment using 'conda install -c bioconda prodigal'.")
-            filesnpaths.is_program_exists("hmmsearch", advice_if_not_exists="You should be able to install it in your "
-                                          "environment using 'conda install -c bioconda hmmer'.")
+        # Get all the things
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.fasta_txt = os.path.abspath(A('fasta_txt'))
         self.reference_name = A('reference')
         self.output_dir = os.path.abspath(A('output_dir'))
