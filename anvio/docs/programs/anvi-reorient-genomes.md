@@ -25,7 +25,7 @@ anvi-reorient-genomes --fasta-txt %(fasta-txt)s \
                       --output-dir REORIENTED-FASTA-FILES/
 {{ codestop }}
 
-### De novo identification of orientation
+### De novo identification of reference orientation
 
 {:.notice}
 TL;DR: Best for any set of highly similar genomes - whether circular (viral, plasmids, complete bacterial genomes) or fragmented (MAGs, draft assemblies). For circular genomes, uses secondary alignments from `minimap2` to find the most conserved position across all genomes in a data-driven manner. For fragmented genomes, orders and orients contigs based on their alignment to the reference.
@@ -37,7 +37,7 @@ Please note that when a reference genome is chosen automatically, the program wi
 
 If you have a reference genome that you trust (downloaded from a reliable source or manually circularized), you can ask the program to use that as a reference. In which case the program will not be tinkering with the reference, and do its best to match every other genome to it.
 
-### Using DnaA gene for biologically meaningful orientation
+### Using DnaA gene for biologically meaningful reference orientation
 
 {:.notice}
 TL;DR: Best for any highly similar set of **bacterial genomes**. If DnaA is not found in the reference, the program will issue a warning and proceed without rotating the reference.
