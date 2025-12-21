@@ -248,10 +248,19 @@ class GenomeReorienter:
         if self.reference_name and self.reference_name not in self.genomes:
             raise ConfigError(f"Reference '{self.reference_name}' is not present in fasta-txt '{self.fasta_txt}'.")
 
+        # Get the directory containing fasta.txt for resolving relative paths
+        fasta_txt_dir = os.path.dirname(self.fasta_txt)
+
         for genome_name, entry in self.genomes.items():
             utils.is_this_name_OK_for_database('fasta.txt entry name', genome_name, additional_chars_allowed='.-')
 
-            genome_path = os.path.abspath(entry['path'])
+            # Resolve path relative to fasta.txt location if it's not absolute
+            if os.path.isabs(entry['path']):
+                genome_path = entry['path']
+            else:
+                genome_path = os.path.join(fasta_txt_dir, entry['path'])
+
+            genome_path = os.path.abspath(genome_path)
             filesnpaths.is_file_exists(genome_path)
             filesnpaths.is_file_fasta_formatted(genome_path)
 
