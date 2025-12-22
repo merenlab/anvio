@@ -1174,13 +1174,14 @@ class DGR_Finder:
         return False
 
 
-    def find_optimal_mismatch_window(self, qseq, hseq, chars_to_skip, threshold, min_length):
+    def find_optimal_mismatch_window(self, qseq, hseq, chars_to_skip, threshold, min_length, min_mismatches):
         """
         Find the longest contiguous window where >= threshold fraction of mismatches
         are to the dominant base on the subject (TR) side.
 
         This implements the "optimal window trimming" algorithm to recover precise VR/TR
-        boundaries from BLAST alignments that may have over-extended.
+        boundaries from BLAST alignments that may have over-extended. The window extends
+        to include matching bases, stopping at (but not including) non-dominant mismatches.
 
         Parameters
         ==========
@@ -1194,6 +1195,8 @@ class DGR_Finder:
             Minimum fraction of mismatches that must be to dominant base (e.g., 0.95).
         min_length : int
             Minimum length of the trimmed alignment.
+        min_mismatches : int
+            Minimum number of mismatches required in the trimmed window.
 
         Returns
         =======
@@ -1237,6 +1240,8 @@ class DGR_Finder:
         best_start = None
         best_end = None
         best_length = 0
+        best_i = None
+        best_j = None
 
         for i in range(n_mismatches):
             for j in range(i + 1, n_mismatches + 1):
@@ -1244,9 +1249,17 @@ class DGR_Finder:
                 dominant_count = prefix_dominant[j] - prefix_dominant[i]
 
                 if total_count > 0 and dominant_count / total_count >= threshold:
-                    # Get alignment positions for this window
-                    align_start = mismatch_positions[i][0]
-                    align_end = mismatch_positions[j - 1][0] + 1  # +1 to include last position
+                    # Extend backward: start after previous "bad" mismatch (or at 0)
+                    if i > 0:
+                        align_start = mismatch_positions[i - 1][0] + 1  # position after bad mismatch
+                    else:
+                        align_start = 0  # no bad mismatch before, start at beginning
+
+                    # Extend forward: end before next "bad" mismatch (or at end)
+                    if j < n_mismatches:
+                        align_end = mismatch_positions[j][0]  # position of next bad mismatch (exclusive)
+                    else:
+                        align_end = len(qseq)  # no bad mismatch after, extend to end
 
                     window_length = align_end - align_start
 
@@ -1254,8 +1267,14 @@ class DGR_Finder:
                         best_start = align_start
                         best_end = align_end
                         best_length = window_length
+                        best_i = i
+                        best_j = j
 
         if best_start is not None:
+            # Check minimum mismatch count in the trimmed window
+            mismatch_count = best_j - best_i
+            if mismatch_count < min_mismatches:
+                return None
             return (best_start, best_end, dominant_base)
         return None
 
@@ -1420,7 +1439,8 @@ class DGR_Finder:
                         trim_result = self.find_optimal_mismatch_window(
                             qseq, hseq, chars_to_skip,
                             self.trimmed_mismatch_bias_threshold,
-                            self.minimum_vr_length
+                            self.minimum_vr_length,
+                            self.number_of_mismatches
                         )
 
                         if trim_result is None:
