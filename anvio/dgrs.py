@@ -1371,35 +1371,14 @@ class DGR_Finder:
 
                         # get parent Iteration and Hit elements
                         section_id = current_section_id
-                        hit_id_counter += 1
-                        hit_identity_unique = f"{section_id}_count_{hit_id_counter}"
 
                         # extract start position from section_id (using pre-compiled regex)
                         match = SECTION_ID_PATTERN.search(section_id)
                         query_start_position = int(match.group(1)) if match else 0
 
+                        # Stage 2: Parse sequences for mismatch analysis
                         qseq = elem.find('Hsp_qseq').text
                         hseq = elem.find('Hsp_hseq').text
-                        midline = elem.find('Hsp_midline').text
-
-                        # check for imperfect repeats, mono- di-mers, tandem repeats
-                        has_repeat_result = self.has_repeat(qseq, qseq, hseq) or self.has_repeat(hseq, qseq, hseq)
-                        if has_repeat_result:
-                            elem.clear()
-                            continue
-
-                        # cache XML element values to avoid redundant tree traversals
-                        hit_from = int(elem.find('Hsp_hit-from').text)
-                        hit_to = int(elem.find('Hsp_hit-to').text)
-                        query_from = int(elem.find('Hsp_query-from').text)
-                        query_to = int(elem.find('Hsp_query-to').text)
-
-                        subject_genome_start_position = min(hit_from - 1, hit_to)
-                        subject_genome_end_position = max(hit_from - 1, hit_to)
-                        query_genome_start_position = query_start_position + min(query_from - 1, query_to)
-                        query_genome_end_position = query_start_position + max(query_from - 1, query_to)
-                        query_frame = int(elem.find('Hsp_query-frame').text)
-                        subject_frame = int(elem.find('Hsp_hit-frame').text)
 
                         query_mismatch_positions = []
                         # use defaultdict for lazy initialization - only creates entries for actual mismatches
@@ -1452,10 +1431,8 @@ class DGR_Finder:
                         # Trim sequences to optimal window
                         trimmed_qseq = qseq[trim_start:trim_end]
                         trimmed_hseq = hseq[trim_start:trim_end]
-                        trimmed_midline = midline[trim_start:trim_end]
 
-                        # Second repeat check: trimming may have concentrated repeats
-                        # that were diluted in the original alignment
+                        # Stage 4: Repeat check on trimmed sequences only
                         if self.has_repeat(trimmed_qseq, trimmed_qseq, trimmed_hseq) or \
                            self.has_repeat(trimmed_hseq, trimmed_qseq, trimmed_hseq):
                             elem.clear()
@@ -1476,19 +1453,41 @@ class DGR_Finder:
 
                         mismatch_length_bp = len(query_mismatch_positions)
 
+                        # Use the dominant base from trimming (handles T -> A conversion later)
+                        letter = dominant_base
+
+                        # Recalculate percentage for the trimmed region
+                        percentage_of_mismatches = subject_mismatch_counts.get(letter, 0) / mismatch_length_bp if mismatch_length_bp > 0 else 0
+
+                        # to test for VR diversity of base types in the sequence
+                        non_zero_bases = sum(1 for count in query_mismatch_counts.values() if count > 0)
+                        if not non_zero_bases >= self.min_mismatching_base_types_vr:
+                            continue
+
+                        # Stage 6-7: Parse remaining XML elements (deferred until after initial filters pass)
+                        hit_from = int(elem.find('Hsp_hit-from').text)
+                        hit_to = int(elem.find('Hsp_hit-to').text)
+                        query_from = int(elem.find('Hsp_query-from').text)
+                        query_to = int(elem.find('Hsp_query-to').text)
+                        query_frame = int(elem.find('Hsp_query-frame').text)
+                        subject_frame = int(elem.find('Hsp_hit-frame').text)
+                        midline = elem.find('Hsp_midline').text
+
+                        # Compute base genome positions
+                        subject_genome_start_position = min(hit_from - 1, hit_to)
+                        subject_genome_end_position = max(hit_from - 1, hit_to)
+                        query_genome_start_position = query_start_position + min(query_from - 1, query_to)
+                        query_genome_end_position = query_start_position + max(query_from - 1, query_to)
+
                         # Update coordinates to reflect trimming
-                        # The trim offsets need to be added to the genome positions
                         query_genome_start_position = query_genome_start_position + trim_start
                         query_genome_end_position = query_genome_start_position + (trim_end - trim_start)
                         subject_genome_start_position = subject_genome_start_position + trim_start
                         subject_genome_end_position = subject_genome_start_position + (trim_end - trim_start)
                         alignment_length = trim_end - trim_start
 
-                        # Use the dominant base from trimming (handles T -> A conversion later)
-                        letter = dominant_base
-
-                        # Recalculate percentage for the trimmed region
-                        percentage_of_mismatches = subject_mismatch_counts.get(letter, 0) / mismatch_length_bp if mismatch_length_bp > 0 else 0
+                        # Trim midline to match trimmed sequences
+                        trimmed_midline = midline[trim_start:trim_end]
 
                         # Now proceed with the trimmed sequences
                         original_query_frame = query_frame
@@ -1514,11 +1513,6 @@ class DGR_Finder:
                             is_reverse_complement = False
                             new_query_frame = original_query_frame
                             new_subject_frame = original_subject_frame
-
-                        # to test for VR diversity of base types in the sequence
-                        non_zero_bases = sum(1 for count in query_mismatch_counts.values() if count > 0)
-                        if not non_zero_bases >= self.min_mismatching_base_types_vr:
-                            continue
 
                         # to test for VR diversity of base types in the sequence
                         # count the distinct base types in the sequence
@@ -1708,6 +1702,10 @@ class DGR_Finder:
                             'mismatch_pos_contig_relative': mismatch_pos_contig_relative,
                             'snv_VR_positions': snv_VR_positions
                         }
+
+                        # Stage 7: Only now increment counter and create unique ID for hits that passed all filters
+                        hit_id_counter += 1
+                        hit_identity_unique = f"{section_id}_count_{hit_id_counter}"
 
                         # store grouped by query_section (VR region)
                         self.mismatch_hits[section_id][hit_identity_unique] = hit_data
