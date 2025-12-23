@@ -2648,9 +2648,13 @@ class DGR_Finder:
             "TR_contig", "TR_frame_Reported", "TR_sequence", "Base", "Reverse Complemented_from_BLAST",
             "TR_start_position", "TR_end_position", "TR_bin", "TR_in_gene", "HMM_source",
             "distance_to_HMM", "HMM_gene_name", "HMM_direction", "HMM_start",
-            "HMM_stop", "HMM_gene_callers_id", "DGR_looks_snv_false", "snv_at_3_codon_over_a_third",
-            "numb_of_snv_in_matches_not_mutagen_base", "numb_of_mismatches", "numb_of_SNVs",
-            "VR_TR_mismatch_positions", "snv_VR_positions", "best_amongst_multiple_TRs_for_one_VR"]
+            "HMM_stop", "HMM_gene_callers_id", "numb_of_mismatches", "numb_of_SNVs",
+            "VR_TR_mismatch_positions", "snv_VR_positions", "best_amongst_multiple_TRs_for_one_VR",
+            # New codon/SNV analysis columns
+            "mismatch_codon_1", "mismatch_codon_2", "mismatch_codon_3", "pct_mismatch_codon_3",
+            "vr_gene_id", "n_snvs_total", "n_snvs_explained", "n_snvs_unexplained", "pct_snvs_explained",
+            "snv_codon_1", "snv_codon_2", "snv_codon_3", "pct_snv_codon_3",
+            "confidence", "confidence_reasons"]
 
         # check if either dictionary is empty or lacks meaningful keys
         if not any(dgrs_dict.values()):
@@ -2675,12 +2679,20 @@ class DGR_Finder:
                         vr_data.get('TR_frame', 'N/A'), vr_data['TR_sequence'],
                         tr['base'], vr_data['TR_reverse_complement'],
                         vr_data['TR_start_position'], vr_data['TR_end_position'],
-                        tr.get('TR_bin', 'N/A'),tr.get('TR_in_gene', 'N/A'), tr['HMM_source'], tr["distance_to_HMM"],
+                        tr.get('TR_bin', 'N/A'), tr.get('TR_in_gene', 'N/A'), tr['HMM_source'], tr["distance_to_HMM"],
                         tr["HMM_gene_name"], tr["HMM_direction"], tr["HMM_start"],
-                        tr["HMM_stop"], tr["HMM_gene_callers_id"], vr_data["DGR_looks_snv_false"],
-                        vr_data["snv_at_3_codon_over_a_third"], vr_data["numb_of_snv_in_matches_not_mutagen_base"],
+                        tr["HMM_stop"], tr["HMM_gene_callers_id"],
                         vr_data["numb_of_mismatches"], vr_data["numb_of_SNVs"], vr_data["VR_TR_mismatch_positions"],
-                        vr_data["snv_VR_positions"], vr_data["best_amongst_multiple_TRs_for_one_VR"]
+                        vr_data["snv_VR_positions"], vr_data["best_amongst_multiple_TRs_for_one_VR"],
+                        # New codon/SNV analysis columns
+                        vr_data.get("mismatch_codon_1", 0), vr_data.get("mismatch_codon_2", 0),
+                        vr_data.get("mismatch_codon_3", 0), vr_data.get("pct_mismatch_codon_3", 0),
+                        vr_data.get("vr_gene_id", "N/A"),
+                        vr_data.get("n_snvs_total", 0), vr_data.get("n_snvs_explained", 0),
+                        vr_data.get("n_snvs_unexplained", 0), vr_data.get("pct_snvs_explained", 100),
+                        vr_data.get("snv_codon_1", 0), vr_data.get("snv_codon_2", 0),
+                        vr_data.get("snv_codon_3", 0), vr_data.get("pct_snv_codon_3", 0),
+                        vr_data.get("confidence", "N/A"), vr_data.get("confidence_reasons", [])
                     ]
                     f.write('\t'.join(map(str, csv_row)) + '\n')
         return
