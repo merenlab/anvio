@@ -578,6 +578,193 @@ class DGR_Finder:
         return None
 
 
+    def analyze_mismatch_codon_positions(self, mismatch_positions_contig, query_contig):
+        """
+        Analyze codon positions of VR/TR mismatches (no SNV data needed).
+
+        Parameters
+        ==========
+        mismatch_positions_contig : list
+            Mismatch positions in contig coordinates
+        query_contig : str
+            Contig name
+
+        Returns
+        =======
+        dict
+            'mismatch_codon_1': count of mismatches at 1st codon position
+            'mismatch_codon_2': count of mismatches at 2nd codon position
+            'mismatch_codon_3': count of mismatches at 3rd codon position
+            'mismatch_codon_unknown': count of mismatches not in a gene
+            'pct_mismatch_codon_3': percentage at 3rd position (of those in genes)
+            'vr_gene_id': overlapping gene if found
+        """
+        counts = {'codon_1': 0, 'codon_2': 0, 'codon_3': 0, 'codon_unknown': 0}
+        gene_id = None
+
+        for pos in mismatch_positions_contig:
+            gene_info = self.find_overlapping_gene(query_contig, pos)
+
+            if gene_info is None:
+                counts['codon_unknown'] += 1
+            else:
+                gene_start, gene_stop, direction, gid = gene_info
+                gene_id = gid  # Store last found gene
+                codon_pos = self.get_codon_position(pos, gene_start, gene_stop, direction)
+                counts[f'codon_{codon_pos}'] += 1
+
+        # Calculate percentage (only among positions in genes)
+        in_gene = counts['codon_1'] + counts['codon_2'] + counts['codon_3']
+        pct_codon_3 = (counts['codon_3'] / in_gene * 100) if in_gene > 0 else 0
+
+        return {
+            'mismatch_codon_1': counts['codon_1'],
+            'mismatch_codon_2': counts['codon_2'],
+            'mismatch_codon_3': counts['codon_3'],
+            'mismatch_codon_unknown': counts['codon_unknown'],
+            'pct_mismatch_codon_3': pct_codon_3,
+            'vr_gene_id': gene_id
+        }
+
+
+    def analyze_snv_pattern(self, query_contig, query_start, query_end,
+                            mismatch_positions_contig, mutagenesis_base, is_reverse_complement):
+        """
+        Analyze SNV pattern relative to DGR expectations.
+
+        Parameters
+        ==========
+        query_contig : str
+            Contig name
+        query_start : int
+            VR region start position
+        query_end : int
+            VR region end position
+        mismatch_positions_contig : list
+            Mismatch positions in contig coordinates
+        mutagenesis_base : str
+            Expected mutagenesis base ('A' typically)
+        is_reverse_complement : bool
+            Whether alignment was reverse complemented
+
+        Returns
+        =======
+        dict or None
+            SNV analysis metrics, or None if no SNVs found
+        """
+        # Fetch full SNV data for this region (including 3rd codon position)
+        snv_data = self.get_snvs_for_region(query_contig, query_start, query_end)
+
+        if snv_data is None or len(snv_data['positions']) == 0:
+            return None
+
+        positions = snv_data['positions']
+        codon_pos = snv_data['codon_pos']
+        reference = snv_data['reference']
+
+        # Unique positions (SNVs can appear multiple times across samples)
+        unique_positions = list(dict.fromkeys(positions))
+        n_snvs_total = len(unique_positions)
+
+        # Adjust mutagenesis base for reverse complement
+        expected_base = mutagenesis_base.upper()
+        if is_reverse_complement:
+            complement = {'A': 'T', 'T': 'A', 'C': 'G', 'G': 'C', 'N': 'N'}
+            expected_base = complement.get(expected_base, expected_base)
+
+        # Classify each SNV
+        mismatch_set = set(mismatch_positions_contig)
+
+        n_explained = 0  # At mismatch OR at matching position with reference = expected_base
+        n_unexplained = 0  # At matching position with reference != expected_base
+
+        snv_codon_counts = {1: 0, 2: 0, 3: 0, 0: 0}  # 0 = unknown/not in gene
+
+        # Process unique positions
+        seen_positions = set()
+        for i, pos in enumerate(positions):
+            if pos in seen_positions:
+                continue
+            seen_positions.add(pos)
+
+            # Codon position counting
+            cp = codon_pos[i] if i < len(codon_pos) else 0
+            if cp in snv_codon_counts:
+                snv_codon_counts[cp] += 1
+
+            # Explained vs unexplained
+            if pos in mismatch_set:
+                n_explained += 1
+            elif reference[i] == expected_base:
+                n_explained += 1
+            else:
+                n_unexplained += 1
+
+        # Calculate percentages
+        pct_explained = (n_explained / n_snvs_total * 100) if n_snvs_total > 0 else 100
+        in_gene = snv_codon_counts[1] + snv_codon_counts[2] + snv_codon_counts[3]
+        pct_snv_codon_3 = (snv_codon_counts[3] / in_gene * 100) if in_gene > 0 else 0
+
+        return {
+            'n_snvs_total': n_snvs_total,
+            'n_snvs_explained': n_explained,
+            'n_snvs_unexplained': n_unexplained,
+            'pct_snvs_explained': pct_explained,
+            'snv_codon_1': snv_codon_counts[1],
+            'snv_codon_2': snv_codon_counts[2],
+            'snv_codon_3': snv_codon_counts[3],
+            'pct_snv_codon_3': pct_snv_codon_3,
+            'snv_positions': unique_positions
+        }
+
+
+    def compute_dgr_confidence(self, mismatch_analysis, snv_analysis):
+        """
+        Compute confidence level based on mismatch and SNV analyses.
+
+        Parameters
+        ==========
+        mismatch_analysis : dict
+            Results from analyze_mismatch_codon_positions()
+        snv_analysis : dict or None
+            Results from analyze_snv_pattern(), or None if no SNVs
+
+        Returns
+        =======
+        tuple
+            (confidence: str, reasons: list)
+            confidence is 'high', 'medium', or 'low'
+            reasons is a list of strings explaining any downgrade
+        """
+        confidence = 'high'
+        reasons = []
+
+        # Check mismatch codon distribution
+        if mismatch_analysis['pct_mismatch_codon_3'] > 50:
+            confidence = 'medium'
+            reasons.append(f"high_mismatch_codon_3_{mismatch_analysis['pct_mismatch_codon_3']:.1f}%")
+
+        # Check SNV pattern (if available)
+        if snv_analysis is not None:
+            if snv_analysis['pct_snvs_explained'] < 70:
+                confidence = 'low'
+                reasons.append(f"low_snvs_explained_{snv_analysis['pct_snvs_explained']:.1f}%")
+            elif snv_analysis['pct_snvs_explained'] < 85:
+                if confidence == 'high':
+                    confidence = 'medium'
+                reasons.append(f"moderate_snvs_explained_{snv_analysis['pct_snvs_explained']:.1f}%")
+
+            if snv_analysis['pct_snv_codon_3'] > 40:
+                confidence = 'low'
+                reasons.append(f"high_snv_codon_3_{snv_analysis['pct_snv_codon_3']:.1f}%")
+            elif snv_analysis['pct_snv_codon_3'] > 33:
+                if confidence == 'high':
+                    confidence = 'medium'
+                reasons.append(f"elevated_snv_codon_3_{snv_analysis['pct_snv_codon_3']:.1f}%")
+
+        return confidence, reasons
+
+
     def find_snv_clusters(self, sample_id_list, contig_sequences):
         """
         Detect clusters of SNVs within contigs, merges overlapping windows,and extracts subsequences as candidate variable regions.
