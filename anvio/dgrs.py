@@ -1372,10 +1372,6 @@ class DGR_Finder:
             If no  BLAST output then exit
         """
 
-        # tracking for SNV filter summary
-        self.snv_filter_codon_removals = 0
-        self.snv_filter_mutagen_removals = 0
-
         # if collections_mode is enabled, process multiple bins separately
         if self.collections_mode:
             self.merged_mismatch_hits = defaultdict(lambda: defaultdict(dict))
@@ -1412,15 +1408,6 @@ class DGR_Finder:
 
             self.run.info_single(f"Total unique mismatches: {len(self.merged_mismatch_hits)}", nl_before=1)
 
-            # SNV filter summary
-            total_snv_removals = self.snv_filter_codon_removals + self.snv_filter_mutagen_removals
-            if total_snv_removals > 0:
-                self.run.warning(f"{PL('candidate DGR', total_snv_removals)} removed by SNV filters: "
-                                f"{self.snv_filter_codon_removals} due to third codon position, "
-                                f"{self.snv_filter_mutagen_removals} due to non-mutagenesis base SNVs. "
-                                "Use '--debug' to see individual removals.",
-                                header="SNV FILTER SUMMARY")
-
             return self.merged_mismatch_hits
 
         # run in normal none collections mode
@@ -1436,15 +1423,6 @@ class DGR_Finder:
 
             # process the BLAST output normally
             self.parse_and_process_blast_results(self.blast_output, bin_name=None, max_percent_identity=max_percent_identity)
-
-            # SNV filter summary
-            total_snv_removals = self.snv_filter_codon_removals + self.snv_filter_mutagen_removals
-            if total_snv_removals > 0:
-                self.run.warning(f"{PL('candidate DGR', total_snv_removals)} removed by SNV filters: "
-                                f"{self.snv_filter_codon_removals} due to third codon position, "
-                                f"{self.snv_filter_mutagen_removals} due to non-mutagenesis base SNVs. "
-                                "Use '--debug' to see individual removals.",
-                                header="SNV FILTER SUMMARY")
 
             return self.mismatch_hits
 
@@ -1937,96 +1915,32 @@ class DGR_Finder:
                         # currently position of mismatches is relative to the VR needs to be relative to the contig so that they match the vr snv ones
                         mismatch_pos_contig_relative = [x + query_genome_start_position for x in query_mismatch_positions]
 
-                        if len(snv_positions) == 0:
-                            # skip because you are useless to us
-                            # i.e. there are no SNVs in the VR)
-                            continue
-                        else:
-                            # first check majority of SNVs come from 1&2 codon pos
-                            # get the counts of the snv codon positions using numpy
-                            count_1 = np.sum(snv_codon_pos == 1)
-                            count_2 = np.sum(snv_codon_pos == 2)
-                            count_3 = np.sum(snv_codon_pos == 3)
+                        # === SNV and Codon Analysis (permissive, reports metrics) ===
+                        # Analyze mismatch codon positions (uses gene position data, not SNV table)
+                        mismatch_analysis = self.analyze_mismatch_codon_positions(
+                            mismatch_pos_contig_relative,
+                            query_contig
+                        )
 
-                            total = count_1 + count_2 + count_3
-                            percent_3 = (count_3 / total * 100) if total > 0 else 0
+                        # Analyze SNV pattern (fetches ALL SNVs including 3rd codon position)
+                        snv_analysis = self.analyze_snv_pattern(
+                            query_contig,
+                            query_genome_start_position,
+                            query_genome_end_position,
+                            mismatch_pos_contig_relative,
+                            base,  # mutagenesis base
+                            is_reverse_complement
+                        )
 
-                            # apply threshold of 66% because we want less than a third of snvs to be at the third codon position
-                            is_3_over_a_third = percent_3 > (self.snv_codon_position * 100)
-                            if is_3_over_a_third:
-                                snv_at_3_codon_over_a_third = True
-                                self.snv_filter_codon_removals += 1
-                                if anvio.DEBUG:
-                                    self.run.warning(f"Skipping candidate DGR due to SNV filters. One with a VR on this contig: {query_contig}. Specifically, in this case the candidate DGR has a high "
-                                                "likelihood of being a false positive due to the fact that there are a high proportion of SNVs that are coming "
-                                                f"from the third codon base position which is unexpected behaviour. This percentage of SNVs comes from the third codon position: "
-                                                f"{percent_3} are in the third codon position of the VR. The percentage cut off for third codon position SNVs is 33% due to the "
-                                                "likelihood of a third of the SNVs in an ORF coming from the third base position. If you would like to change this use the '--snv-codon-position' parameter "
-                                                "to give it another value.", header="WARNING: DGR REMOVED", lc='yellow')
-                            else:
-                                snv_at_3_codon_over_a_third = False
+                        # Compute confidence level
+                        confidence, confidence_reasons = self.compute_dgr_confidence(
+                            mismatch_analysis,
+                            snv_analysis
+                        )
 
-                            # look if matches of VR have SNVs (exclude mismatch positions and matches of base of mutagenesis in VR (normally A).)
-                            # letter to skip is mutagenesis base (usually A), if mismatch majority A IF rev comp then T, else make mismatch majority use base
-                            letter_to_skip = base.upper()
-
-                            if is_reverse_complement:
-                                if letter_to_skip == "A":
-                                    letter_to_skip = "T"
-                                elif letter_to_skip == "T":
-                                    letter_to_skip = "A"
-                                elif letter_to_skip == "C":
-                                    letter_to_skip = "G"
-                                elif letter_to_skip == "G":
-                                    letter_to_skip = "C"
-                                elif letter_to_skip == "N":
-                                    letter_to_skip = "N"
-
-                            # subset VR snv, by matches in VR and TR *AND* reference in VR being mutagenesis base (usually A)
-                            # Create set for O(1) lookup instead of pandas .isin()
-                            mismatch_pos_set = set(mismatch_pos_contig_relative)
-                            # Boolean mask: position not in mismatches AND reference != letter_to_skip
-                            mask = np.array([pos not in mismatch_pos_set and ref != letter_to_skip
-                                           for pos, ref in zip(snv_positions, snv_reference)])
-                            # this needs to be a set of the position in contig so that there are not multiple reported
-                            numb_of_snv_in_matches_not_mutagen_base = len(set(snv_positions[mask]))
-                            numb_of_mismatches = len(query_mismatch_positions)
-                            numb_of_SNVs = len(snv_VR_positions)
-
-                            # report proportion of non-mutagenesis SNVs vs all SNVs
-                            prop_non_mutagen_snv = 0
-                            if numb_of_SNVs > 0:
-                                prop_non_mutagen_snv = numb_of_snv_in_matches_not_mutagen_base/numb_of_SNVs
-
-                            # flag to store final DGR-like decision based on SNVs
-                            DGR_looks_snv_false = False
-
-                            # apply filters based on SNV count and thresholds
-                            if self.snv_matching_proportion:
-                                max_allowed_bad_snv_fraction = self.snv_matching_proportion
-                            else:
-                                if numb_of_SNVs >= 30:
-                                    max_allowed_bad_snv_fraction = 0.30  # 30%
-                                elif numb_of_SNVs < 30:
-                                    max_allowed_bad_snv_fraction = 0.25  # 25%
-
-                            # evaluate
-                            if prop_non_mutagen_snv >= max_allowed_bad_snv_fraction:
-                                DGR_looks_snv_false = True
-                                self.snv_filter_mutagen_removals += 1
-                                if anvio.DEBUG:
-                                    self.run.warning("Skipping candidate DGR due to SNV filters. Specifically, in this case the candidate DGR has a high "
-                                                "likelihood of being a false positive due to the fact that there are a high proportion of SNVs that are coming "
-                                                f"from the non mismatching or mutagenesis bases which is where the SNVs are expected to be. There are this many SNVs total: {numb_of_SNVs} of which "
-                                                f"{numb_of_snv_in_matches_not_mutagen_base} are in matching positions of the TR and VR (the proportion is therefore: {prop_non_mutagen_snv:.2%}). "
-                                                "The cut off for these SNVs is proportional to the total number of SNVs in the VR if there are >30 than 30%% SNVs in matching positions are allowed, "
-                                                "if less than 30 SNVs than 25%% are allowed, this is by default. If you think that this is incorrect please change the '--snv-matching-proportion' parameter "
-                                                "to give it a blanket value, this is what we found to be most effective based on our short read metagenome testing.", header="WARNING: DGR REMOVED", lc='yellow')
-
-                        # here we dont add VR candidates based on SNV parameters.
-                        # skip DGR if flagged due to SNV-based filters
-                        if DGR_looks_snv_false or snv_at_3_codon_over_a_third:
-                            continue
+                        # Basic counts for backwards compatibility
+                        numb_of_mismatches = len(query_mismatch_positions)
+                        numb_of_SNVs = snv_analysis['n_snvs_total'] if snv_analysis else 0
 
                         hit_data = {
                             'bin': bin_name if bin_name else "N/A",
@@ -2048,15 +1962,34 @@ class DGR_Finder:
                             'subject_frame': new_subject_frame,
                             'base': base,
                             'is_reverse_complement': is_reverse_complement,
-                            'numb_of_snv_in_matches_not_mutagen_base': numb_of_snv_in_matches_not_mutagen_base,
                             'numb_of_mismatches': numb_of_mismatches,
                             'numb_of_SNVs': numb_of_SNVs,
-                            'numb_snvs_in_3rd_codon_pos': count_3,
-                            'DGR_looks_false': DGR_looks_snv_false,
-                            'snv_at_3_codon_over_a_third': snv_at_3_codon_over_a_third,
                             'percentage_of_mismatches': percentage_of_mismatches,
                             'mismatch_pos_contig_relative': mismatch_pos_contig_relative,
-                            'snv_VR_positions': snv_VR_positions
+                            'snv_VR_positions': snv_analysis['snv_positions'] if snv_analysis else [],
+                            # Mismatch codon analysis
+                            'mismatch_codon_1': mismatch_analysis['mismatch_codon_1'],
+                            'mismatch_codon_2': mismatch_analysis['mismatch_codon_2'],
+                            'mismatch_codon_3': mismatch_analysis['mismatch_codon_3'],
+                            'pct_mismatch_codon_3': mismatch_analysis['pct_mismatch_codon_3'],
+                            'vr_gene_id': mismatch_analysis['vr_gene_id'],
+                            # SNV analysis
+                            'n_snvs_total': snv_analysis['n_snvs_total'] if snv_analysis else 0,
+                            'n_snvs_explained': snv_analysis['n_snvs_explained'] if snv_analysis else 0,
+                            'n_snvs_unexplained': snv_analysis['n_snvs_unexplained'] if snv_analysis else 0,
+                            'pct_snvs_explained': snv_analysis['pct_snvs_explained'] if snv_analysis else 100,
+                            'snv_codon_1': snv_analysis['snv_codon_1'] if snv_analysis else 0,
+                            'snv_codon_2': snv_analysis['snv_codon_2'] if snv_analysis else 0,
+                            'snv_codon_3': snv_analysis['snv_codon_3'] if snv_analysis else 0,
+                            'pct_snv_codon_3': snv_analysis['pct_snv_codon_3'] if snv_analysis else 0,
+                            # Confidence
+                            'confidence': confidence,
+                            'confidence_reasons': confidence_reasons,
+                            # Backwards compatibility fields (derived from new analysis)
+                            'numb_snvs_in_3rd_codon_pos': snv_analysis['snv_codon_3'] if snv_analysis else 0,
+                            'numb_of_snv_in_matches_not_mutagen_base': snv_analysis['n_snvs_unexplained'] if snv_analysis else 0,
+                            'DGR_looks_false': confidence == 'low',
+                            'snv_at_3_codon_over_a_third': mismatch_analysis['pct_mismatch_codon_3'] > 33,
                         }
 
                         # Stage 7: Only now increment counter and create unique ID for hits that passed all filters
