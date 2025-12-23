@@ -451,6 +451,58 @@ class DGR_Finder:
             self.gene_positions[contig].sort(key=lambda x: x[0])
 
 
+    def get_snvs_for_region(self, contig_name, start_pos, end_pos):
+        """
+        Fetch all SNVs (including 3rd codon position) for a specific genomic region.
+
+        This is called only for candidate DGRs that pass initial filtering,
+        so it's called ~10-50 times, not millions.
+
+        Parameters
+        ==========
+        contig_name : str
+            Name of the contig
+        start_pos : int
+            Start position in contig (inclusive)
+        end_pos : int
+            End position in contig (inclusive)
+
+        Returns
+        =======
+        dict or None
+            Dictionary with numpy arrays:
+                'positions': np.array of pos_in_contig
+                'codon_pos': np.array of base_pos_in_codon
+                'reference': np.array of reference base
+                'sample_ids': np.array of sample_id
+            Returns None if no SNVs found.
+        """
+        profile_db = dbops.ProfileDatabase(self.profile_db_path)
+
+        # Query for specific region using split_name LIKE pattern (no codon position filter)
+        where_clause = f'''split_name LIKE "{contig_name}_split_%" AND pos_in_contig >= {start_pos} AND pos_in_contig <= {end_pos} AND departure_from_reference >= {self.departure_from_reference_percentage}'''
+
+        snv_data = profile_db.db.get_some_rows_from_table_as_dict(
+            t.variable_nts_table_name,
+            where_clause=where_clause,
+            error_if_no_data=False
+        )
+        profile_db.disconnect()
+
+        if not snv_data:
+            return None
+
+        # Convert to sorted numpy arrays
+        rows = sorted(snv_data.values(), key=lambda x: x['pos_in_contig'])
+
+        return {
+            'positions': np.array([r['pos_in_contig'] for r in rows]),
+            'codon_pos': np.array([r['base_pos_in_codon'] for r in rows]),
+            'reference': np.array([r['reference'] for r in rows]),
+            'sample_ids': np.array([r['sample_id'] for r in rows])
+        }
+
+
     def find_snv_clusters(self, sample_id_list, contig_sequences):
         """
         Detect clusters of SNVs within contigs, merges overlapping windows,and extracts subsequences as candidate variable regions.
