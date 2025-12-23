@@ -262,16 +262,10 @@ class DGR_Finder:
                                     f"that are in your {self.contigs_db_path}. The HMMs you give 'anvi-report-dgrs' need to be in your "
                                     "contigs.db.")
 
-            if self.gene_caller_to_consider_in_context:
-                genes_in_contigs_dict = contigs_db.db.get_table_as_dict(t.genes_in_contigs_table_name)
-                unique_sources = set()
-                for gene_id, gene_info in genes_in_contigs_dict.items():
-                    unique_sources.add(gene_info['source'])
-                unique_sources_list = list(unique_sources)
-                if self.gene_caller_to_consider_in_context not in unique_sources_list:
-                    raise ConfigError(f"Anvi'o can't find {self.gene_caller_to_consider_in_context} in your {self.contigs_db_path}. "
-                                    f"Here are the sources of your genes: {unique_sources_list}.")
             contigs_db.disconnect()
+
+            # Load gene information once (validates gene caller source and creates lookup structures)
+            self.load_gene_info()
 
         html_files_exist = any(file.endswith('.html') for file in os.listdir(self.output_directory) if os.path.isfile(os.path.join(self.output_directory, file)))
         if html_files_exist:
@@ -407,6 +401,54 @@ class DGR_Finder:
         else:
             self.snv_panda = self.snv_panda.query("departure_from_reference >= @self.departure_from_reference_percentage and base_pos_in_codon in (1, 2)")
 
+
+    def load_gene_info(self):
+        """
+        Load gene information from contigs database once and create optimized lookup structures.
+
+        Creates two data structures:
+        - self.genes_in_contigs: dict keyed by gene_callers_id for direct lookups
+        - self.gene_positions: dict of sorted lists per contig for efficient overlap queries
+                               {contig_name: [(start, stop, direction, gene_id), ...]}
+
+        Also validates that the requested gene caller source exists in the database.
+
+        Raises
+        ======
+        ConfigError
+            If the requested gene caller source is not found in the database.
+        """
+        contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
+        all_genes = contigs_db.db.get_table_as_dict(t.genes_in_contigs_table_name)
+        contigs_db.disconnect()
+
+        # Validate gene caller source exists
+        unique_sources = set(gene_info['source'] for gene_info in all_genes.values())
+        if self.gene_caller_to_consider_in_context not in unique_sources:
+            raise ConfigError(f"Anvi'o can't find {self.gene_caller_to_consider_in_context} in your {self.contigs_db_path}. "
+                            f"Here are the sources of your genes: {list(unique_sources)}.")
+
+        # Filter by gene caller and build both data structures
+        self.genes_in_contigs = {}
+        self.gene_positions = defaultdict(list)
+
+        for gene_id, gene_info in all_genes.items():
+            if gene_info['source'] != self.gene_caller_to_consider_in_context:
+                continue
+
+            # Store full gene info for direct lookups by gene_id
+            self.genes_in_contigs[gene_id] = gene_info
+
+            # Build position-sorted structure for overlap queries
+            contig = gene_info['contig']
+            start = gene_info['start']
+            stop = gene_info['stop']
+            direction = gene_info['direction']
+            self.gene_positions[contig].append((start, stop, direction, gene_id))
+
+        # Sort by start position for binary search
+        for contig in self.gene_positions:
+            self.gene_positions[contig].sort(key=lambda x: x[0])
 
 
     def find_snv_clusters(self, sample_id_list, contig_sequences):
