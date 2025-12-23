@@ -503,6 +503,81 @@ class DGR_Finder:
         }
 
 
+    def get_codon_position(self, contig_pos, gene_start, gene_stop, direction):
+        """
+        Calculate the codon position (1, 2, or 3) for a given contig position.
+
+        Parameters
+        ==========
+        contig_pos : int
+            Position in the contig (0-indexed)
+        gene_start : int
+            Gene start position (0-indexed)
+        gene_stop : int
+            Gene stop position (0-indexed)
+        direction : str
+            'f' for forward, 'r' for reverse
+
+        Returns
+        =======
+        int
+            1, 2, or 3 indicating codon position, or 0 if position is not in gene
+        """
+        if contig_pos < gene_start or contig_pos >= gene_stop:
+            return 0
+
+        if direction == 'f':
+            offset = contig_pos - gene_start
+        else:
+            # Reverse strand: count from the other end
+            offset = gene_stop - 1 - contig_pos
+
+        return (offset % 3) + 1  # Returns 1, 2, or 3
+
+
+    def find_overlapping_gene(self, contig, position):
+        """
+        Find gene that overlaps with a given position using binary search.
+
+        Parameters
+        ==========
+        contig : str
+            Contig name
+        position : int
+            Position in contig (0-indexed)
+
+        Returns
+        =======
+        tuple or None
+            (gene_start, gene_stop, direction, gene_id) if found, None otherwise
+        """
+        if contig not in self.gene_positions:
+            return None
+
+        genes = self.gene_positions[contig]
+
+        # Binary search: find genes where start <= position
+        idx = bisect.bisect_right(genes, (position, float('inf'), '', 0)) - 1
+
+        # Check if this gene contains the position
+        while idx >= 0:
+            start, stop, direction, gene_id = genes[idx]
+            if start <= position < stop:
+                return (start, stop, direction, gene_id)
+            if stop <= position:
+                break
+            idx -= 1
+
+        # Also check next gene in case of overlapping genes
+        idx = bisect.bisect_right(genes, (position, float('inf'), '', 0))
+        if idx < len(genes):
+            start, stop, direction, gene_id = genes[idx]
+            if start <= position < stop:
+                return (start, stop, direction, gene_id)
+
+        return None
+
+
     def find_snv_clusters(self, sample_id_list, contig_sequences):
         """
         Detect clusters of SNVs within contigs, merges overlapping windows,and extracts subsequences as candidate variable regions.
