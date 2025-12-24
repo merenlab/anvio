@@ -1858,28 +1858,8 @@ class DGR_Finder:
                             continue
 
                         # By default (conservative), filter for A-base mutagenesis only.
-                        # If --allow-any-base is set, check TR diversity instead.
-                        if not self.allow_any_base:
-                            # filter out bases with count > 0 before checking
-                            nonzero_mismatch_bases = [b for b, cnt in subject_mismatch_counts.items() if cnt > 0]
-
-                            # if reverse complemented, treat 'T' as 'A'
-                            if is_reverse_complement:
-                                all_mismatches_are_A = all(b in ('A', 'T') for b in nonzero_mismatch_bases)
-                            else:
-                                all_mismatches_are_A = all(b == 'A' for b in nonzero_mismatch_bases)
-
-                            # skip if any mismatching base is not valid
-                            if not all_mismatches_are_A:
-                                continue
-                        else:
-                            # --allow-any-base mode: test for TR diversity of base types in the sequence
-                            # count the distinct base types in the sequence
-                            hit_unique_bases = set(hit_sequence) - {"-", "N"}
-
-                            # ensure the sequence has at least the required number of distinct base types
-                            if len(hit_unique_bases) <= self.min_base_types_tr:
-                                continue
+                        if not self.allow_any_base and base != "A":
+                            continue
 
                         query_contig = section_id.split('_section', 1)[0]
                         subject_contig = current_subject_contig
