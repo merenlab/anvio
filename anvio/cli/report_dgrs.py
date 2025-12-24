@@ -117,8 +117,8 @@ def get_args():
     groupB.add_argument("--word-size", help="BLASTn word size parameter. Default = 8", type=str, default=8, metavar="INT")
 
     groupC = parser.add_argument_group('LOCATING VR OPTIONS', "Options for the fine tuning this program's location of variable regions'")
-    groupC.add_argument("--skip-Ns", help="Skip 'N' bases when searching for mismatches", action = 'store_true', default=True)
-    groupC.add_argument("--skip-dashes", help="Skip '-' bases when searching for mismatches", action = 'store_true',default=True)
+    groupC.add_argument("--skip-Ns", help="Skip 'N' bases when searching for mismatches", action = 'store_true', default=False)
+    groupC.add_argument("--skip-dashes", help="Skip '-' bases when searching for mismatches", action = 'store_true',default=False)
     groupC.add_argument("--discovery-mode", help="By default, anvi'o uses SNVs occurring in the first and second codon position of ORF to identify DGRs. "
                         "This constraint allows for a fast search and more reliable results. If you feel daring, you can use this flag and let anvi'o use "
                         "ANY SNVs to identify regions of interest for the VR/TR search.", action = "store_true", default=False)
