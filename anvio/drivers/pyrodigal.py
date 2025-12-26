@@ -133,7 +133,8 @@ class Pyrodigal_gv:
         self.run.info('Full gene calling reporting requested?', 'Yes' if self.full_gene_calling_report else 'No')
 
         self.progress.new('Processing')
-        self.progress.update(f"Identifying ORFs using {terminal.pluralize('thread', self.num_threads)}.")
+        thread_info = terminal.pluralize('thread', self.num_threads) if self.num_threads else "default number of threads"
+        self.progress.update(f"Identifying ORFs using {thread_info}.")
 
         # key variables to fill in
         gene_calls_dict = {}
