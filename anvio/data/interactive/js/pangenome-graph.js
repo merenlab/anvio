@@ -185,7 +185,7 @@ class PangenomeGraphUserInterface {
         
         var current_middle_stop = sum_middle_layer
         var current_outer_stop = sum_outer_layer
-        
+
         var enabled = []
         var order = []
         var max_dist = 0
@@ -988,7 +988,6 @@ class PangenomeGraphUserInterface {
                 }
             }
         }
-       
 
         // Only draw newick tree if we have one (order will be empty if no newick data)
         if ($('#flextree').prop('checked') == true && order.length > 0){
@@ -1191,7 +1190,7 @@ class PangenomeGraphUserInterface {
                 }
 
                 output.push('<path d="M ' + a_x + ' ' + a_y + ' L ' + b_x + ' ' + b_y + '" stroke-width="' + line_thickness + '" stroke="black"></path>')
-        
+
                 if (Object.values(saving_ids).includes(start_fraction)){
                     var saving_id = Object.keys(saving_ids)[Object.values(saving_ids).indexOf(start_fraction)]
                     saving_positions[saving_id].push(y_value)
@@ -1249,7 +1248,7 @@ class PangenomeGraphUserInterface {
                 }
                 
                 output.push('<path d="M ' + a_x + ' ' + a_y + ' L ' + b_x + ' ' + b_y + '" stroke-width="' + line_thickness + '" stroke="black"></path>')
-                
+
                 if (Object.values(saving_ids).includes(start_fraction)) {
                     var saving_id = Object.keys(saving_ids)[Object.values(saving_ids).indexOf(start_fraction)]
                     saving_positions[saving_id].push(y_value)
