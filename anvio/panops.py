@@ -1581,6 +1581,15 @@ class PangenomeGraph():
         # generate pan-graph-db and populate it with information
         self.generate_pan_graph_db()
 
+        # Let the user know if we ended up with a zero-variation graph
+        if not self.newick:
+            self.run.warning("Your pangenome graph has no structure, which means the genomes you are working with "
+                             "have no gene-level variation. All the files are still generated (because that's how "
+                             "anvi'o rolls), but it will be a wasted effort to visualize these data since you will "
+                             "not see anything worth noting :/ If you were expecting variation, please double-check "
+                             "your input genomes, or take a look at the conventional pangenome using the program "
+                             "`anvi-display-pan` for good measure.", header="⚠️ SILLY GENOMES WARNING ⚠️", lc="red")
+
 
     # TODO needs more sanity checks!
     def sanity_check(self):
@@ -1611,7 +1620,9 @@ class PangenomeGraph():
         search = int(tracks_layer / 2)
 
         label = int(arrow * 0.25)
-        disty = int(tracks_layer / y_max)
+        # Prevent division by zero when all nodes have y position of 0
+        # Use tracks_layer as default when y_max is 0 (single layer case)
+        disty = int(tracks_layer / y_max) if y_max > 0 else tracks_layer
 
         state = {'rearranged_color': '#8FF0A4',
                  'accessory_color': '#DC8ADD',
@@ -1703,8 +1714,10 @@ class PangenomeGraph():
     def update_pan_graph_db_with_layer_orders(self):
         """Adds the newick tree calculated from the graph into the pan-graph-db"""
 
-        args = argparse.Namespace(pan_or_profile_db=self.pan_graph_db_path, target_data_table="layer_orders")
-        miscdata.TableForLayerOrders(args, r=terminal.Run(verbose=False)).add({"default": {'data_type': 'newick', 'data_value': self.newick}}, skip_check_names=True)
+        # Only add newick tree if one was generated (not empty for identical genomes)
+        if self.newick:
+            args = argparse.Namespace(pan_or_profile_db=self.pan_graph_db_path, target_data_table="layer_orders")
+            miscdata.TableForLayerOrders(args, r=terminal.Run(verbose=False)).add({"default": {'data_type': 'newick', 'data_value': self.newick}}, skip_check_names=True)
 
 
     def update_pan_graph_db_with_items_additional_data(self):

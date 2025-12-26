@@ -476,6 +476,9 @@ class PangenomeGraphManager():
         W_median = df['weight'].median()
 
         def log_min_max_normalize(X, X_min, X_max):
+            # Handle edge case where all values are the same
+            if X_min == X_max:
+                return 0.0
             X_norm = (math.log(1 + X) - math.log(1 + X_min)) / (math.log(1 + X_max) - math.log(1 + X_min))
             return(X_norm)
 
@@ -584,6 +587,12 @@ class PangenomeGraphManager():
             X[j][i] = elements_unsimilar / (elements_similar + elements_unsimilar)
 
             self.run.info_single(f"d({genome_i},{genome_j}) = {round(X[i][j], 3)}")
+
+        # Check if all distances are zero (identical genomes)
+        if np.all(X == 0):
+            self.run.warning("All pairwise distances are zero (genomes are identical). No dendrogram will be generated.")
+            self.run.info_single("Done.")
+            return ''
 
         condensed_X = squareform(X)
         Z = linkage(condensed_X, 'ward')
