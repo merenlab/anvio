@@ -588,6 +588,12 @@ class PangenomeGraphManager():
 
             self.run.info_single(f"d({genome_i},{genome_j}) = {round(X[i][j], 3)}")
 
+        # Check if all distances are zero (identical genomes)
+        if np.all(X == 0):
+            self.run.warning("All pairwise distances are zero (genomes are identical). No dendrogram will be generated.")
+            self.run.info_single("Done.")
+            return ''
+
         condensed_X = squareform(X)
         Z = linkage(condensed_X, 'ward')
 
