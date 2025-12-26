@@ -126,8 +126,6 @@ class GenomeReorienter:
                 self.run.info("Rotated reference", rotated_ref, nl_after=1)
             elif dnaa_position == 0:
                 self.run.info("Reference rotation", "Not needed (DnaA gene is already at position 0)", nl_after=1)
-            else:
-                self.run.warning("DnaA gene not found. Will proceed without rotating the reference.", nl_after=1)
 
         # If reference was auto-selected and not using DnaA, find the optimal starting position
         elif not reference_was_user_specified:
