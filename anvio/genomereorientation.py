@@ -13,9 +13,9 @@ import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
-from anvio.errors import ConfigError, FilesNPathsError
-from anvio.drivers.prodigal import Prodigal
 from anvio.drivers.hmmer import HMMer
+from anvio.genecalling import GeneCaller
+from anvio.errors import ConfigError, FilesNPathsError
 
 
 __copyright__ = "Copyleft 2015-2025, The Anvi'o Project (http://anvio.org/)"
@@ -126,8 +126,6 @@ class GenomeReorienter:
                 self.run.info("Rotated reference", rotated_ref, nl_after=1)
             elif dnaa_position == 0:
                 self.run.info("Reference rotation", "Not needed (DnaA gene is already at position 0)", nl_after=1)
-            else:
-                self.run.warning("DnaA gene not found. Will proceed without rotating the reference.", nl_after=1)
 
         # If reference was auto-selected and not using DnaA, find the optimal starting position
         elif not reference_was_user_specified:
@@ -224,9 +222,11 @@ class GenomeReorienter:
                        "large sequences.")
 
         if self.use_dnaa_for_reference_orientation:
-            citation_msg += (" Additionally, `prodigal` by Hyatt et al (doi:10.1186/1471-2105-11-119) was used for gene "
-                           "calling and `HMMER` by Eddy (doi:10.1371/journal.pcbi.1002195) was used to identify the DnaA "
-                           "gene for reference orientation.")
+            citation_msg += ("Additionally, anvi'o used 'pyrodigal-gv' by Martin Larralde for gene calling. It is an extension of "
+                             "'pyrodigal' (doi:10.21105/joss.04296), which builds upon the approach originally implemented by Hyatt et al "
+                             "(doi:10.1186/1471-2105-11-119), with additional metagenomics models for giant viruses and viruses with "
+                             "alternative genetic codes by Camargo et al (doi:10.1038/s41587-023-01953-y). Anvi'o also used `HMMER` by "
+                             "Eddy (doi:10.1371/journal.pcbi.1002195) to identify the DnaA gene for reference orientation.")
 
         citation_msg += " If you publish your findings, please do not forget to properly credit the authors of these tools."
 
@@ -1385,8 +1385,6 @@ class GenomeReorienter:
 
         Returns the start position of the DnaA gene, or None if not found.
         """
-        import argparse
-
         self.run.warning(None, header="FINDING DnaA GENE IN REFERENCE")
         self.run.info("Reference genome", self.reference_name)
 
@@ -1394,17 +1392,14 @@ class GenomeReorienter:
         temp_dir = filesnpaths.get_temp_directory_path()
 
         try:
-            # Step 1: Call genes using Prodigal
-            self.run.info("Step 1", "Calling genes with Prodigal")
+            # Step 1: Call genes using pyrodigal-gv
+            self.run.info("Step 1", "Calling genes")
 
-            # Create args for Prodigal
-            prodigal_args = argparse.Namespace(num_threads=1, prodigal_single_mode=True)
-
-            prodigal = Prodigal(args=prodigal_args, run=self.log_run, progress=self.progress)
-            gene_calls_dict, aa_sequences_dict = prodigal.process(self.reference_path, temp_dir)
+            gene_caller = GeneCaller(self.reference_path, gene_caller='pyrodigal-gv', run=self.log_run, progress=self.progress)
+            gene_calls_dict, aa_sequences_dict = gene_caller.process()
 
             if not aa_sequences_dict:
-                self.run.warning("Prodigal did not find any genes in the reference genome. DnaA orientation will be skipped.")
+                self.run.warning("Gene caller did not find any genes in the reference genome. DnaA orientation will be skipped.")
                 return None
 
             self.run.info("Genes called", f"{len(gene_calls_dict)}")
