@@ -187,17 +187,25 @@ class PangenomeGraphUserInterface {
         var current_outer_stop = sum_outer_layer
         
         var enabled = []
-        var order = this.newick_to_order(this.data['meta']['newick']).reverse()
+        var order = []
         var max_dist = 0
         var item_order = []
-        for (var item of order) {
-            var [name, item_start, item_end] = item
-            if (name != 'branching') {
-                item_order.push(name)
+
+        // Only parse newick tree if it exists (may be empty for identical genomes)
+        if (this.data['meta']['newick'] && this.data['meta']['newick'].length > 0) {
+            order = this.newick_to_order(this.data['meta']['newick']).reverse()
+            for (var item of order) {
+                var [name, item_start, item_end] = item
+                if (name != 'branching') {
+                    item_order.push(name)
+                }
+                if (item_end > max_dist) {
+                    max_dist = item_end
+                }
             }
-            if (item_end > max_dist) {
-                max_dist = item_end
-            }
+        } else {
+            // No newick tree - just use genome names in their original order
+            item_order = this.genomes.slice()
         }
         
         for (var genome of item_order) {
@@ -981,7 +989,9 @@ class PangenomeGraphUserInterface {
             }
         }
        
-        if ($('#flextree').prop('checked') == true){
+
+        // Only draw newick tree if we have one (order will be empty if no newick data)
+        if ($('#flextree').prop('checked') == true && order.length > 0){
             svg_tree = this.draw_newick(order, item_dist, max_dist, offset, tree_length, tree_thickness, theta, start_angle, end_angle, linear, node_distance_x)
         }
         
