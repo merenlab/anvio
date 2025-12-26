@@ -476,6 +476,9 @@ class PangenomeGraphManager():
         W_median = df['weight'].median()
 
         def log_min_max_normalize(X, X_min, X_max):
+            # Handle edge case where all values are the same
+            if X_min == X_max:
+                return 0.0
             X_norm = (math.log(1 + X) - math.log(1 + X_min)) / (math.log(1 + X_max) - math.log(1 + X_min))
             return(X_norm)
 
