@@ -3586,16 +3586,20 @@ class PanGraphSuperclass(PanSuperclass):
 
 
     def load_state(self, state='default', order='default'):
-
         args = argparse.Namespace(pan_or_profile_db=self.pan_graph_db_path, target_data_table="layer_orders")
         items_layer_order = TableForLayerOrders(args)
 
-        order_dict = items_layer_order.get()[order]
-        if 'newick' in order_dict:
-            self.p_meta['newick'] = order_dict['newick']
+        # Handle case where no layer orders exist (e.g., identical genomes with no newick tree)
+        layer_orders = items_layer_order.get()
+        if order in layer_orders:
+            order_dict = layer_orders[order]
+            if 'newick' in order_dict:
+                self.p_meta['newick'] = order_dict['newick']
+            else:
+                self.p_meta['newick'] = ''
         else:
-            # FIXME
-            pass
+            # No layer order exists - set empty newick
+            self.p_meta['newick'] = ''
 
         self.p_meta['order'] = order
         self.p_meta['state'] = state
@@ -3622,11 +3626,16 @@ class PanGraphSuperclass(PanSuperclass):
         args = argparse.Namespace(pan_or_profile_db=self.pan_graph_db_path, target_data_table="layer_orders")
         items_layer_order = TableForLayerOrders(args)
 
-        order_dict = items_layer_order.get()[self.p_meta['order']]
-        if 'newick' in order_dict:
-            self.p_meta['newick'] = order_dict['newick']
+        # Handle case where no layer orders exist (e.g., identical genomes with no newick tree)
+        layer_orders = items_layer_order.get()
+        if self.p_meta['order'] in layer_orders:
+            order_dict = layer_orders[self.p_meta['order']]
+            if 'newick' in order_dict:
+                self.p_meta['newick'] = order_dict['newick']
+            else:
+                self.p_meta['newick'] = ''
         else:
-            # FIXME
+            # No layer order exists - keep current newick (likely empty)
             pass
 
         node_positions, edge_positions, node_groups = TopologicalLayout().run_synteny_layout_algorithm(
