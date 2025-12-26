@@ -1581,6 +1581,15 @@ class PangenomeGraph():
         # generate pan-graph-db and populate it with information
         self.generate_pan_graph_db()
 
+        # Let the user know if we ended up with a zero-variation graph
+        if not self.newick:
+            self.run.warning("Your pangenome graph has no structure, which means the genomes you are working with "
+                             "have no gene-level variation. All the files are still generated (because that's how "
+                             "anvi'o rolls), but it will be a wasted effort to visualize these data since you will "
+                             "not see anything worth noting :/ If you were expecting variation, please double-check "
+                             "your input genomes, or take a look at the conventional pangenome using the program "
+                             "`anvi-display-pan` for good measure.", header="⚠️ SILLY GENOMES WARNING ⚠️", lc="red")
+
 
     # TODO needs more sanity checks!
     def sanity_check(self):
