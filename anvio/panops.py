@@ -1703,8 +1703,10 @@ class PangenomeGraph():
     def update_pan_graph_db_with_layer_orders(self):
         """Adds the newick tree calculated from the graph into the pan-graph-db"""
 
-        args = argparse.Namespace(pan_or_profile_db=self.pan_graph_db_path, target_data_table="layer_orders")
-        miscdata.TableForLayerOrders(args, r=terminal.Run(verbose=False)).add({"default": {'data_type': 'newick', 'data_value': self.newick}}, skip_check_names=True)
+        # Only add newick tree if one was generated (not empty for identical genomes)
+        if self.newick:
+            args = argparse.Namespace(pan_or_profile_db=self.pan_graph_db_path, target_data_table="layer_orders")
+            miscdata.TableForLayerOrders(args, r=terminal.Run(verbose=False)).add({"default": {'data_type': 'newick', 'data_value': self.newick}}, skip_check_names=True)
 
 
     def update_pan_graph_db_with_items_additional_data(self):
