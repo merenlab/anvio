@@ -1398,11 +1398,7 @@ class GenomeReorienter:
             self.run.info("Step 1", "Calling genes with Prodigal")
 
             # Create args for Prodigal
-            prodigal_args = argparse.Namespace(
-                num_threads=1,  # Prodigal is single-threaded
-                prodigal_translation_table=11,  # Standard bacterial code
-                prodigal_single_mode=True  # Use single mode for single circular genome
-            )
+            prodigal_args = argparse.Namespace(num_threads=1, prodigal_single_mode=True)
 
             prodigal = Prodigal(args=prodigal_args, run=self.log_run, progress=self.progress)
             gene_calls_dict, aa_sequences_dict = prodigal.process(self.reference_path, temp_dir)
