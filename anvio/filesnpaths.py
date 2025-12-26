@@ -359,8 +359,9 @@ def is_file_bam_file(file_path, dont_raise=False, ok_if_not_indexed=False):
     return True
 
 
-def is_program_exists(program):
+def is_program_exists(program, advice_if_not_exists=None):
     """adapted from http://stackoverflow.com/a/377028"""
+
     def is_exe(fpath):
         return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
 
@@ -375,7 +376,12 @@ def is_program_exists(program):
             if is_exe(exe_file):
                 return True
 
-    raise FilesNPathsError("'%s' is not found" % program)
+    # so the program doesn't exist ..
+    error_msg = (f"The program '{program}' is not found in your path, "
+                 f"but it is needed for the task you set out to do :/"
+                 f"{' ' + advice_if_not_exists if advice_if_not_exists else ''}")
+
+    raise FilesNPathsError(error_msg)
 
 
 def get_temp_directory_path(just_the_path=False):

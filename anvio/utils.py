@@ -670,6 +670,71 @@ def get_command_output_from_shell(cmd_line):
     return out_bytes, ret_code
 
 
+def run_command_and_get_output(cmdline, raise_on_error=True, log_file_path=None):
+    """Run a command and return its stdout as a string.
+
+    This is a modern utility function using subprocess.run() that captures
+    stdout for parsing while optionally logging stderr to a file. At some point
+    we will have to migrate all run_command functionality to this style and stop
+    using the older `subprocess.Popen()` approach.
+
+    Parameters
+    ==========
+    cmdline : str or list
+        The command to be run, e.g. "echo hello" or ["echo", "hello"]
+    raise_on_error : bool, True
+        If True, raises ConfigError when command exits with non-zero status
+    log_file_path : str or Path-like, None
+        Optional path to log stderr output. If None, stderr is captured to stdout.
+
+    Returns
+    =======
+    stdout : str
+        The stdout from the command as a decoded string
+
+    Raises
+    ======
+    ConfigError
+        If raise_on_error is True and command returns non-zero exit code
+    """
+    cmdline = format_cmdline(cmdline)
+
+    if anvio.DEBUG:
+        Progress().reset()
+        Run().info("[DEBUG] `run_command_and_get_output` is running",
+                   ' '.join(['%s' % (('"%s"' % str(x)) if ' ' in str(x) else ('%s' % str(x))) for x in cmdline]),
+                   nl_before=1, nl_after=1, mc='red', lc='yellow')
+
+    try:
+        proc = subprocess.run(
+            cmdline,
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+
+        if proc.returncode != 0:
+            error_msg = f"Command failed (exit {proc.returncode}): {' '.join(cmdline)}"
+            if proc.stderr:
+                error_msg += f"\n{proc.stderr.strip()}"
+
+            if log_file_path:
+                filesnpaths.is_output_file_writable(log_file_path)
+                with open(log_file_path, 'w') as f:
+                    f.write(f"# DATE: {get_date()}\n# CMD LINE: {' '.join(cmdline)}\n")
+                    f.write(f"# EXIT CODE: {proc.returncode}\n")
+                    f.write(proc.stderr)
+
+            if raise_on_error:
+                raise ConfigError(error_msg)
+
+        return proc.stdout
+
+    except OSError as e:
+        raise ConfigError(f"Command failed for the following reason: '{e}' ('{' '.join(cmdline)}')")
+
+
 def store_array_as_TAB_delimited_file(a, output_path, header, exclude_columns=[]):
     filesnpaths.is_output_file_writable(output_path)
 
