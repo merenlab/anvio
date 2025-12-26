@@ -1611,7 +1611,9 @@ class PangenomeGraph():
         search = int(tracks_layer / 2)
 
         label = int(arrow * 0.25)
-        disty = int(tracks_layer / y_max)
+        # Prevent division by zero when all nodes have y position of 0
+        # Use tracks_layer as default when y_max is 0 (single layer case)
+        disty = int(tracks_layer / y_max) if y_max > 0 else tracks_layer
 
         state = {'rearranged_color': '#8FF0A4',
                  'accessory_color': '#DC8ADD',
