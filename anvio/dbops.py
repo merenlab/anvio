@@ -3571,7 +3571,6 @@ class PanGraphSuperclass(PanSuperclass):
         else:
             self.run.warning("The pan database is being initialized without a genomes storage.")
 
-        F = lambda x: '[YES]' if x else '[NO]'
         self.run.info('Pan Graph DB', 'Initialized: %s (v. %s)' % (self.pan_graph_db_path, anvio.__pan__version__))
 
 
