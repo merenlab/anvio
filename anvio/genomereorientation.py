@@ -1302,64 +1302,174 @@ class GenomeReorienter:
 
         self.progress.end()
 
-        # Find the position with maximum coverage (in a greedy fashion)
-        # Use a sliding window to smooth out noise and find a good anchor region
-        window_size = min(1000, ref_len // 100)  # 1kb or 1% of genome, whichever is smaller
-        if window_size < 100:
-            window_size = min(100, ref_len)
+        # Find the longest contiguous high-coverage region
+        # This is better than greedy first-match as it avoids edges of conserved regions
+        self.run.info_single("Finding longest conserved region instead of first match", level=2)
 
-        # Convert window size to number of bins
-        window_bins = max(1, window_size // bin_size)
+        # Determine coverage threshold (at least 80% of genomes, or all if there are few)
+        min_coverage_threshold = max(int(total_genomes * 0.8), total_genomes - 1) if total_genomes > 3 else total_genomes
 
-        self.progress.new("Finding optimal start position", progress_total_items=num_bins)
-        best_score = -1
-        best_position = 0
-        best_window_genomes = set()
+        # Find all contiguous regions with high coverage
+        conserved_regions = []
+        current_region_start = None
+        current_region_end = None
 
-        # Search at bin resolution rather than base-pair resolution
         for bin_idx in range(num_bins):
-            if bin_idx % 10 == 0:  # Update every 10 bins
-                self.progress.update(f"Scanning bin {bin_idx:,} / {num_bins:,}")
-                self.progress.increment(increment_to=bin_idx)
+            bin_coverage = len(coverage_bins[bin_idx])
 
-            # Calculate coverage in a window of bins around this bin
-            # Coverage = number of unique genomes covering the bins in the window
-            window_genomes = set()
-            for offset in range(-window_bins // 2, window_bins // 2):
-                bin_pos = (bin_idx + offset) % num_bins  # Circular genome
-                window_genomes.update(coverage_bins[bin_pos])
+            if bin_coverage >= min_coverage_threshold:
+                if current_region_start is None:
+                    # Start a new conserved region
+                    current_region_start = bin_idx
+                    current_region_end = bin_idx
+                else:
+                    # Extend current region
+                    current_region_end = bin_idx
+            else:
+                if current_region_start is not None:
+                    # End current region and save it
+                    region_length = (current_region_end - current_region_start + 1) * bin_size
+                    avg_coverage = sum(len(coverage_bins[i]) for i in range(current_region_start, current_region_end + 1)) / (current_region_end - current_region_start + 1)
+                    conserved_regions.append({
+                        'start_bin': current_region_start,
+                        'end_bin': current_region_end,
+                        'start_bp': current_region_start * bin_size,
+                        'end_bp': min((current_region_end + 1) * bin_size, ref_len),
+                        'length': region_length,
+                        'avg_coverage': avg_coverage
+                    })
+                    current_region_start = None
+                    current_region_end = None
 
-            avg_coverage = len(window_genomes)
+        # Handle wrap-around for circular genomes
+        if current_region_start is not None:
+            # Region extends to end of genome, check if it wraps around
+            region_length = (current_region_end - current_region_start + 1) * bin_size
+            avg_coverage = sum(len(coverage_bins[i]) for i in range(current_region_start, current_region_end + 1)) / (current_region_end - current_region_start + 1)
+            conserved_regions.append({
+                'start_bin': current_region_start,
+                'end_bin': current_region_end,
+                'start_bp': current_region_start * bin_size,
+                'end_bp': min((current_region_end + 1) * bin_size, ref_len),
+                'length': region_length,
+                'avg_coverage': avg_coverage
+            })
 
-            if avg_coverage > best_score:
-                best_score = avg_coverage
-                # Convert bin index back to position (use middle of bin)
-                best_position = bin_idx * bin_size + bin_size // 2
-                # Make sure we don't go past the reference length
-                if best_position >= ref_len:
-                    best_position = bin_idx * bin_size
-                best_window_genomes = window_genomes.copy()
+        if not conserved_regions:
+            self.run.warning("No highly conserved regions found. Using position 0 as fallback.")
+            return 0, 0, total_genomes
 
-                # Early termination: if all genomes cover this position, we can't do better. Even though
-                # we may have to think about this more carefully. As in not stopping immediately after
-                # the first match, but stopping after three consecutive matches or something. Difficult
-                # to explain why, but I know why. TRUST MEH.
-                if avg_coverage == total_genomes:
-                    self.progress.update(f"Found optimal position at {best_position:,} (100% coverage)")
-                    self.log_run.info_single(f"Early termination: found position with 100% coverage at {best_position:,}", level=2)
-                    break
+        # Find the longest conserved region
+        longest_region = max(conserved_regions, key=lambda r: r['length'])
 
-        self.progress.end()
+        self.run.info("Conserved regions found", len(conserved_regions))
+        self.run.info("Longest conserved region", f"{longest_region['start_bp']:,} - {longest_region['end_bp']:,} bp ({longest_region['length']:,} nts)")
+        self.run.info("Average coverage in longest region", f"{longest_region['avg_coverage']:.1f} genomes")
 
-        # Report the window coverage that was actually used for selection
-        genomes_covering = len(best_window_genomes)
+        # Now find the optimal position within this region that doesn't split a gene
+        best_position = self._find_position_between_genes(longest_region, ref_len)
+
+        # Get coverage at the selected position
+        selected_bin = best_position // bin_size
+        genomes_covering = len(coverage_bins[selected_bin])
         coverage_pct = (genomes_covering / total_genomes) * 100 if total_genomes > 0 else 0
 
-        self.run.info("Optimal start position", f"{best_position:,} bp")
-        self.run.info("Window size used for selection", f"{window_size:,} bp")
+        self.run.info("Optimal start position", f"{best_position:,} nts (middle of longest conserved region, between genes)")
         self.run.info("Genomes covering this position", f"{genomes_covering}/{total_genomes} ({coverage_pct:.1f}%)")
 
         return best_position, genomes_covering, total_genomes
+
+
+    def _find_position_between_genes(self, conserved_region, ref_len):
+        """Find the best position within a conserved region that doesn't split a gene.
+
+        Args:
+            conserved_region: dict with 'start_bp' and 'end_bp' keys
+            ref_len: total reference length
+
+        Returns:
+            Position (bp) in the middle of the conserved region, ideally between genes
+        """
+        region_start = conserved_region['start_bp']
+        region_end = conserved_region['end_bp']
+        region_middle = (region_start + region_end) // 2
+
+        self.run.info_single("Calling genes to find intergenic position in conserved region", level=2)
+
+        # Call genes on reference
+        temp_dir = filesnpaths.get_temp_directory_path()
+        try:
+            gene_caller = GeneCaller(self.reference_path, gene_caller='pyrodigal-gv', run=terminal.Run(verbose=False), progress=self.progress)
+            gene_calls_dict, _ = gene_caller.process()
+
+            if not gene_calls_dict:
+                self.run.warning("No genes found in reference. Using middle of conserved region.")
+                return region_middle
+
+            self.run.info_single(f"Found {len(gene_calls_dict)} genes in reference", level=2)
+
+            # Extract gene boundaries
+            gene_boundaries = []
+            for gene_id, gene_info in gene_calls_dict.items():
+                gene_boundaries.append({
+                    'id': gene_id,
+                    'start': gene_info['start'],
+                    'stop': gene_info['stop']
+                })
+
+            # Sort by start position
+            gene_boundaries.sort(key=lambda g: g['start'])
+
+            # Find intergenic regions within the conserved region
+            intergenic_regions = []
+
+            for i in range(len(gene_boundaries)):
+                gene1 = gene_boundaries[i]
+                gene2 = gene_boundaries[(i + 1) % len(gene_boundaries)]  # Next gene (wrap around)
+
+                # Calculate intergenic region
+                if i < len(gene_boundaries) - 1:
+                    # Normal case: gap between consecutive genes
+                    intergenic_start = gene1['stop']
+                    intergenic_end = gene2['start']
+                else:
+                    # Wrap-around case: from last gene to first gene
+                    intergenic_start = gene1['stop']
+                    intergenic_end = gene2['start'] + ref_len  # Adjust for circular
+
+                # Check if this intergenic region overlaps with our conserved region
+                # For simplicity, use the middle point of the intergenic region
+                if intergenic_start < intergenic_end:
+                    intergenic_middle = (intergenic_start + intergenic_end) // 2
+                    if region_start <= intergenic_middle <= region_end:
+                        distance_from_region_middle = abs(intergenic_middle - region_middle)
+                        intergenic_regions.append({
+                            'position': intergenic_middle,
+                            'distance_from_middle': distance_from_region_middle,
+                            'length': intergenic_end - intergenic_start
+                        })
+
+            if intergenic_regions:
+                # Choose intergenic region closest to the middle of conserved region
+                best_intergenic = min(intergenic_regions, key=lambda r: r['distance_from_middle'])
+                self.run.info_single(f"Selected intergenic position at {best_intergenic['position']:,} nts "
+                                     f"({best_intergenic['distance_from_middle']:,} nts from literal region middle, "
+                                     f"where the intergenic region is {best_intergenic['length']:,} nts)", level=2, cut_after=None)
+                return best_intergenic['position']
+            else:
+                # No intergenic region found in conserved region, use middle
+                self.run.info_single(
+                    f"No intergenic regions in conserved region. Using region middle: {region_middle:,} nts",
+                    level=2
+                )
+                return region_middle
+
+        except Exception as e:
+            self.run.warning(f"Could not call genes for optimal positioning: {e}. Using middle of conserved region.")
+            return region_middle
+        finally:
+            if not anvio.DEBUG:
+                shutil.rmtree(temp_dir)
 
 
     def _find_dnaa_gene_position(self):
