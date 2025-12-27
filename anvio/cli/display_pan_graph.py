@@ -68,6 +68,7 @@ def get_args():
     groupC.add_argument(*anvio.A('browser-path'), **anvio.K('browser-path'))
     groupC.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
     groupC.add_argument(*anvio.A('password-protected'), **anvio.K('password-protected'))
+    groupC.add_argument(*anvio.A('export-svg'), **anvio.K('export-svg'))
 
     return parser.get_args(parser)
 

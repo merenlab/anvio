@@ -2933,4 +2933,5 @@ class PangenomeGraphUserInterface {
 
 $(document).ready(function () {
     const pgui = new PangenomeGraphUserInterface();
+    window.pgui = pgui;  // Make accessible to Selenium for SVG export
 });
