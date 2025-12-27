@@ -53,12 +53,13 @@ class PafRecord:
 
 
 class ReorientationResult:
-    def __init__(self, name, status, message, output_path=None, trust=None):
+    def __init__(self, name, status, message, output_path=None, trust=None, alignment=None):
         self.name = name
         self.status = status
         self.message = message
         self.output_path = output_path
         self.trust = trust
+        self.alignment = alignment  # Store alignment info for post-processing
 
 
 class GenomeReorienter:
@@ -348,7 +349,7 @@ class GenomeReorienter:
             self.run.info_single("After reorientation", nl_before=1, nl_after=1)
             self._plot_synteny_ribbons(paf_final, genome_name, label="After reorientation")
 
-        return ReorientationResult(genome_name, "ok", message, output_path, trust=trust_label)
+        return ReorientationResult(genome_name, "success", message, output_path, trust=trust_label, alignment=best_alignment)
 
 
     def _report_and_visualize_fragmented_genome(self, genome_name, output_path, result_data, fasta_path):
@@ -409,7 +410,7 @@ class GenomeReorienter:
             except Exception as e:
                 self.log_run.info_single(f"Could not generate alignment plots: {e}", level=2)
 
-        return ReorientationResult(genome_name, "ok", message, output_path, trust=trust_label)
+        return ReorientationResult(genome_name, "success", message, output_path, trust=trust_label, alignment=None)
 
 
     def _process_circular(self, query_fa, output_path, genome_name):
@@ -432,88 +433,53 @@ class GenomeReorienter:
             oriented_query = os.path.join(temp_dir, "query_oriented.fa")
             if anchor1.strand == "-":
                 self._seqkit_reverse_complement(query_fa, oriented_query)
+                # After reverse complement, positions transform: i -> qlen-1-i
+                # So the cut position must be transformed too
+                cut0 = (anchor1.qlen - 1 - cut0) % anchor1.qlen
+                self.log_run.info_single(f"Transformed cut0={cut0} after RC", level=2)
             else:
                 shutil.copyfile(query_fa, oriented_query)
 
-            rot1 = os.path.join(temp_dir, "query_rot1.fa")
-            self._seqkit_rotate(oriented_query, cut0 + 1, rot1)
-
-            self.progress.update(f"{genome_name}: Re-aligning (pass 2)")
-            paf2 = self._minimap2_align(self.reference_path, rot1)
-            anchor2 = self._select_anchor_smallest_reference_start(paf2)
-            cut1 = self._cut0_for_ref0(anchor2)
-            self.log_run.info_single(f"Pass-2 anchor strand={anchor2.strand} cut1={cut1}", level=2)
-            actions.append(f"rotated {cut1 + 1} bp (pass2 snap)")
-
-            self.progress.update(f"{genome_name}: Rotating (pass 2)")
-            rot2 = os.path.join(temp_dir, "query_rot2.fa")
-            self._seqkit_rotate(rot1, cut1 + 1, rot2)
-
-            self.progress.update(f"{genome_name}: Re-aligning (pass 3)")
-            paf3 = self._minimap2_align(self.reference_path, rot2)
-            anchor_snap = self._select_anchor_for_ref0(paf3)
-            cut_snap = self._cut0_for_ref0(anchor_snap)
-            actions.append(f"rotated {cut_snap + 1} bp (snap-to-ref0 anchor)")
-
-            self.progress.update(f"{genome_name}: Rotating (pass 3)")
-            rot3 = os.path.join(temp_dir, "query_rot3.fa")
-            self._seqkit_rotate(rot2, cut_snap + 1, rot3)
-
-            self.progress.update(f"{genome_name}: Final alignment (pass 4)")
-            paf4 = self._minimap2_align(self.reference_path, rot3)
-            best_final = self._best_primary_alignment(paf4)
-
-            # final snap: force reference position 0 to align to query position 0
-            self.progress.update(f"{genome_name}: Final rotation snap")
-            cut_final = self._cut0_for_ref0(best_final)
-            final_fa = os.path.join(temp_dir, "query_rot_final.fa")
-            if cut_final == 0:
-                shutil.copyfile(rot3, final_fa)
-            else:
-                self._seqkit_rotate(rot3, cut_final + 1, final_fa)
-            actions.append(f"rotated {cut_final + 1} bp (final snap to ref0)")
+            # After the initial pass we go straight to verification and correction
+            initial_rotated = os.path.join(temp_dir, "query_rot1.fa")
+            self._seqkit_rotate(oriented_query, cut0 + 1, initial_rotated)
 
             self.progress.update(f"{genome_name}: Verification alignment")
-            paf_final = self._minimap2_align(self.reference_path, final_fa)
+            paf_final = self._minimap2_align(self.reference_path, initial_rotated)
             best_final_final = self._best_primary_alignment(paf_final)
 
             # Iteratively correct until alignment starts at reference position 0
-            current_fa = final_fa
+            current_fa = initial_rotated
             max_correction_iterations = 5
             correction_iteration = 0
 
             self.log_run.info_single(f"Initial: tstart={best_final_final.tstart} qstart={best_final_final.qstart}", level=2)
 
-            while best_final_final.tstart != 0 and correction_iteration < max_correction_iterations:
+            # Final correction to ensure query starts at position 0
+            # Goal: qstart=0 (tstart offset will be handled by consensus offset fix if needed)
+            while best_final_final.qstart != 0 and correction_iteration < max_correction_iterations:
                 correction_iteration += 1
                 self.progress.update(f"{genome_name}: Correction iteration {correction_iteration}")
                 self.log_run.info_single(f"Correction iteration {correction_iteration}: tstart={best_final_final.tstart} qstart={best_final_final.qstart} strand={best_final_final.strand}", level=2)
 
-                # For circular genomes, we need to rotate the query so that
-                # the query position that aligns with ref[0] becomes query[0]
-                #
-                # Current state: query[qstart] aligns with ref[tstart]
-                # Goal: make ref[0] align with query[0]
-                #
-                # For + strand:
-                # If query[qstart] aligns with ref[tstart], then:
-                # - ref[0] aligns with query[qstart - tstart] (handle negative with modulo)
-                if best_final_final.strand == "+":
-                    # Position in query that aligns with ref[0]
-                    cut_correction = (best_final_final.qstart - best_final_final.tstart) % best_final_final.qlen
+                # Only fix qstart, not tstart
+                # tstart offset will be handled globally by consensus offset fix
+                if best_final_final.qstart != 0:
+                    if best_final_final.strand == "+":
+                        cut_correction = best_final_final.qstart
+                    else:
+                        cut_correction = self._cut0_for_ref0(best_final_final)
                 else:
-                    # For - strand, use the existing logic which handles reverse complement
-                    cut_correction = self._cut0_for_ref0(best_final_final)
-
-                self.log_run.info_single(f"Calculated cut_correction={cut_correction} (qstart={best_final_final.qstart}, qend={best_final_final.qend})", level=2)
-                corrected_fa = os.path.join(temp_dir, f"query_corrected_{correction_iteration}.fa")
-
-                if cut_correction == 0:
-                    self.log_run.info_single("Cut correction is 0, alignment already starts at position 0", level=2)
+                    # qstart is already 0, we're done
                     break
 
+                if cut_correction == 0:
+                    self.log_run.info_single("Cut correction is 0, alignment already optimal", level=2)
+                    break
+
+                corrected_fa = os.path.join(temp_dir, f"query_corrected_{correction_iteration}.fa")
                 self._seqkit_rotate(current_fa, cut_correction + 1, corrected_fa)
-                actions.append(f"rotated {cut_correction + 1} bp (correction iter {correction_iteration} for tstart={best_final_final.tstart})")
+                actions.append(f"rotated {cut_correction + 1} bp (correction iter {correction_iteration} for qstart={best_final_final.qstart}, tstart={best_final_final.tstart})")
 
                 # Re-align after correction
                 paf_final = self._minimap2_align(self.reference_path, corrected_fa)
@@ -524,10 +490,23 @@ class GenomeReorienter:
 
             if best_final_final.tstart == 0:
                 self.log_run.info_single(f"Successfully aligned to tstart=0 after {correction_iteration} correction(s)", level=2)
+                shutil.copyfile(current_fa, output_path)
             else:
-                self.log_run.info_single(f"Warning: Could not achieve tstart=0 after {correction_iteration} attempts (final tstart={best_final_final.tstart})", level=2)
+                # qstart=0 but tstart!=0: query is offset from reference
+                # query[0] aligns with ref[tstart], meaning the first tstart bp of ref are at the END of query
+                # Rotate BACKWARD to move those bp from end to beginning
+                self.log_run.info_single(f"Final tstart={best_final_final.tstart}, applying backward rotation to match reference", level=2)
+                final_adjustment_fa = os.path.join(temp_dir, "query_final_adjustment.fa")
 
-            shutil.copyfile(current_fa, output_path)
+                # Rotate backward by tstart (use qlen - tstart for forward rotation equivalent)
+                backward_rotation = (best_final_final.qlen - best_final_final.tstart) % best_final_final.qlen
+                self._seqkit_rotate(current_fa, backward_rotation + 1, final_adjustment_fa)
+                shutil.copyfile(final_adjustment_fa, output_path)
+                actions.append(f"rotated backward {best_final_final.tstart} bp (final adjustment to match reference start)")
+
+                # Update alignment info for reporting
+                paf_final = self._minimap2_align(self.reference_path, output_path)
+                best_final_final = self._best_primary_alignment(paf_final)
             return best_final_final, paf_final, paf1, actions
         finally:
             if not anvio.DEBUG:
@@ -1024,10 +1003,12 @@ class GenomeReorienter:
             # That position should become query[0], so we rotate by: qstart - tstart
             cut = rec.qstart - rec.tstart
         else:
-            # For - strand: query is reverse complemented
-            # query[qend-1] aligns with ref[tstart] (coordinates are on forward strand)
-            # Position that aligns with ref[0]: qend-1 - tstart (but on reverse)
-            # After reverse complement rotation correction:
+            # For - strand alignment (before RC):
+            # PAF coordinates are on forward strand. The RC of query[qstart:qend] aligns with ref[tstart:tend]
+            # We need to find position in original (pre-RC) query that, after RC of whole sequence, aligns with ref[0]
+            # After whole-sequence RC: original position (qend-1) aligns with ref[tstart]
+            # Going back by tstart in ref means going forward by tstart in original query before RC
+            # Position in original query: (qend - 1) + tstart
             cut = (rec.qend - 1) + rec.tstart
 
         # Handle negative cuts and wrap around circular genome
