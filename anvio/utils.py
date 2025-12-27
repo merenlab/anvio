@@ -4924,7 +4924,28 @@ def get_file_md5(file_path):
     return hash_md5.hexdigest()
 
 
-def run_selenium_and_export_svg(url, output_file_path, browser_path=None, run=run):
+def run_selenium_and_export_svg(url, output_file_path, browser_path=None, run=run,
+                                 wait_text="Current view", pangraph_mode=False):
+    """Export SVG from anvi'o interactive interface using Selenium.
+
+    This function works for all anvi'o interactive interfaces. Use pangraph_mode=True
+    for pangenome graph visualizations which have a different rendering approach.
+
+    Parameters
+    ==========
+    url : str
+        The URL to the interactive interface page
+    output_file_path : str
+        Path where the SVG file should be saved
+    browser_path : str, optional
+        Path to alternative Chrome/Chromium browser executable
+    run : terminal.Run, optional
+        Run instance for logging
+    wait_text : str, optional
+        Text to wait for in title-panel-second-line element (default: "Current view")
+    pangraph_mode : bool, optional
+        Set to True for pangenome graph interface (default: False)
+    """
     if filesnpaths.is_file_exists(output_file_path, dont_raise=True):
         raise FilesNPathsError("The output file already exists. Anvi'o does not like overwriting stuff.")
 
@@ -4941,35 +4962,83 @@ def run_selenium_and_export_svg(url, output_file_path, browser_path=None, run=ru
                           "do that but you don't have it. If you are lucky, you probably can install it by "
                           "typing 'pip install selenium' or something :/")
 
+    # Configure Chrome options for headless operation (needed for HPC/servers without GUI)
+    chrome_options = webdriver.ChromeOptions()
+    chrome_options.add_argument('--headless=new')  # New headless mode
+    chrome_options.add_argument('--no-sandbox')  # Needed for running in restricted environments
+    chrome_options.add_argument('--disable-dev-shm-usage')  # Overcome limited resource problems
+    chrome_options.add_argument('--disable-gpu')  # Applicable to headless mode
+    chrome_options.add_argument('--window-size=1920,1080')
+
     if browser_path:
         filesnpaths.is_file_exists(browser_path)
         run.info_single('You are launching an alternative browser. Keep an eye on things!', mc='red', nl_before=1)
-        driver = webdriver.Chrome(executable_path=browser_path)
+        chrome_options.binary_location = browser_path
+        driver = webdriver.Chrome(options=chrome_options)
     else:
-        driver = webdriver.Chrome()
+        driver = webdriver.Chrome(options=chrome_options)
 
     driver.wait = WebDriverWait(driver, 10)
-    driver.set_window_size(1920, 1080)
     driver.get(url)
 
     try:
-        WebDriverWait(driver, 300).until(EC.text_to_be_present_in_element((By.ID, "title-panel-second-line"), "Current view"))
+        WebDriverWait(driver, 300).until(EC.text_to_be_present_in_element((By.ID, "title-panel-second-line"), wait_text))
     except TimeoutException:
-        print("Timeout occured, could not get the SVG drawing in 600 seconds.")
+        print(f"Timeout occurred, could not get the SVG drawing in 300 seconds.")
         driver.quit()
-    time.sleep(1)
+        raise
 
-    driver.execute_script("exportSvg(true);")
-    time.sleep(1)
+    # Extract SVG content - different approach for pangraph vs standard interfaces
+    try:
+        if pangraph_mode:
+            # Pangenome graph: generate SVG and insert into DOM, then wait for it to be ready
+            driver.execute_script("""
+                var svg = pgui.generate_svg(0);
+                $('#svgbox').empty().html(svg[0].outerHTML);
+            """)
 
-    svg = driver.find_element_by_id('panel-center')
+            # Wait for the SVG element to be present and have content
+            WebDriverWait(driver, 300).until(
+                EC.presence_of_element_located((By.ID, 'result'))
+            )
 
-    svg_file = open(output_file_path, 'w')
-    svg_file.write(svg.get_attribute('innerHTML'))
-    svg_file.close()
+            # Additional check: ensure SVG has actual content (not empty)
+            WebDriverWait(driver, 300).until(
+                lambda d: len(d.find_element(By.ID, 'result').get_attribute('outerHTML')) > 100
+            )
+
+            svg_content = driver.find_element(By.ID, 'result').get_attribute('outerHTML')
+        else:
+            # Standard interface: call exportSvg and wait for it to complete
+            driver.execute_script("exportSvg(true);")
+
+            # Wait for the SVG export to complete by checking if panel-center has SVG content
+            WebDriverWait(driver, 300).until(
+                lambda d: 'svg' in d.find_element(By.ID, 'panel-center').get_attribute('innerHTML').lower()
+            )
+
+            svg = driver.find_element(By.ID, 'panel-center')
+            svg_content = svg.get_attribute('innerHTML')
+    except Exception as e:
+        driver.quit()
+        raise ConfigError(f"Could not extract SVG from the page. Error: {e}")
+
+    # Write SVG to file
+    with open(output_file_path, 'w') as svg_file:
+        svg_file.write(svg_content)
+
     driver.quit()
 
     run.info_single('\'%s\' saved successfully.' % output_file_path)
+
+
+def run_selenium_and_export_svg_for_pangraph(url, output_file_path, browser_path=None, run=run):
+    """Export SVG from pangenome graph interface using Selenium.
+
+    This is a thin wrapper around run_selenium_and_export_svg with pangraph-specific settings.
+    """
+    return run_selenium_and_export_svg(url, output_file_path, browser_path=browser_path, run=run,
+                                       wait_text="Pangraph Detail", pangraph_mode=True)
 
 
 def open_url_in_browser(url, browser_path=None, run=run):
