@@ -55,7 +55,7 @@ class GeneCaller:
     def process(self):
         output_dir = filesnpaths.get_temp_directory_path()
         self.tmp_dirs.append(output_dir)
-        gene_caller = self.gene_callers[self.gene_caller](args=self.args)
+        gene_caller = self.gene_callers[self.gene_caller](args=self.args, progress=self.progress, run=self.run)
 
         gene_calls_dict, amino_acid_sequences_dict = gene_caller.process(self.fasta_file_path, output_dir)
 
