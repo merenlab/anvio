@@ -105,6 +105,9 @@ class GenomeReorienter:
 
 
     def process(self):
+        self.run.info("Output directory", self.output_dir)
+
+        # Deal with reference selection
         reference_was_user_specified = self.reference_name is not None
         self.select_reference_genome()
 
@@ -114,7 +117,7 @@ class GenomeReorienter:
             dnaa_position = self._find_dnaa_gene_position()
             if dnaa_position is not None and dnaa_position != 0:
                 self.run.warning(None, header="ROTATING REFERENCE TO DnaA POSITION")
-                self.run.info("Rotating reference by", f"{dnaa_position:,} bp")
+                self.run.info("Rotating reference by", f"{dnaa_position:,} nts")
                 self.run.info("Reason", "Aligning genome to DnaA gene (origin of replication)")
 
                 # Create a rotated version of the reference
@@ -126,7 +129,7 @@ class GenomeReorienter:
                 self.reference_path = rotated_ref
                 self.run.info("Rotated reference", rotated_ref, nl_after=1)
             elif dnaa_position == 0:
-                self.run.info("Reference rotation", "Not needed (DnaA gene is already at position 0)", nl_after=1)
+                self.run.info("Reference rotation", "Not needed (DnaA gene is already at position 0 .. yes, that happened o_O)", nl_after=1)
 
         # If reference was auto-selected and not using DnaA, find the optimal starting position
         elif not reference_was_user_specified:
@@ -137,7 +140,7 @@ class GenomeReorienter:
 
                 if optimal_position != 0:
                     self.run.warning(None, header="ROTATING REFERENCE TO OPTIMAL START")
-                    self.run.info("Rotating reference by", f"{optimal_position:,} bp")
+                    self.run.info("Rotating reference by", f"{optimal_position:,} nts")
                     self.run.info("Reason", f"This position is conserved across {genomes_covering}/{total_genomes} genomes ({coverage_pct:.1f}%)")
 
                     # Create a rotated version of the reference
@@ -151,8 +154,6 @@ class GenomeReorienter:
                 else:
                     self.run.info("Reference rotation", "Not needed (optimal start is already at position 0)", nl_after=1)
 
-        self.run.info("Reference genome", self.reference_name)
-        self.run.info("Output directory", self.output_dir)
         if self.log_run.log_file_path:
             self.run.info("Log file", self.log_run.log_file_path)
 
@@ -388,7 +389,7 @@ class GenomeReorienter:
         self.run.info("Reference coverage", f"{ref_cov:.1f}%")
         self.run.info("Average ANI", f"{avg_ani:.1f}%")
         self.run.info("Total gaps", len(result_data['gaps']))
-        self.run.info("Total gap size", f"{result_data['total_gap_size']:,} bp", nl_after=1)
+        self.run.info("Total gap size", f"{result_data['total_gap_size']:,} nts", nl_after=1)
 
         # Generate alignment plots showing before and after reorientation
         if not self.skip_visualizing_alignments:
@@ -427,7 +428,7 @@ class GenomeReorienter:
             self.log_run.info_single(f"Pass-1 anchor strand={anchor1.strand} cut0={cut0}", level=2)
             if anchor1.strand == "-":
                 actions.append("reverse-complemented query (pass1 anchor '-')")
-            actions.append(f"rotated {cut0 + 1} bp (pass1 snap)")
+            actions.append(f"rotated {cut0 + 1} nts (pass1 snap)")
 
             self.progress.update(f"{genome_name}: Orienting and rotating (pass 1)")
             oriented_query = os.path.join(temp_dir, "query_oriented.fa")
@@ -502,7 +503,7 @@ class GenomeReorienter:
                 backward_rotation = (best_final_final.qlen - best_final_final.tstart) % best_final_final.qlen
                 self._seqkit_rotate(current_fa, backward_rotation + 1, final_adjustment_fa)
                 shutil.copyfile(final_adjustment_fa, output_path)
-                actions.append(f"rotated backward {best_final_final.tstart} bp (final adjustment to match reference start)")
+                actions.append(f"rotated backward {best_final_final.tstart} nts (final adjustment to match reference start)")
 
                 # Update alignment info for reporting
                 paf_final = self._minimap2_align(self.reference_path, output_path)
@@ -750,12 +751,12 @@ class GenomeReorienter:
                             'ref_end': gap_end
                         })
                         self.log_run.info_single(
-                            f"Gap: {gap_size} bp between '{contig_id}' and '{next_contig_id}'",
+                            f"Gap: {gap_size} nts between '{contig_id}' and '{next_contig_id}'",
                             level=2)
                     elif gap_end < gap_start:
                         overlap_size = gap_start - gap_end
                         self.log_run.info_single(
-                            f"WARNING: {overlap_size} bp overlap between '{contig_id}' "
+                            f"WARNING: {overlap_size} nts overlap between '{contig_id}' "
                             f"and '{next_contig_id}'", level=2)
                         gaps.append({
                             'after_contig': contig_id,
@@ -837,7 +838,7 @@ class GenomeReorienter:
             if num_wrap_around_contigs > 0:
                 actions_summary += f" ({num_wrap_around_contigs} split for wrap-around)"
             if self.scaffold_fragmented:
-                actions_summary += f", inserted {total_gap_size:,} bp of N-padding"
+                actions_summary += f", inserted {total_gap_size:,} nts of N-padding"
 
             # Return results
             return {
@@ -1226,7 +1227,7 @@ class GenomeReorienter:
         # Format the plot
         contig_info = f" ({len(unique_qnames)} contigs)" if has_multiple_contigs else ""
         plt.title(f"{label}: {genome_name}{contig_info} ↔ {self.reference_name} (green=forward, red=reverse)")
-        plt.xlabel("Genome position (bp)")
+        plt.xlabel("Genome position (nts)")
         plt.ylim(-0.1, 2.1)
 
         # Set y-axis labels
@@ -1261,8 +1262,8 @@ class GenomeReorienter:
 
         self.run.warning(None, header="FINDING OPTIMAL REFERENCE START")
         self.run.info("Reference genome", self.reference_name)
-        self.run.info("Reference length", f"{ref_len:,} bp")
-        self.run.info("Bin size for coverage", f"{bin_size:,} bp")
+        self.run.info("Reference length", f"{ref_len:,} nts")
+        self.run.info("Bin size for coverage", f"{bin_size:,} nts")
         self.run.info("Number of bins", f"{num_bins:,}")
 
         total_genomes = len([g for g in self.genomes.keys() if g != self.reference_name])
@@ -1473,7 +1474,7 @@ class GenomeReorienter:
             dnaa_stop = gene_info['stop']
 
             self.run.info("DnaA gene found", f"Gene {gene_id}")
-            self.run.info("DnaA location", f"{dnaa_start:,} - {dnaa_stop:,} bp")
+            self.run.info("DnaA location", f"{dnaa_start:,} - {dnaa_stop:,} nts")
             self.run.info("DnaA bit score", f"{best_hit['bit_score']:.1f}")
             self.run.info("DnaA e-value", f"{best_hit['e_value']:.2e}", nl_after=1)
 
