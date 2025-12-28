@@ -6,7 +6,6 @@
     anvi-pan-genome is the default client using this module
 """
 
-import copy
 import random
 import networkx as nx
 

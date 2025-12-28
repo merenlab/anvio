@@ -16,10 +16,8 @@ import pandas as pd
 import itertools as it
 import matplotlib.pyplot as plt
 
-from itertools import chain
-from scipy.optimize import curve_fit
 from scipy.spatial.distance import squareform
-from scipy.cluster.hierarchy import linkage, fcluster, dendrogram, to_tree
+from scipy.cluster.hierarchy import linkage, fcluster, dendrogram
 
 from warnings import simplefilter
 simplefilter("ignore", category=pd.errors.PerformanceWarning)
