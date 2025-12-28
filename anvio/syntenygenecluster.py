@@ -30,8 +30,6 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.dbinfo import DBInfo
 
-from anvio.genomestorage import GenomeStorage
-
 from anvio.errors import ConfigError
 
 
