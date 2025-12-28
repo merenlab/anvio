@@ -1328,6 +1328,9 @@ class PangenomeGraph():
         self.run = run
         self.progress = progress
 
+        # we seem to like longer messages in this class.
+        self.run.width = 60
+
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         # ANVI'O INPUTS
         self.pan_db_path = A('pan_db')

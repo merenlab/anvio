@@ -54,6 +54,7 @@ class DirectedForce():
         self.run = r
         self.progress = p
 
+        self.run.width = 60
 
     def return_optimum_complexity(self, H, start_node=[], max_iterations=1):
         """One of the main functions it aims to decide which (in the best case)

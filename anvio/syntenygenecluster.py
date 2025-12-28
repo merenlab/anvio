@@ -64,6 +64,8 @@ class SyntenyGeneCluster():
         self.run = r
         self.progress = p
 
+        self.run.width = 60
+
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.pan_db_path = A('pan_db')
         self.external_genomes = A('external_genomes')
