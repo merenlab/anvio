@@ -1529,7 +1529,10 @@ class PangenomeGraph():
 
         self.pangenome_data_df = SynGC.get_data_from_YAML() if self.pan_graph_yaml else SynGC.get_data_from_pan_db()
 
+        # Determine the first node of the graph
+        self.run.warning(None, header="FIRST NODE DETERMINATION", lc="green")
         if self.start_gene and self.start_column:
+            # If a start gene is specified, try to work with that.
             if self.start_column in self.pangenome_data_df.columns:
                 start_syn_cluster = self.pangenome_data_df[self.pangenome_data_df[self.start_column].str.contains(self.start_gene)]['syn_cluster'].to_list()
                 start_syn_type = self.pangenome_data_df[self.pangenome_data_df[self.start_column].str.contains(self.start_gene)]['syn_cluster_type'].to_list()
@@ -1545,6 +1548,33 @@ class PangenomeGraph():
                     self.run.info_single("At least one occurence of a start gene is not a core synteny cluster.")
             else:
                 self.run.info_single("The column were we should search for your start gene does not exist...")
+        else:
+            # If no start gene specified, use the synteny cluster with the smallest average gene_caller_id
+            # while appearing in the most genomes. This works well for reoriented genomes where
+            # gene 0 is at the aligned position, avoiding singleton SynGCs with gene_caller_id=0
+            if 'gene_caller_id' in self.pangenome_data_df.columns:
+                # Calculate metrics for each synteny cluster
+                syn_cluster_stats = self.pangenome_data_df.groupby('syn_cluster').agg({'gene_caller_id': ['mean', 'min'], 'genome': 'nunique'})
+                syn_cluster_stats.columns = ['avg_gene_caller_id', 'min_gene_caller_id', 'num_genomes']
+
+                # Find the maximum number of genomes any SynGC appears in
+                max_genome_count = syn_cluster_stats['num_genomes'].max()
+
+                # Among SynGCs that appear in the most genomes, pick the one with smallest average gene_caller_id
+                most_core_syn_clusters = syn_cluster_stats[syn_cluster_stats['num_genomes'] == max_genome_count]
+                start_syn_cluster = most_core_syn_clusters['avg_gene_caller_id'].idxmin()
+
+                avg_gene_id = most_core_syn_clusters.loc[start_syn_cluster, 'avg_gene_caller_id']
+                num_genomes = most_core_syn_clusters.loc[start_syn_cluster, 'num_genomes']
+
+                self.run.info_single(f"No start gene was specified, so anvi'o automatically chose SynGC '{start_syn_cluster}' "
+                                     f"which is present in {int(num_genomes)} of {len(self.genome_names)} genome(s) and has "
+                                     f"an average gene caller ID of {avg_gene_id:.1f}, as the starting node for the graph", level=0)
+
+                self.start_node += [start_syn_cluster]
+            else:
+                self.run.info_single("No start gene specified and the `gene_caller_id` column is somehow not available "
+                                     "in the data frame. DirectedForce will choose a start node automatically.", level=0)
 
         self.create_pangenome_graph()
 
