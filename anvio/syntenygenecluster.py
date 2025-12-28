@@ -107,19 +107,6 @@ class SyntenyGeneCluster():
         self.just_do_it = A('just_do_it')
 
 
-    def get_num_contigs_and_genome_length(self, file_path):
-        fasta = f.SequenceSource(file_path)
-
-        num_contigs = 0
-        length = 0
-
-        while next(fasta):
-            num_contigs += 1
-            length += len(fasta.seq)
-
-        return(num_contigs, length)
-
-
     def get_data_from_YAML(self, contextualize_paralogs=True, gene_length=400, intron_length=100):
         """Create a data tale form the YAML file"""
         i = 0
