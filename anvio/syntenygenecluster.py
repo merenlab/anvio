@@ -149,7 +149,7 @@ class SyntenyGeneCluster():
             Dataframe containing gene call informations present in the anvi'o dbs.
         """
 
-        self.run.warning(None, header="Loading data from database", lc="green")
+        self.run.warning(None, header="LOADING GENOMES", lc="green")
 
         filesnpaths.is_file_tab_delimited(self.external_genomes)
 
@@ -217,18 +217,16 @@ class SyntenyGeneCluster():
                     offset += len(group)
 
                     pangenome_data_list += [group]
-                self.run.info_single(f"Successfully mined data from genome {genome}.")
+                self.run.info_single(f"{genome} ✅")
             else:
-                self.run.info_single(f"Skipped genome {genome} on users request.")
+                self.run.info_single(f"{genome} ⛔ -- excluded on user's")
 
         pangenome_data_df = pd.concat(pangenome_data_list)
-        self.run.info_single("Done.")
 
         if contextualize_paralogs:
             return self.run_contextualize_paralogs_algorithm(pangenome_data_df)
         else:
             return pangenome_data_df
-
 
     # TODO complete distance works like a charm here but I should consider implementing ward distance for cases where both distances are NOT 1.0
     def k_mer_split(self, gene_cluster, gene_cluster_k_mer_contig_positions, gene_cluster_contig_order, single_copy_core):
@@ -497,7 +495,13 @@ class SyntenyGeneCluster():
             plus the additional column of unipque syn clusters.
         """
 
-        self.run.warning(None, header="Select paralog context", lc="green")
+        self.run.warning("Pangneome graph calculation algorithm will now split the conventional gene clusters that "
+                         "contain multiple genes from a single genome (such as paralogs) into SynGCs by exploring "
+                         "the entirety of the genomic context. This step ensures that each SynGC contains at most "
+                         "one gene per genome by iteratively increasing the number of genes to consider to "
+                         "disambiguate paralogs fully while preserveing the gene synteny information across the "
+                         "pangenome.",
+                         header="RESOLVING PARALOGS USING GENOMIC CONTEXT", lc="green")
 
         gene_cluster_positions = {}
         gene_cluster_contig_order = {}
@@ -585,17 +589,20 @@ class SyntenyGeneCluster():
         gene_cluster_id_contig_positions_df = pd.DataFrame.from_dict(gene_cluster_id_contig_positions, orient='index')
         pangenome_data_df = pangenome_data_df.merge(gene_cluster_id_contig_positions_df, on=['genome', 'contig', 'gene_caller_id'], how='inner')
 
-        self.run.info_single(f'{len(pangenome_data_df)} gene caller entries.')
-        self.run.info_single(f'{len(pangenome_data_df["gene_cluster"].unique())} gene cluster entries.')
-
         value_counts = pangenome_data_df["syn_cluster_type"].value_counts()
-        self.run.info_single(f'{value_counts.get("core", 0)} core synteny gene caller entries.')
-        self.run.info_single(f'{value_counts.get("duplication", 0)} paralog synteny gene caller entries.')
-        self.run.info_single(f'{value_counts.get("rna", 0)} rna synteny gene caller entries.')
-        self.run.info_single(f'{value_counts.get("rearrangement", 0)} rearranged synteny gene caller entries.')
-        self.run.info_single(f'{value_counts.get("accessory", 0)} remaining accessory synteny gene caller entries.')
-        self.run.info_single(f'{value_counts.get("singleton", 0)} singleton synteny gene caller entries.')
-        self.run.info_single(f'{len(pangenome_data_df["syn_cluster"].unique())} synteny gene cluster entries in total.')
+        total_genes = len(pangenome_data_df)
+        total_gene_clusters = len(pangenome_data_df["gene_cluster"].unique())
+        total_syn_clusters = len(pangenome_data_df["syn_cluster"].unique())
+
+        self.run.info('Total genes', total_genes)
+        self.run.info('Gene clusters (before contextualization)', total_gene_clusters)
+        self.run.info('Synteny clusters (after contextualization)', total_syn_clusters)
+        self.run.info('Genes in core synteny clusters', int(value_counts.get("core", 0)), mc='green')
+        self.run.info('Genes in paralog synteny clusters', int(value_counts.get("duplication", 0)))
+        self.run.info('Genes in RNA synteny clusters', int(value_counts.get("rna", 0)))
+        self.run.info('Genes in rearranged synteny clusters', int(value_counts.get("rearrangement", 0)))
+        self.run.info('Genes in accessory synteny clusters', int(value_counts.get("accessory", 0)))
+        self.run.info('Genes in singleton synteny clusters', int(value_counts.get("singleton", 0)))
         
         if len(pangenome_data_df["syn_cluster"].unique()) > 2 * len(pangenome_data_df["gene_cluster"].unique()):
             if self.just_do_it:
@@ -614,8 +621,8 @@ class SyntenyGeneCluster():
                                   "fine-tuning efforts. By continuing with this advice you are required to not blame "
                                   "us if you get an error after a long wait.")
 
-        pangenome_data_df.set_index('position').to_csv(os.path.join(self.output_dir, 'synteny_cluster.tsv'), sep='\t')
-        self.run.info_single(f"Exported mining table to {os.path.join(self.output_dir, 'synteny_cluster.tsv')}.")
-        self.run.info_single("Done.")
+        output_file = os.path.join(self.output_dir, 'synteny_cluster.tsv')
+        pangenome_data_df.set_index('position').to_csv(output_file, sep='\t')
+        self.run.info('Synteny cluster table', output_file)
 
         return(pangenome_data_df)

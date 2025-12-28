@@ -170,31 +170,48 @@ class PangenomeGraphManager():
         self.graph
         """
 
-        self.run.warning(None, header="Running connectivity check on pangenome graph.", lc="green")
+        self.run.warning("A fully connected graph is required for downstream processing. If the graph contains "
+                         "disconnected components (common with draft genomes or fragmented assemblies), only the "
+                         "largest connected component will be retained. Disconnected fragments typically arise from "
+                         "incomplete assemblies or highly variable accessory genes.",
+                         header="CHECKING GRAPH CONNECTIVITY", lc="green")
 
         connectivity = nx.is_connected(self.graph.to_undirected())
 
         if connectivity == False:
-
             weakly_components = list(nx.weakly_connected_components(self.graph))
-            self.run.info_single(f"The pangenome graph contains {len(weakly_components)} "
-                                 f"independant components. The reason is likely to be the "
-                                 f"fragmented nature of at least one of the genomes "
-                                 f"present in the dataset. This happens quite often if the dataset "
-                                 f"contains draft genomes and should not bother you to much.")
+            num_components = len(weakly_components)
+            component_sizes = sorted([len(comp) for comp in weakly_components], reverse=True)
+
+            self.run.info('Graph connectivity', 'Disconnected', mc='red')
+            self.run.info('Number of components', num_components)
+            self.run.info('Largest component size', f"{component_sizes[0]} nodes")
+            if num_components > 1:
+                self.run.info('Other component sizes', f"{component_sizes[1:10]}" + ("..." if num_components > 10 else ""))
+
+            self.run.warning(f"The graph contains {num_components} disconnected component(s), likely due to "
+                             f"fragmented genomes or highly variable accessory regions. Keeping only the largest component.")
 
             subgraph = self.graph.subgraph(max(weakly_components, key=len))
+            nodes_removed = len(self.graph.nodes()) - len(subgraph.nodes())
+            edges_removed = len(self.graph.edges()) - len(subgraph.edges())
+
             self.graph = nx.DiGraph(subgraph)
-            self.run.info_single(f"Keeping the longest conntected subgraph with {len(self.graph.nodes())} nodes and {len(self.graph.edges())} edges.")
+
+            self.run.info('Nodes removed', nodes_removed, mc='red')
+            self.run.info('Edges removed', edges_removed, mc='red')
+            self.run.info('Remaining nodes', len(self.graph.nodes()), mc='green')
+            self.run.info('Remaining edges', len(self.graph.edges()), mc='green')
 
             connectivity = nx.is_connected(self.graph.to_undirected())
             if connectivity == True:
-                self.run.info_single("The pangenome graph is now a connected cyclic graph.")
+                self.run.info('Final connectivity status', 'Connected', mc='green')
             else:
-                raise ConfigError("Looks like the graph is still fragmented, please check the data"
-                                  "for at least some level of consistency.")
-
-        self.run.info_single("Done.")
+                raise ConfigError("The graph is still fragmented after removing small components. This suggests "
+                                  "severe inconsistencies in your data. Please verify genome quality and pangenome "
+                                  "generation parameters.")
+        else:
+            self.run.info('Graph connectivity', 'Fully connected', mc='green')
 
 
     def walk_one_step(self, G, current, nodes_position_dict, visited):
@@ -253,8 +270,6 @@ class PangenomeGraphManager():
         =======
         pd.DataFrame
         """
-
-        # self.run.warning(None, header="Generate pangenome graph summary tables", lc="green")
 
         genome_names = set(it.chain(*[list(d.keys()) for node, d in self.graph.nodes(data='gene_calls')]))
 
@@ -557,7 +572,7 @@ class PangenomeGraphManager():
 
 
     def calculate_graph_distance(self, output_dir=''):
-        self.run.warning(None, header="Calculate synteny distance dendrogram", lc="green")
+        self.run.warning(None, header="COMPUTING GRAPH-BASED GENOME DISTANCES", lc="green")
         genome_names = list(set(it.chain(*[list(d.keys()) for node, d in self.graph.nodes(data='gene_calls')])))
 
         X = np.zeros([len(genome_names), len(genome_names)])
@@ -586,7 +601,7 @@ class PangenomeGraphManager():
             X[i][j] = elements_unsimilar / (elements_similar + elements_unsimilar)
             X[j][i] = elements_unsimilar / (elements_similar + elements_unsimilar)
 
-            self.run.info_single(f"d({genome_i},{genome_j}) = {round(X[i][j], 3)}")
+            self.run.info_single(f"d({genome_i},{genome_j}) = {round(X[i][j], 3)}", cut_after=None)
 
         # Check if all distances are zero (identical genomes)
         if np.all(X == 0):

@@ -81,7 +81,7 @@ class DirectedForce():
         # TODO Give a warning if the node that is set or randomly picked is NOT a core synGC, this will likely mess up the graph a bit
         if max_iterations == 1 and not start_node:
             try:
-                self.run.info_single("Low ressource mode: No start node was picked and the maximum number of iterations was set to 1.")
+                self.run.info('DirectedForce mode', 'Fast (single iteration, auto start)')
                 # Suboptimal run, trying to find a sufficient starting point without a lot of ressources.
                 G = nx.DiGraph(H)
                 add_start = [node for node in G.nodes() if len(list(G.predecessors(node))) == 0]
@@ -96,7 +96,7 @@ class DirectedForce():
                     # G, M, removed_nodes, removed_edges = self.find_maximum_branching(G)
                     G, M = self.find_maximum_branching(G)
 
-                self.run.info_single("Solving complex graph.")
+                # Finding optimal edge reversals
                 changed_edges = self.run_tree_to_flow_network_algorithm(G, M, max_weight)
                 # return(changed_edges, removed_nodes, removed_edges)
             except Exception as e:
@@ -111,20 +111,20 @@ class DirectedForce():
             all_starts = list(H.nodes())
 
             if set(start_node).issubset(all_starts):
-                self.run.info_single("Low ressource mode: A start node was picked.")
+                self.run.info('DirectedForce mode', 'Targeted (start node specified)')
                 starting_list = start_node
             elif max_iterations >= len(all_starts):
-                self.run.info_single("Medium ressource mode: No start node was picked but the maximum number of iterations is set less or equal then the number of nodes.")
+                self.run.info('DirectedForce mode', 'Exhaustive (testing all nodes)')
                 starting_list = all_starts
             else:
-                self.run.info_single("High ressource mode: No start node was picked and the maximum number of iterations is set higher then number of nodes.")
+                self.run.info('DirectedForce mode', f'Sampling ({max_iterations} iterations)')
                 random.seed(self.seed)
                 starting_list = random.sample(all_starts, max_iterations)
 
             min_complexity = len(H.nodes())
 
             iteration = 0
-            self.run.info_single("Solving complex graph.")
+            # Finding optimal edge reversals across multiple starting points
             for start in starting_list:
                 try:
                     self.run.info_single(f"Iteration {iteration}.")
@@ -214,17 +214,18 @@ class DirectedForce():
         )
 
         if not nx.algorithms.tree.recognition.is_arborescence(M):
-            self.run.info_single('No maximum aborescence. Entering fallback mode.')
+            self.run.warning('No maximum arborescence found. Using largest connected component.')
             M_sub_components = max(nx.weakly_connected_components(M), key=len)
             M_sub_graph = nx.DiGraph(M.subgraph(M_sub_components))
             if nx.algorithms.tree.recognition.is_arborescence(M_sub_graph):
-                self.run.info_single('Found aborescence.')
+                self.run.info('Arborescence status', 'Found in subgraph', mc='cyan')
                 M = nx.DiGraph(M_sub_graph)
 
                 removed_nodes = set(G.nodes()) - set(M.nodes())
                 removed_edges = set(G.edges()) - set(M.edges())
 
-                self.run.info_single(f'{len(removed_nodes)} nodes and {len(removed_edges)} edges removed to capture strongest signal.')
+                self.run.info('Nodes removed for arborescence', len(removed_nodes))
+                self.run.info('Edges removed for arborescence', len(removed_edges))
                 G = nx.DiGraph(G.subgraph(M_sub_components))
             else:
                 raise ConfigError("I'm very sorry to inform you that your data is not solvable by the current version of"
@@ -441,13 +442,6 @@ class DirectedForce():
 
                                 else:
                                     break
-
-                                # if M.out_degree(current_node) == 0:
-                                # current_connector = current_node
-                                # else:
-                                # current_connector = ''
-                                # print(next_node)
-
                             break
 
                 visited_nodes.add(current_node)
@@ -475,7 +469,7 @@ class DirectedForce():
 
             M_successors[stop] += ['STOP']
 
-            self.run.info_single(f"One node {stop} remained open. This should be checked and will be count as a problem.")
+            self.run.warning(f"Node '{stop}' remained open and was connected to STOP. This may indicate a structural issue.")
 
         if not nx.is_directed_acyclic_graph(M):
             raise ConfigError("Oh no. It looks like your graph is so complex or includes a motif I haven't seen before"
@@ -483,7 +477,7 @@ class DirectedForce():
                               "sanity checks to prevent this but unfortunatly nobody is perfect. We will include more"
                               "checks in the next version. Sorry :/")
         else:
-            self.run.info_single("No loops. Roger roger and ready to go.")
+            self.run.info('Graph validation', 'DAG! No loops, and ready to go 🎉', mc='green')
 
         v = 0
         w = 0
@@ -511,9 +505,11 @@ class DirectedForce():
                 # print('problem.')
                 y += 1
 
-        self.run.info_single(f"{x} edges can be kept in the original direction.")
-        self.run.info_single(f"{w} edges have to reversed to capture maximum force.")
-        self.run.info_single(f"{v} edges seem to be double sided. Double sided edges are a sign for potential inversions.")
-        self.run.info_single(f"{y} problems.")
+        self.run.info('Edges kept in original direction', x, mc='green')
+        self.run.info('Edges reversed for directed flow', w, mc='cyan')
+        if v > 0:
+            self.run.info('Double-sided edges (inversions)', v, mc='yellow')
+        if y > 0:
+            self.run.info('Problem edges', y, mc='red')
 
         return(changed_edges_new)
