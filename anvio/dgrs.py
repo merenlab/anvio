@@ -1744,7 +1744,7 @@ class DGR_Finder:
                                 passes_initial_filter = True
                                 break
 
-                        if not passes_initial_filter or mismatch_length_bp <= self.number_of_mismatches:
+                        if not passes_initial_filter or mismatch_length_bp < self.number_of_mismatches:
                             continue
 
                         # Stage 2: Optimal window trimming
