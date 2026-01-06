@@ -30,7 +30,6 @@ from anvio.sequencefeatures import PrimerSearch
 from anvio.constants import nucleotides
 from anvio.artifacts.samples_txt import SamplesTxt
 
-from multiprocessing import Queue
 from Bio.Seq import Seq # type: ignore
 from collections import defaultdict
 
@@ -1173,8 +1172,9 @@ class DGR_Finder:
             snv_panda_records = self.snv_panda.to_dict('records')
 
             # setup queues
-            input_queue = Queue()
-            output_queue = Queue()
+            manager = multiprocessing.Manager()
+            input_queue = manager.Queue()
+            output_queue = manager.Queue()
 
             # put all bins in input queue
             for bin_name, bin_splits_list in bin_splits_dict.items():
@@ -3696,8 +3696,9 @@ class DGR_Finder:
         ##################
 
         # setup the input/output queues
-        input_queue = Queue()
-        output_queue = Queue()
+        manager = multiprocessing.Manager()
+        input_queue = manager.Queue()
+        output_queue = manager.Queue()
 
         self.dgr_activity = []
         # create directory for Primer matches
