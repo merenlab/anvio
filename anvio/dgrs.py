@@ -324,10 +324,8 @@ class DGR_Finder:
 
         """
 
-        self.run.info_single('Getting BLAST results', nl_before=1)
         # setup
         self.target_file_path = os.path.join(self.temp_dir, "reference_sequences.fasta")
-        self.run.info('Temporary (contig) reference input for blast', self.target_file_path)
 
         # initialise the SNV table
         self.init_snv_table()
