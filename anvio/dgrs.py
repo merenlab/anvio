@@ -3537,11 +3537,14 @@ class DGR_Finder:
                 'VR_sequence', 'Midline', 'Mismatch %', 'VR_start_position',
                 'VR_end_position', 'VR_bin', 'VR_contig', 'VR_frame_reported',
                 'TR_start_position', 'TR_end_position', 'TR_sequence',
-                'TR_frame_Reported', 'DGR_looks_snv_false',
-                'snv_at_3_codon_over_a_third', 'VR_TR_mismatch_positions',
-                'snv_VR_positions', 'numb_of_snv_in_matches_not_mutagen_base',
-                'numb_of_mismatches', 'numb_of_SNVs',
-                'best_amongst_multiple_TRs_for_one_VR'
+                'TR_frame_Reported', 'VR_TR_mismatch_positions',
+                'snv_VR_positions', 'numb_of_mismatches', 'numb_of_SNVs',
+                'best_amongst_multiple_TRs_for_one_VR', 'mismatch_codon_1',
+                'mismatch_codon_2', 'mismatch_codon_3', 'pct_mismatch_codon_3',
+                'vr_gene_id', 'n_snvs_total', 'n_snvs_explained',
+                'n_snvs_unexplained', 'pct_snvs_explained', 'snv_codon_1',
+                'snv_codon_2', 'snv_codon_3', 'pct_snv_codon_3', 'confidence',
+                'confidence_reasons'
             ]
 
             # Add VR fields that have valid values
