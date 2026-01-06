@@ -139,6 +139,7 @@ def get_args():
     groupD.add_argument("--min-base-types-vr", help="The minimum number of base 'types' in the variable region, to ensure the variable region has multiple bases present. Has to be an integer between 1 and 4. (NB if 1 then has no variety in the mismatching bases). Default = 2", type=int, default=2, metavar="INT")
     groupD.add_argument("--snv-matching-proportion", help="A blanket proportion of SNVs allowed in matching bases of the TR and VR. If there are more than 30 SNVs in the VR then 30%% of these can be in matching positions, if there are less than 30 SNVs then 25%% of these can be in matching positions. This is a conservative approach based on short-read metagenomes, that can be changed here.", type=float, metavar="FLOAT")
     groupD.add_argument("--snv-codon-position", help="The maximum percentage of SNVs that are allowed in the 3rd codon position of the variable region.", type=float, default=0.33, metavar="FLOAT")
+    groupD.add_argument("--max-alignment-gaps", help="Maximum number of gap characters ('-') allowed in the trimmed VR/TR alignment window (counted in both sequences). Default = 0 (no gaps allowed)", type=int, default=0, metavar="INT")
 
     groupF = parser.add_argument_group('OUTPUT DIRECTORY', "Where to put all the output files.")
     groupF.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
