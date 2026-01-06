@@ -24,8 +24,7 @@ with terminal.SuppressAllOutput():
 
 distance_metrics = ['euclidean', 'cityblock', 'sqeuclidean', 'cosine', 'correlation', 'hamming',\
                     'hamming', 'jaccard', 'chebyshev', 'canberra', 'braycurtis', 'yule', 'matching',\
-                    'dice', 'kulsinski', 'rogerstanimoto', 'russellrao', 'braycurtis', 'yule',\
-                    'matching', 'dice', 'kulsinski', 'rogerstanimoto', 'russellrao', 'sokalmichener',\
+                    'dice', 'kulsinski', 'rogerstanimoto', 'russellrao', 'sokalmichener',\
                     'sokalsneath', 'minkowski']
 
 linkage_methods = ['single', 'complete', 'average', 'weighted', 'centroid', 'median', 'ward']
