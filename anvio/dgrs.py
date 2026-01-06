@@ -156,10 +156,14 @@ class DGR_Finder:
                                                 ('Base', str), ('Reverse Complemented_from_BLAST', bool), ('TR_start_position', int),
                                                 ('TR_end_position', int), ('TR_bin', str), ('TR_in_gene', bool), ('HMM_source', str),
                                                 ('distance_to_HMM', float), ('HMM_gene_name', str), ('HMM_direction', str), ('HMM_start', int),
-                                                ('HMM_stop', int), ('HMM_gene_callers_id', int), ('DGR_looks_snv_false', bool),
-                                                ('snv_at_3_codon_over_a_third', bool), ('numb_of_snv_in_matches_not_mutagen_base', list),
+                                                ('HMM_stop', int), ('HMM_gene_callers_id', int),
                                                 ('numb_of_mismatches', int), ('numb_of_SNVs', int), ('VR_TR_mismatch_positions', list),
-                                                ('snv_VR_positions', list), ('best_amongst_multiple_TRs_for_one_VR', bool)]
+                                                ('snv_VR_positions', list), ('best_amongst_multiple_TRs_for_one_VR', bool),
+                                                ('mismatch_codon_1', int), ('mismatch_codon_2', int), ('mismatch_codon_3', int),
+                                                ('pct_mismatch_codon_3', float), ('vr_gene_id', str), ('n_snvs_total', int),
+                                                ('n_snvs_explained', int), ('n_snvs_unexplained', int), ('pct_snvs_explained', float),
+                                                ('snv_codon_1', int), ('snv_codon_2', int), ('snv_codon_3', int),
+                                                ('pct_snv_codon_3', float), ('confidence', str), ('confidence_reasons', list)]
 
 
 
