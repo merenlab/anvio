@@ -98,6 +98,7 @@ class DGR_Finder:
         self.repeat_motif_coverage = A('repeat_motif_coverage') or 0.8
         self.snv_matching_proportion = A('snv_matching_proportion') or None
         self.snv_codon_position = A('snv_codon_position') or 0.33 # default is 33% of SNVs in the third codon position
+        self.max_alignment_gaps = A('max_alignment_gaps') or 0
 
         # performance
         self.num_threads = int(A('num_threads')) if A('num_threads') else 1
@@ -115,6 +116,7 @@ class DGR_Finder:
         self.run.info('Initial mismatch bias threshold', self.initial_mismatch_bias_threshold)
         self.run.info('Trimmed mismatch bias threshold', self.trimmed_mismatch_bias_threshold)
         self.run.info('Minimum VR length after trimming', self.minimum_vr_length)
+        self.run.info('Max alignment gaps', self.max_alignment_gaps)
         if self.allow_any_base:
             self.run.info('Allow any dominant base', self.allow_any_base)
         self.run.info('Minimum Mismatching Base Types in VR', self.min_mismatching_base_types_vr)
@@ -1506,7 +1508,7 @@ class DGR_Finder:
         return False
 
 
-    def find_optimal_mismatch_window(self, qseq, hseq, chars_to_skip, threshold, min_length, min_mismatches):
+    def find_optimal_mismatch_window(self, qseq, hseq, chars_to_skip, threshold, min_length, min_mismatches, max_gaps=0):
         """
         Find the longest contiguous window where >= threshold fraction of mismatches
         are to the dominant base on the subject (TR) side.
@@ -1529,6 +1531,9 @@ class DGR_Finder:
             Minimum length of the trimmed alignment.
         min_mismatches : int
             Minimum number of mismatches required in the trimmed window.
+        max_gaps : int
+            Maximum number of gap characters ('-') allowed in the trimmed alignment window
+            (counted in both qseq and hseq). Default is 0 (no gaps allowed).
 
         Returns
         =======
@@ -1592,6 +1597,11 @@ class DGR_Finder:
                         align_end = mismatch_positions[j][0]  # position of next bad mismatch (exclusive)
                     else:
                         align_end = len(qseq)  # no bad mismatch after, extend to end
+
+                    # Count gaps in both sequences for this candidate window
+                    gap_count = qseq[align_start:align_end].count('-') + hseq[align_start:align_end].count('-')
+                    if gap_count > max_gaps:
+                        continue  # Skip this window, too many gaps
 
                     window_length = align_end - align_start
 
@@ -1751,7 +1761,8 @@ class DGR_Finder:
                             qseq, hseq, chars_to_skip,
                             self.trimmed_mismatch_bias_threshold,
                             self.minimum_vr_length,
-                            self.number_of_mismatches
+                            self.number_of_mismatches,
+                            self.max_alignment_gaps
                         )
 
                         if trim_result is None:
