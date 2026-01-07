@@ -282,6 +282,8 @@ Contact = "https://anvio.org/people"
 "anvi-script-tabulate"                                   = "anvio.cli.tabulate:main"
 "anvi-script-transpose-matrix"                           = "anvio.cli.transpose_matrix:main"
 "anvi-script-variability-to-vcf"                         = "anvio.cli.variability_to_vcf:main"
+"anvi-script-gen-fasta-file"                             = "anvio.cli.gen_fasta_file:main"
+"anvi-script-mod-config-json"                            = "anvio.cli.mod_config_json:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
