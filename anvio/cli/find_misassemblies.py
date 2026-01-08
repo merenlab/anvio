@@ -144,7 +144,7 @@ def run_program():
             contig, length, cov, clip = result
             cov_dict[contig] = {
                 'length': length,
-                'cov': dict(enumerate(cov)),
+                'cov': cov,
                 'clipping': clip
             }
             received += 1
