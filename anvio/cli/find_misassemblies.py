@@ -3,6 +3,7 @@
 
 import sys
 import anvio
+import numpy as np
 
 import anvio.bamops as bamops
 import anvio.terminal as terminal
@@ -44,7 +45,7 @@ def process_contig(args, available_index_queue, output_queue, contigs_size):
             contig = list(contigs_size.keys())[idx]
             length = contigs_size[contig]
 
-            coverage = [0] * length
+            coverage = np.zeros(length, dtype=np.uint32)
             clipping = {}
 
             # got through each read, compute coverage and idc (insertion, deletion, (hard - soft)clipping).
