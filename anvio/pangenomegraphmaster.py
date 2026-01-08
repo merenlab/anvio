@@ -434,7 +434,7 @@ class PangenomeGraphManager():
                     n_i = len(genome_set)
                     p_i = n_i / T
                     shannon_sum += p_i * math.log(p_i)
-                diversity = ((-1) * shannon_sum) / math.log(K)
+                diversity = round(((-1) * shannon_sum) / math.log(K), 3)
 
             values = list(genome_counts.values())
             max_expansion = max(values)
@@ -456,7 +456,7 @@ class PangenomeGraphManager():
                 'x_max': region_x_positions_max,
                 'num_gene_clusters': K,
                 'num_gene_calls': T,
-                'complexity': complexity / weight,
+                'complexity': round(complexity / weight, 3),
                 'max_expansion': max_expansion,
                 'min_expansion': min_expansion,
                 'diversity': diversity,
