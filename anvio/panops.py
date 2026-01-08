@@ -1341,6 +1341,21 @@ class PangenomeGraph():
 
         # learn the project name from the pan-db if the user did not
         # provide another
+        if self.pan_graph_yaml:
+            with open(self.pan_graph_yaml) as file:
+                self.yaml_file = yaml.safe_load(file)
+        else:
+            self.yaml_file = {}
+
+        if A('genome_names'):
+            self.genome_names = A('genome_names').split(',')
+        elif self.external_genomes_txt:
+            self.genome_names = pd.read_csv(self.external_genomes_txt, header=0, sep="\t")['name'].to_list()
+        elif self.pan_graph_yaml:
+            self.genome_names = list(self.yaml_file.keys())
+        else:
+            self.genome_names = []
+
         if self.pan_db_path:
             self.pan_db = dbops.PanDatabase(self.pan_db_path)
             self.gene_alignments_computed = self.pan_db.meta['gene_alignments_computed']
@@ -1364,21 +1379,6 @@ class PangenomeGraph():
                 raise ConfigError("You need to explicitly define a `--project-name` for this "
                                   "run (anvi'o would have figured it out for you, but you don't "
                                   "even have a pan-db).")
-
-        if self.pan_graph_yaml:
-            with open(self.pan_graph_yaml) as file:
-                self.yaml_file = yaml.safe_load(file)
-        else:
-            self.yaml_file = {}
-
-        if A('genome_names'):
-            self.genome_names = A('genome_names').split(',')
-        elif self.external_genomes_txt:
-            self.genome_names = pd.read_csv(self.external_genomes_txt, header=0, sep="\t")['name'].to_list()
-        elif self.pan_graph_yaml:
-            self.genome_names = list(self.yaml_file.keys())
-        else:
-            self.genome_names = []
 
         # ANVI'O OUTPUTS
         self.output_dir = A('output_dir')
