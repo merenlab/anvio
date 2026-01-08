@@ -3545,6 +3545,7 @@ class PanGraphSuperclass(PanSuperclass):
         self.pangenome_graph = PangenomeGraphManager()
         self.pangenome_graph_initialized = False
 
+        print(self.p_meta)
         self.synteny_gene_clusters_gene_alignments_available = self.p_meta['gene_alignments_computed']
 
         if not self.synteny_gene_cluster_names:
@@ -5111,13 +5112,12 @@ class PanGraphDatabase:
         self.meta = dbi(self.db_path, expecting=self.db_type).get_self_table()
         # FIXME: Identify all the integer values in the self table to explicitly
         # cast them to int here:
-        for key in []:
+        for key in ['num_nodes', 'num_edges', 'num_genomes', 'gene_alignments_computed']:
             try:
                 self.meta[key] = int(self.meta[key])
             except:
                 pass
 
-        # FIXME: same as above, but for floating points
         for key in []:
             try:
                 self.meta[key] = float(self.meta[key])
