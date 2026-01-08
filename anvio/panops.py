@@ -1342,14 +1342,24 @@ class PangenomeGraph():
         # learn the project name from the pan-db if the user did not
         # provide another
         if self.pan_db_path:
-            pan_db = dbops.PanDatabase(self.pan_db_path)
-            self.gene_alignments_computed = pan_db.meta['gene_alignments_computed']
+            self.pan_db = dbops.PanDatabase(self.pan_db_path)
+            self.gene_alignments_computed = self.pan_db.meta['gene_alignments_computed']
+
+            self.pan_super = dbops.PanSuperclass(self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+            self.pan_super.init_gene_clusters()
         else:
+            self.pan_db = None
+            self.pan_super = None
             self.gene_alignments_computed = False
 
+        if self.genomes_storage:
+            self.genomes_storage_hash = GenomeStorage(self.genomes_storage, storage_hash=None, genome_names_to_focus=self.genome_names).get_storage_hash()
+        else:
+            self.genomes_storage_hash = None
+
         if not self.project_name:
-            if pan_db:
-                self.project_name = pan_db.meta['project_name']
+            if self.pan_db:
+                self.project_name = self.pan_db.meta['project_name']
             else:
                 raise ConfigError("You need to explicitly define a `--project-name` for this "
                                   "run (anvi'o would have figured it out for you, but you don't "
@@ -1719,12 +1729,14 @@ class PangenomeGraph():
             'project_name': self.project_name,
             'state': self.load_state,
             'version': self.version,
-            'genomes_storage_hash': GenomeStorage(self.genomes_storage, storage_hash=None, genome_names_to_focus=self.genome_names).get_storage_hash(),
+            'genomes_storage_hash': self.genomes_storage_hash,
             'priority_genome': self.priority_genome,
             'genome_names': ','.join(self.genome_names),
             'gene_alignments_computed': self.gene_alignments_computed,
             'gene_function_sources': ','.join(self.functional_annotation_sources_available),
         }
+
+        print(meta_values)
 
         dbops.PanGraphDatabase(self.pan_graph_db_path, run=self.run, progress=self.progress, quiet=False).create(meta_values)
 
@@ -1839,9 +1851,6 @@ class PangenomeGraph():
         =======
         self.pangenome_graph: PangenomeGraphManager Object
         """
-
-        pan_db = dbops.PanSuperclass(self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
-        pan_db.init_gene_clusters()
 
         # 2. step: Fill self.pangenome_graph with nodes and edges based on the synteny data
         self.run.warning("The algorithm will now build a directed graph where nodes represent synteny gene clusters "
@@ -2034,7 +2043,7 @@ class PangenomeGraph():
             node_alignments = {}
             for genome_name, gene_caller_id in data['gene_calls'].items():
                 if self.gene_alignments_computed:
-                    genome_alignments = pan_db.gene_clusters_gene_alignments[genome_name]
+                    genome_alignments = self.pan_super.gene_clusters_gene_alignments[genome_name]
                     if gene_caller_id in genome_alignments:
                         alignment_summary = genome_alignments[gene_caller_id]
                         node_alignment_summaries[genome_name] = alignment_summary
