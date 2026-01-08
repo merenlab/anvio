@@ -62,8 +62,7 @@ def process_contig(args, available_index_queue, output_queue, contigs_size):
                     num_tup += 1
                     # if mapping, compute cov, increase current position
                     if tup[0] == 0:
-                        for pos in range(current_pos, current_pos + tup[1]):
-                            coverage[pos] += 1
+                        coverage[current_pos:current_pos + tup[1]] += 1
                         current_pos += tup[1]
                     # if deletion, increase current position
                     elif tup[0] == 2:
