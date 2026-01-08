@@ -75,7 +75,25 @@ def process_contig(args, available_index_queue, output_queue, contigs_size):
                         elif current_pos != length:
                             clipping[current_pos - 1] = clipping.get(current_pos - 1, 0) + 1
 
-            output_queue.put((contig, length, coverage, clipping))
+            # bundle clipping positions with their coverage values
+            clipping_with_cov = {pos: (clip_count, coverage[pos]) for pos, clip_count in clipping.items()}
+
+            # compute zero-coverage ranges
+            zero_ranges = []
+            in_window = False
+            window_start = 0
+            for pos in range(length):
+                if coverage[pos] == 0 and not in_window:
+                    window_start = pos
+                    in_window = True
+                elif coverage[pos] > 0 and in_window:
+                    zero_ranges.append((window_start, pos))
+                    in_window = False
+            # handle window that extends to end of contig
+            if in_window:
+                zero_ranges.append((window_start, length))
+
+            output_queue.put((contig, length, clipping_with_cov, zero_ranges))
 
         except Exception as e:
             output_queue.put(e)
@@ -150,48 +168,22 @@ def run_program():
                     for p in processes:
                         p.terminate()
                     raise result
-                contig, contig_length, cov, clip = result
+                contig, contig_length, clipping_with_cov, zero_ranges = result
                 received += 1
                 progress.update(f"computing contigs {received}/{num_contigs}")
                 progress.increment(increment_to = received)
 
                 # write clipping results for this contig
-                for pos in clip:
-                    cov_at_pos = cov[pos]
-                    clipping = clip[pos]
-                    clipping_ratio = clipping/cov_at_pos
+                for pos, (clip_count, cov_at_pos) in clipping_with_cov.items():
+                    clipping_ratio = clip_count/cov_at_pos
                     relative_pos = pos/contig_length
                     if clipping_ratio > min_clipping_ratio and pos > min_dist_to_end and contig_length-pos > min_dist_to_end:
-                        clipping_file.write(f"{contig}\t{contig_length}\t{pos}\t{relative_pos}\t{cov_at_pos}\t{clipping}\t{clipping_ratio}\n")
+                        clipping_file.write(f"{contig}\t{contig_length}\t{pos}\t{relative_pos}\t{cov_at_pos}\t{clip_count}\t{clipping_ratio}\n")
 
                 # write zero coverage results for this contig
-                in_window = False
-                window_start = ''
-                window_end = ''
-                window_length = ''
-                for pos in range(contig_length):
-                    if cov[pos] == 0 and in_window == False:
-                        window_start = pos
-                        in_window = True
-                        zero_file.write(f"{contig}\t{contig_length}\t{window_start}-")
-                    elif (cov[pos] > 0 and in_window == True):
-                        window_end = pos
-                        window_length = window_end - window_start
-                        in_window = False
-                        zero_file.write(f"{window_end}\t{window_length}\n")
-                    # if end of contig
-                    if cov[pos] == 0 and pos == contig_length - 1:
-                        if in_window:
-                            window_end = pos + 1
-                            window_length = window_end - window_start
-                            in_window = False
-                            zero_file.write(f"{window_end}\t{window_length}\n")
-                        else:
-                            window_start = pos
-                            window_end = pos + 1
-                            window_length = window_end - window_start
-                            in_window = False
-                            zero_file.write(f"{contig}\t{contig_length}\t{window_start}-{window_end}\t{window_length}\n")
+                for window_start, window_end in zero_ranges:
+                    window_length = window_end - window_start
+                    zero_file.write(f"{contig}\t{contig_length}\t{window_start}-{window_end}\t{window_length}\n")
 
             except KeyboardInterrupt:
                 run.info_single("Received SIGINT, terminating processes...")
