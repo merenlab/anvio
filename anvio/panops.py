@@ -1328,6 +1328,9 @@ class PangenomeGraph():
         self.run = run
         self.progress = progress
 
+        # we seem to like longer messages in this class.
+        self.run.width = 60
+
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         # ANVI'O INPUTS
         self.pan_db_path = A('pan_db')
@@ -1339,14 +1342,24 @@ class PangenomeGraph():
         # learn the project name from the pan-db if the user did not
         # provide another
         if self.pan_db_path:
-            pan_db = dbops.PanDatabase(self.pan_db_path)
-            self.gene_alignments_computed = pan_db.meta['gene_alignments_computed']
+            self.pan_db = dbops.PanDatabase(self.pan_db_path)
+            self.gene_alignments_computed = self.pan_db.meta['gene_alignments_computed']
+
+            self.pan_super = dbops.PanSuperclass(self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+            self.pan_super.init_gene_clusters()
         else:
+            self.pan_db = None
+            self.pan_super = None
             self.gene_alignments_computed = False
 
+        if self.genomes_storage:
+            self.genomes_storage_hash = GenomeStorage(self.genomes_storage, storage_hash=None, genome_names_to_focus=self.genome_names).get_storage_hash()
+        else:
+            self.genomes_storage_hash = None
+
         if not self.project_name:
-            if pan_db:
-                self.project_name = pan_db.meta['project_name']
+            if self.pan_db:
+                self.project_name = self.pan_db.meta['project_name']
             else:
                 raise ConfigError("You need to explicitly define a `--project-name` for this "
                                   "run (anvi'o would have figured it out for you, but you don't "
@@ -1476,7 +1489,7 @@ class PangenomeGraph():
 
 
     def summarize_pangenome_graph(self):
-        self.run.warning(None, header="Generate pangenome graph summary tables", lc="green")
+        self.run.warning(None, header="GENERATING SUMMARY TABLES", lc="green")
 
         node_positions, edge_positions, node_groups = TopologicalLayout().run_synteny_layout_algorithm(F=self.pangenome_graph.graph)
 
@@ -1513,10 +1526,9 @@ class PangenomeGraph():
         #     file.write(str(complexity_value))
 
         # self.run.info_single(f"Pangenome graph complexity is {round(complexity_value, 3)}.")
-        self.run.info_single(f"Exported gene calls table to {os.path.join(self.output_dir, 'gene_calls_df.tsv')}.")
-        self.run.info_single(f"Exported region table to {os.path.join(self.output_dir, 'region_sides_df.tsv')}.")
-        self.run.info_single(f"Exported nodes table to {os.path.join(self.output_dir, 'nodes_df.tsv')}.")
-        self.run.info_single("Done.")
+        self.run.info_single("Gene calls", os.path.join(self.output_dir, 'gene_calls_df.tsv'))
+        self.run.info_single("Regieons", os.path.join(self.output_dir, 'region_sides_df.tsv'))
+        self.run.info_single("Nodes", os.path.join(self.output_dir, 'nodes_df.tsv'))
 
 
     def layout_pangenome_graph(self):
@@ -1567,22 +1579,19 @@ class PangenomeGraph():
 
 
     def print_settings(self):
-        """Print settings"""
-        self.run.warning(None, header="Loading settings to create anvi'o pangenome graph from scratch", lc="green")
-        self.run.info_single(f"Circularize genomes: {self.circularize}.")
-        self.run.info_single(f"Graph starting gene: {self.start_gene}.")
-        self.run.info_single(f"Functional annotation source for starting gene: {self.start_column}.")
-        self.run.info_single(f"Minimum number of synteny clusters in contig: {self.min_contig_chain}.")
-        self.run.info_single(f"Global context comparison window size: {self.n}.")
-        self.run.info_single(f"Global context comparison treshold value alpha: {self.alpha}.")
-        self.run.info_single(f"Local context comparison gap to gene value beta: {self.beta}.")
-        self.run.info_single(f"Local context comparison gap to gap value gamma: {self.gamma}.")
-        self.run.info_single(f"General context comparison max treshold dela: {self.delta}.")
-        self.run.info_single(f"Synteny gene cluster min k: {self.min_k}.")
-        self.run.info_single(f"Higher inversion awareness: {self.inversion_aware}.")
-        self.run.info_single(f"Priority genome: {self.priority_genome}.")
-        self.run.info_single("The remaining settings are not affecting the pangenome graph core creation.")
-        self.run.info_single("Done.")
+        self.run.warning(None, header="SETTINGS", lc="green")
+        self.run.info("Circularize genomes", self.circularize)
+        self.run.info("Graph starting gene", self.start_gene if self.start_gene else 'Auto (min avg. gene caller id)')
+        self.run.info("Functional annotation source for starting gene", self.start_column)
+        self.run.info("Minimum number of synteny clusters in contig", self.min_contig_chain)
+        self.run.info("Global context comparison window size", self.n)
+        self.run.info("Global context comparison treshold value alpha", self.alpha)
+        self.run.info("Local context comparison gap to gene value beta", self.beta)
+        self.run.info("Local context comparison gap to gap value gamma", self.gamma)
+        self.run.info("General context comparison max treshold dela", self.delta)
+        self.run.info("Synteny gene cluster min k", self.min_k)
+        self.run.info("Higher inversion awareness", self.inversion_aware)
+        self.run.info("Priority genome", self.priority_genome)
 
 
     def get_pangenome_graph_from_scratch(self):
@@ -1590,24 +1599,59 @@ class PangenomeGraph():
 
         SynGC = SyntenyGeneCluster(self.args)
 
-        self.pangenome_data_df = SynGC.get_data_from_YAML() if self.pan_graph_yaml else SynGC.get_data_from_pan_db()
+        if self.pan_graph_yaml:
+            self.pangenome_data_df = SynGC.get_data_from_YAML()
+        else:
+            self.pangenome_data_df = SynGC.get_data_from_pan_db()
 
+        # Determine the first node of the graph
+        self.run.warning(None, header="FIRST NODE DETERMINATION", lc="green")
         if self.start_gene and self.start_column:
+            # If a start gene is specified, try to work with that.
             if self.start_column in self.pangenome_data_df.columns:
                 start_syn_cluster = self.pangenome_data_df[self.pangenome_data_df[self.start_column].str.contains(self.start_gene)]['syn_cluster'].to_list()
                 start_syn_type = self.pangenome_data_df[self.pangenome_data_df[self.start_column].str.contains(self.start_gene)]['syn_cluster_type'].to_list()
                 self.start_node += set(start_syn_cluster)
 
                 if len(set(start_syn_cluster)) > 1:
-                    self.run.info_single("There is more than one occurance of your start gene of preference, I really hope you know what you are doing.")
+                    self.run.info_single("There is more than one occurance of your start gene of preference, "
+                                         "we are assuming here that you know what you are doing.", level=0)
 
                 if len(start_syn_cluster) != len(self.genome_names):
-                    self.run.info_single("The number of genomes in the dataset does not equal the number of occurances of the start gene. Weird.")
+                    self.run.info_single("The number of genomes in the dataset does not equal the number of "
+                                         "occurances of the start gene. Weird.", level=0)
 
                 if any(node != 'core' for node in start_syn_type):
-                    self.run.info_single("At least one occurence of a start gene is not a core synteny cluster.")
+                    self.run.info_single("At least one occurence of a start gene is not a core synteny cluster.", level=0)
             else:
-                self.run.info_single("The column were we should search for your start gene does not exist...")
+                self.run.info_single("The column were we should search for your start gene does not exist...", level=0)
+        else:
+            # If no start gene specified, use the synteny cluster with the smallest average gene_caller_id
+            # while appearing in the most genomes. This works well for reoriented genomes where
+            # gene 0 is at the aligned position, avoiding singleton SynGCs with gene_caller_id=0
+            if 'gene_caller_id' in self.pangenome_data_df.columns:
+                # Calculate metrics for each synteny cluster
+                syn_cluster_stats = self.pangenome_data_df.groupby('syn_cluster').agg({'gene_caller_id': ['mean', 'min'], 'genome': 'nunique'})
+                syn_cluster_stats.columns = ['avg_gene_caller_id', 'min_gene_caller_id', 'num_genomes']
+
+                # Find the maximum number of genomes any SynGC appears in
+                max_genome_count = syn_cluster_stats['num_genomes'].max()
+
+                # Among SynGCs that appear in the most genomes, pick the one with smallest average gene_caller_id
+                most_core_syn_clusters = syn_cluster_stats[syn_cluster_stats['num_genomes'] == max_genome_count]
+                start_syn_cluster = most_core_syn_clusters['avg_gene_caller_id'].idxmin()
+
+                avg_gene_id = most_core_syn_clusters.loc[start_syn_cluster, 'avg_gene_caller_id']
+                num_genomes = most_core_syn_clusters.loc[start_syn_cluster, 'num_genomes']
+
+                self.run.info_single(f"No start gene was specified, so anvi'o automatically chose SynGC '{start_syn_cluster}' "
+                                     f"which is present in {int(num_genomes)} of {len(self.genome_names)} genome(s) and has "
+                                     f"an average gene caller ID of {avg_gene_id:.1f}, as the starting node for the graph", level=0)
+
+                self.start_node += [start_syn_cluster]
+            else:
+                self.run.info_single("No start gene specified and the `gene_caller_id` column is somehow not available "
+                                     "in the data frame. DirectedForce will choose a start node automatically.", level=0)
 
         self.create_pangenome_graph()
 
@@ -1647,6 +1691,15 @@ class PangenomeGraph():
         # generate pan-graph-db and populate it with information
         self.generate_pan_graph_db()
 
+        # Let the user know if we ended up with a zero-variation graph
+        if not self.newick:
+            self.run.warning("Your pangenome graph has no structure, which means the genomes you are working with "
+                             "have no gene-level variation. All the files are still generated (because that's how "
+                             "anvi'o rolls), but it will be a wasted effort to visualize these data since you will "
+                             "not see anything worth noting :/ If you were expecting variation, please double-check "
+                             "your input genomes, or take a look at the conventional pangenome using the program "
+                             "`anvi-display-pan` for good measure.", header="⚠️ SILLY GENOMES WARNING ⚠️", lc="red")
+
 
     # TODO needs more sanity checks!
     def sanity_check(self):
@@ -1677,7 +1730,9 @@ class PangenomeGraph():
         search = int(tracks_layer / 2)
 
         label = int(arrow * 0.25)
-        disty = int(tracks_layer / y_max)
+        # Prevent division by zero when all nodes have y position of 0
+        # Use tracks_layer as default when y_max is 0 (single layer case)
+        disty = int(tracks_layer / y_max) if y_max > 0 else tracks_layer
 
         state = {'rearranged_color': '#8FF0A4',
                  'accessory_color': '#DC8ADD',
@@ -1731,8 +1786,7 @@ class PangenomeGraph():
 
 
     def generate_pan_graph_db(self):
-
-        self.run.warning(None, header="Generate and populate pangenome graph database.", lc="green")
+        self.run.warning(None, header="STORING PAN-GRAPH-DB", lc="green")
 
         """Generates an empty pan-graph-db and populates it with essential information"""
 
@@ -1741,14 +1795,16 @@ class PangenomeGraph():
             'project_name': self.project_name,
             'state': self.load_state,
             'version': self.version,
-            'genomes_storage_hash': GenomeStorage(self.genomes_storage, storage_hash=None, genome_names_to_focus=self.genome_names).get_storage_hash(),
+            'genomes_storage_hash': self.genomes_storage_hash,
             'priority_genome': self.priority_genome,
             'genome_names': ','.join(self.genome_names),
             'gene_alignments_computed': self.gene_alignments_computed,
             'gene_function_sources': ','.join(self.functional_annotation_sources_available),
         }
 
-        dbops.PanGraphDatabase(self.pan_graph_db_path, quiet=False).create(meta_values)
+        print(meta_values)
+
+        dbops.PanGraphDatabase(self.pan_graph_db_path, run=self.run, progress=self.progress, quiet=False).create(meta_values)
 
         # add a default state
         TablesForStates(self.pan_graph_db_path).store_state('default', json.dumps(self.get_default_state()))
@@ -1769,8 +1825,10 @@ class PangenomeGraph():
     def update_pan_graph_db_with_layer_orders(self):
         """Adds the newick tree calculated from the graph into the pan-graph-db"""
 
-        args = argparse.Namespace(pan_or_profile_db=self.pan_graph_db_path, target_data_table="layer_orders")
-        miscdata.TableForLayerOrders(args, r=terminal.Run(verbose=False)).add({"default": {'data_type': 'newick', 'data_value': self.newick}}, skip_check_names=True)
+        # Only add newick tree if one was generated (not empty for identical genomes)
+        if self.newick:
+            args = argparse.Namespace(pan_or_profile_db=self.pan_graph_db_path, target_data_table="layer_orders")
+            miscdata.TableForLayerOrders(args, r=terminal.Run(verbose=False)).add({"default": {'data_type': 'newick', 'data_value': self.newick}}, skip_check_names=True)
 
 
     def update_pan_graph_db_with_items_additional_data(self):
@@ -1813,7 +1871,7 @@ class PangenomeGraph():
 
         table_for_nodes.store()
 
-        pan_graph_db = dbops.PanGraphDatabase(self.pan_graph_db_path, quiet=True)
+        pan_graph_db = dbops.PanGraphDatabase(self.pan_graph_db_path, run=self.run, progress=self.progress, quiet=True,)
         pan_graph_db.db.set_meta_value('num_nodes', len(self.pangenome_graph.graph.nodes()))
         pan_graph_db.disconnect()
 
@@ -1839,7 +1897,7 @@ class PangenomeGraph():
 
         table_for_edges.store()
 
-        pan_graph_db = dbops.PanGraphDatabase(self.pan_graph_db_path, quiet=True)
+        pan_graph_db = dbops.PanGraphDatabase(self.pan_graph_db_path, run=self.run, progress=self.progress, quiet=True)
         pan_graph_db.db.set_meta_value('num_edges', len(self.pangenome_graph.graph.edges(data=True)))
         pan_graph_db.disconnect()
 
@@ -1860,11 +1918,13 @@ class PangenomeGraph():
         self.pangenome_graph: PangenomeGraphManager Object
         """
 
-        pan_db = dbops.PanSuperclass(self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
-        pan_db.init_gene_clusters()
-
         # 2. step: Fill self.pangenome_graph with nodes and edges based on the synteny data
-        self.run.warning(None, header="Initalizing pangenome graph and filling with nodes and edges.", lc="green")
+        self.run.warning("The algorithm will now build a directed graph where nodes represent synteny gene clusters "
+                         "(SynGCs) and edges connect consecutive SynGCs so they follow the genomic context. Edge weights "
+                         "are computed to prioritize paths through core genes and the specified priority genome if provided. "
+                         "For circular genomes (when --circularize is used), wrap-around edges will connect the last "
+                         "gene back to the first gene to maintain circularity.",
+                         header="BUILDING PANGENOME GRAPH", lc="green")
         factor = 0.00000001 / 2
         decisison_making = {}
 
@@ -2059,8 +2119,13 @@ class PangenomeGraph():
             for layer, value_list in layer_data.items():
                 self.pangenome_graph.graph.nodes[syn_cluster]['layer'] = self.pangenome_graph.graph.nodes[syn_cluster]['layer'] | {layer: sum(value_list) / len(value_list)}
 
-        for genome in number_gene_calls:
-            self.run.info_single(f"Added {number_gene_calls[genome]} gene calls from {genome}.")
+        total_genes_added = sum(number_gene_calls.values())
+        self.run.info('Total genes added to graph', total_genes_added, nl_before=1)
+
+        if self.genome_names and len(self.genome_names) <= 10:
+            # Only show per-genome details if there are 10 or fewer genomes
+            for genome in number_gene_calls:
+                self.run.info(f' - {genome}', number_gene_calls[genome], lc='cyan', nl_before=0, nl_after=0)
 
         # variable to track nodes with differing alignment lengths
         diff_len_nodes = []
@@ -2074,7 +2139,7 @@ class PangenomeGraph():
             node_alignments = {}
             for genome_name, gene_caller_id in data['gene_calls'].items():
                 if self.gene_alignments_computed:
-                    genome_alignments = pan_db.gene_clusters_gene_alignments[genome_name]
+                    genome_alignments = self.pan_super.gene_clusters_gene_alignments[genome_name]
                     if gene_caller_id in genome_alignments:
                         alignment_summary = genome_alignments[gene_caller_id]
                         node_alignment_summaries[genome_name] = alignment_summary
@@ -2150,23 +2215,34 @@ class PangenomeGraph():
 
         num_syn_cluster = len(self.pangenome_data_df['syn_cluster'].unique())
         num_graph_nodes = len(self.pangenome_graph.graph.nodes())
+        num_graph_edges = len(self.pangenome_graph.graph.edges())
 
-        self.run.info_single(f"Added {num_graph_nodes} nodes and {len(self.pangenome_graph.graph.edges())} edges to pangenome graph.")
-        self.run.info_single("Done.")
+        self.run.info('Graph nodes (SynGCs)', num_graph_nodes, mc='green')
+        self.run.info('Graph edges', num_graph_edges)
 
         if num_syn_cluster != num_graph_nodes:
-            self.run.info_single(f"It looks like {abs(num_syn_cluster - num_graph_nodes)} nodes were not added to the graph. Proceeding from "
-                              f"here might cause some trouble. Maybe you also set a minimum contig size, in this case great job user, go ahead :)")
+            nodes_not_added = abs(num_syn_cluster - num_graph_nodes)
+            self.run.info('SynGCs not added to graph', nodes_not_added, mc='red')
+            self.run.warning(f"{nodes_not_added} synteny cluster(s) were not added to the graph, likely due to "
+                             f"--min-contig-chain filtering. This is expected behavior if you set a minimum contig size.")
 
         # 3. step: Check connectivity of the graph
         self.pangenome_graph.run_connectivity_check()
 
         # 4. step: Find edges to reverse to create maxmimum directed force
-        self.run.warning(None, header="Running maximum force calculation on pangenome graph", lc="green")
+        self.run.warning("The algorithm will now determine which edges need to be reversed to create a 'directed acyclic "
+                         "graph' that flows from the specified start node all the way to the end.. This process finds "
+                         "the optimal set of edge reversals to minimize conflicts while maintaining the maximum weighted "
+                         "path through core genes. Edge reversals are necessary to resolve cycles, and establish a "
+                         "consistent directional flow for anvi'o to be able to give you a biologically meaningful "
+                         "visualization of the pangenome.", header="OPTIMIZING GRAPH DIRECTIONALITY", lc="green")
 
         selfloops = list(nx.selfloop_edges(self.pangenome_graph.graph))
-        self.run.info_single(f"Found and removed {len(selfloops)} selfloop edge(s)")
-        self.pangenome_graph.graph.remove_edges_from(selfloops)
+        if selfloops:
+            self.run.info('Self-loop edges found', len(selfloops), mc='red')
+            self.pangenome_graph.graph.remove_edges_from(selfloops)
+        else:
+            self.run.info('Self-loop edges found', 0, mc='green')
 
         # changed_edges, removed_nodes, removed_edges = DirectedForce().return_optimum_complexity()
         changed_edges = DirectedForce().return_optimum_complexity(
@@ -2182,5 +2258,6 @@ class PangenomeGraph():
         # self.pangenome_data_df.drop(self.pangenome_data_df.loc[self.pangenome_data_df['syn_cluster'].isin(removed_nodes)].index, inplace=True)
         # self.run.info_single(f"The pangenome graph is now a connected non-cyclic graph.")
         if len(changed_edges) == 0:
-            self.run.info_single("This does look weird good but maybe you have a perfect dataset without the need of any edge reversal.")
-        self.run.info_single("Done.")
+            self.run.info('Edges reversed', 0, mc='green')
+            self.run.warning("No edges needed to be reversed. This is unusual but can happen with perfectly linear "
+                             "or well-structured datasets where the initial graph already flows in the correct direction.")

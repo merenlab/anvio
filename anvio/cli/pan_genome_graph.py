@@ -57,7 +57,7 @@ def get_args():
                                 "the parameters below, you can ask anvi'o to store the resulting graph into a text output file (which "
                                 "may be useful for developers for debugging purposes) or you can ask anvi'o to skip adding the results "
                                 "to the pan-db.")
-    groupB.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
+    groupB.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required': True}))
     groupB.add_argument('--output-synteny-gene-cluster-dendrogram', default=False, action="store_true", help="Write a dendrogram (.svg) "
                                 "and distance matrix (.tsv) for each split SynGC to the output directory (for debugging "
                                 "the paralog splitter).")
@@ -93,8 +93,12 @@ def get_args():
 
     groupD.add_argument('--priority-genome', default='', type=str, help = "Genome name to prioritize when building edges "
                     "(its path gets extra weight so layout favors its ordering).")
-    groupD.add_argument('--start-gene', default='RecA/RadA', type=str, help = "Regex/text to pick a SynGC as the "
-                    "starting node for layout (looked up in --start-column; helpful to anchor the graph).")
+    groupD.add_argument('--start-gene', default=None, type=str, help = "Regex/text to pick a SynGC as the "
+                    "starting node for layout (looked up in --start-column; helpful to anchor the graph). "
+                    "If not specified, anvi'o will use the synteny cluster with the smallest avg. gene caller ID "
+                    "across all genomes to serve as the starting node automatically. If you have reoriented your "
+                    "genomes, this should give you best results where the graph starts at the SynGC that describes "
+                    "the first genes in your genomes.")
     groupD.add_argument('--start-column', default='COG24_FUNCTION_TEXT', type=str, help = "Annotation column to search for --start-gene.")
 
     groupE = parser.add_argument_group('LAYOUT & SIMPLIFICATION', "Controls how the graph is compressed and long edges are filtered.")

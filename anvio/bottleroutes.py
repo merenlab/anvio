@@ -233,10 +233,17 @@ class BottleApplication(Bottle):
 
             if self.export_svg:
                 try:
-                    utils.run_selenium_and_export_svg("/".join([url, "app/index.html"]),
-                                                      self.args.export_svg,
-                                                      browser_path=self.browser_path,
-                                                      run=run)
+                    # Route to appropriate export function based on mode
+                    if self.interactive.mode == 'pangraph':
+                        utils.run_selenium_and_export_svg_for_pangraph("/".join([url, "app/pangraph.html"]),
+                                                                       self.args.export_svg,
+                                                                       browser_path=self.browser_path,
+                                                                       run=run)
+                    else:
+                        utils.run_selenium_and_export_svg("/".join([url, "app/index.html"]),
+                                                          self.args.export_svg,
+                                                          browser_path=self.browser_path,
+                                                          run=run)
                 except Exception as e:
                     print(e)
                 finally:

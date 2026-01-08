@@ -3545,6 +3545,7 @@ class PanGraphSuperclass(PanSuperclass):
         self.pangenome_graph = PangenomeGraphManager()
         self.pangenome_graph_initialized = False
 
+        print(self.p_meta)
         self.synteny_gene_clusters_gene_alignments_available = self.p_meta['gene_alignments_computed']
 
         if not self.synteny_gene_cluster_names:
@@ -3571,7 +3572,6 @@ class PanGraphSuperclass(PanSuperclass):
         else:
             self.run.warning("The pan database is being initialized without a genomes storage.")
 
-        F = lambda x: '[YES]' if x else '[NO]'
         self.run.info('Pan Graph DB', 'Initialized: %s (v. %s)' % (self.pan_graph_db_path, anvio.__pan__version__))
 
 
@@ -3587,16 +3587,20 @@ class PanGraphSuperclass(PanSuperclass):
 
 
     def load_state(self, state='default', order='default'):
-
         args = argparse.Namespace(pan_or_profile_db=self.pan_graph_db_path, target_data_table="layer_orders")
         items_layer_order = TableForLayerOrders(args)
 
-        order_dict = items_layer_order.get()[order]
-        if 'newick' in order_dict:
-            self.p_meta['newick'] = order_dict['newick']
+        # Handle case where no layer orders exist (e.g., identical genomes with no newick tree)
+        layer_orders = items_layer_order.get()
+        if order in layer_orders:
+            order_dict = layer_orders[order]
+            if 'newick' in order_dict:
+                self.p_meta['newick'] = order_dict['newick']
+            else:
+                self.p_meta['newick'] = ''
         else:
-            # FIXME
-            pass
+            # No layer order exists - set empty newick
+            self.p_meta['newick'] = ''
 
         self.p_meta['order'] = order
         self.p_meta['state'] = state
@@ -3623,11 +3627,16 @@ class PanGraphSuperclass(PanSuperclass):
         args = argparse.Namespace(pan_or_profile_db=self.pan_graph_db_path, target_data_table="layer_orders")
         items_layer_order = TableForLayerOrders(args)
 
-        order_dict = items_layer_order.get()[self.p_meta['order']]
-        if 'newick' in order_dict:
-            self.p_meta['newick'] = order_dict['newick']
+        # Handle case where no layer orders exist (e.g., identical genomes with no newick tree)
+        layer_orders = items_layer_order.get()
+        if self.p_meta['order'] in layer_orders:
+            order_dict = layer_orders[self.p_meta['order']]
+            if 'newick' in order_dict:
+                self.p_meta['newick'] = order_dict['newick']
+            else:
+                self.p_meta['newick'] = ''
         else:
-            # FIXME
+            # No layer order exists - keep current newick (likely empty)
             pass
 
         node_positions, edge_positions, node_groups = TopologicalLayout().run_synteny_layout_algorithm(
@@ -5103,13 +5112,12 @@ class PanGraphDatabase:
         self.meta = dbi(self.db_path, expecting=self.db_type).get_self_table()
         # FIXME: Identify all the integer values in the self table to explicitly
         # cast them to int here:
-        for key in []:
+        for key in ['num_nodes', 'num_edges', 'num_genomes', 'gene_alignments_computed']:
             try:
                 self.meta[key] = int(self.meta[key])
             except:
                 pass
 
-        # FIXME: same as above, but for floating points
         for key in []:
             try:
                 self.meta[key] = float(self.meta[key])
