@@ -57,7 +57,7 @@ def get_args():
                                 "the parameters below, you can ask anvi'o to store the resulting graph into a text output file (which "
                                 "may be useful for developers for debugging purposes) or you can ask anvi'o to skip adding the results "
                                 "to the pan-db.")
-    groupB.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))
+    groupB.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required': True}))
     groupB.add_argument('--output-synteny-gene-cluster-dendrogram', default=False, action="store_true", help="Write a dendrogram (.svg) "
                                 "and distance matrix (.tsv) for each split SynGC to the output directory (for debugging "
                                 "the paralog splitter).")
