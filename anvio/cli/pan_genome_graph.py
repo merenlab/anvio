@@ -82,6 +82,13 @@ def get_args():
                     "(values above delta are treated as mismatches; raise to be more permissive).")
     groupC.add_argument('--inversion-aware', default=False, action="store_true", help = "Also compare reversed k-mers, allowing inverted "
                     "contexts to cluster together (helps when inversions are common 🤞).")
+    groupC.add_argument('--paralog-aware', default=False, action="store_true", help = "Enables the max paralog parameters.")
+    groupC.add_argument('--max-num-paralogs', default=-1, type=int, help = "Filter gene clusters with more than this many TOTAL "
+                    "occurrences across all genomes (-1 disables filtering; useful for removing transposons/repeats "
+                    "that appear many times across the pangenome and cause cycles).")
+    groupC.add_argument('--max-num-paralogs-per-genome', default=-1, type=int, help = "Filter gene clusters where ANY single "
+                    "genome has more than this many copies (-1 disables filtering; useful for removing within-genome "
+                    "duplications like tandem repeats).")
 
     groupD = parser.add_argument_group('ANCHORING & PRIORITY', "Choose a reference genome or anchor gene for layout.")
 

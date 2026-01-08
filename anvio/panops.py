@@ -1401,6 +1401,9 @@ class PangenomeGraph():
         self.delta = A('delta')
         self.min_k = A('min_k')
         self.inversion_aware = A('inversion_aware')
+        self.paralog_aware = A('paralog_aware')
+        self.max_num_paralogs = A('max_num_paralogs')
+        self.max_num_paralogs_per_genome = A('max_num_paralogs_per_genome')
 
         self.max_edge_length_filter = A('max_edge_length_filter')
         self.gene_cluster_grouping_threshold = A('gene_cluster_grouping_threshold')
