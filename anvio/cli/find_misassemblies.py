@@ -78,20 +78,15 @@ def process_contig(args, available_index_queue, output_queue, contigs_size):
             # bundle clipping positions with their coverage values
             clipping_with_cov = {pos: (clip_count, coverage[pos]) for pos, clip_count in clipping.items()}
 
-            # compute zero-coverage ranges
-            zero_ranges = []
-            in_window = False
-            window_start = 0
-            for pos in range(length):
-                if coverage[pos] == 0 and not in_window:
-                    window_start = pos
-                    in_window = True
-                elif coverage[pos] > 0 and in_window:
-                    zero_ranges.append((window_start, pos))
-                    in_window = False
-            # handle window that extends to end of contig
-            if in_window:
-                zero_ranges.append((window_start, length))
+            # compute zero-coverage ranges using vectorized numpy operations
+            is_zero = coverage == 0
+            # pad with False to handle edge cases (zeros at start/end of contig)
+            padded = np.concatenate([[False], is_zero, [False]])
+            # find transitions: +1 where zero region starts, -1 where it ends
+            diff = np.diff(padded.astype(np.int8))
+            starts = np.where(diff == 1)[0]
+            ends = np.where(diff == -1)[0]
+            zero_ranges = list(zip(starts.tolist(), ends.tolist()))
 
             output_queue.put((contig, length, clipping_with_cov, zero_ranges))
 
