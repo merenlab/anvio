@@ -3545,7 +3545,6 @@ class PanGraphSuperclass(PanSuperclass):
         self.pangenome_graph = PangenomeGraphManager()
         self.pangenome_graph_initialized = False
 
-        print(self.p_meta)
         self.synteny_gene_clusters_gene_alignments_available = self.p_meta['gene_alignments_computed']
 
         if not self.synteny_gene_cluster_names:

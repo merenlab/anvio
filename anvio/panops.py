@@ -1433,33 +1433,16 @@ class PangenomeGraph():
         region_sides_df, nodes_df, gene_calls_df = self.pangenome_graph.summarize()
         additional_info = pd.merge(region_sides_df.reset_index(drop=False), nodes_df.reset_index(drop=False), how="left", on="region_id").set_index('syn_cluster')
 
-        # for item, data in self.pangenome_graph.graph.nodes(data='layer'):
-        #     print(item, data)
-
         for index, line in additional_info.iterrows():
-            # print(index, line["motif"])
             if line["motif"] == "BB":
-                # print('yes')
                 self.pangenome_graph.graph.nodes[index]['layer'] = self.pangenome_graph.graph.nodes[index]['layer'] | {'backbone': 1}
             else:
-                # print('no')
                 self.pangenome_graph.graph.nodes[index]['layer'] = self.pangenome_graph.graph.nodes[index]['layer'] | {'backbone': 0}
-
-        # for item, data in self.pangenome_graph.graph.nodes(data='layer'):
-        #     print(item, data)
 
         gene_calls_df.to_csv(os.path.join(self.output_dir, 'gene_calls_df.tsv'), sep='\t')
         region_sides_df.to_csv(os.path.join(self.output_dir, 'region_sides_df.tsv'), sep='\t')
         nodes_df.to_csv(os.path.join(self.output_dir, 'nodes_df.tsv'), sep='\t')
 
-        # X = len(set(nodes_df.reset_index().query('region_id == -1')['x'].tolist())) / len(set(nodes_df.reset_index()['x'].tolist()))
-        # A = len(set(nodes_df.reset_index().query('region_id == -1')['syn_cluster'].tolist())) / len(set(nodes_df.reset_index()['syn_cluster'].tolist()))
-        # complexity_value = 1 - (X + A) / 2
-
-        # with open(os.path.join(self.output_dir, 'complexity_value.txt'), 'w') as file:
-        #     file.write(str(complexity_value))
-
-        # self.run.info_single(f"Pangenome graph complexity is {round(complexity_value, 3)}.")
         self.run.info_single("Gene calls", os.path.join(self.output_dir, 'gene_calls_df.tsv'))
         self.run.info_single("Regieons", os.path.join(self.output_dir, 'region_sides_df.tsv'))
         self.run.info_single("Nodes", os.path.join(self.output_dir, 'nodes_df.tsv'))
@@ -1735,8 +1718,6 @@ class PangenomeGraph():
             'gene_alignments_computed': self.gene_alignments_computed,
             'gene_function_sources': ','.join(self.functional_annotation_sources_available),
         }
-
-        print(meta_values)
 
         dbops.PanGraphDatabase(self.pan_graph_db_path, run=self.run, progress=self.progress, quiet=False).create(meta_values)
 
@@ -2017,8 +1998,6 @@ class PangenomeGraph():
                         self.pangenome_graph.add_edge_to_graph(extra_connections_syn_i, extra_connections_syn_j, edge_attributes)
 
         for syn_cluster, layer_data in layers_data.items():
-
-            # print(syn_cluster, layer_data)
 
             for layer, value_list in layer_data.items():
                 self.pangenome_graph.graph.nodes[syn_cluster]['layer'] = self.pangenome_graph.graph.nodes[syn_cluster]['layer'] | {layer: sum(value_list) / len(value_list)}
