@@ -401,7 +401,9 @@ class PangenomeGraphManager():
             region_x_positions_max = max(region_x_positions)
 
             if region_x_positions_min in set(core_positions) and region_x_positions_max in set(core_positions):
-                complexity = 1
+                complexity = 0
+            # elif region_x_positions_max - region_x_positions_min == 1:
+            #     complexity = 0
             elif region_x_positions_min not in set(core_positions) and region_x_positions_max not in set(core_positions):
 
                 if region_x_positions_min != 0:
@@ -410,9 +412,9 @@ class PangenomeGraphManager():
 
                     predecessor = [item[2] for item in prior_core_region if item[0] == region_x_positions_min - 1][0]
 
-                    complexity = sum([len(list(self.graph.successors(node))) - 1 for node in nodes_sets + [predecessor]]) + 1
+                    complexity = sum([len(list(self.graph.successors(node))) - 1 for node in nodes_sets + [predecessor]])
                 else:
-                    complexity = -1
+                    complexity = 0
             else:
                 print('Summary error.')
 
@@ -442,9 +444,9 @@ class PangenomeGraphManager():
             mean_expansion = round(mean(values), 3)
             mode = ", ".join(str(num) for num in multimode(values))
 
-            if complexity == 1:
+            if complexity == 0:
                 motif = 'BB'
-            elif complexity == 2:
+            elif complexity == 1 and min_expansion == 0:
                 motif = 'INDEL'
             else:
                 motif = 'HVR'
@@ -497,6 +499,10 @@ class PangenomeGraphManager():
             X_norm = (math.log(1 + X) - math.log(1 + X_min)) / (math.log(1 + X_max) - math.log(1 + X_min))
             return(X_norm)
 
+        def fixed_baseline_log_scaling(X, X_max):
+            X_norm = (math.log(1 + X)) / (math.log(1 + X_max))
+            return(X_norm)
+
         def func(row):
 
             C = row['complexity']
@@ -504,8 +510,8 @@ class PangenomeGraphManager():
             W = row['weight']
             D = row['diversity']
 
-            C_norm = log_min_max_normalize(C, C_min, C_max)
-            E_norm = log_min_max_normalize(E, E_min, E_max)
+            C_norm = fixed_baseline_log_scaling(C, C_max)
+            E_norm = fixed_baseline_log_scaling(E, E_max)
 
             W_f = 1 - math.e**(-W/W_median)
 
