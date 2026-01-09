@@ -2806,7 +2806,7 @@ class DGR_Finder:
             "mismatch_codon_1", "mismatch_codon_2", "mismatch_codon_3", "pct_mismatch_codon_3",
             "vr_gene_id", "n_snvs_total", "n_snvs_explained", "n_snvs_unexplained", "pct_snvs_explained",
             "snv_codon_1", "snv_codon_2", "snv_codon_3", "pct_snv_codon_3",
-            "confidence", "confidence_reasons"]
+            "snv_supporting_sample", "confidence", "confidence_reasons"]
 
         # check if either dictionary is empty or lacks meaningful keys
         if not any(dgrs_dict.values()):
@@ -2844,6 +2844,7 @@ class DGR_Finder:
                         vr_data.get("n_snvs_unexplained", 0), vr_data.get("pct_snvs_explained", 100),
                         vr_data.get("snv_codon_1", 0), vr_data.get("snv_codon_2", 0),
                         vr_data.get("snv_codon_3", 0), vr_data.get("pct_snv_codon_3", 0),
+                        vr_data.get("snv_supporting_sample", "N/A"),
                         vr_data.get("confidence", "N/A"), vr_data.get("confidence_reasons", [])
                     ]
                     f.write('\t'.join(map(str, csv_row)) + '\n')
