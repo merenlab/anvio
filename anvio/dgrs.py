@@ -645,7 +645,11 @@ class DGR_Finder:
     def analyze_snv_pattern(self, query_contig, query_start, query_end,
                             mismatch_positions_contig, mutagenesis_base, is_reverse_complement):
         """
-        Analyze SNV pattern relative to DGR expectations.
+        Analyze SNV pattern on a per-sample basis.
+
+        Evaluates each sample individually, sorted by SNV count (descending).
+        Returns metrics from the first sample that passes all thresholds,
+        or from the sample with most SNVs if none pass.
 
         Parameters
         ==========
@@ -665,7 +669,10 @@ class DGR_Finder:
         Returns
         =======
         dict or None
-            SNV analysis metrics, or None if no SNVs found
+            SNV analysis metrics including:
+            - All standard fields (n_snvs_total, pct_snvs_explained, etc.)
+            - 'snv_supporting_sample': str or None (sample that passed thresholds)
+            - 'sample_passed': bool (True if a sample met all thresholds)
         """
         # Fetch full SNV data for this region (including 3rd codon position)
         snv_data = self.get_snvs_for_region(query_contig, query_start, query_end)
@@ -676,10 +683,7 @@ class DGR_Finder:
         positions = snv_data['positions']
         codon_pos = snv_data['codon_pos']
         reference = snv_data['reference']
-
-        # Unique positions (SNVs can appear multiple times across samples)
-        unique_positions = list(dict.fromkeys(positions))
-        n_snvs_total = len(unique_positions)
+        sample_ids = snv_data['sample_ids']
 
         # Adjust mutagenesis base for reverse complement
         expected_base = mutagenesis_base.upper()
@@ -687,50 +691,106 @@ class DGR_Finder:
             complement = {'A': 'T', 'T': 'A', 'C': 'G', 'G': 'C', 'N': 'N'}
             expected_base = complement.get(expected_base, expected_base)
 
-        # Classify each SNV
         mismatch_set = set(mismatch_positions_contig)
 
-        n_explained = 0  # At mismatch OR at matching position with reference = expected_base
-        n_unexplained = 0  # At matching position with reference != expected_base
+        # Group SNV indices by sample
+        sample_indices = defaultdict(list)
+        for i, sample_id in enumerate(sample_ids):
+            sample_indices[sample_id].append(i)
 
-        snv_codon_counts = {1: 0, 2: 0, 3: 0, 0: 0}  # 0 = unknown/not in gene
+        # Sort samples by SNV count (descending) for early exit optimization
+        # Samples with more SNVs are checked first; we stop as soon as one passes
+        samples_sorted = sorted(sample_indices.keys(),
+                               key=lambda s: len(sample_indices[s]),
+                               reverse=True)
 
-        # Process unique positions
-        seen_positions = set()
-        for i, pos in enumerate(positions):
-            if pos in seen_positions:
+        best_result = None
+        best_sample_snv_count = 0
+
+        for sample_id in samples_sorted:
+            indices = sample_indices[sample_id]
+
+            # Get unique positions for this sample (same position can appear multiple times)
+            sample_positions = []
+            seen = set()
+            for i in indices:
+                pos = positions[i]
+                if pos not in seen:
+                    seen.add(pos)
+                    sample_positions.append(i)
+
+            n_snvs = len(sample_positions)
+
+            # Skip samples below minimum threshold - not enough data to evaluate
+            if n_snvs < self.min_snvs_per_sample:
                 continue
-            seen_positions.add(pos)
 
-            # Codon position counting
-            cp = codon_pos[i] if i < len(codon_pos) else 0
-            if cp in snv_codon_counts:
-                snv_codon_counts[cp] += 1
+            # Compute metrics for this sample
+            snv_codon_counts = {1: 0, 2: 0, 3: 0, 0: 0}  # 0 = unknown/not in gene
+            n_explained = 0
+            n_unexplained = 0
+            unique_positions_list = []
 
-            # Explained vs unexplained
-            if pos in mismatch_set:
-                n_explained += 1
-            elif reference[i] == expected_base:
-                n_explained += 1
-            else:
-                n_unexplained += 1
+            for i in sample_positions:
+                pos = positions[i]
+                unique_positions_list.append(pos)
 
-        # Calculate percentages
-        pct_explained = (n_explained / n_snvs_total * 100) if n_snvs_total > 0 else 100
-        in_gene = snv_codon_counts[1] + snv_codon_counts[2] + snv_codon_counts[3]
-        pct_snv_codon_3 = (snv_codon_counts[3] / in_gene * 100) if in_gene > 0 else 0
+                # Codon position counting
+                cp = codon_pos[i] if i < len(codon_pos) else 0
+                if cp in snv_codon_counts:
+                    snv_codon_counts[cp] += 1
 
-        return {
-            'n_snvs_total': n_snvs_total,
-            'n_snvs_explained': n_explained,
-            'n_snvs_unexplained': n_unexplained,
-            'pct_snvs_explained': pct_explained,
-            'snv_codon_1': snv_codon_counts[1],
-            'snv_codon_2': snv_codon_counts[2],
-            'snv_codon_3': snv_codon_counts[3],
-            'pct_snv_codon_3': pct_snv_codon_3,
-            'snv_positions': unique_positions
-        }
+                # Explained: at mismatch position OR at mutagenesis base site
+                # Unexplained: at a position that doesn't match either criterion
+                if pos in mismatch_set:
+                    n_explained += 1
+                elif reference[i] == expected_base:
+                    n_explained += 1
+                else:
+                    n_unexplained += 1
+
+            # Calculate percentages
+            pct_explained = (n_explained / n_snvs * 100) if n_snvs > 0 else 100
+            in_gene = snv_codon_counts[1] + snv_codon_counts[2] + snv_codon_counts[3]
+            pct_snv_codon_3 = (snv_codon_counts[3] / in_gene * 100) if in_gene > 0 else 0
+
+            # Build result dict for this sample
+            sample_result = {
+                'n_snvs_total': n_snvs,
+                'n_snvs_explained': n_explained,
+                'n_snvs_unexplained': n_unexplained,
+                'pct_snvs_explained': pct_explained,
+                'snv_codon_1': snv_codon_counts[1],
+                'snv_codon_2': snv_codon_counts[2],
+                'snv_codon_3': snv_codon_counts[3],
+                'pct_snv_codon_3': pct_snv_codon_3,
+                'snv_positions': unique_positions_list,
+                'snv_supporting_sample': sample_id,
+                'sample_passed': False  # Will be set to True if passes
+            }
+
+            # Track best result (sample with most SNVs) as fallback
+            if n_snvs > best_sample_snv_count:
+                best_sample_snv_count = n_snvs
+                best_result = sample_result
+
+            # Check if this sample passes all thresholds
+            passes_codon_3 = pct_snv_codon_3 <= self.max_pct_snv_codon_3_per_sample
+            passes_explained = pct_explained >= self.min_pct_snvs_explained_per_sample
+
+            if passes_codon_3 and passes_explained:
+                # Found a passing sample - return immediately (early exit)
+                sample_result['sample_passed'] = True
+                return sample_result
+
+        # No sample passed thresholds - return best result (most SNVs) with sample_passed=False
+        if best_result is not None:
+            best_result['snv_supporting_sample'] = None  # No supporting sample found
+            best_result['sample_passed'] = False
+            return best_result
+
+        # No samples had enough SNVs to evaluate
+        return None
 
 
     def compute_dgr_confidence(self, mismatch_analysis, snv_analysis):
