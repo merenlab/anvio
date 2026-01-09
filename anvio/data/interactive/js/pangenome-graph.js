@@ -192,7 +192,7 @@ class PangenomeGraphUserInterface {
         var item_order = []
 
         // Only parse newick tree if it exists (may be empty for identical genomes)
-        if (this.data['meta']['newick'] && this.data['meta']['newick'].length > 0) {
+        if (this.data['meta']['newick'] && this.data['meta']['newick'].length > 0 && $('#flextree').prop('checked') == true) {
             order = this.newick_to_order(this.data['meta']['newick']).reverse()
             for (var item of order) {
                 var [name, item_start, item_end] = item
@@ -205,7 +205,23 @@ class PangenomeGraphUserInterface {
             }
         } else {
             // No newick tree - just use genome names in their original order
-            item_order = this.genomes.slice()
+            // item_order = this.genomes.slice()
+
+            // Comment from Alex: maybe let's use the current order of layers as
+            // per color order instead, this opens more options for users if 
+            // there is no current tree loaded or drawn.
+
+            var array_order = []
+            for (var [key, value] of Object.entries(edgecoloring)) {
+                 array_order.push([value[0], key])
+            }
+            
+            var sorted_array_order = array_order.sort(function(a, b) {
+              return b[0] - a[0];
+            });
+            
+            item_order = sorted_array_order.map(arr => arr[1]);
+            console.log(item_order)
         }
         
         for (var genome of item_order) {
@@ -1150,10 +1166,11 @@ class PangenomeGraphUserInterface {
         var array = []
         for (var name of genomes) {
             array.push(edgecoloring[name])
-            var sortedArray = array.sort(function(a, b) {
-                return a[0] - b[0];
-            });
         }
+
+        var sortedArray = array.sort(function(a, b) {
+            return a[0] - b[0];
+        });
         
         return sortedArray[0][1]
     }
