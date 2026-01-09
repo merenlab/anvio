@@ -1913,10 +1913,11 @@ class DGR_Finder:
                         midline = elem.find('Hsp_midline').text
 
                         # Compute base genome positions
-                        subject_genome_start_position = min(hit_from - 1, hit_to)
-                        subject_genome_end_position = max(hit_from - 1, hit_to)
-                        query_genome_start_position = query_start_position + min(query_from - 1, query_to)
-                        query_genome_end_position = query_start_position + max(query_from - 1, query_to)
+                        # BLAST coordinates are 1-based; convert to 0-based by subtracting 1 from both endpoints
+                        subject_genome_start_position = min(hit_from - 1, hit_to - 1)
+                        subject_genome_end_position = max(hit_from - 1, hit_to - 1)
+                        query_genome_start_position = query_start_position + min(query_from - 1, query_to - 1)
+                        query_genome_end_position = query_start_position + max(query_from - 1, query_to - 1)
 
                         # Update coordinates to reflect trimming
                         query_genome_start_position = query_genome_start_position + trim_start
