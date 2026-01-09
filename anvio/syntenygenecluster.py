@@ -106,6 +106,57 @@ class SyntenyGeneCluster():
         self.just_do_it = A('just_do_it')
 
 
+    def preprocess_contextualize(self, pangenome_data_df):
+
+        if self.paralog_aware:
+            subset_df = pangenome_data_df.reset_index(drop=False)[['genome', 'gene_cluster']]
+
+            paralogs_df = subset_df[subset_df.duplicated(keep=False)]
+            paralogs = paralogs_df['gene_cluster'].unique().tolist()
+            no_paralogs_df = self.run_contextualize_paralogs_algorithm(pangenome_data_df.query('gene_cluster not in @paralogs'))
+            paralogs_per_genome = paralogs_df.groupby('genome').size()
+            run = True
+
+            self.run.warning("Dear user, you requested higher paralog awareness, therefore the same algorithm you."
+                             "saw running a second ago might run again. This is expected behaivior. The first execution" 
+                             "skipped all paralog gene clusters in the dataset to solely focus on the more stable genomic areas."
+                             "Depending on your settings of maximum number of total paralogs and paralogs per genome, the"
+                             "algorithm will now first check whether a second run is in line with your needs. Stay seated"
+                             "and thank you for your attention.",
+                     header="RESOLVING PARALOGS USING GENOMIC CONTEXT", lc="green")
+
+            if len(paralogs_df) <= self.max_num_paralogs or self.max_num_paralogs == -1:
+                run = True if run == True else False
+                if self.max_num_paralogs != -1:
+                    self.run.info_single(f"The number of total paralogs is below {self.max_num_paralogs} ✅")
+            else:
+                run = False
+                self.run.info_single(f"The number of total paralogs is higher than {self.max_num_paralogs} ⛔")
+
+            if (paralogs_per_genome <= self.max_num_paralogs_per_genome).all() or self.max_num_paralogs_per_genome == -1:
+                run = True if run == True else False
+                if self.max_num_paralogs != -1:
+                    self.run.info_single(f"The number of paralogs per genome is lower than {self.max_num_paralogs_per_genome} ✅")
+            else:
+                run = False
+                self.run.info_single(f"The number of paralogs per genome is at least once higher than {self.max_num_paralogs_per_genome} ⛔")
+
+            if run == True:
+
+                self.run.info_single('Running algorithm again to place paralogs, while keeping the remaining GCs unaffected ✅')
+                only_paralogs_df = self.run_contextualize_paralogs_algorithm(pangenome_data_df).query('gene_cluster in @paralogs')
+                pangenome_data_contextualized_df = pd.concat([no_paralogs_df, only_paralogs_df], ignore_index=True).sort_values(["genome", "position"], ascending=True)
+            else:
+                self.run.info_single('The users settings prevent the second run ⛔')
+                self.run.info_single('Removing now all paralogs from the dataset.')
+                pangenome_data_contextualized_df = no_paralogs_df.sort_values(["genome", "position"], ascending=True)
+
+        else:
+            pangenome_data_contextualized_df = self.run_contextualize_paralogs_algorithm(pangenome_data_df)
+
+        return pangenome_data_contextualized_df
+    
+
     def get_data_from_YAML(self, contextualize_paralogs=True, gene_length=400, intron_length=100):
         """Create a data tale form the YAML file"""
         i = 0
@@ -134,44 +185,7 @@ class SyntenyGeneCluster():
         self.run.info_single("Done.")
 
         if contextualize_paralogs:
-
-            if self.paralog_aware:
-                subset_df = pangenome_data_df.reset_index(drop=False)[['genome', 'gene_cluster']]
-
-                paralogs_df = subset_df[subset_df.duplicated(keep=False)]
-                paralogs = paralogs_df['gene_cluster'].unique().tolist()
-                no_paralogs_df = self.run_contextualize_paralogs_algorithm(pangenome_data_df.query('gene_cluster not in @paralogs'))
-                paralogs_per_genome = paralogs_df.groupby('genome').size()
-                run = True
-
-                if len(paralogs_df) <= self.max_num_paralogs or self.max_num_paralogs == -1:
-                    run = True if run == True else False
-                    if self.max_num_paralogs != -1:
-                        self.run.info_single(f"The number of total paralogs is below {self.max_num_paralogs} ✅")
-                else:
-                    run = False
-                    self.run.info_single(f"The number of total paralogs is higher than {self.max_num_paralogs} ⛔")
-
-                if (paralogs_per_genome <= self.max_num_paralogs_per_genome).all() or self.max_num_paralogs_per_genome == -1:
-                    run = True if run == True else False
-                    if self.max_num_paralogs != -1:
-                        self.run.info_single(f"The number of paralogs per genome is lower than {self.max_num_paralogs_per_genome} ✅")
-                else:
-                    run = False
-                    self.run.info_single(f"The number of paralogs per genome is at least once higher than {self.max_num_paralogs_per_genome} ⛔")
-
-                if run == True:
-                    self.run.info_single('Proceed with paralog aware clustering.')
-                    only_paralogs_df = self.run_contextualize_paralogs_algorithm(pangenome_data_df).query('gene_cluster in @paralogs')
-                    pangenome_data_contextualized_df = pd.concat([no_paralogs_df, only_paralogs_df], ignore_index=True).sort_values(["genome", "position"], ascending=True)
-                else:
-                    self.run.info_single('Removing all paralogs from the dataset.')
-                    pangenome_data_contextualized_df = no_paralogs_df.sort_values(["genome", "position"], ascending=True)
-
-            else:
-                pangenome_data_contextualized_df = self.run_contextualize_paralogs_algorithm(pangenome_data_df)
-
-            return pangenome_data_contextualized_df
+            return self.preprocess_contextualize(pangenome_data_df)
 
         else:
             return pangenome_data_df
@@ -265,44 +279,7 @@ class SyntenyGeneCluster():
         pangenome_data_df = pd.concat(pangenome_data_list)
 
         if contextualize_paralogs:
-
-            if self.paralog_aware:
-                subset_df = pangenome_data_df.reset_index(drop=False)[['genome', 'gene_cluster']]
-
-                paralogs_df = subset_df[subset_df.duplicated(keep=False)]
-                paralogs = paralogs_df['gene_cluster'].unique().tolist()
-                no_paralogs_df = self.run_contextualize_paralogs_algorithm(pangenome_data_df.query('gene_cluster not in @paralogs'))
-                paralogs_per_genome = paralogs_df.groupby('genome').size()
-                run = True
-
-                if len(paralogs_df) <= self.max_num_paralogs or self.max_num_paralogs == -1:
-                    run = True if run == True else False
-                    if self.max_num_paralogs != -1:
-                        self.run.info_single(f"The number of total paralogs is below {self.max_num_paralogs} ✅")
-                else:
-                    run = False
-                    self.run.info_single(f"The number of total paralogs is higher than {self.max_num_paralogs} ⛔")
-
-                if (paralogs_per_genome <= self.max_num_paralogs_per_genome).all() or self.max_num_paralogs_per_genome == -1:
-                    run = True if run == True else False
-                    if self.max_num_paralogs != -1:
-                        self.run.info_single(f"The number of paralogs per genome is lower than {self.max_num_paralogs_per_genome} ✅")
-                else:
-                    run = False
-                    self.run.info_single(f"The number of paralogs per genome is at least once higher than {self.max_num_paralogs_per_genome} ⛔")
-
-                if run == True:
-                    self.run.info_single('Proceed with paralog aware clustering.')
-                    only_paralogs_df = self.run_contextualize_paralogs_algorithm(pangenome_data_df).query('gene_cluster in @paralogs')
-                    pangenome_data_contextualized_df = pd.concat([no_paralogs_df, only_paralogs_df], ignore_index=True).sort_values(["genome", "position"], ascending=True)
-                else:
-                    self.run.info_single('Removing all paralogs from the dataset.')
-                    pangenome_data_contextualized_df = no_paralogs_df.sort_values(["genome", "position"], ascending=True)
-
-            else:
-                pangenome_data_contextualized_df = self.run_contextualize_paralogs_algorithm(pangenome_data_df)
-
-            return pangenome_data_contextualized_df
+            return self.preprocess_contextualize(pangenome_data_df)
 
         else:
             return pangenome_data_df
@@ -580,7 +557,7 @@ class SyntenyGeneCluster():
                          "one gene per genome by iteratively increasing the number of genes to consider to "
                          "disambiguate paralogs fully while preserveing the gene synteny information across the "
                          "pangenome.",
-                         header="RESOLVING PARALOGS USING GENOMIC CONTEXT", lc="green")
+                         header="CONTEXTUALIZE GENE CALLS USING GENOMIC CONTEXT", lc="green")
 
         gene_cluster_positions = {}
         gene_cluster_contig_order = {}
