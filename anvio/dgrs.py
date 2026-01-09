@@ -797,6 +797,11 @@ class DGR_Finder:
         """
         Compute confidence level based on mismatch and SNV analyses.
 
+        Confidence levels:
+        - high: Good mismatch distribution AND a sample passed with excellent SNV metrics
+        - medium: Good mismatch distribution AND a sample passed with acceptable SNV metrics
+        - low: Poor mismatch distribution OR no sample passed SNV thresholds OR no SNVs
+
         Parameters
         ==========
         mismatch_analysis : dict
@@ -814,28 +819,43 @@ class DGR_Finder:
         confidence = 'high'
         reasons = []
 
-        # Check mismatch codon distribution
+        # Check mismatch codon distribution (unchanged from before)
+        # If >50% of VR/TR mismatches are at 3rd codon position, it's suspicious
         if mismatch_analysis['pct_mismatch_codon_3'] > 50:
             confidence = 'medium'
             reasons.append(f"high_mismatch_codon_3_{mismatch_analysis['pct_mismatch_codon_3']:.1f}%")
 
-        # Check SNV pattern (if available)
-        if snv_analysis is not None:
-            if snv_analysis['pct_snvs_explained'] < 70:
-                confidence = 'low'
-                reasons.append(f"low_snvs_explained_{snv_analysis['pct_snvs_explained']:.1f}%")
-            elif snv_analysis['pct_snvs_explained'] < 85:
-                if confidence == 'high':
-                    confidence = 'medium'
-                reasons.append(f"moderate_snvs_explained_{snv_analysis['pct_snvs_explained']:.1f}%")
+        # Check SNV pattern using per-sample logic
+        if snv_analysis is None:
+            # No SNVs at all in VR region -> low confidence
+            # This could mean no coverage or no variation detected
+            confidence = 'low'
+            reasons.append("no_snvs_in_vr_region")
+        elif not snv_analysis.get('sample_passed', False):
+            # SNVs exist but no sample passed the thresholds -> low confidence
+            # This suggests the SNV pattern doesn't match DGR expectations
+            confidence = 'low'
+            reasons.append("no_sample_passed_snv_thresholds")
+        else:
+            # A sample passed - check if it has excellent metrics for high confidence
+            pct_codon_3 = snv_analysis['pct_snv_codon_3']
+            pct_explained = snv_analysis['pct_snvs_explained']
 
-            if snv_analysis['pct_snv_codon_3'] > 40:
-                confidence = 'low'
-                reasons.append(f"high_snv_codon_3_{snv_analysis['pct_snv_codon_3']:.1f}%")
-            elif snv_analysis['pct_snv_codon_3'] > 33:
+            # Excellent: very few SNVs at codon 3 AND almost all SNVs explained
+            is_excellent = (pct_codon_3 <= self.high_conf_max_pct_snv_codon_3 and
+                           pct_explained >= self.high_conf_min_pct_snvs_explained)
+
+            if is_excellent:
+                # Excellent SNV metrics - this strongly supports DGR activity
+                # Note: we don't override mismatch-based downgrade, but we note the excellent SNVs
+                if confidence == 'medium':
+                    reasons.append(f"excellent_snv_support_codon3_{pct_codon_3:.1f}%_explained_{pct_explained:.1f}%")
+                # If confidence is still 'high', keep it high (no reason to add)
+            else:
+                # Passed thresholds but not excellent -> cap at medium confidence
                 if confidence == 'high':
                     confidence = 'medium'
-                reasons.append(f"elevated_snv_codon_3_{snv_analysis['pct_snv_codon_3']:.1f}%")
+                reasons.append(f"snv_passed_not_excellent_codon3_{pct_codon_3:.1f}%_explained_{pct_explained:.1f}%")
 
         return confidence, reasons
 
