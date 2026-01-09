@@ -1920,10 +1920,11 @@ class DGR_Finder:
                         query_genome_end_position = query_start_position + max(query_from - 1, query_to - 1)
 
                         # Update coordinates to reflect trimming
+                        # trim_end is exclusive (Python slice convention), so subtract 1 for inclusive end
                         query_genome_start_position = query_genome_start_position + trim_start
-                        query_genome_end_position = query_genome_start_position + (trim_end - trim_start)
+                        query_genome_end_position = query_genome_start_position + (trim_end - trim_start) - 1
                         subject_genome_start_position = subject_genome_start_position + trim_start
-                        subject_genome_end_position = subject_genome_start_position + (trim_end - trim_start)
+                        subject_genome_end_position = subject_genome_start_position + (trim_end - trim_start) - 1
                         alignment_length = trim_end - trim_start
 
                         # Trim midline to match trimmed sequences
