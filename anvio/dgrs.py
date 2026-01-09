@@ -99,6 +99,15 @@ class DGR_Finder:
         self.snv_codon_position = A('snv_codon_position') or 0.33 # default is 33% of SNVs in the third codon position
         self.max_alignment_gaps = A('max_alignment_gaps') or 0
 
+        # Per-sample SNV analysis thresholds (hardcoded for now, no CLI args)
+        self.min_snvs_per_sample = 5
+        self.max_pct_snv_codon_3_per_sample = 33  # percent
+        self.min_pct_snvs_explained_per_sample = 80  # percent
+
+        # High confidence thresholds for SNV analysis
+        self.high_conf_max_pct_snv_codon_3 = 10  # percent
+        self.high_conf_min_pct_snvs_explained = 90  # percent (i.e., < 10% unexplained)
+
         # performance
         self.num_threads = int(A('num_threads')) if A('num_threads') else 1
 
@@ -135,6 +144,9 @@ class DGR_Finder:
         self.run.info('Departure from reference percentage', self.departure_from_reference_percentage)
         if self.snv_matching_proportion:
             self.run.info('SNV matching proportion', self.snv_matching_proportion)
+        self.run.info('Per-sample SNV: min SNVs', self.min_snvs_per_sample)
+        self.run.info('Per-sample SNV: max % codon 3', self.max_pct_snv_codon_3_per_sample)
+        self.run.info('Per-sample SNV: min % explained', self.min_pct_snvs_explained_per_sample)
         self.run.info('HMM(s) Provided', ", ".join(self.hmm) if self.hmm else "(will use default: Reverse_Transcriptase)")
         if not self.skip_recovering_genomic_context:
             self.run.info('Number of genes to consider in context', self.num_genes_to_consider_in_context)
