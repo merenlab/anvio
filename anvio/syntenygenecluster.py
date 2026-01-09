@@ -659,7 +659,7 @@ class SyntenyGeneCluster():
         self.run.info('Genes in rearranged synteny clusters', int(value_counts.get("rearrangement", 0)))
         self.run.info('Genes in accessory synteny clusters', int(value_counts.get("accessory", 0)))
         self.run.info('Genes in singleton synteny clusters', int(value_counts.get("singleton", 0)))
-        
+
         if len(pangenome_data_df["syn_cluster"].unique()) > 2 * len(pangenome_data_df["gene_cluster"].unique()):
             if self.just_do_it:
                 self.run.info_single("We wanted to inform you that the number of gene to syn clusters doesn't really line "
