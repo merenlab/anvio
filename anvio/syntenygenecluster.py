@@ -155,7 +155,7 @@ class SyntenyGeneCluster():
             pangenome_data_contextualized_df = self.run_contextualize_paralogs_algorithm(pangenome_data_df)
 
         return pangenome_data_contextualized_df
-    
+
 
     def get_data_from_YAML(self, contextualize_paralogs=True, gene_length=400, intron_length=100):
         """Create a data tale form the YAML file"""
@@ -584,7 +584,6 @@ class SyntenyGeneCluster():
                 else:
                     gene_cluster_positions[gene_cluster][(genome, contig)] += [(i, gene_caller_id)]
 
-
         gene_cluster_count = {}
         for (genome, contig), gene_cluster_sequence in gene_cluster_contig_order.items():
             for gene_cluster in gene_cluster_sequence:
@@ -597,7 +596,6 @@ class SyntenyGeneCluster():
         for gene_cluster, count in gene_cluster_count.items():
             if len(count) == len(self.genome_names) and len(set(count)) == len(self.genome_names):
                 single_copy_core.add(gene_cluster)
-
 
         j = 0
         self.progress.new("Contextualize gene clusters")
