@@ -2067,6 +2067,9 @@ class DGR_Finder:
                             'snv_codon_2': snv_analysis['snv_codon_2'] if snv_analysis else 0,
                             'snv_codon_3': snv_analysis['snv_codon_3'] if snv_analysis else 0,
                             'pct_snv_codon_3': snv_analysis['pct_snv_codon_3'] if snv_analysis else 0,
+                            # Per-sample SNV analysis results
+                            'snv_supporting_sample': snv_analysis.get('snv_supporting_sample') if snv_analysis else None,
+                            'sample_passed': snv_analysis.get('sample_passed', False) if snv_analysis else False,
                             # Confidence
                             'confidence': confidence,
                             'confidence_reasons': confidence_reasons,
