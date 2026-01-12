@@ -400,7 +400,14 @@ class DGR_Finder:
         """
         # load SNV data
         profile_db = dbops.ProfileDatabase(self.profile_db_path)
-        self.snv_panda = profile_db.db.get_table_as_dataframe(t.variable_nts_table_name, columns_of_interest=['sample_id','split_name',  'pos_in_contig','base_pos_in_codon','departure_from_reference','reference']).sort_values(by=['split_name', 'pos_in_contig'])
+        columns_of_interest = [
+            'sample_id', 'split_name', 'pos_in_contig', 'base_pos_in_codon',
+            'departure_from_reference', 'reference'
+        ] + nucleotides
+        self.snv_panda = profile_db.db.get_table_as_dataframe(
+            t.variable_nts_table_name,
+            columns_of_interest=columns_of_interest
+        ).sort_values(by=['split_name', 'pos_in_contig'])
         self.snv_panda['contig_name'] = self.snv_panda['split_name'].str.split('_split_').str[0]
         profile_db.disconnect()
 
@@ -878,8 +885,13 @@ class DGR_Finder:
         # reset possible windows each run
         self.all_possible_windows = {}
 
+        # For SNV windows, only keep SNVs with >= 3 distinct nucleotides within a sample.
+        min_diverse_bases = 3
+        diverse_base_counts = (self.snv_panda[nucleotides] > 0).sum(axis=1)
+        snv_panda_for_windows = self.snv_panda.loc[diverse_base_counts >= min_diverse_bases]
+
         # group the DataFrame by 'split_name' and 'sample_id' upfront
-        grouped = self.snv_panda.groupby(['split_name', 'sample_id'])
+        grouped = snv_panda_for_windows.groupby(['split_name', 'sample_id'])
 
         # now iterate over the grouped data
         for (split, sample), group in grouped:
@@ -1085,8 +1097,11 @@ class DGR_Finder:
                 sample_id_list = list(set(snv_panda.sample_id.unique()))
 
                 # === find_snv_clusters logic ===
+                min_diverse_bases = 3
+                diverse_base_counts = (snv_panda[nucleotides] > 0).sum(axis=1)
+                snv_panda_for_windows = snv_panda.loc[diverse_base_counts >= min_diverse_bases]
                 all_possible_windows = {}
-                grouped = snv_panda.groupby(['split_name', 'sample_id'])
+                grouped = snv_panda_for_windows.groupby(['split_name', 'sample_id'])
 
                 for (split, sample), group in grouped:
                     if split in split_names_unique and sample in sample_id_list:
