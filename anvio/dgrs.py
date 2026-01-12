@@ -65,7 +65,7 @@ class DGR_Finder:
         self.skip_dashes = A('skip_dashes')
         self.number_of_mismatches = A('number_of_mismatches')
         self.initial_mismatch_bias_threshold = A('initial_mismatch_bias_threshold') or 0.6
-        self.trimmed_mismatch_bias_threshold = A('trimmed_mismatch_bias_threshold') or 0.95
+        self.max_non_dominant = A('max_non_dominant') or 1
         self.minimum_vr_length = A('minimum_vr_length') or 50
         self.min_mismatching_base_types_vr = A('min_mismatching_base_types_vr') or 2
         self.min_base_types_vr = A('min_base_types_vr') or 2
@@ -122,7 +122,7 @@ class DGR_Finder:
         self.run.info('minimum_snv_density', self.minimum_snv_density)
         self.run.info('Number of Mismatches', self.number_of_mismatches)
         self.run.info('Initial mismatch bias threshold', self.initial_mismatch_bias_threshold)
-        self.run.info('Trimmed mismatch bias threshold', self.trimmed_mismatch_bias_threshold)
+        self.run.info('Max Non-Dominant Base Threshold', self.max_non_dominant)
         self.run.info('Minimum VR length after trimming', self.minimum_vr_length)
         self.run.info('Max alignment gaps', self.max_alignment_gaps)
         if self.allow_any_base:
@@ -220,13 +220,8 @@ class DGR_Finder:
         if not (0 < self.initial_mismatch_bias_threshold <= 1):
             raise ConfigError('The initial mismatch bias threshold must be between 0 and 1 (exclusive of 0).')
 
-        if not (0 < self.trimmed_mismatch_bias_threshold <= 1):
-            raise ConfigError('The trimmed mismatch bias threshold must be between 0 and 1 (exclusive of 0).')
-
-        if self.initial_mismatch_bias_threshold > self.trimmed_mismatch_bias_threshold:
-            raise ConfigError(f'The initial mismatch bias threshold ({self.initial_mismatch_bias_threshold}) should not be '
-                            f'greater than the trimmed threshold ({self.trimmed_mismatch_bias_threshold}). '
-                            f'The initial filter should be more permissive than the trimmed filter.')
+        if not (self.max_non_dominant > 0):
+            raise ConfigError('The max non-dominant base threshold needs to be a positive number.')
 
         if self.minimum_vr_length <= 0:
             raise ConfigError('The minimum VR length must be a positive integer.')
@@ -1852,9 +1847,9 @@ class DGR_Finder:
                         # Find the longest region where >= 95% of mismatches are to dominant base
                         trim_result = self.find_optimal_mismatch_window(
                             qseq, hseq, chars_to_skip,
-                            self.trimmed_mismatch_bias_threshold,
                             self.minimum_vr_length,
                             self.number_of_mismatches,
+                            self.max_non_dominant,
                             self.max_alignment_gaps
                         )
 
@@ -4184,7 +4179,7 @@ class DGR_Finder:
                 ("Skip '-'", self.skip_dashes if self.skip_dashes else "FALSE"),
                 ("Number of Mismatches", self.number_of_mismatches if self.number_of_mismatches else "7"),
                 ("Initial Mismatch Bias Threshold", self.initial_mismatch_bias_threshold if self.initial_mismatch_bias_threshold else "0.6"),
-                ("Trimmed Mismatch Bias Threshold", self.trimmed_mismatch_bias_threshold if self.trimmed_mismatch_bias_threshold else "0.95"),
+                ("Max Non-Dominant Base Threshold", self.max_non_dominant if self.max_non_dominant else "1"),
                 ("Minimum VR Length", self.minimum_vr_length if self.minimum_vr_length else "50"),
                 ("Allow Any Base", self.allow_any_base or "FALSE"),
                 ("SNV Window Size", self.snv_window_size if self.snv_window_size else "50"),
