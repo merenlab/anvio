@@ -390,7 +390,7 @@ class PangenomeGraphManager():
             weight = len(genomes_involved)
 
             nodes_sets = [item[2] for item in values_list]
-            nodes_involved = set(nodes_sets)
+            # nodes_involved = set(nodes_sets)
 
             # diversity = len(set([item.rsplit('_', 1)[0] for item in nodes_involved]))
 
@@ -412,7 +412,7 @@ class PangenomeGraphManager():
 
                     predecessor = [item[2] for item in prior_core_region if item[0] == region_x_positions_min - 1][0]
 
-                    complexity = sum([len(list(self.graph.successors(node))) - 1 for node in nodes_sets + [predecessor]])
+                    complexity = sum([len(list(self.graph.successors(node))) - 1 for node in nodes_sets + [predecessor]]) / weight
                 else:
                     complexity = 0
             else:
@@ -428,21 +428,26 @@ class PangenomeGraphManager():
             K = len(nodes_sets)
             T = len(genome_occurences)
 
-            if K < 2:
+            if weight < 2:
                 diversity = 0
             else:
-                shannon_sum = 0
-                for genome_set in genomes_sets:
-                    n_i = len(genome_set)
-                    p_i = n_i / T
-                    shannon_sum += p_i * math.log(p_i)
-                diversity = round(((-1) * shannon_sum) / math.log(K), 3)
+                # mean cluster prevalence
+                n = (1/K) * sum([len(genome_set) for genome_set in genomes_sets])
+
+                # variance
+                var = (1/K) * sum([(len(genome_set) - n)**2 for genome_set in genomes_sets])
+
+                # normalize variance with the weight and turn into penalty
+                p = 1 - math.sqrt((var / (weight-1)**2))
+
+                # final diversity
+                diversity = ((weight - n) / (weight - 1)) * p
 
             values = list(genome_counts.values())
             max_expansion = max(values)
             min_expansion = min(values)
-            mean_expansion = round(mean(values), 3)
-            mode = ", ".join(str(num) for num in multimode(values))
+            # mean_expansion = mean(values)
+            # mode = ", ".join(str(num) for num in multimode(values))
 
             if complexity == 0:
                 motif = 'BB'
@@ -458,7 +463,7 @@ class PangenomeGraphManager():
                 'x_max': region_x_positions_max,
                 'num_gene_clusters': K,
                 'num_gene_calls': T,
-                'complexity': round(complexity / weight, 3),
+                'complexity': complexity,
                 'max_expansion': max_expansion,
                 'min_expansion': min_expansion,
                 'diversity': diversity,
@@ -484,12 +489,12 @@ class PangenomeGraphManager():
     @staticmethod
     def composite_variability_score(df):
 
-        C_min = df['complexity'].min()
+        # C_min = df['complexity'].min()
         C_max = df['complexity'].max()
-        E_min = df['max_expansion'].min()
+        # E_min = df['max_expansion'].min()
         E_max = df['max_expansion'].max()
-        D_min = df['diversity'].min()
-        D_max = df['diversity'].max()
+        # D_min = df['diversity'].min()
+        # D_max = df['diversity'].max()
         W_median = df['weight'].median()
 
         def log_min_max_normalize(X, X_min, X_max):
@@ -500,8 +505,11 @@ class PangenomeGraphManager():
             return(X_norm)
 
         def fixed_baseline_log_scaling(X, X_max):
-            X_norm = (math.log(1 + X)) / (math.log(1 + X_max))
-            return(X_norm)
+            if X_max == 0.0:
+                return(0.0)
+            else:
+                X_norm = (math.log(1 + X)) / (math.log(1 + X_max))
+                return(X_norm)
 
         def func(row):
 
@@ -517,7 +525,7 @@ class PangenomeGraphManager():
 
             CVS = (C_norm * E_norm * D)**(1/3) * W_f
 
-            return(round(CVS, 3))
+            return(CVS)
         return(func)
 
 
