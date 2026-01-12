@@ -1603,15 +1603,14 @@ class DGR_Finder:
 
         return False
 
-
-    def find_optimal_mismatch_window(self, qseq, hseq, chars_to_skip, threshold, min_length, min_mismatches, max_gaps=0):
+    def find_optimal_mismatch_window(self, qseq, hseq, chars_to_skip, min_length, min_mismatches, max_non_dominant=1, max_gaps=0):
         """
-        Find the longest contiguous window where >= threshold fraction of mismatches
-        are to the dominant base on the subject (TR) side.
+        Find the longest contiguous window where:
+        1. First and last mismatches are to the dominant base
+        2. At most max_non_dominant mismatches are to non-dominant bases
 
-        This implements the "optimal window trimming" algorithm to recover precise VR/TR
-        boundaries from BLAST alignments that may have over-extended. The window extends
-        to include matching bases, stopping at (but not including) non-dominant mismatches.
+        The window extends through matching bases, stopping just before
+        any mismatch outside the valid window.
 
         Parameters
         ==========
@@ -1621,32 +1620,29 @@ class DGR_Finder:
             Hit/subject sequence (TR) from BLAST alignment.
         chars_to_skip : set
             Characters to ignore when counting mismatches (e.g., {'N', '-'}).
-        threshold : float
-            Minimum fraction of mismatches that must be to dominant base (e.g., 0.95).
         min_length : int
             Minimum length of the trimmed alignment.
         min_mismatches : int
             Minimum number of mismatches required in the trimmed window.
+        max_non_dominant : int
+            Maximum number of non-dominant mismatches allowed in window (default 1).
         max_gaps : int
-            Maximum number of gap characters ('-') allowed in the trimmed alignment window
-            (counted in both qseq and hseq). Default is 0 (no gaps allowed).
+            Maximum number of gap characters ('-') allowed in the trimmed alignment window.
 
         Returns
         =======
         tuple or None
             (trim_start, trim_end, dominant_base) if valid window found, None otherwise.
-            trim_start and trim_end are indices into the alignment (0-based, end exclusive).
         """
-        # First, identify all mismatch positions and what base they are on TR side
-        mismatch_positions = []  # List of (position, tr_base)
+        # Collect all mismatch positions and their TR base
+        mismatch_positions = []
         for idx in range(len(qseq)):
             if qseq[idx] in chars_to_skip or hseq[idx] in chars_to_skip:
                 continue
             if qseq[idx] != hseq[idx]:
                 mismatch_positions.append((idx, hseq[idx]))
 
-        if len(mismatch_positions) < 2:
-            # Not enough mismatches to trim
+        if len(mismatch_positions) < min_mismatches:
             return None
 
         # Find the dominant base (most frequent on TR side)
@@ -1656,63 +1652,64 @@ class DGR_Finder:
 
         dominant_base = max(base_counts, key=base_counts.get)
 
-        # Create binary array: 1 if mismatch is to dominant base, 0 otherwise
-        # We work in "mismatch space" - positions refer to indices in mismatch_positions
-        is_dominant = [1 if tr_base == dominant_base else 0 for _, tr_base in mismatch_positions]
+        # Mark each mismatch as dominant or not
+        is_dominant = [tr_base == dominant_base for _, tr_base in mismatch_positions]
 
         n_mismatches = len(mismatch_positions)
 
-        # Build prefix sums for efficient window queries
-        # prefix_dominant[i] = count of dominant mismatches in positions [0, i)
-        # prefix_total[i] = i (total mismatches in positions [0, i))
-        prefix_dominant = [0] * (n_mismatches + 1)
-        for i in range(n_mismatches):
-            prefix_dominant[i + 1] = prefix_dominant[i] + is_dominant[i]
-
-        # Find longest window [i, j) where dominant_count / total_count >= threshold
+        # Find longest valid window [i, j) where:
+        # - mismatch i is dominant (first in window)
+        # - mismatch j-1 is dominant (last in window)
+        # - at most max_non_dominant non-dominant mismatches in window
         best_start = None
         best_end = None
         best_length = 0
-        best_i = None
-        best_j = None
 
         for i in range(n_mismatches):
+            # First mismatch in window must be dominant
+            if not is_dominant[i]:
+                continue
+
             for j in range(i + 1, n_mismatches + 1):
-                total_count = j - i
-                dominant_count = prefix_dominant[j] - prefix_dominant[i]
+                # Last mismatch in window must be dominant
+                if not is_dominant[j - 1]:
+                    continue
 
-                if total_count > 0 and dominant_count / total_count >= threshold:
-                    # Extend backward: start after previous "bad" mismatch (or at 0)
-                    if i > 0:
-                        align_start = mismatch_positions[i - 1][0] + 1  # position after bad mismatch
-                    else:
-                        align_start = 0  # no bad mismatch before, start at beginning
+                # Count non-dominant mismatches in this window
+                non_dominant_count = sum(1 for k in range(i, j) if not is_dominant[k])
 
-                    # Extend forward: end before next "bad" mismatch (or at end)
-                    if j < n_mismatches:
-                        align_end = mismatch_positions[j][0]  # position of next bad mismatch (exclusive)
-                    else:
-                        align_end = len(qseq)  # no bad mismatch after, extend to end
+                if non_dominant_count > max_non_dominant:
+                    continue
 
-                    # Count gaps in both sequences for this candidate window
-                    gap_count = qseq[align_start:align_end].count('-') + hseq[align_start:align_end].count('-')
-                    if gap_count > max_gaps:
-                        continue  # Skip this window, too many gaps
+                # Valid window - compute alignment coordinates with extension
 
-                    window_length = align_end - align_start
+                # Extend backward: start at beginning or after the mismatch before i
+                if i > 0:
+                    align_start = mismatch_positions[i - 1][0] + 1
+                else:
+                    align_start = 0
 
-                    if window_length >= min_length and window_length > best_length:
-                        best_start = align_start
-                        best_end = align_end
-                        best_length = window_length
-                        best_i = i
-                        best_j = j
+                # Extend forward: end at sequence end or before the mismatch after j-1
+                if j < n_mismatches:
+                    align_end = mismatch_positions[j][0]
+                else:
+                    align_end = len(qseq)
+
+                # Check gap count in the extended window
+                gap_count = qseq[align_start:align_end].count('-') + hseq[align_start:align_end].count('-')
+                if gap_count > max_gaps:
+                    continue
+
+                window_length = align_end - align_start
+                mismatch_count = j - i
+
+                # Check minimum requirements and track best
+                if window_length >= min_length and mismatch_count >= min_mismatches and window_length > best_length:
+                    best_start = align_start
+                    best_end = align_end
+                    best_length = window_length
 
         if best_start is not None:
-            # Check minimum mismatch count in the trimmed window
-            mismatch_count = best_j - best_i
-            if mismatch_count < min_mismatches:
-                return None
             return (best_start, best_end, dominant_base)
         return None
 
