@@ -221,7 +221,6 @@ class PangenomeGraphUserInterface {
             });
             
             item_order = sorted_array_order.map(arr => arr[1]);
-            console.log(item_order)
         }
         
         for (var genome of item_order) {
@@ -1980,6 +1979,9 @@ class PangenomeGraphUserInterface {
     }
 
     set_UI_settings() {
+
+        var genome_order = []
+
         for (var [setting, value] of Object.entries(this.data['states'])) {
             if (typeof value === 'number') {
                 $('#' + setting)[0].value = value;
@@ -1988,7 +1990,20 @@ class PangenomeGraphUserInterface {
             } else {
                 $('#' + setting)[0].value = value;
             }
+
+            if (this.genomes.includes(setting)) {
+                genome_order.push(setting)
+            }
         }
+
+        var container = document.getElementById('genomecolors');
+
+        genome_order.forEach(id => {
+            var element = document.getElementById(id + '_row');
+            if (element) {
+                container.appendChild(element);
+            }
+        });
 
         for(var [layer, max_value] of Object.entries(this.layers_max)) {
             $('#' + layer + '_max')[0].value = max_value;
@@ -2085,7 +2100,7 @@ class PangenomeGraphUserInterface {
         // if (!$('#genomecolors').children().length) {
         for (var genome of this.genomes) {  
             $('#genomecolors').append(
-                $('<div class="col-12 d-flex mb-1">').append(
+                $('<div class="col-12 d-flex mb-1" id="' + genome + '_row">').append(
                     $('<div class="col-1 d-flex align-items-center">').append(
                         $('<div class="form-switch d-flex">').append(
                             $('<input class="" type="checkbox" id="flex' + genome + '" name="' + genome + '" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Tooltip on top">')
@@ -2896,6 +2911,18 @@ class PangenomeGraphUserInterface {
             }
         }
 
+        var genome_order = [...document.getElementById("genomecolors").children]
+            .filter(element => element.classList.contains("col-12"))
+            .map(element => element.id.replace('_row', ''));
+
+        genome_order.forEach(key => {
+            if (key in new_state) {
+              const value = new_state[key];
+              delete new_state[key];
+              new_state[key] = value;
+            }
+        });
+         
         var result = {}
         result['state_name'] = $('#savestatename')[0].value
         result['state_values'] = new_state
