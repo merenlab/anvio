@@ -172,7 +172,7 @@ class DGR_Finder:
                                                 ('snv_VR_positions', list), ('best_amongst_multiple_TRs_for_one_VR', bool),
                                                 ('mismatch_codon_1', int), ('mismatch_codon_2', int), ('mismatch_codon_3', int),
                                                 ('pct_mismatch_codon_3', float), ('vr_gene_id', str), ('n_snvs_total', int),
-                                                ('n_snvs_explained', int), ('n_snvs_unexplained', int), ('pct_snvs_explained', float),
+                                                ('n_snvs_explained', int), ('n_snvs_unexplained', int), ('n_explained_diverse', int), ('pct_snvs_explained', float),
                                                 ('snv_codon_1', int), ('snv_codon_2', int), ('snv_codon_3', int),
                                                 ('pct_snv_codon_3', float), ('confidence', str), ('confidence_reasons', list)]
 
@@ -492,6 +492,7 @@ class DGR_Finder:
                 'codon_pos': np.array of base_pos_in_codon
                 'reference': np.array of reference base
                 'sample_ids': np.array of sample_id
+                'A', 'C', 'G', 'T': np.array of nucleotide coverage counts
             Returns None if no SNVs found.
         """
         profile_db = dbops.ProfileDatabase(self.profile_db_path)
@@ -516,7 +517,11 @@ class DGR_Finder:
             'positions': np.array([r['pos_in_contig'] for r in rows]),
             'codon_pos': np.array([r['base_pos_in_codon'] for r in rows]),
             'reference': np.array([r['reference'] for r in rows]),
-            'sample_ids': np.array([r['sample_id'] for r in rows])
+            'sample_ids': np.array([r['sample_id'] for r in rows]),
+            'A': np.array([r['A'] for r in rows]),
+            'C': np.array([r['C'] for r in rows]),
+            'G': np.array([r['G'] for r in rows]),
+            'T': np.array([r['T'] for r in rows]),
         }
 
 
@@ -686,6 +691,11 @@ class DGR_Finder:
         codon_pos = snv_data['codon_pos']
         reference = snv_data['reference']
         sample_ids = snv_data['sample_ids']
+        # Nucleotide coverage arrays for diversity calculation
+        nuc_A = snv_data['A']
+        nuc_C = snv_data['C']
+        nuc_G = snv_data['G']
+        nuc_T = snv_data['T']
 
         # Adjust mutagenesis base for reverse complement
         expected_base = mutagenesis_base.upper()
@@ -731,6 +741,7 @@ class DGR_Finder:
             snv_codon_counts = {1: 0, 2: 0, 3: 0, 0: 0}  # 0 = unknown/not in gene
             n_explained = 0
             n_unexplained = 0
+            n_explained_diverse = 0  # explained SNVs with >= 3 nucleotides
             unique_positions_list = []
 
             for i in sample_positions:
@@ -742,12 +753,20 @@ class DGR_Finder:
                 if cp in snv_codon_counts:
                     snv_codon_counts[cp] += 1
 
+                # Check nucleotide diversity at this position (>= 3 bases with coverage > 0)
+                n_bases_with_coverage = sum(1 for cov in [nuc_A[i], nuc_C[i], nuc_G[i], nuc_T[i]] if cov > 0)
+                is_diverse = n_bases_with_coverage >= 3
+
                 # Explained: at mismatch position OR at mutagenesis base site
                 # Unexplained: at a position that doesn't match either criterion
                 if pos in mismatch_set:
                     n_explained += 1
+                    if is_diverse:
+                        n_explained_diverse += 1
                 elif reference[i] == expected_base:
                     n_explained += 1
+                    if is_diverse:
+                        n_explained_diverse += 1
                 else:
                     n_unexplained += 1
 
@@ -761,6 +780,7 @@ class DGR_Finder:
                 'n_snvs_total': n_snvs,
                 'n_snvs_explained': n_explained,
                 'n_snvs_unexplained': n_unexplained,
+                'n_explained_diverse': n_explained_diverse,
                 'pct_snvs_explained': pct_explained,
                 'snv_codon_1': snv_codon_counts[1],
                 'snv_codon_2': snv_codon_counts[2],
@@ -842,6 +862,14 @@ class DGR_Finder:
             # A sample passed - check if it has excellent metrics for high confidence
             pct_codon_3 = snv_analysis['pct_snv_codon_3']
             pct_explained = snv_analysis['pct_snvs_explained']
+            n_explained_diverse = snv_analysis.get('n_explained_diverse', 0)
+
+            # Check diversity of explained SNVs (>= 3 nucleotides at position)
+            # Low diversity (<=2 diverse SNVs) suggests false positive
+            if n_explained_diverse <= 2:
+                confidence = 'low'
+                reasons.append(f"low_snv_diversity_n_explained_diverse_{n_explained_diverse}")
+                return confidence, reasons
 
             # Excellent: very few SNVs at codon 3 AND almost all SNVs explained
             is_excellent = (pct_codon_3 <= self.high_conf_max_pct_snv_codon_3 and
@@ -2071,6 +2099,7 @@ class DGR_Finder:
                             'n_snvs_total': snv_analysis['n_snvs_total'] if snv_analysis else 0,
                             'n_snvs_explained': snv_analysis['n_snvs_explained'] if snv_analysis else 0,
                             'n_snvs_unexplained': snv_analysis['n_snvs_unexplained'] if snv_analysis else 0,
+                            'n_explained_diverse': snv_analysis['n_explained_diverse'] if snv_analysis else 0,
                             'pct_snvs_explained': snv_analysis['pct_snvs_explained'] if snv_analysis else 100,
                             'snv_codon_1': snv_analysis['snv_codon_1'] if snv_analysis else 0,
                             'snv_codon_2': snv_analysis['snv_codon_2'] if snv_analysis else 0,
@@ -2227,6 +2256,7 @@ class DGR_Finder:
                 n_snvs_total = best_hit.get('n_snvs_total', 0)
                 n_snvs_explained = best_hit.get('n_snvs_explained', 0)
                 n_snvs_unexplained = best_hit.get('n_snvs_unexplained', 0)
+                n_explained_diverse = best_hit.get('n_explained_diverse', 0)
                 pct_snvs_explained = best_hit.get('pct_snvs_explained', 100)
                 snv_codon_1 = best_hit.get('snv_codon_1', 0)
                 snv_codon_2 = best_hit.get('snv_codon_2', 0)
@@ -2248,7 +2278,7 @@ class DGR_Finder:
                                 subject_contig, midline, percentage_of_mismatches, DGR_looks_snv_false, snv_at_3_codon_over_a_third, mismatch_pos_contig_relative,
                                 snv_VR_positions, numb_of_snv_in_matches_not_mutagen_base, numb_of_mismatches, numb_of_SNVs, best_amongst_multiple_TRs_for_one_VR,
                                 mismatch_codon_1, mismatch_codon_2, mismatch_codon_3, pct_mismatch_codon_3, vr_gene_id,
-                                n_snvs_total, n_snvs_explained, n_snvs_unexplained, pct_snvs_explained,
+                                n_snvs_total, n_snvs_explained, n_snvs_unexplained, n_explained_diverse, pct_snvs_explained,
                                 snv_codon_1, snv_codon_2, snv_codon_3, pct_snv_codon_3, snv_supporting_sample, confidence, confidence_reasons)
                 else:
                     was_added = False
@@ -2264,7 +2294,7 @@ class DGR_Finder:
                                             subject_contig, DGR_looks_snv_false, snv_at_3_codon_over_a_third, mismatch_pos_contig_relative, snv_VR_positions,
                                             numb_of_snv_in_matches_not_mutagen_base, numb_of_mismatches, numb_of_SNVs, best_amongst_multiple_TRs_for_one_VR,
                                             mismatch_codon_1, mismatch_codon_2, mismatch_codon_3, pct_mismatch_codon_3, vr_gene_id,
-                                            n_snvs_total, n_snvs_explained, n_snvs_unexplained, pct_snvs_explained,
+                                            n_snvs_total, n_snvs_explained, n_snvs_unexplained, n_explained_diverse, pct_snvs_explained,
                                             snv_codon_1, snv_codon_2, snv_codon_3, pct_snv_codon_3, snv_supporting_sample, confidence, confidence_reasons)
                             break
                     if not was_added:
@@ -2293,7 +2323,7 @@ class DGR_Finder:
                                         snv_VR_positions, numb_of_snv_in_matches_not_mutagen_base, numb_of_mismatches,
                                         numb_of_SNVs, best_amongst_multiple_TRs_for_one_VR,
                                         mismatch_codon_1, mismatch_codon_2, mismatch_codon_3, pct_mismatch_codon_3, vr_gene_id,
-                                        n_snvs_total, n_snvs_explained, n_snvs_unexplained, pct_snvs_explained,
+                                        n_snvs_total, n_snvs_explained, n_snvs_unexplained, n_explained_diverse, pct_snvs_explained,
                                         snv_codon_1, snv_codon_2, snv_codon_3, pct_snv_codon_3, snv_supporting_sample, confidence, confidence_reasons)
 
         # summary of DGRs found
@@ -2320,7 +2350,7 @@ class DGR_Finder:
                     percentage_of_mismatches, DGR_looks_snv_false, snv_at_3_codon_over_a_third, mismatch_pos_contig_relative, snv_VR_positions,
                     numb_of_snv_in_matches_not_mutagen_base, numb_of_mismatches, numb_of_SNVs, best_amongst_multiple_TRs_for_one_VR,
                     mismatch_codon_1=0, mismatch_codon_2=0, mismatch_codon_3=0, pct_mismatch_codon_3=0, vr_gene_id=None,
-                    n_snvs_total=0, n_snvs_explained=0, n_snvs_unexplained=0, pct_snvs_explained=100,
+                    n_snvs_total=0, n_snvs_explained=0, n_snvs_unexplained=0, n_explained_diverse=0, pct_snvs_explained=100,
                     snv_codon_1=0, snv_codon_2=0, snv_codon_3=0, pct_snv_codon_3=0,
                     snv_supporting_sample=None, confidence='N/A', confidence_reasons=None):
         """
@@ -2391,6 +2421,7 @@ class DGR_Finder:
         self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['n_snvs_total'] = n_snvs_total
         self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['n_snvs_explained'] = n_snvs_explained
         self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['n_snvs_unexplained'] = n_snvs_unexplained
+        self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['n_explained_diverse'] = n_explained_diverse
         self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['pct_snvs_explained'] = pct_snvs_explained
         self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['snv_codon_1'] = snv_codon_1
         self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['snv_codon_2'] = snv_codon_2
@@ -2406,7 +2437,7 @@ class DGR_Finder:
                             subject_contig, DGR_looks_snv_false, snv_at_3_codon_over_a_third, mismatch_pos_contig_relative, snv_VR_positions,
                             numb_of_snv_in_matches_not_mutagen_base, numb_of_mismatches, numb_of_SNVs, best_amongst_multiple_TRs_for_one_VR,
                             mismatch_codon_1=0, mismatch_codon_2=0, mismatch_codon_3=0, pct_mismatch_codon_3=0, vr_gene_id=None,
-                            n_snvs_total=0, n_snvs_explained=0, n_snvs_unexplained=0, pct_snvs_explained=100,
+                            n_snvs_total=0, n_snvs_explained=0, n_snvs_unexplained=0, n_explained_diverse=0, pct_snvs_explained=100,
                             snv_codon_1=0, snv_codon_2=0, snv_codon_3=0, pct_snv_codon_3=0,
                             snv_supporting_sample=None, confidence='N/A', confidence_reasons=None):
         """
@@ -2470,6 +2501,7 @@ class DGR_Finder:
         self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['n_snvs_total'] = n_snvs_total
         self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['n_snvs_explained'] = n_snvs_explained
         self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['n_snvs_unexplained'] = n_snvs_unexplained
+        self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['n_explained_diverse'] = n_explained_diverse
         self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['pct_snvs_explained'] = pct_snvs_explained
         self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['snv_codon_1'] = snv_codon_1
         self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['snv_codon_2'] = snv_codon_2
@@ -2816,7 +2848,7 @@ class DGR_Finder:
             "VR_TR_mismatch_positions", "snv_VR_positions", "best_amongst_multiple_TRs_for_one_VR",
             # New codon/SNV analysis columns
             "mismatch_codon_1", "mismatch_codon_2", "mismatch_codon_3", "pct_mismatch_codon_3",
-            "vr_gene_id", "n_snvs_total", "n_snvs_explained", "n_snvs_unexplained", "pct_snvs_explained",
+            "vr_gene_id", "n_snvs_total", "n_snvs_explained", "n_snvs_unexplained", "n_explained_diverse", "pct_snvs_explained",
             "snv_codon_1", "snv_codon_2", "snv_codon_3", "pct_snv_codon_3",
             "snv_supporting_sample", "confidence", "confidence_reasons"]
 
@@ -2853,7 +2885,7 @@ class DGR_Finder:
                         vr_data.get("mismatch_codon_3", 0), vr_data.get("pct_mismatch_codon_3", 0),
                         vr_data.get("vr_gene_id", "N/A"),
                         vr_data.get("n_snvs_total", 0), vr_data.get("n_snvs_explained", 0),
-                        vr_data.get("n_snvs_unexplained", 0), vr_data.get("pct_snvs_explained", 100),
+                        vr_data.get("n_snvs_unexplained", 0), vr_data.get("n_explained_diverse", 0), vr_data.get("pct_snvs_explained", 100),
                         vr_data.get("snv_codon_1", 0), vr_data.get("snv_codon_2", 0),
                         vr_data.get("snv_codon_3", 0), vr_data.get("pct_snv_codon_3", 0),
                         vr_data.get("snv_supporting_sample", "N/A"),
@@ -3650,7 +3682,7 @@ class DGR_Finder:
                 'best_amongst_multiple_TRs_for_one_VR', 'mismatch_codon_1',
                 'mismatch_codon_2', 'mismatch_codon_3', 'pct_mismatch_codon_3',
                 'vr_gene_id', 'n_snvs_total', 'n_snvs_explained',
-                'n_snvs_unexplained', 'pct_snvs_explained', 'snv_codon_1',
+                'n_snvs_unexplained', 'n_explained_diverse', 'pct_snvs_explained', 'snv_codon_1',
                 'snv_codon_2', 'snv_codon_3', 'pct_snv_codon_3', 'confidence',
                 'confidence_reasons'
             ]
