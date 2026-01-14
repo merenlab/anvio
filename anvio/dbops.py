@@ -2136,7 +2136,7 @@ class PanSuperclass(object):
 
         # if there is only one sequence, then there is nothing to do here.
         if len(d) == 1:
-            return (0.0, 0.0, 0.0)
+            return (0.0, 0.0, 0.0, 0.0)
 
         # get all pairs of sequences
         pairs_of_sequences = list(itertools.combinations(d.keys(), 2))
@@ -2156,8 +2156,9 @@ class PanSuperclass(object):
         AAI_min = min(identities)
         AAI_max = max(identities)
         AAI_avg = numpy.mean(identities)
+        AAI_min_nonzero = min([identity for identity in identities if identity > 0.0], default=0.0)
 
-        return (AAI_min, AAI_max, AAI_avg)
+        return (AAI_min, AAI_max, AAI_avg, AAI_min_nonzero)
 
 
     def compute_homogeneity_indices_for_gene_clusters(self, gene_cluster_names=set([]), gene_clusters_failed_to_align=set([]), num_threads=1):
@@ -2206,7 +2207,8 @@ class PanSuperclass(object):
                                                                       'combined_homogeneity_index': homogeneity_dict['combined'],
                                                                       'AAI_min': homogeneity_dict['AAI_min'],
                                                                       'AAI_max': homogeneity_dict['AAI_max'],
-                                                                      'AAI_avg': homogeneity_dict['AAI_avg']}
+                                                                      'AAI_avg': homogeneity_dict['AAI_avg'],
+                                                                      'AAI_min_nonzero': homogeneity_dict['AAI_min_nonzero']}
 
                 received_gene_clusters += 1
                 self.progress.increment(increment_to=received_gene_clusters)
@@ -2243,7 +2245,7 @@ class PanSuperclass(object):
                 indices_dict['geometric'] = geo_index[gene_cluster_name]
                 indices_dict['combined'] = combined_index[gene_cluster_name]
 
-                indices_dict['AAI_min'], indices_dict['AAI_max'], indices_dict['AAI_avg'] = AAI_calculator(gene_cluster)
+                indices_dict['AAI_min'], indices_dict['AAI_max'], indices_dict['AAI_avg'], indices_dict['AAI_min_nonzero'] = AAI_calculator(gene_cluster)
 
             except:
                 if gene_cluster_name not in str(gene_clusters_failed_to_align):
@@ -2262,6 +2264,7 @@ class PanSuperclass(object):
                 indices_dict['AAI_min'] = -1
                 indices_dict['AAI_max'] = -1
                 indices_dict['AAI_avg'] = -1
+                indices_dict['AAI_min_nonzero'] = -1
 
             output_queue.put(indices_dict)
 

@@ -125,6 +125,7 @@ async function loadGCAdditionalData(gc_id, gc_key, gc_key_short) {
                 AAI_avg : "Amino Acid Identity Average",
                 AAI_max : "Amino Acid Identity Maximum",
                 AAI_min : "Amino Acid Identity Minimum",
+                AAI_min_nonzero : "Amino Acid Identity Min (non-zero)",
                 SCG : "Single-copy Core Gene"
             };
 
@@ -183,6 +184,7 @@ async function createDisplay(display_table){
         AAI_avg : "AAI_avg",
         AAI_max : "AAI_max",
         AAI_min : "AAI_min",
+        AAI_min_nonzero : "AAI_min_nz",
         SCG : "SCG"
     };
 

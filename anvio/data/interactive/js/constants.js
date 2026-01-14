@@ -388,6 +388,15 @@ var named_layers = {
         'type': 'bar',
         'pretty_name': 'Min AAI',
     },
+    'AAI_min_nonzero': {
+        'height': 180,
+        'color': '#9e009e',
+        'norm': 'none',
+        'min': 0,
+        'max': 1,
+        'type': 'bar',
+        'pretty_name': 'Min non-zero AAI',
+    },
     'AAI_max': {
         'height': 180,
         'color': '#9e009e',

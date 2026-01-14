@@ -1365,7 +1365,7 @@ class Pangenome(object):
                               without updating anything in the pan database...")
             return
 
-        keys = ['functional_homogeneity_index', 'geometric_homogeneity_index', 'combined_homogeneity_index', 'AAI_min', 'AAI_max', 'AAI_avg']
+        keys = ['functional_homogeneity_index', 'geometric_homogeneity_index', 'combined_homogeneity_index', 'AAI_min', 'AAI_min_nonzero', 'AAI_max', 'AAI_avg']
         miscdata.TableForItemAdditionalData(self.args, r=terminal.Run(verbose=False)).add(d, keys, skip_check_names=True)
 
 
