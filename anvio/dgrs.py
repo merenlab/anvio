@@ -1566,6 +1566,11 @@ class DGR_Finder:
         """
         Check whether a sequence contains tandem repeats or STRs.
         Returns True if a repeat is found, otherwise False.
+
+        Both the sequence and its reverse complement are checked, because
+        depending on the dominant base (A vs T), the output may be reverse
+        complemented. We need to ensure neither orientation exceeds the
+        repeat threshold.
         """
 
         # here we use pytrf for removing tandem and not exact tandem repeats, this is a python compiled version of tandem repeats finder:
@@ -1595,14 +1600,20 @@ class DGR_Finder:
         # historically we used pytrf (https://doi.org/10.1186/s12859-025-06168-3)
         # citation notice is shown once at the start of parse_and_process_blast_results()
 
-        masked_seq = pytantan.mask_repeats(seq)
-        # Count lowercase (masked) characters - str.count() is C-optimized
-        num_masked = sum(masked_seq.count(c) for c in 'acgtn')
-        frac_masked = num_masked / len(masked_seq)
-        if frac_masked > self.repeat_threshold:
-            if anvio.DEBUG and self.verbose:
-                    self.run.warning(f"Removing the candidate DGR with its VR on this contig: {qseq} and TR on this contig: {hseq}. This is because of repeats found in the sequence by pytantan.")
-            return True
+        # Check both the sequence and its reverse complement, since the output
+        # may be reverse complemented if the dominant base is T
+        seq_rc = utils.rev_comp(seq)
+
+        for seq_to_check in [seq, seq_rc]:
+            masked_seq = pytantan.mask_repeats(seq_to_check)
+            # Count lowercase (masked) characters - str.count() is C-optimized
+            num_masked = sum(masked_seq.count(c) for c in 'acgtn')
+            frac_masked = num_masked / len(masked_seq)
+            if frac_masked > self.repeat_threshold:
+                if anvio.DEBUG and self.verbose:
+                    self.run.warning(f"Removing the candidate DGR with its VR on this contig: {qseq} and TR on this contig: {hseq}. "
+                                     f"This is because of repeats found in the sequence by pytantan ({frac_masked:.1%} masked).")
+                return True
 
         # for atr1 in pytrf.ATRFinder('name', seq):
         #     if int(atr1.repeat) > self.numb_imperfect_tandem_repeats:
