@@ -40,7 +40,8 @@ class ArgumentParser(argparse.ArgumentParser):
         self.anvio_allowed_ad_hoc_flags = ['--version', '--debug', '--force', '--fix-sad-tables',
                                            '--quiet', '--no-progress', '--as-markdown', '--display-db-calls',
                                            '--force-use-my-tree', '--force-overwrite', '--tmp-dir',
-                                           '--I-know-this-is-not-a-good-idea', '--include-stray-KOs']
+                                           '--I-know-this-is-not-a-good-idea', '--include-stray-KOs',
+                                           '--track-memory']
 
 
     def get_anvio_epilogue(self):
