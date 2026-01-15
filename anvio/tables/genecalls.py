@@ -307,6 +307,7 @@ class TablesForGeneCalls(Table):
             amino_acid_sequences = {}
 
         # FIXME: this is a very poor practice for memory management:
+        terminal.memory_checkpoint("genecalls: before loading contig sequences")
         contig_sequences = {}
         if self.contigs_fasta:
             fasta = u.SequenceSource(self.contigs_fasta)
@@ -316,6 +317,7 @@ class TablesForGeneCalls(Table):
         else:
             database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
             contig_sequences = database.get_table_as_dict(t.contig_sequences_table_name)
+        terminal.memory_checkpoint("genecalls: after loading contig sequences")
 
         # keep track of things to report later
         P = lambda x: x % ("partial_" if partial else "")
