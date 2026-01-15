@@ -946,6 +946,8 @@ class TrackMemory(object):
     def __init__(self, at_most_every=5):
         self.t = None
         self.at_most_every = at_most_every
+        self.checkpoints = []  # list of (name, timestamp, memory_bytes)
+        self.peak_memory = 0
 
 
     def start(self):
@@ -968,6 +970,77 @@ class TrackMemory(object):
         df = self.t.gen_dataframe_report().rename(columns={'score': 'bytes'}).set_index('key', drop=True)
         df['memory'] = df['bytes'].apply(self._format)
         return df
+
+
+    def checkpoint(self, name):
+        """Record a named memory checkpoint.
+
+        Parameters
+        ==========
+        name : str
+            A descriptive name for this checkpoint (e.g., "After loading sequences")
+
+        Returns
+        =======
+        str
+            Human-readable memory usage at this checkpoint
+        """
+        import time
+        mem = self._get_mem()
+        timestamp = time.time()
+        self.checkpoints.append((name, timestamp, mem))
+
+        if not np.isnan(mem) and mem > self.peak_memory:
+            self.peak_memory = mem
+
+        return self._format(mem)
+
+
+    def gen_summary_report(self):
+        """Generate a summary table of all named checkpoints.
+
+        Returns
+        =======
+        str
+            Formatted table showing checkpoint name, memory, delta, and peak
+        """
+        if not self.checkpoints:
+            return None
+
+        lines = []
+        lines.append("=" * 80)
+        lines.append("MEMORY TRACKING REPORT")
+        lines.append("=" * 80)
+        lines.append(f"{'Step':<45} {'Memory':>12} {'Delta':>12} {'Peak':>12}")
+        lines.append("-" * 80)
+
+        prev_mem = None
+        running_peak = 0
+
+        for name, timestamp, mem in self.checkpoints:
+            mem_str = self._format(mem)
+
+            if not np.isnan(mem) and mem > running_peak:
+                running_peak = mem
+            peak_str = self._format(running_peak)
+
+            if prev_mem is None:
+                delta_str = "-"
+            else:
+                delta = mem - prev_mem
+                delta_str = self._format_diff(delta)
+
+            # Truncate name if too long
+            display_name = name[:44] if len(name) > 44 else name
+            lines.append(f"{display_name:<45} {mem_str:>12} {delta_str:>12} {peak_str:>12}")
+
+            prev_mem = mem
+
+        lines.append("-" * 80)
+        lines.append(f"{'Peak memory:':<45} {self._format(self.peak_memory):>12}")
+        lines.append("=" * 80)
+
+        return "\n".join(lines)
 
 
     def get_last(self):
@@ -1012,6 +1085,55 @@ class TrackMemory(object):
             return np.nan
 
         return mem
+
+
+# Global memory tracker for --track-memory flag
+_global_memory_tracker = None
+
+
+def get_memory_tracker():
+    """Get or create the global memory tracker (only if --track-memory is set).
+
+    Returns
+    =======
+    TrackMemory or None
+        The global memory tracker instance, or None if --track-memory is not set
+    """
+    global _global_memory_tracker
+    import anvio
+    if not anvio.TRACK_MEMORY:
+        return None
+    if _global_memory_tracker is None:
+        _global_memory_tracker = TrackMemory()
+    return _global_memory_tracker
+
+
+def memory_checkpoint(name):
+    """Convenience function to record a checkpoint if memory tracking is enabled.
+
+    Parameters
+    ==========
+    name : str
+        A descriptive name for this checkpoint
+
+    Returns
+    =======
+    str or None
+        Human-readable memory usage, or None if tracking is disabled
+    """
+    tracker = get_memory_tracker()
+    if tracker:
+        return tracker.checkpoint(name)
+    return None
+
+
+def print_memory_report():
+    """Print the memory summary report if tracking is enabled."""
+    tracker = get_memory_tracker()
+    if tracker and tracker.checkpoints:
+        report = tracker.gen_summary_report()
+        if report:
+            print("\n" + report + "\n")
 
 
 def pretty_print(n):
