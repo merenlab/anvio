@@ -109,14 +109,18 @@ class Pyrodigal_gv:
             # see a longer discussion here: https://github.com/merenlab/anvio/issues/1641
             self.predictor = pyrodigal_gv.ViralGeneFinder(meta=True, mask=True)
 
-        # since the predictor is now set, next we will read all sequences into the memory :/
-        terminal.memory_checkpoint("Pyrodigal: before loading sequences")
-        data = []
+        # To avoid memory explosion with multiprocessing fork, we process sequences in batches.
+        # When a Pool forks workers, each worker inherits the parent's memory. By processing
+        # in small batches, we limit how much data is in memory during forking.
+        BATCH_SIZE = 10000
+
+        # First pass: count sequences (quick, no memory accumulation)
+        terminal.memory_checkpoint("Pyrodigal: before counting sequences")
         fasta = f.SequenceSource(fasta_file_path)
+        num_sequences_in_fasta_file = 0
         while next(fasta):
-            data.append((fasta.id, fasta.seq, self.predictor),)
+            num_sequences_in_fasta_file += 1
         fasta.close()
-        terminal.memory_checkpoint("Pyrodigal: after loading sequences")
 
         self.run.warning("Anvi'o will use 'pyrodigal-gv' by Martin Larralde to identify open reading frames in your data. "
                          "It is an extension of 'pyrodigal' (doi:10.21105/joss.04296), which builds upon the approach "
@@ -125,52 +129,79 @@ class Pyrodigal_gv:
                          "(doi:10.1038/s41587-023-01953-y). If you publish your findings, please do not forget to properly credit "
                          "all three work.", lc='green', header="CITATION")
 
-        # let's learn the number of sequences we will work with early on and report
-        num_sequences_in_fasta_file = len(data)
-
         # some nice logs.
+        num_batches = (num_sequences_in_fasta_file + BATCH_SIZE - 1) // BATCH_SIZE
         self.run.warning('', header=f'Finding ORFs using pyrodigal-gv {pyrodigal_gv.__version__}', lc='green')
         self.run.info('Number of sequences', pp(num_sequences_in_fasta_file))
+        self.run.info('Batch size', pp(BATCH_SIZE))
+        self.run.info('Number of batches', pp(num_batches))
         self.run.info('Procedure', 'Single Genome (with `--prodigal-single-mode`)' if self.prodigal_single_mode else 'Metagenome (without `--prodigal-single-mode`)')
         self.run.info('Full gene calling reporting requested?', 'Yes' if self.full_gene_calling_report else 'No')
 
-        self.progress.new('Processing')
+        self.progress.new('Processing', progress_total_items=num_sequences_in_fasta_file)
         thread_info = terminal.pluralize('thread', self.num_threads) if self.num_threads else "default number of threads"
-        self.progress.update(f"Identifying ORFs using {thread_info}.")
 
         # key variables to fill in
         gene_calls_dict = {}
         amino_acid_sequences_dict = {}
 
         gene_callers_id = 0
-        with multiprocessing.pool.Pool(self.num_threads) as pool:
-            for contig_name, predicted_genes in pool.map(predict, data):
-                for gene in predicted_genes:
-                    gene_calls_dict[gene_callers_id] = {'contig': contig_name,
-                                                        'start': gene.begin - 1,
-                                                        'stop': gene.end,
-                                                        'direction': 'f' if int(gene.strand) == 1 else 'r',
-                                                        'partial': gene.partial_begin or gene.partial_end,
-                                                        'call_type': constants.gene_call_types['CODING'],
-                                                        'source': self.gene_caller_name,
-                                                        'version': self.gene_caller_version}
+        sequences_processed = 0
+        batch_number = 0
 
-                    amino_acid_sequences_dict[gene_callers_id] = gene.translate().replace('*', '')
+        # Second pass: process sequences in batches
+        fasta = f.SequenceSource(fasta_file_path)
+        while sequences_processed < num_sequences_in_fasta_file:
+            batch_number += 1
 
-                    # if the user wants a full report, we will update the gene calls dict with additional
-                    # data from the object
-                    if self.full_gene_calling_report:
-                        addtl_data = [('confidence', gene.confidence()), ('gc_cont', gene.gc_cont), ('partial_begin', gene.partial_begin), ('partial_end', gene.partial_end),
-                                      ('rbs_motif', gene.rbs_motif), ('rbs_spacer', gene.rbs_spacer), ('score', gene.score), ('cscore', gene.cscore), ('rscore', gene.rscore), ('sscore', gene.sscore),
-                                      ('start_type', gene.start_type),  ('translation_table', gene.translation_table), ('tscore', gene.tscore), ('uscore', gene.uscore), ('sequence', gene.sequence()),
-                                      ('translated_sequence', amino_acid_sequences_dict[gene_callers_id])]
+            # Load one batch of sequences
+            batch_data = []
+            for _ in range(BATCH_SIZE):
+                if not next(fasta):
+                    break
+                batch_data.append((fasta.id, fasta.seq, self.predictor),)
 
-                        for k, v in addtl_data:
-                            gene_calls_dict[gene_callers_id][k] = v
+            if not batch_data:
+                break
 
-                    # uppity
-                    gene_callers_id += 1
+            self.progress.update(f"Batch {batch_number}/{num_batches} ({pp(len(batch_data))} sequences) using {thread_info}")
 
+            # Process this batch with a fresh pool. When the pool forks workers,
+            # only this batch's data is in memory, dramatically reducing memory usage.
+            with multiprocessing.pool.Pool(self.num_threads) as pool:
+                for contig_name, predicted_genes in pool.map(predict, batch_data):
+                    for gene in predicted_genes:
+                        gene_calls_dict[gene_callers_id] = {'contig': contig_name,
+                                                            'start': gene.begin - 1,
+                                                            'stop': gene.end,
+                                                            'direction': 'f' if int(gene.strand) == 1 else 'r',
+                                                            'partial': gene.partial_begin or gene.partial_end,
+                                                            'call_type': constants.gene_call_types['CODING'],
+                                                            'source': self.gene_caller_name,
+                                                            'version': self.gene_caller_version}
+
+                        amino_acid_sequences_dict[gene_callers_id] = gene.translate().replace('*', '')
+
+                        # if the user wants a full report, we will update the gene calls dict with additional
+                        # data from the object
+                        if self.full_gene_calling_report:
+                            addtl_data = [('confidence', gene.confidence()), ('gc_cont', gene.gc_cont), ('partial_begin', gene.partial_begin), ('partial_end', gene.partial_end),
+                                          ('rbs_motif', gene.rbs_motif), ('rbs_spacer', gene.rbs_spacer), ('score', gene.score), ('cscore', gene.cscore), ('rscore', gene.rscore), ('sscore', gene.sscore),
+                                          ('start_type', gene.start_type),  ('translation_table', gene.translation_table), ('tscore', gene.tscore), ('uscore', gene.uscore), ('sequence', gene.sequence()),
+                                          ('translated_sequence', amino_acid_sequences_dict[gene_callers_id])]
+
+                            for k, v in addtl_data:
+                                gene_calls_dict[gene_callers_id][k] = v
+
+                        gene_callers_id += 1
+
+            sequences_processed += len(batch_data)
+            self.progress.increment(increment_to=sequences_processed)
+
+            # Free batch memory before loading next batch
+            del batch_data
+
+        fasta.close()
         self.progress.end()
         terminal.memory_checkpoint("Pyrodigal: after gene calling")
 
