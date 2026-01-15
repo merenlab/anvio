@@ -37,6 +37,8 @@ def main():
         print(e)
         sys.exit(-2)
 
+    terminal.print_memory_report()
+
 
 def get_args():
     from anvio.argparse import ArgumentParser
