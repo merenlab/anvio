@@ -110,11 +110,13 @@ class Pyrodigal_gv:
             self.predictor = pyrodigal_gv.ViralGeneFinder(meta=True, mask=True)
 
         # since the predictor is now set, next we will read all sequences into the memory :/
+        terminal.memory_checkpoint("Pyrodigal: before loading sequences")
         data = []
         fasta = f.SequenceSource(fasta_file_path)
         while next(fasta):
             data.append((fasta.id, fasta.seq, self.predictor),)
         fasta.close()
+        terminal.memory_checkpoint("Pyrodigal: after loading sequences")
 
         self.run.warning("Anvi'o will use 'pyrodigal-gv' by Martin Larralde to identify open reading frames in your data. "
                          "It is an extension of 'pyrodigal' (doi:10.21105/joss.04296), which builds upon the approach "
@@ -170,6 +172,7 @@ class Pyrodigal_gv:
                     gene_callers_id += 1
 
         self.progress.end()
+        terminal.memory_checkpoint("Pyrodigal: after gene calling")
 
         self.run.info('Result', f'Pyrodigal-gv (v{pyrodigal_gv.__version__}) has identified {pp(len(gene_calls_dict))} genes.', nl_after=1)
 
