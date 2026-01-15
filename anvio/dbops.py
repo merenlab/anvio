@@ -5230,6 +5230,7 @@ class ContigsDatabase:
         recovered_split_lengths = []
 
         # THE INFAMOUS GEN CONTGS DB LOOP (because it is so costly, we call it South Loop)
+        terminal.memory_checkpoint("dbops: before SOUTH LOOP")
         self.progress.new('The South Loop', progress_total_items=total_number_of_contigs)
         fasta.reset()
         while next(fasta):
@@ -5285,6 +5286,7 @@ class ContigsDatabase:
         splits_info_table.store(self.db)
 
         self.db._exec_many('''INSERT INTO %s VALUES (?,?)''' % t.contig_sequences_table_name, db_entries_contig_sequences)
+        terminal.memory_checkpoint("dbops: after SOUTH LOOP and contig sequences insert")
 
         # set some useful meta values:
         self.db.set_meta_value('num_contigs', contigs_info_table.total_contigs)
