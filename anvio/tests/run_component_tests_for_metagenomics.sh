@@ -298,6 +298,13 @@ anvi-export-functions -c $output_dir/CONTIGS.db \
                       --annotation-sources Pfam \
                       --no-progress
 
+INFO "Export all functional annotations in matrix format"
+anvi-export-functions -c $output_dir/CONTIGS.db \
+                      -o $output_dir/exported_functions_matrix_format.txt \
+                      --matrix-format \
+                      --no-progress
+SHOW_FILE $output_dir/exported_functions_matrix_format.txt
+
 INFO "Contigs DB is ready; here are the tables in it:"
 sqlite3 $output_dir/CONTIGS.db '.tables'
 
