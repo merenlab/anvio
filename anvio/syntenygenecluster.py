@@ -75,7 +75,6 @@ class SyntenyGeneCluster():
         self.gamma = A('gamma')
         self.delta = A('delta')
         self.inversion_aware = A('inversion_aware')
-        self.paralog_aware = A('paralog_aware')
         self.max_num_paralogs = A('max_num_paralogs')
         self.max_num_paralogs_per_genome = A('max_num_paralogs_per_genome')
         self.min_k = A('min_k')
@@ -108,7 +107,7 @@ class SyntenyGeneCluster():
 
     def preprocess_contextualize(self, pangenome_data_df):
 
-        if self.paralog_aware:
+        if self.max_num_paralogs != -1 or self.max_num_paralogs_per_genome != -1:
             subset_df = pangenome_data_df.reset_index(drop=False)[['genome', 'gene_cluster']]
 
             paralogs_df = subset_df[subset_df.duplicated(keep=False)]
@@ -117,11 +116,11 @@ class SyntenyGeneCluster():
             paralogs_per_genome = paralogs_df.groupby('genome').size()
             run = True
 
-            self.run.warning("Dear user, you requested higher paralog awareness, therefore the same algorithm you."
-                             "saw running a second ago might run again. This is expected behaivior. The first execution" 
-                             "skipped all paralog gene clusters in the dataset to solely focus on the more stable genomic areas."
-                             "Depending on your settings of maximum number of total paralogs and paralogs per genome, the"
-                             "algorithm will now first check whether a second run is in line with your needs. Stay seated"
+            self.run.warning("Dear user, you have set paralog filtering thresholds, so the same algorithm you "
+                             "saw running a second ago will run again. This is expected behavior. The first execution "
+                             "skipped all paralog gene clusters in the dataset to solely focus on the more stable genomic areas. "
+                             "Depending on your settings of maximum number of total paralogs and paralogs per genome, the "
+                             "algorithm will now first check whether a second run is in line with your thresholds. Stay seated "
                              "and thank you for your attention.",
                      header="RESOLVING PARALOGS USING GENOMIC CONTEXT", lc="green")
 

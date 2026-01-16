@@ -1401,7 +1401,6 @@ class PangenomeGraph():
         self.delta = A('delta')
         self.min_k = A('min_k')
         self.inversion_aware = A('inversion_aware')
-        self.paralog_aware = A('paralog_aware')
         self.max_num_paralogs = A('max_num_paralogs')
         self.max_num_paralogs_per_genome = A('max_num_paralogs_per_genome')
 
@@ -1511,7 +1510,6 @@ class PangenomeGraph():
         self.run.info("General context comparison max treshold dela", self.delta)
         self.run.info("Synteny gene cluster min k", self.min_k)
         self.run.info("Higher inversion awareness", self.inversion_aware)
-        self.run.info("Higher paralog awareness", self.inversion_aware)
         self.run.info("Maximum number of paralogs", self.max_num_paralogs)
         self.run.info("Maximum number of paralogs per genome", self.max_num_paralogs_per_genome)
         self.run.info("Priority genome", self.priority_genome)
