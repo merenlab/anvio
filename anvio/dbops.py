@@ -5231,6 +5231,10 @@ class ContigsDatabase:
 
         # THE INFAMOUS GEN CONTGS DB LOOP (because it is so costly, we call it South Loop)
         self.progress.new('The South Loop', progress_total_items=total_number_of_contigs)
+
+        mem_tracker = terminal.TrackMemory(at_most_every=5)
+        mem_usage, mem_diff = mem_tracker.start()
+
         fasta.reset()
         while next(fasta):
             self.progress.increment()
@@ -5238,7 +5242,11 @@ class ContigsDatabase:
             contig_name = fasta.id
             contig_sequence = fasta.seq
 
-            self.progress.update('Contig "%d" ' % fasta.pos)
+            if mem_tracker.measure():
+                mem_usage = mem_tracker.get_last()
+                mem_diff = mem_tracker.get_last_diff()
+
+            self.progress.update('Contig "%d" | MEMORY 🧠 %s (%s) ' % (fasta.pos, mem_usage, mem_diff))
 
             genes_in_contig = contig_name_to_gene_start_stops[contig_name] if contig_name in contig_name_to_gene_start_stops else set([])
 
