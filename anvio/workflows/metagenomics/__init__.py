@@ -237,7 +237,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
         # just some extra checks. TO BE UTLRA-SAFE
         if len(self.sample_names) < 1:
-            raise WorkflowError("No samples found in samples.txt")
+            raise ConfigError("No samples found in samples.txt")
 
         self.references_for_removal_txt = self.get_param_value_from_config(['remove_short_reads_based_on_references',\
                                                                             'references_for_removal_txt'])
