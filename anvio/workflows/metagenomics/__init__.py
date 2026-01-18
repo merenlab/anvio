@@ -548,7 +548,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
             if missing_samples_in_kraken_txt:
                 raise ConfigError("Your kraken annotation file, '%s', is missing samples that "
                                   "are in your samples_txt file, '%s'. This is not allowed. "
-                                  "Here is an example of such a sample: %s." % (kraken_txt, self.get_param_value_from_config('samples_txt'), wrong_samples_in_kraken_txt[0]))
+                                  "Here is an example of such a sample: %s." % (kraken_txt, self.get_param_value_from_config('samples_txt'), next(iter(missing_samples_in_kraken_txt))))
             self.kraken_annotation_dict = kraken_annotation_dict
 
         if self.get_param_value_from_config(['krakenuniq', 'run']):
