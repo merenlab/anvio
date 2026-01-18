@@ -707,7 +707,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
         - Fails in references mode (assemblies are off there).
         - Verifies this group is an SR assembly group.
-        - `use_filtered=False` is recommended for assembly (use QC outputs, not ref-filtered).
+        - Returns QC'd files if QC is enabled, otherwise raw input files.
+        - `use_filtered=True` uses reference-filtered outputs if available.
         - `zipped=None` → auto-detect from your run_gzip_fastqs flag.
         """
         if self.references_mode:
@@ -715,17 +716,13 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         if self.assembly_types.get(group_id) != 'SR':
             raise ConfigError(f"Group '{group_id}' is not SR (type={self.assembly_types.get(group_id)})")
 
-        if zipped is None:
-            # defer to your global setting at call-time
-            try:
-                zipped = run_gzip_fastqs
-            except NameError:
-                zipped = True  # sensible default if the flag lives elsewhere
-
         r1, r2 = [], []
         member_readsets = self.assembly_members.get(group_id, [])
         for rs_id in member_readsets:
-            d = self.get_sr_files_for_readset(rs_id)
+            # Use get_fastq which respects run_qc setting:
+            # - pre_ref_removal=True means we want QC'd files (not reference-filtered)
+            # - If QC is disabled, get_fastq falls back to raw input files
+            d = self.get_fastq(rs_id, pre_ref_removal=not use_filtered)
             r1.extend(d['r1'])
             r2.extend(d['r2'])
 
