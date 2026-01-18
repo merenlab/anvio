@@ -941,13 +941,12 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         # do we have a conda env/yaml?
         has_conda_yaml = self.get_param_value_from_config([tool, 'conda_yaml'])
         has_conda_env = self.get_param_value_from_config([tool, 'conda_env'])
-        print(has_conda_env)
         if has_conda_yaml or has_conda_env:
             return  # conda env/yaml will provide the executable
 
         if not shutil.which(executable):
             raise ConfigError(
-                f"You enabled '{tool}', but {executable} were found in your $PATH. "
+                f"You enabled '{tool}', but '{executable}' was not found in your $PATH. "
                 f"You can either install it, or set a conda environment via "
                 f"'conda_yaml' or 'conda_env' in your config file."
             )
