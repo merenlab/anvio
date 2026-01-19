@@ -7,8 +7,8 @@ version-related data.
 """
 
 # Core anvi'o version information
-anvio_version = '8-dev'
-anvio_codename = 'marie'  # after Marie Tharp -- see the release notes for details: https:ithub.com/merenlab/anvio/releases/tag/v8
+anvio_version = '9'
+anvio_codename = 'eunice' # after Eunice Newton Foote -- see the release notes for details: https://github.com/merenlab/anvio/releases/tag/v9
 
 # Mandatory Python version
 major_python_version_required = 3
