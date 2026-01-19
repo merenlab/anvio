@@ -390,9 +390,8 @@ class PangenomeGraphManager():
             weight = len(genomes_involved)
 
             nodes_sets = [item[2] for item in values_list]
-            # nodes_involved = set(nodes_sets)
 
-            # diversity = len(set([item.rsplit('_', 1)[0] for item in nodes_involved]))
+            num_gene_clusters = len(set([item.rsplit('_', 1)[0] for item in nodes_sets]))
 
             region_x_positions = [item[0] for item in values_list]
             # region_y_positions = [item[1] for item in values_list]
@@ -401,9 +400,7 @@ class PangenomeGraphManager():
             region_x_positions_max = max(region_x_positions)
 
             if region_x_positions_min in set(core_positions) and region_x_positions_max in set(core_positions):
-                complexity = 0
-            # elif region_x_positions_max - region_x_positions_min == 1:
-            #     complexity = 0
+                P = 0
             elif region_x_positions_min not in set(core_positions) and region_x_positions_max not in set(core_positions):
 
                 if region_x_positions_min != 0:
@@ -412,9 +409,9 @@ class PangenomeGraphManager():
 
                     predecessor = [item[2] for item in prior_core_region if item[0] == region_x_positions_min - 1][0]
 
-                    complexity = sum([len(list(self.graph.successors(node))) - 1 for node in nodes_sets + [predecessor]]) / weight
+                    P = sum([len(list(self.graph.successors(node))) - 1 for node in nodes_sets + [predecessor]])
                 else:
-                    complexity = 0
+                    P = 0
             else:
                 print('Summary error.')
 
@@ -429,6 +426,9 @@ class PangenomeGraphManager():
             T = len(genome_occurences)
 
             if weight < 2:
+                n = (1/K) * sum([len(genome_set) for genome_set in genomes_sets])
+                var = (1/K) * sum([(len(genome_set) - n)**2 for genome_set in genomes_sets])
+                p = 0
                 diversity = 0
             else:
                 # mean cluster prevalence
@@ -449,23 +449,34 @@ class PangenomeGraphManager():
             # mean_expansion = mean(values)
             # mode = ", ".join(str(num) for num in multimode(values))
 
-            if complexity == 0:
+            if P == 0:
                 motif = 'BB'
-            elif complexity == 1 and min_expansion == 0:
+            elif P == 1 and min_expansion == 0:
                 motif = 'INDEL'
             else:
                 motif = 'HVR'
+
+            complexity = P / weight
+            # if weight >= 2 and P >= 1:
+            #     complexity = (P-1) / (weight-1)
+            # else:
+            #     complexity = 0
 
             regions_summary_dict[i] = {
                 'region_id': region_id,
                 'motif': motif,
                 'x_min': region_x_positions_min,
                 'x_max': region_x_positions_max,
-                'num_gene_clusters': K,
+                'num_synteny_gene_clusters': K,
+                'num_gene_clusters': num_gene_clusters,
                 'num_gene_calls': T,
+                'pathways': P,
                 'complexity': complexity,
                 'max_expansion': max_expansion,
                 'min_expansion': min_expansion,
+                'prevalence': n,
+                'prevalence_variance': var,
+                'diversity_penalty': p,
                 'diversity': diversity,
                 'weight': weight
             }
@@ -481,7 +492,7 @@ class PangenomeGraphManager():
         gene_calls_df = pd.DataFrame.from_dict(gene_calls_dict, orient='index').set_index(['genome', 'gene_caller_id'])
         nodes_df = pd.DataFrame.from_dict(node_regions_dict, orient='index').set_index('syn_cluster')
         region_sides_df = pd.DataFrame.from_dict(regions_summary_dict, orient='index').set_index('region_id')
-        region_sides_df['composite_variability_score'] = region_sides_df.apply(PangenomeGraphManager.composite_variability_score(region_sides_df), axis=1)
+        region_sides_df[['composite_variability_score', 'complexity_normalized', 'max_expansion_normalized', 'weight_factor']] = region_sides_df.apply(PangenomeGraphManager.composite_variability_score(region_sides_df), axis=1, result_type='expand')
 
         return(region_sides_df, nodes_df, gene_calls_df)
 
@@ -525,7 +536,8 @@ class PangenomeGraphManager():
 
             CVS = (C_norm * E_norm * D)**(1/3) * W_f
 
-            return(CVS)
+            return([CVS, C_norm, E_norm, W_f])
+
         return(func)
 
 
