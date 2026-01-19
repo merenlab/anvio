@@ -7,7 +7,7 @@ version-related data.
 """
 
 # Core anvi'o version information
-anvio_version = '9'
+anvio_version = '9-dev'
 anvio_codename = 'eunice' # after Eunice Newton Foote -- see the release notes for details: https://github.com/merenlab/anvio/releases/tag/v9
 
 # Mandatory Python version
