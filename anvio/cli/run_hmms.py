@@ -10,6 +10,7 @@ import anvio.terminal as terminal
 
 with terminal.SuppressAllOutput():
     import anvio.data.hmm as hmm_data
+    import anvio.data.misc.HMM as misc_hmm_data
 
 available_hmm_sources = list(hmm_data.sources.keys())
 
@@ -48,15 +49,28 @@ def run_program():
     run = terminal.Run()
     P = terminal.pluralize
 
+    if not args.list_miscellaneous_models and not args.contigs_db:
+        raise ConfigError("You must provide a contigs database with '-c' / '--contigs-db'. "
+                          "If you only wish to list miscellaneous models, use '--list-miscellaneous-models'.")
+
+    if args.list_miscellaneous_models:
+        misc_hmm_data.display_miscellaneous_models(run)
+        return
+
     # then check whether we are going to use the default HMM profiles, or run it for a new one.
     sources = {}
+    if args.miscellaneous_model:
+        if args.hmm_profile_dir:
+            raise ConfigError("You selected a miscellaneous model and also provided --hmm-profile-dir. Please choose only one.")
+        args.hmm_profile_dir = misc_hmm_data.resolve_miscellaneous_model(args.miscellaneous_model, run)
+
     if args.hmm_profile_dir and args.installed_hmm_profile:
         raise ConfigError("You must select either an installed HMM profile, or provide a path for a profile directory. "
                           "But not both :/")
     elif args.hmm_profile_dir:
         if not os.path.exists(args.hmm_profile_dir):
             raise ConfigError('No such file or directory: "%s"' % args.hmm_profile_dir)
-        sources = utils.get_HMM_sources_dictionary([args.hmm_profile_dir])
+        sources = utils.get_HMM_sources_dictionary([args.hmm_profile_dir], check_for_ACC_lines_in_HMM=args.add_to_functions_table)
         run.info('HMM profiles', '%d source%s been loaded: %s' % (len(sources),
                                                           's' if len(sources) > 1 else '',
                                                           ', '.join(['%s (%d genes)' % (s, len(sources[s]['genes']))\
@@ -113,12 +127,13 @@ def get_args():
 
 
     groupA = parser.add_argument_group("DB", "An anvi'o contigs database to populate with HMM hits")
-    groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
+    groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
 
     groupB = parser.add_argument_group("HMM OPTIONS", "If you have your own HMMs, or if you would like to run only a set of "
                                                       "default anvi'o HMM profiles rather than running them all, this is "
                                                       "your stop.")
     groupB.add_argument(*anvio.A('hmm-profile-dir'), **anvio.K('hmm-profile-dir'))
+    groupB.add_argument(*anvio.A('miscellaneous-model'), **anvio.K('miscellaneous-model'))
     groupB.add_argument(*anvio.A('installed-hmm-profile'), **anvio.K('installed-hmm-profile',
                             {'help': f"When you run this program without any parameter, it will run all {len(available_hmm_sources)} "
                                      f"HMM profiles installed on your system. Using this parameter, you can instruct anvi'o to run "
@@ -128,6 +143,7 @@ def get_args():
                                      f"{available_hmm_sources_pretty}."}))
     groupB.add_argument(*anvio.A('hmmer-output-dir'), **anvio.K('hmmer-output-dir'))
     groupB.add_argument(*anvio.A('domain-hits-table'), **anvio.K('domain-hits-table'))
+    groupB.add_argument(*anvio.A('list-miscellaneous-models'), **anvio.K('list-miscellaneous-models'))
     groupC = parser.add_argument_group("tRNAs", "Through this program you can also scan Transfer RNA sequences in your "
                                                 "contigs database for free (instead of running `anvi-scan-trnas` later).")
     groupC.add_argument(*anvio.A('also-scan-trnas'), **anvio.K('also-scan-trnas'))

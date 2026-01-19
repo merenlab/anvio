@@ -2,13 +2,26 @@ A simpe program to perform a combination of simple operations on a FASTA file in
 
 * Renaming sequences so they have simplified deflines (more on this in the next section),
 * Adding a prefix to sequence names in a FASTA file (useful when you wish to concatenate multiple FASTA files and want to make sure each sequence name is unique and tracable back to its original source),
-* Removing sequences that are shorter than a specific length or only keeping those that match to a specific length,
+* Removing sequences that are shorter or longer than specific thresholds, or only keeping those that match to a specific length,
 * Removing sequences if they contain more than a number of gap characters or exceed the precentage of gap characters you permit (some simple quality checks prior to phylogenetic / phylogenomic analyses),
 * Excluding sequences that match to a list of sequence IDs, or only keep those that match to a list of sequence IDs,
 * Enforcing a sequence type and to replace any character with `N` for nucleotide sequences that are not A, C, T, or G, or to replace any character with `X` for amino acid sequences if the character does not match any of the single-letter amino acid characters (useuful to make sure the input file conforms the expectations of that input file type (i.e., all DNA sequences, or all AA sequences, etc)).
 
 {:.notice}
-This program can work with compressed input FASTA files (i.e., the file name ends with a `.gz` extention) and will report a compressed output FASTA file (i.e., if the output file name ends with a `.gz` extension).
+This program can work with compressed input FASTA files (i.e., the file name ends with a `.gz` extention) and will report a compressed output FASTA file (i.e., if the output file name ends with a `.gz` extension). It will just take awfully long time to run as it will have to decompress and recompress the file on the fly. But hey, you will have all the storage place you need to protect protected, right?
+
+### Stats-only mode
+
+If you only want to take a quick look at FASTA-level summary statistics without writing a new file, you can ask the program to skip all reformatting steps and don't change anything in the FASTA file with the `--stats-only` flag:
+
+{{ codestart }}
+anvi-script-reformat-fasta %(fasta)s \
+                           --stats-only
+{{ codestop }}
+
+Which will report entry counts, length totals, min/max/mean/median lengths, and N50/L50, and render length histograms in the terminal (anvi'o will pick a bin count for these histograms, but you can also set a specific number using the `--length-histogram-bins` parameter and control the plot height with `--length-histogram-height`).
+
+[![Example stats-only output](../../images/anvi-script-reformat-fasta-stats.png){:.center-img}](../../images/anvi-script-reformat-fasta-stats.png)
 
 ### Renaming / simplifying sequence deflines
 
@@ -35,6 +48,8 @@ anvi-script-reformat-fasta %(fasta)s \
                            --report-file %(contig-rename-report-txt)s
 {{ codestop }}
 
+You can also discard unusually long sequences with the `--max-len` parameter if you want to enforce an upper bound on sequence size. You may ask yourself why would I discard my long contigs, but actually this can be quite useful when screening FASTA files for phylogenomic analyses, where you do not want to include sequences that are much longer than the expected siize of the model hits. To do it right, you can take a look at the histogram output, and determine what is your meaningful limits for length.
+
 ### Example output
 
 ```
@@ -60,6 +75,7 @@ WHAT WAS ASKED
 Simplify deflines? ...........................: Yes
 Add prefix to sequence names? ................: Yes, add 'YYY'
 Minimum length of contigs to keep ............: 1,000
+Maximum length of contigs to keep ............: No limit
 Max %% gaps allowed ...........................: 100.00%%
 Max num gaps allowed .........................: 1,000,000
 Exclude specific sequences? ..................: No

@@ -861,7 +861,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                             row_ids_of_interest=self.split_names_of_interest)
 
             try:
-                clustering_id, newick = clustering.order_contigs_simple(config, progress=progress)
+                clustering_id, newick = clustering.order_contigs_simple(config, distance=self.distance, linkage=self.linkage, progress=progress)
             except Exception as e:
                 run.warning('Clustering has failed for "%s": "%s"' % (config_name, e))
                 progress.end()
@@ -3339,10 +3339,7 @@ class ContigsInteractive():
         MIN_L = lambda: [min(lengths) for lengths in contig_lengths_for_all]
         basic_stats.append(['Longest Contig'] + MAX_L())
         basic_stats.append(['Shortest Contig'] + MIN_L())
-
-        self.progress.update('Number of genes ...')
-        contig_lengths_for_all = [c['contig_lengths'] for c in self.contigs_stats.values()]
-        basic_stats.append(['Num Genes'] + [c['num_genes'] for c in self.contigs_stats.values()])
+        basic_stats.append(['Mean Contig Length (trim 10%)'] + [f"{c['contig_length_trimmed_mean_10pct']:.2f}" if isinstance(c['contig_length_trimmed_mean_10pct'], (int, float)) else c['contig_length_trimmed_mean_10pct'] for c in self.contigs_stats.values()])
 
         self.progress.update('N/L values ...')
         n_values = [c['n_values'] for c in self.contigs_stats.values()]
@@ -3355,8 +3352,18 @@ class ContigsInteractive():
         basic_stats.append(['N75'] + L(74))
         basic_stats.append(['N90'] + L(89))
 
+        # gene stats in their own section
+        self.progress.update('Gene stats ...')
+        gene_stats = []
+        gene_stats.append(['Num Genes'] + [c['num_genes'] for c in self.contigs_stats.values()])
+        gene_stats.append(['Avg Gene Length'] + [f"{c['avg_gene_length']:.2f}" if isinstance(c['avg_gene_length'], (int, float)) else c['avg_gene_length'] for c in self.contigs_stats.values()])
+        gene_stats.append(['Avg Gene Length (trim 10%)'] + [f"{c['avg_gene_length_trimmed_10pct']:.2f}" if isinstance(c['avg_gene_length_trimmed_10pct'], (int, float)) else c['avg_gene_length_trimmed_10pct'] for c in self.contigs_stats.values()])
+        gene_stats.append(['Min Gene Length'] + [c['min_gene_length'] for c in self.contigs_stats.values()])
+        gene_stats.append(['Max Gene Length'] + [c['max_gene_length'] for c in self.contigs_stats.values()])
+
         self.tables['basic_stats'] = basic_stats
-        self.human_readable_keys.extend([e[0] for e in basic_stats])
+        self.tables['gene_stats'] = gene_stats
+        self.human_readable_keys.extend([e[0] for e in basic_stats + gene_stats])
 
         ##
         ##  Table for hmm hits

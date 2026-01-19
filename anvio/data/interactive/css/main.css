@@ -552,6 +552,7 @@ td > input[type='checkbox'] {
     border-color: var(--black);
     width: 16px;
     height: 16px;
+    vertical-align: middle;
 }
 
 .btn-group > .colorpicker-base {
@@ -650,6 +651,11 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 }
 
 #estimate-taxonomy-check {
+    margin-bottom: 6px;
+    margin-top: 6px;
+}
+
+#taxonomy-ops-wrapper {
     background: #e7f3381a;
     padding: 3px 6px 5px 10px;
     border: 1px dashed #a9a9a9;
@@ -663,6 +669,12 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 #search-results-table > tbody > tr > td { padding: 5px; word-break: break-all; }
 #search-results-table tbody tr td:first-child  { border-right: 2px solid rgb(230, 230, 230); }
 #search-results-table thead tr th:first-child  { border-right: 2px solid rgb(230, 230, 230); }
+
+#collapsed_nodes_panel table td,
+#collapsed_nodes_panel table th {
+    vertical-align: middle;
+    font-size: 10px;
+}
 
 #divzoom {
     position: absolute;
@@ -968,6 +980,31 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 
 .menu-padding{
     padding-left: 5px;
+}
+
+#tree-settings .menu-padding,
+#tree-settings .input-dropdown,
+#tree-settings .input-align{
+    width: 100%;
+    max-width: 100%;
+}
+
+#table_layers_container table{
+    width: 100%;
+}
+
+#table_layers thead td,
+#table_layers tbody td{
+    width: auto;
+}
+
+#table_samples_container table{
+    width: 100%;
+}
+
+#table_samples thead td,
+#table_samples tbody td{
+    width: auto;
 }
 
 .chart-icon-padding{

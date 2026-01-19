@@ -381,6 +381,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user":True
     },
+    "genes-of-interest-txt": {
+        "name": "GENES OF INTEREST",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
     "pfam-accession": {
         "name": "PFAM ACCESSION",
         "type": "TXT",

@@ -407,7 +407,12 @@ class Read:
         if read.has_tag('MD'):
             self.reference_sequence = np.frombuffer(read.get_reference_sequence().upper().encode('ascii'), np.uint8)
         else:
-            self.reference_sequence = np.array([ord('N')] * (self.reference_end - self.reference_start))
+            # Calculate reference sequence length excluding N operations (skipped regions)
+            ref_seq_length = self.reference_end - self.reference_start
+            for op, length in read.cigartuples:
+                if op == 3:  # N operation (skipped region)
+                    ref_seq_length -= length
+            self.reference_sequence = np.array([ord('N')] * ref_seq_length)
 
         # See self.vectorize
         self.v = None
@@ -2122,34 +2127,42 @@ def _vectorize_read(cigartuples, query_sequence, reference_sequence, reference_s
     v = np.full((size, 4), -1, dtype=np.int32)
 
     count = 0
-    ref_consumed = 0
+    ref_pos = 0       # position on the reference genome (for column 0)
+    ref_seq_idx = 0   # index into reference_sequence array (for column 3)
     read_consumed = 0
+
     for i in range(cigartuples.shape[0]):
         operation, length = cigartuples[i, :]
         consumes_read, consumes_ref = cigar_consumption[operation, :]
 
         if consumes_read and consumes_ref:
-            v[count:(count + length), 0] = np.arange(ref_consumed + reference_start, ref_consumed + reference_start + length)
+            v[count:(count + length), 0] = np.arange(ref_pos + reference_start, ref_pos + reference_start + length)
             v[count:(count + length), 1] = query_sequence[read_consumed:(read_consumed + length)]
-            v[count:(count + length), 3] = reference_sequence[ref_consumed:(ref_consumed + length)]
+            v[count:(count + length), 3] = reference_sequence[ref_seq_idx:(ref_seq_idx + length)]
             v[count:(count + length), 2] = 0
 
             read_consumed += length
-            ref_consumed += length
+            ref_pos += length
+            ref_seq_idx += length
 
         elif consumes_read:
-            v[count:(count + length), 0] = ref_consumed + reference_start - 1
+            v[count:(count + length), 0] = ref_pos + reference_start - 1
             v[count:(count + length), 1] = query_sequence[read_consumed:(read_consumed + length)]
             v[count:(count + length), 2] = 1
 
             read_consumed += length
 
         elif consumes_ref:
-            v[count:(count + length), 0] = np.arange(ref_consumed + reference_start, ref_consumed + reference_start + length)
-            v[count:(count + length), 3] = reference_sequence[ref_consumed:(ref_consumed + length)]
+            v[count:(count + length), 0] = np.arange(ref_pos + reference_start, ref_pos + reference_start + length)
             v[count:(count + length), 2] = 2
 
-            ref_consumed += length
+            # Only fetch reference bases for deletions (op=2), not skips (op=3)
+            if operation == 2:  # Deletion
+                v[count:(count + length), 3] = reference_sequence[ref_seq_idx:(ref_seq_idx + length)]
+                ref_seq_idx += length
+            # For N (op=3), leave column 3 as -1 (already initialized)
+
+            ref_pos += length
 
         count += length
 
@@ -2213,18 +2226,15 @@ def _trim(cigartuples, cigar_consumption, query_sequence, reference_sequence, re
     cigartuples = cigartuples[::-1, :] if side == 1 else cigartuples
 
     ref_positions_trimmed = 0
+    ref_bases_trimmed = 0  # only counts bases actually in reference_sequence
     read_positions_trimmed = 0
-    terminate_next = False
 
     count = 0
     for i in range(cigartuples.shape[0]):
         operation, length = cigartuples[i, :]
         consumes_read, consumes_ref = cigar_consumption[operation, :]
 
-        if consumes_ref and consumes_read:
-            if terminate_next:
-                break
-
+        if consumes_ref:
             remaining = trim_by - ref_positions_trimmed
 
             if length > remaining:
@@ -2233,20 +2243,26 @@ def _trim(cigartuples, cigar_consumption, query_sequence, reference_sequence, re
                 # truncated length
                 cigartuples[count, 1] = length - remaining
                 ref_positions_trimmed += remaining
-                read_positions_trimmed += remaining
+                # Only count bases for non-N operations (N is op 3)
+                if operation != 3:
+                    ref_bases_trimmed += remaining
+                if consumes_read:
+                    read_positions_trimmed += remaining
                 break
 
             ref_positions_trimmed += length
-            read_positions_trimmed += length
-
-        elif consumes_ref:
-            ref_positions_trimmed += length
+            # Only count bases for non-N operations
+            if operation != 3:
+                ref_bases_trimmed += length
+            if consumes_read:
+                read_positions_trimmed += length
 
         elif consumes_read:
+            # this operation does not consume ref so it does not contribute to trim_by
+            # but if we met our ref trim target, we should stop
+            if ref_positions_trimmed >= trim_by:
+                break
             read_positions_trimmed += length
-
-        if ref_positions_trimmed >= trim_by:
-            terminate_next = True
 
         count += 1
 
@@ -2254,13 +2270,17 @@ def _trim(cigartuples, cigar_consumption, query_sequence, reference_sequence, re
 
     if side == 1:
         cigartuples = cigartuples[::-1]
-        query_sequence = query_sequence[:-read_positions_trimmed]
-        reference_sequence = reference_sequence[:-ref_positions_trimmed]
+        if read_positions_trimmed > 0:
+            query_sequence = query_sequence[:-read_positions_trimmed]
+        if ref_bases_trimmed > 0:
+            reference_sequence = reference_sequence[:-ref_bases_trimmed]
         reference_end -= ref_positions_trimmed
     else:
         cigartuples = cigartuples
-        query_sequence = query_sequence[read_positions_trimmed:]
-        reference_sequence = reference_sequence[ref_positions_trimmed:]
+        if read_positions_trimmed > 0:
+            query_sequence = query_sequence[read_positions_trimmed:]
+        if ref_bases_trimmed > 0:
+            reference_sequence = reference_sequence[ref_bases_trimmed:]
         reference_start += ref_positions_trimmed
 
     return cigartuples, query_sequence, reference_sequence, reference_start, reference_end

@@ -1241,20 +1241,252 @@ function orderLegend(legend_id, type) {
     createLegendColorPanel(legend_id);
 }
 
+function isCollapsedLabelTaken(label, skipIndex) {
+    if (!label) {
+        return false;
+    }
+
+    if (drawer && drawer.tree && drawer.tree.label_to_leaves && drawer.tree.label_to_leaves.hasOwnProperty(label)) {
+        return true;
+    }
+
+    for (let i = 0; i < collapsedNodes.length; i++) {
+        if (i === skipIndex) {
+            continue;
+        }
+
+        if (collapsedNodes[i]['label'] === label) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function markCollapsedNodesChanged(redraw=false) {
+    $('#tree_modified_warning').show();
+    $('#btn_draw_tree').addClass('glowingbutton');
+    $('#draw-btn').addClass('glowingbutton');
+
+    if (redraw) {
+        drawTree();
+    }
+}
+
+function sanitizeCollapsedNodes() {
+    for (let i = 0; i < collapsedNodes.length; i++) {
+        let node = collapsedNodes[i];
+        node.size = (typeof node.size !== 'undefined' && node.size !== null && node.size !== '') ? node.size : 0.25;
+
+        let fs = parseFloat(node.font_size);
+        node.font_size = (isNaN(fs) || fs <= 0) ? 100 : fs;
+
+        node.color = node.color || '#888888';
+    }
+}
+
+function buildTreeForCollapsedCount() {
+    if (typeof Tree === 'undefined' || !clusteringData) {
+        return null;
+    }
+
+    try {
+        let t = new Tree();
+        t.Parse(String(clusteringData).trim(), drawer && drawer.settings ? drawer.settings['edge-normalization'] : false);
+        if (t.error != 0) {
+            return null;
+        }
+        return t;
+    } catch (e) {
+        console.warn('Failed to build tree for collapsed-node counting', e);
+        return '?';
+    }
+}
+
+function getCollapsedNodeItemCount(collapse_attributes, tree_for_counting) {
+    const tree = tree_for_counting || (drawer && drawer.tree);
+
+    if (!tree) {
+        return '?';
+    }
+
+    const left_most = tree.label_to_leaves[collapse_attributes['left_most']];
+    const right_most = tree.label_to_leaves[collapse_attributes['right_most']];
+
+    if (!left_most || !right_most) {
+        return '?';
+    }
+
+    const cnode = tree.FindLowestCommonAncestor(left_most, right_most);
+    if (!cnode) {
+        return '?';
+    }
+
+    let count = 0;
+    const iterator = new PreorderIterator(cnode);
+    let q = iterator.Begin();
+    while (q) {
+        if (q.IsLeaf()) {
+            count++;
+        }
+        q = iterator.Next();
+    }
+
+    return count;
+}
+
+function refreshCollapsedNodesTable() {
+    const container = document.getElementById('collapsed_nodes_panel');
+    const wrapper = document.getElementById('collapsed_nodes_wrapper');
+
+    if (!container || !wrapper) {
+        return;
+    }
+
+    sanitizeCollapsedNodes();
+
+    container.innerHTML = '';
+
+    if (!collapsedNodes.length) {
+        wrapper.style.display = 'none';
+        return;
+    }
+
+    wrapper.style.display = 'block';
+
+    const table = document.createElement('table');
+    table.setAttribute('class', 'table table-sm table-striped mb-1');
+
+    const thead = document.createElement('thead');
+    thead.innerHTML = '<tr><th></th><th></th><th>Label</th><th>Font</th><th>Size</th><th>Num Items</th></tr>';
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+
+    const tree_for_counting = buildTreeForCollapsedCount();
+
+    collapsedNodes.forEach((node, idx) => {
+        const row = document.createElement('tr');
+
+        const actionCell = document.createElement('td');
+        const removeBtn = document.createElement('button');
+        removeBtn.setAttribute('class', 'btn btn-link p-0 m-0');
+        removeBtn.setAttribute('aria-label', 'Remove collapsed node');
+        removeBtn.innerHTML = '<i class="bi bi-trash-fill"></i>';
+        removeBtn.addEventListener('click', () => {
+            collapsedNodes.splice(idx, 1);
+            refreshCollapsedNodesTable();
+            markCollapsedNodesChanged();
+        });
+        actionCell.appendChild(removeBtn);
+        row.appendChild(actionCell);
+
+        const colorCell = document.createElement('td');
+        const colorDiv = document.createElement('div');
+        const colorValue = node.color || '#888888';
+        colorDiv.setAttribute('class', 'colorpicker colorpicker-base collapsed-colorpicker');
+        colorDiv.setAttribute('data-index', idx);
+        colorDiv.setAttribute('color', colorValue);
+        colorDiv.style.backgroundColor = colorValue;
+        colorDiv.style.cursor = 'pointer';
+        colorCell.appendChild(colorDiv);
+        row.appendChild(colorCell);
+
+        const labelCell = document.createElement('td');
+        labelCell.style.width = '267px';
+        const labelInput = document.createElement('input');
+        labelInput.type = 'text';
+        labelInput.value = node.label || `Collapsed Node ${idx + 1}`;
+        labelInput.className = 'form-control form-control-sm';
+        labelInput.addEventListener('change', () => {
+            if (isCollapsedLabelTaken(labelInput.value, idx)) {
+                toastr.warning('This label already exists in the tree.', 'Collapsed nodes');
+                labelInput.value = node.label;
+                return;
+            }
+            node.label = labelInput.value;
+            markCollapsedNodesChanged();
+        });
+        labelCell.appendChild(labelInput);
+        row.appendChild(labelCell);
+
+        const fontCell = document.createElement('td');
+        const fontInput = document.createElement('input');
+        fontInput.type = 'text';
+        fontInput.value = node.font_size || 0;
+        fontInput.className = 'form-control form-control-sm';
+        fontInput.style.width = '40px';
+        fontInput.addEventListener('change', () => {
+            const value = fontInput.value === '' ? 0 : fontInput.value;
+            node.font_size = value;
+            markCollapsedNodesChanged();
+        });
+        fontCell.appendChild(fontInput);
+        row.appendChild(fontCell);
+
+        const sizeCell = document.createElement('td');
+        const sizeInput = document.createElement('input');
+        sizeInput.type = 'text';
+        sizeInput.value = node.size || 0.25;
+        sizeInput.className = 'form-control form-control-sm';
+        sizeInput.style.width = '40px';
+        sizeInput.addEventListener('change', () => {
+            node.size = sizeInput.value;
+            markCollapsedNodesChanged();
+        });
+        sizeCell.appendChild(sizeInput);
+        row.appendChild(sizeCell);
+
+        const countCell = document.createElement('td');
+        countCell.textContent = getCollapsedNodeItemCount(node, tree_for_counting);
+        countCell.style.textAlign = 'center';
+        row.appendChild(countCell);
+
+        tbody.appendChild(row);
+    });
+
+    table.appendChild(tbody);
+    container.appendChild(table);
+
+    $(container).find('.collapsed-colorpicker').colpick({
+        layout: 'hex',
+        submit: 0,
+        colorScheme: 'light',
+        onChange: function(hsb, hex, rgb, el, bySetColor) {
+            const color = '#' + hex;
+            const index = parseInt(el.getAttribute('data-index'));
+            collapsedNodes[index].color = color;
+            $(el).css('background-color', color).attr('color', color);
+            if (!bySetColor) {
+                markCollapsedNodesChanged();
+            }
+        }
+    });
+}
+
 function loadOrderingAdditionalData(order) {
     collapsedNodes = [];
 
     if (order.hasOwnProperty('additional')) {
         let orders_additional = order['additional'];
 
-        if (typeof orders_additional === 'string') {
-            orders_additional = JSON.parse(orders_additional);
+        try {
+            // Additional data may arrive as JSON, a JSON-encoded string, or double-encoded
+            while (typeof orders_additional === 'string') {
+                orders_additional = JSON.parse(orders_additional);
+            }
+        } catch (error) {
+            console.warn('Failed to parse additional order data', error, orders_additional);
+            orders_additional = {};
         }
 
-        if (orders_additional.hasOwnProperty('collapsedNodes')) {
+        if (orders_additional && orders_additional.hasOwnProperty('collapsedNodes')) {
             collapsedNodes = orders_additional['collapsedNodes'];
         }
     }
+
+    sanitizeCollapsedNodes();
+    refreshCollapsedNodesTable();
 }
 
 function onTreeClusteringChange() {
@@ -1757,6 +1989,8 @@ function serializeSettings(use_layer_names) {
     state['bin-labels-font-size'] = $('#bin_labels_font_size').val();
     state['autorotate-bin-labels'] = $('#autorotate_bin_labels').is(':checked');
     state['estimate-taxonomy'] = $('#estimate_taxonomy').is(':checked');
+    state['use-taxonomy-bin-labels'] = $('#use_taxonomy_bin_labels').is(':checked');
+    state['taxonomy-label-level'] = $('input[name="taxonomy_label_level"]:checked').val();
     state['bin-labels-angle'] = $('#bin_labels_angle').val();
     state['background-opacity'] = $('#background_opacity').val();
     state['max-font-size-label'] = $('#max_font_size_label').val();
@@ -1889,7 +2123,8 @@ function drawTree() {
     var settings = serializeSettings();
     tree_type = settings['tree-type'];
 
-    $('#btn_draw_tree').removeClass('glowing-button');
+    $('#btn_draw_tree').removeClass('glowingbutton');
+    $('#draw-btn').removeClass('glowingbutton');
     $('#draw_delta_time').html('');
     $('#btn_draw_tree').prop('disabled', true);
     $('#bin_settings_tab').removeClass("disabled"); // enable bins tab
@@ -1916,6 +2151,7 @@ function drawTree() {
                 try {
                     drawer = new Drawer(settings);
                     drawer.draw();
+                    refreshCollapsedNodesTable();
                 }
                 catch (error) {
                     let issue_title = encodeURIComponent("Interactive interface, " + error);
@@ -2145,6 +2381,32 @@ const FUNCTION_CONFIGS = {
 
 };
 
+// CSS hooks for the waiting dialog so we can clean it up robustly
+const WAITING_DIALOG_CLASS = 'anvio-waiting-dialog';
+const WAITING_BACKDROP_CLASS = 'anvio-waiting-backdrop';
+
+// Ensure the waiting dialog and its backdrop disappear even if Bootstrap gets confused.
+function hideWaitingDialogSafely() {
+    try {
+        waitingDialog.hide();
+    } catch (err) {
+        console.error('Failed to hide waiting dialog', err);
+    }
+
+    try {
+        $(`.${WAITING_DIALOG_CLASS}`).modal('hide');
+        $(`.${WAITING_DIALOG_CLASS}`).remove();
+        $(`.${WAITING_BACKDROP_CLASS}`).remove();
+        if ($('.modal.show').length === 0) {
+            // No modal is visible, so we can safely clear any stray backdrops/body class.
+            $('.modal-backdrop').remove();
+            $('body').removeClass('modal-open');
+        }
+    } catch (err) {
+        console.error('Failed to clean waiting dialog remnants', err);
+    }
+}
+
 // Track ongoing function lookups to prevent duplicate requests and show progress.
 const ITEM_FUNCTION_REQUESTS_IN_FLIGHT = new Set();
 
@@ -2194,13 +2456,29 @@ function showItemFunctions(bin_id, config, updateOnly = false) {
         return;
     }
 
+    let requestFinished = false;
     const finishRequest = () => {
+        if (requestFinished) {
+            return;
+        }
+
+        requestFinished = true;
         ITEM_FUNCTION_REQUESTS_IN_FLIGHT.delete(requestKey);
-        waitingDialog.hide();
+        hideWaitingDialogSafely();
     };
 
     ITEM_FUNCTION_REQUESTS_IN_FLIGHT.add(requestKey);
-    waitingDialog.show(config.loadingMessage || 'Fetching functions...', { dialogSize: 'sm' });
+    waitingDialog.show(config.loadingMessage || 'Fetching functions...', {
+        dialogSize: 'sm',
+        onShow: function() {
+            const $waiting = $('.modal').filter(function() {
+                return $(this).find('.progress.progress-striped.active').length > 0;
+            }).last();
+
+            $waiting.addClass(WAITING_DIALOG_CLASS);
+            $('.modal-backdrop').last().addClass(WAITING_BACKDROP_CLASS);
+        }
+    });
 
     // Prepare AJAX data based on config
     let ajaxData = {};
@@ -2211,7 +2489,10 @@ function showItemFunctions(bin_id, config, updateOnly = false) {
         url: config.url,
         data: ajaxData,
         success: (response) => {
-            if (response.hasOwnProperty('status') && response.status != 0) {
+            const hasErrorStatus = response && typeof response === 'object' &&
+                                   response.hasOwnProperty('status') && response.status != 0;
+
+            if (hasErrorStatus) {
                 finishRequest();
                 toastr.error('"' + response.message + '", the server said.', "The anvi'o headquarters is upset");
                 return;
@@ -2248,7 +2529,8 @@ function showItemFunctions(bin_id, config, updateOnly = false) {
         error: () => {
             finishRequest();
             toastr.error('Failed to fetch functions for this bin. Please try again.', "The anvi'o headquarters is upset");
-        }
+        },
+        complete: finishRequest
     });
 }
 
@@ -3572,6 +3854,15 @@ function processState(state_name, state) {
         $('#estimate_taxonomy').prop('checked', state['estimate-taxonomy']).trigger('change');
     }
 
+    if (state.hasOwnProperty('taxonomy-label-level')) {
+        $(`input[name="taxonomy_label_level"][value="${state['taxonomy-label-level']}"]`).prop('checked', true);
+    }
+
+    if (state.hasOwnProperty('use-taxonomy-bin-labels')) {
+        $('#use_taxonomy_bin_labels').prop('checked', state['use-taxonomy-bin-labels']);
+        toggleTaxonomyLabeling();
+    }
+
     if (state.hasOwnProperty('show-grid-for-bins')) {
         $('#show_grid_for_bins').prop('checked', state['show-grid-for-bins']).trigger('change');
     }
@@ -3808,6 +4099,7 @@ function restoreOriginalTree(type) {
      .then(
         function() {
             collapsedNodes = [];
+            refreshCollapsedNodesTable();
             $('#tree_modified_warning').hide();
             drawTree();
         }
@@ -4079,6 +4371,16 @@ function toggleTaxonomyEstimation() {
         });
     }
 
+    if (!is_checked) {
+        $('#use_taxonomy_bin_labels').prop('checked', false);
+        $('#taxonomy-label-levels').hide();
+        if (bins) {
+            bins.DisableTaxonomyLabeling();
+        }
+    }
+
+    updateTaxonomyLabelingVisibility();
+
     /*
         loadState/processState triggers onchange event of inputs
         which causes problem when state is loaded before bins initialized
@@ -4087,6 +4389,44 @@ function toggleTaxonomyEstimation() {
     if (bins) {
         bins.UpdateBinsWindow();
     }
+}
+
+function updateTaxonomyLabelingVisibility() {
+    const estimationChecked = $('#estimate_taxonomy').is(':checked');
+    const hasTaxonomyData = (bins && typeof bins.HasTaxonomyData === 'function') ? bins.HasTaxonomyData() : false;
+
+    if (estimationChecked && hasTaxonomyData) {
+        $('#taxonomy-labeling-container').show();
+    } else {
+        if ($('#use_taxonomy_bin_labels').is(':checked') && bins) {
+            bins.DisableTaxonomyLabeling();
+        }
+        $('#use_taxonomy_bin_labels').prop('checked', false);
+        $('#taxonomy-label-levels').hide();
+        $('#taxonomy-labeling-container').hide();
+    }
+}
+
+function toggleTaxonomyLabeling() {
+    const shouldAssignLabels = $('#use_taxonomy_bin_labels').is(':checked');
+
+    if (shouldAssignLabels) {
+        $('#taxonomy-label-levels').show();
+        if (bins) {
+            bins.EnableTaxonomyLabeling();
+            bins.ApplyTaxonomyLabels();
+        }
+    } else {
+        $('#taxonomy-label-levels').hide();
+        if (bins) {
+            bins.DisableTaxonomyLabeling();
+        }
+    }
+}
+
+function onTaxonomyLabelLevelChange() {
+    if (!bins) return;
+    bins.ApplyTaxonomyLabels();
 }
 
 function ShadowBoxSelection(type) {

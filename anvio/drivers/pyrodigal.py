@@ -33,6 +33,7 @@ pp = terminal.pretty_print
 
 
 def predict(datum):
+    """Predict genes for a single contig (thread-safe, used with ThreadPool)."""
     contig_name, sequence, predictor = datum
     return (contig_name, predictor.find_genes(sequence))
 
@@ -132,16 +133,35 @@ class Pyrodigal_gv:
         self.run.info('Procedure', 'Single Genome (with `--prodigal-single-mode`)' if self.prodigal_single_mode else 'Metagenome (without `--prodigal-single-mode`)')
         self.run.info('Full gene calling reporting requested?', 'Yes' if self.full_gene_calling_report else 'No')
 
-        self.progress.new('Processing')
-        self.progress.update(f"Identifying ORFs using {terminal.pluralize('thread', self.num_threads)}.")
+        self.progress.new('Processing', progress_total_items=num_sequences_in_fasta_file)
+
+        mem_tracker = terminal.TrackMemory(at_most_every=5)
+        mem_usage, mem_diff = mem_tracker.start()
 
         # key variables to fill in
         gene_calls_dict = {}
         amino_acid_sequences_dict = {}
 
         gene_callers_id = 0
-        with multiprocessing.pool.Pool(self.num_threads) as pool:
-            for contig_name, predicted_genes in pool.map(predict, data):
+        num_contigs_processed = 0
+        # NOTE: We use ThreadPool instead of Pool (which is what we had been doing until
+        # recently 😱) because pyrodigal releases the GIL during gene prediction, making
+        # it completely thread-safe. By sharing memory across threads ThreadPool avoids
+        # the massive memory overhead of multiprocessing.Pool which duplicates data
+        # for each worker process as if memory prices are not increasing but decreasing
+        # (did you see that? did you see what capitalism did to memory prices? I saw it
+        # on the train this morning and that's why I decided to fix this).
+        with multiprocessing.pool.ThreadPool(self.num_threads) as pool:
+            for contig_name, predicted_genes in pool.imap_unordered(predict, data):
+                num_contigs_processed += 1
+                self.progress.increment()
+
+                if mem_tracker.measure():
+                    mem_usage = mem_tracker.get_last()
+                    mem_diff = mem_tracker.get_last_diff()
+
+                self.progress.update(f"ORF finding {pp(num_contigs_processed)}/{pp(num_sequences_in_fasta_file)} | MEMORY 🧠 {mem_usage} ({mem_diff})")
+
                 for gene in predicted_genes:
                     gene_calls_dict[gene_callers_id] = {'contig': contig_name,
                                                         'start': gene.begin - 1,

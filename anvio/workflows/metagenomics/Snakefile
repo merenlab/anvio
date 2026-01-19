@@ -1270,6 +1270,8 @@ rule dummy_rule_for_anvi_summarize:
 rule krakenuniq:
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{readset}-krakenuniq.log"
+    wildcard_constraints:
+        readset = SR_RS_RE
     input: unpack(lambda wildcards: M.get_fastq(wildcards.readset))
     output:
         raw = os.path.join(dirs_dict["TAXONOMY_DIR"], "{readset}.krakenuniq"),

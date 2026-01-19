@@ -55,6 +55,9 @@ anvi-run-hmms -c %(contigs-db)s \
               --add-to-functions-table
 {{ codestop }}
 
+{:.warning}
+If you want to use this flag with custom %(hmm-source)ss, then please make sure you include `ACC` lines specifying the accession number of each model in your `.hmm` file. If these lines are not included, then the HMMER software won't know the accession numbers of your models and we won't be able to add those accessions to your %(contigs-db)s, which might cause you some headaches later. We've recently added a sanity check for these `ACC` lines to help you remember to add them in, but if you are working with older versions of anvi'o, this message is here for you instead.
+
 ### Changing the HMMER program
 
 By default, `anvi-run-hmms` will use [HMMER](http://hmmer.org/)'s `hmmscan` for amino acid HMM profiles, but you can use `hmmsearch` if you are searching a very large number of models against a relatively smaller number of sequences:
@@ -107,3 +110,10 @@ Please note that this output **won't be used to filter hits to be added to the c
 ### Other things anvi-run-hmms can do
 
 * Add the tag `--also-scan-trnas` to basically run %(anvi-scan-trnas)s for you at the same time. It's very convenient. (But it only works if you are not using the `-I` or `-H` flags at the same time because reasons.)
+* Discover extra HMMs shipped with anvi'o but not run by default with `--list-miscellaneous-models`. This prints categories, descriptions, and the full paths to these models so you can copy-paste one into `-H` when you want to run it.
+* Prefer keywords instead of full paths for those extra models using `--miscellaneous-model`, or `-M`, which accepts model name as a parameter:
+
+{{ codestart }}
+anvi-run-hmms -c %(contigs-db)s \
+              -M DNA_Polymerase_Type_B
+{{ codestop }}

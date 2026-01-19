@@ -2,7 +2,7 @@
 # anvi'o. See the comments section at the end of this file for more information.
 
 v2020-04-27:
-    url: https://ndownloader.figshare.com/files/23345462
+    url: https://cloud.uol.de/public.php/dav/files/P9joDppCgdWNHeN
     archive_name: KEGG_build_2020-04-27_b893b7b915cb.tar.gz
     hash: b893b7b915cb
     modules_db_version: 1
@@ -12,7 +12,7 @@ v2020-04-27:
     no_maps: True
 
 v2020-06-23:
-    url: https://ndownloader.figshare.com/files/23701919
+    url: https://cloud.uol.de/public.php/dav/files/BsD82TY7rLeyStK
     archive_name: KEGG_build_2020-06-23_4a75508b48aa.tar.gz
     hash: 4a75508b48aa
     modules_db_version: 2
@@ -22,7 +22,7 @@ v2020-06-23:
     no_maps: True
 
 v2020-08-06:
-    url: https://ndownloader.figshare.com/files/25464530
+    url: https://cloud.uol.de/public.php/dav/files/33rmHGCe3pP7Rik
     archive_name: KEGG_build_2020-08-06_8f88ef165f4c.tar.gz
     hash: 8f88ef165f4c
     modules_db_version: 2
@@ -32,7 +32,7 @@ v2020-08-06:
     no_maps: True
 
 v2020-12-23:
-    url: https://ndownloader.figshare.com/files/25878342
+    url: https://cloud.uol.de/public.php/dav/files/q93ToHgfFqjHRxp
     archive_name: KEGG_build_2020-12-23_45b7cc2e4fdc.tar.gz
     hash: 45b7cc2e4fdc
     modules_db_version: 2
@@ -42,7 +42,7 @@ v2020-12-23:
     no_maps: True
 
 v2021-12-18:
-    url: https://figshare.com/ndownloader/files/31959416
+    url: https://cloud.uol.de/public.php/dav/files/zs4zxkXrDd3KKZ3
     archive_name: KEGG_build_2021-12-18_58937b64c44c.tar.gz
     hash: 58937b64c44c
     modules_db_version: 3
@@ -52,7 +52,7 @@ v2021-12-18:
     no_maps: True
 
 v2022-04-14:
-    url: https://figshare.com/ndownloader/files/34817812
+    url: https://cloud.uol.de/public.php/dav/files/99rQ83XTH5wpiTE
     archive_name: KEGG_build_2022-04-14_666feeac5de2.tar.gz
     hash: 666feeac5de2
     modules_db_version: 4
@@ -62,7 +62,7 @@ v2022-04-14:
     no_maps: True
 
 v2023-01-10:
-    url: https://figshare.com/ndownloader/files/38799687
+    url: https://cloud.uol.de/public.php/dav/files/TmY9M46PbaXtX46
     archive_name: KEGG_build_2023-01-10_d20a0dcd2128.tar.gz
     hash: d20a0dcd2128
     modules_db_version: 4
@@ -72,7 +72,7 @@ v2023-01-10:
     no_maps: True
 
 v2023-09-18:
-    url: https://figshare.com/ndownloader/files/42381873
+    url: https://cloud.uol.de/public.php/dav/files/An5SJ3cxoSPeEe3
     archive_name: KEGG_build_2023-09-18_a2b5bde358bb.tar.gz
     hash: a2b5bde358bb
     modules_db_version: 4
@@ -82,7 +82,7 @@ v2023-09-18:
     no_maps: True
 
 v2023-09-22:
-    url: https://figshare.com/ndownloader/files/42428115
+    url: https://cloud.uol.de/public.php/dav/files/sM2WHjZk63kADnQ
     archive_name: KEGG_build_2023-09-22_a2b5bde358bb.tar.gz
     hash: a2b5bde358bb
     modules_db_version: 4
@@ -91,7 +91,7 @@ v2023-09-22:
     no_maps: True
 
 v2024-03-09:
-    url: https://figshare.com/ndownloader/files/44953354
+    url: https://cloud.uol.de/public.php/dav/files/q2BCNzq4HQbHzsW # there is an 2024-03-04 that we don't use q2BCNzq4HQbHzsW
     archive_name: KEGG_build_2024-03-09_23910d68b4f2.tar.gz
     hash: 23910d68b4f2
     modules_db_version: 4
@@ -100,20 +100,20 @@ v2024-03-09:
     no_maps: True
 
 v2024-08-30:
-    url: https://figshare.com/ndownloader/files/48903154
+    url: https://cloud.uol.de/public.php/dav/files/bjA3ApX7wE8xSew
     archive_name: KEGG_build_2024-08-30_6b658b5c4379.tar.gz
     hash: 6b658b5c4379
     modules_db_version: 4
     no_nt_KOs: True
 
-v2024-09-29:
-    url: https://figshare.com/ndownloader/files/49500822
+v2024-09-08:
+    url: https://cloud.uol.de/public.php/dav/files/KRA5koHkaF7dBtC
     archive_name: KEGG_build_2024-09-29_5a9644d40061.tar.gz
     hash: 5a9644d40061
     modules_db_version: 4
 
 v2025-02-04:
-    url: https://figshare.com/ndownloader/files/52133138
+    url: https://cloud.uol.de/public.php/dav/files/gBBYae7Zx39eqeP
     archive_name: KEGG_build_2025-02-04_4039c79d9c82.tar.gz
     hash: 4039c79d9c82
     modules_db_version: 4
@@ -123,13 +123,13 @@ v2025-02-04:
 # expect delays in programs that access the modules DB when you use this snapshot
 # see https://github.com/merenlab/anvio/issues/2491 for details
 v2025-08-07:
-    url: https://figshare.com/ndownloader/files/57008792
+    url: https://cloud.uol.de/public.php/dav/files/94bAtMHzt77QrcC
     archive_name: KEGG_build_2025-08-07_66e53d49e65a.tar.gz
     hash: 66e53d49e65a
     modules_db_version: 4
 
 v2025-11-07:
-    url: https://figshare.com/ndownloader/files/59407568
+    url: https://cloud.uol.de/public.php/dav/files/HM2o22mExzoEa3n
     archive_name: KEGG_build_2025-11-07_68221bd12b30.tar.gz
     hash: 68221bd12b30
     modules_db_version: 4
@@ -137,6 +137,7 @@ v2025-11-07:
 # How to add a new KEGG snapshot to this file:
 # 1. download the latest data directly from KEGG by running
 #    `anvi-setup-kegg-data -D --kegg-data-dir ./KEGG -T 5 --include-nt-KOs`
+#    IMPORTANT: the directory MUST be called `KEGG` or the setup won't work
 # 2. get the hash value and version info from the MODULES.db:
 #    `anvi-db-info ./KEGG/MODULES.db`
 # 3. archive that directory:
@@ -145,8 +146,12 @@ v2025-11-07:
 #   MODULES.db hash value obtained in step 2
 # 4. Test that setup works with this archive by running
 #    `anvi-setup-kegg-data --kegg-archive KEGG_build_YYYY-MM-DD_HASH.tar.gz --kegg-data-dir TEST_NEW_KEGG_ARCHIVE`
-# 5. Upload the .tar.gz archive to figshare and get the download url
-# 6. Finally, add an entry to the bottom of this file with the url, archive name, and MODULES.db hash and version. 
+# 5. Upload the .tar.gz archive to a data repository that works with `curl` and get the download URL.
+#    Figshare doesn't work, but Zenodo is an option. Meren lab members can use the University of Oldenburg cloud 
+#    (cloud.uol.de, store the snapshot on the ROSA HPC at `ROSA_SHARE_NEXTCLOUD/KEGG_SNAPSHOTS` and create a public 
+#    link for it to get the a URL that ends with a unique ID for the file. Then insert that ID into the <ID> part of
+#    "https://cloud.uol.de/public.php/dav/files/<ID>" to get the URL that goes into this file).
+# 6. Finally, add an entry to the bottom of this file with the URL, archive name, and MODULES.db hash and version. 
 #    You should also update the default self.target_snapshot variable in metabolism/setup.py to point to this 
 #    latest version that you have added.
 # 7. Test it by running `anvi-setup-kegg-data --kegg-data-dir TEST_NEW_KEGG` (you don't need to run the full thing, 

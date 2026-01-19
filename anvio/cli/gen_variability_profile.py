@@ -18,7 +18,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['ekiefl', 'meren', 'ShaiberAlon']
 __resources__ = [("All about SNVs, SCVs, and SAAVs", "http://merenlab.org/2015/07/20/analyzing-variability/"), ("This program in action in the anvi'o structure tutorial", "http://merenlab.org/2018/09/04/getting-started-with-anvio-structure/#supplying-anvi-display-structure-with-sequence-variability")]
-__requires__ = ['contigs-db', 'profile-db', 'structure-db', 'bin', 'variability-profile', 'splits-txt']
+__requires__ = ['contigs-db', 'profile-db', 'structure-db', 'bin', 'variability-profile', 'splits-txt', 'genes-of-interest-txt']
 __provides__ = ['variability-profile-txt']
 __description__ = ("Generate a table that comprehensively summarizes the variability of nucleotide, "
                    "codon, or amino acid positions. We call these single nucleotide variants (SNVs), "

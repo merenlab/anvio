@@ -90,7 +90,7 @@ This is one of the most frequently used tabs in the interface, and there are mul
   - Display part of the interface is where you can adjust individual layer attributes like _color_, display _type_, _height_  and _min/max_ values. Click + drag each layer to rearrange how layers are ordered. Or _edit attributes for multiple lpngayers_ as well.
 
 - #### Layers subsection
-  - __Change general settings for the tree__ (i.e., switching between circle or rectengular displays, changing tree radius or width), __and layers__ (i.e., editing layer margins, or activating custom layer margins).
+  - __Change general settings for the tree__ (i.e., switching between circle or rectangular displays, changing tree radius or width), __and layers__ (i.e., editing layer margins, or activating custom layer margins).
   - __Load or save states__ to store all visual settings, or load a previously saved state.
   - Display usage is same as Items subsection.
   - Change the order of layers using automatically-generated or user-provided orders of layers using the Sample order combo box.

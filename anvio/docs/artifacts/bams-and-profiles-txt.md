@@ -19,7 +19,7 @@ Here is an example file:
 
 ### Optional columns
 
-In addition to the required columns shown above, you can add as many columns as you like in your file. But two of these columns will be further processed during sanity check: `r1` and `r2`, whith the expectation that these columns will include information regarding the location of the raw FASTQ files. For each row the %(bams-and-profiles-txt)s file describes, the FASTQ files must be those that were used to generate the BAM files. Here is an example file with these two additional columns: 
+In addition to the required columns shown above, you can add as many columns as you like in your file. But two of these columns will be further processed during sanity check: `r1` and `r2`, with the expectation that these columns will include information regarding the location of the raw FASTQ files. For each row the %(bams-and-profiles-txt)s file describes, the FASTQ files must be those that were used to generate the BAM files. Here is an example file with these two additional columns: 
 
 |name|contigs_db_path|profile_db_path|bam_file_path|r1|r2|
 |:--|:--:|:--:|:--:|:--:|:--:|

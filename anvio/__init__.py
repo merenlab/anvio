@@ -1331,6 +1331,16 @@ D = {
                      "the gene names that appear multiple times, and remove all but the one with the lowest e-value. Good "
                      "for whenever you really need to get only a single copy of single-copy core genes from a genome bin."}
                 ),
+    'return-best-hit-per-contig': (
+            ['--return-best-hit-per-contig'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Similar to `--return-best-hit`, but resolves ties at the contig level. If a contig has multiple hits "
+                     "for the same gene name and HMM source, only the hit with the lowest e-value will be kept. Please be "
+                     "CAREFUL using this flag, as it may remove legitimate copies of genes that are meant to be multi-copy, "
+                     "such as transfer RNAs, etc, and its behavior will be dependent on the nature of the HMM source being used."
+             }
+                ),
     'return-all-function-hits-for-each-gene': (
             ['--return-all-function-hits-for-each-gene'],
             {'default': False,
@@ -1596,7 +1606,8 @@ D = {
             ['--gene-caller-ids'],
             {'metavar': 'GENE_CALLER_IDS',
              'type': str,
-             'help': "Gene caller ids. Multiple of them can be declared separated by a delimiter (the default is a comma). "
+             'help': "Gene caller ids to focus on. Multiple of them can be declared separated by a delimiter (the default is a comma, "
+                     "and if there is no option to change the delimiter, you must use a comma)."
                      "In anvi-gen-variability-profile, if you declare nothing you will get all genes matching your other "
                      "filtering criteria. In other programs, you may get everything, nothing, or an error. It really depends "
                      "on the situation. Fortunately, mistakes are cheap, so it's worth a try."}
@@ -2662,9 +2673,22 @@ D = {
                      "This way you can run HMM profiles that are not included in anvi'o. See the online "
                      "to find out about the specifics of this directory structure ."}
                 ),
+    'miscellaneous-model': (
+            ['-M', '--miscellaneous-model'],
+            {'metavar': 'CATEGORY:MODEL',
+             'help': "Use a miscellaneous HMM model installed with anvi'o by its key. See '--list-miscellaneous-models' "
+                     "for available options."}
+                ),
     'installed-hmm-profile': (
             ['-I', '--installed-hmm-profile'],
             {'metavar': 'HMM PROFILE NAME(S)'}
+                ),
+    'list-miscellaneous-models': (
+            ['--list-miscellaneous-models'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "List the miscellaneous HMM profiles that are shipped with anvi'o but not run by default, "
+                     "including their categories, notes, and full paths to use with '-H'."}
                 ),
     'hmmer-output-dir': (
             ['--hmmer-output-dir'],
