@@ -1357,6 +1357,10 @@ class PDBDatabase(object):
         """Update the search database used by MODELLER so it shares the same proteins as this database"""
 
         modeller_database_dir = J(os.path.dirname(anvio.__file__), 'data/misc/MODELLER/db')
+        
+        # CREATE THE DIRECTORY IF IT DOESN'T EXIST
+        os.makedirs(modeller_database_dir, exist_ok=True)
+        
         pir_db = J(modeller_database_dir, 'pdb_95.pir')
         bin_db = J(modeller_database_dir, 'pdb_95.bin')
         dmnd_db = J(modeller_database_dir, 'pdb_95.dmnd')
