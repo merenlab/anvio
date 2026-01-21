@@ -674,8 +674,4 @@ class SyntenyGeneCluster():
                                   "fine-tuning efforts. By continuing with this advice you are required to not blame "
                                   "us if you get an error after a long wait.")
 
-        output_file = os.path.join(self.output_dir, 'synteny_cluster.tsv')
-        pangenome_data_df.set_index('position').to_csv(output_file, sep='\t')
-        self.run.info('Synteny cluster table', output_file)
-
         return(pangenome_data_df)

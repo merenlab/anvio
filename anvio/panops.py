@@ -1447,11 +1447,12 @@ class PangenomeGraph():
         gene_calls_df.to_csv(os.path.join(self.output_dir, 'gene_calls_df.tsv'), sep='\t')
         region_sides_df.to_csv(os.path.join(self.output_dir, 'region_sides_df.tsv'), sep='\t')
         nodes_df.to_csv(os.path.join(self.output_dir, 'nodes_df.tsv'), sep='\t')
+        self.pangenome_data_df.set_index('position').to_csv(os.path.join(self.output_dir, 'synteny_cluster.tsv'), sep='\t')
 
-        self.run.info_single("Gene calls", os.path.join(self.output_dir, 'gene_calls_df.tsv'))
-        self.run.info_single("Regieons", os.path.join(self.output_dir, 'region_sides_df.tsv'))
-        self.run.info_single("Nodes", os.path.join(self.output_dir, 'nodes_df.tsv'))
-
+        self.run.info_single(f"Functions table saved in {os.path.join(self.output_dir, 'synteny_cluster.tsv')}.")
+        self.run.info_single(f"Gene calls summary table saved in {os.path.join(self.output_dir, 'gene_calls_df.tsv')}.")
+        self.run.info_single(f"Regions summary table saved in {os.path.join(self.output_dir, 'region_sides_df.tsv')}.")
+        self.run.info_single(f"Nodes summary table saved in {os.path.join(self.output_dir, 'nodes_df.tsv')}.")
 
     def layout_pangenome_graph(self):
         self.run.warning(None, header="Running maximum force layout algorithm", lc="green")
