@@ -3488,6 +3488,8 @@ class PanGraphSuperclass(PanSuperclass):
         self.views = {}
         self.collection_profile = {}
 
+        self.synteny_gene_cluster_summary_info = {}
+
         # self.items_additional_data_dict = None
         # self.items_additional_data_keys = None
 
@@ -3621,6 +3623,9 @@ class PanGraphSuperclass(PanSuperclass):
         self.pangenome_graph.set_node_groups(node_groups)
         self.pangenome_graph.cut_edges(max_edge_length_filter)
 
+        region_sides_df, nodes_df, gene_calls_df = self.pangenome_graph.summarize()
+        self.synteny_gene_cluster_summary_info = pd.merge(nodes_df.reset_index(drop=False), region_sides_df.reset_index(drop=False), how="left", on="region_id").set_index('syn_cluster').to_dict(orient='index')
+
     def rerun_state(self, gene_cluster_grouping_threshold, groupcompress, max_edge_length_filter):
 
         args = argparse.Namespace(pan_or_profile_db=self.pan_graph_db_path, target_data_table="layer_orders")
@@ -3648,6 +3653,9 @@ class PanGraphSuperclass(PanSuperclass):
         self.pangenome_graph.set_node_positions(node_positions)
         self.pangenome_graph.set_node_groups(node_groups)
         self.pangenome_graph.cut_edges(max_edge_length_filter)
+
+        region_sides_df, nodes_df, gene_calls_df = self.pangenome_graph.summarize()
+        self.synteny_gene_cluster_summary_info = pd.merge(nodes_df.reset_index(drop=False), region_sides_df.reset_index(drop=False), how="left", on="region_id").set_index('syn_cluster').to_dict(orient='index')
 
     def get_json(self):
 
@@ -3722,6 +3730,7 @@ class PanGraphSuperclass(PanSuperclass):
         return self.gene_callers_id_to_synteny_gene_cluster
 
     def init_synteny_gene_clusters(self):
+
         for node, data in self.nodes.items():
             if data['gene_cluster_id'] != 'GC_00000000':
                 self.synteny_gene_clusters[node] = {}

@@ -79,6 +79,7 @@ class PangenomeGraphUserInterface {
         this.get_gene_cluster_basics_table = this.get_gene_cluster_basics_table.bind(this);
         this.get_layer_data = this.get_layer_data.bind(this);
         this.get_gene_cluster_functions_table = this.get_gene_cluster_functions_table.bind(this);
+        this.get_region_data = this.get_region_data.bind(this)
         this.appendalignment = this.appendalignment.bind(this);
         this.get_color_code = this.get_color_code.bind(this);
         this.alignment_download = this.alignment_download.bind(this);
@@ -2511,6 +2512,8 @@ class PangenomeGraphUserInterface {
         var basic_layer_table = this.get_layer_data(gene_cluster_id, add_align);
         
         var functions_table = await this.get_gene_cluster_functions_table(gene_cluster_id, add_align);
+
+        var regions_table = await this.get_region_data(gene_cluster_id, add_align);
         
         ///////////////////////////////////////////////////////////////////////////////////////////
         // RETRIEVE AND BUILD SEQUENCE ALIGNMENTS
@@ -2539,11 +2542,11 @@ class PangenomeGraphUserInterface {
             // MERGE ALL AND RETURN
             ///////////////////////////////////////////////////////////////////////////////////////////
             
-            return gene_cluster_context_table + basic_info_table + basic_layer_table + functions_table + gene_cluster_sequence_alignments_table
+            return gene_cluster_context_table + basic_info_table + basic_layer_table + regions_table + functions_table + gene_cluster_sequence_alignments_table
         
         } else {
         
-            return gene_cluster_context_table + basic_info_table + basic_layer_table + functions_table
+            return gene_cluster_context_table + basic_info_table + basic_layer_table + regions_table + functions_table
         
         }
     }
@@ -2625,6 +2628,39 @@ class PangenomeGraphUserInterface {
         basic_info_table += `</tr></tbody></table>`;
         
         return basic_info_table;
+    }
+
+    async get_region_data(gene_cluster_id, add_align) {
+
+      var d = await this.get_gene_cluster_region_data([gene_cluster_id]);
+      console.log(d)
+      var region_info = d['data'][gene_cluster_id]
+        
+      if (add_align == 1) {
+            var region_table = `<p class="settings-secondary-header mb-3 mt-3">LAYERS</p>`;
+            region_table += `<table class="table table-striped table-bordered sortable" id="node_regions_table">`;
+        } else {
+            var region_table = ''
+            region_table += `<table class="table table-striped table-bordered sortable">`;
+        }
+        
+        region_table += `<thead><tr>`;
+        
+        region_table += `<th scope="col">Metrics</th>`;
+        region_table += `<th scope="col">Value</th>`;
+        
+        region_table += `</tr></thead>`;
+        region_table += `<tbody>`;
+        for (const [key, value] of Object.entries(region_info)) {
+            region_table += `<tr>`
+            region_table += `<td>` + key + `</td>`;
+            region_table += `<td>` + value + `</td>`;
+            region_table += `</tr>`;
+        }
+        region_table += `</tbody></table>`;
+        
+        return region_table;
+
     }
     
     async get_gene_cluster_functions_table(gene_cluster_id, add_align) {
@@ -2740,6 +2776,28 @@ class PangenomeGraphUserInterface {
         return alignments_table;
     }
 
+    get_gene_cluster_region_data(gene_cluster_names) {
+        
+        var func = {};
+        func['synteny_gene_clusters'] = gene_cluster_names
+    
+        var d = $.ajax({
+            url: "/pangraph/get_pangraph_synteny_gene_cluster_region",
+            type: "POST",
+            data: JSON.stringify(func),
+            contentType: "application/json",
+            dataType: "json",
+            error: function(){
+                console.log('Error while attempting to fetch region.')
+            },
+            success: function(){
+                console.log('Successfully fetched alignment.')
+            }
+        })
+        
+        return d
+    }
+    
     get_gene_cluster_consensus_functions(gene_cluster_names) {
     
         var func = {};
@@ -2790,10 +2848,12 @@ class PangenomeGraphUserInterface {
         var basics = $('#node_basics_table')
         var title = basics[0].getAttribute("gc_id")
         var layers = $('#node_layers_table')
+        var regions = $('#node_regions_table')
         var functions = $('#node_functions_table')
         
         var basics_rows = basics[0].getElementsByTagName('tr');
         var layers_rows = layers[0].getElementsByTagName('tr');
+        var regions_rows = regions[0].getElementsByTagName('tr');
         
         var function_rows = functions[0].getElementsByTagName('tr');
         
@@ -2803,11 +2863,13 @@ class PangenomeGraphUserInterface {
                 var basics_cols = []
                 basics_cols = Array.prototype.concat.apply(basics_cols, basics_rows[1].querySelectorAll('td,th'));
                 basics_cols = Array.prototype.concat.apply(basics_cols, layers_rows[1].querySelectorAll('td,th'));
+                basics_cols = Array.prototype.concat.apply(basics_cols, regions_rows[1].querySelectorAll('td,th'));
                 var function_cols = function_rows[i].querySelectorAll('td,th');
             } else { 
                 var basics_cols = []
                 basics_cols = Array.prototype.concat.apply(basics_cols, basics_rows[i].querySelectorAll('td,th'));
                 basics_cols = Array.prototype.concat.apply(basics_cols, layers_rows[i].querySelectorAll('td,th'));
+                basics_cols = Array.prototype.concat.apply(basics_cols, regions_rows[i].querySelectorAll('td,th'));
                 var function_cols = function_rows[i].querySelectorAll('td,th');
             }
             

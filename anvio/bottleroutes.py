@@ -207,6 +207,7 @@ class BottleApplication(Bottle):
         self.route('/pangraph/rerun_pangraph_json_data',                          callback=self.rerun_pangraph_json_data, method='POST')
         self.route('/pangraph/get_pangraph_synteny_gene_cluster_alignment',       callback=self.get_pangraph_synteny_gene_cluster_alignment, method="POST")
         self.route('/pangraph/get_pangraph_synteny_gene_cluster_function',        callback=self.get_pangraph_synteny_gene_cluster_function, method="POST")
+        self.route('/pangraph/get_pangraph_synteny_gene_cluster_region',          callback=self.get_pangraph_synteny_gene_cluster_region, method="POST")
         self.route('/pangraph/get_pangraph_synteny_gene_cluster_search_result',   callback=self.get_pangraph_synteny_gene_cluster_search_result, method="POST")
 
 
@@ -1704,6 +1705,19 @@ class BottleApplication(Bottle):
             synteny_gene_clusters = payload['synteny_gene_clusters']
 
             data = self.interactive.get_sequences_for_synteny_gene_clusters(gene_cluster_names=set(synteny_gene_clusters))
+            return(json.dumps({'status': 0, 'data': data}))
+        except:
+            return(json.dumps({'status': 1, 'data': ''}))
+
+    
+    def get_pangraph_synteny_gene_cluster_region(self):
+
+        try:
+            payload = request.json
+            synteny_gene_clusters = payload['synteny_gene_clusters']
+
+            data = {synteny_gene_cluster: self.interactive.synteny_gene_cluster_summary_info[synteny_gene_cluster] for synteny_gene_cluster in synteny_gene_clusters}
+
             return(json.dumps({'status': 0, 'data': data}))
         except:
             return(json.dumps({'status': 1, 'data': ''}))
