@@ -1738,7 +1738,7 @@ class DGR_Finder:
 
         return False
 
-    def find_optimal_mismatch_window(self, qseq, hseq, chars_to_skip, min_length, min_mismatches, max_non_dominant=1, max_gaps=0):
+    def find_optimal_mismatch_window(self, vr_seq, tr_seq, chars_to_skip, min_length, min_mismatches, max_non_dominant=1, max_gaps=0):
         """
         Find the longest contiguous window where:
         1. First and last mismatches are to the dominant base
@@ -1749,10 +1749,10 @@ class DGR_Finder:
 
         Parameters
         ==========
-        qseq : str
-            Query sequence (VR) from BLAST alignment.
-        hseq : str
-            Hit/subject sequence (TR) from BLAST alignment.
+        vr_seq : str
+            Variable region sequence from BLAST alignment.
+        tr_seq : str
+            Template region sequence from BLAST alignment (used for dominant base detection).
         chars_to_skip : set
             Characters to ignore when counting mismatches (e.g., {'N', '-'}).
         min_length : int
@@ -1771,11 +1771,11 @@ class DGR_Finder:
         """
         # Collect all mismatch positions and their TR base
         mismatch_positions = []
-        for idx in range(len(qseq)):
-            if qseq[idx] in chars_to_skip or hseq[idx] in chars_to_skip:
+        for idx in range(len(vr_seq)):
+            if vr_seq[idx] in chars_to_skip or tr_seq[idx] in chars_to_skip:
                 continue
-            if qseq[idx] != hseq[idx]:
-                mismatch_positions.append((idx, hseq[idx]))
+            if vr_seq[idx] != tr_seq[idx]:
+                mismatch_positions.append((idx, tr_seq[idx]))
 
         if len(mismatch_positions) < min_mismatches:
             return None
@@ -1828,10 +1828,10 @@ class DGR_Finder:
                 if j < n_mismatches:
                     align_end = mismatch_positions[j][0]
                 else:
-                    align_end = len(qseq)
+                    align_end = len(vr_seq)
 
                 # Check gap count in the extended window
-                gap_count = qseq[align_start:align_end].count('-') + hseq[align_start:align_end].count('-')
+                gap_count = vr_seq[align_start:align_end].count('-') + tr_seq[align_start:align_end].count('-')
                 if gap_count > max_gaps:
                     continue
 
@@ -1986,8 +1986,12 @@ class DGR_Finder:
                         # ========== TWO-STAGE FILTERING ==========
                         # Stage 1: Permissive initial filter
                         # Check if any base has >= initial_threshold (60%) of mismatches
+                        # IMPORTANT: We check the TR side for dominant base (A)
+                        # In activity mode: TR is subject (hseq), so use subject_mismatch_counts
+                        # In homology mode: TR is query (qseq), so use query_mismatch_counts
+                        tr_mismatch_counts = subject_mismatch_counts if vr_in_query else query_mismatch_counts
                         passes_initial_filter = False
-                        for letter, count in subject_mismatch_counts.items():
+                        for letter, count in tr_mismatch_counts.items():
                             initial_percentage = count / mismatch_length_bp
                             if initial_percentage >= self.initial_mismatch_bias_threshold:
                                 passes_initial_filter = True
@@ -1998,13 +2002,25 @@ class DGR_Finder:
 
                         # Stage 2: Optimal window trimming
                         # Find the longest region where >= 95% of mismatches are to dominant base
-                        trim_result = self.find_optimal_mismatch_window(
-                            qseq, hseq, chars_to_skip,
-                            self.minimum_vr_length,
-                            self.number_of_mismatches,
-                            self.max_non_dominant,
-                            self.max_alignment_gaps
-                        )
+                        # The function expects (vr_seq, tr_seq) so we swap order for homology mode
+                        if vr_in_query:
+                            # Activity mode: query=VR, subject=TR
+                            trim_result = self.find_optimal_mismatch_window(
+                                qseq, hseq, chars_to_skip,
+                                self.minimum_vr_length,
+                                self.number_of_mismatches,
+                                self.max_non_dominant,
+                                self.max_alignment_gaps
+                            )
+                        else:
+                            # Homology mode: query=TR, subject=VR - swap order
+                            trim_result = self.find_optimal_mismatch_window(
+                                hseq, qseq, chars_to_skip,
+                                self.minimum_vr_length,
+                                self.number_of_mismatches,
+                                self.max_non_dominant,
+                                self.max_alignment_gaps
+                            )
 
                         if trim_result is None:
                             # No valid trimmed window found
@@ -2041,10 +2057,16 @@ class DGR_Finder:
                         letter = dominant_base
 
                         # Recalculate percentage for the trimmed region
-                        percentage_of_mismatches = subject_mismatch_counts.get(letter, 0) / mismatch_length_bp if mismatch_length_bp > 0 else 0
+                        # The dominant base should be on the TR side
+                        # Activity mode: TR is subject; Homology mode: TR is query
+                        tr_counts = subject_mismatch_counts if vr_in_query else query_mismatch_counts
+                        percentage_of_mismatches = tr_counts.get(letter, 0) / mismatch_length_bp if mismatch_length_bp > 0 else 0
 
-                        # to test for VR diversity of base types in the sequence
-                        non_zero_bases = sum(1 for count in query_mismatch_counts.values() if count > 0)
+                        # To test for VR diversity of base types in the sequence
+                        # VR should have multiple different bases at mismatch positions
+                        # Activity mode: VR is query; Homology mode: VR is subject
+                        vr_counts = query_mismatch_counts if vr_in_query else subject_mismatch_counts
+                        non_zero_bases = sum(1 for count in vr_counts.values() if count > 0)
                         if not non_zero_bases >= self.min_mismatching_base_types_vr:
                             continue
 
@@ -2087,9 +2109,9 @@ class DGR_Finder:
                             midline = ''.join(reversed(original_midline))
                             base = 'A'
                             is_reverse_complement = True
-                            # query_frame is the VR frame
+                            # Flip frames for reverse complement
+                            # (actual VR/TR assignment happens in semantic swap below)
                             new_query_frame = original_query_frame * -1
-                            # subject_frame is the TR frame
                             new_subject_frame = original_subject_frame * -1
                         else:
                             hit_sequence = str(trimmed_hseq)
@@ -2103,10 +2125,12 @@ class DGR_Finder:
                         # to test for VR diversity of base types in the sequence
                         # count the distinct base types in the sequence
                         # ignore gaps and ambiguous bases if needed
-                        query_unique_bases = set(query_sequence) - {"-", "N"}
+                        # Activity mode: VR is query_sequence; Homology mode: VR is hit_sequence
+                        vr_sequence_for_diversity = query_sequence if vr_in_query else hit_sequence
+                        vr_unique_bases = set(vr_sequence_for_diversity) - {"-", "N"}
 
                         # ensure the sequence has at least the required number of distinct base types (default 2)
-                        if len(query_unique_bases) <= self.min_base_types_vr:
+                        if len(vr_unique_bases) <= self.min_base_types_vr:
                             continue
 
                         # By default (conservative), filter for A-base mutagenesis only.
