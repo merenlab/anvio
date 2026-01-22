@@ -89,9 +89,21 @@ def get_args():
     groupX.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     groupX.add_argument(*anvio.A('verbose'), **anvio.K('verbose'))
 
-    groupA = parser.add_argument_group('INPUT DATA', "Contigs.db AND a Profile.db preferably a merged profile.db. The tool searches for DGRs based on areas of high SNV density")
+    groupA = parser.add_argument_group('INPUT DATA', "Contigs.db AND optionally a Profile.db (preferably a merged profile.db). "
+                        "The tool can search for DGRs using SNV patterns from metagenomes (activity-based, requires profile.db) "
+                        "and/or by searching near Reverse Transcriptase genes (homology-based, requires RT HMM).")
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': True}))
-    groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': True})) #ADD THAT HAS TO BE MERGED_DB, unless have
+    groupA.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db', {'required': False}))
+
+    groupAA = parser.add_argument_group('DETECTION MODE', "Choose how DGRs should be detected. Activity-based detection uses SNV patterns "
+                        "from metagenomes to find active DGRs. Homology-based detection searches for TR/VR pairs near Reverse Transcriptase genes.")
+    groupAA.add_argument("--detection-mode", help="DGR detection mode: 'activity' uses SNV patterns (requires profile.db), "
+                        "'homology' searches near RT genes (requires RT HMM), 'both' runs both approaches and merges results. "
+                        "Default: 'both' if profile.db provided, 'homology' otherwise.", type=str, default=None,
+                        choices=['activity', 'homology', 'both'], metavar="MODE")
+    groupAA.add_argument("--rt-window-size", help="Size of the window (in bp) to search around each Reverse Transcriptase gene "
+                        "for TR/VR pairs in homology-based detection. The window extends this many bp on each side of the RT gene. "
+                        "Default = 2000 (total 4kb window).", type=int, default=2000, metavar="INT")
 
     groupE = parser.add_argument_group('CONTIGS AND PROFILE DB INPUT ARGUMENTS', "Options for using the Contigs.db and Profile.db input for this program")
     groupE.add_argument("-I","--hmm-usage", required = False, help="The name of the HMM run with your Contigs.db. If not provided, "

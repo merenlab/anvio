@@ -99,6 +99,10 @@ class DGR_Finder:
         self.snv_codon_position = A('snv_codon_position') or 0.33 # default is 33% of SNVs in the third codon position
         self.max_alignment_gaps = A('max_alignment_gaps') or 0
 
+        # Detection mode parameters
+        self.detection_mode = A('detection_mode')  # Will be resolved in sanity_check based on available inputs
+        self.rt_window_size = A('rt_window_size') or 2000  # bp on each side of RT gene
+
         # Per-sample SNV analysis thresholds (hardcoded for now, no CLI args)
         self.min_snvs_per_sample = 5
         self.max_pct_snv_codon_3_per_sample = 33  # percent
@@ -115,6 +119,8 @@ class DGR_Finder:
             self.run.info('Threads Used', self.num_threads)
         # be talkative or not
         self.verbose = A('verbose')
+        self.run.info('Detection mode', self.detection_mode if self.detection_mode else "(will be determined based on inputs)")
+        self.run.info('RT window size (bp each side)', self.rt_window_size)
         self.run.info('BLASTn word size', self.word_size)
         self.run.info('Skip "N" characters', self.skip_Ns)
         self.run.info('Skip "-" characters', self.skip_dashes)
@@ -174,7 +180,8 @@ class DGR_Finder:
                                                 ('pct_mismatch_codon_3', float), ('vr_gene_id', str), ('n_snvs_total', int),
                                                 ('n_snvs_explained', int), ('n_snvs_unexplained', int), ('n_explained_diverse', int), ('pct_snvs_explained', float),
                                                 ('snv_codon_1', int), ('snv_codon_2', int), ('snv_codon_3', int),
-                                                ('pct_snv_codon_3', float), ('confidence', str), ('confidence_reasons', list)]
+                                                ('pct_snv_codon_3', float), ('confidence', str), ('confidence_reasons', list),
+                                                ('detection_method', str)]
 
 
 
