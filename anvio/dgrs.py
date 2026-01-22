@@ -2421,6 +2421,7 @@ class DGR_Finder:
                 snv_supporting_sample = best_hit.get('snv_supporting_sample', None)
                 confidence = best_hit.get('confidence', 'N/A')
                 confidence_reasons = best_hit.get('confidence_reasons', [])
+                detection_method = best_hit.get('detection_method', 'activity')
 
                 # need to check if the new TR you're looping through exists in the DGR_found_dict, see if position overlap
                 if not self.DGRs_found_dict:
@@ -2435,7 +2436,8 @@ class DGR_Finder:
                                 snv_VR_positions, numb_of_snv_in_matches_not_mutagen_base, numb_of_mismatches, numb_of_SNVs, best_amongst_multiple_TRs_for_one_VR,
                                 mismatch_codon_1, mismatch_codon_2, mismatch_codon_3, pct_mismatch_codon_3, vr_gene_id,
                                 n_snvs_total, n_snvs_explained, n_snvs_unexplained, n_explained_diverse, pct_snvs_explained,
-                                snv_codon_1, snv_codon_2, snv_codon_3, pct_snv_codon_3, snv_supporting_sample, confidence, confidence_reasons)
+                                snv_codon_1, snv_codon_2, snv_codon_3, pct_snv_codon_3, snv_supporting_sample, confidence, confidence_reasons,
+                                detection_method)
                 else:
                     was_added = False
                     for dgr in self.DGRs_found_dict:
@@ -2451,7 +2453,8 @@ class DGR_Finder:
                                             numb_of_snv_in_matches_not_mutagen_base, numb_of_mismatches, numb_of_SNVs, best_amongst_multiple_TRs_for_one_VR,
                                             mismatch_codon_1, mismatch_codon_2, mismatch_codon_3, pct_mismatch_codon_3, vr_gene_id,
                                             n_snvs_total, n_snvs_explained, n_snvs_unexplained, n_explained_diverse, pct_snvs_explained,
-                                            snv_codon_1, snv_codon_2, snv_codon_3, pct_snv_codon_3, snv_supporting_sample, confidence, confidence_reasons)
+                                            snv_codon_1, snv_codon_2, snv_codon_3, pct_snv_codon_3, snv_supporting_sample, confidence, confidence_reasons,
+                                            detection_method)
                             break
                     if not was_added:
                         # add new TR and its first VR
@@ -2480,7 +2483,8 @@ class DGR_Finder:
                                         numb_of_SNVs, best_amongst_multiple_TRs_for_one_VR,
                                         mismatch_codon_1, mismatch_codon_2, mismatch_codon_3, pct_mismatch_codon_3, vr_gene_id,
                                         n_snvs_total, n_snvs_explained, n_snvs_unexplained, n_explained_diverse, pct_snvs_explained,
-                                        snv_codon_1, snv_codon_2, snv_codon_3, pct_snv_codon_3, snv_supporting_sample, confidence, confidence_reasons)
+                                        snv_codon_1, snv_codon_2, snv_codon_3, pct_snv_codon_3, snv_supporting_sample, confidence, confidence_reasons,
+                                        detection_method)
 
         # summary of DGRs found
         if num_DGR > 0:
@@ -2508,7 +2512,8 @@ class DGR_Finder:
                     mismatch_codon_1=0, mismatch_codon_2=0, mismatch_codon_3=0, pct_mismatch_codon_3=0, vr_gene_id=None,
                     n_snvs_total=0, n_snvs_explained=0, n_snvs_unexplained=0, n_explained_diverse=0, pct_snvs_explained=100,
                     snv_codon_1=0, snv_codon_2=0, snv_codon_3=0, pct_snv_codon_3=0,
-                    snv_supporting_sample=None, confidence='N/A', confidence_reasons=None):
+                    snv_supporting_sample=None, confidence='N/A', confidence_reasons=None,
+                    detection_method='activity'):
         """
         This function is adding the DGRs that are found initially to the DGRs_found_dict.
 
@@ -2586,6 +2591,7 @@ class DGR_Finder:
         self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['snv_supporting_sample'] = snv_supporting_sample
         self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['confidence'] = confidence
         self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['confidence_reasons'] = confidence_reasons if confidence_reasons else []
+        self.DGRs_found_dict[DGR_key]['VRs']['VR_001']['detection_method'] = detection_method
 
 
     def update_existing_DGR(self, existing_DGR_key, bin, TR_frame, VR_sequence, VR_frame, TR_sequence, midline, percentage_of_mismatches, is_reverse_complement,
@@ -2595,7 +2601,8 @@ class DGR_Finder:
                             mismatch_codon_1=0, mismatch_codon_2=0, mismatch_codon_3=0, pct_mismatch_codon_3=0, vr_gene_id=None,
                             n_snvs_total=0, n_snvs_explained=0, n_snvs_unexplained=0, n_explained_diverse=0, pct_snvs_explained=100,
                             snv_codon_1=0, snv_codon_2=0, snv_codon_3=0, pct_snv_codon_3=0,
-                            snv_supporting_sample=None, confidence='N/A', confidence_reasons=None):
+                            snv_supporting_sample=None, confidence='N/A', confidence_reasons=None,
+                            detection_method='activity'):
         """
         This function is updating the DGRs in the DGRs_found_dict with those DGRs that overlap each other.
 
@@ -2666,6 +2673,7 @@ class DGR_Finder:
         self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['snv_supporting_sample'] = snv_supporting_sample
         self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['confidence'] = confidence
         self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['confidence_reasons'] = confidence_reasons if confidence_reasons else []
+        self.DGRs_found_dict[existing_DGR_key]['VRs'][new_VR_key]['detection_method'] = detection_method
 
         self.DGRs_found_dict[existing_DGR_key]['TR_start_position'] = min(subject_genome_start_position, self.DGRs_found_dict[existing_DGR_key]['TR_start_position'])
         self.DGRs_found_dict[existing_DGR_key]['TR_end_position'] = max(subject_genome_end_position, self.DGRs_found_dict[existing_DGR_key]['TR_end_position'])
@@ -3384,7 +3392,8 @@ class DGR_Finder:
             "mismatch_codon_1", "mismatch_codon_2", "mismatch_codon_3", "pct_mismatch_codon_3",
             "vr_gene_id", "n_snvs_total", "n_snvs_explained", "n_snvs_unexplained", "n_explained_diverse", "pct_snvs_explained",
             "snv_codon_1", "snv_codon_2", "snv_codon_3", "pct_snv_codon_3",
-            "snv_supporting_sample", "confidence", "confidence_reasons"]
+            "snv_supporting_sample", "confidence", "confidence_reasons",
+            "detection_method"]
 
         # check if either dictionary is empty or lacks meaningful keys
         if not any(dgrs_dict.values()):
@@ -3423,7 +3432,8 @@ class DGR_Finder:
                         vr_data.get("snv_codon_1", 0), vr_data.get("snv_codon_2", 0),
                         vr_data.get("snv_codon_3", 0), vr_data.get("pct_snv_codon_3", 0),
                         vr_data.get("snv_supporting_sample", "N/A"),
-                        vr_data.get("confidence", "N/A"), vr_data.get("confidence_reasons", [])
+                        vr_data.get("confidence", "N/A"), vr_data.get("confidence_reasons", []),
+                        vr_data.get("detection_method", "activity")
                     ]
                     f.write('\t'.join(map(str, csv_row)) + '\n')
         return
