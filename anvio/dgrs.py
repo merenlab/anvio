@@ -190,10 +190,53 @@ class DGR_Finder:
         Basic checks for a smooth operation
         """
 
-        # first check the contigs.db and profile.db exists
+        # Contigs.db is always required
         utils.is_contigs_db(self.contigs_db_path)
-        utils.is_profile_db(self.profile_db_path)
 
+        # Check if profile.db exists (may be optional depending on detection mode)
+        profile_db_exists = self.profile_db_path and os.path.exists(self.profile_db_path)
+        if profile_db_exists:
+            utils.is_profile_db(self.profile_db_path)
+
+        # ========== DETECTION MODE RESOLUTION ==========
+        # Resolve detection_mode based on user input and available data
+        if self.detection_mode is None:
+            # User didn't specify, determine based on available inputs
+            if profile_db_exists:
+                self.detection_mode = 'both'
+                self.run.info_single("No --detection-mode specified. Since a profile.db is provided, "
+                                    "anvi'o will use 'both' activity and homology-based detection.", nl_before=1)
+            else:
+                self.detection_mode = 'homology'
+                self.run.warning("No --detection-mode specified and no profile.db provided. Anvi'o will use "
+                               "'homology' mode only, which searches for DGRs near Reverse Transcriptase genes. "
+                               "To use activity-based detection (which finds active DGRs using SNV patterns), "
+                               "please provide a profile.db.",
+                               header="DEFAULTING TO HOMOLOGY-ONLY MODE")
+        elif self.detection_mode == 'activity':
+            # Activity mode requires profile.db
+            if not profile_db_exists:
+                raise ConfigError("You requested --detection-mode 'activity', but no profile.db was provided. "
+                                "Activity-based detection requires SNV data from a profile database. Please provide "
+                                "a profile.db with --profile-db, or use --detection-mode 'homology' instead.")
+        elif self.detection_mode == 'both':
+            # Both mode prefers profile.db, but can fall back to homology-only
+            if not profile_db_exists:
+                self.detection_mode = 'homology'
+                self.run.warning("You requested --detection-mode 'both', but no profile.db was provided. "
+                               "Anvi'o is switching to 'homology' mode only. To use both detection modes, "
+                               "please provide a profile.db with --profile-db.",
+                               header="SWITCHING TO HOMOLOGY-ONLY MODE")
+        # else: detection_mode == 'homology', no profile.db needed
+
+        # Update the displayed detection mode now that it's resolved
+        self.run.info('Detection mode (resolved)', self.detection_mode)
+
+        # Validate rt_window_size
+        if self.rt_window_size <= 0:
+            raise ConfigError("The RT window size (--rt-window-size) must be a positive integer.")
+
+        # ========== OUTPUT DIRECTORY ==========
         try:
             output_dir = filesnpaths.check_output_directory(self.output_directory, ok_if_exists=False or self.just_do_it)
 
@@ -204,8 +247,9 @@ class DGR_Finder:
                             "you here. You have three options if you want to continue: rename your directory, delete your existing directory, "
                             "or rerun with the flag `--just-do-it` (which will overwrite your directory. You have been warned).")
 
-        if (self.contigs_db_path and self.profile_db_path) and not self.hmm:
-            # Set default HMM to Reverse_Transcriptase
+        # ========== HMM CONFIGURATION ==========
+        # Set default HMM to Reverse_Transcriptase (required for all modes)
+        if not self.hmm:
             self.hmm = ['Reverse_Transcriptase']
             self.run.warning("No HMM source was specified with `--hmm-usage`. Anvi'o will use the default "
                            "'Reverse_Transcriptase' HMM to identify DGRs. If you haven't run this HMM yet, "
@@ -246,6 +290,11 @@ class DGR_Finder:
             raise ConfigError('The number of base types of the VR sequence cannot exceed 4 this is because there are only 4 bases in our DNA alphabet')
 
         if self.collections_mode:
+            # Collections mode requires activity-based detection (needs profile.db)
+            if self.detection_mode == 'homology':
+                raise ConfigError("Collections mode (--collections-mode) requires activity-based detection, "
+                                "but you are running in 'homology' mode only. Please provide a profile.db "
+                                "and use --detection-mode 'activity' or 'both' to use collections mode.")
             if not self.collections_given:
                 raise ConfigError("You must provide a collection name for collections mode to work. If you want to know about "
                                 "all the collections in your profile database you can use the program "
@@ -255,36 +304,38 @@ class DGR_Finder:
             if not isinstance(self.collections_given, str):
                 raise ValueError("'collection-name' must be a single collection name")
 
-        if self.contigs_db_path and self.hmm:
-            contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
-            hmm_hits_info_dict = contigs_db.db.get_table_as_dict(t.hmm_hits_info_table_name)
-            hmm_hits_info_dict = contigs_db.db.smart_get(t.hmm_hits_info_table_name, column = 'source')
-            self.hmms_provided = set(hmm_hits_info_dict.keys())
+        # ========== HMM VALIDATION ==========
+        # HMM is required for all detection modes (for RT location in activity mode post-hoc,
+        # and as the search anchor in homology mode)
+        contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
+        hmm_hits_info_dict = contigs_db.db.get_table_as_dict(t.hmm_hits_info_table_name)
+        hmm_hits_info_dict = contigs_db.db.smart_get(t.hmm_hits_info_table_name, column = 'source')
+        self.hmms_provided = set(hmm_hits_info_dict.keys())
+        contigs_db.disconnect()
 
-            bad_hmm = []
-            for i in self.hmm:
-                if i not in self.hmms_provided:
-                    bad_hmm.append(i)
+        bad_hmm = []
+        for i in self.hmm:
+            if i not in self.hmms_provided:
+                bad_hmm.append(i)
 
-            if bad_hmm == ['Reverse_Transcriptase']:
+        if bad_hmm == ['Reverse_Transcriptase']:
+            raise ConfigError("The classic reverse transcriptase HMM has not been run with these contigs. "
+                                "Please run 'anvi-run-hmms' with the '-I' flag and the 'Reverse_Transcriptase' HMM, "
+                                f"so that anvi'o knows where there are Reverse Transcriptases in your {self.contigs_db_path}.")
+        elif len(bad_hmm) > 0:
+            if 'Reverse_Transcriptase' in bad_hmm:
                 raise ConfigError("The classic reverse transcriptase HMM has not been run with these contigs. "
-                                    "Please run 'anvi-run-hmms' with the '-I' flag and the 'Reverse_Transcriptase' HMM, "
-                                    f"so that anvi'o knows where there are Reverse Transcriptases in your {self.contigs_db_path}.")
-            elif len(bad_hmm) > 0:
-                if 'Reverse_Transcriptase' in bad_hmm:
-                    raise ConfigError("The classic reverse transcriptase HMM has not been run with these contigs. "
-                                    "Please run 'anvi-run-hmms' with the '-I' flag and the 'Reverse_Transcriptase' HMM, "
-                                    f"so that anvi'o knows where there are Reverse Transcriptases in your {self.contigs_db_path}. "
-                                    f"Also you don't have these HMMs you requested: {bad_hmm} in {self.hmms_provided}")
-                else:
-                    raise ConfigError(f"You requested these HMMs to be searched through: {bad_hmm} in these HMMs {self.hmms_provided} "
-                                    f"that are in your {self.contigs_db_path}. The HMMs you give 'anvi-report-dgrs' need to be in your "
-                                    "contigs.db.")
+                                "Please run 'anvi-run-hmms' with the '-I' flag and the 'Reverse_Transcriptase' HMM, "
+                                f"so that anvi'o knows where there are Reverse Transcriptases in your {self.contigs_db_path}. "
+                                f"Also you don't have these HMMs you requested: {bad_hmm} in {self.hmms_provided}")
+            else:
+                raise ConfigError(f"You requested these HMMs to be searched through: {bad_hmm} in these HMMs {self.hmms_provided} "
+                                f"that are in your {self.contigs_db_path}. The HMMs you give 'anvi-report-dgrs' need to be in your "
+                                "contigs.db.")
 
-            contigs_db.disconnect()
-
-            # Load gene information once (validates gene caller source and creates lookup structures)
-            self.load_gene_info()
+        # Load gene information once (validates gene caller source and creates lookup structures)
+        # This is needed for codon position analysis in all modes
+        self.load_gene_info()
 
         html_files_exist = any(file.endswith('.html') for file in os.listdir(self.output_directory) if os.path.isfile(os.path.join(self.output_directory, file)))
         if html_files_exist:
