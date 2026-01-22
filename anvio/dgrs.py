@@ -4821,8 +4821,62 @@ class DGR_Finder:
             # WE'RE DOnE HERE. DoNe.
             return
 
-        self.get_blast_results()
-        self.process_blast_results()
+        # Run detection based on the selected mode
+        self.run.info('Detection mode', self.detection_mode)
+
+        activity_hits = None
+        homology_hits = None
+
+        # Activity-based detection (requires profile.db with SNV data)
+        if self.detection_mode in ('activity', 'both'):
+            self.run.info_single("Running activity-based DGR detection...", nl_before=1, mc='green')
+            self.get_blast_results()
+            self.process_blast_results(vr_in_query=True, apply_snv_filters=True)
+
+            # Save activity hits for potential merging
+            if self.collections_mode:
+                activity_hits = copy.deepcopy(self.merged_mismatch_hits)
+            else:
+                activity_hits = copy.deepcopy(self.mismatch_hits)
+
+        # Homology-based detection (uses RT HMM windows)
+        if self.detection_mode in ('homology', 'both'):
+            self.run.info_single("Running homology-based DGR detection...", nl_before=1, mc='green')
+            homology_hits = self.process_homology_mode()
+
+            # For 'homology' only mode, copy to merged_mismatch_hits if in collections mode
+            if self.detection_mode == 'homology' and self.collections_mode:
+                self.merged_mismatch_hits = copy.deepcopy(self.mismatch_hits)
+
+        # Merge results if running both modes
+        if self.detection_mode == 'both':
+            if activity_hits and homology_hits:
+                merged = self.merge_detection_results(activity_hits, homology_hits)
+                if self.collections_mode:
+                    self.merged_mismatch_hits = merged
+                else:
+                    self.mismatch_hits = merged
+            elif activity_hits:
+                # Only activity hits found
+                if self.collections_mode:
+                    self.merged_mismatch_hits = activity_hits
+                else:
+                    self.mismatch_hits = activity_hits
+            elif homology_hits:
+                # Only homology hits found
+                if self.collections_mode:
+                    self.merged_mismatch_hits = homology_hits
+                else:
+                    self.mismatch_hits = homology_hits
+            else:
+                # No hits from either mode
+                self.run.warning("No DGR candidates were found by either activity or homology detection modes.",
+                               header="NO DGRs FOUND")
+                if self.collections_mode:
+                    self.merged_mismatch_hits = defaultdict(lambda: defaultdict(dict))
+                else:
+                    self.mismatch_hits = defaultdict(lambda: defaultdict(dict))
+
         self.filter_for_best_VR_TR()
         if args.parameter_output:
             self.run.info_single("Writing to Parameters used file.", nl_before=1)
