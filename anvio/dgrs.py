@@ -2845,6 +2845,283 @@ class DGR_Finder:
 
 
 
+    def get_rt_windows(self):
+        """
+        Find all RT HMM hits and create search windows around each for homology-based DGR detection.
+
+        This method queries the contigs database for HMM hits matching the specified RT HMM sources,
+        then creates genomic windows extending rt_window_size bp on each side of each RT gene.
+        Windows are clipped to contig boundaries to avoid invalid coordinates.
+
+        Returns
+        =======
+        dict
+            Dictionary mapping window_id to window metadata:
+            {
+                'RT_window_0': {
+                    'contig': str,           # Contig name
+                    'window_start': int,     # Window start position (0-based)
+                    'window_end': int,       # Window end position (0-based, inclusive)
+                    'rt_gene_id': int,       # Gene callers ID of the RT
+                    'rt_start': int,         # RT gene start position
+                    'rt_end': int,           # RT gene end position
+                    'rt_direction': str,     # RT gene direction ('f' or 'r')
+                    'rt_gene_name': str,     # HMM gene name (e.g., 'Clean_DGR_clade_3')
+                    'hmm_source': str,       # HMM source name
+                    'e_value': float,        # HMM hit e-value
+                },
+                ...
+            }
+        """
+        self.run.info_single("Finding RT HMM hits and creating search windows for homology-based detection...", nl_before=1)
+
+        # Open contigs database and get required tables
+        contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
+        hmm_hits_dict = contigs_db.db.get_table_as_dict(t.hmm_hits_table_name)
+        genes_in_contigs = contigs_db.db.get_table_as_dict(t.genes_in_contigs_table_name)
+        contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
+        contigs_db.disconnect()
+
+        # Build contig length lookup
+        contig_lengths = {contig: len(data['sequence']) for contig, data in contig_sequences.items()}
+
+        # Find all RT HMM hits matching specified sources
+        # For each gene_callers_id, keep the hit with lowest e-value
+        rt_hits = {}
+        for index, entry in hmm_hits_dict.items():
+            if entry['source'] in self.hmm:
+                gene_callers_id = entry['gene_callers_id']
+                gene_name = entry['gene_name']
+                e_value = entry['e_value']
+                hmm_source = entry['source']
+
+                if gene_callers_id not in rt_hits:
+                    rt_hits[gene_callers_id] = {
+                        'gene_name': gene_name,
+                        'e_value': e_value,
+                        'hmm_source': hmm_source
+                    }
+                elif e_value < rt_hits[gene_callers_id]['e_value']:
+                    rt_hits[gene_callers_id]['gene_name'] = gene_name
+                    rt_hits[gene_callers_id]['e_value'] = e_value
+                    rt_hits[gene_callers_id]['hmm_source'] = hmm_source
+
+        if not rt_hits:
+            self.run.warning("No RT HMM hits were found in the contigs database. Homology-based detection "
+                           "cannot proceed without RT genes. Please ensure you have run "
+                           "`anvi-run-hmms -I Reverse_Transcriptase` on your contigs database.",
+                           header="NO RT HMM HITS FOUND")
+            return {}
+
+        # Create windows around each RT hit
+        rt_windows = {}
+        window_counter = 0
+
+        for gene_callers_id, hit_info in rt_hits.items():
+            # Get gene position information
+            if gene_callers_id not in genes_in_contigs:
+                continue
+
+            gene_info = genes_in_contigs[gene_callers_id]
+            contig = gene_info['contig']
+            rt_start = gene_info['start']
+            rt_end = gene_info['stop']
+            rt_direction = gene_info['direction']
+
+            # Get contig length for boundary clipping
+            contig_length = contig_lengths.get(contig, 0)
+            if contig_length == 0:
+                continue
+
+            # Calculate window boundaries (clip to contig edges)
+            window_start = max(0, rt_start - self.rt_window_size)
+            window_end = min(contig_length - 1, rt_end + self.rt_window_size)
+
+            # Create window entry
+            window_id = f"RT_window_{window_counter}"
+            rt_windows[window_id] = {
+                'contig': contig,
+                'window_start': window_start,
+                'window_end': window_end,
+                'rt_gene_id': gene_callers_id,
+                'rt_start': rt_start,
+                'rt_end': rt_end,
+                'rt_direction': rt_direction,
+                'rt_gene_name': hit_info['gene_name'],
+                'hmm_source': hit_info['hmm_source'],
+                'e_value': hit_info['e_value'],
+            }
+            window_counter += 1
+
+        self.run.info('RT windows created', len(rt_windows))
+
+        # Store for later use
+        self.rt_windows = rt_windows
+
+        return rt_windows
+
+
+
+    def get_rt_window_query_records(self, contig_sequences, bin_contigs=None):
+        """
+        Extract RT window sequences and create query records for BLAST.
+
+        Parameters
+        ==========
+        contig_sequences : dict
+            Contig sequences as {contig_name: {'sequence': seq}}.
+        bin_contigs : list or None
+            If provided, only include RT windows from these contigs (for collections mode).
+
+        Returns
+        =======
+        dict
+            Query records as {section_id: sequence} for BLAST input.
+        """
+        # Get RT windows if not already computed
+        if not hasattr(self, 'rt_windows') or not self.rt_windows:
+            self.get_rt_windows()
+
+        if not self.rt_windows:
+            return {}
+
+        # Extract window sequences and create query records
+        # Format section_id to be compatible with existing parsing code:
+        # {contig_name}_section_{window_id}_start_bp{start}_end_bp{end}
+        query_records = {}
+        for window_id, window_info in self.rt_windows.items():
+            contig = window_info['contig']
+            window_start = window_info['window_start']
+            window_end = window_info['window_end']
+
+            # Skip if not in target contigs (for collections mode)
+            if bin_contigs is not None and contig not in bin_contigs:
+                continue
+
+            if contig not in contig_sequences:
+                continue
+
+            # Extract window sequence (window_end is inclusive, so add 1 for Python slicing)
+            contig_seq = contig_sequences[contig]['sequence']
+            window_seq = contig_seq[window_start:window_end + 1]
+
+            # Create section_id compatible with existing parsing
+            section_id = f"{contig}_section_{window_id}_start_bp{window_start}_end_bp{window_end}"
+            query_records[section_id] = window_seq
+
+        return query_records
+
+
+    def run_blast_homology_mode(self, contig_sequences=None, bin_name=None, bin_contigs=None):
+        """
+        Run BLASTn using RT neighborhood windows as queries against contig sequences.
+
+        This method is used for homology-based DGR detection. It:
+        1. Gets RT windows from get_rt_windows()
+        2. Extracts genomic sequences for each window
+        3. BLASTs these TR-candidate regions against the genome
+        4. Returns the path to the BLAST output for parsing
+
+        Parameters
+        ==========
+        contig_sequences : dict or None
+            Contig sequences as {contig_name: {'sequence': seq}}.
+            If None, loads all contigs from contigs.db.
+        bin_name : str or None
+            Bin name for collections mode output naming.
+        bin_contigs : list or None
+            If provided, only include RT windows from these contigs.
+
+        Returns
+        =======
+        str
+            Path to the BLASTn output XML file.
+
+        Raises
+        ======
+        ConfigError
+            If no RT windows are found or no contig sequences are available.
+        """
+        self.run.info_single("Running BLAST for homology-based DGR detection...", nl_before=1)
+
+        # Load contig sequences if not provided
+        if contig_sequences is None:
+            contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
+            contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
+            contigs_db.disconnect()
+
+        if not contig_sequences:
+            raise ConfigError("No contig sequences found in the contigs database.")
+
+        # Get query records (RT window sequences)
+        query_records = self.get_rt_window_query_records(contig_sequences, bin_contigs)
+
+        if not query_records:
+            if bin_name:
+                self.run.warning(f"No RT windows found in bin '{bin_name}'. Skipping homology-based detection for this bin.")
+                return None
+            else:
+                raise ConfigError("No RT windows were found. Homology-based detection requires RT HMM hits "
+                                "in the contigs database. Please run `anvi-run-hmms -I Reverse_Transcriptase`.")
+
+        # Use unified run_blast function
+        blast_output_path = self.run_blast(query_records, contig_sequences,
+                                           mode='homology', bin_name=bin_name)
+
+        # Store for later use
+        self.homology_blast_output = blast_output_path
+
+        return blast_output_path
+
+
+
+    def process_homology_mode(self):
+        """
+        Run the complete homology-based DGR detection pipeline.
+
+        This method orchestrates homology-based detection:
+        1. Runs BLAST with RT windows as queries
+        2. Parses BLAST results with vr_in_query=False (query=TR, subject=VR)
+        3. Skips SNV-based filtering (apply_snv_filters=False)
+
+        Returns
+        =======
+        dict
+            The mismatch_hits dictionary containing homology-based DGR candidates.
+            Each hit has detection_method='homology' and confidence='homology-based'.
+        """
+        self.run.info_single("Starting homology-based DGR detection pipeline...", nl_before=1, nl_after=1)
+
+        # Step 1: Run BLAST with RT windows as queries
+        blast_output = self.run_blast_homology_mode()
+
+        # Check if BLAST was run and produced output
+        if blast_output is None or os.stat(blast_output).st_size == 0:
+            self.run.warning("No BLAST hits were found in homology mode. This could mean there are no "
+                           "TR/VR pairs near the RT genes, or the RT windows don't contain template regions.",
+                           header="NO HOMOLOGY-MODE HITS")
+            self.mismatch_hits = defaultdict(lambda: defaultdict(dict))
+            return self.mismatch_hits
+
+        # Step 2: Parse BLAST results
+        # In homology mode: query=TR (RT window), subject=VR
+        # So we set vr_in_query=False
+        self.mismatch_hits = defaultdict(lambda: defaultdict(dict))
+        self.parse_and_process_blast_results(
+            blast_output,
+            bin_name=None,
+            max_percent_identity=100,
+            vr_in_query=False,  # Query contains TR (RT windows), subject contains VR
+            apply_snv_filters=False  # No SNV data in homology mode
+        )
+
+        num_hits = sum(len(hits) for hits in self.mismatch_hits.values())
+        self.run.info('Homology mode candidates found', num_hits)
+
+        return self.mismatch_hits
+
+
+
     def get_hmm_info(self):
         """
         This function creates a dictionary of the HMMs provided that are the closest to the template
