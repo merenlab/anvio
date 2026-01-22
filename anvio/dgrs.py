@@ -394,9 +394,6 @@ class DGR_Finder:
 
         """
 
-        # setup
-        self.target_file_path = os.path.join(self.temp_dir, "reference_sequences.fasta")
-
         # initialise the SNV table
         self.init_snv_table()
 
@@ -1080,16 +1077,28 @@ class DGR_Finder:
 
 
 
-    def run_blast(self, contig_records, output_filename, contig_sequences):
+    def run_blast(self, query_records, target_sequences, mode='activity', bin_name=None):
         """
-        Run BLASTn using SNV cluster subsequences as queries against contig sequences.
+        Run BLASTn with given query and target sequences.
+
+        This is the unified BLAST execution function used by both activity-based and
+        homology-based detection modes. It handles FASTA file creation, BLAST execution,
+        and returns the path to the output file.
 
         Parameters
         ==========
-        contig_records : dict
-            SNV cluster subsequences to use as query sequences.
-        output_filename : str
-            Name of the temporary FASTA file to store query sequences.
+        query_records : dict
+            Query sequences as {section_id: sequence}. For activity mode, these are
+            SNV cluster regions (VR candidates). For homology mode, these are RT
+            window regions (TR candidates).
+        target_sequences : dict
+            Target sequences as {contig_name: {'sequence': seq}}. Typically all
+            contigs or bin-specific contigs.
+        mode : str
+            Detection mode: 'activity' or 'homology'. Used for logging messages
+            and output filename generation.
+        bin_name : str or None
+            Bin name for collections mode. If provided, creates bin-specific output files.
 
         Returns
         =======
@@ -1099,54 +1108,67 @@ class DGR_Finder:
         Raises
         ======
         ConfigError
-            If no contig sequences are found in the contigs database.
+            If no query or target sequences are provided.
         """
-        # write sequences to FASTA
-        query_fasta_path = os.path.join(self.temp_dir, output_filename)
-        query_fasta = fastalib.FastaOutput(query_fasta_path)
+        if not query_records:
+            raise ConfigError("No query sequences provided for BLAST search.")
 
-        for seq_id, seq in contig_records.items():
+        if not target_sequences:
+            raise ConfigError("No target sequences found. Please check your contigs database.")
+
+        # Generate descriptive filenames based on mode and bin
+        if bin_name:
+            query_fasta_filename = f"blast_query_{mode}_bin_{bin_name}.fasta"
+            target_fasta_filename = f"blast_target_{mode}_bin_{bin_name}.fasta"
+            blast_output_filename = f"blast_output_{mode}_bin_{bin_name}_wordsize_{self.word_size}.xml"
+        else:
+            query_fasta_filename = f"blast_query_{mode}.fasta"
+            target_fasta_filename = f"blast_target_{mode}.fasta"
+            blast_output_filename = f"blast_output_{mode}_wordsize_{self.word_size}.xml"
+
+        query_fasta_path = os.path.join(self.temp_dir, query_fasta_filename)
+        target_fasta_path = os.path.join(self.temp_dir, target_fasta_filename)
+        blast_output_path = os.path.join(self.temp_dir, blast_output_filename)
+
+        # Write query FASTA
+        query_fasta = fastalib.FastaOutput(query_fasta_path)
+        for seq_id, seq in query_records.items():
             query_fasta.write_id(seq_id)
             query_fasta.write_seq(seq)
         query_fasta.close()
 
-        # Summarize potential VR candidates before BLAST
-        num_sequences = len(contig_records)
-        total_bp = sum(len(seq) for seq in contig_records.values())
-        self.run.info_single(f"Identified {num_sequences} potential VR candidate region(s) "
-                            f"({total_bp:,} bp total) for BLAST search.", nl_before=1)
-
-        self.run.info('Temporary (SNV window) query input for blast', query_fasta_path)
-
-        #  export target sequences
-        if len(contig_sequences) > 0:
-            # make target fasta
-            target_fasta = fastalib.FastaOutput(self.target_file_path)
-            for name, sequence in contig_sequences.items():
-                seq = sequence['sequence']
-                target_fasta.write_id(name)
-                target_fasta.write_seq(seq)
-            target_fasta.close()
+        # Log query summary with mode-appropriate message
+        num_sequences = len(query_records)
+        total_bp = sum(len(seq) for seq in query_records.values())
+        if mode == 'activity':
+            query_desc = "VR candidate region(s) (SNV clusters)"
         else:
-            raise ConfigError("Well... this is a pretty fatal error. There are no contig sequences found in the contigs database. You should probably go and check your contigs.db.")
+            query_desc = "TR candidate region(s) (RT windows)"
 
-        # run BLAST
-        if self.collections_mode:
-            # for collections mode, create bin-specific blast output filename
-            bin_name = output_filename.split('bin_')[1].split('_subsequences')[0]
-            blast_output_filename = f"blast_output_for_bin_{bin_name}_wordsize_{self.word_size}.xml"
-        else:
-            blast_output_filename = f"blast_output_wordsize_{self.word_size}.xml"
+        bin_suffix = f" for bin '{bin_name}'" if bin_name else ""
+        self.run.info_single(f"Identified {num_sequences} {query_desc} "
+                            f"({total_bp:,} bp total){bin_suffix} for BLAST search.", nl_before=1)
+        self.run.info(f'Query FASTA ({mode} mode)', query_fasta_path)
 
-        blast_output_path = os.path.join(self.temp_dir, blast_output_filename)
+        # Write target FASTA
+        target_fasta = fastalib.FastaOutput(target_fasta_path)
+        for name, sequence in target_sequences.items():
+            seq = sequence['sequence']
+            target_fasta.write_id(name)
+            target_fasta.write_seq(seq)
+        target_fasta.close()
 
-        blast = BLAST(query_fasta_path, target_fasta=self.target_file_path, search_program='blastn',
-                    output_file=blast_output_path, additional_params='-dust no', num_threads=self.num_threads)
+        self.run.info(f'Target FASTA ({mode} mode)', target_fasta_path)
+
+        # Run BLAST
+        blast = BLAST(query_fasta_path, target_fasta=target_fasta_path, search_program='blastn',
+                     output_file=blast_output_path, additional_params='-dust no', num_threads=self.num_threads)
         blast.evalue = 10
         blast.makedb(dbtype='nucl')
         blast.blast(outputfmt='5', word_size=self.word_size)
 
-        self.blast_output = blast_output_path
+        self.run.info(f'BLAST output ({mode} mode)', blast_output_path)
+
         return blast_output_path
 
 
@@ -1424,11 +1446,10 @@ class DGR_Finder:
                 try:
                     sample_id_list, bin_contig_sequences = self.load_data_and_setup(bin_splits_list)
 
-                    # update target file path to be bin-specific
-                    self.target_file_path = os.path.join(self.temp_dir, f"bin_{bin_name}_reference_sequences.fasta")
-
                     contig_records = self.find_snv_clusters(sample_id_list, bin_contig_sequences)
-                    blast_output_path = self.run_blast(contig_records, f"bin_{bin_name}_subsequences.fasta", bin_contig_sequences)
+                    blast_output_path = self.run_blast(contig_records, bin_contig_sequences,
+                                                       mode='activity', bin_name=bin_name)
+                    self.blast_output = blast_output_path
 
                     successful_bins.append(bin_name)
 
@@ -1487,9 +1508,9 @@ class DGR_Finder:
 
         sample_id_list, contig_sequences = self.load_data_and_setup()
         contig_records = self.find_snv_clusters(sample_id_list, contig_sequences)
-        result = self.run_blast(contig_records, "potential_dgrs.fasta", contig_sequences)
+        self.blast_output = self.run_blast(contig_records, contig_sequences, mode='activity')
 
-        return result
+        return self.blast_output
 
 
 
