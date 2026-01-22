@@ -1535,7 +1535,7 @@ class DGR_Finder:
 
 
 
-    def process_blast_results(self, max_percent_identity=100):
+    def process_blast_results(self, max_percent_identity=100, vr_in_query=True, apply_snv_filters=True):
         """
         Process BLAST output depending on whether collections_mode is enabled.
         If collections_mode is True, process multiple bins separately and merge results.
@@ -1552,6 +1552,11 @@ class DGR_Finder:
             BLASTn results
         max_percent_identity: number
             Maximum percentage identity threshold (default 100%).
+        vr_in_query : bool
+            If True (activity mode), query=VR, subject=TR.
+            If False (homology mode), query=TR, subject=VR.
+        apply_snv_filters : bool
+            If True, perform SNV-based filtering. If False, skip SNV analysis.
 
         Returns
         =======
@@ -1591,7 +1596,8 @@ class DGR_Finder:
                                     "of this tool if you believe this should not be the case. Anvi'o wishes you a nice day :)")
 
                 # process mismatches from this bin
-                self.parse_and_process_blast_results(blast_file, bin_name, max_percent_identity)
+                self.parse_and_process_blast_results(blast_file, bin_name, max_percent_identity,
+                                                     vr_in_query=vr_in_query, apply_snv_filters=apply_snv_filters)
 
                 # merge results into `merged_mismatch_hits`
                 for section_id, hits_dict in self.mismatch_hits.items():
@@ -1614,7 +1620,8 @@ class DGR_Finder:
                                 "of this tool if you believe this should not be the case. Anvi'o wishes you a nice day :)")
 
             # process the BLAST output normally
-            self.parse_and_process_blast_results(self.blast_output, bin_name=None, max_percent_identity=max_percent_identity)
+            self.parse_and_process_blast_results(self.blast_output, bin_name=None, max_percent_identity=max_percent_identity,
+                                                 vr_in_query=vr_in_query, apply_snv_filters=apply_snv_filters)
 
             return self.mismatch_hits
 
@@ -1821,18 +1828,20 @@ class DGR_Finder:
         return None
 
 
-    def parse_and_process_blast_results(self, xml_file_path, bin_name, max_percent_identity):
+    def parse_and_process_blast_results(self, xml_file_path, bin_name, max_percent_identity,
+                                         vr_in_query=True, apply_snv_filters=True):
         """
         Parse and process BLAST XML results for a single bin or dataset.
-        This function does a lot of filtering for HSP (children of hits) and query matches to make sure that the query matches typical VR features and that the HSP matches the TR characteristics.
-        Filtering for mismatched hits below 100% identity.
-        Filters out highly repeated sequences, both query and hit sequences.
-        Filters based on the number of mismatches and those mismatches largely come from one base type via a given percent identity threshold.
-        Checks that the mismatches of the query (VR) are from more than a required number of bases.
-        Optional only A base mismatches for the TR OR checks that the mismatching bases in the TR largely come from less than the given number of base types.
-        Filters for pairs that have less than 33% of the SNVs coming from the 3rd codon base position
-        Filters for pairs that have under a percentage threshold of SNVs coming from the non mutagenesis base
 
+        This function filters BLAST HSPs for TR/VR alignment characteristics:
+        - Mismatched hits below 100% identity
+        - Filters out highly repeated sequences
+        - Requires mismatches to be biased toward one base type (typically A on TR side)
+        - Checks sequence diversity requirements
+
+        The function supports two modes based on vr_in_query:
+        - Activity mode (vr_in_query=True): Query=VR candidates, Subject=genome (contains TR)
+        - Homology mode (vr_in_query=False): Query=TR candidates (RT windows), Subject=genome (contains VR)
 
         Parameters
         ==========
@@ -1844,9 +1853,18 @@ class DGR_Finder:
         max_percent_identity : float
             Maximum percent identity allowed for considering a hit as mismatched.
             Hits with higher identity are ignored.
+        vr_in_query : bool
+            If True (default, activity mode), query sequences are VR candidates and
+            subjects are potential TRs. If False (homology mode), query sequences are
+            TR candidates (RT windows) and subjects are potential VRs.
+        apply_snv_filters : bool
+            If True (default), perform SNV-based analysis and confidence scoring.
+            If False (homology mode), skip SNV analysis and set confidence to "homology-based".
 
         Returns
         =======
+        None
+            Updates self.mismatch_hits dictionary with filtered results.
         """
 
         hit_id_counter = 0
@@ -1862,16 +1880,18 @@ class DGR_Finder:
                         lc='green', header="CITATION")
 
         # === PRE-INDEX SNV DATA BY CONTIG AS SORTED NUMPY ARRAYS ===
-        # Using sorted arrays enables O(log n) binary search for range queries
-        # instead of O(n) pandas filtering per HSP
+        # Only needed for activity-based detection (when apply_snv_filters=True)
         snv_index = {}
-        for contig, group in self.snv_panda.groupby('contig_name'):
-            sorted_group = group.sort_values('pos_in_contig')
-            snv_index[contig] = {
-                'positions': sorted_group['pos_in_contig'].values,
-                'codon_pos': sorted_group['base_pos_in_codon'].values,
-                'reference': sorted_group['reference'].values
-            }
+        if apply_snv_filters and hasattr(self, 'snv_panda') and self.snv_panda is not None:
+            # Using sorted arrays enables O(log n) binary search for range queries
+            # instead of O(n) pandas filtering per HSP
+            for contig, group in self.snv_panda.groupby('contig_name'):
+                sorted_group = group.sort_values('pos_in_contig')
+                snv_index[contig] = {
+                    'positions': sorted_group['pos_in_contig'].values,
+                    'codon_pos': sorted_group['base_pos_in_codon'].values,
+                    'reference': sorted_group['reference'].values
+                }
 
         chars_to_skip = []
         if self.skip_Ns:
@@ -2072,99 +2092,143 @@ class DGR_Finder:
                         if not self.allow_any_base and base != "A":
                             continue
 
+                        # Extract contig names from BLAST query/subject
                         query_contig = section_id.split('_section', 1)[0]
                         subject_contig = current_subject_contig
 
-                        #### SNV logic based removal of DGRs.
-                        # first remove dgrs that have more than 34% of the SNVs in the VR range to be coming from the 3rd codon position
-                        # - because this is not very DGR like and means that there is more non-specific read mapping happening nothing biological
-                        # Secondly, we want to check that the SNVs are coming from the sites of matches in the mutagenesis base (usually A), and
-                        # all of the mismatching bases (remember we have already cut out those that have more than 20% of the mismatches coming
-                        # from the non-mutagenesis site). This means that we filter out those that have SNVs at the site of matches in the non-mutagenesis base (usually C,G,T).
-                        # Currently the code (30.04.2025) adds a column to the DGR_looks_snv_false if there is ONE single SNV at a non-mutagenesis match site.
-                        # Could at creating  thresholds - for populations etc
-
-                        # subset snv by query contig (vr contig) and VR range using binary search
-                        contig_data = snv_index.get(query_contig)
-                        if contig_data is not None:
-                            positions = contig_data['positions']
-                            left_idx = bisect.bisect_left(positions, query_genome_start_position)
-                            right_idx = bisect.bisect_right(positions, query_genome_end_position)
-                            # Slice all arrays to matching range
-                            snv_positions = positions[left_idx:right_idx]
-                            snv_codon_pos = contig_data['codon_pos'][left_idx:right_idx]
-                            snv_reference = contig_data['reference'][left_idx:right_idx]
+                        # ========== ASSIGN VR/TR BASED ON DETECTION MODE ==========
+                        # In activity mode (vr_in_query=True): query=VR, subject=TR
+                        # In homology mode (vr_in_query=False): query=TR (RT window), subject=VR
+                        if vr_in_query:
+                            # Activity mode: query is VR, subject is TR
+                            vr_contig = query_contig
+                            tr_contig = subject_contig
+                            vr_sequence = query_sequence
+                            tr_sequence = hit_sequence
+                            vr_start = query_genome_start_position
+                            vr_end = query_genome_end_position
+                            tr_start = subject_genome_start_position
+                            tr_end = subject_genome_end_position
+                            vr_frame = new_query_frame
+                            tr_frame = new_subject_frame
+                            vr_mismatch_counts = query_mismatch_counts
+                            tr_mismatch_counts = subject_mismatch_counts
                         else:
-                            snv_positions = np.array([], dtype=int)
-                            snv_codon_pos = np.array([], dtype=int)
-                            snv_reference = np.array([], dtype=object)
+                            # Homology mode: query is TR (RT window), subject is VR
+                            vr_contig = subject_contig
+                            tr_contig = query_contig
+                            vr_sequence = hit_sequence
+                            tr_sequence = query_sequence
+                            vr_start = subject_genome_start_position
+                            vr_end = subject_genome_end_position
+                            tr_start = query_genome_start_position
+                            tr_end = query_genome_end_position
+                            vr_frame = new_subject_frame
+                            tr_frame = new_query_frame
+                            vr_mismatch_counts = subject_mismatch_counts
+                            tr_mismatch_counts = query_mismatch_counts
 
-                        # make snv vr positions a list so we can print it in the output
-                        # (already sorted, use dict.fromkeys to remove duplicates while preserving order)
-                        snv_VR_positions = list(dict.fromkeys(snv_positions))
+                        # Mismatch positions relative to VR contig
+                        # In activity mode, query positions are VR positions
+                        # In homology mode, subject positions are VR positions
+                        if vr_in_query:
+                            mismatch_pos_contig_relative = [x + vr_start for x in query_mismatch_positions]
+                        else:
+                            # For homology mode, we need to calculate VR positions from subject coordinates
+                            # The query_mismatch_positions are alignment-relative, so we add to vr_start
+                            mismatch_pos_contig_relative = [x + vr_start for x in query_mismatch_positions]
 
-                        # currently position of mismatches is relative to the VR needs to be relative to the contig so that they match the vr snv ones
-                        mismatch_pos_contig_relative = [x + query_genome_start_position for x in query_mismatch_positions]
+                        # ========== SNV ANALYSIS (only for activity mode) ==========
+                        if apply_snv_filters:
+                            # Activity mode: perform full SNV analysis
+                            # subset snv by VR contig and VR range using binary search
+                            contig_data = snv_index.get(vr_contig)
+                            if contig_data is not None:
+                                positions = contig_data['positions']
+                                left_idx = bisect.bisect_left(positions, vr_start)
+                                right_idx = bisect.bisect_right(positions, vr_end)
+                                snv_positions = positions[left_idx:right_idx]
+                            else:
+                                snv_positions = np.array([], dtype=int)
 
-                        # === SNV and Codon Analysis (permissive, reports metrics) ===
-                        # Analyze mismatch codon positions (uses gene position data, not SNV table)
-                        mismatch_analysis = self.analyze_mismatch_codon_positions(
-                            mismatch_pos_contig_relative,
-                            query_contig
-                        )
+                            snv_VR_positions = list(dict.fromkeys(snv_positions))
 
-                        # Analyze SNV pattern (fetches ALL SNVs including 3rd codon position)
-                        snv_analysis = self.analyze_snv_pattern(
-                            query_contig,
-                            query_genome_start_position,
-                            query_genome_end_position,
-                            mismatch_pos_contig_relative,
-                            base,  # mutagenesis base
-                            is_reverse_complement
-                        )
+                            # Analyze mismatch codon positions (uses gene position data)
+                            mismatch_analysis = self.analyze_mismatch_codon_positions(
+                                mismatch_pos_contig_relative,
+                                vr_contig
+                            )
 
-                        # Compute confidence level
-                        confidence, confidence_reasons = self.compute_dgr_confidence(
-                            mismatch_analysis,
-                            snv_analysis
-                        )
+                            # Analyze SNV pattern
+                            snv_analysis = self.analyze_snv_pattern(
+                                vr_contig,
+                                vr_start,
+                                vr_end,
+                                mismatch_pos_contig_relative,
+                                base,
+                                is_reverse_complement
+                            )
 
-                        # Basic counts for backwards compatibility
+                            # Compute confidence level
+                            confidence, confidence_reasons = self.compute_dgr_confidence(
+                                mismatch_analysis,
+                                snv_analysis
+                            )
+
+                            numb_of_SNVs = snv_analysis['n_snvs_total'] if snv_analysis else 0
+                        else:
+                            # Homology mode: skip SNV analysis, use default values
+                            snv_VR_positions = []
+
+                            # Still analyze mismatch codon positions (doesn't require SNV data)
+                            mismatch_analysis = self.analyze_mismatch_codon_positions(
+                                mismatch_pos_contig_relative,
+                                vr_contig
+                            )
+
+                            snv_analysis = None
+                            confidence = "homology-based"
+                            confidence_reasons = []
+                            numb_of_SNVs = 0
+
+                        # Basic counts
                         numb_of_mismatches = len(query_mismatch_positions)
-                        numb_of_SNVs = snv_analysis['n_snvs_total'] if snv_analysis else 0
 
+                        # ========== BUILD HIT DATA ==========
+                        # Use semantic VR/TR naming regardless of BLAST query/subject direction
                         hit_data = {
                             'bin': bin_name if bin_name else "N/A",
                             'query_section': section_id,
-                            'query_seq': query_sequence,
-                            'hit_seq': hit_sequence,
+                            # Semantic VR/TR fields
+                            'query_seq': vr_sequence,  # VR sequence (for backwards compat, query_seq = VR)
+                            'hit_seq': tr_sequence,    # TR sequence (for backwards compat, hit_seq = TR)
                             'midline': midline,
-                            'query_contig': query_contig,
-                            'subject_contig': subject_contig,
-                            'subject_genome_start_position': subject_genome_start_position,
-                            'subject_genome_end_position': subject_genome_end_position,
-                            'query_mismatch_counts': query_mismatch_counts,
-                            'subject_mismatch_counts': subject_mismatch_counts,
+                            'query_contig': vr_contig,  # VR contig
+                            'subject_contig': tr_contig,  # TR contig
+                            'subject_genome_start_position': tr_start,  # TR start
+                            'subject_genome_end_position': tr_end,  # TR end
+                            'query_mismatch_counts': vr_mismatch_counts,
+                            'subject_mismatch_counts': tr_mismatch_counts,
                             'position': query_mismatch_positions,
                             'alignment_length': alignment_length,
-                            'query_genome_start_position': query_genome_start_position,
-                            'query_genome_end_position': query_genome_end_position,
-                            'query_frame': new_query_frame,
-                            'subject_frame': new_subject_frame,
+                            'query_genome_start_position': vr_start,  # VR start
+                            'query_genome_end_position': vr_end,  # VR end
+                            'query_frame': vr_frame,
+                            'subject_frame': tr_frame,
                             'base': base,
                             'is_reverse_complement': is_reverse_complement,
                             'numb_of_mismatches': numb_of_mismatches,
                             'numb_of_SNVs': numb_of_SNVs,
                             'percentage_of_mismatches': percentage_of_mismatches,
                             'mismatch_pos_contig_relative': mismatch_pos_contig_relative,
-                            'snv_VR_positions': snv_analysis['snv_positions'] if snv_analysis else [],
+                            'snv_VR_positions': snv_analysis['snv_positions'] if snv_analysis else snv_VR_positions,
                             # Mismatch codon analysis
                             'mismatch_codon_1': mismatch_analysis['mismatch_codon_1'],
                             'mismatch_codon_2': mismatch_analysis['mismatch_codon_2'],
                             'mismatch_codon_3': mismatch_analysis['mismatch_codon_3'],
                             'pct_mismatch_codon_3': mismatch_analysis['pct_mismatch_codon_3'],
                             'vr_gene_id': mismatch_analysis['vr_gene_id'],
-                            # SNV analysis
+                            # SNV analysis (defaults for homology mode)
                             'n_snvs_total': snv_analysis['n_snvs_total'] if snv_analysis else 0,
                             'n_snvs_explained': snv_analysis['n_snvs_explained'] if snv_analysis else 0,
                             'n_snvs_unexplained': snv_analysis['n_snvs_unexplained'] if snv_analysis else 0,
@@ -2180,11 +2244,13 @@ class DGR_Finder:
                             # Confidence
                             'confidence': confidence,
                             'confidence_reasons': confidence_reasons,
-                            # Backwards compatibility fields (derived from new analysis)
+                            # Backwards compatibility fields
                             'numb_snvs_in_3rd_codon_pos': snv_analysis['snv_codon_3'] if snv_analysis else 0,
                             'numb_of_snv_in_matches_not_mutagen_base': snv_analysis['n_snvs_unexplained'] if snv_analysis else 0,
-                            'DGR_looks_false': confidence == 'low',
+                            'DGR_looks_false': confidence == 'low' if apply_snv_filters else False,
                             'snv_at_3_codon_over_a_third': mismatch_analysis['pct_mismatch_codon_3'] > 33,
+                            # Detection method tracking
+                            'detection_method': 'activity' if apply_snv_filters else 'homology',
                         }
 
                         # Stage 7: Only now increment counter and create unique ID for hits that passed all filters
