@@ -3122,6 +3122,107 @@ class DGR_Finder:
 
 
 
+    def merge_detection_results(self, activity_hits, homology_hits):
+        """
+        Merge results from activity-based and homology-based detection modes.
+
+        When the same VR/TR pair is found by both methods, they are merged into a single
+        entry with detection_method='both'. The activity-based confidence score is kept
+        since it's more informative (based on SNV analysis).
+
+        Parameters
+        ==========
+        activity_hits : dict
+            Mismatch hits from activity-based detection (query=VR, subject=TR).
+            Each hit has detection_method='activity'.
+        homology_hits : dict
+            Mismatch hits from homology-based detection (query=TR, subject=VR).
+            Each hit has detection_method='homology'.
+
+        Returns
+        =======
+        dict
+            Merged mismatch_hits dictionary with detection_method indicating
+            'activity', 'homology', or 'both' for each hit.
+        """
+        self.run.info_single("Merging results from activity and homology detection modes...", nl_before=1)
+
+        merged_hits = defaultdict(lambda: defaultdict(dict))
+
+        # Track statistics
+        activity_only = 0
+        homology_only = 0
+        found_by_both = 0
+
+        # First, add all activity hits to merged results
+        for section_id, hits_dict in activity_hits.items():
+            for hit_id, hit_data in hits_dict.items():
+                merged_hits[section_id][hit_id] = hit_data.copy()
+                merged_hits[section_id][hit_id]['detection_method'] = 'activity'
+
+        # Now process homology hits, checking for overlaps
+        for section_id, hits_dict in homology_hits.items():
+            for hit_id, hit_data in hits_dict.items():
+                # Extract key coordinates for matching
+                # In homology mode, hit_data already has semantic VR/TR naming from parsing
+                h_vr_contig = hit_data.get('query_contig')  # VR contig
+                h_vr_start = hit_data.get('query_genome_start_position')  # VR start
+                h_vr_end = hit_data.get('query_genome_end_position')  # VR end
+                h_tr_contig = hit_data.get('subject_contig')  # TR contig
+                h_tr_start = hit_data.get('subject_genome_start_position')  # TR start
+                h_tr_end = hit_data.get('subject_genome_end_position')  # TR end
+
+                # Look for matching entry in activity hits
+                match_found = False
+                for a_section_id, a_hits_dict in activity_hits.items():
+                    for a_hit_id, a_hit_data in a_hits_dict.items():
+                        a_vr_contig = a_hit_data.get('query_contig')
+                        a_vr_start = a_hit_data.get('query_genome_start_position')
+                        a_vr_end = a_hit_data.get('query_genome_end_position')
+                        a_tr_contig = a_hit_data.get('subject_contig')
+                        a_tr_start = a_hit_data.get('subject_genome_start_position')
+                        a_tr_end = a_hit_data.get('subject_genome_end_position')
+
+                        # Check if VR and TR coordinates overlap significantly
+                        vr_overlap = (h_vr_contig == a_vr_contig and
+                                     self.range_overlapping(h_vr_start, h_vr_end, a_vr_start, a_vr_end))
+                        tr_overlap = (h_tr_contig == a_tr_contig and
+                                     self.range_overlapping(h_tr_start, h_tr_end, a_tr_start, a_tr_end))
+
+                        if vr_overlap and tr_overlap:
+                            # Found a match - update detection_method to 'both'
+                            # Keep the activity hit data (has SNV-based confidence)
+                            merged_hits[a_section_id][a_hit_id]['detection_method'] = 'both'
+                            match_found = True
+                            found_by_both += 1
+                            break
+                    if match_found:
+                        break
+
+                if not match_found:
+                    # No match found - add as homology-only hit
+                    new_hit_id = f"{hit_id}_homology"
+                    merged_hits[section_id][new_hit_id] = hit_data.copy()
+                    merged_hits[section_id][new_hit_id]['detection_method'] = 'homology'
+                    homology_only += 1
+
+        # Count activity-only hits (those not upgraded to 'both')
+        for section_id, hits_dict in merged_hits.items():
+            for hit_id, hit_data in hits_dict.items():
+                if hit_data.get('detection_method') == 'activity':
+                    activity_only += 1
+
+        # Report merge statistics
+        total_merged = activity_only + homology_only + found_by_both
+        self.run.info('Total merged candidates', total_merged)
+        self.run.info('  Activity-only', activity_only)
+        self.run.info('  Homology-only', homology_only)
+        self.run.info('  Found by both', found_by_both)
+
+        return merged_hits
+
+
+
     def get_hmm_info(self):
         """
         This function creates a dictionary of the HMMs provided that are the closest to the template
