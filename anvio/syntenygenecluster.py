@@ -293,13 +293,15 @@ class SyntenyGeneCluster():
             synteny_gene_cluster_type = 'singleton'
         else:
             X = np.empty([len(gene_cluster_k_mer_contig_positions), len(gene_cluster_k_mer_contig_positions)])
-            gene_cluster_k_mer_contig_dict_i = {}
-            gene_cluster_k_mer_contig_dict_j = {}
+            # gene_cluster_k_mer_contig_dict_i = {}
+            # gene_cluster_k_mer_contig_dict_j = {}
+            gene_cluster_k_mer_contig_genome_list = []
 
             for i, gene_cluster_k_mer_contig_position_a in enumerate(gene_cluster_k_mer_contig_positions):
+                gene_cluster_k_mer_contig_genome_list += [gene_cluster_k_mer_contig_position_a[0]]
                 for j, gene_cluster_k_mer_contig_position_b in enumerate(gene_cluster_k_mer_contig_positions):
-                    gene_cluster_k_mer_contig_dict_i[i] = gene_cluster_k_mer_contig_position_a[0]
-                    gene_cluster_k_mer_contig_dict_j[j] = gene_cluster_k_mer_contig_position_b[0]
+                    # gene_cluster_k_mer_contig_dict_i[i] = gene_cluster_k_mer_contig_position_a[0]
+                    # gene_cluster_k_mer_contig_dict_j[j] = gene_cluster_k_mer_contig_position_b[0]
                     X[i][j] = self.k_mer_distance(gene_cluster_k_mer_contig_position_a, gene_cluster_k_mer_contig_position_b, gene_cluster_contig_order, single_copy_core)
 
             np.fill_diagonal(X, 0.0)
@@ -307,27 +309,40 @@ class SyntenyGeneCluster():
             Z = linkage(condensed_X, 'complete')
 
             # Maye the Z.tolist is not the best way to estimate the steps
-            for threshold in sorted(set(sum(Z.tolist(), [])), reverse=True):
-                clusters = fcluster(Z, threshold, criterion='distance')
-                valid = True
-                for c in set(clusters.tolist()):
-                    pos = np.where(clusters == c)[0]
-                    for i, j in it.combinations(pos, 2):
-                        if X[i][j] == 1.0:
-                            valid = False
-                            if gene_cluster_k_mer_contig_dict_i[i] == gene_cluster_k_mer_contig_dict_j[j]:
-                                synteny_gene_cluster_type = 'duplication'
-                            else:
-                                if not synteny_gene_cluster_type:
-                                    synteny_gene_cluster_type = 'rearrangement'
+            # for threshold in sorted(set(sum(Z.tolist(), [])), reverse=True):
+            #     clusters = fcluster(Z, threshold, criterion='distance')
+            #     valid = True
+            #     for c in set(clusters.tolist()):
+            #         pos = np.where(clusters == c)[0]
+            #         for i, j in it.combinations(pos, 2):
+            #             if X[i][j] == 1.0:
+            #                 valid = False
+            #                 if gene_cluster_k_mer_contig_dict_i[i] == gene_cluster_k_mer_contig_dict_j[j]:
+            #                     synteny_gene_cluster_type = 'duplication'
+            #                 else:
+            #                     if not synteny_gene_cluster_type:
+            #                         synteny_gene_cluster_type = 'rearrangement'
 
-                if valid is True:
-                    if not synteny_gene_cluster_type:
-                        if len(gene_cluster_k_mer_contig_positions) == len(self.genome_names):
-                            synteny_gene_cluster_type = 'core'
-                        else:
-                            synteny_gene_cluster_type = 'accessory'
-                    break
+            #     if valid is True:
+            #         if not synteny_gene_cluster_type:
+            #             if len(gene_cluster_k_mer_contig_positions) == len(self.genome_names):
+            #                 synteny_gene_cluster_type = 'core'
+            #             else:
+            #                 synteny_gene_cluster_type = 'accessory'
+            #         break
+
+            clusters = fcluster(Z, 1.0 - 1e-12, criterion="distance")
+
+            if len(set(clusters)) == 1:
+                if len(gene_cluster_k_mer_contig_positions) == len(self.genome_names):
+                    synteny_gene_cluster_type = 'core'
+                else:
+                    synteny_gene_cluster_type = 'accessory'
+            else:
+                if len(set(gene_cluster_k_mer_contig_genome_list)) != len(gene_cluster_k_mer_contig_genome_list):
+                    synteny_gene_cluster_type = 'duplication'
+                else:
+                    synteny_gene_cluster_type = 'rearrangement'
 
         if gene_cluster == "GC_00000000":
             synteny_gene_cluster_type = 'rna'
