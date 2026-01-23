@@ -2757,8 +2757,8 @@ class DGR_Finder:
                     vr_id = f"{vr_contig}:{vr_start}-{vr_end}"
                 hits_by_vr[vr_id].append(hit_data)
 
-            # now filter per query_section
-            for query_section, query_hits in hits_by_query.items():
+            # now filter per VR (select best TR if one VR matches multiple TRs)
+            for vr_id, query_hits in hits_by_vr.items():
 
                 # if only one hit, keep it
                 if len(query_hits) == 1:
