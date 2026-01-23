@@ -2079,20 +2079,38 @@ class DGR_Finder:
                         subject_frame = int(elem.find('Hsp_hit-frame').text)
                         midline = elem.find('Hsp_midline').text
 
-                        # Compute base genome positions
-                        # BLAST coordinates are 1-based; convert to 0-based by subtracting 1 from both endpoints
-                        subject_genome_start_position = min(hit_from - 1, hit_to - 1)
-                        subject_genome_end_position = max(hit_from - 1, hit_to - 1)
+                        # Determine strand orientation from BLAST coordinates
+                        # When hit_from > hit_to, the subject hit is on the reverse strand
+                        subject_on_reverse_strand = hit_from > hit_to
+                        query_on_reverse_strand = query_from > query_to
+
+                        # Compute base genome positions (0-based)
+                        # For query: always forward strand relative to our input sequences
                         query_genome_start_position = query_start_position + min(query_from - 1, query_to - 1)
                         query_genome_end_position = query_start_position + max(query_from - 1, query_to - 1)
 
+                        # For subject: need to track strand for proper coordinate handling
+                        subject_genome_start_position = min(hit_from - 1, hit_to - 1)
+                        subject_genome_end_position = max(hit_from - 1, hit_to - 1)
+
                         # Update coordinates to reflect trimming
-                        # trim_end is exclusive (Python slice convention), so subtract 1 for inclusive end
-                        query_genome_start_position = query_genome_start_position + trim_start
-                        query_genome_end_position = query_genome_start_position + (trim_end - trim_start) - 1
-                        subject_genome_start_position = subject_genome_start_position + trim_start
-                        subject_genome_end_position = subject_genome_start_position + (trim_end - trim_start) - 1
+                        # trim_start/trim_end are alignment-relative positions
                         alignment_length = trim_end - trim_start
+
+                        # Query trimming (query is always forward strand in our usage)
+                        query_genome_start_position = query_genome_start_position + trim_start
+                        query_genome_end_position = query_genome_start_position + alignment_length - 1
+
+                        # Subject trimming depends on strand
+                        if subject_on_reverse_strand:
+                            # Reverse strand: alignment position 0 = genomic end
+                            # Trimming from alignment start removes from genomic end
+                            subject_genome_end_position = subject_genome_end_position - trim_start
+                            subject_genome_start_position = subject_genome_end_position - alignment_length + 1
+                        else:
+                            # Forward strand: alignment position 0 = genomic start
+                            subject_genome_start_position = subject_genome_start_position + trim_start
+                            subject_genome_end_position = subject_genome_start_position + alignment_length - 1
 
                         # Trim midline to match trimmed sequences
                         trimmed_midline = midline[trim_start:trim_end]
@@ -2174,14 +2192,20 @@ class DGR_Finder:
                             tr_mismatch_counts = query_mismatch_counts
 
                         # Mismatch positions relative to VR contig
-                        # In activity mode, query positions are VR positions
-                        # In homology mode, subject positions are VR positions
+                        # query_mismatch_positions are alignment-relative (0-indexed within trimmed alignment)
+                        # Need to convert to genomic coordinates, accounting for strand
                         if vr_in_query:
+                            # Activity mode: VR is query (always forward strand in our usage)
                             mismatch_pos_contig_relative = [x + vr_start for x in query_mismatch_positions]
                         else:
-                            # For homology mode, we need to calculate VR positions from subject coordinates
-                            # The query_mismatch_positions are alignment-relative, so we add to vr_start
-                            mismatch_pos_contig_relative = [x + vr_start for x in query_mismatch_positions]
+                            # Homology mode: VR is subject (can be forward or reverse strand)
+                            if subject_on_reverse_strand:
+                                # Reverse strand: alignment position 0 = genomic end (vr_end)
+                                # Position X in alignment = genomic position (vr_end - X)
+                                mismatch_pos_contig_relative = [vr_end - x for x in query_mismatch_positions]
+                            else:
+                                # Forward strand: alignment position 0 = genomic start (vr_start)
+                                mismatch_pos_contig_relative = [x + vr_start for x in query_mismatch_positions]
 
                         # ========== SNV ANALYSIS (only for activity mode) ==========
                         if apply_snv_filters:
