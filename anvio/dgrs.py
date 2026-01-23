@@ -2589,6 +2589,23 @@ class DGR_Finder:
                             confidence_reasons = []
                             numb_of_SNVs = 0
 
+                        # Filter out low confidence hits in activity mode
+                        # We only keep medium and high confidence for activity-based detection
+                        if apply_snv_filters and confidence == 'low':
+                            elem.clear()
+                            continue
+
+                        # Filter out VRs that don't overlap with any gene call
+                        # Check start and end positions of VR
+                        gene_at_start = self.find_overlapping_gene(vr_contig, vr_start)
+                        gene_at_end = self.find_overlapping_gene(vr_contig, vr_end)
+
+                        if not (gene_at_start or gene_at_end):
+                            # VR doesn't overlap with any gene - skip this hit
+                            elem.clear()
+                            continue
+
+
                         # Basic counts
                         numb_of_mismatches = len(query_mismatch_positions)
 
@@ -2650,12 +2667,6 @@ class DGR_Finder:
                             # Detection method tracking
                             'detection_method': 'activity' if apply_snv_filters else 'homology',
                         }
-
-                        # Filter out low confidence hits in activity mode
-                        # We only keep medium and high confidence for activity-based detection
-                        if apply_snv_filters and confidence == 'low':
-                            elem.clear()
-                            continue
 
                         # Stage 7: Only now increment counter and create unique ID for hits that passed all filters
                         hit_id_counter += 1
