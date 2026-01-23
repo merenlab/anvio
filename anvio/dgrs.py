@@ -1363,6 +1363,84 @@ class DGR_Finder:
             except Exception as e:
                 output_queue.put((bin_name, False, None, str(e)))
 
+
+    @staticmethod
+    def process_bin_worker_homology(input_queue, output_queue, config, rt_windows_list, contigs_db_path):
+        """
+        Worker function for parallel bin processing in homology mode. Processes bins from input_queue
+        and puts results in output_queue.
+
+        This is a static method to work with multiprocessing - all needed data is passed
+        explicitly rather than through self.
+
+        Parameters
+        ==========
+        input_queue : multiprocessing.Queue
+            Queue containing (bin_name, bin_contigs_list) tuples.
+        output_queue : multiprocessing.Queue
+            Queue for results as (bin_name, success, blast_path, error_msg) tuples.
+        config : dict
+            Configuration dict with 'temp_dir', 'word_size'.
+        rt_windows_list : list
+            List of RT window dicts (serializable format from rt_windows.values()).
+        contigs_db_path : str
+            Path to contigs database.
+        """
+        while True:
+            bin_name, bin_contigs_list = input_queue.get(True)
+
+            try:
+                # Load contig sequences for this bin
+                contigs_db = dbops.ContigsDatabase(contigs_db_path, run=run_quiet, progress=progress_quiet)
+                contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
+                contigs_db.disconnect()
+
+                # Filter contig sequences to only those in this bin
+                bin_contig_sequences = {contig: contig_sequences[contig]
+                                        for contig in bin_contigs_list if contig in contig_sequences}
+
+                if not bin_contig_sequences:
+                    output_queue.put((bin_name, False, None, "No contig sequences found for bin"))
+                    continue
+
+                # Filter RT windows to only those in this bin's contigs
+                query_records = {}
+                for window_info in rt_windows_list:
+                    contig = window_info['contig']
+                    if contig not in bin_contigs_list:
+                        continue
+
+                    window_start = window_info['window_start']
+                    window_end = window_info['window_end']
+                    window_id = window_info['window_id']
+
+                    if contig not in bin_contig_sequences:
+                        continue
+
+                    # Extract window sequence
+                    contig_seq = bin_contig_sequences[contig]['sequence']
+                    window_seq = contig_seq[window_start:window_end + 1]
+
+                    # Create section_id compatible with existing parsing
+                    section_id = f"{contig}_section_{window_id}_start_bp{window_start}_end_bp{window_end}"
+                    query_records[section_id] = window_seq
+
+                if not query_records:
+                    output_queue.put((bin_name, False, None, "No RT windows found in bin"))
+                    continue
+
+                # Run BLAST using the standalone execute_blast() function
+                blast_output_path = execute_blast(
+                    query_records=query_records,
+                    target_sequences=bin_contig_sequences,
+                    temp_dir=config['temp_dir'],
+                    word_size=config['word_size'],
+                    num_threads=1,
+                    query_fasta_filename=f"bin_{bin_name}_homology_query.fasta",
+                    target_fasta_filename=f"bin_{bin_name}_homology_target.fasta",
+                    blast_output_filename=f"blast_output_homology_for_bin_{bin_name}_wordsize_{config['word_size']}.xml"
+                )
+
                 output_queue.put((bin_name, True, blast_output_path, None))
 
             except Exception as e:
@@ -1541,6 +1619,191 @@ class DGR_Finder:
         # return the last successful blast output (maintains original behavior)
         return self.blast_output
 
+
+    def process_collections_mode_homology(self):
+        """
+        Process contigs in collections mode for homology-based detection by running BLASTn
+        separately for each bin in the collection.
+
+        Similar to process_collections_mode() but uses RT windows as queries instead of
+        SNV clusters. This is used when detection_mode is 'homology' or 'both' and
+        collections_mode is True.
+
+        If num_bins > num_threads: process bins in parallel (each BLAST uses 1 thread)
+        If num_bins <= num_threads: process bins sequentially (each BLAST uses all threads)
+
+        Returns
+        =======
+        blast_outputs : dict
+            Dictionary mapping bin_name to blast_output_path for successful bins.
+        """
+        self.run.info_single("Running homology-based detection in collections mode...", nl_before=1)
+
+        # Get collections data
+        profile_db = dbops.ProfileDatabase(self.profile_db_path)
+        where_clause = f'''collection_name == "{self.collections_given}"'''
+        split_collections_dict = profile_db.db.get_some_rows_from_table_as_dict(
+            t.collections_splits_table_name, where_clause=where_clause, error_if_no_data=True)
+        profile_db.disconnect()
+
+        # Group splits by bin and get contigs
+        bin_contigs_dict = {}
+        for key, value in split_collections_dict.items():
+            bin_name = value['bin_name']
+            split = value['split']
+            contig = split.split('_split_')[0]
+            if bin_name not in bin_contigs_dict:
+                bin_contigs_dict[bin_name] = set()
+            bin_contigs_dict[bin_name].add(contig)
+
+        # Convert sets to lists
+        for bin_name in bin_contigs_dict:
+            bin_contigs_dict[bin_name] = list(bin_contigs_dict[bin_name])
+
+        num_bins = len(bin_contigs_dict)
+
+        # Pre-compute RT windows (shared across all bins)
+        if not hasattr(self, 'rt_windows') or not self.rt_windows:
+            self.get_rt_windows()
+
+        if not self.rt_windows:
+            self.run.warning("No RT windows found. Homology-based detection cannot proceed in collections mode.",
+                           header="NO RT WINDOWS")
+            return {}
+
+        # Initialize results tracking
+        blast_outputs = {}
+        successful_bins = []
+        skipped_bins = {}
+
+        # === DECIDE: PARALLEL vs SEQUENTIAL ===
+        use_parallel = num_bins > self.num_threads and self.num_threads > 1
+
+        if use_parallel:
+            # === PARALLEL BIN PROCESSING ===
+            self.run.info_single(f"Processing {num_bins} bins in parallel using {self.num_threads} threads "
+                                f"(homology mode, each BLAST uses 1 thread).", nl_before=1)
+
+            # Prepare config dict for workers
+            config = {
+                'temp_dir': self.temp_dir,
+                'word_size': self.word_size,
+            }
+
+            # Convert rt_windows to serializable list format with window_id
+            rt_windows_list = []
+            for window_id, window_info in self.rt_windows.items():
+                window_dict = dict(window_info)
+                window_dict['window_id'] = window_id
+                rt_windows_list.append(window_dict)
+
+            # Setup queues
+            manager = multiprocessing.Manager()
+            input_queue = manager.Queue()
+            output_queue = manager.Queue()
+
+            # Put all bins in input queue
+            for bin_name, bin_contigs_list in bin_contigs_dict.items():
+                input_queue.put((bin_name, bin_contigs_list))
+
+            # Start workers
+            workers = []
+            for i in range(self.num_threads):
+                worker = multiprocessing.Process(
+                    target=DGR_Finder.process_bin_worker_homology,
+                    args=(input_queue, output_queue, config, rt_windows_list, self.contigs_db_path))
+                workers.append(worker)
+                worker.start()
+
+            # Monitor progress
+            self.progress.new('Processing bins for homology BLAST (parallel)', progress_total_items=num_bins)
+            self.progress.update(f"Processing {num_bins} bins across {self.num_threads} workers...")
+
+            bins_processed = 0
+            while bins_processed < num_bins:
+                try:
+                    bin_name, success, blast_path, error_msg = output_queue.get()
+                    bins_processed += 1
+                    self.progress.increment(increment_to=bins_processed)
+
+                    if success:
+                        successful_bins.append(bin_name)
+                        blast_outputs[bin_name] = blast_path
+                    else:
+                        skipped_bins[bin_name] = error_msg
+
+                    if bins_processed < num_bins:
+                        self.progress.update(f"Processed {bins_processed}/{num_bins} bins...")
+                    else:
+                        self.progress.update("All done!")
+
+                except KeyboardInterrupt:
+                    self.run.info_single("Received kill signal, terminating workers...", nl_before=1)
+                    break
+
+            self.progress.end()
+
+            # Terminate workers
+            for worker in workers:
+                worker.terminate()
+
+        else:
+            # === SEQUENTIAL BIN PROCESSING ===
+            if self.num_threads > 1:
+                self.run.info_single(f"Processing {num_bins} bins sequentially "
+                                    f"(homology mode, each BLAST uses {self.num_threads} threads).", nl_before=1)
+
+            self.progress.new('Processing bins for homology BLAST', progress_total_items=num_bins)
+
+            # Load contig sequences once
+            contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
+            contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
+            contigs_db.disconnect()
+
+            for bin_name, bin_contigs_list in bin_contigs_dict.items():
+                self.progress.update(f"{bin_name}", increment=True)
+
+                try:
+                    # Filter contig sequences to this bin
+                    bin_contig_sequences = {contig: contig_sequences[contig]
+                                           for contig in bin_contigs_list if contig in contig_sequences}
+
+                    # Run homology mode BLAST for this bin
+                    blast_output_path = self.run_blast_homology_mode(
+                        contig_sequences=bin_contig_sequences,
+                        bin_name=bin_name,
+                        bin_contigs=bin_contigs_list
+                    )
+
+                    if blast_output_path:
+                        blast_outputs[bin_name] = blast_output_path
+                        successful_bins.append(bin_name)
+                    else:
+                        skipped_bins[bin_name] = "No RT windows in bin"
+
+                except ConfigError as e:
+                    skipped_bins[bin_name] = str(e)
+                    continue
+                except Exception as e:
+                    skipped_bins[bin_name] = str(e)
+                    continue
+
+            self.progress.end()
+
+        # Summary message
+        self.run.info_single(f"Homology mode processed {PL('bin', num_bins)}: {len(successful_bins)} successful, "
+                            f"{len(skipped_bins)} skipped.", nl_before=1)
+
+        # Report skipped bins if any
+        if skipped_bins:
+            self.run.warning(f"{PL('bin', len(skipped_bins))} skipped during homology BLAST: {', '.join(skipped_bins.keys())}. "
+                           "Use '--debug' to see detailed error messages.",
+                           header="BINS SKIPPED (HOMOLOGY)")
+            if anvio.DEBUG:
+                for bin_name, error_msg in skipped_bins.items():
+                    self.run.info_single(f"  {bin_name}: {error_msg}")
+
+        return blast_outputs
 
 
     def process_standard_mode(self):
