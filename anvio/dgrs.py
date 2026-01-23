@@ -1160,9 +1160,9 @@ class DGR_Finder:
         """
         Run BLASTn with given query and target sequences.
 
-        This is the unified BLAST execution function used by both activity-based and
-        homology-based detection modes. It handles FASTA file creation, BLAST execution,
-        and returns the path to the output file.
+        This is the unified BLAST execution method used by both activity-based and
+        homology-based detection modes. It handles logging and delegates the actual
+        BLAST execution to the standalone execute_blast() function.
 
         Parameters
         ==========
@@ -1205,17 +1205,6 @@ class DGR_Finder:
             target_fasta_filename = f"blast_target_{mode}.fasta"
             blast_output_filename = f"blast_output_{mode}_wordsize_{self.word_size}.xml"
 
-        query_fasta_path = os.path.join(self.temp_dir, query_fasta_filename)
-        target_fasta_path = os.path.join(self.temp_dir, target_fasta_filename)
-        blast_output_path = os.path.join(self.temp_dir, blast_output_filename)
-
-        # Write query FASTA
-        query_fasta = fastalib.FastaOutput(query_fasta_path)
-        for seq_id, seq in query_records.items():
-            query_fasta.write_id(seq_id)
-            query_fasta.write_seq(seq)
-        query_fasta.close()
-
         # Log query summary with mode-appropriate message
         num_sequences = len(query_records)
         total_bp = sum(len(seq) for seq in query_records.values())
@@ -1227,24 +1216,18 @@ class DGR_Finder:
         bin_suffix = f" for bin '{bin_name}'" if bin_name else ""
         self.run.info_single(f"Identified {num_sequences} {query_desc} "
                             f"({total_bp:,} bp total){bin_suffix} for BLAST search.", nl_before=1)
-        self.run.info(f'Query FASTA ({mode} mode)', query_fasta_path)
 
-        # Write target FASTA
-        target_fasta = fastalib.FastaOutput(target_fasta_path)
-        for name, sequence in target_sequences.items():
-            seq = sequence['sequence']
-            target_fasta.write_id(name)
-            target_fasta.write_seq(seq)
-        target_fasta.close()
-
-        self.run.info(f'Target FASTA ({mode} mode)', target_fasta_path)
-
-        # Run BLAST
-        blast = BLAST(query_fasta_path, target_fasta=target_fasta_path, search_program='blastn',
-                     output_file=blast_output_path, additional_params='-dust no', num_threads=self.num_threads)
-        blast.evalue = 10
-        blast.makedb(dbtype='nucl')
-        blast.blast(outputfmt='5', word_size=self.word_size)
+        # Execute BLAST using the standalone function
+        blast_output_path = execute_blast(
+            query_records=query_records,
+            target_sequences=target_sequences,
+            temp_dir=self.temp_dir,
+            word_size=self.word_size,
+            num_threads=self.num_threads,
+            query_fasta_filename=query_fasta_filename,
+            target_fasta_filename=target_fasta_filename,
+            blast_output_filename=blast_output_filename
+        )
 
         self.run.info(f'BLAST output ({mode} mode)', blast_output_path)
 
