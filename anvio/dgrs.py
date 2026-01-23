@@ -1346,28 +1346,22 @@ class DGR_Finder:
                     continue
 
                 # === run_blast logic ===
-                query_fasta_path = os.path.join(config['temp_dir'], f"bin_{bin_name}_subsequences.fasta")
-                query_fasta = fastalib.FastaOutput(query_fasta_path)
-                for name, seq in contig_records.items():
-                    query_fasta.write_id(name)
-                    query_fasta.write_seq(seq)
-                query_fasta.close()
+                # Use the standalone execute_blast() function to avoid code duplication
+                blast_output_path = execute_blast(
+                    query_records=contig_records,
+                    target_sequences=bin_contig_sequences,
+                    temp_dir=config['temp_dir'],
+                    word_size=config['word_size'],
+                    num_threads=1,
+                    query_fasta_filename=f"bin_{bin_name}_subsequences.fasta",
+                    target_fasta_filename=f"bin_{bin_name}_reference_sequences.fasta",
+                    blast_output_filename=f"blast_output_for_bin_{bin_name}_wordsize_{config['word_size']}.xml"
+                )
 
-                target_file_path = os.path.join(config['temp_dir'], f"bin_{bin_name}_reference_sequences.fasta")
-                target_fasta = fastalib.FastaOutput(target_file_path)
-                for name, sequence in bin_contig_sequences.items():
-                    target_fasta.write_id(name)
-                    target_fasta.write_seq(sequence['sequence'])
-                target_fasta.close()
+                output_queue.put((bin_name, True, blast_output_path, None))
 
-                blast_output_path = os.path.join(config['temp_dir'],
-                                                  f"blast_output_for_bin_{bin_name}_wordsize_{config['word_size']}.xml")
-
-                blast = BLAST(query_fasta_path, target_fasta=target_file_path, search_program='blastn',
-                              output_file=blast_output_path, additional_params='-dust no', num_threads=1)
-                blast.evalue = 10
-                blast.makedb(dbtype='nucl')
-                blast.blast(outputfmt='5', word_size=config['word_size'])
+            except Exception as e:
+                output_queue.put((bin_name, False, None, str(e)))
 
                 output_queue.put((bin_name, True, blast_output_path, None))
 
