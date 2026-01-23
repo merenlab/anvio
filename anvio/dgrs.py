@@ -2732,18 +2732,30 @@ class DGR_Finder:
                 hits_dict = {f"hit_{i+1}": h for i, h in enumerate(hits_dict)}
 
             # create grouping dict for this section
-            hits_by_query = defaultdict(list)
+            # Group by VR coordinates, not by query_section
+            # In activity mode: query_section = VR section_id (grouping by VR works)
+            # In homology mode: query_section = TR section_id (wrong! multiple VRs share same query_section)
+            # Solution: Use VR coordinates (query_contig + query_genome_start + query_genome_end) as unique VR identifier
+            hits_by_vr = defaultdict(list)
 
-            # populate hits_by_query
+            # populate hits_by_vr using VR coordinates
             for hit_id, hit_data in hits_dict.items():
                 # defensive: skip non-dicts
                 if not isinstance(hit_data, dict):
                     continue
-                query_section = hit_data.get('query_section')
-                if query_section is None:
-                    # if no query_section, skip or decide appropriate fallback
-                    continue
-                hits_by_query[query_section].append(hit_data)
+                # Create a unique VR identifier from VR coordinates
+                # After semantic swap in parse_and_process_blast_results, query_* fields contain VR info
+                vr_contig = hit_data.get('query_contig')
+                vr_start = hit_data.get('query_genome_start_position')
+                vr_end = hit_data.get('query_genome_end_position')
+                if vr_contig is None or vr_start is None or vr_end is None:
+                    # fallback to query_section if coordinates missing
+                    vr_id = hit_data.get('query_section')
+                    if vr_id is None:
+                        continue
+                else:
+                    vr_id = f"{vr_contig}:{vr_start}-{vr_end}"
+                hits_by_vr[vr_id].append(hit_data)
 
             # now filter per query_section
             for query_section, query_hits in hits_by_query.items():
