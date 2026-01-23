@@ -2651,6 +2651,12 @@ class DGR_Finder:
                             'detection_method': 'activity' if apply_snv_filters else 'homology',
                         }
 
+                        # Filter out low confidence hits in activity mode
+                        # We only keep medium and high confidence for activity-based detection
+                        if apply_snv_filters and confidence == 'low':
+                            elem.clear()
+                            continue
+
                         # Stage 7: Only now increment counter and create unique ID for hits that passed all filters
                         hit_id_counter += 1
                         hit_identity_unique = f"{section_id}_count_{hit_id_counter}"
