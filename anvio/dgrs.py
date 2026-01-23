@@ -1875,7 +1875,7 @@ class DGR_Finder:
 
 
 
-    def process_blast_results(self, max_percent_identity=100, vr_in_query=True, apply_snv_filters=True):
+    def process_blast_results(self, max_percent_identity=100, vr_in_query=True, apply_snv_filters=True, mode='activity'):
         """
         Process BLAST output depending on whether collections_mode is enabled.
         If collections_mode is True, process multiple bins separately and merge results.
@@ -1897,6 +1897,9 @@ class DGR_Finder:
             If False (homology mode), query=TR, subject=VR.
         apply_snv_filters : bool
             If True, perform SNV-based filtering. If False, skip SNV analysis.
+        mode : str
+            Detection mode ('activity' or 'homology'). Affects BLAST output file naming
+            pattern in collections mode.
 
         Returns
         =======
@@ -1920,17 +1923,24 @@ class DGR_Finder:
                 # reset mismatch hits for each bin
                 self.mismatch_hits = defaultdict(lambda: defaultdict(dict))
 
-                blast_file = os.path.join(
-                    tmp_directory_path,
-                    f"blast_output_for_bin_{bin_name}_wordsize_{self.word_size}.xml"
-                )
+                # Use mode-specific file naming pattern
+                if mode == 'homology':
+                    blast_file = os.path.join(
+                        tmp_directory_path,
+                        f"blast_output_homology_for_bin_{bin_name}_wordsize_{self.word_size}.xml"
+                    )
+                else:
+                    blast_file = os.path.join(
+                        tmp_directory_path,
+                        f"blast_output_for_bin_{bin_name}_wordsize_{self.word_size}.xml"
+                    )
 
                 if not os.path.exists(blast_file):
-                    self.run.warning(f"Warning: BLAST output file for {bin_name} not found. Skipping...")
+                    self.run.warning(f"Warning: BLAST output file for {bin_name} ({mode} mode) not found. Skipping...")
                     continue
 
                 if os.stat(blast_file).st_size == 0:
-                    self.run.warning("No DGR like sequences are being found via BLAST.", header="NO DGRS FOUND")
+                    self.run.warning(f"No DGR like sequences are being found via BLAST ({mode} mode).", header="NO DGRS FOUND")
                     raise ConfigError("Therefore, we will exit here because anvi'o has found no DGRs in your data, "
                                     "nada, nowt, nothin'! However, you can go back and tinker with the parameters "
                                     "of this tool if you believe this should not be the case. Anvi'o wishes you a nice day :)")
@@ -5219,11 +5229,26 @@ class DGR_Finder:
         # Homology-based detection (uses RT HMM windows)
         if self.detection_mode in ('homology', 'both'):
             self.run.info_single("Running homology-based DGR detection...", nl_before=1, mc='green')
-            homology_hits = self.process_homology_mode()
 
-            # For 'homology' only mode, copy to merged_mismatch_hits if in collections mode
-            if self.detection_mode == 'homology' and self.collections_mode:
-                self.merged_mismatch_hits = copy.deepcopy(self.mismatch_hits)
+            if self.collections_mode:
+                # Run homology BLAST for each bin in the collection
+                homology_blast_outputs = self.process_collections_mode_homology()
+
+                if homology_blast_outputs:
+                    # Store bin names list for process_blast_results to iterate over
+                    # (only bins that had successful BLAST runs)
+                    self.bin_names_list = list(homology_blast_outputs.keys())
+
+                    # Process BLAST results for all bins (homology mode)
+                    self.process_blast_results(vr_in_query=False, apply_snv_filters=False, mode='homology')
+                    homology_hits = copy.deepcopy(self.merged_mismatch_hits)
+                else:
+                    self.run.warning("No bins had successful homology-based BLAST runs.",
+                                   header="NO HOMOLOGY RESULTS")
+                    homology_hits = defaultdict(lambda: defaultdict(dict))
+            else:
+                # Standard (non-collections) homology mode
+                homology_hits = self.process_homology_mode()
 
         # Merge results if running both modes
         if self.detection_mode == 'both':
