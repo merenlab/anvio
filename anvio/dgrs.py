@@ -49,6 +49,85 @@ progress_quiet = terminal.Progress(verbose=False)
 # pre-compiled regex for extracting start/end positions from section IDs (used in BLAST parsing loop)
 SECTION_ID_PATTERN = re.compile(r"start_bp(\d+)_end_bp(\d+)")
 
+
+def execute_blast(query_records, target_sequences, temp_dir, word_size, num_threads=1,
+                  query_fasta_filename="blast_query.fasta", target_fasta_filename="blast_target.fasta",
+                  blast_output_filename="blast_output.xml"):
+    """
+    Execute BLASTn search with given query and target sequences.
+
+    This is a standalone function (not a method) that handles the core BLAST execution
+    logic. It can be called from both instance methods and static methods, avoiding
+    code duplication.
+
+    Parameters
+    ==========
+    query_records : dict
+        Query sequences as {section_id: sequence}.
+    target_sequences : dict
+        Target sequences as {contig_name: {'sequence': seq}} or {contig_name: sequence}.
+    temp_dir : str
+        Directory for temporary BLAST files.
+    word_size : int
+        BLAST word size parameter.
+    num_threads : int
+        Number of threads for BLAST (default 1).
+    query_fasta_filename : str
+        Filename for query FASTA file.
+    target_fasta_filename : str
+        Filename for target FASTA file.
+    blast_output_filename : str
+        Filename for BLAST output XML file.
+
+    Returns
+    =======
+    str
+        Path to the BLASTn output XML file.
+
+    Raises
+    ======
+    ConfigError
+        If no query or target sequences are provided.
+    """
+    if not query_records:
+        raise ConfigError("No query sequences provided for BLAST search.")
+
+    if not target_sequences:
+        raise ConfigError("No target sequences found for BLAST search.")
+
+    query_fasta_path = os.path.join(temp_dir, query_fasta_filename)
+    target_fasta_path = os.path.join(temp_dir, target_fasta_filename)
+    blast_output_path = os.path.join(temp_dir, blast_output_filename)
+
+    # Write query FASTA
+    query_fasta = fastalib.FastaOutput(query_fasta_path)
+    for seq_id, seq in query_records.items():
+        query_fasta.write_id(seq_id)
+        query_fasta.write_seq(seq)
+    query_fasta.close()
+
+    # Write target FASTA
+    # Handle both dict formats: {'sequence': seq} and just seq
+    target_fasta = fastalib.FastaOutput(target_fasta_path)
+    for name, sequence in target_sequences.items():
+        if isinstance(sequence, dict):
+            seq = sequence['sequence']
+        else:
+            seq = sequence
+        target_fasta.write_id(name)
+        target_fasta.write_seq(seq)
+    target_fasta.close()
+
+    # Run BLAST
+    blast = BLAST(query_fasta_path, target_fasta=target_fasta_path, search_program='blastn',
+                  output_file=blast_output_path, additional_params='-dust no', num_threads=num_threads)
+    blast.evalue = 10
+    blast.makedb(dbtype='nucl')
+    blast.blast(outputfmt='5', word_size=word_size)
+
+    return blast_output_path
+
+
 class DGR_Finder:
     def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
         self.args = args
