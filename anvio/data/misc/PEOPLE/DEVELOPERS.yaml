@@ -591,10 +591,14 @@
   linkedin: metehaansever
   orcid: 0000-0003-1043-4956
   affiliations:
+    - title: Engineer
+      inst: Automation Faculty GmbH
+      inst_link: https://www.automation-factory.net/
+      current: true
     - title: Scientific Programmer
       inst: HIFMB
       inst_link: https://hifmb.de/
-      current: true
+      current: false
 
 - github: bcoltman
   name: Benjamin Luke Coltman
