@@ -1433,10 +1433,7 @@ class ContigsSuperclass(object):
 
         output = {}
 
-        if not len(self.contig_sequences):
-            self.init_contig_sequences()
-
-        contig_length = len(self.contig_sequences[contig_name]['sequence'])
+        contig_length = len(self.get_contig_sequence(contig_name))
         data_shape = (contig_length, len(available_info))
 
         # Init the array. First 3 columns have defaults of 0, last 5 have defaults of -1

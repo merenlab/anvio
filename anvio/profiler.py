@@ -709,7 +709,10 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         # Initialize contigs db
         dbops.ContigsSuperclass.__init__(self, self.args, r=null_run, p=self.progress)
-        self.init_contig_sequences(contig_names_of_interest=self.contig_names_of_interest)
+        # NOTE: We intentionally skip init_contig_sequences() here to avoid loading all contig
+        # sequences into memory upfront. Instead, sequences are fetched on-demand via
+        # get_contig_sequence() during process_contig(). This dramatically reduces memory usage
+        # for large contigs databases.
         self.contig_names_in_contigs_db = set(self.contigs_basic_info.keys())
 
         # restore our run object. OK. take deep breath. because you are a good programmer, you have
@@ -1296,9 +1299,10 @@ class BAMProfiler(dbops.ContigsSuperclass):
         timer.make_checkpoint('Initialization done')
 
         # populate contig with empty split objects
+        contig_sequence = self.get_contig_sequence(contig_name)
         for split_name in self.contig_name_to_splits[contig_name]:
             s = self.splits_basic_info[split_name]
-            split_sequence = self.contig_sequences[contig_name]['sequence'][s['start']:s['end']]
+            split_sequence = contig_sequence[s['start']:s['end']]
             split = contigops.Split(split_name, split_sequence, contig_name, s['order_in_parent'], s['start'], s['end'])
             contig.splits.append(split)
 
