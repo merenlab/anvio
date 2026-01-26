@@ -597,36 +597,47 @@ class ContigsSuperclass(object):
         return contigs_shorter_than_M
 
 
-    def get_contig_sequence(self, contig_name):
-        """Fetch a single contig sequence on demand, with instance-level caching.
+    def get_contig_sequence(self, contig_name, _cache_size=100):
+        """Fetch a single contig sequence on demand, with bounded LRU caching.
 
         This method provides lazy access to contig sequences without loading the entire
-        contig_sequences table into memory. It maintains a small cache to avoid repeated
-        database lookups for frequently accessed contigs.
-        """
-        # Check instance cache first
-        if not hasattr(self, '_contig_sequence_cache'):
-            self._contig_sequence_cache = {}
+        contig_sequences table into memory. It maintains a bounded LRU cache to keep
+        memory usage constant regardless of how many contigs are processed.
 
+        The cache size is small by default (100) since contigs are typically processed
+        sequentially and each sequence is needed only once.
+        """
+        # Initialize cache and persistent DB connection on first call
+        if not hasattr(self, '_contig_sequence_cache'):
+            from collections import OrderedDict
+            self._contig_sequence_cache = OrderedDict()
+            self._contig_sequence_cache_size = _cache_size
+            self._contig_sequence_db = None
+
+        # Check LRU cache first (and move to end if found for LRU behavior)
         if contig_name in self._contig_sequence_cache:
+            self._contig_sequence_cache.move_to_end(contig_name)
             return self._contig_sequence_cache[contig_name]
 
         # Also check if init_contig_sequences was called and has this contig
         if hasattr(self, 'contig_sequences') and contig_name in self.contig_sequences:
             return self.contig_sequences[contig_name]['sequence']
 
-        # Fetch from database
-        contigs_db = ContigsDatabase(self.contigs_db_path)
-        result = contigs_db.db.smart_get(t.contig_sequences_table_name, 'contig', {contig_name}, string_the_key=True, error_if_no_data=False)
-        contigs_db.disconnect()
+        # Use persistent DB connection (lazy initialization)
+        if self._contig_sequence_db is None:
+            self._contig_sequence_db = ContigsDatabase(self.contigs_db_path)
+
+        result = self._contig_sequence_db.db.smart_get(t.contig_sequences_table_name, 'contig', {contig_name}, string_the_key=True, error_if_no_data=False)
 
         if not result or contig_name not in result:
             raise ConfigError(f"The contig '{contig_name}' does not exist in the contigs database.")
 
         sequence = result[contig_name]['sequence']
 
-        # Cache it (simple cache, no size limit for now - contigs are processed once each)
+        # Add to LRU cache, evicting oldest if at capacity
         self._contig_sequence_cache[contig_name] = sequence
+        if len(self._contig_sequence_cache) > self._contig_sequence_cache_size:
+            self._contig_sequence_cache.popitem(last=False)
 
         return sequence
 
