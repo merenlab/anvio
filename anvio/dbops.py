@@ -597,6 +597,40 @@ class ContigsSuperclass(object):
         return contigs_shorter_than_M
 
 
+    def get_contig_sequence(self, contig_name):
+        """Fetch a single contig sequence on demand, with instance-level caching.
+
+        This method provides lazy access to contig sequences without loading the entire
+        contig_sequences table into memory. It maintains a small cache to avoid repeated
+        database lookups for frequently accessed contigs.
+        """
+        # Check instance cache first
+        if not hasattr(self, '_contig_sequence_cache'):
+            self._contig_sequence_cache = {}
+
+        if contig_name in self._contig_sequence_cache:
+            return self._contig_sequence_cache[contig_name]
+
+        # Also check if init_contig_sequences was called and has this contig
+        if hasattr(self, 'contig_sequences') and contig_name in self.contig_sequences:
+            return self.contig_sequences[contig_name]['sequence']
+
+        # Fetch from database
+        contigs_db = ContigsDatabase(self.contigs_db_path)
+        result = contigs_db.db.smart_get(t.contig_sequences_table_name, 'contig', {contig_name}, string_the_key=True, error_if_no_data=False)
+        contigs_db.disconnect()
+
+        if not result or contig_name not in result:
+            raise ConfigError(f"The contig '{contig_name}' does not exist in the contigs database.")
+
+        sequence = result[contig_name]['sequence']
+
+        # Cache it (simple cache, no size limit for now - contigs are processed once each)
+        self._contig_sequence_cache[contig_name] = sequence
+
+        return sequence
+
+
     def get_items_additional_data_for_functions_per_split_summary(self, source, split_names_of_interest, data_dict={}, keys_list=[]):
         """Get items additional data layers to display the frequency of function names
            for each split in a given contigs database so it can be shown as a stacked bar
