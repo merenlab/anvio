@@ -2230,6 +2230,7 @@ class PangenomeGraph():
 
                                 if len(node_x['gene_calls']) == len(self.genome_names) and node_x['type'] == 'rearrangement':
                                     node_x['type'] = 'core'
+                                    self.pangenome_data_df.loc[self.pangenome_data_df['syn_cluster'] == syn_cluster_x, 'syn_cluster_type'] = 'core'
                                     new_core_num += 1
 
         self.run.info_single("Successfully remerged nodes.")
