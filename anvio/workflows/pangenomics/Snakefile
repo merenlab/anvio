@@ -58,7 +58,8 @@ rule anvi_pan_genome:
         skip_hierarchical_clustering = M.get_rule_param("anvi_pan_genome", "--skip-hierarchical-clustering"),
         enforce_hierarchical_clustering = M.get_rule_param("anvi_pan_genome", "--enforce-hierarchical-clustering"),
         distance = M.get_rule_param("anvi_pan_genome", "--distance"),
-        linkage = M.get_rule_param("anvi_pan_genome", "--linkage")
+        linkage = M.get_rule_param("anvi_pan_genome", "--linkage"),
+        i_know_this_is_not_a_good_idea = M.get_rule_param("anvi_pan_genome", "--I-know-this-is-not-a-good-idea")
     output: os.path.join(dirs_dict["PAN_DIR"], M.pan_project_name + "-PAN.db")
     shell:
         """
@@ -68,7 +69,7 @@ rule anvi_pan_genome:
             {params.min_occurrence} {params.min_percent_identity} \
             {params.description} {params.overwrite_output_destinations}\
             {params.skip_hierarchical_clustering} {params.enforce_hierarchical_clustering}\
-            {params.distance} {params.linkage} >> {log} 2>&1
+            {params.distance} {params.linkage} {params.i_know_this_is_not_a_good_idea} >> {log} 2>&1
         """
 
 
