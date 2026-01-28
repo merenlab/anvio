@@ -382,6 +382,8 @@ class PangenomeGraphManager():
         # TODO height depends on the position of empty edges (should be fixed already)
         i = 0
         regions_summary_dict = {}
+        num_genomes = len(genome_names)
+
         for region_id, values_list in dict(sorted(regions_info_dict.items())).items():
 
             genomes_sets = [item[3] for item in values_list]
@@ -456,7 +458,7 @@ class PangenomeGraphManager():
             else:
                 motif = 'HVR'
 
-            complexity = P / weight
+            complexity = P / num_genomes
             # if weight >= 2 and P >= 1:
             #     complexity = (P-1) / (weight-1)
             # else:
