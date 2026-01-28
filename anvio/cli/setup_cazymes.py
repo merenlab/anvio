@@ -14,7 +14,7 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['mschecht']
 __provides__ = ['cazyme-data']
-__description__ = "Download and setup Pfam data from the EBI"
+__description__ = "Download and setup CAZyme data from the dbCAN3"
 
 
 def main():
