@@ -377,9 +377,6 @@ class PangenomeGraphManager():
                 else:
                     regions_info_dict[region_id] += [(node_x_position, node_y_position, node, genomes)]
 
-        # all_ghost_max_y_positions = {}
-
-        # TODO height depends on the position of empty edges (should be fixed already)
         i = 0
         regions_summary_dict = {}
         num_genomes = len(genome_names)
@@ -396,7 +393,6 @@ class PangenomeGraphManager():
             num_gene_clusters = len(set([item.rsplit('_', 1)[0] for item in nodes_sets]))
 
             region_x_positions = [item[0] for item in values_list]
-            # region_y_positions = [item[1] for item in values_list]
 
             region_x_positions_min = min(region_x_positions)
             region_x_positions_max = max(region_x_positions)
@@ -418,54 +414,48 @@ class PangenomeGraphManager():
                 print('Summary error.')
 
             genome_occurences = list(it.chain(*genomes_sets))
-            # genome_max = max(genome_occurences, key=genome_occurences.count)
-            # expansion = genome_occurences.count(genome_max)
-
             counts = Counter(genome_occurences)
-            genome_counts = {item: counts.get(item, 0) for item in genome_names}
 
             K = len(nodes_sets) #Num synteny gene clusters
             T = len(genome_occurences)
 
-            if weight < 2:
-                n = (1/K) * sum([len(genome_set) for genome_set in genomes_sets])
-                var = (1/K) * sum([(len(genome_set) - n)**2 for genome_set in genomes_sets])
-                p = 0
-                diversity = 0
+            p = (1/K) * sum([len(genome_set)/weight for genome_set in genomes_sets])
+            # Option 2:
+            # p = (1/K) * sum([len(genome_set) for genome_set in genomes_sets])
+
+            var = (1/K) * sum([(len(genome_set)/weight - p)**2 for genome_set in genomes_sets])
+            # Option 2:
+            # var = (1/K) * sum([(len(genome_set) - p)**2 for genome_set in genomes_sets])
+
+            if p != 1:
+                diversity = 1 - math.sqrt(var / (p * (1 - p)))
+                # Option 2:
+                # diversity = (weight - p) / (weight - 1) * (1 - math.sqrt(var / ((weight - 1)**2)))
+
             else:
-                # mean cluster prevalence
-                n = (1/K) * sum([len(genome_set) for genome_set in genomes_sets])
+                diversity = 0
 
-                # variance
-                var = (1/K) * sum([(len(genome_set) - n)**2 for genome_set in genomes_sets])
-
-                # normalize variance with the weight and turn into penalty
-                p = 1 - math.sqrt((var / (weight-1)**2))
-
-                # final diversity
-                diversity = ((weight - n) / (weight - 1)) * p
-
+            genome_counts = {item: counts.get(item, 0) for item in genomes_involved}
             values = list(genome_counts.values())
 
             max_expansion = max(values)
-            min_expansion = min(values)
+            min_expansion = 0 if len(genomes_involved) != len(genome_names) else min(values)
             mean_expansion = sum(values) / len(values)
+
             expansion = math.sqrt(max_expansion * mean_expansion)
-            # mode = ", ".join(str(num) for num in multimode(values))
+            # Option 2:
+            # expansion = max_expansion
 
             if P == 0:
                 motif = 'BB'
             elif P == 1 and min_expansion == 0:
                 motif = 'INDEL'
             else:
-                motif = 'HVR'
+                motif = 'VR'
 
             complexity = P / weight
+            # Option 2:
             # complexity = P / num_genomes
-            # if weight >= 2 and P >= 1:
-            #     complexity = (P-1) / (weight-1)
-            # else:
-            #     complexity = 0
 
             regions_summary_dict[i] = {
                 'region_id': region_id,
@@ -481,9 +471,8 @@ class PangenomeGraphManager():
                 'mean_expansion': mean_expansion,
                 'max_expansion': max_expansion,
                 'min_expansion': min_expansion,
-                'prevalence': n,
+                'prevalence': p,
                 'prevalence_variance': var,
-                'diversity_penalty': p,
                 'diversity': diversity,
                 'weight': weight
             }
@@ -507,16 +496,17 @@ class PangenomeGraphManager():
     @staticmethod
     def composite_variability_score(df, N):
 
-        # C_min = df['complexity'].min()
         C_max = df['complexity'].max()
-        # E_min = df['max_expansion'].min()
+        # Option 2:
+        # C_min = df['complexity'].min()
+
         E_max = df['expansion'].max()
-        # D_min = df['diversity'].min()
-        # D_max = df['diversity'].max()
+        # Option 2:
+        # E_min = df['max_expansion'].min()
+
         W_median = df['weight'].median()
 
         def log_min_max_normalize(X, X_min, X_max):
-            # Handle edge case where all values are the same
             if X_min == X_max:
                 return 0.0
             X_norm = (math.log(1 + X) - math.log(1 + X_min)) / (math.log(1 + X_max) - math.log(1 + X_min))
@@ -537,9 +527,18 @@ class PangenomeGraphManager():
             D = row['diversity']
 
             C_norm = fixed_baseline_log_scaling(C, C_max)
-            E_norm = fixed_baseline_log_scaling(E, E_max)
+            # Option 2:
+            # C_norm = log_min_max_normalize(C, C_min, C_max)
 
-            W_f = (1 - math.e**(-W/W_median)) / (1 - math.e**(-N/W_median))
+            E_norm = fixed_baseline_log_scaling(E, E_max)
+            # Option 2:
+            # E_norm = log_min_max_normalize(E, E_min, E_max)
+
+            W_f = W/N
+            # Option 2:
+            # W_f = (1 - math.e**(-W/W_median))
+            # Option 3:
+            # W_f = (1 - math.e**(-W/W_median)) / (1 - math.e**(-N/W_median))
 
             CVS = (C_norm * E_norm * D)**(1/3) * W_f
 
