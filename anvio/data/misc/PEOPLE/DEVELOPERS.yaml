@@ -655,6 +655,8 @@
   name: Joseph Nesme
   avatar: jnesme-anvio.png
   email: jnesme@gmail.com
+  git_records:
+    - jnesme@gmail.com
   linkedin: joseph-nesme-66946892
   orcid: 0000-0003-1929-5040
   bio: "Microbial ecologist studying plasmid diversity in the environment"
