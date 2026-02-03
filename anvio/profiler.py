@@ -31,6 +31,7 @@ import anvio.constants as constants
 import anvio.clustering as clustering
 import anvio.filesnpaths as filesnpaths
 import anvio.auxiliarydataops as auxiliarydataops
+import anvio.streamingops as streamingops
 
 from anvio.errors import ConfigError
 from anvio.tables.views import TablesForViews
@@ -633,6 +634,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.skip_SNV_profiling = A('skip_SNV_profiling')
         self.skip_INDEL_profiling = A('skip_INDEL_profiling')
         self.profile_SCVs = A('profile_SCVs')
+        self.use_streaming = A('use_streaming') if A('use_streaming') is not None else False
         self.min_percent_identity = A('min_percent_identity')
         self.fetch_filter = A('fetch_filter')
         self.gen_serialized_profile = A('gen_serialized_profile')
@@ -1350,6 +1352,204 @@ class BAMProfiler(dbops.ContigsSuperclass):
         return contig
 
 
+    def process_contig_streaming(self, bam_file, contig_name, contig_length):
+        """Process a contig using single-pass streaming approach.
+
+        This method replaces the multi-pass approach in process_contig() with a
+        single-pass design that extracts coverage, SNVs, and INDELs from each read
+        in one iteration through the BAM file.
+
+        The output format is identical to process_contig() for compatibility with
+        downstream code.
+        """
+        from anvio.variability import (VariablityTestFactory, ProcessNucleotideCounts,
+                                        ProcessCodonCounts, ProcessIndelCounts)
+
+        timer = terminal.Timer(initial_checkpoint_key='Start')
+
+        # Initialize contig (same as process_contig)
+        contig = contigops.Contig(contig_name)
+        contig.length = contig_length
+        contig.split_length = self.a_meta['split_length']
+        contig.skip_SNV_profiling = self.skip_SNV_profiling
+        timer.make_checkpoint('Initialization done')
+
+        # Create split objects (same as process_contig)
+        for split_name in self.contig_name_to_splits[contig_name]:
+            s = self.splits_basic_info[split_name]
+            split_sequence = self.contig_sequences[contig_name]['sequence'][s['start']:s['end']]
+            split = contigops.Split(split_name, split_sequence, contig_name, s['order_in_parent'], s['start'], s['end'])
+            contig.splits.append(split)
+
+        timer.make_checkpoint('Split objects initialized')
+
+        # Populate gene info for splits (same as process_contig)
+        self.populate_gene_info_for_splits(contig)
+        timer.make_checkpoint('Gene info for split added')
+
+        # Set up variability test class
+        variability_test_class_null = VariablityTestFactory(params=None)
+        variability_test_class_default = VariablityTestFactory(params={'b': 2, 'm': 1.45, 'c': 0.05})
+
+        # Initialize contig-level coverage array for later slicing
+        contig_coverage = np.zeros(contig_length, dtype=np.int32)
+
+        # Process each split in a SINGLE PASS
+        for split in contig.splits:
+            # Initialize accumulators for this split
+            coverage_acc = streamingops.CoverageAccumulator(split.length)
+            snv_acc = streamingops.SNVAccumulator(split.length) if not self.skip_SNV_profiling else None
+            indel_acc = streamingops.INDELAccumulator(split.length) if not self.skip_INDEL_profiling else None
+
+            # Prepare per-position data for SNV annotation
+            additional_per_position_data = {}
+            if not self.skip_SNV_profiling and hasattr(split, 'per_position_info'):
+                additional_per_position_data = split.per_position_info.copy()
+
+            # Decide read iterator based on percent identity filtering
+            if self.min_percent_identity:
+                read_iterator = bam_file.fetch_filter_and_trim
+                kwargs = {'percent_id_cutoff': self.min_percent_identity}
+            else:
+                read_iterator = bam_file.fetch_and_trim
+                kwargs = {}
+
+            # SINGLE PASS through reads for this split
+            for read in read_iterator(split.parent, split.start, split.end, **kwargs):
+                # Extract all variant evidence in one call
+                evidence = read.extract_variant_evidence(
+                    split_start=split.start,
+                    skip_SNV=self.skip_SNV_profiling,
+                    skip_INDEL=self.skip_INDEL_profiling
+                )
+
+                # Update coverage accumulator
+                coverage_acc.update(evidence['coverage_blocks'])
+
+                # Update SNV accumulator
+                if snv_acc is not None:
+                    snv_acc.update_from_vectorized(evidence['vectorized'], split.start)
+
+                # Update INDEL accumulator
+                if indel_acc is not None:
+                    indel_acc.update(
+                        evidence['insertions'],
+                        evidence['deletions'],
+                        split.name,
+                        split.sequence,
+                        additional_per_position_data if additional_per_position_data else None
+                    )
+
+            # Finalize coverage
+            cov_result = coverage_acc.finalize()
+            split.coverage = bamops.Coverage()
+            split.coverage.c = cov_result['coverage']
+            split.coverage.min = cov_result['min']
+            split.coverage.max = cov_result['max']
+            split.coverage.mean = cov_result['mean']
+            split.coverage.std = cov_result['std']
+            split.coverage.median = cov_result['median']
+            split.coverage.detection = cov_result['detection']
+            split.coverage.num_reads = cov_result['num_reads']
+
+            # Compute outliers (matching original behavior)
+            if len(split.coverage.c) > 0:
+                mean_cov = split.coverage.mean
+                std_cov = split.coverage.std
+                if std_cov > 0:
+                    split.coverage.is_outlier = np.abs(split.coverage.c - mean_cov) > (2.5 * std_cov)
+                else:
+                    split.coverage.is_outlier = np.zeros(len(split.coverage.c), dtype=bool)
+                split.coverage.is_outlier_in_parent = split.coverage.is_outlier.copy()
+            else:
+                split.coverage.is_outlier = np.array([], dtype=bool)
+                split.coverage.is_outlier_in_parent = np.array([], dtype=bool)
+
+            # Compute mean_Q2Q3 (matching original behavior)
+            if len(split.coverage.c) >= 4:
+                sorted_cov = np.sort(split.coverage.c)
+                q1_idx = len(sorted_cov) // 4
+                q3_idx = (3 * len(sorted_cov)) // 4
+                split.coverage.mean_Q2Q3 = np.mean(sorted_cov[q1_idx:q3_idx])
+            else:
+                split.coverage.mean_Q2Q3 = split.coverage.mean
+
+            # Copy coverage to contig array
+            contig_coverage[split.start:split.end] = split.coverage.c
+
+            # Process SNVs if not skipped
+            if snv_acc is not None:
+                allele_counts_array = snv_acc.finalize()
+
+                # Add coverage outlier info to additional data
+                additional_per_position_data['cov_outlier_in_split'] = split.coverage.is_outlier.astype(int)
+                additional_per_position_data['cov_outlier_in_contig'] = split.coverage.is_outlier_in_parent.astype(int)
+
+                # Use existing ProcessNucleotideCounts for compatibility
+                split_as_index = utils.nt_seq_to_nt_num_array(split.sequence)
+                nt_to_array_index = {nt: i for i, nt in enumerate(constants.nucleotides)}
+
+                nt_profile = ProcessNucleotideCounts(
+                    allele_counts=allele_counts_array,
+                    allele_to_array_index=nt_to_array_index,
+                    sequence=split.sequence,
+                    sequence_as_index=split_as_index,
+                    min_coverage_for_variability=self.min_coverage_for_variability,
+                    test_class=variability_test_class_null if self.report_variability_full else variability_test_class_default,
+                    additional_per_position_data=additional_per_position_data,
+                )
+                nt_profile.process()
+                split.SNV_profiles = nt_profile.d
+                split.num_SNV_entries = len(nt_profile.d.get('coverage', []))
+
+                # Process INDELs if not skipped
+                if indel_acc is not None:
+                    indels = indel_acc.finalize()
+                    # Add pos_in_contig to each indel entry
+                    for indel_hash, entry in indels.items():
+                        entry['pos_in_contig'] = entry['pos'] + split.start
+
+                    indel_profile = ProcessIndelCounts(
+                        indels=indels,
+                        coverage=allele_counts_array.sum(axis=0),
+                        test_class=variability_test_class_null if self.report_variability_full else variability_test_class_default,
+                        min_coverage_for_variability=self.min_coverage_for_variability if not self.report_variability_full else 1,
+                    )
+                    indel_profile.process()
+                    split.INDEL_profiles = indel_profile.indels
+                    split.num_INDEL_entries = len(split.INDEL_profiles)
+
+                # Calculate variation density
+                if split.num_SNV_entries > 0:
+                    split.auxiliary = type('Auxiliary', (), {'variation_density': split.num_SNV_entries * 1000.0 / split.length})()
+                else:
+                    split.auxiliary = type('Auxiliary', (), {'variation_density': 0.0})()
+
+                # Add redundant data for compatibility (same as process_contig)
+                if split.num_SNV_entries > 0:
+                    split.SNV_profiles['split_name'] = [split.name] * split.num_SNV_entries
+                    split.SNV_profiles['sample_id'] = [self.sample_id] * split.num_SNV_entries
+                    split.SNV_profiles['pos_in_contig'] = split.SNV_profiles['pos'] + split.start
+
+        timer.make_checkpoint('Streaming analysis done')
+
+        # Set up contig-level coverage (needed by downstream code)
+        contig.coverage = bamops.Coverage()
+        contig.coverage.c = contig_coverage
+        contig.coverage.process_c(contig_coverage)
+
+        # Clean up per_position_info (same as process_contig)
+        del contig.coverage.c  # only split coverage array is needed
+        for split in contig.splits:
+            if hasattr(split, 'per_position_info'):
+                del split.per_position_info
+
+        if anvio.DEBUG:
+            timer.gen_report('%s Time Report (streaming)' % contig.name)
+
+        return contig
+
+
     def profile_single_thread(self):
         """The main method for anvi-profile when num_threads is 1"""
 
@@ -1368,7 +1568,10 @@ class BAMProfiler(dbops.ContigsSuperclass):
             contig_name = self.contig_names[index]
             contig_length = self.contig_lengths[index]
 
-            contig = self.process_contig(bam_file, contig_name, contig_length)
+            if self.use_streaming:
+                contig = self.process_contig_streaming(bam_file, contig_name, contig_length)
+            else:
+                contig = self.process_contig(bam_file, contig_name, contig_length)
 
             self.contigs.append(contig)
 

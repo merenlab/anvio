@@ -118,6 +118,11 @@ def get_args():
     groupZ.add_argument('--force-multi', action='store_true',
                         help="This is not useful to non-developers. It forces the multi-process "
                              "routine even when 1 thread is chosen.")
+    groupZ.add_argument('--use-streaming', action='store_true',
+                        help="Use the streaming profiler implementation. This is a redesigned "
+                             "single-pass algorithm that significantly reduces memory usage when "
+                             "profiling SNVs and INDELs. Recommended for large datasets. "
+                             "Currently only works with single-threaded mode.")
 
     return parser.get_args(parser)
 
