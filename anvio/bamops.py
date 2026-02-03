@@ -541,6 +541,91 @@ class Read:
         return blocks
 
 
+    def extract_variant_evidence(self, split_start=0, skip_SNV=False, skip_INDEL=False):
+        """Extract all variant-relevant information in a single pass through the read.
+
+        This method unifies the extraction of coverage, SNVs, and INDELs that previously
+        required multiple passes through the read data. It calls vectorize() once and
+        extracts all needed information from the resulting array.
+
+        Parameters
+        ==========
+        split_start : int, 0
+            Reference position of the split start. All returned positions will be
+            relative to this value (i.e., position_in_split = ref_position - split_start).
+
+        skip_SNV : bool, False
+            If True, skip SNV extraction (snv_evidence will be empty).
+
+        skip_INDEL : bool, False
+            If True, skip INDEL extraction (insertions and deletions will be empty).
+
+        Returns
+        =======
+        dict with keys:
+            'coverage_blocks': list of (start, end) tuples (positions relative to split_start)
+            'snv_evidence': list of (pos, ref_ord, query_ord) tuples for mismatches
+            'insertions': list of (pos, sequence_as_ords) tuples
+            'deletions': list of (pos, length) tuples
+            'vectorized': the full vectorized array (for downstream SCV processing)
+
+        Notes
+        =====
+        - All positions in the output are relative to split_start
+        - SNV evidence only includes mismatches (where query != reference)
+        - The vectorized array is included for SCV processing which requires
+          gene-aware codon extraction that builds on top of this data
+        """
+
+        # Ensure we have the vectorized form
+        if self.v is None:
+            self.vectorize()
+
+        result = {
+            'coverage_blocks': [],
+            'snv_evidence': [],
+            'insertions': [],
+            'deletions': [],
+            'vectorized': self.v,
+        }
+
+        # Extract coverage blocks (contiguous mapped regions)
+        # We use get_blocks() which is already efficient
+        for block_start, block_end in self.get_blocks():
+            result['coverage_blocks'].append((block_start - split_start, block_end - split_start))
+
+        if not skip_SNV:
+            # Extract SNV evidence: positions where mapping_type=0 and query != reference
+            mapped_mask = self.v[:, 2] == 0
+            mapped_positions = self.v[mapped_mask]
+
+            # Find mismatches (query != reference)
+            mismatch_mask = mapped_positions[:, 1] != mapped_positions[:, 3]
+            mismatches = mapped_positions[mismatch_mask]
+
+            for row in mismatches:
+                pos = int(row[0]) - split_start
+                ref_ord = int(row[3])
+                query_ord = int(row[1])
+                result['snv_evidence'].append((pos, ref_ord, query_ord))
+
+        if not skip_INDEL:
+            # Extract insertions (mapping_type=1)
+            for ins_segment in self.iterate_blocks_by_mapping_type(mapping_type=1):
+                # Position is the reference position where insertion occurs (before the insertion)
+                ins_pos = int(ins_segment[0, 0]) - split_start
+                ins_seq = ins_segment[:, 1].astype(np.int64)  # query sequence as ord values
+                result['insertions'].append((ins_pos, ins_seq))
+
+            # Extract deletions (mapping_type=2)
+            for del_segment in self.iterate_blocks_by_mapping_type(mapping_type=2):
+                del_pos = int(del_segment[0, 0]) - split_start
+                del_len = del_segment.shape[0]
+                result['deletions'].append((del_pos, del_len))
+
+        return result
+
+
     def __repr__(self):
         """Fancy output for viewing a read's alignment in relation to the reference"""
 
