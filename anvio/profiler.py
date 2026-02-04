@@ -1265,11 +1265,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 contig_name = self.contig_names[index]
                 contig_length = self.contig_lengths[index]
 
-                # Use streaming or original implementation based on flag
-                if self.use_streaming:
-                    contig = self.process_contig_streaming(bam_file, contig_name, contig_length)
-                else:
-                    contig = self.process_contig(bam_file, contig_name, contig_length)
+                contig = self.process_contig(bam_file, contig_name, contig_length)
                 output_queue.put(contig)
 
                 if contig is not None:
@@ -1293,78 +1289,14 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
 
     def process_contig(self, bam_file, contig_name, contig_length):
-        timer = terminal.Timer(initial_checkpoint_key='Start')
-
-        contig = contigops.Contig(contig_name)
-        contig.length = contig_length
-        contig.split_length = self.a_meta['split_length']
-        contig.skip_SNV_profiling = self.skip_SNV_profiling
-        timer.make_checkpoint('Initialization done')
-
-        # populate contig with empty split objects
-        for split_name in self.contig_name_to_splits[contig_name]:
-            s = self.splits_basic_info[split_name]
-            split_sequence = self.contig_sequences[contig_name]['sequence'][s['start']:s['end']]
-            split = contigops.Split(split_name, split_sequence, contig_name, s['order_in_parent'], s['start'], s['end'])
-            contig.splits.append(split)
-
-        timer.make_checkpoint('Split objects initialized')
-
-        self.populate_gene_info_for_splits(contig)
-        timer.make_checkpoint('Gene info for split added')
-
-        # analyze coverage for each split
-        contig.analyze_coverage(bam_file, self.min_percent_identity)
-        timer.make_checkpoint('Coverage done')
-
-        if not self.skip_SNV_profiling:
-            for split in contig.splits:
-                split.auxiliary = contigops.Auxiliary(split,
-                                                      profile_SCVs=self.profile_SCVs,
-                                                      skip_INDEL_profiling=self.skip_INDEL_profiling,
-                                                      skip_SNV_profiling=self.skip_SNV_profiling,
-                                                      min_coverage_for_variability=self.min_coverage_for_variability,
-                                                      report_variability_full=self.report_variability_full,
-                                                      min_percent_identity=self.min_percent_identity,
-                                                      skip_edges=self.skip_edges)
-
-                split.auxiliary.process(bam_file)
-
-                if split.num_SNV_entries == 0:
-                    continue
-
-                # Add these redundant data ad-hoc
-                split.SNV_profiles['split_name'] = [split.name] * split.num_SNV_entries
-                split.SNV_profiles['sample_id'] = [self.sample_id] * split.num_SNV_entries
-                split.SNV_profiles['pos_in_contig'] = split.SNV_profiles['pos'] + split.start
-
-                for gene_id in split.SCV_profiles:
-                    split.SCV_profiles[gene_id]['sample_id'] = [self.sample_id] * split.num_SCV_entries[gene_id]
-                    split.SCV_profiles[gene_id]['corresponding_gene_call'] = [gene_id] * split.num_SCV_entries[gene_id]
-
-            timer.make_checkpoint('Auxiliary analyzed')
-
-        # output_queue.put(contig) is an expensive operation that does not handle large data
-        # structures well. So we delete everything we can
-        del contig.coverage.c # only split coverage array is needed
-        for split in contig.splits:
-            del split.per_position_info
-
-        if anvio.DEBUG:
-            timer.gen_report('%s Time Report' % contig.name)
-
-        return contig
-
-
-    def process_contig_streaming(self, bam_file, contig_name, contig_length):
         """Process a contig using single-pass streaming approach.
 
-        This method replaces the multi-pass approach in process_contig() with a
-        single-pass design that extracts coverage, SNVs, and INDELs from each read
-        in one iteration through the BAM file.
+        This method uses a single-pass design that extracts coverage, SNVs, and
+        INDELs from each read in one iteration through the BAM file. This dramatically
+        reduces memory usage compared to the previous multi-pass approach.
 
-        The output format is identical to process_contig() for compatibility with
-        downstream code.
+        If processing_chunk_size is set, splits larger than the chunk size will be
+        processed in smaller chunks to further reduce peak memory usage.
         """
         from anvio.variability import (VariablityTestFactory, ProcessNucleotideCounts,
                                         ProcessCodonCounts, ProcessIndelCounts)
@@ -1694,10 +1626,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             contig_name = self.contig_names[index]
             contig_length = self.contig_lengths[index]
 
-            if self.use_streaming:
-                contig = self.process_contig_streaming(bam_file, contig_name, contig_length)
-            else:
-                contig = self.process_contig(bam_file, contig_name, contig_length)
+            contig = self.process_contig(bam_file, contig_name, contig_length)
 
             self.contigs.append(contig)
 
