@@ -545,6 +545,85 @@ class CoverageStats:
         else:
             self.is_outlier = get_list_of_outliers(coverage, median=self.median) # this is an array not a list
 
+        self.dis_cov: float = self.compute_distribution_of_coverage_metric(coverage, filter_nonspecific_mapping=True)
+
+    def compute_distribution_of_coverage_metric(self, cov_array, filter_nonspecific_mapping: bool = False, beta: float = 0.5):
+        """Calculates the distribution of coverage (DisCov) as an improved detection metric.
+        
+        Briefly, it first identifies regions of nonzero coverage in the input array (with optional filtering
+        to remove regions of nonspecific read recruitment), then computes how evenly-distributed they are. The 
+        evenness of the distribution is then used to increase the (filtered) detection value (up to a maximum of 1.0),
+        with a modifiable weight (beta) that controls how 'important' the evenness is to the final metric.
+
+        Filtered detection: 
+            d_filtered = (total covered bases in cov_array after filtering out nonspecific mapping) / (length of cov_array)
+            ** if filtering is skipped, d_filtered is simply the self.detection attribute
+        Evenness score: E = 1 - Gini coefficient of the gap lengths
+        DisCov metric: S = d_filtered + (1 - d_filtered) x E x β, where β ∈ [0, 1] controls evenness contribution
+
+        Parameters
+        ==========
+        cov_array : array of numerical values
+            The per-nucleotide coverages
+        filter_nonspecific_mapping : boolean
+            If True, will remove areas of non-specific read recruitment before computing the metric
+        beta : float
+            The beta value modulates the impact of gap evenness on the (filtered) detection. The higher it is, the
+            larger the increase in the DisCov metric value when the coverage is perfectly even
+        """
+
+        # this will be a list of tuples like (start_position, stop_position, mean_coverage)
+        # if mean_coverage is 0, then the region is a gap region. Otherwise, it is a covered region
+        regions = []
+
+        current_start = 0
+        current_stop = 0
+        current_state = None
+        # create the list of regions
+        for i,p in enumerate(cov_array):
+            current_state = 'covered' if p > 0 else 'gap'
+                
+            if i == len(cov_array) - 1: # EXIT CASE: end of the input sequence
+                region_data = (current_start, i+1, np.mean(cov_array[current_start:i+1]))
+                regions.append(region_data)
+                break
+
+            next_state = 'covered' if cov_array[i+1] > 0 else 'gap'
+            current_stop = i+1
+            if next_state != current_state: # STATE TRANSITION: store the previous region and reset for the next one
+                region_data = (current_start, current_stop, np.mean(cov_array[current_start:current_stop]))
+                regions.append(region_data)
+                current_start = i+1
+
+        #print(f"original coverage array: {cov_array}")
+        #print(f"regions of coverage/gaps: {regions}")
+
+        # filter out regions with unusually-high coverage that might be non-specific read recruitment
+        # these regions and their surrounding gaps get replaced with one longer gap
+        filtered_detection = self.detection
+        if filter_nonspecific_mapping:
+            # filtered_detection = #FIXME: update detection value from modified version
+            pass
+        
+        # compute Gini coefficient on the gap lengths
+        gaplens = []
+        for start, stop, meancov in regions:
+            if meancov == 0:
+                gaplens.append(stop - start)
+        ngaps = len(gaplens)
+        #print(f"Number of gap regions: {ngaps}")
+        #print(f"Gap lengths: {gaplens}")
+
+        G = self.compute_gini_coeff(gaplens)
+        #print(f"Gini: {G}")
+
+        # compute final metric
+        # note that (1-G) is the evenness score (E)
+        #print(f"filtered detection: {filtered_detection}")
+        S = filtered_detection + (1 - filtered_detection) * (1 - G) * beta
+        #print(f"DisCov metric (with beta = {beta}): {S}")
+        return S
+        
     
     def compute_gini_coeff(self, array):
         """Computes the Gini coefficient from an input array.
