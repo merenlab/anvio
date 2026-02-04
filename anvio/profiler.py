@@ -1531,6 +1531,30 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     split.SNV_profiles['sample_id'] = [self.sample_id] * split.num_SNV_entries
                     split.SNV_profiles['pos_in_contig'] = split.SNV_profiles['pos'] + split.start
 
+                # SCV profiling: targeted second pass for codons containing SNVs
+                # This reuses the existing run_SCVs logic which already filters to only
+                # process genes that have SNVs, making the second pass efficient.
+                if self.profile_SCVs and split.num_SNV_entries > 0:
+                    # Create an Auxiliary object configured for SCV-only processing
+                    aux = contigops.Auxiliary(
+                        split,
+                        profile_SCVs=True,
+                        skip_INDEL_profiling=True,   # Already done in first pass
+                        skip_SNV_profiling=True,     # Already done in first pass
+                        min_coverage_for_variability=self.min_coverage_for_variability,
+                        report_variability_full=self.report_variability_full,
+                        min_percent_identity=self.min_percent_identity,
+                        skip_edges=self.skip_edges
+                    )
+
+                    # Run SCV profiling (second pass, but only processes genes with SNVs)
+                    aux.run_SCVs(bam_file)
+
+                    # Add redundant data for SCV compatibility (same as process_contig)
+                    for gene_id in split.SCV_profiles:
+                        split.SCV_profiles[gene_id]['sample_id'] = [self.sample_id] * split.num_SCV_entries[gene_id]
+                        split.SCV_profiles[gene_id]['corresponding_gene_call'] = [gene_id] * split.num_SCV_entries[gene_id]
+
         timer.make_checkpoint('Streaming analysis done')
 
         # Set up contig-level coverage (needed by downstream code)
