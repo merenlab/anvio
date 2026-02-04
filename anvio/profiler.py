@@ -1265,7 +1265,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 contig_name = self.contig_names[index]
                 contig_length = self.contig_lengths[index]
 
-                contig = self.process_contig(bam_file, contig_name, contig_length)
+                # Use streaming or original implementation based on flag
+                if self.use_streaming:
+                    contig = self.process_contig_streaming(bam_file, contig_name, contig_length)
+                else:
+                    contig = self.process_contig(bam_file, contig_name, contig_length)
                 output_queue.put(contig)
 
                 if contig is not None:
