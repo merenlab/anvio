@@ -545,6 +545,22 @@ class CoverageStats:
         else:
             self.is_outlier = get_list_of_outliers(coverage, median=self.median) # this is an array not a list
 
+    
+    def compute_gini_coeff(self, array):
+        """Computes the Gini coefficient from an input array.
+
+        The equation we use comes from https://en.wikipedia.org/wiki/Gini_coefficient#Alternative_expressions:
+        for a list of m values sorted such that g_1 <= g_2 <= .... <= g_m, 
+        Gini = (2 x Σᵢ₌₁ᵐ (i x g₍ᵢ₎)) / (m x Σᵢ₌₁ᵐ g₍ᵢ₎) - (m+1)/m
+        """
+
+        array = np.sort(array)
+        m = array.size
+        index = np.arange(1, m + 1)
+        
+        gini = (2 * np.sum(index * array)) / (m * np.sum(array)) - (m+1)/m
+        return gini
+
 
 class RunInDirectory(object):
     """ Run any block of code in a specified directory. Return to original directory
