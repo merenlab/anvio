@@ -118,11 +118,14 @@ def get_args():
     groupZ.add_argument('--force-multi', action='store_true',
                         help="This is not useful to non-developers. It forces the multi-process "
                              "routine even when 1 thread is chosen.")
-    groupZ.add_argument('--use-streaming', action='store_true',
-                        help="Use the streaming profiler implementation. This is a redesigned "
-                             "single-pass algorithm that significantly reduces memory usage when "
-                             "profiling SNVs and INDELs. Recommended for large datasets. "
-                             "Currently only works with single-threaded mode.")
+    groupZ.add_argument('--processing-chunk-size', type=int, default=None, metavar='INT',
+                        help="Advanced option: Override the chunk size used for processing reads. "
+                             "By default, the profiler processes reads one split at a time (typically "
+                             "~20KB). If you have very long splits and want to reduce memory usage, "
+                             "you can set a smaller chunk size (e.g., 20000 for 20KB chunks). This "
+                             "causes the profiler to process each split in smaller pieces. Only set "
+                             "this if you know what you're doing and are experiencing memory issues "
+                             "with very long splits.")
 
     return parser.get_args(parser)
 

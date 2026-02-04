@@ -634,7 +634,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.skip_SNV_profiling = A('skip_SNV_profiling')
         self.skip_INDEL_profiling = A('skip_INDEL_profiling')
         self.profile_SCVs = A('profile_SCVs')
-        self.use_streaming = A('use_streaming') if A('use_streaming') is not None else False
+        self.processing_chunk_size = A('processing_chunk_size')  # None means use split length
         self.min_percent_identity = A('min_percent_identity')
         self.fetch_filter = A('fetch_filter')
         self.gen_serialized_profile = A('gen_serialized_profile')
@@ -1398,12 +1398,12 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # Initialize contig-level coverage array for later slicing
         contig_coverage = np.zeros(contig_length, dtype=np.int32)
 
-        # Process each split in a SINGLE PASS
+        # Process each split
         for split in contig.splits:
-            # Initialize accumulators for this split
-            coverage_acc = streamingops.CoverageAccumulator(split.length)
-            snv_acc = streamingops.SNVAccumulator(split.length) if not self.skip_SNV_profiling else None
-            indel_acc = streamingops.INDELAccumulator(split.length) if not self.skip_INDEL_profiling else None
+            # Determine chunk size: use processing_chunk_size if set and smaller than split
+            chunk_size = split.length
+            if self.processing_chunk_size and self.processing_chunk_size < split.length:
+                chunk_size = self.processing_chunk_size
 
             # Prepare per-position data for SNV annotation
             additional_per_position_data = {}
@@ -1418,31 +1418,129 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 read_iterator = bam_file.fetch_and_trim
                 kwargs = {}
 
-            # SINGLE PASS through reads for this split
-            for read in read_iterator(split.parent, split.start, split.end, **kwargs):
-                # Extract all variant evidence in one call
-                evidence = read.extract_variant_evidence(
-                    split_start=split.start,
-                    skip_SNV=self.skip_SNV_profiling,
-                    skip_INDEL=self.skip_INDEL_profiling
-                )
+            if chunk_size >= split.length:
+                # Process entire split at once (standard case)
+                coverage_acc = streamingops.CoverageAccumulator(split.length)
+                snv_acc = streamingops.SNVAccumulator(split.length) if not self.skip_SNV_profiling else None
+                indel_acc = streamingops.INDELAccumulator(split.length) if not self.skip_INDEL_profiling else None
 
-                # Update coverage accumulator
-                coverage_acc.update(evidence['coverage_blocks'])
-
-                # Update SNV accumulator
-                if snv_acc is not None:
-                    snv_acc.update_from_vectorized(evidence['vectorized'], split.start)
-
-                # Update INDEL accumulator
-                if indel_acc is not None:
-                    indel_acc.update(
-                        evidence['insertions'],
-                        evidence['deletions'],
-                        split.name,
-                        split.sequence,
-                        additional_per_position_data if additional_per_position_data else None
+                for read in read_iterator(split.parent, split.start, split.end, **kwargs):
+                    evidence = read.extract_variant_evidence(
+                        split_start=split.start,
+                        skip_SNV=self.skip_SNV_profiling,
+                        skip_INDEL=self.skip_INDEL_profiling
                     )
+                    coverage_acc.update(evidence['coverage_blocks'])
+                    if snv_acc is not None:
+                        snv_acc.update_from_vectorized(evidence['vectorized'], split.start)
+                    if indel_acc is not None:
+                        indel_acc.update(
+                            evidence['insertions'],
+                            evidence['deletions'],
+                            split.name,
+                            split.sequence,
+                            additional_per_position_data if additional_per_position_data else None
+                        )
+            else:
+                # Process split in chunks to reduce memory usage
+                # Initialize arrays/dicts to accumulate chunk results
+                full_coverage = np.zeros(split.length, dtype=np.int32)
+                full_snv_counts = np.zeros((5, split.length), dtype=np.int32) if not self.skip_SNV_profiling else None
+                all_indels = {} if not self.skip_INDEL_profiling else None
+                total_reads = 0
+
+                for chunk_start in range(0, split.length, chunk_size):
+                    chunk_end = min(chunk_start + chunk_size, split.length)
+                    chunk_len = chunk_end - chunk_start
+
+                    # Absolute positions in contig coordinates
+                    abs_chunk_start = split.start + chunk_start
+                    abs_chunk_end = split.start + chunk_end
+
+                    # Create chunk-sized accumulators
+                    chunk_cov_acc = streamingops.CoverageAccumulator(chunk_len)
+                    chunk_snv_acc = streamingops.SNVAccumulator(chunk_len) if not self.skip_SNV_profiling else None
+                    chunk_indel_acc = streamingops.INDELAccumulator(chunk_len) if not self.skip_INDEL_profiling else None
+
+                    # Fetch reads overlapping this chunk
+                    for read in read_iterator(split.parent, abs_chunk_start, abs_chunk_end, **kwargs):
+                        evidence = read.extract_variant_evidence(
+                            split_start=abs_chunk_start,  # Positions relative to chunk start
+                            skip_SNV=self.skip_SNV_profiling,
+                            skip_INDEL=self.skip_INDEL_profiling
+                        )
+
+                        # Clip coverage blocks to chunk boundaries
+                        clipped_blocks = []
+                        for block_start, block_end in evidence['coverage_blocks']:
+                            # Clip to [0, chunk_len)
+                            clipped_start = max(0, block_start)
+                            clipped_end = min(chunk_len, block_end)
+                            if clipped_start < clipped_end:
+                                clipped_blocks.append((clipped_start, clipped_end))
+                        chunk_cov_acc.update(clipped_blocks)
+
+                        # Update SNV accumulator (with chunk-relative positions)
+                        if chunk_snv_acc is not None:
+                            chunk_snv_acc.update_from_vectorized(
+                                evidence['vectorized'],
+                                abs_chunk_start,
+                                position_limit=chunk_len
+                            )
+
+                        # Update INDEL accumulator (filter to chunk boundaries)
+                        if chunk_indel_acc is not None:
+                            # Filter insertions/deletions to chunk boundaries
+                            chunk_insertions = [(p, s) for p, s in evidence['insertions'] if 0 <= p < chunk_len]
+                            chunk_deletions = [(p, l) for p, l in evidence['deletions'] if 0 <= p < chunk_len]
+                            if chunk_insertions or chunk_deletions:
+                                chunk_indel_acc.update(
+                                    chunk_insertions,
+                                    chunk_deletions,
+                                    split.name,
+                                    split.sequence[chunk_start:chunk_end],
+                                    {k: v[chunk_start:chunk_end] for k, v in additional_per_position_data.items()} if additional_per_position_data else None
+                                )
+
+                    # Accumulate chunk results into full arrays
+                    chunk_result = chunk_cov_acc.finalize()
+                    full_coverage[chunk_start:chunk_end] = chunk_result['coverage']
+                    total_reads += chunk_result['num_reads']
+
+                    if chunk_snv_acc is not None:
+                        chunk_snv_counts = chunk_snv_acc.finalize()
+                        full_snv_counts[:, chunk_start:chunk_end] = chunk_snv_counts
+
+                    if chunk_indel_acc is not None:
+                        chunk_indels = chunk_indel_acc.finalize()
+                        # Adjust positions and merge into all_indels
+                        for key, indel in chunk_indels.items():
+                            # Create new key with adjusted position
+                            adjusted_pos = indel['pos'] + chunk_start
+                            new_key = (indel['type'], adjusted_pos, indel.get('sequence', ''), indel['length'])
+                            if new_key in all_indels:
+                                all_indels[new_key]['count'] += indel['count']
+                            else:
+                                adjusted_indel = indel.copy()
+                                adjusted_indel['pos'] = adjusted_pos
+                                all_indels[new_key] = adjusted_indel
+
+                # Create mock accumulators with combined results for compatibility
+                # Note: lambdas need 'self' parameter since they become instance methods
+                coverage_acc = type('MockCoverageAcc', (), {
+                    'finalize': lambda self: {
+                        'coverage': full_coverage,
+                        'num_reads': total_reads,
+                        'min': int(full_coverage.min()) if len(full_coverage) > 0 else 0,
+                        'max': int(full_coverage.max()) if len(full_coverage) > 0 else 0,
+                        'mean': float(full_coverage.mean()) if len(full_coverage) > 0 else 0.0,
+                        'std': float(full_coverage.std()) if len(full_coverage) > 0 else 0.0,
+                        'median': float(np.median(full_coverage)) if len(full_coverage) > 0 else 0.0,
+                        'detection': float(np.count_nonzero(full_coverage) / len(full_coverage)) if len(full_coverage) > 0 else 0.0,
+                    }
+                })()
+                snv_acc = type('MockSNVAcc', (), {'finalize': lambda self: full_snv_counts})() if full_snv_counts is not None else None
+                indel_acc = type('MockINDELAcc', (), {'finalize': lambda self: all_indels})() if all_indels is not None else None
 
             # Finalize coverage
             cov_result = coverage_acc.finalize()
