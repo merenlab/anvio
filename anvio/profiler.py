@@ -1282,6 +1282,21 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                          f"Value: {getattr(self, '_shared_sequence_shm_name', 'NOT SET')}"))
             return
 
+        # Attach to shared memory for nt_positions_info (created by main process)
+        # This avoids duplicating the large per-nucleotide arrays across workers
+        if hasattr(self, '_shared_nt_positions_shm_name'):
+            try:
+                self._worker_nt_positions_store = streamingops.SharedNtPositionsStore.from_existing(
+                    self._shared_nt_positions_shm_name,
+                    self._shared_nt_positions_index
+                )
+                # Replace nt_positions_info with a proxy that fetches from shared memory
+                # We need to set _nt_positions_info directly since it's a LazyProperty
+                self._nt_positions_info = self._worker_nt_positions_store.as_dict_proxy()
+            except Exception as e:
+                output_queue.put(ConfigError(f"Worker failed to attach to nt_positions shared memory: {e}"))
+                return
+
         while True:
             try:
                 index = available_index_queue.get(True)
@@ -1755,9 +1770,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
         available_index_queue = manager.Queue()
         output_queue = manager.Queue(self.queue_size)
 
-        # Create shared memory for contig sequences to avoid duplicating them
-        # across worker processes. This can save enormous amounts of memory
-        # when using many threads.
+        # Create shared memory for contig sequences and nt_positions_info to avoid
+        # duplicating them across worker processes. This can save enormous amounts
+        # of memory when using many threads.
         self.progress.new('Setting up shared memory')
         self.progress.update('Packing contig sequences into shared memory ...')
         # NOTE: We store the SharedSequenceStore as a local variable, NOT on self.
@@ -1768,9 +1783,21 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self._shared_sequence_shm_name = shared_sequence_store.shm_name
         self._shared_sequence_index = shared_sequence_store.index
 
-        # Clear the original contig_sequences dict to free memory in the main process
+        # Also create shared memory for nt_positions_info (per-nucleotide gene info)
+        # This can be 8+ GB and would otherwise be duplicated across all workers
+        self.progress.update('Packing nt_positions_info into shared memory ...')
+        # Force load the lazy property before we can share it
+        _ = self.nt_positions_info
+        shared_nt_positions_store = streamingops.SharedNtPositionsStore(self.nt_positions_info)
+        self._shared_nt_positions_shm_name = shared_nt_positions_store.shm_name
+        self._shared_nt_positions_index = shared_nt_positions_store.index
+
+        # Clear the original data to free memory in the main process
         # before forking workers. Workers will use shared memory instead.
         self.contig_sequences = None
+        # Clear the cached nt_positions_info by deleting the lazy property cache
+        if hasattr(self, '_nt_positions_info'):
+            del self._nt_positions_info
         gc.collect()
         self.progress.end()
 
@@ -1837,6 +1864,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 # Clean up shared memory before breaking
                 shared_sequence_store.close()
                 shared_sequence_store.unlink()
+                shared_nt_positions_store.close()
+                shared_nt_positions_store.unlink()
                 break
 
             except Exception as worker_error:
@@ -1847,6 +1876,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 # Clean up shared memory before raising
                 shared_sequence_store.close()
                 shared_sequence_store.unlink()
+                shared_nt_positions_store.close()
+                shared_nt_positions_store.unlink()
                 raise worker_error
 
         for proc in processes:
@@ -1859,6 +1890,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # Clean up shared memory
         shared_sequence_store.close()
         shared_sequence_store.unlink()
+        shared_nt_positions_store.close()
+        shared_nt_positions_store.unlink()
 
         self.progress.end(timing_filepath='anvio.debug.timing.txt' if anvio.DEBUG else None)
 
