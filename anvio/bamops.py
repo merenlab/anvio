@@ -564,7 +564,8 @@ class Read:
         =======
         dict with keys:
             'coverage_blocks': list of (start, end) tuples (positions relative to split_start)
-            'snv_evidence': list of (pos, ref_ord, query_ord) tuples for mismatches
+            'snv_evidence': numpy array of shape (N, 3) with columns [pos, ref_ord, query_ord],
+                            or empty list if no mismatches
             'insertions': list of (pos, sequence_as_ords) tuples
             'deletions': list of (pos, length) tuples
             'vectorized': the full vectorized array (for downstream SCV processing)
@@ -603,11 +604,13 @@ class Read:
             mismatch_mask = mapped_positions[:, 1] != mapped_positions[:, 3]
             mismatches = mapped_positions[mismatch_mask]
 
-            for row in mismatches:
-                pos = int(row[0]) - split_start
-                ref_ord = int(row[3])
-                query_ord = int(row[1])
-                result['snv_evidence'].append((pos, ref_ord, query_ord))
+            if len(mismatches) > 0:
+                # Vectorized extraction: positions, ref_ord, query_ord
+                positions = mismatches[:, 0] - split_start
+                ref_ords = mismatches[:, 3]
+                query_ords = mismatches[:, 1]
+                # Stack as (N, 3) array: each row is (pos, ref_ord, query_ord)
+                result['snv_evidence'] = np.column_stack((positions, ref_ords, query_ords))
 
         if not skip_INDEL:
             # Extract insertions (mapping_type=1)
