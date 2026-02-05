@@ -582,3 +582,178 @@ class _SharedSequenceEntry:
         if key == 'sequence':
             return self._store.get_sequence(self._contig_name)
         return default
+
+
+class SharedNtPositionsStore:
+    """Stores nt_positions_info arrays in shared memory for multi-process access.
+
+    This class packs all per-contig numpy arrays (uint8) into a single shared
+    memory buffer, allowing multiple worker processes to access the data without
+    duplicating it in each process's memory space.
+
+    Parameters
+    ==========
+    nt_positions_info : dict
+        Dictionary mapping contig names to numpy arrays (uint8).
+        This is the format returned by the nt_positions_info property.
+
+    Attributes
+    ==========
+    shm : multiprocessing.shared_memory.SharedMemory
+        The shared memory object containing all arrays.
+    index : dict
+        Maps contig_name -> (offset, length) in the shared buffer.
+    shm_name : str
+        Name of the shared memory block (needed for workers to attach).
+
+    Notes
+    =====
+    - The owner (main process) must call close() and unlink() when done
+    - Workers should call close() but NOT unlink()
+    - Arrays are stored as raw uint8 bytes in the shared buffer
+    """
+
+    def __init__(self, nt_positions_info):
+        from multiprocessing import shared_memory
+
+        # Calculate total size needed
+        total_size = sum(arr.nbytes for arr in nt_positions_info.values())
+
+        if total_size == 0:
+            # Handle empty case
+            self.shm = None
+            self.shm_name = None
+            self.index = {}
+            self._is_owner = True
+            return
+
+        # Create shared memory
+        self.shm = shared_memory.SharedMemory(create=True, size=total_size)
+        self.shm_name = self.shm.name
+        self._is_owner = True
+
+        # Build index and copy arrays to shared memory
+        self.index = {}
+        offset = 0
+        buffer = self.shm.buf
+
+        for contig_name, arr in nt_positions_info.items():
+            length = arr.nbytes
+
+            # Copy to shared memory
+            buffer[offset:offset + length] = arr.tobytes()
+
+            # Record in index
+            self.index[contig_name] = (offset, length)
+            offset += length
+
+    @classmethod
+    def from_existing(cls, shm_name, index):
+        """Attach to existing shared memory (for worker processes).
+
+        Parameters
+        ==========
+        shm_name : str
+            Name of the shared memory block.
+        index : dict
+            The index mapping contig_name -> (offset, length).
+
+        Returns
+        =======
+        SharedNtPositionsStore
+            A store instance attached to existing shared memory.
+        """
+        from multiprocessing import shared_memory
+
+        instance = cls.__new__(cls)
+        if shm_name is None:
+            instance.shm = None
+            instance.shm_name = None
+            instance.index = {}
+        else:
+            instance.shm = shared_memory.SharedMemory(name=shm_name)
+            instance.shm_name = shm_name
+            instance.index = index
+        instance._is_owner = False
+        return instance
+
+    def get_array(self, contig_name):
+        """Get a contig's nt_positions array.
+
+        Parameters
+        ==========
+        contig_name : str
+            Name of the contig.
+
+        Returns
+        =======
+        numpy.ndarray
+            The uint8 array for this contig.
+        """
+        if contig_name not in self.index:
+            raise KeyError(contig_name)
+
+        offset, length = self.index[contig_name]
+
+        # Create numpy array view of shared memory
+        return np.frombuffer(self.shm.buf, dtype=np.uint8, count=length, offset=offset)
+
+    def close(self):
+        """Close access to shared memory. Call from all processes."""
+        if self.shm is not None:
+            self.shm.close()
+
+    def unlink(self):
+        """Remove shared memory. Only call from the owner (main process)."""
+        if self._is_owner and self.shm is not None:
+            self.shm.unlink()
+
+    def as_dict_proxy(self):
+        """Return a dict-like proxy for compatibility with nt_positions_info interface.
+
+        Returns a SharedNtPositionsDict that provides the same interface as the
+        original nt_positions_info dict: d[contig_name] returns numpy array
+        """
+        return SharedNtPositionsDict(self)
+
+
+class SharedNtPositionsDict:
+    """Dict-like proxy for SharedNtPositionsStore.
+
+    Provides the same interface as the nt_positions_info dict, allowing code
+    that accesses nt_positions_info[contig_name] to work transparently with
+    shared memory.
+    """
+
+    def __init__(self, store):
+        self._store = store
+
+    def __len__(self):
+        """Return number of contigs."""
+        return len(self._store.index)
+
+    def __bool__(self):
+        """Return True if there are any contigs."""
+        return len(self._store.index) > 0
+
+    def __contains__(self, contig_name):
+        """Check if contig exists."""
+        return contig_name in self._store.index
+
+    def __getitem__(self, contig_name):
+        """Return the numpy array for the contig."""
+        return self._store.get_array(contig_name)
+
+    def keys(self):
+        """Return contig names."""
+        return self._store.index.keys()
+
+    def __iter__(self):
+        """Iterate over contig names."""
+        return iter(self._store.index.keys())
+
+    def get(self, contig_name, default=None):
+        """Get array for contig, or default if not found."""
+        if contig_name in self._store.index:
+            return self._store.get_array(contig_name)
+        return default
