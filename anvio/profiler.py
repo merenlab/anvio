@@ -1749,9 +1749,13 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # when using many threads.
         self.progress.new('Setting up shared memory')
         self.progress.update('Packing contig sequences into shared memory ...')
-        self._shared_sequence_store = streamingops.SharedSequenceStore(self.contig_sequences)
-        self._shared_sequence_shm_name = self._shared_sequence_store.shm_name
-        self._shared_sequence_index = self._shared_sequence_store.index
+        # NOTE: We store the SharedSequenceStore as a local variable, NOT on self.
+        # This is because SharedMemory objects don't pickle well, and self gets
+        # pickled when passed to worker processes. We only store the name (string)
+        # and index (dict) on self, which pickle correctly.
+        shared_sequence_store = streamingops.SharedSequenceStore(self.contig_sequences)
+        self._shared_sequence_shm_name = shared_sequence_store.shm_name
+        self._shared_sequence_index = shared_sequence_store.index
 
         # Clear the original contig_sequences dict to free memory in the main process
         # before forking workers. Workers will use shared memory instead.
@@ -1820,8 +1824,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
             except KeyboardInterrupt:
                 self.run.info_single("Anvi'o profiler received SIGINT, terminating all processes...", nl_before=2)
                 # Clean up shared memory before breaking
-                self._shared_sequence_store.close()
-                self._shared_sequence_store.unlink()
+                shared_sequence_store.close()
+                shared_sequence_store.unlink()
                 break
 
             except Exception as worker_error:
@@ -1830,8 +1834,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 for proc in processes:
                     proc.terminate()
                 # Clean up shared memory before raising
-                self._shared_sequence_store.close()
-                self._shared_sequence_store.unlink()
+                shared_sequence_store.close()
+                shared_sequence_store.unlink()
                 raise worker_error
 
         for proc in processes:
@@ -1842,8 +1846,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.auxiliary_db.close()
 
         # Clean up shared memory
-        self._shared_sequence_store.close()
-        self._shared_sequence_store.unlink()
+        shared_sequence_store.close()
+        shared_sequence_store.unlink()
 
         self.progress.end(timing_filepath='anvio.debug.timing.txt' if anvio.DEBUG else None)
 
