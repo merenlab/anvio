@@ -370,3 +370,140 @@ class INDELAccumulator:
             Dictionary mapping indel hash to indel entry (OrderedDict).
         """
         return self.indels
+
+
+class SharedSequenceStore:
+    """Stores contig sequences in shared memory for multi-process access.
+
+    This class packs all contig sequences into a single shared memory buffer,
+    allowing multiple worker processes to access sequences without duplicating
+    the data in each process's memory space.
+
+    Parameters
+    ==========
+    contig_sequences : dict
+        Dictionary mapping contig names to {'sequence': str} dicts.
+        This is the format returned by init_contig_sequences().
+
+    Attributes
+    ==========
+    shm : multiprocessing.shared_memory.SharedMemory
+        The shared memory object containing all sequences.
+    index : dict
+        Maps contig_name -> (offset, length) in the shared buffer.
+    shm_name : str
+        Name of the shared memory block (needed for workers to attach).
+
+    Notes
+    =====
+    - The owner (main process) must call close() and unlink() when done
+    - Workers should call close() but NOT unlink()
+    - Sequences are stored as ASCII bytes in the shared buffer
+
+    Example
+    =======
+    # In main process:
+    store = SharedSequenceStore(contig_sequences)
+    # Pass store.shm_name and store.index to workers
+    ...
+    store.close()
+    store.unlink()
+
+    # In worker process:
+    store = SharedSequenceStore.from_existing(shm_name, index)
+    seq = store.get_sequence('contig_name', start, end)
+    ...
+    store.close()  # Don't unlink!
+    """
+
+    def __init__(self, contig_sequences):
+        from multiprocessing import shared_memory
+
+        # Calculate total size needed
+        total_size = sum(len(v['sequence']) for v in contig_sequences.values())
+
+        # Create shared memory
+        self.shm = shared_memory.SharedMemory(create=True, size=total_size)
+        self.shm_name = self.shm.name
+        self._is_owner = True
+
+        # Build index and copy sequences to shared memory
+        self.index = {}
+        offset = 0
+        buffer = self.shm.buf
+
+        for contig_name, data in contig_sequences.items():
+            seq = data['sequence']
+            seq_bytes = seq.encode('ascii')
+            length = len(seq_bytes)
+
+            # Copy to shared memory
+            buffer[offset:offset + length] = seq_bytes
+
+            # Record in index
+            self.index[contig_name] = (offset, length)
+            offset += length
+
+    @classmethod
+    def from_existing(cls, shm_name, index):
+        """Attach to existing shared memory (for worker processes).
+
+        Parameters
+        ==========
+        shm_name : str
+            Name of the shared memory block.
+        index : dict
+            The index mapping contig_name -> (offset, length).
+
+        Returns
+        =======
+        SharedSequenceStore
+            A store instance attached to existing shared memory.
+        """
+        from multiprocessing import shared_memory
+
+        instance = cls.__new__(cls)
+        instance.shm = shared_memory.SharedMemory(name=shm_name)
+        instance.shm_name = shm_name
+        instance.index = index
+        instance._is_owner = False
+        return instance
+
+    def get_sequence(self, contig_name, start=None, end=None):
+        """Get a contig sequence or subsequence.
+
+        Parameters
+        ==========
+        contig_name : str
+            Name of the contig.
+        start : int, optional
+            Start position (0-indexed). If None, starts from beginning.
+        end : int, optional
+            End position (exclusive). If None, goes to end.
+
+        Returns
+        =======
+        str
+            The sequence or subsequence.
+        """
+        offset, length = self.index[contig_name]
+
+        if start is None:
+            start = 0
+        if end is None:
+            end = length
+
+        # Adjust for the contig's position in the buffer
+        buf_start = offset + start
+        buf_end = offset + end
+
+        return bytes(self.shm.buf[buf_start:buf_end]).decode('ascii')
+
+    def close(self):
+        """Close access to shared memory. Call from all processes."""
+        self.shm.close()
+
+    def unlink(self):
+        """Remove shared memory. Only call from the owner (main process)."""
+        if self._is_owner:
+            self.shm.unlink()

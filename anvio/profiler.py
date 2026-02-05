@@ -1259,6 +1259,16 @@ class BAMProfiler(dbops.ContigsSuperclass):
         bam_file = bamops.BAMFileObject(self.input_file_path)
         bam_file.fetch_filter = self.fetch_filter
 
+        # Attach to shared memory for contig sequences (created by main process)
+        # This avoids duplicating sequence data across all worker processes
+        if hasattr(self, '_shared_sequence_shm_name') and self._shared_sequence_shm_name:
+            self._worker_sequence_store = streamingops.SharedSequenceStore.from_existing(
+                self._shared_sequence_shm_name,
+                self._shared_sequence_index
+            )
+        else:
+            self._worker_sequence_store = None
+
         while True:
             try:
                 index = available_index_queue.get(True)
@@ -1313,7 +1323,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # Create split objects (same as process_contig)
         for split_name in self.contig_name_to_splits[contig_name]:
             s = self.splits_basic_info[split_name]
-            split_sequence = self.contig_sequences[contig_name]['sequence'][s['start']:s['end']]
+            # Get sequence from shared memory (multi-thread) or regular dict (single-thread)
+            if hasattr(self, '_worker_sequence_store') and self._worker_sequence_store:
+                split_sequence = self._worker_sequence_store.get_sequence(contig_name, s['start'], s['end'])
+            else:
+                split_sequence = self.contig_sequences[contig_name]['sequence'][s['start']:s['end']]
             split = contigops.Split(split_name, split_sequence, contig_name, s['order_in_parent'], s['start'], s['end'])
             contig.splits.append(split)
 
@@ -1730,6 +1744,21 @@ class BAMProfiler(dbops.ContigsSuperclass):
         available_index_queue = manager.Queue()
         output_queue = manager.Queue(self.queue_size)
 
+        # Create shared memory for contig sequences to avoid duplicating them
+        # across worker processes. This can save enormous amounts of memory
+        # when using many threads.
+        self.progress.new('Setting up shared memory')
+        self.progress.update('Packing contig sequences into shared memory ...')
+        self._shared_sequence_store = streamingops.SharedSequenceStore(self.contig_sequences)
+        self._shared_sequence_shm_name = self._shared_sequence_store.shm_name
+        self._shared_sequence_index = self._shared_sequence_store.index
+
+        # Clear the original contig_sequences dict to free memory in the main process
+        # before forking workers. Workers will use shared memory instead.
+        self.contig_sequences = None
+        gc.collect()
+        self.progress.end()
+
         # put contig indices into the queue to be read from within the worker
         for i in range(0, self.num_contigs):
             available_index_queue.put(i)
@@ -1790,6 +1819,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
             except KeyboardInterrupt:
                 self.run.info_single("Anvi'o profiler received SIGINT, terminating all processes...", nl_before=2)
+                # Clean up shared memory before breaking
+                self._shared_sequence_store.close()
+                self._shared_sequence_store.unlink()
                 break
 
             except Exception as worker_error:
@@ -1797,6 +1829,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 self.progress.end()
                 for proc in processes:
                     proc.terminate()
+                # Clean up shared memory before raising
+                self._shared_sequence_store.close()
+                self._shared_sequence_store.unlink()
                 raise worker_error
 
         for proc in processes:
@@ -1805,6 +1840,10 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | WRITING TO DB 💾 ...")
         self.store_contigs_buffer()
         self.auxiliary_db.close()
+
+        # Clean up shared memory
+        self._shared_sequence_store.close()
+        self._shared_sequence_store.unlink()
 
         self.progress.end(timing_filepath='anvio.debug.timing.txt' if anvio.DEBUG else None)
 
