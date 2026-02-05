@@ -507,3 +507,78 @@ class SharedSequenceStore:
         """Remove shared memory. Only call from the owner (main process)."""
         if self._is_owner:
             self.shm.unlink()
+
+    def as_dict_proxy(self):
+        """Return a dict-like proxy for compatibility with contig_sequences interface.
+
+        Returns a SharedSequenceDict that provides the same interface as the
+        original contig_sequences dict: d[contig_name]['sequence']
+        """
+        return SharedSequenceDict(self)
+
+
+class SharedSequenceDict:
+    """Dict-like proxy for SharedSequenceStore.
+
+    Provides the same interface as the contig_sequences dict, allowing code
+    that accesses contig_sequences[contig_name]['sequence'] to work
+    transparently with shared memory.
+
+    This class implements __len__, __getitem__, __contains__, and keys()
+    to be compatible with typical usage patterns.
+    """
+
+    def __init__(self, store):
+        """
+        Parameters
+        ==========
+        store : SharedSequenceStore
+            The underlying shared memory store.
+        """
+        self._store = store
+
+    def __len__(self):
+        """Return number of contigs."""
+        return len(self._store.index)
+
+    def __contains__(self, contig_name):
+        """Check if contig exists."""
+        return contig_name in self._store.index
+
+    def __getitem__(self, contig_name):
+        """Return a dict-like object with 'sequence' key for the contig."""
+        if contig_name not in self._store.index:
+            raise KeyError(contig_name)
+        return _SharedSequenceEntry(self._store, contig_name)
+
+    def keys(self):
+        """Return contig names."""
+        return self._store.index.keys()
+
+    def __iter__(self):
+        """Iterate over contig names."""
+        return iter(self._store.index.keys())
+
+
+class _SharedSequenceEntry:
+    """Dict-like object representing a single contig's entry.
+
+    Provides access to the 'sequence' key, fetching from shared memory.
+    """
+
+    def __init__(self, store, contig_name):
+        self._store = store
+        self._contig_name = contig_name
+
+    def __getitem__(self, key):
+        if key == 'sequence':
+            return self._store.get_sequence(self._contig_name)
+        raise KeyError(key)
+
+    def __contains__(self, key):
+        return key == 'sequence'
+
+    def get(self, key, default=None):
+        if key == 'sequence':
+            return self._store.get_sequence(self._contig_name)
+        return default

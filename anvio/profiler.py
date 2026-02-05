@@ -1256,18 +1256,31 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
     @staticmethod
     def profile_contig_worker(self, available_index_queue, output_queue):
+        import traceback
+
         bam_file = bamops.BAMFileObject(self.input_file_path)
         bam_file.fetch_filter = self.fetch_filter
 
         # Attach to shared memory for contig sequences (created by main process)
         # This avoids duplicating sequence data across all worker processes
         if hasattr(self, '_shared_sequence_shm_name') and self._shared_sequence_shm_name:
-            self._worker_sequence_store = streamingops.SharedSequenceStore.from_existing(
-                self._shared_sequence_shm_name,
-                self._shared_sequence_index
-            )
+            try:
+                self._worker_sequence_store = streamingops.SharedSequenceStore.from_existing(
+                    self._shared_sequence_shm_name,
+                    self._shared_sequence_index
+                )
+                # Replace contig_sequences with a proxy that fetches from shared memory
+                # This makes all code that accesses self.contig_sequences work transparently
+                self.contig_sequences = self._worker_sequence_store.as_dict_proxy()
+            except Exception as e:
+                output_queue.put(ConfigError(f"Worker failed to attach to shared memory '{self._shared_sequence_shm_name}': {e}"))
+                return
         else:
-            self._worker_sequence_store = None
+            # This should not happen in multi-threaded mode - shared memory should always be set up
+            output_queue.put(ConfigError(f"Worker missing shared memory attributes. "
+                                         f"Has _shared_sequence_shm_name: {hasattr(self, '_shared_sequence_shm_name')}, "
+                                         f"Value: {getattr(self, '_shared_sequence_shm_name', 'NOT SET')}"))
+            return
 
         while True:
             try:
@@ -1289,8 +1302,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     del contig
             except Exception as e:
                 # This thread encountered an error. We send the error back to the main thread which
-                # will terminate the job.
-                output_queue.put(e)
+                # will terminate the job. Include traceback for debugging.
+                error_msg = f"{type(e).__name__}: {e}\n\nTraceback:\n{traceback.format_exc()}"
+                output_queue.put(ConfigError(error_msg))
 
         # we are closing this object here for clarity, although we are not really closing it since
         # the code never reaches here and the worker is killed by its parent:
@@ -1323,11 +1337,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # Create split objects (same as process_contig)
         for split_name in self.contig_name_to_splits[contig_name]:
             s = self.splits_basic_info[split_name]
-            # Get sequence from shared memory (multi-thread) or regular dict (single-thread)
-            if hasattr(self, '_worker_sequence_store') and self._worker_sequence_store:
-                split_sequence = self._worker_sequence_store.get_sequence(contig_name, s['start'], s['end'])
-            else:
-                split_sequence = self.contig_sequences[contig_name]['sequence'][s['start']:s['end']]
+            # Get split sequence - works with both regular dict and shared memory proxy
+            split_sequence = self.contig_sequences[contig_name]['sequence'][s['start']:s['end']]
             split = contigops.Split(split_name, split_sequence, contig_name, s['order_in_parent'], s['start'], s['end'])
             contig.splits.append(split)
 
