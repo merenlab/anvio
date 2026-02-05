@@ -196,13 +196,38 @@ class SNVAccumulator:
         mapped_mask = vectorized[:, 2] == 0
         mapped = vectorized[mapped_mask]
 
-        for row in mapped:
-            pos = int(row[0]) - split_start
-            base_ord = int(row[1])
-            if 0 <= pos < limit:
-                idx = self.NT_TO_INDEX.get(base_ord)
-                if idx is not None:
-                    self.allele_counts[idx, pos] += 1
+        if len(mapped) == 0:
+            return
+
+        # Compute positions relative to split start
+        positions = mapped[:, 0] - split_start
+        bases = mapped[:, 1]
+
+        # Filter to valid position range [0, limit)
+        valid_mask = (positions >= 0) & (positions < limit)
+        positions = positions[valid_mask]
+        bases = bases[valid_mask]
+
+        if len(positions) == 0:
+            return
+
+        # Map nucleotide ord values to array indices (vectorized)
+        # A=65, C=67, G=71, T=84, N=78 (uppercase)
+        # a=97, c=99, g=103, t=116, n=110 (lowercase)
+        base_indices = np.full(len(bases), -1, dtype=np.int32)
+        base_indices[(bases == 65) | (bases == 97)] = 0   # A/a
+        base_indices[(bases == 67) | (bases == 99)] = 1   # C/c
+        base_indices[(bases == 71) | (bases == 103)] = 2  # G/g
+        base_indices[(bases == 84) | (bases == 116)] = 3  # T/t
+        base_indices[(bases == 78) | (bases == 110)] = 4  # N/n
+
+        # Filter out unknown bases
+        valid_bases_mask = base_indices >= 0
+        positions = positions[valid_bases_mask]
+        base_indices = base_indices[valid_bases_mask]
+
+        # Scatter-add: increment allele_counts at (base_index, position) pairs
+        np.add.at(self.allele_counts, (base_indices, positions), 1)
 
     def get_coverage(self):
         """Get per-position coverage from allele counts."""
