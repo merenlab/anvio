@@ -173,7 +173,7 @@ class SNVAccumulator:
                 if idx is not None:
                     self.allele_counts[idx, pos] += 1
 
-    def update_from_vectorized(self, vectorized, split_start):
+    def update_from_vectorized(self, vectorized, split_start, position_limit=None):
         """Update allele counts from a vectorized read array.
 
         Parameters
@@ -184,7 +184,14 @@ class SNVAccumulator:
 
         split_start : int
             The reference position of the split start.
+
+        position_limit : int, optional
+            If provided, only count positions in range [0, position_limit).
+            Used for chunk-based processing where the accumulator is smaller
+            than the full split.
         """
+        limit = position_limit if position_limit is not None else self.split_length
+
         # Filter to only mapped positions (mapping_type == 0)
         mapped_mask = vectorized[:, 2] == 0
         mapped = vectorized[mapped_mask]
@@ -192,7 +199,7 @@ class SNVAccumulator:
         for row in mapped:
             pos = int(row[0]) - split_start
             base_ord = int(row[1])
-            if 0 <= pos < self.split_length:
+            if 0 <= pos < limit:
                 idx = self.NT_TO_INDEX.get(base_ord)
                 if idx is not None:
                     self.allele_counts[idx, pos] += 1
