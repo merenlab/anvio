@@ -302,7 +302,8 @@ class INDELAccumulator:
             if ins_pos < 0 or ins_pos >= self.split_length:
                 continue
 
-            ins_seq = ''.join(chr(x) for x in ins_seq_ord)
+            # Convert ordinal array to string efficiently using bytes conversion
+            ins_seq = bytes(ins_seq_ord.astype(np.uint8)).decode('ascii')
             indel_hash = hash((ins_pos, ins_seq))
 
             if indel_hash in self.indels:
