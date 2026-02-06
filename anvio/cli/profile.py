@@ -61,6 +61,13 @@ def get_args():
     groupQ.add_argument(*anvio.A('min-contig-length'), **anvio.K('min-contig-length'))
     groupQ.add_argument(*anvio.A('max-contig-length'), **anvio.K('max-contig-length'))
     groupQ.add_argument(*anvio.A('contigs-of-interest'), **anvio.K('contigs-of-interest'))
+    groupQ.add_argument('--skip-contigs-without-coverage', default=False, action='store_true',
+                        help="Use this flag to focus only on contigs that have at least one mapped read "
+                             "in the BAM file. This is VERY useful when profiling against a large reference "
+                             "(such as all MAGs from a database) where most contigs have zero coverage from "
+                             "any single metagenome. Anvi'o will quickly scan the BAM index to identify contigs "
+                             "with mapped reads, and only load data for those contigs. This can dramatically "
+                             "reduce memory usage and runtime when most contigs have no coverage.")
     groupQ.add_argument(*anvio.A('list-contigs'), **anvio.K('list-contigs'))
 
     #############################################################################################################################
