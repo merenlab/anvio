@@ -1802,6 +1802,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # Clear the original data to free memory in the main process
         # before forking workers. Workers will use shared memory instead.
         self.contig_sequences = None
+        gc.collect()
+        self.progress.end()
 
         # Clear _lazy_loaded_data so it doesn't get pickled to workers.
         # Workers will load what they need lazily from SQLite, and SQLite's
@@ -1809,56 +1811,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # This can save significant memory with many workers.
         if hasattr(self, '_lazy_loaded_data'):
             self._lazy_loaded_data.clear()
-
-        gc.collect()
-        self.progress.end()
-
-        # DEBUG: Measure pickle size to understand worker memory overhead
-        if anvio.DEBUG:
-            import dill
-            self.run.warning(None, header="DEBUG: Analyzing pickle size of self before spawning workers", lc='yellow')
-            # Temporarily store large objects we want to exclude from analysis
-            _temp_lazy = getattr(self, '_lazy_loaded_data', {}).copy() if hasattr(self, '_lazy_loaded_data') else {}
-
-            # Measure total pickle size
-            try:
-                pickled = dill.dumps(self)
-                total_mb = len(pickled) / (1024 * 1024)
-                self.run.info("Total pickle size of self", f"{total_mb:.2f} MB")
-            except Exception as e:
-                self.run.info("Could not pickle self", str(e))
-
-            # Measure individual attributes
-            large_attrs = []
-            for attr_name in dir(self):
-                if attr_name.startswith('_'):
-                    continue
-                try:
-                    attr_val = getattr(self, attr_name)
-                    if callable(attr_val):
-                        continue
-                    pickled_attr = dill.dumps(attr_val)
-                    size_mb = len(pickled_attr) / (1024 * 1024)
-                    if size_mb > 0.1:  # Only show attrs > 0.1 MB
-                        large_attrs.append((attr_name, size_mb))
-                except:
-                    pass
-
-            large_attrs.sort(key=lambda x: -x[1])
-            self.run.info("Large attributes (>0.1 MB):", "")
-            for attr_name, size_mb in large_attrs[:15]:
-                self.run.info(f"  {attr_name}", f"{size_mb:.2f} MB")
-
-            # Also check _lazy_loaded_data contents
-            if hasattr(self, '_lazy_loaded_data') and self._lazy_loaded_data:
-                self.run.info("_lazy_loaded_data contents:", "")
-                for key, val in self._lazy_loaded_data.items():
-                    try:
-                        pickled_val = dill.dumps(val)
-                        size_mb = len(pickled_val) / (1024 * 1024)
-                        self.run.info(f"  {key}", f"{size_mb:.2f} MB")
-                    except Exception as e:
-                        self.run.info(f"  {key}", f"(could not pickle: {e})")
 
         # put contig indices into the queue to be read from within the worker
         for i in range(0, self.num_contigs):
