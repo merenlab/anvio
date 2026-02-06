@@ -1291,8 +1291,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     self._shared_nt_positions_index
                 )
                 # Replace nt_positions_info with a proxy that fetches from shared memory
-                # We need to set _nt_positions_info directly since it's a LazyProperty
-                self._nt_positions_info = self._worker_nt_positions_store.as_dict_proxy()
+                # LazyProperty stores cached data in _lazy_loaded_data[attr_name],
+                # so we need to set it there to override the lazy loading
+                if not hasattr(self, '_lazy_loaded_data'):
+                    self._lazy_loaded_data = {}
+                self._lazy_loaded_data['nt_positions_info'] = self._worker_nt_positions_store.as_dict_proxy()
             except Exception as e:
                 output_queue.put(ConfigError(f"Worker failed to attach to nt_positions shared memory: {e}"))
                 return
