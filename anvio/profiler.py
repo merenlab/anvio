@@ -1805,13 +1805,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
         gc.collect()
         self.progress.end()
 
-        # Clear _lazy_loaded_data so it doesn't get pickled to workers.
-        # Workers will load what they need lazily from SQLite, and SQLite's
-        # memory-mapped I/O should share the data across processes efficiently.
-        # This can save significant memory with many workers.
-        if hasattr(self, '_lazy_loaded_data'):
-            self._lazy_loaded_data.clear()
-
         # put contig indices into the queue to be read from within the worker
         for i in range(0, self.num_contigs):
             available_index_queue.put(i)
