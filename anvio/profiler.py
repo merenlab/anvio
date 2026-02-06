@@ -1795,9 +1795,10 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # Clear the original data to free memory in the main process
         # before forking workers. Workers will use shared memory instead.
         self.contig_sequences = None
-        # Clear the cached nt_positions_info by deleting the lazy property cache
-        if hasattr(self, '_nt_positions_info'):
-            del self._nt_positions_info
+        # Clear the cached nt_positions_info from LazyProperty cache.
+        # LazyProperty stores cached values in instance._lazy_loaded_data[attr_name]
+        if hasattr(self, '_lazy_loaded_data') and 'nt_positions_info' in self._lazy_loaded_data:
+            del self._lazy_loaded_data['nt_positions_info']
         gc.collect()
         self.progress.end()
 
