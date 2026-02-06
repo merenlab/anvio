@@ -52,6 +52,169 @@ null_run = terminal.Run(verbose=False)
 pp = terminal.pretty_print
 
 
+class SharedDataStore:
+    """Packs dict data into a single shared memory buffer for multi-process access.
+
+    Supports two modes:
+    - 'bytes': for string data (like contig sequences). Values are stored as UTF-8 bytes.
+    - 'numpy_uint8': for numpy uint8 arrays (like nt_positions_info).
+
+    Parameters
+    ==========
+    data : dict
+        Dictionary to pack. Values must be either strings or numpy uint8 arrays.
+    mode : str
+        'bytes' for string data, 'numpy_uint8' for numpy arrays.
+    """
+
+    def __init__(self, data, mode='bytes'):
+        from multiprocessing import shared_memory
+
+        self.mode = mode
+        self._is_owner = True
+
+        # Calculate total size and build index
+        self.index = {}
+        offset = 0
+
+        if mode == 'bytes':
+            # Calculate sizes for string data
+            encoded = {}
+            for key, val in data.items():
+                if isinstance(val, dict) and 'sequence' in val:
+                    raw = val['sequence'].encode('utf-8')
+                else:
+                    raw = str(val).encode('utf-8')
+                encoded[key] = raw
+                self.index[key] = (offset, len(raw))
+                offset += len(raw)
+        elif mode == 'numpy_uint8':
+            for key, arr in data.items():
+                length = arr.nbytes
+                self.index[key] = (offset, length)
+                offset += length
+        else:
+            raise ValueError(f"Unknown mode: {mode}")
+
+        total_size = offset
+
+        if total_size == 0:
+            self.shm = None
+            self.shm_name = None
+            return
+
+        # Create shared memory and copy data
+        self.shm = shared_memory.SharedMemory(create=True, size=total_size)
+        self.shm_name = self.shm.name
+        buf = self.shm.buf
+
+        if mode == 'bytes':
+            for key, raw in encoded.items():
+                off, length = self.index[key]
+                buf[off:off + length] = raw
+        elif mode == 'numpy_uint8':
+            for key, arr in data.items():
+                off, length = self.index[key]
+                buf[off:off + length] = arr.tobytes()
+
+    @classmethod
+    def from_existing(cls, shm_name, index, mode='bytes'):
+        """Attach to existing shared memory (for worker processes)."""
+        from multiprocessing import shared_memory
+
+        instance = cls.__new__(cls)
+        instance.mode = mode
+        instance._is_owner = False
+        instance.index = index
+
+        if shm_name is None:
+            instance.shm = None
+            instance.shm_name = None
+        else:
+            instance.shm = shared_memory.SharedMemory(name=shm_name)
+            instance.shm_name = shm_name
+
+        return instance
+
+    def get(self, key):
+        """Retrieve a value by key."""
+        if key not in self.index:
+            raise KeyError(key)
+
+        offset, length = self.index[key]
+
+        if self.mode == 'bytes':
+            return self.shm.buf[offset:offset + length].tobytes().decode('utf-8')
+        elif self.mode == 'numpy_uint8':
+            return np.frombuffer(self.shm.buf, dtype=np.uint8, count=length, offset=offset)
+
+    def close(self):
+        if self.shm is not None:
+            self.shm.close()
+
+    def unlink(self):
+        if self._is_owner and self.shm is not None:
+            self.shm.unlink()
+
+
+class SharedContigSequencesProxy:
+    """Dict-like proxy for shared contig sequences.
+
+    Mimics the interface of contig_sequences: d[contig_name]['sequence']
+    """
+
+    def __init__(self, store):
+        self._store = store
+
+    def __getitem__(self, contig_name):
+        return {'sequence': self._store.get(contig_name)}
+
+    def __contains__(self, contig_name):
+        return contig_name in self._store.index
+
+    def __len__(self):
+        return len(self._store.index)
+
+    def keys(self):
+        return self._store.index.keys()
+
+    def __iter__(self):
+        return iter(self._store.index.keys())
+
+
+class SharedNtPositionsProxy:
+    """Dict-like proxy for shared nt_positions_info.
+
+    Mimics the interface: d[contig_name] returns numpy uint8 array.
+    """
+
+    def __init__(self, store):
+        self._store = store
+
+    def __getitem__(self, contig_name):
+        return self._store.get(contig_name)
+
+    def __contains__(self, contig_name):
+        return contig_name in self._store.index
+
+    def __len__(self):
+        return len(self._store.index)
+
+    def __bool__(self):
+        return len(self._store.index) > 0
+
+    def keys(self):
+        return self._store.index.keys()
+
+    def __iter__(self):
+        return iter(self._store.index.keys())
+
+    def get(self, contig_name, default=None):
+        if contig_name in self._store.index:
+            return self._store.get(contig_name)
+        return default
+
+
 class BAMProfilerQuick:
     """A class for rapid profiling of BAM files that produce text files rather than profile dbs"""
 
@@ -1353,6 +1516,21 @@ class BAMProfiler(dbops.ContigsSuperclass):
         bam_file = bamops.BAMFileObject(self.input_file_path)
         bam_file.fetch_filter = self.fetch_filter
 
+        # Attach to shared memory for contig sequences
+        if hasattr(self, '_shared_seq_shm_name') and self._shared_seq_shm_name:
+            worker_seq_store = SharedDataStore.from_existing(
+                self._shared_seq_shm_name, self._shared_seq_index, mode='bytes')
+            self.contig_sequences = SharedContigSequencesProxy(worker_seq_store)
+
+        # Attach to shared memory for nt_positions_info
+        if hasattr(self, '_shared_nt_shm_name') and self._shared_nt_shm_name:
+            worker_nt_store = SharedDataStore.from_existing(
+                self._shared_nt_shm_name, self._shared_nt_index, mode='numpy_uint8')
+            # LazyProperty stores in _lazy_loaded_data
+            if not hasattr(self, '_lazy_loaded_data'):
+                self._lazy_loaded_data = {}
+            self._lazy_loaded_data['nt_positions_info'] = SharedNtPositionsProxy(worker_nt_store)
+
         while True:
             try:
                 index = available_index_queue.get(True)
@@ -1568,6 +1746,30 @@ class BAMProfiler(dbops.ContigsSuperclass):
         available_index_queue = manager.Queue()
         output_queue = manager.Queue(self.queue_size)
 
+        # Create shared memory for large data structures to avoid duplicating
+        # them across worker processes. Without this, each worker gets its own
+        # copy via pickling, which can use terabytes of memory with many threads.
+        self.progress.new('Setting up shared memory')
+        self.progress.update('Packing contig sequences into shared memory ...')
+        shared_seq_store = SharedDataStore(self.contig_sequences, mode='bytes')
+        self._shared_seq_shm_name = shared_seq_store.shm_name
+        self._shared_seq_index = shared_seq_store.index
+
+        self.progress.update('Packing nt_positions_info into shared memory ...')
+        # Force load the lazy property before sharing
+        _ = self.nt_positions_info
+        shared_nt_store = SharedDataStore(self.nt_positions_info, mode='numpy_uint8')
+        self._shared_nt_shm_name = shared_nt_store.shm_name
+        self._shared_nt_index = shared_nt_store.index
+
+        # Clear the originals to free memory before spawning workers.
+        # Workers will access data through shared memory proxies instead.
+        self.contig_sequences = None
+        if hasattr(self, '_lazy_loaded_data') and 'nt_positions_info' in self._lazy_loaded_data:
+            self._lazy_loaded_data['nt_positions_info'] = None
+        gc.collect()
+        self.progress.end()
+
         # put contig indices into the queue to be read from within the worker
         for i in range(0, self.num_contigs):
             available_index_queue.put(i)
@@ -1628,6 +1830,10 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
             except KeyboardInterrupt:
                 self.run.info_single("Anvi'o profiler received SIGINT, terminating all processes...", nl_before=2)
+                shared_seq_store.close()
+                shared_seq_store.unlink()
+                shared_nt_store.close()
+                shared_nt_store.unlink()
                 break
 
             except Exception as worker_error:
@@ -1635,6 +1841,10 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 self.progress.end()
                 for proc in processes:
                     proc.terminate()
+                shared_seq_store.close()
+                shared_seq_store.unlink()
+                shared_nt_store.close()
+                shared_nt_store.unlink()
                 raise worker_error
 
         for proc in processes:
@@ -1643,6 +1853,12 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | WRITING TO DB 💾 ...")
         self.store_contigs_buffer()
         self.auxiliary_db.close()
+
+        # Clean up shared memory
+        shared_seq_store.close()
+        shared_seq_store.unlink()
+        shared_nt_store.close()
+        shared_nt_store.unlink()
 
         self.progress.end(timing_filepath='anvio.debug.timing.txt' if anvio.DEBUG else None)
 
