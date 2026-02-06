@@ -697,12 +697,22 @@ class BAMProfiler(dbops.ContigsSuperclass):
         else:
             self.contig_names_of_interest = set([])
 
+        # Handle --skip-contigs-without-coverage flag
+        self.skip_contigs_without_coverage = A('skip_contigs_without_coverage')
+
         if self.list_contigs_and_exit:
             self.list_contigs()
             sys.exit()
 
         if not self.contigs_db_path:
             raise ConfigError("No contigs database, no profilin'. Bye.")
+
+        # If --skip-contigs-without-coverage is set, scan the BAM index early to identify
+        # contigs with mapped reads. We do this BEFORE initializing ContigsSuperclass so
+        # that LazyProperties only load data for relevant contigs.
+        self.split_names_of_interest = set([])
+        if self.skip_contigs_without_coverage and self.input_file_path and not self.blank:
+            self.split_names_of_interest = self._get_split_names_with_coverage()
 
         # store our run object. 'why?', you may ask. well, keep reading.
         my_run = self.run
@@ -1018,6 +1028,87 @@ class BAMProfiler(dbops.ContigsSuperclass):
                              'or (b) your the gene caller was not capable of dealing with the type of data you had. '
                              'If you would like to take a look yourself, here is one contig that is missing any genes: %s"' %\
                                       (P(len(contigs_without_any_gene_calls)), random.choice(contigs_without_any_gene_calls)))
+
+
+    def _get_split_names_with_coverage(self):
+        """Scan BAM index to identify contigs with coverage, then get their split names.
+
+        This is called early (before ContigsSuperclass init) when --skip-contigs-without-coverage
+        is used. By identifying splits of interest before lazy properties are accessed, we avoid
+        loading massive data structures (like nt_positions_info) for contigs with no coverage.
+
+        Returns
+        =======
+        set
+            Set of split names belonging to contigs with at least one mapped read.
+        """
+        import pysam
+
+        self.progress.new('Pre-filtering contigs')
+        self.progress.update('Scanning BAM index for contigs with coverage ...')
+
+        # Open BAM and get index statistics (very fast - reads only the index)
+        try:
+            bam = pysam.AlignmentFile(self.input_file_path, 'rb')
+            index_stats = bam.get_index_statistics()
+            bam.close()
+        except Exception as e:
+            self.progress.end()
+            raise ConfigError(f"Failed to read BAM index for pre-filtering. Make sure your BAM file "
+                              f"is indexed (run 'samtools index' if needed). Error: {e}")
+
+        # Get contig names with at least one mapped read
+        contigs_with_coverage = set(stat.contig for stat in index_stats if stat.mapped > 0)
+        total_contigs_in_bam = len(index_stats)
+
+        self.progress.update(f'Found {pp(len(contigs_with_coverage))} contigs with coverage '
+                            f'(out of {pp(total_contigs_in_bam)} in BAM) ...')
+
+        if not contigs_with_coverage:
+            self.progress.end()
+            raise ConfigError("None of the contigs in your BAM file have any mapped reads. There is "
+                              "nothing to profile :/")
+
+        # If user also specified --contigs-of-interest, take the intersection
+        if self.contig_names_of_interest:
+            contigs_with_coverage = contigs_with_coverage & self.contig_names_of_interest
+            self.progress.update(f'After intersection with --contigs-of-interest: {pp(len(contigs_with_coverage))} contigs ...')
+
+            if not contigs_with_coverage:
+                self.progress.end()
+                raise ConfigError("After intersecting contigs with coverage with your --contigs-of-interest, "
+                                  "there are no contigs left to profile. Please check your inputs.")
+
+        # Update contig_names_of_interest to only include contigs with coverage
+        self.contig_names_of_interest = contigs_with_coverage
+
+        # Query the database directly to get split names for these contigs
+        # We do this before ContigsSuperclass init, so we can't use LazyProperties
+        self.progress.update('Querying database for split names ...')
+
+        import anvio.db as db
+        contigs_db = db.DB(self.contigs_db_path, None, ignore_version=True)
+
+        # Build WHERE clause for the query
+        contig_list_str = ','.join(['"%s"' % c for c in contigs_with_coverage])
+        where_clause = f"parent IN ({contig_list_str})"
+
+        # Get split names
+        split_names = set()
+        for row in contigs_db.get_some_rows_from_table('splits_basic_info', where_clause):
+            split_names.add(row[0])  # First column is split name
+
+        contigs_db.disconnect()
+
+        self.progress.end()
+
+        self.run.warning(None, header="PRE-FILTERING CONTIGS", lc='green')
+        self.run.info('Total contigs in BAM', pp(total_contigs_in_bam))
+        self.run.info('Contigs WITH at least one mapped read', pp(len(contigs_with_coverage)), mc='green')
+        self.run.info('Contigs WITHOUT any mapped reads (skipped)', pp(total_contigs_in_bam - len(contigs_with_coverage)), mc='red')
+        self.run.info('Splits to process', pp(len(split_names)))
+
+        return split_names
 
 
     def list_contigs(self):
