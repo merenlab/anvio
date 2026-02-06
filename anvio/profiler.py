@@ -1282,9 +1282,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                          f"Value: {getattr(self, '_shared_sequence_shm_name', 'NOT SET')}"))
             return
 
-        # Attach to shared memory for nt_positions_info (created by main process)
-        # This avoids duplicating the large per-nucleotide arrays across workers
-        if hasattr(self, '_shared_nt_positions_shm_name'):
+        # Attach to shared memory for nt_positions_info if available
+        # (may be disabled if SQLite mmap sharing is more efficient)
+        if hasattr(self, '_shared_nt_positions_shm_name') and self._shared_nt_positions_shm_name:
             try:
                 self._worker_nt_positions_store = streamingops.SharedNtPositionsStore.from_existing(
                     self._shared_nt_positions_shm_name,
@@ -1299,6 +1299,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
             except Exception as e:
                 output_queue.put(ConfigError(f"Worker failed to attach to nt_positions shared memory: {e}"))
                 return
+        # else: workers will access nt_positions_info lazily via LazyProperty,
+        # which loads from SQLite. OS-level mmap sharing may make this efficient.
 
         while True:
             try:
@@ -1786,22 +1788,20 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self._shared_sequence_shm_name = shared_sequence_store.shm_name
         self._shared_sequence_index = shared_sequence_store.index
 
-        # Also create shared memory for nt_positions_info (per-nucleotide gene info)
-        # This can be 8+ GB and would otherwise be duplicated across all workers
-        self.progress.update('Packing nt_positions_info into shared memory ...')
-        # Force load the lazy property before we can share it
-        _ = self.nt_positions_info
-        shared_nt_positions_store = streamingops.SharedNtPositionsStore(self.nt_positions_info)
-        self._shared_nt_positions_shm_name = shared_nt_positions_store.shm_name
-        self._shared_nt_positions_index = shared_nt_positions_store.index
+        # NOTE: We tried adding shared memory for nt_positions_info, but it actually
+        # INCREASED memory usage. This is likely because SQLite uses memory-mapping,
+        # which the OS shares across processes automatically. By explicitly loading
+        # into Python objects and copying to SharedMemory, we were adding overhead.
+        # Workers will access nt_positions_info lazily via SQLite, benefiting from
+        # OS-level mmap sharing.
+        #
+        # TODO: Investigate if there's a way to ensure workers use mmap-based sharing
+        # for nt_positions_info rather than each loading a copy.
+        self._shared_nt_positions_shm_name = None  # Workers will detect this and skip
 
         # Clear the original data to free memory in the main process
         # before forking workers. Workers will use shared memory instead.
         self.contig_sequences = None
-        # Clear the cached nt_positions_info from LazyProperty cache.
-        # LazyProperty stores cached values in instance._lazy_loaded_data[attr_name]
-        if hasattr(self, '_lazy_loaded_data') and 'nt_positions_info' in self._lazy_loaded_data:
-            del self._lazy_loaded_data['nt_positions_info']
         gc.collect()
         self.progress.end()
 
@@ -1868,8 +1868,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 # Clean up shared memory before breaking
                 shared_sequence_store.close()
                 shared_sequence_store.unlink()
-                shared_nt_positions_store.close()
-                shared_nt_positions_store.unlink()
                 break
 
             except Exception as worker_error:
@@ -1880,8 +1878,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 # Clean up shared memory before raising
                 shared_sequence_store.close()
                 shared_sequence_store.unlink()
-                shared_nt_positions_store.close()
-                shared_nt_positions_store.unlink()
                 raise worker_error
 
         for proc in processes:
@@ -1894,8 +1890,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # Clean up shared memory
         shared_sequence_store.close()
         shared_sequence_store.unlink()
-        shared_nt_positions_store.close()
-        shared_nt_positions_store.unlink()
 
         self.progress.end(timing_filepath='anvio.debug.timing.txt' if anvio.DEBUG else None)
 
