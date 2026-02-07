@@ -73,21 +73,18 @@ class SharedDataStore:
         self.mode = mode
         self._is_owner = True
 
-        # Calculate total size and build index
+        # First pass: calculate total size and build index (no intermediate copies)
         self.index = {}
         offset = 0
 
         if mode == 'bytes':
-            # Calculate sizes for string data
-            encoded = {}
             for key, val in data.items():
                 if isinstance(val, dict) and 'sequence' in val:
-                    raw = val['sequence'].encode('utf-8')
+                    length = len(val['sequence'].encode('utf-8'))
                 else:
-                    raw = str(val).encode('utf-8')
-                encoded[key] = raw
-                self.index[key] = (offset, len(raw))
-                offset += len(raw)
+                    length = len(str(val).encode('utf-8'))
+                self.index[key] = (offset, length)
+                offset += length
         elif mode == 'numpy_uint8':
             for key, arr in data.items():
                 length = arr.nbytes
@@ -103,15 +100,19 @@ class SharedDataStore:
             self.shm_name = None
             return
 
-        # Create shared memory and copy data
+        # Second pass: create shared memory and copy data directly (one entry at a time
+        # to avoid holding all encoded data in memory simultaneously)
         self.shm = shared_memory.SharedMemory(create=True, size=total_size)
         self.shm_name = self.shm.name
         buf = self.shm.buf
 
         if mode == 'bytes':
-            for key, raw in encoded.items():
+            for key, val in data.items():
                 off, length = self.index[key]
-                buf[off:off + length] = raw
+                if isinstance(val, dict) and 'sequence' in val:
+                    buf[off:off + length] = val['sequence'].encode('utf-8')
+                else:
+                    buf[off:off + length] = str(val).encode('utf-8')
         elif mode == 'numpy_uint8':
             for key, arr in data.items():
                 off, length = self.index[key]
@@ -1748,7 +1749,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         # Create shared memory for large data structures to avoid duplicating
         # them across worker processes. Without this, each worker gets its own
-        # copy via pickling, which can use terabytes of memory with many threads.
+        # copy via fork copy-on-write, which can use terabytes of memory with
+        # many threads due to Python's reference counting triggering COW breaks.
         self.progress.new('Setting up shared memory')
         self.progress.update('Packing contig sequences into shared memory ...')
         shared_seq_store = SharedDataStore(self.contig_sequences, mode='bytes')
@@ -1762,12 +1764,54 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self._shared_nt_shm_name = shared_nt_store.shm_name
         self._shared_nt_index = shared_nt_store.index
 
-        # Clear the originals to free memory before spawning workers.
-        # Workers will access data through shared memory proxies instead.
+        # Aggressively clear data from self to minimize the parent process's memory
+        # footprint before forking workers. On Linux, fork() uses copy-on-write, but
+        # Python's reference counting modifies object headers on every access, triggering
+        # page duplication. With 128 workers, this can duplicate the parent's entire
+        # Python heap (~50GB) across all workers. By clearing data here, we reduce the
+        # parent's heap so workers inherit much less memory.
+        #
+        # Workers will:
+        #   - Access contig_sequences and nt_positions_info through shared memory proxies
+        #   - Reload other LazyProperties from SQLite as needed (filtered by split_names_of_interest)
+        self.progress.update('Clearing data before forking workers ...')
         self.contig_sequences = None
-        if hasattr(self, '_lazy_loaded_data') and 'nt_positions_info' in self._lazy_loaded_data:
-            self._lazy_loaded_data['nt_positions_info'] = None
+
+        # Save objects the main thread needs after workers finish, then clear from self
+        saved_for_main_thread = {
+            'bam': self.bam,
+            'auxiliary_db': self.auxiliary_db,
+            'contig_names_in_contigs_db': self.contig_names_in_contigs_db,
+            'contig_names_of_interest': self.contig_names_of_interest,
+            'lazy_loaded_data': self._lazy_loaded_data.copy(),
+        }
+        for attr in ('variable_nts_table', 'indels_table', 'variable_codons_table'):
+            if hasattr(self, attr):
+                saved_for_main_thread[attr] = getattr(self, attr)
+                setattr(self, attr, None)
+
+        # Clear the large data structures from self
+        self.bam = None
+        self.contig_names_in_contigs_db = None
+        self.contig_names_of_interest = None
+        self._lazy_loaded_data = {}
+
+        # Force garbage collection and release freed memory back to OS.
+        # Python's arena allocator holds freed memory; malloc_trim forces release.
         gc.collect()
+
+        # Freeze all existing Python objects into the permanent GC generation.
+        # Without this, forked child processes' garbage collectors would traverse
+        # all inherited objects, incrementing reference counts and triggering
+        # copy-on-write page duplication even on objects the children never use.
+        gc.freeze()
+
+        try:
+            import ctypes
+            ctypes.CDLL(None).malloc_trim(0)
+        except Exception:
+            pass
+
         self.progress.end()
 
         # put contig indices into the queue to be read from within the worker
@@ -1780,6 +1824,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         for proc in processes:
             proc.start()
+
+        # Unfreeze GC in the parent process now that workers have forked
+        gc.unfreeze()
 
         received_contigs = 0
 
@@ -1834,6 +1881,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 shared_seq_store.unlink()
                 shared_nt_store.close()
                 shared_nt_store.unlink()
+                self.auxiliary_db = saved_for_main_thread['auxiliary_db']
                 break
 
             except Exception as worker_error:
@@ -1845,10 +1893,21 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 shared_seq_store.unlink()
                 shared_nt_store.close()
                 shared_nt_store.unlink()
+                self.auxiliary_db = saved_for_main_thread['auxiliary_db']
                 raise worker_error
 
         for proc in processes:
             proc.terminate()
+
+        # Restore objects that the main thread needs for post-processing
+        self.bam = saved_for_main_thread['bam']
+        self.auxiliary_db = saved_for_main_thread['auxiliary_db']
+        self.contig_names_in_contigs_db = saved_for_main_thread['contig_names_in_contigs_db']
+        self.contig_names_of_interest = saved_for_main_thread['contig_names_of_interest']
+        self._lazy_loaded_data = saved_for_main_thread['lazy_loaded_data']
+        for attr in ('variable_nts_table', 'indels_table', 'variable_codons_table'):
+            if attr in saved_for_main_thread:
+                setattr(self, attr, saved_for_main_thread[attr])
 
         self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | WRITING TO DB 💾 ...")
         self.store_contigs_buffer()
