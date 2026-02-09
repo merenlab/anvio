@@ -1196,9 +1196,9 @@ class DGR_Finder:
 
         # Generate descriptive filenames based on mode and bin
         if bin_name:
-            query_fasta_filename = f"blast_query_{mode}_bin_{bin_name}.fasta"
-            target_fasta_filename = f"blast_target_{mode}_bin_{bin_name}.fasta"
-            blast_output_filename = f"blast_output_{mode}_bin_{bin_name}_wordsize_{self.word_size}.xml"
+            query_fasta_filename = f"blast_query_{mode}_for_bin_{bin_name}.fasta"
+            target_fasta_filename = f"blast_target_{mode}_for_bin_{bin_name}.fasta"
+            blast_output_filename = f"blast_output_{mode}_for_bin_{bin_name}_wordsize_{self.word_size}.xml"
         else:
             query_fasta_filename = f"blast_query_{mode}.fasta"
             target_fasta_filename = f"blast_target_{mode}.fasta"
