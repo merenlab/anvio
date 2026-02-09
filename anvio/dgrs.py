@@ -2477,7 +2477,7 @@ class DGR_Finder:
                         vr_unique_bases = set(vr_sequence_for_diversity) - {"-", "N"}
 
                         # ensure the sequence has at least the required number of distinct base types (default 2)
-                        if len(vr_unique_bases) <= self.min_base_types_vr:
+                        if len(vr_unique_bases) < self.min_base_types_vr:
                             continue
 
                         # By default (conservative), filter for A-base mutagenesis only.
