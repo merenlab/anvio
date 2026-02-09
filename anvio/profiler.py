@@ -2124,6 +2124,14 @@ def _pack_shared_memory_worker(result_queue, contigs_db_path, split_names_of_int
         _ = cs.nt_positions_info
         nt_store = SharedDataStore(cs.nt_positions_info, mode='numpy_uint8')
 
+        # Unregister shared memory from the resource tracker so it persists after
+        # this subprocess exits. The parent process owns cleanup via _cleanup_shared_memory().
+        # Without this, the resource tracker unlinks the segments on subprocess exit,
+        # causing FileNotFoundError in workers that try to attach later.
+        from multiprocessing.resource_tracker import unregister
+        unregister(seq_store.shm._name, 'shared_memory')
+        unregister(nt_store.shm._name, 'shared_memory')
+
         result_queue.put({
             'seq_shm_name': seq_store.shm_name,
             'seq_index': seq_store.index,
