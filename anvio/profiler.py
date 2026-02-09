@@ -135,6 +135,11 @@ class SharedDataStore:
             instance.shm = shared_memory.SharedMemory(name=shm_name)
             instance.shm_name = shm_name
 
+            # This process doesn't own the segment — the parent handles cleanup.
+            # Unregister so the resource tracker doesn't try to unlink on exit.
+            from multiprocessing.resource_tracker import unregister
+            unregister(instance.shm._name, 'shared_memory')
+
         return instance
 
     def get(self, key):
