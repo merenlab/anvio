@@ -72,7 +72,6 @@ class SharedDataStore:
         from multiprocessing import shared_memory
 
         self.mode = mode
-        self._is_owner = True
 
         # First pass: calculate total size and build index (no intermediate copies)
         self.index = {}
@@ -126,7 +125,6 @@ class SharedDataStore:
 
         instance = cls.__new__(cls)
         instance.mode = mode
-        instance._is_owner = False
         instance.index = index
 
         if shm_name is None:
@@ -155,13 +153,6 @@ class SharedDataStore:
         elif self.mode == 'numpy_uint8':
             return np.frombuffer(self.shm.buf, dtype=np.uint8, count=length, offset=offset)
 
-    def close(self):
-        if self.shm is not None:
-            self.shm.close()
-
-    def unlink(self):
-        if self._is_owner and self.shm is not None:
-            self.shm.unlink()
 
 
 class SharedContigSequencesProxy:
@@ -2144,7 +2135,6 @@ def _pack_shared_memory_worker(result_queue, contigs_db_path, split_names_of_int
 
         seq_store = SharedDataStore(cs.contig_sequences, mode='bytes')
 
-        _ = cs.nt_positions_info
         nt_store = SharedDataStore(cs.nt_positions_info, mode='numpy_uint8')
 
         # Unregister shared memory from the resource tracker so it persists after
