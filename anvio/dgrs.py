@@ -2152,11 +2152,22 @@ class DGR_Finder:
                 else:
                     align_start = 0
 
+                # Ensure the window starts with a matching base, not a mismatch.
+                # This can happen when i==0 and the first mismatch is at position 0,
+                # or when consecutive mismatches leave no matching base between them.
+                if align_start >= mismatch_positions[i][0]:
+                    continue
+
                 # Extend forward: end at sequence end or before the mismatch after j-1
                 if j < n_mismatches:
                     align_end = mismatch_positions[j][0]
                 else:
                     align_end = len(vr_seq)
+
+                # Ensure the window ends with a matching base, not a mismatch.
+                # align_end is exclusive, so the last included position is align_end - 1.
+                if align_end <= mismatch_positions[j - 1][0] + 1:
+                    continue
 
                 # Check gap count in the extended window
                 gap_count = vr_seq[align_start:align_end].count('-') + tr_seq[align_start:align_end].count('-')
