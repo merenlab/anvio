@@ -415,6 +415,9 @@ class DGR_Finder:
         # This is needed for codon position analysis in all modes
         self.load_gene_info()
 
+        # Load RT gene genomic regions for filtering TRs that overlap RT genes
+        self.load_rt_gene_regions()
+
         html_files_exist = any(file.endswith('.html') for file in os.listdir(self.output_directory) if os.path.isfile(os.path.join(self.output_directory, file)))
         if html_files_exist:
             raise ConfigError("Files with .html suffix exist in the directory. Please delete them before rerunning and we will keep calm and carry on. (later this will delete them for you)")
@@ -599,6 +602,91 @@ class DGR_Finder:
         # Sort by start position for binary search
         for contig in self.gene_positions:
             self.gene_positions[contig].sort(key=lambda x: x[0])
+
+
+    def load_rt_gene_regions(self):
+        """Pre-load genomic coordinates of all genes with RT HMM hits.
+
+        Queries the hmm_hits table for entries whose source matches self.hmm,
+        then cross-references with self.genes_in_contigs to get contig/start/stop.
+        Results are stored as sorted (start, stop) lists per contig for efficient
+        overlap queries.
+
+        Populates
+        =========
+        self.rt_gene_regions : defaultdict(list)
+            {contig_name: [(start, stop), ...]} sorted by start position.
+        """
+
+        contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
+        hmm_hits_dict = contigs_db.db.get_table_as_dict(t.hmm_hits_table_name)
+        contigs_db.disconnect()
+
+        # Collect gene_callers_ids that have RT HMM hits
+        rt_gene_ids = set()
+        for entry in hmm_hits_dict.values():
+            if entry['source'] in self.hmm:
+                rt_gene_ids.add(entry['gene_callers_id'])
+
+        # Build per-contig sorted coordinate lists from genes_in_contigs
+        self.rt_gene_regions = defaultdict(list)
+        for gene_id in rt_gene_ids:
+            if gene_id not in self.genes_in_contigs:
+                continue
+            gene_info = self.genes_in_contigs[gene_id]
+            contig = gene_info['contig']
+            self.rt_gene_regions[contig].append((gene_info['start'], gene_info['stop']))
+
+        for contig in self.rt_gene_regions:
+            self.rt_gene_regions[contig].sort()
+
+        self.run.info("RT genes loaded for TR overlap filter", sum(len(v) for v in self.rt_gene_regions.values()))
+
+
+    def tr_overlaps_rt_gene(self, contig, tr_start, tr_end):
+        """Check whether a TR interval overlaps any RT gene on the given contig.
+
+        Uses binary search on the sorted rt_gene_regions list for O(log n) lookup.
+
+        Gene coordinates are half-open [start, stop). TR coordinates are inclusive
+        [tr_start, tr_end]. Overlap condition: rt_start <= tr_end AND tr_start < rt_stop.
+
+        Parameters
+        ==========
+        contig : str
+            Contig name.
+        tr_start : int
+            TR start position (inclusive).
+        tr_end : int
+            TR end position (inclusive).
+
+        Returns
+        =======
+        bool
+            True if the TR overlaps any RT gene.
+        """
+
+        regions = self.rt_gene_regions.get(contig)
+        if not regions:
+            return False
+
+        # Find the rightmost region whose start <= tr_end
+        # bisect_right on (tr_end,) finds insertion point after all (start, stop) with start <= tr_end
+        idx = bisect.bisect_right(regions, (tr_end, float('inf'))) - 1
+
+        # Scan backward: any region with start <= tr_end could overlap if tr_start < stop
+        while idx >= 0:
+            rt_start, rt_stop = regions[idx]
+            if rt_start > tr_end:
+                idx -= 1
+                continue
+            # rt_start <= tr_end; check if tr_start < rt_stop
+            if tr_start < rt_stop:
+                return True
+            # Since regions are sorted by start, all earlier regions have start <= rt_start <= tr_end
+            # but if rt_stop <= tr_start, earlier regions with smaller stops also won't overlap
+            break
+        return False
 
 
     def get_snvs_for_region(self, contig_name, start_pos, end_pos):
@@ -2208,6 +2296,8 @@ class DGR_Finder:
         if self.skip_dashes:
             chars_to_skip.append('-')
 
+        tr_rt_overlap_count = 0
+
         # iterate over XML HSPs one by one
         # use iterparse with start/end events for better context tracking
         context = ET.iterparse(xml_file_path, events=("start", "end"))
@@ -2564,6 +2654,13 @@ class DGR_Finder:
                             elem.clear()
                             continue
 
+                        # Filter out TRs that overlap with an RT gene.
+                        # These are typically homologous RT genes with natural divergence,
+                        # not real DGR template regions.
+                        if self.tr_overlaps_rt_gene(tr_contig, tr_start, tr_end):
+                            tr_rt_overlap_count += 1
+                            elem.clear()
+                            continue
 
                         # Basic counts
                         numb_of_mismatches = len(query_mismatch_positions)
@@ -2644,6 +2741,9 @@ class DGR_Finder:
         finally:
             # ensure cleanup
             del context
+
+        if tr_rt_overlap_count > 0:
+            self.run.info_single(f"Filtered out {tr_rt_overlap_count} hit(s) where the TR overlapped an RT gene.", nl_before=1)
 
 
     def filter_for_best_VR_TR(self):
