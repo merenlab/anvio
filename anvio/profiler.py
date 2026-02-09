@@ -1261,14 +1261,20 @@ class BAMProfiler(dbops.ContigsSuperclass):
         import anvio.db as db
         contigs_db = db.DB(self.contigs_db_path, None, ignore_version=True)
 
-        # Build WHERE clause for the query
-        contig_list_str = ','.join(['"%s"' % c for c in contigs_with_coverage])
-        where_clause = f"parent IN ({contig_list_str})"
-
-        # Get split names
+        # Get split names using parameterized queries (batched to stay within
+        # SQLite's variable limit)
         split_names = set()
-        for row in contigs_db.get_some_rows_from_table('splits_basic_info', where_clause):
-            split_names.add(row[0])  # First column is split name
+        contig_list = list(contigs_with_coverage)
+        batch_size = 500
+        for i in range(0, len(contig_list), batch_size):
+            batch = contig_list[i:i + batch_size]
+            placeholders = ','.join(['?'] * len(batch))
+            response = contigs_db._exec(
+                f"SELECT split FROM splits_basic_info WHERE parent IN ({placeholders})",
+                tuple(batch)
+            )
+            for row in response.fetchall():
+                split_names.add(row[0])
 
         contigs_db.disconnect()
 
