@@ -1563,8 +1563,15 @@ class BAMProfiler(dbops.ContigsSuperclass):
         )
         p.start()
 
-        # Block until the subprocess sends its result
-        result = result_queue.get()
+        # Block until the subprocess sends its result. Timeout guards against the
+        # subprocess crashing before it can put anything on the queue.
+        try:
+            result = result_queue.get(timeout=600)
+        except Exception:
+            p.join(timeout=10)
+            raise ConfigError("Shared memory setup subprocess did not respond within 10 minutes. "
+                              "It may have crashed or run out of memory.")
+
         p.join()
 
         if 'error' in result:
