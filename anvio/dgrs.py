@@ -214,7 +214,7 @@ class DGR_Finder:
             self.run.info('Allow any dominant base', self.allow_any_base)
         self.run.info('Minimum Mismatching Base Types in VR', self.min_mismatching_base_types_vr)
         self.run.info('Minimum Base Types in VR', self.min_base_types_vr)
-        self.run.info('Minimum Base Types in VR', self.min_base_types_tr)
+        self.run.info('Minimum Base Types in TR', self.min_base_types_tr)
         self.run.info('Number of imperfect tandem repeats', self.numb_imperfect_tandem_repeats)
         self.run.info('Collections Mode', self.collections_mode)
         if self.collections_mode:
