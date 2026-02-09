@@ -3395,6 +3395,7 @@ class DGR_Finder:
                            "cannot proceed without RT genes. Please ensure you have run "
                            "`anvi-run-hmms -I Reverse_Transcriptase` on your contigs database.",
                            header="NO RT HMM HITS FOUND")
+            self.rt_windows = {}
             return {}
 
         # Create windows around each RT hit
