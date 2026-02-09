@@ -1819,139 +1819,136 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.progress.update('Loading and packing data in subprocess ...')
         shm_info = self._setup_shared_memory_via_subprocess()
 
-        manager = multiprocessing.Manager()
-        available_index_queue = manager.Queue()
-        output_queue = manager.Queue(self.queue_size)
-
-        self._shared_seq_shm_name = shm_info['seq_shm_name']
-        self._shared_seq_index = shm_info['seq_index']
-        self._shared_nt_shm_name = shm_info['nt_shm_name']
-        self._shared_nt_index = shm_info['nt_index']
-
-        # Store shm names for cleanup (we don't map them in the parent to avoid
-        # adding to the parent's virtual address space before fork).
+        # Store shm names for cleanup. Everything from here through the processing
+        # loop is wrapped in try/finally so the segments are always unlinked.
         seq_shm_name = shm_info['seq_shm_name']
         nt_shm_name = shm_info['nt_shm_name']
 
-        # Build the lightweight WorkerContext. This triggers loading of the smaller
-        # LazyProperties (splits_basic_info, contig_name_to_genes, genes_in_contigs_dict)
-        # which total ~2-3GB — much less than the 24GB we avoided above.
-        self.progress.update('Building worker context ...')
-        ctx = self._build_worker_context()
-
-        # Save and clear objects workers don't need. The BAM object is large
-        # (~300MB for 7.5M reference names) and workers create their own.
-        saved_bam = self.bam
-        self.bam = None
-
-        # Force garbage collection and release freed memory back to OS.
-        gc.collect()
-
-        # Freeze all existing Python objects into the permanent GC generation.
-        # Without this, forked child processes' garbage collectors would traverse
-        # all inherited objects, incrementing reference counts and triggering
-        # copy-on-write page duplication even on objects the children never use.
-        gc.freeze()
-
         try:
-            import ctypes
-            ctypes.CDLL(None).malloc_trim(0)
-        except Exception:
-            pass
+            manager = multiprocessing.Manager()
+            available_index_queue = manager.Queue()
+            output_queue = manager.Queue(self.queue_size)
 
-        self.progress.end()
+            self._shared_seq_shm_name = shm_info['seq_shm_name']
+            self._shared_seq_index = shm_info['seq_index']
+            self._shared_nt_shm_name = shm_info['nt_shm_name']
+            self._shared_nt_index = shm_info['nt_index']
 
-        # put contig indices into the queue to be read from within the worker
-        for i in range(0, self.num_contigs):
-            available_index_queue.put(i)
+            # Build the lightweight WorkerContext. This triggers loading of the smaller
+            # LazyProperties (splits_basic_info, contig_name_to_genes, genes_in_contigs_dict)
+            # which total ~2-3GB — much less than the 24GB we avoided above.
+            self.progress.update('Building worker context ...')
+            ctx = self._build_worker_context()
 
-        processes = []
-        for i in range(0, self.num_threads):
-            processes.append(multiprocessing.Process(target=profile_contig_worker, args=(ctx, available_index_queue, output_queue)))
+            # Save and clear objects workers don't need. The BAM object is large
+            # (~300MB for 7.5M reference names) and workers create their own.
+            saved_bam = self.bam
+            self.bam = None
 
-        for proc in processes:
-            proc.start()
+            # Force garbage collection and release freed memory back to OS.
+            gc.collect()
 
-        # Unfreeze GC in the parent process now that workers have forked
-        gc.unfreeze()
+            # Freeze all existing Python objects into the permanent GC generation.
+            # Without this, forked child processes' garbage collectors would traverse
+            # all inherited objects, incrementing reference counts and triggering
+            # copy-on-write page duplication even on objects the children never use.
+            gc.freeze()
 
-        received_contigs = 0
-
-        self.progress.new('Profiling w/%d threads' % self.num_threads, progress_total_items=self.num_contigs)
-        self.progress.update('initializing threads ...')
-
-        mem_tracker = terminal.TrackMemory(at_most_every=5)
-        mem_usage, mem_diff = mem_tracker.start()
-
-        self.progress.update('contigs are being processed ...')
-        while received_contigs < self.num_contigs:
             try:
-                contig = output_queue.get()
+                try:
+                    import ctypes
+                    ctypes.CDLL(None).malloc_trim(0)
+                except (OSError, AttributeError):
+                    pass  # Expected on macOS/non-glibc systems
 
-                if isinstance(contig, Exception):
-                    # If thread returns an exception, we raise it and kill the main thread.
-                    raise contig
-
-                self.contigs.append(contig)
-
-                received_contigs += 1
-
-                if mem_tracker.measure():
-                    mem_usage = mem_tracker.get_last()
-                    mem_diff = mem_tracker.get_last_diff()
-
-                self.progress.increment(received_contigs)
-                self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | MEMORY 🧠  {mem_usage} ({mem_diff}) ...")
-
-                # Here you're about to witness the poor side of Python (or our use of it). Although
-                # we couldn't find any refs to these objects, garbage collecter kept them in the
-                # memory. So here we are accessing to the atomic data structures in our split
-                # objects to try to relieve the memory by encouraging the garbage collector to
-                # realize what's up. Afterwards, we explicitly call the garbage collector
-                if self.write_buffer_size > 0 and len(self.contigs) % self.write_buffer_size == 0:
-                    self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | WRITING TO DB 💾 ...")
-                    self.store_contigs_buffer()
-                    for c in self.contigs:
-                        for split in c.splits:
-                            del split.coverage
-                            del split.auxiliary
-                            del split
-                        del c.splits[:]
-                        del c.coverage
-                        del c
-                    del self.contigs[:]
-                    gc.collect()
-
-            except KeyboardInterrupt:
-                self.run.info_single("Anvi'o profiler received SIGINT, terminating all processes...", nl_before=2)
-                _cleanup_shared_memory(seq_shm_name)
-                _cleanup_shared_memory(nt_shm_name)
-                self.bam = saved_bam
-                break
-
-            except Exception as worker_error:
-                # An exception was thrown in one of the profile workers. We kill all processes in this case
                 self.progress.end()
+
+                # put contig indices into the queue to be read from within the worker
+                for i in range(0, self.num_contigs):
+                    available_index_queue.put(i)
+
+                processes = []
+                for i in range(0, self.num_threads):
+                    processes.append(multiprocessing.Process(target=profile_contig_worker, args=(ctx, available_index_queue, output_queue)))
+
                 for proc in processes:
-                    proc.terminate()
-                _cleanup_shared_memory(seq_shm_name)
-                _cleanup_shared_memory(nt_shm_name)
-                self.bam = saved_bam
-                raise worker_error
+                    proc.start()
+            finally:
+                # Unfreeze GC in the parent process now that workers have forked
+                gc.unfreeze()
 
-        for proc in processes:
-            proc.terminate()
+            received_contigs = 0
 
-        # Restore the BAM object for the main thread
-        self.bam = saved_bam
+            self.progress.new('Profiling w/%d threads' % self.num_threads, progress_total_items=self.num_contigs)
+            self.progress.update('initializing threads ...')
 
-        self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | WRITING TO DB 💾 ...")
-        self.store_contigs_buffer()
-        self.auxiliary_db.close()
+            mem_tracker = terminal.TrackMemory(at_most_every=5)
+            mem_usage, mem_diff = mem_tracker.start()
 
-        # Clean up shared memory
-        _cleanup_shared_memory(seq_shm_name)
-        _cleanup_shared_memory(nt_shm_name)
+            self.progress.update('contigs are being processed ...')
+            while received_contigs < self.num_contigs:
+                try:
+                    contig = output_queue.get()
+
+                    if isinstance(contig, Exception):
+                        # If thread returns an exception, we raise it and kill the main thread.
+                        raise contig
+
+                    self.contigs.append(contig)
+
+                    received_contigs += 1
+
+                    if mem_tracker.measure():
+                        mem_usage = mem_tracker.get_last()
+                        mem_diff = mem_tracker.get_last_diff()
+
+                    self.progress.increment(received_contigs)
+                    self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | MEMORY 🧠  {mem_usage} ({mem_diff}) ...")
+
+                    # Here you're about to witness the poor side of Python (or our use of it). Although
+                    # we couldn't find any refs to these objects, garbage collecter kept them in the
+                    # memory. So here we are accessing to the atomic data structures in our split
+                    # objects to try to relieve the memory by encouraging the garbage collector to
+                    # realize what's up. Afterwards, we explicitly call the garbage collector
+                    if self.write_buffer_size > 0 and len(self.contigs) % self.write_buffer_size == 0:
+                        self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | WRITING TO DB 💾 ...")
+                        self.store_contigs_buffer()
+                        for c in self.contigs:
+                            for split in c.splits:
+                                del split.coverage
+                                del split.auxiliary
+                                del split
+                            del c.splits[:]
+                            del c.coverage
+                            del c
+                        del self.contigs[:]
+                        gc.collect()
+
+                except KeyboardInterrupt:
+                    self.run.info_single("Anvi'o profiler received SIGINT, terminating all processes...", nl_before=2)
+                    break
+
+                except Exception as worker_error:
+                    # An exception was thrown in one of the profile workers. We kill all processes in this case
+                    self.progress.end()
+                    for proc in processes:
+                        proc.terminate()
+                    self.bam = saved_bam
+                    raise worker_error
+
+            for proc in processes:
+                proc.terminate()
+
+            # Restore the BAM object for the main thread
+            self.bam = saved_bam
+
+            self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | WRITING TO DB 💾 ...")
+            self.store_contigs_buffer()
+            self.auxiliary_db.close()
+
+        finally:
+            _cleanup_shared_memory(seq_shm_name)
+            _cleanup_shared_memory(nt_shm_name)
 
         self.progress.end(timing_filepath='anvio.debug.timing.txt' if anvio.DEBUG else None)
 
