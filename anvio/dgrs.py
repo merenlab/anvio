@@ -1134,8 +1134,8 @@ class DGR_Finder:
         contig_records = {}
         for contig_name in all_merged_snv_windows.keys():
             contig_sequence=contig_sequences[contig_name]['sequence']
-            self.positions= all_merged_snv_windows[contig_name]
-            for i, (start, end) in enumerate(self.positions):
+            positions = all_merged_snv_windows[contig_name]
+            for i, (start, end) in enumerate(positions):
                 section_sequence = contig_sequence[start:end]
                 section_id = f"{contig_name}_section_{i}_start_bp{start}_end_bp{end}"
                 # add sequence to dictionary of
