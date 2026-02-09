@@ -612,11 +612,23 @@ class DGR_Finder:
         Results are stored as sorted (start, stop) lists per contig for efficient
         overlap queries.
 
+        If no RT HMM sources are available in the contigs database (e.g. activity-only
+        mode where the RT HMM was not run), the filter is silently disabled by setting
+        self.rt_gene_regions to an empty dict.
+
         Populates
         =========
         self.rt_gene_regions : defaultdict(list)
             {contig_name: [(start, stop), ...]} sorted by start position.
         """
+
+        self.rt_gene_regions = defaultdict(list)
+
+        # If none of the requested HMM sources were run on this contigs.db,
+        # the TR-overlaps-RT filter cannot operate. This is fine in activity
+        # mode where RT HMMs are optional.
+        if not any(source in self.hmms_provided for source in self.hmm):
+            return
 
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
         hmm_hits_dict = contigs_db.db.get_table_as_dict(t.hmm_hits_table_name)
@@ -629,7 +641,6 @@ class DGR_Finder:
                 rt_gene_ids.add(entry['gene_callers_id'])
 
         # Build per-contig sorted coordinate lists from genes_in_contigs
-        self.rt_gene_regions = defaultdict(list)
         for gene_id in rt_gene_ids:
             if gene_id not in self.genes_in_contigs:
                 continue
