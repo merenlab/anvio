@@ -1708,11 +1708,11 @@ def get_list_of_outliers(values, threshold=None, zeros_are_outliers=False, media
     median_absolute_deviation = np.median(diff)
 
     if not median_absolute_deviation:
-       if values[0] == 0:
+       if np.count_nonzero(values) == 0:
             # A vector of all zeros is considered "all outliers"
             return np.array([True] * values.size)
        else:
-            # A vector of uniform non-zero values is "all non-outliers"
+            # A vector of mostly uniform values is "all non-outliers"
             # This could be important for silly cases (like in megahit) in which there is a maximum value for coverage
             return np.array([False] * values.size)
 
