@@ -5030,9 +5030,13 @@ class DGR_Finder:
                 # to display in the output
                 # if we have genes we can display them else not
                 if tr_genes:
-                    # get the start and stop positions of the first and last genes in tr_genes
-                    genomic_context_start_tr = min(gene['start'] for gene in tr_genes.values()) - 100
-                    genomic_context_end_tr = max(gene['stop'] for gene in tr_genes.values()) + 100
+                    # get the start and stop positions of the first and last genes in tr_genes,
+                    # but also include the TR coordinates so the TR is always visible even when
+                    # it falls outside the surrounding genes
+                    tr_pos_start = int(dgr_data['TR_start_position'])
+                    tr_pos_end = int(dgr_data['TR_end_position'])
+                    genomic_context_start_tr = min(min(gene['start'] for gene in tr_genes.values()), tr_pos_start) - 100
+                    genomic_context_end_tr = max(max(gene['stop'] for gene in tr_genes.values()), tr_pos_end) + 100
                 else:
                     genomic_context_start_tr = int(dgr_data['TR_start_position']) - 500
                     genomic_context_end_tr = int(dgr_data['TR_end_position']) + 500
