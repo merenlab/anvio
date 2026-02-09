@@ -1512,53 +1512,54 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 split.per_position_info[info] = nt_info[info][split.start:split.end]
 
 
-    @staticmethod
-    def profile_contig_worker(self, available_index_queue, output_queue):
-        bam_file = bamops.BAMFileObject(self.input_file_path)
-        bam_file.fetch_filter = self.fetch_filter
+    def _build_worker_context(self):
+        """Build a lightweight WorkerContext carrying only the data worker processes need.
 
-        # Attach to shared memory for contig sequences
-        if hasattr(self, '_shared_seq_shm_name') and self._shared_seq_shm_name:
-            worker_seq_store = SharedDataStore.from_existing(
-                self._shared_seq_shm_name, self._shared_seq_index, mode='bytes')
-            self.contig_sequences = SharedContigSequencesProxy(worker_seq_store)
+        Instead of passing the entire BAMProfiler object (with hundreds of attributes) to
+        forked worker processes, this creates a minimal proxy. Workers never touch the
+        BAMProfiler, so its memory pages stay shared via copy-on-write.
+        """
 
-        # Attach to shared memory for nt_positions_info
-        if hasattr(self, '_shared_nt_shm_name') and self._shared_nt_shm_name:
-            worker_nt_store = SharedDataStore.from_existing(
-                self._shared_nt_shm_name, self._shared_nt_index, mode='numpy_uint8')
-            # LazyProperty stores in _lazy_loaded_data
-            if not hasattr(self, '_lazy_loaded_data'):
-                self._lazy_loaded_data = {}
-            self._lazy_loaded_data['nt_positions_info'] = SharedNtPositionsProxy(worker_nt_store)
+        ctx = WorkerContext()
 
-        while True:
-            try:
-                index = available_index_queue.get(True)
-                contig_name = self.contig_names[index]
-                contig_length = self.contig_lengths[index]
+        # BAM file path (workers open their own BAM handles)
+        ctx.input_file_path = self.input_file_path
+        ctx.fetch_filter = self.fetch_filter
 
-                contig = self.process_contig(bam_file, contig_name, contig_length)
-                output_queue.put(contig)
+        # Contig lists
+        ctx.contig_names = self.contig_names
+        ctx.contig_lengths = self.contig_lengths
 
-                if contig is not None:
-                    # We mark these for deletion the next time garbage is collected
-                    for split in contig.splits:
-                        del split.coverage
-                        del split.auxiliary
-                        del split
-                    del contig.splits[:]
-                    del contig.coverage
-                    del contig
-            except Exception as e:
-                # This thread encountered an error. We send the error back to the main thread which
-                # will terminate the job.
-                output_queue.put(e)
+        # Mapping dict (built during profiler init, not a LazyProperty)
+        ctx.contig_name_to_splits = self.contig_name_to_splits
 
-        # we are closing this object here for clarity, although we are not really closing it since
-        # the code never reaches here and the worker is killed by its parent:
-        bam_file.close()
-        return
+        # Shared memory metadata (workers attach themselves)
+        ctx._shared_seq_shm_name = self._shared_seq_shm_name
+        ctx._shared_seq_index = self._shared_seq_index
+        ctx._shared_nt_shm_name = self._shared_nt_shm_name
+        ctx._shared_nt_index = self._shared_nt_index
+
+        # Profiling flags
+        ctx.skip_SNV_profiling = self.skip_SNV_profiling
+        ctx.skip_INDEL_profiling = self.skip_INDEL_profiling
+        ctx.profile_SCVs = self.profile_SCVs
+        ctx.min_percent_identity = self.min_percent_identity
+        ctx.min_coverage_for_variability = self.min_coverage_for_variability
+        ctx.report_variability_full = self.report_variability_full
+        ctx.skip_edges = self.skip_edges
+        ctx.sample_id = self.sample_id
+
+        # Data from ContigsSuperclass (force-load LazyProperties, store as plain attrs)
+        ctx.splits_basic_info = self.splits_basic_info
+        ctx.contig_name_to_genes = self.contig_name_to_genes
+        ctx.genes_in_contigs_dict = self.genes_in_contigs_dict
+        ctx.a_meta = self.a_meta
+
+        # These will be set by workers from shared memory
+        ctx.contig_sequences = None
+        ctx.nt_positions_info = None
+
+        return ctx
 
 
     def process_contig(self, bam_file, contig_name, contig_length):
@@ -1764,9 +1765,15 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self._shared_nt_shm_name = shared_nt_store.shm_name
         self._shared_nt_index = shared_nt_store.index
 
-        # Clear the two large data structures that are now in shared memory.
-        # Keep everything else in _lazy_loaded_data so workers can share it
-        # via copy-on-write instead of each loading their own copy from SQLite.
+        # Build the lightweight WorkerContext BEFORE clearing data from self.
+        # This copies references to the ~22 attributes workers need into a small
+        # proxy object, so workers never touch the full BAMProfiler after fork.
+        self.progress.update('Building worker context ...')
+        ctx = self._build_worker_context()
+
+        # Now clear large data from self to reduce parent memory before fork.
+        # contig_sequences and nt_positions_info are in shared memory; workers
+        # access them via ctx's shared memory metadata, not via self.
         self.progress.update('Clearing originals (now in shared memory) ...')
         self.contig_sequences = None
         if hasattr(self, '_lazy_loaded_data') and 'nt_positions_info' in self._lazy_loaded_data:
@@ -1801,7 +1808,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         processes = []
         for i in range(0, self.num_threads):
-            processes.append(multiprocessing.Process(target=BAMProfiler.profile_contig_worker, args=(self, available_index_queue, output_queue)))
+            processes.append(multiprocessing.Process(target=profile_contig_worker, args=(ctx, available_index_queue, output_queue)))
 
         for proc in processes:
             proc.start()
@@ -2038,3 +2045,71 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         if self.write_buffer_size < 0:
             raise ConfigError('No. Write buffer size can not have a negative value.')
+
+
+class WorkerContext:
+    """Lightweight proxy carrying only the data that worker processes need.
+
+    Instead of passing the entire BAMProfiler object to forked workers (which causes
+    massive copy-on-write memory duplication due to Python's reference counting), this
+    carries only the ~22 attributes and 4 methods workers actually access.
+
+    Methods are assigned as class attributes from their original classes. Python's
+    descriptor protocol makes ctx.method(...) automatically bind ctx as self, so the
+    method bodies work unchanged.
+    """
+
+    process_contig = BAMProfiler.process_contig
+    populate_gene_info_for_splits = BAMProfiler.populate_gene_info_for_splits
+    get_gene_info_for_each_position = dbops.ContigsSuperclass.get_gene_info_for_each_position
+    get_gene_start_stops_in_contig = dbops.ContigsSuperclass.get_gene_start_stops_in_contig
+
+
+def profile_contig_worker(ctx, available_index_queue, output_queue):
+    """Worker function that processes contigs using a WorkerContext.
+
+    Each worker attaches to shared memory for contig sequences and nt_positions_info,
+    then processes contigs from the queue until the parent terminates it.
+    """
+
+    bam_file = bamops.BAMFileObject(ctx.input_file_path)
+    bam_file.fetch_filter = ctx.fetch_filter
+
+    # Attach to shared memory for contig sequences
+    if ctx._shared_seq_shm_name:
+        worker_seq_store = SharedDataStore.from_existing(
+            ctx._shared_seq_shm_name, ctx._shared_seq_index, mode='bytes')
+        ctx.contig_sequences = SharedContigSequencesProxy(worker_seq_store)
+
+    # Attach to shared memory for nt_positions_info
+    if ctx._shared_nt_shm_name:
+        worker_nt_store = SharedDataStore.from_existing(
+            ctx._shared_nt_shm_name, ctx._shared_nt_index, mode='numpy_uint8')
+        ctx.nt_positions_info = SharedNtPositionsProxy(worker_nt_store)
+
+    while True:
+        try:
+            index = available_index_queue.get(True)
+            contig_name = ctx.contig_names[index]
+            contig_length = ctx.contig_lengths[index]
+
+            contig = ctx.process_contig(bam_file, contig_name, contig_length)
+            output_queue.put(contig)
+
+            if contig is not None:
+                # We mark these for deletion the next time garbage is collected
+                for split in contig.splits:
+                    del split.coverage
+                    del split.auxiliary
+                    del split
+                del contig.splits[:]
+                del contig.coverage
+                del contig
+        except Exception as e:
+            # This thread encountered an error. We send the error back to the main thread which
+            # will terminate the job.
+            output_queue.put(e)
+
+    # we are closing this object here for clarity, although we are not really closing it since
+    # the code never reaches here and the worker is killed by its parent:
+    bam_file.close()
