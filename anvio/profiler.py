@@ -181,6 +181,9 @@ class SharedContigSequencesProxy:
     def __len__(self):
         return len(self._store.index)
 
+    def __bool__(self):
+        return len(self._store.index) > 0
+
     def keys(self):
         return self._store.index.keys()
 
@@ -2113,6 +2116,10 @@ class WorkerContext:
     populate_gene_info_for_splits = BAMProfiler.populate_gene_info_for_splits
     get_gene_info_for_each_position = dbops.ContigsSuperclass.get_gene_info_for_each_position
     get_gene_start_stops_in_contig = dbops.ContigsSuperclass.get_gene_start_stops_in_contig
+
+    def init_contig_sequences(self, **kwargs):
+        raise ConfigError("Worker process attempted to load contig_sequences outside of shared "
+                          "memory. This should not happen — please report this as a bug.")
 
 
 def _pack_shared_memory_worker(result_queue, contigs_db_path, split_names_of_interest, contig_names):
