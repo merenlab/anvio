@@ -81,9 +81,9 @@ class SharedDataStore:
         if mode == 'bytes':
             for key, val in data.items():
                 if isinstance(val, dict) and 'sequence' in val:
-                    length = len(val['sequence'].encode('utf-8'))
+                    length = len(val['sequence'])
                 else:
-                    length = len(str(val).encode('utf-8'))
+                    length = len(str(val))
                 self.index[key] = (offset, length)
                 offset += length
         elif mode == 'numpy_uint8':
