@@ -1338,7 +1338,7 @@ class DGR_Finder:
                     contig_sequence = bin_contig_sequences[contig_name]['sequence']
                     for i, (start, end) in enumerate(all_merged_snv_windows[contig_name]):
                         section_sequence = contig_sequence[start:end]
-                        section_name = f"{contig_name}_section{i}_start_bp{start}_end_bp{end}"
+                        section_name = f"{contig_name}_section_{i}_start_bp{start}_end_bp{end}"
                         contig_records[section_name] = section_sequence
 
                 if not contig_records:
