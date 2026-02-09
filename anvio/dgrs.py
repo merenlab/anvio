@@ -1453,7 +1453,7 @@ class DGR_Finder:
                     num_threads=1,
                     query_fasta_filename=f"bin_{bin_name}_subsequences.fasta",
                     target_fasta_filename=f"bin_{bin_name}_reference_sequences.fasta",
-                    blast_output_filename=f"blast_output_for_bin_{bin_name}_wordsize_{config['word_size']}.xml"
+                    blast_output_filename=f"blast_output_activity_for_bin_{bin_name}_wordsize_{config['word_size']}.xml"
                 )
 
                 output_queue.put((bin_name, True, blast_output_path, None))
@@ -2030,7 +2030,7 @@ class DGR_Finder:
                 else:
                     blast_file = os.path.join(
                         tmp_directory_path,
-                        f"blast_output_for_bin_{bin_name}_wordsize_{self.word_size}.xml"
+                        f"blast_output_activity_for_bin_{bin_name}_wordsize_{self.word_size}.xml"
                     )
 
                 if not os.path.exists(blast_file):
