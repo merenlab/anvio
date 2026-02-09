@@ -387,7 +387,6 @@ class DGR_Finder:
         # HMM is required for all detection modes (for RT location in activity mode post-hoc,
         # and as the search anchor in homology mode)
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
-        hmm_hits_info_dict = contigs_db.db.get_table_as_dict(t.hmm_hits_info_table_name)
         hmm_hits_info_dict = contigs_db.db.smart_get(t.hmm_hits_info_table_name, column = 'source')
         self.hmms_provided = set(hmm_hits_info_dict.keys())
         contigs_db.disconnect()
