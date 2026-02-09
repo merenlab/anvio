@@ -47,6 +47,7 @@ __version__ = anvio.__version__
 __maintainer__ = "A. Murat Eren"
 __email__ = "a.murat.eren@gmail.com"
 
+run = terminal.Run()
 null_progress = terminal.Progress(verbose=False)
 null_run = terminal.Run(verbose=False)
 pp = terminal.pretty_print
@@ -2168,8 +2169,11 @@ def _cleanup_shared_memory(shm_name):
         shm = shared_memory.SharedMemory(name=shm_name, create=False)
         shm.close()
         shm.unlink()
-    except Exception:
-        pass
+    except FileNotFoundError:
+        pass  # Already cleaned up
+    except Exception as e:
+        run.warning(f"Failed to clean up shared memory segment '{shm_name}': {e}. "
+                    f"You may want to check /dev/shm for leftover segments.")
 
 
 def profile_contig_worker(ctx, available_index_queue, output_queue):
