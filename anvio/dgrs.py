@@ -5181,7 +5181,7 @@ class DGR_Finder:
                 ("Allow Any Base", self.allow_any_base or "FALSE"),
                 ("SNV Window Size", self.snv_window_size if self.snv_window_size else "50"),
                 ("SNV Window Step", self.snv_window_step if self.snv_window_step else "10"),
-                ("Minimum Mismatching Base Types in VR", self.min_base_types_vr if self.min_base_types_vr else "2"),
+                ("Minimum Mismatching Base Types in VR", self.min_mismatching_base_types_vr if self.min_mismatching_base_types_vr else "2"),
                 ("Minimum Base Types in VR", self.min_base_types_vr if self.min_base_types_vr else "2"),
                 ("Minimum Base Types in TR", self.min_base_types_tr if self.min_base_types_tr else "2"),
                 ("Number of imperfect tandem repeats", self.numb_imperfect_tandem_repeats or "10"),
