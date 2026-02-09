@@ -1764,37 +1764,18 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self._shared_nt_shm_name = shared_nt_store.shm_name
         self._shared_nt_index = shared_nt_store.index
 
-        # Aggressively clear data from self to minimize the parent process's memory
-        # footprint before forking workers. On Linux, fork() uses copy-on-write, but
-        # Python's reference counting modifies object headers on every access, triggering
-        # page duplication. With 128 workers, this can duplicate the parent's entire
-        # Python heap (~50GB) across all workers. By clearing data here, we reduce the
-        # parent's heap so workers inherit much less memory.
-        #
-        # Workers will:
-        #   - Access contig_sequences and nt_positions_info through shared memory proxies
-        #   - Reload other LazyProperties from SQLite as needed (filtered by split_names_of_interest)
-        self.progress.update('Clearing data before forking workers ...')
+        # Clear the two large data structures that are now in shared memory.
+        # Keep everything else in _lazy_loaded_data so workers can share it
+        # via copy-on-write instead of each loading their own copy from SQLite.
+        self.progress.update('Clearing originals (now in shared memory) ...')
         self.contig_sequences = None
+        if hasattr(self, '_lazy_loaded_data') and 'nt_positions_info' in self._lazy_loaded_data:
+            self._lazy_loaded_data['nt_positions_info'] = None
 
-        # Save objects the main thread needs after workers finish, then clear from self
-        saved_for_main_thread = {
-            'bam': self.bam,
-            'auxiliary_db': self.auxiliary_db,
-            'contig_names_in_contigs_db': self.contig_names_in_contigs_db,
-            'contig_names_of_interest': self.contig_names_of_interest,
-            'lazy_loaded_data': self._lazy_loaded_data.copy(),
-        }
-        for attr in ('variable_nts_table', 'indels_table', 'variable_codons_table'):
-            if hasattr(self, attr):
-                saved_for_main_thread[attr] = getattr(self, attr)
-                setattr(self, attr, None)
-
-        # Clear the large data structures from self
+        # Save and clear objects workers don't need. The BAM object is large
+        # (~300MB for 7.5M reference names) and workers create their own.
+        saved_bam = self.bam
         self.bam = None
-        self.contig_names_in_contigs_db = None
-        self.contig_names_of_interest = None
-        self._lazy_loaded_data = {}
 
         # Force garbage collection and release freed memory back to OS.
         # Python's arena allocator holds freed memory; malloc_trim forces release.
@@ -1881,7 +1862,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 shared_seq_store.unlink()
                 shared_nt_store.close()
                 shared_nt_store.unlink()
-                self.auxiliary_db = saved_for_main_thread['auxiliary_db']
+                self.bam = saved_bam
                 break
 
             except Exception as worker_error:
@@ -1893,21 +1874,14 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 shared_seq_store.unlink()
                 shared_nt_store.close()
                 shared_nt_store.unlink()
-                self.auxiliary_db = saved_for_main_thread['auxiliary_db']
+                self.bam = saved_bam
                 raise worker_error
 
         for proc in processes:
             proc.terminate()
 
-        # Restore objects that the main thread needs for post-processing
-        self.bam = saved_for_main_thread['bam']
-        self.auxiliary_db = saved_for_main_thread['auxiliary_db']
-        self.contig_names_in_contigs_db = saved_for_main_thread['contig_names_in_contigs_db']
-        self.contig_names_of_interest = saved_for_main_thread['contig_names_of_interest']
-        self._lazy_loaded_data = saved_for_main_thread['lazy_loaded_data']
-        for attr in ('variable_nts_table', 'indels_table', 'variable_codons_table'):
-            if attr in saved_for_main_thread:
-                setattr(self, attr, saved_for_main_thread[attr])
+        # Restore the BAM object for the main thread
+        self.bam = saved_bam
 
         self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | WRITING TO DB 💾 ...")
         self.store_contigs_buffer()
