@@ -881,9 +881,12 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # store our run object. 'why?', you may ask. well, keep reading.
         my_run = self.run
 
-        # Initialize contigs db
+        # Initialize contigs db. We do NOT load contig sequences here because they
+        # are ~12GB for large databases. Loading them allocates heap memory that can't
+        # be reclaimed due to arena fragmentation, which balloons memory after fork().
+        # Instead, sequences are loaded at profiling time: in a subprocess for multi-
+        # thread mode (so the heap is freed on exit), or directly for single-thread.
         dbops.ContigsSuperclass.__init__(self, self.args, r=null_run, p=self.progress)
-        self.init_contig_sequences(contig_names_of_interest=self.contig_names_of_interest)
         self.contig_names_in_contigs_db = set(self.contigs_basic_info.keys())
 
         # restore our run object. OK. take deep breath. because you are a good programmer, you have
@@ -1512,6 +1515,49 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 split.per_position_info[info] = nt_info[info][split.start:split.end]
 
 
+    def _setup_shared_memory_via_subprocess(self):
+        """Load contig_sequences and nt_positions_info in a subprocess, pack into shared memory.
+
+        These two data structures total ~24GB for large databases. Loading them in the
+        main process allocates heap memory that glibc cannot reclaim (heap fragmentation:
+        freed blocks are trapped below still-live objects, and malloc_trim can only shrink
+        from the top). After fork(), each of 128 workers inherits these unreclaimable pages
+        via copy-on-write, ballooning total memory to ~4TB.
+
+        By loading and packing in a subprocess, the ~24GB lives in the child's heap. The
+        child packs data into OS-level shared memory (/dev/shm or equivalent), then exits —
+        the OS frees its entire heap. The parent's heap never grows beyond its small live data.
+
+        Uses the 'fork' start method on Linux (child inherits parent state cheaply) and 'spawn'
+        on macOS (where fork is unsafe). The child creates a fresh ContigsSuperclass either way
+        to avoid inheriting non-fork-safe state like progress bars.
+        """
+
+        import multiprocessing as stdlib_mp
+
+        # Use fork on Linux (faster, no pickling), spawn on macOS (safer).
+        start_method = 'fork' if sys.platform == 'linux' else 'spawn'
+        ctx = stdlib_mp.get_context(start_method)
+
+        result_queue = ctx.Queue()
+
+        p = ctx.Process(
+            target=_pack_shared_memory_worker,
+            args=(result_queue, self.contigs_db_path, self.split_names_of_interest,
+                  set(self.contig_names)),
+        )
+        p.start()
+
+        # Block until the subprocess sends its result
+        result = result_queue.get()
+        p.join()
+
+        if 'error' in result:
+            raise ConfigError("Shared memory setup subprocess failed:\n%s" % result['error'])
+
+        return result
+
+
     def _build_worker_context(self):
         """Build a lightweight WorkerContext carrying only the data worker processes need.
 
@@ -1629,6 +1675,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
     def profile_single_thread(self):
         """The main method for anvi-profile when num_threads is 1"""
 
+        # Load contig sequences now (deferred from __init__ to avoid heap bloat
+        # in multi-thread mode, but single-thread has no fork so it's fine here).
+        if not self.contig_sequences:
+            self.init_contig_sequences(contig_names_of_interest=set(self.contig_names))
+
         bam_file = bamops.BAMFileObject(self.input_file_path)
         bam_file.fetch_filter = self.fetch_filter
 
@@ -1744,40 +1795,35 @@ class BAMProfiler(dbops.ContigsSuperclass):
     def profile_multi_thread(self):
         """The main method for anvi-profile when num_threads is >1"""
 
+        # Load contig_sequences and nt_positions_info in a subprocess, pack into
+        # shared memory. The subprocess allocates ~24GB on its own heap, packs the
+        # data into /dev/shm, then exits — the OS frees its entire heap. The parent
+        # never allocates these large structures, keeping its heap small for fork.
+        # This MUST happen before Manager() which starts background threads that
+        # make os.fork() unsafe on some platforms.
+        self.progress.new('Setting up shared memory')
+        self.progress.update('Loading and packing data in subprocess ...')
+        shm_info = self._setup_shared_memory_via_subprocess()
+
         manager = multiprocessing.Manager()
         available_index_queue = manager.Queue()
         output_queue = manager.Queue(self.queue_size)
 
-        # Create shared memory for large data structures to avoid duplicating
-        # them across worker processes. Without this, each worker gets its own
-        # copy via fork copy-on-write, which can use terabytes of memory with
-        # many threads due to Python's reference counting triggering COW breaks.
-        self.progress.new('Setting up shared memory')
-        self.progress.update('Packing contig sequences into shared memory ...')
-        shared_seq_store = SharedDataStore(self.contig_sequences, mode='bytes')
-        self._shared_seq_shm_name = shared_seq_store.shm_name
-        self._shared_seq_index = shared_seq_store.index
+        self._shared_seq_shm_name = shm_info['seq_shm_name']
+        self._shared_seq_index = shm_info['seq_index']
+        self._shared_nt_shm_name = shm_info['nt_shm_name']
+        self._shared_nt_index = shm_info['nt_index']
 
-        self.progress.update('Packing nt_positions_info into shared memory ...')
-        # Force load the lazy property before sharing
-        _ = self.nt_positions_info
-        shared_nt_store = SharedDataStore(self.nt_positions_info, mode='numpy_uint8')
-        self._shared_nt_shm_name = shared_nt_store.shm_name
-        self._shared_nt_index = shared_nt_store.index
+        # Store shm names for cleanup (we don't map them in the parent to avoid
+        # adding to the parent's virtual address space before fork).
+        seq_shm_name = shm_info['seq_shm_name']
+        nt_shm_name = shm_info['nt_shm_name']
 
-        # Build the lightweight WorkerContext BEFORE clearing data from self.
-        # This copies references to the ~22 attributes workers need into a small
-        # proxy object, so workers never touch the full BAMProfiler after fork.
+        # Build the lightweight WorkerContext. This triggers loading of the smaller
+        # LazyProperties (splits_basic_info, contig_name_to_genes, genes_in_contigs_dict)
+        # which total ~2-3GB — much less than the 24GB we avoided above.
         self.progress.update('Building worker context ...')
         ctx = self._build_worker_context()
-
-        # Now clear large data from self to reduce parent memory before fork.
-        # contig_sequences and nt_positions_info are in shared memory; workers
-        # access them via ctx's shared memory metadata, not via self.
-        self.progress.update('Clearing originals (now in shared memory) ...')
-        self.contig_sequences = None
-        if hasattr(self, '_lazy_loaded_data') and 'nt_positions_info' in self._lazy_loaded_data:
-            self._lazy_loaded_data['nt_positions_info'] = None
 
         # Save and clear objects workers don't need. The BAM object is large
         # (~300MB for 7.5M reference names) and workers create their own.
@@ -1785,7 +1831,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.bam = None
 
         # Force garbage collection and release freed memory back to OS.
-        # Python's arena allocator holds freed memory; malloc_trim forces release.
         gc.collect()
 
         # Freeze all existing Python objects into the permanent GC generation.
@@ -1865,10 +1910,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
             except KeyboardInterrupt:
                 self.run.info_single("Anvi'o profiler received SIGINT, terminating all processes...", nl_before=2)
-                shared_seq_store.close()
-                shared_seq_store.unlink()
-                shared_nt_store.close()
-                shared_nt_store.unlink()
+                _cleanup_shared_memory(seq_shm_name)
+                _cleanup_shared_memory(nt_shm_name)
                 self.bam = saved_bam
                 break
 
@@ -1877,10 +1920,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 self.progress.end()
                 for proc in processes:
                     proc.terminate()
-                shared_seq_store.close()
-                shared_seq_store.unlink()
-                shared_nt_store.close()
-                shared_nt_store.unlink()
+                _cleanup_shared_memory(seq_shm_name)
+                _cleanup_shared_memory(nt_shm_name)
                 self.bam = saved_bam
                 raise worker_error
 
@@ -1895,10 +1936,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.auxiliary_db.close()
 
         # Clean up shared memory
-        shared_seq_store.close()
-        shared_seq_store.unlink()
-        shared_nt_store.close()
-        shared_nt_store.unlink()
+        _cleanup_shared_memory(seq_shm_name)
+        _cleanup_shared_memory(nt_shm_name)
 
         self.progress.end(timing_filepath='anvio.debug.timing.txt' if anvio.DEBUG else None)
 
@@ -2063,6 +2102,51 @@ class WorkerContext:
     populate_gene_info_for_splits = BAMProfiler.populate_gene_info_for_splits
     get_gene_info_for_each_position = dbops.ContigsSuperclass.get_gene_info_for_each_position
     get_gene_start_stops_in_contig = dbops.ContigsSuperclass.get_gene_start_stops_in_contig
+
+
+def _pack_shared_memory_worker(result_queue, contigs_db_path, split_names_of_interest, contig_names):
+    """Subprocess target: load contig_sequences + nt_positions_info, pack into shared memory.
+
+    Creates a fresh ContigsSuperclass (not the parent's BAMProfiler) to load data from
+    SQLite, packs it into shared memory segments, then sends the segment names and indices
+    back via the result queue. When this process exits, its entire heap is freed by the OS.
+    """
+
+    try:
+        child_args = argparse.Namespace(contigs_db=contigs_db_path)
+        cs = dbops.ContigsSuperclass(child_args, r=null_run, p=null_progress)
+        cs.split_names_of_interest = split_names_of_interest
+
+        cs.init_contig_sequences(contig_names_of_interest=contig_names)
+
+        seq_store = SharedDataStore(cs.contig_sequences, mode='bytes')
+
+        _ = cs.nt_positions_info
+        nt_store = SharedDataStore(cs.nt_positions_info, mode='numpy_uint8')
+
+        result_queue.put({
+            'seq_shm_name': seq_store.shm_name,
+            'seq_index': seq_store.index,
+            'nt_shm_name': nt_store.shm_name,
+            'nt_index': nt_store.index,
+        })
+
+    except Exception as e:
+        import traceback
+        result_queue.put({'error': f"{e}\n{traceback.format_exc()}"})
+
+
+def _cleanup_shared_memory(shm_name):
+    """Clean up a shared memory segment by name."""
+    if not shm_name:
+        return
+    try:
+        from multiprocessing import shared_memory
+        shm = shared_memory.SharedMemory(name=shm_name, create=False)
+        shm.close()
+        shm.unlink()
+    except Exception:
+        pass
 
 
 def profile_contig_worker(ctx, available_index_queue, output_queue):
