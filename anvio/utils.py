@@ -688,8 +688,7 @@ class CoverageStats:
         filtered_regions, new_cov_array = None, None
         nonzero_mean_coverages = np.array([m for (x,y,m) in region_tuples if m > 0])
         if len(nonzero_mean_coverages) >= min_regions:
-            # TODO: fix function so it catches only positive outliers
-            outlier_mean_coverages = get_list_of_outliers(nonzero_mean_coverages, threshold=mod_z_score_threshold)
+            outlier_mean_coverages = get_list_of_outliers(nonzero_mean_coverages, threshold=mod_z_score_threshold, only_positive_outliers=True)
             min_outlier_mean_coverage = None # we need this min so we can identify the outlier regions in the original list
             for i, cov in enumerate(nonzero_mean_coverages):
                 if outlier_mean_coverages[i]:
@@ -749,8 +748,7 @@ class CoverageStats:
                 continue
             if (not regions_to_check_indices) or (i in regions_to_check_indices):
                 region_cov_array = coverage[start:stop]
-                # TODO: only positive outliers
-                outlier_cov_in_region = np.where(get_list_of_outliers(region_cov_array, threshold=mod_z_score_threshold) == True)[0]
+                outlier_cov_in_region = np.where(get_list_of_outliers(region_cov_array, threshold=mod_z_score_threshold, only_positive_outliers=True) == True)[0]
                 # if we didn't find any outliers, the entire region could be outliers. We remove the whole thing when requested.
                 if outlier_cov_in_region.shape[0] == 0 and drop_entire_region_if_no_internal_outliers:
                     # we use the region length here because we will add the start position to every element in the array later
