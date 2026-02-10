@@ -574,26 +574,7 @@ class CoverageStats:
 
         # this will be a list of tuples like (start_position, stop_position, mean_coverage)
         # if mean_coverage is 0, then the region is a gap region. Otherwise, it is a covered region
-        regions = []
-
-        current_start = 0
-        current_stop = 0
-        current_state = None
-        # create the list of regions
-        for i,p in enumerate(cov_array):
-            current_state = 'covered' if p > 0 else 'gap'
-                
-            if i == len(cov_array) - 1: # EXIT CASE: end of the input sequence
-                region_data = (current_start, i+1, np.mean(cov_array[current_start:i+1]))
-                regions.append(region_data)
-                break
-
-            next_state = 'covered' if cov_array[i+1] > 0 else 'gap'
-            current_stop = i+1
-            if next_state != current_state: # STATE TRANSITION: store the previous region and reset for the next one
-                region_data = (current_start, current_stop, np.mean(cov_array[current_start:current_stop]))
-                regions.append(region_data)
-                current_start = i+1
+        regions = self.get_list_of_coverage_and_gap_regions(cov_array)
 
         #print(f"original coverage array: {cov_array}")
         #print(f"regions of coverage/gaps: {regions}")
@@ -623,6 +604,38 @@ class CoverageStats:
         S = filtered_detection + (1 - filtered_detection) * (1 - G) * beta
         #print(f"DisCov metric (with beta = {beta}): {S}")
         return S
+
+
+    def get_list_of_coverage_and_gap_regions(self, coverage):
+        """Given an array of coverage values, divides the sequence into gap regions and regions of nonzero coverage.
+        
+        Each region is described as a tuple of (start_position, stop_position, mean_coverage). If the mean_coverage 
+        is 0, then the region is a gap region. Otherwise, it is a covered region.
+
+        Note that start and stop positions follow Python indexing rules to enable slicing of the coverage array: 
+        indices start from 0, and the last index of the region is stop_position - 1
+        """
+        regions = []
+
+        current_start = 0
+        current_stop = 0
+        current_state = None
+        # create the list of regions
+        for i,p in enumerate(coverage):
+            current_state = 'covered' if p > 0 else 'gap'
+                
+            if i == len(coverage) - 1: # EXIT CASE: end of the input sequence
+                region_data = (current_start, i+1, np.mean(coverage[current_start:i+1]))
+                regions.append(region_data)
+                break
+
+            next_state = 'covered' if coverage[i+1] > 0 else 'gap'
+            current_stop = i+1
+            if next_state != current_state: # STATE TRANSITION: store the previous region and reset for the next one
+                region_data = (current_start, current_stop, np.mean(coverage[current_start:current_stop]))
+                regions.append(region_data)
+                current_start = i+1
+        return regions
         
     
     def compute_gini_coeff(self, array):
