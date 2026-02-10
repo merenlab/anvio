@@ -1154,6 +1154,87 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.auxiliary_db.store()
 
 
+    def store_zero_coverage_for_skipped_splits(self):
+        """Insert zero-coverage records for contigs that were skipped by pre-filtering.
+
+        Pre-filtering excludes contigs with no mapped reads from the profiling pipeline
+        to save memory and time. But these contigs must still appear in the profile database
+        with zero coverage so that anvi-merge sees consistent split sets across samples.
+        """
+
+        if not hasattr(self, '_contigs_skipped_by_prefilter') or not self._contigs_skipped_by_prefilter:
+            return
+
+        import anvio.db as db
+
+        self.progress.new('Zero-coverage records')
+        self.progress.update('Querying contigs database for skipped splits ...')
+
+        # Get splits for the skipped contigs that also pass the length filters.
+        contigs_db = db.DB(self.contigs_db_path, None, ignore_version=True)
+
+        skipped_splits = {}  # split_name -> split_length
+        skipped_contig_names = set()
+        contig_list = list(self._contigs_skipped_by_prefilter)
+        batch_size = 500
+        for i in range(0, len(contig_list), batch_size):
+            batch = contig_list[i:i + batch_size]
+            placeholders = ','.join(['?'] * len(batch))
+            response = contigs_db._exec(
+                f"SELECT s.split, s.length, s.parent, c.length AS contig_length "
+                f"FROM splits_basic_info s "
+                f"JOIN contigs_basic_info c ON s.parent = c.contig "
+                f"WHERE s.parent IN ({placeholders}) "
+                f"AND c.length >= ? AND c.length <= ?",
+                tuple(batch) + (self.min_contig_length, self.max_contig_length)
+            )
+            for split_name, split_length, parent, contig_length in response.fetchall():
+                skipped_splits[split_name] = split_length
+                skipped_contig_names.add(parent)
+
+        contigs_db.disconnect()
+
+        if not skipped_splits:
+            self.progress.end()
+            return
+
+        self.progress.update(f'Writing zero-coverage rows for {pp(len(skipped_splits))} skipped splits ...')
+
+        # Insert zero values into each atomic data table
+        zero_rows = [(s, self.sample_id, 0) for s in skipped_splits]
+        for atomic_data_field in self.essential_data_fields_for_anvio_profiles:
+            for target in ['splits', 'contigs']:
+                table_name = f"{atomic_data_field}_{target}"
+                TablesForViews(self.profile_db_path,
+                               progress=null_progress) \
+                                    .create_new_view(view_data=zero_rows,
+                                                     table_name=table_name,
+                                                     view_name=None,
+                                                     append_mode=True)
+
+        # Insert zero-coverage entries into the auxiliary DB. The auxiliary DB
+        # stores just the split length as an integer for all-zero coverage arrays,
+        # so we bypass numpy array creation entirely.
+        for split_name, split_length in skipped_splits.items():
+            self.auxiliary_db.coverage_entries.append((split_name, self.sample_id, split_length))
+
+        self.auxiliary_db.store()
+
+        # Update profile DB metadata to include the skipped contigs/splits
+        skipped_total_length = sum(skipped_splits.values())
+
+        profile_db = dbops.ProfileDatabase(self.profile_db_path, quiet=True)
+        profile_db.db.set_meta_value('num_splits', self.num_splits + len(skipped_splits))
+        profile_db.db.set_meta_value('num_contigs', self.num_contigs + len(skipped_contig_names))
+        profile_db.db.set_meta_value('total_length', self.total_length + skipped_total_length)
+        profile_db.disconnect()
+
+        self.progress.end()
+
+        self.run.info('Skipped splits with zero coverage added', pp(len(skipped_splits)))
+        self.run.info('Skipped contigs with zero coverage added', pp(len(skipped_contig_names)))
+
+
     def set_sample_id(self):
         if self.sample_id:
             utils.check_sample_id(self.sample_id)
@@ -1198,9 +1279,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
     def _get_split_names_with_coverage(self):
         """Scan BAM index to identify contigs with coverage, then get their split names.
 
-        This is called early (before ContigsSuperclass init) when --skip-contigs-without-coverage
-        is used. By identifying splits of interest before lazy properties are accessed, we avoid
-        loading massive data structures (like nt_positions_info) for contigs with no coverage.
+        This is called early (before ContigsSuperclass init). By identifying splits of interest
+        before lazy properties are accessed, we avoid loading massive data structures (like
+        nt_positions_info) for contigs with no coverage.
 
         Returns
         =======
@@ -1223,6 +1304,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                               f"is indexed (run 'samtools index' if needed). Error: {e}")
 
         # Get contig names with at least one mapped read
+        all_contigs_in_bam = set(stat.contig for stat in index_stats)
         contigs_with_coverage = set(stat.contig for stat in index_stats if stat.mapped > 0)
         total_contigs_in_bam = len(index_stats)
 
@@ -1234,8 +1316,10 @@ class BAMProfiler(dbops.ContigsSuperclass):
             raise ConfigError("None of the contigs in your BAM file have any mapped reads. There is "
                               "nothing to profile :/")
 
-        # If user also specified --contigs-of-interest, take the intersection
+        # Determine the eligible set (all BAM contigs, or intersected with --contigs-of-interest)
+        eligible_contigs = all_contigs_in_bam
         if self.contig_names_of_interest:
+            eligible_contigs = all_contigs_in_bam & self.contig_names_of_interest
             contigs_with_coverage = contigs_with_coverage & self.contig_names_of_interest
             self.progress.update(f'After intersection with --contigs-of-interest: {pp(len(contigs_with_coverage))} contigs ...')
 
@@ -1243,6 +1327,10 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 self.progress.end()
                 raise ConfigError("After intersecting contigs with coverage with your --contigs-of-interest, "
                                   "there are no contigs left to profile. Please check your inputs.")
+
+        # Save the zero-coverage contigs for later (store_zero_coverage_for_skipped_splits
+        # will use this to write zero-coverage records into the profile DB).
+        self._contigs_skipped_by_prefilter = eligible_contigs - contigs_with_coverage
 
         # Update contig_names_of_interest to only include contigs with coverage
         self.contig_names_of_interest = contigs_with_coverage
@@ -1741,6 +1829,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | WRITING TO DB 💾 ...")
         self.store_contigs_buffer()
+        self.store_zero_coverage_for_skipped_splits()
         self.auxiliary_db.close()
 
         self.progress.end(timing_filepath='anvio.debug.timing.txt' if anvio.DEBUG else None)
@@ -1941,6 +2030,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
             self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | WRITING TO DB 💾 ...")
             self.store_contigs_buffer()
+            self.store_zero_coverage_for_skipped_splits()
             self.auxiliary_db.close()
 
         finally:
