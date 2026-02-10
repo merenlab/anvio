@@ -382,6 +382,58 @@ anvi-profile -i $output_dir/SAMPLE-01.bam \
              $thread_controller
 rm -rf $output_dir/MULTI-THREAD-SAMPLE-01
 
+# Test the profiler's handling of contigs that have zero coverage in the BAM file.
+# The pre-filtering step identifies such contigs via the BAM index and skips them
+# during profiling, but stores zero-coverage records so that anvi-merge succeeds
+# (since it requires identical split counts across profiles). This test creates
+# BAMs with an extra contig in the header that has no mapped reads, profiles them,
+# and verifies the merge works.
+INFO "Testing zero-coverage contig handling in profiler pre-filtering"
+PREFILTER_DIR=$output_dir/PREFILTER-TEST
+mkdir -p $PREFILTER_DIR
+python - "$PREFILTER_DIR" "$output_dir" << 'PREFILTER_SETUP'
+import pysam, os, sys
+
+test_dir = sys.argv[1]
+src_dir = sys.argv[2]
+phantom_name = "phantom_contig_no_coverage"
+phantom_seq = "ATCGATCGATCG" * 134
+
+with open(os.path.join(test_dir, "contigs.fa"), "w") as out:
+    with open("sandbox/contigs.fa") as src:
+        out.write(src.read())
+    out.write(">" + phantom_name + "\n" + phantom_seq + "\n")
+
+for sample in ["SAMPLE-01", "SAMPLE-02"]:
+    src_path = os.path.join(src_dir, sample + ".bam")
+    dst_path = os.path.join(test_dir, sample + ".bam")
+    with pysam.AlignmentFile(src_path, "rb") as src_bam:
+        header_dict = src_bam.header.to_dict()
+        header_dict["SQ"].append({"SN": phantom_name, "LN": len(phantom_seq)})
+        with pysam.AlignmentFile(dst_path, "wb", header=header_dict) as dst_bam:
+            for read in src_bam:
+                dst_bam.write(read)
+    pysam.index(dst_path)
+PREFILTER_SETUP
+anvi-gen-contigs-database -f $PREFILTER_DIR/contigs.fa \
+                          -o $PREFILTER_DIR/CONTIGS.db \
+                          -L 1000 \
+                          --project-name "Pre-filter test" \
+                          --no-progress \
+                          $thread_controller
+for sample in SAMPLE-01 SAMPLE-02
+do
+    anvi-profile -i $PREFILTER_DIR/$sample.bam \
+                 -o $PREFILTER_DIR/$sample \
+                 -c $PREFILTER_DIR/CONTIGS.db \
+                 --no-progress \
+                 $thread_controller
+done
+anvi-merge $PREFILTER_DIR/SAMPLE-*/PROFILE.db \
+           -o $PREFILTER_DIR/MERGED \
+           -c $PREFILTER_DIR/CONTIGS.db \
+           --no-progress
+
 INFO "Merging profiles"
 anvi-merge $output_dir/*/PROFILE.db -o $output_dir/SAMPLES-MERGED \
                                     -c $output_dir/CONTIGS.db \
