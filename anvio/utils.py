@@ -1854,7 +1854,7 @@ def get_indices_for_outlier_values(c):
     return set([p for p in range(0, c.size) if is_outlier[p]])
 
 
-def get_list_of_outliers(values, threshold=None, zeros_are_outliers=False, median=None):
+def get_list_of_outliers(values, threshold=None, zeros_are_outliers=False, median=None, only_positive_outliers=False):
     """Return boolean array of whether values are outliers (True means outlier)
 
     Modified from Joe Kington's (https://stackoverflow.com/users/325565/joe-kington)
@@ -1867,11 +1867,14 @@ def get_list_of_outliers(values, threshold=None, zeros_are_outliers=False, media
 
     threshold : number, None
         The modified z-score to use as a thresholdold. Observations with
-        a modified z-score (based on the median absolute deviation) greater
+        a modified z-score (based on the median absolute deviation, or MAD) greater
         than this value will be classified as outliers.
 
     median : array-like, None
         Pass median of values if you already calculated it to save time.
+    
+    only_positive_outliers : bool
+        If True, only returns outliers that are higher than the median.
 
     Returns
     =======
@@ -1940,13 +1943,17 @@ def get_list_of_outliers(values, threshold=None, zeros_are_outliers=False, media
     modified_z_score = 0.6745 * diff / median_absolute_deviation
     non_outliers = modified_z_score > threshold
 
-    if not zeros_are_outliers:
-        return non_outliers
-    else:
+    if only_positive_outliers: # anything lower than the median is considered not an outlier
+        neg_diff = [x for x in range(len(values)) if values[x] - median < 0]
+        for i in neg_diff:
+            non_outliers[i] = False
+
+    if zeros_are_outliers:
         zero_positions = [x for x in range(len(values)) if values[x] == 0]
         for i in zero_positions:
             non_outliers[i] = True
-        return non_outliers
+
+    return non_outliers
 
 
 def get_gene_caller_ids_from_args(gene_caller_ids, delimiter=','):
