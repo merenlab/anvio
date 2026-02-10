@@ -576,16 +576,12 @@ class CoverageStats:
         # if mean_coverage is 0, then the region is a gap region. Otherwise, it is a covered region
         regions = self.get_list_of_coverage_and_gap_regions(cov_array)
 
-        #print(f"original coverage array: {cov_array}")
-        #print(f"regions of coverage/gaps: {regions}")
-
         # filter out regions with unusually-high coverage that might be non-specific read recruitment
         # these regions and their surrounding gaps get replaced with one longer gap
         filtered_detection = self.detection
         if filter_nonspecific_mapping:
             regions, new_cov_array = self.filter_nonspecific_regions(cov_array, regions, mod_z_score_threshold=3)
             filtered_detection = np.sum(new_cov_array > 0) / len(new_cov_array)
-
         
         # compute Gini coefficient on the gap lengths
         gaplens = []
@@ -593,17 +589,13 @@ class CoverageStats:
             if meancov == 0:
                 gaplens.append(stop - start)
         ngaps = len(gaplens)
-        #print(f"Number of gap regions: {ngaps}")
-        #print(f"Gap lengths: {gaplens}")
 
         G = self.compute_gini_coeff(gaplens)
-        #print(f"Gini: {G}")
 
         # compute final metric
         # note that (1-G) is the evenness score (E)
-        #print(f"filtered detection: {filtered_detection}")
         S = filtered_detection + (1 - filtered_detection) * (1 - G) * beta
-        #print(f"DisCov metric (with beta = {beta}): {S}")
+
         return S
 
 
