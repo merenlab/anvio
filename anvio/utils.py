@@ -695,8 +695,12 @@ class CoverageStats:
                     if not min_outlier_mean_coverage or min_outlier_mean_coverage > cov:
                         min_outlier_mean_coverage = cov 
             # get the indices of regions with outlier mean coverage in region_tuples
-            outlier_region_indices = [i for i,r_tuple in enumerate(region_tuples) if r_tuple[2] >= min_outlier_mean_coverage]
-            filtered_regions, new_cov_array = self.filter_nonspecific_coverage_internal(coverage, region_tuples, mod_z_score_threshold, 
+            if not min_outlier_mean_coverage: # there are no outlier regions to filter out
+                filtered_regions = region_tuples
+                new_cov_array = coverage
+            else:
+                outlier_region_indices = [i for i,r_tuple in enumerate(region_tuples) if r_tuple[2] >= min_outlier_mean_coverage]
+                filtered_regions, new_cov_array = self.filter_nonspecific_coverage_internal(coverage, region_tuples, mod_z_score_threshold, 
                                         regions_to_check_indices = outlier_region_indices, drop_entire_region_if_no_internal_outliers=True)
         elif self.detection >= min_detection_for_internal_filter:
             filtered_regions, new_cov_array = self.filter_nonspecific_coverage_internal(coverage, region_tuples, mod_z_score_threshold)
