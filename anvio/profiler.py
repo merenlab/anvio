@@ -861,9 +861,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
         else:
             self.contig_names_of_interest = set([])
 
-        # Handle --skip-contigs-without-coverage flag
-        self.skip_contigs_without_coverage = A('skip_contigs_without_coverage')
-
         if self.list_contigs_and_exit:
             self.list_contigs()
             sys.exit()
@@ -871,11 +868,12 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if not self.contigs_db_path:
             raise ConfigError("No contigs database, no profilin'. Bye.")
 
-        # If --skip-contigs-without-coverage is set, scan the BAM index early to identify
-        # contigs with mapped reads. We do this BEFORE initializing ContigsSuperclass so
-        # that LazyProperties only load data for relevant contigs.
+        # Scan the BAM index to identify contigs with at least one mapped read.
+        # We do this BEFORE initializing ContigsSuperclass so that LazyProperties
+        # only load data for relevant contigs. This is essentially free (reads only
+        # the .bai index) and can dramatically reduce memory for large references.
         self.split_names_of_interest = set([])
-        if self.skip_contigs_without_coverage and self.input_file_path and not self.blank:
+        if self.input_file_path and not self.blank:
             self.split_names_of_interest = self._get_split_names_with_coverage()
 
         # store our run object. 'why?', you may ask. well, keep reading.
