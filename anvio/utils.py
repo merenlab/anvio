@@ -583,8 +583,9 @@ class CoverageStats:
         # these regions and their surrounding gaps get replaced with one longer gap
         filtered_detection = self.detection
         if filter_nonspecific_mapping:
-            # filtered_detection = #FIXME: update detection value from modified version
-            pass
+            regions, new_cov_array = self.filter_nonspecific_regions(cov_array, regions, mod_z_score_threshold=3)
+            filtered_detection = np.sum(new_cov_array > 0) / len(new_cov_array)
+
         
         # compute Gini coefficient on the gap lengths
         gaplens = []
@@ -652,6 +653,118 @@ class CoverageStats:
         
         gini = (2 * np.sum(index * array)) / (m * np.sum(array)) - (m+1)/m
         return gini
+
+    
+    def filter_nonspecific_regions(self, coverage, region_tuples, mod_z_score_threshold, min_regions=5, min_detection_for_internal_filter=0.5):
+        """Given a set of coverage regions, this function finds and removes outlier coverage values.
+        
+        If there are many regions, it first selects which of them to investigate further by looking at their mean coverage values. This 
+        is the 'external filter': subsetting regions of coverage with suspiciously high mean coverage relative to the other regions.
+        Otherwise, if the detection is high enough (ie, there are a few long regions), it examines every single region. 
+        
+        Selected regions of interest undergo the 'internal filter': identifying outliers in an array of per-nucleotide coverages.
+        These outlier regions are simply removed from the original input array of coverages before recomputing the set of coverage 
+        vs gap regions in the sequence. Thus, the internal filter returns a new set of coverage regions based on a 'shorter' input
+        sequence without outlier bases.
+
+        Parameters
+        ==========
+        coverage: List of int
+            The coverage array of the entire input sequence
+        region_tuples : List of tuples
+            A list of alternating gap regions and regions of nonzero coverage. Each tuple contains 
+            (start_position, stop_position, mean_coverage) for a region. This funcion works only on
+            the regions of nonzero coverage.
+        mod_z_score_threshold : float
+            A value will be flagged as an outlier if its modified z-score is greater than this number.
+        min_regions : int
+            The minimum number of coverage regions needed for the 'external' filter. If we have fewer
+            than this many regions, we instead choose to filter all regions or none depending on the 
+            overall detection value.
+        min_detection_for_internal_filter : float
+            When there are not enough regions for the 'external' filter, we use this detection threshold
+            to determine if the regions are likely to be long enough for the 'internal' filter.
+        """
+        filtered_regions, new_cov_array = None, None
+        nonzero_mean_coverages = np.array([m for (x,y,m) in region_tuples if m > 0])
+        if len(nonzero_mean_coverages) >= min_regions:
+            # TODO: fix function so it catches only positive outliers
+            outlier_mean_coverages = get_list_of_outliers(nonzero_mean_coverages, threshold=mod_z_score_threshold)
+            min_outlier_mean_coverage = None # we need this min so we can identify the outlier regions in the original list
+            for i, cov in enumerate(nonzero_mean_coverages):
+                if outlier_mean_coverages[i]:
+                    if not min_outlier_mean_coverage or min_outlier_mean_coverage > cov:
+                        min_outlier_mean_coverage = cov 
+            # get the indices of regions with outlier mean coverage in region_tuples
+            outlier_region_indices = [i for i,r_tuple in enumerate(region_tuples) if r_tuple[2] >= min_outlier_mean_coverage]
+            filtered_regions, new_cov_array = self.filter_nonspecific_coverage_internal(coverage, region_tuples, mod_z_score_threshold, 
+                                        regions_to_check_indices = outlier_region_indices, drop_entire_region_if_no_internal_outliers=True)
+        elif self.detection >= min_detection_for_internal_filter:
+            filtered_regions, new_cov_array = self.filter_nonspecific_coverage_internal(coverage, region_tuples, mod_z_score_threshold)
+        else:
+            run.warning(f"CoverageStats class speaking. While attempting to filter out regions of non-specific "
+                        f"read recruitment, we realized that there is not enough data to reliably detect outlier "
+                        f"coverage values. Specifically, there were only {len(nonzero_mean_coverages)} regions of "
+                        f"nonzero coverage spanning only {self.detection*100:.2f}% of the input sequence. Rather than "
+                        f"make any bad calls, we skipped the filtering entirely.",
+                        header="FILTERING OF NON-SPECIFIC MAPPING FAILED", overwrite_verbose=True)
+            filtered_regions = region_tuples
+            new_cov_array = coverage
+
+        return filtered_regions, new_cov_array
+
+
+    def filter_nonspecific_coverage_internal(self, coverage, region_tuples, mod_z_score_threshold, regions_to_check_indices = None, 
+                                             drop_entire_region_if_no_internal_outliers=False, min_region_length=20):
+        """This function goes through each region of nonzero coverage and removes nucleotides with suspiciously high coverage.
+
+        It creates a subset of the coverage array with the bases of outlier coverage values removed, and returns a new 
+        region list created that subset of coverage values. It also returns the subset coverage array.
+        
+        Parameters
+        ==========
+        coverage: List of int
+            The coverage array of the entire input sequence
+        region_tuples : List of tuples
+            A list of alternating gap regions and regions of nonzero coverage. Each tuple contains 
+            (start_position, stop_position, mean_coverage) for a region. This funcion works only on
+            the regions of nonzero coverage.
+        mod_z_score_threshold : float
+            A coverage value will be flagged as an outlier if its modified z-score is greater than this number.
+        regions_to_check_indices : List of int
+            Indices (in region_tuples) of the specific regions to check. If None, check all regions.
+        drop_entire_region_if_no_internal_outliers : bool
+            If True, it means the parent function flagged these regions as having suspiciously high coverage 
+            (ie, due to the external filter) and we should remove the entire region (because if the entire
+            region consists entirely of outliers, the internal check won't find them).
+        min_region_length : int
+            Only detect and remove outliers from regions of nonzero coverage that are at least this long.
+        """
+
+        cov_indices_to_remove = []
+        for i, r_tuple in enumerate(region_tuples):
+            start = r_tuple[0]
+            stop = r_tuple[1]
+            if r_tuple[2] == 0 or (stop - start) < min_region_length: # skip gaps and regions that are too small
+                continue
+            if (not regions_to_check_indices) or (i in regions_to_check_indices):
+                region_cov_array = coverage[start:stop]
+                # TODO: only positive outliers
+                outlier_cov_in_region = np.where(get_list_of_outliers(region_cov_array, threshold=mod_z_score_threshold) == True)[0]
+                # if we didn't find any outliers, the entire region could be outliers. We remove the whole thing when requested.
+                if outlier_cov_in_region.shape[0] == 0 and drop_entire_region_if_no_internal_outliers:
+                    # we use the region length here because we will add the start position to every element in the array later
+                    outlier_cov_in_region = np.arange(0, len(region_cov_array))
+
+                if outlier_cov_in_region.shape[0] > 0:
+                    outlier_cov_in_original_array = outlier_cov_in_region + start # we add the region start position to each index
+                    cov_indices_to_remove.extend(list(outlier_cov_in_original_array))
+
+        # remove all bases with outlier coverage
+        new_coverage = np.delete(coverage, cov_indices_to_remove)
+        new_regions = self.get_list_of_coverage_and_gap_regions(new_coverage)
+
+        return new_regions, new_coverage
 
 
 class RunInDirectory(object):
