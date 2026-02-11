@@ -2,6 +2,7 @@
 # pylint: disable=line-too-long
 """A module to characterize Florian's inversions"""
 
+import gc
 import os
 import copy
 import argparse
@@ -1570,22 +1571,44 @@ class Inversions:
         for sample_name in sample_names:
             input_queue.put(sample_name)
 
-        # engage the proletariat, our hard-working wage-earner class
-        workers = []
-        for i in range(self.num_threads):
-            worker = multiprocessing.Process(target=Inversions.compute_inversion_activity_for_sample,
-                                             args=(input_queue,
-                                                   output_queue,
-                                                   self.profile_db_bam_file_pairs,
-                                                   primers_dict,
-                                                   self.min_frequency,
-                                                   self.oligo_length,
-                                                   self.end_primer_search_after_x_hits),
+        # clear cached contig sequences before forking -- workers don't need them and on Linux
+        # fork() inherits the parent's address space via copy-on-write. reducing what's in
+        # memory before fork minimizes pages that can be duplicated.
+        self._contig_sequence_cache.clear()
 
-                                             kwargs=({'progress': self.progress if self.num_threads == 1 else progress_quiet}))
-            workers.append(worker)
-            worker.start()
+        # force a garbage collection pass and freeze all surviving objects into the permanent
+        # GC generation. without this, forked child processes' garbage collectors would traverse
+        # all inherited objects, incrementing reference counts and triggering copy-on-write page
+        # duplication even on objects the children never use.
+        gc.collect()
+        gc.freeze()
 
+        try:
+            # on Linux (glibc), ask the C allocator to return freed arena memory to the OS so
+            # forked children inherit a smaller resident set.
+            try:
+                import ctypes
+                ctypes.CDLL(None).malloc_trim(0)
+            except (OSError, AttributeError):
+                pass  # expected on macOS or non-glibc systems
+
+            # engage the proletariat, our hard-working wage-earner class
+            workers = []
+            for i in range(self.num_threads):
+                worker = multiprocessing.Process(target=Inversions.compute_inversion_activity_for_sample,
+                                                 args=(input_queue,
+                                                       output_queue,
+                                                       self.profile_db_bam_file_pairs,
+                                                       primers_dict,
+                                                       self.min_frequency,
+                                                       self.oligo_length,
+                                                       self.end_primer_search_after_x_hits),
+
+                                                 kwargs=({'progress': self.progress if self.num_threads == 1 else progress_quiet}))
+                workers.append(worker)
+                worker.start()
+        finally:
+            gc.unfreeze()
 
         # these if blocks for progress is an ugly hack, but they are serving a very useful purpose.
         # if the user is working with a single thread, we would like them to see th eactual PrimerSearch
