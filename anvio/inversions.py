@@ -186,10 +186,14 @@ class Inversions:
 
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
         self.splits_basic_info = contigs_db.db.smart_get(t.splits_info_table_name, column='split', data=split_names)
-        self.contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
         self.genes_are_called_in_contigs_db = contigs_db.meta['genes_are_called']
         self.genes_annotated_with_functions_in_contigs_db = contigs_db.meta['gene_function_sources'] is not None and len(contigs_db.meta['gene_function_sources']) > 0
         contigs_db.disconnect()
+
+        # contig sequences are loaded on demand rather than all at once. for large metagenomes
+        # the full contig_sequences table can be many gigabytes, yet only a small fraction of
+        # contigs end up being accessed (those with coverage stretches containing inversions).
+        self._contig_sequence_cache = {}
 
         # next, we will generate a dictionary to convert contig names to split names
         self.contig_name_to_split_names = {}
@@ -210,6 +214,18 @@ class Inversions:
                                   f"but there doesn't seem to be a contig in this database with that name :/")
             else:
                 self.contig_names = [self.target_contig]
+
+
+    def _get_contig_sequence(self, contig_name):
+        """Load a single contig sequence from the database on demand, with caching."""
+
+        if contig_name not in self._contig_sequence_cache:
+            contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
+            result = contigs_db.db.smart_get(t.contig_sequences_table_name, 'contig', {contig_name}, string_the_key=True)
+            contigs_db.disconnect()
+            self._contig_sequence_cache[contig_name] = result[contig_name]['sequence']
+
+        return self._contig_sequence_cache[contig_name]
 
 
     def process_db(self, entry_name, profile_db_path, bam_file_path):
@@ -351,7 +367,7 @@ class Inversions:
         # constructs, and then go through every FWD/FWD and REV/REV read from the BAM file to see if
         # our constructs occur in any of them, which is the only 100% proof of an active inversion.
         for contig_name in coverage_stretches_in_contigs:
-            contig_sequence = self.contig_sequences[contig_name]['sequence']
+            contig_sequence = self._get_contig_sequence(contig_name)
             for start, stop in coverage_stretches_in_contigs[contig_name]:
                 stretch_sequence_coverage = contig_coverages[contig_name][start:stop]
                 stretch_sequence = contig_sequence[start:stop]
@@ -1062,7 +1078,7 @@ class Inversions:
 
                 # While we are here, let's add more info about each gene
                 # DNA sequence:
-                dna_sequence = self.contig_sequences[contig_name]['sequence'][gene_call['start']:gene_call['stop']]
+                dna_sequence = self._get_contig_sequence(contig_name)[gene_call['start']:gene_call['stop']]
                 rev_compd = None
                 if gene_call['direction'] == 'f':
                     gene_call['DNA_sequence'] = dna_sequence
@@ -1244,7 +1260,7 @@ class Inversions:
             second_start = entry['second_start'] - 20
             second_end = entry['second_end'] + 20
 
-            contig_sequence = self.contig_sequences[contig_name]['sequence']
+            contig_sequence = self._get_contig_sequence(contig_name)
 
             # get sequence of each IR and their reverse complement
             first_IR = contig_sequence[first_start:first_end]
