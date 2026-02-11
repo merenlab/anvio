@@ -536,6 +536,9 @@ class Inversions:
 
         self.progress.end()
 
+        bam_file.close()
+        auxiliary_db.close()
+
         self.run.info(f"[Inversions found] In sample {entry_name}", f"{len(self.inversions[entry_name])}", lc="yellow")
 
 
