@@ -205,6 +205,9 @@ class Inversions:
 
             self.contig_name_to_split_names[contig_name].append(split_name)
 
+        # splits_basic_info was only needed to build contig_name_to_split_names above
+        del self.splits_basic_info
+
         # let's have a variable of convenience:
         self.contig_names = sorted(list(self.contig_name_to_split_names.keys()))
 
