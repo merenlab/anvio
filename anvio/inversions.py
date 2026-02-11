@@ -231,6 +231,30 @@ class Inversions:
         return self._contig_sequence_cache[contig_name]
 
 
+    def _build_contig_coverage(self, contig_name, auxiliary_db, sample_id):
+        """Build the coverage array for a single contig from its split coverages."""
+
+        split_names = self.contig_name_to_split_names[contig_name]
+
+        parts = []
+        for split_name in split_names:
+            split_coverages = auxiliary_db.get(split_name)
+            parts.append(split_coverages[sample_id])
+
+        contig_coverage = np.concatenate(parts) if parts else np.array([])
+
+        # if the user is asking us to focus only a particular stretch in the contig
+        # we are going to grant their wish by setting the values in `contig_coverage`
+        # to zero that are outside of those regions
+        if self.target_region_start or self.target_region_end:
+            if self.target_region_start:
+                contig_coverage[0:self.target_region_start] = 0.0
+            if self.target_region_end:
+                contig_coverage[self.target_region_end:] = 0.0
+
+        return contig_coverage
+
+
     def process_db(self, entry_name, profile_db_path, bam_file_path):
         """Function that does everything.
 
@@ -263,29 +287,9 @@ class Inversions:
         # populate coverage stretches in contigs based on coverage data in this
         # particular profile_db. we will then go through each stretch to find
         # those that include palindromic sequences
-        contig_coverages = {}
         coverage_stretches_in_contigs = {}
         for contig_name in self.contig_names:
-            contig_coverage = np.array([])
-
-            split_names = self.contig_name_to_split_names[contig_name]
-
-            for i in range(len(split_names)):
-                split_name = split_names[i]
-                split_coverages = auxiliary_db.get(split_name)
-                contig_coverage = np.concatenate((contig_coverage, split_coverages[sample_id]), axis=None)
-
-            # if the user is asking us to focus only a particular stretch in the contig
-            # we are going to grant their wish by setting the values in `contig_coverage`
-            # to zero that are outside of those regions
-            if self.target_region_start or self.target_region_end:
-                if self.target_region_start:
-                    contig_coverage[0:self.target_region_start] = 0.0
-                if self.target_region_end:
-                    contig_coverage[self.target_region_end:] = 0.0
-
-            # now we know the `contig_coverage`
-            contig_coverages[contig_name] = contig_coverage
+            contig_coverage = self._build_contig_coverage(contig_name, auxiliary_db, sample_id)
 
             # and all we want to do now via the downstream code in this loop is to break it into stretches
             # of 'high coverage' regions of FWD/FWD or REV/REV reads (as in coverage > `self.min_coverage_to_define_stretches`),
@@ -370,9 +374,14 @@ class Inversions:
         # constructs, and then go through every FWD/FWD and REV/REV read from the BAM file to see if
         # our constructs occur in any of them, which is the only 100% proof of an active inversion.
         for contig_name in coverage_stretches_in_contigs:
+            if not coverage_stretches_in_contigs[contig_name]:
+                continue
+
             contig_sequence = self._get_contig_sequence(contig_name)
+            contig_coverage = self._build_contig_coverage(contig_name, auxiliary_db, sample_id)
+
             for start, stop in coverage_stretches_in_contigs[contig_name]:
-                stretch_sequence_coverage = contig_coverages[contig_name][start:stop]
+                stretch_sequence_coverage = contig_coverage[start:stop]
                 stretch_sequence = contig_sequence[start:stop]
                 sequence_name = f"{contig_name}_{start}_{stop}"
 
