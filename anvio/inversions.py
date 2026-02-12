@@ -806,7 +806,7 @@ class Inversions:
                                 'num_samples': len(self.profile_db_paths),
                                 'output_directory': self.output_directory,
                                 'genomic_context_recovered': not self.skip_recovering_genomic_context,
-                                'inversion_activity_computed': not self.skip_compute_inversion_activity,
+                                'inversion_activity_computed': not self.skip_compute_inversion_activity and self.raw_r1_r2_reads_are_present,
                                 # if no function source, it says 'the contigs.db' because it fits with the message 
                                 # displayed in the final index.html. See the inversion template, line 215
                                 # if it works, it works
@@ -896,7 +896,7 @@ class Inversions:
                                                        'functions': os.path.join('PER_INV', inversion_id, 'SURROUNDING-FUNCTIONS.txt')}
 
         # add inversion activity
-        if self.skip_compute_inversion_activity:
+        if self.skip_compute_inversion_activity or not self.raw_r1_r2_reads_are_present:
             pass
         else:
             # sum each oligo freq and rank them to give them appropriate colors
