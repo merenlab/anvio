@@ -679,6 +679,9 @@ class CoverageStats:
         """
         filtered_regions, new_cov_array = None, None
         nonzero_mean_coverages = np.array([m for (x,y,m) in region_tuples if m > 0])
+        run.info("EXTERNAL FILTER: number of nonzero coverage regions", len(nonzero_mean_coverages), overwrite_verbose=anvio.DEBUG)
+        run.info("EXTERNAL FILTER: minimum number to detect outlier regions", min_regions, overwrite_verbose=anvio.DEBUG)
+        run.info("EXTERNAL FILTER will be run", len(nonzero_mean_coverages) >= min_regions, overwrite_verbose=anvio.DEBUG)
         if len(nonzero_mean_coverages) >= min_regions:
             outlier_mean_coverages = get_list_of_outliers(nonzero_mean_coverages, threshold=mod_z_score_threshold, only_positive_outliers=True)
             min_outlier_mean_coverage = None # we need this min so we can identify the outlier regions in the original list
@@ -686,12 +689,15 @@ class CoverageStats:
                 if outlier_mean_coverages[i]:
                     if not min_outlier_mean_coverage or min_outlier_mean_coverage > cov:
                         min_outlier_mean_coverage = cov 
+            run.info("EXTERNAL FILTER: smallest mean coverage of outlier region", min_outlier_mean_coverage, overwrite_verbose=anvio.DEBUG)
             # get the indices of regions with outlier mean coverage in region_tuples
             if not min_outlier_mean_coverage: # there are no outlier regions to filter out
                 filtered_regions = region_tuples
                 new_cov_array = coverage
+                run.info("EXTERNAL FILTER: num outlier regions found", 0, overwrite_verbose=anvio.DEBUG)
             else:
                 outlier_region_indices = [i for i,r_tuple in enumerate(region_tuples) if r_tuple[2] >= min_outlier_mean_coverage]
+                run.info("EXTERNAL FILTER: num outlier regions found", len(outlier_region_indices), overwrite_verbose=anvio.DEBUG)
                 filtered_regions, new_cov_array = self.filter_nonspecific_coverage_internal(coverage, region_tuples, mod_z_score_threshold, 
                                         regions_to_check_indices = outlier_region_indices, drop_entire_region_if_no_internal_outliers=True)
         elif self.detection >= min_detection_for_internal_filter:
@@ -702,7 +708,7 @@ class CoverageStats:
                         f"coverage values. Specifically, there were only {len(nonzero_mean_coverages)} regions of "
                         f"nonzero coverage spanning only {self.detection*100:.2f}% of the input sequence. Rather than "
                         f"make any bad calls, we skipped the filtering entirely.",
-                        header="FILTERING OF NON-SPECIFIC MAPPING FAILED", overwrite_verbose=True)
+                        header="FILTERING OF NON-SPECIFIC MAPPING FAILED", overwrite_verbose=anvio.DEBUG)
             filtered_regions = region_tuples
             new_cov_array = coverage
 
@@ -735,28 +741,34 @@ class CoverageStats:
         min_region_length : int
             Only detect and remove outliers from regions of nonzero coverage that are at least this long.
         """
-
+        run.info("INTERNAL FILTER: number of regions to examine", len(regions_to_check_indices) if regions_to_check_indices else len(region_tuples), overwrite_verbose=anvio.DEBUG)
         cov_indices_to_remove = []
         for i, r_tuple in enumerate(region_tuples):
             start = r_tuple[0]
             stop = r_tuple[1]
-            if r_tuple[2] == 0 or (stop - start) < min_region_length: # skip gaps and regions that are too small
-                continue
             if (not regions_to_check_indices) or (i in regions_to_check_indices):
+                if r_tuple[2] == 0 or (stop - start) < min_region_length: # skip gaps and regions that are too small
+                    run.info(f"\tREGION {i}", f"too small to check (<{min_region_length} bp)", overwrite_verbose=anvio.DEBUG)
+                    continue
                 region_cov_array = coverage[start:stop]
                 outlier_cov_in_region = np.where(get_list_of_outliers(region_cov_array, threshold=mod_z_score_threshold, only_positive_outliers=True) == True)[0]
                 # if we didn't find any outliers, the entire region could be outliers. We remove the whole thing when requested.
                 if outlier_cov_in_region.shape[0] == 0 and drop_entire_region_if_no_internal_outliers:
                     # we use the region length here because we will add the start position to every element in the array later
                     outlier_cov_in_region = np.arange(0, len(region_cov_array))
+                    run.info(f"\tREGION {i}", f"no internal outliers; will remove entire region", overwrite_verbose=anvio.DEBUG)
 
                 if outlier_cov_in_region.shape[0] > 0:
                     outlier_cov_in_original_array = outlier_cov_in_region + start # we add the region start position to each index
                     cov_indices_to_remove.extend(list(outlier_cov_in_original_array))
+                    run.info(f"\tREGION {i}", f"removing {outlier_cov_in_region.shape[0]} bases with outlier coverage", overwrite_verbose=anvio.DEBUG)
+                else:
+                    run.info(f"\tREGION {i}", f"no outliers found", overwrite_verbose=anvio.DEBUG)
 
         # remove all bases with outlier coverage
         new_coverage = np.delete(coverage, cov_indices_to_remove)
         new_regions = self.get_list_of_coverage_and_gap_regions(new_coverage)
+        run.info("INTERNAL FILTER: total bases removed", len(cov_indices_to_remove), overwrite_verbose=anvio.DEBUG)
 
         return new_regions, new_coverage
 
