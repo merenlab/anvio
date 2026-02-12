@@ -547,7 +547,7 @@ class CoverageStats:
 
         self.dis_cov: float = self.compute_distribution_of_coverage_metric(coverage, filter_nonspecific_mapping=True)
 
-    def compute_distribution_of_coverage_metric(self, cov_array, filter_nonspecific_mapping: bool = False, beta: float = 0.5):
+    def compute_distribution_of_coverage_metric(self, cov_array, filter_nonspecific_mapping: bool = False, beta: float = 0.5, min_num_gaps_for_gini: int = 10):
         """Calculates the distribution of coverage (DisCov) as an improved detection metric.
         
         Briefly, it first identifies regions of nonzero coverage in the input array (with optional filtering
@@ -558,8 +558,9 @@ class CoverageStats:
         Filtered detection: 
             d_filtered = (total covered bases in cov_array after filtering out nonspecific mapping) / (length of cov_array)
             ** if filtering is skipped, d_filtered is simply the self.detection attribute
-        Evenness score: E = 1 - Gini coefficient of the gap lengths
+        Evenness score: E = 1 - Gini coefficient of the gap lengths (can be None if not enough gaps)
         DisCov metric: S = d_filtered + (1 - d_filtered) x E x β, where β ∈ [0, 1] controls evenness contribution
+            ** if the Gini coefficient is None, S is also None
 
         Parameters
         ==========
@@ -570,6 +571,9 @@ class CoverageStats:
         beta : float
             The beta value modulates the impact of gap evenness on the (filtered) detection. The higher it is, the
             larger the increase in the DisCov metric value when the coverage is perfectly even
+        min_num_gaps_for_gini : int
+            The minimum number of observed gaps in the input coverage data to compute the Gini coefficient
+        """
 
         run.warning(f"Anvi'o is now attempting to compute how coverage is distributed across a contig. The "
                     f"terminal output below relates to this calculation.", header="Computing Distribution of Coverage", 
@@ -597,11 +601,19 @@ class CoverageStats:
         ngaps = len(gaplens)
         run.info("Number of coverage gaps in contig", ngaps, overwrite_verbose=anvio.DEBUG)
 
-        G = self.compute_gini_coeff(gaplens)
+        G, S = None, None
+        if ngaps > min_num_gaps_for_gini:
+            G = self.compute_gini_coeff(gaplens)
 
-        # compute final metric
-        # note that (1-G) is the evenness score (E)
-        S = filtered_detection + (1 - filtered_detection) * (1 - G) * beta
+            # compute final metric
+            # note that (1-G) is the evenness score (E)
+            S = filtered_detection + (1 - filtered_detection) * (1 - G) * beta
+            run.info("Gini coefficient of gap lengths", G, overwrite_verbose=anvio.DEBUG)
+
+        else:
+            run.warning(f"The number of coverage gaps was too low (<{min_num_gaps_for_gini} gaps) to compute coverage "
+                        f"evenness via the Gini coefficient. As a result, the input contig will not get a DisCov score.",
+                        overwrite_verbose=anvio.DEBUG)
 
         return S
 
