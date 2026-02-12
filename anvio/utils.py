@@ -561,6 +561,7 @@ class CoverageStats:
         Evenness score: E = 1 - Gini coefficient of the gap lengths (can be None if not enough gaps)
         DisCov metric: S = d_filtered + (1 - d_filtered) x E x β, where β ∈ [0, 1] controls evenness contribution
             ** if the Gini coefficient is None, S is also None
+            ** if no reads mapped to the contig at all (ie detection is 0), S is 0
 
         Parameters
         ==========
@@ -574,6 +575,9 @@ class CoverageStats:
         min_num_gaps_for_gini : int
             The minimum number of observed gaps in the input coverage data to compute the Gini coefficient
         """
+
+        if self.detection == 0:
+            return 0.0
 
         run.warning(f"Anvi'o is now attempting to compute how coverage is distributed across a contig. The "
                     f"terminal output below relates to this calculation.", header="Computing Distribution of Coverage", 
