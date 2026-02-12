@@ -283,13 +283,26 @@ class Inversions:
         bam_file = bamops.BAMFileObject(bam_file_path, 'rb')
 
         ################################################################################
+        self.progress.update("Scanning BAM index for contigs with mapped reads")
+        ################################################################################
+        # for large metagenomes, the vast majority of contigs will have zero inversion-type
+        # reads. scanning the BAM index lets us skip them entirely rather than building
+        # coverage arrays from the auxiliary DB for hundreds of thousands of contigs.
+        contigs_with_mapped_reads = set(s.contig for s in bam_file.get_index_statistics() if s.mapped > 0)
+        contig_names_to_process = [c for c in self.contig_names if c in contigs_with_mapped_reads]
+
+        self.run.info(f"[{entry_name}] Contigs with inversion-type reads",
+                      f"{pp(len(contig_names_to_process))} of {pp(len(self.contig_names))}", lc="yellow")
+
+        ################################################################################
         self.progress.update("Computing coverage stretches")
         ################################################################################
         # populate coverage stretches in contigs based on coverage data in this
         # particular profile_db. we will then go through each stretch to find
         # those that include palindromic sequences
         coverage_stretches_in_contigs = {}
-        for contig_name in self.contig_names:
+        contig_coverage_for_stretches = {}
+        for contig_name in contig_names_to_process:
             contig_coverage = self._build_contig_coverage(contig_name, auxiliary_db, sample_id)
 
             # and all we want to do now via the downstream code in this loop is to break it into stretches
@@ -352,6 +365,10 @@ class Inversions:
                                                            contig_length if (e[1] + self.num_nts_to_pad_a_stretch) > contig_length else e[1] + self.num_nts_to_pad_a_stretch) \
                                                                 for e in coverage_stretches_in_contigs[contig_name]]
 
+            # keep the coverage array for contigs that have stretches so we don't
+            # have to rebuild it in the palindrome processing loop below
+            contig_coverage_for_stretches[contig_name] = contig_coverage
+
         ################################################################################
         self.progress.update("Getting ready to process stretches")
         ################################################################################
@@ -374,12 +391,9 @@ class Inversions:
         # type), find palindromes in those sequences that match to those coverage stretches, build some
         # constructs, and then go through every FWD/FWD and REV/REV read from the BAM file to see if
         # our constructs occur in any of them, which is the only 100% proof of an active inversion.
-        for contig_name in coverage_stretches_in_contigs:
-            if not coverage_stretches_in_contigs[contig_name]:
-                continue
-
+        for contig_name in contig_coverage_for_stretches:
             contig_sequence = self._get_contig_sequence(contig_name)
-            contig_coverage = self._build_contig_coverage(contig_name, auxiliary_db, sample_id)
+            contig_coverage = contig_coverage_for_stretches[contig_name]
 
             for start, stop in coverage_stretches_in_contigs[contig_name]:
                 stretch_sequence_coverage = contig_coverage[start:stop]
