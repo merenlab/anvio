@@ -288,10 +288,13 @@ class Inversions:
         # for large metagenomes, the vast majority of contigs will have zero inversion-type
         # reads. scanning the BAM index lets us skip them entirely rather than building
         # coverage arrays from the auxiliary DB for hundreds of thousands of contigs.
-        contigs_with_mapped_reads = set(s.contig for s in bam_file.get_index_statistics() if s.mapped > 0)
-        contig_names_to_process = [c for c in self.contig_names if c in contigs_with_mapped_reads]
+        # furthermore, a contig needs at least `min_coverage_to_define_stretches` reads
+        # overlapping a single position to produce a stretch, so contigs with fewer mapped
+        # reads than that threshold can be safely skipped as well.
+        contigs_with_enough_reads = set(s.contig for s in bam_file.get_index_statistics() if s.mapped >= self.min_coverage_to_define_stretches)
+        contig_names_to_process = [c for c in self.contig_names if c in contigs_with_enough_reads]
 
-        self.run.info(f"[{entry_name}] Contigs with inversion-type reads",
+        self.run.info(f"[{entry_name}] Contigs with enough inversion-type reads",
                       f"{pp(len(contig_names_to_process))} of {pp(len(self.contig_names))}", lc="yellow")
 
         ################################################################################
