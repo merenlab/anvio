@@ -394,7 +394,7 @@ class BAMProfilerQuick:
             if self.report_minimal:
                 return ['contig', 'sample', 'length', 'gc_content', 'num_mapped_reads', 'detection', 'mean_cov']
             else:
-                return ['contig', 'sample', 'length', 'gc_content', 'num_mapped_reads', 'detection', 'mean_cov', 'q2q3_cov', 'median_cov', 'min_cov', 'max_cov', 'std_cov']
+                return ['contig', 'sample', 'length', 'gc_content', 'num_mapped_reads', 'detection', 'mean_cov', 'q2q3_cov', 'dis_cov', 'median_cov', 'min_cov', 'max_cov', 'std_cov']
 
         raise ConfigError("This function reached a point it should have never :(")
 
@@ -567,6 +567,7 @@ class BAMProfilerQuick:
                          f"{mean:.4}\n")
         else:
             C = utils.CoverageStats(coverage_obj.c, skip_outliers=True)
+            dis_cov = f"{C.dis_cov:.4}" if C.dis_cov else "NA"
             output.write(f"{contig_name}\t"
                          f"{bam_file_name}\t"
                          f"{self.contigs_basic_info[contig_name]['length']}\t"
@@ -575,6 +576,7 @@ class BAMProfilerQuick:
                          f"{C.detection:.4}\t"
                          f"{C.mean:.4}\t"
                          f"{C.mean_Q2Q3:.4}\t"
+                         f"{dis_cov}\t"
                          f"{C.median}\t"
                          f"{C.min}\t"
                          f"{C.max}\t"
