@@ -570,7 +570,12 @@ class CoverageStats:
         beta : float
             The beta value modulates the impact of gap evenness on the (filtered) detection. The higher it is, the
             larger the increase in the DisCov metric value when the coverage is perfectly even
-        """
+
+        run.warning(f"Anvi'o is now attempting to compute how coverage is distributed across a contig. The "
+                    f"terminal output below relates to this calculation.", header="Computing Distribution of Coverage", 
+                    lc='green', overwrite_verbose=anvio.DEBUG)
+        run.info("Filtering out non-specific read recruitment", filter_nonspecific_mapping, overwrite_verbose=anvio.DEBUG)
+        run.info("Detection of contig", self.detection, overwrite_verbose=anvio.DEBUG)
 
         # this will be a list of tuples like (start_position, stop_position, mean_coverage)
         # if mean_coverage is 0, then the region is a gap region. Otherwise, it is a covered region
@@ -582,6 +587,7 @@ class CoverageStats:
         if filter_nonspecific_mapping:
             regions, new_cov_array = self.filter_nonspecific_regions(cov_array, regions, mod_z_score_threshold=3)
             filtered_detection = np.sum(new_cov_array > 0) / len(new_cov_array)
+            run.info("Detection of contig (post-filter)", filtered_detection, overwrite_verbose=anvio.DEBUG)
         
         # compute Gini coefficient on the gap lengths
         gaplens = []
@@ -589,6 +595,7 @@ class CoverageStats:
             if meancov == 0:
                 gaplens.append(stop - start)
         ngaps = len(gaplens)
+        run.info("Number of coverage gaps in contig", ngaps, overwrite_verbose=anvio.DEBUG)
 
         G = self.compute_gini_coeff(gaplens)
 
