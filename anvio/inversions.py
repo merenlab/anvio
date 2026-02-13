@@ -178,15 +178,8 @@ class Inversions:
         if not skip_sanity_check:
             self.sanity_check()
 
-        # we will generate our splits info, contigs to splits dicts, and check a few things to learn more about the
-        # contigs db.
-        if self.profile_db_paths:
-            split_names = utils.get_all_item_names_from_the_database(self.profile_db_paths[0])
-        else:
-            split_names = utils.get_all_item_names_from_the_database(self.contigs_db_path)
-
+        # learn some things about the contigs db
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
-        self.splits_basic_info = contigs_db.db.smart_get(t.splits_info_table_name, column='split', data=split_names)
         self.genes_are_called_in_contigs_db = contigs_db.meta['genes_are_called']
         self.genes_annotated_with_functions_in_contigs_db = contigs_db.meta['gene_function_sources'] is not None and len(contigs_db.meta['gene_function_sources']) > 0
         contigs_db.disconnect()
@@ -196,18 +189,11 @@ class Inversions:
         # contigs end up being accessed (those with coverage stretches containing inversions).
         self._contig_sequence_cache = {}
 
-        # next, we will generate a dictionary to convert contig names to split names
-        self.contig_name_to_split_names = {}
-        for split_name in sorted(self.splits_basic_info.keys()):
-            contig_name = self.splits_basic_info[split_name]['parent']
-
-            if contig_name not in self.contig_name_to_split_names:
-                self.contig_name_to_split_names[contig_name] = []
-
-            self.contig_name_to_split_names[contig_name].append(split_name)
-
-        # splits_basic_info was only needed to build contig_name_to_split_names above
-        del self.splits_basic_info
+        # generate a dictionary to convert contig names to split names. we use the existing
+        # utility function which queries (split, parent) directly from the splits_info table,
+        # avoiding the expensive smart_get on all split names. the function returns sets, so
+        # we sort them into lists (split names are ordered alphabetically: _00001, _00002, ...).
+        self.contig_name_to_split_names = {c: sorted(s) for c, s in utils.get_contig_name_to_splits_dict(self.contigs_db_path).items()}
 
         # let's have a variable of convenience:
         self.contig_names = sorted(list(self.contig_name_to_split_names.keys()))
