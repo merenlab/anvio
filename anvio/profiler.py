@@ -1171,24 +1171,24 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.progress.update('Querying contigs database for skipped splits ...')
 
         # Get splits for the skipped contigs that also pass the length filters.
+        # Instead of batching 7M+ contigs into thousands of IN-clause queries
+        # (which is catastrophically slow on networked filesystems), we run a
+        # single query for all length-eligible splits and filter in Python.
         contigs_db = db.DB(self.contigs_db_path, None, ignore_version=True)
 
         skipped_splits = {}  # split_name -> split_length
         skipped_contig_names = set()
-        contig_list = list(self._contigs_skipped_by_prefilter)
-        batch_size = 500
-        for i in range(0, len(contig_list), batch_size):
-            batch = contig_list[i:i + batch_size]
-            placeholders = ','.join(['?'] * len(batch))
-            response = contigs_db._exec(
-                f"SELECT s.split, s.length, s.parent, c.length AS contig_length "
-                f"FROM splits_basic_info s "
-                f"JOIN contigs_basic_info c ON s.parent = c.contig "
-                f"WHERE s.parent IN ({placeholders}) "
-                f"AND c.length >= ? AND c.length <= ?",
-                tuple(batch) + (self.min_contig_length, self.max_contig_length)
-            )
-            for split_name, split_length, parent, contig_length in response.fetchall():
+
+        response = contigs_db._exec(
+            "SELECT s.split, s.length, s.parent "
+            "FROM splits_basic_info s "
+            "JOIN contigs_basic_info c ON s.parent = c.contig "
+            "WHERE c.length >= ? AND c.length <= ?",
+            (self.min_contig_length, self.max_contig_length)
+        )
+
+        for split_name, split_length, parent in response:
+            if parent in self._contigs_skipped_by_prefilter:
                 skipped_splits[split_name] = split_length
                 skipped_contig_names.add(parent)
 
