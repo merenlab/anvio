@@ -30,7 +30,7 @@ import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.auxiliarydataops as auxiliarydataops
 
-from anvio.errors import ConfigError
+from anvio.errors import AuxiliaryDataError, ConfigError
 from anvio.summaryhtml import SummaryHTMLOutput
 from anvio.artifacts.samples_txt import SamplesTxt
 from anvio.sequencefeatures import Palindromes, PrimerSearch
@@ -225,7 +225,14 @@ class Inversions:
 
         parts = []
         for split_name in split_names:
-            split_coverages = auxiliary_db.get(split_name)
+            try:
+                split_coverages = auxiliary_db.get(split_name)
+            except AuxiliaryDataError:
+                # the contigs DB may contain splits for contigs that were excluded during
+                # profiling (e.g., contigs shorter than the --min-contig-length threshold).
+                # if a split is not in the auxiliary DB, it has no coverage data and we skip it.
+                continue
+
             parts.append(split_coverages[sample_id])
 
         contig_coverage = np.concatenate(parts) if parts else np.array([])
