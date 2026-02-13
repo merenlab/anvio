@@ -219,22 +219,28 @@ class Inversions:
 
 
     def _build_contig_coverage(self, contig_name, auxiliary_db, sample_id):
-        """Build the coverage array for a single contig from its split coverages."""
+        """Build the coverage array for a single contig from its split coverages.
+
+        Uses a single batch SQL query per contig rather than one query per split,
+        and filters by sample_name to avoid decompressing coverage for other samples.
+        """
 
         split_names = self.contig_name_to_split_names[contig_name]
 
-        parts = []
-        for split_name in split_names:
-            try:
-                split_coverages = auxiliary_db.get(split_name)
-            except AuxiliaryDataError:
-                # the contigs DB may contain splits for contigs that were excluded during
-                # profiling (e.g., contigs shorter than the --min-contig-length threshold).
-                # if a split is not in the auxiliary DB, it has no coverage data and we skip it.
-                continue
+        placeholders = ','.join(['?'] * len(split_names))
+        query = (f'SELECT split_name, coverages FROM {t.split_coverages_table_name} '
+                 f'WHERE sample_name = ? AND split_name IN ({placeholders})')
+        cursor = auxiliary_db.db._exec(query, [sample_id] + list(split_names))
+        rows = cursor.fetchall()
 
-            parts.append(split_coverages[sample_id])
+        coverage_by_split = {}
+        for split_name, blob in rows:
+            if isinstance(blob, int):
+                coverage_by_split[split_name] = np.zeros(blob, dtype=auxiliary_db.coverage_dtype)
+            else:
+                coverage_by_split[split_name] = utils.convert_binary_blob_to_numpy_array(blob, dtype=auxiliary_db.coverage_dtype)
 
+        parts = [coverage_by_split[s] for s in split_names if s in coverage_by_split]
         contig_coverage = np.concatenate(parts) if parts else np.array([])
 
         # if the user is asking us to focus only a particular stretch in the contig
@@ -307,9 +313,13 @@ class Inversions:
             # so here is the blank entry that will be filled soon:
             coverage_stretches_in_contigs[contig_name] = []
 
-            # but we don't want to go through any of this if the contig has no coverage at all. so here we will test that first.
-            # speicial thanks goes to Andrea Watson who identified this edge case in https://github.com/merenlab/anvio/issues/1970
-            if len(contig_coverage) == 0 or not max(contig_coverage) > 0:
+            # skip contigs with no coverage data, or where the peak coverage is below the threshold
+            # needed to define a stretch. this single check replaces three separate tests (empty array,
+            # all-zero, and below-threshold) and avoids building intermediate boolean arrays for the
+            # majority of contigs that can never produce a stretch.
+            # speicial thanks goes to Andrea Watson who identified the empty-coverage edge case in
+            # https://github.com/merenlab/anvio/issues/1970
+            if len(contig_coverage) == 0 or contig_coverage.max() < self.min_coverage_to_define_stretches:
                 continue
 
             # if we are here, we're good to go. let's keep the contig lenght in a separate variable:
@@ -318,10 +328,6 @@ class Inversions:
             # to find regions of high coverage, we first need to 'pad' our array to ensure it always
             # starts and ends with 'low coverage'.
             regions_of_contig_covered_enough = np.hstack([[False], contig_coverage >= self.min_coverage_to_define_stretches, [False]])
-
-            # but if there aren't any regions covered enough we want to stop:
-            if not regions_of_contig_covered_enough.any():
-                continue
 
             regions_of_contig_covered_enough_diff = np.diff(regions_of_contig_covered_enough.astype(int))
             cov_stretch_start_positions = np.where(regions_of_contig_covered_enough_diff == 1)[0]
