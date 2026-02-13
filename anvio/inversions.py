@@ -309,7 +309,7 @@ class Inversions:
 
             # but we don't want to go through any of this if the contig has no coverage at all. so here we will test that first.
             # speicial thanks goes to Andrea Watson who identified this edge case in https://github.com/merenlab/anvio/issues/1970
-            if not max(contig_coverage) > 0:
+            if len(contig_coverage) == 0 or not max(contig_coverage) > 0:
                 continue
 
             # if we are here, we're good to go. let's keep the contig lenght in a separate variable:
