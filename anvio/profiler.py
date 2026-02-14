@@ -1675,9 +1675,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
         ctx.contig_names = self.contig_names
         ctx.contig_lengths = self.contig_lengths
 
-        # Mapping dict (built during profiler init, not a LazyProperty)
-        ctx.contig_name_to_splits = self.contig_name_to_splits
-
         # Shared memory metadata (workers attach themselves)
         ctx._shared_seq_shm_name = self._shared_seq_shm_name
         ctx._shared_seq_index = self._shared_seq_index
@@ -1694,10 +1691,10 @@ class BAMProfiler(dbops.ContigsSuperclass):
         ctx.skip_edges = self.skip_edges
         ctx.sample_id = self.sample_id
 
-        # Data from ContigsSuperclass (force-load LazyProperties, store as plain attrs)
-        ctx.splits_basic_info = self.splits_basic_info
-        ctx.contig_name_to_genes = self.contig_name_to_genes
-        ctx.genes_in_contigs_dict = self.genes_in_contigs_dict
+        # Contigs DB path (workers query SQLite directly for per-contig data)
+        ctx.contigs_db_path = self.contigs_db_path
+
+        # Small metadata dict (no COW concern)
         ctx.a_meta = self.a_meta
 
         # These will be set by workers from shared memory
@@ -2189,7 +2186,9 @@ class WorkerContext:
 
     Instead of passing the entire BAMProfiler object to forked workers (which causes
     massive copy-on-write memory duplication due to Python's reference counting), this
-    carries only the ~22 attributes and 4 methods workers actually access.
+    carries only small metadata and methods. Large per-contig data (splits_basic_info,
+    genes_in_contigs_dict, contig_name_to_splits, contig_name_to_genes) is loaded
+    from SQLite per-contig in the worker loop, avoiding COW entirely.
 
     Methods are assigned as class attributes from their original classes. Python's
     descriptor protocol makes ctx.method(...) automatically bind ctx as self, so the
@@ -2261,15 +2260,85 @@ def _cleanup_shared_memory(shm_name):
                     f"You may want to check /dev/shm for leftover segments.")
 
 
+def _load_contig_data_from_db(db_conn, contig_name):
+    """Load per-contig splits and gene data from the contigs database.
+
+    Workers call this for each contig they process, loading only the data needed
+    for that contig rather than inheriting entire dicts via fork() + COW.
+
+    Returns (splits_basic_info, contig_name_to_splits, genes_in_contigs_dict, contig_name_to_genes).
+    """
+
+    cursor = db_conn.cursor()
+
+    # Query splits for this contig
+    cursor.execute(
+        "SELECT split, order_in_parent, start, end, length, gc_content, gc_content_parent, parent "
+        "FROM splits_basic_info WHERE parent = ?",
+        (contig_name,)
+    )
+    split_rows = cursor.fetchall()
+
+    splits_basic_info = {}
+    contig_name_to_splits = {contig_name: []}
+    for row in split_rows:
+        split_name = row[0]
+        splits_basic_info[split_name] = {
+            'order_in_parent': row[1],
+            'start': row[2],
+            'end': row[3],
+            'length': row[4],
+            'gc_content': row[5],
+            'gc_content_parent': row[6],
+            'parent': row[7],
+        }
+        contig_name_to_splits[contig_name].append(split_name)
+
+    # Sort splits by order_in_parent to match the original sorted-by-name behavior
+    contig_name_to_splits[contig_name].sort(key=lambda s: splits_basic_info[s]['order_in_parent'])
+
+    # Query genes for this contig
+    cursor.execute(
+        "SELECT gene_callers_id, contig, start, stop, direction, partial, call_type, source, version "
+        "FROM genes_in_contigs WHERE contig = ?",
+        (contig_name,)
+    )
+    gene_rows = cursor.fetchall()
+
+    genes_in_contigs_dict = {}
+    contig_name_to_genes = {contig_name: set()}
+    for row in gene_rows:
+        gene_id = row[0]
+        genes_in_contigs_dict[gene_id] = {
+            'contig': row[1],
+            'start': row[2],
+            'stop': row[3],
+            'direction': row[4],
+            'partial': row[5],
+            'call_type': row[6],
+            'source': row[7],
+            'version': row[8],
+        }
+        contig_name_to_genes[contig_name].add((gene_id, row[2], row[3]))
+
+    return splits_basic_info, contig_name_to_splits, genes_in_contigs_dict, contig_name_to_genes
+
+
 def profile_contig_worker(ctx, available_index_queue, output_queue):
     """Worker function that processes contigs using a WorkerContext.
 
     Each worker attaches to shared memory for contig sequences and nt_positions_info,
-    then processes contigs from the queue until the parent terminates it.
+    opens a read-only SQLite connection for per-contig data lookups, then processes
+    contigs from the queue until the parent terminates it.
     """
+
+    import sqlite3
 
     bam_file = bamops.BAMFileObject(ctx.input_file_path)
     bam_file.fetch_filter = ctx.fetch_filter
+
+    # Open a read-only SQLite connection for per-contig data queries
+    db_conn = sqlite3.connect(f"file:{ctx.contigs_db_path}?mode=ro", uri=True)
 
     # Attach to shared memory for contig sequences
     if ctx._shared_seq_shm_name:
@@ -2288,6 +2357,11 @@ def profile_contig_worker(ctx, available_index_queue, output_queue):
             index = available_index_queue.get(True)
             contig_name = ctx.contig_names[index]
             contig_length = ctx.contig_lengths[index]
+
+            # Load only this contig's splits and gene data from SQLite
+            ctx.splits_basic_info, ctx.contig_name_to_splits, \
+                ctx.genes_in_contigs_dict, ctx.contig_name_to_genes = \
+                _load_contig_data_from_db(db_conn, contig_name)
 
             contig = ctx.process_contig(bam_file, contig_name, contig_length)
             output_queue.put(contig)
