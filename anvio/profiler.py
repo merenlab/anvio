@@ -6,6 +6,7 @@ import gc
 import os
 import sys
 import copy
+import json
 import shutil
 import argparse
 import numpy as np
@@ -1675,14 +1676,13 @@ class BAMProfiler(dbops.ContigsSuperclass):
         ctx.contig_names = self.contig_names
         ctx.contig_lengths = self.contig_lengths
 
-        # Mapping dict (built during profiler init, not a LazyProperty)
-        ctx.contig_name_to_splits = self.contig_name_to_splits
-
         # Shared memory metadata (workers attach themselves)
         ctx._shared_seq_shm_name = self._shared_seq_shm_name
         ctx._shared_seq_index = self._shared_seq_index
         ctx._shared_nt_shm_name = self._shared_nt_shm_name
         ctx._shared_nt_index = self._shared_nt_index
+        ctx._shared_contig_data_shm_name = self._shared_contig_data_shm_name
+        ctx._shared_contig_data_index = self._shared_contig_data_index
 
         # Profiling flags
         ctx.skip_SNV_profiling = self.skip_SNV_profiling
@@ -1694,10 +1694,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         ctx.skip_edges = self.skip_edges
         ctx.sample_id = self.sample_id
 
-        # Data from ContigsSuperclass (force-load LazyProperties, store as plain attrs)
-        ctx.splits_basic_info = self.splits_basic_info
-        ctx.contig_name_to_genes = self.contig_name_to_genes
-        ctx.genes_in_contigs_dict = self.genes_in_contigs_dict
+        # a_meta is small and needed by process_contig
         ctx.a_meta = self.a_meta
 
         # These will be set by workers from shared memory
@@ -1909,6 +1906,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # loop is wrapped in try/finally so the segments are always unlinked.
         seq_shm_name = shm_info['seq_shm_name']
         nt_shm_name = shm_info['nt_shm_name']
+        contig_data_shm_name = shm_info['contig_data_shm_name']
 
         try:
             manager = multiprocessing.Manager()
@@ -1919,10 +1917,12 @@ class BAMProfiler(dbops.ContigsSuperclass):
             self._shared_seq_index = shm_info['seq_index']
             self._shared_nt_shm_name = shm_info['nt_shm_name']
             self._shared_nt_index = shm_info['nt_index']
+            self._shared_contig_data_shm_name = shm_info['contig_data_shm_name']
+            self._shared_contig_data_index = shm_info['contig_data_index']
 
-            # Build the lightweight WorkerContext. This triggers loading of the smaller
-            # LazyProperties (splits_basic_info, contig_name_to_genes, genes_in_contigs_dict)
-            # which total ~2-3GB — much less than the 24GB we avoided above.
+            # Build the lightweight WorkerContext. Per-contig dict data (splits_basic_info,
+            # contig_name_to_genes, genes_in_contigs_dict) is already packed into shared
+            # memory by the subprocess — workers deserialize JSON per contig.
             self.progress.update('Building worker context ...')
             ctx = self._build_worker_context()
 
@@ -2036,6 +2036,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         finally:
             _cleanup_shared_memory(seq_shm_name)
             _cleanup_shared_memory(nt_shm_name)
+            _cleanup_shared_memory(contig_data_shm_name)
 
         self.progress.end(timing_filepath='anvio.debug.timing.txt' if anvio.DEBUG else None)
 
@@ -2225,6 +2226,37 @@ def _pack_shared_memory_worker(result_queue, contigs_db_path, split_names_of_int
 
         nt_store = SharedDataStore(cs.nt_positions_info, mode='numpy_uint8')
 
+        # Build per-contig JSON blobs for splits_basic_info, contig_name_to_genes,
+        # genes_in_contigs_dict, and contig_name_to_splits. Workers deserialize one
+        # contig's tiny JSON blob (~500 bytes) per iteration instead of inheriting
+        # massive Python dicts that cause COW page duplication.
+
+        # Group splits by parent contig (single pass over splits_basic_info)
+        splits_by_contig = {}
+        for split_name in sorted(cs.splits_basic_info.keys()):
+            info = cs.splits_basic_info[split_name]
+            parent = info['parent']
+            if parent in contig_names:
+                if parent not in splits_by_contig:
+                    splits_by_contig[parent] = []
+                splits_by_contig[parent].append(
+                    [split_name, info['order_in_parent'], info['start'], info['end']])
+
+        contig_data = {}
+        for contig_name in contig_names:
+            splits = splits_by_contig.get(contig_name, [])
+
+            # genes for this contig: [gene_callers_id, start, stop, direction]
+            genes = []
+            if contig_name in cs.contig_name_to_genes:
+                for gene_callers_id, start, stop in cs.contig_name_to_genes[contig_name]:
+                    direction = cs.genes_in_contigs_dict[gene_callers_id]['direction']
+                    genes.append([gene_callers_id, start, stop, direction])
+
+            contig_data[contig_name] = json.dumps({'s': splits, 'g': genes})
+
+        contig_data_store = SharedDataStore(contig_data, mode='bytes')
+
         # Unregister shared memory from the resource tracker so it persists after
         # this subprocess exits. The parent process owns cleanup via _cleanup_shared_memory().
         # Without this, the resource tracker unlinks the segments on subprocess exit,
@@ -2232,12 +2264,15 @@ def _pack_shared_memory_worker(result_queue, contigs_db_path, split_names_of_int
         from multiprocessing.resource_tracker import unregister
         unregister(seq_store.shm._name, 'shared_memory')
         unregister(nt_store.shm._name, 'shared_memory')
+        unregister(contig_data_store.shm._name, 'shared_memory')
 
         result_queue.put({
             'seq_shm_name': seq_store.shm_name,
             'seq_index': seq_store.index,
             'nt_shm_name': nt_store.shm_name,
             'nt_index': nt_store.index,
+            'contig_data_shm_name': contig_data_store.shm_name,
+            'contig_data_index': contig_data_store.index,
         })
 
     except Exception as e:
@@ -2283,11 +2318,24 @@ def profile_contig_worker(ctx, available_index_queue, output_queue):
             ctx._shared_nt_shm_name, ctx._shared_nt_index, mode='numpy_uint8')
         ctx.nt_positions_info = SharedNtPositionsProxy(worker_nt_store)
 
+    # Attach to shared memory for per-contig dict data (splits, genes)
+    contig_data_store = SharedDataStore.from_existing(
+        ctx._shared_contig_data_shm_name, ctx._shared_contig_data_index, mode='bytes')
+
     while True:
         try:
             index = available_index_queue.get(True)
             contig_name = ctx.contig_names[index]
             contig_length = ctx.contig_lengths[index]
+
+            # Deserialize per-contig dict data from shared memory
+            cd = json.loads(contig_data_store.get(contig_name))
+            ctx.contig_name_to_splits = {contig_name: [s[0] for s in cd['s']]}
+            ctx.splits_basic_info = {s[0]: {'order_in_parent': s[1], 'start': s[2], 'end': s[3]}
+                                     for s in cd['s']}
+            ctx.contig_name_to_genes = {contig_name: set((g[0], g[1], g[2])
+                                        for g in cd['g'])}
+            ctx.genes_in_contigs_dict = {g[0]: {'direction': g[3]} for g in cd['g']}
 
             contig = ctx.process_contig(bam_file, contig_name, contig_length)
             output_queue.put(contig)
