@@ -1928,8 +1928,21 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
             # Save and clear objects workers don't need. The BAM object is large
             # (~300MB for 7.5M reference names) and workers create their own.
+            # The three LazyProperties (splits_basic_info, contig_name_to_genes,
+            # genes_in_contigs_dict) are no longer needed by workers (they use
+            # per-contig JSON from shared memory), but still sit in the parent's
+            # heap. Clearing them before fork prevents COW page duplication.
             saved_bam = self.bam
             self.bam = None
+
+            saved_lazy = {}
+            for key in ('splits_basic_info', 'contig_name_to_genes', 'genes_in_contigs_dict'):
+                if key in self._lazy_loaded_data:
+                    saved_lazy[key] = self._lazy_loaded_data.pop(key)
+
+            # contig_name_to_splits is a plain attribute (not a LazyProperty)
+            saved_contig_name_to_splits = self.contig_name_to_splits
+            self.contig_name_to_splits = None
 
             # Force garbage collection and release freed memory back to OS.
             gc.collect()
@@ -2020,13 +2033,17 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     for proc in processes:
                         proc.terminate()
                     self.bam = saved_bam
+                    self._lazy_loaded_data.update(saved_lazy)
+                    self.contig_name_to_splits = saved_contig_name_to_splits
                     raise worker_error
 
             for proc in processes:
                 proc.terminate()
 
-            # Restore the BAM object for the main thread
+            # Restore objects cleared before fork
             self.bam = saved_bam
+            self._lazy_loaded_data.update(saved_lazy)
+            self.contig_name_to_splits = saved_contig_name_to_splits
 
             self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | WRITING TO DB 💾 ...")
             self.store_contigs_buffer()
