@@ -886,7 +886,15 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # Instead, sequences are loaded at profiling time: in a subprocess for multi-
         # thread mode (so the heap is freed on exit), or directly for single-thread.
         dbops.ContigsSuperclass.__init__(self, self.args, r=null_run, p=self.progress)
-        self.contig_names_in_contigs_db = set(self.contigs_basic_info.keys())
+
+        # Get contig names via lightweight SQL instead of loading the full
+        # contigs_basic_info LazyProperty. Keeping the parent's heap small
+        # is critical for multi-thread mode where fork() COW-duplicates it.
+        import anvio.db as db
+        _db = db.DB(self.contigs_db_path, None, ignore_version=True)
+        self.contig_names_in_contigs_db = set(_db.get_single_column_from_table(
+            t.contigs_info_table_name, 'contig'))
+        _db.disconnect()
 
         # restore our run object. OK. take deep breath. because you are a good programmer, you have
         # this voice in your head tellin gyou that the tinkering with self.run here feels kind of out
@@ -1264,8 +1272,17 @@ class BAMProfiler(dbops.ContigsSuperclass):
                              "OK with it as well." % (self.contigs_db_path))
             return
 
+        # Use a lightweight SQL query instead of loading the full contig_name_to_genes
+        # LazyProperty (which also triggers genes_in_contigs_dict and contigs_basic_info).
+        # This keeps the parent's heap small for multi-thread fork().
+        import anvio.db as db
+        _db = db.DB(self.contigs_db_path, None, ignore_version=True)
+        contigs_with_genes = set(_db.get_single_column_from_table(
+            t.genes_in_contigs_table_name, 'contig', unique=True))
+        _db.disconnect()
+
         contig_names = set(contig_names)
-        contigs_without_any_gene_calls = [c for c in contig_names if c not in self.contig_name_to_genes]
+        contigs_without_any_gene_calls = [c for c in contig_names if c not in contigs_with_genes]
 
         if len(contigs_without_any_gene_calls):
             import random
@@ -1417,20 +1434,48 @@ class BAMProfiler(dbops.ContigsSuperclass):
             self.total_length = sum(self.contig_lengths) # into the db in a second.
 
         contigs_with_good_lengths = set(self.contig_names) # for fast access
-        self.split_names = set([])
+
+        # Build split_names and contig_name_to_splits using a lightweight SQL
+        # query instead of loading the full splits_basic_info LazyProperty.
+        # This keeps the parent's heap small for multi-thread fork().
+        self.split_names = set()
         self.contig_name_to_splits = {}
-        for split_name in sorted(self.splits_basic_info.keys()):
-            parent = self.splits_basic_info[split_name]['parent']
 
-            if parent not in contigs_with_good_lengths:
-                continue
+        import anvio.db as db
+        _db = db.DB(self.contigs_db_path, None, ignore_version=True)
 
-            self.split_names.add(split_name)
+        if self.split_names_of_interest:
+            # Batched query filtered to splits of interest
+            split_list = list(self.split_names_of_interest)
+            batch_size = 500
+            for i in range(0, len(split_list), batch_size):
+                batch = split_list[i:i + batch_size]
+                placeholders = ','.join(['?'] * len(batch))
+                response = _db._exec(
+                    f"SELECT split, parent FROM {t.splits_info_table_name} "
+                    f"WHERE split IN ({placeholders}) ORDER BY split",
+                    tuple(batch))
+                for split_name, parent in response.fetchall():
+                    if parent not in contigs_with_good_lengths:
+                        continue
+                    self.split_names.add(split_name)
+                    if parent in self.contig_name_to_splits:
+                        self.contig_name_to_splits[parent].append(split_name)
+                    else:
+                        self.contig_name_to_splits[parent] = [split_name]
+        else:
+            response = _db._exec(
+                f"SELECT split, parent FROM {t.splits_info_table_name} ORDER BY split")
+            for split_name, parent in response.fetchall():
+                if parent not in contigs_with_good_lengths:
+                    continue
+                self.split_names.add(split_name)
+                if parent in self.contig_name_to_splits:
+                    self.contig_name_to_splits[parent].append(split_name)
+                else:
+                    self.contig_name_to_splits[parent] = [split_name]
 
-            if parent in self.contig_name_to_splits:
-                self.contig_name_to_splits[parent].append(split_name)
-            else:
-                self.contig_name_to_splits[parent] = [split_name]
+        _db.disconnect()
 
         self.num_splits = len(self.split_names)
 
@@ -1936,13 +1981,18 @@ class BAMProfiler(dbops.ContigsSuperclass):
             self.bam = None
 
             saved_lazy = {}
-            for key in ('splits_basic_info', 'contig_name_to_genes', 'genes_in_contigs_dict'):
+            for key in ('splits_basic_info', 'contig_name_to_genes', 'genes_in_contigs_dict',
+                        'contigs_basic_info'):
                 if key in self._lazy_loaded_data:
                     saved_lazy[key] = self._lazy_loaded_data.pop(key)
 
-            # contig_name_to_splits is a plain attribute (not a LazyProperty)
+            # Plain attributes not needed by workers
             saved_contig_name_to_splits = self.contig_name_to_splits
             self.contig_name_to_splits = None
+            saved_split_names = self.split_names
+            self.split_names = None
+            saved_contig_names_in_contigs_db = self.contig_names_in_contigs_db
+            self.contig_names_in_contigs_db = None
 
             # Force garbage collection and release freed memory back to OS.
             gc.collect()
@@ -2035,6 +2085,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     self.bam = saved_bam
                     self._lazy_loaded_data.update(saved_lazy)
                     self.contig_name_to_splits = saved_contig_name_to_splits
+                    self.split_names = saved_split_names
+                    self.contig_names_in_contigs_db = saved_contig_names_in_contigs_db
                     raise worker_error
 
             for proc in processes:
@@ -2044,6 +2096,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
             self.bam = saved_bam
             self._lazy_loaded_data.update(saved_lazy)
             self.contig_name_to_splits = saved_contig_name_to_splits
+            self.split_names = saved_split_names
+            self.contig_names_in_contigs_db = saved_contig_names_in_contigs_db
 
             self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | WRITING TO DB 💾 ...")
             self.store_contigs_buffer()
