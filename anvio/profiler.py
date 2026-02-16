@@ -697,6 +697,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
         else:
             self.contig_names_of_interest = set([])
 
+        self._user_specified_contigs_of_interest = bool(self.contig_names_of_interest)
+
         if self.list_contigs_and_exit:
             self.list_contigs()
             sys.exit()
@@ -704,13 +706,28 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if not self.contigs_db_path:
             raise ConfigError("No contigs database, no profilin'. Bye.")
 
+        # Pre-filter contigs using BAM index to skip zero-coverage contigs. This must happen
+        # BEFORE ContigsSuperclass.__init__ so that split_names_of_interest is set, causing
+        # all LazyProperties to only load data for contigs with coverage.
+        self._contigs_skipped_by_prefilter = set()
+        if not self.blank and self.input_file_path:
+            self._apply_bam_index_prefilter()
+
         # store our run object. 'why?', you may ask. well, keep reading.
         my_run = self.run
 
         # Initialize contigs db
         dbops.ContigsSuperclass.__init__(self, self.args, r=null_run, p=self.progress)
         self.init_contig_sequences(contig_names_of_interest=self.contig_names_of_interest)
-        self.contig_names_in_contigs_db = set(self.contigs_basic_info.keys())
+
+        # Use a lightweight SQL query to get all contig names instead of triggering
+        # the contigs_basic_info LazyProperty for ALL contigs (which would defeat
+        # the purpose of pre-filtering)
+        import anvio.db as db
+        _db = db.DB(self.contigs_db_path, None, ignore_version=True)
+        self.contig_names_in_contigs_db = set(_db.get_single_column_from_table(
+            t.contigs_info_table_name, 'contig'))
+        _db.disconnect()
 
         # restore our run object. OK. take deep breath. because you are a good programmer, you have
         # this voice in your head tellin gyou that the tinkering with self.run here feels kind of out
@@ -749,6 +766,79 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # additional layer data will be filled later
         self.layer_additional_keys = []
         self.layer_additional_data = {}
+
+
+    def _get_contigs_with_coverage(self):
+        """Scan the BAM index to identify contigs with at least one mapped read.
+
+        This is essentially free (reads only the .bai index, not the BAM data) and returns
+        a set of contig names that have coverage > 0.
+        """
+
+        bam = bamops.BAMFileObject(self.input_file_path, 'rb')
+
+        contigs_with_coverage = set()
+        for stat in bam.get_index_statistics():
+            if stat.mapped > 0:
+                contigs_with_coverage.add(stat.contig)
+
+        bam.close()
+
+        return contigs_with_coverage
+
+
+    def _apply_bam_index_prefilter(self):
+        """Use BAM index statistics to pre-filter contigs before heavy initialization.
+
+        Sets self.split_names_of_interest so that ContigsSuperclass.__init__ only loads
+        data for contigs with coverage. Tracks skipped contigs in self._contigs_skipped_by_prefilter
+        for later zero-coverage backfill.
+        """
+
+        import anvio.db as db
+
+        contigs_with_coverage = self._get_contigs_with_coverage()
+
+        # Get all contig names from the contigs DB
+        _db = db.DB(self.contigs_db_path, None, ignore_version=True)
+        all_contig_names = set(_db.get_single_column_from_table(
+            t.contigs_info_table_name, 'contig'))
+
+        # If user specified contigs of interest, intersect with those
+        if self.contig_names_of_interest:
+            eligible_contigs = self.contig_names_of_interest & all_contig_names
+        else:
+            eligible_contigs = all_contig_names
+
+        # Contigs with coverage that are also eligible
+        contigs_to_profile = contigs_with_coverage & eligible_contigs
+        self._contigs_skipped_by_prefilter = eligible_contigs - contigs_to_profile
+
+        if not contigs_to_profile:
+            _db.disconnect()
+            raise ConfigError("None of the contigs in the BAM file have any mapped reads. There is nothing "
+                              "to profile here.")
+
+        # Get split names for the contigs we will actually profile
+        # This is a lightweight SQL query, not a LazyProperty load
+        if contigs_to_profile != all_contig_names:
+            where_clause = "parent IN (%s)" % ','.join(['"%s"' % c for c in contigs_to_profile])
+            split_names_for_covered = set(_db.get_single_column_from_table(
+                t.splits_info_table_name, 'split', where_clause=where_clause))
+
+            self.split_names_of_interest = split_names_for_covered
+
+            # Also update contig_names_of_interest so init_contig_sequences only loads
+            # sequences for contigs with coverage
+            self.contig_names_of_interest = contigs_to_profile
+
+        _db.disconnect()
+
+        num_skipped = len(self._contigs_skipped_by_prefilter)
+        if num_skipped > 0:
+            self.run.info('BAM index pre-filter',
+                          f'{pp(len(contigs_to_profile))} contigs with coverage '
+                          f'({pp(num_skipped)} zero-coverage contigs will be backfilled)')
 
 
     def init_dirs_and_dbs(self):
