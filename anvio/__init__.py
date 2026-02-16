@@ -2050,6 +2050,13 @@ D = {
                      "those with legitimate variation to be reported) remain unchanged. This flag can only be used with `--engine AA` "
                      "or `--engine CDN` and is incompatible wth --quince-mode."}
                 ),
+    'exclude-intergenic': (
+            ['--exclude-intergenic'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag to exclude SNVs that occur in intergenic regions (i.e., nucleotide positions that do not "
+                     "fall within any gene call, whether coding or non-coding). This flag can only be used with `--engine NT`."}
+                ),
     'include-contig-names': (
             ['--include-contig-names'],
             {'default': False,

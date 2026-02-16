@@ -532,6 +532,7 @@ class VariabilitySuper(VariabilityFilter, object):
         self.min_departure_from_consensus = A('min_departure_from_consensus', float) or 0
         self.max_departure_from_consensus = A('max_departure_from_consensus', float) or 1
         self.num_positions_from_each_split = A('num_positions_from_each_split', int) or 0
+        self.exclude_intergenic = A('exclude_intergenic', bool)
         # output
         self.kiefl_mode = A('kiefl_mode', bool)
         self.quince_mode = A('quince_mode', bool)
@@ -688,6 +689,11 @@ class VariabilitySuper(VariabilityFilter, object):
                 raise ConfigError("You can't run --kiefl-mode and --quince-mode concurrently.")
             if self.engine not in ('AA', 'CDN'):
                 raise ConfigError("--kiefl-mode is only compatible with `--engine AA` or `--engine CDN`.")
+
+        if self.exclude_intergenic and self.engine != 'NT':
+            raise ConfigError("--exclude-intergenic is only compatible with `--engine NT`. The CDN and AA engines "
+                              "already focus on coding sequences by definition, so intergenic positions are not "
+                              "included in their output.")
 
         if not self.table_provided:
             if not self.contigs_db_path:
@@ -1304,6 +1310,12 @@ class VariabilitySuper(VariabilityFilter, object):
                          min_condition = self.min_departure_from_reference > 0 and not self.min_departure_from_reference_filtered,
                          max_filter = self.max_departure_from_reference,
                          max_condition = self.max_departure_from_reference < 1 and not self.max_departure_from_reference_filtered)
+
+        if self.exclude_intergenic:
+            num_entries_before = len(self.data)
+            # keep only positions that fall within a gene (coding or non-coding), removing intergenic positions
+            self.data = self.data[(self.data['in_coding_gene_call'] == 1) | (self.data['in_noncoding_gene_call'] == 1)].copy()
+            self.report_change_in_entry_number(num_entries_before, len(self.data), reason="excluding intergenic")
 
         if self.engine == 'NT':
             self.data['unique_pos_identifier_str'] = self.data['split_name'] + "_" + self.data['pos'].astype(str)
