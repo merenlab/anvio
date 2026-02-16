@@ -566,7 +566,7 @@ class BAMProfilerQuick:
                          f"{detection:.4}\t"
                          f"{mean:.4}\n")
         else:
-            C = utils.CoverageStats(coverage_obj.c, skip_outliers=True)
+            C = utils.CoverageStats(coverage_obj.c, skip_outliers=True, contig_name=contig_name)
             dis_cov = f"{C.dis_cov:.4}" if not C.dis_cov is None else "NA"
             output.write(f"{contig_name}\t"
                          f"{bam_file_name}\t"

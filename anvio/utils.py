@@ -524,13 +524,14 @@ class CoverageStats:
     FIXME: This class should replace `coverage_c` function in bamops to avoid redundancy.
     """
 
-    def __init__(self, coverage, skip_outliers=False):
+    def __init__(self, coverage, skip_outliers=False, contig_name=None):
         self.min: float = np.amin(coverage)
         self.max: float = np.amax(coverage)
         self.median: float = np.median(coverage)
         self.mean: float = np.mean(coverage)
         self.std: float = np.std(coverage)
         self.detection: float = np.sum(coverage > 0) / len(coverage)
+        self.name = contig_name # optional parameter, only used for debug output
 
         if coverage.size < 4:
             self.mean_Q2Q3: float = self.mean
@@ -582,6 +583,7 @@ class CoverageStats:
         run.warning(f"Anvi'o is now attempting to compute how coverage is distributed across a contig. The "
                     f"terminal output below relates to this calculation.", header="Computing Distribution of Coverage", 
                     lc='green', overwrite_verbose=anvio.DEBUG)
+        run.info(f"Contig name", self.name if self.name else 'Unknown', overwrite_verbose=anvio.DEBUG)
         run.info("Filtering out non-specific read recruitment", filter_nonspecific_mapping, overwrite_verbose=anvio.DEBUG)
         run.info("Detection of contig", self.detection, overwrite_verbose=anvio.DEBUG)
 
