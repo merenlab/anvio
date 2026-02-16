@@ -805,6 +805,23 @@ class BAMProfiler(dbops.ContigsSuperclass):
         all_contig_names = set(_db.get_single_column_from_table(
             t.contigs_info_table_name, 'contig'))
 
+        # Preserve the BAM-vs-contigs-DB mismatch check that init_profile_from_BAM performs
+        # on master. Without this, covered BAM contigs not in the contigs DB would be silently
+        # dropped by the prefilter, masking a "wrong contigs DB" mistake.
+        if not self._user_specified_contigs_of_interest:
+            covered_but_missing = contigs_with_coverage - all_contig_names
+            if covered_but_missing:
+                example = covered_but_missing.pop()
+                example_db = all_contig_names.pop() if all_contig_names else 'N/A'
+                _db.disconnect()
+                raise ConfigError("At least one contig name in your BAM file does not match contig names stored in the "
+                                  "contigs database. For instance, this is one contig name found in your BAM file: '%s', "
+                                  "and this is another one found in your contigs database: '%s'. You may be using an "
+                                  "contigs database for profiling that has nothing to do with the BAM file you are "
+                                  "trying to profile, or you may have failed to fix your contig names in your FASTA file "
+                                  "prior to mapping, which is described here: %s"
+                                        % (example, example_db, 'http://goo.gl/Q9ChpS'))
+
         # If user specified contigs of interest, intersect with those
         if self.contig_names_of_interest:
             eligible_contigs = self.contig_names_of_interest & all_contig_names
