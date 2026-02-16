@@ -21,6 +21,7 @@ import multiprocess as multiprocessing
 from collections import OrderedDict
 
 import anvio
+import anvio.db as db
 import anvio.tables as t
 import anvio.dbops as dbops
 import anvio.utils as utils
@@ -723,7 +724,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # Use a lightweight SQL query to get all contig names instead of triggering
         # the contigs_basic_info LazyProperty for ALL contigs (which would defeat
         # the purpose of pre-filtering)
-        import anvio.db as db
+
         _db = db.DB(self.contigs_db_path, None, ignore_version=True)
         self.contig_names_in_contigs_db = set(_db.get_single_column_from_table(
             t.contigs_info_table_name, 'contig'))
@@ -795,7 +796,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         for later zero-coverage backfill.
         """
 
-        import anvio.db as db
+
 
         contigs_with_coverage = self._get_contigs_with_coverage()
 
@@ -816,8 +817,13 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         if not contigs_to_profile:
             _db.disconnect()
-            raise ConfigError("None of the contigs in the BAM file have any mapped reads. There is nothing "
-                              "to profile here.")
+            if self._user_specified_contigs_of_interest:
+                raise ConfigError("None of the contigs you specified via `--contigs-of-interest` have any mapped "
+                                  "reads in the BAM file. The BAM file does contain reads mapped to other contigs, "
+                                  "but none of them match your list. There is nothing to profile here.")
+            else:
+                raise ConfigError("None of the contigs in the BAM file have any mapped reads. There is nothing "
+                                  "to profile here.")
 
         # Get split names for the contigs we will actually profile
         # This is a lightweight SQL query, not a LazyProperty load
@@ -1080,7 +1086,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if not self._contigs_skipped_by_prefilter:
             return
 
-        import anvio.db as db
+
 
         # Get split info for skipped contigs that pass length filters
         _db = db.DB(self.contigs_db_path, None, ignore_version=True)
@@ -1193,7 +1199,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         # Use a lightweight SQL query to find contigs with genes, instead of triggering
         # the contig_name_to_genes LazyProperty which would load all gene/contig data
-        import anvio.db as db
+
         _db = db.DB(self.contigs_db_path, None, ignore_version=True)
         contigs_with_genes = set(_db.get_single_column_from_table(
             t.genes_in_contigs_table_name, 'contig', unique=True))
