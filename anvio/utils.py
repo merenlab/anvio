@@ -608,7 +608,7 @@ class CoverageStats:
         run.info("Number of coverage gaps in contig", ngaps, overwrite_verbose=anvio.DEBUG)
 
         G, S = None, None
-        if ngaps > min_num_gaps_for_gini:
+        if ngaps >= min_num_gaps_for_gini:
             G = self.compute_gini_coeff(gaplens)
 
             # compute final metric
