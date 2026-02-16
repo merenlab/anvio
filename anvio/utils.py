@@ -690,7 +690,7 @@ class CoverageStats:
             The coverage array of the entire input sequence
         region_tuples : List of tuples
             A list of alternating gap regions and regions of nonzero coverage. Each tuple contains 
-            (start_position, stop_position, mean_coverage) for a region. This funcion works only on
+            (start_position, stop_position, mean_coverage) for a region. This function works only on
             the regions of nonzero coverage.
         mod_z_score_threshold : float
             A value will be flagged as an outlier if its modified z-score is greater than this number.
@@ -753,7 +753,7 @@ class CoverageStats:
             The coverage array of the entire input sequence
         region_tuples : List of tuples
             A list of alternating gap regions and regions of nonzero coverage. Each tuple contains 
-            (start_position, stop_position, mean_coverage) for a region. This funcion works only on
+            (start_position, stop_position, mean_coverage) for a region. This function works only on
             the regions of nonzero coverage.
         mod_z_score_threshold : float
             A coverage value will be flagged as an outlier if its modified z-score is greater than this number.
@@ -772,7 +772,11 @@ class CoverageStats:
             start = r_tuple[0]
             stop = r_tuple[1]
             if (not regions_to_check_indices) or (i in regions_to_check_indices):
-                if r_tuple[2] == 0 or (stop - start) < min_region_length: # skip gaps and regions that are too small
+                # skip gaps and regions that are too small
+                if r_tuple[2] == 0:
+                    run.info(f"\tREGION {i}", f"gap region (SKIPPING)", overwrite_verbose=anvio.DEBUG)
+                    continue
+                elif (stop - start) < min_region_length:
                     run.info(f"\tREGION {i}", f"too small to check (<{min_region_length} bp)", overwrite_verbose=anvio.DEBUG)
                     continue
                 region_cov_array = coverage[start:stop]
