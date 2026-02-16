@@ -1595,6 +1595,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | WRITING TO DB 💾 ...")
         self.store_contigs_buffer()
+        self.store_zero_coverage_for_skipped_splits()
         self.auxiliary_db.close()
 
         self.progress.end(timing_filepath='anvio.debug.timing.txt' if anvio.DEBUG else None)
@@ -1629,7 +1630,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             diff = self.num_reads_mapped - self.total_reads_kept
             perc = (1 - self.total_reads_kept / self.num_reads_mapped) * 100
 
-            if self.contig_names_of_interest:
+            if self._user_specified_contigs_of_interest:
                 self.run.warning(f"There were {pp(diff)} reads present in the BAM file that did not end up being used "
                                  f"by the profiler, which corresponds to about {perc}% of all reads. This is "
                                  f"most likely due to the parameter `--contigs-of-interest`. Regardless, anvi'o "
@@ -1738,6 +1739,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | WRITING TO DB 💾 ...")
         self.store_contigs_buffer()
+        self.store_zero_coverage_for_skipped_splits()
         self.auxiliary_db.close()
 
         self.progress.end(timing_filepath='anvio.debug.timing.txt' if anvio.DEBUG else None)
