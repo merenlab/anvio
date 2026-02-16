@@ -2970,13 +2970,11 @@ D = {
                 ),
     'write-buffer-size-per-thread': (
             ['--write-buffer-size-per-thread'],
-            {'default': 500,
+            {'default': 5000,
              'metavar': 'INT',
              'required': False,
-             'help': "How many items should be kept in memory before they are written do the disk. The default is "
-                     "%(default)d per thread. So a single-threaded job would have a write buffer size of "
-                     "%(default)d, whereas a job with 4 threads would have a write buffer size of 4*%(default)d. "
-                     "The larger the buffer size, the less frequent the program will access to the disk, yet the more memory "
+             'help': "How many contigs should be kept in memory before they are written to the disk. The default is "
+                     "%(default)d. The larger the buffer size, the less frequently the program will access the disk, yet the more memory "
                      "will be consumed since the processed items will be cleared off the memory only after they are written "
                      "to the disk. The default buffer size will likely work for most cases. Please keep an eye on the memory "
                      "usage output to make sure the memory use never exceeds the size of the physical memory."}
