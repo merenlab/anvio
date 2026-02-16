@@ -1097,8 +1097,16 @@ class BAMProfiler(dbops.ContigsSuperclass):
                              "OK with it as well." % (self.contigs_db_path))
             return
 
+        # Use a lightweight SQL query to find contigs with genes, instead of triggering
+        # the contig_name_to_genes LazyProperty which would load all gene/contig data
+        import anvio.db as db
+        _db = db.DB(self.contigs_db_path, None, ignore_version=True)
+        contigs_with_genes = set(_db.get_single_column_from_table(
+            t.genes_in_contigs_table_name, 'contig', unique=True))
+        _db.disconnect()
+
         contig_names = set(contig_names)
-        contigs_without_any_gene_calls = [c for c in contig_names if c not in self.contig_name_to_genes]
+        contigs_without_any_gene_calls = [c for c in contig_names if c not in contigs_with_genes]
 
         if len(contigs_without_any_gene_calls):
             import random
