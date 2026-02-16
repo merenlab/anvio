@@ -2973,7 +2973,7 @@ D = {
             {'default': 5000,
              'metavar': 'INT',
              'required': False,
-             'help': "How many contigs should be kept in memory before they are written to the disk. The default is "
+             'help': "How many splits should be kept in memory before they are written to the disk. The default is "
                      "%(default)d. The larger the buffer size, the less frequently the program will access the disk, yet the more memory "
                      "will be consumed since the processed items will be cleared off the memory only after they are written "
                      "to the disk. The default buffer size will likely work for most cases. Please keep an eye on the memory "
