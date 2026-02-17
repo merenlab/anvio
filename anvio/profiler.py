@@ -1714,7 +1714,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.info('Number of sequences in the contigs DB', pp(len(self.contig_names)))
 
         if self.contig_names_of_interest:
-            indexes = [self.contig_names.index(r) for r in self.contig_names_of_interest if r in self.contig_names]
+            contig_name_to_index = {name: i for i, name in enumerate(self.contig_names)}
+            indexes = [contig_name_to_index[r] for r in self.contig_names_of_interest if r in contig_name_to_index]
             self.contig_names = [self.contig_names[i] for i in indexes]
             self.contig_lengths = [self.contig_lengths[i] for i in indexes]
             self.run.info('Number of contigs selected for analysis', pp(len(self.contig_names)), mc='green')
