@@ -5,6 +5,7 @@ import os
 import shutil
 
 import anvio
+import anvio.fastalib as f
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
@@ -99,7 +100,7 @@ class FAMSA:
             >>> f = FAMSA()
             >>> f.run_default([('seq1', 'ATCATCATCGA'), ('seq2', 'ATCGAGTCGAT')])
             {u'seq1': u'ATCATCATCGA-', u'seq2': u'ATCG-AGTCGAT'}
-        
+
         """
 
         tmp_dir = filesnpaths.get_temp_directory_path()
@@ -133,18 +134,10 @@ class FAMSA:
         alignments = {}
 
         # parse the output, and fill alignments
-        defline, seq = None, None
-        with open(output_file_path, 'r') as output:
-            for line in [o for o in output.read().split('\n')[2:-2] if len(o)] + ['>']:
-                if line.startswith('>'):
-                    if defline:
-                        alignments[defline[1:]] = seq
-                    defline, seq = line, None
-                else:
-                    if not seq:
-                        seq = line
-                    else:
-                        seq += line
+        output = f.SequenceSource(output_file_path)
+
+        while next(output):
+            alignments[output.id] = output.seq
 
         if not debug:
             shutil.rmtree(tmp_dir)
