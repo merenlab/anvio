@@ -718,9 +718,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # store our run object. 'why?', you may ask. well, keep reading.
         my_run = self.run
 
-        # Initialize contigs db
+        # Initialize contigs db (contig_sequences are loaded lazily — in profile_single_thread
+        # or via shared memory in profile_multi_thread)
         dbops.ContigsSuperclass.__init__(self, self.args, r=null_run, p=self.progress)
-        self.init_contig_sequences(contig_names_of_interest=self.contig_names_of_interest)
 
         # Use a lightweight SQL query to get all contig names instead of triggering
         # the contigs_basic_info LazyProperty for ALL contigs (which would defeat
@@ -1568,6 +1568,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
     def profile_single_thread(self):
         """The main method for anvi-profile when num_threads is 1"""
+
+        if not self.contig_sequences:
+            self.init_contig_sequences(contig_names_of_interest=set(self.contig_names))
 
         bam_file = bamops.BAMFileObject(self.input_file_path)
         bam_file.fetch_filter = self.fetch_filter
