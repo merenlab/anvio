@@ -2105,6 +2105,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     self.progress.increment(received_contigs)
                     self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | MEMORY 🧠  {mem_usage} ({mem_diff}) ...")
 
+                    if contig is not None:
+                        self.buffer_splits += len(contig.splits)
+
                     if self.write_buffer_size > 0 and self.buffer_splits >= self.write_buffer_size:
                         self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | WRITING TO DB 💾 ...")
                         self.store_contigs_buffer()
@@ -2119,9 +2122,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
                         del self.contigs[:]
                         self.buffer_splits = 0
                         gc.collect()
-                    else:
-                        if contig is not None:
-                            self.buffer_splits += len(contig.splits)
 
                 except KeyboardInterrupt:
                     self.run.info_single("Anvi'o profiler received SIGINT, terminating all processes...", nl_before=2)
