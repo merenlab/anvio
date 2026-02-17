@@ -642,7 +642,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.num_threads = int(A('num_threads') or 1)
         self.queue_size = int(A('queue_size') if A('queue_size') is not None else 0)
         self.write_buffer_size_per_thread = int(A('write_buffer_size_per_thread') if A('write_buffer_size_per_thread') is not None else 500)
-        self.write_buffer_size = self.write_buffer_size_per_thread * self.num_threads
+        self.write_buffer_size = 5000  # flush after this many splits
+        self.buffer_splits = 0
         self.total_length_of_all_contigs = 0
         self.total_coverage_values_for_all_contigs = 0
         self.total_reads_kept = 0
@@ -1597,12 +1598,16 @@ class BAMProfiler(dbops.ContigsSuperclass):
             msg = '%d/%d contigs ⚙  | MEMORY 🧠  %s (%s)' % (received_contigs, self.num_contigs, mem_usage, mem_diff)
             self.progress.update(msg)
 
+            # Track splits for buffer flushing
+            if contig is not None:
+                self.buffer_splits += len(contig.splits)
+
             # Here you're about to witness the poor side of Python (or our use of it). Although
             # we couldn't find any refs to these objects, garbage collecter kept them in the
             # memory. So here we are accessing to the atomic data structures in our split
             # objects to try to relieve the memory by encouraging the garbage collector to
             # realize what's up. Afterwards, we explicitly call the garbage collector
-            if self.write_buffer_size > 0 and len(self.contigs) % self.write_buffer_size == 0:
+            if self.write_buffer_size > 0 and self.buffer_splits >= self.write_buffer_size:
                 self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | WRITING TO DB 💾 ...")
                 self.store_contigs_buffer()
                 for c in self.contigs:
@@ -1614,6 +1619,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     del c.coverage
                     del c
                 del self.contigs[:]
+                self.buffer_splits = 0
                 gc.collect()
 
         self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | WRITING TO DB 💾 ...")
