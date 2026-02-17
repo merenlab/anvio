@@ -66,7 +66,7 @@ class FAMSA:
 
         if output[0:5] != 'FAMSA' or output[-6:].strip() != "Done!":
             with open(log_file_path, "a") as log_file: log_file.write('# THIS IS THE OUTPUT YOU ARE LOOKING FOR:\n\n%s\n' % (output))
-            raise ConfigError("Drivers::FAMSA: Something is worng :/ The output does not like the expected output "
+            raise ConfigError("Drivers::FAMSA: Something is wrong :/ The output does not look like the expected output "
                               "for a proper FAMSA run. You can find the output in this log file: %s" % (log_file_path))
 
         alignments = {}
@@ -99,11 +99,57 @@ class FAMSA:
             >>> f = FAMSA()
             >>> f.run_default([('seq1', 'ATCATCATCGA'), ('seq2', 'ATCGAGTCGAT')])
             {u'seq1': u'ATCATCATCGA-', u'seq2': u'ATCG-AGTCGAT'}
-
-        But it is not implemented yet. If it becomes a necessity, please do implement :)
+        
         """
 
-        raise ConfigError("Default alignment option for Famsa is not implemented :/")
+        tmp_dir = filesnpaths.get_temp_directory_path()
+        log_file_path = os.path.join(tmp_dir, '00_log.txt')
+        input_file_path = os.path.join(tmp_dir, 'input.fa')
+        output_file_path = os.path.join(tmp_dir, 'output.fa')
+
+        self.run.info('Running %s' % self.program_name, '%d sequences will be aligned' % len(sequences_list))
+        self.run.info('Log file path', log_file_path)
+        self.run.info('Input file path', input_file_path)
+        self.run.info('Output file path', output_file_path)
+
+        sequences_data = ''.join(['>%s\n%s\n' % (t[0], t[1]) for t in sequences_list])
+
+        with open(input_file_path, 'w') as input_file:
+            input_file.write(sequences_data)
+
+        cmd_line = [self.program_name, input_file_path, output_file_path]
+
+        additional_params = self.get_additional_params_from_shell()
+        if additional_params:
+            cmd_line += additional_params
+
+        output = utils.run_command(cmd_line, log_file_path)
+        
+        if not os.path.exists(output_file_path) or os.path.getsize(output_file_path) == 0:
+            with open(log_file_path, "a") as log_file: log_file.write('# THIS IS THE OUTPUT YOU ARE LOOKING FOR:\n\n%s\n' % (output))
+            raise ConfigError("Drivers::FAMSA: Something went wrong with this alignment that was working on %d "
+                              "sequences :/ You can find the output in this log file: %s" % (len(sequences_list), log_file_path))
+        
+        alignments = {}
+
+        # parse the output, and fill alignments
+        defline, seq = None, None
+        with open(output_file_path, 'r') as output:
+            for line in [o for o in output.read().split('\n')[2:-2] if len(o)] + ['>']:
+                if line.startswith('>'):
+                    if defline:
+                        alignments[defline[1:]] = seq
+                    defline, seq = line, None
+                else:
+                    if not seq:
+                        seq = line
+                    else:
+                        seq += line
+
+        if not debug:
+            shutil.rmtree(tmp_dir)
+
+        return alignments
 
 
     def get_additional_params_from_shell(self):
