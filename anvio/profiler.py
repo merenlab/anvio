@@ -7,6 +7,7 @@ import os
 import sys
 import copy
 import json
+import queue
 import shutil
 import argparse
 import numpy as np
@@ -52,10 +53,9 @@ __email__ = "a.murat.eren@gmail.com"
 null_progress = terminal.Progress(verbose=False)
 null_run = terminal.Run(verbose=False)
 pp = terminal.pretty_print
-run = terminal.Run()
 
 
-def _cleanup_shared_memory(shm_name):
+def _cleanup_shared_memory(shm_name, run=None):
     """Safely close and unlink a shared memory segment, warn on failure."""
     if not shm_name:
         return
@@ -65,7 +65,10 @@ def _cleanup_shared_memory(shm_name):
         shm.close()
         shm.unlink()
     except Exception as e:
-        run.warning(f"Failed to clean up shared memory segment '{shm_name}': {e}")
+        if run:
+            run.warning(f"Failed to clean up shared memory segment '{shm_name}': {e}")
+        else:
+            sys.stderr.write(f"WARNING: Failed to clean up shared memory segment '{shm_name}': {e}\n")
 
 
 def _pack_shared_memory_worker(result_queue, contigs_db_path, split_names_of_interest, contig_names):
@@ -85,26 +88,34 @@ def _pack_shared_memory_worker(result_queue, contigs_db_path, split_names_of_int
             cs.split_names_of_interest = split_names_of_interest
 
         # Load contig sequences for only the contigs we need
+        result_queue.put("Loading contig sequences ...")
         cs.init_contig_sequences(contig_names_of_interest=set(contig_names))
 
         # Pack contig_sequences into shared memory (mode='bytes')
+        result_queue.put("Packing contig sequences into shared memory ...")
         seq_data = {}
         for name in contig_names:
             if name in cs.contig_sequences:
                 seq_data[name] = cs.contig_sequences[name]['sequence']
         seq_store = SharedDataStore(seq_data, mode='bytes')
+        result_queue.put(('shm_name', seq_store.shm.name))
+        del seq_data
 
         # Pack nt_positions_info into shared memory (mode='numpy_uint8')
-        # Trigger lazy loading
+        result_queue.put("Loading nucleotide position info ...")
         _ = cs.nt_positions_info
+        result_queue.put("Packing nucleotide position info into shared memory ...")
         nt_data = {}
         for name in contig_names:
             if name in cs.nt_positions_info:
                 nt_data[name] = cs.nt_positions_info[name]
         nt_store = SharedDataStore(nt_data, mode='numpy_uint8')
+        result_queue.put(('shm_name', nt_store.shm.name))
+        del nt_data
 
         # Build per-contig JSON blobs with compact keys:
         # 's' = splits (from splits_basic_info), 'g' = genes (from contig_name_to_genes)
+        result_queue.put("Packing contig metadata into shared memory ...")
         _ = cs.splits_basic_info
         _ = cs.contig_name_to_genes
 
@@ -140,6 +151,8 @@ def _pack_shared_memory_worker(result_queue, contigs_db_path, split_names_of_int
             contig_meta[name] = json.dumps(blob)
 
         meta_store = SharedDataStore(contig_meta, mode='bytes')
+        result_queue.put(('shm_name', meta_store.shm.name))
+        del contig_meta
 
         # Unregister from resource tracker so the subprocess doesn't unlink on exit
         from multiprocessing import resource_tracker
@@ -156,7 +169,11 @@ def _pack_shared_memory_worker(result_queue, contigs_db_path, split_names_of_int
         })
 
     except Exception as e:
-        result_queue.put(e)
+        import traceback
+        # Send error as a plain string — ConfigError is not safely picklable across
+        # stdlib multiprocessing boundaries (AnvioError.__init__ doesn't pass args to
+        # Exception.__init__, so pickle reconstruction loses the message).
+        result_queue.put(RuntimeError(f"Shared memory setup failed: {e}\n\n{traceback.format_exc()}"))
 
 
 def profile_contig_worker(ctx, available_index_queue, output_queue):
@@ -192,9 +209,9 @@ def profile_contig_worker(ctx, available_index_queue, output_queue):
             # genes_in_contigs_dict from the deserialized blob
             ctx.contig_name_to_splits = {contig_name: list(meta['s'].keys())}
             ctx.splits_basic_info = meta['s']
-            ctx.contig_name_to_genes = {contig_name: set(
+            ctx.contig_name_to_genes = {contig_name: [
                 (gid, start, stop) for gid, start, stop in meta['g']
-            )}
+            ]}
             ctx.genes_in_contigs_dict = {int(k): v for k, v in meta['d'].items()}
 
             contig = ctx.process_contig(bam_file, contig_name, contig_length)
@@ -209,9 +226,8 @@ def profile_contig_worker(ctx, available_index_queue, output_queue):
                 del contig.coverage
                 del contig
         except Exception as e:
-            output_queue.put(e)
-
-    bam_file.close()
+            import traceback
+            output_queue.put(ConfigError(f"Worker error: {e}\n\n{traceback.format_exc()}"))
 
 
 class SharedDataStore:
@@ -1493,25 +1509,57 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         result_queue = mp_ctx.Queue()
 
+        # split_names_of_interest is always set by ContigsSuperclass.__init__
+        split_names = self.split_names_of_interest
+
+        self.progress.new('Setting up shared memory')
+        self.progress.update('Starting subprocess ...')
+
         proc = mp_ctx.Process(
             target=_pack_shared_memory_worker,
             args=(result_queue, self.contigs_db_path,
-                  self.split_names_of_interest if hasattr(self, 'split_names_of_interest') else set(),
+                  split_names,
                   self.contig_names)
         )
         proc.start()
 
+        # Poll the queue for progress messages, shm_name registrations, errors, or the final result.
+        # There is no fixed timeout — we wait as long as the subprocess is alive.
+        shm_names_so_far = []
+        result = None
+
         try:
-            result = result_queue.get(timeout=600)
-        except Exception:
+            while True:
+                try:
+                    msg = result_queue.get(timeout=30)
+                except queue.Empty:
+                    if not proc.is_alive():
+                        raise ConfigError(
+                            f"Shared memory setup subprocess died unexpectedly "
+                            f"(exit code {proc.exitcode}). This may indicate the subprocess "
+                            f"ran out of memory while loading contig data.")
+                    continue  # subprocess still alive, keep waiting
+
+                if isinstance(msg, tuple) and len(msg) == 2 and msg[0] == 'shm_name':
+                    shm_names_so_far.append(msg[1])
+                elif isinstance(msg, str):
+                    self.progress.update(msg)
+                elif isinstance(msg, Exception):
+                    raise msg
+                elif isinstance(msg, dict):
+                    result = msg
+                    break
+        except:
+            # Clean up any shared memory segments created before the failure
+            for name in shm_names_so_far:
+                _cleanup_shared_memory(name, run=self.run)
             proc.terminate()
             proc.join()
-            raise ConfigError("Shared memory setup subprocess timed out after 600 seconds.")
+            self.progress.end()
+            raise
 
         proc.join()
-
-        if isinstance(result, Exception):
-            raise result
+        self.progress.end()
 
         return result
 
@@ -2034,6 +2082,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         """The main method for anvi-profile when num_threads is >1"""
 
         # Step 1: Load contig data in a subprocess and pack into shared memory
+        self._shm_names = []
         shm_info = self._setup_shared_memory_via_subprocess()
         self._shm_names = [shm_info['seq_shm_name'], shm_info['nt_shm_name'], shm_info['meta_shm_name']]
 
@@ -2193,7 +2242,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         finally:
             # Always clean up shared memory segments
             for shm_name in self._shm_names:
-                _cleanup_shared_memory(shm_name)
+                _cleanup_shared_memory(shm_name, run=self.run)
 
 
     def store_contigs_buffer(self):
@@ -2305,9 +2354,26 @@ class WorkerContext:
     Carries only the attributes needed by process_contig() and its callees,
     avoiding the need to pickle/fork the full BAMProfiler object.
     Must be defined AFTER BAMProfiler since it references its methods.
+
+    The bound methods below form a closed set: process_contig calls
+    populate_gene_info_for_splits, which calls get_gene_info_for_each_position
+    and get_gene_start_stops_in_contig. These methods access the following
+    attributes on `self` (i.e. the WorkerContext instance):
+
+        contig_sequences, contig_name_to_splits, splits_basic_info,
+        contig_name_to_genes, genes_in_contigs_dict, nt_positions_info,
+        a_meta, sample_id, skip_SNV_profiling, skip_INDEL_profiling,
+        profile_SCVs, min_coverage_for_variability, report_variability_full,
+        min_percent_identity, skip_edges, input_file_path, fetch_filter,
+        contig_names, contig_lengths
+
+    If process_contig or its callees are modified to access new attributes,
+    those must be added to _build_worker_context() as well.
     """
 
-    # Bind the methods workers need directly from BAMProfiler / ContigsSuperclass
+    # Bind the methods workers need directly from BAMProfiler / ContigsSuperclass.
+    # In Python 3, unbound methods are plain functions, so this works as long as
+    # these methods only access attributes listed above on `self`.
     process_contig = BAMProfiler.process_contig
     populate_gene_info_for_splits = BAMProfiler.populate_gene_info_for_splits
     get_gene_info_for_each_position = dbops.ContigsSuperclass.get_gene_info_for_each_position
