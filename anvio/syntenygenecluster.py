@@ -276,7 +276,7 @@ class SyntenyGeneCluster():
                     pangenome_data_list += [group]
                 self.run.info_single(f"{genome} ✅")
             else:
-                self.run.info_single(f"{genome} ⛔ -- excluded on user's")
+                self.run.info_single(f"{genome} ⛔ -- excluded on user's demand.")
 
         pangenome_data_df = pd.concat(pangenome_data_list)
 
