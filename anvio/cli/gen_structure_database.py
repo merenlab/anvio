@@ -151,10 +151,10 @@ def get_args():
 
     params = {
         'default': 25,
-        'help': anvio.K('write-buffer-size-per-thread')['help'] + \
+        'help': anvio.K('write-buffer-size')['help'] + \
                 ' If --num-threads is 1, this parameter is ignored because the DB is written to after each gene'
     }
-    groupE.add_argument(*anvio.A('write-buffer-size-per-thread'), **anvio.K('write-buffer-size-per-thread', params))
+    groupE.add_argument(*anvio.A('write-buffer-size'), **anvio.K('write-buffer-size', params))
 
     return parser.get_args(parser)
 

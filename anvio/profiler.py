@@ -640,8 +640,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.linkage = A('linkage') or constants.linkage_method_default
         self.num_threads = int(A('num_threads') or 1)
         self.queue_size = int(A('queue_size') if A('queue_size') is not None else 0)
-        self.write_buffer_size_per_thread = int(A('write_buffer_size_per_thread') if A('write_buffer_size_per_thread') is not None else 500)
-        self.write_buffer_size = self.write_buffer_size_per_thread * self.num_threads
+        self.write_buffer_size = int(A('write_buffer_size') or A('write_buffer_size_per_thread') or 5000)
         self.total_length_of_all_contigs = 0
         self.total_coverage_values_for_all_contigs = 0
         self.total_reads_kept = 0
