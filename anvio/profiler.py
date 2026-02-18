@@ -1461,7 +1461,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         for atomic_data_field in self.essential_data_fields_for_anvio_profiles:
             zero_rows = []
             for split_name in splits_info:
-                zero_rows.append((split_name, self.sample_id, 0))
+                zero_rows.append((split_name, self.sample_id, 0.0))
 
             for target in ['splits', 'contigs']:
                 table_name = f"{atomic_data_field}_{target}"
