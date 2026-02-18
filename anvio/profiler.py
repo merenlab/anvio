@@ -1429,76 +1429,94 @@ class BAMProfiler(dbops.ContigsSuperclass):
         This ensures the profile DB and auxiliary DB contain entries for ALL length-eligible
         contigs, not just those with coverage, producing output identical to profiling without
         pre-filtering.
+
+        Processes data in batches to keep memory bounded — with millions of skipped contigs
+        and long contig names (~50 chars), loading everything at once would consume several GB.
         """
 
         if not self._contigs_skipped_by_prefilter:
             return
 
+        batch_size = self.write_buffer_size if self.write_buffer_size > 0 else 5000
 
+        contigs_db = db.DB(self.contigs_db_path, None, ignore_version=True)
 
-        # Get split info for skipped contigs that pass length filters
-        _db = db.DB(self.contigs_db_path, None, ignore_version=True)
+        # Open profile DB once for all atomic data inserts. This bypasses the per-field
+        # TablesForViews overhead (repeated DB open/close and sanity_check, which iterates
+        # all rows twice just to validate types — wasteful at millions of rows).
+        profile_db = dbops.ProfileDatabase(self.profile_db_path, quiet=True)
 
-        # First get lengths for skipped contigs to apply min/max length filter
-        skipped_contigs = self._contigs_skipped_by_prefilter
-        where_clause = "contig IN (%s)" % ','.join(['"%s"' % c for c in skipped_contigs])
-        contig_info = _db.get_some_rows_from_table_as_dict(
-            t.contigs_info_table_name, where_clause=where_clause, string_the_key=True)
+        skipped_list = list(self._contigs_skipped_by_prefilter)
+        skipped_total_length = 0
+        num_skipped_contigs = 0
+        num_skipped_splits = 0
 
-        # Apply the same min/max contig length filters
-        length_eligible_contigs = set()
-        for contig_name, info in contig_info.items():
-            if info['length'] >= self.min_contig_length and info['length'] <= self.max_contig_length:
-                length_eligible_contigs.add(contig_name)
+        # Process skipped contigs in batches: for each batch, query contig lengths,
+        # filter by min/max length, query their splits, then backfill auxiliary + atomic
+        # data. Only one batch of dicts is alive at a time.
+        for i in range(0, len(skipped_list), batch_size):
+            contig_batch = skipped_list[i:i + batch_size]
 
-        if not length_eligible_contigs:
-            _db.disconnect()
+            # Get contig lengths for this batch
+            where_clause = "contig IN (%s)" % ','.join(["'%s'" % c for c in contig_batch])
+            contig_info = contigs_db.get_some_rows_from_table_as_dict(
+                t.contigs_info_table_name, where_clause=where_clause,
+                string_the_key=True, error_if_no_data=False)
+
+            # Apply min/max contig length filters
+            eligible_in_batch = [name for name, info in contig_info.items()
+                                 if self.min_contig_length <= info['length'] <= self.max_contig_length]
+
+            if not eligible_in_batch:
+                continue
+
+            skipped_total_length += sum(contig_info[c]['length'] for c in eligible_in_batch)
+            num_skipped_contigs += len(eligible_in_batch)
+            del contig_info
+
+            # Get split info for length-eligible contigs in this batch
+            where_clause = "parent IN (%s)" % ','.join(["'%s'" % c for c in eligible_in_batch])
+            splits_batch = contigs_db.get_some_rows_from_table_as_dict(
+                t.splits_info_table_name, where_clause=where_clause, error_if_no_data=False)
+            del eligible_in_batch
+
+            if not splits_batch:
+                continue
+
+            # Auxiliary DB: store integer length directly, skipping wasteful np.zeros()
+            # allocation. auxiliary_db.append() would create an all-zero numpy array only
+            # to detect it's all zeros and store the integer length — we shortcut that.
+            for split_name, info in splits_batch.items():
+                self.auxiliary_db.coverage_entries.append((split_name, self.sample_id, info['length']))
+            self.auxiliary_db.store()
+
+            # Atomic data: build zero-value rows once per batch, reuse for all fields × targets
+            zero_rows = [(split_name, self.sample_id, 0.0) for split_name in splits_batch]
+
+            for atomic_data_field in self.essential_data_fields_for_anvio_profiles:
+                for target in ['splits', 'contigs']:
+                    table_name = '%s_%s' % (atomic_data_field, target)
+                    profile_db.db._exec_many(
+                        '''INSERT INTO %s VALUES (?,?,?)''' % table_name, zero_rows)
+
+            # Track split names for downstream use (e.g. clustering)
+            for split_name in splits_batch:
+                self.split_names.add(split_name)
+
+            num_skipped_splits += len(splits_batch)
+            del splits_batch, zero_rows
+
+        contigs_db.disconnect()
+
+        if num_skipped_splits == 0:
+            profile_db.disconnect()
             return
-
-        # Get split info for these contigs
-        where_clause = "parent IN (%s)" % ','.join(['"%s"' % c for c in length_eligible_contigs])
-        splits_info = _db.get_some_rows_from_table_as_dict(
-            t.splits_info_table_name, where_clause=where_clause)
-
-        _db.disconnect()
-
-        if not splits_info:
-            return
-
-        # Backfill auxiliary DB with zero-coverage entries for skipped splits
-        for split_name, split_info in splits_info.items():
-            split_length = split_info['length']
-            # For zero-coverage splits, append stores the integer length (not an array)
-            # which is the convention for all-zero coverage arrays
-            self.auxiliary_db.append(split_name, self.sample_id, np.zeros(split_length, dtype=np.uint16))
-
-        self.auxiliary_db.store()
-
-        # Backfill profile DB atomic data tables with zero-value rows
-        for atomic_data_field in self.essential_data_fields_for_anvio_profiles:
-            zero_rows = []
-            for split_name in splits_info:
-                zero_rows.append((split_name, self.sample_id, 0.0))
-
-            for target in ['splits', 'contigs']:
-                table_name = f"{atomic_data_field}_{target}"
-                TablesForViews(self.profile_db_path,
-                               progress=self.progress) \
-                                    .create_new_view(view_data=zero_rows,
-                                                     table_name=table_name,
-                                                     view_name=None,
-                                                     append_mode=True)
 
         # Update total_length_of_all_contigs to include skipped contigs (needed for
         # correct overall_mean_coverage computation)
-        skipped_total_length = sum(contig_info[c]['length'] for c in length_eligible_contigs)
         self.total_length_of_all_contigs += skipped_total_length
 
         # Update profile DB metadata to include skipped contigs/splits
-        num_skipped_contigs = len(length_eligible_contigs)
-        num_skipped_splits = len(splits_info)
-
-        profile_db = dbops.ProfileDatabase(self.profile_db_path, quiet=True)
         current_num_splits = int(profile_db.db.get_meta_value('num_splits'))
         current_num_contigs = int(profile_db.db.get_meta_value('num_contigs'))
         current_total_length = int(profile_db.db.get_meta_value('total_length'))
@@ -1511,10 +1529,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.num_splits += num_skipped_splits
         self.num_contigs += num_skipped_contigs
         self.total_length += skipped_total_length
-
-        # Add skipped split names to self.split_names so clustering sees all splits
-        for split_name in splits_info:
-            self.split_names.add(split_name)
 
 
     def _setup_shared_memory_via_subprocess(self):
