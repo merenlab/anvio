@@ -1275,6 +1275,15 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if not self.skip_INDEL_profiling:
             self.indels_table = TableForIndels(self.profile_db_path, progress=null_progress)
 
+        self._log_mem("after DB init")
+
+
+    def _log_mem(self, stage):
+        """Log memory usage at a key profiler stage (always written to RUNLOG.txt)."""
+        mem = utils.get_total_memory_usage()
+        if mem:
+            self.run.info("Memory [%s]" % stage, mem, display_only=True)
+
 
     def _run(self):
         self.check_args()
@@ -1352,11 +1361,15 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
             self.run.info("Additional data added to the new profile DB", f"{', '.join(self.layer_additional_keys)}", nl_before=1)
 
+        self._log_mem("before clustering")
+
         if self.contigs_shall_be_clustered:
             self.cluster_contigs()
 
         if self.bam:
             self.bam.close()
+
+        self._log_mem("end of run")
 
         self.run.info_single('Happy 😇', nl_before=1, nl_after=1)
 
@@ -1588,6 +1601,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     shm_names_so_far.append(msg[1])
                 elif isinstance(msg, str):
                     self.progress.update(msg)
+                    self.run.info("Shared memory setup", msg, display_only=True, progress=self.progress)
                 elif isinstance(msg, Exception):
                     raise msg
                 elif isinstance(msg, dict):
@@ -1843,6 +1857,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.layer_additional_data['total_reads_mapped'] = self.num_reads_mapped
         self.layer_additional_keys.append('total_reads_mapped')
 
+        self._log_mem("after BAM init")
+
 
     def init_mock_profile(self):
         self.progress.new('Init')
@@ -2004,6 +2020,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if not self.contig_sequences:
             self.init_contig_sequences(contig_names_of_interest=set(self.contig_names))
 
+        self._log_mem("after loading contig sequences")
+
         bam_file = bamops.BAMFileObject(self.input_file_path)
         bam_file.fetch_filter = self.fetch_filter
 
@@ -2061,6 +2079,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.store_contigs_buffer()
         self.store_zero_coverage_for_skipped_splits()
         self.auxiliary_db.close()
+
+        self._log_mem("after profiling + DB writes")
 
         self.progress.end(timing_filepath='anvio.debug.timing.txt' if anvio.DEBUG else None)
 
@@ -2131,6 +2151,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self._shm_names = [shm_info['seq_shm_name'], shm_info['nt_shm_name'], shm_info['meta_shm_name']]
 
         try:
+            self._log_mem("after shared memory setup")
+
             # Step 2: Build lightweight WorkerContext
             ctx = self._build_worker_context(shm_info)
 
@@ -2154,6 +2176,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
             # Step 4: Collect garbage to reduce COW footprint
             gc.collect()
+
+            self._log_mem("before forking workers")
 
             # Step 5: Fork workers using multiprocess (dill-based) for compatibility
             manager = multiprocessing.Manager()
@@ -2250,6 +2274,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
             self.store_contigs_buffer()
             self.store_zero_coverage_for_skipped_splits()
             self.auxiliary_db.close()
+
+            self._log_mem("after profiling + DB writes")
 
             self.progress.end(timing_filepath='anvio.debug.timing.txt' if anvio.DEBUG else None)
 
