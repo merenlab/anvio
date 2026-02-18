@@ -119,20 +119,24 @@ def _pack_shared_memory_worker(result_queue, contigs_db_path, split_names_of_int
         _ = cs.splits_basic_info
         _ = cs.contig_name_to_genes
 
+        # Build a reverse index from parent contig name to its splits (avoids O(contigs * splits) loop)
+        parent_to_splits = {}
+        for split_name, info in cs.splits_basic_info.items():
+            parent = info['parent']
+            if parent not in parent_to_splits:
+                parent_to_splits[parent] = {}
+            parent_to_splits[parent][split_name] = {
+                'start': info['start'],
+                'end': info['end'],
+                'order_in_parent': info['order_in_parent'],
+            }
+
         contig_meta = {}
         for name in contig_names:
             blob = {}
 
             # Splits for this contig
-            splits = {}
-            for split_name, info in cs.splits_basic_info.items():
-                if info['parent'] == name:
-                    splits[split_name] = {
-                        'start': info['start'],
-                        'end': info['end'],
-                        'order_in_parent': info['order_in_parent'],
-                    }
-            blob['s'] = splits
+            blob['s'] = parent_to_splits.get(name, {})
 
             # Genes for this contig
             if name in cs.contig_name_to_genes:
