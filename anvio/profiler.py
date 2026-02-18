@@ -252,28 +252,30 @@ class SharedDataStore:
         self.mode = mode
         self.index = {}
 
-        # Pass 1: calculate total size and build index
+        # Pass 1: calculate total size and build index (no encoded data retained)
         offset = 0
-        entries = []
         for key, value in data.items():
             if mode == 'bytes':
-                encoded = value.encode('utf-8') if isinstance(value, str) else value
+                length = len(value.encode('utf-8') if isinstance(value, str) else value)
             elif mode == 'numpy_uint8':
-                encoded = value.tobytes()
+                length = value.nbytes
             else:
                 raise ConfigError(f"SharedDataStore: unknown mode '{mode}'")
 
-            length = len(encoded)
             self.index[key] = (offset, length)
-            entries.append((offset, encoded))
             offset += length
 
         total_size = max(offset, 1)  # SharedMemory requires size > 0
 
-        # Pass 2: allocate and copy
+        # Pass 2: allocate buffer and encode directly into it
         self.shm = SharedMemory(create=True, size=total_size)
-        for entry_offset, encoded in entries:
-            self.shm.buf[entry_offset:entry_offset + len(encoded)] = encoded
+        for key, value in data.items():
+            entry_offset, length = self.index[key]
+            if mode == 'bytes':
+                encoded = value.encode('utf-8') if isinstance(value, str) else value
+            else:
+                encoded = value.tobytes()
+            self.shm.buf[entry_offset:entry_offset + length] = encoded
 
     @classmethod
     def from_existing(cls, shm_name, index, mode='bytes'):
