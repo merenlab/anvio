@@ -558,9 +558,10 @@ class PangenomeGraphManager():
             if self.graph.has_edge(edge_j, edge_i):
                 edge_attributes_ji = self.graph[edge_j][edge_i]
 
-                print('one double sided edge')
                 edge_attributes_ji['weight'] += edge_attributes_ij['weight']
                 edge_attributes_ji['directions'].update(edge_attributes_ij['directions'])
+
+                self.graph.remove_edge(edge_i, edge_j)
             else:
                 self.add_edge_to_graph(edge_j, edge_i, edge_attributes_ij)
                 self.graph.remove_edge(edge_i, edge_j)
