@@ -199,9 +199,19 @@ def profile_contig_worker(ctx, available_index_queue, output_queue):
     ctx.contig_sequences = seq_proxy
     ctx.nt_positions_info = nt_proxy
 
-    while True:
-        try:
-            index = available_index_queue.get(True)
+    shm_handles = [seq_proxy.store.shm, nt_proxy.store.shm, meta_store.shm]
+
+    try:
+        while True:
+            try:
+                index = available_index_queue.get(True)
+            except Exception:
+                break
+
+            # None sentinel signals graceful shutdown
+            if index is None:
+                break
+
             contig_name = ctx.contig_names[index]
             contig_length = ctx.contig_lengths[index]
 
@@ -218,20 +228,25 @@ def profile_contig_worker(ctx, available_index_queue, output_queue):
             ]}
             ctx.genes_in_contigs_dict = {int(k): v for k, v in meta['d'].items()}
 
-            contig = ctx.process_contig(bam_file, contig_name, contig_length)
-            output_queue.put(contig)
+            try:
+                contig = ctx.process_contig(bam_file, contig_name, contig_length)
+                output_queue.put(contig)
 
-            if contig is not None:
-                for split in contig.splits:
-                    del split.coverage
-                    del split.auxiliary
-                    del split
-                del contig.splits[:]
-                del contig.coverage
-                del contig
-        except Exception as e:
-            import traceback
-            output_queue.put(ConfigError(f"Worker error: {e}\n\n{traceback.format_exc()}"))
+                if contig is not None:
+                    for split in contig.splits:
+                        del split.coverage
+                        del split.auxiliary
+                        del split
+                    del contig.splits[:]
+                    del contig.coverage
+                    del contig
+            except Exception as e:
+                import traceback
+                output_queue.put(ConfigError(f"Worker error: {e}\n\n{traceback.format_exc()}"))
+    finally:
+        bam_file.close()
+        for shm in shm_handles:
+            shm.close()
 
 
 class SharedDataStore:
@@ -2184,12 +2199,21 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
                 except Exception as worker_error:
                     self.progress.end()
+                    for _ in processes:
+                        available_index_queue.put(None)
                     for proc in processes:
-                        proc.terminate()
+                        proc.join(timeout=5)
+                        if proc.is_alive():
+                            proc.terminate()
                     raise worker_error
 
+            # Send sentinel to each worker for graceful shutdown
+            for _ in processes:
+                available_index_queue.put(None)
             for proc in processes:
-                proc.terminate()
+                proc.join(timeout=10)
+                if proc.is_alive():
+                    proc.terminate()
 
             # Step 7: Restore saved objects for post-processing
             self.bam = saved_bam
