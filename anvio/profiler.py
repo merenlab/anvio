@@ -2174,8 +2174,14 @@ class BAMProfiler(dbops.ContigsSuperclass):
             self.split_names = set()
             self.contig_names_in_contigs_db = set()
 
-            # Step 4: Collect garbage to reduce COW footprint
+            # Step 4: Collect garbage and try to release freed memory back to OS
             gc.collect()
+
+            try:
+                import ctypes
+                ctypes.CDLL("libc.so.6").malloc_trim(0)
+            except Exception:
+                pass
 
             self._log_mem("before forking workers")
 
