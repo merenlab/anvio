@@ -1275,7 +1275,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if not self.skip_INDEL_profiling:
             self.indels_table = TableForIndels(self.profile_db_path, progress=null_progress)
 
-        self._log_mem("after DB init")
 
 
     def _log_mem(self, stage):
@@ -1293,6 +1292,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.init_dirs_and_dbs()
 
         self.run.log_file_path = self.generate_output_destination('RUNLOG.txt')
+        self._log_mem("after DB init")
         self.run.info('Sample name set', self.sample_id)
         self.run.info('Description', 'Found (%d characters)' % len(self.description) if self.description else None)
         self.run.info('Profile DB path', self.profile_db_path, display_only=True)
@@ -2169,10 +2169,16 @@ class BAMProfiler(dbops.ContigsSuperclass):
             saved_contig_name_to_splits = getattr(self, 'contig_name_to_splits', {})
             saved_split_names = getattr(self, 'split_names', set())
             saved_contig_names_in_contigs_db = getattr(self, 'contig_names_in_contigs_db', set())
+            saved_contigs_skipped = getattr(self, '_contigs_skipped_by_prefilter', set())
+            saved_split_names_of_interest = getattr(self, 'split_names_of_interest', set())
+            saved_contig_names_of_interest = getattr(self, 'contig_names_of_interest', set())
 
             self.contig_name_to_splits = {}
             self.split_names = set()
             self.contig_names_in_contigs_db = set()
+            self._contigs_skipped_by_prefilter = set()
+            self.split_names_of_interest = set()
+            self.contig_names_of_interest = set()
 
             # Step 4: Collect garbage and try to release freed memory back to OS
             gc.collect()
@@ -2275,6 +2281,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
             self.contig_name_to_splits = saved_contig_name_to_splits
             self.split_names = saved_split_names
             self.contig_names_in_contigs_db = saved_contig_names_in_contigs_db
+            self._contigs_skipped_by_prefilter = saved_contigs_skipped
+            self.split_names_of_interest = saved_split_names_of_interest
+            self.contig_names_of_interest = saved_contig_names_of_interest
 
             self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | WRITING TO DB 💾 ...")
             self.store_contigs_buffer()
