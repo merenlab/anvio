@@ -144,19 +144,19 @@ def run_program():
 
     config_file_dict = json.load(open(args.config_file, 'r'))
 
-    if args.local_change:
-        for string in args.local_change:
-            json_string = unquote(string)
-            json_dict = json.loads(json_string)
-            
-            local_update(config_file_dict, json_dict, run)
-
     if args.global_change:
         for string in args.global_change:
             json_string = unquote(string)
             json_dict = json.loads(json_string)
-            
+
             global_update(config_file_dict, json_dict, run)
+
+    if args.local_change:
+        for string in args.local_change:
+            json_string = unquote(string)
+            json_dict = json.loads(json_string)
+
+            local_update(config_file_dict, json_dict, run)
 
     json.dump(config_file_dict, open(args.config_file, 'w'), indent=4, ensure_ascii=False)
     run.info_single(f"Successfully saved JSON")
