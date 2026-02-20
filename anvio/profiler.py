@@ -2166,16 +2166,12 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 if attr in self._lazy_loaded_data:
                     saved_lazy[attr] = self._lazy_loaded_data.pop(attr)
 
-            saved_contig_name_to_splits = getattr(self, 'contig_name_to_splits', {})
             saved_split_names = getattr(self, 'split_names', set())
-            saved_contig_names_in_contigs_db = getattr(self, 'contig_names_in_contigs_db', set())
             saved_contigs_skipped = getattr(self, '_contigs_skipped_by_prefilter', set())
             saved_split_names_of_interest = getattr(self, 'split_names_of_interest', set())
             saved_contig_names_of_interest = getattr(self, 'contig_names_of_interest', set())
 
-            self.contig_name_to_splits = {}
             self.split_names = set()
-            self.contig_names_in_contigs_db = set()
             self._contigs_skipped_by_prefilter = set()
             self.split_names_of_interest = set()
             self.contig_names_of_interest = set()
@@ -2277,9 +2273,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             # Step 7: Restore saved objects for post-processing
             for attr, value in saved_lazy.items():
                 self._lazy_loaded_data[attr] = value
-            self.contig_name_to_splits = saved_contig_name_to_splits
             self.split_names = saved_split_names
-            self.contig_names_in_contigs_db = saved_contig_names_in_contigs_db
             self._contigs_skipped_by_prefilter = saved_contigs_skipped
             self.split_names_of_interest = saved_split_names_of_interest
             self.contig_names_of_interest = saved_contig_names_of_interest
