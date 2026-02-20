@@ -2166,7 +2166,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 if attr in self._lazy_loaded_data:
                     saved_lazy[attr] = self._lazy_loaded_data.pop(attr)
 
-            saved_split_names = getattr(self, 'split_names', set())
             saved_contigs_skipped = getattr(self, '_contigs_skipped_by_prefilter', set())
             saved_split_names_of_interest = getattr(self, 'split_names_of_interest', set())
             saved_contig_names_of_interest = getattr(self, 'contig_names_of_interest', set())
@@ -2231,6 +2230,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | MEMORY 🧠  {mem_usage} ({mem_diff}) ...")
 
                     if contig is not None:
+                        for split in contig.splits:
+                            self.split_names.add(split.name)
                         self.buffer_splits += len(contig.splits)
 
                     if self.write_buffer_size > 0 and self.buffer_splits >= self.write_buffer_size:
@@ -2273,7 +2274,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
             # Step 7: Restore saved objects for post-processing
             for attr, value in saved_lazy.items():
                 self._lazy_loaded_data[attr] = value
-            self.split_names = saved_split_names
             self._contigs_skipped_by_prefilter = saved_contigs_skipped
             self.split_names_of_interest = saved_split_names_of_interest
             self.contig_names_of_interest = saved_contig_names_of_interest
