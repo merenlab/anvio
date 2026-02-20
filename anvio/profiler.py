@@ -2161,10 +2161,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
             self.bam.close()
             self.bam = None
 
-            saved_lazy = {}
-            for attr in ['splits_basic_info', 'contig_name_to_genes', 'genes_in_contigs_dict', 'contigs_basic_info']:
-                if attr in self._lazy_loaded_data:
-                    saved_lazy[attr] = self._lazy_loaded_data.pop(attr)
+            # Drop lazy-loaded caches entirely before forking. If any are needed later,
+            # they can be lazily reloaded from the DB.
+            self._lazy_loaded_data.clear()
 
             saved_contigs_skipped = getattr(self, '_contigs_skipped_by_prefilter', set())
             saved_split_names_of_interest = getattr(self, 'split_names_of_interest', set())
@@ -2272,8 +2271,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     proc.terminate()
 
             # Step 7: Restore saved objects for post-processing
-            for attr, value in saved_lazy.items():
-                self._lazy_loaded_data[attr] = value
             self._contigs_skipped_by_prefilter = saved_contigs_skipped
             self.split_names_of_interest = saved_split_names_of_interest
             self.contig_names_of_interest = saved_contig_names_of_interest
