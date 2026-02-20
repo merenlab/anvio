@@ -2158,7 +2158,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
             # Step 3: Save parent objects that workers don't need, then clear them
             # to reduce copy-on-write surface area
-            saved_bam = self.bam
+            self.bam.close()
             self.bam = None
 
             saved_lazy = {}
@@ -2275,7 +2275,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     proc.terminate()
 
             # Step 7: Restore saved objects for post-processing
-            self.bam = saved_bam
             for attr, value in saved_lazy.items():
                 self._lazy_loaded_data[attr] = value
             self.contig_name_to_splits = saved_contig_name_to_splits
