@@ -126,6 +126,30 @@ class DisCov:
                 regions.append(region_data)
                 current_start = i+1
         return regions
+
+    def get_sliding_window_regions(self, coverage, window_length):
+        """Given an array of coverage values, divides it into non-overlapping windows of the requested length.
+
+        Each region is described as a tuple of (start_position, stop_position, mean_coverage), with start and stop 
+        positions following Python indexing rules to enable slicing.
+        """
+        if window_length > len(coverage):
+            raise ConfigError(f"get_sliding_window_regions() function was requested to make windows of length {window_length}, "
+                              f"but the input coverage array is smaller than that (length {len(coverage)}).")
+        windows = []
+        current_start = 0
+        current_stop = current_start + window_length
+        while current_stop < len(coverage):
+            region_data = (current_start, current_stop, np.mean(coverage[current_start:current_stop]))
+            windows.append(region_data)
+            current_start = current_stop
+            current_stop = current_start + window_length
+            # EDGE CASE: final region is incomplete window
+            if current_stop >= len(coverage):
+                final_region = (current_start, len(coverage), np.mean(coverage[current_start:]))
+                windows.append(final_region)
+
+        return windows
     
     def compute_CV(self, array):
         """Returns coefficient of variation from an input array. Returns None if mean is 0."""
