@@ -29,7 +29,9 @@ class DisCov:
         # establish output files for testing
         unfilt_output = "TEST_UNFILTERED.txt"
         filt_output = "TEST_FILTERED.txt"
-        header = ["contig", "sample", "gap_evenness_gini"]
+        header = ["contig", "sample", "Gap Evenness (Gini)", "SW Depth Evenness MAD (fine/medium/coarse)",
+                  "SW Depth Evenness CV (fine/medium/coarse)", "SW Proportion Covered (fine/medium/coarse)",
+                 ]
         for outfile in [unfilt_output, filt_output]:
             if not filesnpaths.is_file_exists(outfile, dont_raise=True):
                 with open(outfile, 'w') as f:
@@ -71,10 +73,28 @@ class DisCov:
         
         # compute all metrics
         gap_gini = self.gap_evenness_gini(regions, min_num_gaps_for_gini=10)
+        window_scales = {
+            'fine': max(100, len(cov_array) // 100),      # ~1% of contig
+            'medium': max(500, len(cov_array) // 20),     # ~5% of contig  
+            'coarse': max(1000, len(cov_array) // 10)     # ~10% of contig
+        }
+        sliding_window_metrics = self.sliding_window_evenness(cov_array, window_scales)
+        sw_mad_vals = [sliding_window_metrics[scale]['Depth_Evenness_MAD'] for scale in ['fine','medium','coarse']]
+        sw_mad = [f"{m:.04}" if m else "NA" for m in sw_mad_vals ]
+        sliding_window_evenness_mad = "/".join(sw_mad)
+        sw_cv_vals = [sliding_window_metrics[scale]['Depth_Evenness_CV'] for scale in ['fine','medium','coarse']]
+        sw_cv = [f"{m:.04}" if m else "NA" for m in sw_cv_vals ]
+        sliding_window_evenness_cv = "/".join(sw_cv)
+        sw_prop_vals = [sliding_window_metrics[scale]['Proportion_Covered'] for scale in ['fine','medium','coarse']]
+        sw_prop = [f"{m:.04}" if m else "NA" for m in sw_prop_vals ]
+        sliding_window_proportion_covered = "/".join(sw_prop)
 
         # append all metrics to file
         output_list = [self.name, self.sample, 
-                        f"{gap_gini:.4}\t" if gap_gini else "NA"
+                        f"{gap_gini:.4}\t" if gap_gini else "NA",
+                        sliding_window_evenness_mad,
+                        sliding_window_evenness_cv,
+                        sliding_window_proportion_covered,
                       ]
         with open(output_file, 'a') as f:
             f.write("\t".join(output_list) + "\n")
@@ -94,6 +114,40 @@ class DisCov:
             return 1 - G
         else:
             return None
+
+    
+    def sliding_window_evenness(self, coverage, window_len_dict):
+        """Evenness of coverage depth and proportion of covered windows at multiple window lengths.
+        Given a dictionary of labeled window lengths, returns a dictionary of values for each window length:
+            Depth_Evenness_MAD : 1 / (1 + (MAD / median))
+            Depth_Evenness_CV : 1 / (1 + CV); where CV = std-dev / mean
+            Proportion_Covered : # windows with nonzero mean coverage / # windows
+
+            Note that the 1 / (1 + x) is a strategy to get an evenness score between 0 and 1.
+            Note also that we don't worry about dividing by zero because we are already working with nonzero means.
+        """
+
+        results = {scale_name : {} for scale_name in window_len_dict}
+        for scale_name, wlen in window_len_dict.items():
+            results[scale_name]['Depth_Evenness_MAD'] = None
+            results[scale_name]['Depth_Evenness_CV'] = None
+            results[scale_name]['Proportion_Covered'] = None
+            if wlen > len(coverage):
+                continue
+
+            windows = self.get_sliding_window_regions(coverage, wlen)
+            nonzero_window_means = [x for x in windows if x[2] > 0]
+            median_depth, depth_MAD = self.compute_median_and_MAD(nonzero_window_means) # will be None if <3 windows
+            cv_of_means = self.compute_CV(nonzero_window_means) # will be None if mean of means is None
+
+            if median_depth:
+                mad_dispersion = depth_MAD / median_depth
+                results[scale_name]['Depth_Evenness_MAD'] = 1 / (1 + mad_dispersion)
+            if cv_of_means:
+                results[scale_name]['Depth_Evenness_CV'] = 1 / (1 + cv_of_means)
+
+            results[scale_name]['Proportion_Covered'] = len(nonzero_window_means) / len(windows)
+        return results
         
 
     ##### HELPER FUNCTIONS #####
