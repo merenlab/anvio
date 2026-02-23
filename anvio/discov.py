@@ -127,6 +127,15 @@ class DisCov:
                 current_start = i+1
         return regions
     
+    def compute_CV(self, array):
+        """Returns coefficient of variation from an input array. Returns None if mean is 0."""
+
+        mean = np.mean(array)
+        std = np.std(array)
+        if mean == 0:
+            return None
+        return std / mean
+
     def compute_gini_coeff(self, array):
         """Computes the Gini coefficient from an input array.
 
@@ -141,6 +150,15 @@ class DisCov:
         
         gini = (2 * np.sum(index * array)) / (m * np.sum(array)) - (m+1)/m
         return gini
+
+    def compute_median_and_MAD(self, array):
+        """Returns the median and the median absolute deviation of the input array. If there are less than 3 data points, returns None."""
+
+        if len(array) < 3:
+            return None, None
+        median = np.median(array)
+        mad = np.median(np.abs(array - median))
+        return median, mad
 
 
     ##### FILTER FUNCTIONS #####
