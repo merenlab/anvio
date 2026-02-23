@@ -9,6 +9,7 @@ import anvio.utils as utils
 import anvio.filesnpaths as filesnpaths
 
 from anvio.terminal import Run
+from anvio.errors import ConfigError
 
 # use --debug flag to allow things to be written to terminal
 run = Run()
