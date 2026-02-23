@@ -12,13 +12,7 @@ import shutil
 import argparse
 import numpy as np
 
-# multiprocess is a fork of multiprocessing that uses the dill serializer instead of pickle
-# using the multiprocessing module directly results in a pickling error in Python 3.10 which
-# goes like this:
-#
-#   >>> AttributeError: Can't pickle local object 'SOMEFUNCTION.<locals>.<lambda>' multiprocessing
-#
-import multiprocess as multiprocessing
+import multiprocessing
 
 from collections import OrderedDict
 
@@ -1556,13 +1550,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
     def _setup_shared_memory_via_subprocess(self):
         """Load contig data in a subprocess and pack into shared memory segments.
 
-        Uses stdlib multiprocessing (not multiprocess/dill) with 'fork' on Linux,
-        'spawn' on macOS. Returns dict with 6 keys (3 segments x name+index).
+        Uses 'fork' on Linux, 'spawn' on macOS. Returns dict with 6 keys
+        (3 segments x name+index).
         """
-        import multiprocessing as stdlib_mp
-
         ctx_method = 'fork' if sys.platform.startswith('linux') else 'spawn'
-        mp_ctx = stdlib_mp.get_context(ctx_method)
+        mp_ctx = multiprocessing.get_context(ctx_method)
 
         result_queue = mp_ctx.Queue()
 
@@ -2156,46 +2148,29 @@ class BAMProfiler(dbops.ContigsSuperclass):
             # Step 2: Build lightweight WorkerContext
             ctx = self._build_worker_context(shm_info)
 
-            # Step 3: Save parent objects that workers don't need, then clear them
-            # to reduce copy-on-write surface area
+            # Close the BAM file — workers will open their own handles, and the
+            # parent doesn't need it during the worker phase.
             self.bam.close()
             self.bam = None
 
-            # Drop lazy-loaded caches entirely before forking. If any are needed later,
-            # they can be lazily reloaded from the DB.
-            self._lazy_loaded_data.clear()
+            self._log_mem("before spawning workers")
 
-            saved_contigs_skipped = getattr(self, '_contigs_skipped_by_prefilter', set())
-            saved_split_names_of_interest = getattr(self, 'split_names_of_interest', set())
-            saved_contig_names_of_interest = getattr(self, 'contig_names_of_interest', set())
-
-            self.split_names = set()
-            self._contigs_skipped_by_prefilter = set()
-            self.split_names_of_interest = set()
-            self.contig_names_of_interest = set()
-
-            # Step 4: Collect garbage and try to release freed memory back to OS
-            gc.collect()
-
-            try:
-                import ctypes
-                ctypes.CDLL("libc.so.6").malloc_trim(0)
-            except Exception:
-                pass
-
-            self._log_mem("before forking workers")
-
-            # Step 5: Fork workers using multiprocess (dill-based) for compatibility
-            manager = multiprocessing.Manager()
-            available_index_queue = manager.Queue()
-            output_queue = manager.Queue(self.queue_size)
+            # Step 3: Spawn workers. Using 'spawn' instead of 'fork' avoids the
+            # copy-on-write memory explosion: fork duplicates the parent's entire
+            # address space per worker (Python refcounting dirties every touched
+            # page), while spawn starts fresh processes that only receive the
+            # serialized WorkerContext. This also avoids the need for dill — all
+            # arguments and return values are plain picklable types.
+            mp_ctx = multiprocessing.get_context('spawn')
+            available_index_queue = mp_ctx.Queue()
+            output_queue = mp_ctx.Queue(self.queue_size)
 
             for i in range(0, self.num_contigs):
                 available_index_queue.put(i)
 
             processes = []
             for i in range(0, self.num_threads):
-                processes.append(multiprocessing.Process(target=profile_contig_worker, args=(ctx, available_index_queue, output_queue)))
+                processes.append(mp_ctx.Process(target=profile_contig_worker, args=(ctx, available_index_queue, output_queue)))
 
             for proc in processes:
                 proc.start()
@@ -2208,7 +2183,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             mem_tracker = terminal.TrackMemory(at_most_every=5)
             mem_usage, mem_diff = mem_tracker.start()
 
-            # Step 6: Processing loop
+            # Step 4: Processing loop
             self.progress.update('contigs are being processed ...')
             while received_contigs < self.num_contigs:
                 try:
@@ -2269,11 +2244,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 proc.join(timeout=10)
                 if proc.is_alive():
                     proc.terminate()
-
-            # Step 7: Restore saved objects for post-processing
-            self._contigs_skipped_by_prefilter = saved_contigs_skipped
-            self.split_names_of_interest = saved_split_names_of_interest
-            self.contig_names_of_interest = saved_contig_names_of_interest
 
             self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | WRITING TO DB 💾 ...")
             self.store_contigs_buffer()
