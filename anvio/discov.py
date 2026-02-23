@@ -72,7 +72,9 @@ class DisCov:
         gap_gini = self.gap_evenness_gini(regions, min_num_gaps_for_gini=10)
 
         # append all metrics to file
-        output_list = [self.name, self.sample, gap_gini]
+        output_list = [self.name, self.sample, 
+                        f"{gap_gini:.4}\t" if gap_gini else "NA"
+                      ]
         with open(output_file, 'a') as f:
             f.write("\t".join(output_list) + "\n")
 
@@ -90,7 +92,7 @@ class DisCov:
             G = self.compute_gini_coeff(gaplens)
             return 1 - G
         else:
-            return "NA"
+            return None
         
 
     ##### HELPER FUNCTIONS #####
