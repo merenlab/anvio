@@ -32,6 +32,7 @@ import anvio.clustering as clustering
 import anvio.filesnpaths as filesnpaths
 import anvio.auxiliarydataops as auxiliarydataops
 
+from anvio.discov import DisCov
 from anvio.errors import ConfigError
 from anvio.tables.views import TablesForViews
 from anvio.tables.indels import TableForIndels
@@ -567,6 +568,7 @@ class BAMProfilerQuick:
                          f"{mean:.4}\n")
         else:
             C = utils.CoverageStats(coverage_obj.c, skip_outliers=True)
+            D = DisCov(coverage_obj.c, contig_name, bam_file_name)
             output.write(f"{contig_name}\t"
                          f"{bam_file_name}\t"
                          f"{self.contigs_basic_info[contig_name]['length']}\t"
