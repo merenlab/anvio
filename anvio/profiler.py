@@ -1985,18 +1985,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
             timer.make_checkpoint('Auxiliary analyzed')
 
-        # Strip data not needed by the parent process to reduce pickle size
-        # and per-worker memory. This must happen BEFORE output_queue.put()
-        # since Queue.put() is asynchronous.
-        del contig.coverage.c
-        del contig.coverage.is_outlier
-        contig.coverage.read_iterator_dict = None
+        # output_queue.put(contig) is an expensive operation that does not handle large data
+        # structures well. So we delete everything we can
+        del contig.coverage.c # only split coverage array is needed
         for split in contig.splits:
             del split.per_position_info
-            del split.coverage.is_outlier
-            del split.coverage.is_outlier_in_parent
-            split.coverage.read_iterator_dict = None
-            split.sequence = None
 
         if anvio.DEBUG:
             timer.gen_report('%s Time Report' % contig.name)
