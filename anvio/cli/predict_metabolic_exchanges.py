@@ -77,6 +77,7 @@ def get_args():
     groupD.add_argument(*anvio.A('report-compounds-with-no-prediction'), **anvio.K('report-compounds-with-no-prediction'))
     groupD.add_argument(*anvio.A('exclude-pathway-maps'), **anvio.K('exclude-pathway-maps'))
     groupD.add_argument(*anvio.A('include-pathway-maps'), **anvio.K('include-pathway-maps'))
+    groupD.add_argument(*anvio.A('skip-checking-genome-hashes'), **anvio.K('skip-checking-genome-hashes'))
 
     groupE = parser.add_argument_group('PERFORMANCE', "Because ain't nobody got time for that")
     groupE.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))

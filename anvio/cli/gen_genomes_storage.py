@@ -55,6 +55,7 @@ def get_args():
 
     groupC = parser.add_argument_group("PRO STUFF", "Things you may not have to change. But you never know (unless you read the help).")
     groupC.add_argument(*anvio.A('gene-caller'), **anvio.K('gene-caller'))
+    groupC.add_argument(*anvio.A('skip-checking-genome-hashes'), **anvio.K('skip-checking-genome-hashes'))
 
     groupD = parser.add_argument_group("OUTPUT", "Give it a nice name. Must end with '-GENOMES.db'. This is primarily due to the fact\
                                                   that there are other .db files used throughout anvi'o and it would be better to\

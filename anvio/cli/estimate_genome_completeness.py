@@ -283,6 +283,7 @@ def get_args():
     groupD.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
     groupD.add_argument(*anvio.A('concise'), **anvio.K('concise'))
     groupD.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+    groupD.add_argument(*anvio.A('skip-checking-genome-hashes'), **anvio.K('skip-checking-genome-hashes'))
 
     return parser.get_args(parser)
 

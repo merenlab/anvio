@@ -326,6 +326,7 @@ def get_args():
     groupF.add_argument(*anvio.A('sequence-min-amino-acids'), **anvio.K('sequence-min-amino-acids'))
     groupF.add_argument(*anvio.A('pansequence-min-amino-acids'), **anvio.K('pansequence-min-amino-acids'))
     groupF.add_argument(*anvio.A('min-codon-filter'), **anvio.K('min-codon-filter'))
+    groupF.add_argument(*anvio.A('skip-checking-genome-hashes'), **anvio.K('skip-checking-genome-hashes'))
 
     return parser.get_args(parser)
 
