@@ -6,6 +6,7 @@ import numpy as np
 
 import anvio
 import anvio.utils as utils
+import anvio.filesnpaths as filesnpaths
 
 from anvio.terminal import Run
 
@@ -29,8 +30,9 @@ class DisCov:
         filt_output = "TEST_FILTERED.txt"
         header = ["contig", "sample", "gap_evenness_gini"]
         for outfile in [unfilt_output, filt_output]:
-            with open(outfile, 'w') as f:
-                f.write("\t".join(header) + "\n")
+            if not filesnpaths.is_file_exists(outfile, dont_raise=True):
+                with open(outfile, 'w') as f:
+                    f.write("\t".join(header) + "\n")
 
         # compute all sub-metrics on regular coverage array
         self.compute_all(coverage, unfilt_output, filter_nonspecific_mapping=False)
