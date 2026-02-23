@@ -225,6 +225,15 @@ def profile_contig_worker(ctx, available_index_queue, output_queue):
             try:
                 contig = ctx.process_contig(bam_file, contig_name, contig_length)
                 output_queue.put(contig)
+
+                if contig is not None:
+                    for split in contig.splits:
+                        del split.coverage
+                        del split.auxiliary
+                        del split
+                    del contig.splits[:]
+                    del contig.coverage
+                    del contig
             except Exception as e:
                 import traceback
                 output_queue.put(ConfigError(f"Worker error: {e}\n\n{traceback.format_exc()}"))
