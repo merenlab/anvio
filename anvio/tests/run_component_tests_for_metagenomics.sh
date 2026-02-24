@@ -434,6 +434,21 @@ anvi-merge $PREFILTER_DIR/SAMPLE-*/PROFILE.db \
            -c $PREFILTER_DIR/CONTIGS.db \
            --no-progress
 
+# Repeat with multi-threading to exercise the shared memory + WorkerContext path
+INFO "Testing zero-coverage contig handling with multi-threading"
+for sample in SAMPLE-01 SAMPLE-02
+do
+    anvi-profile -i $PREFILTER_DIR/$sample.bam \
+                 -o $PREFILTER_DIR/${sample}-MT \
+                 -c $PREFILTER_DIR/CONTIGS.db \
+                 --no-progress \
+                 --num-threads 2
+done
+anvi-merge $PREFILTER_DIR/SAMPLE-*-MT/PROFILE.db \
+           -o $PREFILTER_DIR/MERGED-MT \
+           -c $PREFILTER_DIR/CONTIGS.db \
+           --no-progress
+
 INFO "Merging profiles"
 anvi-merge $output_dir/*/PROFILE.db -o $output_dir/SAMPLES-MERGED \
                                     -c $output_dir/CONTIGS.db \
