@@ -31,7 +31,7 @@ class DisCov:
         filt_output = "TEST_FILTERED.txt"
         header = ["contig", "sample", "Gap Evenness (Gini)", "SW Depth Evenness MAD (fine/medium/coarse)",
                   "SW Depth Evenness CV (fine/medium/coarse)", "SW Proportion Covered (fine/medium/coarse)",
-                 ]
+                  "Window-Scaling Variance",]
         for outfile in [unfilt_output, filt_output]:
             if not filesnpaths.is_file_exists(outfile, dont_raise=True):
                 with open(outfile, 'w') as f:
@@ -88,6 +88,7 @@ class DisCov:
         sw_prop_vals = [sliding_window_metrics[scale]['Proportion_Covered'] for scale in ['fine','medium','coarse']]
         sw_prop = [f"{m:.04}" if m else "NA" for m in sw_prop_vals ]
         sliding_window_proportion_covered = "/".join(sw_prop)
+        window_scaling_variance = self.compute_window_scaling_variance(cov_array)
 
         # append all metrics to file
         output_list = [self.name, self.sample, 
@@ -95,6 +96,7 @@ class DisCov:
                         sliding_window_evenness_mad,
                         sliding_window_evenness_cv,
                         sliding_window_proportion_covered,
+                        f"{window_scaling_variance:.4}\t" if window_scaling_variance else "NA",
                       ]
         with open(output_file, 'a') as f:
             f.write("\t".join(output_list) + "\n")
@@ -148,6 +150,76 @@ class DisCov:
 
             results[scale_name]['Proportion_Covered'] = len(nonzero_window_means) / len(windows)
         return results
+
+    def compute_window_scaling_variance(self, coverage, max_window_fraction=0.10, num_window_sizes=20):
+        """Computes the 'window-scaling variance' slope from an array of coverage values.
+
+        Divides the coverage array into non-overlapping windows of logarithmically-spaced
+        sizes ranging from max(100, 1% of array length) to max_window_fraction * array length.
+        For each window size, computes the variance of the per-window mean coverages.
+        Returns the slope of log(variance) vs log(window_size), fit by linear regression. The closer 
+        to -1 this slope is, the more stationary the coverage distribution. The closer to 0, the more 
+        sparse it is.
+
+        Parameters
+        ==========
+        coverage : array-like
+            Array of read recruitment coverage values.
+        max_window_fraction : float
+            Upper bound on window size as a fraction of the array length. Default 0.10
+            (i.e., 10%), which yields ~10 windows at the largest scale. Going above ~15%
+            risks too few windows for reliable variance estimates.
+        num_window_sizes : int
+            Number of logarithmically-spaced window sizes to evaluate. Default 20.
+
+        Returns
+        =======
+        float
+            The scaling slope (i.e., the exponent relating variance to window size).
+        """
+
+        L = len(coverage)
+        min_w = max(100, int(0.01 * L))
+        max_w = int(max_window_fraction * L)
+
+        if min_w >= max_w:
+            raise ConfigError(f"compute_window_scaling_variance() could not construct a valid window size range: "
+                                f"min window size ({min_w}) >= max window size ({max_w}). Your coverage array "
+                                f"(length {L}) may be too short, or max_window_fraction ({max_window_fraction}) too small.")
+
+        # Logarithmically spaced window sizes, deduplicated after rounding to integers
+        window_sizes = np.unique(
+            np.round(np.geomspace(min_w, max_w, num_window_sizes)).astype(int)
+        )
+
+        log_w_vals = []
+        log_var_vals = []
+
+        for w in window_sizes:
+            windows = self.get_sliding_window_regions(coverage, w)
+            means = [region[2] for region in windows]
+
+            if len(means) < 2:
+                # Too few windows to compute meaningful variance; skip this size
+                continue
+
+            var = np.var(means, ddof=1) #ddof means we use unbiased sample variance
+
+            if var <= 0:
+                # Zero or negative variance (e.g., perfectly flat coverage); skip to avoid log(0)
+                continue
+
+            log_w_vals.append(np.log(w))
+            log_var_vals.append(np.log(var))
+
+        if len(log_w_vals) < 2:
+            run.warning(f"compute_window_scaling_variance() could not collect enough valid (window_size, variance) "
+                        f"pairs to fit a slope (got {len(log_w_vals)}). This may indicate that coverage is "
+                        f"extremely flat or that the array is too short.")
+            return None
+
+        slope, _intercept = np.polyfit(log_w_vals, log_var_vals, 1)
+        return slope
         
 
     ##### HELPER FUNCTIONS #####
