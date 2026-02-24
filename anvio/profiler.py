@@ -1345,6 +1345,13 @@ class BAMProfiler(dbops.ContigsSuperclass):
         elif self.input_file_path:
             self.init_profile_from_BAM()
             if self.num_threads > 1 or self.args.force_multi:
+                if self.num_splits > 200000 and self.num_threads > 20:
+                    self.run.warning(f"We noticed that you have more than 200,000 splits and are using more than 20 "
+                                     f"threads. In fact, you have {self.num_splits:,} splits and are using "
+                                     f"{self.num_threads} threads. Based on our experience, the memory requirement for "
+                                     f"this many threads with this many splits is not worth the time gained by "
+                                     f"multithreading. If your job fails because of an out-of-memory (OOM) error, "
+                                     f"please consider re-running with a lower number of threads.")
                 self.profile_multi_thread()
             else:
                 self.profile_single_thread()
