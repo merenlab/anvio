@@ -21,6 +21,7 @@ import multiprocess as multiprocessing
 from collections import OrderedDict
 
 import anvio
+import anvio.db as db
 import anvio.tables as t
 import anvio.dbops as dbops
 import anvio.utils as utils
@@ -697,6 +698,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
         else:
             self.contig_names_of_interest = set([])
 
+        self._user_specified_contigs_of_interest = bool(self.contig_names_of_interest)
+
         if self.list_contigs_and_exit:
             self.list_contigs()
             sys.exit()
@@ -704,13 +707,28 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if not self.contigs_db_path:
             raise ConfigError("No contigs database, no profilin'. Bye.")
 
+        # Pre-filter contigs using BAM index to skip zero-coverage contigs. This must happen
+        # BEFORE ContigsSuperclass.__init__ so that split_names_of_interest is set, causing
+        # all LazyProperties to only load data for contigs with coverage.
+        self._contigs_skipped_by_prefilter = set()
+        if not self.blank and self.input_file_path:
+            self._apply_bam_index_prefilter()
+
         # store our run object. 'why?', you may ask. well, keep reading.
         my_run = self.run
 
         # Initialize contigs db
         dbops.ContigsSuperclass.__init__(self, self.args, r=null_run, p=self.progress)
         self.init_contig_sequences(contig_names_of_interest=self.contig_names_of_interest)
-        self.contig_names_in_contigs_db = set(self.contigs_basic_info.keys())
+
+        # Use a lightweight SQL query to get all contig names instead of triggering
+        # the contigs_basic_info LazyProperty for ALL contigs (which would defeat
+        # the purpose of pre-filtering)
+
+        _db = db.DB(self.contigs_db_path, None, ignore_version=True)
+        self.contig_names_in_contigs_db = set(_db.get_single_column_from_table(
+            t.contigs_info_table_name, 'contig'))
+        _db.disconnect()
 
         # restore our run object. OK. take deep breath. because you are a good programmer, you have
         # this voice in your head tellin gyou that the tinkering with self.run here feels kind of out
@@ -749,6 +767,101 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # additional layer data will be filled later
         self.layer_additional_keys = []
         self.layer_additional_data = {}
+
+
+    def _get_contigs_with_coverage(self):
+        """Scan the BAM index to identify contigs with at least one mapped read.
+
+        This is essentially free (reads only the .bai index, not the BAM data) and returns
+        a set of contig names that have coverage > 0.
+        """
+
+        bam = bamops.BAMFileObject(self.input_file_path, 'rb')
+
+        contigs_with_coverage = set()
+        for stat in bam.get_index_statistics():
+            if stat.mapped > 0:
+                contigs_with_coverage.add(stat.contig)
+
+        bam.close()
+
+        return contigs_with_coverage
+
+
+    def _apply_bam_index_prefilter(self):
+        """Use BAM index statistics to pre-filter contigs before heavy initialization.
+
+        Sets self.split_names_of_interest so that ContigsSuperclass.__init__ only loads
+        data for contigs with coverage. Tracks skipped contigs in self._contigs_skipped_by_prefilter
+        for later zero-coverage backfill.
+        """
+
+
+
+        contigs_with_coverage = self._get_contigs_with_coverage()
+
+        # Get all contig names from the contigs DB
+        _db = db.DB(self.contigs_db_path, None, ignore_version=True)
+        all_contig_names = set(_db.get_single_column_from_table(
+            t.contigs_info_table_name, 'contig'))
+
+        # Preserve the BAM-vs-contigs-DB mismatch check that init_profile_from_BAM performs
+        # on master. Without this, covered BAM contigs not in the contigs DB would be silently
+        # dropped by the prefilter, masking a "wrong contigs DB" mistake.
+        if not self._user_specified_contigs_of_interest:
+            covered_but_missing = contigs_with_coverage - all_contig_names
+            if covered_but_missing:
+                example = covered_but_missing.pop()
+                example_db = all_contig_names.pop() if all_contig_names else 'N/A'
+                _db.disconnect()
+                raise ConfigError("At least one contig name in your BAM file does not match contig names stored in the "
+                                  "contigs database. For instance, this is one contig name found in your BAM file: '%s', "
+                                  "and this is another one found in your contigs database: '%s'. You may be using an "
+                                  "contigs database for profiling that has nothing to do with the BAM file you are "
+                                  "trying to profile, or you may have failed to fix your contig names in your FASTA file "
+                                  "prior to mapping, which is described here: %s"
+                                        % (example, example_db, 'http://goo.gl/Q9ChpS'))
+
+        # If user specified contigs of interest, intersect with those
+        if self.contig_names_of_interest:
+            eligible_contigs = self.contig_names_of_interest & all_contig_names
+        else:
+            eligible_contigs = all_contig_names
+
+        # Contigs with coverage that are also eligible
+        contigs_to_profile = contigs_with_coverage & eligible_contigs
+        self._contigs_skipped_by_prefilter = eligible_contigs - contigs_to_profile
+
+        if not contigs_to_profile:
+            _db.disconnect()
+            if self._user_specified_contigs_of_interest:
+                raise ConfigError("None of the contigs you specified via `--contigs-of-interest` have any mapped "
+                                  "reads in the BAM file. The BAM file does contain reads mapped to other contigs, "
+                                  "but none of them match your list. There is nothing to profile here.")
+            else:
+                raise ConfigError("None of the contigs in the BAM file have any mapped reads. There is nothing "
+                                  "to profile here.")
+
+        # Get split names for the contigs we will actually profile
+        # This is a lightweight SQL query, not a LazyProperty load
+        if contigs_to_profile != all_contig_names:
+            where_clause = "parent IN (%s)" % ','.join(['"%s"' % c for c in contigs_to_profile])
+            split_names_for_covered = set(_db.get_single_column_from_table(
+                t.splits_info_table_name, 'split', where_clause=where_clause))
+
+            self.split_names_of_interest = split_names_for_covered
+
+            # Also update contig_names_of_interest so init_contig_sequences only loads
+            # sequences for contigs with coverage
+            self.contig_names_of_interest = contigs_to_profile
+
+        _db.disconnect()
+
+        num_skipped = len(self._contigs_skipped_by_prefilter)
+        if num_skipped > 0:
+            self.run.info('BAM index pre-filter',
+                          f'{pp(len(contigs_to_profile))} contigs with coverage '
+                          f'({pp(num_skipped)} zero-coverage contigs will be backfilled)')
 
 
     def init_dirs_and_dbs(self):
@@ -979,6 +1092,100 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.auxiliary_db.store()
 
 
+    def store_zero_coverage_for_skipped_splits(self):
+        """Backfill zero-coverage data for contigs that were skipped by BAM index pre-filtering.
+
+        This ensures the profile DB and auxiliary DB contain entries for ALL length-eligible
+        contigs, not just those with coverage, producing output identical to profiling without
+        pre-filtering.
+        """
+
+        if not self._contigs_skipped_by_prefilter:
+            return
+
+
+
+        # Get split info for skipped contigs that pass length filters
+        _db = db.DB(self.contigs_db_path, None, ignore_version=True)
+
+        # First get lengths for skipped contigs to apply min/max length filter
+        skipped_contigs = self._contigs_skipped_by_prefilter
+        where_clause = "contig IN (%s)" % ','.join(['"%s"' % c for c in skipped_contigs])
+        contig_info = _db.get_some_rows_from_table_as_dict(
+            t.contigs_info_table_name, where_clause=where_clause, string_the_key=True)
+
+        # Apply the same min/max contig length filters
+        length_eligible_contigs = set()
+        for contig_name, info in contig_info.items():
+            if info['length'] >= self.min_contig_length and info['length'] <= self.max_contig_length:
+                length_eligible_contigs.add(contig_name)
+
+        if not length_eligible_contigs:
+            _db.disconnect()
+            return
+
+        # Get split info for these contigs
+        where_clause = "parent IN (%s)" % ','.join(['"%s"' % c for c in length_eligible_contigs])
+        splits_info = _db.get_some_rows_from_table_as_dict(
+            t.splits_info_table_name, where_clause=where_clause)
+
+        _db.disconnect()
+
+        if not splits_info:
+            return
+
+        # Backfill auxiliary DB with zero-coverage entries for skipped splits
+        for split_name, split_info in splits_info.items():
+            split_length = split_info['length']
+            # For zero-coverage splits, append stores the integer length (not an array)
+            # which is the convention for all-zero coverage arrays
+            self.auxiliary_db.append(split_name, self.sample_id, np.zeros(split_length, dtype=np.uint16))
+
+        self.auxiliary_db.store()
+
+        # Backfill profile DB atomic data tables with zero-value rows
+        for atomic_data_field in self.essential_data_fields_for_anvio_profiles:
+            zero_rows = []
+            for split_name in splits_info:
+                zero_rows.append((split_name, self.sample_id, 0))
+
+            for target in ['splits', 'contigs']:
+                table_name = f"{atomic_data_field}_{target}"
+                TablesForViews(self.profile_db_path,
+                               progress=self.progress) \
+                                    .create_new_view(view_data=zero_rows,
+                                                     table_name=table_name,
+                                                     view_name=None,
+                                                     append_mode=True)
+
+        # Update total_length_of_all_contigs to include skipped contigs (needed for
+        # correct overall_mean_coverage computation)
+        skipped_total_length = sum(contig_info[c]['length'] for c in length_eligible_contigs)
+        self.total_length_of_all_contigs += skipped_total_length
+
+        # Update profile DB metadata to include skipped contigs/splits
+        num_skipped_contigs = len(length_eligible_contigs)
+        num_skipped_splits = len(splits_info)
+
+        profile_db = dbops.ProfileDatabase(self.profile_db_path, quiet=True)
+        current_num_splits = int(profile_db.db.get_meta_value('num_splits'))
+        current_num_contigs = int(profile_db.db.get_meta_value('num_contigs'))
+        current_total_length = int(profile_db.db.get_meta_value('total_length'))
+        profile_db.db.set_meta_value('num_splits', current_num_splits + num_skipped_splits)
+        profile_db.db.set_meta_value('num_contigs', current_num_contigs + num_skipped_contigs)
+        profile_db.db.set_meta_value('total_length', current_total_length + skipped_total_length)
+        profile_db.disconnect()
+
+        # Update instance variables so downstream code (like clustering) sees the full set
+        self.num_splits += num_skipped_splits
+        self.num_contigs += num_skipped_contigs
+        self.total_length += skipped_total_length
+
+        # Add skipped split names to self.split_names so clustering sees all splits
+        for split_name in splits_info:
+            self.split_names.add(split_name)
+
+
     def set_sample_id(self):
         if self.sample_id:
             utils.check_sample_id(self.sample_id)
@@ -1007,8 +1214,16 @@ class BAMProfiler(dbops.ContigsSuperclass):
                              "OK with it as well." % (self.contigs_db_path))
             return
 
+        # Use a lightweight SQL query to find contigs with genes, instead of triggering
+        # the contig_name_to_genes LazyProperty which would load all gene/contig data
+
+        _db = db.DB(self.contigs_db_path, None, ignore_version=True)
+        contigs_with_genes = set(_db.get_single_column_from_table(
+            t.genes_in_contigs_table_name, 'contig', unique=True))
+        _db.disconnect()
+
         contig_names = set(contig_names)
-        contigs_without_any_gene_calls = [c for c in contig_names if c not in self.contig_name_to_genes]
+        contigs_without_any_gene_calls = [c for c in contig_names if c not in contigs_with_genes]
 
         if len(contigs_without_any_gene_calls):
             import random
@@ -1403,6 +1618,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | WRITING TO DB 💾 ...")
         self.store_contigs_buffer()
+        self.store_zero_coverage_for_skipped_splits()
         self.auxiliary_db.close()
 
         self.progress.end(timing_filepath='anvio.debug.timing.txt' if anvio.DEBUG else None)
@@ -1437,7 +1653,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             diff = self.num_reads_mapped - self.total_reads_kept
             perc = (1 - self.total_reads_kept / self.num_reads_mapped) * 100
 
-            if self.contig_names_of_interest:
+            if self._user_specified_contigs_of_interest:
                 self.run.warning(f"There were {pp(diff)} reads present in the BAM file that did not end up being used "
                                  f"by the profiler, which corresponds to about {perc}% of all reads. This is "
                                  f"most likely due to the parameter `--contigs-of-interest`. Regardless, anvi'o "
@@ -1546,6 +1762,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | WRITING TO DB 💾 ...")
         self.store_contigs_buffer()
+        self.store_zero_coverage_for_skipped_splits()
         self.auxiliary_db.close()
 
         self.progress.end(timing_filepath='anvio.debug.timing.txt' if anvio.DEBUG else None)

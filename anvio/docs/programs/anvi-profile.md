@@ -48,6 +48,12 @@ Where `contigs_i_like.txt` looks like this:
     SF15-RossSeacontig4922
     SF15-RossSeacontig702
 
+### Automatic pre-filtering of contigs without coverage
+
+Before profiling begins, %(anvi-profile)s automatically scans the BAM index to identify contigs that have at least one mapped read, and only loads data for those contigs. This is transparent and requires no user intervention.
+
+This is particularly useful when profiling against a large reference database (such as a collection of MAGs) where most contigs in the %(contigs-db)s will have zero coverage from any individual metagenome. By skipping these contigs early, anvi'o avoids loading unnecessary data into memory. If you also provide a `--contigs-of-interest` file, anvi'o will take the intersection of contigs with coverage and your contigs of interest.
+
 ## Analysis Parameters
 
 Changing these will affect the way that your sequences are analyzed.
@@ -60,7 +66,7 @@ To profile only contigs within a specific length, you can use the flags `--min-c
 
 But beyond these flags, you can specify which contigs you would like to profile much more explicitly using the flag `--contigs-of-interest`.
 
-For instance, if you wish to work only with contigs that have more than a certain coverage across your samples, you can first run the program %(anvi-profile-blitz)s on all BAM files, then use the resulting output file %(bam-stats-txt)s to identify contigs of interest based on their coverages across samples, then put their names in a text file, and pass this file to %(anvi-profile)s using the flag `--contigs-of-interest` (the anvi'o profile used to have a flag for this, `--min-mean-coverage`, that allowed users to remove contigs based on their coverage in a given sample, but [we recently removed it](https://github.com/merenlab/anvio/issues/2047) to promote explicit specification of contigs.
+For instance, if you wish to work only with contigs that have more than a certain coverage across your samples, you can first run the program %(anvi-profile-blitz)s on all BAM files, then use the resulting output file %(bam-stats-txt)s to identify contigs of interest based on their coverages across samples, then put their names in a text file, and pass this file to %(anvi-profile)s using the flag `--contigs-of-interest`.
 
 ### Filter reads
 
