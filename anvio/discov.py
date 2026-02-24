@@ -32,7 +32,8 @@ class DisCov:
         header = ["contig", "sample", "Num Coverage Regions", "Num Gap Regions", "Gap Evenness (Gini)", 
                   "Midpoint Range", "Midpoint Evenness", "SW Depth Evenness MAD (fine/medium/coarse)",
                   "SW Depth Evenness CV (fine/medium/coarse)", "SW Proportion Covered (fine/medium/coarse)",
-                  "Window-Scaling Variance", "Dispersion of Counts (num bins = 50/30/10)"]
+                  "Window-Scaling Variance", "Dispersion of Counts (num bins = 50/30/10)",
+                  "Shannon Entropy Evenness"]
         for outfile in [unfilt_output, filt_output]:
             if not filesnpaths.is_file_exists(outfile, dont_raise=True):
                 with open(outfile, 'w') as f:
@@ -100,6 +101,9 @@ class DisCov:
         disp_all = [f"{m:.04}" if m else "NA" for m in [disp_50, disp_30, disp_10]]
         disp_counts = "/".join(disp_all)
 
+        ## whole-contig metrics
+        shannon = self.Shannon_entropy_evenness(cov_array)
+
         # append all metrics to file
         output_list = [self.name, self.sample,
                         f"{num_coverage_regions}",
@@ -111,7 +115,8 @@ class DisCov:
                         sliding_window_evenness_cv,
                         sliding_window_proportion_covered,
                         f"{window_scaling_variance:.4}" if window_scaling_variance else "NA",
-                        disp_counts
+                        disp_counts,
+                        f"{shannon:.4}" if shannon else "NA"
                       ]
         with open(output_file, 'a') as f:
             f.write("\t".join(output_list) + "\n")
@@ -284,6 +289,47 @@ class DisCov:
             return None
         
         return np.var(counts) / np.mean(counts)
+
+    def Shannon_entropy_evenness(self, coverage):
+        """Computes the Shannon entropy of the coverage distribution, normalized to [0, 1].
+
+        Coverage values are treated as a probability distribution by dividing by their sum.
+        Entropy is then normalized by log(N), where N is the length of the coverage array,
+        which is the maximum possible entropy for a distribution of that length.
+
+        Interpretation:
+        ~0.9–1.0: very even coverage, reads are distributed across the genome with little positional bias
+        ~0.7–0.9: moderate unevenness, perhaps some peaks or troughs but broadly distributed
+        below ~0.5–0.6: substantial coverage concentration, likely indicating strong mapping bias, repetitive regions, or highly variable depth
+
+        Parameters
+        ==========
+        coverage : array-like
+            Array of read recruitment coverage values. Must not sum to zero.
+
+        Returns
+        =======
+        float
+            Evenness score in [0, 1]. Values near 1 indicate coverage is spread
+            uniformly across positions; values near 0 indicate coverage is concentrated
+            at very few positions.
+        """
+
+        coverage = np.asarray(coverage, dtype=float)
+        total = coverage.sum()
+
+        if total <= 0:
+            raise ConfigError("compute_coverage_evenness() received a coverage array with zero total coverage. "
+                              "Shannon entropy is undefined when there are no reads to distribute.")
+
+        N = len(coverage)
+        p = coverage / total
+
+        # Compute entropy, ignoring zero-coverage positions (0 * log(0) := 0 by convention)
+        nonzero = p > 0
+        entropy = -np.sum(p[nonzero] * np.log(p[nonzero]))
+
+        return entropy / np.log(N)
 
 
     ##### HELPER FUNCTIONS #####
