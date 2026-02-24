@@ -39,6 +39,9 @@ class TablesForViews(Table):
             self.progress.reset()
             raise ConfigError(f"View data must be a list of tuples or list of lists :( Yours is a {type(view_data)}.")
 
+        if not view_data:
+            return
+
         if len(view_data[0]) != 3:
             self.progress.reset()
             raise ConfigError(f"Each item in the view data list must be a list or tuple with three items (item name, "
@@ -91,6 +94,9 @@ class TablesForViews(Table):
 
         if not skip_sanity_check:
             self.sanity_check(view_data)
+
+        if not view_data:
+            return
 
         anvio_db = DBClassFactory().get_db_object(self.db_path)
 
