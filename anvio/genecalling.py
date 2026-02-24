@@ -12,7 +12,6 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 
-from anvio.drivers.prodigal import Prodigal
 from anvio.drivers.pyrodigal import Pyrodigal_gv
 
 
@@ -42,8 +41,7 @@ class GeneCaller:
         self.debug = debug
         self.tmp_dirs = []
 
-        self.gene_callers = {'pyrodigal-gv': Pyrodigal_gv,
-                             'prodigal': Prodigal}
+        self.gene_callers = {'pyrodigal-gv': Pyrodigal_gv}
 
         self.gene_caller = gene_caller
 
