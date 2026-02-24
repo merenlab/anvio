@@ -29,7 +29,8 @@ class DisCov:
         # establish output files for testing
         unfilt_output = "TEST_UNFILTERED.txt"
         filt_output = "TEST_FILTERED.txt"
-        header = ["contig", "sample", "Gap Evenness (Gini)", "SW Depth Evenness MAD (fine/medium/coarse)",
+        header = ["contig", "sample", "Gap Evenness (Gini)", "Midpoint Range", "Midpoint Evenness",
+                  "SW Depth Evenness MAD (fine/medium/coarse)",
                   "SW Depth Evenness CV (fine/medium/coarse)", "SW Proportion Covered (fine/medium/coarse)",
                   "Window-Scaling Variance",]
         for outfile in [unfilt_output, filt_output]:
@@ -73,6 +74,7 @@ class DisCov:
         
         # compute all metrics
         gap_gini = self.gap_evenness_gini(regions, min_num_gaps_for_gini=10)
+        mp_range, mp_evenness = self.midpoint_spread_and_evenness(regions)
         window_scales = {
             'fine': max(100, len(cov_array) // 100),      # ~1% of contig
             'medium': max(500, len(cov_array) // 20),     # ~5% of contig  
@@ -93,6 +95,8 @@ class DisCov:
         # append all metrics to file
         output_list = [self.name, self.sample, 
                         f"{gap_gini:.4}\t" if gap_gini else "NA",
+                        f"{mp_range:.4}\t" if mp_range else "NA",
+                        f"{mp_evenness:.4}\t" if mp_evenness else "NA",
                         sliding_window_evenness_mad,
                         sliding_window_evenness_cv,
                         sliding_window_proportion_covered,
@@ -221,6 +225,30 @@ class DisCov:
         slope, _intercept = np.polyfit(log_w_vals, log_var_vals, 1)
         return slope
         
+    def midpoint_spread_and_evenness(self, regions):
+        """Returns the range and evenness based on the midpoints of coverage regions.
+        
+        Given a list of region tuples, determines the midpoint of each region, normalizes by 
+        contig length (so midpoints become fractions), and computes:
+            spread = fraction of contig between first and last coverage region
+            evenness = 1 / (1 + CV of midpoint distances)
+        """
+
+        starts = np.sort(np.array([r[0] for r in regions if r[2] > 0]))
+        stops = np.sort(np.array([r[1] for r in regions if r[2] > 0]))
+        midpoints = (starts + stops) / 2
+        contig_length = regions[-1][1] # ending index of the last region
+        normalized_midpoints = midpoints / contig_length
+
+        midpoint_range = normalized_midpoints.max() - normalized_midpoints.min()
+        inter_region_distances = np.diff(normalized_midpoints)
+        distance_CV = self.compute_CV(inter_region_distances)
+        midpoint_evenness = None
+        if distance_CV is not None and len(normalized_midpoints) > 2:
+            midpoint_evenness = 1 / (1 + distance_CV)
+
+        return midpoint_range, midpoint_evenness
+
 
     ##### HELPER FUNCTIONS #####
     def get_list_of_coverage_and_gap_regions(self, coverage):
