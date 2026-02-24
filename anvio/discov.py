@@ -32,7 +32,7 @@ class DisCov:
         header = ["contig", "sample", "Num Coverage Regions", "Num Gap Regions", "Gap Evenness (Gini)", 
                   "Midpoint Range", "Midpoint Evenness", "SW Depth Evenness MAD (fine/medium/coarse)",
                   "SW Depth Evenness CV (fine/medium/coarse)", "SW Proportion Covered (fine/medium/coarse)",
-                  "Window-Scaling Variance",]
+                  "Window-Scaling Variance", "Dispersion of Counts (num bins = 50/30/10)"]
         for outfile in [unfilt_output, filt_output]:
             if not filesnpaths.is_file_exists(outfile, dont_raise=True):
                 with open(outfile, 'w') as f:
@@ -72,10 +72,12 @@ class DisCov:
             run.info("Detection of contig (post-filter)", filtered_detection, overwrite_verbose=anvio.DEBUG)
         
         # compute all metrics
+        ## region metrics
         num_coverage_regions = len([r for r in regions if r[2] > 0])
         num_gaps = len([r for r in regions if r[2] == 0])
         gap_gini = self.gap_evenness_gini(regions, min_num_gaps_for_gini=10)
         mp_range, mp_evenness = self.midpoint_spread_and_evenness(regions)
+        ## window metrics
         window_scales = {
             'fine': max(100, len(cov_array) // 100),      # ~1% of contig
             'medium': max(500, len(cov_array) // 20),     # ~5% of contig  
@@ -92,6 +94,11 @@ class DisCov:
         sw_prop = [f"{m:.04}" if m else "NA" for m in sw_prop_vals ]
         sliding_window_proportion_covered = "/".join(sw_prop)
         window_scaling_variance = self.compute_window_scaling_variance(cov_array)
+        disp_50 = self.binned_count_dispersion(cov_array, num_windows=50) # fine-scale clustering, small windows
+        disp_30 = self.binned_count_dispersion(cov_array, num_windows=30)
+        disp_10 = self.binned_count_dispersion(cov_array, num_windows=10) # coarse-scale clustering, large windows
+        disp_all = [f"{m:.04}" if m else "NA" for m in [disp_50, disp_30, disp_10]]
+        disp_counts = "/".join(disp_all)
 
         # append all metrics to file
         output_list = [self.name, self.sample,
@@ -104,6 +111,7 @@ class DisCov:
                         sliding_window_evenness_cv,
                         sliding_window_proportion_covered,
                         f"{window_scaling_variance:.4}" if window_scaling_variance else "NA",
+                        disp_counts
                       ]
         with open(output_file, 'a') as f:
             f.write("\t".join(output_list) + "\n")
@@ -123,7 +131,6 @@ class DisCov:
             return 1 - G
         else:
             return None
-
     
     def sliding_window_evenness(self, coverage, window_len_dict):
         """Evenness of coverage depth and proportion of covered windows at multiple window lengths.
@@ -251,6 +258,32 @@ class DisCov:
             midpoint_evenness = 1 / (1 + distance_CV)
 
         return midpoint_range, midpoint_evenness
+
+    def binned_count_dispersion(self, coverage, num_windows=30, min_window_len=100):
+        """Returns index of dispersion D = variance(count)/mean(count), where count is the number of 
+        bases with coverage in each equal-sized window.
+
+        D should be low (moderate dispersion) for present populations and high (overdispersion) for absent populations.
+        """
+
+        window_len = len(coverage) // num_windows
+        if window_len < min_window_len:
+            return None
+        windows = self.get_sliding_window_regions(coverage, window_length=window_len)
+        remainder = len(coverage) % num_windows
+        if remainder != 0 and remainder < 0.9*window_len:
+            windows = windows[:-1] # throw out the last (smaller) region so it doesn't throw off the variance too much
+
+        counts = []
+        for w_start, w_stop, w_mean in windows:
+            w_bases = coverage[w_start:w_stop]
+            w_covered = w_bases[w_bases > 0]
+            counts.append(len(w_covered))
+
+        if np.mean(counts) == 0:
+            return None
+        
+        return np.var(counts) / np.mean(counts)
 
 
     ##### HELPER FUNCTIONS #####
