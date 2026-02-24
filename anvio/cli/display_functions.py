@@ -100,6 +100,7 @@ def get_args():
                                                                        nice to have).")
     groupG.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
     groupG.add_argument(*anvio.A('skip-news'), **anvio.K('skip-news'))
+    groupG.add_argument(*anvio.A('skip-checking-genome-hashes'), **anvio.K('skip-checking-genome-hashes'))
 
     groupH = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
     groupH.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))

@@ -68,7 +68,7 @@ def main():
 
             args.bin_id = bin_name
 
-        if not args.bin_id or args.bin_ids_file:
+        if not args.bin_id and not args.bin_ids_file:
             raise ConfigError("This program needs to know which bin(s) you wish to refine.")
 
         args.mode = 'refine'

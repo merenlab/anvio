@@ -149,6 +149,7 @@ def get_args():
     groupD.add_argument(*anvio.A('get-raw-data-as-json'), **anvio.K('get-raw-data-as-json'))
     groupD.add_argument(*anvio.A('store-json-without-estimation'), **anvio.K('store-json-without-estimation'))
     groupD.add_argument(*anvio.A('estimate-from-json'), **anvio.K('estimate-from-json'))
+    groupD.add_argument(*anvio.A('skip-checking-genome-hashes'), **anvio.K('skip-checking-genome-hashes'))
     groupD.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
     return parser.get_args(parser)
