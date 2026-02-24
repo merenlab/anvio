@@ -6,6 +6,8 @@ import gc
 import os
 import sys
 import copy
+import json
+import queue
 import shutil
 import argparse
 import numpy as np
@@ -51,6 +53,334 @@ __email__ = "a.murat.eren@gmail.com"
 null_progress = terminal.Progress(verbose=False)
 null_run = terminal.Run(verbose=False)
 pp = terminal.pretty_print
+
+
+def _cleanup_shared_memory(shm_name, run=None):
+    """Safely close and unlink a shared memory segment, warn on failure."""
+    if not shm_name:
+        return
+    try:
+        from multiprocessing.shared_memory import SharedMemory
+        shm = SharedMemory(name=shm_name, create=False)
+        shm.close()
+        shm.unlink()
+    except Exception as e:
+        if run:
+            run.warning(f"Failed to clean up shared memory segment '{shm_name}': {e}")
+        else:
+            sys.stderr.write(f"WARNING: Failed to clean up shared memory segment '{shm_name}': {e}\n")
+
+
+def _pack_shared_memory_worker(result_queue, contigs_db_path, split_names_of_interest, contig_names):
+    """Subprocess target: loads contig data and packs into SharedMemory segments.
+
+    Creates a fresh ContigsSuperclass, loads contig_sequences and nt_positions_info,
+    builds per-contig JSON blobs, and packs everything into 3 SharedDataStore segments.
+    Sends segment names and indices back via result_queue.
+    """
+    try:
+        # Build a minimal args object for ContigsSuperclass
+        args = argparse.Namespace(contigs_db=contigs_db_path)
+
+        # Create fresh ContigsSuperclass with only the splits we need
+        cs = dbops.ContigsSuperclass(args, r=null_run, p=null_progress)
+        if split_names_of_interest:
+            cs.split_names_of_interest = split_names_of_interest
+
+        # Load contig sequences for only the contigs we need
+        result_queue.put("Loading contig sequences ...")
+        cs.init_contig_sequences(contig_names_of_interest=set(contig_names))
+
+        # Pack contig_sequences into shared memory (mode='bytes')
+        result_queue.put("Packing contig sequences into shared memory ...")
+        seq_data = {}
+        for name in contig_names:
+            if name in cs.contig_sequences:
+                seq_data[name] = cs.contig_sequences[name]['sequence']
+        seq_store = SharedDataStore(seq_data, mode='bytes')
+        result_queue.put(('shm_name', seq_store.shm.name))
+        del seq_data
+
+        # Pack nt_positions_info into shared memory (mode='numpy_uint8')
+        result_queue.put("Loading nucleotide position info ...")
+        _ = cs.nt_positions_info
+        result_queue.put("Packing nucleotide position info into shared memory ...")
+        nt_data = {}
+        for name in contig_names:
+            if name in cs.nt_positions_info:
+                nt_data[name] = cs.nt_positions_info[name]
+        nt_store = SharedDataStore(nt_data, mode='numpy_uint8')
+        result_queue.put(('shm_name', nt_store.shm.name))
+        del nt_data
+
+        # Build per-contig JSON blobs with compact keys:
+        # 's' = splits (from splits_basic_info), 'g' = genes (from contig_name_to_genes)
+        result_queue.put("Packing contig metadata into shared memory ...")
+        _ = cs.splits_basic_info
+        _ = cs.contig_name_to_genes
+
+        # Build a reverse index from parent contig name to its splits (avoids O(contigs * splits) loop)
+        parent_to_splits = {}
+        for split_name, info in cs.splits_basic_info.items():
+            parent = info['parent']
+            if parent not in parent_to_splits:
+                parent_to_splits[parent] = {}
+            parent_to_splits[parent][split_name] = {
+                'start': info['start'],
+                'end': info['end'],
+                'order_in_parent': info['order_in_parent'],
+            }
+
+        contig_meta = {}
+        for name in contig_names:
+            blob = {}
+
+            # Splits for this contig
+            blob['s'] = parent_to_splits.get(name, {})
+
+            # Genes for this contig
+            if name in cs.contig_name_to_genes:
+                blob['g'] = [[gid, start, stop] for gid, start, stop in cs.contig_name_to_genes[name]]
+            else:
+                blob['g'] = []
+
+            # genes_in_contigs_dict entries for genes in this contig
+            gene_dicts = {}
+            if name in cs.contig_name_to_genes:
+                for gid, start, stop in cs.contig_name_to_genes[name]:
+                    if gid in cs.genes_in_contigs_dict:
+                        gene_dicts[str(gid)] = cs.genes_in_contigs_dict[gid]
+            blob['d'] = gene_dicts
+
+            contig_meta[name] = json.dumps(blob)
+
+        meta_store = SharedDataStore(contig_meta, mode='bytes')
+        result_queue.put(('shm_name', meta_store.shm.name))
+        del contig_meta
+
+        # Unregister from resource tracker so the subprocess doesn't unlink on exit
+        from multiprocessing import resource_tracker
+        for store in [seq_store, nt_store, meta_store]:
+            resource_tracker.unregister('/' + store.shm.name, 'shared_memory')
+
+        result_queue.put({
+            'seq_shm_name': seq_store.shm.name,
+            'seq_index': seq_store.index,
+            'nt_shm_name': nt_store.shm.name,
+            'nt_index': nt_store.index,
+            'meta_shm_name': meta_store.shm.name,
+            'meta_index': meta_store.index,
+        })
+
+    except Exception as e:
+        import traceback
+        # Send error as a plain string — ConfigError is not safely picklable across
+        # stdlib multiprocessing boundaries (AnvioError.__init__ doesn't pass args to
+        # Exception.__init__, so pickle reconstruction loses the message).
+        result_queue.put(RuntimeError(f"Shared memory setup failed: {e}\n\n{traceback.format_exc()}"))
+
+
+def profile_contig_worker(ctx, available_index_queue, output_queue):
+    """Module-level worker function for multi-threaded profiling.
+
+    Attaches to shared memory segments, deserializes per-contig data,
+    and calls ctx.process_contig() for each contig index from the queue.
+    """
+    bam_file = bamops.BAMFileObject(ctx.input_file_path)
+    bam_file.fetch_filter = ctx.fetch_filter
+
+    # Attach to shared memory segments
+    seq_proxy = SharedContigSequencesProxy(
+        SharedDataStore.from_existing(ctx.seq_shm_name, ctx.seq_index, mode='bytes'))
+    nt_proxy = SharedNtPositionsProxy(
+        SharedDataStore.from_existing(ctx.nt_shm_name, ctx.nt_index, mode='numpy_uint8'))
+    meta_store = SharedDataStore.from_existing(ctx.meta_shm_name, ctx.meta_index, mode='bytes')
+
+    ctx.contig_sequences = seq_proxy
+    ctx.nt_positions_info = nt_proxy
+
+    shm_handles = [seq_proxy.store.shm, nt_proxy.store.shm, meta_store.shm]
+
+    try:
+        while True:
+            try:
+                index = available_index_queue.get(True)
+            except Exception:
+                break
+
+            # None sentinel signals graceful shutdown
+            if index is None:
+                break
+
+            contig_name = ctx.contig_names[index]
+            contig_length = ctx.contig_lengths[index]
+
+            # Deserialize per-contig metadata from shared memory
+            meta_json = meta_store.get(contig_name)
+            meta = json.loads(meta_json)
+
+            # Populate contig_name_to_splits, splits_basic_info, contig_name_to_genes,
+            # genes_in_contigs_dict from the deserialized blob
+            ctx.contig_name_to_splits = {contig_name: list(meta['s'].keys())}
+            ctx.splits_basic_info = meta['s']
+            ctx.contig_name_to_genes = {contig_name: [
+                (gid, start, stop) for gid, start, stop in meta['g']
+            ]}
+            ctx.genes_in_contigs_dict = {int(k): v for k, v in meta['d'].items()}
+
+            try:
+                contig = ctx.process_contig(bam_file, contig_name, contig_length)
+                output_queue.put(contig)
+
+                if contig is not None:
+                    for split in contig.splits:
+                        del split.coverage
+                        del split.auxiliary
+                        del split
+                    del contig.splits[:]
+                    del contig.coverage
+                    del contig
+            except Exception as e:
+                import traceback
+                output_queue.put(RuntimeError(f"Worker error: {e}\n\n{traceback.format_exc()}"))
+    finally:
+        bam_file.close()
+        for shm in shm_handles:
+            shm.close()
+
+
+class SharedDataStore:
+    """Pack a dict of data into a single OS-level shared memory segment.
+
+    Two-pass algorithm:
+    - Pass 1: iterate data, calculate offsets, build self.index dict {key: (offset, length)}
+    - Pass 2: allocate SharedMemory(size=total_size), copy data entry-by-entry
+
+    Modes:
+    - 'bytes': values are strings (encoded to UTF-8 bytes)
+    - 'numpy_uint8': values are numpy uint8 arrays (stored as raw bytes)
+    """
+
+    def __init__(self, data, mode='bytes'):
+        from multiprocessing.shared_memory import SharedMemory
+
+        self.mode = mode
+        self.index = {}
+
+        # Pass 1: calculate total size and build index (no encoded data retained)
+        offset = 0
+        for key, value in data.items():
+            if mode == 'bytes':
+                length = len(value.encode('utf-8') if isinstance(value, str) else value)
+            elif mode == 'numpy_uint8':
+                length = value.nbytes
+            else:
+                raise ConfigError(f"SharedDataStore: unknown mode '{mode}'")
+
+            self.index[key] = (offset, length)
+            offset += length
+
+        total_size = max(offset, 1)  # SharedMemory requires size > 0
+
+        # Pass 2: allocate buffer and encode directly into it
+        self.shm = SharedMemory(create=True, size=total_size)
+        for key, value in data.items():
+            entry_offset, length = self.index[key]
+            if mode == 'bytes':
+                encoded = value.encode('utf-8') if isinstance(value, str) else value
+            else:
+                encoded = value.tobytes()
+            self.shm.buf[entry_offset:entry_offset + length] = encoded
+
+    @classmethod
+    def from_existing(cls, shm_name, index, mode='bytes'):
+        """Attach to an existing shared memory segment (for use in workers)."""
+        from multiprocessing.shared_memory import SharedMemory
+        from multiprocessing import resource_tracker
+
+        obj = cls.__new__(cls)
+        obj.mode = mode
+        obj.index = index
+        obj.shm = SharedMemory(name=shm_name, create=False)
+
+        # Worker doesn't own cleanup — unregister from resource tracker
+        resource_tracker.unregister('/' + obj.shm.name, 'shared_memory')
+
+        return obj
+
+    def get(self, key):
+        """Return decoded string or numpy array from buffer."""
+        offset, length = self.index[key]
+        raw = bytes(self.shm.buf[offset:offset + length])
+
+        if self.mode == 'bytes':
+            return raw.decode('utf-8')
+        elif self.mode == 'numpy_uint8':
+            return np.frombuffer(raw, dtype=np.uint8)
+
+    def __contains__(self, key):
+        return key in self.index
+
+    def __len__(self):
+        return len(self.index)
+
+    def keys(self):
+        return self.index.keys()
+
+
+class SharedContigSequencesProxy:
+    """Dict-like wrapper over a SharedDataStore that mimics contig_sequences[name]['sequence']."""
+
+    def __init__(self, store):
+        self.store = store
+
+    def __getitem__(self, key):
+        return {'sequence': self.store.get(key)}
+
+    def __contains__(self, key):
+        return key in self.store
+
+    def __len__(self):
+        return len(self.store)
+
+    def __bool__(self):
+        return len(self.store) > 0
+
+    def keys(self):
+        return self.store.keys()
+
+    def __iter__(self):
+        return iter(self.store.keys())
+
+
+class SharedNtPositionsProxy:
+    """Dict-like wrapper over a SharedDataStore that mimics nt_positions_info[name]."""
+
+    def __init__(self, store):
+        self.store = store
+
+    def __getitem__(self, key):
+        return self.store.get(key)
+
+    def get(self, key, default=None):
+        if key in self.store:
+            return self.store.get(key)
+        return default
+
+    def __contains__(self, key):
+        return key in self.store
+
+    def __len__(self):
+        return len(self.store)
+
+    def __bool__(self):
+        return len(self.store) > 0
+
+    def keys(self):
+        return self.store.keys()
+
+    def __iter__(self):
+        return iter(self.store.keys())
 
 
 class BAMProfilerQuick:
@@ -642,7 +972,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.num_threads = int(A('num_threads') or 1)
         self.queue_size = int(A('queue_size') if A('queue_size') is not None else 0)
         self.write_buffer_size_per_thread = int(A('write_buffer_size_per_thread') if A('write_buffer_size_per_thread') is not None else 500)
-        self.write_buffer_size = self.write_buffer_size_per_thread * self.num_threads
+        self.write_buffer_size = self.write_buffer_size_per_thread * self.num_threads  # flush after this many splits
+        self.buffer_splits = 0
         self.total_length_of_all_contigs = 0
         self.total_coverage_values_for_all_contigs = 0
         self.total_reads_kept = 0
@@ -717,9 +1048,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # store our run object. 'why?', you may ask. well, keep reading.
         my_run = self.run
 
-        # Initialize contigs db
+        # Initialize contigs db (contig_sequences are loaded lazily — in profile_single_thread
+        # or via shared memory in profile_multi_thread)
         dbops.ContigsSuperclass.__init__(self, self.args, r=null_run, p=self.progress)
-        self.init_contig_sequences(contig_names_of_interest=self.contig_names_of_interest)
 
         # Use a lightweight SQL query to get all contig names instead of triggering
         # the contigs_basic_info LazyProperty for ALL contigs (which would defeat
@@ -796,8 +1127,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
         for later zero-coverage backfill.
         """
 
-
-
         contigs_with_coverage = self._get_contigs_with_coverage()
 
         # Get all contig names from the contigs DB
@@ -842,12 +1171,17 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 raise ConfigError("None of the contigs in the BAM file have any mapped reads. There is nothing "
                                   "to profile here.")
 
-        # Get split names for the contigs we will actually profile
-        # This is a lightweight SQL query, not a LazyProperty load
+        # Get split names for the contigs we will actually profile.
+        # Uses a temp table + JOIN with parameterized inserts to avoid SQL injection
+        # from contig names (which come from the BAM header and are user-controlled).
         if contigs_to_profile != all_contig_names:
-            where_clause = "parent IN (%s)" % ','.join(['"%s"' % c for c in contigs_to_profile])
-            split_names_for_covered = set(_db.get_single_column_from_table(
-                t.splits_info_table_name, 'split', where_clause=where_clause))
+            _db._exec("CREATE TEMP TABLE contigs_to_profile (name TEXT)")
+            _db._exec_many("INSERT INTO contigs_to_profile VALUES (?)",
+                           [(c,) for c in contigs_to_profile])
+            cursor = _db._exec(
+                "SELECT s.split FROM %s s JOIN contigs_to_profile p ON s.parent = p.name"
+                % t.splits_info_table_name)
+            split_names_for_covered = set(row[0] for row in cursor)
 
             self.split_names_of_interest = split_names_for_covered
 
@@ -945,6 +1279,14 @@ class BAMProfiler(dbops.ContigsSuperclass):
             self.indels_table = TableForIndels(self.profile_db_path, progress=null_progress)
 
 
+
+    def _log_mem(self, stage):
+        """Log memory usage at a key profiler stage (always written to RUNLOG.txt)."""
+        mem = utils.get_total_memory_usage()
+        if mem:
+            self.run.info("Memory [%s]" % stage, mem, display_only=True)
+
+
     def _run(self):
         self.check_args()
 
@@ -953,6 +1295,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.init_dirs_and_dbs()
 
         self.run.log_file_path = self.generate_output_destination('RUNLOG.txt')
+        self._log_mem("after DB init")
         self.run.info('Sample name set', self.sample_id)
         self.run.info('Description', 'Found (%d characters)' % len(self.description) if self.description else None)
         self.run.info('Profile DB path', self.profile_db_path, display_only=True)
@@ -1005,6 +1348,13 @@ class BAMProfiler(dbops.ContigsSuperclass):
         elif self.input_file_path:
             self.init_profile_from_BAM()
             if self.num_threads > 1 or self.args.force_multi:
+                if self.num_splits > 200000 and self.num_threads > 20:
+                    self.run.warning(f"We noticed that you have more than 200,000 splits and are using more than 20 "
+                                     f"threads. In fact, you have {self.num_splits:,} splits and are using "
+                                     f"{self.num_threads} threads. Based on our experience, the memory requirement for "
+                                     f"this many threads with this many splits is not worth the time gained by "
+                                     f"multithreading. If your job fails because of an out-of-memory (OOM) error, "
+                                     f"please consider re-running with a lower number of threads.")
                 self.profile_multi_thread()
             else:
                 self.profile_single_thread()
@@ -1021,11 +1371,15 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
             self.run.info("Additional data added to the new profile DB", f"{', '.join(self.layer_additional_keys)}", nl_before=1)
 
+        self._log_mem("before clustering")
+
         if self.contigs_shall_be_clustered:
             self.cluster_contigs()
 
         if self.bam:
             self.bam.close()
+
+        self._log_mem("end of run")
 
         self.run.info_single('Happy 😇', nl_before=1, nl_after=1)
 
@@ -1098,76 +1452,103 @@ class BAMProfiler(dbops.ContigsSuperclass):
         This ensures the profile DB and auxiliary DB contain entries for ALL length-eligible
         contigs, not just those with coverage, producing output identical to profiling without
         pre-filtering.
+
+        Uses SQLite temp tables and cursor streaming (fetchmany) to avoid materializing millions
+        of split names in Python. The query planner handles the heavy lifting via indexed JOINs.
         """
 
         if not self._contigs_skipped_by_prefilter:
             return
 
+        fetch_size = self.write_buffer_size if self.write_buffer_size > 0 else 5000
 
+        contigs_db = db.DB(self.contigs_db_path, None, ignore_version=True)
 
-        # Get split info for skipped contigs that pass length filters
-        _db = db.DB(self.contigs_db_path, None, ignore_version=True)
+        # Open profile DB once for all atomic data inserts. This bypasses the per-field
+        # TablesForViews overhead (repeated DB open/close and sanity_check, which iterates
+        # all rows twice just to validate types — wasteful at millions of rows).
+        profile_db = dbops.ProfileDatabase(self.profile_db_path, quiet=True)
 
-        # First get lengths for skipped contigs to apply min/max length filter
-        skipped_contigs = self._contigs_skipped_by_prefilter
-        where_clause = "contig IN (%s)" % ','.join(['"%s"' % c for c in skipped_contigs])
-        contig_info = _db.get_some_rows_from_table_as_dict(
-            t.contigs_info_table_name, where_clause=where_clause, string_the_key=True)
+        # Step 1: Bulk-insert skipped contig names into a temp table
+        contigs_db._exec("CREATE TEMP TABLE skipped_contigs (name TEXT)")
+        contigs_db._exec_many("INSERT INTO skipped_contigs VALUES (?)",
+                              [(c,) for c in self._contigs_skipped_by_prefilter])
 
-        # Apply the same min/max contig length filters
-        length_eligible_contigs = set()
-        for contig_name, info in contig_info.items():
-            if info['length'] >= self.min_contig_length and info['length'] <= self.max_contig_length:
-                length_eligible_contigs.add(contig_name)
+        # Step 2: Query length-eligible contigs via JOIN, streaming results to build
+        # the eligible set and accumulate total length without a big Python dict
+        cursor = contigs_db._exec(
+            """SELECT c.contig, c.length FROM %s c
+               JOIN skipped_contigs s ON c.contig = s.name
+               WHERE c.length BETWEEN %d AND %d""" % (
+                t.contigs_info_table_name, self.min_contig_length, self.max_contig_length))
 
-        if not length_eligible_contigs:
-            _db.disconnect()
+        eligible_names = []
+        skipped_total_length = 0
+        while True:
+            rows = cursor.fetchmany(fetch_size)
+            if not rows:
+                break
+            for contig_name, length in rows:
+                eligible_names.append(contig_name)
+                skipped_total_length += length
+
+        num_skipped_contigs = len(eligible_names)
+
+        if num_skipped_contigs == 0:
+            contigs_db.disconnect()
+            profile_db.disconnect()
             return
 
-        # Get split info for these contigs
-        where_clause = "parent IN (%s)" % ','.join(['"%s"' % c for c in length_eligible_contigs])
-        splits_info = _db.get_some_rows_from_table_as_dict(
-            t.splits_info_table_name, where_clause=where_clause)
+        # Step 3: Insert eligible contig names into a second temp table for the splits JOIN
+        contigs_db._exec("CREATE TEMP TABLE eligible_contigs (name TEXT)")
+        contigs_db._exec_many("INSERT INTO eligible_contigs VALUES (?)",
+                              [(c,) for c in eligible_names])
+        del eligible_names
 
-        _db.disconnect()
+        # Step 4: Stream splits via JOIN, backfilling auxiliary + atomic data per chunk
+        cursor = contigs_db._exec(
+            """SELECT s.split, s.length FROM %s s
+               JOIN eligible_contigs e ON s.parent = e.name""" % t.splits_info_table_name)
 
-        if not splits_info:
+        num_skipped_splits = 0
+        while True:
+            rows = cursor.fetchmany(fetch_size)
+            if not rows:
+                break
+
+            # Auxiliary DB: store integer length directly, skipping wasteful np.zeros()
+            # allocation. auxiliary_db.append() would create an all-zero array only to
+            # detect it's all zeros and store the integer length — we shortcut that.
+            for split_name, length in rows:
+                self.auxiliary_db.coverage_entries.append((split_name, self.sample_id, length))
+            self.auxiliary_db.store()
+
+            # Atomic data: build zero-value rows once per chunk, reuse for all fields × targets
+            zero_rows = [(split_name, self.sample_id, 0.0) for split_name, _ in rows]
+
+            for atomic_data_field in self.essential_data_fields_for_anvio_profiles:
+                for target in ['splits', 'contigs']:
+                    table_name = '%s_%s' % (atomic_data_field, target)
+                    profile_db.db._exec_many(
+                        '''INSERT INTO %s VALUES (?,?,?)''' % table_name, zero_rows)
+
+            # Track split names for downstream use (e.g. clustering)
+            for split_name, _ in rows:
+                self.split_names.add(split_name)
+
+            num_skipped_splits += len(rows)
+
+        contigs_db.disconnect()
+
+        if num_skipped_splits == 0:
+            profile_db.disconnect()
             return
-
-        # Backfill auxiliary DB with zero-coverage entries for skipped splits
-        for split_name, split_info in splits_info.items():
-            split_length = split_info['length']
-            # For zero-coverage splits, append stores the integer length (not an array)
-            # which is the convention for all-zero coverage arrays
-            self.auxiliary_db.append(split_name, self.sample_id, np.zeros(split_length, dtype=np.uint16))
-
-        self.auxiliary_db.store()
-
-        # Backfill profile DB atomic data tables with zero-value rows
-        for atomic_data_field in self.essential_data_fields_for_anvio_profiles:
-            zero_rows = []
-            for split_name in splits_info:
-                zero_rows.append((split_name, self.sample_id, 0))
-
-            for target in ['splits', 'contigs']:
-                table_name = f"{atomic_data_field}_{target}"
-                TablesForViews(self.profile_db_path,
-                               progress=self.progress) \
-                                    .create_new_view(view_data=zero_rows,
-                                                     table_name=table_name,
-                                                     view_name=None,
-                                                     append_mode=True)
 
         # Update total_length_of_all_contigs to include skipped contigs (needed for
         # correct overall_mean_coverage computation)
-        skipped_total_length = sum(contig_info[c]['length'] for c in length_eligible_contigs)
         self.total_length_of_all_contigs += skipped_total_length
 
         # Update profile DB metadata to include skipped contigs/splits
-        num_skipped_contigs = len(length_eligible_contigs)
-        num_skipped_splits = len(splits_info)
-
-        profile_db = dbops.ProfileDatabase(self.profile_db_path, quiet=True)
         current_num_splits = int(profile_db.db.get_meta_value('num_splits'))
         current_num_contigs = int(profile_db.db.get_meta_value('num_contigs'))
         current_total_length = int(profile_db.db.get_meta_value('total_length'))
@@ -1181,9 +1562,118 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.num_contigs += num_skipped_contigs
         self.total_length += skipped_total_length
 
-        # Add skipped split names to self.split_names so clustering sees all splits
-        for split_name in splits_info:
-            self.split_names.add(split_name)
+
+    def _setup_shared_memory_via_subprocess(self):
+        """Load contig data in a subprocess and pack into shared memory segments.
+
+        Uses stdlib multiprocessing (not multiprocess/dill) with 'fork' on Linux,
+        'spawn' on macOS. Returns dict with 6 keys (3 segments x name+index).
+        """
+        import multiprocessing as stdlib_mp
+
+        ctx_method = 'fork' if sys.platform.startswith('linux') else 'spawn'
+        mp_ctx = stdlib_mp.get_context(ctx_method)
+
+        result_queue = mp_ctx.Queue()
+
+        # split_names_of_interest is always set by ContigsSuperclass.__init__
+        split_names = self.split_names_of_interest
+
+        self.progress.new('Setting up shared memory')
+        self.progress.update('Starting subprocess ...')
+
+        proc = mp_ctx.Process(
+            target=_pack_shared_memory_worker,
+            args=(result_queue, self.contigs_db_path,
+                  split_names,
+                  self.contig_names)
+        )
+        proc.start()
+
+        # Poll the queue for progress messages, shm_name registrations, errors, or the final result.
+        # There is no fixed timeout — we wait as long as the subprocess is alive.
+        shm_names_so_far = []
+        result = None
+
+        try:
+            while True:
+                try:
+                    msg = result_queue.get(timeout=30)
+                except queue.Empty:
+                    if not proc.is_alive():
+                        raise ConfigError(
+                            f"Shared memory setup subprocess died unexpectedly "
+                            f"(exit code {proc.exitcode}). This may indicate the subprocess "
+                            f"ran out of memory while loading contig data.")
+                    continue  # subprocess still alive, keep waiting
+
+                if isinstance(msg, tuple) and len(msg) == 2 and msg[0] == 'shm_name':
+                    shm_names_so_far.append(msg[1])
+                elif isinstance(msg, str):
+                    self.progress.update(msg)
+                    self.run.info("Shared memory setup", msg, display_only=True, progress=self.progress)
+                elif isinstance(msg, Exception):
+                    raise msg
+                elif isinstance(msg, dict):
+                    result = msg
+                    break
+        except BaseException:
+            # Clean up any shared memory segments created before the failure
+            for name in shm_names_so_far:
+                _cleanup_shared_memory(name, run=self.run)
+            proc.terminate()
+            proc.join()
+            self.progress.end()
+            raise
+
+        proc.join()
+        self.progress.end()
+
+        return result
+
+
+    def _build_worker_context(self, shm_info):
+        """Build a lightweight WorkerContext with the attributes needed by workers."""
+        ctx = WorkerContext()
+
+        # BAM file info
+        ctx.input_file_path = self.input_file_path
+        ctx.fetch_filter = self.fetch_filter
+
+        # Contig name/length arrays
+        ctx.contig_names = self.contig_names
+        ctx.contig_lengths = self.contig_lengths
+
+        # Shared memory segment info (3 segments x name+index)
+        ctx.seq_shm_name = shm_info['seq_shm_name']
+        ctx.seq_index = shm_info['seq_index']
+        ctx.nt_shm_name = shm_info['nt_shm_name']
+        ctx.nt_index = shm_info['nt_index']
+        ctx.meta_shm_name = shm_info['meta_shm_name']
+        ctx.meta_index = shm_info['meta_index']
+
+        # Profiling flags
+        ctx.skip_SNV_profiling = self.skip_SNV_profiling
+        ctx.skip_INDEL_profiling = self.skip_INDEL_profiling
+        ctx.profile_SCVs = self.profile_SCVs
+        ctx.min_coverage_for_variability = self.min_coverage_for_variability
+        ctx.report_variability_full = self.report_variability_full
+        ctx.min_percent_identity = self.min_percent_identity
+        ctx.skip_edges = self.skip_edges
+
+        # Metadata
+        ctx.a_meta = self.a_meta
+        ctx.sample_id = self.sample_id
+
+        # These will be populated per-contig by the worker from shared memory
+        ctx.contig_sequences = None
+        ctx.nt_positions_info = None
+        ctx.contig_name_to_splits = {}
+        ctx.splits_basic_info = {}
+        ctx.contig_name_to_genes = {}
+        ctx.genes_in_contigs_dict = {}
+
+        return ctx
 
 
     def set_sample_id(self):
@@ -1340,7 +1830,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.run.info('Number of sequences in the contigs DB', pp(len(self.contig_names)))
 
         if self.contig_names_of_interest:
-            indexes = [self.contig_names.index(r) for r in self.contig_names_of_interest if r in self.contig_names]
+            contig_name_to_index = {name: i for i, name in enumerate(self.contig_names)}
+            indexes = [contig_name_to_index[r] for r in self.contig_names_of_interest if r in contig_name_to_index]
             self.contig_names = [self.contig_names[i] for i in indexes]
             self.contig_lengths = [self.contig_lengths[i] for i in indexes]
             self.run.info('Number of contigs selected for analysis', pp(len(self.contig_names)), mc='green')
@@ -1375,6 +1866,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         self.layer_additional_data['total_reads_mapped'] = self.num_reads_mapped
         self.layer_additional_keys.append('total_reads_mapped')
+
+        self._log_mem("after BAM init")
 
 
     def init_mock_profile(self):
@@ -1467,40 +1960,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 split.per_position_info[info] = nt_info[info][split.start:split.end]
 
 
-    @staticmethod
-    def profile_contig_worker(self, available_index_queue, output_queue):
-        bam_file = bamops.BAMFileObject(self.input_file_path)
-        bam_file.fetch_filter = self.fetch_filter
-
-        while True:
-            try:
-                index = available_index_queue.get(True)
-                contig_name = self.contig_names[index]
-                contig_length = self.contig_lengths[index]
-
-                contig = self.process_contig(bam_file, contig_name, contig_length)
-                output_queue.put(contig)
-
-                if contig is not None:
-                    # We mark these for deletion the next time garbage is collected
-                    for split in contig.splits:
-                        del split.coverage
-                        del split.auxiliary
-                        del split
-                    del contig.splits[:]
-                    del contig.coverage
-                    del contig
-            except Exception as e:
-                # This thread encountered an error. We send the error back to the main thread which
-                # will terminate the job.
-                output_queue.put(e)
-
-        # we are closing this object here for clarity, although we are not really closing it since
-        # the code never reaches here and the worker is killed by its parent:
-        bam_file.close()
-        return
-
-
     def process_contig(self, bam_file, contig_name, contig_length):
         timer = terminal.Timer(initial_checkpoint_key='Start')
 
@@ -1568,6 +2027,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
     def profile_single_thread(self):
         """The main method for anvi-profile when num_threads is 1"""
 
+        if not self.contig_sequences:
+            self.init_contig_sequences(contig_names_of_interest=set(self.contig_names))
+
+        self._log_mem("after loading contig sequences")
+
         bam_file = bamops.BAMFileObject(self.input_file_path)
         bam_file.fetch_filter = self.fetch_filter
 
@@ -1597,12 +2061,16 @@ class BAMProfiler(dbops.ContigsSuperclass):
             msg = '%d/%d contigs ⚙  | MEMORY 🧠  %s (%s)' % (received_contigs, self.num_contigs, mem_usage, mem_diff)
             self.progress.update(msg)
 
+            # Track splits for buffer flushing
+            if contig is not None:
+                self.buffer_splits += len(contig.splits)
+
             # Here you're about to witness the poor side of Python (or our use of it). Although
             # we couldn't find any refs to these objects, garbage collecter kept them in the
             # memory. So here we are accessing to the atomic data structures in our split
             # objects to try to relieve the memory by encouraging the garbage collector to
             # realize what's up. Afterwards, we explicitly call the garbage collector
-            if self.write_buffer_size > 0 and len(self.contigs) % self.write_buffer_size == 0:
+            if self.write_buffer_size > 0 and self.buffer_splits >= self.write_buffer_size:
                 self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | WRITING TO DB 💾 ...")
                 self.store_contigs_buffer()
                 for c in self.contigs:
@@ -1614,12 +2082,15 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     del c.coverage
                     del c
                 del self.contigs[:]
+                self.buffer_splits = 0
                 gc.collect()
 
         self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | WRITING TO DB 💾 ...")
         self.store_contigs_buffer()
         self.store_zero_coverage_for_skipped_splits()
         self.auxiliary_db.close()
+
+        self._log_mem("after profiling + DB writes")
 
         self.progress.end(timing_filepath='anvio.debug.timing.txt' if anvio.DEBUG else None)
 
@@ -1684,129 +2155,188 @@ class BAMProfiler(dbops.ContigsSuperclass):
     def profile_multi_thread(self):
         """The main method for anvi-profile when num_threads is >1"""
 
-        manager = multiprocessing.Manager()
-        available_index_queue = manager.Queue()
-        output_queue = manager.Queue(self.queue_size)
+        # Step 1: Load contig data in a subprocess and pack into shared memory
+        self._shm_names = []
+        shm_info = self._setup_shared_memory_via_subprocess()
+        self._shm_names = [shm_info['seq_shm_name'], shm_info['nt_shm_name'], shm_info['meta_shm_name']]
 
-        # put contig indices into the queue to be read from within the worker
-        for i in range(0, self.num_contigs):
-            available_index_queue.put(i)
+        try:
+            self._log_mem("after shared memory setup")
 
-        processes = []
-        for i in range(0, self.num_threads):
-            processes.append(multiprocessing.Process(target=BAMProfiler.profile_contig_worker, args=(self, available_index_queue, output_queue)))
+            # Step 2: Build lightweight WorkerContext
+            ctx = self._build_worker_context(shm_info)
 
-        for proc in processes:
-            proc.start()
+            # Step 3: Save parent objects that workers don't need, then clear them
+            # to reduce copy-on-write surface area
+            self.bam.close()
+            self.bam = None
 
-        received_contigs = 0
+            # Drop lazy-loaded caches entirely before forking. If any are needed later,
+            # they can be lazily reloaded from the DB.
+            self._lazy_loaded_data.clear()
 
-        self.progress.new('Profiling w/%d threads' % self.num_threads, progress_total_items=self.num_contigs)
-        self.progress.update('initializing threads ...')
+            saved_contigs_skipped = getattr(self, '_contigs_skipped_by_prefilter', set())
+            saved_split_names_of_interest = getattr(self, 'split_names_of_interest', set())
+            saved_contig_names_of_interest = getattr(self, 'contig_names_of_interest', set())
 
-        mem_tracker = terminal.TrackMemory(at_most_every=5)
-        mem_usage, mem_diff = mem_tracker.start()
+            self.split_names = set()
+            self._contigs_skipped_by_prefilter = set()
+            self.split_names_of_interest = set()
+            self.contig_names_of_interest = set()
 
-        self.progress.update('contigs are being processed ...')
-        while received_contigs < self.num_contigs:
+            # Step 4: Collect garbage and try to release freed memory back to OS
+            gc.collect()
+
             try:
-                contig = output_queue.get()
+                import ctypes
+                ctypes.CDLL("libc.so.6").malloc_trim(0)
+            except Exception:
+                pass
 
-                if isinstance(contig, Exception):
-                    # If thread returns an exception, we raise it and kill the main thread.
-                    raise contig
+            self._log_mem("before forking workers")
 
-                self.contigs.append(contig)
+            # Step 5: Fork workers using multiprocess (dill-based) for compatibility
+            manager = multiprocessing.Manager()
+            available_index_queue = manager.Queue()
+            output_queue = manager.Queue(self.queue_size)
 
-                received_contigs += 1
+            for i in range(0, self.num_contigs):
+                available_index_queue.put(i)
 
-                if mem_tracker.measure():
-                    mem_usage = mem_tracker.get_last()
-                    mem_diff = mem_tracker.get_last_diff()
+            processes = []
+            for i in range(0, self.num_threads):
+                processes.append(multiprocessing.Process(target=profile_contig_worker, args=(ctx, available_index_queue, output_queue)))
 
-                self.progress.increment(received_contigs)
-                self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | MEMORY 🧠  {mem_usage} ({mem_diff}) ...")
+            for proc in processes:
+                proc.start()
 
-                # Here you're about to witness the poor side of Python (or our use of it). Although
-                # we couldn't find any refs to these objects, garbage collecter kept them in the
-                # memory. So here we are accessing to the atomic data structures in our split
-                # objects to try to relieve the memory by encouraging the garbage collector to
-                # realize what's up. Afterwards, we explicitly call the garbage collector
-                if self.write_buffer_size > 0 and len(self.contigs) % self.write_buffer_size == 0:
-                    self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | WRITING TO DB 💾 ...")
-                    self.store_contigs_buffer()
-                    for c in self.contigs:
-                        for split in c.splits:
-                            del split.coverage
-                            del split.auxiliary
-                            del split
-                        del c.splits[:]
-                        del c.coverage
-                        del c
-                    del self.contigs[:]
-                    gc.collect()
+            received_contigs = 0
 
-            except KeyboardInterrupt:
-                self.run.info_single("Anvi'o profiler received SIGINT, terminating all processes...", nl_before=2)
-                break
+            self.progress.new('Profiling w/%d threads' % self.num_threads, progress_total_items=self.num_contigs)
+            self.progress.update('initializing threads ...')
 
-            except Exception as worker_error:
-                # An exception was thrown in one of the profile workers. We kill all processes in this case
-                self.progress.end()
-                for proc in processes:
+            mem_tracker = terminal.TrackMemory(at_most_every=5)
+            mem_usage, mem_diff = mem_tracker.start()
+
+            # Step 6: Processing loop
+            self.progress.update('contigs are being processed ...')
+            while received_contigs < self.num_contigs:
+                try:
+                    contig = output_queue.get()
+
+                    if isinstance(contig, Exception):
+                        raise contig
+
+                    self.contigs.append(contig)
+
+                    received_contigs += 1
+
+                    if mem_tracker.measure():
+                        mem_usage = mem_tracker.get_last()
+                        mem_diff = mem_tracker.get_last_diff()
+
+                    self.progress.increment(received_contigs)
+                    self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | MEMORY 🧠  {mem_usage} ({mem_diff}) ...")
+
+                    if contig is not None:
+                        for split in contig.splits:
+                            self.split_names.add(split.name)
+                        self.buffer_splits += len(contig.splits)
+
+                    if self.write_buffer_size > 0 and self.buffer_splits >= self.write_buffer_size:
+                        self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | WRITING TO DB 💾 ...")
+                        self.store_contigs_buffer()
+                        for c in self.contigs:
+                            for split in c.splits:
+                                del split.coverage
+                                del split.auxiliary
+                                del split
+                            del c.splits[:]
+                            del c.coverage
+                            del c
+                        del self.contigs[:]
+                        self.buffer_splits = 0
+                        gc.collect()
+
+                except KeyboardInterrupt:
+                    self.run.info_single("Anvi'o profiler received SIGINT, terminating all processes...", nl_before=2)
+                    break
+
+                except Exception as worker_error:
+                    self.progress.end()
+                    for _ in processes:
+                        available_index_queue.put(None)
+                    for proc in processes:
+                        proc.join(timeout=5)
+                        if proc.is_alive():
+                            proc.terminate()
+                    raise worker_error
+
+            # Send sentinel to each worker for graceful shutdown
+            for _ in processes:
+                available_index_queue.put(None)
+            for proc in processes:
+                proc.join(timeout=10)
+                if proc.is_alive():
                     proc.terminate()
-                raise worker_error
 
-        for proc in processes:
-            proc.terminate()
+            # Step 7: Restore saved objects for post-processing
+            self._contigs_skipped_by_prefilter = saved_contigs_skipped
+            self.split_names_of_interest = saved_split_names_of_interest
+            self.contig_names_of_interest = saved_contig_names_of_interest
 
-        self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | WRITING TO DB 💾 ...")
-        self.store_contigs_buffer()
-        self.store_zero_coverage_for_skipped_splits()
-        self.auxiliary_db.close()
+            self.progress.update(f"{received_contigs}/{self.num_contigs} contigs ⚙ | WRITING TO DB 💾 ...")
+            self.store_contigs_buffer()
+            self.store_zero_coverage_for_skipped_splits()
+            self.auxiliary_db.close()
 
-        self.progress.end(timing_filepath='anvio.debug.timing.txt' if anvio.DEBUG else None)
+            self._log_mem("after profiling + DB writes")
 
-        overall_mean_coverage = 1
-        if self.total_length_of_all_contigs != 0:
-            overall_mean_coverage = self.total_coverage_values_for_all_contigs / self.total_length_of_all_contigs
+            self.progress.end(timing_filepath='anvio.debug.timing.txt' if anvio.DEBUG else None)
 
-        # FIXME: We know this is ugly. You can keep your opinion to yourself.
-        if overall_mean_coverage > 0.0:
-            # avoid dividing by zero
-            dbops.ProfileDatabase(self.profile_db_path).db._exec("UPDATE abundance_splits SET value = value / " + str(overall_mean_coverage) + " * 1.0;")
-            dbops.ProfileDatabase(self.profile_db_path).db._exec("UPDATE abundance_contigs SET value = value / " + str(overall_mean_coverage) + " * 1.0;")
+            overall_mean_coverage = 1
+            if self.total_length_of_all_contigs != 0:
+                overall_mean_coverage = self.total_coverage_values_for_all_contigs / self.total_length_of_all_contigs
 
-        if not self.skip_SNV_profiling:
-            self.layer_additional_data['num_SNVs_reported'] = self.variable_nts_table.num_entries
-            self.layer_additional_keys.append('num_SNVs_reported')
-            self.run.info("Num SNVs reported", self.layer_additional_data['num_SNVs_reported'], nl_before=1)
+            # FIXME: We know this is ugly. You can keep your opinion to yourself.
+            if overall_mean_coverage > 0.0:
+                dbops.ProfileDatabase(self.profile_db_path).db._exec("UPDATE abundance_splits SET value = value / " + str(overall_mean_coverage) + " * 1.0;")
+                dbops.ProfileDatabase(self.profile_db_path).db._exec("UPDATE abundance_contigs SET value = value / " + str(overall_mean_coverage) + " * 1.0;")
 
-        if not self.skip_INDEL_profiling:
-            self.layer_additional_data['num_INDELs_reported'] = self.indels_table.num_entries
-            self.layer_additional_keys.append('num_INDELs_reported')
-            self.run.info("Num INDELs reported", self.layer_additional_data['num_INDELs_reported'])
+            if not self.skip_SNV_profiling:
+                self.layer_additional_data['num_SNVs_reported'] = self.variable_nts_table.num_entries
+                self.layer_additional_keys.append('num_SNVs_reported')
+                self.run.info("Num SNVs reported", self.layer_additional_data['num_SNVs_reported'], nl_before=1)
 
-        if self.profile_SCVs:
-            self.layer_additional_data['num_SCVs_reported'] = self.variable_codons_table.num_entries
-            self.layer_additional_keys.append('num_SCVs_reported')
-            self.run.info("Num SCVs reported", self.layer_additional_data['num_SCVs_reported'])
+            if not self.skip_INDEL_profiling:
+                self.layer_additional_data['num_INDELs_reported'] = self.indels_table.num_entries
+                self.layer_additional_keys.append('num_INDELs_reported')
+                self.run.info("Num INDELs reported", self.layer_additional_data['num_INDELs_reported'])
 
-        if self.total_reads_kept != self.num_reads_mapped:
-            # Num reads in profile do not equal num reads in bam
-            diff = self.num_reads_mapped - self.total_reads_kept
-            perc = (1 - self.total_reads_kept / self.num_reads_mapped) * 100
-            self.run.warning("There were %d reads present in the BAM file that did not end up being used "
-                             "by anvi'o. That corresponds to about %.2f percent of all reads in the bam file. "
-                             "This could be either because you supplied --contigs-of-interest, "
-                             "or because pysam encountered reads it could not deal with, e.g. they mapped "
-                             "but had no defined sequence, or they had a sequence but did not map. "
-                             "Regardless, anvi'o thought you should be aware of this." % (diff, perc))
+            if self.profile_SCVs:
+                self.layer_additional_data['num_SCVs_reported'] = self.variable_codons_table.num_entries
+                self.layer_additional_keys.append('num_SCVs_reported')
+                self.run.info("Num SCVs reported", self.layer_additional_data['num_SCVs_reported'])
 
-        self.layer_additional_data['total_reads_kept'] = self.total_reads_kept
-        self.layer_additional_keys.append('total_reads_kept')
+            if self.total_reads_kept != self.num_reads_mapped:
+                diff = self.num_reads_mapped - self.total_reads_kept
+                perc = (1 - self.total_reads_kept / self.num_reads_mapped) * 100
+                self.run.warning("There were %d reads present in the BAM file that did not end up being used "
+                                 "by anvi'o. That corresponds to about %.2f percent of all reads in the bam file. "
+                                 "This could be either because you supplied --contigs-of-interest, "
+                                 "or because pysam encountered reads it could not deal with, e.g. they mapped "
+                                 "but had no defined sequence, or they had a sequence but did not map. "
+                                 "Regardless, anvi'o thought you should be aware of this." % (diff, perc))
 
-        self.check_contigs(num_contigs=received_contigs)
+            self.layer_additional_data['total_reads_kept'] = self.total_reads_kept
+            self.layer_additional_keys.append('total_reads_kept')
+
+            self.check_contigs(num_contigs=received_contigs)
+
+        finally:
+            # Always clean up shared memory segments
+            for shm_name in self._shm_names:
+                _cleanup_shared_memory(shm_name, run=self.run)
 
 
     def store_contigs_buffer(self):
@@ -1910,3 +2440,39 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         if self.write_buffer_size < 0:
             raise ConfigError('No. Write buffer size can not have a negative value.')
+
+
+class WorkerContext:
+    """Lightweight stand-in for BAMProfiler in multi-threaded workers.
+
+    Carries only the attributes needed by process_contig() and its callees,
+    avoiding the need to pickle/fork the full BAMProfiler object.
+    Must be defined AFTER BAMProfiler since it references its methods.
+
+    The bound methods below form a closed set: process_contig calls
+    populate_gene_info_for_splits, which calls get_gene_info_for_each_position
+    and get_gene_start_stops_in_contig. These methods access the following
+    attributes on `self` (i.e. the WorkerContext instance):
+
+        contig_sequences, contig_name_to_splits, splits_basic_info,
+        contig_name_to_genes, genes_in_contigs_dict, nt_positions_info,
+        a_meta, sample_id, skip_SNV_profiling, skip_INDEL_profiling,
+        profile_SCVs, min_coverage_for_variability, report_variability_full,
+        min_percent_identity, skip_edges, input_file_path, fetch_filter,
+        contig_names, contig_lengths
+
+    If process_contig or its callees are modified to access new attributes,
+    those must be added to _build_worker_context() as well.
+    """
+
+    # Bind the methods workers need directly from BAMProfiler / ContigsSuperclass.
+    # In Python 3, unbound methods are plain functions, so this works as long as
+    # these methods only access attributes listed above on `self`.
+    process_contig = BAMProfiler.process_contig
+    populate_gene_info_for_splits = BAMProfiler.populate_gene_info_for_splits
+    get_gene_info_for_each_position = dbops.ContigsSuperclass.get_gene_info_for_each_position
+    get_gene_start_stops_in_contig = dbops.ContigsSuperclass.get_gene_start_stops_in_contig
+
+    def init_contig_sequences(self, **kwargs):
+        raise ConfigError("WorkerContext.init_contig_sequences() should never be called. "
+                          "Workers use shared memory for contig sequences.")

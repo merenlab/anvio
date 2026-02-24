@@ -152,3 +152,6 @@ since v6.2
 Alternatively, you can choose not to store insertion and deletion data or single nucleotide variant data.
 
 If you know the limits of your system, you can also multithread this program. See the program help menu for more information.
+
+{:.warning}
+If you are profiling a large number of splits (e.g., more than 200,000) with many threads (e.g., more than 20), be aware that the memory requirement may outweigh the time gained by multithreading. If your job fails due to an out-of-memory (OOM) error, consider re-running with fewer threads.
