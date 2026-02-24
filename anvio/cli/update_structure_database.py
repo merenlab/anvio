@@ -2,6 +2,7 @@
 # -*- coding: utf-8
 
 import sys
+import argparse
 import anvio
 from anvio.argparse import ArgumentParser
 
@@ -66,10 +67,11 @@ def get_args():
     groupE.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     params = {
         'default': 25,
-        'help': anvio.K('write-buffer-size-per-thread')['help'] + \
+        'help': anvio.K('write-buffer-size')['help'] + \
                 ' If --num-threads is 1, this parameter is ignored because the DB is written to after each gene'
     }
-    groupE.add_argument(*anvio.A('write-buffer-size-per-thread'), **anvio.K('write-buffer-size-per-thread', params))
+    groupE.add_argument(*anvio.A('write-buffer-size'), **anvio.K('write-buffer-size', params))
+    groupE.add_argument(*anvio.A('write-buffer-size-per-thread'), **anvio.K('write-buffer-size-per-thread', {'help': argparse.SUPPRESS}))
 
     return parser.get_args(parser)
 
