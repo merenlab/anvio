@@ -1619,7 +1619,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 elif isinstance(msg, dict):
                     result = msg
                     break
-        except:
+        except BaseException:
             # Clean up any shared memory segments created before the failure
             for name in shm_names_so_far:
                 _cleanup_shared_memory(name, run=self.run)
