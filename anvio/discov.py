@@ -60,8 +60,7 @@ class DisCov:
 
         # this will be a list of tuples like (start_position, stop_position, mean_coverage)
         # if mean_coverage is 0, then the region is a gap region. Otherwise, it is a covered region
-        #FIXME: use sliding windows to detect regions
-        regions = self.get_list_of_coverage_and_gap_regions(cov_array)
+        regions = self.get_list_of_coverage_and_gap_regions(cov_array, min_gap_length=3)
 
         # filter out regions with unusually-high coverage that might be non-specific read recruitment
         # these regions and their surrounding gaps get replaced with one longer gap
@@ -223,7 +222,7 @@ class DisCov:
         if len(log_w_vals) < 2:
             run.warning(f"compute_window_scaling_variance() could not collect enough valid (window_size, variance) "
                         f"pairs to fit a slope (got {len(log_w_vals)}). This may indicate that coverage is "
-                        f"extremely flat or that the array is too short.")
+                        f"extremely flat or that the array is too short.", overwrite_verbose=anvio.DEBUG)
             return None
 
         slope, _intercept = np.polyfit(log_w_vals, log_var_vals, 1)
@@ -255,7 +254,7 @@ class DisCov:
 
 
     ##### HELPER FUNCTIONS #####
-    def get_list_of_coverage_and_gap_regions(self, coverage):
+    def get_list_of_coverage_and_gap_regions(self, coverage, min_gap_length=0):
         """Given an array of coverage values, divides the sequence into gap regions and regions of nonzero coverage.
         
         Each region is described as a tuple of (start_position, stop_position, mean_coverage). If the mean_coverage 
@@ -263,6 +262,8 @@ class DisCov:
 
         Note that start and stop positions follow Python indexing rules to enable slicing of the coverage array: 
         indices start from 0, and the last index of the region is stop_position - 1
+
+        If a gap is too small, the two coverage regions around it are combined into one.
         """
         regions = []
 
@@ -284,6 +285,36 @@ class DisCov:
                 region_data = (current_start, current_stop, np.mean(coverage[current_start:current_stop]))
                 regions.append(region_data)
                 current_start = i+1
+
+        if min_gap_length > 0: # optionally combine coverage regions around small gaps
+            small_gap_indices = []
+            for i,r in enumerate(regions):
+                if i == 0 or i == len(regions) - 1:
+                    continue # we skip last and first regions because we can't combine around them
+                if r[2] == 0 and (r[1] - r[0] < min_gap_length):
+                    small_gap_indices.append(i)
+            if small_gap_indices:
+                new_regions = []
+                skip_next = False
+                for i,r in enumerate(regions):
+                    if skip_next:
+                        skip_next = False
+                        continue
+                    if i in small_gap_indices:
+                        # edit the last entry in the new regions to be the combined coverage region around this small gap
+                        prev_cov_start = regions[i-1][0]
+                        next_cov_stop = regions[i+1][1]
+                        overall_mean = np.mean(coverage[prev_cov_start:next_cov_stop])
+                        new_regions[-1] = (prev_cov_start, next_cov_stop, overall_mean)
+                        skip_next = True
+                    else:
+                        new_regions.append(r)
+
+                run.warning(f"Found {len(small_gap_indices)} small gaps (< {min_gap_length} bp) and combined "
+                            f"their surrounding coverage regions. Old region list: {regions}. New region "
+                            f"list: {new_regions}", overwrite_verbose=anvio.DEBUG)
+                regions = new_regions
+
         return regions
 
     def get_sliding_window_regions(self, coverage, window_length):
@@ -469,7 +500,7 @@ class DisCov:
 
         # remove all bases with outlier coverage
         new_coverage = np.delete(coverage, cov_indices_to_remove)
-        new_regions = self.get_list_of_coverage_and_gap_regions(new_coverage)
+        new_regions = self.get_list_of_coverage_and_gap_regions(new_coverage, min_gap_length=3)
         run.info("INTERNAL FILTER: total bases removed", len(cov_indices_to_remove), overwrite_verbose=anvio.DEBUG)
 
         return new_regions, new_coverage
