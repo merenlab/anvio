@@ -749,6 +749,7 @@ class GenbankToAnvio:
         num_genes_with_functions = 0
 
         num_genes_excluded = 0
+        num_genes_with_transl_except = 0
         genes_excluded = set([])
 
         # A very quick look at the genbank file to see if translated sequences are present in it
@@ -807,9 +808,10 @@ class GenbankToAnvio:
                     if any(exclusion_term in note for exclusion_term in self.note_terms_to_exclude):
                         continue
 
-                # dumping if overlapping translation frame
+                # counting genes with translational exceptions (e.g., selenocysteine
+                # or pyrrolysine) so we can warn the user about them later
                 if "transl_except" in gene.qualifiers:
-                    continue
+                    num_genes_with_transl_except += 1
 
                 # dumping if gene declared a pseudogene
                 if "pseudo" in gene.qualifiers or "pseudogene" in gene.qualifiers:
@@ -913,6 +915,7 @@ class GenbankToAnvio:
         self.run.info('Num genes with AA sequences', num_genes_with_AA_sequences, mc='green')
         self.run.info('Num genes with functions', num_genes_with_functions, mc='green')
         self.run.info('Locus tags included in functions output?', "Yes" if self.include_locus_tags_as_functions else "No", mc='green')
+        self.run.info('Num genes with translational exceptions', num_genes_with_transl_except, mc='cyan')
         self.run.info('Num partial genes', num_partial_genes, mc='cyan')
         self.run.info('Num genes excluded', num_genes_excluded, mc='red', nl_after=1)
 
@@ -932,6 +935,18 @@ class GenbankToAnvio:
                                  f"know.", header="WEIRD GENE CALLS EXCLUDED")
             else:
                 self.run.warning(msg, header="WERID GENE CALLS EXCLUDED")
+
+        if num_genes_with_transl_except:
+            self.run.warning(f"A total of {num_genes_with_transl_except} gene(s) in this GenBank file had the "
+                             f"'transl_except' qualifier, which indicates translational exceptions at specific "
+                             f"codon positions (e.g., selenocysteine encoded by UGA, or pyrrolysine encoded by "
+                             f"UAG, both of which are normally stop codons). These genes are included in the "
+                             f"output files with the amino acid sequences provided by the GenBank file, which "
+                             f"already correctly account for these exceptions. However, please be aware that "
+                             f"downstream analyses that involve codon-level operations, such as single-codon "
+                             f"variant (SCV) profiling, may not correctly interpret the amino acid identity at "
+                             f"these exception sites since they rely on standard codon-to-amino-acid mappings.",
+                             header="GENES WITH TRANSLATIONAL EXCEPTIONS")
 
         if aa_sequences_present and num_partial_genes > 1:
             self.run.warning(f"Anvi'o found out that aminio acid seqeunces were present in the GFF file, so it "
