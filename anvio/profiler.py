@@ -1173,12 +1173,17 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 raise ConfigError("None of the contigs in the BAM file have any mapped reads. There is nothing "
                                   "to profile here.")
 
-        # Get split names for the contigs we will actually profile
-        # This is a lightweight SQL query, not a LazyProperty load
+        # Get split names for the contigs we will actually profile.
+        # Uses a temp table + JOIN with parameterized inserts to avoid SQL injection
+        # from contig names (which come from the BAM header and are user-controlled).
         if contigs_to_profile != all_contig_names:
-            where_clause = "parent IN (%s)" % ','.join(['"%s"' % c for c in contigs_to_profile])
-            split_names_for_covered = set(_db.get_single_column_from_table(
-                t.splits_info_table_name, 'split', where_clause=where_clause))
+            _db._exec("CREATE TEMP TABLE contigs_to_profile (name TEXT)")
+            _db._exec_many("INSERT INTO contigs_to_profile VALUES (?)",
+                           [(c,) for c in contigs_to_profile])
+            cursor = _db._exec(
+                "SELECT s.split FROM %s s JOIN contigs_to_profile p ON s.parent = p.name"
+                % t.splits_info_table_name)
+            split_names_for_covered = set(row[0] for row in cursor)
 
             self.split_names_of_interest = split_names_for_covered
 
