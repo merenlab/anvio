@@ -68,7 +68,7 @@ class DisCov:
         filtered_detection = self.detection
         if filter_nonspecific_mapping:
             #FIXME: two thresholds for external vs internal filter
-            regions, new_cov_array = self.filter_nonspecific_regions(cov_array, regions, mod_z_score_threshold=3)
+            regions, new_cov_array = self.filter_nonspecific_regions(cov_array, regions, mod_z_score_threshold_external=4, mod_z_score_threshold_internal=3)
             filtered_detection = np.sum(new_cov_array > 0) / len(new_cov_array)
             run.info("Detection of contig (post-filter)", filtered_detection, overwrite_verbose=anvio.DEBUG)
         
@@ -455,7 +455,7 @@ class DisCov:
 
 
     ##### FILTER FUNCTIONS #####
-    def filter_nonspecific_regions(self, coverage, region_tuples, mod_z_score_threshold, min_regions=5, min_detection_for_internal_filter=0.5):
+    def filter_nonspecific_regions(self, coverage, region_tuples, mod_z_score_threshold_external, mod_z_score_threshold_internal, min_regions=5, min_detection_for_internal_filter=0.5):
         """Given a set of coverage regions, this function finds and removes outlier coverage values.
         
         If there are many regions, it first selects which of them to investigate further by looking at their mean coverage values. This 
@@ -475,7 +475,7 @@ class DisCov:
             A list of alternating gap regions and regions of nonzero coverage. Each tuple contains 
             (start_position, stop_position, mean_coverage) for a region. This function works only on
             the regions of nonzero coverage.
-        mod_z_score_threshold : float
+        mod_z_score_threshold (internal and external): float
             A value will be flagged as an outlier if its modified z-score is greater than this number.
         min_regions : int
             The minimum number of coverage regions needed for the 'external' filter. If we have fewer
@@ -491,7 +491,7 @@ class DisCov:
         run.info("EXTERNAL FILTER: minimum number to detect outlier regions", min_regions, overwrite_verbose=anvio.DEBUG)
         run.info("EXTERNAL FILTER will be run", len(nonzero_mean_coverages) >= min_regions, overwrite_verbose=anvio.DEBUG)
         if len(nonzero_mean_coverages) >= min_regions:
-            outlier_mean_coverages = utils.get_list_of_outliers(nonzero_mean_coverages, threshold=mod_z_score_threshold, only_positive_outliers=True)
+            outlier_mean_coverages = utils.get_list_of_outliers(nonzero_mean_coverages, threshold=mod_z_score_threshold_external, only_positive_outliers=True)
             min_outlier_mean_coverage = None # we need this min so we can identify the outlier regions in the original list
             for i, cov in enumerate(nonzero_mean_coverages):
                 if outlier_mean_coverages[i]:
@@ -506,10 +506,10 @@ class DisCov:
             else:
                 outlier_region_indices = [i for i,r_tuple in enumerate(region_tuples) if r_tuple[2] >= min_outlier_mean_coverage]
                 run.info("EXTERNAL FILTER: num outlier regions found", len(outlier_region_indices), overwrite_verbose=anvio.DEBUG)
-                filtered_regions, new_cov_array = self.filter_nonspecific_coverage_internal(coverage, region_tuples, mod_z_score_threshold, 
+                filtered_regions, new_cov_array = self.filter_nonspecific_coverage_internal(coverage, region_tuples, mod_z_score_threshold_internal, 
                                         regions_to_check_indices = outlier_region_indices, drop_entire_region_if_no_internal_outliers=True)
         elif self.detection >= min_detection_for_internal_filter:
-            filtered_regions, new_cov_array = self.filter_nonspecific_coverage_internal(coverage, region_tuples, mod_z_score_threshold)
+            filtered_regions, new_cov_array = self.filter_nonspecific_coverage_internal(coverage, region_tuples, mod_z_score_threshold_internal)
         else:
             run.warning(f"CoverageStats class speaking. While attempting to filter out regions of non-specific "
                         f"read recruitment, we realized that there is not enough data to reliably detect outlier "
