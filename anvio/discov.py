@@ -29,8 +29,8 @@ class DisCov:
         # establish output files for testing
         unfilt_output = "TEST_UNFILTERED.txt"
         filt_output = "TEST_FILTERED.txt"
-        header = ["contig", "sample", "Gap Evenness (Gini)", "Midpoint Range", "Midpoint Evenness",
-                  "SW Depth Evenness MAD (fine/medium/coarse)",
+        header = ["contig", "sample", "Num Coverage Regions", "Num Gap Regions", "Gap Evenness (Gini)", 
+                  "Midpoint Range", "Midpoint Evenness", "SW Depth Evenness MAD (fine/medium/coarse)",
                   "SW Depth Evenness CV (fine/medium/coarse)", "SW Proportion Covered (fine/medium/coarse)",
                   "Window-Scaling Variance",]
         for outfile in [unfilt_output, filt_output]:
@@ -73,6 +73,8 @@ class DisCov:
             run.info("Detection of contig (post-filter)", filtered_detection, overwrite_verbose=anvio.DEBUG)
         
         # compute all metrics
+        num_coverage_regions = len([r for r in regions if r[2] > 0])
+        num_gaps = len([r for r in regions if r[2] == 0])
         gap_gini = self.gap_evenness_gini(regions, min_num_gaps_for_gini=10)
         mp_range, mp_evenness = self.midpoint_spread_and_evenness(regions)
         window_scales = {
@@ -93,14 +95,16 @@ class DisCov:
         window_scaling_variance = self.compute_window_scaling_variance(cov_array)
 
         # append all metrics to file
-        output_list = [self.name, self.sample, 
-                        f"{gap_gini:.4}\t" if gap_gini else "NA",
-                        f"{mp_range:.4}\t" if mp_range else "NA",
-                        f"{mp_evenness:.4}\t" if mp_evenness else "NA",
+        output_list = [self.name, self.sample,
+                        f"{num_coverage_regions}",
+                        f"{num_gaps}",
+                        f"{gap_gini:.4}" if gap_gini else "NA",
+                        f"{mp_range:.4}" if mp_range else "NA",
+                        f"{mp_evenness:.4}" if mp_evenness else "NA",
                         sliding_window_evenness_mad,
                         sliding_window_evenness_cv,
                         sliding_window_proportion_covered,
-                        f"{window_scaling_variance:.4}\t" if window_scaling_variance else "NA",
+                        f"{window_scaling_variance:.4}" if window_scaling_variance else "NA",
                       ]
         with open(output_file, 'a') as f:
             f.write("\t".join(output_list) + "\n")
