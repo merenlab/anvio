@@ -1127,8 +1127,6 @@ class BAMProfiler(dbops.ContigsSuperclass):
         for later zero-coverage backfill.
         """
 
-
-
         contigs_with_coverage = self._get_contigs_with_coverage()
 
         # Get all contig names from the contigs DB
