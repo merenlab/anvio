@@ -95,9 +95,6 @@ class TablesForViews(Table):
         if not skip_sanity_check:
             self.sanity_check(view_data)
 
-        if not view_data:
-            return
-
         anvio_db = DBClassFactory().get_db_object(self.db_path)
 
         views_in_db = anvio_db.db.get_table_as_dict(t.views_table_name)
@@ -123,7 +120,8 @@ class TablesForViews(Table):
                                   "'%s'. Here is how the part of the code that was about this described the "
                                   "problem: '%s'." % (table_name, self.db_path, str(e)))
 
-        anvio_db.db._exec_many('''INSERT INTO %s VALUES (%s)''' % (table_name, ','.join(['?'] * len(t.view_table_structure))), view_data)
+        if view_data:
+            anvio_db.db._exec_many('''INSERT INTO %s VALUES (%s)''' % (table_name, ','.join(['?'] * len(t.view_table_structure))), view_data)
 
         if view_name and view_name not in views_in_db:
             anvio_db.db._exec('''INSERT INTO %s VALUES (?,?)''' % t.views_table_name, (view_name, table_name))
