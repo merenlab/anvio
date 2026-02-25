@@ -453,7 +453,7 @@ class PangenomeGraphManager():
             else:
                 motif = 'VR'
 
-            complexity = P / weight
+            complexity = min(1, P / weight)
             # Option 2:
             # complexity = P / num_genomes
 
@@ -540,7 +540,7 @@ class PangenomeGraphManager():
             # Option 3:
             # W_f = (1 - math.e**(-W/W_median)) / (1 - math.e**(-N/W_median))
 
-            CVS = (C_norm * E_norm * D)**(1/3) * W_f
+            CVS = (C * D * E_norm)**(1/3) * W_f
 
             return([CVS, C_norm, E_norm, W_f])
 
