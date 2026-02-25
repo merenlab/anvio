@@ -12,12 +12,19 @@ import shutil
 import argparse
 import numpy as np
 
-# multiprocess is a fork of multiprocessing that uses the dill serializer instead of pickle
-# using the multiprocessing module directly results in a pickling error in Python 3.10 which
-# goes like this:
+# We use TWO multiprocessing libraries:
 #
-#   >>> AttributeError: Can't pickle local object 'SOMEFUNCTION.<locals>.<lambda>' multiprocessing
+# 1) `multiprocess` (dill-based) — for Process spawning. Dill can serialize lambdas and
+#    closures that stdlib pickle cannot, which avoids pickling errors like:
+#      >>> AttributeError: Can't pickle local object 'SOMEFUNCTION.<locals>.<lambda>'
 #
+# 2) `multiprocessing` (stdlib) — for Queue only. stdlib Queue uses OS pipes with a
+#    per-process feeder thread, while multiprocess's manager.Queue() funnels everything
+#    through a single-threaded Manager process over sockets. The stdlib Queue removes
+#    that bottleneck and roughly doubles throughput.
+#
+# This combination works because Process uses fork() on Linux/macOS, so Queue objects
+# are inherited by child processes rather than serialized.
 import multiprocessing as stdlib_multiprocessing
 import multiprocess as multiprocessing
 
