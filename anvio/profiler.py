@@ -12,12 +12,20 @@ import shutil
 import argparse
 import numpy as np
 
-# multiprocess is a fork of multiprocessing that uses the dill serializer instead of pickle
-# using the multiprocessing module directly results in a pickling error in Python 3.10 which
-# goes like this:
+# We use TWO multiprocessing libraries:
 #
-#   >>> AttributeError: Can't pickle local object 'SOMEFUNCTION.<locals>.<lambda>' multiprocessing
+# 1) `multiprocess` (dill-based) — for Process spawning. Dill can serialize lambdas and
+#    closures that stdlib pickle cannot, which avoids pickling errors like:
+#      >>> AttributeError: Can't pickle local object 'SOMEFUNCTION.<locals>.<lambda>'
 #
+# 2) `multiprocessing` (stdlib) — for Queue only. stdlib Queue uses OS pipes with a
+#    per-process feeder thread, while multiprocess's manager.Queue() funnels everything
+#    through a single-threaded Manager process over sockets. The stdlib Queue removes
+#    that bottleneck and roughly doubles throughput.
+#
+# This combination works because Process uses fork() on Linux/macOS, so Queue objects
+# are inherited by child processes rather than serialized.
+import multiprocessing as stdlib_multiprocessing
 import multiprocess as multiprocessing
 
 from collections import OrderedDict
@@ -231,15 +239,10 @@ def profile_contig_worker(ctx, available_index_queue, output_queue):
             try:
                 contig = ctx.process_contig(bam_file, contig_name, contig_length)
                 output_queue.put(contig)
-
-                if contig is not None:
-                    for split in contig.splits:
-                        del split.coverage
-                        del split.auxiliary
-                        del split
-                    del contig.splits[:]
-                    del contig.coverage
-                    del contig
+                # NOTE: Do NOT delete contig attributes here. stdlib multiprocessing.Queue
+                # serializes asynchronously via a feeder thread. The contig must remain
+                # intact until the feeder thread has pickled it. Memory is freed naturally
+                # when `contig` is reassigned on the next iteration.
             except Exception as e:
                 import traceback
                 output_queue.put(RuntimeError(f"Worker error: {e}\n\n{traceback.format_exc()}"))
@@ -2194,10 +2197,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
             self._log_mem("before forking workers")
 
-            # Step 5: Fork workers using multiprocess (dill-based) for compatibility
-            manager = multiprocessing.Manager()
-            available_index_queue = manager.Queue()
-            output_queue = manager.Queue(self.queue_size)
+            # Step 5: Fork workers. We use stdlib multiprocessing.Queue (pipe-based, pickle)
+            # instead of multiprocess manager.Queue (socket-based, dill) to avoid the
+            # single-threaded Manager process bottleneck that caps throughput.
+            available_index_queue = stdlib_multiprocessing.Queue()
+            output_queue = stdlib_multiprocessing.Queue(self.queue_size)
 
             for i in range(0, self.num_contigs):
                 available_index_queue.put(i)
