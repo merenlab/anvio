@@ -29,7 +29,7 @@ class DisCov:
         # establish output files for testing
         unfilt_output = "TEST_UNFILTERED.txt"
         filt_output = "TEST_FILTERED.txt"
-        header = ["contig", "sample", "Num Coverage Regions", "Num Gap Regions", "Gap Evenness (Gini)", 
+        header = ["contig", "sample", "Non-specific Filter Removed Bases", "Num Coverage Regions", "Num Gap Regions", "Gap Evenness (Gini)", 
                   "Midpoint Range", "Midpoint Evenness", "SW Depth Evenness MAD (fine)",
                   "SW Depth Evenness MAD (medium)", "SW Depth Evenness MAD (coarse)",
                   "SW Depth Evenness CV (fine)", "SW Depth Evenness CV (medium)",
@@ -69,12 +69,16 @@ class DisCov:
 
         # filter out regions with unusually-high coverage that might be non-specific read recruitment
         # these regions and their surrounding gaps get replaced with one longer gap
+        ns_filter_removed_something = 0
         filtered_detection = self.detection
         if filter_nonspecific_mapping:
             regions, new_cov_array = self.filter_nonspecific_regions(cov_array, regions, mod_z_score_threshold_external=4, mod_z_score_threshold_internal=3)
             filtered_detection = np.sum(new_cov_array > 0) / len(new_cov_array)
             run.info("Detection of contig (post-filter)", filtered_detection, overwrite_verbose=anvio.DEBUG)
-        
+            if not np.array_equal(new_cov_array, cov_array):
+                ns_filter_removed_something = len(cov_array) - len(new_cov_array)
+                cov_array = new_cov_array
+
         # compute all metrics
         ## region metrics
         num_coverage_regions = len([r for r in regions if r[2] > 0])
@@ -109,6 +113,7 @@ class DisCov:
 
         # append all metrics to file
         output_list = [self.name, self.sample,
+                        f"{ns_filter_removed_something}",
                         f"{num_coverage_regions}",
                         f"{num_gaps}",
                         f"{gap_gini:.4}" if gap_gini else "NA",
