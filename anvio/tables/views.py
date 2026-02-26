@@ -39,6 +39,9 @@ class TablesForViews(Table):
             self.progress.reset()
             raise ConfigError(f"View data must be a list of tuples or list of lists :( Yours is a {type(view_data)}.")
 
+        if not view_data:
+            return
+
         if len(view_data[0]) != 3:
             self.progress.reset()
             raise ConfigError(f"Each item in the view data list must be a list or tuple with three items (item name, "
@@ -117,7 +120,8 @@ class TablesForViews(Table):
                                   "'%s'. Here is how the part of the code that was about this described the "
                                   "problem: '%s'." % (table_name, self.db_path, str(e)))
 
-        anvio_db.db._exec_many('''INSERT INTO %s VALUES (%s)''' % (table_name, ','.join(['?'] * len(t.view_table_structure))), view_data)
+        if view_data:
+            anvio_db.db._exec_many('''INSERT INTO %s VALUES (%s)''' % (table_name, ','.join(['?'] * len(t.view_table_structure))), view_data)
 
         if view_name and view_name not in views_in_db:
             anvio_db.db._exec('''INSERT INTO %s VALUES (?,?)''' % t.views_table_name, (view_name, table_name))

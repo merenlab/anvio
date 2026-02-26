@@ -4373,7 +4373,7 @@ def sanity_check_hmm_model(model_path, genes, require_ACC_lines=False):
             if line.startswith('ACC'):
                 acc = line.split()[1]
                 accession_ids_in_model.append(acc)
-                model_num_to_details[model_number]['acc'] = name
+                model_num_to_details[model_number]['acc'] = acc
 
     if len(accession_ids_in_model) != len(set(accession_ids_in_model)):
         raise ConfigError(f"Accession IDs in your HMM model should be unique, however, the `genes.hmm.gz` "

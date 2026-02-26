@@ -2058,6 +2058,13 @@ D = {
                      "those with legitimate variation to be reported) remain unchanged. This flag can only be used with `--engine AA` "
                      "or `--engine CDN` and is incompatible wth --quince-mode."}
                 ),
+    'exclude-intergenic': (
+            ['--exclude-intergenic'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag to exclude SNVs that occur in intergenic regions (i.e., nucleotide positions that do not "
+                     "fall within any gene call, whether coding or non-coding). This flag can only be used with `--engine NT`."}
+                ),
     'include-contig-names': (
             ['--include-contig-names'],
             {'default': False,
@@ -2989,7 +2996,7 @@ D = {
                 ),
     'write-buffer-size': (
             ['--write-buffer-size'],
-            {'default': 500,
+            {'default': 5000,
              'metavar': 'INT',
              'required': False,
              'help': "How many items should be kept in memory before they are written to the disk. The default is "
@@ -3005,13 +3012,9 @@ D = {
             {'default': 500,
              'metavar': 'INT',
              'required': False,
-             'help': "How many items should be kept in memory before they are written do the disk. The default is "
-                     "%(default)d per thread. So a single-threaded job would have a write buffer size of "
-                     "%(default)d, whereas a job with 4 threads would have a write buffer size of 4*%(default)d. "
-                     "The larger the buffer size, the less frequent the program will access to the disk, yet the more memory "
-                     "will be consumed since the processed items will be cleared off the memory only after they are written "
-                     "to the disk. The default buffer size will likely work for most cases. Please keep an eye on the memory "
-                     "usage output to make sure the memory use never exceeds the size of the physical memory."}
+             'help': "DEPRECATED: Use --write-buffer-size instead. This flag is kept for backward compatibility. "
+                     "If --write-buffer-size is not provided, this value will be used as the write buffer size "
+                     "(without thread multiplication)."}
                 ),
     'export-gff3': (
             ['--export-gff3'],

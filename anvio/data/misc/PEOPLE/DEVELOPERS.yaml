@@ -591,10 +591,14 @@
   linkedin: metehaansever
   orcid: 0000-0003-1043-4956
   affiliations:
+    - title: Engineer
+      inst: Automation Faculty GmbH
+      inst_link: https://www.automation-factory.net/
+      current: true
     - title: Scientific Programmer
       inst: HIFMB
       inst_link: https://hifmb.de/
-      current: true
+      current: false
 
 - github: bcoltman
   name: Benjamin Luke Coltman
@@ -645,4 +649,19 @@
     - title: PhD Candidate
       inst: Boston University
       inst_link: https://www.bu.edu/biology/
+      current: true
+
+- github: jnesme
+  name: Joseph Nesme
+  avatar: jnesme-anvio.png
+  email: jnesme@gmail.com
+  git_records:
+    - jnesme@gmail.com
+  linkedin: joseph-nesme-66946892
+  orcid: 0000-0003-1929-5040
+  bio: "Microbial ecologist studying plasmid diversity in the environment"
+  affiliations:
+    - title: Senior Researcher
+      inst: DTU Bioengineering
+      inst_link: https://cemist.dtu.dk/
       current: true

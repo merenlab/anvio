@@ -938,6 +938,7 @@ rule anvi_profile:
         min_coverage_for_variability = M.get_rule_param("anvi_profile", "--min-coverage-for-variability"),
         contigs_of_interest = M.get_rule_param("anvi_profile", "--contigs-of-interest"),
         queue_size = M.get_rule_param("anvi_profile", "--queue-size"),
+        write_buffer_size = M.get_rule_param("anvi_profile", "--write-buffer-size"),
         write_buffer_size_per_thread = M.get_rule_param("anvi_profile", "--write-buffer-size-per-thread"),
         min_percent_identity = M.get_rule_param("anvi_profile", "--min-percent-identity"),
         fetch_filter = M.get_rule_param("anvi_profile", "--fetch-filter"),
@@ -954,7 +955,7 @@ rule anvi_profile:
                              {params.skip_hierarchical_clustering} {params.distance} \
                              {params.linkage} {params.min_mean_coverage} \
                              {params.min_coverage_for_variability} {params.contigs_of_interest} \
-                             {params.queue_size} {params.write_buffer_size_per_thread} \
+                             {params.queue_size} {params.write_buffer_size} {params.write_buffer_size_per_thread} \
                              {params.min_percent_identity} {params.fetch_filter} \
                              {params.max_contig_length} >> {log} 2>&1
         """
@@ -1270,6 +1271,8 @@ rule dummy_rule_for_anvi_summarize:
 rule krakenuniq:
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{readset}-krakenuniq.log"
+    wildcard_constraints:
+        readset = SR_RS_RE
     input: unpack(lambda wildcards: M.get_fastq(wildcards.readset))
     output:
         raw = os.path.join(dirs_dict["TAXONOMY_DIR"], "{readset}.krakenuniq"),

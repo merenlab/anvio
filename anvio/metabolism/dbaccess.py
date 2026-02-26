@@ -66,7 +66,8 @@ class KeggEstimatorArgs():
         self.add_coverage = True if A('add_coverage') else False
         self.add_copy_number = True if A('add_copy_number') else False
         self.exclude_kos_no_threshold = False if A('include_kos_not_in_kofam') else True
-        self.include_stray_kos = True if A('include_nt_KOs') else False
+        self.include_stray_kos = True if A('include_nt_KOs') or A('include_stray_kos') else False # quick fix for backward compatability
+        self.include_nt_KOs = True if A('include_nt_KOs') or A('include_stray_kos') else False # quick fix for backward compatability
         self.ignore_unknown_kos = True if A('ignore_unknown_KOs') else False
         self.exclude_dashed_reactions = True if A('exclude_dashed_reactions') else False
         self.module_specific_matrices = A('module_specific_matrices') or None
