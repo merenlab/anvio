@@ -30,9 +30,13 @@ class DisCov:
         unfilt_output = "TEST_UNFILTERED.txt"
         filt_output = "TEST_FILTERED.txt"
         header = ["contig", "sample", "Num Coverage Regions", "Num Gap Regions", "Gap Evenness (Gini)", 
-                  "Midpoint Range", "Midpoint Evenness", "SW Depth Evenness MAD (fine/medium/coarse)",
-                  "SW Depth Evenness CV (fine/medium/coarse)", "SW Proportion Covered (fine/medium/coarse)",
-                  "Window-Scaling Variance", "Dispersion of Counts (num bins = 50/30/10)",
+                  "Midpoint Range", "Midpoint Evenness", "SW Depth Evenness MAD (fine)",
+                  "SW Depth Evenness MAD (medium)", "SW Depth Evenness MAD (coarse)",
+                  "SW Depth Evenness CV (fine)", "SW Depth Evenness CV (medium)",
+                  "SW Depth Evenness CV (coarse)", "SW Proportion Covered (fine)",
+                  "SW Proportion Covered (medium)", "SW Proportion Covered (coarse)",
+                  "Window-Scaling Variance", "Dispersion of Counts (num bins = 50)",
+                  "Dispersion of Counts (num bins = 30)", "Dispersion of Counts (num bins = 10)",
                   "Shannon Entropy Evenness"]
         for outfile in [unfilt_output, filt_output]:
             if not filesnpaths.is_file_exists(outfile, dont_raise=True):
@@ -87,19 +91,19 @@ class DisCov:
         sliding_window_metrics = self.sliding_window_evenness(cov_array, window_scales)
         sw_mad_vals = [sliding_window_metrics[scale]['Depth_Evenness_MAD'] for scale in ['fine','medium','coarse']]
         sw_mad = [f"{m:.04}" if m else "NA" for m in sw_mad_vals ]
-        sliding_window_evenness_mad = "/".join(sw_mad)
+        sliding_window_evenness_mad = "\t".join(sw_mad)
         sw_cv_vals = [sliding_window_metrics[scale]['Depth_Evenness_CV'] for scale in ['fine','medium','coarse']]
         sw_cv = [f"{m:.04}" if m else "NA" for m in sw_cv_vals ]
-        sliding_window_evenness_cv = "/".join(sw_cv)
+        sliding_window_evenness_cv = "\t".join(sw_cv)
         sw_prop_vals = [sliding_window_metrics[scale]['Proportion_Covered'] for scale in ['fine','medium','coarse']]
         sw_prop = [f"{m:.04}" if m else "NA" for m in sw_prop_vals ]
-        sliding_window_proportion_covered = "/".join(sw_prop)
+        sliding_window_proportion_covered = "\t".join(sw_prop)
         window_scaling_variance = self.compute_window_scaling_variance(cov_array)
         disp_50 = self.binned_count_dispersion(cov_array, num_windows=50) # fine-scale clustering, small windows
         disp_30 = self.binned_count_dispersion(cov_array, num_windows=30)
         disp_10 = self.binned_count_dispersion(cov_array, num_windows=10) # coarse-scale clustering, large windows
         disp_all = [f"{m:.04}" if m else "NA" for m in [disp_50, disp_30, disp_10]]
-        disp_counts = "/".join(disp_all)
+        disp_counts = "\t".join(disp_all)
 
         ## whole-contig metrics
         shannon = self.Shannon_entropy_evenness(cov_array)
