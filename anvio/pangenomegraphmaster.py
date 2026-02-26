@@ -12,6 +12,7 @@ import numpy as np
 import pandas as pd
 import networkx as nx
 import itertools as it
+import statistics as stat
 import matplotlib.pyplot as plt
 from collections import Counter
 from statistics import mean, multimode
@@ -397,65 +398,104 @@ class PangenomeGraphManager():
             region_x_positions_min = min(region_x_positions)
             region_x_positions_max = max(region_x_positions)
 
-            if region_x_positions_min in set(core_positions) and region_x_positions_max in set(core_positions):
-                P = 0
-            elif region_x_positions_min not in set(core_positions) and region_x_positions_max not in set(core_positions):
+            # if region_x_positions_min in set(core_positions) and region_x_positions_max in set(core_positions):
+            #     P = 0
+            # elif region_x_positions_min not in set(core_positions) and region_x_positions_max not in set(core_positions):
 
-                if region_x_positions_min != 0:
-                    prior_core_region_id = regions_dict[region_x_positions_min - 1]
-                    prior_core_region = regions_info_dict[prior_core_region_id]
+            #     if region_x_positions_min != all_positions_min:
+            #         prior_core_region_id = regions_dict[region_x_positions_min - 1]
+            #         prior_core_region = regions_info_dict[prior_core_region_id]
+            #         predecessor = [item[2] for item in prior_core_region if item[0] == region_x_positions_min - 1][0]
+            #         P_pred = sum([len(list(self.graph.successors(node))) - 1 for node in nodes_sets + [predecessor]])
+            #     else:
+            #         P_pred = 0
 
-                    predecessor = [item[2] for item in prior_core_region if item[0] == region_x_positions_min - 1][0]
+            #     if region_x_positions_max != all_positions_max:
+            #         latter_core_region_id = regions_dict[region_x_positions_max + 1]
+            #         latter_core_region = regions_info_dict[latter_core_region_id]
+            #         successor = [item[2] for item in latter_core_region if item[0] == region_x_positions_max + 1][0]
+            #         P_succ = sum([len(list(self.graph.predecessors(node))) - 1 for node in nodes_sets + [successor]])
+            #     else:
+            #         P_succ = 0
 
-                    P = sum([len(list(self.graph.successors(node))) - 1 for node in nodes_sets + [predecessor]])
-                else:
-                    P = 0
-            else:
-                print('Summary error.')
+            #     P = max(P_pred, P_succ)
+
+            # else:
+            #     print('Summary error.')
 
             genome_occurences = list(it.chain(*genomes_sets))
             counts = Counter(genome_occurences)
 
-            K = len(nodes_sets) #Num synteny gene clusters
+            # Num synteny gene clusters
+            K = len(nodes_sets)
             T = len(genome_occurences)
 
-            p = (1/K) * sum([len(genome_set)/weight for genome_set in genomes_sets])
-            # Option 2:
-            # p = (1/K) * sum([len(genome_set) for genome_set in genomes_sets])
+            # p = (1/K) * sum([len(genome_set)/weight for genome_set in genomes_sets])
+            # # Option 2:
+            # # p = (1/K) * sum([len(genome_set) for genome_set in genomes_sets])
 
-            var = (1/K) * sum([(len(genome_set)/weight - p)**2 for genome_set in genomes_sets])
-            # Option 2:
-            # var = (1/K) * sum([(len(genome_set) - p)**2 for genome_set in genomes_sets])
+            # var = (1/K) * sum([(len(genome_set)/weight - p)**2 for genome_set in genomes_sets])
+            # # Option 2:
+            # # var = (1/K) * sum([(len(genome_set) - p)**2 for genome_set in genomes_sets])
 
-            if p != 1:
-                diversity = 1 - math.sqrt(var / (p * (1 - p)))
-                # Option 2:
-                # diversity = (weight - p) / (weight - 1) * (1 - math.sqrt(var / ((weight - 1)**2)))
+            # if p != 1:
+            #     diversity = 1 - math.sqrt(var / (p * (1 - p)))
+            #     # Option 2:
+            #     # diversity = (weight - p) / (weight - 1) * (1 - math.sqrt(var / ((weight - 1)**2)))
 
-            else:
-                diversity = 0
+            # else:
+            #     diversity = 0
 
             genome_counts = {item: counts.get(item, 0) for item in genomes_involved}
             values = list(genome_counts.values())
-
             max_expansion = max(values)
+
             min_expansion = 0 if len(genomes_involved) != len(genome_names) else min(values)
             mean_expansion = sum(values) / len(values)
 
-            expansion = math.sqrt(max_expansion * mean_expansion)
+            # expansion = math.sqrt(max_expansion * mean_expansion)
             # Option 2:
             # expansion = max_expansion
 
-            if P == 0:
-                motif = 'BB'
-            elif P == 1 and min_expansion == 0:
-                motif = 'INDEL'
-            else:
-                motif = 'VR'
+            # if P == 0:
+            #     motif = 'BB'
+            # elif P == 1 and min_expansion == 0:
+            #     motif = 'INDEL'
+            # else:
+            #     motif = 'VR'
 
-            complexity = min(1, P / weight)
+            # complexity = min(1, P / weight)
             # Option 2:
             # complexity = P / num_genomes
+
+            sum_of_genomes = set()
+            complexity = -1
+            for genome_set in sorted(genomes_sets, key=len, reverse=False):
+                if set(genome_set).issubset(sum_of_genomes):
+                    continue
+                else:
+                    complexity += 1
+                    sum_of_genomes |= set(genome_set)
+
+            complexity_scaled = complexity / num_genomes
+
+            if len(genomes_sets) > 1:
+                diversity = stat.pvariance([1, num_genomes]) - stat.pvariance([len(genome_set) for genome_set in genomes_sets])
+                diversity_scaled = stat.pvariance([1/num_genomes, 1]) - stat.pvariance([len(genome_set)/num_genomes for genome_set in genomes_sets])
+            else:
+                diversity = 0
+                diversity_scaled = 0
+
+            # if complexity == 0 and min_expansion == 0:
+            #     motif = 'INDEL'
+            if complexity == 0 and min_expansion != 0:
+                motif = 'BB'
+                max_expansion = 0
+                min_expansion = 0
+                diversity = 0
+                diversity_scaled = 0
+            else:
+                motif = 'VR'
 
             regions_summary_dict[i] = {
                 'region_id': region_id,
@@ -465,16 +505,19 @@ class PangenomeGraphManager():
                 'num_synteny_gene_clusters': K,
                 'num_gene_clusters': num_gene_clusters,
                 'num_gene_calls': T,
-                'pathways': P,
-                'complexity': complexity,
-                'expansion': expansion,
-                'mean_expansion': mean_expansion,
+                # 'pathways': P,
+                # 'expansion': expansion,
+                # 'mean_expansion': mean_expansion,
                 'max_expansion': max_expansion,
                 'min_expansion': min_expansion,
-                'prevalence': p,
-                'prevalence_variance': var,
+                # 'prevalence': p,
+                # 'prevalence_variance': var,
+                'complexity': complexity,
+                'complexity_normalized': complexity_scaled,
                 'diversity': diversity,
-                'weight': weight
+                'diversity_normalized': diversity_scaled,
+                'weight': weight,
+                'weight_normalized': weight/num_genomes
             }
             i += 1
 
@@ -488,63 +531,103 @@ class PangenomeGraphManager():
         gene_calls_df = pd.DataFrame.from_dict(gene_calls_dict, orient='index').set_index(['genome', 'gene_caller_id'])
         nodes_df = pd.DataFrame.from_dict(node_regions_dict, orient='index').set_index('syn_cluster')
         region_sides_df = pd.DataFrame.from_dict(regions_summary_dict, orient='index').set_index('region_id')
-        region_sides_df[['composite_variability_score', 'complexity_normalized', 'expansion_normalized', 'weight_factor']] = region_sides_df.apply(PangenomeGraphManager.composite_variability_score(region_sides_df, num_genomes), axis=1, result_type='expand')
+
+        region_sides_df[['composite_variability_score', 'complexity_mm_scaled', 'diversity_mm_scaled', 'expansion_mm_scaled', 'weight_mm_scaled']] = region_sides_df.apply(PangenomeGraphManager.composite_variability_score(region_sides_df), axis=1, result_type='expand')
+
+        # region_sides_df[['composite_variability_score', 'complexity_normalized', 'expansion_normalized', 'weight_factor']] = region_sides_df.apply(PangenomeGraphManager.composite_variability_score(region_sides_df, num_genomes), axis=1, result_type='expand')
 
         return(region_sides_df, nodes_df, gene_calls_df)
 
 
     @staticmethod
-    def composite_variability_score(df, N):
+    def composite_variability_score(df):
+        C_max = df['complexity_normalized'].max()
+        D_max = df['diversity_normalized'].max()
+        E_max = df['max_expansion'].max()
+        W_max = df['weight_normalized'].max()
 
-        C_max = df['complexity'].max()
-        # Option 2:
-        # C_min = df['complexity'].min()
+        C_min = df['complexity_normalized'].min()
+        D_min = df['diversity_normalized'].min()
+        E_min = df['max_expansion'].min()
+        W_min = df['weight_normalized'].min()
 
-        E_max = df['expansion'].max()
-        # Option 2:
-        # E_min = df['max_expansion'].min()
-
-        W_median = df['weight'].median()
-
-        def log_min_max_normalize(X, X_min, X_max):
+        def minmax_scale(X, X_min, X_max):
             if X_min == X_max:
-                return 0.0
-            X_norm = (math.log(1 + X) - math.log(1 + X_min)) / (math.log(1 + X_max) - math.log(1 + X_min))
-            return(X_norm)
-
-        def fixed_baseline_log_scaling(X, X_max):
-            if X_max == 0.0:
                 return(0.0)
             else:
-                X_norm = (math.log(1 + X)) / (math.log(1 + X_max))
+                X_norm = (X - X_min) / (X_max - X_min)
                 return(X_norm)
 
         def func(row):
 
-            C = row['complexity']
-            E = row['expansion']
-            W = row['weight']
-            D = row['diversity']
+            C = row['complexity_normalized']
+            D = row['diversity_normalized']
+            E = row['max_expansion']
+            W = row['weight_normalized']
 
-            C_norm = fixed_baseline_log_scaling(C, C_max)
-            # Option 2:
-            # C_norm = log_min_max_normalize(C, C_min, C_max)
+            C_norm = minmax_scale(C, C_min, C_max)
+            D_norm = minmax_scale(D, D_min, D_max)
+            E_norm = minmax_scale(E, E_min, E_max)
+            W_norm = minmax_scale(W, W_min, W_max)
 
-            E_norm = fixed_baseline_log_scaling(E, E_max)
-            # Option 2:
-            # E_norm = log_min_max_normalize(E, E_min, E_max)
+            CVS = (C_norm * D_norm * E_norm * W_norm)**(1/4)
 
-            W_f = W/N
-            # Option 2:
-            # W_f = (1 - math.e**(-W/W_median))
-            # Option 3:
-            # W_f = (1 - math.e**(-W/W_median)) / (1 - math.e**(-N/W_median))
-
-            CVS = (C * D * E_norm)**(1/3) * W_f
-
-            return([CVS, C_norm, E_norm, W_f])
+            return([CVS, C_norm, D_norm, E_norm, W_norm])
 
         return(func)
+
+    # @staticmethod
+    # def composite_variability_score(df, N):
+
+    #     C_max = df['complexity'].max()
+    #     # Option 2:
+    #     # C_min = df['complexity'].min()
+
+    #     E_max = df['expansion'].max()
+    #     # Option 2:
+    #     # E_min = df['max_expansion'].min()
+
+    #     W_median = df['weight'].median()
+
+    #     def log_min_max_normalize(X, X_min, X_max):
+    #         if X_min == X_max:
+    #             return 0.0
+    #         X_norm = (math.log(1 + X) - math.log(1 + X_min)) / (math.log(1 + X_max) - math.log(1 + X_min))
+    #         return(X_norm)
+
+    #     def fixed_baseline_log_scaling(X, X_max):
+    #         if X_max == 0.0:
+    #             return(0.0)
+    #         else:
+    #             X_norm = (math.log(1 + X)) / (math.log(1 + X_max))
+    #             return(X_norm)
+
+    #     def func(row):
+
+    #         C = row['complexity']
+    #         E = row['expansion']
+    #         W = row['weight']
+    #         D = row['diversity']
+
+    #         C_norm = fixed_baseline_log_scaling(C, C_max)
+    #         # Option 2:
+    #         # C_norm = log_min_max_normalize(C, C_min, C_max)
+
+    #         E_norm = fixed_baseline_log_scaling(E, E_max)
+    #         # Option 2:
+    #         # E_norm = log_min_max_normalize(E, E_min, E_max)
+
+    #         W_f = W/N
+    #         # Option 2:
+    #         # W_f = (1 - math.e**(-W/W_median))
+    #         # Option 3:
+    #         # W_f = (1 - math.e**(-W/W_median)) / (1 - math.e**(-N/W_median))
+
+    #         CVS = (C_norm * D * E_norm)**(1/3) * W_f
+
+    #         return([CVS, C_norm, E_norm, W_f])
+
+    #     return(func)
 
 
     def reverse_edges(self, changed_edges):
