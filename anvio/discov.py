@@ -71,7 +71,6 @@ class DisCov:
         # these regions and their surrounding gaps get replaced with one longer gap
         filtered_detection = self.detection
         if filter_nonspecific_mapping:
-            #FIXME: two thresholds for external vs internal filter
             regions, new_cov_array = self.filter_nonspecific_regions(cov_array, regions, mod_z_score_threshold_external=4, mod_z_score_threshold_internal=3)
             filtered_detection = np.sum(new_cov_array > 0) / len(new_cov_array)
             run.info("Detection of contig (post-filter)", filtered_detection, overwrite_verbose=anvio.DEBUG)
