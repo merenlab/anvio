@@ -40,7 +40,8 @@ class DisCov:
                   "SW Depth Evenness CV Nonzero (coarse)", 
                   "SW Proportion Covered (fine)",
                   "SW Proportion Covered (medium)", "SW Proportion Covered (coarse)",
-                  "Window-Scaling Variance", "Dispersion of Counts (num bins = 50)",
+                  "Window-Scaling Variance", "Window-Scaling Variance Nonzero",
+                  "Dispersion of Counts (num bins = 50)",
                   "Dispersion of Counts (num bins = 30)", "Dispersion of Counts (num bins = 10)",
                   "Shannon Entropy Evenness"]
         for outfile in [unfilt_output, filt_output]:
@@ -127,6 +128,7 @@ class DisCov:
         sw_cv_nz = [f"{m:.04}" if m else "NA" for m in sw_cv_vals_nz ]
         sliding_window_evenness_cv_nz = "\t".join(sw_cv_nz)
         window_scaling_variance = self.compute_window_scaling_variance(cov_array)
+        window_scaling_variance_nz = self.compute_window_scaling_variance(cov_array[cov_array > 0])
         disp_50 = self.binned_count_dispersion(cov_array, num_windows=50) # fine-scale clustering, small windows
         disp_30 = self.binned_count_dispersion(cov_array, num_windows=30)
         disp_10 = self.binned_count_dispersion(cov_array, num_windows=10) # coarse-scale clustering, large windows
@@ -146,6 +148,7 @@ class DisCov:
                         sliding_window_evenness_cv_nz,
                         sliding_window_proportion_covered,
                         f"{window_scaling_variance:.4}" if window_scaling_variance else "NA",
+                        f"{window_scaling_variance_nz:.4}" if window_scaling_variance_nz else "NA",
                         disp_counts,
                         f"{shannon:.4}" if shannon else "NA"
                       ]
@@ -233,9 +236,11 @@ class DisCov:
         max_w = int(max_window_fraction * L)
 
         if min_w >= max_w:
-            raise ConfigError(f"compute_window_scaling_variance() could not construct a valid window size range: "
-                                f"min window size ({min_w}) >= max window size ({max_w}). Your coverage array "
-                                f"(length {L}) may be too short, or max_window_fraction ({max_window_fraction}) too small.")
+            run.warning(f"compute_window_scaling_variance() could not construct a valid window size range: "
+                        f"min window size ({min_w}) >= max window size ({max_w}). Your coverage array "
+                        f"(length {L}) may be too short, or max_window_fraction ({max_window_fraction}) too small.", 
+                        overwrite_verbose=anvio.DEBUG)
+            return None
 
         # Logarithmically spaced window sizes, deduplicated after rounding to integers
         window_sizes = np.unique(
