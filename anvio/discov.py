@@ -47,7 +47,8 @@ class DisCov:
                   "Normalized Dispersion of Counts (num bins = 30)", "Normalized Dispersion of Counts (num bins = 10)",
                   "Dispersion of Detection (num bins = 50)",
                   "Dispersion of Detection (num bins = 30)", "Dispersion of Detection (num bins = 10)",
-                  "Shannon Entropy Evenness", "Nonzero Depth Range", "Nonzero Depth Variance"]
+                  "Shannon Entropy Evenness", "Nonzero Depth Range", "Nonzero Depth IQR", 
+                  "Nonzero Depth IQR/median", "Nonzero Depth Variance"]
         for outfile in [unfilt_output, filt_output]:
             if not filesnpaths.is_file_exists(outfile, dont_raise=True):
                 with open(outfile, 'w') as f:
@@ -78,7 +79,7 @@ class DisCov:
                         "NA\tNA\tNA", # normalized distribution of counts in bins
                         "NA\tNA\tNA", # distribution of detection
                         "NA", # shannon entropy evenness, NA because we have no data to compute entropy on
-                        "0", # nonzero depth range
+                        "0\t0\t0", # nonzero depth range, IQR, IQR/med
                         "NA" # nonzero depth variance
                       ]
             with open(output_file, 'a') as f:
@@ -155,6 +156,8 @@ class DisCov:
         ## whole-contig metrics
         shannon = self.Shannon_entropy_evenness(cov_array)
         nz_depth_range = np.max(cov_array[cov_array > 0]) - np.min(cov_array[cov_array > 0])
+        nz_depth_IQR = np.percentile(cov_array[cov_array > 0], 75) - np.percentile(cov_array[cov_array > 0], 25)
+        nz_depth_IQR_med_ratio = nz_depth_IQR / np.median(cov_array[cov_array > 0])
         nz_depth_variance = np.var(cov_array[cov_array > 0])
 
         # append all metrics to file
@@ -171,6 +174,8 @@ class DisCov:
                         disp_counts,
                         f"{shannon:.4}" if shannon else "NA",
                         f"{nz_depth_range}",
+                        f"{nz_depth_IQR}",
+                        f"{nz_depth_IQR_med_ratio:.4}",
                         f"{nz_depth_variance:.4}"
                       ]
         with open(output_file, 'a') as f:
