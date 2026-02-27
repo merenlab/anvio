@@ -48,7 +48,8 @@ class DisCov:
                   "Dispersion of Detection (num bins = 50)",
                   "Dispersion of Detection (num bins = 30)", "Dispersion of Detection (num bins = 10)",
                   "Shannon Entropy Evenness", "Nonzero Depth Range", "Nonzero Depth IQR", 
-                  "Nonzero Depth IQR/median", "Nonzero Depth Variance"]
+                  "Nonzero Depth IQR/median", "Nonzero Depth Variance",
+                  "Nonzero Depth Fold-Range Detection (Narrow: 0.5x - 2x)", "Nonzero Depth Fold-Range Detection (Wide: 0.25x - 4x)"]
         for outfile in [unfilt_output, filt_output]:
             if not filesnpaths.is_file_exists(outfile, dont_raise=True):
                 with open(outfile, 'w') as f:
@@ -80,7 +81,8 @@ class DisCov:
                         "NA\tNA\tNA", # distribution of detection
                         "NA", # shannon entropy evenness, NA because we have no data to compute entropy on
                         "0\t0\t0", # nonzero depth range, IQR, IQR/med
-                        "NA" # nonzero depth variance
+                        "NA", # nonzero depth variance
+                        "0\t0", # nonzero depth fold-range narrow and wide
                       ]
             with open(output_file, 'a') as f:
                 f.write("\t".join(output_list) + "\n")
@@ -159,6 +161,8 @@ class DisCov:
         nz_depth_IQR = np.percentile(cov_array[cov_array > 0], 75) - np.percentile(cov_array[cov_array > 0], 25)
         nz_depth_IQR_med_ratio = nz_depth_IQR / np.median(cov_array[cov_array > 0])
         nz_depth_variance = np.var(cov_array[cov_array > 0])
+        nz_depth_foldrange_narrow = self.fold_range_of_median_detection(cov_array[cov_array > 0], fold_lower=0.5, fold_upper=2)
+        nz_depth_foldrange_wide = self.fold_range_of_median_detection(cov_array[cov_array > 0], fold_lower=0.25, fold_upper=4)
 
         # append all metrics to file
         output_list = [self.name, self.sample,
@@ -176,7 +180,9 @@ class DisCov:
                         f"{nz_depth_range}",
                         f"{nz_depth_IQR}",
                         f"{nz_depth_IQR_med_ratio:.4}",
-                        f"{nz_depth_variance:.4}"
+                        f"{nz_depth_variance:.4}",
+                        f"{nz_depth_foldrange_narrow:.4}",
+                        f"{nz_depth_foldrange_wide:.4}",
                       ]
         with open(output_file, 'a') as f:
             f.write("\t".join(output_list) + "\n")
@@ -398,6 +404,13 @@ class DisCov:
         entropy = -np.sum(p[nonzero] * np.log(p[nonzero]))
 
         return entropy / np.log(N)
+
+    def fold_range_of_median_detection(self, coverage, fold_lower=0.5, fold_upper=2):
+        """Returns the fraction of bases within the fold-range of the median coverage."""
+
+        median = np.median(coverage)
+        num_within_range = len(coverage[(coverage >= fold_lower*median) & (coverage <= fold_upper*median)])
+        return num_within_range/len(coverage)
 
 
     ##### HELPER FUNCTIONS #####
