@@ -183,8 +183,8 @@ class DisCov:
                 results[scale_name]['Depth_Evenness_MAD'] = 1 / (1 + mad_dispersion)
             if cv_of_means:
                 results[scale_name]['Depth_Evenness_CV'] = 1 / (1 + cv_of_means)
-
-            results[scale_name]['Proportion_Covered'] = len(nonzero_window_means) / len(windows)
+            if windows:
+                results[scale_name]['Proportion_Covered'] = len(nonzero_window_means) / len(windows)
         return results
 
     def compute_window_scaling_variance(self, coverage, max_window_fraction=0.10, num_window_sizes=20):
