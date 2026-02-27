@@ -64,11 +64,16 @@ class DisCov:
                         f"0", # filter removed 0 bases
                         f"0", # midpoint range is 0
                         "NA\tNA\tNA", # sliding window evenness MAD, NA because we can't divide by median of 0
+                        "NA\tNA\tNA", # sliding window evenness MAD nonzero
                         "NA\tNA\tNA", # sliding window evenness CV, NA because we can't divide by mean of 0
+                        "NA\tNA\tNA", # sliding window evenness CV nonzero
                         "0\t0\t0", # sliding window proportion covered
                         "NA", # window-scaling variance, NA because we can't take log of 0 variance
-                        "NA", # distribution of counts in bins, NA because we can't divide by mean of 0
-                        "NA" # shannon entropy evenness, NA because we have no data to compute entropy on
+                        "NA", # window-scaling variance nonzero
+                        "NA\tNA\tNA", # distribution of counts in bins, NA because we can't divide by mean of 0
+                        "NA", # shannon entropy evenness, NA because we have no data to compute entropy on
+                        "0", # nonzero depth range
+                        "NA" # nonzero depth variance
                       ]
             with open(output_file, 'a') as f:
                 f.write("\t".join(output_list) + "\n")
