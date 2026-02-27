@@ -602,21 +602,195 @@ class Inversions:
                                                            contig_length if (e[1] + self.num_nts_to_pad_a_stretch) > contig_length else e[1] + self.num_nts_to_pad_a_stretch) \
                                                                 for e in coverage_stretches_in_contigs[contig_name]]
 
-        ################################################################################
-        self.progress.update("Getting ready to process stretches")
-        ################################################################################
-        # time to go through each stretch and look for palindromes
-        # first, we will set up the Palindromes class
-        _args = argparse.Namespace(min_palindrome_length=self.min_palindrome_length,
-                                   max_num_mismatches=self.max_num_mismatches,
-                                   min_distance=self.min_distance_palindrome,
-                                   palindrome_search_algorithm=self.palindrome_search_algorithm,
-                                   min_mismatch_distance_to_first_base=self.min_mismatch_distance_to_first_base)
+        if self.num_threads > 1:
+            # parallel mode: close the BAM file (workers open their own) and delegate
+            bam_file.close()
+            self._process_stretches_parallel(entry_name, sample_id, bam_file_path,
+                                              coverage_stretches_in_contigs, contig_coverages)
+            self.progress.end()
+        else:
+            ################################################################################
+            self.progress.update("Getting ready to process stretches")
+            ################################################################################
+            # time to go through each stretch and look for palindromes
+            # first, we will set up the Palindromes class
+            _args = argparse.Namespace(min_palindrome_length=self.min_palindrome_length,
+                                       max_num_mismatches=self.max_num_mismatches,
+                                       min_distance=self.min_distance_palindrome,
+                                       palindrome_search_algorithm=self.palindrome_search_algorithm,
+                                       min_mismatch_distance_to_first_base=self.min_mismatch_distance_to_first_base)
 
-        P = Palindromes(_args,
-                        run=run_quiet,
-                        progress=progress_quiet)
-        P.verbose = False
+            P = Palindromes(_args,
+                            run=run_quiet,
+                            progress=progress_quiet)
+            P.verbose = False
+
+            # now we can go through all the stretches to look for palindromes. this is a LOOOOOONG loop.
+            # down below, we will got through each contig name, find stretches of good coverage of FWD/FWD
+            # and REV/REV reads (since their coverage values are stored in the profile db of 'inversions'
+            # type), find palindromes in those sequences that match to those coverage stretches, build some
+            # constructs, and then go through every FWD/FWD and REV/REV read from the BAM file to see if
+            # our constructs occur in any of them, which is the only 100% proof of an active inversion.
+            for contig_name in coverage_stretches_in_contigs:
+                contig_sequence = self.contig_sequences[contig_name]['sequence']
+                for start, stop in coverage_stretches_in_contigs[contig_name]:
+                    stretch_sequence_coverage = contig_coverages[contig_name][start:stop]
+                    stretch_sequence = contig_sequence[start:stop]
+                    sequence_name = f"{contig_name}_{start}_{stop}"
+
+                    # before we go any further, let's print out the sequence in consideration
+                    # for the user if they used `--verbose`
+                    if anvio.DEBUG or self.verbose:
+                        self.progress.reset()
+                        self.run.warning(None, header=f"Palindromes in {sequence_name}", lc='yellow', nl_before=3)
+                        self.run.info_single(f"Sequence {stretch_sequence}", cut_after=0)
+                        self.run.info_single(f"Coverage in {sample_id}:", nl_before=1, nl_after=1)
+                        self.plot_coverage(f"{sequence_name}", stretch_sequence_coverage)
+
+                    # make a record of the stretch that is about to be considered for having
+                    # palindromes and later true inversions
+                    self.stretches_considered[f"{entry_name}_{sequence_name}"] = {'sequence_name': sequence_name,
+                                                                                  'sample_name': entry_name,
+                                                                                  'contig_name': contig_name,
+                                                                                  'start_stop': f"{start}-{stop}",
+                                                                                  'max_coverage': int(max(stretch_sequence_coverage)),
+                                                                                  'num_palindromes_found': 0,
+                                                                                  'true_inversions_found': False}
+
+                    ################################################################################
+                    self.progress.update(f"{contig_name}: looking for palindromes")
+                    ################################################################################
+                    P.find(stretch_sequence, sequence_name=sequence_name, display_palindromes=False)
+
+                    if not len(P.palindromes[sequence_name]):
+                        # there is no palindrome in this one
+                        if anvio.DEBUG or self.verbose:
+                            self.progress.reset()
+                            self.run.info_single("No palindromes in this one :/", mc="red")
+                        continue
+                    else:
+                        num_palindromes_found = len(P.palindromes[sequence_name])
+                        self.stretches_considered[f"{entry_name}_{sequence_name}"]['num_palindromes_found'] = num_palindromes_found
+
+                        if anvio.DEBUG or self.verbose:
+                            self.progress.reset()
+                            self.run.info_single(f"The sequence has {PL('palindrome', num_palindromes_found)}:", mc="green")
+
+                    ################################################################################
+                    self.progress.update(f"{contig_name}: building constructs")
+                    ################################################################################
+                    # this is important. here we are getting ready to test each our inversion candidate
+                    # by reconstructing Florian's imaginary sequences. in the next step we will see if
+                    # any of these sequences are in any of the FWD/FWD or REV/REV reads
+                    inversion_candidates = []
+                    for inversion_candidate in P.palindromes[sequence_name]:
+                        region_A_start = inversion_candidate.first_start - 6
+                        region_A_end = inversion_candidate.first_start
+                        region_A = stretch_sequence[region_A_start:region_A_end]
+
+                        region_B_start = inversion_candidate.first_end
+                        region_B_end = inversion_candidate.first_end + 6
+                        region_B = stretch_sequence[region_B_start:region_B_end]
+
+                        region_C_start = inversion_candidate.second_start - 6
+                        region_C_end = inversion_candidate.second_start
+                        region_C = stretch_sequence[region_C_start:region_C_end]
+
+                        region_D_start = inversion_candidate.second_end
+                        region_D_end = inversion_candidate.second_end + 6
+                        region_D = stretch_sequence[region_D_start:region_D_end]
+
+                        construct_v1_left = region_A + inversion_candidate.first_sequence + utils.rev_comp(region_C)
+                        construct_v1_right = utils.rev_comp(region_B) + utils.rev_comp(inversion_candidate.second_sequence) + region_D
+
+                        construct_v2_left = region_A + inversion_candidate.second_sequence + utils.rev_comp(region_C)
+                        construct_v2_right = utils.rev_comp(region_B) + utils.rev_comp(inversion_candidate.first_sequence) + region_D
+
+                        # update the palindrome instance with its constructs
+                        inversion_candidate.v1_left = construct_v1_left
+                        inversion_candidate.v1_right = construct_v1_right
+                        inversion_candidate.v2_left = construct_v2_left
+                        inversion_candidate.v2_right = construct_v2_right
+
+                        if (anvio.DEBUG or self.verbose) and not anvio.QUIET:
+                            self.progress.reset()
+                            inversion_candidate.display()
+                            self.run.info("Construct v1 left", construct_v1_left, mc="cyan")
+                            self.run.info("Construct v1 right", construct_v1_right, mc="cyan")
+                            self.run.info("Construct v2 left", construct_v2_left, mc="cyan")
+                            self.run.info("Construct v2 right", construct_v2_right, mc="cyan")
+
+                        inversion_candidates.append(inversion_candidate)
+
+                    # here we have, for a given `contig_name`, `start` and `stop` positions of a stretch in it,
+                    # we have our inversion candidates,
+                    ################################################################################
+                    self.progress.update(f"{contig_name}[{start}:{stop}]: true inv testing w/constructs")
+                    ################################################################################
+                    true_inversions = self.get_true_inversions_in_stretch(inversion_candidates, bam_file, contig_name, start, stop)
+
+                    if (anvio.DEBUG or self.verbose) and not anvio.QUIET:
+                        if true_inversions:
+                            self.progress.reset()
+                            self.run.info_single(f"Of the {PL('inversion candidate', len(inversion_candidates))} above, "
+                                                 f"anvi'o found the following inversion(s) to have at least one perfect match "
+                                                 f"to their constructs in the BAM file:", mc="green", nl_before=1)
+
+                            for true_inversion in true_inversions:
+                                true_inversion.display()
+                        else:
+                            self.progress.reset()
+                            self.run.info_single(f"No true inversions in this one: none of the REV/REV or FWD/FWD reads "
+                                                 f"had any of the constructs in {PL('inversion candidate', len(inversion_candidates))}.",
+                                                 mc="red", nl_before=1)
+
+                    # if there are no true inversions, go back.
+                    if not len(true_inversions):
+                        continue
+
+                    # here we have, for a given `contig_name`, `start` and `stop` positions of a stretch in it,
+                    # and one or more ture inversions. the next step will require us to count them in the original
+                    # FASTQ files to see their ratio across samples, but for that we need primers to get oligos
+                    ################################################################################
+                    self.progress.update(f"{contig_name}[{start}:{stop}]: oligo determination")
+                    ################################################################################
+                    self.update_inversions_with_primer_sequences(true_inversions, contig_sequence, start)
+
+
+                    # if we are here, it means we took care of one region.
+                    # it is time to update our global data dictionaries with
+                    # everything we know about this inversion, and the stretch
+                    # it belongs:
+                    if len(true_inversions):
+                        for inv in true_inversions:
+                            self.stretches_considered[f"{entry_name}_{sequence_name}"]['invs_found'] = True
+
+                            d = OrderedDict({'entry_id': inv.sequence_name,
+                                             'sample_name': entry_name,
+                                             'contig_name': contig_name,
+                                             'first_seq': inv.first_sequence,
+                                             'midline': inv.midline,
+                                             'second_seq': utils.rev_comp(inv.second_sequence),
+                                             'first_start': inv.first_start + start,
+                                             'first_end': inv.first_end + start,
+                                             'first_oligo_primer': inv.first_oligo_primer,
+                                             'first_oligo_reference': inv.first_oligo_reference,
+                                             'second_start': inv.second_start + start,
+                                             'second_end': inv.second_end + start,
+                                             'second_oligo_primer': inv.second_oligo_primer,
+                                             'second_oligo_reference': inv.second_oligo_reference,
+                                             'num_mismatches': inv.num_mismatches,
+                                             'num_gaps': inv.num_gaps,
+                                             'length': inv.length,
+                                             'distance': inv.distance})
+
+                            self.inversions[entry_name].append(d)
+
+            self.progress.end()
+
+        self.run.info(f"[Inversions found] In sample {entry_name}", f"{len(self.inversions[entry_name])}", lc="yellow")
+
+
     def _process_stretches_parallel(self, entry_name, sample_id, bam_file_path,
                                      coverage_stretches_in_contigs, contig_coverages):
         """Process all coverage stretches in parallel using multiple worker processes.
