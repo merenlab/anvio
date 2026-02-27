@@ -43,6 +43,10 @@ class DisCov:
                   "Window-Scaling Variance", "Window-Scaling Variance Nonzero",
                   "Dispersion of Counts (num bins = 50)",
                   "Dispersion of Counts (num bins = 30)", "Dispersion of Counts (num bins = 10)",
+                  "Normalized Dispersion of Counts (num bins = 50)",
+                  "Normalized Dispersion of Counts (num bins = 30)", "Normalized Dispersion of Counts (num bins = 10)",
+                  "Dispersion of Detection (num bins = 50)",
+                  "Dispersion of Detection (num bins = 30)", "Dispersion of Detection (num bins = 10)",
                   "Shannon Entropy Evenness", "Nonzero Depth Range", "Nonzero Depth Variance"]
         for outfile in [unfilt_output, filt_output]:
             if not filesnpaths.is_file_exists(outfile, dont_raise=True):
@@ -71,6 +75,8 @@ class DisCov:
                         "NA", # window-scaling variance, NA because we can't take log of 0 variance
                         "NA", # window-scaling variance nonzero
                         "NA\tNA\tNA", # distribution of counts in bins, NA because we can't divide by mean of 0
+                        "NA\tNA\tNA", # normalized distribution of counts in bins
+                        "NA\tNA\tNA", # distribution of detection
                         "NA", # shannon entropy evenness, NA because we have no data to compute entropy on
                         "0", # nonzero depth range
                         "NA" # nonzero depth variance
@@ -137,7 +143,13 @@ class DisCov:
         disp_50 = self.binned_count_dispersion(cov_array, num_windows=50) # fine-scale clustering, small windows
         disp_30 = self.binned_count_dispersion(cov_array, num_windows=30)
         disp_10 = self.binned_count_dispersion(cov_array, num_windows=10) # coarse-scale clustering, large windows
-        disp_all = [f"{m:.04}" if m else "NA" for m in [disp_50, disp_30, disp_10]]
+        disp_50_norm = disp_50 / (1 - self.detection) if disp_50 else None # eventual FIXME: deal with divide by 0 when detection = 1
+        disp_30_norm = disp_30 / (1 - self.detection) if disp_30 else None
+        disp_10_norm = disp_10 / (1 - self.detection) if disp_10 else None
+        disp_50_det = self.binned_count_dispersion(cov_array, num_windows=50, use_detection=True) # fine-scale clustering, small windows
+        disp_30_det = self.binned_count_dispersion(cov_array, num_windows=30, use_detection=True)
+        disp_10_det = self.binned_count_dispersion(cov_array, num_windows=10, use_detection=True) # coarse-scale clustering, large windows
+        disp_all = [f"{m:.04}" if m else "NA" for m in [disp_50, disp_30, disp_10, disp_50_norm, disp_30_norm, disp_10_norm, disp_50_det, disp_30_det, disp_10_det]]
         disp_counts = "\t".join(disp_all)
 
         ## whole-contig metrics
