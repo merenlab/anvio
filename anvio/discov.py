@@ -43,7 +43,7 @@ class DisCov:
                   "Window-Scaling Variance", "Window-Scaling Variance Nonzero",
                   "Dispersion of Counts (num bins = 50)",
                   "Dispersion of Counts (num bins = 30)", "Dispersion of Counts (num bins = 10)",
-                  "Shannon Entropy Evenness"]
+                  "Shannon Entropy Evenness", "Nonzero Depth Range", "Nonzero Depth Variance"]
         for outfile in [unfilt_output, filt_output]:
             if not filesnpaths.is_file_exists(outfile, dont_raise=True):
                 with open(outfile, 'w') as f:
@@ -137,6 +137,8 @@ class DisCov:
 
         ## whole-contig metrics
         shannon = self.Shannon_entropy_evenness(cov_array)
+        nz_depth_range = np.max(cov_array[cov_array > 0]) - np.min(cov_array[cov_array > 0])
+        nz_depth_variance = np.var(cov_array[cov_array > 0])
 
         # append all metrics to file
         output_list = [self.name, self.sample,
@@ -150,7 +152,9 @@ class DisCov:
                         f"{window_scaling_variance:.4}" if window_scaling_variance else "NA",
                         f"{window_scaling_variance_nz:.4}" if window_scaling_variance_nz else "NA",
                         disp_counts,
-                        f"{shannon:.4}" if shannon else "NA"
+                        f"{shannon:.4}" if shannon else "NA",
+                        f"{nz_depth_range}",
+                        f"{nz_depth_variance:.4}"
                       ]
         with open(output_file, 'a') as f:
             f.write("\t".join(output_list) + "\n")
