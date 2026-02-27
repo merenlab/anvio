@@ -1628,7 +1628,7 @@ class Inversions:
             return
 
         try:
-            plt.clp()
+            plt.clf()
             plt.title(f"{sequence_name}")
             plt.xlabel("Position")
             plt.ylabel("Coverage")
