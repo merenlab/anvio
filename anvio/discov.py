@@ -309,11 +309,13 @@ class DisCov:
 
         return midpoint_range, midpoint_evenness
 
-    def binned_count_dispersion(self, coverage, num_windows=30, min_window_len=100):
+    def binned_count_dispersion(self, coverage, num_windows=30, min_window_len=100, use_detection=False):
         """Returns index of dispersion D = variance(count)/mean(count), where count is the number of 
         bases with coverage in each equal-sized window.
 
         D should be low (moderate dispersion) for present populations and high (overdispersion) for absent populations.
+
+        if use_detection is True, we compute D on the per-bin detection values instead of counts.
         """
 
         window_len = len(coverage) // num_windows
@@ -332,6 +334,10 @@ class DisCov:
 
         if np.mean(counts) == 0:
             return None
+
+        if use_detection:
+            detection_vals = np.array(counts) / window_len
+            return np.var(detection_vals) / np.mean(detection_vals)
         
         return np.var(counts) / np.mean(counts)
 
