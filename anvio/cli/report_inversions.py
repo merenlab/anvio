@@ -66,6 +66,20 @@ def get_args():
     groupC.add_argument('--num-nts-to-pad-a-stretch', default=100, type=int, help="Some leeway towards upstream and downstream context "
                     "that is essential to not miss key information due to coverage variation that may influence the beginnings and ends "
                     "of final stretches.", metavar="INT")
+    groupC.add_argument('--min-ratio-of-normal-to-special-coverage', default=0.05, type=float, help="When a contig has "
+                    "significant detection of FWD/FWD or REV/REV reads (see --min-detection-to-report-coverage-ratio), "
+                    "anvi'o computes the ratio of the coverage of these 'special' reads to the total coverage from all "
+                    "reads in the BAM file for each stretch. A low ratio with high detection is a hallmark of PCR "
+                    "template-switching artifacts, where chimeric reads uniformly cover entire contigs but represent "
+                    "only a tiny fraction of total sequencing depth. Stretches with a coverage ratio below this "
+                    "cutoff will be skipped. The default of 0.05 means that stretches where special reads account "
+                    "for less than 5%% of total coverage will not be considered for inversion calling.", metavar="FLOAT")
+    groupC.add_argument('--min-detection-to-report-coverage-ratio', default=0.10, type=float, help="The minimum "
+                    "detection value (i.e., the fraction of the contig covered by FWD/FWD or REV/REV reads) required "
+                    "before anvi'o computes the coverage ratio between special reads and all reads in the BAM file. "
+                    "If the detection is below this value, the coverage ratio columns in the stretches report will "
+                    "show 'NA'. The default of 0.10 means that a contig must have at least 10%% of its nucleotide "
+                    "positions covered by special reads before the coverage ratio check kicks in.", metavar="FLOAT")
 
     groupD = parser.add_argument_group('KEY ALGORITHMIC COMPONENT 02: FINDING PALINDROMES', "Some essential parameters to find palindromes in sequence "
                     "stretches anvi'o identified in the previous step")
