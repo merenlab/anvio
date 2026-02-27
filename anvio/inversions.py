@@ -7,7 +7,7 @@ import copy
 import argparse
 import numpy as np
 import xml.etree.ElementTree as ET
-from collections import OrderedDict, Counter
+from collections import OrderedDict, Counter, namedtuple
 
 # multiprocess is a fork of multiprocessing that uses the dill serializer instead of pickle
 # using the multiprocessing module directly results in a pickling error in Python 3.10 which
@@ -48,6 +48,280 @@ pp = terminal.pretty_print
 PL = terminal.pluralize
 run_quiet = terminal.Run(verbose=False)
 progress_quiet = terminal.Progress(verbose=False)
+
+
+# namedtuples for passing work items and results through multiprocessing queues
+StretchWorkItem = namedtuple('StretchWorkItem', ['contig_name', 'start', 'stop', 'stretch_sequence',
+                                                  'stretch_sequence_coverage', 'contig_sequence',
+                                                  'entry_name', 'sequence_name'])
+
+StretchResult = namedtuple('StretchResult', ['inversions_found', 'stretch_considered', 'stretch_key'])
+
+
+def _test_inversion_candidates_standalone(inversion_candidates, reads, check_all_palindromes):
+    """Standalone version of test_inversion_candidates_using_short_reads for worker processes."""
+
+    true_inversions = []
+
+    for inversion_candidate in inversion_candidates:
+        match = False
+        evidence_right = None
+        evidence_left = None
+
+        if inversion_candidate.num_mismatches == 0:
+            for read in reads:
+                if read is None:
+                    continue
+                if not evidence_left:
+                    if inversion_candidate.v1_left in read:
+                        evidence_left = True
+                        if evidence_right:
+                            match = True
+                            evidence_right = False
+                            evidence_left = False
+                            break
+                elif not evidence_right:
+                    if inversion_candidate.v1_right in read:
+                        evidence_right = True
+                        if evidence_left:
+                            match = True
+                            evidence_right = False
+                            evidence_left = False
+                            break
+        else:
+            for read in reads:
+                if read is None:
+                    continue
+                if not evidence_left:
+                    if inversion_candidate.v1_left in read:
+                        evidence_left = True
+                        if evidence_right:
+                            match = True
+                            evidence_right = False
+                            evidence_left = False
+                            break
+                    elif inversion_candidate.v2_left in read:
+                        evidence_left = True
+                        if evidence_right:
+                            match = True
+                            evidence_right = False
+                            evidence_left = False
+                            break
+                if not evidence_right:
+                    if inversion_candidate.v1_right in read:
+                        evidence_right = True
+                        if evidence_left:
+                            match = True
+                            evidence_right = False
+                            evidence_left = False
+                            break
+                    elif inversion_candidate.v2_right in read:
+                        evidence_right = True
+                        if evidence_left:
+                            match = True
+                            evidence_right = False
+                            evidence_left = False
+                            break
+
+        if match:
+            true_inversions.append(inversion_candidate)
+            if not check_all_palindromes:
+                return true_inversions
+
+    return true_inversions
+
+
+def _get_true_inversions_in_stretch_standalone(inversion_candidates, bam_file, contig_name, start, stop,
+                                                process_only_inverted_reads, check_all_palindromes):
+    """Standalone version of get_true_inversions_in_stretch for worker processes."""
+
+    if process_only_inverted_reads:
+        bam_file.fetch_filter = 'inversions'
+        reads = [r.query_sequence for r in bam_file.fetch_only(contig_name, start=start, end=stop)]
+        true_inversions_in_stretch = _test_inversion_candidates_standalone(inversion_candidates, reads, check_all_palindromes)
+    else:
+        if not check_all_palindromes:
+            bam_file.fetch_filter = 'inversions'
+            reads = [r.query_sequence for r in bam_file.fetch_only(contig_name, start=start, end=stop)]
+            true_inversions_in_stretch = _test_inversion_candidates_standalone(inversion_candidates, reads, check_all_palindromes)
+
+            if not len(true_inversions_in_stretch):
+                bam_file.fetch_filter = None
+                reads = [r.query_sequence for r in bam_file.fetch_only(contig_name, start=start, end=stop)]
+                true_inversions_in_stretch = _test_inversion_candidates_standalone(inversion_candidates, reads, check_all_palindromes)
+        else:
+            bam_file.fetch_filter = None
+            reads = [r.query_sequence for r in bam_file.fetch_only(contig_name, start=start, end=stop)]
+            true_inversions_in_stretch = _test_inversion_candidates_standalone(inversion_candidates, reads, check_all_palindromes)
+
+    return true_inversions_in_stretch
+
+
+def _update_inversions_with_primer_sequences_standalone(inversions, contig_sequence, start,
+                                                         oligo_primer_base_length, oligo_length):
+    """Standalone version of update_inversions_with_primer_sequences for worker processes."""
+
+    for inv in inversions:
+        first_genomic_region_start = inv.first_start + start - oligo_primer_base_length
+        first_genomic_region_end = inv.first_start + start
+        first_genomic_region = contig_sequence[first_genomic_region_start:first_genomic_region_end]
+
+        second_genomic_region_start = inv.second_end + start
+        second_genomic_region_end = inv.second_end + start + oligo_primer_base_length + 1
+        second_genomic_region = contig_sequence[second_genomic_region_start:second_genomic_region_end]
+
+        first_with_mismatches = ''.join(['.' if inv.midline[i] == 'x' else inv.first_sequence[i] for i in range(0, inv.length)])
+        second_with_mismatches = ''.join(['.' if inv.midline[i] == 'x' else inv.second_sequence[i] for i in range(0, inv.length)])
+
+        inv.first_oligo_primer = first_genomic_region + first_with_mismatches
+        inv.second_oligo_primer = utils.rev_comp(second_genomic_region) + second_with_mismatches
+
+        inv.first_oligo_reference = contig_sequence[first_genomic_region_end + inv.length:first_genomic_region_end + inv.length + oligo_length]
+        inv.second_oligo_reference = utils.rev_comp(contig_sequence[second_genomic_region_start - inv.length - oligo_length:second_genomic_region_start - inv.length])
+
+
+def _process_single_stretch(work_item, bam_file, P, inversion_params):
+    """Process a single stretch: find palindromes, build constructs, test with BAM reads.
+
+    This is the core logic extracted from the process_db() stretch loop body,
+    designed to run in worker processes without access to `self`.
+    """
+
+    contig_name = work_item.contig_name
+    start = work_item.start
+    stop = work_item.stop
+    stretch_sequence = work_item.stretch_sequence
+    stretch_sequence_coverage = work_item.stretch_sequence_coverage
+    contig_sequence = work_item.contig_sequence
+    entry_name = work_item.entry_name
+    sequence_name = work_item.sequence_name
+
+    stretch_key = f"{entry_name}_{sequence_name}"
+
+    stretch_considered = {'sequence_name': sequence_name,
+                          'sample_name': entry_name,
+                          'contig_name': contig_name,
+                          'start_stop': f"{start}-{stop}",
+                          'max_coverage': int(max(stretch_sequence_coverage)),
+                          'num_palindromes_found': 0,
+                          'true_inversions_found': False}
+
+    # find palindromes
+    P.find(stretch_sequence, sequence_name=sequence_name, display_palindromes=False)
+
+    if not len(P.palindromes[sequence_name]):
+        return StretchResult(inversions_found=[], stretch_considered=stretch_considered, stretch_key=stretch_key)
+
+    stretch_considered['num_palindromes_found'] = len(P.palindromes[sequence_name])
+
+    # build constructs
+    inversion_candidates = []
+    for inversion_candidate in P.palindromes[sequence_name]:
+        region_A_start = inversion_candidate.first_start - 6
+        region_A_end = inversion_candidate.first_start
+        region_A = stretch_sequence[region_A_start:region_A_end]
+
+        region_B_start = inversion_candidate.first_end
+        region_B_end = inversion_candidate.first_end + 6
+        region_B = stretch_sequence[region_B_start:region_B_end]
+
+        region_C_start = inversion_candidate.second_start - 6
+        region_C_end = inversion_candidate.second_start
+        region_C = stretch_sequence[region_C_start:region_C_end]
+
+        region_D_start = inversion_candidate.second_end
+        region_D_end = inversion_candidate.second_end + 6
+        region_D = stretch_sequence[region_D_start:region_D_end]
+
+        inversion_candidate.v1_left = region_A + inversion_candidate.first_sequence + utils.rev_comp(region_C)
+        inversion_candidate.v1_right = utils.rev_comp(region_B) + utils.rev_comp(inversion_candidate.second_sequence) + region_D
+        inversion_candidate.v2_left = region_A + inversion_candidate.second_sequence + utils.rev_comp(region_C)
+        inversion_candidate.v2_right = utils.rev_comp(region_B) + utils.rev_comp(inversion_candidate.first_sequence) + region_D
+
+        inversion_candidates.append(inversion_candidate)
+
+    # test constructs against BAM reads
+    true_inversions = _get_true_inversions_in_stretch_standalone(
+        inversion_candidates, bam_file, contig_name, start, stop,
+        inversion_params['process_only_inverted_reads'],
+        inversion_params['check_all_palindromes'])
+
+    if not len(true_inversions):
+        return StretchResult(inversions_found=[], stretch_considered=stretch_considered, stretch_key=stretch_key)
+
+    # compute primers
+    _update_inversions_with_primer_sequences_standalone(
+        true_inversions, contig_sequence, start,
+        inversion_params['oligo_primer_base_length'],
+        inversion_params['oligo_length'])
+
+    # build result dicts
+    inversions_found = []
+    if len(true_inversions):
+        stretch_considered['invs_found'] = True
+        for inv in true_inversions:
+            d = OrderedDict({'entry_id': inv.sequence_name,
+                             'sample_name': entry_name,
+                             'contig_name': contig_name,
+                             'first_seq': inv.first_sequence,
+                             'midline': inv.midline,
+                             'second_seq': utils.rev_comp(inv.second_sequence),
+                             'first_start': inv.first_start + start,
+                             'first_end': inv.first_end + start,
+                             'first_oligo_primer': inv.first_oligo_primer,
+                             'first_oligo_reference': inv.first_oligo_reference,
+                             'second_start': inv.second_start + start,
+                             'second_end': inv.second_end + start,
+                             'second_oligo_primer': inv.second_oligo_primer,
+                             'second_oligo_reference': inv.second_oligo_reference,
+                             'num_mismatches': inv.num_mismatches,
+                             'num_gaps': inv.num_gaps,
+                             'length': inv.length,
+                             'distance': inv.distance})
+            inversions_found.append(d)
+
+    return StretchResult(inversions_found=inversions_found, stretch_considered=stretch_considered, stretch_key=stretch_key)
+
+
+def process_stretch_worker(bam_file_path, palindrome_args, inversion_params, input_queue, output_queue):
+    """Worker function for parallel stretch processing.
+
+    Each worker opens its own BAM file and Palindromes instance, then processes
+    stretches from the input queue until it receives a None sentinel.
+    """
+
+    try:
+        bam_file = bamops.BAMFileObject(bam_file_path, 'rb')
+        P = Palindromes(palindrome_args, run=run_quiet, progress=progress_quiet)
+        P.verbose = False
+    except Exception as e:
+        output_queue.put(RuntimeError(f"Worker failed to initialize: {e}"))
+        # drain our sentinel so other workers aren't disrupted
+        while input_queue.get() is not None:
+            pass
+        output_queue.close()
+        output_queue.join_thread()
+        return
+
+    try:
+        while True:
+            work_item = input_queue.get()
+
+            if work_item is None:
+                break
+
+            try:
+                result = _process_single_stretch(work_item, bam_file, P, inversion_params)
+                output_queue.put(result)
+            except Exception as e:
+                output_queue.put(RuntimeError(f"Worker failed processing stretch {work_item.sequence_name}: {e}"))
+    finally:
+        bam_file.close()
+
+        # ensure all queued data is flushed to the pipe before the process exits.
+        # without this, the background feeder thread may be killed mid-send.
+        output_queue.close()
+        output_queue.join_thread()
 
 
 class Inversions:
