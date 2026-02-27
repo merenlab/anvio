@@ -29,8 +29,8 @@ class DisCov:
         # establish output files for testing
         unfilt_output = "TEST_UNFILTERED.txt"
         filt_output = "TEST_FILTERED.txt"
-        header = ["contig", "sample", "Non-specific Filter Removed Bases", "Num Coverage Regions", "Num Gap Regions", "Gap Evenness (Gini)", 
-                  "Midpoint Range", "Midpoint Evenness", "SW Depth Evenness MAD (fine)",
+        header = ["contig", "sample", "Non-specific Filter Removed Bases", 
+                  "Midpoint Range", "SW Depth Evenness MAD (fine)",
                   "SW Depth Evenness MAD (medium)", "SW Depth Evenness MAD (coarse)",
                   "SW Depth Evenness CV (fine)", "SW Depth Evenness CV (medium)",
                   "SW Depth Evenness CV (coarse)", "SW Proportion Covered (fine)",
@@ -114,11 +114,7 @@ class DisCov:
         # append all metrics to file
         output_list = [self.name, self.sample,
                         f"{ns_filter_removed_something}",
-                        f"{num_coverage_regions}",
-                        f"{num_gaps}",
-                        f"{gap_gini:.4}" if gap_gini else "NA",
                         f"{mp_range:.4}" if mp_range else "NA",
-                        f"{mp_evenness:.4}" if mp_evenness else "NA",
                         sliding_window_evenness_mad,
                         sliding_window_evenness_cv,
                         sliding_window_proportion_covered,
