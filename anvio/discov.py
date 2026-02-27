@@ -32,8 +32,13 @@ class DisCov:
         header = ["contig", "sample", "Non-specific Filter Removed Bases", 
                   "Midpoint Range", "SW Depth Evenness MAD (fine)",
                   "SW Depth Evenness MAD (medium)", "SW Depth Evenness MAD (coarse)",
+                  "SW Depth Evenness MAD Nonzero (fine)",
+                  "SW Depth Evenness MAD Nonzero (medium)", "SW Depth Evenness MAD Nonzero (coarse)",
                   "SW Depth Evenness CV (fine)", "SW Depth Evenness CV (medium)",
-                  "SW Depth Evenness CV (coarse)", "SW Proportion Covered (fine)",
+                  "SW Depth Evenness CV (coarse)", 
+                  "SW Depth Evenness CV Nonzero (fine)", "SW Depth Evenness CV Nonzero (medium)",
+                  "SW Depth Evenness CV Nonzero (coarse)", 
+                  "SW Proportion Covered (fine)",
                   "SW Proportion Covered (medium)", "SW Proportion Covered (coarse)",
                   "Window-Scaling Variance", "Dispersion of Counts (num bins = 50)",
                   "Dispersion of Counts (num bins = 30)", "Dispersion of Counts (num bins = 10)",
@@ -114,6 +119,13 @@ class DisCov:
         sw_prop_vals = [sliding_window_metrics[scale]['Proportion_Covered'] for scale in ['fine','medium','coarse']]
         sw_prop = [f"{m:.04}" if m else "NA" for m in sw_prop_vals ]
         sliding_window_proportion_covered = "\t".join(sw_prop)
+        sliding_window_metrics_nonzero = self.sliding_window_evenness(cov_array[cov_array > 0], window_scales)
+        sw_mad_vals_nz = [sliding_window_metrics_nonzero[scale]['Depth_Evenness_MAD'] for scale in ['fine','medium','coarse']]
+        sw_mad_nz = [f"{m:.04}" if m else "NA" for m in sw_mad_vals_nz ]
+        sliding_window_evenness_mad_nz = "\t".join(sw_mad_nz)
+        sw_cv_vals_nz = [sliding_window_metrics_nonzero[scale]['Depth_Evenness_CV'] for scale in ['fine','medium','coarse']]
+        sw_cv_nz = [f"{m:.04}" if m else "NA" for m in sw_cv_vals_nz ]
+        sliding_window_evenness_cv_nz = "\t".join(sw_cv_nz)
         window_scaling_variance = self.compute_window_scaling_variance(cov_array)
         disp_50 = self.binned_count_dispersion(cov_array, num_windows=50) # fine-scale clustering, small windows
         disp_30 = self.binned_count_dispersion(cov_array, num_windows=30)
@@ -129,7 +141,9 @@ class DisCov:
                         f"{ns_filter_removed_something}",
                         f"{mp_range:.4}" if mp_range else "NA",
                         sliding_window_evenness_mad,
+                        sliding_window_evenness_mad_nz,
                         sliding_window_evenness_cv,
+                        sliding_window_evenness_cv_nz,
                         sliding_window_proportion_covered,
                         f"{window_scaling_variance:.4}" if window_scaling_variance else "NA",
                         disp_counts,
