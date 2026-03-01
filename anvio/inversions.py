@@ -995,11 +995,20 @@ class Inversions:
             p.start()
             workers.append(p)
 
-        # collect results
+        # collect results, with a timeout to detect worker crashes (segfaults, OOM kills, etc.)
         results_collected = 0
         errors = []
         while results_collected < total_stretches:
-            result = output_queue.get()
+            try:
+                result = output_queue.get(timeout=60)
+            except Exception:
+                # timeout: check if any workers are still alive
+                if any(p.is_alive() for p in workers):
+                    continue
+                # all workers are dead but we haven't collected all results
+                missing = total_stretches - results_collected
+                errors.append(f"{missing} stretch(es) were never processed: all worker processes died")
+                break
 
             if isinstance(result, Exception):
                 errors.append(str(result))
@@ -1022,7 +1031,7 @@ class Inversions:
 
         # wait for all workers to finish
         for p in workers:
-            p.join()
+            p.join(timeout=10)
 
         if errors:
             raise RuntimeError(f"Errors occurred in {len(errors)} stretch(es) during parallel processing: "
