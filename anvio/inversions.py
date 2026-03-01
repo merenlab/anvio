@@ -1081,156 +1081,26 @@ class Inversions:
             But it updates the inversion data structure with `first_oligo_primer` and `second_oligo_primer`.
         """
 
-        for inv in inversions:
-            # we will first identify upstream and downstream genomic regions that are before the first palindrome
-            # in the inversion and after the second palindrome in the inversion
-            first_genomic_region_start = inv.first_start + start - self.oligo_primer_base_length
-            first_genomic_region_end = inv.first_start + start
-            first_genomic_region = contig_sequence[first_genomic_region_start:first_genomic_region_end]
-
-            second_genomic_region_start = inv.second_end + start
-            second_genomic_region_end = inv.second_end + start + self.oligo_primer_base_length + 1
-            second_genomic_region = contig_sequence[second_genomic_region_start:second_genomic_region_end]
-
-            # then, we will replace nucleotides found on the contig with `.` character where
-            # there are mismatches in the palindrome sequence
-            first_with_mismatches = ''.join(['.' if inv.midline[i] == 'x' else inv.first_sequence[i] for i in range(0, inv.length)])
-            second_with_mismatches = ''.join(['.' if inv.midline[i] == 'x' else inv.second_sequence[i] for i in range(0, inv.length)])
-
-            # here we first update the inversion object with primers
-            inv.first_oligo_primer = first_genomic_region + first_with_mismatches
-            inv.second_oligo_primer = utils.rev_comp(second_genomic_region) + second_with_mismatches
-
-            # and finally we update the inversion object with reference oligos
-            # found in the original contig
-            inv.first_oligo_reference = contig_sequence[first_genomic_region_end + inv.length:first_genomic_region_end + inv.length + self.oligo_length]
-            inv.second_oligo_reference = utils.rev_comp(contig_sequence[second_genomic_region_start - inv.length - self.oligo_length:second_genomic_region_start - inv.length])
-
-        return
+        _update_inversions_with_primer_sequences_standalone(inversions, contig_sequence, start,
+                                                            self.oligo_primer_base_length, self.oligo_length)
 
 
     def test_inversion_candidates_using_short_reads(self, inversion_candidates, reads):
         """Takes a set of inversion candidates and short reads to look for true inversions"""
 
-        true_inversions = []
+        true_inversions = _test_inversion_candidates_standalone(inversion_candidates, reads, self.check_all_palindromes)
 
-        total_num_inversions = len(inversion_candidates)
-        current_inversion = 0
-        for inversion_candidate in inversion_candidates:
-            current_inversion += 1
-            num_reads_considered = 0
-            num_bad_reads = 0
-            match = False
-            evidence = ''
+        if anvio.DEBUG or self.verbose:
+            self.progress.reset()
+            total_num = len(inversion_candidates)
+            num_confirmed = len(true_inversions)
 
-            # we are going to be using these to variables to ensure both left and right
-            # construct are supported by short reads
-            evidence_right = None
-            evidence_left = None
-
-            if inversion_candidate.num_mismatches == 0:
-                # Here we take advantage of construct symmetry. If the inversion candidate has no
-                # mismatches, we only needs to test for the v1 constructs.
-                for read in reads:
-                    # we will skip empty reads
-                    if read is None:
-                        num_bad_reads += 1
-                        continue
-                    num_reads_considered += 1
-                    if not evidence_left:
-                        if inversion_candidate.v1_left in read:
-                            evidence += 'v1_left and '
-                            evidence_left = True
-
-                            if evidence_right:
-                                match = True
-                                evidence_right = False
-                                evidence_left = False
-                                break
-                    elif not evidence_right:
-                        if inversion_candidate.v1_right in read:
-                            evidence += 'v1_right'
-                            evidence_right = True
-
-                            if evidence_left:
-                                match = True
-                                evidence_right = False
-                                evidence_left = False
-                                break
+            if num_confirmed:
+                self.run.info_single(f"👍 {num_confirmed} of {PL('inversion candidate', total_num)} confirmed "
+                                     f"by short reads.", mc="yellow", level=2)
             else:
-                # Unfortunately, the inversion candidate has some mismatches, which requires testing
-                # for v1 _and_ v2 constructs.
-                for read in reads:
-                    if read is None:
-                        num_bad_reads += 1
-                        continue
-                    num_reads_considered += 1
-                    if not evidence_left:
-                        if inversion_candidate.v1_left in read:
-                            evidence += 'v1_left and '
-                            evidence_left = True
-
-                            if evidence_right:
-                                match = True
-                                evidence_right = False
-                                evidence_left = False
-                                break
-                        elif inversion_candidate.v2_left in read:
-                            evidence += 'v2_left and'
-                            evidence_left = True
-
-                            if evidence_right:
-                                match = True
-                                evidence_right = False
-                                evidence_left = False
-                                break
-                    if not evidence_right:
-                        if inversion_candidate.v1_right in read:
-                            evidence += 'v1_right'
-                            evidence_right = True
-
-                            if evidence_left:
-                                match = True
-                                evidence_right = False
-                                evidence_left = False
-                                break
-                        elif inversion_candidate.v2_right in read:
-                            evidence += 'v2_right'
-                            evidence_right = True
-
-                            if evidence_left:
-                                match = True
-                                evidence_right = False
-                                evidence_left = False
-                                break
-
-            if match:
-                # we found an inversion candidate that has at least one confirmed
-                # construct. We add this one into the list of true inversions:
-                true_inversions.append(inversion_candidate)
-
-                if anvio.DEBUG or self.verbose:
-                    self.progress.reset()
-                    self.run.info_single(f"👍 Candidate {current_inversion} of {total_num_inversions}: confirmed by {evidence} "
-                                         f"after {num_reads_considered} reads.", mc="yellow", level=2)
-
-                if not self.check_all_palindromes:
-                    # if the user is not interested in testing of every single palindrome
-                    # found in the stretch of interest to see whether there may be more
-                    # inversion candidates, we return the current list which includes only
-                    # one confirmed inversion
-                    return true_inversions
-            else:
-                if anvio.DEBUG or self.verbose:
-                    self.progress.reset()
-
-                    if num_bad_reads:
-                        self.run.info_single(f"👎 Candidate {current_inversion} of {total_num_inversions}: no confirmation "
-                                             f"after processing {num_reads_considered} reads, {num_bad_reads} of which were "
-                                             f"'bad' reads as they somehow had no DNA sequence in the BAM file :/", mc="red", level=2)
-                    else:
-                        self.run.info_single(f"👎 Candidate {current_inversion} of {total_num_inversions}: no confirmation "
-                                             f"after processing {num_reads_considered} reads.", mc="red", level=2)
+                self.run.info_single(f"👎 None of the {PL('inversion candidate', total_num)} confirmed "
+                                     f"by short reads.", mc="red", level=2)
 
         return true_inversions
 
@@ -1238,70 +1108,19 @@ class Inversions:
     def get_true_inversions_in_stretch(self, inversion_candidates, bam_file, contig_name, start, stop):
         """Survey a bunch of palindromes with 'constructs' to find true/active inversions.
 
-        A true inversion is one with evidence from short reads that it has activity.
+        A true inversion is one with evidence from short reads that it has activity. This method
+        is a verbose wrapper around _get_true_inversions_in_stretch_standalone, which contains the
+        actual read-fetching and testing logic shared with worker processes.
         """
 
-        # here we will do something sneaky. if the user wants us to test inversions only using inverted reads,
-        # we will abide and move on. as inverted reads will be a fraction of all reads that cover a given
-        # region in the BAM file, it is not as costly as going through all of the regular reads. that said,
-        # inverted reads will often miss active inversions, and going through the costly route of using all
-        # reads will be necessary to be sure. the following if/else block covers that with the consideration
-        # of one more key parameter: `self.check_all_palindromes`. the code is intentionally redundant below
-        # to ensure maximum readability and to make it easier to follow this relatively complex logic.
-        if self.process_only_inverted_reads:
-            # if we are here, we will only use the inverted reads and move on. this is the simple case.
-            bam_file.fetch_filter = 'inversions'
-            reads = [r.query_sequence for r in bam_file.fetch_only(contig_name, start=start, end=stop)]
+        if anvio.DEBUG or self.verbose:
+            self.progress.reset()
+            self.run.info_single(f"Testing {len(inversion_candidates)} palindromes to find true inversions:",
+                                 mc="green", nl_before=1, nl_after=1)
 
-            if anvio.DEBUG or self.verbose:
-                self.progress.reset()
-                self.run.info_single(f"Testing {len(inversion_candidates)} palindromes with {len(reads)} REV/REV and FWD/FWD reads to find "
-                                     f"true inversions:", mc="green", nl_before=1, nl_after=1)
-
-            true_inversions_in_stretch = self.test_inversion_candidates_using_short_reads(inversion_candidates, reads)
-        else:
-            # if we are here, we want to use the inverted reads first, and if we find nothing, we want to
-            # try all reads. BUT THERE IS ONE MORE CONSIDERATION: if we have multiple palindromes, and if
-            # the user asked for `self.check_all_palindromes`, it means we may have a match to one of them
-            # in inverted reads, but even if we could have found more if we were to use all reads, we would
-            # not be checking them since `if not len(true_inversions_in_stretch)` would no longer be True.
-            # Which means, if the user is asking for `self.check_all_palindromes`, we can't do the sneaky
-            # thing we wished to do and must work with all reads from the get go :/ first, we will take
-            # care of the default case where the user did not ask to check all palindromes:
-            if not self.check_all_palindromes:
-                bam_file.fetch_filter = 'inversions'
-                reads = [r.query_sequence for r in bam_file.fetch_only(contig_name, start=start, end=stop)]
-                if anvio.DEBUG or self.verbose:
-                    self.progress.reset()
-                    self.run.info_single(f"Testing {len(inversion_candidates)} palindromes with {len(reads)} REV/REV and FWD/FWD reads to find "
-                                         f"true inversions:", mc="green", nl_before=1, nl_after=1)
-
-                true_inversions_in_stretch = self.test_inversion_candidates_using_short_reads(inversion_candidates, reads)
-
-                if not len(true_inversions_in_stretch):
-                    # if we are here, it means inverted reads did not match any of the constructs, and next
-                    # we will try all reads.
-                    bam_file.fetch_filter = None
-                    reads = [r.query_sequence for r in bam_file.fetch_only(contig_name, start=start, end=stop)]
-
-                    if anvio.DEBUG or self.verbose:
-                        self.progress.reset()
-                        self.run.info_single(f"REV/REV and FWD/FWD reads didn't work :( Now testing the same {len(inversion_candidates)} palindromes "
-                                             f"with {len(reads)} regular reads to look for true inversions:", mc="green", nl_before=1, nl_after=1)
-
-                    true_inversions_in_stretch = self.test_inversion_candidates_using_short_reads(inversion_candidates, reads)
-            else:
-                # so the user wants us to test test all palindromes. this is the case where we shouldn't use
-                # inverted reads to speed things up when possible, and simply use all reads.
-                bam_file.fetch_filter = None
-                reads = [r.query_sequence for r in bam_file.fetch_only(contig_name, start=start, end=stop)]
-
-                if anvio.DEBUG or self.verbose:
-                    self.progress.reset()
-                    self.run.info_single(f"Testing {len(inversion_candidates)} palindromes with {len(reads)} regular reads to find "
-                                         f"true inversions:", mc="green", nl_before=1, nl_after=1)
-
-                true_inversions_in_stretch = self.test_inversion_candidates_using_short_reads(inversion_candidates, reads)
+        true_inversions_in_stretch = _get_true_inversions_in_stretch_standalone(
+            inversion_candidates, bam_file, contig_name, start, stop,
+            self.process_only_inverted_reads, self.check_all_palindromes)
 
         return true_inversions_in_stretch
 
