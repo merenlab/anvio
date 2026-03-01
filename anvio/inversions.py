@@ -52,7 +52,7 @@ progress_quiet = terminal.Progress(verbose=False)
 
 # namedtuples for passing work items and results through multiprocessing queues
 StretchWorkItem = namedtuple('StretchWorkItem', ['contig_name', 'start', 'stop', 'stretch_sequence',
-                                                  'stretch_sequence_coverage', 'contig_sequence',
+                                                  'stretch_sequence_coverage',
                                                   'entry_name', 'sequence_name'])
 
 StretchResult = namedtuple('StretchResult', ['inversions_found', 'stretch_considered', 'stretch_key'])
@@ -180,7 +180,7 @@ def _update_inversions_with_primer_sequences_standalone(inversions, contig_seque
         inv.second_oligo_reference = utils.rev_comp(contig_sequence[second_genomic_region_start - inv.length - oligo_length:second_genomic_region_start - inv.length])
 
 
-def _process_single_stretch(work_item, bam_file, P, inversion_params):
+def _process_single_stretch(work_item, bam_file, P, inversion_params, contig_sequence_cache, contigs_db_path):
     """Process a single stretch: find palindromes, build constructs, test with BAM reads.
 
     This is the core logic extracted from the process_db() stretch loop body,
@@ -192,7 +192,6 @@ def _process_single_stretch(work_item, bam_file, P, inversion_params):
     stop = work_item.stop
     stretch_sequence = work_item.stretch_sequence
     stretch_sequence_coverage = work_item.stretch_sequence_coverage
-    contig_sequence = work_item.contig_sequence
     entry_name = work_item.entry_name
     sequence_name = work_item.sequence_name
 
@@ -249,7 +248,21 @@ def _process_single_stretch(work_item, bam_file, P, inversion_params):
     if not len(true_inversions):
         return StretchResult(inversions_found=[], stretch_considered=stretch_considered, stretch_key=stretch_key)
 
-    # compute primers
+    # compute primers — load contig sequence on demand since this only happens
+    # for stretches with true inversions (rare), avoiding the cost of sending
+    # full contig sequences through the queue for every stretch
+    if contig_name not in contig_sequence_cache:
+        contigs_db = dbops.ContigsDatabase(contigs_db_path, run=run_quiet, progress=progress_quiet)
+        where_clause = f'contig = "{contig_name}"'
+        rows = contigs_db.db.get_some_rows_from_table_as_dict(t.contig_sequences_table_name,
+                                                               where_clause=where_clause,
+                                                               row_num_as_key=True)
+        contigs_db.disconnect()
+        for row in rows.values():
+            contig_sequence_cache[row['contig']] = row['sequence']
+
+    contig_sequence = contig_sequence_cache[contig_name]
+
     _update_inversions_with_primer_sequences_standalone(
         true_inversions, contig_sequence, start,
         inversion_params['oligo_primer_base_length'],
@@ -283,7 +296,7 @@ def _process_single_stretch(work_item, bam_file, P, inversion_params):
     return StretchResult(inversions_found=inversions_found, stretch_considered=stretch_considered, stretch_key=stretch_key)
 
 
-def process_stretch_worker(bam_file_path, palindrome_args, inversion_params, input_queue, output_queue):
+def process_stretch_worker(bam_file_path, contigs_db_path, palindrome_args, inversion_params, input_queue, output_queue):
     """Worker function for parallel stretch processing.
 
     Each worker opens its own BAM file and Palindromes instance, then processes
@@ -308,6 +321,8 @@ def process_stretch_worker(bam_file_path, palindrome_args, inversion_params, inp
         output_queue.join_thread()
         return
 
+    contig_sequence_cache = {}
+
     try:
         while True:
             work_item = input_queue.get()
@@ -316,7 +331,8 @@ def process_stretch_worker(bam_file_path, palindrome_args, inversion_params, inp
                 break
 
             try:
-                result = _process_single_stretch(work_item, bam_file, P, inversion_params)
+                result = _process_single_stretch(work_item, bam_file, P, inversion_params,
+                                                 contig_sequence_cache, contigs_db_path)
                 output_queue.put(result)
             except Exception as e:
                 output_queue.put(RuntimeError(f"Worker failed processing stretch {work_item.sequence_name}: {e}"))
@@ -963,7 +979,6 @@ class Inversions:
                     stop=stop,
                     stretch_sequence=stretch_sequence,
                     stretch_sequence_coverage=stretch_sequence_coverage,
-                    contig_sequence=contig_sequence,
                     entry_name=entry_name,
                     sequence_name=sequence_name)
 
@@ -991,7 +1006,7 @@ class Inversions:
         for _ in range(num_workers):
             p = multiprocessing.Process(
                 target=process_stretch_worker,
-                args=(bam_file_path, palindrome_args, inversion_params, input_queue, output_queue))
+                args=(bam_file_path, self.contigs_db_path, palindrome_args, inversion_params, input_queue, output_queue))
             p.start()
             workers.append(p)
 
