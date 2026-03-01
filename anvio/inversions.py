@@ -295,10 +295,15 @@ def process_stretch_worker(bam_file_path, palindrome_args, inversion_params, inp
         P = Palindromes(palindrome_args, run=run_quiet, progress=progress_quiet)
         P.verbose = False
     except Exception as e:
-        output_queue.put(RuntimeError(f"Worker failed to initialize: {e}"))
-        # drain our sentinel so other workers aren't disrupted
-        while input_queue.get() is not None:
-            pass
+        init_error = RuntimeError(f"Worker failed to initialize: {e}")
+        output_queue.put(init_error)
+        # drain remaining work items until our sentinel, putting an error for each
+        # so the main process doesn't deadlock waiting for results that will never come
+        while True:
+            item = input_queue.get()
+            if item is None:
+                break
+            output_queue.put(init_error)
         output_queue.close()
         output_queue.join_thread()
         return
