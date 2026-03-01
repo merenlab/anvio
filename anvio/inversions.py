@@ -462,7 +462,7 @@ class Inversions:
 
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
         self.splits_basic_info = contigs_db.db.smart_get(t.splits_info_table_name, column='split', data=split_names)
-        self.contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
+        self.contig_sequences = {}
         self.genes_are_called_in_contigs_db = contigs_db.meta['genes_are_called']
         self.genes_annotated_with_functions_in_contigs_db = contigs_db.meta['gene_function_sources'] is not None and len(contigs_db.meta['gene_function_sources']) > 0
         contigs_db.disconnect()
@@ -477,6 +477,8 @@ class Inversions:
 
             self.contig_name_to_split_names[contig_name].append(split_name)
 
+        del self.splits_basic_info
+
         # let's have a variable of convenience:
         self.contig_names = sorted(list(self.contig_name_to_split_names.keys()))
 
@@ -486,6 +488,26 @@ class Inversions:
                                   f"but there doesn't seem to be a contig in this database with that name :/")
             else:
                 self.contig_names = [self.target_contig]
+
+
+    def _load_contig_sequences(self, contig_names):
+        """Load contig sequences on demand, only for contigs not already cached."""
+
+        contig_names_to_load = [c for c in contig_names if c not in self.contig_sequences]
+
+        if not contig_names_to_load:
+            return
+
+        contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
+        formatted = ', '.join([f'"{c}"' for c in contig_names_to_load])
+        where_clause = f"contig IN ({formatted})"
+        new_sequences = contigs_db.db.get_some_rows_from_table_as_dict(t.contig_sequences_table_name,
+                                                                        where_clause=where_clause,
+                                                                        row_num_as_key=True)
+        contigs_db.disconnect()
+
+        for row in new_sequences.values():
+            self.contig_sequences[row['contig']] = {'sequence': row['sequence']}
 
 
     def process_db(self, entry_name, profile_db_path, bam_file_path):
@@ -505,26 +527,13 @@ class Inversions:
         self.progress.update("Recovering the coverage data")
         ################################################################################
 
-        profile_db = dbops.ProfileSuperclass(argparse.Namespace(profile_db=profile_db_path, contigs_db=self.contigs_db_path), r=run_quiet, p=progress_quiet)
-        auxiliary_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(profile_db.auxiliary_data_path, profile_db.p_meta['contigs_db_hash'])
-        sample_id = profile_db.p_meta['sample_id']
+        profile_db = dbops.ProfileDatabase(profile_db_path, quiet=True)
+        sample_id = profile_db.meta['sample_id']
+        contigs_db_hash = profile_db.meta['contigs_db_hash']
+        profile_db.disconnect()
 
-        # load per-contig detection values from the profile DB. these represent the fraction
-        # of each contig covered by FWD/FWD or REV/REV reads, which is useful for identifying
-        # potential template-switching artifacts where such reads uniformly cover entire contigs.
-        # NOTE: the detection_contigs table is keyed by split names (not contig names), where
-        # each split stores its parent contig's detection value. we map back to contig names
-        # by looking up the first split for each contig.
-        contig_detections = {}
-        profile_db_obj = dbops.ProfileDatabase(profile_db_path)
-        detection_data, _ = profile_db_obj.db.get_view_data('detection_contigs')
-        profile_db_obj.disconnect()
-        for contig_name in self.contig_names:
-            split_names = self.contig_name_to_split_names[contig_name]
-            if split_names and split_names[0] in detection_data:
-                contig_detections[contig_name] = detection_data[split_names[0]].get(sample_id, 0)
-            else:
-                contig_detections[contig_name] = 0
+        auxiliary_data_path = dbops.get_auxiliary_data_path_for_profile_db(profile_db_path)
+        auxiliary_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(auxiliary_data_path, contigs_db_hash)
 
         # here we open our bam file with an inversions fetch filter.
         # we will access to it later when it is time to get the FWD/FWD and
@@ -620,6 +629,33 @@ class Inversions:
             coverage_stretches_in_contigs[contig_name] = [(0 if (e[0] - self.num_nts_to_pad_a_stretch< 0) else e[0] - self.num_nts_to_pad_a_stretch,
                                                            contig_length if (e[1] + self.num_nts_to_pad_a_stretch) > contig_length else e[1] + self.num_nts_to_pad_a_stretch) \
                                                                 for e in coverage_stretches_in_contigs[contig_name]]
+
+        ################################################################################
+        self.progress.update("Loading data for contigs with stretches")
+        ################################################################################
+        contigs_with_stretches = [c for c in coverage_stretches_in_contigs if coverage_stretches_in_contigs[c]]
+
+        # load detection values only for splits belonging to contigs that have stretches
+        contig_detections = {}
+        if contigs_with_stretches:
+            splits_for_detection = set()
+            for c in contigs_with_stretches:
+                splits_for_detection.add(self.contig_name_to_split_names[c][0])
+
+            profile_db_obj = dbops.ProfileDatabase(profile_db_path, quiet=True)
+            detection_data, _ = profile_db_obj.db.get_view_data('detection_contigs',
+                                                                  split_names_of_interest=splits_for_detection)
+            profile_db_obj.disconnect()
+
+            for contig_name in contigs_with_stretches:
+                split_names = self.contig_name_to_split_names[contig_name]
+                if split_names and split_names[0] in detection_data:
+                    contig_detections[contig_name] = detection_data[split_names[0]].get(sample_id, 0)
+                else:
+                    contig_detections[contig_name] = 0
+
+        # load contig sequences only for contigs that have stretches
+        self._load_contig_sequences(contigs_with_stretches)
 
         ################################################################################
         self.progress.update("Computing coverage ratios for stretches")
@@ -1452,6 +1488,10 @@ class Inversions:
         if self.skip_recovering_genomic_context:
             return
 
+        # load contig sequences for contigs referenced by consensus inversions
+        contig_names_needed = set(entry['contig_name'] for entry in self.consensus_inversions)
+        self._load_contig_sequences(contig_names_needed)
+
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
 
         # are there genes?
@@ -1709,6 +1749,10 @@ class Inversions:
         # how many motifs should we look for?
         if not self.num_of_motifs:
             self.num_of_motifs = len(self.consensus_inversions)
+
+        # load contig sequences for contigs referenced by consensus inversions
+        contig_names_needed = set(entry['contig_name'] for entry in self.consensus_inversions)
+        self._load_contig_sequences(contig_names_needed)
 
         # for each inversion, run MEME with num_motifs = 3
         individual_fasta_paths = []
