@@ -5,6 +5,7 @@
 import os
 import copy
 import argparse
+import traceback
 import numpy as np
 import xml.etree.ElementTree as ET
 from collections import OrderedDict, Counter, namedtuple
@@ -308,7 +309,8 @@ def process_stretch_worker(bam_file_path, contigs_db_path, palindrome_args, inve
         P = Palindromes(palindrome_args, run=run_quiet, progress=progress_quiet)
         P.verbose = False
     except Exception as e:
-        init_error = RuntimeError(f"Worker failed to initialize: {e}")
+        tb = traceback.format_exc()
+        init_error = RuntimeError(f"Worker failed to initialize: {e}\n{tb}")
         output_queue.put(init_error)
         # drain remaining work items until our sentinel, putting an error for each
         # so the main process doesn't deadlock waiting for results that will never come
@@ -335,7 +337,8 @@ def process_stretch_worker(bam_file_path, contigs_db_path, palindrome_args, inve
                                                  contig_sequence_cache, contigs_db_path)
                 output_queue.put(result)
             except Exception as e:
-                output_queue.put(RuntimeError(f"Worker failed processing stretch {work_item.sequence_name}: {e}"))
+                tb = traceback.format_exc()
+                output_queue.put(RuntimeError(f"Worker failed processing stretch {work_item.sequence_name}: {e}\n{tb}"))
     finally:
         bam_file.close()
 
