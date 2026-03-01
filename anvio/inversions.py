@@ -254,7 +254,8 @@ def _process_single_stretch(work_item, bam_file, P, inversion_params, contig_seq
     # full contig sequences through the queue for every stretch
     if contig_name not in contig_sequence_cache:
         contigs_db = dbops.ContigsDatabase(contigs_db_path, run=run_quiet, progress=progress_quiet)
-        where_clause = f'contig = "{contig_name}"'
+        safe_name = contig_name.replace("'", "''")
+        where_clause = f"contig = '{safe_name}'"
         rows = contigs_db.db.get_some_rows_from_table_as_dict(t.contig_sequences_table_name,
                                                                where_clause=where_clause,
                                                                row_num_as_key=True)
@@ -523,7 +524,7 @@ class Inversions:
             return
 
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
-        formatted = ', '.join([f'"{c}"' for c in contig_names_to_load])
+        formatted = ', '.join(["'%s'" % c.replace("'", "''") for c in contig_names_to_load])
         where_clause = f"contig IN ({formatted})"
         new_sequences = contigs_db.db.get_some_rows_from_table_as_dict(t.contig_sequences_table_name,
                                                                         where_clause=where_clause,
