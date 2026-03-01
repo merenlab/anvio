@@ -399,7 +399,7 @@ class Inversions:
             self.contigs_db_path, self.profile_db_bam_file_pairs = utils.get_bams_and_profiles_txt_as_data(self.bams_and_profiles_file_path)
 
         self.profile_db_paths = [e['profile_db_path'] for e in self.profile_db_bam_file_pairs.values() if 'profile_db_path' in e]
-        self.raw_r1_r2_reads_are_present = all([('r1' in v) and ('r1' in v) for v in self.profile_db_bam_file_pairs.values()])
+        self.raw_r1_r2_reads_are_present = all([('r1' in v) and ('r2' in v) for v in self.profile_db_bam_file_pairs.values()])
 
         # params to identify regions of interest. if you are studying the code, don't forget to read
         # the information stored in the help menu of the program about these parameters
