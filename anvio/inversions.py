@@ -516,23 +516,31 @@ class Inversions:
 
 
     def _load_contig_sequences(self, contig_names):
-        """Load contig sequences on demand, only for contigs not already cached."""
+        """Load contig sequences on demand, only for contigs not already cached.
+
+        Loads in batches to avoid exceeding SQLite's maximum SQL length when
+        building large WHERE IN (...) clauses with many contig names.
+        """
 
         contig_names_to_load = [c for c in contig_names if c not in self.contig_sequences]
 
         if not contig_names_to_load:
             return
 
+        batch_size = 500
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
-        formatted = ', '.join(["'%s'" % c.replace("'", "''") for c in contig_names_to_load])
-        where_clause = f"contig IN ({formatted})"
-        new_sequences = contigs_db.db.get_some_rows_from_table_as_dict(t.contig_sequences_table_name,
-                                                                        where_clause=where_clause,
-                                                                        row_num_as_key=True)
-        contigs_db.disconnect()
 
-        for row in new_sequences.values():
-            self.contig_sequences[row['contig']] = {'sequence': row['sequence']}
+        for i in range(0, len(contig_names_to_load), batch_size):
+            batch = contig_names_to_load[i:i + batch_size]
+            formatted = ', '.join(["'%s'" % c.replace("'", "''") for c in batch])
+            where_clause = f"contig IN ({formatted})"
+            new_sequences = contigs_db.db.get_some_rows_from_table_as_dict(t.contig_sequences_table_name,
+                                                                            where_clause=where_clause,
+                                                                            row_num_as_key=True)
+            for row in new_sequences.values():
+                self.contig_sequences[row['contig']] = {'sequence': row['sequence']}
+
+        contigs_db.disconnect()
 
 
     def process_db(self, entry_name, profile_db_path, bam_file_path):
