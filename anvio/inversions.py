@@ -574,6 +574,30 @@ class Inversions:
         bam_file = bamops.BAMFileObject(bam_file_path, 'rb')
 
         ################################################################################
+        self.progress.update("Pre-filtering contigs by detection")
+        ################################################################################
+        # load detection values for all splits upfront so we can skip contigs with zero
+        # detection before the expensive coverage stretch computation
+        profile_db_obj = dbops.ProfileDatabase(profile_db_path, quiet=True)
+        detection_data, _ = profile_db_obj.db.get_view_data('detection_contigs')
+        profile_db_obj.disconnect()
+
+        contig_detections = {}
+        for contig_name in self.contig_names:
+            split_names = self.contig_name_to_split_names[contig_name]
+            if split_names and split_names[0] in detection_data:
+                contig_detections[contig_name] = detection_data[split_names[0]].get(sample_id, 0)
+            else:
+                contig_detections[contig_name] = 0
+
+        contig_names_to_process = [c for c in self.contig_names if contig_detections.get(c, 0) > 0]
+        num_skipped = len(self.contig_names) - len(contig_names_to_process)
+
+        if num_skipped:
+            self.run.info_single(f"Skipped {num_skipped} of {len(self.contig_names)} contigs with zero detection.",
+                                 nl_before=1, mc='cyan')
+
+        ################################################################################
         self.progress.update("Computing coverage stretches")
         ################################################################################
         # populate coverage stretches in contigs based on coverage data in this
@@ -581,7 +605,7 @@ class Inversions:
         # those that include palindromic sequences
         contig_coverages = {}
         coverage_stretches_in_contigs = {}
-        for contig_name in self.contig_names:
+        for contig_name in contig_names_to_process:
             contig_coverage = np.array([])
 
             split_names = self.contig_name_to_split_names[contig_name]
@@ -667,25 +691,6 @@ class Inversions:
         self.progress.update("Loading data for contigs with stretches")
         ################################################################################
         contigs_with_stretches = [c for c in coverage_stretches_in_contigs if coverage_stretches_in_contigs[c]]
-
-        # load detection values only for splits belonging to contigs that have stretches
-        contig_detections = {}
-        if contigs_with_stretches:
-            splits_for_detection = set()
-            for c in contigs_with_stretches:
-                splits_for_detection.add(self.contig_name_to_split_names[c][0])
-
-            profile_db_obj = dbops.ProfileDatabase(profile_db_path, quiet=True)
-            detection_data, _ = profile_db_obj.db.get_view_data('detection_contigs',
-                                                                  split_names_of_interest=splits_for_detection)
-            profile_db_obj.disconnect()
-
-            for contig_name in contigs_with_stretches:
-                split_names = self.contig_name_to_split_names[contig_name]
-                if split_names and split_names[0] in detection_data:
-                    contig_detections[contig_name] = detection_data[split_names[0]].get(sample_id, 0)
-                else:
-                    contig_detections[contig_name] = 0
 
         # load contig sequences only for contigs that have stretches
         self._load_contig_sequences(contigs_with_stretches)
