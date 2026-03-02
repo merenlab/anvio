@@ -688,20 +688,13 @@ class Inversions:
                                                                 for e in coverage_stretches_in_contigs[contig_name]]
 
         ################################################################################
-        self.progress.update("Loading data for contigs with stretches")
-        ################################################################################
-        contigs_with_stretches = [c for c in coverage_stretches_in_contigs if coverage_stretches_in_contigs[c]]
-
-        # load contig sequences only for contigs that have stretches
-        self._load_contig_sequences(contigs_with_stretches)
-
-        ################################################################################
         self.progress.update("Computing coverage ratios for stretches")
         ################################################################################
         # pre-compute coverage ratio information for each stretch. this is done before
-        # the single-thread/multi-thread branch because it requires the BAM file (which
-        # workers won't have access to during enqueue) and both paths need the results.
+        # loading contig sequences because stretches that fail the coverage ratio check
+        # will be removed entirely, avoiding expensive sequence loading for them.
         stretch_coverage_ratios = {}
+        stretches_to_remove = {}
         for contig_name in coverage_stretches_in_contigs:
             for start, stop in coverage_stretches_in_contigs[contig_name]:
                 stretch_sequence_coverage = contig_coverages[contig_name][start:stop]
@@ -729,8 +722,32 @@ class Inversions:
 
                     if coverage_ratio < self.min_ratio_of_normal_to_special_coverage:
                         info['skipped'] = True
+                        if contig_name not in stretches_to_remove:
+                            stretches_to_remove[contig_name] = []
+                        stretches_to_remove[contig_name].append((start, stop))
 
                 stretch_coverage_ratios[stretch_key] = info
+
+        # remove stretches that failed the coverage ratio check so we don't load
+        # contig sequences or do palindrome searches for them
+        num_stretches_removed = 0
+        for contig_name, bad_stretches in stretches_to_remove.items():
+            for stretch in bad_stretches:
+                coverage_stretches_in_contigs[contig_name].remove(stretch)
+                num_stretches_removed += 1
+
+        if num_stretches_removed:
+            self.run.info_single(f"Removed {num_stretches_removed} {('stretch' if num_stretches_removed == 1 else 'stretches')} "
+                                 f"that failed the coverage ratio check.",
+                                 nl_before=1, mc='cyan')
+
+        ################################################################################
+        self.progress.update("Loading data for contigs with stretches")
+        ################################################################################
+        contigs_with_stretches = [c for c in coverage_stretches_in_contigs if coverage_stretches_in_contigs[c]]
+
+        # load contig sequences only for contigs that still have stretches
+        self._load_contig_sequences(contigs_with_stretches)
 
         if self.num_threads > 1:
             # parallel mode: close the BAM file (workers open their own) and delegate
@@ -792,15 +809,6 @@ class Inversions:
                                                               'mean_coverage_special': stretch_info.get('mean_coverage_special', 'NA'),
                                                               'mean_coverage_total': stretch_info.get('mean_coverage_total', 'NA'),
                                                               'coverage_ratio': stretch_info.get('coverage_ratio', 'NA')}
-
-                    # skip stretches where the coverage ratio indicates template-switching artifacts
-                    if stretch_info.get('skipped'):
-                        if anvio.DEBUG or self.verbose:
-                            self.progress.reset()
-                            self.run.info_single(f"Skipping {sequence_name}: coverage ratio ({stretch_info['coverage_ratio']}) is below "
-                                                 f"the cutoff ({self.min_ratio_of_normal_to_special_coverage}), which suggests "
-                                                 f"template-switching artifacts rather than true inversions.", mc="red")
-                        continue
 
                     ################################################################################
                     self.progress.update(f"{contig_name}: looking for palindromes")
@@ -974,21 +982,6 @@ class Inversions:
                 stretch_sequence = contig_sequence[start:stop]
                 sequence_name = f"{contig_name}_{start}_{stop}"
                 stretch_key = f"{entry_name}_{sequence_name}"
-
-                # record skipped stretches in stretches_considered and move on
-                stretch_info = stretch_coverage_ratios.get(stretch_key, {})
-                if stretch_info.get('skipped'):
-                    self.stretches_considered[stretch_key] = {'sequence_name': sequence_name,
-                                                              'sample_name': entry_name,
-                                                              'contig_name': contig_name,
-                                                              'start_stop': f"{start}-{stop}",
-                                                              'max_coverage': int(max(stretch_sequence_coverage)),
-                                                              'num_palindromes_found': 0,
-                                                              'true_inversions_found': False,
-                                                              'mean_coverage_special': stretch_info['mean_coverage_special'],
-                                                              'mean_coverage_total': stretch_info['mean_coverage_total'],
-                                                              'coverage_ratio': stretch_info['coverage_ratio']}
-                    continue
 
                 work_item = StretchWorkItem(
                     contig_name=contig_name,
