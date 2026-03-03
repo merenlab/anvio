@@ -81,6 +81,9 @@ def migrate(db_path):
     profile_db.remove_meta_key_value_pair('version')
     profile_db.set_version(next_version)
 
+    progress.update("Reclaiming disk space")
+    profile_db._exec('VACUUM')
+
     progress.update("Committing changes")
     profile_db.disconnect()
 
