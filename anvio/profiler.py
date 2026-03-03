@@ -1501,13 +1501,21 @@ class BAMProfiler(dbops.ContigsSuperclass):
             profile_db.disconnect()
             return
 
-        # Step 3: Insert eligible contig names into a second temp table for the splits JOIN
+        # Step 3: Backfill _contigs tables with one zero row per eligible contig
+        contigs_zero_rows = [(contig_name, self.sample_id, 0.0) for contig_name in eligible_names]
+        for atomic_data_field in self.essential_data_fields_for_anvio_profiles:
+            table_name = '%s_contigs' % atomic_data_field
+            profile_db.db._exec_many(
+                '''INSERT INTO %s VALUES (?,?,?)''' % table_name, contigs_zero_rows)
+        del contigs_zero_rows
+
+        # Step 4: Insert eligible contig names into a temp table for the splits JOIN
         contigs_db._exec("CREATE TEMP TABLE eligible_contigs (name TEXT)")
         contigs_db._exec_many("INSERT INTO eligible_contigs VALUES (?)",
                               [(c,) for c in eligible_names])
         del eligible_names
 
-        # Step 4: Stream splits via JOIN, backfilling auxiliary + atomic data per chunk
+        # Step 5: Stream splits via JOIN, backfilling auxiliary + _splits atomic data per chunk
         cursor = contigs_db._exec(
             """SELECT s.split, s.length FROM %s s
                JOIN eligible_contigs e ON s.parent = e.name""" % t.splits_info_table_name)
@@ -1525,14 +1533,13 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 self.auxiliary_db.coverage_entries.append((split_name, self.sample_id, length))
             self.auxiliary_db.store()
 
-            # Atomic data: build zero-value rows once per chunk, reuse for all fields × targets
+            # Atomic data: build zero-value rows for _splits tables only
             zero_rows = [(split_name, self.sample_id, 0.0) for split_name, _ in rows]
 
             for atomic_data_field in self.essential_data_fields_for_anvio_profiles:
-                for target in ['splits', 'contigs']:
-                    table_name = '%s_%s' % (atomic_data_field, target)
-                    profile_db.db._exec_many(
-                        '''INSERT INTO %s VALUES (?,?,?)''' % table_name, zero_rows)
+                table_name = '%s_splits' % atomic_data_field
+                profile_db.db._exec_many(
+                    '''INSERT INTO %s VALUES (?,?,?)''' % table_name, zero_rows)
 
             # Track split names for downstream use (e.g. clustering)
             for split_name, _ in rows:
