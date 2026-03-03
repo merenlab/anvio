@@ -640,18 +640,27 @@ class BinSplitter(summarizer.Bin, XSplitter):
                     t.item_additional_data_table_name: ('item_name', self.split_names),
                 }
 
-        # dealing with 'view' data tables
+        # dealing with 'view' data tables. _contigs tables are keyed by contig names,
+        # so we need to derive the contig names for this bin's splits.
+        contig_names_in_bin = set(self.summary.splits_basic_info[s]['parent']
+                                 for s in self.split_names
+                                 if s in self.summary.splits_basic_info)
+
         for table_name in constants.essential_data_fields_for_anvio_profiles:
             # ignore `variability_splits`` and `variability_contigs` view tables if SNVs have not been profiled
             if table_name == 'variability' and self.summary.p_meta['SNVs_profiled'] == 0:
                 continue
+
             for target in ['splits', 'contigs']:
                 new_table_name = '_'.join([table_name, target])
                 new_table_structure = t.view_table_structure
                 new_table_types = t.view_table_types
                 bin_profile_db.db.create_table(new_table_name, new_table_structure, new_table_types)
 
-                tables[new_table_name] = ('item', self.split_names)
+                if target == 'contigs':
+                    tables[new_table_name] = ('item', contig_names_in_bin)
+                else:
+                    tables[new_table_name] = ('item', self.split_names)
 
         # we need to migrate these guys, too. unless we don't need to... if we are migrating,
         # the values in the self table are already accurate. if we are skipping, regardless
