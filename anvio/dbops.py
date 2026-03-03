@@ -4324,8 +4324,14 @@ class ProfileSuperclass(object):
         else:
             # return split-keyed data with contig-level values (expanded from _contigs table)
             table_name = coverage_data_of_interest + '_contigs'
+            if hasattr(self, 'splits_basic_info'):
+                splits_basic_info = self.splits_basic_info
+            else:
+                contigs_db = ContigsDatabase(self.contigs_db_path)
+                splits_basic_info = contigs_db.db.get_table_as_dict(t.splits_info_table_name)
+                contigs_db.disconnect()
             coverages_dict, _ = profile_db.db.get_view_data(table_name,
-                                                            splits_basic_info=self.splits_basic_info,
+                                                            splits_basic_info=splits_basic_info,
                                                             expand_to_splits=True)
 
         profile_db.disconnect()
