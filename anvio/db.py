@@ -887,6 +887,9 @@ class DB:
             contig_names_of_interest = set(splits_basic_info[s]['parent']
                                            for s in split_names_of_interest
                                            if s in splits_basic_info)
+            if not contig_names_of_interest:
+                return ({}, [])
+
             contig_names_formatted = ', '.join([f"'{c}'" for c in contig_names_of_interest])
             where_clause = f"""item IN ({contig_names_formatted})"""
             d = self.get_some_rows_from_table(view_table_name, where_clause=where_clause)
