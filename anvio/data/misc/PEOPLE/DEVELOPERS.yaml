@@ -55,6 +55,13 @@
   linkedin: florian-trigodet-67b351b4
   avatar: FlorianTrigodet.jpg
   bio: "Microbiologist using advanced computational strategies to make sense of the microbial ecology of complex habitats."
+  intellectual-contributions:
+    - contribution: "Led the design and development of core anvi'o programs and workflows"
+    - contribution: "Made significant contributions to anvi'o educational materials, maintained active engagement with the anvi'o user and developer community"
+    - contribution: "Spearheaded the development of <a href=https://anvio.org/help/main/programs/anvi-report-inversions/>anvi'o framework to study genomic inversions</a>"
+    - contribution: "Made significant contributions to improving the performance of various anvi'o programs and workflows, including <a href=https://anvio.org/help/main/programs/anvi-profile/>anvi-profile</a> and <a href=https://anvio.org/help/main/workflows/ecophylo/>EcoPhylo</a>, by reducing the memory requirements, storage fingerprint, and runtime"
+    - contribution: "Made significant contributions to the overall health and maintenance of the codebase through performance refactoring, feature implementation, and issue diagnoses"
+    - contribution: "Organized and taught free-to-attend anvi'o workshops"
   affiliations:
     - title: Senior Scientist
       inst: Alfred Wegener Institute for Polar and Marine Research
@@ -168,6 +175,7 @@
     - contribution: "Spearheaded the development of <a href=https://anvio.org/help/main/programs/anvi-estimate-metabolism/>anvi'o metabolism framework</a>"
     - contribution: "Spearheaded <a href=https://anvio.org/vocabulary>the 'omics vocabulary</a> effort"
     - contribution: "Developed the <a href=https://anvio.org/help/main/programs/anvi-run-kegg-kofams/#how-does-it-work>annotation heuristic</a> and <a href=https://anvio.org/help/main/programs/anvi-setup-kegg-data/#what-are-stray-kos-and-what-happens-when-i-include-them>'stray KO' framework</a> for annotating KEGG KOfams"
+    - contribution: "Organized and taught free-to-attend anvi'o workshops"
   affiliations:
     - title: Post-doctoral Scientist
       inst: Helmholtz Institute for Functional Marine Biodiversity
