@@ -13,7 +13,7 @@ import pandas as pd
 import networkx as nx
 import itertools as it
 import statistics as stat
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 from collections import Counter
 from statistics import mean, multimode
 
@@ -729,12 +729,12 @@ class PangenomeGraphManager():
         Z = linkage(condensed_X, 'ward')
 
         if output_dir:
-            fig = plt.figure(figsize=(25, 10))
-            ax = plt.axes()
-            dendrogram(Z, ax=ax, labels=genome_names, orientation='right')
-            plt.tight_layout()
-            fig.savefig(os.path.join(output_dir, 'synteny_distance_dendrogram.svg'))
-            plt.close(fig)
+            # fig = plt.figure(figsize=(25, 10))
+            # ax = plt.axes()
+            # dendrogram(Z, ax=ax, labels=genome_names, orientation='right')
+            # plt.tight_layout()
+            # fig.savefig(os.path.join(output_dir, 'synteny_distance_dendrogram.svg'))
+            # plt.close(fig)
 
             distance_matrix = pd.DataFrame(X, index=genome_names, columns=genome_names)
             distance_matrix.to_csv(os.path.join(output_dir, 'synteny_distance_matrix.tsv'), sep='\t')
