@@ -2184,6 +2184,7 @@ class PangenomeGraph():
         gene_cluster_to_synteny_gene_cluster = {}
         original_num_nodes = len(self.pangenome_graph.graph.nodes())
         new_core_num = 0
+        new_accessory_num = 0
 
         for synteny_gene_cluster, data in self.pangenome_graph.graph.nodes(data=True):
             gene_cluster = data['gene_cluster']
@@ -2231,14 +2232,23 @@ class PangenomeGraph():
 
                                 del self.layers_data[syn_cluster_y]
 
-                                if len(node_x['gene_calls']) == len(self.genome_names) and node_x['type'] == 'rearrangement':
+                                max_num_genomes = len(self.genome_names)
+                                cluster_num_genomes = len(self.pangenome_data_df.query('gene_cluster == @gene_cluster'))
+
+                                if len(node_x['gene_calls']) == max_num_genomes and node_x['type'] == 'rearrangement':
                                     node_x['type'] = 'core'
                                     self.pangenome_data_df.loc[self.pangenome_data_df['syn_cluster'] == syn_cluster_x, 'syn_cluster_type'] = 'core'
                                     new_core_num += 1
 
+                                elif len(node_x['gene_calls']) == cluster_num_genomes and node_x['type'] == 'rearrangement':
+                                    node_x['type'] = 'accessory'
+                                    self.pangenome_data_df.loc[self.pangenome_data_df['syn_cluster'] == syn_cluster_x, 'syn_cluster_type'] = 'accessory'
+                                    new_accessory_num += 1
+
         self.run.info_single("Successfully remerged nodes.")
         self.run.info_single(f"{original_num_nodes - len(self.pangenome_graph.graph.nodes())} nodes were removed in the process.")
         self.run.info_single(f"{new_core_num} nodes changed from type 'rearrangement' to 'core'.")
+        self.run.info_single(f"{new_accessory_num} nodes changed from type 'rearrangement' to 'accessory'.")
 
         if not nx.is_directed_acyclic_graph(self.pangenome_graph.graph):
             raise ConfigError("Cyclic graphs, are not implemented.")
