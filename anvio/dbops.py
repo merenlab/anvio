@@ -4311,31 +4311,32 @@ class ProfileSuperclass(object):
 
         coverage_data_of_interest = 'mean_coverage_Q2Q3' if use_Q2Q3_coverages else 'mean_coverage'
 
-        table_name = coverage_data_of_interest + '_' + ('splits' if splits_mode else 'contigs')
-
         profile_db = ProfileDatabase(self.profile_db_path)
-        split_coverages_dict, _ = profile_db.db.get_view_data(table_name)
+
+        if splits_mode:
+            # return split-level data from _splits table
+            table_name = coverage_data_of_interest + '_splits'
+            coverages_dict, _ = profile_db.db.get_view_data(table_name)
+        elif report_contigs:
+            # return contig-keyed data directly from _contigs table
+            table_name = coverage_data_of_interest + '_contigs'
+            coverages_dict, _ = profile_db.db.get_view_data(table_name, expand_to_splits=False)
+        else:
+            # return split-keyed data with contig-level values (expanded from _contigs table)
+            table_name = coverage_data_of_interest + '_contigs'
+            if hasattr(self, 'splits_basic_info'):
+                splits_basic_info = self.splits_basic_info
+            else:
+                contigs_db = ContigsDatabase(self.contigs_db_path)
+                splits_basic_info = contigs_db.db.get_table_as_dict(t.splits_info_table_name)
+                contigs_db.disconnect()
+            coverages_dict, _ = profile_db.db.get_view_data(table_name,
+                                                            splits_basic_info=splits_basic_info,
+                                                            expand_to_splits=True)
+
         profile_db.disconnect()
 
-        if report_contigs:
-            # if we are here it means the user is asking for coverages for contigs, not splits. easy peasy.
-            contigs_db = ContigsDatabase(self.contigs_db_path)
-            split_parents = contigs_db.db.get_table_as_dict(t.splits_info_table_name, columns_of_interest=['contig', 'parent'])
-            contigs_db.disconnect()
-
-            contig_coverages_dict = {}
-
-            for split_name in split_coverages_dict:
-                contig_name = split_parents[split_name]['parent']
-
-                if contig_name in contig_coverages_dict:
-                    continue
-
-                contig_coverages_dict[contig_name] = split_coverages_dict[split_name]
-
-            return contig_coverages_dict
-        else:
-            return split_coverages_dict
+        return coverages_dict
 
 
     def init_collection_profile(self, collection_name, calculate_Q2Q3_carefully=False):

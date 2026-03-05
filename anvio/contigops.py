@@ -62,8 +62,7 @@ def get_atomic_data(sample_id, contigs, atomic_data_field):
     for contig in contigs:
         contig_atomic_data = contig.get_atomic_data_dict(atomic_data_field)
 
-        for split in contig.splits:
-            atomic_data_contigs.append((split.name, sample_id, contig_atomic_data), )
+        atomic_data_contigs.append((contig.name, sample_id, contig_atomic_data), )
 
         # contig is done, deal with splits in it:
         for split in contig.splits:
