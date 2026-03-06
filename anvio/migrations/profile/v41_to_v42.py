@@ -57,6 +57,12 @@ def migrate(db_path):
 
     existing_tables = profile_db.get_table_names()
 
+    # Check whether SNVs were profiled. When they were not, the variability tables
+    # may be empty or contain None values, and should be excluded from both
+    # validation and zero-row deletion.
+    self_table = profile_db.get_table_as_dict('self')
+    SNVs_profiled = int(self_table['SNVs_profiled']['value']) if 'SNVs_profiled' in self_table else False
+
     # We accumulate all SQL operations and execute them in a single transaction.
     queued_operations = []
 
@@ -69,9 +75,13 @@ def migrate(db_path):
         zero_cov_table = f'zero_coverage_{target}'
         progress.update(f"Processing {target} view tables")
 
-        # Collect all view table names for this target that exist
+        # Collect all view table names for this target that exist, skipping
+        # variability tables when SNVs were not profiled (they may be empty
+        # or contain None values that should not be treated as zero-coverage).
         table_names = []
         for field in essential_data_fields:
+            if field == 'variability' and not SNVs_profiled:
+                continue
             table_name = f'{field}_{target}'
             if table_name in existing_tables:
                 table_names.append(table_name)
@@ -102,10 +112,11 @@ def migrate(db_path):
 
         # Step 2: Validate consistency across all other view tables.
         # For each zero-detection (item, layer) pair, every other field must also be 0.
-        # For variability, we also accept None (SNV profiling may have been skipped).
         # We also verify that zero-detection pairs exist in every view table (no missing rows).
         for field in essential_data_fields:
             if field == 'detection':
+                continue
+            if field == 'variability' and not SNVs_profiled:
                 continue
 
             table_name = f'{field}_{target}'
@@ -122,20 +133,12 @@ def migrate(db_path):
                 pair = (item, layer)
                 if pair in zero_pairs:
                     zero_pairs_found.add(pair)
-                    if field == 'variability':
-                        if value is not None and value != 0 and value != 0.0:
-                            raise ConfigError(
-                                f"Data integrity problem: {target[:-1]} '{item}' in layer '{layer}' "
-                                f"has detection=0 but {field}={value} (expected 0 or None). "
-                                f"The migration cannot proceed safely."
-                            )
-                    else:
-                        if value != 0 and value != 0.0:
-                            raise ConfigError(
-                                f"Data integrity problem: {target[:-1]} '{item}' in layer '{layer}' "
-                                f"has detection=0 but {field}={value} (expected 0). "
-                                f"The migration cannot proceed safely."
-                            )
+                    if value != 0 and value != 0.0:
+                        raise ConfigError(
+                            f"Data integrity problem: {target[:-1]} '{item}' in layer '{layer}' "
+                            f"has detection=0 but {field}={value} (expected 0). "
+                            f"The migration cannot proceed safely."
+                        )
 
             # Verify all zero-detection pairs exist in this table
             missing_pairs = zero_pairs - zero_pairs_found
