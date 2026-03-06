@@ -4572,6 +4572,8 @@ class ProfileDatabase:
         self.db.create_table(t.states_table_name, t.states_table_structure, t.states_table_types)
         self.db.create_table(t.protein_abundances_table_name, t.protein_abundances_table_structure, t.protein_abundances_table_types)
         self.db.create_table(t.metabolite_abundances_table_name, t.metabolite_abundances_table_structure, t.metabolite_abundances_table_types)
+        self.db.create_table(t.zero_coverage_splits_table_name, t.zero_coverage_splits_table_structure, t.zero_coverage_splits_table_types)
+        self.db.create_table(t.zero_coverage_contigs_table_name, t.zero_coverage_contigs_table_structure, t.zero_coverage_contigs_table_types)
 
         return self.db
 
