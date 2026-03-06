@@ -829,9 +829,51 @@ class DB:
                                                 splits_basic_info, log_norm_numeric_values)
 
 
+    def _get_zero_cov_dict(self, zero_cov_table_name, items_of_interest=None):
+        """Read a zero_coverage table and return {item: set_of_samples}.
+
+        Returns an empty dict if the table does not exist in the database (e.g. when
+        called on a pan database or a database that predates v42).
+        """
+
+        if zero_cov_table_name not in self.get_table_names():
+            return {}
+
+        if items_of_interest:
+            items_formatted = ', '.join([f"'{i}'" for i in items_of_interest])
+            where_clause = f"item IN ({items_formatted})"
+            rows = self.get_some_rows_from_table(zero_cov_table_name, where_clause=where_clause)
+        else:
+            rows = self.get_all_rows_from_table(zero_cov_table_name)
+
+        result = {}
+        for item, sample in rows:
+            if item not in result:
+                result[item] = set()
+            result[item].add(sample)
+
+        return result
+
+
     def _get_view_data_standard(self, view_table_name, split_names_of_interest=None,
                                 splits_basic_info=None, log_norm_numeric_values=False):
-        """Read view data directly from a table, returning items as stored."""
+        """Read view data directly from a table, returning items as stored.
+
+        For profile database view tables (_splits or _contigs), also consults
+        the corresponding zero_coverage table to include items that have no
+        coverage (whose rows are not stored in the view table).
+        """
+
+        # Determine which zero-coverage table to consult, if any
+        if view_table_name.endswith('_splits'):
+            zero_cov_table = 'zero_coverage_splits'
+        elif view_table_name.endswith('_contigs'):
+            zero_cov_table = 'zero_coverage_contigs'
+        else:
+            zero_cov_table = None
+
+        # Read zero-coverage entries: {item: {sample1, sample2, ...}}
+        zero_cov = self._get_zero_cov_dict(zero_cov_table, split_names_of_interest) if zero_cov_table else {}
 
         if split_names_of_interest:
             split_names_formatted = ', '.join([f"'{split_name}'" for split_name in split_names_of_interest])
@@ -841,7 +883,7 @@ class DB:
             d = self.get_all_rows_from_table(view_table_name)
 
         data = {}
-        layers = set([])
+        layers = set()
 
         # this looks dumb, but actually much faster than better looking alternatives
         for entry_id, item, layer, value in d:
@@ -853,6 +895,17 @@ class DB:
                 data[item][layer] = math.log10(value + 1)
             else:
                 data[item][layer] = value
+
+        # Add zero-coverage items. First collect their layers so the header is complete,
+        # then populate the data dict with zero values.
+        for item, samples in zero_cov.items():
+            layers.update(samples)
+
+        for item, samples in zero_cov.items():
+            if item not in data:
+                data[item] = {}
+            for sample in samples:
+                data[item][sample] = 0
 
         # add `__parent__` layer if asked:
         if splits_basic_info:
@@ -871,10 +924,12 @@ class DB:
         """Read a _contigs view table (contig-keyed) and expand to split-keyed rows.
 
         Each contig row is replicated for every split belonging to that contig, using
-        the contig-to-splits mapping derived from `splits_basic_info`.
+        the contig-to-splits mapping derived from `splits_basic_info`. Zero-coverage
+        contigs (from the zero_coverage_contigs table) are expanded the same way, with
+        all their splits receiving a value of 0.
         """
 
-        # Build contig → [split_names] mapping
+        # Build contig -> [split_names] mapping
         contig_to_splits = {}
         for split_name, info in splits_basic_info.items():
             parent = info['parent']
@@ -882,14 +937,21 @@ class DB:
                 contig_to_splits[parent] = []
             contig_to_splits[parent].append(split_name)
 
-        # If we have split_names_of_interest, determine which contigs we need
+        # Determine contig_names_of_interest from split_names_of_interest
         if split_names_of_interest:
             contig_names_of_interest = set(splits_basic_info[s]['parent']
                                            for s in split_names_of_interest
                                            if s in splits_basic_info)
             if not contig_names_of_interest:
                 return ({}, [])
+        else:
+            contig_names_of_interest = None
 
+        # Read zero-coverage contigs
+        zero_cov = self._get_zero_cov_dict('zero_coverage_contigs', contig_names_of_interest)
+
+        # Query view table for non-zero contig data
+        if contig_names_of_interest:
             contig_names_formatted = ', '.join([f"'{c}'" for c in contig_names_of_interest])
             where_clause = f"""item IN ({contig_names_formatted})"""
             d = self.get_some_rows_from_table(view_table_name, where_clause=where_clause)
@@ -898,7 +960,7 @@ class DB:
 
         # First pass: collect layers and contig data
         contig_data = {}
-        layers = set([])
+        layers = set()
 
         for entry_id, contig_name, layer, value in d:
             contig_data[contig_name] = {}
@@ -910,7 +972,11 @@ class DB:
             else:
                 contig_data[contig_name][layer] = value
 
-        # Second pass: expand contig rows to split rows
+        # Collect layers from zero-coverage contigs
+        for contig_name, samples in zero_cov.items():
+            layers.update(samples)
+
+        # Expand non-zero contig rows to split rows
         data = {}
         split_names_of_interest_set = set(split_names_of_interest) if split_names_of_interest else None
 
@@ -923,6 +989,19 @@ class DB:
                     continue
                 data[split_name] = dict(contig_values)
                 data[split_name]['__parent__'] = contig_name
+
+        # Expand zero-coverage contigs to split rows with zero values
+        for contig_name, samples in zero_cov.items():
+            if contig_name not in contig_to_splits:
+                continue
+
+            for split_name in contig_to_splits[contig_name]:
+                if split_names_of_interest_set and split_name not in split_names_of_interest_set:
+                    continue
+                if split_name not in data:
+                    data[split_name] = {'__parent__': contig_name}
+                for sample in samples:
+                    data[split_name][sample] = 0
 
         header = sorted(list(layers)) + ['__parent__']
 
