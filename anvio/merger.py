@@ -613,7 +613,7 @@ class MultipleRuns:
         self.progress.new('Views')
 
         # Merge zero_coverage tables from all input profiles
-        for zero_cov_table in [t.zero_coverage_splits_table_name, t.zero_coverage_contigs_table_name]:
+        for zero_cov_table in [tables.zero_coverage_splits_table_name, tables.zero_coverage_contigs_table_name]:
             for input_profile_db_path in self.profile_dbs_info_dict:
                 sample_id = self.profile_dbs_info_dict[input_profile_db_path]['sample_id']
                 self.progress.update(f"Merging '{zero_cov_table}' from '{sample_id}'")
