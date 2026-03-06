@@ -662,6 +662,10 @@ class BinSplitter(summarizer.Bin, XSplitter):
                 else:
                     tables[new_table_name] = ('item', self.split_names)
 
+        # copy zero_coverage tables for splits/contigs in this bin
+        tables[t.zero_coverage_splits_table_name] = ('item', self.split_names)
+        tables[t.zero_coverage_contigs_table_name] = ('item', contig_names_in_bin)
+
         # we need to migrate these guys, too. unless we don't need to... if we are migrating,
         # the values in the self table are already accurate. if we are skipping, regardless
         # of what the values were, we will set the absolut correct ones.
