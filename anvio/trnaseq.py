@@ -7237,9 +7237,13 @@ class DatabaseMerger(object):
 
     def create_contigs_and_splits_tables(self, profile_db_path, table_basename, data_dict):
         """Create a pair of tables in a profile database. Contigs and splits tables contain the same
-        information since tRNA, unlike a metagenomic contig, is not long enough to be split."""
+        information since tRNA, unlike a metagenomic contig, is not long enough to be split.
+
+        The data_dict keys are split names (seed_name + '_split_00001'). For the _contigs table,
+        we re-key by contig name (stripping the '_split_00001' suffix)."""
+        contigs_data_dict = {k.removesuffix('_split_00001'): v for k, v in data_dict.items()}
         TablesForViews(profile_db_path).create_new_view(
-            view_data=data_dict,
+            view_data=contigs_data_dict,
             table_name=table_basename + '_contigs',
             view_name=None,
             from_matrix_form=True)
@@ -7471,9 +7475,8 @@ class ResultTabulator(object):
         sample_total_discriminator_spec_covs = tuple(map(int, get_meta_value('sample_total_discriminator_specific_coverage').split(', ')))
         mean_spec_cov_df = spec_profile_db.db.get_table_as_dataframe('mean_coverage_contigs')
         spec_profile_db.disconnect()
-        mean_spec_cov_df['contig_name'] = mean_spec_cov_df['item'].apply(lambda s: s.split('_split_00001')[0])
-        mean_spec_cov_df = mean_spec_cov_df.drop(['item', 'layer'], axis=1)
-        mean_spec_cov_df = mean_spec_cov_df.rename({'value': 'mean_spec_cov'}, axis=1)
+        mean_spec_cov_df = mean_spec_cov_df.rename({'item': 'contig_name', 'value': 'mean_spec_cov'}, axis=1)
+        mean_spec_cov_df = mean_spec_cov_df.drop(['layer'], axis=1)
         mean_spec_cov_dict = {}
         for contig_name, contig_df in mean_spec_cov_df.groupby('contig_name'):
             mean_spec_cov_dict[contig_name] = tuple(contig_df['mean_spec_cov'])
@@ -7485,9 +7488,8 @@ class ResultTabulator(object):
             self.sample_names = sample_names = get_meta_value('samples').split(', ')
             mean_nonspec_cov_df = nonspec_profile_db.db.get_table_as_dataframe('mean_coverage_contigs')
             nonspec_profile_db.disconnect()
-            mean_nonspec_cov_df['contig_name'] = mean_nonspec_cov_df['item'].apply(lambda s: s.split('_split_00001')[0])
-            mean_nonspec_cov_df = mean_nonspec_cov_df.drop(['item', 'layer'], axis=1)
-            mean_nonspec_cov_df = mean_nonspec_cov_df.rename({'value': 'mean_nonspec_cov'}, axis=1)
+            mean_nonspec_cov_df = mean_nonspec_cov_df.rename({'item': 'contig_name', 'value': 'mean_nonspec_cov'}, axis=1)
+            mean_nonspec_cov_df = mean_nonspec_cov_df.drop(['layer'], axis=1)
             mean_nonspec_cov_dict = {}
             for contig_name, contig_df in mean_nonspec_cov_df.groupby('contig_name'):
                 mean_nonspec_cov_dict[contig_name] = tuple(contig_df['mean_nonspec_cov'])

@@ -50,8 +50,13 @@ def gen_split_name(parent_name, order):
     return '_'.join([parent_name, 'split', '%05d' % (order + 1)])
 
 
-def get_atomic_data(sample_id, contigs, atomic_data_field):
-    """Takes a list of contigops.Contig objects, and returns views for an atomic_data_field"""
+def get_atomic_data(sample_id, contigs, atomic_data_field, zero_cov_splits=None):
+    """Takes a list of contigops.Contig objects, and returns views for an atomic_data_field.
+
+    If `zero_cov_splits` is provided (a set of split names), those splits are skipped
+    since they have zero coverage and their data lives in the zero_coverage_splits table
+    instead of the view tables.
+    """
 
     atomic_data_contigs = []
     atomic_data_splits = []
@@ -62,11 +67,12 @@ def get_atomic_data(sample_id, contigs, atomic_data_field):
     for contig in contigs:
         contig_atomic_data = contig.get_atomic_data_dict(atomic_data_field)
 
-        for split in contig.splits:
-            atomic_data_contigs.append((split.name, sample_id, contig_atomic_data), )
+        atomic_data_contigs.append((contig.name, sample_id, contig_atomic_data), )
 
         # contig is done, deal with splits in it:
         for split in contig.splits:
+            if zero_cov_splits and split.name in zero_cov_splits:
+                continue
             split_atomic_data = split.get_atomic_data_dict(atomic_data_field)
             atomic_data_splits.append((split.name, sample_id, split_atomic_data), )
 

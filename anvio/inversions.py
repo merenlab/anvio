@@ -238,19 +238,12 @@ class Inversions:
         # load per-contig detection values from the profile DB. these represent the fraction
         # of each contig covered by FWD/FWD or REV/REV reads, which is useful for identifying
         # potential template-switching artifacts where such reads uniformly cover entire contigs.
-        # NOTE: the detection_contigs table is keyed by split names (not contig names), where
-        # each split stores its parent contig's detection value. we map back to contig names
-        # by looking up the first split for each contig.
         contig_detections = {}
         profile_db_obj = dbops.ProfileDatabase(profile_db_path)
-        detection_data, _ = profile_db_obj.db.get_view_data('detection_contigs')
+        detection_data, _ = profile_db_obj.db.get_view_data('detection_contigs', expand_to_splits=False)
         profile_db_obj.disconnect()
         for contig_name in self.contig_names:
-            split_names = self.contig_name_to_split_names[contig_name]
-            if split_names and split_names[0] in detection_data:
-                contig_detections[contig_name] = detection_data[split_names[0]].get(sample_id, 0)
-            else:
-                contig_detections[contig_name] = 0
+            contig_detections[contig_name] = detection_data.get(contig_name, {}).get(sample_id, 0)
 
         # here we open our bam file with an inversions fetch filter.
         # we will access to it later when it is time to get the FWD/FWD and
