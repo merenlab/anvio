@@ -4574,6 +4574,8 @@ class ProfileDatabase:
         self.db.create_table(t.metabolite_abundances_table_name, t.metabolite_abundances_table_structure, t.metabolite_abundances_table_types)
         self.db.create_table(t.zero_coverage_splits_table_name, t.zero_coverage_splits_table_structure, t.zero_coverage_splits_table_types)
         self.db.create_table(t.zero_coverage_contigs_table_name, t.zero_coverage_contigs_table_structure, t.zero_coverage_contigs_table_types)
+        self.db._exec("CREATE INDEX IF NOT EXISTS covering_index_for_zero_cov_splits ON %s (item)" % t.zero_coverage_splits_table_name)
+        self.db._exec("CREATE INDEX IF NOT EXISTS covering_index_for_zero_cov_contigs ON %s (item)" % t.zero_coverage_contigs_table_name)
 
         return self.db
 

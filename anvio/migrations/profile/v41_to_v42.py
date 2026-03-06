@@ -70,6 +70,8 @@ def migrate(db_path):
     # matching the naming convention used throughout the profile database.
     queued_operations.append(('CREATE TABLE IF NOT EXISTS "zero_coverage_splits" (item text, layer text)', None))
     queued_operations.append(('CREATE TABLE IF NOT EXISTS "zero_coverage_contigs" (item text, layer text)', None))
+    queued_operations.append(('CREATE INDEX IF NOT EXISTS covering_index_for_zero_cov_splits ON "zero_coverage_splits" (item)', None))
+    queued_operations.append(('CREATE INDEX IF NOT EXISTS covering_index_for_zero_cov_contigs ON "zero_coverage_contigs" (item)', None))
 
     for target in ['splits', 'contigs']:
         zero_cov_table = f'zero_coverage_{target}'
