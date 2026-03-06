@@ -201,12 +201,12 @@ view_table_structure = ['item', 'layer',  'value' ]
 view_table_types     = ['text', 'text' , 'numeric']
 
 zero_coverage_splits_table_name       = 'zero_coverage_splits'
-zero_coverage_splits_table_structure  = ['item', 'sample']
-zero_coverage_splits_table_types      = ['text', 'text'  ]
+zero_coverage_splits_table_structure  = ['item', 'layer']
+zero_coverage_splits_table_types      = ['text', 'text' ]
 
 zero_coverage_contigs_table_name      = 'zero_coverage_contigs'
-zero_coverage_contigs_table_structure = ['item', 'sample']
-zero_coverage_contigs_table_types     = ['text', 'text'  ]
+zero_coverage_contigs_table_structure = ['item', 'layer']
+zero_coverage_contigs_table_types     = ['text', 'text' ]
 
 protein_abundances_table_name        = 'protein_abundances'
 protein_abundances_table_structure   = ['protein_id', 'reference_source', 'reference_id', 'sample_name', 'abundance_value']
