@@ -830,7 +830,7 @@ class DB:
 
 
     def _get_zero_cov_dict(self, zero_cov_table_name, items_of_interest=None):
-        """Read a zero_coverage table and return {item: set_of_samples}.
+        """Read a zero_coverage table and return {item: set_of_layers}.
 
         Returns an empty dict if the table does not exist in the database (e.g. when
         called on a pan database or a database that predates v42).
@@ -847,10 +847,10 @@ class DB:
             rows = self.get_all_rows_from_table(zero_cov_table_name)
 
         result = {}
-        for item, sample in rows:
+        for item, layer in rows:
             if item not in result:
                 result[item] = set()
-            result[item].add(sample)
+            result[item].add(layer)
 
         return result
 
@@ -872,7 +872,7 @@ class DB:
         else:
             zero_cov_table = None
 
-        # Read zero-coverage entries: {item: {sample1, sample2, ...}}
+        # Read zero-coverage entries: {item: {layer1, layer2, ...}}
         zero_cov = self._get_zero_cov_dict(zero_cov_table, split_names_of_interest) if zero_cov_table else {}
 
         if split_names_of_interest:
@@ -898,14 +898,14 @@ class DB:
 
         # Add zero-coverage items. First collect their layers so the header is complete,
         # then populate the data dict with zero values.
-        for item, samples in zero_cov.items():
-            layers.update(samples)
+        for item, zero_cov_layers in zero_cov.items():
+            layers.update(zero_cov_layers)
 
-        for item, samples in zero_cov.items():
+        for item, zero_cov_layers in zero_cov.items():
             if item not in data:
                 data[item] = {}
-            for sample in samples:
-                data[item][sample] = 0
+            for layer in zero_cov_layers:
+                data[item][layer] = 0
 
         # add `__parent__` layer if asked:
         if splits_basic_info:
@@ -958,23 +958,19 @@ class DB:
         else:
             d = self.get_all_rows_from_table(view_table_name)
 
-        # First pass: collect layers and contig data
+        # Build contig data and collect layers in a single pass
         contig_data = {}
         layers = set()
 
         for entry_id, contig_name, layer, value in d:
-            contig_data[contig_name] = {}
+            if contig_name not in contig_data:
+                contig_data[contig_name] = {}
             layers.add(layer)
-
-        for entry_id, contig_name, layer, value in d:
-            if log_norm_numeric_values:
-                contig_data[contig_name][layer] = math.log10(value + 1)
-            else:
-                contig_data[contig_name][layer] = value
+            contig_data[contig_name][layer] = math.log10(value + 1) if log_norm_numeric_values else value
 
         # Collect layers from zero-coverage contigs
-        for contig_name, samples in zero_cov.items():
-            layers.update(samples)
+        for contig_name, zero_cov_layers in zero_cov.items():
+            layers.update(zero_cov_layers)
 
         # Expand non-zero contig rows to split rows
         data = {}
@@ -991,7 +987,7 @@ class DB:
                 data[split_name]['__parent__'] = contig_name
 
         # Expand zero-coverage contigs to split rows with zero values
-        for contig_name, samples in zero_cov.items():
+        for contig_name, zero_cov_layers in zero_cov.items():
             if contig_name not in contig_to_splits:
                 continue
 
@@ -1000,8 +996,8 @@ class DB:
                     continue
                 if split_name not in data:
                     data[split_name] = {'__parent__': contig_name}
-                for sample in samples:
-                    data[split_name][sample] = 0
+                for layer in zero_cov_layers:
+                    data[split_name][layer] = 0
 
         header = sorted(list(layers)) + ['__parent__']
 
