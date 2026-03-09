@@ -71,7 +71,7 @@ rule anvi_script_reformat_fasta_prefix_only:
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_script_reformat_fasta_prefix_only.log"
     input:
-        contigs = M.get_raw_fasta
+        contigs = M.get_input_fasta_path
     output:
         # write protecting the contigs fasta file using protected() because
         # runnig the assembly is probably the most time consuming step and

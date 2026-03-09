@@ -202,17 +202,8 @@ class ContigsDBWorkflow(WorkflowSuperClass):
         return os.path.join(self.dirs_dict["CONTIGS_DIR"], "{group}-contigs.db")
 
 
-    def get_raw_fasta(self, wildcards, remove_gz_suffix=True):
-        '''
-            Define the path to the input fasta files. Gzipped FASTA files are
-            returned as-is since all downstream tools (anvi-script-reformat-fasta,
-            anvi-gen-contigs-database, bowtie2-build, minimap2) natively support
-            gzipped input via fastalib.SequenceSource.
-
-            The `remove_gz_suffix` parameter is kept for API compatibility with
-            code that overrides this method (e.g., MetagenomicsWorkflow) but is
-            no longer acted upon.
-        '''
+    def get_input_fasta_path(self, wildcards, remove_gz_suffix=True):
+        '''Returns the user-provided input FASTA path for a given group.'''
         return self.fasta_information[wildcards.group]['path']
 
 
@@ -293,7 +284,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
             Define the path to the input fasta files.
         '''
         # The raw fasta will be used if no formatting is needed
-        contigs = self.get_raw_fasta(wildcards)
+        contigs = self.get_input_fasta_path(wildcards)
 
         if self.get_param_value_from_config(['anvi_script_reformat_fasta','run']):
             # by default, reformat fasta is ran
