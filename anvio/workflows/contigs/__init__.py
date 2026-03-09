@@ -43,7 +43,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                            'anvi_gen_contigs_database', 'export_gene_calls_for_centrifuge', 'centrifuge',
                            'anvi_import_taxonomy_for_genes', 'anvi_run_scg_taxonomy', 'anvi_run_trna_scan', 'anvi_run_hmms', 'anvi_run_ncbi_cogs',
                            'annotate_contigs_database', 'anvi_get_sequences_for_gene_calls', 'emapper',
-                           'anvi_script_run_eggnog_mapper', 'gunzip_fasta', 'reformat_external_gene_calls_table',
+                           'anvi_script_run_eggnog_mapper', 'reformat_external_gene_calls_table',
                            'reformat_external_functions', 'import_external_functions', 'anvi_run_pfams', 'anvi_run_kegg_kofams'])
 
         self.general_params.extend(["fasta_txt"])
@@ -204,16 +204,16 @@ class ContigsDBWorkflow(WorkflowSuperClass):
 
     def get_raw_fasta(self, wildcards, remove_gz_suffix=True):
         '''
-            Define the path to the input fasta files.
+            Define the path to the input fasta files. Gzipped FASTA files are
+            returned as-is since all downstream tools (anvi-script-reformat-fasta,
+            anvi-gen-contigs-database, bowtie2-build, minimap2) natively support
+            gzipped input via fastalib.SequenceSource.
+
+            The `remove_gz_suffix` parameter is kept for API compatibility with
+            code that overrides this method (e.g., MetagenomicsWorkflow) but is
+            no longer acted upon.
         '''
-        contigs = self.fasta_information[wildcards.group]['path']
-        ends_with_gz = contigs.endswith('.gz')
-        if remove_gz_suffix and ends_with_gz:
-            # we need to gunzip the fasta file
-            # we will create a temporary uncompressed fasta file.
-            contigs = os.path.join(self.dirs_dict['FASTA_DIR'], \
-                                   wildcards.group + '-temp.fa')
-        return contigs
+        return self.fasta_information[wildcards.group]['path']
 
 
     def get_input_for_anvi_gen_contigs_database(self, wildcards):
