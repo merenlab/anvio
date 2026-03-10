@@ -180,7 +180,7 @@ rule anvi_gen_contigs_database:
     # filtered.
     input: unpack(M.get_input_for_anvi_gen_contigs_database)
     output:
-        db = os.path.join(dirs_dict["CONTIGS_DIR"], "{group}-contigs.db")
+        db = os.path.join(dirs_dict["CONTIGS_DIR"], "{group}.db")
     params:
         description = M.get_rule_param("anvi_gen_contigs_database", "--description"),
         skip_gene_calling = M.get_rule_param("anvi_gen_contigs_database", "--skip-gene-calling"),
@@ -448,7 +448,7 @@ rule anvi_script_run_eggnog_mapper:
     log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_script_run_eggnog_mapper.log"
     input:
         eggnog_output = rules.emapper.output,
-        contigs = dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"
+        contigs = dirs_dict["CONTIGS_DIR"] + "/{group}.db"
     output:
         touch(dirs_dict["CONTIGS_DIR"] + "/{group}-anvi_script_run_eggnog_mapper.done")
     params:
@@ -471,7 +471,7 @@ rule gen_external_genome_file:
     log: dirs_dict["LOGS_DIR"] + "" + "/gen_external_genome_file.log"
     input:
         annotation_done = expand(dirs_dict['CONTIGS_DIR'] + "/{sample}-annotate_contigs_database.done", sample=M.group_names),
-        contigs_db_paths = expand(dirs_dict["CONTIGS_DIR"] + "/{sample}-contigs.db", sample=M.group_names)
+        contigs_db_paths = expand(dirs_dict["CONTIGS_DIR"] + "/{sample}.db", sample=M.group_names)
     output: M.external_genomes_file
     threads: M.T("gen_external_genome_file")
     resources: nodes = M.T("gen_external_genome_file")

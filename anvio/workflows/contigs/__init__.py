@@ -199,7 +199,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
 
 
     def get_contigs_db_path(self):
-        return os.path.join(self.dirs_dict["CONTIGS_DIR"], "{group}-contigs.db")
+        return os.path.join(self.dirs_dict["CONTIGS_DIR"], "{group}.db")
 
 
     def get_input_fasta_path(self, wildcards, remove_gz_suffix=True):
@@ -234,7 +234,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
     def get_input_for_import_external_functions(self, wildcards):
         d = {}
         d['gene_functional_annotation'] = self.get_external_gene_functions_file_name(wildcards)
-        d['contigs'] = os.path.join(self.dirs_dict["CONTIGS_DIR"], wildcards.group + "-contigs.db")
+        d['contigs'] = os.path.join(self.dirs_dict["CONTIGS_DIR"], wildcards.group + ".db")
         return d
 
 
