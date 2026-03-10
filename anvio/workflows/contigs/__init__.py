@@ -142,18 +142,18 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                                   "config file. See documentation for more details.")
 
         if run_taxonomy_with_centrifuge:
-            optional_targets.append(self.dirs_dict["CONTIGS_DIR"] + "/{group}-anvi_anvi_import_taxonomy_for_genes.done")
+            optional_targets.append(os.path.join(self.dirs_dict["CONTIGS_DIR"], "{group}-steps", "anvi_anvi_import_taxonomy_for_genes.done"))
 
         run_anvi_run_hmms = self.get_param_value_from_config(["anvi_run_hmms", "run"]) == True
         if run_anvi_run_hmms:
-            optional_targets.append(os.path.join(self.dirs_dict["CONTIGS_DIR"], "anvi_run_hmms-{group}.done"))
+            optional_targets.append(os.path.join(self.dirs_dict["CONTIGS_DIR"], "{group}-steps", "anvi_run_hmms.done"))
 
         if self.get_param_value_from_config(["anvi_run_ncbi_cogs", "run"]) == True:
-            optional_targets.append(os.path.join(self.dirs_dict["CONTIGS_DIR"], "anvi_run_ncbi_cogs-{group}.done"))
+            optional_targets.append(os.path.join(self.dirs_dict["CONTIGS_DIR"], "{group}-steps", "anvi_run_ncbi_cogs.done"))
 
         run_anvi_run_kofams = self.get_param_value_from_config(["anvi_run_kegg_kofams", "run"]) == True
         if run_anvi_run_kofams:
-            optional_targets.append(os.path.join(self.dirs_dict["CONTIGS_DIR"], "anvi_run_kegg_kofams-{group}.done"))
+            optional_targets.append(os.path.join(self.dirs_dict["CONTIGS_DIR"], "{group}-steps", "anvi_run_kegg_kofams.done"))
 
         run_anvi_run_scg_taxonomy = self.get_param_value_from_config(["anvi_run_scg_taxonomy", "run"]) == True
         if run_anvi_run_scg_taxonomy:
@@ -161,25 +161,25 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                 self.run.warning('You chose to run anvi_run_scg_taxonomy, but you didn\'t choose to run '
                                  'anvi_run_hmms. Continue at your own risk. If your contigs databases '
                                  'don\'t have HMM hits stored already then anvi_run_scg_taxonomy will fail.')
-            optional_targets.append(os.path.join(self.dirs_dict["CONTIGS_DIR"], "anvi_run_scg_taxonomy-{group}.done"))
+            optional_targets.append(os.path.join(self.dirs_dict["CONTIGS_DIR"], "{group}-steps", "anvi_run_scg_taxonomy.done"))
 
         run_anvi_run_trna_scan = self.get_param_value_from_config(["anvi_run_trna_scan", "run"]) == True
         if run_anvi_run_trna_scan:
-            optional_targets.append(os.path.join(self.dirs_dict["CONTIGS_DIR"], "anvi_run_trna_scan-{group}.done"))
+            optional_targets.append(os.path.join(self.dirs_dict["CONTIGS_DIR"], "{group}-steps", "anvi_run_trna_scan.done"))
 
         if self.get_param_value_from_config(["anvi_script_run_eggnog_mapper", "run"]) == True:
-            optional_targets.append(os.path.join(self.dirs_dict["CONTIGS_DIR"], "{group}-anvi_script_run_eggnog_mapper.done"))
+            optional_targets.append(os.path.join(self.dirs_dict["CONTIGS_DIR"], "{group}-steps", "anvi_script_run_eggnog_mapper.done"))
 
         # import external functions if provided
         import_external_functions_flags = [os.path.join(self.dirs_dict["CONTIGS_DIR"],
-                                           group + "-external-functions-imported.done")\
+                                           group + "-steps", "external_functions_imported.done")\
                                            for group in self.contigs_information \
                                            if self.contigs_information[group].get('gene_functional_annotation')]
         if import_external_functions_flags:
             optional_targets.extend(import_external_functions_flags)
 
         if self.get_param_value_from_config(['anvi_run_pfams', 'run']):
-            optional_targets.append(os.path.join(self.dirs_dict["CONTIGS_DIR"], "anvi_run_pfams-{group}.done"))
+            optional_targets.append(os.path.join(self.dirs_dict["CONTIGS_DIR"], "{group}-steps", "anvi_run_pfams.done"))
 
         return optional_targets
 

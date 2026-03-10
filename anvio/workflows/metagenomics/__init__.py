@@ -293,7 +293,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
 
         contigs_annotated = [os.path.join(self.dirs_dict["CONTIGS_DIR"],\
-                             g + "-annotate_contigs_database.done") for g in self.group_names]
+                             g + "-steps", "annotate_contigs_database.done") for g in self.group_names]
         target_files.extend(contigs_annotated)
 
         if self.run_qc:
