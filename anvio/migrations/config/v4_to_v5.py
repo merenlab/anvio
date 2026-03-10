@@ -55,7 +55,12 @@ def migrate(config_path):
     run.info_single(f"The config file version is now {next_version}. This upgrade removes the `gunzip_fasta` "
                     f"rule from your config (if it was there). The contigs workflow no longer needs to decompress "
                     f"gzipped FASTA files before processing them, since all downstream tools (anvi-script-reformat-fasta, "
-                    f"anvi-gen-contigs-database, bowtie2-build, minimap2) natively support gzipped input.",
+                    f"anvi-gen-contigs-database, bowtie2-build, minimap2) natively support gzipped input. In addition, "
+                    f"the contigs workflow had additional changes that will make your *existing* `anvi-run-workflow` outputs "
+                    f"not recognized with the new version of the workflow :/ BUT we have made available a migration script "
+                    f"at https://github.com/merenlab/anvio/pull/2553 to help you with this backwards compatibility issue. "
+                    f"Please check out the link for more details, and reach out to us on anvi'o Discord if you have any "
+                    f"questions regarding how to complete the migration process for your data.",
                     nl_after=1, nl_before=1, mc='green')
 
 
