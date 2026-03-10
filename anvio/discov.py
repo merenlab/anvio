@@ -493,6 +493,9 @@ class DisCov:
         if window_length > len(coverage):
             raise ConfigError(f"get_sliding_window_regions() function was requested to make windows of length {window_length}, "
                               f"but the input coverage array is smaller than that (length {len(coverage)}).")
+        elif window_length == 0:
+            raise ConfigError(f"get_sliding_window_regions() function was requested to make zero-length windows. Impossible!")
+        
         windows = []
         current_start = 0
         current_stop = current_start + window_length
