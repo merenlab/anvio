@@ -4,7 +4,7 @@ The purpose of this document is to serve as a comprehensive reference for anyone
 
 ## What is anvi'o
 
-Anvi'o is an interactive analysis and visualization platform for 'omics data (metagenomics, pangenomics, phylogenomics, metabolomics, tRNA-seq, etc.). It is a Python package that processes input files and stores results in SQLite databases, and exposes both a CLI (~180 programs) and a web-based visualization interface for various analyses.
+Anvi'o is an analysis and visualization platform for 'omics data (genomics, metagenomics, pangenomics, phylogenomics, tRNA-seq, etc.). It is a Python package that processes input files and stores results in SQLite databases, and exposes both a CLI (~180 programs) and a web-based visualization interface for various analyses.
 
 Here is some information where things are currently:
 
