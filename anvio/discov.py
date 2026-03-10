@@ -134,7 +134,19 @@ class DisCov:
         sw_prop_vals = [sliding_window_metrics[scale]['Proportion_Covered'] for scale in ['fine','medium','coarse']]
         sw_prop = [f"{m:.04}" if m else "NA" for m in sw_prop_vals ]
         sliding_window_proportion_covered = "\t".join(sw_prop)
-        sliding_window_metrics_nonzero = self.sliding_window_evenness(cov_array[cov_array > 0], window_scales)
+        # nonzero window metrics
+        if len(cov_array[cov_array > 0]) == 0:
+            sliding_window_metrics_nonzero = {'fine': {'Depth_Evenness_MAD': 0, 'Depth_Evenness_CV': 0 },
+            'medium': {'Depth_Evenness_MAD': 0, 'Depth_Evenness_CV': 0 },
+            'coarse': {'Depth_Evenness_MAD': 0, 'Depth_Evenness_CV': 0 }
+            }
+        else:
+            window_scales_nz = {
+                'fine': max(100, len(cov_array[cov_array > 0]) // 100),      # ~1% of contig
+                'medium': max(500, len(cov_array[cov_array > 0]) // 20),     # ~5% of contig  
+                'coarse': max(1000, len(cov_array[cov_array > 0]) // 10)     # ~10% of contig
+            }
+            sliding_window_metrics_nonzero = self.sliding_window_evenness(cov_array[cov_array > 0], window_scales_nz)
         sw_mad_vals_nz = [sliding_window_metrics_nonzero[scale]['Depth_Evenness_MAD'] for scale in ['fine','medium','coarse']]
         sw_mad_nz = [f"{m:.04}" if m else "NA" for m in sw_mad_vals_nz ]
         sliding_window_evenness_mad_nz = "\t".join(sw_mad_nz)
