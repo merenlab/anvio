@@ -211,7 +211,8 @@ class DisCov:
             Proportion_Covered : # windows with nonzero mean coverage / # windows
 
             Note that the 1 / (1 + x) is a strategy to get an evenness score between 0 and 1.
-            Note also that we don't worry about dividing by zero because we are already working with nonzero means.
+            For edge cases where there is not enough coverage to compute the metrics, we return the 
+            maximum unevenness score of 0
         """
 
         results = {scale_name : {} for scale_name in window_len_dict}
@@ -219,7 +220,7 @@ class DisCov:
             results[scale_name]['Depth_Evenness_MAD'] = None
             results[scale_name]['Depth_Evenness_CV'] = None
             results[scale_name]['Proportion_Covered'] = None
-            if wlen > len(coverage):
+            if wlen == 0 or wlen > len(coverage):
                 continue
 
             windows = self.get_sliding_window_regions(coverage, wlen)
@@ -230,10 +231,16 @@ class DisCov:
             if median_depth:
                 mad_dispersion = depth_MAD / median_depth
                 results[scale_name]['Depth_Evenness_MAD'] = 1 / (1 + mad_dispersion)
+            else:
+                results[scale_name]['Depth_Evenness_MAD'] = 0 # maximum unevenness
             if cv_of_means:
                 results[scale_name]['Depth_Evenness_CV'] = 1 / (1 + cv_of_means)
+            else:
+                results[scale_name]['Depth_Evenness_CV'] = 0 # maximum unevenness
             if windows:
                 results[scale_name]['Proportion_Covered'] = len(nonzero_window_means) / len(windows)
+            else:
+                results[scale_name]['Proportion_Covered'] = 0 # no coverage
         return results
 
     def compute_window_scaling_variance(self, coverage, max_window_fraction=0.10, num_window_sizes=20):
