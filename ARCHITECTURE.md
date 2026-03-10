@@ -2,7 +2,7 @@
 
 The purpose of this document is to serve as a comprehensive reference for anyone — or anything — working with the anvi'o codebase, covering its architecture, major subsystems, coding conventions, and developer workflow.
 
-## What Is Anvi'o
+## What is anvi'o
 
 Anvi'o is an interactive analysis and visualization platform for 'omics data (metagenomics, pangenomics, phylogenomics, metabolomics, tRNA-seq, etc.). It is a Python package that processes input files and stores results in SQLite databases, and exposes both a CLI (~180 programs) and a web-based visualization interface for various analyses.
 
@@ -483,7 +483,7 @@ This pattern appears frequently before code that depends on a lazy property bein
 
 ### String Formatting
 
-The codebase has a long history of `%`-style formatting, and it remains common in older code. **Do not go back and change old `%`-style strings to f-strings** — that kind of sweep creates noisy diffs with no functional benefit. Simply leave existing code as-is and use f-strings in any new code you write:
+The codebase has a long history of `%`-style formatting, and it remains common in older code. **Do not go back and change old `%`-style strings to f-strings** (as that kind of sweep creates noisy diffs and loss of authorship of individual lines of code), **UNLESS** it is your own code (in that case please consider swithing to f-strings). **Use f-strings in any new code you write**:
 
 ```python
 # older style — leave it alone when you see it
