@@ -373,7 +373,7 @@ To visualize the output of [profile-mode](#profile-mode-insights-into-the-ecolog
 ```bash
 PROTEIN="" # Replace with name of protein from hmm_list.txt
 anvi-interactive -p METAGENOMICS_WORKFLOW/06_MERGED/"${PROTEIN}"/PROFILE.db \
-                 -c METAGENOMICS_WORKFLOW/03_CONTIGS/"${PROTEIN}"-contigs.db \
+                 -c METAGENOMICS_WORKFLOW/03_CONTIGS/"${PROTEIN}".db \
                  --manual
 ```
 
@@ -441,12 +441,12 @@ grep -v -f SUBSET_TREE/bad_branches_headers.txt SUBSET_TREE/collection-DEFAULT.t
 
 anvi-import-collection SUBSET_TREE/my_bins.txt -C curated \
                                                -p METAGENOMICS_WORKFLOW/06_MERGED/"${PROTEIN}"/PROFILE.db \
-                                               -c METAGENOMICS_WORKFLOW/03_CONTIGS/"${PROTEIN}"-contigs.db
+                                               -c METAGENOMICS_WORKFLOW/03_CONTIGS/"${PROTEIN}".db
                         
 anvi-split -C curated \
            --bin-id EVERYTHING_curated \
            -p METAGENOMICS_WORKFLOW/06_MERGED/"${PROTEIN}"/PROFILE.db \
-           -c METAGENOMICS_WORKFLOW/03_CONTIGS/"${PROTEIN}"-contigs.db \
+           -c METAGENOMICS_WORKFLOW/03_CONTIGS/"${PROTEIN}".db \
            --output-dir SUBSET_TREE/"${PROTEIN}"_curated
 ```
 
@@ -575,7 +575,7 @@ To visualize the results of the different ecophylo runs, just change the paths t
 
 ```bash
 PROTEIN="" # Replace with name of protein from hmm_list.txt
-anvi-interactive -c METAGENOMICS_WORKFLOW/03_CONTIGS/"${PROTEIN}"-contigs.db -p METAGENOMICS_WORKFLOW/06_MERGED/"${PROTEIN}"/PROFILE.db
+anvi-interactive -c METAGENOMICS_WORKFLOW/03_CONTIGS/"${PROTEIN}".db -p METAGENOMICS_WORKFLOW/06_MERGED/"${PROTEIN}"/PROFILE.db
 ```
 
 However, if you are interested in comparing the outputs of different parameters on the same protein, make a new %(workflow-config)s file, otherwise ecophylo will try and fail to overwrite your original run.
@@ -852,6 +852,6 @@ anvi-run-workflow -w ecophylo -c config_RP_L16.json
 anvi-run-workflow -w ecophylo -c config_RP_S11.json
 
 # Visualize
-anvi-interactive -c 03_CONTIGS/Ribosomal_L16-contigs.db -p 06_MERGED/Ribosomal_L16/PROFILE.db
-anvi-interactive -c 03_CONTIGS/Ribosomal_S11-contigs.db -p 06_MERGED/Ribosomal_S11/PROFILE.db
+anvi-interactive -c 03_CONTIGS/Ribosomal_L16.db -p 06_MERGED/Ribosomal_L16/PROFILE.db
+anvi-interactive -c 03_CONTIGS/Ribosomal_S11.db -p 06_MERGED/Ribosomal_S11/PROFILE.db
 ```

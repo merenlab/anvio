@@ -1001,7 +1001,7 @@ def configure_flag_files_for_anvi_merge_optional_inputs(wildcards, flag_file_nam
 
     if not run_flag:
         # keep legacy 'ancient' fallback (single path) so Snakemake doesn’t require flags
-        flag_files = ancient(dirs_dict["CONTIGS_DIR"] + f"/{wildcards.group}-contigs.db")
+        flag_files = ancient(dirs_dict["CONTIGS_DIR"] + f"/{wildcards.group}.db")
 
     return flag_files
 
