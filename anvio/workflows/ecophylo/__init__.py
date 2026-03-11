@@ -9,11 +9,13 @@ import argparse
 import pandas as pd
 
 import anvio
-import anvio.data.hmm
 import anvio.utils as u
 import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
+
+with terminal.SuppressAllOutput():
+    import anvio.data.hmm
 
 from anvio.errors import ConfigError
 from anvio.workflows import WorkflowSuperClass
