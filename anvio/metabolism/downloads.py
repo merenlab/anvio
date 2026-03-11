@@ -46,7 +46,7 @@ class KOfamDownload(KeggSetup):
         self.run = run
         self.progress = progress
         self.skip_init = skip_init
-        self.include_stray_kos = True if A('include_stray_KOs') else False
+        self.include_stray_kos = True if A('include_nt_KOs') else False
 
         self.run.info_single("Info from KOfam Download")
         self.run.info("nt-KOs will be processed (`--include-nt-KOs` flag)", self.include_stray_kos)

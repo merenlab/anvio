@@ -1168,6 +1168,30 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
             self.tables_for_taxonomy = None
             database_version = None
 
+        # first check if the required HMM source exists in the contigs database
+        # (i.e., whether anvi-run-hmms was run with the default HMM profiles)
+        if self.scgs_focus:
+            required_hmm_sources = self.ctx.hmm_source_for_scg_taxonomy
+        elif self.trna_focus:
+            required_hmm_sources = self.ctx.hmm_source_for_trna_genes
+        else:
+            required_hmm_sources = set()
+
+        contigs_db = ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
+        available_hmm_sources = set(contigs_db.db.get_table_as_dict(t.hmm_hits_info_table_name).keys())
+        contigs_db.disconnect()
+
+        missing_hmm_sources = required_hmm_sources - available_hmm_sources
+        if missing_hmm_sources:
+            if self.scgs_focus:
+                fix_suggestion = "Please run `anvi-run-hmms` first and then try again."
+            else:
+                fix_suggestion = ("Please run `anvi-run-hmms --also-scan-trnas` or `anvi-scan-trnas` "
+                                  "first and then try again.")
+
+            raise ConfigError(f"This contigs database does not have the required HMM source(s) for {self._ITEM} taxonomy: "
+                              f"'{', '.join(missing_hmm_sources)}'. {fix_suggestion}")
+
         # get the dictionary that shows all hits for each self._ITEM of interest
         self.progress.new('Contigs bleep bloop')
         self.progress.update(f'Recovering the {self._ITEMS} dictionary')

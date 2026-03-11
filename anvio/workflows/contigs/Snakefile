@@ -32,7 +32,7 @@ localrules: annotate_contigs_database
 
 
 rule contigs_target_rule:
-    input: expand(dirs_dict['CONTIGS_DIR'] + "/{group}-annotate_contigs_database.done", group=M.group_names)
+    input: expand(os.path.join(dirs_dict['CONTIGS_DIR'], "{group}-steps", "annotate_contigs_database.done"), group=M.group_names)
 
 
 rule annotate_contigs_database:
@@ -44,18 +44,7 @@ rule annotate_contigs_database:
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{group}-annotate_contigs_database.log"
     input: lambda wildcards: M.get_contigs_target_files()
-    output: touch(dirs_dict['CONTIGS_DIR'] + "/{group}-annotate_contigs_database.done")
-
-
-rule gunzip_fasta:
-    version: 1.0
-    log: dirs_dict["LOGS_DIR"] + "/{group}-gunzip_fasta.log"
-    input: lambda wildcards: M.get_raw_fasta(wildcards, remove_gz_suffix=False)
-    output: temp(os.path.join(M.dirs_dict['FASTA_DIR'], \
-                            '{group}' + '-temp.fa'))
-    threads: M.T('gunzip_fasta')
-    resources: nodes = M.T('gunzip_fasta')
-    shell: "gunzip < {input} > {output} 2>{log}"
+    output: touch(os.path.join(dirs_dict['CONTIGS_DIR'], "{group}-steps", "annotate_contigs_database.done"))
 
 
 rule anvi_script_reformat_fasta_prefix_only:
@@ -82,7 +71,7 @@ rule anvi_script_reformat_fasta_prefix_only:
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_script_reformat_fasta_prefix_only.log"
     input:
-        contigs = M.get_raw_fasta
+        contigs = M.get_input_fasta_path
     output:
         # write protecting the contigs fasta file using protected() because
         # runnig the assembly is probably the most time consuming step and
@@ -120,13 +109,15 @@ rule anvi_script_reformat_fasta:
     params:
         prefix = "{group}",
         min_len = M.get_rule_param("anvi_script_reformat_fasta", "--min-len"),
+        max_len = M.get_rule_param("anvi_script_reformat_fasta", "--max-len"),
         seq_type = M.get_rule_param("anvi_script_reformat_fasta", "--seq-type"),
     threads: M.T('anvi_script_reformat_fasta')
     resources: nodes = M.T('anvi_script_reformat_fasta'),
     shell: w.r("""anvi-script-reformat-fasta {input} \
                                              -o {output.contigs} \
                                              {params.seq_type} \
-                                             {params.min_len} >> {log} 2>&1""")
+                                             {params.min_len} \
+                                             {params.max_len} >> {log} 2>&1""")
 
 
 rule reformat_external_gene_calls_table:
@@ -189,7 +180,7 @@ rule anvi_gen_contigs_database:
     # filtered.
     input: unpack(M.get_input_for_anvi_gen_contigs_database)
     output:
-        db = os.path.join(dirs_dict["CONTIGS_DIR"], "{group}-contigs.db")
+        db = os.path.join(dirs_dict["CONTIGS_DIR"], "{group}.db")
     params:
         description = M.get_rule_param("anvi_gen_contigs_database", "--description"),
         skip_gene_calling = M.get_rule_param("anvi_gen_contigs_database", "--skip-gene-calling"),
@@ -255,7 +246,7 @@ rule import_external_functions:
     log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-import_external_functions.log")
     input: unpack(M.get_input_for_import_external_functions)
     output:
-        functions_imported = touch(os.path.join(dirs_dict["CONTIGS_DIR"], "{group}-external-functions-imported.done")),
+        functions_imported = touch(os.path.join(dirs_dict["CONTIGS_DIR"], "{group}-steps", "external_functions_imported.done")),
     threads: M.T('import_external_functions')
     resources: nodes = M.T('import_external_functions')
     shell: "anvi-import-functions -c {input.contigs} -i {input.gene_functional_annotation} >> {log} 2>&1"
@@ -305,7 +296,7 @@ rule anvi_import_taxonomy_for_genes:
     # using a flag file because no file is created by this rule.
     # for more information see:
     # http://snakemake.readthedocs.io/en/stable/snakefiles/rules.html#flag-files
-    output: touch(dirs_dict["CONTIGS_DIR"] + "/{group}-anvi_anvi_import_taxonomy_for_genes.done")
+    output: touch(os.path.join(dirs_dict["CONTIGS_DIR"], "{group}-steps", "anvi_anvi_import_taxonomy_for_genes.done"))
     params: parser = "centrifuge"
     threads: M.T('anvi_import_taxonomy_for_genes')
     resources: nodes = M.T('anvi_import_taxonomy_for_genes'),
@@ -322,7 +313,7 @@ rule anvi_run_hmms:
     input: ancient(M.get_contigs_db_path())
     # using a snakemake flag file as an output since no file is generated
     # by the rule.
-    output: touch(dirs_dict["CONTIGS_DIR"] + "/anvi_run_hmms-{group}.done")
+    output: touch(os.path.join(dirs_dict["CONTIGS_DIR"], "{group}-steps", "anvi_run_hmms.done"))
     params:
         installed_hmm_profile = M.get_rule_param("anvi_run_hmms", "--installed-hmm-profile"),
         hmm_profile_dir = M.get_rule_param("anvi_run_hmms", "--hmm-profile-dir"),
@@ -344,7 +335,7 @@ rule anvi_run_pfams:
     version: 1.0
     log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-anvi_run_pfams.log")
     input: ancient(M.get_contigs_db_path())
-    output: touch(os.path.join(dirs_dict["CONTIGS_DIR"], "anvi_run_pfams-{group}.done"))
+    output: touch(os.path.join(dirs_dict["CONTIGS_DIR"], "{group}-steps", "anvi_run_pfams.done"))
     params:
         pfam_data_dir = M.get_rule_param('anvi_run_pfams', '--pfam-data-dir')
     threads: M.T('anvi_run_pfams')
@@ -356,7 +347,7 @@ rule anvi_run_kegg_kofams:
     version: 1.0
     log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-anvi_run_kegg_kofams.log")
     input: ancient(M.get_contigs_db_path())
-    output: touch(os.path.join(dirs_dict["CONTIGS_DIR"], "anvi_run_kegg_kofams-{group}.done"))
+    output: touch(os.path.join(dirs_dict["CONTIGS_DIR"], "{group}-steps", "anvi_run_kegg_kofams.done"))
     params:
         kegg_data_dir = M.get_rule_param('anvi_run_kegg_kofams', '--kegg-data-dir'),
         hmmer_program = M.get_rule_param('anvi_run_kegg_kofams', '--hmmer-program'),
@@ -373,7 +364,7 @@ rule anvi_run_ncbi_cogs:
     log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_run_ncbi_cogs.log"
     input:
         contigs = ancient(M.get_contigs_db_path())
-    output: touch(dirs_dict["CONTIGS_DIR"] + "/anvi_run_ncbi_cogs-{group}.done")
+    output: touch(os.path.join(dirs_dict["CONTIGS_DIR"], "{group}-steps", "anvi_run_ncbi_cogs.done"))
     params:
         # anvi-run-ncbi-cogs params. See anvi-run-ncbi-cogs help menu for more info.
         cog_data_dir = M.get_rule_param('anvi_run_ncbi_cogs', '--cog-data-dir'),
@@ -393,9 +384,9 @@ rule anvi_run_scg_taxonomy:
     log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_run_scg_taxonomy.log"
     input:
         # make sure HMMs were done before running this rule
-        hmms_done = ancient(dirs_dict["CONTIGS_DIR"] + "/anvi_run_hmms-{group}.done"),
+        hmms_done = ancient(os.path.join(dirs_dict["CONTIGS_DIR"], "{group}-steps", "anvi_run_hmms.done")),
         contigs = ancient(M.get_contigs_db_path())
-    output: touch(dirs_dict["CONTIGS_DIR"] + "/anvi_run_scg_taxonomy-{group}.done")
+    output: touch(os.path.join(dirs_dict["CONTIGS_DIR"], "{group}-steps", "anvi_run_scg_taxonomy.done"))
     params:
         scg_taxonomy_data_dir = M.get_rule_param('anvi_run_scg_taxonomy', '--scgs-taxonomy-data-dir'),
     threads: M.T('anvi_run_scg_taxonomy')
@@ -410,7 +401,7 @@ rule anvi_run_trna_scan:
     log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_run_trna_scan.log"
     input:
         contigs = ancient(M.get_contigs_db_path())
-    output: touch(dirs_dict["CONTIGS_DIR"] + "/anvi_run_trna_scan-{group}.done")
+    output: touch(os.path.join(dirs_dict["CONTIGS_DIR"], "{group}-steps", "anvi_run_trna_scan.done"))
     params:
         # FIXME not sure how to handle optional --trna-hits-file parameter
         #trna_scan_hits_file = M.get_rule_param('anvi_run_trna_scan', '--trna-hits-file'),
@@ -457,9 +448,9 @@ rule anvi_script_run_eggnog_mapper:
     log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_script_run_eggnog_mapper.log"
     input:
         eggnog_output = rules.emapper.output,
-        contigs = dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.db"
+        contigs = dirs_dict["CONTIGS_DIR"] + "/{group}.db"
     output:
-        touch(dirs_dict["CONTIGS_DIR"] + "/{group}-anvi_script_run_eggnog_mapper.done")
+        touch(os.path.join(dirs_dict["CONTIGS_DIR"], "{group}-steps", "anvi_script_run_eggnog_mapper.done"))
     params:
         use_version = M.get_rule_param("anvi_script_run_eggnog_mapper", "--use-version")
     threads: M.T('anvi_script_run_eggnog_mapper')
@@ -479,8 +470,8 @@ rule gen_external_genome_file:
     version: 1.0
     log: dirs_dict["LOGS_DIR"] + "" + "/gen_external_genome_file.log"
     input:
-        annotation_done = expand(dirs_dict['CONTIGS_DIR'] + "/{sample}-annotate_contigs_database.done", sample=M.group_names),
-        contigs_db_paths = expand(dirs_dict["CONTIGS_DIR"] + "/{sample}-contigs.db", sample=M.group_names)
+        annotation_done = expand(os.path.join(dirs_dict['CONTIGS_DIR'], "{sample}-steps", "annotate_contigs_database.done"), sample=M.group_names),
+        contigs_db_paths = expand(dirs_dict["CONTIGS_DIR"] + "/{sample}.db", sample=M.group_names)
     output: M.external_genomes_file
     threads: M.T("gen_external_genome_file")
     resources: nodes = M.T("gen_external_genome_file")

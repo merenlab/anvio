@@ -13,9 +13,9 @@ For example, if you used `pyANI`'s `ANIb` (the default program), the output dire
 
 -`ANIb_full_percentage_identity.newick` and `ANIb_full_percentage_identity.txt`: contains the percent identity in the context of the length of the entire query and subject sequences (not just the aligned segment)
 
--`ANIb_alignment_lengths.newick` and `ANIb_alignment_lengths.txt`: contians the total aligned lengths 
+-`ANIb_alignment_lengths.newick` and `ANIb_alignment_lengths.txt`: contains the total aligned lengths 
 
 -`ANIb_similarity_errors.newick` and `ANIb_similarity_errors.txt`: contains similarity errors (total number of mismatches, not including indels)
 
--`ANIb_hadamard.newick` and `ANIb_hadamard.txt`: contians the hadamard matrix (dot product of identity and coverage matrices)
+-`ANIb_hadamard.newick` and `ANIb_hadamard.txt`: contains the hadamard matrix (dot product of identity and coverage matrices)
 

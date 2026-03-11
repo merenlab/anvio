@@ -2,6 +2,7 @@
 # -*- coding: utf-8
 
 import sys
+import argparse
 import anvio
 from anvio.argparse import ArgumentParser
 
@@ -20,7 +21,7 @@ __resources__ = [("A conceptual tutorial on the structural biology capabilities 
                   "http://merenlab.org/2018/09/04/structural-biology-with-anvio/"),
                  ("A practical tutorial section in the infant gut tutorial",
                   "http://merenlab.org/tutorials/infant-gut/#chapter-vii-linking-genomic-heterogeneity-to-protein-structures")]
-__requires__ = ['contigs-db', 'pdb-db']
+__requires__ = ['contigs-db', 'pdb-db', 'genes-of-interest-txt']
 __provides__ = ['structure-db']
 __description__ = ("Creates a database of protein structures. Predict protein structures using "
                    "template-based homology modelling of genes in your contigs database, or import "
@@ -151,10 +152,11 @@ def get_args():
 
     params = {
         'default': 25,
-        'help': anvio.K('write-buffer-size-per-thread')['help'] + \
+        'help': anvio.K('write-buffer-size')['help'] + \
                 ' If --num-threads is 1, this parameter is ignored because the DB is written to after each gene'
     }
-    groupE.add_argument(*anvio.A('write-buffer-size-per-thread'), **anvio.K('write-buffer-size-per-thread', params))
+    groupE.add_argument(*anvio.A('write-buffer-size'), **anvio.K('write-buffer-size', params))
+    groupE.add_argument(*anvio.A('write-buffer-size-per-thread'), **anvio.K('write-buffer-size-per-thread', {'help': argparse.SUPPRESS}))
 
     return parser.get_args(parser)
 

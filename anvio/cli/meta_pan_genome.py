@@ -70,6 +70,7 @@ def get_args():
 
     groupD = parser.add_argument_group("PRO STUFF", "Things you may not have to change unless you are doing something extra cool and edgy.")
     groupD.add_argument(*anvio.A('gene-caller'), **anvio.K('gene-caller'))
+    groupD.add_argument(*anvio.A('skip-checking-genome-hashes'), **anvio.K('skip-checking-genome-hashes'))
 
     return parser.get_args(parser)
 

@@ -1337,6 +1337,16 @@ D = {
                      "the gene names that appear multiple times, and remove all but the one with the lowest e-value. Good "
                      "for whenever you really need to get only a single copy of single-copy core genes from a genome bin."}
                 ),
+    'return-best-hit-per-contig': (
+            ['--return-best-hit-per-contig'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Similar to `--return-best-hit`, but resolves ties at the contig level. If a contig has multiple hits "
+                     "for the same gene name and HMM source, only the hit with the lowest e-value will be kept. Please be "
+                     "CAREFUL using this flag, as it may remove legitimate copies of genes that are meant to be multi-copy, "
+                     "such as transfer RNAs, etc, and its behavior will be dependent on the nature of the HMM source being used."
+             }
+                ),
     'return-all-function-hits-for-each-gene': (
             ['--return-all-function-hits-for-each-gene'],
             {'default': False,
@@ -1602,7 +1612,8 @@ D = {
             ['--gene-caller-ids'],
             {'metavar': 'GENE_CALLER_IDS',
              'type': str,
-             'help': "Gene caller ids. Multiple of them can be declared separated by a delimiter (the default is a comma). "
+             'help': "Gene caller ids to focus on. Multiple of them can be declared separated by a delimiter (the default is a comma, "
+                     "and if there is no option to change the delimiter, you must use a comma)."
                      "In anvi-gen-variability-profile, if you declare nothing you will get all genes matching your other "
                      "filtering criteria. In other programs, you may get everything, nothing, or an error. It really depends "
                      "on the situation. Fortunately, mistakes are cheap, so it's worth a try."}
@@ -2044,6 +2055,13 @@ D = {
                      "sample. The reference codon for all such entries is given a codon frequency of 1. All other entries (aka "
                      "those with legitimate variation to be reported) remain unchanged. This flag can only be used with `--engine AA` "
                      "or `--engine CDN` and is incompatible wth --quince-mode."}
+                ),
+    'exclude-intergenic': (
+            ['--exclude-intergenic'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag to exclude SNVs that occur in intergenic regions (i.e., nucleotide positions that do not "
+                     "fall within any gene call, whether coding or non-coding). This flag can only be used with `--engine NT`."}
                 ),
     'include-contig-names': (
             ['--include-contig-names'],
@@ -2639,8 +2657,8 @@ D = {
                      "should be listed within curly brackets, which will be evaluated in contex. Anything outside "
                      "of curly brackets will be kept as is. For instance, if you would like your defline to have "
                      "the gene caller ID after the contig name in which it occurs, you can use this template: "
-                     "'{contig_name}_{gene_caller_id}', and your defline will look like '>XXX_182'. In most cases "
-                     "'{gene_caller_id}' will serve as the default defline format if this parameters is not used. "
+                     "'{contig_name}_{gene_callers_id}', and your defline will look like '>XXX_182'. In most cases "
+                     "'{gene_callers_id}' will serve as the default defline format if this parameters is not used. "
                      "See more examples in online help."}
                 ),
     'report-extended-deflines': (
@@ -2668,9 +2686,22 @@ D = {
                      "This way you can run HMM profiles that are not included in anvi'o. See the online "
                      "to find out about the specifics of this directory structure ."}
                 ),
+    'miscellaneous-model': (
+            ['-M', '--miscellaneous-model'],
+            {'metavar': 'CATEGORY:MODEL',
+             'help': "Use a miscellaneous HMM model installed with anvi'o by its key. See '--list-miscellaneous-models' "
+                     "for available options."}
+                ),
     'installed-hmm-profile': (
             ['-I', '--installed-hmm-profile'],
             {'metavar': 'HMM PROFILE NAME(S)'}
+                ),
+    'list-miscellaneous-models': (
+            ['--list-miscellaneous-models'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "List the miscellaneous HMM profiles that are shipped with anvi'o but not run by default, "
+                     "including their categories, notes, and full paths to use with '-H'."}
                 ),
     'hmmer-output-dir': (
             ['--hmmer-output-dir'],
@@ -2939,7 +2970,7 @@ D = {
                 ),
     'write-buffer-size': (
             ['--write-buffer-size'],
-            {'default': 500,
+            {'default': 5000,
              'metavar': 'INT',
              'required': False,
              'help': "How many items should be kept in memory before they are written to the disk. The default is "
@@ -2955,13 +2986,9 @@ D = {
             {'default': 500,
              'metavar': 'INT',
              'required': False,
-             'help': "How many items should be kept in memory before they are written do the disk. The default is "
-                     "%(default)d per thread. So a single-threaded job would have a write buffer size of "
-                     "%(default)d, whereas a job with 4 threads would have a write buffer size of 4*%(default)d. "
-                     "The larger the buffer size, the less frequent the program will access to the disk, yet the more memory "
-                     "will be consumed since the processed items will be cleared off the memory only after they are written "
-                     "to the disk. The default buffer size will likely work for most cases. Please keep an eye on the memory "
-                     "usage output to make sure the memory use never exceeds the size of the physical memory."}
+             'help': "DEPRECATED: Use --write-buffer-size instead. This flag is kept for backward compatibility. "
+                     "If --write-buffer-size is not provided, this value will be used as the write buffer size "
+                     "(without thread multiplication)."}
                 ),
     'export-gff3': (
             ['--export-gff3'],

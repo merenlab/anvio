@@ -3,6 +3,7 @@
 
 import sys
 import anvio
+import numpy as np
 
 import anvio.bamops as bamops
 import anvio.terminal as terminal
@@ -44,7 +45,7 @@ def process_contig(args, available_index_queue, output_queue, contigs_size):
             contig = list(contigs_size.keys())[idx]
             length = contigs_size[contig]
 
-            coverage = [0] * length
+            coverage = np.zeros(length, dtype=np.uint32)
             clipping = {}
 
             # got through each read, compute coverage and idc (insertion, deletion, (hard - soft)clipping).
@@ -61,8 +62,7 @@ def process_contig(args, available_index_queue, output_queue, contigs_size):
                     num_tup += 1
                     # if mapping, compute cov, increase current position
                     if tup[0] == 0:
-                        for pos in range(current_pos, current_pos + tup[1]):
-                            coverage[pos] += 1
+                        coverage[current_pos:current_pos + tup[1]] += 1
                         current_pos += tup[1]
                     # if deletion, increase current position
                     elif tup[0] == 2:
@@ -75,7 +75,20 @@ def process_contig(args, available_index_queue, output_queue, contigs_size):
                         elif current_pos != length:
                             clipping[current_pos - 1] = clipping.get(current_pos - 1, 0) + 1
 
-            output_queue.put((contig, length, coverage, clipping))
+            # bundle clipping positions with their coverage values
+            clipping_with_cov = {pos: (clip_count, coverage[pos]) for pos, clip_count in clipping.items()}
+
+            # compute zero-coverage ranges using vectorized numpy operations
+            is_zero = coverage == 0
+            # pad with False to handle edge cases (zeros at start/end of contig)
+            padded = np.concatenate([[False], is_zero, [False]])
+            # find transitions: +1 where zero region starts, -1 where it ends
+            diff = np.diff(padded.astype(np.int8))
+            starts = np.where(diff == 1)[0]
+            ends = np.where(diff == -1)[0]
+            zero_ranges = list(zip(starts.tolist(), ends.tolist()))
+
+            output_queue.put((contig, length, clipping_with_cov, zero_ranges))
 
         except Exception as e:
             output_queue.put(e)
@@ -131,84 +144,51 @@ def run_program():
         processes.append(p)
         p.start()
 
-    cov_dict = {}
+    # open output files for streaming writes
+    clipping_ouput = args.output_prefix + '-clipping.txt'
+    zero_ouput = args.output_prefix + "-zero_cov.txt"
+    run.info('Output file', clipping_ouput)
+    run.info('Output file', zero_ouput)
+
     received = 0
 
-    while received < num_contigs:
-        try:
-            result = output_queue.get()
-            if isinstance(result, Exception):
+    with open(clipping_ouput, 'w') as clipping_file, open(zero_ouput, 'w') as zero_file:
+        clipping_file.write("contig\tlength\tpos\trelative_pos\tcov\tclipping\tclipping_ratio\n")
+        zero_file.write("contig\tlength\trange\trange_size\n")
+
+        while received < num_contigs:
+            try:
+                result = output_queue.get()
+                if isinstance(result, Exception):
+                    for p in processes:
+                        p.terminate()
+                    raise result
+                contig, contig_length, clipping_with_cov, zero_ranges = result
+                received += 1
+                progress.update(f"computing contigs {received}/{num_contigs}")
+                progress.increment(increment_to = received)
+
+                # write clipping results for this contig
+                for pos, (clip_count, cov_at_pos) in clipping_with_cov.items():
+                    clipping_ratio = clip_count/cov_at_pos
+                    relative_pos = pos/contig_length
+                    if clipping_ratio > min_clipping_ratio and pos > min_dist_to_end and contig_length-pos > min_dist_to_end:
+                        clipping_file.write(f"{contig}\t{contig_length}\t{pos}\t{relative_pos}\t{cov_at_pos}\t{clip_count}\t{clipping_ratio}\n")
+
+                # write zero coverage results for this contig
+                for window_start, window_end in zero_ranges:
+                    window_length = window_end - window_start
+                    zero_file.write(f"{contig}\t{contig_length}\t{window_start}-{window_end}\t{window_length}\n")
+
+            except KeyboardInterrupt:
+                run.info_single("Received SIGINT, terminating processes...")
                 for p in processes:
                     p.terminate()
-                raise result
-            contig, length, cov, clip = result
-            cov_dict[contig] = {
-                'length': length,
-                'cov': dict(enumerate(cov)),
-                'clipping': clip
-            }
-            received += 1
-            progress.update(f"computing contigs {received}/{num_contigs}")
-            progress.increment(increment_to = received)
-        except KeyboardInterrupt:
-            run.info_single("Received SIGINT, terminating processes...")
-            for p in processes:
-                p.terminate()
-            break
+                break
 
     for p in processes:
         p.terminate()
 
-    progress.end()
-
-    # writting the outputs
-    clipping_ouput = args.output_prefix + '-clipping.txt'
-    run.info('Output file', clipping_ouput)
-    with open(clipping_ouput, 'w') as file:
-        file.write("contig\tlength\tpos\trelative_pos\tcov\tclipping\tclipping_ratio\n")
-        for contig, data in cov_dict.items():
-            contig_length = data['length']
-            for pos in data['clipping']:
-                cov = cov_dict[contig]['cov'][pos]
-                clipping = cov_dict[contig]['clipping'][pos]
-                clipping_ratio = clipping/cov
-                relative_pos = pos/contig_length
-                if clipping_ratio > min_clipping_ratio and pos > min_dist_to_end and contig_length-pos > min_dist_to_end:
-                    file.write(f"{contig}\t{contig_length}\t{pos}\t{relative_pos}\t{cov}\t{clipping}\t{clipping_ratio}\n")
-
-    zero_ouput = args.output_prefix + "-zero_cov.txt"
-    run.info('Output file', zero_ouput)
-    with open(zero_ouput, 'w') as file:
-        file.write("contig\tlength\trange\trange_size\n")
-        for contig, data, in cov_dict.items():
-            contig_length = data['length']
-            in_window = False
-            window_start = ''
-            window_end = ''
-            window_length = ''
-            for pos in range(data['length']):
-                if data['cov'][pos] == 0 and in_window == False:
-                    window_start = pos
-                    in_window = True
-                    file.write(f"{contig}\t{contig_length}\t{window_start}-")
-                elif (data['cov'][pos] > 0 and in_window == True):
-                    window_end = pos
-                    window_length = window_end - window_start
-                    in_window = False
-                    file.write(f"{window_end}\t{window_length}\n")
-                # if end of contig
-                if data['cov'][pos] == 0 and pos == contig_length - 1:
-                    if in_window:
-                        window_end = pos + 1
-                        window_length = window_end - window_start
-                        in_window = False
-                        file.write(f"{window_end}\t{window_length}\n")
-                    else:
-                        window_start = pos
-                        window_end = pos + 1
-                        window_length = window_end - window_start
-                        in_window = False
-                        file.write(f"{contig}\t{contig_length}\t{window_start}-{window_end}\t{window_length}\n")
     progress.end()
 
 

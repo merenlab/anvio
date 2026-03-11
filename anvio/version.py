@@ -7,8 +7,8 @@ version-related data.
 """
 
 # Core anvi'o version information
-anvio_version = '8-dev'
-anvio_codename = 'marie'  # after Marie Tharp -- see the release notes for details: https:ithub.com/merenlab/anvio/releases/tag/v8
+anvio_version = '9-dev'
+anvio_codename = 'eunice' # after Eunice Newton Foote -- see the release notes for details: https://github.com/merenlab/anvio/releases/tag/v9
 
 # Mandatory Python version
 major_python_version_required = 3
@@ -25,7 +25,7 @@ auxiliary_data_version = "2"
 structure_db_version = "2"
 genomes_storage_version = "7"
 trnaseq_db_version = "2"
-workflow_config_version = "4"
+workflow_config_version = "5"
 metabolic_modules_db_version = "4"
 
 versions_for_db_types = {'contigs': contigs_db_version,

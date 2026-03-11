@@ -68,7 +68,7 @@ def main():
 
             args.bin_id = bin_name
 
-        if not args.bin_id or args.bin_ids_file:
+        if not args.bin_id and not args.bin_ids_file:
             raise ConfigError("This program needs to know which bin(s) you wish to refine.")
 
         args.mode = 'refine'
@@ -134,6 +134,12 @@ def get_args():
     groupE.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
     groupE.add_argument(*anvio.A('skip-init-functions'), **anvio.K('skip-init-functions'))
     groupE.add_argument(*anvio.A('skip-news'), **anvio.K('skip-news'))
+    groupE.add_argument(*anvio.A('distance'), **anvio.K('distance', {'help':
+                                    'The distance metric for the hierarchical clustering of splits in the bin. Only relevant if you are\
+                                     not using --skip-hierarchical-clustering. The default is "%(default)s".'}))
+    groupE.add_argument(*anvio.A('linkage'), **anvio.K('linkage', {'help':
+                                    'The linkage method for the hierarchical clustering of splits in the bin. Only relevant if you are\
+                                     not using --skip-hierarchical-clustering. The default is "%(default)s".'}))
 
     groupF = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
     groupE.add_argument(*anvio.A('skip-auto-ordering'), **anvio.K('skip-auto-ordering'))

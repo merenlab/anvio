@@ -405,7 +405,10 @@ class ModulesDatabase(KeggContext):
                     for name, val, definition, line in entries_tuple_list:
                         # there is one situation in which we want to ignore the entry, and that is Modules appearing in the ORTHOLOGY category, like so:
                         # (M00531  Assimilatory nitrate reduction, nitrate => ammonia)
-                        if not (name == "ORTHOLOGY" and val[0] == '('):
+                        # as of September 2025, we also want to ignore COMPLETE entries, which are really long lists of organisms that have the module
+                        # complete and we just don't care about that info to justify the additional space it takes in the database --
+                        # see https://github.com/merenlab/anvio/issues/2491 for context and more details:
+                        if not (name == "ORTHOLOGY" and val[0] == '(') and not (name == 'COMPLETE'):
                             # append_and_store will collect db entries and store every 10000 at a time
                             mod_table.append_and_store(self.db, mnum, name, val, definition, line)
                         else:
@@ -719,7 +722,7 @@ class ModulesDatabase(KeggContext):
         return module_dictionary
 
 
-    def get_data_value_entries_for_module_by_data_name(self, module_num, data_name):
+    def get_data_value_entries_for_module_by_data_name(self, module_num, data_name, raise_error_if_no_data=True):
         """This function returns data_value elements from the modules table for the specified module and data_name pair.
 
         All elements corresponding to the pair (ie, M00001 and ORTHOLOGY) will be returned.
@@ -732,6 +735,8 @@ class ModulesDatabase(KeggContext):
             the module to fetch data for
         data_name : str
             which data_name field we want
+        raise_error_if_no_data : bool
+            whether to quit all things if we don't get what we want
 
         RETURNS
         =======
@@ -739,8 +744,9 @@ class ModulesDatabase(KeggContext):
             the data_values corresponding to the module/data_name pair
         """
 
-        where_clause_string = "module = '%s'" % (module_num)
-        dict_from_mod_table = self.db.get_some_rows_from_table_as_dict(self.module_table_name, where_clause_string, row_num_as_key=True)
+        where_clause_string = f"module = '{module_num}' and data_name = '{data_name}'"
+        dict_from_mod_table = self.db.get_some_rows_from_table_as_dict(self.module_table_name, where_clause_string, row_num_as_key=True,
+                                                                error_if_no_data=raise_error_if_no_data)
         # the returned dictionary is keyed by an arbitrary integer, and each value is a dict containing one row from the modules table
         # ex of one row in this dict: 0: {'module': 'M00001', 'data_name': 'ENTRY', 'data_value': 'M00001', 'data_definition': 'Pathway', 'line': 1}
         data_values_to_ret = []
@@ -749,14 +755,14 @@ class ModulesDatabase(KeggContext):
                 data_values_to_ret.append(dict_from_mod_table[key]['data_value'])
 
         if not data_values_to_ret:
-            self.run.warning("Just so you know, we tried to fetch data from the Modules database for the data_name field %s "
-                             "and module %s, but didn't come up with anything, so an empty list is being returned. This may "
-                             "cause errors down the line, and if so we're very sorry for that.")
+            self.run.warning(f"Just so you know, we tried to fetch data values from the modules database for the data_name field {data_name} "
+                             f"and module {module_num}, but didn't come up with anything, so an empty list is being returned. This may "
+                             f"cause errors down the line, and if so we're very sorry for that.")
 
         return data_values_to_ret
 
 
-    def get_data_definition_entries_for_module_by_data_name(self, module_num, data_name):
+    def get_data_definition_entries_for_module_by_data_name(self, module_num, data_name, raise_error_if_no_data=True):
         """This function returns data_definition elements from the modules table for the specified module and data_name pair.
 
         All elements corresponding to the pair (ie, M00001 and ORTHOLOGY) will be returned.
@@ -769,6 +775,8 @@ class ModulesDatabase(KeggContext):
             the module to fetch data for
         data_name : str
             which data_name field we want
+        raise_error_if_no_data : bool
+            whether to quit all things if we don't get what we want
 
         RETURNS
         =======
@@ -776,8 +784,9 @@ class ModulesDatabase(KeggContext):
             the data_definitions corresponding to the module/data_name pair
         """
 
-        where_clause_string = "module = '%s'" % (module_num)
-        dict_from_mod_table = self.db.get_some_rows_from_table_as_dict(self.module_table_name, where_clause_string, row_num_as_key=True)
+        where_clause_string = f"module = '{module_num}' and data_name = '{data_name}'" 
+        dict_from_mod_table = self.db.get_some_rows_from_table_as_dict(self.module_table_name, where_clause_string, row_num_as_key=True,
+                                                                error_if_no_data=raise_error_if_no_data)
 
         data_defs_to_ret = []
         for key in dict_from_mod_table.keys():
@@ -785,9 +794,9 @@ class ModulesDatabase(KeggContext):
                 data_defs_to_ret.append(dict_from_mod_table[key]['data_definition'])
 
         if not data_defs_to_ret and anvio.DEBUG:
-            self.run.warning("Just so you know, we tried to fetch data definitions from the Modules database for the data_name field %s "
-                             "and module %s, but didn't come up with anything, so an empty list is being returned. This may "
-                             "cause errors down the line, and if so we're very sorry for that.")
+            self.run.warning(f"Just so you know, we tried to fetch data definitions from the modules database for the data_name field {data_name} "
+                             f"and module {module_num}, but didn't come up with anything, so an empty list is being returned. This may "
+                             f"cause errors down the line, and if so we're very sorry for that.")
 
         return data_defs_to_ret
 
@@ -991,6 +1000,11 @@ class ModulesDatabase(KeggContext):
         Note that this function refers to compounds by their KEGG identifier (format is 'C#####' where # is a digit).
         A separate function is used to convert these lists to human-readable compound names.
 
+        PARAMETERS
+        ==========
+        mnum : str
+            module number to get compounds for
+
         RETURNS
         =======
         substrates : list
@@ -1001,9 +1015,8 @@ class ModulesDatabase(KeggContext):
             Compunds that are only outputs from the module's metabolic pathway
         """
 
-        reactions_list = self.get_data_definition_entries_for_module_by_data_name(mnum, "REACTION")
-        if not reactions_list:
-            if anvio.DEBUG:
+        reactions_list = self.get_data_definition_entries_for_module_by_data_name(mnum, "REACTION", raise_error_if_no_data=False)
+        if not reactions_list and anvio.DEBUG:
                 self.run.warning(f"No REACTION entries found for module {mnum}, so no compounds will be returned by "
                                  "get_kegg_module_compound_lists()")
 
@@ -1082,6 +1095,10 @@ class ModulesDatabase(KeggContext):
         """
         compound_to_name_dict = self.get_compound_dict_for_module(mnum)
         substrate_compounds, intermediate_compounds, product_compounds = self.get_kegg_module_compound_lists(mnum)
+
+        if not compound_to_name_dict and anvio.DEBUG:
+            self.run.warning(f"No COMPOUND entries were found for module {mnum}, so the corresponding lists of "
+                             f"substrates/products will likely be empty. Just so you are prepared.")
 
         substrate_name_list = [compound_to_name_dict[c] for c in substrate_compounds]
         intermediate_name_list = [compound_to_name_dict[c] for c in intermediate_compounds]

@@ -424,12 +424,12 @@ class AnvioPrograms(AnvioAuthors):
 
 
 class Program:
-    def __init__(self, program_name, program_path, r=terminal.Run(), p=terminal.Progress()):
+    def __init__(self, program_name, program_path=None, r=terminal.Run(), p=terminal.Progress()):
         self.run = r
         self.progress = p
 
         self.name = program_name
-        self.program_path = program_path
+        self.program_path = program_path or self.get_program_path(self.name)
         self.usage = None
 
         self.meta_info = {
@@ -465,6 +465,50 @@ class Program:
 
         self.module = self.load_as_module(self.program_path)
         self.get_meta_info()
+
+
+    @staticmethod
+    def get_program_path(program_name):
+        """Locate a program file by name using project entry points."""
+        try:
+            import tomllib  # Python 3.11+
+        except ImportError:
+            try:
+                import tomli as tomllib  # pragma: no cover
+            except ImportError:
+                raise ConfigError("Program cannot be initialized from name because neither `tomllib` nor "
+                                  "`tomli` is available to read pyproject.toml :/")
+
+        anvio_dir = os.path.dirname(anvio.__file__)
+        pyproject_path = os.path.join(os.path.dirname(anvio_dir), 'pyproject.toml')
+
+        if not os.path.exists(pyproject_path):
+            raise ConfigError("The pyproject.toml for the anvi'o package is missing, so Program.from_name "
+                              "cannot resolve the file path for '%s'." % program_name)
+
+        with open(pyproject_path, 'rb') as f:
+            pyproject_data = tomllib.load(f)
+
+        entry_points = pyproject_data.get('project', {}).get('scripts', {})
+        if program_name in entry_points:
+            entry_point = entry_points[program_name]
+            program_relative_path = entry_point.split(':')[0].replace('.', '/') + '.py'
+            program_path = os.path.abspath(os.path.join(anvio_dir, '..', program_relative_path))
+        else:
+            non_python_scripts = pyproject_data.get('tool', {}).get('setuptools', {}).get('script-files', [])
+            program_path = None
+            for script in non_python_scripts:
+                if os.path.basename(script) == program_name:
+                    program_path = os.path.abspath(os.path.join(anvio_dir, '..', script))
+                    break
+
+        if not program_path:
+            raise ConfigError(f"Program '{program_name}' was not found among entry points in pyproject.toml :/")
+
+        if not os.path.exists(program_path):
+            raise ConfigError(f"Program '{program_name}' was mapped to '{program_path}', but that path does not exist :(")
+
+        return program_path
 
 
     def get_meta_info(self):
@@ -774,6 +818,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.output_directory_path = A("output_dir") or 'ANVIO-HELP'
+        self.repo_root = os.path.abspath(os.path.join(os.path.dirname(anvio.__file__), '..'))
 
         if not os.path.exists(anvio.DOCS_PATH):
             raise ConfigError("The anvi'o docs path is not where it should be :/ Something funny is going on.")
@@ -1070,10 +1115,17 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
 
         program_provides_requires_dict = self.get_program_requires_provides_dict()
 
+        resources_example_program = 'anvi-interactive'
+        resources_example_path = None
+        if resources_example_program in self.program_names_and_paths:
+            resources_example_path = os.path.relpath(self.program_names_and_paths[resources_example_program], self.repo_root)
+            resources_example_path = resources_example_path.replace(os.sep, '/')
+
         for program_name in self.programs:
             self.progress.update(f"'{program_name}' ...", increment=True)
 
             program = self.programs[program_name]
+            program_source_path = os.path.relpath(program.program_path, self.repo_root).replace(os.sep, '/')
             d = {'program': {},
                  'meta': {'summary_type': 'program',
                           'version': '\n'.join(['|%s|%s|' % (t[0], t[1]) for t in anvio.get_version_tuples()]),
@@ -1085,6 +1137,8 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
             d['program']['usage'] = program.usage
             d['program']['description'] = program.meta_info['description']['value']
             d['program']['resources'] = program.meta_info['resources']['value']
+            d['program']['source_path'] = program_source_path
+            d['program']['resources_example_source_path'] = resources_example_path or program_source_path
             d['program']['requires'] = program_provides_requires_dict[program_name]['requires']
             d['program']['provides'] = program_provides_requires_dict[program_name]['provides']
             d['program']['icon'] = '../../images/icons/%s.png' % 'PROGRAM'
@@ -1308,5 +1362,3 @@ class ProgramsVignette(AnvioPrograms):
         open(self.output_file_path, 'w').write(SummaryHTMLOutput(vignette, r=run, p=progress).render())
 
         run.info('Output file', os.path.abspath(self.output_file_path))
-
-

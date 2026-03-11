@@ -8,7 +8,7 @@ A genomes storage database contains information about the genomes that you input
 
 Specifically, there are three tables stored in a genomes storage database: 
 
-* A table describing the information about each of your genomes, such as their name, type (internal or external), GC content, number of contigs, completition, redunduncy, number of genes, etc. 
+* A table describing the information about each of your genomes, such as their name, type (internal or external), GC content, number of contigs, completion, redundancy, number of genes, etc. 
 * A table describing the genes within your genomes. For each gene, this includes its gene caller id, associated genome and position, sequence, length, and whether or not it is partial. 
 * A table describing the functions of your genes, including their sources and e-values. 
 

@@ -203,7 +203,19 @@ ContextMenu = function(options) {
         'collapse': {
             'title': 'Collapse these items',
             'action': (node, layer, param) => {
-                new CollapseNodeDialog(node);
+                let [left_most, right_most] = this.node.GetBorderNodes();
+
+                collapsedNodes.push({
+                    'left_most': left_most.label,
+                    'right_most': right_most.label,
+                    'label': `Collapsed Node ${collapsedNodes.length + 1}`,
+                    'size': 0.25,
+                    'font_size': 100,
+                    'color': '#888888'
+                });
+
+                refreshCollapsedNodesTable();
+                markCollapsedNodesChanged(true);
             }
         },
         'expand': {
@@ -215,6 +227,7 @@ ContextMenu = function(options) {
                         break;
                     }
                 }
+                refreshCollapsedNodesTable();
                 drawTree();
             }
         },
@@ -250,6 +263,7 @@ ContextMenu = function(options) {
                         collapsedNodes = [];
                         clusteringData = data['newick'];
                         $('#tree_modified_warning').show();
+                        refreshCollapsedNodesTable();
                         drawTree();
                     }
                 });
@@ -274,6 +288,7 @@ ContextMenu = function(options) {
                         collapsedNodes = [];
                         clusteringData = data['newick'];
                         $('#tree_modified_warning').show();
+                        refreshCollapsedNodesTable();
                         drawTree();
                     }
                 });
@@ -297,6 +312,7 @@ ContextMenu = function(options) {
                         collapsedNodes = [];
                         clusteringData = data['newick'];
                         $('#tree_modified_warning').show();
+                        refreshCollapsedNodesTable();
                         drawTree();
                     }
                 });

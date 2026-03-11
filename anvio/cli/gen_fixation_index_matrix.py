@@ -17,7 +17,7 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['ekiefl']
-__requires__ = ['contigs-db', 'profile-db', 'structure-db', 'bin', 'variability-profile-txt', 'splits-txt']
+__requires__ = ['contigs-db', 'profile-db', 'structure-db', 'bin', 'variability-profile-txt', 'splits-txt', 'genes-of-interest-txt']
 __provides__ = ['fixation-index-matrix']
 __resources__ = [("Utilizing fixation index to study SAR11 population structure", "http://merenlab.org/data/sar11-saavs/#generating-distance-matrices-from-fixation-index-for-saavs-and-snvs-data"),
                  ("Measuring Distances Between Genomes in the Infant Gut Tutorial", "http://merenlab.org/tutorials/infant-gut/#measuring-distances-between-metagenomes-with-fst")]

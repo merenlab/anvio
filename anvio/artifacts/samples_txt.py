@@ -101,7 +101,7 @@ class SamplesTxt:
         possible_columns = set([self._first_col, "r1", "r2", "lr", "group"])
         extra_columns = set(self._columns_found) - possible_columns
         if extra_columns:
-            self.run.warning(f"Your samples txt file contains {utils.pluralize('extra column', len(extra_columns))}: "
+            self.run.warning(f"Your samples txt file contains {terminal.pluralize('extra column', len(extra_columns))}: "
                              f"{', '.join(sorted(extra_columns))} compared to what is expected of a `samples-txt` file, "
                              f"which is absolutely fine. You're reading this message because anvi'o wanted to make sure you "
                              f"know that it knows that it is the case. Classic anvi'o virtue signaling.", lc="yellow")
@@ -464,12 +464,12 @@ class SamplesTxt:
                         identical.add(sample)
 
         if missing:
-            raise ConfigError(f"Bad news. Your samples txt contains {utils.pluralize('sample', len(missing))} "
+            raise ConfigError(f"Bad news. Your samples txt contains {terminal.pluralize('sample', len(missing))} "
                               f"({', '.join(sorted(missing))}) with missing files (by which we mean that the "
                               f"r1/r2/lr paths are there, but the files they point to are not).")
 
         if identical:
-            raise ConfigError(f"Interesting. Your samples txt contains {utils.pluralize('sample', len(identical))} "
+            raise ConfigError(f"Interesting. Your samples txt contains {terminal.pluralize('sample', len(identical))} "
                               f"({', '.join(sorted(identical))}) where r1 and r2 file paths are identical. Not OK.")
 
     def _warn_on_unconventional_fastq_suffixes(self):

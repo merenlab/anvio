@@ -112,7 +112,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                                         "--skip-SNV-profiling", "--profile-SCVs", "--description",
                                                         "--skip-hierarchical-clustering", "--distance", "--linkage", "--min-contig-length",
                                                         "--min-mean-coverage", "--min-coverage-for-variability", "--cluster-contigs",
-                                                        "--contigs-of-interest", "--queue-size", "--write-buffer-size-per-thread",
+                                                        "--contigs-of-interest", "--queue-size", "--write-buffer-size", "--write-buffer-size-per-thread",
                                                         "--fetch-filter", "--min-percent-identity", "--max-contig-length"]
         rule_acceptable_params_dict['merge_fastas_for_co_assembly'] = []
         rule_acceptable_params_dict['merge_fastqs_for_co_assembly'] = []
@@ -237,7 +237,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
         # just some extra checks. TO BE UTLRA-SAFE
         if len(self.sample_names) < 1:
-            raise WorkflowError("No samples found in samples.txt")
+            raise ConfigError("No samples found in samples.txt")
 
         self.references_for_removal_txt = self.get_param_value_from_config(['remove_short_reads_based_on_references',\
                                                                             'references_for_removal_txt'])
@@ -293,7 +293,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
 
         contigs_annotated = [os.path.join(self.dirs_dict["CONTIGS_DIR"],\
-                             g + "-annotate_contigs_database.done") for g in self.group_names]
+                             g + "-steps", "annotate_contigs_database.done") for g in self.group_names]
         target_files.extend(contigs_annotated)
 
         if self.run_qc:
@@ -548,7 +548,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
             if missing_samples_in_kraken_txt:
                 raise ConfigError("Your kraken annotation file, '%s', is missing samples that "
                                   "are in your samples_txt file, '%s'. This is not allowed. "
-                                  "Here is an example of such a sample: %s." % (kraken_txt, self.get_param_value_from_config('samples_txt'), wrong_samples_in_kraken_txt[0]))
+                                  "Here is an example of such a sample: %s." % (kraken_txt, self.get_param_value_from_config('samples_txt'), next(iter(missing_samples_in_kraken_txt))))
             self.kraken_annotation_dict = kraken_annotation_dict
 
         if self.get_param_value_from_config(['krakenuniq', 'run']):
@@ -707,7 +707,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
         - Fails in references mode (assemblies are off there).
         - Verifies this group is an SR assembly group.
-        - `use_filtered=False` is recommended for assembly (use QC outputs, not ref-filtered).
+        - Returns QC'd files if QC is enabled, otherwise raw input files.
+        - `use_filtered=True` uses reference-filtered outputs if available.
         - `zipped=None` → auto-detect from your run_gzip_fastqs flag.
         """
         if self.references_mode:
@@ -715,17 +716,13 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         if self.assembly_types.get(group_id) != 'SR':
             raise ConfigError(f"Group '{group_id}' is not SR (type={self.assembly_types.get(group_id)})")
 
-        if zipped is None:
-            # defer to your global setting at call-time
-            try:
-                zipped = run_gzip_fastqs
-            except NameError:
-                zipped = True  # sensible default if the flag lives elsewhere
-
         r1, r2 = [], []
         member_readsets = self.assembly_members.get(group_id, [])
         for rs_id in member_readsets:
-            d = self.get_sr_files_for_readset(rs_id)
+            # Use get_fastq which respects run_qc setting:
+            # - pre_ref_removal=True means we want QC'd files (not reference-filtered)
+            # - If QC is disabled, get_fastq falls back to raw input files
+            d = self.get_fastq(rs_id, pre_ref_removal=not use_filtered)
             r1.extend(d['r1'])
             r2.extend(d['r2'])
 
@@ -763,29 +760,21 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         if wildcards.group in self.references_for_removal:
             # if it's a reference for removal then we just want to use the
             # raw fasta file, and there is no need to reformat or assemble
-            contigs = self.get_raw_fasta(wildcards)
+            contigs = self.get_input_fasta_path(wildcards)
         elif self.get_param_value_from_config(['anvi_script_reformat_fasta','run']):
             contigs = self.dirs_dict["FASTA_DIR"] + "/{group}/{group}-contigs.fa".format(group=wildcards.group)
         else:
-            contigs = self.get_raw_fasta(wildcards)
+            contigs = self.get_input_fasta_path(wildcards)
         return contigs
 
 
-    def get_raw_fasta(self, wildcards, remove_gz_suffix=True):
-        """
-        Path to the input FASTA for reformat_fasta.
-
-        Priority:
-          1) If a precomputed raw FASTA exists (written by SR/LR assembler wrappers):
-             {FASTA_DIR}/{group}.raw.fa  -> use it.
-          2) References mode (or references slated for removal): delegate to base logic
-             that reads from self.fasta_information[...] (handles .gz via remove_gz_suffix).
-          3) Assembly mode (SR legacy path): use assembler output at
-             {FASTA_DIR}/{group}/final.contigs.fa
-        """
+    def get_input_fasta_path(self, wildcards, remove_gz_suffix=True):
+        '''Returns the input FASTA path for a given group. In references mode or
+        when removing references, delegates to the base class. In assembly mode,
+        returns the assembler output path.'''
         # References-mode / reference-removal path (uses fasta_information)
         if self.references_mode or wildcards.group in self.references_for_removal:
-            return super(MetagenomicsWorkflow, self).get_raw_fasta(
+            return super(MetagenomicsWorkflow, self).get_input_fasta_path(
                 wildcards, remove_gz_suffix=remove_gz_suffix)
 
         # Assembly-mode : assembler's canonical output location
@@ -944,13 +933,12 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         # do we have a conda env/yaml?
         has_conda_yaml = self.get_param_value_from_config([tool, 'conda_yaml'])
         has_conda_env = self.get_param_value_from_config([tool, 'conda_env'])
-        print(has_conda_env)
         if has_conda_yaml or has_conda_env:
             return  # conda env/yaml will provide the executable
 
         if not shutil.which(executable):
             raise ConfigError(
-                f"You enabled '{tool}', but {executable} were found in your $PATH. "
+                f"You enabled '{tool}', but '{executable}' was not found in your $PATH. "
                 f"You can either install it, or set a conda environment via "
                 f"'conda_yaml' or 'conda_env' in your config file."
             )

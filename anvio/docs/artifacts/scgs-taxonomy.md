@@ -1,4 +1,4 @@
-This contains the taxonomy annotions for each of the single-copy core genes found in your %(contigs-db)s; in other words, this contains the results of a run of %(anvi-run-scg-taxonomy)s. 
+This contains the taxonomy annotations for each of the single-copy core genes found in your %(contigs-db)s; in other words, this contains the results of a run of %(anvi-run-scg-taxonomy)s. 
 
 This information was found through the [GTDB](https://gtdb.ecogenomic.org/) database, so it will not work with Eukaryotic genomes. 
 

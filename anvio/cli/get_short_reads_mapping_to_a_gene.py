@@ -23,7 +23,7 @@ __version__ = anvio.__version__
 __authors__ = ['meren']
 __requires__ = ['contigs-db', 'bam-file',]
 __provides__ = ['short-reads-fasta',]
-__tags__ = ["metagenomics", "profile_db", "contigs_db", "bam", "variability", "clustering"]
+__tags__ = ["metagenomics", "profile_db", "contigs_db", "bam", "variability", "clustering", "genes-of-interest-txt"]
 __description__ = ("Recover short reads from BAM files that were mapped to genes you are "
                    "interested in. It is possible to work with a single gene call, or a "
                    "bunch of them. Similarly, you can get short reads from a single "
