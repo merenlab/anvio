@@ -11,7 +11,7 @@ sources = u.get_HMM_sources_dictionary([s for s in glob.glob(os.path.join(dir_pa
 scg_domain_to_source = dict([(sources[s]['domain'], s) for s in sources if sources[s]['kind'] == 'singlecopy'])
 
 if len(sources):
-   run.info('HMM profiles',
-            '%d source%s been loaded: %s' % (len(sources),
-                                             's have' if len(sources) > 1 else ' has',
-                                             ', '.join(['%s (%d genes, domain: %s)' % (s, len(sources[s]['genes']), sources[s]['domain']) for s in sources])))
+    run.info('HMM profiles',
+             '%d source%s been loaded: %s' % (len(sources),
+                                              's have' if len(sources) > 1 else ' has',
+                                              ', '.join(['%s (%d genes, domain: %s)' % (s, len(sources[s]['genes']), sources[s]['domain']) for s in sources])))
