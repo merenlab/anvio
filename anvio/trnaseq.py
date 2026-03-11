@@ -6597,7 +6597,7 @@ class DatabaseMerger(object):
                  0, # Is partial gene call: for now, say all seeds are "full tRNAs"
                  2, # Call type: 1 = coding, 2 = noncoding, 3 = unknown
                  'anvi-trnaseq', # Gene caller
-                 tables.trnaseq_db_version) # Version of caller
+                 anvio.version.trnaseq_db_version) # Version of caller
             )
         return entries
 
