@@ -7529,7 +7529,7 @@ class ResultTabulator(object):
         self.sample_names = sample_names = get_meta_value('samples').split(', ')
         sample_total_mean_spec_covs = tuple(map(float, get_meta_value('sample_total_mean_specific_coverage').split(', ')))
         sample_total_discriminator_spec_covs = tuple(map(int, get_meta_value('sample_total_discriminator_specific_coverage').split(', ')))
-        mean_spec_cov_df = spec_profile_db.db.get_table_as_dataframe('mean_coverage_contigs')
+        mean_spec_cov_df = spec_profile_db.db.get_table_as_dataframe('mean_coverage_contigs', error_if_no_data=False)
         # zero-coverage contigs are stored in a separate table since profile db v42
         if 'zero_coverage_contigs' in spec_profile_db.db.get_table_names():
             zero_cov_contigs_df = spec_profile_db.db.get_table_as_dataframe('zero_coverage_contigs', error_if_no_data=False)
@@ -7551,7 +7551,7 @@ class ResultTabulator(object):
             nonspec_profile_db = dbops.ProfileDatabase(self.nonspec_profile_db_path, quiet=True)
             get_meta_value = nonspec_profile_db.db.get_meta_value
             self.sample_names = sample_names = get_meta_value('samples').split(', ')
-            mean_nonspec_cov_df = nonspec_profile_db.db.get_table_as_dataframe('mean_coverage_contigs')
+            mean_nonspec_cov_df = nonspec_profile_db.db.get_table_as_dataframe('mean_coverage_contigs', error_if_no_data=False)
             # zero-coverage contigs are stored in a separate table since profile db v42
             if 'zero_coverage_contigs' in nonspec_profile_db.db.get_table_names():
                 zero_cov_contigs_df = nonspec_profile_db.db.get_table_as_dataframe('zero_coverage_contigs', error_if_no_data=False)
