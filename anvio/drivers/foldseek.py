@@ -57,6 +57,7 @@ class Foldseek():
                             " Please run 'anvi-setup-prostt5' and try again.")
 
         self.output_file = None
+        self.result_file_path = None
 
         if not self.run.log_file_path:
             self.run.log_file_path = filesnpaths.get_temp_file_path()
@@ -83,8 +84,11 @@ class Foldseek():
 
         try:
             utils.run_command(cmd_line, self.run.log_file_path)
-        except FilesNPathsError:
-            run.warning("Opss! CREATEDB not working. Probably you are giving wrong file path :/")
+        except ConfigError:
+            self.progress.end()
+            raise ConfigError(f"Foldseek createdb failed. Please check the log file at '{self.run.log_file_path}' "
+                              f"for more details. This could be due to a wrong file path or a problem with the "
+                              f"ProstT5 model at '{self.weight_dir}'.")
 
         self.progress.end()
         self.run.info('Command line', ' '.join([str(x) for x in cmd_line]), quiet=True)
@@ -98,14 +102,14 @@ class Foldseek():
         query_db = os.path.join(query_db, 'db', 'search_db')
         target_db = os.path.join(target_db, 'db', 'search_db')
 
-        result_file_dir = os.path.join(self.output_file, 'result')
+        self.result_file_path = os.path.join(self.output_file, 'result')
 
         cmd_line = [
             'foldseek',
             'easy-search',
             query_db,
             target_db,
-            result_file_dir,
+            self.result_file_path,
             self.tmp_dir,
             '--threads', self.num_threads
         ]
@@ -115,7 +119,8 @@ class Foldseek():
         self.progress.end()
 
         self.run.info('Command line', ' '.join([str(x) for x in cmd_line]), quiet=True)
-        self.run.info('Foldseek search Result', result_file_dir)
+        self.run.info('Foldseek search result', self.result_file_path)
+
 
     def process(self, output_file):
 
@@ -124,13 +129,22 @@ class Foldseek():
         self.create_db()
         self.search(output_file, output_file)
 
+
     def get_foldseek_results(self):
-        """ Return result.m8 file """
-        force_makedb, force_search = False, False
+        """Returns the path to the foldseek search results file."""
 
-        result_dir = os.path.join(self.output_file, 'result')
+        if not self.result_file_path or not os.path.exists(self.result_file_path):
+            raise ConfigError(f"Foldseek search results file was not found at '{self.result_file_path}'. "
+                              f"This could mean that the foldseek search did not complete successfully. "
+                              f"Please check the log file at '{self.run.log_file_path}' for more details.")
 
-        return result_dir
+        if os.path.getsize(self.result_file_path) == 0:
+            raise ConfigError(f"The foldseek search results file at '{self.result_file_path}' is empty. "
+                              f"This could mean that foldseek did not find any structural similarities "
+                              f"between your gene cluster representatives. Please check the log file at "
+                              f"'{self.run.log_file_path}' for more details.")
+
+        return self.result_file_path
 
 
 class Prostt5SetupWeight:
