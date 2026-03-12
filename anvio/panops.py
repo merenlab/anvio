@@ -135,6 +135,9 @@ class ComparePan:
         # report gene cluster status in compared pangenome: fragmented or combined?
         self.detect_fragmentation_combination()
 
+        # classify gene clusters as core/singleton/accessory in both pans
+        self.add_gene_cluster_type_data()
+
         # add summary of function
         self.add_function_summary_to_compare()
 
@@ -396,6 +399,88 @@ class ComparePan:
 
         # then we write:
         utils.store_dict_as_TAB_delimited_file(out_dict, self.output_file_prefix, headers=column_order, key_header='GC_ID', none_value='')
+
+
+    def add_gene_cluster_type_data(self):
+        """Classify gene clusters as core/singleton/accessory in both pans and write as item additional data."""
+        num_genomes = self.pan.p_meta['num_genomes']
+
+        # classify gene clusters in the primary pan
+        pan_gc_types = Pangenome.classify_gene_cluster_types(self.pan.gene_clusters, num_genomes)
+        pan_type_data = {gc: {'gc_type': gc_type} for gc, gc_type in pan_gc_types.items()}
+        pan_type_keys = ['gc_type']
+
+        pan_table = TableForItemAdditionalData(self.args, r=terminal.Run(verbose=False))
+        pan_table.add(pan_type_data, pan_type_keys, skip_check_names=True)
+
+        # classify gene clusters in the compared pan
+        compared_gc_types = Pangenome.classify_gene_cluster_types(self.compared_pan.gene_clusters, num_genomes)
+        compared_type_data = {gc: {'gc_type': gc_type} for gc, gc_type in compared_gc_types.items()}
+
+        compared_args = argparse.Namespace(**{**vars(self.args), 'pan_db': self.compared_pan_db_path})
+        compared_table = TableForItemAdditionalData(compared_args, r=terminal.Run(verbose=False))
+        compared_table.add(compared_type_data, pan_type_keys, skip_check_names=True)
+
+
+    def add_psgc_composition_metrics(self, gc_psgc_associations, de_novo_gene_clusters_dict, num_genomes):
+        """Compute and add PSGC composition metrics (core/singleton/accessory counts) to the structure pan-db.
+
+        Parameters
+        ==========
+        gc_psgc_associations : dict
+            Dictionary mapping gene_cluster_id -> protein_structure_informed_gene_cluster_id
+        de_novo_gene_clusters_dict : dict
+            Dictionary of de novo gene clusters (list-of-dicts format)
+        num_genomes : int
+            Number of genomes in the analysis
+        """
+        # classify de novo gene clusters
+        de_novo_gc_types = Pangenome.classify_gene_cluster_types(de_novo_gene_clusters_dict, num_genomes)
+
+        # build reverse mapping: psgc -> list of gc names
+        psgc_to_gcs = {}
+        for gc_name, psgc_name in gc_psgc_associations.items():
+            if psgc_name:
+                if psgc_name not in psgc_to_gcs:
+                    psgc_to_gcs[psgc_name] = []
+                psgc_to_gcs[psgc_name].append(gc_name)
+
+        # compute per-PSGC metrics
+        psgc_data = {}
+        for psgc_name in self.pan.gene_cluster_names:
+            gcs_in_psgc = psgc_to_gcs.get(psgc_name, [])
+
+            core_genes = 0
+            singleton_genes = 0
+            accessory_genes = 0
+            gc_types_dict = {}
+
+            for gc in gcs_in_psgc:
+                if gc not in de_novo_gc_types:
+                    continue
+                gc_type = de_novo_gc_types[gc]
+                gc_types_dict[gc] = gc_type
+                gene_count = len(de_novo_gene_clusters_dict[gc])
+                if gc_type == 'core':
+                    core_genes += gene_count
+                elif gc_type == 'singleton':
+                    singleton_genes += gene_count
+                else:
+                    accessory_genes += gene_count
+
+            psgc_data[psgc_name] = {
+                'number_gc_in_psgc': len(gcs_in_psgc),
+                'psgc_composition!core': core_genes,
+                'psgc_composition!singleton': singleton_genes,
+                'psgc_composition!accessory': accessory_genes,
+                'gc_types': json.dumps(gc_types_dict),
+            }
+
+        psgc_keys = ['number_gc_in_psgc', 'psgc_composition!core', 'psgc_composition!singleton',
+                     'psgc_composition!accessory', 'gc_types']
+
+        psgc_table = TableForItemAdditionalData(self.args, r=terminal.Run(verbose=False))
+        psgc_table.add(psgc_data, psgc_keys, skip_check_names=True)
 
 
 class RarefactionAnalysis:
@@ -1152,6 +1237,31 @@ class Pangenome(object):
         #                   RETURN THE -LIKELY- UPDATED PROTEIN CLUSTERS DICT
         ########################################################################################
         return gene_clusters_dict
+
+
+    @staticmethod
+    def classify_gene_cluster_types(gene_clusters_dict, num_genomes):
+        """Classify gene clusters as core, singleton, or accessory based on genome occurrence.
+
+        Accepts both the list-of-dicts format (from Pangenome: [{gene_entry dicts}]) and the
+        dict-of-dicts format (from PanSuperclass: {genome_name: [gene_ids]}).
+        """
+        gc_types = {}
+        for gc_name, gc_data in gene_clusters_dict.items():
+            if isinstance(gc_data, dict):
+                # PanSuperclass format: {genome_name: [gene_ids]}
+                genomes_with_hits = set(g for g, genes in gc_data.items() if genes)
+            else:
+                # Pangenome format: [{genome_name: ..., ...}]
+                genomes_with_hits = set(e['genome_name'] for e in gc_data)
+
+            if len(genomes_with_hits) == num_genomes:
+                gc_types[gc_name] = 'core'
+            elif len(genomes_with_hits) == 1:
+                gc_types[gc_name] = 'singleton'
+            else:
+                gc_types[gc_name] = 'accessory'
+        return gc_types
 
 
     def add_psgc_layers(self, gene_clusters_dict, item_additional_data_keys):
