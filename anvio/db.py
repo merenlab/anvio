@@ -792,7 +792,8 @@ class DB:
         return self.get_all_rows_from_table(table_name)
 
 
-    def get_view_data(self, view_table_name, split_names_of_interest=None, splits_basic_info=None, log_norm_numeric_values=False):
+    def get_view_data(self, view_table_name, split_names_of_interest=None, splits_basic_info=None,
+                      log_norm_numeric_values=False, expand_to_splits=True):
         """A wrapper function to get view data.
 
         Anvi'o keeps view data in long format while most tools in it work with view data
@@ -803,7 +804,34 @@ class DB:
         contig of each split. While anvi'o reports clean view data by default, if the user
         provides a `splits_basic_info` dictionary, this function will add the `__parent__`
         key to each item.
+
+        For `_contigs` view tables (which store one row per contig with contig-level values),
+        the `expand_to_splits` parameter controls the output format:
+          - If True (default), contig-keyed rows are expanded to split-keyed rows using
+            `splits_basic_info` (required in this case). This is used by the clustering
+            system which operates on splits.
+          - If False, contig-keyed data is returned directly. No `splits_basic_info` needed.
         """
+
+        is_contigs_table = view_table_name.endswith('_contigs')
+
+        if is_contigs_table and expand_to_splits and splits_basic_info is None:
+            raise ConfigError(f"get_view_data() was called on '{view_table_name}' (a _contigs view table) "
+                              f"with expand_to_splits=True but without providing `splits_basic_info`. "
+                              f"Either provide `splits_basic_info` from the associated contigs database, "
+                              f"or set expand_to_splits=False to get contig-keyed data directly.")
+
+        if is_contigs_table and expand_to_splits:
+            return self._get_view_data_contigs_expanded(view_table_name, split_names_of_interest,
+                                                        splits_basic_info, log_norm_numeric_values)
+        else:
+            return self._get_view_data_standard(view_table_name, split_names_of_interest,
+                                                splits_basic_info, log_norm_numeric_values)
+
+
+    def _get_view_data_standard(self, view_table_name, split_names_of_interest=None,
+                                splits_basic_info=None, log_norm_numeric_values=False):
+        """Read view data directly from a table, returning items as stored."""
 
         if split_names_of_interest:
             split_names_formatted = ', '.join([f"'{split_name}'" for split_name in split_names_of_interest])
@@ -835,6 +863,69 @@ class DB:
             header = sorted(list(layers))
 
         # fly away, lil birb, flai awai.
+        return (data, header)
+
+
+    def _get_view_data_contigs_expanded(self, view_table_name, split_names_of_interest=None,
+                                         splits_basic_info=None, log_norm_numeric_values=False):
+        """Read a _contigs view table (contig-keyed) and expand to split-keyed rows.
+
+        Each contig row is replicated for every split belonging to that contig, using
+        the contig-to-splits mapping derived from `splits_basic_info`.
+        """
+
+        # Build contig → [split_names] mapping
+        contig_to_splits = {}
+        for split_name, info in splits_basic_info.items():
+            parent = info['parent']
+            if parent not in contig_to_splits:
+                contig_to_splits[parent] = []
+            contig_to_splits[parent].append(split_name)
+
+        # If we have split_names_of_interest, determine which contigs we need
+        if split_names_of_interest:
+            contig_names_of_interest = set(splits_basic_info[s]['parent']
+                                           for s in split_names_of_interest
+                                           if s in splits_basic_info)
+            if not contig_names_of_interest:
+                return ({}, [])
+
+            contig_names_formatted = ', '.join([f"'{c}'" for c in contig_names_of_interest])
+            where_clause = f"""item IN ({contig_names_formatted})"""
+            d = self.get_some_rows_from_table(view_table_name, where_clause=where_clause)
+        else:
+            d = self.get_all_rows_from_table(view_table_name)
+
+        # First pass: collect layers and contig data
+        contig_data = {}
+        layers = set([])
+
+        for entry_id, contig_name, layer, value in d:
+            contig_data[contig_name] = {}
+            layers.add(layer)
+
+        for entry_id, contig_name, layer, value in d:
+            if log_norm_numeric_values:
+                contig_data[contig_name][layer] = math.log10(value + 1)
+            else:
+                contig_data[contig_name][layer] = value
+
+        # Second pass: expand contig rows to split rows
+        data = {}
+        split_names_of_interest_set = set(split_names_of_interest) if split_names_of_interest else None
+
+        for contig_name, contig_values in contig_data.items():
+            if contig_name not in contig_to_splits:
+                continue
+
+            for split_name in contig_to_splits[contig_name]:
+                if split_names_of_interest_set and split_name not in split_names_of_interest_set:
+                    continue
+                data[split_name] = dict(contig_values)
+                data[split_name]['__parent__'] = contig_name
+
+        header = sorted(list(layers)) + ['__parent__']
+
         return (data, header)
 
 
