@@ -3944,6 +3944,14 @@ D = {
                      "re-running foldseek. This is mostly for debugging purposes and we strongly advice "
                      "you to not use it unless you consider yourself to be a hacker-type."}
         ),
+   'skip-sequence-pan': (
+            ['--skip-sequence-pan'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When running a structure-informed pangenome, anvi'o generates a conventional "
+                     "sequence-based pan database alongside the structure pan database. Use this flag "
+                     "to skip generating the sequence-based pan database."}
+        ),
    'init-pan-mode': (
             ['--init-pan-mode'],
             {'default': constants.pangenome_mode_default,
