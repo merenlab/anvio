@@ -3952,6 +3952,14 @@ D = {
                      "sequence-based pan database alongside the structure pan database. Use this flag "
                      "to skip generating the sequence-based pan database."}
         ),
+   'compared-pan-db': (
+            ['--compared-pan-db'],
+            {'default': None,
+             'type': str,
+             'metavar': 'PAN_DB',
+             'help': "Path to a second pan database to compare against the primary pan database. Both pan "
+                     "databases must have been generated from the same genomes storage database."}
+        ),
    'init-pan-mode': (
             ['--init-pan-mode'],
             {'default': constants.pangenome_mode_default,
