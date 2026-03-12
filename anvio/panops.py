@@ -727,6 +727,8 @@ class Pangenome(object):
         self.prostt5_data_dir = A('prostt5_data_dir')
         self.foldseek_search_results_output_file = A('foldseek_search_results')
         self.de_novo_gene_clusters_dict = None
+        self.skip_sequence_pan = A('skip_sequence_pan')
+        self.conventional_pan_db_path = None
 
         self.additional_params_for_seq_search = A('additional_params_for_seq_search')
         self.additional_params_for_seq_search_processed = False
@@ -810,6 +812,37 @@ class Pangenome(object):
 
         # know thyself.
         self.args.pan_db = self.pan_db_path
+
+
+    def generate_conventional_pan_db(self):
+        """Generate a conventional sequence-based pan-db alongside the structure pan-db."""
+        meta_values = {'internal_genome_names': ','.join(self.internal_genome_names),
+                       'external_genome_names': ','.join(self.external_genome_names),
+                       'num_genomes': len(self.genomes),
+                       'min_percent_identity': self.min_percent_identity,
+                       'gene_cluster_min_occurrence': self.gene_cluster_min_occurrence,
+                       'mcl_inflation': self.mcl_inflation,
+                       'user_provided_gene_clusters_txt': True if self.user_defined_gene_clusters else False,
+                       'default_view': 'gene_cluster_presence_absence',
+                       'use_ncbi_blast': self.use_ncbi_blast,
+                       'additional_params_for_seq_search': self.additional_params_for_seq_search,
+                       'minbit': self.minbit,
+                       'exclude_partial_gene_calls': self.exclude_partial_gene_calls,
+                       'gene_alignments_computed': False if self.skip_alignments else True,
+                       'genomes_storage_hash': self.genomes_storage.get_storage_hash(),
+                       'project_name': self.project_name,
+                       'items_ordered': False,
+                       'reaction_network_ko_annotations_hash': None,
+                       'reaction_network_kegg_database_release': None,
+                       'reaction_network_modelseed_database_sha': None,
+                       'reaction_network_consensus_threshold': None,
+                       'reaction_network_discard_ties': None,
+                       'description': self.description if self.description else '_No description is provided_',
+                      }
+
+        filesnpaths.is_output_file_writable(self.conventional_pan_db_path, ok_if_exists=False)
+
+        dbops.PanDatabase(self.conventional_pan_db_path, quiet=False).create(meta_values, db_variant=constants.PAN_SEQUENCE_MODE)
 
 
     def get_output_file_path(self, file_name, delete_if_exists=False):
@@ -902,6 +935,8 @@ class Pangenome(object):
 
         if self.STRUCTURE_MODE:
             self.pan_db_path = self.get_output_file_path(self.project_name + '-STRUCTURE-PAN.db')
+            if not self.skip_sequence_pan:
+                self.conventional_pan_db_path = self.get_output_file_path(self.project_name + '-PAN.db')
         elif self.SEQUENCE_MODE or self.user_defined_gene_clusters:
             self.pan_db_path = self.get_output_file_path(self.project_name + '-PAN.db')
         else:
@@ -1220,10 +1255,6 @@ class Pangenome(object):
 
         item_additional_data_table = miscdata.TableForItemAdditionalData(self.args, r=terminal.Run(verbose=False))
         item_additional_data_keys = ['num_genomes_gene_cluster_has_hits', 'num_genes_in_gene_cluster', 'max_num_paralogs', 'SCG']
-
-        # If we're in structure mode, add information about PSGCs
-        if self.STRUCTURE_MODE:
-            self.add_psgc_layers(gene_clusters_dict, item_additional_data_keys)
 
         item_additional_data_table.add(self.additional_view_data, item_additional_data_keys, skip_check_names=True)
         #                                                                                    ^^^^^^^^^^^^^^^^^^^^^
@@ -1607,8 +1638,8 @@ class Pangenome(object):
         self.progress.new('Storing gc <-> psgc associations in the database')
         self.progress.update('...')
 
-        if self.STRUCTURE_MODE:
-            # if we are in structure mode, we also need to update the `TableForPSGCGCAssociations`
+        if self.STRUCTURE_MODE and utils.get_db_variant(self.pan_db_path) == constants.PAN_STRUCTURE_MODE:
+            # if we are in structure mode and writing to the structure pan-db, we also need to update the `TableForPSGCGCAssociations`
             table_for_gc_psgc_associations = TableForPSGCGCAssociations(self.pan_db_path, run=self.run, progress=self.progress)
 
             for gc_name, psgc_name in self.gc_psgc_associations:
@@ -1957,6 +1988,10 @@ class Pangenome(object):
         # clusters distributed across genomes in conjunction with the gc_psgc_associations table
         self.populate_gene_cluster_tracker_table(self.de_novo_gene_clusters_dict)
 
+        # generate the conventional pan-db if requested
+        if not self.skip_sequence_pan:
+            self.generate_conventional_pan_db()
+
         # next, we will align non-singleton gene clusters to make sure we have all the information
         # we need to be able to pick an appropriate representative for each gene cluster.
         skip_alignments = self.skip_alignments
@@ -2064,6 +2099,56 @@ class Pangenome(object):
         return gene_clusters_dict
 
 
+    def _run_full_pan_pipeline(self, gene_clusters_dict, pan_db_path, unsuccessful_alignments=None):
+        """Run the complete pan-db population pipeline for a given gene clusters dict and pan-db path."""
+        if unsuccessful_alignments is None:
+            unsuccessful_alignments = set()
+
+        original_pan_db_path = self.pan_db_path
+        original_args_pan_db = self.args.pan_db
+
+        self.pan_db_path = pan_db_path
+        self.args.pan_db = pan_db_path
+
+        try:
+            gene_clusters_dict = self.process_gene_clusters(gene_clusters_dict)
+            self.store_gene_clusters(gene_clusters_dict)
+            self.gen_hierarchical_clustering_of_gene_clusters()
+            self.gen_synteny_based_ordering_of_gene_clusters(gene_clusters_dict)
+            self.populate_layers_additional_data_and_orders()
+            self.populate_gene_cluster_homogeneity_index(gene_clusters_dict, gene_clusters_failed_to_align=unsuccessful_alignments)
+        finally:
+            self.pan_db_path = original_pan_db_path
+            self.args.pan_db = original_args_pan_db
+
+        return gene_clusters_dict
+
+
+    def _compare_structure_and_sequence_pans(self):
+        """Compare the structure and conventional pan-dbs, adding comparison layers to both."""
+        self.run.warning(None, header="COMPARING STRUCTURE AND SEQUENCE PAN DATABASES", lc="cyan")
+
+        compare_args = argparse.Namespace(
+            pan_db=self.pan_db_path,
+            compared_pan_db=self.conventional_pan_db_path,
+            genomes_storage=self.genomes_storage_path,
+            output_file=self.get_output_file_path('structure-vs-sequence-comparison.txt'),
+            skip_output_files=False,
+        )
+
+        comparer = ComparePan(compare_args, run=self.run, progress=self.progress)
+
+        # add PSGC composition metrics to the structure pan-db
+        comparer.pan.init_gc_psgc_associations()
+        comparer.add_psgc_composition_metrics(
+            comparer.pan.gc_psgc_associations,
+            self.de_novo_gene_clusters_dict,
+            len(self.genomes),
+        )
+
+        comparer.process()
+
+
     def process(self):
         # start by processing the additional params user may have passed for the blast step
         self.process_additional_params()
@@ -2111,23 +2196,17 @@ class Pangenome(object):
                                 f"into temporary FASTA files and will print out their locations. Here is the name of those gene clusters: "
                                 f"{', '.join(unsuccessful_alignments)}.", header="GENE CLUSTERS SEQUENCE ALIGNMENT WARNING")
 
-        # populate the pan db with results
-        gene_clusters_dict = self.process_gene_clusters(gene_clusters_dict)
+        # --- Process the primary pan-db ---
+        gene_clusters_dict = self._run_full_pan_pipeline(gene_clusters_dict, self.pan_db_path, unsuccessful_alignments)
 
-        # store gene clusters dict into the db
-        self.store_gene_clusters(gene_clusters_dict)
+        # --- If structure mode, process conventional pan-db and compare ---
+        if self.STRUCTURE_MODE and not self.skip_sequence_pan:
+            self.run.warning(None, header="PROCESSING SEQUENCE-BASED PAN DATABASE", lc="cyan")
+            # de_novo_gene_clusters_dict already has alignments from get_structure_informed_gene_clusters
+            self._run_full_pan_pipeline(self.de_novo_gene_clusters_dict, self.conventional_pan_db_path)
 
-        # generate a hierarchical clustering of gene clusters (or don't)
-        self.gen_hierarchical_clustering_of_gene_clusters()
-
-        # generate orderings of gene_clusters based on synteny of genes
-        self.gen_synteny_based_ordering_of_gene_clusters(gene_clusters_dict)
-
-        # populate layers additional data and orders
-        self.populate_layers_additional_data_and_orders()
-
-        # work with gene cluster homogeneity index
-        self.populate_gene_cluster_homogeneity_index(gene_clusters_dict, gene_clusters_failed_to_align=unsuccessful_alignments)
+            # compare the two pan-dbs
+            self._compare_structure_and_sequence_pans()
 
         # let people know if they have too much data for their own comfort
         if len(gene_clusters_dict) > 20000 or len(self.genomes) > 150:
