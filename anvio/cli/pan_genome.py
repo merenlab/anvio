@@ -82,6 +82,7 @@ def get_args():
                                 "or based on predicted protein structures by utilizing the protein language model ProstT5 to go from a AA sequence to a 3di "
                                 "to form gene clusters.")
     groupB.add_argument(*anvio.A('pan-mode'), **anvio.K('pan-mode', {'required': False}))
+    groupB.add_argument(*anvio.A('skip-sequence-pan'), **anvio.K('skip-sequence-pan'))
 
     groupC = parser.add_argument_group('DEFAULT GENE CLUSTER FORMATION: SEQUENCE SEARCH', "The first step in this workflow is to perform reciprocal sequence search "
                                 "within the gene pool of input genomes. If you don't change anything in this section, things will work fine, and anvi'o will "
