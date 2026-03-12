@@ -5,10 +5,13 @@ a TAB-delimited matrix."""
 
 import sys
 
+import pandas as pd
+
 import anvio
 import anvio.db as db
 import anvio.utils as utils
 import anvio.terminal as terminal
+import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError, FilesNPathsError
@@ -33,6 +36,7 @@ def main():
     args_fields = A('fields')
     args_output_file = A('output_file')
     args_matrix_format = A('matrix_format')
+    args_include_zeros = A('include_zeros')
     args_index = A('index')
     args_columns = A('columns')
     args_values = A('values')
@@ -83,6 +87,33 @@ def main():
                               f"the fields of your table. Here are your the field names you have: {', '.join(table_columns)}.")
 
         table_content = database.get_table_as_dataframe(args_table, columns_of_interest=table_columns)
+
+        # the view tables in profile databases no longer store rows for items with zero coverage.
+        # instead, those items are listed in dedicated zero_coverage_splits / zero_coverage_contigs
+        # tables. when the user asks for --include-zeros, we backfill those rows so the exported
+        # table is complete.
+        view_table_suffixes = ['_splits', '_contigs']
+        view_table_names = [f"{field}{suffix}" for field in constants.essential_data_fields_for_anvio_profiles for suffix in view_table_suffixes]
+
+        if args_include_zeros:
+            if args_table not in view_table_names:
+                raise ConfigError(f"The --include-zeros flag is only relevant for view tables in profile databases "
+                                  f"(i.e., {', '.join(view_table_names)}), but you asked for '{args_table}'.")
+
+            zero_cov_table = 'zero_coverage_splits' if args_table.endswith('_splits') else 'zero_coverage_contigs'
+
+            if zero_cov_table not in tables_in_database:
+                raise ConfigError(f"The --include-zeros flag requires the '{zero_cov_table}' table to be present in "
+                                  f"the database, but it doesn't seem to be there. This is likely a profile database "
+                                  f"that was created before this feature was introduced. You can upgrade it with "
+                                  f"`anvi-migrate`.")
+
+            zero_cov_df = database.get_table_as_dataframe(zero_cov_table)
+            if len(zero_cov_df):
+                zero_cov_df['value'] = 0
+                zero_cov_df = zero_cov_df[['item', 'layer', 'value']]
+                table_content = pd.concat([table_content, zero_cov_df], ignore_index=True)
+                run.info_single(f"{len(zero_cov_df)} zero-coverage entries have been added from '{zero_cov_table}'.", nl_before=1)
 
         run.info('Table', '"%s" has been read with %d entries and %d columns.' % (args_table, len(table_content), len(table_columns)))
 
@@ -146,6 +177,12 @@ def get_args():
                                                     "and `--values` variables. Try it only with the `--matrix-format` flag, take a "
                                                     "look at the output, if it doesn't seem to be working for you, improve.")
     groupB.add_argument(*anvio.A('matrix-format'), **anvio.K('matrix-format'))
+    groupB.add_argument('--include-zeros', default=False, action='store_true',
+                        help="When exporting a view table from a profile database (e.g., mean_coverage_splits, "
+                             "detection_contigs, etc.), rows for items with zero coverage are not stored in the "
+                             "table itself but in a separate zero_coverage_splits or zero_coverage_contigs table. "
+                             "Use this flag to backfill those zero-value rows into the exported output so you get "
+                             "a complete table.")
     groupB.add_argument('--index', type=str, default=None, help="The field name in your table be used as the index of your matrix output.")
     groupB.add_argument('--columns', type=str, default=None, help="The field name in your table be used as the column of your matrix output.")
     groupB.add_argument('--values', type=str, default=None, help="The field name in your table be used as the values of your matrix output.")

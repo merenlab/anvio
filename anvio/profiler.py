@@ -1501,13 +1501,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
             profile_db.disconnect()
             return
 
-        # Step 3: Backfill _contigs tables with one zero row per eligible contig
-        contigs_zero_rows = [(contig_name, self.sample_id, 0.0) for contig_name in eligible_names]
-        for atomic_data_field in self.essential_data_fields_for_anvio_profiles:
-            table_name = '%s_contigs' % atomic_data_field
-            profile_db.db._exec_many(
-                '''INSERT INTO %s VALUES (?,?,?)''' % table_name, contigs_zero_rows)
-        del contigs_zero_rows
+        # Step 3: Write to zero_coverage_contigs instead of view tables
+        zero_cov_contig_rows = [(contig_name, self.sample_id) for contig_name in eligible_names]
+        profile_db.db._exec_many(
+            'INSERT INTO %s VALUES (?,?)' % t.zero_coverage_contigs_table_name, zero_cov_contig_rows)
+        del zero_cov_contig_rows
 
         # Step 4: Insert eligible contig names into a temp table for the splits JOIN
         contigs_db._exec("CREATE TEMP TABLE eligible_contigs (name TEXT)")
@@ -1515,7 +1513,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                               [(c,) for c in eligible_names])
         del eligible_names
 
-        # Step 5: Stream splits via JOIN, backfilling auxiliary + _splits atomic data per chunk
+        # Step 5: Stream splits via JOIN, writing to auxiliary DB + zero_coverage_splits
         cursor = contigs_db._exec(
             """SELECT s.split, s.length FROM %s s
                JOIN eligible_contigs e ON s.parent = e.name""" % t.splits_info_table_name)
@@ -1533,13 +1531,10 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 self.auxiliary_db.coverage_entries.append((split_name, self.sample_id, length))
             self.auxiliary_db.store()
 
-            # Atomic data: build zero-value rows for _splits tables only
-            zero_rows = [(split_name, self.sample_id, 0.0) for split_name, _ in rows]
-
-            for atomic_data_field in self.essential_data_fields_for_anvio_profiles:
-                table_name = '%s_splits' % atomic_data_field
-                profile_db.db._exec_many(
-                    '''INSERT INTO %s VALUES (?,?,?)''' % table_name, zero_rows)
+            # Write to zero_coverage_splits instead of view tables
+            zero_cov_split_rows = [(split_name, self.sample_id) for split_name, _ in rows]
+            profile_db.db._exec_many(
+                'INSERT INTO %s VALUES (?,?)' % t.zero_coverage_splits_table_name, zero_cov_split_rows)
 
             # Track split names for downstream use (e.g. clustering)
             for split_name, _ in rows:
@@ -2366,9 +2361,27 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.generate_indels_table()
         self.store_split_coverages()
 
+        # Identify zero-coverage splits within covered contigs. These splits belong to
+        # contigs that DID have reads, but the reads did not cover every split. Instead
+        # of writing zero rows to all 12 view tables, we record them in
+        # zero_coverage_splits and skip them during atomic data generation.
+        zero_cov_split_names = set()
+        for contig in self.contigs:
+            for split in contig.splits:
+                if split.coverage.mean == 0:
+                    zero_cov_split_names.add(split.name)
+
+        if zero_cov_split_names:
+            profile_db = dbops.ProfileDatabase(self.profile_db_path, quiet=True)
+            profile_db.db._exec_many(
+                'INSERT INTO %s VALUES (?,?)' % t.zero_coverage_splits_table_name,
+                [(name, self.sample_id) for name in zero_cov_split_names])
+            profile_db.disconnect()
+
         # the crux of the profiling
         for atomic_data_field in self.essential_data_fields_for_anvio_profiles:
-            view_data_splits, view_data_contigs = contigops.get_atomic_data(self.sample_id, self.contigs, atomic_data_field)
+            view_data_splits, view_data_contigs = contigops.get_atomic_data(self.sample_id, self.contigs, atomic_data_field,
+                                                                            zero_cov_splits=zero_cov_split_names)
 
             table_name = '_'.join([atomic_data_field, 'splits'])
             TablesForViews(self.profile_db_path,
