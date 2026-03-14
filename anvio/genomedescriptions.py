@@ -702,6 +702,40 @@ class GenomeDescriptions(object):
         self.progress.end()
 
 
+    def search_for_gene_functions(self, search_terms, requested_sources=None, verbose=False, full_report=False, delimiter=',', case_sensitive=False, exact_match=False, genes_as_split_names=False):
+        """Search for gene functions matching the given terms in all contigs databases. Returns dictionaries 
+        in which the genome name has been added to the item matches and to the verbose (gene call) information 
+        so that downstream reports can specify in which genome each match has been found.
+        """
+
+        all_matching_item_names = {}
+        all_verbose_output = []
+        self.progress.new("Searching across all databases")
+        for genome_name in self.genomes:
+            self.progress.update(f"Processing '{genome_name}' ...", increment=True)
+            args = argparse.Namespace()
+            args.contigs_db = self.genomes[genome_name]['contigs_db_path']
+            contigs_db = dbops.ContigsSuperclass(args, r=anvio.terminal.Run(verbose=False))
+            genome_matching_item_names_dict, genome_verbose_output = contigs_db.search_for_gene_functions(search_terms, requested_sources=requested_sources, verbose=verbose, full_report=full_report, delimiter=delimiter, case_sensitive=case_sensitive, exact_match=exact_match, genes_as_split_names=genes_as_split_names)
+            
+            # convert each item to a tuple of (genome name, item) to allow for separating the results later 
+            for term, item_list in genome_matching_item_names_dict.items():
+                if item_list: # only add non-empty lists to the combined dictionary of matches
+                    genome_matching_item_names_dict[term] = [(genome_name, l) for l in item_list]
+                    if term in all_matching_item_names:
+                        all_matching_item_names[term].extend(genome_matching_item_names_dict[term])
+                    else:
+                        all_matching_item_names[term] = genome_matching_item_names_dict[term]
+
+            # add genome name to the verbose output tuple as well
+            genome_verbose_output_modified = [(gene_tuple[0],) + (genome_name,) + gene_tuple[1:] for gene_tuple in genome_verbose_output]
+
+            all_verbose_output.extend(genome_verbose_output_modified)
+        self.progress.end()
+
+        return all_matching_item_names, all_verbose_output
+
+
 class MetagenomeDescriptions(object):
     def __init__(self, args=None, run=run, progress=progress, enforce_single_profiles=True):
         self.args = args
