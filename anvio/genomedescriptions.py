@@ -708,6 +708,29 @@ class GenomeDescriptions(object):
         so that downstream reports can specify in which genome each match has been found.
         """
 
+        if requested_sources:
+            if isinstance(requested_sources, str):
+                requested_sources = list(set([source.strip() for source in requested_sources.split(delimiter)]))
+            elif isinstance(requested_sources, list):
+                pass
+            else:
+                raise ConfigError("Requested sources for annotations must be of type 'list' or 'str'")
+
+        if not self.initialized:
+            self.load_genomes_descriptions()
+        if not self.functions_are_available:
+            raise ConfigError("Unfortunately, there are no functional annotation sources common to all of your input databases and "
+                              "therefore no search results to report :( ")
+
+        missing_srcs = set(requested_sources).difference(self.function_annotation_sources)
+        if missing_srcs:
+            missing_str = ", ".join(list(missing_srcs))
+            raise ConfigError(f"At least one of the annotation sources you requested is not available in all "
+                              f"of your input databases. Anvi'o suggests you either remove the missing source(s) "
+                              f"from the list or check your databases and update those that are lacking the "
+                              f"requested annotations. These are the missing source(s): {missing_str}")
+
+
         all_matching_item_names = {}
         all_verbose_output = []
         self.progress.new("Searching across all databases")
