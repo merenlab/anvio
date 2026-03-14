@@ -118,25 +118,34 @@ class SearchResultReporter(object):
         results_dict = {}
 
         for item_name in self.all_item_names:
-            results_dict[item_name] = dict([(s + '_hits', '') for s in self.search_terms])
+            if self.search_mode == 'external_genomes': # item_name is a tuple: (genome, item)
+                results_dict[item_name] = {'genome': item_name[0], 'item': item_name[1]}
+                results_dict[item_name].update(dict([(s + '_hits', '') for s in self.search_terms]))
+            else:
+                results_dict[item_name] = dict([(s + '_hits', '') for s in self.search_terms])
 
             for search_term in self.search_terms:
                 if item_name in self.matching_item_names_dict[search_term]:
                     results_dict[item_name][search_term + '_hits'] = search_term
+        
+        if self.search_mode == 'external_genomes':
+            header_list = ['key', 'item', 'genome'] + [s + '_hits' for s in self.search_terms]
+        else:
+            header_list = [self.search_mode] + [s + '_hits' for s in self.search_terms]
 
-        utils.store_dict_as_TAB_delimited_file(results_dict, self.basic_report_path, headers = [self.search_mode] + [s + '_hits' for s in self.search_terms])
+        utils.store_dict_as_TAB_delimited_file(results_dict, self.basic_report_path, headers = header_list, do_not_write_key_column=(self.search_mode == 'external_genomes'))
         self.run.info('Items additional data compatible output', self.basic_report_path, nl_before=1)
 
 
     def write_full_report(self):
         if self.search_mode == 'contigs':
             header = ['gene_callers_id']
-        elif self.search_mode == 'gene_clusters':
+        elif self.search_mode == 'gene_clusters' or self.search_mode == 'external_genomes':
             header = ['gene_callers_id', 'genome_name']
         else:
             raise ConfigError("You ended up in a place you should have never ended up. Go back. Go back.")
 
-        header.extend(['source', 'accession', 'function', 'search_term', self.search_mode])
+        header.extend(['source', 'accession', 'function', 'search_term', 'item' if self.search_mode == 'external_genomes' else self.search_mode])
 
         if self.include_sequences:
             if self.search_mode == 'contigs':
