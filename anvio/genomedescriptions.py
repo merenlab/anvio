@@ -457,6 +457,17 @@ class GenomeDescriptions(object):
                     self.run.warning("Good news! Anvi'o found all these functions that are common to all of your genomes and will use them for "
                                      "downstream analyses and is very proud of you: '%s'." % (', '.join(self.function_annotation_sources)), lc='green')
 
+    
+    def list_function_sources(self):
+        if not self.initialized:
+            self.load_genomes_descriptions()
+        if not self.functions_are_available or not len(self.function_annotation_sources):
+            self.run.info_single('No common functional annotations found across all input databases :/', nl_before=1, nl_after=1, mc='red')
+        else:
+            self.run.warning('', 'AVAILABLE FUNCTION SOURCES COMMON TO ALL DATABASES (%d FOUND)' % (len(self.function_annotation_sources)), lc='yellow')
+            for source in self.function_annotation_sources:
+                self.run.info_single('%s' % (source), nl_after = 0)
+
 
     def get_genome_hash_for_external_genome(self, entry):
         self.is_proper_db(entry['contigs_db_path'], db_type='contigs')
