@@ -32,7 +32,7 @@ __description__ = ("Search functions in an anvi'o contigs database or genomes st
 class SearchResultReporter(object):
     def __init__(self, args):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.annotation_sources = A('annotation_sources')
+        self.annotation_sources = [s.strip() for s in A('annotation_sources').split(',')]
         self.list_annotation_sources = A('list_annotation_sources')
         self.basic_report_path = A('output_file') or 'search_results.txt'
         self.full_report_path = A('full_report')
@@ -97,7 +97,7 @@ class SearchResultReporter(object):
             self.search_mode = 'external_genomes'
             self.run.info("Searching in multiple contigs databases from file", self.external_genomes)
             genome_desc = GenomeDescriptions(self.args, run=self.run)
-            genome_desc.load_genomes_descriptions(init=False)
+            genome_desc.load_genomes_descriptions(init=self.include_sequences)
             return genome_desc
 
         else:
@@ -154,6 +154,12 @@ class SearchResultReporter(object):
                 header.extend(['direction', 'rev_compd', 'dna_sequence', 'aa_sequence'])
             elif self.search_mode == 'gene_clusters':
                 header.extend(['dna_sequence', 'aa_sequence'])
+            elif self.search_mode == 'external_genomes':
+                # now we need to load sequences from all databases in the input file
+                aa_seq_dicts_by_genome, dna_seq_dicts_by_genome = {}, {}
+                for g in self.db.genomes:
+                    _, aa_seq_dicts_by_genome[g], dna_seq_dicts_by_genome[g] = self.db.get_functions_and_sequences_dicts_from_contigs_db(g, requested_source_list=self.annotation_sources)
+                header.extend(['dna_sequence', 'aa_sequence'])
 
         report = open(self.full_report_path, 'w')
         report.write('\t'.join(header) + '\n')
@@ -169,6 +175,12 @@ class SearchResultReporter(object):
                 elif self.search_mode == 'gene_clusters':
                     # pan results already contains dna and aa sequences
                     pass
+                elif self.search_mode == 'external_genomes':
+                    gcid = entry[0]
+                    genome = entry[1]
+                    content.extend([dna_seq_dicts_by_genome[genome][gcid]['sequence'],
+                                    aa_seq_dicts_by_genome[genome][gcid]['sequence']])
+
             else:
                 if self.search_mode == 'gene_clusters':
                     content = content[:-2]
