@@ -19,6 +19,7 @@ anvi-search-functions -g %(genomes-storage-db)s \
 
 Or, if you want to search across multiple %(contigs-db)ss at once, you can provide an %(external-genomes)s file:
 
+{{ codestart }}
 anvi-search-functions -e %(external-genomes)s \
                       --search-terms kinase
 {{ codestop }}
