@@ -733,6 +733,11 @@ class GenomeDescriptions(object):
             all_verbose_output.extend(genome_verbose_output_modified)
         self.progress.end()
 
+        # if any search term was not found in any of the genomes, let's include an empty list to avoid KeyErrors later
+        for term in search_terms:
+            if term not in all_matching_item_names:
+                all_matching_item_names[term] = []
+
         return all_matching_item_names, all_verbose_output
 
 
