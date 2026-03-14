@@ -32,7 +32,7 @@ __description__ = ("Search functions in an anvi'o contigs database or genomes st
 class SearchResultReporter(object):
     def __init__(self, args):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.annotation_sources = [s.strip() for s in A('annotation_sources').split(',')]
+        self.annotation_sources = [s.strip() for s in A('annotation_sources').split(',')] if A('annotation_sources') else []
         self.list_annotation_sources = A('list_annotation_sources')
         self.basic_report_path = A('output_file') or 'search_results.txt'
         self.full_report_path = A('full_report')
