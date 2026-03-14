@@ -10,6 +10,7 @@ import anvio.terminal as terminal
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.dbops import ContigsSuperclass, PanSuperclass
+from anvio.genomedescriptions import GenomeDescriptions
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -47,6 +48,7 @@ class SearchResultReporter(object):
         self.contigs_db = A('contigs_db')
         self.genomes_storage = A('genomes_storage')
         self.pan_db = A('pan_db')
+        self.external_genomes = A('external_genomes')
 
         # get search results will fill these
         self.all_item_names = None
@@ -73,7 +75,11 @@ class SearchResultReporter(object):
 
     def get_database(self):
         if self.contigs_db and (self.genomes_storage or self.pan_db):
-            raise ConfigError("You can not provide both contigs database and genomes storage")
+            raise ConfigError("You cannot provide both a contigs database and genomes storage")
+        elif self.contigs_db and self.external_genomes:
+            raise ConfigError("You cannot provide both an individual contigs database and an external genomes file")
+        elif self.external_genomes and (self.genomes_storage or self.pan_db):
+            raise ConfigError("You cannot provide both an external genomes file and genomes storage")
 
         if self.contigs_db:
             self.search_mode = 'contigs'
@@ -87,9 +93,16 @@ class SearchResultReporter(object):
             pan_database.init_gene_clusters()
             return pan_database
 
+        elif self.external_genomes:
+            self.search_mode = 'external_genomes'
+            self.run.info("Searching in multiple contigs databases from file", self.external_genomes)
+            genome_desc = GenomeDescriptions(self.args, run=self.run)
+            genome_desc.load_genomes_descriptions(init=False)
+            return genome_desc
+
         else:
-            raise ConfigError("You did not provide enough arguments to initialize contigs database or pan database. "
-                              "To initialize pan database you need to provide both genome storage and pan database.")
+            raise ConfigError("You did not provide enough arguments to initialize the input databases. Note that "
+                              "to initialize a pan database you need to provide both a genomes storage and pan database.")
 
 
     def get_search_results(self):
@@ -179,6 +192,7 @@ def get_args():
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
     groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db', {'required': False}))
     groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
+    groupA.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes', {'required': False}))
 
     groupB = parser.add_argument_group('SEARCH FOR', 'Relevant terms')
     groupB.add_argument(*anvio.A('search-terms'), **anvio.K('search-terms', {'required': True}))
