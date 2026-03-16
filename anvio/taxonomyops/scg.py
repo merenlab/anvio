@@ -372,8 +372,6 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
 
         # NOTE some enforced flags
         self.profile_dbs_available = False # we don't load profile dbs for external genomes, so this has to be off
-        if self.metagenome_mode:
-            self.metagenome_mode = False
 
         genomes_without_scg_taxonomy = [x for x in g.genomes if not g.genomes[x]['scg_taxonomy_was_run']]
         if genomes_without_scg_taxonomy:
