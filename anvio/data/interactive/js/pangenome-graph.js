@@ -108,6 +108,7 @@ class PangenomeGraphUserInterface {
         var svg_nodes = [];
         var svg_tree = [];
         var svg_groups = [];
+        var svg_region_labels = [];
         var svg_genome_tracks = {}
         for (var genome of this.genomes){
             svg_genome_tracks[genome] = []
@@ -1010,6 +1011,62 @@ class PangenomeGraphUserInterface {
             svg_tree = this.draw_newick(order, item_dist, max_dist, offset, tree_length, tree_thickness, theta, start_angle, end_angle, linear, node_distance_x)
         }
         
+        if ($('#flexregionlabels').prop('checked') && this.data['regions']) {
+            // Outermost content edge in radial/y coordinates (no font padding — added dynamically).
+            var outer_content_r = current_outer_stop + sum_middle_layer + this.global_y * node_distance_y;
+
+            for (var [rid, rinfo] of Object.entries(this.data['regions'])) {
+                var x_min = rinfo['x_min'];
+                var x_max = rinfo['x_max'];
+                var x_span = x_max - x_min;
+
+                // Skip single-position (backbone-only) regions
+                if (x_span === 0) continue;
+
+                var x_mid = (x_min + x_max) / 2;
+                var svg_region_width = x_span * node_distance_x;
+
+                // Store geometry as data attributes; position and font-size are set
+                // dynamically by the zoom handler so the label always clears the graph.
+                if (linear == 0) {
+                    var label_angle = theta * (x_mid + 0.5) + start_angle;
+                    var angle_start = theta * x_min + start_angle;
+                    var angle_end   = theta * (x_max + 1) + start_angle;
+                    svg_region_labels.push($(
+                        `<text class="region-label"
+                            data-svg-width="${svg_region_width}"
+                            data-layout="circular"
+                            data-outer-r="${outer_content_r}"
+                            data-inner-r="${start_offset}"
+                            data-angle="${label_angle}"
+                            data-angle-start="${angle_start}"
+                            data-angle-end="${angle_end}"
+                            text-anchor="middle" dominant-baseline="middle"
+                            x="0" y="0" font-size="1" font-family="sans-serif"
+                            fill="#555555" opacity="0.85"
+                            style="display:none">#${rid}</text>`
+                    ));
+                } else {
+                    var label_x   = x_mid * node_distance_x;
+                    var x_start_svg = x_min * node_distance_x;
+                    var x_end_svg   = (x_max + 1) * node_distance_x;
+                    svg_region_labels.push($(
+                        `<text class="region-label"
+                            data-svg-width="${svg_region_width}"
+                            data-layout="linear"
+                            data-outer-r="${outer_content_r}"
+                            data-label-x="${label_x}"
+                            data-x-start="${x_start_svg}"
+                            data-x-end="${x_end_svg}"
+                            text-anchor="middle" dominant-baseline="middle"
+                            x="${label_x}" y="0" font-size="1" font-family="sans-serif"
+                            fill="#555555" opacity="0.85"
+                            style="display:none">#${rid}</text>`
+                    ));
+                }
+            }
+        }
+
         var end = new Date().getTime();
         var time = end - start;
         console.log('SVG drawing remaining elements', time, 'ms.')
@@ -1051,7 +1108,11 @@ class PangenomeGraphUserInterface {
         var svg_group = $('<g></g>')
         for (var item of svg_tree) svg_group.append(item);
         svg_core.append(svg_group);
-        
+
+        var svg_group = $('<g id="region-labels-group"></g>')
+        for (var item of svg_region_labels) svg_group.append(item);
+        svg_core.append(svg_group);
+
         var svg_group = $('<g></g>')
         for (var item of svg_text) svg_group.append(item);
         svg_core.append(svg_group);
@@ -1658,13 +1719,128 @@ class PangenomeGraphUserInterface {
         if (this.panZoomInstance !== null) {
             this.panZoomInstance.destroy()
         };
-        
+
+        this.refresh_region_label_visibility = () => {
+            if (!$('#flexregionlabels').prop('checked')) return;
+            const realZoom = this.panZoomInstance.getSizes().realZoom;
+            const TARGET_PX = parseFloat($('#region_label_size')[0].value) || 13;
+            const MIN_WIDTH_PX = parseFloat($('#region_label_min_width')[0].value) || 80;
+            const font_size_svg = TARGET_PX / realZoom;
+            // r = content_edge + font_size * distance, where distance is user-controlled.
+            // distance=1 means the label baseline sits flush; higher values push it further out.
+            const DISTANCE = parseFloat($('#region_label_distance')[0].value) || 2;
+            document.querySelectorAll('.region-label').forEach(el => {
+                const screen_width = parseFloat(el.dataset.svgWidth) * realZoom;
+                if (screen_width >= MIN_WIDTH_PX) {
+                    const outer_r = parseFloat(el.dataset.outerR);
+                    const r = outer_r + font_size_svg * DISTANCE;
+                    if (el.dataset.layout === 'circular') {
+                        const angle_rad = parseFloat(el.dataset.angle) * Math.PI / 180;
+                        el.setAttribute('x', r * Math.sin(angle_rad));
+                        el.setAttribute('y', r * Math.cos(angle_rad));
+                    } else {
+                        el.setAttribute('x', el.dataset.labelX);
+                        el.setAttribute('y', -r);
+                    }
+                    el.setAttribute('font-size', font_size_svg);
+                    el.style.display = '';
+                } else {
+                    el.style.display = 'none';
+                }
+            });
+        };
+
         this.panZoomInstance = svgPanZoom('#result', {
             zoomEnabled: true,
             panEnabled: false,
             controlIconsEnabled: false,
             minZoom: 0.1,
-            maxZoom: 100
+            maxZoom: 100,
+            onZoom: this.refresh_region_label_visibility
+        });
+
+        this.refresh_region_label_visibility();
+
+        // Hover highlight: draw a filled wedge/rectangle showing the region extent
+        const svg_el = document.getElementById('result');
+        const get_viewport = () => svg_el.querySelector('.svg-pan-zoom_viewport') || svg_el;
+
+        const remove_highlight = () => {
+            const el = document.getElementById('region-hover-highlight');
+            if (el) el.remove();
+        };
+
+        document.querySelectorAll('.region-label').forEach(el => {
+            el.style.cursor = 'default';
+
+            el.addEventListener('mouseover', () => {
+                remove_highlight();
+
+                const layout = el.dataset.layout;
+                // outer_r: derive from the label's current live position so the
+                // highlight always reaches the label regardless of zoom level.
+                const lx = parseFloat(el.getAttribute('x'));
+                const ly = parseFloat(el.getAttribute('y'));
+                // getBBox() returns the exact rendered bounding box in SVG coordinates.
+                // This is available because mouseover only fires on visible elements.
+                const bbox = el.getBBox();
+                let outer_r;
+                if (layout === 'circular') {
+                    // Furthest corner of the text bounding box from the SVG center (0,0).
+                    outer_r = Math.max(
+                        Math.sqrt( bbox.x                  ** 2 +  bbox.y                  ** 2),
+                        Math.sqrt((bbox.x + bbox.width)    ** 2 +  bbox.y                  ** 2),
+                        Math.sqrt( bbox.x                  ** 2 + (bbox.y + bbox.height)   ** 2),
+                        Math.sqrt((bbox.x + bbox.width)    ** 2 + (bbox.y + bbox.height)   ** 2)
+                    );
+                } else {
+                    // Top edge of the text is bbox.y (most negative y = furthest from baseline).
+                    outer_r = Math.abs(bbox.y);
+                }
+
+                let path_d;
+                if (layout === 'circular') {
+                    const a1 = parseFloat(el.dataset.angleStart) * Math.PI / 180;
+                    const a2 = parseFloat(el.dataset.angleEnd)   * Math.PI / 180;
+                    const span = parseFloat(el.dataset.angleEnd) - parseFloat(el.dataset.angleStart);
+                    const large_arc = span > 180 ? 1 : 0;
+                    const inner_r = parseFloat(el.dataset.innerR) || 0;
+                    const ox1 = outer_r * Math.sin(a1), oy1 = outer_r * Math.cos(a1);
+                    const ox2 = outer_r * Math.sin(a2), oy2 = outer_r * Math.cos(a2);
+                    const ix1 = inner_r * Math.sin(a1), iy1 = inner_r * Math.cos(a1);
+                    const ix2 = inner_r * Math.sin(a2), iy2 = inner_r * Math.cos(a2);
+                    // Annular sector: outer arc sweep=0 (counter-clockwise in SVG coords,
+                    // which traces angle_start→angle_end the short way in our system),
+                    // inner arc sweep=1 (clockwise, tracing back angle_end→angle_start).
+                    if (inner_r <= 0) {
+                        path_d = `M 0 0 L ${ox1} ${oy1} A ${outer_r} ${outer_r} 0 ${large_arc} 0 ${ox2} ${oy2} Z`;
+                    } else {
+                        path_d = `M ${ix1} ${iy1} L ${ox1} ${oy1}
+                                  A ${outer_r} ${outer_r} 0 ${large_arc} 0 ${ox2} ${oy2}
+                                  L ${ix2} ${iy2}
+                                  A ${inner_r} ${inner_r} 0 ${large_arc} 1 ${ix1} ${iy1} Z`;
+                    }
+                } else {
+                    const xs = parseFloat(el.dataset.xStart);
+                    const xe = parseFloat(el.dataset.xEnd);
+                    // bbox.y is the top of the text (most negative y), use it directly.
+                    path_d = `M ${xs} 0 L ${xe} 0 L ${xe} ${bbox.y} L ${xs} ${bbox.y} Z`;
+                }
+
+                const highlight = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                highlight.setAttribute('id', 'region-hover-highlight');
+                highlight.setAttribute('d', path_d);
+                highlight.setAttribute('fill', '#4a90d9');
+                highlight.setAttribute('fill-opacity', '0.12');
+                highlight.setAttribute('stroke', '#4a90d9');
+                highlight.setAttribute('stroke-width', '0');
+                highlight.setAttribute('pointer-events', 'none');
+                // Insert at the bottom of the viewport so it sits behind all graph elements
+                const vp = get_viewport();
+                vp.insertBefore(highlight, vp.firstChild);
+            });
+
+            el.addEventListener('mouseout', remove_highlight);
         });
 
         var elements = document.querySelectorAll(".node, .group");
@@ -2390,6 +2566,12 @@ class PangenomeGraphUserInterface {
         $('#bin_1_radio').on("click", this.switch_bin)
 
         $('#flextree').on("change", this.flextree_change)
+        $('#flexregionlabels').on("change", () => this.main_draw())
+        $('#region_label_size, #region_label_min_width, #region_label_distance').on("change", () => {
+            if (this.panZoomInstance && $('#flexregionlabels').prop('checked')) {
+                this.refresh_region_label_visibility();
+            }
+        })
 
         $('#binadd').on("click", this.add_bin);
         $('#binremove').on("click", this.remove_bin);
