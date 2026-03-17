@@ -389,6 +389,7 @@ def get_args():
     groupH.add_argument(*anvio.A('return-best-hit-per-contig'), **anvio.K('return-best-hit-per-contig'))
     groupH.add_argument(*anvio.A('ignore-genes-longer-than'), **anvio.K('ignore-genes-longer-than'))
     groupH.add_argument(*anvio.A('unique-genes'), **anvio.K('unique-genes'))
+    groupH.add_argument(*anvio.A('skip-checking-genome-hashes'), **anvio.K('skip-checking-genome-hashes'))
     groupH.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
     return parser.get_args(parser)

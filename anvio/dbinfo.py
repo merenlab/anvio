@@ -296,7 +296,8 @@ class DBInfo(ABC):
         """
         if self.functional_annotation_sources_name:
             with self.load_db() as database:
-                return database.get_meta_value(self.functional_annotation_sources_name, return_none_if_not_in_table=True).split(',')
+                functional_annotation_sources_raw_text = database.get_meta_value(self.functional_annotation_sources_name, return_none_if_not_in_table=True)
+                return functional_annotation_sources_raw_text.split(',') if len(functional_annotation_sources_raw_text) else None
         else:
             return None
 

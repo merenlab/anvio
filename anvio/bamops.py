@@ -664,6 +664,21 @@ class Coverage:
         }
 
 
+    def __getstate__(self):
+        state = self.__dict__.copy()
+        state.pop('read_iterator_dict', None)
+        return state
+
+
+    def __setstate__(self, state):
+        self.__dict__.update(state)
+        self.read_iterator_dict = {
+            'fetch': self._fetch_iterator,
+            'fetch_and_trim': self._fetch_and_trim_iterator,
+            'fetch_filter_and_trim': self._fetch_filter_and_trim_iterator,
+        }
+
+
     def run(self, bam, contig_or_split, start=None, end=None, read_iterator='fetch',
             max_coverage=None, skip_coverage_stats=False, **kwargs):
         """Loop through the bam pileup and calculate coverage over a defined region of a contig or split

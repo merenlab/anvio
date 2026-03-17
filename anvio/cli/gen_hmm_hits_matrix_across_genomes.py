@@ -100,6 +100,7 @@ def get_args():
 
     groupD = parser.add_argument_group('OUTPUTTAH')
     groupD.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': True }))
+    groupD.add_argument(*anvio.A('skip-checking-genome-hashes'), **anvio.K('skip-checking-genome-hashes'))
 
     return parser.parse_known_args()
 

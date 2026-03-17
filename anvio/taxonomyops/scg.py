@@ -157,6 +157,9 @@ class SanityCheck(object):
 
             filesnpaths.is_output_file_writable(self.per_scg_output_file) if self.per_scg_output_file else None
 
+            if self.presence_absence_only and self.compute_scg_coverages:
+                raise ConfigError("The flag `--presence-absence-only` is not quite compatible with `--compute-scg-coverages` since "
+                                  "the presence/absence information is only meaningful when working without coverage data :/")
 
             ###########################################################
             # PopulateContigsDatabaseWithSCGTaxonomy
@@ -184,7 +187,8 @@ class SanityCheck(object):
             if self.__class__.__name__ in ['SCGTaxonomyEstimatorSingle']:
                 if self.metagenomes:
                     raise ConfigError("Taxonomy estimation classes have been initiated with a single contigs database, but your "
-                            "arguments also include an input file for multiple (meta)genomes. It is a no no. Please choose either. ")
+                                      "arguments also include an input file for multiple (meta)genomes. It is a no no. "
+                                      "Please choose either. ")
 
                 if self.output_file_prefix:
                     raise ConfigError("When using SCG taxonomy estimation in this mode, you must provide an output file path "
@@ -326,6 +330,7 @@ class SCGTaxonomyArgs(object):
         self.metagenome_mode = True if A('metagenome_mode') else False
         self.scg_name_for_metagenome_mode = A('scg_name_for_metagenome_mode')
         self.compute_scg_coverages = A('compute_scg_coverages')
+        self.presence_absence_only = True if A('presence_absence_only') else False
         self.report_scg_frequencies_path = A('report_scg_frequencies')
         self.metagenomes = A('metagenomes')
         self.user_taxonomic_level = A('taxonomic_level')
@@ -341,6 +346,7 @@ class SCGTaxonomyArgs(object):
             self.output_file_prefix = None
             self.matrix_format = None
             self.raw_output = None
+            self.presence_absence_only = False
 
         self.skip_sanity_check = A('skip_sanity_check')
 
@@ -372,8 +378,6 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
 
         # NOTE some enforced flags
         self.profile_dbs_available = False # we don't load profile dbs for external genomes, so this has to be off
-        if self.metagenome_mode:
-            self.metagenome_mode = False
 
         genomes_without_scg_taxonomy = [x for x in g.genomes if not g.genomes[x]['scg_taxonomy_was_run']]
         if genomes_without_scg_taxonomy:
@@ -488,6 +492,23 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
             self.report_scg_frequencies_as_TAB_delimited_file()
             return
 
+        if self.metagenome_mode:
+            if not self.scg_name_for_metagenome_mode:
+                self.scg_name_for_metagenome_mode = self.get_best_scg_name_for_metagenome_mode()
+
+                self.run.warning(f"Please note that anvi'o just set the SCG for metagenome mode as "
+                                 f"'{self.scg_name_for_metagenome_mode}' since it was the most frequent SCG "
+                                 f"occurring across all {len(self.metagenomes)} contigs databases involved in "
+                                 f"this analysis. But this is nothing more than some heuristic for your "
+                                 f"convenience, and we strongly advice you to run this program with the parameter "
+                                 f"`--report-scg-frequencies` and examine the output to see if there is a better "
+                                 f"choice. As you can imagine, the most frequent SCG may not be the one that is "
+                                 f"more common across all genomes you are interested.")
+
+                self.run.info("SCG [determined by anvi'o]", self.scg_name_for_metagenome_mode, nl_after=1, mc="green")
+            else:
+                self.run.info("SCG [chosen by the user]", self.scg_name_for_metagenome_mode, nl_after=1, mc="green")
+
         scg_taxonomy_super_dict_multi = self.get_scg_taxonomy_super_dict_for_metagenomes()
 
         if self.sequences_file_path_prefix:
@@ -520,7 +541,7 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
         if not self.scg_name_for_metagenome_mode:
             self.scg_name_for_metagenome_mode = self.get_best_scg_name_for_metagenome_mode()
 
-            self.run.warning("Please not that anvi'o just set the SCG for metagenome mode as '%s' since it was the most "
+            self.run.warning("Please note that anvi'o just set the SCG for metagenome mode as '%s' since it was the most "
                              "frequent SCG occurring across all %d contigs databases involved in this analysis. But this "
                              "is nothing more than some heuristic for your convenience, and we strongly advice you to "
                              "run this program with the parameter `--report-scg-frequencies` and examine the output "
@@ -833,6 +854,9 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
             DF.rename(columns={"coverage": "times_observed"}, inplace = True)
             DF['times_observed'] = DF['times_observed'].astype(int)
 
+            if self.presence_absence_only:
+                DF['times_observed'] = DF['times_observed'].apply(lambda x: 1 if x > 0 else 0)
+
         self.progress.end()
 
         return DF
@@ -950,7 +974,6 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
         implement that, let's leave a FIXME here only to be remove by
         that hero.
         """
-
         scgs_ordered_based_on_frequency, contigs_dbs_ordered_based_on_num_scgs, scg_frequencies = self.get_scg_frequencies()
 
         return scgs_ordered_based_on_frequency[0]
@@ -1026,18 +1049,32 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
         scg_taxonomy_super_dict = {}
 
         if self.profile_dbs_available:
-            self.run.info_single("Your metagenome file DOES contain profile databases, so anvi'o will turn on `--metagenome-mode`, "
-                                 "set the SCG name to %s, and turn on `--compute-scg-coverages` flag. If this doesn't make sense, "
-                                 "please adjust your input parameters." % (self.scg_name_for_metagenome_mode), nl_after=1)
+            if self.presence_absence_only:
+                self.run.info_single(f"Since you asked anvi'o to estimate SCG taxonomy with profile-db files together with the flag "
+                                     f"`--presence-absence-only`, anvi'o will turn on `--metagenome-mode` and use "
+                                     f"'{self.scg_name_for_metagenome_mode}' to report presence/absence SCG taxonomy for your input data. "
+                                     f"You are really confusing anvi'o here, but you are the boss. If this doesn't make sense, please "
+                                     f"adjust your input parameters.", nl_after=1, nl_before=1)
+            else:
+                self.run.info_single(f"Since you asked anvi'o to estimate SCG taxonomy with profile-db files, anvi'o will turn on "
+                                     f"`--metagenome-mode` and `--compute-scg-coverages` and use '{self.scg_name_for_metagenome_mode}' "
+                                     f"to report SCG taxonomy for your input data. If this doesn't make sense, please adjust your input "
+                                     f"parameters.", nl_after=1, nl_before=1)
         else:
             if self.metagenome_mode:
-                self.run.info_single("Your metagenome file DOES NOT contain profile databases, but you asked anvi'o to estimate SCG "
-                                     "taxonomy in metagenome mode. So be it. SCG name is set to %s." \
-                                        % (self.scg_name_for_metagenome_mode), nl_after=1)
+                if self.presence_absence_only:
+                    self.run.info_single(f"Since you asked anvi'o to estimate SCG taxonomy in `--metagenome-mode` with `--presence-absence-only` "
+                                         f"and without any profile-db files, anvi'o will use '{self.scg_name_for_metagenome_mode}' and report "
+                                         f"its presence/absence across your contigs databases.", nl_after=1, nl_before=1)
+                else:
+                    self.run.info_single(f"Since you asked anvi'o to estimate SCG taxonomy in `--metagenome-mode` without any profile-db files, "
+                                         f"anvi'o will use '{self.scg_name_for_metagenome_mode}' and report its frequencies across your "
+                                         f"contigs databases.", nl_after=1, nl_before=1)
             else:
-                self.run.info_single("Your (meta)genome file DOES NOT contain profile databases, and you haven't asked anvi'o to "
-                                     "work in `--metagenome-mode`. Your contigs databases will be treated as genomes rather than "
-                                     "metagenomes.", nl_after=1)
+                self.run.info_single("Since you asked anvi'o to estimate SCG taxonomy without any profile-db files and without the "
+                                     "`--metagenome-mode` flag, anvi'o will treat your contigs-db file(s) as individual genomes rather "
+                                     "than metagenomes. If this doesn't make any sense, please revisit your parameters.", nl_after=1,
+                                     nl_before=1)
 
         self.progress.new("Recovering tax super dict", progress_total_items=len(self.metagenome_names))
         total_num_metagenomes = len(self.metagenome_names)
@@ -1047,9 +1084,9 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
             args.contigs_db = self.metagenomes[metagenome_name]['contigs_db_path']
 
             if self.profile_dbs_available:
-                args.metagenome_mode = True
+                args.metagenome_mode = False if self.presence_absence_only else True       # These two are confusing as in "why would anyone do this", but
+                args.compute_scg_coverages = False if self.presence_absence_only else True # the user is the boss, and they can do whatever the heck they want.
                 args.profile_db = self.metagenomes[metagenome_name]['profile_db_path']
-                args.compute_scg_coverages = True
                 args.scg_name_for_metagenome_mode = self.scg_name_for_metagenome_mode
             else:
                 if self.metagenome_mode:

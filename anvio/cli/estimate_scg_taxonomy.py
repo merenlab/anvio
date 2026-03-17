@@ -97,8 +97,10 @@ def get_args():
     groupE.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
     groupF = parser.add_argument_group('ADVANCED', "Very pro-like stuff.")
+    groupF.add_argument(*anvio.A('skip-checking-genome-hashes'), **anvio.K('skip-checking-genome-hashes'))
     groupF.add_argument(*anvio.A('simplify-taxonomy-information'), **anvio.K('simplify-taxonomy-information'))
     groupF.add_argument(*anvio.A('compute-scg-coverages'), **anvio.K('compute-scg-coverages'))
+    groupF.add_argument(*anvio.A('presence-absence-only'), **anvio.K('presence-absence-only'))
     groupF.add_argument(*anvio.A('update-profile-db-with-taxonomy'), **anvio.K('update-profile-db-with-taxonomy'))
 
     groupG = parser.add_argument_group('BORING', "Options that you will likely never need.")

@@ -176,7 +176,7 @@ Once everything finishes running (on our cluster it only takes 6 minutes as thes
 
 ```
 anvi-interactive -p 06_MERGED/G02/PROFILE.db \
-                 -c 03_CONTIGS/G02-contigs.db
+                 -c 03_CONTIGS/G02.db
 ```
 
 And it should look like this:
@@ -198,7 +198,7 @@ Which means, while you can use the program %(anvi-interactive)s to interactively
 
 ```bash
 anvi-interactive -p 05_ANVIO_PROFILE/G01/sample_01/PROFILE.db \
-                 -c 03_CONTIGS/G01-contigs.db
+                 -c 03_CONTIGS/G01.db
 ```
 
 [![single_profile_idba_ud](../../images/workflows/metagenomics/single_profile_idba_ud.png)]( ../../images/workflows/metagenomics/single_profile_idba_ud.png){:.center-img .width-50}
@@ -590,7 +590,7 @@ This is done through 'references mode', but as you see in the relevant section, 
 │   ├── anvi_run_ncbi_cogs-EXAMPLE.done
 │   ├── anvi_run_scg_taxonomy-EXAMPLE.done
 │   ├── EXAMPLE-annotate_contigs_database.done
-│   └── EXAMPLE-contigs.db
+│   └── EXAMPLE.db
 ├── config.json
 ├── contigs.fa
 ├── fasta.txt

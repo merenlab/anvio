@@ -352,7 +352,15 @@ class TRNATaxonomyEstimatorMulti(TRNATaxonomyArgs, SanityCheck):
         # update your self args
         TRNATaxonomyArgs.__init__(self, self.args)
 
-        # set your context
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.tRNA_taxonomy_data_dir = A('trna_taxonomy_data_dir')
+
+        global ctx
+
+        # if the user has specified a taxonomy data directory, we need to create a new context
+        if self.tRNA_taxonomy_data_dir:
+            ctx = TRNATaxonomyContext(trna_taxonomy_data_dir=self.tRNA_taxonomy_data_dir)
+
         self.ctx = ctx
 
         # intiate sanity check
@@ -371,8 +379,15 @@ class TRNATaxonomyEstimatorSingle(TRNATaxonomyArgs, SanityCheck, TaxonomyEstimat
         self.collection_name = A('collection_name')
         self.update_profile_db_with_taxonomy = A('update_profile_db_with_taxonomy')
         self.bin_id = A('bin_id')
+        self.tRNA_taxonomy_data_dir = A('trna_taxonomy_data_dir')
 
         TRNATaxonomyArgs.__init__(self, self.args)
+
+        global ctx
+
+        # if the user has specified a taxonomy data directory, we need to create a new context
+        if self.tRNA_taxonomy_data_dir:
+            ctx = TRNATaxonomyContext(trna_taxonomy_data_dir=self.tRNA_taxonomy_data_dir)
 
         self.ctx = ctx
 
@@ -394,6 +409,28 @@ class SetupLocalTRNATaxonomyData(TRNATaxonomyArgs, SanityCheck):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.redo_databases = A("redo_databases")
         self.num_threads = A('num_threads')
+        self.tRNA_taxonomy_data_dir = A('trna_taxonomy_data_dir')
+
+        global ctx
+
+        # if the user has specified a taxonomy data directory, we need to create a new context
+        if self.tRNA_taxonomy_data_dir:
+            # since this is the first time we're dealing with this path, we will have to do a few
+            # things to make sure it will work smoothly. the first step is to make sure it exists,
+            # and the user has write access to it
+            filesnpaths.gen_output_directory(self.tRNA_taxonomy_data_dir, delete_if_exists=False)
+
+            # then, we will have to copy all relevant files from the anvi'o source directory to
+            # the new setup database
+            shutil.copy(ctx.accession_to_taxonomy_file_path, self.tRNA_taxonomy_data_dir)
+            shutil.copy(ctx.database_version_file_path, self.tRNA_taxonomy_data_dir)
+
+            sdb_dir = os.path.join(self.tRNA_taxonomy_data_dir, 'ANTICODON_SEARCH_DATABASES')
+            filesnpaths.gen_output_directory(sdb_dir, delete_if_exists=False)
+            [shutil.copy(f, sdb_dir) for f in glob.glob(os.path.join(ctx.search_databases_dir_path, '*.gz'))]
+
+            # now all files are in place, we will re-initialize the context with the right user defined path
+            ctx = TRNATaxonomyContext(trna_taxonomy_data_dir=self.tRNA_taxonomy_data_dir)
 
         self.ctx = ctx
 
@@ -529,6 +566,13 @@ class PopulateContigsDatabaseWithTRNATaxonomy(TRNATaxonomyArgs, SanityCheck, Pop
         self.contigs_db_path = A('contigs_db')
         self.num_parallel_processes = int(A('num_parallel_processes')) if A('num_parallel_processes') else 1
         self.num_threads = int(A('num_threads')) if A('num_threads') else 1
+        self.tRNA_taxonomy_data_dir = A('trna_taxonomy_data_dir')
+
+        global ctx
+
+        # if the user has specified a taxonomy data directory, we need to create a new context
+        if self.tRNA_taxonomy_data_dir:
+            ctx = TRNATaxonomyContext(trna_taxonomy_data_dir=self.tRNA_taxonomy_data_dir)
 
         self.ctx = ctx
 

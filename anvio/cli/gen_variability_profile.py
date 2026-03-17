@@ -85,6 +85,7 @@ def get_args():
     groupG.add_argument(*anvio.A('min-coverage-in-each-sample'), **anvio.K('min-coverage-in-each-sample'))
     groupG.add_argument(*anvio.A('quince-mode'), **anvio.K('quince-mode'))
     groupG.add_argument(*anvio.A('kiefl-mode'), **anvio.K('kiefl-mode'))
+    groupG.add_argument(*anvio.A('exclude-intergenic'), **anvio.K('exclude-intergenic'))
 
     groupH = parser.add_argument_group('OUTPUT', 'Output file and style')
     groupH.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'default': 'variability.txt', 'metavar': 'VARIABILITY_PROFILE'}))

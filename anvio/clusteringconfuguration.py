@@ -11,6 +11,8 @@ import anvio.db as db
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 
+import anvio.tables as t
+
 from anvio.utils import check_sample_id
 from anvio.utils import store_array_as_TAB_delimited_file as store_array
 from anvio.utils import store_dict_as_TAB_delimited_file
@@ -231,6 +233,10 @@ class ClusteringConfiguration:
 
     def check_for_db_requests(self, config):
         sections = self.get_other_sections(config)
+
+        # cache for splits_basic_info, loaded lazily when a _contigs view table is encountered
+        _cached_splits_basic_info = None
+
         # look for requests from the database, create temporary tab delimited files:
         for section in sections:
             alias, matrix = section.split()
@@ -274,7 +280,25 @@ class ClusteringConfiguration:
                 table_form = self.get_option(config, section, 'table_form', str)
 
                 if table_form == 'view':
-                    table_rows, _ = dbc.get_view_data(table, split_names_of_interest=self.row_ids_of_interest)
+                    if table.endswith('_contigs'):
+                        # _contigs view tables store one row per contig. for clustering we need
+                        # split-keyed rows, so we expand using splits_basic_info from the contigs DB.
+                        if _cached_splits_basic_info is None:
+                            contigs_db_path = self.db_paths.get('CONTIGS.db')
+                            if contigs_db_path is None:
+                                raise ConfigError("The clustering config references the _contigs view table '%s', "
+                                                  "but no contigs database path was provided (expected key 'CONTIGS.db' "
+                                                  "in db_paths)." % table)
+                            contigs_dbc = db.DB(contigs_db_path, None, ignore_version=True)
+                            _cached_splits_basic_info = contigs_dbc.get_table_as_dict(t.splits_info_table_name)
+                            contigs_dbc.disconnect()
+
+                        table_rows, _ = dbc.get_view_data(table,
+                                                          split_names_of_interest=self.row_ids_of_interest,
+                                                          splits_basic_info=_cached_splits_basic_info,
+                                                          expand_to_splits=True)
+                    else:
+                        table_rows, _ = dbc.get_view_data(table, split_names_of_interest=self.row_ids_of_interest)
                 else:
                     if self.row_ids_of_interest:
                         if table_form == 'dataframe':

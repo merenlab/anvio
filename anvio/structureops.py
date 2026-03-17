@@ -350,7 +350,7 @@ class StructureSuperclass(object):
 
         self.num_threads = A('num_threads', int)
         self.queue_size = self.num_threads * 2
-        self.write_buffer_size = self.num_threads * A('write_buffer_size_per_thread', int)
+        self.write_buffer_size = int(A('write_buffer_size') or A('write_buffer_size_per_thread') or 5000)
 
         self.genes_of_interest_path = A('genes_of_interest', null)
         self.gene_caller_ids = A('gene_caller_ids', null)

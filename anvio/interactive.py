@@ -861,7 +861,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                             row_ids_of_interest=self.split_names_of_interest)
 
             try:
-                clustering_id, newick = clustering.order_contigs_simple(config, progress=progress)
+                clustering_id, newick = clustering.order_contigs_simple(config, distance=self.distance, linkage=self.linkage, progress=progress)
             except Exception as e:
                 run.warning('Clustering has failed for "%s": "%s"' % (config_name, e))
                 progress.end()

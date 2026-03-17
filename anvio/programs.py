@@ -818,6 +818,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.output_directory_path = A("output_dir") or 'ANVIO-HELP'
+        self.repo_root = os.path.abspath(os.path.join(os.path.dirname(anvio.__file__), '..'))
 
         if not os.path.exists(anvio.DOCS_PATH):
             raise ConfigError("The anvi'o docs path is not where it should be :/ Something funny is going on.")
@@ -1114,10 +1115,17 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
 
         program_provides_requires_dict = self.get_program_requires_provides_dict()
 
+        resources_example_program = 'anvi-interactive'
+        resources_example_path = None
+        if resources_example_program in self.program_names_and_paths:
+            resources_example_path = os.path.relpath(self.program_names_and_paths[resources_example_program], self.repo_root)
+            resources_example_path = resources_example_path.replace(os.sep, '/')
+
         for program_name in self.programs:
             self.progress.update(f"'{program_name}' ...", increment=True)
 
             program = self.programs[program_name]
+            program_source_path = os.path.relpath(program.program_path, self.repo_root).replace(os.sep, '/')
             d = {'program': {},
                  'meta': {'summary_type': 'program',
                           'version': '\n'.join(['|%s|%s|' % (t[0], t[1]) for t in anvio.get_version_tuples()]),
@@ -1129,6 +1137,8 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
             d['program']['usage'] = program.usage
             d['program']['description'] = program.meta_info['description']['value']
             d['program']['resources'] = program.meta_info['resources']['value']
+            d['program']['source_path'] = program_source_path
+            d['program']['resources_example_source_path'] = resources_example_path or program_source_path
             d['program']['requires'] = program_provides_requires_dict[program_name]['requires']
             d['program']['provides'] = program_provides_requires_dict[program_name]['provides']
             d['program']['icon'] = '../../images/icons/%s.png' % 'PROGRAM'
@@ -1352,4 +1362,3 @@ class ProgramsVignette(AnvioPrograms):
         open(self.output_file_path, 'w').write(SummaryHTMLOutput(vignette, r=run, p=progress).render())
 
         run.info('Output file', os.path.abspath(self.output_file_path))
-

@@ -343,6 +343,9 @@ function drawSupportValue(svg_id, p, p0, p1, supportValueData) {
          * Check if the branch support values fall within the given number range.
          * @return {bool}    True if the branch support values are within the specified range, False otherwise.
         */
+        if (p.branch_support === null) {
+            return false;
+        }
         if (typeof p.branch_support === 'string' && p.branch_support.includes('/')) {
             const [branch_support_value0, branch_support_value1] = p.branch_support.split('/').map(parseFloat);
             const min_support = Math.min(branch_support_value0, branch_support_value1);
