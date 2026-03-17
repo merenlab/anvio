@@ -157,6 +157,9 @@ class SanityCheck(object):
 
             filesnpaths.is_output_file_writable(self.per_scg_output_file) if self.per_scg_output_file else None
 
+            if self.presence_absence_only and self.compute_scg_coverages:
+                raise ConfigError("The flag `--presence-absence-only` is not quite compatible with `--compute-scg-coverages` since "
+                                  "the presence/absence information is only meaningful when working without coverage data :/")
 
             ###########################################################
             # PopulateContigsDatabaseWithSCGTaxonomy
@@ -184,7 +187,8 @@ class SanityCheck(object):
             if self.__class__.__name__ in ['SCGTaxonomyEstimatorSingle']:
                 if self.metagenomes:
                     raise ConfigError("Taxonomy estimation classes have been initiated with a single contigs database, but your "
-                            "arguments also include an input file for multiple (meta)genomes. It is a no no. Please choose either. ")
+                                      "arguments also include an input file for multiple (meta)genomes. It is a no no. "
+                                      "Please choose either. ")
 
                 if self.output_file_prefix:
                     raise ConfigError("When using SCG taxonomy estimation in this mode, you must provide an output file path "
@@ -326,6 +330,7 @@ class SCGTaxonomyArgs(object):
         self.metagenome_mode = True if A('metagenome_mode') else False
         self.scg_name_for_metagenome_mode = A('scg_name_for_metagenome_mode')
         self.compute_scg_coverages = A('compute_scg_coverages')
+        self.presence_absence_only = True if A('presence_absence_only') else False
         self.report_scg_frequencies_path = A('report_scg_frequencies')
         self.metagenomes = A('metagenomes')
         self.user_taxonomic_level = A('taxonomic_level')
@@ -341,6 +346,7 @@ class SCGTaxonomyArgs(object):
             self.output_file_prefix = None
             self.matrix_format = None
             self.raw_output = None
+            self.presence_absence_only = False
 
         self.skip_sanity_check = A('skip_sanity_check')
 
@@ -831,6 +837,9 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
             DF.rename(columns={"coverage": "times_observed"}, inplace = True)
             DF['times_observed'] = DF['times_observed'].astype(int)
 
+            if self.presence_absence_only:
+                DF['times_observed'] = DF['times_observed'].apply(lambda x: 1 if x > 0 else 0)
+
         self.progress.end()
 
         return DF
@@ -948,7 +957,6 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
         implement that, let's leave a FIXME here only to be remove by
         that hero.
         """
-
         scgs_ordered_based_on_frequency, contigs_dbs_ordered_based_on_num_scgs, scg_frequencies = self.get_scg_frequencies()
 
         return scgs_ordered_based_on_frequency[0]
@@ -1045,9 +1053,9 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
             args.contigs_db = self.metagenomes[metagenome_name]['contigs_db_path']
 
             if self.profile_dbs_available:
-                args.metagenome_mode = True
+                args.metagenome_mode = False if self.presence_absence_only else True       # These two are confusing as in "why would anyone do this", but
+                args.compute_scg_coverages = False if self.presence_absence_only else True # the user is the boss, and they can do whatever the heck they want.
                 args.profile_db = self.metagenomes[metagenome_name]['profile_db_path']
-                args.compute_scg_coverages = True
                 args.scg_name_for_metagenome_mode = self.scg_name_for_metagenome_mode
             else:
                 if self.metagenome_mode:

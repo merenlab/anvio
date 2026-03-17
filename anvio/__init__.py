@@ -900,6 +900,16 @@ D = {
              'help': "When this flag is declared, anvi'o will go back to the profile database to learn coverage "
                      "statistics of single-copy core genes for which we have taxonomy information."}
                 ),
+    'presence-absence-only': (
+            ['--presence-absence-only'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When this flag is declared, anvi'o will report only binary presence/absence information for "
+                     "each taxon rather than the number of times each SCG was observed. This is particularly useful "
+                     "when working with external genomes files to generate matrix outputs, where raw SCG frequencies "
+                     "may be difficult to interpret. If you use this flag together with `--compute-scg-coverages` "
+                     "will make anvi'o disappoint."}
+                ),
     'compute-anticodon-coverages': (
             ['--compute-anticodon-coverages'],
             {'default': False,
