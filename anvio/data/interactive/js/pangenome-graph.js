@@ -2578,6 +2578,18 @@ class PangenomeGraphUserInterface {
         $('#redraw').on("click", this.start_draw);
         $('#fit').on('click', this.fit_aspect);
         $('#svgDownload').on('click', this.svg_download);
+        $('#genome_tracks_select_all').on('click', () => {
+            $('#genome_tracks input[type="checkbox"]').prop('checked', true).trigger('change');
+        })
+        $('#genome_tracks_unselect_all').on('click', () => {
+            $('#genome_tracks input[type="checkbox"]').prop('checked', false).trigger('change');
+        })
+        $('#genomes_select_all').on('click', () => {
+            $('#genomecolors input[type="checkbox"]').prop('checked', true).trigger('change');
+        })
+        $('#genomes_unselect_all').on('click', () => {
+            $('#genomecolors input[type="checkbox"]').prop('checked', false).trigger('change');
+        })
         $('#svgbox').on('mousedown', this.press_down)
         $('#svgbox').on('mousemove', this.press_move)
         $('#svgbox').on('mouseup', this.press_up)
