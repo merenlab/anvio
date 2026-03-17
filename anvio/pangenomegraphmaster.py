@@ -373,6 +373,8 @@ class PangenomeGraphManager():
                 }
                 i += 1
 
+                self.graph.nodes[node]['region_id'] = region_id
+
                 if region_id not in regions_info_dict:
                     regions_info_dict[region_id] = [(node_x_position, node_y_position, node, genomes)]
                 else:

@@ -3625,6 +3625,7 @@ class PanGraphSuperclass(PanSuperclass):
 
         region_sides_df, nodes_df, gene_calls_df = self.pangenome_graph.summarize()
         self.synteny_gene_cluster_summary_info = pd.merge(nodes_df.reset_index(drop=False), region_sides_df.reset_index(drop=False), how="left", on="region_id").set_index('syn_cluster').to_dict(orient='index')
+        self.region_sides_info = region_sides_df.reset_index()[['region_id', 'x_min', 'x_max', 'num_synteny_gene_clusters', 'motif']].set_index('region_id').to_dict(orient='index')
 
     def rerun_state(self, gene_cluster_grouping_threshold, groupcompress, max_edge_length_filter):
 
@@ -3656,6 +3657,7 @@ class PanGraphSuperclass(PanSuperclass):
 
         region_sides_df, nodes_df, gene_calls_df = self.pangenome_graph.summarize()
         self.synteny_gene_cluster_summary_info = pd.merge(nodes_df.reset_index(drop=False), region_sides_df.reset_index(drop=False), how="left", on="region_id").set_index('syn_cluster').to_dict(orient='index')
+        self.region_sides_info = region_sides_df.reset_index()[['region_id', 'x_min', 'x_max', 'num_synteny_gene_clusters', 'motif']].set_index('region_id').to_dict(orient='index')
 
     def get_json(self):
 
@@ -3664,7 +3666,8 @@ class PanGraphSuperclass(PanSuperclass):
             'meta': self.p_meta,
             'states': state_dict,
             'nodes': dict(self.pangenome_graph.graph.nodes(data=True)),
-            'edges': {data['name']: {'source': edge_i, 'target': edge_j, **data} for edge_i, edge_j, data in self.pangenome_graph.graph.edges(data=True)}
+            'edges': {data['name']: {'source': edge_i, 'target': edge_j, **data} for edge_i, edge_j, data in self.pangenome_graph.graph.edges(data=True)},
+            'regions': self.region_sides_info
         }
 
         return export_dict
