@@ -541,7 +541,7 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
         if not self.scg_name_for_metagenome_mode:
             self.scg_name_for_metagenome_mode = self.get_best_scg_name_for_metagenome_mode()
 
-            self.run.warning("Please not that anvi'o just set the SCG for metagenome mode as '%s' since it was the most "
+            self.run.warning("Please note that anvi'o just set the SCG for metagenome mode as '%s' since it was the most "
                              "frequent SCG occurring across all %d contigs databases involved in this analysis. But this "
                              "is nothing more than some heuristic for your convenience, and we strongly advice you to "
                              "run this program with the parameter `--report-scg-frequencies` and examine the output "
@@ -1049,18 +1049,32 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
         scg_taxonomy_super_dict = {}
 
         if self.profile_dbs_available:
-            self.run.info_single("Your metagenome file DOES contain profile databases, so anvi'o will turn on `--metagenome-mode`, "
-                                 "set the SCG name to %s, and turn on `--compute-scg-coverages` flag. If this doesn't make sense, "
-                                 "please adjust your input parameters." % (self.scg_name_for_metagenome_mode), nl_after=1)
+            if self.presence_absence_only:
+                self.run.info_single(f"Since you asked anvi'o to estimate SCG taxonomy with profile-db files together with the flag "
+                                     f"`--presence-absence-only`, anvi'o will turn on `--metagenome-mode` and use "
+                                     f"'{self.scg_name_for_metagenome_mode}' to report presence/absence SCG taxonomy for your input data. "
+                                     f"You are really confusing anvi'o here, but you are the boss. If this doesn't make sense, please "
+                                     f"adjust your input parameters.", nl_after=1, nl_before=1)
+            else:
+                self.run.info_single(f"Since you asked anvi'o to estimate SCG taxonomy with profile-db files, anvi'o will turn on "
+                                     f"`--metagenome-mode` and `--compute-scg-coverages` and use '{self.scg_name_for_metagenome_mode}' "
+                                     f"to report SCG taxonomy for your input data. If this doesn't make sense, please adjust your input "
+                                     f"parameters.", nl_after=1, nl_before=1)
         else:
             if self.metagenome_mode:
-                self.run.info_single("Your metagenome file DOES NOT contain profile databases, but you asked anvi'o to estimate SCG "
-                                     "taxonomy in metagenome mode. So be it. SCG name is set to %s." \
-                                        % (self.scg_name_for_metagenome_mode), nl_after=1)
+                if self.presence_absence_only:
+                    self.run.info_single(f"Since you asked anvi'o to estimate SCG taxonomy in `--metagenome-mode` with `--presence-absence-only` "
+                                         f"and without any profile-db files, anvi'o will use '{self.scg_name_for_metagenome_mode}' and report "
+                                         f"its presence/absence across your contigs databases.", nl_after=1, nl_before=1)
+                else:
+                    self.run.info_single(f"Since you asked anvi'o to estimate SCG taxonomy in `--metagenome-mode` without any profile-db files, "
+                                         f"anvi'o will use '{self.scg_name_for_metagenome_mode}' and report its frequencies across your "
+                                         f"contigs databases.", nl_after=1, nl_before=1)
             else:
-                self.run.info_single("Your (meta)genome file DOES NOT contain profile databases, and you haven't asked anvi'o to "
-                                     "work in `--metagenome-mode`. Your contigs databases will be treated as genomes rather than "
-                                     "metagenomes.", nl_after=1)
+                self.run.info_single("Since you asked anvi'o to estimate SCG taxonomy without any profile-db files and without the "
+                                     "`--metagenome-mode` flag, anvi'o will treat your contigs-db file(s) as individual genomes rather "
+                                     "than metagenomes. If this doesn't make any sense, please revisit your parameters.", nl_after=1,
+                                     nl_before=1)
 
         self.progress.new("Recovering tax super dict", progress_total_items=len(self.metagenome_names))
         total_num_metagenomes = len(self.metagenome_names)
