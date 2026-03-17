@@ -492,6 +492,23 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
             self.report_scg_frequencies_as_TAB_delimited_file()
             return
 
+        if self.metagenome_mode:
+            if not self.scg_name_for_metagenome_mode:
+                self.scg_name_for_metagenome_mode = self.get_best_scg_name_for_metagenome_mode()
+
+                self.run.warning(f"Please note that anvi'o just set the SCG for metagenome mode as "
+                                 f"'{self.scg_name_for_metagenome_mode}' since it was the most frequent SCG "
+                                 f"occurring across all {len(self.metagenomes)} contigs databases involved in "
+                                 f"this analysis. But this is nothing more than some heuristic for your "
+                                 f"convenience, and we strongly advice you to run this program with the parameter "
+                                 f"`--report-scg-frequencies` and examine the output to see if there is a better "
+                                 f"choice. As you can imagine, the most frequent SCG may not be the one that is "
+                                 f"more common across all genomes you are interested.")
+
+                self.run.info("SCG [determined by anvi'o]", self.scg_name_for_metagenome_mode, nl_after=1, mc="green")
+            else:
+                self.run.info("SCG [chosen by the user]", self.scg_name_for_metagenome_mode, nl_after=1, mc="green")
+
         scg_taxonomy_super_dict_multi = self.get_scg_taxonomy_super_dict_for_metagenomes()
 
         if self.sequences_file_path_prefix:
