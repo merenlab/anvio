@@ -82,7 +82,7 @@ anvi-run-workflow -w ecophylo -c default-config.json
 INFO "Running ecophylo workflow interactive (profile-mode)"
 HMM=`awk 'NR==2{print $2 "_" $1}' hmm_list.txt`
 echo $HMM
-anvi-interactive -c ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/03_CONTIGS/${HMM}-contigs.db \
+anvi-interactive -c ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/03_CONTIGS/${HMM}.db \
                  -p ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED/${HMM}/PROFILE.db \
                  $dry_run_controller
 
@@ -131,7 +131,7 @@ anvi-run-workflow -w ecophylo -c merge-by-group-config.json
 
 INFO "Running ecophylo workflow interactive (merge by group - profile mode)"
 GROUP=`awk 'NR==2{print $4}' hmm_list_group.txt`
-anvi-interactive -c ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/03_CONTIGS/${GROUP}-contigs.db \
+anvi-interactive -c ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/03_CONTIGS/${GROUP}.db \
                  -p ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED/${GROUP}/PROFILE.db \
                  $dry_run_controller
 

@@ -214,6 +214,14 @@ views_table_types                    = [  'str'  ,      'str'    ]
 view_table_structure = ['item', 'layer',  'value' ]
 view_table_types     = ['text', 'text' , 'numeric']
 
+zero_coverage_splits_table_name       = 'zero_coverage_splits'
+zero_coverage_splits_table_structure  = ['item', 'layer']
+zero_coverage_splits_table_types      = ['text', 'text' ]
+
+zero_coverage_contigs_table_name      = 'zero_coverage_contigs'
+zero_coverage_contigs_table_structure = ['item', 'layer']
+zero_coverage_contigs_table_types     = ['text', 'text' ]
+
 protein_abundances_table_name        = 'protein_abundances'
 protein_abundances_table_structure   = ['protein_id', 'reference_source', 'reference_id', 'sample_name', 'abundance_value']
 protein_abundances_table_types       = [  'numeric' ,       'text'      ,     'text'    ,     'text'   ,     'numeric'    ]
@@ -371,6 +379,8 @@ table_requires_unique_entry_id = {'self': False,
                                   'abundance_contigs': True,
                                   'variability_splits': True,
                                   'variability_contigs': True,
+                                  'zero_coverage_splits': False,
+                                  'zero_coverage_contigs': False,
                                   'gene_cluster_frequencies': True,
                                   'gene_cluster_presence_absence': True,
                                   'clusters': False,

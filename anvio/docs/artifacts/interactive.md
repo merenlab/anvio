@@ -2,48 +2,81 @@ This page describes general properties of anvi'o interactive displays and progra
 
 ## Terminology
 
-Anvi'o uses a simple terminology to address various aspects of interactive displays it produces, such as items, layers, views, orders, and so on. The purpose of this section is to provide some insights into these terminology using the figure below:
+Anvi'o uses a simple terminology to address various aspects of interactive displays it produces. The same terminology applies regardless of which program initiated the interface -- whether it is %(anvi-interactive)s, %(anvi-display-pan)s, or any other display program. Here is a quick-reference table:
 
-![an anvi'o display](../../images/interactive_interface/anvio_display_template.png){:.center-img}
+| Term | Definition |
+|------|------------|
+| **Items** | The individual elements displayed in the central tree/dendrogram. Depending on the context, items can be contigs, gene clusters, genes, samples, or any other unit of data. Items are the *rows* of your data matrix. |
+| **Layers** | The concentric rings of data that surround the central tree. Each layer represents a different data dimension -- for instance, a sample’s coverage, a genome in a pangenome, or a categorical annotation. Layers are the *columns* of your data matrix. |
+| **View** | A specific representation of your data. Different views show different aspects of the same dataset (e.g., mean coverage vs. detection in a metagenomic context). Views are stored in the database and can be extended with `--additional-view`. |
+| **Items order** | The tree or dendrogram at the center of the display that organizes items. It can be a phylogenetic/phylogenomic tree, a hierarchical clustering dendrogram, or a linear order. Users can provide custom orders through %(misc-data-items-order)s. |
+| **Layer order** | The tree or dendrogram that organizes layers around the display. Users can extend available layer orders through %(misc-data-layer-orders)s. |
+| **Bins** | User-defined selections (groups) of items. You can create bins by clicking on branches of the tree. Bins are central to tasks like genome binning in metagenomics or selecting gene clusters in pangenomics. |
+| **Collection** | A named set of bins that can be stored in the database and recalled later. |
+| **State** | A saved configuration of all visual settings -- layer order, colors, normalization, drawing type, etc. States are stored in the database and can be exported/imported with %(anvi-export-state)s and %(anvi-import-state)s. |
+| **Additional data** | Extra information associated with items or layers that is not part of the core data matrix. Managed with %(anvi-import-misc-data)s, %(anvi-export-misc-data)s, and %(anvi-delete-misc-data)s. |
 
-Even though the figure is a product of %(anvi-display-pan)s, the general terminology does not change across different interfaces, including the default visualizations of %(anvi-interactive)s. Here are the descriptions of numbered areas in the figure:
+Now let’s see where each of these concepts lives in an actual display.
 
-* The tree denoted by **(1)** shows the organization of each `item`. Items could be contigs, gene clusters, bins, genes, or anything else depending on which mode the anvi'o interactive interface was initiated. The structure that orders items and denoted by **(1)** in the figure can be a phylogenetic or phylogenomic tree, or a dendrogram produced by a hierarchical clustering algorithm. In addition, there may be nothing there, if the user has requested or set a linear items order through %(misc-data-items-order)s.
-* Each concentric circle underneath the number **(2)** is called a `layer` and the data shown for items and layers as a whole is called a `view`. A **layer** can be a genome, a metagenome, or anything else depending on which mode the anvi'o interactive was initiated. The **view** is like a data table where a datum is set for each **item** in each **layer**. The view data is typically computed by anvi’o and stored in pan databases by %(anvi-pan-genome)s or profile databases by %(anvi-profile)s. The user add another view to the relevant combo box in the interface by providing a TAB-delimited file to %(anvi-interactive)s through the command line argument `--additional-view`, or add new layers to extend these vies with additional data through %(misc-data-items)s.
-* The tree denoted by **(3)** shows a specific ordering of layers. Anvi'o will compute various layer orders automatically based on available **view** depending on the analysis or visualization mode, and users can extend available **layer orders** through %(misc-data-layer-orders)s.
-* What is shown by **(4)** is the additional data for layers. the user can extend this section with additional information on layers using the %(misc-data-layers)s.
+### Items and layers
 
-The orchestrated use of %(anvi-import-misc-data)s, %(anvi-export-misc-data)s, and %(anvi-delete-misc-data)s provides a powerful framework to decorate items or layers in a display and enhance visualization of complex data. Please take a look at the following article on how to extend anvi'o displays:
+![Items and layers in an anvi'o display](../../images/interactive_interface/terms_items_and_layers.gif){:.center-img .width-70}
 
-* [https://merenlab.org/2017/12/11/additional-data-tables/](https://merenlab.org/2017/12/11/additional-data-tables/)
+**Items** are the units arranged around the center of the display. What they represent depends entirely on the context: contigs in a metagenomic analysis, gene clusters in a pangenome, genomes in a phylogenomic tree, or anything else. **Layers** are the concentric rings of data surrounding the items tree. Each layer shows a data value for every item, like coverage of a contig in a given sample, or presence/absence of a gene cluster in a given genome.
+
+Together, items and layers form a data matrix: items are the rows, layers are the columns.
+
+### Items order and layer order (dendrograms)
+
+![The two dendrograms in an anvi'o display](../../images/interactive_interface/terms_dendrograms.gif){:.center-img .width-70}
+
+The **items order** is the tree or dendrogram at the center of the display. It determines how items are organized: it can be a phylogenetic tree, a hierarchical clustering dendrogram, or a simple linear order. The **layer order** is the smaller tree on the outside of the display that organizes layers. Anvi'o computes layer orders automatically, but you can provide your own through %(misc-data-layer-orders)s.
+
+### Views
+
+![Two views of the same data in an anvi'o display](../../images/interactive_interface/terms_views.gif){:.center-img .width-70}
+
+A **view** defines what numerical values are displayed in the layers. For instance, in a metagenomics dataset, the data that can be viewed are mean coverage, detection, or variability; and with pangenome, the options are presence/absence or frequencies of gene clusters. Views are stored in the database and can be switched using the **Data** dropdown in the settings panel. You can also add custom views with the `--additional-view` flag.
+
+### Bins
+
+![Bins in an anvi'o display](../../images/interactive_interface/terms_bins.gif){:.center-img .width-70}
+
+**Bins** are user-defined groups of items. You create them by clicking on branches of the dendrogram. In a metagenomic context, bins typically represent metagenome-assembled genomes (MAGs). In a pangenomic context, they can represent groups of gene clusters (core genome, accessory genome, etc.). Bins are organized into **collections** that can be stored in the database and used by downstream programs like %(anvi-summarize)s.
+
+### Additional data for items and layers
+
+![Additional data in an anvi'o display](../../images/interactive_interface/terms_additional_data.gif){:.center-img .width-70}
+
+Beyond the core view data, you can decorate your display with **additional data** for both items and layers. Additional data for items appears as extra layers on the outside of the display (e.g., taxonomy assignments, GC content, bin colors). Additional data for layers appears next to the layer order dendrogram (e.g., sample metadata like body site, or genome metadata like species name). These are managed through %(anvi-import-misc-data)s.
+
+See [this article](https://merenlab.org/2017/12/11/additional-data-tables/) for a detailed guide on extending anvi'o displays with additional data tables.
 
 ## Programs that give interactive access
 
-If you're new to the anvi'o interactive interface, you'll probably want to check out [this tutorial for beginners](http://merenlab.org/tutorials/interactive-interface/) or the other resources on the  %(anvi-interactive)s page.
+Several anvi'o programs produce an interactive display. The most commonly used ones are:
 
-However, there are more interfaces available in anvi'o than just that one, so let's list them out:
+- %(anvi-interactive)s is the main interactive interface. It displays information from a %(profile-db)s and %(contigs-db)s, and supports manual binning, gene mode, collection mode, and a fully flexible manual mode for visualizing any data.
 
-- %(anvi-display-structure)s lets you examine specific protein structures, along with SCV and SAAVs within it. (It even has [its own software page.](http://merenlab.org/software/anvio-structure/). It's kind of a big deal.)
+- %(anvi-display-pan)s displays pangenomic data from a %(pan-db)s. It shows gene cluster distributions across genomes and supports gene cluster inspection and binning.
 
-- %(anvi-display-contigs-stats)s shows you various stats about the contigs within a %(contigs-db)s, such as their hmm-hits, lengths, N and L statistics, and so on.
+- %(anvi-inspect)s provides a detailed, nucleotide-level view of a single contig across samples, including coverage, SNVs, and gene calls.
 
-- %(anvi-display-functions)s lets you quickly browse the functional pool for a given set of genomes or metagenomes.
+- %(anvi-display-contigs-stats)s shows summary statistics for contigs in a %(contigs-db)s.
 
-- %(anvi-display-metabolism)s is still under development but will allow you to interactively view metabolism estimation data using %(anvi-estimate-metabolism)s under the hood.
+- %(anvi-display-functions)s lets you browse the functional pool for a set of genomes or metagenomes.
 
-- %(anvi-display-pan)s displays information about the gene clusters that are stored in a %(pan-db)s. It lets you easily view your core and accessory genes, and can even be turned into a metapangenome through importing additional data tables.
+- %(anvi-display-metabolism)s provides an interactive view of metabolism estimation data.
 
-- %(anvi-inspect)s lets you look at a single split across your samples, as well as the genes identified within it. This interface can also be opened from the %(anvi-interactive)s interface by asking for details about a specific split.
+- %(anvi-display-structure)s lets you examine protein structures along with SCVs and SAAVs.
 
-- %(anvi-interactive)s displays the information in a %(profile-db)s. It lets you view the distribution of your contigs across your samples, manually bin metagenomic data into MAGSs (and refine those bins with %(anvi-refine)s), and much more. You can also use this to look at your genes instead of your contigs or [examine the genomes after a phylogenomic analysis](http://merenlab.org/2017/06/07/phylogenomics/). Just look at that program page for a glimpse of this program's amazingness.
-
-- %(anvi-script-snvs-to-interactive)s lets you view a comprehensive summary of the SNVs, SCVs, and SAAVs within your contigs.
+And a few others, including %(anvi-script-snvs-to-interactive)s.
 
 ## Artifacts that give interactive access
 
-- %(gene-cluster-inspection)s lets you examine specific gene clusters.
+- %(contig-inspection)s shows detailed contig information (coverage, SNVs, gene calls).
 
-- %(contig-inspection)s shows you detailed contig information.
+- %(gene-cluster-inspection)s lets you examine individual gene clusters (alignments, genomic context, functional annotations).
 
 ## An overview of the display
 
@@ -121,7 +154,7 @@ Mastering these in the Options Tab will minimize the post-processing of your anv
 
 ### Bins tab
 
-Anvi’o allows you to create selections of items shown in the display (whether they are contigs, gene clusters, or any other type of data shown in the display). Bins tab allow you to maintain these selections. Any selection on the tree will be added to active bin in this tab (the state radio button next to a bin defines its activity). Through this tab you can,
+Anvi'o allows you to create selections of items shown in the display (whether they are contigs, gene clusters, or any other type of data shown in the display). Bins tab allow you to maintain these selections. Any selection on the tree will be added to active bin in this tab (the state radio button next to a bin defines its activity). Through this tab you can,
 
 ![an anvi'o options items](../../images/interactive_interface/interactive-settings-bins-tabs.png){:.center-img}
 

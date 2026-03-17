@@ -4507,6 +4507,11 @@ def get_all_item_names_from_the_database(db_path, run=run):
             return set([])
         else:
             all_items = set(database.get_single_column_from_table('mean_coverage_Q2Q3_splits', 'item'))
+
+            # zero-coverage splits are stored in a separate table rather than in the view tables,
+            # so we need to include them here to get the complete set of split names.
+            if 'zero_coverage_splits' in database.get_table_names():
+                all_items.update(database.get_single_column_from_table('zero_coverage_splits', 'item'))
     elif db_type == 'pan':
         all_items = set(database.get_single_column_from_table(t.pan_gene_clusters_table_name, 'gene_cluster_id'))
     elif db_type == 'contigs':

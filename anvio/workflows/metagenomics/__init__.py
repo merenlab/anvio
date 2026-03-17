@@ -293,7 +293,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
 
         contigs_annotated = [os.path.join(self.dirs_dict["CONTIGS_DIR"],\
-                             g + "-annotate_contigs_database.done") for g in self.group_names]
+                             g + "-steps", "annotate_contigs_database.done") for g in self.group_names]
         target_files.extend(contigs_annotated)
 
         if self.run_qc:
@@ -760,29 +760,21 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         if wildcards.group in self.references_for_removal:
             # if it's a reference for removal then we just want to use the
             # raw fasta file, and there is no need to reformat or assemble
-            contigs = self.get_raw_fasta(wildcards)
+            contigs = self.get_input_fasta_path(wildcards)
         elif self.get_param_value_from_config(['anvi_script_reformat_fasta','run']):
             contigs = self.dirs_dict["FASTA_DIR"] + "/{group}/{group}-contigs.fa".format(group=wildcards.group)
         else:
-            contigs = self.get_raw_fasta(wildcards)
+            contigs = self.get_input_fasta_path(wildcards)
         return contigs
 
 
-    def get_raw_fasta(self, wildcards, remove_gz_suffix=True):
-        """
-        Path to the input FASTA for reformat_fasta.
-
-        Priority:
-          1) If a precomputed raw FASTA exists (written by SR/LR assembler wrappers):
-             {FASTA_DIR}/{group}.raw.fa  -> use it.
-          2) References mode (or references slated for removal): delegate to base logic
-             that reads from self.fasta_information[...] (handles .gz via remove_gz_suffix).
-          3) Assembly mode (SR legacy path): use assembler output at
-             {FASTA_DIR}/{group}/final.contigs.fa
-        """
+    def get_input_fasta_path(self, wildcards, remove_gz_suffix=True):
+        '''Returns the input FASTA path for a given group. In references mode or
+        when removing references, delegates to the base class. In assembly mode,
+        returns the assembler output path.'''
         # References-mode / reference-removal path (uses fasta_information)
         if self.references_mode or wildcards.group in self.references_for_removal:
-            return super(MetagenomicsWorkflow, self).get_raw_fasta(
+            return super(MetagenomicsWorkflow, self).get_input_fasta_path(
                 wildcards, remove_gz_suffix=remove_gz_suffix)
 
         # Assembly-mode : assembler's canonical output location
