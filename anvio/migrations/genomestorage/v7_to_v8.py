@@ -124,7 +124,7 @@ def migrate(db_path):
         run.info_single("Fixed %d corrupted source values in gene_function_calls." % count_source)
 
     # -----------------------------------------------------------------------
-    # D. Fix genome_info genome_hash column
+    # D. Fix genome_info genome_hash column — TEXT b'...' variant
     # -----------------------------------------------------------------------
     progress.update("Checking genome_info genome_hash column")
 
@@ -163,27 +163,41 @@ def migrate(db_path):
             run.info_single("Fixed %d corrupted genome_name values in %s." % (count_gn, table_name))
 
     # -----------------------------------------------------------------------
-    # F. Fix BLOB sequences in gene_info (defensive — bytes inserted directly
-    #    into sqlite3 are stored as BLOBs rather than TEXT)
+    # F. Fix BLOB-typed values across all tables
+    #
+    # When raw bytes (rather than str) were inserted into SQLite, they are
+    # stored as BLOBs instead of TEXT. These won't match LIKE patterns above,
+    # but cause a different class of bug: Python's %s formatting on a bytes
+    # object produces "b'...'" in string contexts (e.g. FASTA headers), while
+    # dict lookups use the raw bytes object as key — leading to mismatches.
     # -----------------------------------------------------------------------
-    progress.update("Checking for BLOB-typed sequences in gene_info")
+    progress.update("Checking for BLOB-typed values")
 
-    response = genomes_db._exec("""SELECT COUNT(*) FROM gene_info WHERE typeof(aa_sequence) = 'blob'""")
-    blob_aa = response.fetchone()[0]
+    blob_columns = [
+        ('genome_info',          'genome_hash'),
+        ('genome_info',          'genome_name'),
+        ('gene_info',            'genome_name'),
+        ('gene_info',            'aa_sequence'),
+        ('gene_info',            'dna_sequence'),
+        ('gene_function_calls',  'genome_name'),
+        ('gene_function_calls',  'source'),
+        ('gene_function_calls',  'accession'),
+        ('gene_function_calls',  'function'),
+    ]
 
-    response = genomes_db._exec("""SELECT COUNT(*) FROM gene_info WHERE typeof(dna_sequence) = 'blob'""")
-    blob_dna = response.fetchone()[0]
+    total_blobs = 0
+    for table_name, column_name in blob_columns:
+        response = genomes_db._exec("""SELECT COUNT(*) FROM %s WHERE typeof(%s) = 'blob'""" % (table_name, column_name))
+        count = response.fetchone()[0]
 
-    if blob_aa > 0 or blob_dna > 0:
-        if blob_aa > 0:
-            genomes_db._exec("""UPDATE gene_info SET aa_sequence = CAST(aa_sequence AS TEXT)
-                                 WHERE typeof(aa_sequence) = 'blob'""")
-        if blob_dna > 0:
-            genomes_db._exec("""UPDATE gene_info SET dna_sequence = CAST(dna_sequence AS TEXT)
-                                 WHERE typeof(dna_sequence) = 'blob'""")
-        total_fixes += blob_aa + blob_dna
-        run.info_single("Converted %d BLOB aa_sequences and %d BLOB dna_sequences to TEXT in "
-                        "gene_info." % (blob_aa, blob_dna))
+        if count > 0:
+            genomes_db._exec("""UPDATE %s SET %s = CAST(%s AS TEXT) WHERE typeof(%s) = 'blob'""" % (
+                table_name, column_name, column_name, column_name))
+            total_blobs += count
+            run.info_single("Converted %d BLOB %s values to TEXT in %s." % (count, column_name, table_name))
+
+    if total_blobs > 0:
+        total_fixes += total_blobs
 
     # -----------------------------------------------------------------------
     # G. Rebuild gene_function_sources meta value from now-clean data
