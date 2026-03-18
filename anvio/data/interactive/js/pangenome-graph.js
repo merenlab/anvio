@@ -2191,6 +2191,12 @@ class PangenomeGraphUserInterface {
             }
         });
 
+        // If max edge length filter was never set (legacy -1 default), apply the new default.
+        if (parseInt($('#maxlength')[0].value) === -1) {
+            $('#maxlength')[0].value = 1000;
+            $('#flexmaxlength').prop('checked', true);
+        }
+
         for(var [layer, max_value] of Object.entries(this.layers_max)) {
             $('#' + layer + '_max')[0].value = max_value;
         }
@@ -2525,7 +2531,7 @@ class PangenomeGraphUserInterface {
         
         $('#flexmaxlength').change(function() {
             if ($(this).prop('checked') == true){
-                $('#maxlength')[0].value = 1;
+                $('#maxlength')[0].value = 1000;
                 $('#maxlength').prop('disabled', false);
             } else {
                 $('#maxlength')[0].value = -1;
