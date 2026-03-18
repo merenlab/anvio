@@ -63,7 +63,7 @@ class PangenomeGraphUserInterface {
         this.remove_bin = this.remove_bin.bind(this);
         this.update_bin = this.update_bin.bind(this);
         this.switch_bin = this.switch_bin.bind(this);
-        this.switch_color = this.switch_color.bind(this);
+
         this.marknode = this.marknode.bind(this);
 
         this.start_draw = this.start_draw.bind(this);
@@ -116,8 +116,8 @@ class PangenomeGraphUserInterface {
         }
         
         var edgecoloring = {}
-        $("#genomecolors :input[type='color']").each((index, element) => {
-            edgecoloring[element.id] = [index, element.value]
+        $("#genomecolors .pangraph-colorpicker").each((index, element) => {
+            edgecoloring[element.id] = [index, $(element).attr('color')]
         })
         
         if ($('#flexlinear').prop('checked') == true){
@@ -140,6 +140,7 @@ class PangenomeGraphUserInterface {
         var node_thickness = parseFloat($('#circ')[0].value);
         var edge_thickness = parseFloat($('#edge')[0].value);
         var line_thickness = parseFloat($('#line')[0].value);
+        var track_line_width = parseFloat($('#track_line_width')[0].value);
         var node_distance_x = parseFloat($('#distx')[0].value);
         var node_distance_y = parseFloat($('#disty')[0].value);
         var num_position = parseFloat($('#num_position')[0].value);
@@ -148,15 +149,15 @@ class PangenomeGraphUserInterface {
         var tree_thickness = parseFloat($('#tree_thickness')[0].value);
         var text_offset = parseFloat($('#label_offset')[0].value);
         
-        var core_color = $('#core_color')[0].value;
-        var paralog_color = $('#paralog_color')[0].value;
-        var singleton_color = $('#singleton_color')[0].value;
-        var accessory_color = $('#accessory_color')[0].value;
-        var rearranged_color = $('#rearranged_color')[0].value;
-        var trna_color = $('#trna_color')[0].value;
-        var layer_color = $('#layer_color')[0].value;
-        var back_color = $('#back_color')[0].value;
-        var non_back_color = $('#non_back_color')[0].value;
+        var core_color = $('#core_color').attr('color');
+        var paralog_color = $('#paralog_color').attr('color');
+        var singleton_color = $('#singleton_color').attr('color');
+        var accessory_color = $('#accessory_color').attr('color');
+        var rearranged_color = $('#rearranged_color').attr('color');
+        var trna_color = $('#trna_color').attr('color');
+        var layer_color = $('#layer_color').attr('color');
+        var back_color = $('#back_color').attr('color');
+        var non_back_color = $('#non_back_color').attr('color');
         var genome_size = this.genomes.length
         
         var theta = (end_angle - start_angle) / (this.global_x+1)
@@ -1563,7 +1564,7 @@ class PangenomeGraphUserInterface {
             this.selection.setAttribute("width", 0);
             this.selection.setAttribute("height", 0);
             
-            var bin_color = document.getElementById(this.current_bin_id + '_color').value
+            var bin_color = $('#' + this.current_bin_id + '_color').attr('color')
             var fill_color = this.addAlpha(bin_color, 0.1);
 
             this.selection.setAttribute("fill", fill_color);
@@ -1780,6 +1781,12 @@ class PangenomeGraphUserInterface {
             onZoom: this.refresh_region_label_visibility
         });
 
+        // Restore pan/zoom from before the redraw (e.g. after a color change).
+        if (savedZoom !== null) {
+            this.panZoomInstance.zoom(savedZoom);
+            this.panZoomInstance.pan(savedPan);
+        }
+
         // Auto-size region labels once on first load.
         //
         // Goal: labels should appear at ~40 screen-pixels when the whole graph fills the
@@ -1964,7 +1971,7 @@ class PangenomeGraphUserInterface {
 
     marknode(element, bin_id) {
         
-        var bin_color = document.getElementById(bin_id + '_color').value
+        var bin_color = $('#' + bin_id + '_color').attr('color')
         var id = element.id;
         var current = ''
         
@@ -1976,12 +1983,12 @@ class PangenomeGraphUserInterface {
             }
         }
         
-        var core_color = $('#core_color')[0].value;
-        var paralog_color = $('#paralog_color')[0].value;
-        var singleton_color = $('#singleton_color')[0].value;
-        var accessory_color = $('#accessory_color')[0].value;
-        var rearranged_color = $('#rearranged_color')[0].value;
-        var trna_color = $('#trna_color')[0].value;
+        var core_color = $('#core_color').attr('color');
+        var paralog_color = $('#paralog_color').attr('color');
+        var singleton_color = $('#singleton_color').attr('color');
+        var accessory_color = $('#accessory_color').attr('color');
+        var rearranged_color = $('#rearranged_color').attr('color');
+        var trna_color = $('#trna_color').attr('color');
 
         var genome_size = this.genomes.length
         
@@ -2062,21 +2069,6 @@ class PangenomeGraphUserInterface {
     }
 
     
-    switch_color(instance) {
-        var bin_id = instance.currentTarget.id.replace("_color", "");
-        var nodes = this.bin_dict[bin_id];
-
-        if (nodes !== undefined && nodes.length !== 0) {
-            for (var node of nodes) {
-      
-              this.bin_dict[bin_id] = this.bin_dict[bin_id].filter(item => item !== node);
-              var element = document.getElementById(node);
-              this.marknode(element, bin_id);
-      
-            }
-        }
-    }
-    
     switch_bin(instance) {
         var bin_id = instance.currentTarget.id.replace("_radio", "");
         this.current_bin_id = bin_id
@@ -2131,15 +2123,15 @@ class PangenomeGraphUserInterface {
                             .on('click', () => { this.show_bin_functions('bin_' + this.current_bin_number); })
                     )
                 ).append(
-                    $('<div class="d-flex col-2"></div>').append(
-                        $('<input type="color" class="form-control form-control-color flex-fill p-0 border-0 colorchange" bin_id="bin_' + this.current_bin_number + '" id="bin_' + this.current_bin_number + '_color" value="#000000" aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color"></input>')
+                    $('<div class="d-flex col-2 align-items-center"></div>').append(
+                        $('<div class="pangraph-colorpicker" id="bin_' + this.current_bin_number + '_color" color="#000000" style="background-color: #000000; width: 100%; height: 22px; cursor: pointer; border: 1px solid #ccc;"></div>')
                     )
                 )
             )
         );
 
         $('#bin_' + this.current_bin_number + '_radio').on("click", this.switch_bin)
-        $('#bin_' + this.current_bin_number + '_color').on("change", this.switch_color)
+        this._init_bin_colorpicker('bin_' + this.current_bin_number);
         this.bin_dict['bin_' + this.current_bin_number] = [];
     }
     
@@ -2209,17 +2201,74 @@ class PangenomeGraphUserInterface {
         }
     }
 
+    // Initialize a colpick color picker on the given selector (e.g. '#core_color').
+    // Updates the swatch color live while the picker is open, then redraws when closed.
+    _init_colorpicker(selector) {
+        $(selector).colpick({
+            layout: 'hex',
+            submit: 0,
+            colorScheme: 'light',
+            onChange: (hsb, hex, rgb, el, bySetColor) => {
+                $(el).css('background-color', '#' + hex);
+                $(el).attr('color', '#' + hex);
+            },
+            onHide: () => {
+                this.main_draw();
+            }
+        });
+    }
+
+    // Initialize a colpick color picker for a bin swatch.
+    // Updates the swatch live, then re-marks all nodes in the bin when closed.
+    _init_bin_colorpicker(bin_id) {
+        const selector = '#' + bin_id + '_color';
+        $(selector).colpick({
+            layout: 'hex',
+            submit: 0,
+            colorScheme: 'light',
+            onChange: (hsb, hex, rgb, el, bySetColor) => {
+                $(el).css('background-color', '#' + hex);
+                $(el).attr('color', '#' + hex);
+            },
+            onHide: () => {
+                const nodes = [...(this.bin_dict[bin_id] || [])];
+                for (var node of nodes) {
+                    this.bin_dict[bin_id] = this.bin_dict[bin_id].filter(item => item !== node);
+                    var element = document.getElementById(node);
+                    this.marknode(element, bin_id);
+                }
+            }
+        });
+    }
+
+    // Initialize colpick on static (HTML-declared) color pickers.
+    // Per-genome pickers are initialized individually in the genome loop.
+    initialize_colorpickers() {
+        const genomeColorIds = new Set(this.genomes);
+        document.querySelectorAll('.pangraph-colorpicker').forEach(el => {
+            if (!genomeColorIds.has(el.id)) {
+                this._init_colorpicker('#' + el.id);
+            }
+        });
+    }
+
     set_UI_settings() {
 
         var genome_order = []
 
         for (var [setting, value] of Object.entries(this.data['states'])) {
-            if (typeof value === 'number') {
-                $('#' + setting)[0].value = value;
+            const el = $('#' + setting);
+            if (el.hasClass('pangraph-colorpicker')) {
+                // colpick element: set background and color attribute
+                const hex = value.replace('#', '');
+                el.css('background-color', value).attr('color', value);
+                el.colpickSetColor(hex);
+            } else if (typeof value === 'number') {
+                el[0].value = value;
             } else if (value == true || value == false) {
-                $('#' + setting).prop('checked', value);
+                el.prop('checked', value);
             } else {
-                $('#' + setting)[0].value = value;
+                el[0].value = value;
             }
 
             if (this.genomes.includes(setting)) {
@@ -2352,11 +2401,12 @@ class PangenomeGraphUserInterface {
                         $('<i class="user-handle bi bi-arrows-expand"></i>')
                     )
                 ).append(
-                    $('<div class="d-flex col-2">').append(
-                        $('<input type="color" class="form-control form-control-color flex-fill p-0 border-0" id="' + genome + '" name="' + genome + '" value="#000000" aria-label="..." data-bs-toggle="tooltip" data-bs-placement="top" title="Choose your color">')
+                    $('<div class="d-flex col-2 align-items-center">').append(
+                        $('<div class="pangraph-colorpicker" id="' + genome + '" color="#000000" style="background-color: #000000; width: 100%; height: 22px; cursor: pointer; border: 1px solid #ccc;"></div>')
                     )
                 )
             );
+            this._init_colorpicker('#' + genome);
     
             $('#RightOffcanvasBodyTop').append(
                 $('<tr>').append(
@@ -2622,11 +2672,12 @@ class PangenomeGraphUserInterface {
 
         // Initialize main buttons with "this" bound functions
         
-        $('#bin_1_color').on("change", this.switch_color)
+        this._init_bin_colorpicker('bin_1');
         $('#bin_1_radio').on("click", this.switch_bin)
         $('#bin_1_value').on("click", () => this.show_bin_functions('bin_1'))
 
         $('#flextree').on("change", this.flextree_change)
+        $('#flexsaturation').on("change", () => this.main_draw())
         $('#flexregionlabels').on("change", () => this.main_draw())
         $('#region_label_size, #region_label_min_width, #region_label_distance').on("change", () => {
             if (this.panZoomInstance && $('#flexregionlabels').prop('checked')) {
@@ -2676,6 +2727,10 @@ class PangenomeGraphUserInterface {
         this.settings_dict['maxlength'] = JSON.parse(JSON.stringify(this.data['states']['maxlength']))
         this.settings_dict['groupcompress'] = JSON.parse(JSON.stringify(this.data['states']['groupcompress']))
         this.settings_dict['state'] = JSON.parse(JSON.stringify(this.data['meta']['state']))
+
+        // Initialize colpick on all static color pickers (per-genome pickers are
+        // initialized individually as they are created in the genome loop above).
+        this.initialize_colorpickers();
 
         $("#redraw").removeClass("disabled");
     }
@@ -3385,12 +3440,15 @@ class PangenomeGraphUserInterface {
         var new_state = {}
         
         for (var [setting, value] of Object.entries(this.data['states'])) {
-            if (typeof value === 'number') {
-                new_state[setting] = Number($('#' + setting)[0].value);
+            const el = $('#' + setting);
+            if (el.hasClass('pangraph-colorpicker')) {
+                new_state[setting] = el.attr('color');
+            } else if (typeof value === 'number') {
+                new_state[setting] = Number(el[0].value);
             } else if (value == true || value == false) {
-                new_state[setting] = $('#' + setting).prop('checked');
+                new_state[setting] = el.prop('checked');
             } else {
-                new_state[setting] = $('#' + setting)[0].value;
+                new_state[setting] = el[0].value;
             }
         }
 

@@ -11,6 +11,7 @@
     <link rel="stylesheet" href="./node_modules/jquery-ui/themes/base/draggable.css">
     <!-- <link type="text/css" rel="stylesheet" href="lib/pangraph/tippy.js/themes/light.css" />
     <link type="text/css" rel="stylesheet" href="lib/pangraph/tippy.js/dist/tippy.css" /> -->
+    <link type="text/css" rel="stylesheet" href="lib/colpick/colpick.css" />
     <link type="text/css" rel="stylesheet" href="css/pangraph.css" />
     <link rel="stylesheet" href="./node_modules/toastr/build/toastr.min.css" type="text/css" />
     <link rel="shortcut icon" href="#">
@@ -42,6 +43,7 @@
     <script type="text/javascript" src="js/tree.js"></script>
     <script type="text/javascript" src="./node_modules/toastr/build/toastr.min.js" onerror='alertDependencyError("toastr")'></script>
     <script type="text/javascript" src="./node_modules/bootstrap-waitingfor/build/bootstrap-waitingfor.js" onerror='alertDependencyError("bootstrap-waitingfor")'></script>
+    <script type="text/javascript" src="lib/colpick/colpick.js" onerror='alertDependencyError("colpick")'></script>
     <script type="text/javascript" src="js/utils.js"></script>
     <script type="text/javascript" src="js/constants.js"></script>
 
@@ -156,70 +158,60 @@
                         <div class="col-1">
                         </div>
                         <div class="col-9 d-flex align-items-center">
-                          Color core 
+                          Color core
                         </div>
                         <div class="d-flex col-2">
-                          <input type="color" class="form-control form-control-color flex-fill p-0 border-0" id=core_color name=core_color value="#000000" aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <div class="pangraph-colorpicker" id="core_color" color="#BCBCBC" style="background-color: #BCBCBC; width: 100%; height: 22px; cursor: pointer; border: 1px solid #ccc;"></div>
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
                         <div class="col-1">
                         </div>
                         <div class="col-9 d-flex align-items-center">
-                          Color accessory 
+                          Color accessory
                         </div>
                         <div class="d-flex col-2">
-                          <input type="color" class="form-control form-control-color flex-fill p-0 border-0" id=accessory_color name=accessory_color value="#000000" aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <div class="pangraph-colorpicker" id="accessory_color" color="#DC8ADD" style="background-color: #DC8ADD; width: 100%; height: 22px; cursor: pointer; border: 1px solid #ccc;"></div>
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
                         <div class="col-1">
                         </div>
                         <div class="col-9 d-flex align-items-center">
-                          Color paralog 
+                          Color paralog
                         </div>
                         <div class="d-flex col-2">
-                          <input type="color" class="form-control form-control-color flex-fill p-0 border-0" id=paralog_color name=paralog_color value="#000000" aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <div class="pangraph-colorpicker" id="paralog_color" color="#FFA348" style="background-color: #FFA348; width: 100%; height: 22px; cursor: pointer; border: 1px solid #ccc;"></div>
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
                         <div class="col-1">
                         </div>
                         <div class="col-9 d-flex align-items-center">
-                          Color trna 
+                          Color trna
                         </div>
                         <div class="d-flex col-2">
-                          <input type="color" class="form-control form-control-color flex-fill p-0 border-0" id=trna_color name=trna_color value="#000000" aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <div class="pangraph-colorpicker" id="trna_color" color="#F66151" style="background-color: #F66151; width: 100%; height: 22px; cursor: pointer; border: 1px solid #ccc;"></div>
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
                         <div class="col-1">
                         </div>
                         <div class="col-9 d-flex align-items-center">
-                          Color singleton 
+                          Color singleton
                         </div>
                         <div class="d-flex col-2">
-                          <input type="color" class="form-control form-control-color flex-fill p-0 border-0" id=singleton_color name=singleton_color value="#000000" aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <div class="pangraph-colorpicker" id="singleton_color" color="#99C1F1" style="background-color: #99C1F1; width: 100%; height: 22px; cursor: pointer; border: 1px solid #ccc;"></div>
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">
                         <div class="col-1">
                         </div>
                         <div class="col-9 d-flex align-items-center">
-                          Color rearranged 
+                          Color rearranged
                         </div>
                         <div class="d-flex col-2">
-                          <input type="color" class="form-control form-control-color flex-fill p-0 border-0" id=rearranged_color name=rearranged_color value="#000000" aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
-                        </div>
-                      </div>
-                      <div class="col-12 d-flex mb-1">
-                        <div class="col-1">
-                        </div>
-                        <div class="col-9 d-flex align-items-center">
-                          Color layers 
-                        </div>
-                        <div class="d-flex col-2">
-                          <input type="color" class="form-control form-control-color flex-fill p-0 border-0" id=layer_color name=layer_color value="#000000" aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <div class="pangraph-colorpicker" id="rearranged_color" color="#8FF0A4" style="background-color: #8FF0A4; width: 100%; height: 22px; cursor: pointer; border: 1px solid #ccc;"></div>
                         </div>
                       </div>
 
@@ -259,11 +251,11 @@
                           Backbone/non-backbone
                         </div>
                         <div class="d-flex col-2">
-                          <input type="color" class="form-control form-control-color flex-fill p-0 border-0" id=back_color name=back_color value="#000000" aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <div class="pangraph-colorpicker" id="back_color" color="#3D70A0" style="background-color: #3D70A0; width: 100%; height: 22px; cursor: pointer; border: 1px solid #ccc;"></div>
                         </div>
-                      
+
                         <div class="d-flex col-2">
-                          <input type="color" class="form-control form-control-color flex-fill p-0 border-0" id=non_back_color name=non_back_color value="#000000" aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                          <div class="pangraph-colorpicker" id="non_back_color" color="#F8E45C" style="background-color: #F8E45C; width: 100%; height: 22px; cursor: pointer; border: 1px solid #ccc;"></div>
                         </div>
                         <div class="d-flex col-2">
                           <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="globalbackbone" name="globalbackbone" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
@@ -645,8 +637,8 @@
                             <div class="d-flex col-2">
                               <input type="button" class="form-control float-end text-end flex-fill p-0 border-0 bin-count-btn" id="bin_1_value" value=0 title="Click for functions summary">
                             </div>
-                            <div class="d-flex col-2">
-                              <input type="color" class="form-control form-control-color flex-fill p-0 border-0 colorchange" id=bin_1_color bin_id="bin_1" value="#000000" aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
+                            <div class="d-flex col-2 align-items-center">
+                              <div class="pangraph-colorpicker" id="bin_1_color" color="#000000" style="background-color: #000000; width: 100%; height: 22px; cursor: pointer; border: 1px solid #ccc;"></div>
                             </div>
                           </div>
                         </div>
