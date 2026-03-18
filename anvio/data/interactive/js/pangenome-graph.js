@@ -1012,8 +1012,8 @@ class PangenomeGraphUserInterface {
         }
         
         if ($('#flexregionlabels').prop('checked') && this.data['regions']) {
-            // Outermost content edge in radial/y coordinates (no font padding — added dynamically).
-            var outer_content_r = current_outer_stop + sum_middle_layer + this.global_y * node_distance_y;
+            // Base radial distance without any node layers.
+            var base_outer_r = current_outer_stop + sum_middle_layer;
 
             for (var [rid, rinfo] of Object.entries(this.data['regions'])) {
                 var x_min = rinfo['x_min'];
@@ -1022,6 +1022,17 @@ class PangenomeGraphUserInterface {
 
                 // Skip single-position (backbone-only) regions
                 if (x_span === 0) continue;
+
+                // Find the tallest node in this region so the label clears it.
+                var region_max_y = 0;
+                for (var [nid, ndata] of Object.entries(this.nodes)) {
+                    var nx = ndata['position'][0];
+                    if (nx >= x_min && nx <= x_max) {
+                        var ny = ndata['position'][1];
+                        if (ny > region_max_y) region_max_y = ny;
+                    }
+                }
+                var outer_content_r = base_outer_r + region_max_y * node_distance_y;
 
                 var x_mid = (x_min + x_max) / 2;
                 var svg_region_width = x_span * node_distance_x;
@@ -2928,13 +2939,18 @@ class PangenomeGraphUserInterface {
                       || document.getElementById(bin_id + '_name')?.value
                       || bin_id;
 
+        waitingDialog.show('Fetching functions and metabolism data...', { dialogSize: 'sm' });
+
         let response;
         try {
             response = await this.fetch_functions_and_metabolism(sgc_ids);
         } catch(err) {
+            waitingDialog.hide();
             toastr.error('Could not reach the functions endpoint.', "Request failed");
             return;
         }
+
+        waitingDialog.hide();
 
         if (!response || response.status !== 0) {
             toastr.error((response && response.message) || 'Could not load functional annotations.', "Server error");
