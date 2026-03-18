@@ -2740,6 +2740,13 @@ class PangenomeGraphUserInterface {
         this.settings_dict['groupcompress'] = JSON.parse(JSON.stringify(this.data['states']['groupcompress']))
         this.settings_dict['state'] = JSON.parse(JSON.stringify(this.data['meta']['state']))
 
+        // Keyboard shortcuts: D = Draw, S = toggle settings panel
+        document.body.addEventListener('keydown', (ev) => {
+            if ((/^(?:input|select|textarea|button)$/i).test(ev.target.nodeName)) return;
+            if (ev.keyCode === 68) this.start_draw();          // D
+            if (ev.keyCode === 83) toggleLeftPanel();           // S
+        });
+
         // Initialize colpick on all static color pickers (per-genome pickers are
         // initialized individually as they are created in the genome loop above).
         this.initialize_colorpickers();
