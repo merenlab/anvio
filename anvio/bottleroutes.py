@@ -209,6 +209,7 @@ class BottleApplication(Bottle):
         self.route('/pangraph/get_pangraph_synteny_gene_cluster_function',        callback=self.get_pangraph_synteny_gene_cluster_function, method="POST")
         self.route('/pangraph/get_pangraph_synteny_gene_cluster_region',          callback=self.get_pangraph_synteny_gene_cluster_region, method="POST")
         self.route('/pangraph/get_pangraph_synteny_gene_cluster_search_result',   callback=self.get_pangraph_synteny_gene_cluster_search_result, method="POST")
+        self.route('/pangraph/get_pangraph_synteny_gc_functions_and_metabolism',  callback=self.get_pangraph_synteny_gc_functions_and_metabolism, method="POST")
 
 
     def run_application(self, ip, port):
@@ -1732,6 +1733,35 @@ class BottleApplication(Bottle):
             return(json.dumps({'status': 0, 'data': data}))
         except:
             return(json.dumps({'status': 1, 'data': ''}))
+
+
+    def get_pangraph_synteny_gc_functions_and_metabolism(self):
+        try:
+            payload = request.json
+            synteny_gene_clusters = payload['synteny_gene_clusters']
+
+            if not len(self.interactive.gene_clusters_function_sources):
+                return json.dumps({'status': 1, 'message': 'No functional annotations are available for this pangenome graph database.'})
+
+            functions = {}
+            for sgc in synteny_gene_clusters:
+                functions[sgc] = self.interactive.synteny_gene_clusters_functions_summary_dict.get(sgc, {})
+
+            kegg_metabolism_superdict = {'user_defined_enzymes': {}}
+            if 'KOfam' in self.interactive.gene_clusters_function_sources:
+                try:
+                    kegg_metabolism_superdict, _ = self.interactive.get_metabolism_estimates_for_a_list_of_gene_clusters(synteny_gene_clusters)
+                except Exception as metabolism_error:
+                    return json.dumps({'status': 1, 'message': f"Metabolism estimation failed: {metabolism_error}"})
+
+            payload = {'status': 0,
+                       'functions': functions,
+                       'metabolism': kegg_metabolism_superdict['user_defined_enzymes'],
+                       'sources': list(self.interactive.gene_clusters_function_sources)}
+
+            return json.dumps(payload, default=utils.to_jsonable)
+        except Exception as e:
+            return json.dumps({'status': 1, 'message': str(e)})
 
 
     def get_pangraph_synteny_gene_cluster_search_result(self):
