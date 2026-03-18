@@ -146,19 +146,19 @@
                 <div id="tree-settings" class="form-horizontal">
                   <span id="toggle-chevron-item" class="settings-header btn d-flex chart-icon-padding align-items-center" data-toggle="collapse" href="#item-collapse-main" role="button" aria-expanded="true" aria-controls="item-collapse-option" onclick="$('#toggle-chevron-item').children('i').toggleClass('bi-chevron-up bi-chevron-down');">
                     <img src="images/item-chart.svg" alt="Item Icon"/> 
-                    Items
+                    Display Settings
                     <i class="text-secondary ml-1 d-flex pt-1 align-items-center bi bi-chevron-down"></i>
                   </span> 
 
                   <div id="item-collapse-main" class="ml-2 mr-3 collapse multi-collapse show">
-                    <span class="settings-secondary-header mb-3 mt-3">Color</span>
+                    <span class="settings-secondary-header mb-3 mt-3">Node Colors</span>
 
                     <div class="row align-items-center">
                       <div class="col-12 d-flex mb-1">
                         <div class="col-1">
                         </div>
                         <div class="col-9 d-flex align-items-center">
-                          Color core
+                          Core SynGCs
                         </div>
                         <div class="d-flex col-2">
                           <div class="pangraph-colorpicker" id="core_color" color="#BCBCBC" style="background-color: #BCBCBC; width: 100%; height: 22px; cursor: pointer; border: 1px solid #ccc;"></div>
@@ -168,7 +168,7 @@
                         <div class="col-1">
                         </div>
                         <div class="col-9 d-flex align-items-center">
-                          Color accessory
+                          Accessory SynGCs
                         </div>
                         <div class="d-flex col-2">
                           <div class="pangraph-colorpicker" id="accessory_color" color="#DC8ADD" style="background-color: #DC8ADD; width: 100%; height: 22px; cursor: pointer; border: 1px solid #ccc;"></div>
@@ -178,7 +178,7 @@
                         <div class="col-1">
                         </div>
                         <div class="col-9 d-flex align-items-center">
-                          Color paralog
+                          Multi-copy SynGCs
                         </div>
                         <div class="d-flex col-2">
                           <div class="pangraph-colorpicker" id="paralog_color" color="#FFA348" style="background-color: #FFA348; width: 100%; height: 22px; cursor: pointer; border: 1px solid #ccc;"></div>
@@ -188,7 +188,7 @@
                         <div class="col-1">
                         </div>
                         <div class="col-9 d-flex align-items-center">
-                          Color trna
+                          tRNAs
                         </div>
                         <div class="d-flex col-2">
                           <div class="pangraph-colorpicker" id="trna_color" color="#F66151" style="background-color: #F66151; width: 100%; height: 22px; cursor: pointer; border: 1px solid #ccc;"></div>
@@ -198,7 +198,7 @@
                         <div class="col-1">
                         </div>
                         <div class="col-9 d-flex align-items-center">
-                          Color singleton
+                          Singleton SynGCs
                         </div>
                         <div class="d-flex col-2">
                           <div class="pangraph-colorpicker" id="singleton_color" color="#99C1F1" style="background-color: #99C1F1; width: 100%; height: 22px; cursor: pointer; border: 1px solid #ccc;"></div>
@@ -208,7 +208,7 @@
                         <div class="col-1">
                         </div>
                         <div class="col-9 d-flex align-items-center">
-                          Color rearranged
+                          Rearranged SynGCs
                         </div>
                         <div class="d-flex col-2">
                           <div class="pangraph-colorpicker" id="rearranged_color" color="#8FF0A4" style="background-color: #8FF0A4; width: 100%; height: 22px; cursor: pointer; border: 1px solid #ccc;"></div>
@@ -220,7 +220,7 @@
                           <input type="checkbox" id="flexsaturation" name="flexsaturation" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top" checked>
                         </div>
                         <div class="col-11 d-flex align-items-center">
-                          Fade colors by genome prevalence (rare nodes and edges appear lighter)
+                            Fade colors by genome prevalence <br />(so that the rare nodes and edges appear lighter)
                         </div>
                       </div>                
                     </div>
@@ -292,6 +292,8 @@
                         </div>
                       </div>
                     </div>
+
+                    <hr />
 
                     <div class="row align-items-center mb-2">
                       <div class="col-12 d-flex justify-content-end">
