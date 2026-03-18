@@ -1918,6 +1918,10 @@ class PangenomeGraphUserInterface {
                 var node_id = this.data['nodes'][element.getAttribute("id")]["gene_cluster"]
             }
 
+            element.addEventListener('contextmenu', (ev) => {
+                this.show_node_context_menu(ev, ev.currentTarget);
+            });
+
             tippy(element, {
                 content: '<strong>' + node_id + '</strong>' + '<br />',
                 allowHTML: true,
@@ -2755,36 +2759,97 @@ class PangenomeGraphUserInterface {
         }
     }
     
-    async nodeinfo(e, gene_cluster_id='') {
-
-        var id = e.id;
-        var element = document.getElementById(id);
-
+    _resolve_node_ids(e, gene_cluster_id='') {
+        const id = e.id;
+        const element = document.getElementById(id);
+        let gene_cluster_context;
         if (element.getAttribute('class') == 'group') {
-            var gene_cluster_context = id;
-            if (!gene_cluster_id) {
-                gene_cluster_id = this.group_dict[id][0];
-            }
+            gene_cluster_context = id;
+            if (!gene_cluster_id) gene_cluster_id = this.group_dict[id][0];
         } else {
             gene_cluster_id = id;
-            var gene_cluster_context = null;
+            gene_cluster_context = null;
         }
+        return { gene_cluster_id, gene_cluster_context };
+    }
 
-        const all_info = await this.get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_context, 1);
-        const title = `Synteny gene cluster: ${gene_cluster_id}`;
+    async nodeinfo(e, gene_cluster_id='') {
+        const { gene_cluster_id: gcid, gene_cluster_context } = this._resolve_node_ids(e, gene_cluster_id);
+
+        const all_info = await this.get_gene_cluster_display_tables(gcid, gene_cluster_context, 1, false);
+        const title = `Synteny gene cluster: ${gcid}`;
         showGeneClusterFunctionsSummaryTableDialog(title, all_info);
 
         setTimeout(() => {
-            // wire up group-context choice clicks inside the new modal
             document.querySelectorAll('.group_choice').forEach(el => {
                 el.addEventListener('click', () => { this.nodeinfo(e, el.getAttribute("name_id")); });
             });
-            // wire up functions table filter controls
             setupItemTableFiltering();
         }, 100);
     }
 
-    async get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_context, add_align) {
+    async nodeinfo_with_functions(e, gene_cluster_id='') {
+        const { gene_cluster_id: gcid, gene_cluster_context } = this._resolve_node_ids(e, gene_cluster_id);
+
+        waitingDialog.show('Fetching functions and metabolism data...', { dialogSize: 'sm' });
+        let all_info;
+        try {
+            all_info = await this.get_gene_cluster_display_tables(gcid, gene_cluster_context, 1, true);
+        } catch(err) {
+            waitingDialog.hide();
+            toastr.error('Could not load data.', "Request failed");
+            return;
+        }
+        waitingDialog.hide();
+
+        const title = `Synteny gene cluster: ${gcid}`;
+        showGeneClusterFunctionsSummaryTableDialog(title, all_info);
+
+        setTimeout(() => {
+            document.querySelectorAll('.group_choice').forEach(el => {
+                el.addEventListener('click', () => { this.nodeinfo_with_functions(e, el.getAttribute("name_id")); });
+            });
+            setupItemTableFiltering();
+        }, 100);
+    }
+
+    show_node_context_menu(event, node_el) {
+        event.preventDefault();
+        document.querySelectorAll('.context-menu').forEach(m => m.remove());
+
+        const menu = document.createElement('ul');
+        menu.setAttribute('class', 'dropdown-menu context-menu');
+        menu.setAttribute('role', 'menu');
+        menu.style.display = 'block';
+        menu.style.visibility = 'hidden';
+
+        const items = [
+            { title: 'Show functions for this SynGC', action: () => this.nodeinfo_with_functions(node_el) },
+        ];
+
+        for (const item of items) {
+            const li = document.createElement('li');
+            const a = document.createElement('a');
+            a.setAttribute('class', 'dropdown-item');
+            a.setAttribute('href', '#');
+            a.textContent = item.title;
+            a.addEventListener('click', (e) => { e.preventDefault(); item.action(); menu.remove(); });
+            li.appendChild(a);
+            menu.appendChild(li);
+        }
+
+        document.body.appendChild(menu);
+
+        const maxLeft = window.innerWidth - menu.clientWidth;
+        const maxTop = window.innerHeight - menu.clientHeight;
+        menu.style.left = Math.min(maxLeft, event.clientX) + 'px';
+        menu.style.top = Math.min(maxTop, event.clientY) + 'px';
+        menu.style.visibility = '';
+
+        document.addEventListener('click', () => menu.remove(), { once: true });
+    }
+
+    async get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_context, add_align, show_functions=false) {
         // The purpose of this function is to build HTML formatted tables to give access to
         // the details of a gene cluster. The parameters here are,
         //
@@ -2815,8 +2880,8 @@ class PangenomeGraphUserInterface {
         ///////////////////////////////////////////////////////////////////////////////////////////
         
         var basic_layer_table = this.get_layer_data(gene_cluster_id, add_align);
-        
-        var functions_table = await this.get_gene_cluster_functions_table(gene_cluster_id, add_align);
+
+        var functions_table = show_functions ? await this.get_gene_cluster_functions_table(gene_cluster_id, add_align) : '';
 
         var regions_table = await this.get_region_data(gene_cluster_id, add_align);
         
@@ -2824,35 +2889,26 @@ class PangenomeGraphUserInterface {
         // RETRIEVE AND BUILD SEQUENCE ALIGNMENTS
         ///////////////////////////////////////////////////////////////////////////////////////////
         
+        ///////////////////////////////////////////////////////////////////////////////////////////
+        // MERGE ALL AND RETURN
+        // Order depends on whether this is a left-click (no functions) or right-click (with
+        // functions). Right-click order: Basics → Metabolism+Functions → Alignments → the rest.
+        ///////////////////////////////////////////////////////////////////////////////////////////
+
         if (add_align == 1) {
-        
-            var alignment = {}
-            
-            // if (gene_cluster_id != 'start' && gene_cluster_id != 'stop') {
-            for (var genome of Object.keys(this.data['nodes'][gene_cluster_id]['gene_calls'])) {
-            
-            // if ($('#flex' + genome).prop('checked') == true){
-            
-            var genecall = this.data['nodes'][gene_cluster_id]['gene_calls'][genome]
-            var name = this.data['nodes'][gene_cluster_id]['gene_cluster']
-            alignment[genome] = [genecall, name]
-            
-            // }
-            }
-            // }
-            
             var gene_cluster_sequence_alignments_table = await this.appendalignment(gene_cluster_id)
-            
-            ///////////////////////////////////////////////////////////////////////////////////////////
-            // MERGE ALL AND RETURN
-            ///////////////////////////////////////////////////////////////////////////////////////////
-            
-            return gene_cluster_context_table + basic_info_table + basic_layer_table + regions_table + functions_table + gene_cluster_sequence_alignments_table
-        
+
+            if (show_functions) {
+                return gene_cluster_context_table + basic_info_table + functions_table + gene_cluster_sequence_alignments_table + basic_layer_table + regions_table;
+            } else {
+                return gene_cluster_context_table + basic_info_table + gene_cluster_sequence_alignments_table + basic_layer_table + regions_table;
+            }
         } else {
-        
-            return gene_cluster_context_table + basic_info_table + basic_layer_table + regions_table + functions_table
-        
+            if (show_functions) {
+                return gene_cluster_context_table + basic_info_table + functions_table + basic_layer_table + regions_table;
+            } else {
+                return gene_cluster_context_table + basic_info_table + basic_layer_table + regions_table;
+            }
         }
     }
     
@@ -2868,16 +2924,15 @@ class PangenomeGraphUserInterface {
         }
         
         if (add_align == 1) {
-            var basic_layer_table = `<p class="settings-secondary-header mb-3 mt-3">LAYERS</p>`;
+            var basic_layer_table = `<p class="bin-modal-header" style="background: #c8e6c978;">Layers</p>`;
             basic_layer_table += `<table class="table table-striped table-bordered sortable" id="node_layers_table">`;
         } else {
             var basic_layer_table = ''
             basic_layer_table += `<table class="table table-striped table-bordered sortable">`;
         }
-        
+
         basic_layer_table += `<thead><tr>`;
-        
-        basic_layer_table += `<th scope="col">Item</th>`;
+        basic_layer_table += `<th scope="col" style="width: 25%;">Item</th>`;
         basic_layer_table += `<th scope="col">Value</th>`;
         
         basic_layer_table += `</tr></thead>`;
@@ -2912,7 +2967,7 @@ class PangenomeGraphUserInterface {
         var basic_info = {'Synteny Gene Cluster': gene_cluster_id, 'Gene Cluster': gene_cluster_name, 'Contributing Genomes': num_contributing_genomes, 'Position in Graph': position_in_graph}
         // build the basic information table
         if (add_align == 1) {
-            var basic_info_table = `<p class="settings-secondary-header mb-3 mt-3">BASICS</p>`;
+            var basic_info_table = `<p class="bin-modal-header" style="background: #d0e4f578;">Basics</p>`;
             basic_info_table += `<table class="table table-striped table-bordered sortable" gc_context="` + context + `" gc_pos="` + x_pos + `" gc_id="` + gene_cluster_id + `" id="node_basics_table">`;
         } else {
             var basic_info_table = ''
@@ -2942,16 +2997,15 @@ class PangenomeGraphUserInterface {
       var region_info = d['data'][gene_cluster_id]
         
       if (add_align == 1) {
-            var region_table = `<p class="settings-secondary-header mb-3 mt-3">LAYERS</p>`;
+            var region_table = `<p class="bin-modal-header" style="background: #b2dfdb78;">Details from graph</p>`;
             region_table += `<table class="table table-striped table-bordered sortable" id="node_regions_table">`;
         } else {
             var region_table = ''
             region_table += `<table class="table table-striped table-bordered sortable">`;
         }
-        
+
         region_table += `<thead><tr>`;
-        
-        region_table += `<th scope="col">Metrics</th>`;
+        region_table += `<th scope="col" style="width: 25%;">Metric</th>`;
         region_table += `<th scope="col">Value</th>`;
         
         region_table += `</tr></thead>`;
@@ -3200,7 +3254,7 @@ class PangenomeGraphUserInterface {
     
         // console.log(gene_cluster_id_current, gene_cluster_context, group_context)
         if (add_align == 1) {
-          var gene_cluster_context_table = `<p class="settings-secondary-header mb-3 mt-3">GENE CLUSTER CONTEXT</p>`;
+          var gene_cluster_context_table = `<p class="bin-modal-header" style="background: #ddd8f578;">Gene cluster context</p>`;
         }else {
           var gene_cluster_context_table = ''
         }
@@ -3225,7 +3279,7 @@ class PangenomeGraphUserInterface {
     }
     
     async appendalignment(gene_cluster_id) {
-        var alignments_table = `<p class="settings-secondary-header mb-3 mt-3">SEQUENCE ALIGNMENTS</p>`;
+        var alignments_table = `<p class="bin-modal-header" style="background: #f8bbd078;">Sequence alignments</p>`;
         alignments_table += `<div class="scroll-wrapper"><table class="table sortable" gc_id="` + gene_cluster_id + `" id="node_sequence_alignments_table">`;
         alignments_table += `<thead class="gc-table-header"><tr>`;
         alignments_table += `<th class="position-sticky" style="left:0px; z-index:2;" scope="col">Genome</th>`;
