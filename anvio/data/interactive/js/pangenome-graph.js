@@ -33,6 +33,7 @@ class PangenomeGraphUserInterface {
 
         this.selection = null;
         this.panZoomInstance = null;
+        this._region_label_size_initialized = false;
 
         this.isDown = false
         this.diff = 0
@@ -1778,6 +1779,32 @@ class PangenomeGraphUserInterface {
             maxZoom: 100,
             onZoom: this.refresh_region_label_visibility
         });
+
+        // Auto-size region labels once on first load.
+        //
+        // Goal: labels should appear at ~40 screen-pixels when the whole graph fills the
+        // viewport (the typical initial view after panning/zooming to fit).
+        //
+        // With font_size_svg = TARGET_PX / realZoom^0.6, screen size = TARGET_PX * realZoom^0.4.
+        // At "graph fills viewport" zoom for a circular layout:
+        //   realZoom_fill ≈ container_width / (2 * max_outer_r)
+        //   screen_px = TARGET_PX * (container_width / (2*max_outer_r))^0.4 = 16
+        //   TARGET_PX = 16 * (2*max_outer_r / container_width)^0.4
+        //
+        // Using max_outer_r (the graph's total SVG extent) rather than per-region widths
+        // ensures a sensible default even for graphs with many narrow regions (e.g. SAR11).
+        if (!this._region_label_size_initialized) {
+            this._region_label_size_initialized = true;
+            const labels = document.querySelectorAll('.region-label');
+            if (labels.length > 0) {
+                const max_outer_r = Math.max(...Array.from(labels)
+                    .map(el => parseFloat(el.dataset.outerR))
+                    .filter(r => r > 0));
+                const container_width = document.getElementById('result').clientWidth || window.innerWidth;
+                const auto_px = Math.round(16 * Math.pow(2 * max_outer_r / container_width, 0.4));
+                $('#region_label_size')[0].value = Math.max(8, Math.min(200, auto_px));
+            }
+        }
 
         this.refresh_region_label_visibility();
 
