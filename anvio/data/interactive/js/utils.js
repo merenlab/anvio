@@ -1138,3 +1138,331 @@ function zoom_reset() {
     const baseMatrix = [scale, 0, 0, scale, centerX, centerY];
     setMatrix(baseMatrix);
 }
+
+
+// ─── Shared functions/metabolism display builders ────────────────────────────
+// Used by both anvi-display-pan (main.js) and anvi-display-pan-graph (pangenome-graph.js).
+// Kept here in utils.js so both interfaces can use them without loading main.js.
+
+function copyTextWithFeedback(btn, text) {
+    if (typeof text !== 'string' || !text.length) return;
+    navigator.clipboard.writeText(text)
+        .then(function () {
+            const icon = btn.nextElementSibling;
+            if (!icon) return;
+            icon.textContent = "✔";
+            icon.style.color = "green";
+            icon.style.marginLeft = "4px";
+            setTimeout(function () { icon.textContent = ""; }, 2000);
+        })
+        .catch(function (err) { console.error("Copy failed", err); });
+}
+
+function buildCopyableNamesSection(label, items, options = {}) {
+    const safeItems = Array.isArray(items) ? items : [];
+    const headerText = `${label} (${safeItems.length})`;
+    const background = options.background || '#ffe4c478';
+    const marginBottom = options.marginBottom || '20px';
+    const copySeparator = options.copySeparator || '\n';
+    const contentRenderer = options.contentRenderer;
+    const copyReadyNames = safeItems.join(copySeparator);
+    const header = `
+        <div class="bin-modal-header" style="background: ${background};">
+            <span style="font-size: large;">${headerText}</span>
+            <button class="btn btn-primary btn-sm"
+                onclick='copyTextWithFeedback(this, ${JSON.stringify(copyReadyNames)})'>Copy to Clipboard</button>
+            <span class="copy-feedback" style="min-width: 14px; font-size: 0.9em; line-height: 1;"></span>
+        </div>`;
+    const body = typeof contentRenderer === 'function'
+        ? contentRenderer(safeItems)
+        : `<p style="margin-bottom: ${marginBottom};">${safeItems.join(', ') || 'No items found.'}</p>`;
+    return header + body;
+}
+
+function buildCopyButton(label, items) {
+    const safeItems = Array.isArray(items) ? items : [];
+    const copyText = safeItems.join('\n');
+    return `
+        <button class="btn btn-primary btn-sm"
+            style="margin-left: 12px;"
+            title="Copy ${label}"
+            onclick='copyTextWithFeedback(this, ${JSON.stringify(copyText)})'>
+            Copy ${label}
+        </button>
+        <span class="copy-feedback" style="min-width: 14px; font-size: 0.9em; line-height: 1;"></span>`;
+}
+
+function buildFunctionsContent(response, config) {
+    const fmtPct = (v) => (typeof v === 'number' && !isNaN(v)) ? (v * 100).toFixed(1) + '%' : 'NA';
+    let content = '';
+    if (config.dialogFunction === 'showGeneFunctionsInSplitsSummaryTableDialog') {
+        content += buildContigAndSplitNamesTable(response, config);
+    }
+    content += buildMetabolismTable(response, config, fmtPct);
+    content += '<hr style="margin: 30px !important;">';
+    content += buildFunctionsTable(response, config);
+    return content;
+}
+
+function buildContigAndSplitNamesTable(response, config) {
+    const contigNames = response && response.contig_names;
+    const splitNames  = response && response.split_names;
+    let out = '';
+    out += buildCopyableNamesSection('Contig Names', contigNames, {
+        background: '#f5f5dc9c', marginBottom: '35px', copySeparator: '\n',
+        contentRenderer: (names) => `<p style="margin-bottom: 35px;">${(names || []).join(', ')}</p>`
+    });
+    out += buildCopyableNamesSection('Split Names', splitNames, {
+        background: '#f5f5dc9c', marginBottom: '35px', copySeparator: '\n',
+        contentRenderer: (names) => `<p style="margin-bottom: 35px;">${(names || []).join(', ')}</p>`
+    });
+    return out;
+}
+
+function buildMetabolismTable(response, config, fmtPct) {
+    const metabolism = response && response.metabolism;
+    let out = `<p class="bin-modal-header" style="background: #f5f5dc9c">Metabolic module involvement</p>`;
+    if (!metabolism || typeof metabolism !== 'object' || !Object.keys(metabolism).length) {
+        out += '<p style="margin-bottom: 35px;">There are no metabolic insights to show here :/</p>';
+        return out;
+    }
+    out += `<p style="margin-bottom: 35px;">${config.metabolismDescription}</p>
+        <table class="table table-sm table-striped" style="width: 95%; margin-left: 10px;">
+            <thead class="thead-light"><tr>
+                <th>Metabolic module</th>
+                <th style="text-align: center;">Contribution to pathway completeness</th>
+                <th style="text-align: center;">Contribution to Stepwise completeness</th>
+                <th style="text-align: center;">${config.itemLabel === 'gene clusters' ? 'Gene clusters' : 'Gene calls'} involved</th>
+            </tr></thead><tbody>`;
+    Object.keys(metabolism)
+        .sort((a, b) => {
+            const pa = metabolism[a]?.pathwise_percent_complete ?? 0;
+            const pb = metabolism[b]?.pathwise_percent_complete ?? 0;
+            if (pb !== pa) return pb - pa;
+            const ga = Array.isArray(metabolism[a]?.gene_caller_ids) ? metabolism[a].gene_caller_ids.length : 0;
+            const gb = Array.isArray(metabolism[b]?.gene_caller_ids) ? metabolism[b].gene_caller_ids.length : 0;
+            return gb - ga;
+        })
+        .forEach((moduleId) => {
+            const m = metabolism[moduleId] || {};
+            const genes = Array.isArray(m.gene_caller_ids)
+                ? [...m.gene_caller_ids].map(String)
+                    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }))
+                    .join(", ")
+                : "NA";
+            const pathwayPct  = fmtPct(m.pathwise_percent_complete);
+            const stepwisePct = fmtPct(m.stepwise_completeness);
+            const moduleName  = m.NAME ?? 'NA';
+            const moduleClass = (typeof m.CLASS === 'string' ? m.CLASS : 'NA');
+            const complete    = (m.pathwise_is_complete === true) || (m.stepwise_is_complete === true);
+            const badge       = complete ? ` <span class="badge badge-success">complete</span>` : '';
+            out += `<tr>
+                <td style="padding-left: 20px;">
+                   <b>${moduleId}</b>${badge}<br />
+                   - Module function: ${moduleName}<br />
+                   - Module class: ${moduleClass.split(";").map((p,i,a) => i===a.length-1 ? `<b>${p.trim()}</b>` : p).join("; ")}
+                </td>
+                <td style="text-align: center; vertical-align: middle;">${pathwayPct}</td>
+                <td style="text-align: center; vertical-align: middle;">${stepwisePct}</td>
+                <td style="text-align: center; vertical-align: middle; max-width: 420px; word-break: break-word;">${genes}</td>
+            </tr>`;
+        });
+    out += `</tbody></table>`;
+    return out;
+}
+
+function buildFilterControls(sources, functions, config) {
+    const totalItems = Object.keys(functions).length;
+    const sourceCounts = {};
+    Object.keys(sources).forEach(function(index) {
+        let source = sources[index];
+        sourceCounts[source] = 0;
+        Object.keys(functions).forEach(function(item_id) {
+            let d = functions[item_id] || {};
+            if (d[source]) {
+                const accession_string = config.getAccessionString(d, source);
+                const function_string  = config.getFunctionString(d, source);
+                if (accession_string !== 'N/A' || function_string !== 'N/A') {
+                    sourceCounts[source]++;
+                }
+            }
+        });
+    });
+    let out = `
+        <div style="background-color: #f8f9fa; padding: 15px; margin: 20px 10px; border-radius: 5px;">
+            <div style="margin-bottom: 10px;">
+                <label><input type="checkbox" id="hideNA"> Hide entries with no annotation to simplify the display</label>
+            </div>
+            <hr>
+            <div>
+                <p>Annotation sources to display for a total of ${totalItems} ${config.itemLabel}:</p>
+                <div style="margin-top: 5px; display: flex; flex-wrap: wrap; gap: 15px;">`;
+    Object.keys(sources).forEach(function(index) {
+        let source = sources[index];
+        out += `<label style="margin-right: 15px;">
+                    <input type="checkbox" class="source-filter" data-source="${source}" checked>
+                    ${source} <span style="color: #666; font-size: 0.9em;">(${sourceCounts[source]})</span>
+                </label>`;
+    });
+    out += `</div>
+                <div style="margin-top: 10px;">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="selectAllSources">Select All</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="deselectAllSources">Deselect All</button>
+                </div>
+            </div>
+        </div>`;
+    return out;
+}
+
+function buildFunctionsTable(response, config) {
+    if (config.dialogFunction === 'showGeneFunctionsInSplitsSummaryTableDialog') return "";
+    const itemIds = Object.keys(response['functions'] || {});
+    const copyButton = (config.itemLabel === 'gene clusters' || config.itemLabel === 'synteny gene clusters')
+        ? buildCopyButton(`${config.itemLabel} names`, itemIds)
+        : '';
+    let content = `
+        <div class="bin-modal-header" style="background: #ffe4c478;">
+            <span style="font-size: large;">Functions per ${config.itemLabel}</span>
+            ${copyButton}
+        </div>
+        <p>${config.functionsDescription}</p>`;
+    content += buildFilterControls(response['sources'], response['functions'], config);
+    content += `
+        <table class="table" id="itemFunctionsTable" style="width: 95%; margin-left: 10px; table-layout: fixed;">
+           <thead class="thead-light"><tr>
+             <th style="width: 10%;">${config.itemIdLabel}</th>
+             <th style="width: 10%;">Source</th>
+             <th style="width: 10%;">Accession</th>
+             <th style="width: 70%;">Function</th>
+           </tr></thead><tbody>`;
+    Object.keys(response['functions']).forEach(function(item_id) {
+        let d = response['functions'][item_id] || {};
+        Object.keys(response['sources']).forEach(function(index) {
+            let function_source = response['sources'][index];
+            let accession_string, function_string;
+            let hasAnnotation = false;
+            if (d[function_source]) {
+                accession_string = config.getAccessionString(d, function_source);
+                function_string  = config.getFunctionString(d, function_source);
+                hasAnnotation    = (accession_string !== 'N/A' && function_string !== 'N/A');
+            } else {
+                accession_string = 'N/A';
+                function_string  = 'N/A';
+            }
+            const dataAttrs = `data-source="${function_source}" data-has-annotation="${hasAnnotation}" data-item="${item_id}"`;
+            if (index == 0) {
+                content += `<tr style="border-top: 3px solid #d0d0d0;" ${dataAttrs}>
+                    <td rowspan="${Object.keys(response['sources']).length}" style="vertical-align: middle; word-wrap: break-word;"><b>${item_id}</b></td>
+                    <td style="word-wrap: break-word;">${function_source}</td>
+                    <td style="word-wrap: break-word;">${accession_string}</td>
+                    <td style="word-wrap: break-word;">${function_string}</td>
+                    </tr>`;
+            } else {
+                content += `<tr ${dataAttrs}>
+                    <td style="word-wrap: break-word;">${function_source}</td>
+                    <td style="word-wrap: break-word;">${accession_string}</td>
+                    <td style="word-wrap: break-word;">${function_string}</td>
+                    </tr>`;
+            }
+        });
+    });
+    content += `</tbody></table>`;
+    return content;
+}
+
+function setupItemTableFiltering() {
+    const table = document.getElementById('itemFunctionsTable');
+    if (!table) return;
+    const hideNACheckbox   = document.getElementById('hideNA');
+    const sourceCheckboxes = document.querySelectorAll('.source-filter');
+    const selectAllBtn     = document.getElementById('selectAllSources');
+    const deselectAllBtn   = document.getElementById('deselectAllSources');
+
+    function applyFilters() {
+        const hideNA = hideNACheckbox.checked;
+        const activeSources = Array.from(sourceCheckboxes).filter(cb => cb.checked).map(cb => cb.dataset.source);
+        table.querySelectorAll('tbody tr').forEach(row => {
+            const hasAnnotation = row.dataset.hasAnnotation === 'true';
+            const source = row.dataset.source;
+            let shouldShow = true;
+            if (hideNA && !hasAnnotation) shouldShow = false;
+            if (!activeSources.includes(source)) shouldShow = false;
+            row.style.display = shouldShow ? '' : 'none';
+        });
+        updateItemRowspans();
+        updateTableStripes();
+    }
+
+    function updateTableStripes() {
+        const visibleRows = Array.from(table.querySelectorAll('tbody tr')).filter(r => r.style.display !== 'none');
+        const geneGroups = {};
+        visibleRows.forEach(row => {
+            const gene = row.dataset.item;
+            if (!geneGroups[gene]) geneGroups[gene] = [];
+            geneGroups[gene].push(row);
+        });
+        visibleRows.forEach((row, index) => {
+            const cells = row.querySelectorAll('td');
+            cells.forEach(cell => { cell.style.backgroundColor = ''; cell.classList.remove('table-striped-manual'); });
+            row.style.borderTop = '';
+            if (index % 2 === 1) {
+                cells.forEach((cell, cellIndex) => {
+                    if (cellIndex === 0 && (cell.getAttribute('rowspan') || cell.classList.contains('dynamic-gene-cell'))) return;
+                    cell.style.backgroundColor = 'rgba(0,0,0,.05)';
+                    cell.classList.add('table-striped-manual');
+                });
+            }
+        });
+        Object.keys(geneGroups).forEach(gene => {
+            if (geneGroups[gene].length > 0) geneGroups[gene][0].style.borderTop = '3px solid #d0d0d0';
+        });
+    }
+
+    function updateItemRowspans() {
+        const allRows = Array.from(table.querySelectorAll('tbody tr'));
+        const itemGroups = {};
+        allRows.forEach(row => {
+            const item = row.dataset.item;
+            if (!itemGroups[item]) itemGroups[item] = [];
+            itemGroups[item].push(row);
+        });
+        Object.keys(itemGroups).forEach(item => {
+            const allRowsForItem     = itemGroups[item];
+            const visibleRowsForItem = allRowsForItem.filter(r => r.style.display !== 'none');
+            allRowsForItem.forEach(row => {
+                const existingCells = row.querySelectorAll('td');
+                if (existingCells.length > 3) {
+                    existingCells[0].style.display = 'none';
+                    existingCells[0].removeAttribute('rowspan');
+                }
+                const dynamicCell = row.querySelector('td.dynamic-gene-cell');
+                if (dynamicCell) dynamicCell.remove();
+            });
+            if (visibleRowsForItem.length > 0) {
+                const firstRow = visibleRowsForItem[0];
+                let geneCell = firstRow.querySelector('td:first-child');
+                if (geneCell && firstRow.querySelectorAll('td').length > 3) {
+                    geneCell.style.display = '';
+                    geneCell.style.verticalAlign = 'middle';
+                    geneCell.style.wordWrap = 'break-word';
+                    geneCell.setAttribute('rowspan', visibleRowsForItem.length);
+                } else {
+                    const newCell = document.createElement('td');
+                    newCell.innerHTML = `<b>${item}</b>`;
+                    newCell.setAttribute('rowspan', visibleRowsForItem.length);
+                    newCell.className = 'dynamic-gene-cell';
+                    newCell.style.borderTop = '3px solid #d0d0d0';
+                    newCell.style.verticalAlign = 'middle';
+                    newCell.style.wordWrap = 'break-word';
+                    firstRow.insertBefore(newCell, firstRow.firstChild);
+                }
+            }
+        });
+    }
+
+    hideNACheckbox.addEventListener('change', applyFilters);
+    sourceCheckboxes.forEach(cb => cb.addEventListener('change', applyFilters));
+    selectAllBtn.addEventListener('click', () => { sourceCheckboxes.forEach(cb => cb.checked = true); applyFilters(); });
+    deselectAllBtn.addEventListener('click', () => { sourceCheckboxes.forEach(cb => cb.checked = false); applyFilters(); });
+    applyFilters();
+}

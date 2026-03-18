@@ -250,3 +250,24 @@
   top: 0;
   z-index: 6;
 }
+
+.bin-modal-header {
+    font-size: large;
+    border-bottom: 1px solid black;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 6px 10px;
+    margin: 0 0 10px 0;
+    border-radius: 2px;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.bin-count-btn {
+    cursor: pointer;
+    background-color: #e9ecef;
+}
+.bin-count-btn:hover {
+    background-color: #d0d7df;
+}
