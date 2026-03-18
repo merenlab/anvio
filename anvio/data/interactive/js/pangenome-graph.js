@@ -585,14 +585,14 @@ class PangenomeGraphUserInterface {
                 }
 
                 var sorted_keys = Object.keys(this.synteny[genome]).sort(function (a, b) {return parseInt(a) - parseInt(b);});
-                if (layer_width >= line_thickness) {
+                if (layer_width >= track_line_width) {
 
-                    layer_width -= line_thickness
-                    layer_start += line_thickness * 0.5
-                    layer_stop -= line_thickness * 0.5
-                    
+                    layer_width -= track_line_width
+                    layer_start += track_line_width * 0.5
+                    layer_stop -= track_line_width * 0.5
+
                     var draw = edgecoloring[genome][1]
-                    var thickness = line_thickness
+                    var thickness = track_line_width
                     var stroke = ''
 
                     var edge_chain = []
