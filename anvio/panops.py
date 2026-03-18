@@ -1713,6 +1713,9 @@ class PangenomeGraph():
                  'maxlength': self.max_edge_length_filter if self.max_edge_length_filter != -1 else 1000,
                  'flexgroupcompress': True if self.groupcompress != 1.0 else False,
                  'groupcompress': self.groupcompress,
+                 'region_label_size': 13,
+                 'region_label_min_width': 80,
+                 'region_label_distance': 2,
                  **{'flex' + genome: True for genome in self.genome_names},
                  **{genome: '#000000' for genome in self.genome_names}
         }
