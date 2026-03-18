@@ -1537,12 +1537,11 @@ class PangenomeGraphUserInterface {
     }
 
     press_down(instance) {
-        // this.old_xpos = instance.offsetX;
-        // this.old_ypos = instance.offsetY;
-        
+        if (instance.button !== 0) return;
+
         this.cur_xpos = instance.offsetX;
         this.cur_ypos = instance.offsetY;
-        
+
         this.isDown = true;
         this.diff = 0;
 
@@ -1609,6 +1608,7 @@ class PangenomeGraphUserInterface {
     }
 
     press_up(instance) {
+        if (instance.button !== 0) return;
         if (this.isDown === true) {
             this.isDown = false
 
