@@ -1713,6 +1713,7 @@ class PangenomeGraph():
                  'maxlength': self.max_edge_length_filter if self.max_edge_length_filter != -1 else 1000,
                  'flexgroupcompress': True if self.groupcompress != 1.0 else False,
                  'groupcompress': self.groupcompress,
+                 'track_line_width': 5,
                  'region_label_size': 13,
                  'region_label_min_width': 80,
                  'region_label_distance': 2,
