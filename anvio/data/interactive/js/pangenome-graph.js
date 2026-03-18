@@ -1738,7 +1738,10 @@ class PangenomeGraphUserInterface {
             const realZoom = this.panZoomInstance.getSizes().realZoom;
             const TARGET_PX = parseFloat($('#region_label_size')[0].value) || 13;
             const MIN_WIDTH_PX = parseFloat($('#region_label_min_width')[0].value) || 80;
-            const font_size_svg = TARGET_PX / realZoom;
+            // Exponent < 1 makes screen size grow with zoom (exponent 1 = constant screen
+            // size; exponent 0 = scales with graph).  0.6 gives moderate growth: at 10x
+            // zoom the label is ~2.5x its original screen size, feeling part of the graph.
+            const font_size_svg = TARGET_PX / Math.pow(realZoom, 0.6);
             // r = content_edge + font_size * distance, where distance is user-controlled.
             // distance=1 means the label baseline sits flush; higher values push it further out.
             const DISTANCE = parseFloat($('#region_label_distance')[0].value) || 2;
@@ -1746,7 +1749,11 @@ class PangenomeGraphUserInterface {
                 const screen_width = parseFloat(el.dataset.svgWidth) * realZoom;
                 if (screen_width >= MIN_WIDTH_PX) {
                     const outer_r = parseFloat(el.dataset.outerR);
-                    const r = outer_r + font_size_svg * DISTANCE;
+                    // The font-based term shrinks as realZoom grows, so at extreme zoom it
+                    // can become smaller than the arc/stroke overshoot beyond outer_r, making
+                    // the label appear inside the graph.  A 0.5% floor ensures the label
+                    // clears the graph at high zoom without pushing it far off-screen.
+                    const r = outer_r + Math.max(font_size_svg * DISTANCE, outer_r * 0.005);
                     if (el.dataset.layout === 'circular') {
                         const angle_rad = parseFloat(el.dataset.angle) * Math.PI / 180;
                         el.setAttribute('x', r * Math.sin(angle_rad));
