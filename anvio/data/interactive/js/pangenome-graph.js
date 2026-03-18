@@ -3038,13 +3038,18 @@ class PangenomeGraphUserInterface {
             }
         }
 
+        waitingDialog.show('Fetching functions and metabolism data...', { dialogSize: 'sm' });
+
         let response;
         try {
             response = await this.fetch_functions_and_metabolism(sgc_ids);
         } catch(err) {
+            waitingDialog.hide();
             toastr.error('Could not reach the functions endpoint.', "Request failed");
             return;
         }
+
+        waitingDialog.hide();
 
         if (!response || response.status !== 0) {
             toastr.error((response && response.message) || 'Could not load functional annotations.', "Server error");
