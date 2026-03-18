@@ -1729,11 +1729,15 @@ class PangenomeGraphUserInterface {
 
         // TODO this is just a temporary fix the whole generate_svg() has to be rewritten in either 
         // createElementNS or raw html string fashion. FML.
-        $('#svgbox').empty().html(svg_core[0].outerHTML);
-
+        // Save current pan/zoom so a redraw (e.g. color change) doesn't snap back.
+        var savedPan = null, savedZoom = null;
         if (this.panZoomInstance !== null) {
-            this.panZoomInstance.destroy()
-        };
+            savedPan  = this.panZoomInstance.getPan();
+            savedZoom = this.panZoomInstance.getZoom();
+            this.panZoomInstance.destroy();
+        }
+
+        $('#svgbox').empty().html(svg_core[0].outerHTML);
 
         this.refresh_region_label_visibility = () => {
             if (!$('#flexregionlabels').prop('checked')) return;
