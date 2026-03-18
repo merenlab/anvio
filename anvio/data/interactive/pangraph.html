@@ -12,6 +12,7 @@
     <!-- <link type="text/css" rel="stylesheet" href="lib/pangraph/tippy.js/themes/light.css" />
     <link type="text/css" rel="stylesheet" href="lib/pangraph/tippy.js/dist/tippy.css" /> -->
     <link type="text/css" rel="stylesheet" href="css/pangraph.css" />
+    <link rel="stylesheet" href="./node_modules/toastr/build/toastr.min.css" type="text/css" />
     <link rel="shortcut icon" href="#">
     <link href="./node_modules/sortable-tablesort/sortable.min.css" rel="stylesheet">
     <script type="text/javascript" src="js/error.js"></script>
@@ -39,7 +40,9 @@
     <script type="text/javascript" src="js/animations.js"></script>
     <script type="text/javascript" src="js/context-menu.js"></script>
     <script type="text/javascript" src="js/tree.js"></script>
+    <script type="text/javascript" src="./node_modules/toastr/build/toastr.min.js" onerror='alertDependencyError("toastr")'></script>
     <script type="text/javascript" src="js/utils.js"></script>
+    <script type="text/javascript" src="js/constants.js"></script>
 
   </head>
 
@@ -616,7 +619,7 @@
                               <input type="text" class="form-control flex-fill p-0 border-0" style= "background-color: #e9ecef;" value="Bin_1" id="bin_1_name" aria-describedby="">
                             </div>
                             <div class="d-flex col-2">
-                              <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="bin_1_value" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color" readonly>
+                              <input type="button" class="form-control float-end text-end flex-fill p-0 border-0 bin-count-btn" id="bin_1_value" value=0 title="Click for functions summary">
                             </div>
                             <div class="d-flex col-2">
                               <input type="color" class="form-control form-control-color flex-fill p-0 border-0 colorchange" id=bin_1_color bin_id="bin_1" value="#000000" aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
