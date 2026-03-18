@@ -1034,6 +1034,7 @@ class PangenomeGraphUserInterface {
                     var angle_end   = theta * (x_max + 1) + start_angle;
                     svg_region_labels.push($(
                         `<text class="region-label"
+                            data-region-id="${rid}"
                             data-svg-width="${svg_region_width}"
                             data-layout="circular"
                             data-outer-r="${outer_content_r}"
@@ -1052,6 +1053,7 @@ class PangenomeGraphUserInterface {
                     var x_end_svg   = (x_max + 1) * node_distance_x;
                     svg_region_labels.push($(
                         `<text class="region-label"
+                            data-region-id="${rid}"
                             data-svg-width="${svg_region_width}"
                             data-layout="linear"
                             data-outer-r="${outer_content_r}"
@@ -1488,8 +1490,8 @@ class PangenomeGraphUserInterface {
         var d = await this.get_gene_cluster_consensus_functions([element_id]);
         for (var source of this.functional_annotation_sources_available) {
 
-            var gene_cluster_functions = d['data'][element_id]
-            if (source in gene_cluster_functions) {
+            var gene_cluster_functions = d['data'] && d['data'][element_id];
+            if (gene_cluster_functions && source in gene_cluster_functions) {
                 var func = gene_cluster_functions[source]['function']
                 func === undefined | func === null ? func = '' : func = func
                 $('#number_' + source)[0].innerText = func;
@@ -1771,7 +1773,13 @@ class PangenomeGraphUserInterface {
         };
 
         document.querySelectorAll('.region-label').forEach(el => {
-            el.style.cursor = 'default';
+            el.style.cursor = 'pointer';
+
+            el.addEventListener('click', (event) => {
+                event.stopPropagation();
+                const rid = el.dataset.regionId;
+                this.show_region_context_menu(event, rid);
+            });
 
             el.addEventListener('mouseover', () => {
                 remove_highlight();
@@ -2074,7 +2082,8 @@ class PangenomeGraphUserInterface {
                     )
                 ).append(
                     $('<div class="col-2"></div>').append(
-                        $('<input type="text" class="form-control float-end text-end flex-fill p-0 border-0" id="bin_' + this.current_bin_number + '_value" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color" readonly>')
+                        $('<input type="button" class="form-control float-end text-end flex-fill p-0 border-0 bin-count-btn" id="bin_' + this.current_bin_number + '_value" value=0 title="Click for functions summary">')
+                            .on('click', () => { this.show_bin_functions('bin_' + this.current_bin_number); })
                     )
                 ).append(
                     $('<div class="d-flex col-2"></div>').append(
@@ -2564,6 +2573,7 @@ class PangenomeGraphUserInterface {
         
         $('#bin_1_color').on("change", this.switch_color)
         $('#bin_1_radio').on("click", this.switch_bin)
+        $('#bin_1_value').on("click", () => this.show_bin_functions('bin_1'))
 
         $('#flextree').on("change", this.flextree_change)
         $('#flexregionlabels').on("change", () => this.main_draw())
@@ -2639,38 +2649,29 @@ class PangenomeGraphUserInterface {
 
         var id = e.id;
         var element = document.getElementById(id);
-        
+
         if (element.getAttribute('class') == 'group') {
             var gene_cluster_context = id;
-        
             if (!gene_cluster_id) {
-                gene_cluster_id = this.group_dict[id][0]
+                gene_cluster_id = this.group_dict[id][0];
             }
         } else {
             gene_cluster_id = id;
             var gene_cluster_context = null;
         }
-        
-        $('#InfoModalBody').empty()
-        var bodyinfo = $('<div class="card-body overflow-scroll"></div>')
-        
-        $('#InfoModalBody').append(bodyinfo)
-        
-        var all_info = await this.get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_context, 1)
-        
-        bodyinfo.append(all_info)
-        
-        if (element.getAttribute('class') == 'group') {
-        
-            var container = document.querySelector("#InfoModalBody");
-            var elem = container.querySelectorAll('.group_choice');
 
-            elem.forEach(el => {
-                $(el).on("click", () => {this.nodeinfo(e, el.getAttribute("name_id"));})
-            })
-        }
-        
-        $('#InfoModal').modal('show');
+        const all_info = await this.get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_context, 1);
+        const title = `Synteny gene cluster: ${gene_cluster_id}`;
+        showGeneClusterFunctionsSummaryTableDialog(title, all_info);
+
+        setTimeout(() => {
+            // wire up group-context choice clicks inside the new modal
+            document.querySelectorAll('.group_choice').forEach(el => {
+                el.addEventListener('click', () => { this.nodeinfo(e, el.getAttribute("name_id")); });
+            });
+            // wire up functions table filter controls
+            setupItemTableFiltering();
+        }, 100);
     }
 
     async get_gene_cluster_display_tables(gene_cluster_id, gene_cluster_context, add_align) {
@@ -2857,50 +2858,215 @@ class PangenomeGraphUserInterface {
 
     }
     
-    async get_gene_cluster_functions_table(gene_cluster_id, add_align) {
-        
-        if (add_align == 1) {
-          var functions_table = `<p class="settings-secondary-header mb-3 mt-3">CONSENSUS FUNCTIONAL ANNOTATIONS</p>`;
-          functions_table += `<table class="table table-striped table-bordered sortable" gc_id="` + gene_cluster_id + `" id="node_functions_table">`;
-        } else {
-          var functions_table = ''
-          functions_table += `<table class="table table-striped table-bordered sortable">`;
-        }
-        functions_table += `<thead><tr>`;
-        functions_table += `<th scope="col">Source</th>`;
-        functions_table += `<th scope="col">Accession</th>`;
-        functions_table += `<th scope="col">Function</th>`;
-        functions_table += `</tr></thead><tbody>`;
-    
-        // var gene_cluster_name = this.data['nodes'][gene_cluster_id]['gene_cluster']
-        var d = await this.get_gene_cluster_consensus_functions([gene_cluster_id]);
-    
-        for (var source of this.functional_annotation_sources_available) {
-
-            var gene_cluster_functions = d['data'][gene_cluster_id]
-            if (source in gene_cluster_functions) {
-                var func = gene_cluster_functions[source]['function']
-                var accession = gene_cluster_functions[source]['accession']
-
-                accession === undefined | accession === null ? accession = '' : accession = accession
-                func === undefined | func === null ? func = '' : func = func
-            } else {
-                var func = ''
-                var accession = ''
+    get_pangraph_gc_config() {
+        return {
+            itemLabel: 'synteny gene clusters',
+            itemIdLabel: 'SynGC',
+            metabolismDescription: 'Metabolic modules these synteny gene clusters are involved in. Completeness scores show what fraction of each module is represented by the gene clusters in view.',
+            functionsDescription: 'Functional annotations for each synteny gene cluster by each annotation source available in the database.',
+            dialogFunction: 'showGeneClusterFunctionsSummaryTableDialog',
+            getAccessionString: (d, source) => {
+                const result = d[source]?.accession;
+                return (!result || result === '-') ? 'N/A' : result;
+            },
+            getFunctionString: (d, source) => {
+                const result = d[source]?.function;
+                return (!result || result === '-') ? 'N/A' : result;
             }
-    
-            functions_table += `<tr>`;
-            functions_table += `<td>` + source + `</td>`;
-            functions_table += `<td>` + accession + `</td>`;
-            functions_table += `<td>` + func + `</td>`;
-            functions_table += `</tr>`;
-        }
-        functions_table += `</tbody></table>`;
-    
-        return functions_table
+        };
     }
-    
-    
+
+    async fetch_functions_and_metabolism(sgc_ids) {
+        const response = await $.ajax({
+            url: '/pangraph/get_pangraph_synteny_gc_functions_and_metabolism',
+            type: 'POST',
+            data: JSON.stringify({ synteny_gene_clusters: sgc_ids }),
+            contentType: 'application/json',
+            dataType: 'json',
+        });
+        return response;
+    }
+
+    async get_gene_cluster_functions_table(gene_cluster_id, add_align) {
+        let response;
+        try {
+            response = await this.fetch_functions_and_metabolism([gene_cluster_id]);
+        } catch(err) {
+            return `<p class="text-muted" style="margin:10px 0">Could not reach the functions endpoint.</p>`;
+        }
+
+        if (!response || response.status !== 0) {
+            return `<p class="text-muted" style="margin:10px 0">${(response && response.message) || 'Could not load functional annotations.'}</p>`;
+        }
+
+        return buildFunctionsContent(response, this.get_pangraph_gc_config());
+    }
+
+    async show_bin_functions(bin_id) {
+        const items = this.bin_dict[bin_id] || [];
+        if (!items.length) {
+            toastr.warning('There are no synteny gene clusters in this bin yet.', "Nothing to show");
+            return;
+        }
+
+        // Expand group nodes to their constituent synteny gene clusters
+        const sgc_ids = [];
+        for (const id of items) {
+            const members = id.startsWith('GCG_') ? (this.group_dict[id] || []) : [id];
+            for (const gc of members) {
+                if (!sgc_ids.includes(gc)) sgc_ids.push(gc);
+            }
+        }
+
+        const bin_name = document.getElementById(bin_id + '_text')?.value
+                      || document.getElementById(bin_id + '_name')?.value
+                      || bin_id;
+
+        let response;
+        try {
+            response = await this.fetch_functions_and_metabolism(sgc_ids);
+        } catch(err) {
+            toastr.error('Could not reach the functions endpoint.', "Request failed");
+            return;
+        }
+
+        if (!response || response.status !== 0) {
+            toastr.error((response && response.message) || 'Could not load functional annotations.', "Server error");
+            return;
+        }
+
+        const title = `A summary of functions for ${sgc_ids.length} synteny gene clusters in "${bin_name}"`;
+        showGeneClusterFunctionsSummaryTableDialog(title, buildFunctionsContent(response, this.get_pangraph_gc_config()));
+        setTimeout(() => setupItemTableFiltering(), 100);
+    }
+
+    get_region_svg_node_ids(rid) {
+        const rinfo = this.data['regions'][rid];
+        if (!rinfo) return [];
+        const x_min = rinfo['x_min'];
+        const x_max = rinfo['x_max'];
+
+        // Build reverse mapping: node_id -> group_id
+        const node_to_group = {};
+        for (const [group_id, node_ids] of Object.entries(this.group_dict)) {
+            for (const node_id of node_ids) {
+                node_to_group[node_id] = group_id;
+            }
+        }
+
+        const result = new Set();
+        for (const [node_id, node_data] of Object.entries(this.data['nodes'])) {
+            const x = node_data['position'][0];
+            if (x >= x_min && x <= x_max) {
+                result.add(node_id in node_to_group ? node_to_group[node_id] : node_id);
+            }
+        }
+        return Array.from(result);
+    }
+
+    show_region_context_menu(event, rid) {
+        document.querySelectorAll('.context-menu').forEach(m => m.remove());
+
+        const menu = document.createElement('ul');
+        menu.setAttribute('class', 'dropdown-menu context-menu');
+        menu.setAttribute('role', 'menu');
+        menu.style.display = 'block';
+        menu.style.visibility = 'hidden';
+
+        const items = [
+            { title: 'Show summary of functions in region', action: () => this.show_region_functions(rid) },
+            { title: 'Add SynGCs in region as a new bin',   action: () => this.add_region_as_new_bin(rid) },
+            { title: 'Append SynGCs in region into the active bin', action: () => this.append_region_to_active_bin(rid) },
+        ];
+
+        for (const item of items) {
+            const li = document.createElement('li');
+            const a = document.createElement('a');
+            a.setAttribute('class', 'dropdown-item');
+            a.setAttribute('href', '#');
+            a.textContent = item.title;
+            a.addEventListener('click', (e) => { e.preventDefault(); item.action(); menu.remove(); });
+            li.appendChild(a);
+            menu.appendChild(li);
+        }
+
+        document.body.appendChild(menu);
+
+        const maxLeft = window.innerWidth - menu.clientWidth;
+        const maxTop = window.innerHeight - menu.clientHeight;
+        menu.style.left = Math.min(maxLeft, event.clientX) + 'px';
+        menu.style.top = Math.min(maxTop, event.clientY) + 'px';
+        menu.style.visibility = '';
+
+        document.addEventListener('click', () => menu.remove(), { once: true });
+    }
+
+    async show_region_functions(rid) {
+        const svg_ids = this.get_region_svg_node_ids(rid);
+        if (!svg_ids.length) {
+            toastr.warning('There are no synteny gene clusters in this region.', "Nothing to show");
+            return;
+        }
+
+        const sgc_ids = [];
+        for (const id of svg_ids) {
+            const members = id.startsWith('GCG_') ? (this.group_dict[id] || []) : [id];
+            for (const gc of members) {
+                if (!sgc_ids.includes(gc)) sgc_ids.push(gc);
+            }
+        }
+
+        let response;
+        try {
+            response = await this.fetch_functions_and_metabolism(sgc_ids);
+        } catch(err) {
+            toastr.error('Could not reach the functions endpoint.', "Request failed");
+            return;
+        }
+
+        if (!response || response.status !== 0) {
+            toastr.error((response && response.message) || 'Could not load functional annotations.', "Server error");
+            return;
+        }
+
+        const title = `A summary of functions for ${sgc_ids.length} synteny gene clusters in region #${rid}`;
+        showGeneClusterFunctionsSummaryTableDialog(title, buildFunctionsContent(response, this.get_pangraph_gc_config()));
+        setTimeout(() => setupItemTableFiltering(), 100);
+    }
+
+    add_region_as_new_bin(rid) {
+        const svg_ids = this.get_region_svg_node_ids(rid);
+        if (!svg_ids.length) {
+            toastr.warning('There are no synteny gene clusters in this region.', "Nothing to show");
+            return;
+        }
+        this.add_bin();
+        const bin_id = this.current_bin_id;
+        for (const svg_id of svg_ids) {
+            const el = document.getElementById(svg_id);
+            if (el) this.marknode(el, bin_id);
+        }
+        toastr.success(`Added ${svg_ids.length} items to new bin "${bin_id}".`, "Bin created");
+    }
+
+    append_region_to_active_bin(rid) {
+        const svg_ids = this.get_region_svg_node_ids(rid);
+        if (!svg_ids.length) {
+            toastr.warning('There are no synteny gene clusters in this region.', "Nothing to show");
+            return;
+        }
+        const bin_id = this.current_bin_id;
+        let added = 0;
+        for (const svg_id of svg_ids) {
+            if (!this.bin_dict[bin_id].includes(svg_id)) {
+                const el = document.getElementById(svg_id);
+                if (el) { this.marknode(el, bin_id); added++; }
+            }
+        }
+        toastr.success(`Appended ${added} new item(s) to "${bin_id}".`, "Bin updated");
+    }
+
+
     get_gene_cluster_context_table(gene_cluster_id_current, gene_cluster_context, add_align) {
         
         if (gene_cluster_context == null){
