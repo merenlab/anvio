@@ -3725,6 +3725,10 @@ class PanGraphSuperclass(PanSuperclass):
         return self.synteny_gene_clusters_initialized
 
     @property
+    def gene_cluster_names(self):
+        return self.synteny_gene_cluster_names
+
+    @property
     def gene_clusters_gene_alignments(self):
         return self.synteny_gene_clusters_gene_alignments
 
