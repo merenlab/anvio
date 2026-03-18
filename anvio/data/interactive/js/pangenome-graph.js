@@ -1447,6 +1447,8 @@ class PangenomeGraphUserInterface {
             this.rerun_JSON(new_settings_dict);
         }
         
+        $('#svgbox').css('opacity', '0.2');
+
         $.ajax({
             url: "/pangraph/get_pangraph_json_data",
             type: "GET",
@@ -1460,8 +1462,10 @@ class PangenomeGraphUserInterface {
                 console.log('Initialized main variables.');
                 this.settings_dict = JSON.parse(JSON.stringify(new_settings_dict));
                 this.main_draw();
+                $('#svgbox').css('opacity', '');
             },
             error: (err) => {
+                $('#svgbox').css('opacity', '');
                 console.error('Failed to load JSON:', err);
             }
         })
