@@ -1271,7 +1271,7 @@ function buildMetabolismTable(response, config, fmtPct) {
     return out;
 }
 
-function buildFilterControls(sources, functions, config) {
+function buildFilterControls(sources, functions, config, gene_clusters) {
     const totalItems = Object.keys(functions).length;
     const sourceCounts = {};
     Object.keys(sources).forEach(function(index) {
@@ -1308,6 +1308,8 @@ function buildFilterControls(sources, functions, config) {
                 <div style="margin-top: 10px;">
                     <button type="button" class="btn btn-sm btn-outline-secondary" id="selectAllSources">Select All</button>
                     <button type="button" class="btn btn-sm btn-outline-secondary" id="deselectAllSources">Deselect All</button>
+                    <button type="button" class="btn btn-sm btn-primary" id="copyTableBelow" style="margin-left: 10px;">Copy table below</button><span class="copy-feedback" style="min-width:14px;font-size:0.9em;line-height:1;margin-right:6px;"></span>
+                    <button type="button" class="btn btn-sm btn-primary" id="copyComprehensiveFunctions">Copy comprehensive function data</button><span class="copy-feedback" style="min-width:14px;font-size:0.9em;line-height:1;"></span>
                 </div>
             </div>
         </div>`;
@@ -1326,7 +1328,7 @@ function buildFunctionsTable(response, config) {
             ${copyButton}
         </div>
         <p>${config.functionsDescription}</p>`;
-    content += buildFilterControls(response['sources'], response['functions'], config);
+    content += buildFilterControls(response['sources'], response['functions'], config, response['gene_clusters']);
     content += `
         <table class="table" id="itemFunctionsTable" style="width: 95%; margin-left: 10px; table-layout: fixed;">
            <thead class="thead-light"><tr>
@@ -1370,13 +1372,15 @@ function buildFunctionsTable(response, config) {
     return content;
 }
 
-function setupItemTableFiltering() {
+function setupItemTableFiltering(gene_clusters) {
     const table = document.getElementById('itemFunctionsTable');
     if (!table) return;
     const hideNACheckbox   = document.getElementById('hideNA');
     const sourceCheckboxes = document.querySelectorAll('.source-filter');
     const selectAllBtn     = document.getElementById('selectAllSources');
     const deselectAllBtn   = document.getElementById('deselectAllSources');
+    const copyTableBtn     = document.getElementById('copyTableBelow');
+    const copyCompBtn      = document.getElementById('copyComprehensiveFunctions');
 
     function applyFilters() {
         const hideNA = hideNACheckbox.checked;
@@ -1464,5 +1468,56 @@ function setupItemTableFiltering() {
     sourceCheckboxes.forEach(cb => cb.addEventListener('change', applyFilters));
     selectAllBtn.addEventListener('click', () => { sourceCheckboxes.forEach(cb => cb.checked = true); applyFilters(); });
     deselectAllBtn.addEventListener('click', () => { sourceCheckboxes.forEach(cb => cb.checked = false); applyFilters(); });
+
+    if (copyTableBtn) {
+        copyTableBtn.addEventListener('click', function() {
+            const rows = Array.from(table.querySelectorAll('tbody tr')).filter(r => r.style.display !== 'none');
+            let tsv = 'SynGC\tSource\tAccession\tFunction\n';
+            rows.forEach(row => {
+                const item = row.dataset.item;
+                // get only visible cells that are not the item/rowspan cell
+                const dataCells = Array.from(row.querySelectorAll('td')).filter(td =>
+                    td.style.display !== 'none' && !td.classList.contains('dynamic-gene-cell') &&
+                    !td.hasAttribute('rowspan')
+                );
+                if (dataCells.length >= 3) {
+                    tsv += `${item}\t${dataCells[0].textContent.trim()}\t${dataCells[1].textContent.trim()}\t${dataCells[2].textContent.trim()}\n`;
+                }
+            });
+            copyTextWithFeedback(copyTableBtn, tsv);
+        });
+    }
+
+    if (copyCompBtn && !gene_clusters) {
+        copyCompBtn.addEventListener('click', function() {
+            if (typeof toastr !== 'undefined') toastr.warning('Per-gene data not available. Please restart the anvi\'o server.', 'No data');
+        });
+    }
+    if (copyCompBtn && gene_clusters) {
+        copyCompBtn.addEventListener('click', function() {
+            const activeSources = Array.from(sourceCheckboxes).filter(cb => cb.checked).map(cb => cb.dataset.source);
+            const hideNA = hideNACheckbox.checked;
+            let tsv = 'SynGC\tGenome_Name\tGene_Callers_ID\tSource\tAccession\tFunction\n';
+            Object.keys(gene_clusters).forEach(sgc => {
+                const genomes = gene_clusters[sgc] || {};
+                Object.keys(genomes).forEach(genome => {
+                    const genes = genomes[genome] || {};
+                    Object.keys(genes).forEach(gene_callers_id => {
+                        const annots = genes[gene_callers_id] || {};
+                        activeSources.forEach(source => {
+                            const blob = annots[source] || '';
+                            const parts = blob.split('|||');
+                            const accession = parts[0] || 'N/A';
+                            const func      = parts[1] || 'N/A';
+                            if (hideNA && accession === 'N/A' && func === 'N/A') return;
+                            tsv += `${sgc}\t${genome}\t${gene_callers_id}\t${source}\t${accession}\t${func}\n`;
+                        });
+                    });
+                });
+            });
+            copyTextWithFeedback(copyCompBtn, tsv);
+        });
+    }
+
     applyFilters();
 }

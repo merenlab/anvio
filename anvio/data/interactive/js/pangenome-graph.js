@@ -2795,7 +2795,7 @@ class PangenomeGraphUserInterface {
             document.querySelectorAll('.group_choice').forEach(el => {
                 el.addEventListener('click', () => { this.nodeinfo(e, el.getAttribute("name_id")); });
             });
-            setupItemTableFiltering();
+            setupItemTableFiltering(this._last_gene_clusters);
         }, 100);
     }
 
@@ -2820,7 +2820,7 @@ class PangenomeGraphUserInterface {
             document.querySelectorAll('.group_choice').forEach(el => {
                 el.addEventListener('click', () => { this.nodeinfo_with_functions(e, el.getAttribute("name_id")); });
             });
-            setupItemTableFiltering();
+            setupItemTableFiltering(this._last_gene_clusters);
         }, 100);
     }
 
@@ -3081,6 +3081,7 @@ class PangenomeGraphUserInterface {
             return `<p class="text-muted" style="margin:10px 0">${(response && response.message) || 'Could not load functional annotations.'}</p>`;
         }
 
+        this._last_gene_clusters = response['gene_clusters'] || {};
         return buildFunctionsContent(response, this.get_pangraph_gc_config());
     }
 
@@ -3122,9 +3123,10 @@ class PangenomeGraphUserInterface {
             return;
         }
 
+        this._last_gene_clusters = response['gene_clusters'] || {};
         const title = `A summary of functions for ${sgc_ids.length} synteny gene clusters in "${bin_name}"`;
         showGeneClusterFunctionsSummaryTableDialog(title, buildFunctionsContent(response, this.get_pangraph_gc_config()));
-        setTimeout(() => setupItemTableFiltering(), 100);
+        setTimeout(() => setupItemTableFiltering(this._last_gene_clusters), 100);
     }
 
     get_region_svg_node_ids(rid) {
@@ -3221,9 +3223,10 @@ class PangenomeGraphUserInterface {
             return;
         }
 
+        this._last_gene_clusters = response['gene_clusters'] || {};
         const title = `A summary of functions for ${sgc_ids.length} synteny gene clusters in region #${rid}`;
         showGeneClusterFunctionsSummaryTableDialog(title, buildFunctionsContent(response, this.get_pangraph_gc_config()));
-        setTimeout(() => setupItemTableFiltering(), 100);
+        setTimeout(() => setupItemTableFiltering(this._last_gene_clusters), 100);
     }
 
     add_region_as_new_bin(rid) {
