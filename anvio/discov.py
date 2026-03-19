@@ -18,18 +18,18 @@ run.verbose = False
 class DisCov:
     """Computes and reports various metrics for coverage evenness."""
 
-    def __init__(self, coverage, contig_name=None, sample_name=None):
+    def __init__(self, coverage, contig_or_genome_name=None, sample_name=None):
         self.median: float = np.median(coverage)
         self.mean: float = np.mean(coverage)
         self.std: float = np.std(coverage)
         self.detection: float = np.sum(coverage > 0) / len(coverage)
-        self.name = contig_name # optional parameter, only used for debug output
+        self.name = contig_or_genome_name # optional parameter, only used for debug output
         self.sample = sample_name
 
         # establish output files for testing
         unfilt_output = "TEST_UNFILTERED.txt"
         filt_output = "TEST_FILTERED.txt"
-        header = ["contig", "sample", "Non-specific Filter Removed Bases", 
+        header = ["name", "sample", "Non-specific Filter Removed Bases", 
                   "SW Depth Evenness MAD (fine)",
                   "SW Depth Evenness MAD (medium)", "SW Depth Evenness MAD (coarse)",
                   "SW Depth Evenness MAD Nonzero (fine)",
@@ -54,12 +54,12 @@ class DisCov:
         self.compute_all(coverage, filt_output, filter_nonspecific_mapping=True)
 
     def compute_all(self, cov_array, output_file, filter_nonspecific_mapping: bool = False):
-        """Compute all sub-metrics for the contig and print to the specified output file"""
+        """Compute all metrics for the input coverage array and print to the specified output file"""
 
         run.warning(f"Anvi'o is now attempting to compute how coverage is distributed across a contig. The "
                     f"terminal output below relates to this calculation.", header="Computing Distribution of Coverage", 
                     lc='green', overwrite_verbose=anvio.DEBUG)
-        run.info(f"Contig name", self.name if self.name else 'Unknown', overwrite_verbose=anvio.DEBUG)
+        run.info(f"Sequence name", self.name if self.name else 'Unknown', overwrite_verbose=anvio.DEBUG)
         run.info(f"Sample", self.sample if self.sample else 'Unknown', overwrite_verbose=anvio.DEBUG)
         run.info("Filtering out non-specific read recruitment", filter_nonspecific_mapping, overwrite_verbose=anvio.DEBUG)
         run.info("Detection of contig", self.detection, overwrite_verbose=anvio.DEBUG)
@@ -117,7 +117,7 @@ class DisCov:
         sw_cv_nz = [f"{m:.04}" if m else "NA" for m in sw_cv_vals_nz ]
         sliding_window_evenness_cv_nz = "\t".join(sw_cv_nz)
 
-        ## whole-contig metrics
+        ## whole-sequence metrics
         if len(cov_array[cov_array > 0]) > 0:
             nz_depth_range = np.max(cov_array[cov_array > 0]) - np.min(cov_array[cov_array > 0])
             nz_depth_IQR = np.percentile(cov_array[cov_array > 0], 75) - np.percentile(cov_array[cov_array > 0], 25)

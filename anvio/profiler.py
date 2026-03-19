@@ -531,6 +531,7 @@ class BAMProfilerQuick:
             self._write_bin_stats_minimal(output, bin_name, bam_file_name, bin_data, mean, detection, num_reads)
         else:
             C = utils.CoverageStats(coverage_array, skip_outliers=True)
+            D = DisCov(coverage_array, bin_name, bam_file_name)
             output.write(f"{bin_name}\t"
                          f"{bam_file_name}\t"
                          f"{bin_data['length']}\t"
