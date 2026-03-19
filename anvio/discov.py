@@ -524,8 +524,10 @@ class DisCov:
         return windows
     
     def compute_CV(self, array):
-        """Returns coefficient of variation from an input array. Returns None if mean is 0."""
+        """Returns coefficient of variation from an input array. Returns None if array is empty or mean is 0."""
 
+        if not len(array):
+            return None
         mean = np.mean(array)
         std = np.std(array)
         if mean == 0:
