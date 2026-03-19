@@ -2789,7 +2789,7 @@ class PangenomeGraphUserInterface {
 
         const all_info = await this.get_gene_cluster_display_tables(gcid, gene_cluster_context, 1, false);
         const title = `Synteny gene cluster: ${gcid}`;
-        showGeneClusterFunctionsSummaryTableDialog(title, all_info);
+        showPangraphFunctionsSummaryTableDialog(title, all_info);
 
         setTimeout(() => {
             document.querySelectorAll('.group_choice').forEach(el => {
@@ -2814,7 +2814,7 @@ class PangenomeGraphUserInterface {
         waitingDialog.hide();
 
         const title = `Synteny gene cluster: ${gcid}`;
-        showGeneClusterFunctionsSummaryTableDialog(title, all_info);
+        showPangraphFunctionsSummaryTableDialog(title, all_info);
 
         setTimeout(() => {
             document.querySelectorAll('.group_choice').forEach(el => {
@@ -3046,7 +3046,7 @@ class PangenomeGraphUserInterface {
             itemIdLabel: 'SynGC',
             metabolismDescription: 'Metabolic modules these synteny gene clusters are involved in. Completeness scores show what fraction of each module is represented by the gene clusters in view.',
             functionsDescription: 'Functional annotations for each synteny gene cluster by each annotation source available in the database.',
-            dialogFunction: 'showGeneClusterFunctionsSummaryTableDialog',
+            dialogFunction: 'showPangraphFunctionsSummaryTableDialog',
             getAccessionString: (d, source) => {
                 const result = d[source]?.accession;
                 return (!result || result === '-') ? 'N/A' : result;
@@ -3125,7 +3125,7 @@ class PangenomeGraphUserInterface {
 
         this._last_gene_clusters = response['gene_clusters'] || {};
         const title = `A summary of functions for ${sgc_ids.length} synteny gene clusters in "${bin_name}"`;
-        showGeneClusterFunctionsSummaryTableDialog(title, buildFunctionsContent(response, this.get_pangraph_gc_config()));
+        showPangraphFunctionsSummaryTableDialog(title, buildFunctionsContent(response, this.get_pangraph_gc_config()));
         setTimeout(() => setupItemTableFiltering(this._last_gene_clusters), 100);
     }
 
@@ -3225,7 +3225,7 @@ class PangenomeGraphUserInterface {
 
         this._last_gene_clusters = response['gene_clusters'] || {};
         const title = `A summary of functions for ${sgc_ids.length} synteny gene clusters in region #${rid}`;
-        showGeneClusterFunctionsSummaryTableDialog(title, buildFunctionsContent(response, this.get_pangraph_gc_config()));
+        showPangraphFunctionsSummaryTableDialog(title, buildFunctionsContent(response, this.get_pangraph_gc_config()));
         setTimeout(() => setupItemTableFiltering(this._last_gene_clusters), 100);
     }
 
