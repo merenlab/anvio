@@ -824,6 +824,20 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
         all_keys_for_group = database.get_single_column_from_table(self.table_name,
             'data_key', unique=True, where_clause="""data_group='%s'""" % self.target_data_group)
+
+        # check for key collisions across other groups (items table only — layers tables
+        # intentionally share keys across groups, e.g. genome names in ANI groups)
+        if self.target_table == 'items' and 'data_group' in database.get_table_structure(self.table_name):
+            all_keys_all_groups = database.get_table_as_dict(self.table_name, columns_of_interest=['data_key', 'data_group'])
+            keys_in_other_groups = set()
+            for entry in all_keys_all_groups.values():
+                if entry['data_group'] != self.target_data_group and entry['data_key'] in data_keys_list:
+                    keys_in_other_groups.add("'%s' (in group '%s')" % (entry['data_key'], entry['data_group']))
+            if keys_in_other_groups:
+                raise ConfigError("Some of the data keys you are trying to add already exist in other data groups: %s. "
+                                  "Having the same key in multiple groups would lead to data collisions in the display. "
+                                  "Please rename your keys or remove the existing ones first." % ', '.join(keys_in_other_groups))
+
         database.disconnect()
 
         keys_already_in_db = [c for c in data_keys_list if c in all_keys_for_group]
