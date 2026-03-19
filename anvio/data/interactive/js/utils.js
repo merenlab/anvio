@@ -608,6 +608,23 @@ function showGeneClusterFunctionsSummaryTableDialog(title, content) {
 }
 
 /**
+ * Show pangenome graph synteny gene cluster functions summary dialog
+ * @param {string} title - Dialog title
+ * @param {string} content - Dialog content HTML
+ */
+function showPangraphFunctionsSummaryTableDialog(title, content) {
+    const noteHTML = `Functional annotations and metabolic module involvement for the synteny gene cluster(s) shown above.
+                      Use the copy buttons below to export this data for further analysis.`;
+    _createModalDialog({
+        title,
+        content,
+        modalClass: 'geneClusterFunctionsSummaryDialog',
+        dialogClass: 'gene-cluster-functions-modal-dialog',
+        noteHTML
+    });
+}
+
+/**
  * Show gene functions in splits summary table dialog
  * @param {string} title - Dialog title
  * @param {string} content - Dialog content HTML
