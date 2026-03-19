@@ -69,10 +69,10 @@ class DisCov:
             output_list = [self.name, self.sample,
                         f"0", # filter removed 0 bases
                         f"0", # midpoint range is 0
-                        "NA\tNA\tNA", # sliding window evenness MAD, NA because we can't divide by median of 0
-                        "NA\tNA\tNA", # sliding window evenness MAD nonzero
-                        "NA\tNA\tNA", # sliding window evenness CV, NA because we can't divide by mean of 0
-                        "NA\tNA\tNA", # sliding window evenness CV nonzero
+                        "0\t0\t0", # sliding window evenness MAD, NA because we can't divide by median of 0
+                        "0\t0\t0", # sliding window evenness MAD nonzero
+                        "0\t0\t0", # sliding window evenness CV, NA because we can't divide by mean of 0
+                        "0\t0\t0", # sliding window evenness CV nonzero
                         "0\t0\t0", # sliding window proportion covered
                         "NA", # window-scaling variance, NA because we can't take log of 0 variance
                         "NA", # window-scaling variance nonzero
