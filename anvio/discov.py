@@ -64,15 +64,15 @@ class DisCov:
         run.info("Filtering out non-specific read recruitment", filter_nonspecific_mapping, overwrite_verbose=anvio.DEBUG)
         run.info("Detection of contig", self.detection, overwrite_verbose=anvio.DEBUG)
 
-        # this will be a list of tuples like (start_position, stop_position, mean_coverage)
-        # if mean_coverage is 0, then the region is a gap region. Otherwise, it is a covered region
-        regions = self.get_list_of_coverage_and_gap_regions(cov_array, min_gap_length=3)
-
         # filter out regions with unusually-high coverage that might be non-specific read recruitment
         # these regions and their surrounding gaps get replaced with one longer gap
         ns_filter_removed_something = 0
         filtered_detection = self.detection
         if filter_nonspecific_mapping:
+            # this will be a list of tuples like (start_position, stop_position, mean_coverage)
+            # if mean_coverage is 0, then the region is a gap region. Otherwise, it is a covered region
+            regions = self.get_list_of_coverage_and_gap_regions(cov_array, min_gap_length=3)
+
             regions, new_cov_array = self.filter_nonspecific_regions(cov_array, regions, mod_z_score_threshold_external=4, mod_z_score_threshold_internal=3)
             filtered_detection = np.sum(new_cov_array > 0) / len(new_cov_array)
             run.info("Detection of contig (post-filter)", filtered_detection, overwrite_verbose=anvio.DEBUG)
