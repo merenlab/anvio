@@ -2120,13 +2120,13 @@ class PangenomeGraphUserInterface {
         this.current_bin_id = "bin_" + this.current_bin_number
         
         $('#bingrid').append(
-            $('<div class="col-12" id="bin_' + this.current_bin_number + '_grid"></div>').append(
-                $('<div class="row gy-1 align-items-center" id="row' + this.current_bin_number + '"></div>').append(
-                    $('<div class="col-2"></div>').append(
+            $('<div class="col-12" id="bin_' + this.current_bin_number + '_grid" style="padding: 3px 0;"></div>').append(
+                $('<div class="row align-items-center" id="row' + this.current_bin_number + '"></div>').append(
+                    $('<div class="col-1"></div>').append(
                         $('<input type="radio" name="binradio" id="bin_' + this.current_bin_number + '_radio" bin_id="bin_' + this.current_bin_number + '" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top" checked></input>')
                     )
                 ).append(
-                    $('<div class="col-6"></div>').append(
+                    $('<div class="col-7"></div>').append(
                         $('<input type="text" class="form-control flex-fill p-0 border-0" style="background-color: #e9ecef;" value="Bin_' + this.current_bin_number + '" id="bin_' + this.current_bin_number + '_text" aria-describedby=""></input>')
                     )
                 ).append(
@@ -2836,6 +2836,13 @@ class PangenomeGraphUserInterface {
 
         const items = [
             { title: 'Show functions for this SynGC', action: () => this.nodeinfo_with_functions(node_el) },
+            { title: 'Add SynGC as a new bin', action: () => {
+                this.add_bin();
+                this.marknode(node_el, this.current_bin_id);
+            }},
+            { title: 'Append SynGC into the active bin', action: () => {
+                this.marknode(node_el, this.current_bin_id);
+            }},
         ];
 
         for (const item of items) {
