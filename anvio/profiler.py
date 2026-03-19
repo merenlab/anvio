@@ -413,6 +413,7 @@ class BAMProfilerQuick:
 
             combined_coverage = None
             cursor = 0
+            contig_boundary_positions = []
 
             for contig_name in bin_data['contigs']:
                 contigs_processed += 1
@@ -442,6 +443,7 @@ class BAMProfilerQuick:
                         combined_coverage = np.empty(bin_data['length'], dtype=coverage_obj.c.dtype)
 
                     combined_coverage[cursor:cursor + len(coverage_obj.c)] = coverage_obj.c
+                    contig_boundary_positions.append((contig_name,cursor,cursor + len(coverage_obj.c)))
                     cursor += len(coverage_obj.c)
 
             if self.report_minimal:
@@ -458,7 +460,7 @@ class BAMProfilerQuick:
 
             combined_coverage = combined_coverage[:cursor]
 
-            self._write_bin_stats(output, bin_name, bam_file_name, bin_data, combined_coverage, bin_num_reads)
+            self._write_bin_stats(output, bin_name, bam_file_name, bin_data, combined_coverage, bin_num_reads, contig_boundary_positions)
 
         return mem_usage, mem_diff
 
@@ -524,14 +526,14 @@ class BAMProfilerQuick:
         return coverage_obj
 
 
-    def _write_bin_stats(self, output, bin_name, bam_file_name, bin_data, coverage_array, num_reads):
+    def _write_bin_stats(self, output, bin_name, bam_file_name, bin_data, coverage_array, num_reads, contig_boundaries):
         if self.report_minimal:
             mean = np.mean(coverage_array)
             detection = np.sum(coverage_array > 0) / len(coverage_array)
             self._write_bin_stats_minimal(output, bin_name, bam_file_name, bin_data, mean, detection, num_reads)
         else:
             C = utils.CoverageStats(coverage_array, skip_outliers=True)
-            D = DisCov(coverage_array, bin_name, bam_file_name)
+            D = DisCov(coverage_array, bin_name, bam_file_name, contig_boundaries)
             output.write(f"{bin_name}\t"
                          f"{bam_file_name}\t"
                          f"{bin_data['length']}\t"

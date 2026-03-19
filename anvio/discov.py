@@ -18,17 +18,19 @@ run.verbose = False
 class DisCov:
     """Computes and reports various metrics for coverage evenness."""
 
-    def __init__(self, coverage, contig_or_genome_name=None, sample_name=None):
+    def __init__(self, coverage, contig_or_genome_name=None, sample_name=None, contig_starts=None):
         self.median: float = np.median(coverage)
         self.mean: float = np.mean(coverage)
         self.std: float = np.std(coverage)
         self.detection: float = np.sum(coverage > 0) / len(coverage)
         self.name = contig_or_genome_name # optional parameter, only used for debug output
         self.sample = sample_name
+        self.contig_start_positions = contig_starts # optional for genome-level stats
 
         # establish output files for testing
         unfilt_output = "TEST_UNFILTERED.txt"
         filt_output = "TEST_FILTERED.txt"
+        filt_report = "FILTER_REMOVAL_REPORT.txt"
         header = ["name", "sample", "Non-specific Filter Removed Bases", 
                   "SW Depth Evenness MAD (fine)",
                   "SW Depth Evenness MAD (medium)", "SW Depth Evenness MAD (coarse)",
@@ -47,6 +49,10 @@ class DisCov:
             if not filesnpaths.is_file_exists(outfile, dont_raise=True):
                 with open(outfile, 'w') as f:
                     f.write("\t".join(header) + "\n")
+            
+        if self.contig_start_positions and not filesnpaths.is_file_exists(filt_report, dont_raise=True):
+            with open(filt_report, 'w') as f:
+                f.write("\t".join(["genome","sample","contig","filter_phase","removed_pos"]) + "\n")
 
         # compute all sub-metrics on regular coverage array
         self.compute_all(coverage, unfilt_output, filter_nonspecific_mapping=False)
@@ -638,5 +644,14 @@ class DisCov:
         new_coverage = np.delete(coverage, cov_indices_to_remove)
         new_regions = self.get_list_of_coverage_and_gap_regions(new_coverage, min_gap_length=3)
         run.info("INTERNAL FILTER: total bases removed", len(cov_indices_to_remove), overwrite_verbose=anvio.DEBUG)
+
+        # report
+        if self.contig_start_positions:
+            contigs_with_removed_bases = {}
+            for contig, contig_start, contig_end in self.contig_start_positions:
+                idx_in_contig = [i for i in cov_indices_to_remove if i >= contig_start and i < contig_end]
+                with open("FILTER_REMOVAL_REPORT.txt", "a") as f:
+                    for i in idx_in_contig:
+                        f.write("\t".join([self.name,self.sample,contig,"internal",str(i)]) + "\n")
 
         return new_regions, new_coverage
