@@ -79,6 +79,7 @@ var samples_tree_hover = false;
 var inspection_available = false;
 var sequences_available = false;
 var load_full_state = false;
+var items_additional_data_groups = {};
 var bbox;
 var functions_available = false;
 
@@ -301,6 +302,19 @@ function initData() {
             samples_order_dict = response.layers_order;
             samples_information_dict = merged['dict'];
             let samples_information_default_layer_order = merged['default_order'];
+            items_additional_data_groups = response.items_additional_data_groups || {};
+
+            let item_groups = Object.keys(items_additional_data_groups).sort();
+            if (item_groups.length > 1) {
+                $('#item_groups_header').show();
+                item_groups.forEach(function (group_name) {
+                    $('#item_groups_container').append(`
+                        <div class="mr-5 col-5">
+                            <input type="checkbox" onclick="toggleItemGroups();" id="item_group_${group_name}" value="${group_name}" checked="checked">
+                            <label onclick="toggleItemGroups();" for="item_group_${group_name}">${group_name}</label>
+                        </div>`);
+                });
+            }
 
             let samples_groups = Object.keys(samples_information_dict).sort();
 
@@ -1527,6 +1541,12 @@ function syncViews() {
     $('#tbody_layers tr').each(
         function(index, layer) {
             var layer_id = $(layer).find('.input-height')[0].id.replace('height', '');
+
+            var item_group = $(layer).attr('items-group-name');
+            if (item_group && !is_item_group_visible(item_group)) {
+                return;
+            }
+
             layers[layer_id] = {};
             layer_order.push(layer_id);
 
@@ -1580,6 +1600,47 @@ function getComboBoxContent(default_item, available_items){
     return combo;
 }
 
+function getGroupLeadingMargin(layer_name, default_margin) {
+    // groups that should not get an automatic leading margin
+    var no_margin_groups = {'default': true, 'basic_info': true};
+    for (var gname in items_additional_data_groups) {
+        if (gname in no_margin_groups) continue;
+        var gkeys = items_additional_data_groups[gname];
+        if (gkeys.length > 0 && gkeys[0] === layer_name) {
+            return '45';
+        }
+    }
+    return default_margin;
+}
+
+function getItemGroupName(layer_name) {
+    for (var gname in items_additional_data_groups) {
+        if (items_additional_data_groups[gname].indexOf(layer_name) > -1) {
+            return gname;
+        }
+    }
+    return null;
+}
+
+function toggleItemGroups() {
+    $('#tbody_layers tr').each(function() {
+        var group = $(this).attr('items-group-name');
+        if (!group) return;
+
+        if (is_item_group_visible(group)) {
+            $(this).show();
+        } else {
+            $(this).hide();
+            $(this).find('.layer_selectors').prop('checked', false);
+        }
+    });
+}
+
+function is_item_group_visible(group_name) {
+    var checkbox = $('input:checkbox#item_group_' + group_name);
+    return checkbox.length === 0 || checkbox.is(':checked');
+}
+
 function buildLayersTable(order, settings)
 {
     for (var i = 0; i < order.length; i++)
@@ -1587,6 +1648,8 @@ function buildLayersTable(order, settings)
         // common layer variables
         var layer_id = order[i];
         var layer_name = layerdata[0][layer_id];
+        var item_group = getItemGroupName(layer_name);
+        var item_group_attr = item_group ? ' items-group-name="' + item_group + '"' : '';
 
         var short_name = (layer_name.indexOf('!') > -1) ? layer_name.split('!')[0] : layer_name;
         short_name = (short_name.length > 10) ? short_name.slice(0,10) + "..." : short_name;
@@ -1656,7 +1719,7 @@ function buildLayersTable(order, settings)
             else
             {
                 var height = '300';
-                var margin = '15';
+                var margin = getGroupLeadingMargin(layer_name, '15');
             }
 
             if (hasViewSettings)
@@ -1668,7 +1731,7 @@ function buildLayersTable(order, settings)
                 var norm = (mode == 'full') ? 'log' : 'none';
             }
 
-            var template = '<tr>' +
+            var template = '<tr' + item_group_attr + '>' +
                 '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
                 '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
                 '<td></td>' +
@@ -1729,7 +1792,7 @@ function buildLayersTable(order, settings)
                 else
                 {
                     var height = getNamedLayerDefaults(layer_name, 'height', '90');
-                    var margin = getNamedLayerDefaults(layer_name, 'margin', '15');
+                    var margin = getGroupLeadingMargin(layer_name, getNamedLayerDefaults(layer_name, 'margin', '15'));
                     var color = "#000000";
                     var color_start = "#DDDDDD";
 
@@ -1760,7 +1823,7 @@ function buildLayersTable(order, settings)
                     }
                 }
 
-                var template = '<tr>' +
+                var template = '<tr' + item_group_attr + '>' +
                     '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
                     '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
                     '<td><div id="picker_start{id}" class="colorpicker picker_start" color="{color-start}" style="background-color: {color-start}; {color-start-hide}"></div><div id="picker{id}" class="colorpicker picker_end" color="{color}" style="background-color: {color}; {color-hide}"></div></td>' +
@@ -1829,7 +1892,7 @@ function buildLayersTable(order, settings)
                 {
                     var height = getNamedLayerDefaults(layer_name, 'height', '180');
                     var color  = getNamedLayerDefaults(layer_name, 'color', '#000000');
-                    var margin = getNamedLayerDefaults(layer_name, 'margin', '15');
+                    var margin = getGroupLeadingMargin(layer_name, getNamedLayerDefaults(layer_name, 'margin', '15'));
                     if (mode == 'collection') {
                         var type = getNamedLayerDefaults(layer_name, 'type', 'intensity');
                         var color_start = "#EEEEEE";
@@ -1839,7 +1902,7 @@ function buildLayersTable(order, settings)
                     }
                 }
 
-                var template = '<tr>' +
+                var template = '<tr' + item_group_attr + '>' +
                     '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
                     '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
                     '<td><div id="picker_start{id}" class="colorpicker picker_start" color="{color-start}" style="background-color: {color-start}; {color-start-hide}"></div><div id="picker{id}" class="colorpicker" color="{color}" style="background-color: {color}"></div></td>' +
@@ -2149,6 +2212,11 @@ function drawTree() {
             },
             onShow: function() {
                 try {
+                    if (layer_order.length === 0) {
+                        waitingDialog.hide();
+                        toastr.warning("No layers to draw. Please check at least one item data group.");
+                        return;
+                    }
                     drawer = new Drawer(settings);
                     drawer.draw();
                     refreshCollapsedNodesTable();

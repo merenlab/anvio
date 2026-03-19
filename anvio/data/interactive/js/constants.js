@@ -376,7 +376,6 @@ var named_layers = {
         'min': 0,
         'max': 1,
         'type': 'bar',
-        'margin': 90,
         'pretty_name': 'Comb. Homogeneity Ind.',
     },
     'AAI_min': {
@@ -417,21 +416,18 @@ var named_layers = {
     'Gene_cluster_type': {
         'height': 180,
         'pretty_name': 'Gene Cluster Type (Class)',
-        'margin': 30,
     },
     'max_num_paralogs': {
         'height': 180,
         'color': '#002e4f',
         'norm': 'none',
         'min': 1,
-        'margin': 90,
         'pretty_name': 'Max num paralogs',
     },
     'SCG': {
         'height': 180,
         'color': '#4f1111',
         'norm': 'none',
-        'margin': 90,
         'pretty_name': 'SCG Clusters',
     },
     'total_length': {
