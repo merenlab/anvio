@@ -30,7 +30,7 @@ class DisCov:
         unfilt_output = "TEST_UNFILTERED.txt"
         filt_output = "TEST_FILTERED.txt"
         header = ["contig", "sample", "Non-specific Filter Removed Bases", 
-                  "Midpoint Range", "SW Depth Evenness MAD (fine)",
+                  "SW Depth Evenness MAD (fine)",
                   "SW Depth Evenness MAD (medium)", "SW Depth Evenness MAD (coarse)",
                   "SW Depth Evenness MAD Nonzero (fine)",
                   "SW Depth Evenness MAD Nonzero (medium)", "SW Depth Evenness MAD Nonzero (coarse)",
@@ -40,14 +40,7 @@ class DisCov:
                   "SW Depth Evenness CV Nonzero (coarse)", 
                   "SW Proportion Covered (fine)",
                   "SW Proportion Covered (medium)", "SW Proportion Covered (coarse)",
-                  "Window-Scaling Variance", "Window-Scaling Variance Nonzero",
-                  "Dispersion of Counts (num bins = 50)",
-                  "Dispersion of Counts (num bins = 30)", "Dispersion of Counts (num bins = 10)",
-                  "Normalized Dispersion of Counts (num bins = 50)",
-                  "Normalized Dispersion of Counts (num bins = 30)", "Normalized Dispersion of Counts (num bins = 10)",
-                  "Dispersion of Detection (num bins = 50)",
-                  "Dispersion of Detection (num bins = 30)", "Dispersion of Detection (num bins = 10)",
-                  "Shannon Entropy Evenness", "Nonzero Depth Range", "Nonzero Depth IQR", 
+                  "Nonzero Depth Range", "Nonzero Depth IQR", 
                   "Nonzero Depth IQR/median", "Nonzero Depth Variance",
                   "Nonzero Depth Fold-Range Detection (Narrow: 0.5x - 2x)", "Nonzero Depth Fold-Range Detection (Wide: 0.25x - 4x)"]
         for outfile in [unfilt_output, filt_output]:
@@ -62,31 +55,6 @@ class DisCov:
 
     def compute_all(self, cov_array, output_file, filter_nonspecific_mapping: bool = False):
         """Compute all sub-metrics for the contig and print to the specified output file"""
-
-        # skip any contigs without any mapping for which all values would be 0
-        if self.detection == 0:
-            # append all metrics to file
-            output_list = [self.name, self.sample,
-                        f"0", # filter removed 0 bases
-                        f"0", # midpoint range is 0
-                        "0\t0\t0", # sliding window evenness MAD, NA because we can't divide by median of 0
-                        "0\t0\t0", # sliding window evenness MAD nonzero
-                        "0\t0\t0", # sliding window evenness CV, NA because we can't divide by mean of 0
-                        "0\t0\t0", # sliding window evenness CV nonzero
-                        "0\t0\t0", # sliding window proportion covered
-                        "NA", # window-scaling variance, NA because we can't take log of 0 variance
-                        "NA", # window-scaling variance nonzero
-                        "NA\tNA\tNA", # distribution of counts in bins, NA because we can't divide by mean of 0
-                        "NA\tNA\tNA", # normalized distribution of counts in bins
-                        "NA\tNA\tNA", # distribution of detection
-                        "NA", # shannon entropy evenness, NA because we have no data to compute entropy on
-                        "0\t0\t0", # nonzero depth range, IQR, IQR/med
-                        "NA", # nonzero depth variance
-                        "0\t0", # nonzero depth fold-range narrow and wide
-                      ]
-            with open(output_file, 'a') as f:
-                f.write("\t".join(output_list) + "\n")
-            return
 
         run.warning(f"Anvi'o is now attempting to compute how coverage is distributed across a contig. The "
                     f"terminal output below relates to this calculation.", header="Computing Distribution of Coverage", 
@@ -113,11 +81,6 @@ class DisCov:
                 cov_array = new_cov_array
 
         # compute all metrics
-        ## region metrics
-        num_coverage_regions = len([r for r in regions if r[2] > 0])
-        num_gaps = len([r for r in regions if r[2] == 0])
-        gap_gini = self.gap_evenness_gini(regions, min_num_gaps_for_gini=10)
-        mp_range, mp_evenness = self.midpoint_spread_and_evenness(regions)
         ## window metrics
         window_scales = {
             'fine': max(100, len(cov_array) // 100),      # ~1% of contig
@@ -153,46 +116,35 @@ class DisCov:
         sw_cv_vals_nz = [sliding_window_metrics_nonzero[scale]['Depth_Evenness_CV'] for scale in ['fine','medium','coarse']]
         sw_cv_nz = [f"{m:.04}" if m else "NA" for m in sw_cv_vals_nz ]
         sliding_window_evenness_cv_nz = "\t".join(sw_cv_nz)
-        window_scaling_variance = self.compute_window_scaling_variance(cov_array)
-        window_scaling_variance_nz = self.compute_window_scaling_variance(cov_array[cov_array > 0])
-        disp_50 = self.binned_count_dispersion(cov_array, num_windows=50) # fine-scale clustering, small windows
-        disp_30 = self.binned_count_dispersion(cov_array, num_windows=30)
-        disp_10 = self.binned_count_dispersion(cov_array, num_windows=10) # coarse-scale clustering, large windows
-        disp_50_norm = disp_50 / (1 - self.detection) if disp_50 else None # eventual FIXME: deal with divide by 0 when detection = 1
-        disp_30_norm = disp_30 / (1 - self.detection) if disp_30 else None
-        disp_10_norm = disp_10 / (1 - self.detection) if disp_10 else None
-        disp_50_det = self.binned_count_dispersion(cov_array, num_windows=50, use_detection=True) # fine-scale clustering, small windows
-        disp_30_det = self.binned_count_dispersion(cov_array, num_windows=30, use_detection=True)
-        disp_10_det = self.binned_count_dispersion(cov_array, num_windows=10, use_detection=True) # coarse-scale clustering, large windows
-        disp_all = [f"{m:.04}" if m else "NA" for m in [disp_50, disp_30, disp_10, disp_50_norm, disp_30_norm, disp_10_norm, disp_50_det, disp_30_det, disp_10_det]]
-        disp_counts = "\t".join(disp_all)
 
         ## whole-contig metrics
-        shannon = self.Shannon_entropy_evenness(cov_array)
-        nz_depth_range = np.max(cov_array[cov_array > 0]) - np.min(cov_array[cov_array > 0])
-        nz_depth_IQR = np.percentile(cov_array[cov_array > 0], 75) - np.percentile(cov_array[cov_array > 0], 25)
-        nz_depth_IQR_med_ratio = nz_depth_IQR / np.median(cov_array[cov_array > 0])
-        nz_depth_variance = np.var(cov_array[cov_array > 0])
-        nz_depth_foldrange_narrow = self.fold_range_of_median_detection(cov_array[cov_array > 0], fold_lower=0.5, fold_upper=2)
-        nz_depth_foldrange_wide = self.fold_range_of_median_detection(cov_array[cov_array > 0], fold_lower=0.25, fold_upper=4)
+        if len(cov_array[cov_array > 0]) > 0:
+            nz_depth_range = np.max(cov_array[cov_array > 0]) - np.min(cov_array[cov_array > 0])
+            nz_depth_IQR = np.percentile(cov_array[cov_array > 0], 75) - np.percentile(cov_array[cov_array > 0], 25)
+            nz_depth_IQR_med_ratio = nz_depth_IQR / np.median(cov_array[cov_array > 0])
+            nz_depth_variance = np.var(cov_array[cov_array > 0])
+            nz_depth_foldrange_narrow = self.fold_range_of_median_detection(cov_array[cov_array > 0], fold_lower=0.5, fold_upper=2)
+            nz_depth_foldrange_wide = self.fold_range_of_median_detection(cov_array[cov_array > 0], fold_lower=0.25, fold_upper=4)
+        else:
+            nz_depth_range = 0 # no bases with nonzero coverage
+            nz_depth_IQR = 0
+            nz_depth_IQR_med_ratio = 0.0
+            nz_depth_variance = None
+            nz_depth_foldrange_narrow = 0.0
+            nz_depth_foldrange_wide = 0.0
 
         # append all metrics to file
         output_list = [self.name, self.sample,
                         f"{ns_filter_removed_something}",
-                        f"{mp_range:.4}" if mp_range else "NA",
                         sliding_window_evenness_mad,
                         sliding_window_evenness_mad_nz,
                         sliding_window_evenness_cv,
                         sliding_window_evenness_cv_nz,
                         sliding_window_proportion_covered,
-                        f"{window_scaling_variance:.4}" if window_scaling_variance else "NA",
-                        f"{window_scaling_variance_nz:.4}" if window_scaling_variance_nz else "NA",
-                        disp_counts,
-                        f"{shannon:.4}" if shannon else "NA",
                         f"{nz_depth_range}",
                         f"{nz_depth_IQR}",
                         f"{nz_depth_IQR_med_ratio:.4}",
-                        f"{nz_depth_variance:.4}",
+                        f"{nz_depth_variance:.4}" if nz_depth_variance else "NA",
                         f"{nz_depth_foldrange_narrow:.4}",
                         f"{nz_depth_foldrange_wide:.4}",
                       ]
