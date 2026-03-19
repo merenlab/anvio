@@ -1747,6 +1747,11 @@ class BottleApplication(Bottle):
             for sgc in synteny_gene_clusters:
                 functions[sgc] = self.interactive.synteny_gene_clusters_functions_summary_dict.get(sgc, {})
 
+            # per-gene data: { sgc: { genome: { gene_callers_id: { source: "accession|||function" } } } }
+            gene_clusters = {}
+            for sgc in synteny_gene_clusters:
+                gene_clusters[sgc] = self.interactive.synteny_gene_clusters_functions_dict.get(sgc, {})
+
             kegg_metabolism_superdict = {'user_defined_enzymes': {}}
             if 'KOfam' in self.interactive.gene_clusters_function_sources:
                 try:
@@ -1756,6 +1761,7 @@ class BottleApplication(Bottle):
 
             payload = {'status': 0,
                        'functions': functions,
+                       'gene_clusters': gene_clusters,
                        'metabolism': kegg_metabolism_superdict['user_defined_enzymes'],
                        'sources': list(self.interactive.gene_clusters_function_sources)}
 
