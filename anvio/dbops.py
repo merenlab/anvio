@@ -2970,9 +2970,9 @@ class PanSuperclass(object):
         gene_cluster_occurrences_accross_genomes, num_genes_contributed_per_genome = self.get_basic_gene_clusters_stats(gene_clusters_dict)
         if self.functional_homogeneity_info_is_available and self.geometric_homogeneity_info_is_available:
             # determine which group contains homogeneity data ('homogeneity' in new dbs, 'default' in old ones)
-            homogeneity_args = copy.deepcopy(self.args)
-            available_groups = TableForItemAdditionalData(homogeneity_args).get_group_names()
-            homogeneity_args.target_data_group = 'homogeneity' if 'homogeneity' in available_groups else 'default'
+            available_groups = TableForItemAdditionalData(self.args).get_group_names()
+            target_group = 'homogeneity' if 'homogeneity' in available_groups else 'default'
+            homogeneity_args = argparse.Namespace(**{**vars(self.args), 'target_data_group': target_group})
             if self.combined_homogeneity_info_is_available:
                 homogeneity_keys, homogeneity_dict = TableForItemAdditionalData(homogeneity_args).get(['functional_homogeneity_index', 'geometric_homogeneity_index', 'combined_homogeneity_index'])
             else:

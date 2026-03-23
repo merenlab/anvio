@@ -10,6 +10,7 @@ import os
 import json
 import math
 import copy
+import argparse
 import numpy as np
 import pandas as pd
 
@@ -755,13 +756,11 @@ class Pangenome(object):
         # generated yet, but the check names functionality in dbops looks for the gene clsuters table to
         # be certain. it is not a big deal here, since we absoluely know what gene cluster names we are
         # working with.
-        stats_args = copy.deepcopy(self.args)
-        stats_args.target_data_group = 'gene_cluster_stats'
+        stats_args = argparse.Namespace(**{**vars(self.args), 'target_data_group': 'gene_cluster_stats'})
         stats_keys = ['num_genomes_gene_cluster_has_hits', 'num_genes_in_gene_cluster', 'max_num_paralogs']
         miscdata.TableForItemAdditionalData(stats_args, r=terminal.Run(verbose=False)).add(self.additional_view_data, stats_keys, skip_check_names=True)
 
-        scg_args = copy.deepcopy(self.args)
-        scg_args.target_data_group = 'SCG'
+        scg_args = argparse.Namespace(**{**vars(self.args), 'target_data_group': 'SCG'})
         miscdata.TableForItemAdditionalData(scg_args, r=terminal.Run(verbose=False)).add(self.additional_view_data, ['SCG'], skip_check_names=True)
 
         ########################################################################################
@@ -873,13 +872,11 @@ class Pangenome(object):
                               without updating anything in the pan database...")
             return
 
-        homogeneity_args = copy.deepcopy(self.args)
-        homogeneity_args.target_data_group = 'homogeneity'
+        homogeneity_args = argparse.Namespace(**{**vars(self.args), 'target_data_group': 'homogeneity'})
         homogeneity_keys = ['functional_homogeneity_index', 'geometric_homogeneity_index', 'combined_homogeneity_index']
         miscdata.TableForItemAdditionalData(homogeneity_args, r=terminal.Run(verbose=False)).add(d, homogeneity_keys, skip_check_names=True)
 
-        aai_args = copy.deepcopy(self.args)
-        aai_args.target_data_group = 'AAI'
+        aai_args = argparse.Namespace(**{**vars(self.args), 'target_data_group': 'AAI'})
         aai_keys = ['AAI_min', 'AAI_max', 'AAI_avg']
         miscdata.TableForItemAdditionalData(aai_args, r=terminal.Run(verbose=False)).add(d, aai_keys, skip_check_names=True)
 
