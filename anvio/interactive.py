@@ -156,19 +156,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         try:
             a_db_is_found = (os.path.exists(self.pan_db_path) if self.pan_db_path else False) or (os.path.exists(self.profile_db_path) if self.profile_db_path else False)
             if a_db_is_found:
-                items_keys_by_group, items_data_by_group = TableForItemAdditionalData(self.args).get_all()
-                group_order = sorted(items_keys_by_group.keys(), key=lambda g: (0 if g == 'default' else 1, g))
-                self.items_additional_data_keys = []
-                self.items_additional_data_dict = {}
-                self.items_additional_data_groups = {}
-                for group_name in group_order:
-                    group_keys = items_keys_by_group[group_name]
-                    self.items_additional_data_keys.extend(group_keys)
-                    self.items_additional_data_groups[group_name] = list(group_keys)
-                    for item_name, item_data in items_data_by_group[group_name].items():
-                        if item_name not in self.items_additional_data_dict:
-                            self.items_additional_data_dict[item_name] = {}
-                        self.items_additional_data_dict[item_name].update(item_data)
+                self.items_additional_data_keys, self.items_additional_data_dict, self.items_additional_data_groups = TableForItemAdditionalData(self.args).get_all_flattened()
             else:
                 self.items_additional_data_keys, self.items_additional_data_dict, self.items_additional_data_groups = [], {}, {}
             self.layers_additional_data_keys, self.layers_additional_data_dict = TableForLayerAdditionalData(self.args).get_all() if a_db_is_found else ([], {})

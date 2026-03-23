@@ -929,6 +929,33 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         return keys_dict, data_dict
 
 
+    def get_all_flattened(self):
+        """Get data from all groups, flattened into a single keys list, data dict, and groups dict.
+
+        Groups are ordered with 'default' first, then alphabetically. Returns a tuple of
+        (keys_list, data_dict, groups_dict) where groups_dict maps group names to their keys.
+        """
+
+        keys_by_group, data_by_group = self.get_all()
+        group_order = sorted(keys_by_group.keys(), key=lambda g: (0 if g == 'default' else 1, g))
+
+        keys = []
+        data = {}
+        groups = {}
+
+        for group_name in group_order:
+            group_keys = keys_by_group[group_name]
+            keys.extend(group_keys)
+            groups[group_name] = list(group_keys)
+
+            for item_name, item_data in data_by_group[group_name].items():
+                if item_name not in data:
+                    data[item_name] = {}
+                data[item_name].update(item_data)
+
+        return keys, data, groups
+
+
     def get_group_names(self):
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
         group_names = database.get_single_column_from_table(self.table_name, 'data_group', unique=True)

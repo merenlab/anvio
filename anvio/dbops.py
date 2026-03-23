@@ -2733,24 +2733,7 @@ class PanSuperclass(object):
         """Recover additional data stored in the pan database."""
 
         items_additional_data = TableForItemAdditionalData(self.args)
-        keys_by_group, data_by_group = items_additional_data.get_all()
-
-        # flatten in group order: 'default' first, then alphabetical
-        group_order = sorted(keys_by_group.keys(), key=lambda g: (0 if g == 'default' else 1, g))
-
-        self.items_additional_data_keys = []
-        self.items_additional_data_dict = {}
-        self.items_additional_data_groups = {}
-
-        for group_name in group_order:
-            group_keys = keys_by_group[group_name]
-            self.items_additional_data_keys.extend(group_keys)
-            self.items_additional_data_groups[group_name] = list(group_keys)
-
-            for item_name, item_data in data_by_group[group_name].items():
-                if item_name not in self.items_additional_data_dict:
-                    self.items_additional_data_dict[item_name] = {}
-                self.items_additional_data_dict[item_name].update(item_data)
+        self.items_additional_data_keys, self.items_additional_data_dict, self.items_additional_data_groups = items_additional_data.get_all_flattened()
 
         # In fact we are done here since we have our `items_additional_data_dict` all filled up with sweet data.
         # But if functions are initialized, we can also get a summary of gene clusters based on whether most
@@ -4312,23 +4295,7 @@ class ProfileSuperclass(object):
 
     def init_items_additional_data(self):
         items_additional_data = TableForItemAdditionalData(self.args)
-        keys_by_group, data_by_group = items_additional_data.get_all()
-
-        group_order = sorted(keys_by_group.keys(), key=lambda g: (0 if g == 'default' else 1, g))
-
-        self.items_additional_data_keys = []
-        self.items_additional_data_dict = {}
-        self.items_additional_data_groups = {}
-
-        for group_name in group_order:
-            group_keys = keys_by_group[group_name]
-            self.items_additional_data_keys.extend(group_keys)
-            self.items_additional_data_groups[group_name] = list(group_keys)
-
-            for item_name, item_data in data_by_group[group_name].items():
-                if item_name not in self.items_additional_data_dict:
-                    self.items_additional_data_dict[item_name] = {}
-                self.items_additional_data_dict[item_name].update(item_data)
+        self.items_additional_data_keys, self.items_additional_data_dict, self.items_additional_data_groups = items_additional_data.get_all_flattened()
 
 
     def get_split_coverages_dict(self, use_Q2Q3_coverages=False, splits_mode=False, report_contigs=False):
