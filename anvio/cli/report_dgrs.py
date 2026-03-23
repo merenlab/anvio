@@ -118,6 +118,9 @@ def get_args():
     groupG.add_argument("--collections-mode", help="The flag to use that searches through specified splits that are in the collection that is specified with the '-C / --collection' flag.", action = "store_true")
     groupG.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'help':"The name of the singular collection that you want to search for DGRs in"}))
 
+    groupGG = parser.add_argument_group('METAGENOME MODE', "When working with metagenome assemblies, VR/TR pairs found on different contigs are likely false positives from different populations. This mode restricts results to same-contig VR/TR pairs and builds a smaller BLAST target database for efficiency.")
+    groupGG.add_argument("--metagenome-mode", help="Restrict DGR search to VR/TR pairs on the same contig. When enabled, only contigs that contain query regions are included in the BLAST target database, which is much faster for large metagenome assemblies. Cross-contig VR/TR hits are filtered out.", action="store_true")
+
     groupJ = parser.add_argument_group('SNV CLUSTER LOCATOR PARAMETERS', "Options for adjusting how to locate clusters of SNVs")
     groupJ.add_argument("-d","--departure-from-reference-percentage", help="Minimum departure from reference to consider a SNV. Default is 0.1", type=float, default=0.1)
     groupJ.add_argument("--minimum-snv-density", help="The minimum percentage of SNVs over a SNV cluster needed for it to be valid, think about it as in the number of SNVs over the length of a possible VR, Default = 0.1", type=float, default=0.1)
