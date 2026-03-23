@@ -4004,10 +4004,10 @@ class DGR_Finder:
         # are there functions?
         function_sources_found = contigs_db.meta['gene_function_sources'] or []
         if not len(function_sources_found):
-            self.run.warning("There are no functions for genes in your contigs database :/ Your reports on the "
-                            "genomic context that surrounds the variable regions associated with the diversity-generating retroelements will not have any functions "
-                            "for the genes. PITY.")
-            return
+            self.run.warning("There are no functional annotations for genes in your contigs database :/ Your "
+                            "reports on the genomic context that surrounds the DGRs will show gene calls but "
+                            "without any functional information. You can always run functional annotation programs "
+                            "like `anvi-run-ncbi-cogs` and re-run this analysis to get richer output.")
 
         self.progress.new('Recovering genomic context surrounding the DGRs', progress_total_items=len(self.DGRs_found_dict))
         self.progress.update('...')
