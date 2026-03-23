@@ -2693,6 +2693,18 @@ class DGR_Finder:
                             elem.clear()
                             continue
 
+                        # Filter out hits where VR and TR fall in the same gene.
+                        # A real DGR always has its VR and TR in separate ORFs.
+                        vr_gene_id = mismatch_analysis['vr_gene_id']
+                        if vr_gene_id is not None:
+                            tr_midpoint = (tr_start + tr_end) // 2
+                            tr_gene_info = self.find_overlapping_gene(tr_contig, tr_midpoint)
+                            if tr_gene_info is not None:
+                                _, _, _, tr_gene_id = tr_gene_info
+                                if vr_gene_id == tr_gene_id:
+                                    elem.clear()
+                                    continue
+
                         # Basic counts
                         numb_of_mismatches = len(query_mismatch_positions)
 
