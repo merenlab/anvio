@@ -61,12 +61,12 @@ anvi-report-dgrs -c 02_CONTIGS/CONTIGS.db \
                 --skip-compute-DGR-variability-profiling \
                 $thread_controller
 
-INFO "Running the base analysis only looking at adenine bases (without reporting the activity of dgrs)"
+INFO "Running the base analysis allowing any dominant base, not just adenine (without reporting the activity of dgrs)"
 anvi-report-dgrs -c 02_CONTIGS/CONTIGS.db \
                 -p 03_PROFILE/PROFILE.db \
                 -I Reverse_Transcriptase \
-                -o DGRS_BASIC_ONLY_A_BASES \
-                --only-a-bases \
+                -o DGRS_BASIC_ALLOW_ANY_BASE \
+                --allow-any-base \
                 --parameter-output \
                 --skip-compute-DGR-variability-profiling \
                 $thread_controller
@@ -104,6 +104,17 @@ anvi-report-dgrs -c 02_CONTIGS/CONTIGS.db \
                 --skip-compute-DGR-variability-profiling \
                 $thread_controller
 
+
+INFO "Running the base analysis with metagenome mode (restricts VR/TR pairs to same contig)"
+anvi-report-dgrs -c 02_CONTIGS/CONTIGS.db \
+                -p 03_PROFILE/PROFILE.db \
+                -I Reverse_Transcriptase \
+                -o DGRS_METAGENOME_MODE \
+                --metagenome-mode \
+                --parameter-output \
+                --skip-compute-DGR-variability-profiling \
+                --skip-recovering-genomic-context \
+                $thread_controller
 
 INFO "Running the full analysis reporting the activity of dgrs and variable primers"
 anvi-report-dgrs -c 02_CONTIGS/CONTIGS.db \
