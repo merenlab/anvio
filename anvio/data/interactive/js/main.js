@@ -2178,6 +2178,11 @@ function serializeSettings(use_layer_names) {
         state['samples-groups'][$(checkbox).val()] = $(checkbox).is(':checked');
     });
 
+    state['item-groups'] = {};
+    $('#item_groups_container input:checkbox').each((index, checkbox) => {
+        state['item-groups'][$(checkbox).val()] = $(checkbox).is(':checked');
+    });
+
     return state;
 }
 
@@ -4097,6 +4102,17 @@ function processState(state_name, state) {
         }
     }
 
+    if (state.hasOwnProperty('item-groups')) {
+        for (let group_name in state['item-groups']) {
+            let checkbox = document.getElementById('item_group_' + group_name);
+
+            if (checkbox) {
+                checkbox.checked = state['item-groups'][group_name];
+            }
+        }
+    }
+
+    toggleItemGroups();
     toggleSampleGroups();
 
     if (state.hasOwnProperty('samples-order') && $(`#samples_order option[value='${state['samples-order']}']`).length > 0) {
