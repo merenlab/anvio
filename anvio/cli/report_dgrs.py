@@ -145,7 +145,7 @@ def get_args():
     groupD.add_argument("--initial-mismatch-bias-threshold", help="Minimum fraction of mismatches to dominant base for initial BLAST hit filtering (before trimming). This is the first stage of a two-stage filter. Default = 0.6", type=float, default=0.6, metavar="FLOAT")
     groupD.add_argument("--max-non-dominant", help="Maxium non-dominant base allowed in the trimmed optimal window. This is the second stage that finds the best region within each BLAST hit. Default = 1", type=int, default=1, metavar="INT")
     groupD.add_argument("--minimum-vr-length", help="Minimum length in bp for a valid VR/TR region after trimming. Default = 50", type=int, default=50, metavar="INT")
-    groupD.add_argument("-n","--number-of-mismatches", help="Minimum number of mismatches required in the TR/VR alignment. Default = 7", type=int, default=7, metavar="INT")
+    groupD.add_argument("-n","--number-of-mismatches", help="Minimum number of mismatches required in the TR/VR alignment. Default = 10", type=int, default=10, metavar="INT")
     groupD.add_argument("--allow-any-base", help="By default, anvi'o only reports DGRs with A-base mutagenesis (the canonical mechanism). "
                         "Use this flag to also report DGRs with other dominant bases (C, G, or T). This is useful for exploratory "
                         "analysis but may include false positives.", default=False, action="store_true")
