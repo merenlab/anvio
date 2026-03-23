@@ -164,6 +164,7 @@ class DGR_Finder:
         self.parameter_outputs = A('parameter_output')
         self.just_do_it = A('just_do_it')
         self.collections_mode = A('collections_mode')
+        self.metagenome_mode = A('metagenome_mode')
         self.collections_given = A('collection_name')
         self.skip_recovering_genomic_context = A('skip_recovering_genomic_context')
         self.num_genes_to_consider_in_context = A('num_genes_to_consider_in_context') or 3
@@ -217,6 +218,7 @@ class DGR_Finder:
         self.run.info('Minimum Base Types in TR', self.min_base_types_tr)
         self.run.info('Number of imperfect tandem repeats', self.numb_imperfect_tandem_repeats)
         self.run.info('Collections Mode', self.collections_mode)
+        self.run.info('Metagenome Mode', self.metagenome_mode)
         if self.collections_mode:
             self.run.info('Collection(s) Provided', (self.collections_given))
         self.run.info('Output Directory', self.output_directory)
@@ -382,6 +384,11 @@ class DGR_Finder:
             # ensure collections_given is a single string (collection name)
             if not isinstance(self.collections_given, str):
                 raise ValueError("'collection-name' must be a single collection name")
+
+        if self.metagenome_mode and self.collections_mode:
+            raise ConfigError("You can't use --metagenome-mode and --collections-mode at the same time. "
+                              f"Collections mode already restricts the BLAST search to per-bin contigs, "
+                              f"so metagenome mode would be redundant. Please use one or the other.")
 
         # ========== HMM VALIDATION ==========
         # HMM is required for all detection modes (for RT location in activity mode post-hoc,
@@ -1925,7 +1932,15 @@ class DGR_Finder:
 
         sample_id_list, contig_sequences = self.load_data_and_setup()
         contig_records = self.find_snv_clusters(sample_id_list, contig_sequences)
-        self.blast_output = self.run_blast(contig_records, contig_sequences, mode='activity')
+
+        target_sequences = contig_sequences
+        if self.metagenome_mode:
+            query_contigs = set(sid.split('_section', 1)[0] for sid in contig_records.keys())
+            target_sequences = {name: seq for name, seq in contig_sequences.items() if name in query_contigs}
+            self.run.info_single(f"Metagenome mode: reduced BLAST target from {len(contig_sequences):,} to {len(target_sequences):,} contigs "
+                                 f"(only contigs containing SNV clusters).", nl_before=1)
+
+        self.blast_output = self.run_blast(contig_records, target_sequences, mode='activity')
 
         return self.blast_output
 
@@ -2579,6 +2594,11 @@ class DGR_Finder:
                             tr_frame = new_query_frame
                             vr_mismatch_counts = subject_mismatch_counts
                             tr_mismatch_counts = query_mismatch_counts
+
+                        # In metagenome mode, skip hits where VR and TR are on different contigs
+                        if self.metagenome_mode and vr_contig != tr_contig:
+                            elem.clear()
+                            continue
 
                         # Mismatch positions relative to VR contig
                         # query_mismatch_positions are alignment-relative (0-indexed within trimmed alignment)
@@ -3548,6 +3568,13 @@ class DGR_Finder:
             else:
                 raise ConfigError("No RT windows were found. Homology-based detection requires RT HMM hits "
                                 "in the contigs database. Please run `anvi-run-hmms -I Reverse_Transcriptase`.")
+
+        # In metagenome mode, restrict BLAST target to only contigs with RT windows
+        if self.metagenome_mode:
+            query_contigs = set(sid.split('_section', 1)[0] for sid in query_records.keys())
+            contig_sequences = {name: seq for name, seq in contig_sequences.items() if name in query_contigs}
+            self.run.info_single(f"Metagenome mode: reduced BLAST target to {len(contig_sequences):,} contigs "
+                                 f"(only contigs containing RT windows).", nl_before=1)
 
         # Use unified run_blast function
         blast_output_path = self.run_blast(query_records, contig_sequences,
@@ -5271,6 +5298,7 @@ class DGR_Finder:
                 ("HMMs Provided to Search through", self.hmm or "Reverse_Transcriptase"),
                 ("Discovery mode", self.discovery_mode or "FALSE"),
                 ("Collections Mode", self.collections_mode or "FALSE"),
+                ("Metagenome Mode", self.metagenome_mode or "FALSE"),
                 ("Collections Given", self.collections_given or "None"),
                 ("Parameter Outputs", self.parameter_outputs or "FALSE"),
                 ("Just Do It", self.just_do_it or "FALSE"),
