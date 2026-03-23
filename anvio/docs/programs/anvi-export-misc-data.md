@@ -1,34 +1,42 @@
 This program lets you export miscellaneous data of your choosing into a text file, which can be imported into another anvi'o project using %(anvi-import-misc-data)s. You can export the same types of data that you can import with that function. These are also listed below.
 
-To see what misc-data is available in your database, use %(anvi-show-misc-data)s. 
+To see what misc-data is available in your database, use %(anvi-show-misc-data)s.
 
-If your misc-data is associated with a specific data group, you can provide that data group to this program with the `-D` flag. 
+If your misc-data is associated with a specific data group, you can provide that data group to this program with the `-D` flag. For instance, to export only the homogeneity indices from a %(pan-db)s:
 
-## Data types you can export 
+{{ codestart }}
+anvi-export-misc-data -p %(pan-db)s \
+                      --target-data-table items \
+                      -D homogeneity
+{{ codestop }}
+
+Several anvi'o programs create named data groups automatically. For items data in a pan database, common groups include `gene_cluster_stats`, `SCG`, `homogeneity`, `AAI`, `functional_annotation`, and `bayesian_pan_core`. See %(misc-data-items)s for details.
+
+## Data types you can export
 
 ### From a pan-db or profile-db: items, layers, layer orders
 
 **From a %(pan-db)s or %(profile-db)s, you can export**
 
-- items data (%(misc-data-items)s) into a %(misc-data-items-txt)s. 
+- items data (%(misc-data-items)s) into a %(misc-data-items-txt)s.
 
 {{ codestart }}
 anvi-export-misc-data -p %(profile-db)s \
-                      --target-data-table items 
+                      --target-data-table items
 {{ codestop }}
 
-- layers data (%(misc-data-layers)s) into a %(misc-data-layers-txt)s.  
+- layers data (%(misc-data-layers)s) into a %(misc-data-layers-txt)s.
 
 {{ codestart }}
 anvi-export-misc-data -p %(pan-db)s \
-                      --target-data-table layers 
+                      --target-data-table layers
 {{ codestop }}
 
-- layer orders data (%(misc-data-layer-orders)s) into a %(misc-data-layer-orders-txt)s. 
+- layer orders data (%(misc-data-layer-orders)s) into a %(misc-data-layer-orders-txt)s.
 
 {{ codestart }}
 anvi-export-misc-data -p %(profile-db)s \
-                      --target-data-table layer_orders 
+                      --target-data-table layer_orders
 {{ codestop }}
 
 ### From a contigs-db: nucleotide and amino acid information
@@ -38,13 +46,13 @@ anvi-export-misc-data -p %(profile-db)s \
 - nucleotide data (%(misc-data-nucleotides)s) into a %(misc-data-nucleotides-txt)s.
 
 {{ codestart }}
-anvi-export-misc-data -c %(contigs-db)s 
+anvi-export-misc-data -c %(contigs-db)s
                       --target-data-table nucleotides
 {{ codestop }}
 
 - amino acid data (%(misc-data-amino-acids)s) into a %(misc-data-amino-acids-txt)s.
 
 {{ codestart }}
-anvi-export-misc-data -c %(contigs-db)s 
+anvi-export-misc-data -c %(contigs-db)s
                       --target-data-table amino_acids
 {{ codestop }}
