@@ -153,7 +153,7 @@ class DGR_Finder:
         self.temp_dir = A('temp_dir') or filesnpaths.get_temp_directory_path()
         self.variable_buffer_length = A('variable_buffer_length')
         self.departure_from_reference_percentage = A('departure_from_reference_percentage')
-        self.gene_caller_to_consider_in_context = A('gene_caller') or 'prodigal'
+        self.gene_caller_to_consider_in_context = A('gene_caller') or utils.get_default_gene_caller(self.contigs_db_path)
         self.snv_window_size = A('snv_window_size') or 50
         self.snv_window_step = A('snv_window_step') or 10
         self.minimum_snv_density = A('minimum_snv_density') or 0.1
