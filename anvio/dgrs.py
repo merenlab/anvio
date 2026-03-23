@@ -3424,8 +3424,9 @@ class DGR_Finder:
 
         if not rt_hits:
             self.run.warning("No RT HMM hits were found in the contigs database. Homology-based detection "
-                           "cannot proceed without RT genes. Please ensure you have run "
-                           "`anvi-run-hmms -I Reverse_Transcriptase` on your contigs database.",
+                           "cannot proceed without RT genes. This could mean that `anvi-run-hmms -I "
+                           "Reverse_Transcriptase` has not been run on your contigs database, or that it was "
+                           "run but simply returned no hits. SAD :(",
                            header="NO RT HMM HITS FOUND")
             self.rt_windows = {}
             return {}
@@ -3577,9 +3578,18 @@ class DGR_Finder:
             if bin_name:
                 self.run.warning(f"No RT windows found in bin '{bin_name}'. Skipping homology-based detection for this bin.")
                 return None
+            elif self.detection_mode == 'both':
+                self.run.warning("No RT windows were found, so homology-based detection will be skipped. "
+                               "This could mean that `anvi-run-hmms -I Reverse_Transcriptase` has not been "
+                               "run on your contigs database, or that it was run but returned no hits. "
+                               "Anvi'o will continue with activity-based detection results only.",
+                               header="SKIPPING HOMOLOGY-BASED DETECTION")
+                return None
             else:
                 raise ConfigError("No RT windows were found. Homology-based detection requires RT HMM hits "
-                                "in the contigs database. Please run `anvi-run-hmms -I Reverse_Transcriptase`.")
+                                f"in the contigs database. This could mean that `anvi-run-hmms -I "
+                                f"Reverse_Transcriptase` has not been run, or that it was run but returned "
+                                f"no hits. SAD :(")
 
         # In metagenome mode, restrict BLAST target to only contigs with RT windows
         if self.metagenome_mode:
