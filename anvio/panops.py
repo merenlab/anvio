@@ -2094,7 +2094,8 @@ class PangenomeGraph():
                          header="ADDING LAYERS", lc="green")
 
         layer_set = set()
-        for syn_cluster, layer_data in self.layers_data.items():
+        for syn_cluster in self.pangenome_graph.graph.nodes():
+            layer_data = self.layers_data[syn_cluster]
             for layer, value_list in layer_data.items():
                 layer_set.add(layer)
                 self.pangenome_graph.graph.nodes[syn_cluster]['layer'] = self.pangenome_graph.graph.nodes[syn_cluster]['layer'] | {layer: sum(value_list) / len(value_list)}
