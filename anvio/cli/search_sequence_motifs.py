@@ -174,6 +174,7 @@ class SequenceMotifSearch:
 
                 args.skip_check_names = True
                 args.just_do_it = True
+                args.target_data_group = 'sequence_motifs'
                 TableForItemAdditionalData(args, r=terminal.Run(verbose=False)).add(M, [f'motif_{m}' for m in list(self.motifs)])
                 self.run.info("Motif frequencies stored in db", "YES", mc='green', nl_before=1)
             else:

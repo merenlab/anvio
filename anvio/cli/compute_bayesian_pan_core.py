@@ -153,6 +153,7 @@ def run_program():
 
     if args.store_in_db:
         data2add = {g: {'Gene_cluster_type' : 'CORE' if g in motu.core else 'ACCESSORY', 'Gene_cluster_type_LLR' : motu.likelies[g]} for g in pan.gene_cluster_names}
+        args.target_data_group = 'bayesian_pan_core'
         panditional_data = TableForItemAdditionalData(args)
         panditional_data.add(data2add, data_keys_list=['Gene_cluster_type', 'Gene_cluster_type_LLR'])
 
