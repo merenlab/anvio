@@ -371,11 +371,10 @@ class DGR_Finder:
             raise ConfigError('The number of base types of the VR sequence cannot exceed 4 this is because there are only 4 bases in our DNA alphabet')
 
         if self.collections_mode:
-            # Collections mode requires activity-based detection (needs profile.db)
-            if self.detection_mode == 'homology':
-                raise ConfigError("Collections mode (--collections-mode) requires activity-based detection, "
-                                "but you are running in 'homology' mode only. Please provide a profile.db "
-                                "and use --detection-mode 'activity' or 'both' to use collections mode.")
+            if not self.profile_db_path:
+                raise ConfigError("Collections mode (--collections-mode) requires a profile database because "
+                                  "that is where collections are stored. Please provide a profile.db with "
+                                  "--profile-db.")
             if not self.collections_given:
                 raise ConfigError("You must provide a collection name for collections mode to work. If you want to know about "
                                 "all the collections in your profile database you can use the program "
