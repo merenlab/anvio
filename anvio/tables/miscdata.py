@@ -824,6 +824,19 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
         all_keys_for_group = database.get_single_column_from_table(self.table_name,
             'data_key', unique=True, where_clause="""data_group='%s'""" % self.target_data_group)
+
+        # check for key collisions across other groups (items table only — layers tables
+        # intentionally share keys across groups, e.g. genome names in ANI groups)
+        if self.target_table == 'items' and 'data_group' in database.get_table_structure(self.table_name):
+            key_placeholders = ','.join(['?'] * len(data_keys_list))
+            query = '''SELECT DISTINCT data_key, data_group FROM %s WHERE data_key IN (%s) AND data_group != ?''' % (self.table_name, key_placeholders)
+            results = database._exec(query, value=list(data_keys_list) + [self.target_data_group]).fetchall()
+            if results:
+                keys_in_other_groups = set("'%s' (in group '%s')" % (row[0], row[1]) for row in results)
+                raise ConfigError("Some of the data keys you are trying to add already exist in other data groups: %s. "
+                                  "Having the same key in multiple groups would lead to data collisions in the display. "
+                                  "Please rename your keys or remove the existing ones first." % ', '.join(keys_in_other_groups))
+
         database.disconnect()
 
         keys_already_in_db = [c for c in data_keys_list if c in all_keys_for_group]
@@ -913,6 +926,40 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
             keys_dict[group_name], data_dict[group_name] = self.get()
 
         return keys_dict, data_dict
+
+
+    def get_all_flattened(self):
+        """Get data from all groups, flattened into a single keys list, data dict, and groups dict.
+
+        Groups are ordered with 'default' first, then alphabetically. Returns a tuple of
+        (keys_list, data_dict, groups_dict) where groups_dict maps group names to their keys.
+        """
+
+        keys_by_group, data_by_group = self.get_all()
+
+        # known groups in their intended display order; any unknown groups go at the end alphabetically
+        preferred_order = ['default', 'gene_cluster_stats', 'SCG', 'AAI', 'homogeneity',
+                           'functional_annotation', 'bayesian_pan_core', 'metapangenome',
+                           'sequence_motifs']
+        known_set = set(preferred_order)
+        group_order = [g for g in preferred_order if g in keys_by_group] + \
+                      sorted([g for g in keys_by_group if g not in known_set])
+
+        keys = []
+        data = {}
+        groups = {}
+
+        for group_name in group_order:
+            group_keys = keys_by_group[group_name]
+            keys.extend(group_keys)
+            groups[group_name] = list(group_keys)
+
+            for item_name, item_data in data_by_group[group_name].items():
+                if item_name not in data:
+                    data[item_name] = {}
+                data[item_name].update(item_data)
+
+        return keys, data, groups
 
 
     def get_group_names(self):

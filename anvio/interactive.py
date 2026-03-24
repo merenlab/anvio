@@ -156,11 +156,14 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # get additional data for items and layers, and get layer orders data.
         try:
             a_db_is_found = (os.path.exists(self.pan_db_path) if self.pan_db_path else False) or (os.path.exists(self.profile_db_path) if self.profile_db_path else False)
-            self.items_additional_data_keys, self.items_additional_data_dict = TableForItemAdditionalData(self.args).get() if a_db_is_found else ([], {})
+            if a_db_is_found:
+                self.items_additional_data_keys, self.items_additional_data_dict, self.items_additional_data_groups = TableForItemAdditionalData(self.args).get_all_flattened()
+            else:
+                self.items_additional_data_keys, self.items_additional_data_dict, self.items_additional_data_groups = [], {}, {}
             self.layers_additional_data_keys, self.layers_additional_data_dict = TableForLayerAdditionalData(self.args).get_all() if a_db_is_found else ([], {})
             self.layers_order_data_dict = TableForLayerOrders(self.args).get() if a_db_is_found else {}
         except GenesDBError as e:
-            self.items_additional_data_keys, self.items_additional_data_dict = [], {}
+            self.items_additional_data_keys, self.items_additional_data_dict, self.items_additional_data_groups = [], {}, {}
             self.layers_additional_data_keys, self.layers_additional_data_dict = [], {}
             self.layers_order_data_dict = {}
 
@@ -2058,13 +2061,21 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             if self.splits_basic_info:
                 basic_info_headers = ['length', 'gc_content']
                 json_header.extend(basic_info_headers)
+                self.items_additional_data_groups['basic_info'] = list(basic_info_headers)
 
             # (3) then add the view!
             json_header.extend(view_headers)
 
+            # add view headers to the 'default' group so they get a checkbox in the interface
+            if view_headers:
+                if 'default' not in self.items_additional_data_groups:
+                    self.items_additional_data_groups['default'] = []
+                self.items_additional_data_groups['default'] = list(view_headers) + self.items_additional_data_groups['default']
+
             # (4) then add 'additional' headers as the outer ring:
             if self.items_additional_data_keys:
-                self.items_additional_data_keys = sorted(self.get_layer_names_with_at_least_one_hit_for_splits(self.items_additional_data_keys, self.items_additional_data_dict))
+                keys_with_hits = set(self.get_layer_names_with_at_least_one_hit_for_splits(self.items_additional_data_keys, self.items_additional_data_dict))
+                self.items_additional_data_keys = [k for k in self.items_additional_data_keys if k in keys_with_hits]
                 json_header.extend(self.items_additional_data_keys)
 
             # (5) finally add hmm search results
@@ -2086,7 +2097,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 # let's sort these layers alphabetically
                 self.hmm_searches_header = sorted(self.hmm_searches_header)
 
-                json_header.extend([tpl[0] for tpl in self.hmm_searches_header])
+                hmm_layer_names = [tpl[0] for tpl in self.hmm_searches_header]
+                json_header.extend(hmm_layer_names)
+                self.items_additional_data_groups['HMM'] = hmm_layer_names
 
             # (6) add taxonomy, if exitsts:
             if len(self.splits_taxonomy_dict):

@@ -231,6 +231,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": True
     },
+    "single-end-fastq": {
+        "name": "SHORT READS",
+        "type": "FASTQ",
+        "provided_by_anvio": True,
+        "provided_by_user": True
+    },
     "genes-fasta": {
         "name": "GENES",
         "type": "FASTA",
