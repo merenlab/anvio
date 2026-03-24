@@ -1367,18 +1367,20 @@ class PangenomeGraph():
             self.genome_names = []
 
         if self.pan_db_path:
-            self.pan_db = dbops.PanDatabase(self.pan_db_path)
-            self.gene_alignments_computed = self.pan_db.meta['gene_alignments_computed']
+            if filesnpaths.is_file_exists(self.pan_db_path, dont_raise=False):
+                self.pan_db = dbops.PanDatabase(self.pan_db_path)
+                self.gene_alignments_computed = self.pan_db.meta['gene_alignments_computed']
 
-            self.pan_super = dbops.PanSuperclass(self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
-            self.pan_super.init_gene_clusters()
+                self.pan_super = dbops.PanSuperclass(self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+                self.pan_super.init_gene_clusters()
         else:
             self.pan_db = None
             self.pan_super = None
             self.gene_alignments_computed = False
 
         if self.genomes_storage:
-            self.genomes_storage_hash = GenomeStorage(self.genomes_storage, storage_hash=None, genome_names_to_focus=self.genome_names).get_storage_hash()
+            if filesnpaths.is_file_exists(self.genomes_storage, dont_raise=False):
+                self.genomes_storage_hash = GenomeStorage(self.genomes_storage, storage_hash=None, genome_names_to_focus=self.genome_names).get_storage_hash()
         else:
             self.genomes_storage_hash = None
 
