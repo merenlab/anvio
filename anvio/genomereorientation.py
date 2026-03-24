@@ -664,23 +664,15 @@ class GenomeReorienter:
                 except RuntimeError as e:
                     self.log_run.info_single(f"'{contig['id']}': alignment failed ({e})", level=2)
 
-            # Count unique original contigs that aligned
-            # (accounting for split wrap-around contigs)
-            aligned_original_contigs = set()
-            for contig_id, info in contig_alignments.items():
-                original_id = info['contig_data'].get('original_id', info['contig_data']['id'])
-                aligned_original_contigs.add(original_id)
-
-            num_aligned_original = len(aligned_original_contigs)
-            num_unaligned = num_contigs_after_filter - num_aligned_original
-            num_alignment_pieces = len(contig_alignments)  # Total pieces (including split contigs)
+            num_aligned = len(contig_alignments)
+            num_unaligned = num_contigs_after_filter - num_aligned
 
             self.log_run.info_single(
-                f"Alignment summary: {num_aligned_original} contigs aligned "
-                f"({num_alignment_pieces} pieces total, {num_wrap_around_contigs} split for wrap-around)",
+                f"Alignment summary: {num_aligned} contigs aligned "
+                f"({num_wrap_around_contigs} rotated for wrap-around)",
                 level=2)
 
-            if num_aligned_original == 0:
+            if num_aligned == 0:
                 raise ConfigError("No contigs aligned to reference")
 
             # Step 3: Order contigs by reference position
@@ -827,23 +819,22 @@ class GenomeReorienter:
 
             avg_ani = sum(ani_values) / len(ani_values) if ani_values else 0.0
 
-            actions_summary = f"ordered {num_aligned_original} contigs by reference position"
+            actions_summary = f"ordered {num_aligned} contigs by reference position"
             if num_wrap_around_contigs > 0:
-                actions_summary += f" ({num_wrap_around_contigs} split for wrap-around)"
+                actions_summary += f" ({num_wrap_around_contigs} rotated for wrap-around)"
             if self.scaffold_fragmented:
                 actions_summary += f", inserted {total_gap_size:,} nts of N-padding"
 
             # Return results
             return {
                 'num_contigs_processed': num_contigs_after_filter,
-                'num_contigs_aligned': num_aligned_original,
+                'num_contigs_aligned': num_aligned,
                 'num_contigs_unaligned': num_unaligned,
                 'reference_coverage_pct': reference_coverage_pct,
                 'gaps': gaps,
                 'total_gap_size': total_gap_size,
                 'avg_ani': avg_ani,
                 'actions_summary': actions_summary,
-                'num_wrap_around_contigs': num_wrap_around_contigs
             }
 
         finally:
