@@ -118,6 +118,25 @@ printf "sample_01\tsample_01-R1.fastq\tsample_01-R2.fastq\n" >> samples.txt
 printf "sample_02\tsample_02-R1.fastq\tsample_02-R2.fastq\n" >> samples.txt
 printf "sample_03\tsample_03-R1.fastq\tsample_03-R2.fastq\n" >> samples.txt
 
+# Create a collection file (contig name -> bin name) for collections mode tests.
+# The 3 bins correspond to the 3 DGR systems in the reference:
+#   DGR_001: single contig, activity-only (no RT gene)
+#   DGR_002: two contigs from B. fragilis (VR + TR/RT on separate contigs)
+#   DGR_003: three contigs from T. erythraeum (TR/RT + 2 additional VRs)
+printf "SAMEA2619974_000000008595_DGR_no_RT\tDGR_001\n" > collection.txt
+printf "B_fragilis_ARW016_000000000001_VR_001_rev_comp\tDGR_002\n" >> collection.txt
+printf "B_fragilis_ARW016_000000000001_TR_RT\tDGR_002\n" >> collection.txt
+printf "T_erythraeum_IMS101_000000000001_RT_TR\tDGR_003\n" >> collection.txt
+printf "T_erythraeum_IMS101_000000000001_VR_002\tDGR_003\n" >> collection.txt
+printf "T_erythraeum_IMS101_000000000001_VR_001\tDGR_003\n" >> collection.txt
+
+INFO "Importing collection for collections mode tests"
+anvi-import-collection collection.txt \
+                       -c CONTIGS.db \
+                       -p MERGED_PROFILE/PROFILE.db \
+                       -C DGR_GENOMES \
+                       --contigs-mode
+
 ####################################################################################################
 #
 #   STEP 4: RUN anvi-report-dgrs WITH VARIOUS FLAGS
@@ -215,6 +234,44 @@ anvi-report-dgrs -c CONTIGS.db \
                 -o DGRS_HOMOLOGY_ONLY \
                 --detection-mode homology \
                 --parameter-output \
+                --skip-recovering-genomic-context \
+                $thread_controller
+
+INFO "Running in collections mode with detection-mode 'both'"
+anvi-report-dgrs -c CONTIGS.db \
+                -p MERGED_PROFILE/PROFILE.db \
+                -I Reverse_Transcriptase \
+                -o DGRS_COLLECTIONS_BOTH \
+                --collections-mode \
+                --collection-name DGR_GENOMES \
+                --parameter-output \
+                --skip-compute-DGR-variability-profiling \
+                --skip-recovering-genomic-context \
+                $thread_controller
+
+INFO "Running in collections mode with detection-mode 'activity' only"
+anvi-report-dgrs -c CONTIGS.db \
+                -p MERGED_PROFILE/PROFILE.db \
+                -I Reverse_Transcriptase \
+                -o DGRS_COLLECTIONS_ACTIVITY \
+                --collections-mode \
+                --collection-name DGR_GENOMES \
+                --detection-mode activity \
+                --parameter-output \
+                --skip-compute-DGR-variability-profiling \
+                --skip-recovering-genomic-context \
+                $thread_controller
+
+INFO "Running in collections mode with detection-mode 'homology' only"
+anvi-report-dgrs -c CONTIGS.db \
+                -p MERGED_PROFILE/PROFILE.db \
+                -I Reverse_Transcriptase \
+                -o DGRS_COLLECTIONS_HOMOLOGY \
+                --collections-mode \
+                --collection-name DGR_GENOMES \
+                --detection-mode homology \
+                --parameter-output \
+                --skip-compute-DGR-variability-profiling \
                 --skip-recovering-genomic-context \
                 $thread_controller
 
