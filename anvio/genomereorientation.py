@@ -605,50 +605,43 @@ class GenomeReorienter:
                                 start_align = max(near_start, key=lambda r: r.aligned_bases)
 
                                 self.log_run.info_single(
-                                    f"'{contig['id']}': WRAP-AROUND detected! Splitting into 2 parts", level=2)
+                                    f"'{contig['id']}': WRAP-AROUND detected! Rotating to reference start", level=2)
                                 self.log_run.info_single(
-                                    f"  Part 1 (end): ref[{end_align.tstart}:{end_align.tend}] "
+                                    f"  Ref-end alignment:   ref[{end_align.tstart}:{end_align.tend}] "
                                     f"qry[{end_align.qstart}:{end_align.qend}] strand={end_align.strand}", level=2)
                                 self.log_run.info_single(
-                                    f"  Part 2 (start): ref[{start_align.tstart}:{start_align.tend}] "
+                                    f"  Ref-start alignment: ref[{start_align.tstart}:{start_align.tend}] "
                                     f"qry[{start_align.qstart}:{start_align.qend}] strand={start_align.strand}", level=2)
 
-                                # Extract the two parts of the contig based on query positions
-                                # Note: Need to handle strand orientation
-                                if end_align.strand == '+':
-                                    # Forward strand: extract by query positions directly
-                                    part1_seq = contig['seq'][end_align.qstart:end_align.qend]
-                                else:
-                                    # Reverse strand: query positions are on RC, need to extract and RC
-                                    part1_seq = contig['seq'][end_align.qstart:end_align.qend]
+                                # Apply the same RC+rotate logic as _process_circular, using
+                                # start_align as the anchor to find ref[0] in the contig.
+                                # We fully orient the contig here and mark it so step 4 skips it.
+                                temp_wrap_fa = os.path.join(temp_dir, f"wrap_{idx}.fa")
+                                with open(temp_wrap_fa, 'w') as f:
+                                    f.write(f">{contig['id']}\n{contig['seq']}\n")
 
-                                if start_align.strand == '+':
-                                    part2_seq = contig['seq'][start_align.qstart:start_align.qend]
-                                else:
-                                    part2_seq = contig['seq'][start_align.qstart:start_align.qend]
+                                cut0 = self._cut0_for_ref0(start_align)
 
-                                # Create two contig entries
-                                part1_id = f"{contig['id']}_wrapPart1"
-                                part2_id = f"{contig['id']}_wrapPart2"
+                                if start_align.strand == '-':
+                                    temp_wrap_rc = os.path.join(temp_dir, f"wrap_{idx}_rc.fa")
+                                    self._seqkit_reverse_complement(temp_wrap_fa, temp_wrap_rc)
+                                    cut0 = (start_align.qlen - 1 - cut0) % start_align.qlen
+                                    temp_wrap_fa = temp_wrap_rc
+                                    self.log_run.info_single(f"  Reverse-complemented '{contig['id']}' (wrap-around, strand=-)", level=2)
 
-                                contig_alignments[part1_id] = {
-                                    'contig_data': {
-                                        'id': part1_id,
-                                        'seq': part1_seq,
-                                        'length': len(part1_seq),
-                                        'original_id': contig['id']
-                                    },
-                                    'alignment': end_align
-                                }
+                                temp_wrap_rot = os.path.join(temp_dir, f"wrap_{idx}_rot.fa")
+                                self._seqkit_rotate(temp_wrap_fa, cut0 + 1, temp_wrap_rot)
+                                self.log_run.info_single(f"  Rotated '{contig['id']}' by {cut0} nts (wrap-around)", level=2)
 
-                                contig_alignments[part2_id] = {
-                                    'contig_data': {
-                                        'id': part2_id,
-                                        'seq': part2_seq,
-                                        'length': len(part2_seq),
-                                        'original_id': contig['id']
-                                    },
-                                    'alignment': start_align
+                                wrap_fasta = utils.u.SequenceSource(temp_wrap_rot)
+                                next(wrap_fasta)
+                                wrap_contig = {'id': contig['id'], 'seq': wrap_fasta.seq, 'length': len(wrap_fasta.seq)}
+                                wrap_fasta.close()
+
+                                contig_alignments[contig['id']] = {
+                                    'contig_data': wrap_contig,
+                                    'alignment': start_align,
+                                    'already_oriented': True
                                 }
 
                     # If not wrap-around, process normally
@@ -709,8 +702,8 @@ class GenomeReorienter:
                 contig_data = contig_info['contig_data']
                 alignment = contig_info['alignment']
 
-                # Orient based on strand
-                if alignment.strand == '-':
+                # Orient based on strand; wrap-around contigs are already fully oriented
+                if alignment.strand == '-' and not contig_info.get('already_oriented', False):
                     temp_in = os.path.join(temp_dir, f"orient_in_{idx}.fa")
                     temp_out = os.path.join(temp_dir, f"orient_out_{idx}.fa")
                     with open(temp_in, 'w') as f:
