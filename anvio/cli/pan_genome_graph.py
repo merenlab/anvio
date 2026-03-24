@@ -60,7 +60,7 @@ def get_args():
     groupB.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required': True}))
     groupB.add_argument('--output-synteny-gene-cluster-dendrogram', default=False, action="store_true", help="Write a dendrogram (.svg) "
                                 "and distance matrix (.tsv) for each split SynGC to the output directory (for debugging "
-                                "the paralog splitter).")
+                                "the multi-copy gene splitter).")
 
     groupC = parser.add_argument_group('GRAPH BUILDING & SPLITTING', "Controls how SynGC are generated and filtered.")
 
@@ -68,7 +68,7 @@ def get_args():
                     "(only sensible for single-contig/circular genomes); can add cycles otherwise.")
     groupC.add_argument('--min-contig-chain', default=5, type=int, help = "Skip contigs with fewer than this many SynGCs "
                     "(filters very short/fragmented contigs).")
-    groupC.add_argument('--min-k', default=1, type=int, help = "Minimum k-mer window size around each gene before splitting paralogs "
+    groupC.add_argument('--min-k', default=1, type=int, help = "Minimum k-mer window size around each gene before splitting multi-copy genes "
                     "(will auto-increase until each k-mer is genome-unique; raise to demand more context).")
     groupC.add_argument('--alpha', default=0.5, type=float, help = "Global context similarity cutoff (single-copy-core flank similarity "
                     "must be >= alpha to be considered same context; lower alpha merges more, higher splits more).")
@@ -85,16 +85,16 @@ def get_args():
     groupC.add_argument('--remerge', default=False, action="store_true", help = "Remerge some nodes that were splitted in highly"
                     "sensitive runs.")
 
-    groupC2 = parser.add_argument_group('EMERGENCY PARALOG REMOVAL', "Use these parameters as a last resort when your pangenome graph "
-                    "has too many cycles or becomes uninterpretable due to paralogs (multi-copy genes like transposons, repeats, or tandem "
+    groupC2 = parser.add_argument_group('EMERGENCY MULTI-COPY GENE REMOVAL', "Use these parameters as a last resort when your pangenome graph "
+                    "has too many cycles or becomes uninterpretable due to multi-copy genes (such as transposons, repeats, or tandem "
                     "duplications). Setting either parameter to a non-default value triggers a special two-phase processing: first, the "
-                    "algorithm establishes stable genomic contexts using only single-copy gene clusters, then attempts to place paralogs "
-                    "into the graph if they meet the thresholds below. Paralogs exceeding these limits will be completely excluded from "
-                    "the final graph.")
-    groupC2.add_argument('--max-num-paralogs', default=-1, type=int, help = "Filter gene clusters with more than this many TOTAL "
+                    "algorithm establishes stable genomic contexts using only single-copy gene clusters, then attempts to place multi-copy "
+                    "genes into the graph if they meet the thresholds below. Multi-copy genes exceeding these limits will be completely "
+                    "excluded from the final graph.")
+    groupC2.add_argument('--max-num-multi-copy-genes', default=-1, type=int, help = "Filter gene clusters with more than this many TOTAL "
                     "occurrences across all genomes (-1 disables filtering; useful for removing transposons/repeats "
                     "that appear many times across the pangenome and cause cycles).")
-    groupC2.add_argument('--max-num-paralogs-per-genome', default=-1, type=int, help = "Filter gene clusters where ANY single "
+    groupC2.add_argument('--max-num-multi-copy-genes-per-genome', default=-1, type=int, help = "Filter gene clusters where ANY single "
                     "genome has more than this many copies (-1 disables filtering; useful for removing within-genome "
                     "duplications like tandem repeats).")
 

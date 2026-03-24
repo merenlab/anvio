@@ -51,7 +51,7 @@ P = terminal.pluralize
 # ANCHOR - SyntenyGeneCluster
 class SyntenyGeneCluster():
     """A class to mine a dataframe containing all the information related to gene calls
-    e.g. functions, contig, direction, etc. Furthermore the run_contextualize_paralogs_algorithm
+    e.g. functions, contig, direction, etc. Furthermore the run_contextualize_multi_copy_genes_algorithm
     function can add another column to the mined dataframe, containing the syncluster ID.
     This ID is unique per genome and can be used before creating pangenome graphs.
     """
@@ -76,8 +76,8 @@ class SyntenyGeneCluster():
         self.gamma = A('gamma')
         self.delta = A('delta')
         self.inversion_aware = A('inversion_aware')
-        self.max_num_paralogs = A('max_num_paralogs')
-        self.max_num_paralogs_per_genome = A('max_num_paralogs_per_genome')
+        self.max_num_multi_copy_genes = A('max_num_multi_copy_genes')
+        self.max_num_multi_copy_genes_per_genome = A('max_num_multi_copy_genes_per_genome')
         self.min_k = A('min_k')
         self.output_synteny_gene_cluster_dendrogram = A('output_synteny_gene_cluster_dendrogram')
 
@@ -111,56 +111,56 @@ class SyntenyGeneCluster():
 
     def preprocess_contextualize(self, pangenome_data_df):
 
-        if self.max_num_paralogs != -1 or self.max_num_paralogs_per_genome != -1:
+        if self.max_num_multi_copy_genes != -1 or self.max_num_multi_copy_genes_per_genome != -1:
             subset_df = pangenome_data_df.reset_index(drop=False)[['genome', 'gene_cluster']]
 
-            paralogs_df = subset_df[subset_df.duplicated(keep=False)]
-            paralogs = paralogs_df['gene_cluster'].unique().tolist()
-            no_paralogs_df = self.run_contextualize_paralogs_algorithm(pangenome_data_df.query('gene_cluster not in @paralogs'))
-            paralogs_per_genome = paralogs_df.groupby('genome').size()
+            multi_copy_df = subset_df[subset_df.duplicated(keep=False)]
+            multi_copy_gene_clusters = multi_copy_df['gene_cluster'].unique().tolist()
+            single_copy_df = self.run_contextualize_multi_copy_genes_algorithm(pangenome_data_df.query('gene_cluster not in @multi_copy_gene_clusters'))
+            multi_copy_per_genome = multi_copy_df.groupby('genome').size()
             run = True
 
-            self.run.warning("Dear user, you have set paralog filtering thresholds, so the same algorithm you "
+            self.run.warning("Dear user, you have set multi-copy gene filtering thresholds, so the same algorithm you "
                              "saw running a second ago will run again. This is expected behavior. The first execution "
-                             "skipped all paralog gene clusters in the dataset to solely focus on the more stable genomic areas. "
-                             "Depending on your settings of maximum number of total paralogs and paralogs per genome, the "
+                             "skipped all multi-copy gene clusters in the dataset to solely focus on the more stable genomic areas. "
+                             "Depending on your settings of maximum number of total multi-copy genes and multi-copy genes per genome, the "
                              "algorithm will now first check whether a second run is in line with your thresholds. Stay seated "
                              "and thank you for your attention.",
-                     header="RESOLVING PARALOGS USING GENOMIC CONTEXT", lc="green")
+                     header="RESOLVING MULTI-COPY GENES USING GENOMIC CONTEXT", lc="green")
 
-            if len(paralogs_df) <= self.max_num_paralogs or self.max_num_paralogs == -1:
+            if len(multi_copy_df) <= self.max_num_multi_copy_genes or self.max_num_multi_copy_genes == -1:
                 run = True if run == True else False
-                if self.max_num_paralogs != -1:
-                    self.run.info_single(f"The number of total paralogs is below {self.max_num_paralogs} ✅")
+                if self.max_num_multi_copy_genes != -1:
+                    self.run.info_single(f"The number of total multi-copy genes is below {self.max_num_multi_copy_genes} ✅")
             else:
                 run = False
-                self.run.info_single(f"The number of total paralogs is higher than {self.max_num_paralogs} ⛔")
+                self.run.info_single(f"The number of total multi-copy genes is higher than {self.max_num_multi_copy_genes} ⛔")
 
-            if (paralogs_per_genome <= self.max_num_paralogs_per_genome).all() or self.max_num_paralogs_per_genome == -1:
+            if (multi_copy_per_genome <= self.max_num_multi_copy_genes_per_genome).all() or self.max_num_multi_copy_genes_per_genome == -1:
                 run = True if run == True else False
-                if self.max_num_paralogs != -1:
-                    self.run.info_single(f"The number of paralogs per genome is lower than {self.max_num_paralogs_per_genome} ✅")
+                if self.max_num_multi_copy_genes != -1:
+                    self.run.info_single(f"The number of multi-copy genes per genome is lower than {self.max_num_multi_copy_genes_per_genome} ✅")
             else:
                 run = False
-                self.run.info_single(f"The number of paralogs per genome is at least once higher than {self.max_num_paralogs_per_genome} ⛔")
+                self.run.info_single(f"The number of multi-copy genes per genome is at least once higher than {self.max_num_multi_copy_genes_per_genome} ⛔")
 
             if run == True:
 
-                self.run.info_single('Running algorithm again to place paralogs, while keeping the remaining GCs unaffected ✅')
-                only_paralogs_df = self.run_contextualize_paralogs_algorithm(pangenome_data_df).query('gene_cluster in @paralogs')
-                pangenome_data_contextualized_df = pd.concat([no_paralogs_df, only_paralogs_df], ignore_index=True).sort_values(["genome", "position"], ascending=True)
+                self.run.info_single('Running algorithm again to place multi-copy genes, while keeping the remaining GCs unaffected ✅')
+                multi_copy_only_df = self.run_contextualize_multi_copy_genes_algorithm(pangenome_data_df).query('gene_cluster in @multi_copy_gene_clusters')
+                pangenome_data_contextualized_df = pd.concat([single_copy_df, multi_copy_only_df], ignore_index=True).sort_values(["genome", "position"], ascending=True)
             else:
                 self.run.info_single('The users settings prevent the second run ⛔')
-                self.run.info_single('Removing now all paralogs from the dataset.')
-                pangenome_data_contextualized_df = no_paralogs_df.sort_values(["genome", "position"], ascending=True)
+                self.run.info_single('Removing now all multi-copy genes from the dataset.')
+                pangenome_data_contextualized_df = single_copy_df.sort_values(["genome", "position"], ascending=True)
 
         else:
-            pangenome_data_contextualized_df = self.run_contextualize_paralogs_algorithm(pangenome_data_df)
+            pangenome_data_contextualized_df = self.run_contextualize_multi_copy_genes_algorithm(pangenome_data_df)
 
         return pangenome_data_contextualized_df
 
 
-    def get_data_from_YAML(self, contextualize_paralogs=True, gene_length=400, intron_length=100):
+    def get_data_from_YAML(self, contextualize_multi_copy_genes=True, gene_length=400, intron_length=100):
         """Create a data tale form the YAML file"""
         i = 0
         pangenome_data_dict = {}
@@ -187,14 +187,14 @@ class SyntenyGeneCluster():
         pangenome_data_df = pd.DataFrame.from_dict(pangenome_data_dict, orient='index').set_index(["genome", "gene_caller_id"])
         self.run.info_single("Done.")
 
-        if contextualize_paralogs:
+        if contextualize_multi_copy_genes:
             return self.preprocess_contextualize(pangenome_data_df)
 
         else:
             return pangenome_data_df
 
 
-    def get_data_from_pan_db(self, contextualize_paralogs=True):
+    def get_data_from_pan_db(self, contextualize_multi_copy_genes=True):
         """Major mining function. Can be used outside of the purpose of creating anvi'o
         pangenome graphs.
 
@@ -281,7 +281,7 @@ class SyntenyGeneCluster():
 
         pangenome_data_df = pd.concat(pangenome_data_list)
 
-        if contextualize_paralogs:
+        if contextualize_multi_copy_genes:
             return self.preprocess_contextualize(pangenome_data_df)
 
         else:
@@ -497,8 +497,8 @@ class SyntenyGeneCluster():
             return(sim_value if sim_value <= self.delta else 1.0)
 
 
-    def run_contextualize_paralogs_algorithm(self, pangenome_data_df):
-        """A function that resolves the graph context of paralogs based on gene synteny
+    def run_contextualize_multi_copy_genes_algorithm(self, pangenome_data_df):
+        """A function that resolves the graph context of multi-copy genes based on gene synteny
         information across genomes and adds this information to the pangenome_data_df dataframe
         as a new column called syn_cluster. A syn cluster is a subset of a gene cluster
         containing at most one gene call per genome.
@@ -506,9 +506,9 @@ class SyntenyGeneCluster():
         G1: GC1 ----- GC2 ----- GC2 ----- GC3 ----- GC4 ----- GC4 ----- GC5 ----- GC5
         G2: GC1 ----- GC2 ----- GC2 ----- GC3 ----- GC4 ----- GC4 ----- GC4 ----- GC5
 
-        This example shows two genomes that contain multiple paralogous genes. The following
-        algorithm reads the context of these paralogous genes to split the related gene cluster
-        into the smaller unit of syn clusters based on the surrounding similariy.
+        This example shows two genomes that contain multiple copies of the same gene. The
+        following algorithm reads the context of these multi-copy genes to split the related
+        gene cluster into the smaller unit of syn clusters based on the surrounding similariy.
 
         G1: GC1_1 --- GC2_1 --- GC2_2 --- GC3_1 --- GC4_1 ------------- GC4_3 --- GC5_1 --- GC5_2
         G2: GC1_1 --- GC2_1 --- GC2_2 --- GC3_1 --- GC4_1 --- GC4_2 --- GC4_3 --- GC5_1 ---------
@@ -569,11 +569,11 @@ class SyntenyGeneCluster():
             plus the additional column of unipque syn clusters.
         """
 
-        self.run.warning("Pangneome graph calculation algorithm will now split the conventional gene clusters that "
-                         "contain multiple genes from a single genome (such as paralogs) into SynGCs by exploring "
+        self.run.warning("Pangenome graph calculation algorithm will now split the conventional gene clusters that "
+                         "contain multiple genes from a single genome (i.e., multi-copy genes) into SynGCs by exploring "
                          "the entirety of the genomic context. This step ensures that each SynGC contains at most "
                          "one gene per genome by iteratively increasing the number of genes to consider to "
-                         "disambiguate paralogs fully while preserveing the gene synteny information across the "
+                         "disambiguate multi-copy genes fully while preserving the gene synteny information across the "
                          "pangenome.",
                          header="CONTEXTUALIZE GENE CALLS USING GENOMIC CONTEXT", lc="green")
 
@@ -670,7 +670,7 @@ class SyntenyGeneCluster():
         self.run.info('Gene clusters (before contextualization)', total_gene_clusters)
         self.run.info('Synteny clusters (after contextualization)', total_syn_clusters)
         self.run.info('Genes in core synteny clusters', int(value_counts.get("core", 0)), mc='green')
-        self.run.info('Genes in paralog synteny clusters', int(value_counts.get("duplication", 0)))
+        self.run.info('Genes in multi-copy synteny clusters', int(value_counts.get("duplication", 0)))
         self.run.info('Genes in RNA synteny clusters', int(value_counts.get("rna", 0)))
         self.run.info('Genes in rearranged synteny clusters', int(value_counts.get("rearrangement", 0)))
         self.run.info('Genes in accessory synteny clusters', int(value_counts.get("accessory", 0)))
@@ -685,7 +685,7 @@ class SyntenyGeneCluster():
             else:
                 raise ConfigError("We are sorry to inform you that the number of gene to syn clusters does not line up. "
                                   "This can happen if you are working with genomes that contain a VERY large number of "
-                                  "repeats and/or paralogous genes that force over-splitting of the graph context. You "
+                                  "repeats and/or multi-copy genes that force over-splitting of the graph context. You "
                                   "can try increasing --min-k, lowering --alpha/--n, or by enabling "
                                   "--inversion-aware processing of the graph. Alternatively, you may also rerun the "
                                   "program with the flag --just-do-it, but please note that the graph building can "

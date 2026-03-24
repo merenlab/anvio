@@ -1412,8 +1412,8 @@ class PangenomeGraph():
         self.min_k = A('min_k')
         self.inversion_aware = A('inversion_aware')
         self.remerge = A('remerge')
-        self.max_num_paralogs = A('max_num_paralogs')
-        self.max_num_paralogs_per_genome = A('max_num_paralogs_per_genome')
+        self.max_num_multi_copy_genes = A('max_num_multi_copy_genes')
+        self.max_num_multi_copy_genes_per_genome = A('max_num_multi_copy_genes_per_genome')
 
         self.max_edge_length_filter = A('max_edge_length_filter')
         self.gene_cluster_grouping_threshold = A('gene_cluster_grouping_threshold')
@@ -1524,8 +1524,8 @@ class PangenomeGraph():
         self.run.info("General context comparison max treshold dela", self.delta)
         self.run.info("Synteny gene cluster min k", self.min_k)
         self.run.info("Higher inversion awareness", self.inversion_aware)
-        self.run.info("Maximum number of paralogs", self.max_num_paralogs)
-        self.run.info("Maximum number of paralogs per genome", self.max_num_paralogs_per_genome)
+        self.run.info("Maximum number of multi-copy genes", self.max_num_multi_copy_genes)
+        self.run.info("Maximum number of multi-copy genes per genome", self.max_num_multi_copy_genes_per_genome)
         self.run.info("Priority genome", self.priority_genome)
 
 

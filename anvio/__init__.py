@@ -1454,7 +1454,7 @@ D = {
              'metavar': 'INTEGER',
              'help': "This filter will remove gene clusters from your report. If you say '--max-num-genes-from-each-genome 1', "
                      "every gene cluster that has more than one gene from any genome that contributes to it will be removed "
-                     "from your analysis. This could be useful to remove gene clusters with paralogs from your report for "
+                     "from your analysis. This could be useful to remove gene clusters with multi-copy genes from your report for "
                      "appropriate phylogenomic analyses. For instance, using '--max-num-genes-from-each-genome 1' and "
                      "'min-num-genomes-gene-cluster-occurs X' where X is the total number of your genomes, would give you the "
                      "single-copy gene clusters in your pan genome."}
