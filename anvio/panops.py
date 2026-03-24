@@ -1253,16 +1253,17 @@ class Pangenome(object):
                                         view_name = 'gene_cluster_presence_absence',
                                         from_matrix_form=True)
 
-        item_additional_data_table = miscdata.TableForItemAdditionalData(self.args, r=terminal.Run(verbose=False))
-        item_additional_data_keys = ['num_genomes_gene_cluster_has_hits', 'num_genes_in_gene_cluster', 'max_num_paralogs', 'SCG']
-
-        item_additional_data_table.add(self.additional_view_data, item_additional_data_keys, skip_check_names=True)
-        #                                                                                    ^^^^^^^^^^^^^^^^^^^^^
-        #                                                                                   /
-        # here we say skip_check_names=True, simply because there is no gene_clusters table has not been
+        # write gene cluster stats and SCG data as items additional data in named groups.
+        # we say skip_check_names=True, simply because there is no gene_clusters table has not been
         # generated yet, but the check names functionality in dbops looks for the gene clsuters table to
         # be certain. it is not a big deal here, since we absoluely know what gene cluster names we are
         # working with.
+        stats_args = argparse.Namespace(**{**vars(self.args), 'target_data_group': 'gene_cluster_stats'})
+        stats_keys = ['num_genomes_gene_cluster_has_hits', 'num_genes_in_gene_cluster', 'max_num_paralogs']
+        miscdata.TableForItemAdditionalData(stats_args, r=terminal.Run(verbose=False)).add(self.additional_view_data, stats_keys, skip_check_names=True)
+
+        scg_args = argparse.Namespace(**{**vars(self.args), 'target_data_group': 'SCG'})
+        miscdata.TableForItemAdditionalData(scg_args, r=terminal.Run(verbose=False)).add(self.additional_view_data, ['SCG'], skip_check_names=True)
 
         ########################################################################################
         #                   RETURN THE -LIKELY- UPDATED PROTEIN CLUSTERS DICT
@@ -1506,8 +1507,13 @@ class Pangenome(object):
                               without updating anything in the pan database...")
             return
 
-        keys = ['functional_homogeneity_index', 'geometric_homogeneity_index', 'combined_homogeneity_index', 'AAI_min', 'AAI_min_nonzero', 'AAI_max', 'AAI_avg']
-        miscdata.TableForItemAdditionalData(self.args, r=terminal.Run(verbose=False)).add(d, keys, skip_check_names=True)
+        homogeneity_args = argparse.Namespace(**{**vars(self.args), 'target_data_group': 'homogeneity'})
+        homogeneity_keys = ['functional_homogeneity_index', 'geometric_homogeneity_index', 'combined_homogeneity_index']
+        miscdata.TableForItemAdditionalData(homogeneity_args, r=terminal.Run(verbose=False)).add(d, homogeneity_keys, skip_check_names=True)
+
+        aai_args = argparse.Namespace(**{**vars(self.args), 'target_data_group': 'AAI'})
+        aai_keys = ['AAI_min', 'AAI_min_nonzero', 'AAI_max', 'AAI_avg']
+        miscdata.TableForItemAdditionalData(aai_args, r=terminal.Run(verbose=False)).add(d, aai_keys, skip_check_names=True)
 
 
     def populate_layers_additional_data_and_orders(self):

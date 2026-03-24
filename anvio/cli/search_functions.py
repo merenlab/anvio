@@ -10,13 +10,14 @@ import anvio.terminal as terminal
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.dbops import ContigsSuperclass, PanSuperclass
+from anvio.genomedescriptions import GenomeDescriptions
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__authors__ = ['meren']
+__authors__ = ['meren', 'ivagljiva']
 __requires__ = ['contigs-db', 'genomes-storage-db']
 __provides__ = ['functions-txt']
 __description__ = ("Search functions in an anvi'o contigs database or genomes storage. Basically, this program "
@@ -31,7 +32,7 @@ __description__ = ("Search functions in an anvi'o contigs database or genomes st
 class SearchResultReporter(object):
     def __init__(self, args):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        self.annotation_sources = A('annotation_sources')
+        self.annotation_sources = [s.strip() for s in A('annotation_sources').split(',')] if A('annotation_sources') else []
         self.list_annotation_sources = A('list_annotation_sources')
         self.basic_report_path = A('output_file') or 'search_results.txt'
         self.full_report_path = A('full_report')
@@ -47,6 +48,7 @@ class SearchResultReporter(object):
         self.contigs_db = A('contigs_db')
         self.genomes_storage = A('genomes_storage')
         self.pan_db = A('pan_db')
+        self.external_genomes = A('external_genomes')
 
         # get search results will fill these
         self.all_item_names = None
@@ -73,7 +75,11 @@ class SearchResultReporter(object):
 
     def get_database(self):
         if self.contigs_db and (self.genomes_storage or self.pan_db):
-            raise ConfigError("You can not provide both contigs database and genomes storage")
+            raise ConfigError("You cannot provide both a contigs database and genomes storage")
+        elif self.contigs_db and self.external_genomes:
+            raise ConfigError("You cannot provide both an individual contigs database and an external genomes file")
+        elif self.external_genomes and (self.genomes_storage or self.pan_db):
+            raise ConfigError("You cannot provide both an external genomes file and genomes storage")
 
         if self.contigs_db:
             self.search_mode = 'contigs'
@@ -87,9 +93,16 @@ class SearchResultReporter(object):
             pan_database.init_gene_clusters()
             return pan_database
 
+        elif self.external_genomes:
+            self.search_mode = 'external_genomes'
+            self.run.info("Searching in multiple contigs databases from file", self.external_genomes)
+            genome_desc = GenomeDescriptions(self.args, run=self.run)
+            genome_desc.load_genomes_descriptions(init=self.include_sequences)
+            return genome_desc
+
         else:
-            raise ConfigError("You did not provide enough arguments to initialize contigs database or pan database. "
-                              "To initialize pan database you need to provide both genome storage and pan database.")
+            raise ConfigError("You did not provide enough arguments to initialize the input databases. Note that "
+                              "to initialize a pan database you need to provide both a genomes storage and pan database.")
 
 
     def get_search_results(self):
@@ -105,25 +118,34 @@ class SearchResultReporter(object):
         results_dict = {}
 
         for item_name in self.all_item_names:
-            results_dict[item_name] = dict([(s + '_hits', '') for s in self.search_terms])
+            if self.search_mode == 'external_genomes': # item_name is a tuple: (genome, item)
+                results_dict[item_name] = {'genome': item_name[0], 'item': item_name[1]}
+                results_dict[item_name].update(dict([(s + '_hits', '') for s in self.search_terms]))
+            else:
+                results_dict[item_name] = dict([(s + '_hits', '') for s in self.search_terms])
 
             for search_term in self.search_terms:
                 if item_name in self.matching_item_names_dict[search_term]:
                     results_dict[item_name][search_term + '_hits'] = search_term
+        
+        if self.search_mode == 'external_genomes':
+            header_list = ['key', 'item', 'genome'] + [s + '_hits' for s in self.search_terms]
+        else:
+            header_list = [self.search_mode] + [s + '_hits' for s in self.search_terms]
 
-        utils.store_dict_as_TAB_delimited_file(results_dict, self.basic_report_path, headers = [self.search_mode] + [s + '_hits' for s in self.search_terms])
+        utils.store_dict_as_TAB_delimited_file(results_dict, self.basic_report_path, headers = header_list, do_not_write_key_column=(self.search_mode == 'external_genomes'))
         self.run.info('Items additional data compatible output', self.basic_report_path, nl_before=1)
 
 
     def write_full_report(self):
         if self.search_mode == 'contigs':
             header = ['gene_callers_id']
-        elif self.search_mode == 'gene_clusters':
+        elif self.search_mode == 'gene_clusters' or self.search_mode == 'external_genomes':
             header = ['gene_callers_id', 'genome_name']
         else:
             raise ConfigError("You ended up in a place you should have never ended up. Go back. Go back.")
 
-        header.extend(['source', 'accession', 'function', 'search_term', self.search_mode])
+        header.extend(['source', 'accession', 'function', 'search_term', 'item' if self.search_mode == 'external_genomes' else self.search_mode])
 
         if self.include_sequences:
             if self.search_mode == 'contigs':
@@ -131,6 +153,12 @@ class SearchResultReporter(object):
                 _, gene_sequences_dict = self.db.get_sequences_for_gene_callers_ids(gene_caller_ids, include_aa_sequences=True)
                 header.extend(['direction', 'rev_compd', 'dna_sequence', 'aa_sequence'])
             elif self.search_mode == 'gene_clusters':
+                header.extend(['dna_sequence', 'aa_sequence'])
+            elif self.search_mode == 'external_genomes':
+                # now we need to load sequences from all databases in the input file
+                aa_seq_dicts_by_genome, dna_seq_dicts_by_genome = {}, {}
+                for g in self.db.genomes:
+                    _, aa_seq_dicts_by_genome[g], dna_seq_dicts_by_genome[g] = self.db.get_functions_and_sequences_dicts_from_contigs_db(g, requested_source_list=self.annotation_sources)
                 header.extend(['dna_sequence', 'aa_sequence'])
 
         report = open(self.full_report_path, 'w')
@@ -147,6 +175,12 @@ class SearchResultReporter(object):
                 elif self.search_mode == 'gene_clusters':
                     # pan results already contains dna and aa sequences
                     pass
+                elif self.search_mode == 'external_genomes':
+                    gcid = entry[0]
+                    genome = entry[1]
+                    content.extend([dna_seq_dicts_by_genome[genome][gcid]['sequence'],
+                                    aa_seq_dicts_by_genome[genome][gcid]['sequence']])
+
             else:
                 if self.search_mode == 'gene_clusters':
                     content = content[:-2]
@@ -179,6 +213,7 @@ def get_args():
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
     groupA.add_argument(*anvio.A('pan-db'), **anvio.K('pan-db', {'required': False}))
     groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
+    groupA.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes', {'required': False}))
 
     groupB = parser.add_argument_group('SEARCH FOR', 'Relevant terms')
     groupB.add_argument(*anvio.A('search-terms'), **anvio.K('search-terms', {'required': True}))

@@ -869,38 +869,41 @@ Drawer.prototype.draw_internal_node = function(p) {
 
         var large_arc_flag = (Math.abs(p.child.GetRightMostSibling().angle - p.child.angle) > Math.PI) ? true : false;
 
-        if (typeof p.branch_support === 'string' && p.branch_support.includes('/')) {
-            multiple_support_value_seen = true;
-            const [branch_support_value0, branch_support_value1] = p.branch_support.split('/').map(parseFloat);
-            
-            branch_support_values.push(branch_support_value0, branch_support_value1);
+        if (p.branch_support !== null) {
+            if (typeof p.branch_support === 'string' && p.branch_support.includes('/')) {
+                multiple_support_value_seen = true;
+                const [branch_support_value0, branch_support_value1] = p.branch_support.split('/').map(parseFloat);
 
-            if (branch_support_values.length > 0) {
-                const min_support = Math.min(...branch_support_values);
-                const max_support = Math.max(...branch_support_values);
-            
-                if (min_branch_support_value_seen === null || min_support < min_branch_support_value_seen) {
-                    min_branch_support_value_seen = min_support;
-                } else {
-                    this.min_support = null;
-                }
-            
-                if (max_branch_support_value_seen === null || max_support > max_branch_support_value_seen) {
-                    max_branch_support_value_seen = max_support;
-                } else {
-                    this.max_support = null;
-                }
-            } 
+                branch_support_values.push(branch_support_value0, branch_support_value1);
 
-        } else {
-                // If there are no string branch support value like '100/100':
-                min_branch_support_value_seen == null ? min_branch_support_value_seen = p.branch_support : null;
-                max_branch_support_value_seen == null ? max_branch_support_value_seen = p.branch_support : null;
-                p.branch_support > max_branch_support_value_seen ? max_branch_support_value_seen = p.branch_support : null;
-                p.branch_support < min_branch_support_value_seen ? min_branch_support_value_seen = p.branch_support : null;
+                if (branch_support_values.length > 0) {
+                    const min_support = Math.min(...branch_support_values);
+                    const max_support = Math.max(...branch_support_values);
+
+                    if (min_branch_support_value_seen === null || min_support < min_branch_support_value_seen) {
+                        min_branch_support_value_seen = min_support;
+                    } else {
+                        this.min_support = null;
+                    }
+
+                    if (max_branch_support_value_seen === null || max_support > max_branch_support_value_seen) {
+                        max_branch_support_value_seen = max_support;
+                    } else {
+                        this.max_support = null;
+                    }
+                }
+
+            } else {
+                    // If there are no string branch support value like '100/100':
+                    min_branch_support_value_seen == null ? min_branch_support_value_seen = p.branch_support : null;
+                    max_branch_support_value_seen == null ? max_branch_support_value_seen = p.branch_support : null;
+                    p.branch_support > max_branch_support_value_seen ? max_branch_support_value_seen = p.branch_support : null;
+                    p.branch_support < min_branch_support_value_seen ? min_branch_support_value_seen = p.branch_support : null;
+            }
+
+            this.settings['show-support-values'] ? drawSupportValue(this.tree_svg_id, p, p0, p1, supportValueData) : null;
         }
 
-        this.settings['show-support-values'] ? drawSupportValue(this.tree_svg_id, p, p0, p1, supportValueData) : null;
         drawCircleArc(this.tree_svg_id, p, p0, p1, p.radius, large_arc_flag);
 
         let arc = drawCircleArc(this.tree_svg_id, p, p0, p1, p.radius, large_arc_flag);
@@ -940,37 +943,40 @@ Drawer.prototype.draw_internal_node = function(p) {
         drawLine(this.tree_svg_id, p, p0, p1, true);
 
         // support value business happens here:
-        if (typeof p.branch_support === 'string' && p.branch_support.includes('/')) {
-            multiple_support_value_seen = true;
-            const [branch_support_value0, branch_support_value1] = p.branch_support.split('/').map(parseFloat);
-            
-            branch_support_values.push(branch_support_value0, branch_support_value1);
+        if (p.branch_support !== null) {
+            if (typeof p.branch_support === 'string' && p.branch_support.includes('/')) {
+                multiple_support_value_seen = true;
+                const [branch_support_value0, branch_support_value1] = p.branch_support.split('/').map(parseFloat);
 
-            if (branch_support_values.length > 0) {
-                const min_support = Math.min(...branch_support_values);
-                const max_support = Math.max(...branch_support_values);
-            
-                if (min_branch_support_value_seen === null || min_support < min_branch_support_value_seen) {
-                    min_branch_support_value_seen = min_support;
-                } else {
-                    this.min_support = null;
-                }
-            
-                if (max_branch_support_value_seen === null || max_support > max_branch_support_value_seen) {
-                    max_branch_support_value_seen = max_support;
-                } else {
-                    this.max_support = null;
-                }
-            } 
+                branch_support_values.push(branch_support_value0, branch_support_value1);
 
-        } else {
-                // If there are no string branch support value like '100/100':
-                min_branch_support_value_seen == null ? min_branch_support_value_seen = p.branch_support : null;
-                max_branch_support_value_seen == null ? max_branch_support_value_seen = p.branch_support : null;
-                p.branch_support > max_branch_support_value_seen ? max_branch_support_value_seen = p.branch_support : null;
-                p.branch_support < min_branch_support_value_seen ? min_branch_support_value_seen = p.branch_support : null;
+                if (branch_support_values.length > 0) {
+                    const min_support = Math.min(...branch_support_values);
+                    const max_support = Math.max(...branch_support_values);
+
+                    if (min_branch_support_value_seen === null || min_support < min_branch_support_value_seen) {
+                        min_branch_support_value_seen = min_support;
+                    } else {
+                        this.min_support = null;
+                    }
+
+                    if (max_branch_support_value_seen === null || max_support > max_branch_support_value_seen) {
+                        max_branch_support_value_seen = max_support;
+                    } else {
+                        this.max_support = null;
+                    }
+                }
+
+            } else {
+                    // If there are no string branch support value like '100/100':
+                    min_branch_support_value_seen == null ? min_branch_support_value_seen = p.branch_support : null;
+                    max_branch_support_value_seen == null ? max_branch_support_value_seen = p.branch_support : null;
+                    p.branch_support > max_branch_support_value_seen ? max_branch_support_value_seen = p.branch_support : null;
+                    p.branch_support < min_branch_support_value_seen ? min_branch_support_value_seen = p.branch_support : null;
+            }
+
+            this.settings['show-support-values'] ? drawSupportValue(this.tree_svg_id, p, p0, p1, supportValueData) : null;
         }
-        this.settings['show-support-values'] ? drawSupportValue(this.tree_svg_id, p, p0, p1, supportValueData) : null;
 
         let line = drawLine(this.tree_svg_id, p, p0, p1, true);
         line.setAttribute('style', PADDING_STYLE);

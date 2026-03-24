@@ -557,7 +557,8 @@ Created by `anvi-profile` (one per BAM file) and merged by `anvi-merge`. Contain
 
 Key tables:
 
-- `mean_coverage`, `detection`, `variability`, etc. — view tables (one per coverage metric per sample)
+- `mean_coverage`, `detection`, `variability`, etc. — view tables (one per coverage metric per sample). There are 6 data fields (`std_coverage`, `mean_coverage`, `mean_coverage_Q2Q3`, `detection`, `abundance`, `variability`) × 2 targets (`_splits`, `_contigs`) = 12 view tables. Each stores rows in long format with columns `(item, layer, value)`.
+- `zero_coverage_splits`, `zero_coverage_contigs` — store `(item, layer)` pairs for splits/contigs with zero coverage. Instead of duplicating zero-value rows across all 12 view tables, these two tables record the zero-coverage items once. The zeros are reconstructed on-the-fly when view data is read via `db.get_view_data()`. Consumers that bypass `get_view_data()` (e.g., `anvi-export-table`) must explicitly consult these tables if they want complete data.
 - `variable_nucleotides` — SNVs
 - `variable_codons` — codon-level variability
 - `indels` — insertion/deletion events

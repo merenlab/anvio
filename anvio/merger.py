@@ -611,6 +611,22 @@ class MultipleRuns:
 
     def gen_view_data_tables_from_atomic_data(self):
         self.progress.new('Views')
+
+        # Merge zero_coverage tables from all input profiles
+        for zero_cov_table in [tables.zero_coverage_splits_table_name, tables.zero_coverage_contigs_table_name]:
+            for input_profile_db_path in self.profile_dbs_info_dict:
+                sample_id = self.profile_dbs_info_dict[input_profile_db_path]['sample_id']
+                self.progress.update(f"Merging '{zero_cov_table}' from '{sample_id}'")
+
+                profile_db = db.DB(input_profile_db_path, utils.get_required_version_for_db(input_profile_db_path), skip_rowid_prepend=True)
+                rows = profile_db.get_all_rows_from_table(zero_cov_table)
+                profile_db.disconnect()
+
+                if rows:
+                    merged_db = db.DB(self.merged_profile_db_path, utils.get_required_version_for_db(self.merged_profile_db_path))
+                    merged_db._exec_many('INSERT INTO %s VALUES (?,?)' % zero_cov_table, rows)
+                    merged_db.disconnect()
+
         for target in ['contigs', 'splits']:
             for essential_field in self.essential_fields:
                 table_name_to_read_from = '_'.join([essential_field, target])

@@ -1930,16 +1930,22 @@ class PanSuperclass(object):
         self.gc_tracker = {}
         self.gc_psgc_associations = {}
 
-        # the following two are initialized via `init_items_additional_data()` and use information
+        # the following are initialized via `init_items_additional_data()` and use information
         # stored in item additional data tables in the pan database
         self.items_additional_data_dict = None
         self.items_additional_data_keys = None
+        self.items_additional_data_groups = {}
 
-        # let's figure out whether this pan database has gene cluster homogeneity data available
-        k = TableForItemAdditionalData(self.args).get_available_data_keys()
-        self.functional_homogeneity_info_is_available = 'functional_homogeneity_index' in k
-        self.geometric_homogeneity_info_is_available = 'geometric_homogeneity_index' in k
-        self.combined_homogeneity_info_is_available = 'combined_homogeneity_index' in k
+        # let's figure out whether this pan database has gene cluster homogeneity data available.
+        # we check across all groups since homogeneity data may be in 'homogeneity' (new dbs) or 'default' (old dbs)
+        items_table = TableForItemAdditionalData(self.args)
+        all_keys = set()
+        for group_name in items_table.get_group_names():
+            items_table.target_data_group = group_name
+            all_keys.update(items_table.get_available_data_keys())
+        self.functional_homogeneity_info_is_available = 'functional_homogeneity_index' in all_keys
+        self.geometric_homogeneity_info_is_available = 'geometric_homogeneity_index' in all_keys
+        self.combined_homogeneity_info_is_available = 'combined_homogeneity_index' in all_keys
 
         self.num_gene_clusters = None
         self.num_genes_in_gene_clusters = None
@@ -2793,7 +2799,7 @@ class PanSuperclass(object):
         """Recover additional data stored in the pan database."""
 
         items_additional_data = TableForItemAdditionalData(self.args)
-        self.items_additional_data_keys, self.items_additional_data_dict = items_additional_data.get()
+        self.items_additional_data_keys, self.items_additional_data_dict, self.items_additional_data_groups = items_additional_data.get_all_flattened()
 
         # In fact we are done here since we have our `items_additional_data_dict` all filled up with sweet data.
         # But if functions are initialized, we can also get a summary of gene clusters based on whether most
@@ -2829,6 +2835,9 @@ class PanSuperclass(object):
                     self.items_additional_data_dict[gene_cluster_id][annotation_source] = 'KNOWN'
 
             self.items_additional_data_keys.append(annotation_source)
+            if 'functional_annotation' not in self.items_additional_data_groups:
+                self.items_additional_data_groups['functional_annotation'] = []
+            self.items_additional_data_groups['functional_annotation'].append(annotation_source)
 
         self.progress.end()
 
@@ -3025,10 +3034,15 @@ class PanSuperclass(object):
                               "that is not what you're doing." % (len(all_genomes), min_num_genomes_gene_cluster_occurs))
 
         gene_cluster_occurrences_accross_genomes, num_genes_contributed_per_genome = self.get_basic_gene_clusters_stats(gene_clusters_dict)
-        if self.functional_homogeneity_info_is_available and self.geometric_homogeneity_info_is_available and not self.combined_homogeneity_info_is_available:
-            homogeneity_keys, homogeneity_dict = TableForItemAdditionalData(self.args).get(['functional_homogeneity_index', 'geometric_homogeneity_index'])
-        elif self.functional_homogeneity_info_is_available and self.geometric_homogeneity_info_is_available and self.combined_homogeneity_info_is_available:
-            homogeneity_keys, homogeneity_dict = TableForItemAdditionalData(self.args).get(['functional_homogeneity_index', 'geometric_homogeneity_index', 'combined_homogeneity_index'])
+        if self.functional_homogeneity_info_is_available and self.geometric_homogeneity_info_is_available:
+            # determine which group contains homogeneity data ('homogeneity' in new dbs, 'default' in old ones)
+            available_groups = TableForItemAdditionalData(self.args).get_group_names()
+            target_group = 'homogeneity' if 'homogeneity' in available_groups else 'default'
+            homogeneity_args = argparse.Namespace(**{**vars(self.args), 'target_data_group': target_group})
+            if self.combined_homogeneity_info_is_available:
+                homogeneity_keys, homogeneity_dict = TableForItemAdditionalData(homogeneity_args).get(['functional_homogeneity_index', 'geometric_homogeneity_index', 'combined_homogeneity_index'])
+            else:
+                homogeneity_keys, homogeneity_dict = TableForItemAdditionalData(homogeneity_args).get(['functional_homogeneity_index', 'geometric_homogeneity_index'])
 
 
         gene_clusters_to_remove = set([])
@@ -3572,6 +3586,7 @@ class ProfileSuperclass(object):
         else:
             self.items_additional_data_dict = None
             self.items_additional_data_keys = None
+            self.items_additional_data_groups = {}
 
         if super() and 'layers_additional_data_dict' in dir(self) and 'layers_additional_data_keys' in dir(self):
             pass
@@ -4346,7 +4361,7 @@ class ProfileSuperclass(object):
 
     def init_items_additional_data(self):
         items_additional_data = TableForItemAdditionalData(self.args)
-        self.items_additional_data_keys, self.items_additional_data_dict = items_additional_data.get()
+        self.items_additional_data_keys, self.items_additional_data_dict, self.items_additional_data_groups = items_additional_data.get_all_flattened()
 
 
     def get_split_coverages_dict(self, use_Q2Q3_coverages=False, splits_mode=False, report_contigs=False):
@@ -4377,31 +4392,32 @@ class ProfileSuperclass(object):
 
         coverage_data_of_interest = 'mean_coverage_Q2Q3' if use_Q2Q3_coverages else 'mean_coverage'
 
-        table_name = coverage_data_of_interest + '_' + ('splits' if splits_mode else 'contigs')
-
         profile_db = ProfileDatabase(self.profile_db_path)
-        split_coverages_dict, _ = profile_db.db.get_view_data(table_name)
+
+        if splits_mode:
+            # return split-level data from _splits table
+            table_name = coverage_data_of_interest + '_splits'
+            coverages_dict, _ = profile_db.db.get_view_data(table_name)
+        elif report_contigs:
+            # return contig-keyed data directly from _contigs table
+            table_name = coverage_data_of_interest + '_contigs'
+            coverages_dict, _ = profile_db.db.get_view_data(table_name, expand_to_splits=False)
+        else:
+            # return split-keyed data with contig-level values (expanded from _contigs table)
+            table_name = coverage_data_of_interest + '_contigs'
+            if hasattr(self, 'splits_basic_info'):
+                splits_basic_info = self.splits_basic_info
+            else:
+                contigs_db = ContigsDatabase(self.contigs_db_path)
+                splits_basic_info = contigs_db.db.get_table_as_dict(t.splits_info_table_name)
+                contigs_db.disconnect()
+            coverages_dict, _ = profile_db.db.get_view_data(table_name,
+                                                            splits_basic_info=splits_basic_info,
+                                                            expand_to_splits=True)
+
         profile_db.disconnect()
 
-        if report_contigs:
-            # if we are here it means the user is asking for coverages for contigs, not splits. easy peasy.
-            contigs_db = ContigsDatabase(self.contigs_db_path)
-            split_parents = contigs_db.db.get_table_as_dict(t.splits_info_table_name, columns_of_interest=['contig', 'parent'])
-            contigs_db.disconnect()
-
-            contig_coverages_dict = {}
-
-            for split_name in split_coverages_dict:
-                contig_name = split_parents[split_name]['parent']
-
-                if contig_name in contig_coverages_dict:
-                    continue
-
-                contig_coverages_dict[contig_name] = split_coverages_dict[split_name]
-
-            return contig_coverages_dict
-        else:
-            return split_coverages_dict
+        return coverages_dict
 
 
     def init_collection_profile(self, collection_name, calculate_Q2Q3_carefully=False):
@@ -4637,6 +4653,8 @@ class ProfileDatabase:
         self.db.create_table(t.states_table_name, t.states_table_structure, t.states_table_types)
         self.db.create_table(t.protein_abundances_table_name, t.protein_abundances_table_structure, t.protein_abundances_table_types)
         self.db.create_table(t.metabolite_abundances_table_name, t.metabolite_abundances_table_structure, t.metabolite_abundances_table_types)
+        self.db.create_table(t.zero_coverage_splits_table_name, t.zero_coverage_splits_table_structure, t.zero_coverage_splits_table_types)
+        self.db.create_table(t.zero_coverage_contigs_table_name, t.zero_coverage_contigs_table_structure, t.zero_coverage_contigs_table_types)
 
         return self.db
 
