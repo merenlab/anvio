@@ -509,20 +509,16 @@ class DGR_Finder:
         contig_sequences : dict
             Dictionary mapping contig names to their sequences.
         """
-        # load contig sequences
+        # load contig sequences (only bin-specific contigs in collections mode)
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
-        contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
-        contigs_db.disconnect()
-
-        # filter for collections if needed
         if bin_splits_list:
             self.split_names_unique = bin_splits_list
-            # get bin-specific contig sequences
-            bin_contigs = [split.split('_split_')[0] for split in bin_splits_list]
-            contig_sequences = {contig: contig_sequences[contig]
-                                    for contig in bin_contigs if contig in contig_sequences}
+            bin_contigs = set(split.split('_split_')[0] for split in bin_splits_list)
+            contig_sequences = contigs_db.db.smart_get(t.contig_sequences_table_name, 'contig', bin_contigs, string_the_key=True, error_if_no_data=False)
         else:
+            contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
             self.split_names_unique = utils.get_all_item_names_from_the_database(self.profile_db_path)
+        contigs_db.disconnect()
 
         sample_id_list = self.snv_panda.sample_id.unique().tolist()
 
@@ -1354,19 +1350,18 @@ class DGR_Finder:
         # reconstruct snv_panda from records
         snv_panda = pd.DataFrame.from_records(snv_panda_records)
 
+        # open the contigs DB once for the lifetime of this worker
+        contigs_db = dbops.ContigsDatabase(contigs_db_path, run=run_quiet, progress=progress_quiet)
+
         while True:
             bin_name, bin_splits_list = input_queue.get(True)
 
             try:
                 # === load_data_and_setup logic ===
-                contigs_db = dbops.ContigsDatabase(contigs_db_path, run=run_quiet, progress=progress_quiet)
-                contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
-                contigs_db.disconnect()
+                bin_contigs_set = set(split.split('_split_')[0] for split in bin_splits_list)
+                bin_contig_sequences = contigs_db.db.smart_get(t.contig_sequences_table_name, 'contig', bin_contigs_set, string_the_key=True, error_if_no_data=False)
 
                 split_names_unique = bin_splits_list
-                bin_contigs = [split.split('_split_')[0] for split in bin_splits_list]
-                bin_contig_sequences = {contig: contig_sequences[contig]
-                                        for contig in bin_contigs if contig in contig_sequences}
 
                 sample_id_list = list(set(snv_panda.sample_id.unique()))
 
@@ -1490,18 +1485,16 @@ class DGR_Finder:
         contigs_db_path : str
             Path to contigs database.
         """
+        # open the contigs DB once for the lifetime of this worker
+        contigs_db = dbops.ContigsDatabase(contigs_db_path, run=run_quiet, progress=progress_quiet)
+
         while True:
             bin_name, bin_contigs_list = input_queue.get(True)
 
             try:
-                # Load contig sequences for this bin
-                contigs_db = dbops.ContigsDatabase(contigs_db_path, run=run_quiet, progress=progress_quiet)
-                contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
-                contigs_db.disconnect()
-
-                # Filter contig sequences to only those in this bin
-                bin_contig_sequences = {contig: contig_sequences[contig]
-                                        for contig in bin_contigs_list if contig in contig_sequences}
+                # Load only this bin's contig sequences
+                bin_contigs_set = set(bin_contigs_list)
+                bin_contig_sequences = contigs_db.db.smart_get(t.contig_sequences_table_name, 'contig', bin_contigs_set, string_the_key=True, error_if_no_data=False)
 
                 if not bin_contig_sequences:
                     output_queue.put((bin_name, False, None, "No contig sequences found for bin"))
@@ -1597,6 +1590,27 @@ class DGR_Finder:
         self.blast_output = None
         successful_bins = []
         skipped_bins = {}  # bin_name -> error message
+
+        # Pre-filter: only process bins that have at least one split with SNVs
+        splits_with_snvs = set(self.snv_panda['split_name'].unique())
+        bins_with_data = {}
+        for bin_name, bin_splits_list in bin_splits_dict.items():
+            if splits_with_snvs.intersection(set(bin_splits_list)):
+                bins_with_data[bin_name] = bin_splits_list
+            else:
+                skipped_bins[bin_name] = "No SNVs in bin"
+
+        num_bins_skipped = len(bin_splits_dict) - len(bins_with_data)
+        if num_bins_skipped:
+            self.run.info_single(f"Pre-filtered {num_bins_skipped} of {num_bins} bins with no SNVs. "
+                                 f"Processing {len(bins_with_data)} bins with SNV data.", nl_before=1)
+
+        bin_splits_dict = bins_with_data
+        num_bins = len(bin_splits_dict)
+
+        if num_bins == 0:
+            raise ConfigError(f"None of the {len(skipped_bins)} bins in collection '{self.collections_given}' "
+                              f"have any SNVs. There is nothing to do for activity-based detection.")
 
         # === DECIDE: PARALLEL vs SEQUENTIAL ===
         use_parallel = num_bins > self.num_threads and self.num_threads > 1
@@ -1780,6 +1794,28 @@ class DGR_Finder:
         successful_bins = []
         skipped_bins = {}
 
+        # Pre-filter: only process bins that contain at least one contig with an RT window
+        contigs_with_rt = set(w['contig'] for w in self.rt_windows.values())
+        bins_with_rt = {}
+        for bin_name, bin_contigs_list in bin_contigs_dict.items():
+            if contigs_with_rt.intersection(set(bin_contigs_list)):
+                bins_with_rt[bin_name] = bin_contigs_list
+            else:
+                skipped_bins[bin_name] = "No RT windows in bin"
+
+        num_bins_skipped = len(bin_contigs_dict) - len(bins_with_rt)
+        if num_bins_skipped:
+            self.run.info_single(f"Pre-filtered {num_bins_skipped} of {num_bins} bins with no RT windows. "
+                                 f"Processing {len(bins_with_rt)} bins.", nl_before=1)
+
+        bin_contigs_dict = bins_with_rt
+        num_bins = len(bin_contigs_dict)
+
+        if num_bins == 0:
+            self.run.warning("No bins contain contigs with RT windows. Homology-based detection found nothing.",
+                           header="NO BINS WITH RT WINDOWS")
+            return {}
+
         # === DECIDE: PARALLEL vs SEQUENTIAL ===
         use_parallel = num_bins > self.num_threads and self.num_threads > 1
 
@@ -1859,9 +1895,17 @@ class DGR_Finder:
 
             self.progress.new('Processing bins for homology BLAST', progress_total_items=num_bins)
 
-            # Load contig sequences once
+            # Load contig sequences for bins in this collection. If the union of
+            # all bin contigs is very large, loading the full table is faster than
+            # building a huge SQL IN clause (which SQLite must parse as a single statement).
+            all_bin_contigs = set()
+            for bin_contigs_list in bin_contigs_dict.values():
+                all_bin_contigs.update(bin_contigs_list)
             contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
-            contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
+            if len(all_bin_contigs) > 10000:
+                contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name, string_the_key=True, error_if_no_data=False)
+            else:
+                contig_sequences = contigs_db.db.smart_get(t.contig_sequences_table_name, 'contig', all_bin_contigs, string_the_key=True, error_if_no_data=False)
             contigs_db.disconnect()
 
             for bin_name, bin_contigs_list in bin_contigs_dict.items():
