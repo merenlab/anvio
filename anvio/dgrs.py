@@ -1504,7 +1504,7 @@ class DGR_Finder:
                 query_records = {}
                 for window_info in rt_windows_list:
                     contig = window_info['contig']
-                    if contig not in bin_contigs_list:
+                    if contig not in bin_contigs_set:
                         continue
 
                     window_start = window_info['window_start']
