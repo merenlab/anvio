@@ -10,6 +10,24 @@ Also see the program %(anvi-show-misc-data)s, %(anvi-export-misc-data)s, and %(a
 
 Please see [this blog post](http://merenlab.org/2017/12/11/additional-data-tables) for a comprehensive documentation on these misc data types.
 
+### Data groups for items
+
+Items additional data is organized into **data groups**. When you import data without specifying a group, it goes into the `default` group. You can assign your data to a specific group using the `-D` flag:
+
+{{ codestart }}
+anvi-import-misc-data -p %(pan-db)s \
+                      -t items \
+                      -D my_analysis \
+                      %(misc-data-items-txt)s
+{{ codestop }}
+
+In the interactive interface, each group appears as a checkbox in the Main tab, allowing you to toggle entire groups of layers on or off. Groups also provide automatic visual separation between related layers.
+
+Several anvi'o programs automatically create named groups when they write items additional data. For instance, %(anvi-pan-genome)s creates groups like `gene_cluster_stats`, `SCG`, `homogeneity`, and `AAI`. See %(misc-data-items)s for the full list.
+
+{:.notice}
+Data key names must be unique across all groups. If you try to import a key that already exists in another group, anvi'o will report an error. You can remove the existing key first with %(anvi-delete-misc-data)s if needed.
+
 ## Nucleotides, Amino Acids, and Contigs Databases
 
 This feature lets you import additional data about specfic residues or specific base pairs into your %(contigs-db)s. This is especially useful for strucutral analysis (so when running programs like %(anvi-display-structure)s) and will be very relevant to the InteracDome functionality when it's added in anvi'o v7 (curious readers can take a look at [this blog post](http://merenlab.org/2020/07/22/interacdome/)).

@@ -321,7 +321,13 @@ class ClusteringConfiguration:
                 if table_form == 'dataframe':
                     args = argparse.Namespace(pan_or_profile_db=database_path, table_name=table)
                     table = TableForItemAdditionalData(args)
-                    table_keys_list, table_data_dict = table.get()
+                    keys_by_group, data_by_group = table.get_all()
+                    table_data_dict = {}
+                    for group_data in data_by_group.values():
+                        for item_name, item_data in group_data.items():
+                            if item_name not in table_data_dict:
+                                table_data_dict[item_name] = {}
+                            table_data_dict[item_name].update(item_data)
                     store_dict_as_TAB_delimited_file(table_data_dict, tmp_file_path)
                 elif table_form == 'view':
                     store_dict_as_TAB_delimited_file(table_rows, tmp_file_path)
