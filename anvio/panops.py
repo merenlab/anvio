@@ -135,6 +135,9 @@ class ComparePan:
         # report gene cluster status in compared pangenome: fragmented or combined?
         self.detect_fragmentation_combination()
 
+        # for each GC in primary pan, report composition of corresponding GCs in compared pan
+        self.add_cluster_composition_metrics()
+
         # classify gene clusters as core/singleton/accessory in both pans
         self.add_gene_cluster_type_data()
 
@@ -417,45 +420,61 @@ class ComparePan:
         compared_table.add(compared_type_data, pan_type_keys, skip_check_names=True)
 
 
-    def add_psgc_composition_metrics(self, gc_psgc_associations, de_novo_gene_clusters_dict, num_genomes):
-        """Compute and add PSGC composition metrics (core/singleton/accessory counts) to the structure pan-db.
+    def build_gene_cluster_mapping(self):
+        """Build a full mapping from primary pan gene clusters to compared pan gene clusters.
 
-        Parameters
-        ==========
-        gc_psgc_associations : dict
-            Dictionary mapping gene_cluster_id -> protein_structure_informed_gene_cluster_id
-        de_novo_gene_clusters_dict : dict
-            Dictionary of de novo gene clusters (list-of-dicts format)
-        num_genomes : int
-            Number of genomes in the analysis
+        For each gene cluster in the primary pan, finds all corresponding gene clusters in
+        the compared pan based on shared gene calls.
+
+        Returns
+        =======
+        dict : {primary_gc_name: set(compared_gc_names)}
         """
-        # classify de novo gene clusters
-        de_novo_gc_types = Pangenome.classify_gene_cluster_types(de_novo_gene_clusters_dict, num_genomes)
+        mapping = {}
+        for gc_name, gc_data in self.pan.gene_clusters.items():
+            compared_gcs = set()
+            for genome, gene_ids in gc_data.items():
+                for gene in gene_ids:
+                    try:
+                        compared_gc = self.compared_pan.gene_callers_id_to_gene_cluster[genome][gene]
+                        compared_gcs.add(compared_gc)
+                    except KeyError:
+                        continue
+            mapping[gc_name] = compared_gcs
+        return mapping
 
-        # build reverse mapping: psgc -> list of gc names
-        psgc_to_gcs = {}
-        for gc_name, psgc_name in gc_psgc_associations.items():
-            if psgc_name:
-                if psgc_name not in psgc_to_gcs:
-                    psgc_to_gcs[psgc_name] = []
-                psgc_to_gcs[psgc_name].append(gc_name)
 
-        # compute per-PSGC metrics
-        psgc_data = {}
-        for psgc_name in self.pan.gene_cluster_names:
-            gcs_in_psgc = psgc_to_gcs.get(psgc_name, [])
+    def add_cluster_composition_metrics(self):
+        """For each GC in the primary pan, report the composition of corresponding GCs in the compared pan.
+
+        This is useful any time one pan has coarser clusters than another (e.g., structure-informed
+        PSGCs vs sequence-based GCs, or two sequence-based pans with different MCL inflation values).
+        For each cluster in the primary pan, it reports how many compared-pan clusters map to it
+        and their core/singleton/accessory gene breakdown.
+        """
+        num_genomes = self.pan.p_meta['num_genomes']
+        compared_name = self.compared_pan_name
+
+        # classify compared pan's gene clusters
+        compared_gc_types = Pangenome.classify_gene_cluster_types(self.compared_pan.gene_clusters, num_genomes)
+
+        # build full mapping: primary GC -> set of compared GCs
+        primary_to_compared = self.build_gene_cluster_mapping()
+
+        # compute per-primary-GC composition metrics
+        composition_data = {}
+        for gc_name in self.pan.gene_cluster_names:
+            compared_gcs = primary_to_compared.get(gc_name, set())
 
             core_genes = 0
             singleton_genes = 0
             accessory_genes = 0
             gc_types_dict = {}
 
-            for gc in gcs_in_psgc:
-                if gc not in de_novo_gc_types:
-                    continue
-                gc_type = de_novo_gc_types[gc]
-                gc_types_dict[gc] = gc_type
-                gene_count = len(de_novo_gene_clusters_dict[gc])
+            for compared_gc in compared_gcs:
+                gc_type = compared_gc_types.get(compared_gc, 'accessory')
+                gc_types_dict[compared_gc] = gc_type
+                gene_count = sum(len(genes) for genes in self.compared_pan.gene_clusters[compared_gc].values())
                 if gc_type == 'core':
                     core_genes += gene_count
                 elif gc_type == 'singleton':
@@ -463,20 +482,25 @@ class ComparePan:
                 else:
                     accessory_genes += gene_count
 
-            psgc_data[psgc_name] = {
-                'number_gc_in_psgc': len(gcs_in_psgc),
-                'psgc_composition!core': core_genes,
-                'psgc_composition!singleton': singleton_genes,
-                'psgc_composition!accessory': accessory_genes,
-                'gc_types': json.dumps(gc_types_dict),
+            composition_data[gc_name] = {
+                f'num_GCs_in_{compared_name}': len(compared_gcs),
+                f'composition_{compared_name}!core': core_genes,
+                f'composition_{compared_name}!singleton': singleton_genes,
+                f'composition_{compared_name}!accessory': accessory_genes,
+                f'gc_types_{compared_name}': json.dumps(gc_types_dict),
             }
 
-        psgc_keys = ['number_gc_in_psgc', 'psgc_composition!core', 'psgc_composition!singleton',
-                     'psgc_composition!accessory', 'gc_types']
+        composition_keys = [
+            f'num_GCs_in_{compared_name}',
+            f'composition_{compared_name}!core',
+            f'composition_{compared_name}!singleton',
+            f'composition_{compared_name}!accessory',
+            f'gc_types_{compared_name}',
+        ]
 
-        psgc_args = argparse.Namespace(**{**vars(self.args), 'target_data_group': 'psgc_composition'})
-        psgc_table = TableForItemAdditionalData(psgc_args, r=terminal.Run(verbose=False))
-        psgc_table.add(psgc_data, psgc_keys, skip_check_names=True)
+        compare_args = argparse.Namespace(**{**vars(self.args), 'target_data_group': 'compare_pan'})
+        composition_table = TableForItemAdditionalData(compare_args, r=terminal.Run(verbose=False))
+        composition_table.add(composition_data, composition_keys, skip_check_names=True)
 
 
 class RarefactionAnalysis:
@@ -1165,6 +1189,12 @@ class Pangenome(object):
     def process_gene_clusters(self, gene_clusters_dict):
         self.progress.new('Generating view data')
         self.progress.update('...')
+
+        # reset view data dicts so a second call (e.g. for the conventional pan-db)
+        # does not carry over entries from a previous call
+        self.view_data = {}
+        self.view_data_presence_absence = {}
+        self.additional_view_data = {}
 
         gene_clusters = list(gene_clusters_dict.keys())
 
@@ -2139,15 +2169,6 @@ class Pangenome(object):
         )
 
         comparer = ComparePan(compare_args, run=self.run, progress=self.progress)
-
-        # add PSGC composition metrics to the structure pan-db
-        comparer.pan.init_gc_psgc_associations()
-        comparer.add_psgc_composition_metrics(
-            comparer.pan.gc_psgc_associations,
-            self.de_novo_gene_clusters_dict,
-            len(self.genomes),
-        )
-
         comparer.process()
 
 
