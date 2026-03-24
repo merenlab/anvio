@@ -44,6 +44,7 @@ __email__ = "ahenoch@outlook.de"
 run = terminal.Run()
 progress = terminal.Progress()
 pp = terminal.pretty_print
+P = terminal.pluralize
 
 
 # TODO implement multithreading here. This will speed up the SynCluster Algorithm
@@ -274,9 +275,9 @@ class SyntenyGeneCluster():
                     offset += len(group)
 
                     pangenome_data_list += [group]
-                self.run.info_single(f"{genome} ✅")
+                self.run.info(f"{genome}", f"{len(joined_contigs_df)} genes in {P('contig', len(joined_contigs_df['contig'].unique()))}.")
             else:
-                self.run.info_single(f"{genome} ⛔ -- excluded on user's demand.")
+                self.run.info(f"{genome}", "(excluded)", mc='red')
 
         pangenome_data_df = pd.concat(pangenome_data_list)
 
