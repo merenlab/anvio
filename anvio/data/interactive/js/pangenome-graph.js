@@ -1481,6 +1481,7 @@ class PangenomeGraphUserInterface {
 
         $('#number_sgc')[0].innerText = '';
         $('#number_gc')[0].innerText = '';
+        $('#number_type')[0].innerText = '';
         $('#number_position')[0].innerText = '0';
         
         for (var source of this.functional_annotation_sources_available) {
@@ -1537,7 +1538,34 @@ class PangenomeGraphUserInterface {
 
         $('#number_sgc')[0].innerText = element_id;
         $('#number_gc')[0].innerText = this.data['nodes'][element_id]['gene_cluster'];
+        $('#number_type')[0].innerText = this.data['nodes'][element_id]['type'];
         $('#number_position')[0].innerText = parseInt(this.data['nodes'][element_id]['position']);
+
+        var raw_type = this.data['nodes'][element_id]['type'];
+        var gene_cluster = this.data['nodes'][element_id]['gene_cluster'];
+        var num_genomes = Object.keys(this.data['nodes'][element_id]['gene_calls']).length;
+        var total_genomes = this.genomes.length;
+
+        const type_labels = {
+            'core':          'Core',
+            'accessory':     'Accessory',
+            'singleton':     'Singleton',
+            'duplication':   'Multi-Copy',
+            'rearrangement': 'Rearrangement',
+            'rna':           'tRNA',
+        };
+        var type_label = type_labels[raw_type] || raw_type;
+        var type_display = (raw_type === 'core')
+            ? type_label
+            : type_label + ' (' + num_genomes + ' of ' + total_genomes + ' genomes)';
+
+        if (raw_type === 'duplication') {
+            var copies_in_graph = Object.values(this.data['nodes']).filter(n => n['gene_cluster'] === gene_cluster).length;
+            type_display += ', ' + copies_in_graph + ' cop' + (copies_in_graph === 1 ? 'y' : 'ies') + ' in graph';
+        }
+
+        instance.setContent('<strong>' + gene_cluster + '</strong><br />' + type_display);
+        $('#number_type')[0].innerText = type_display;
     }
 
     press_down(instance) {
@@ -2333,6 +2361,18 @@ class PangenomeGraphUserInterface {
                 )
             ).append(
                 $('<td class="col-8 text-end" id="number_gc">').append(
+                    ''
+                )
+            )
+        );
+
+        $('#RightOffcanvasBodyTop').append(
+            $('<tr>').append(
+                $('<td class="col-4">').append(
+                    'SynGC type'
+                )
+            ).append(
+                $('<td class="col-8 text-end" id="number_type">').append(
                     ''
                 )
             )
