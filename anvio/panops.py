@@ -337,15 +337,9 @@ class ComparePan:
 
             items_additional_data_dict[gene_cluster] = summary
 
-        # everything to the items additional table:
-        # TODO: we need to better handle group for layers. As far as I understand, I can make groups for
-        # item_additiona_table, but only 'default' is shown. A group could have a default spacing to the rest of the
-        # layers. It if becomes available one day, here is how making a group would look like:
-        #comparison_group_name = f"compare_pan_{self.compared_pan_name}"
-        #args_with_group = argparse.Namespace(**{**vars(self.args), 'target_data_group': comparison_group_name})
-        #items_additional_data_table = TableForItemAdditionalData(args_with_group, r=terminal.Run(verbose=True))
-        # instead we have:
-        items_additional_data_table = TableForItemAdditionalData(self.args, r=terminal.Run(verbose=False))
+        # everything to the items additional table, in the 'compare_pan' group:
+        compare_args = argparse.Namespace(**{**vars(self.args), 'target_data_group': 'compare_pan'})
+        items_additional_data_table = TableForItemAdditionalData(compare_args, r=terminal.Run(verbose=False))
         items_additional_data_table.add(items_additional_data_dict, items_additional_data_keys, skip_check_names=True)
 
 
@@ -410,14 +404,15 @@ class ComparePan:
         pan_type_data = {gc: {'gc_type': gc_type} for gc, gc_type in pan_gc_types.items()}
         pan_type_keys = ['gc_type']
 
-        pan_table = TableForItemAdditionalData(self.args, r=terminal.Run(verbose=False))
+        pan_gc_type_args = argparse.Namespace(**{**vars(self.args), 'target_data_group': 'gene_cluster_stats'})
+        pan_table = TableForItemAdditionalData(pan_gc_type_args, r=terminal.Run(verbose=False))
         pan_table.add(pan_type_data, pan_type_keys, skip_check_names=True)
 
         # classify gene clusters in the compared pan
         compared_gc_types = Pangenome.classify_gene_cluster_types(self.compared_pan.gene_clusters, num_genomes)
         compared_type_data = {gc: {'gc_type': gc_type} for gc, gc_type in compared_gc_types.items()}
 
-        compared_args = argparse.Namespace(**{**vars(self.args), 'pan_db': self.compared_pan_db_path})
+        compared_args = argparse.Namespace(**{**vars(self.args), 'pan_db': self.compared_pan_db_path, 'target_data_group': 'gene_cluster_stats'})
         compared_table = TableForItemAdditionalData(compared_args, r=terminal.Run(verbose=False))
         compared_table.add(compared_type_data, pan_type_keys, skip_check_names=True)
 
@@ -479,7 +474,8 @@ class ComparePan:
         psgc_keys = ['number_gc_in_psgc', 'psgc_composition!core', 'psgc_composition!singleton',
                      'psgc_composition!accessory', 'gc_types']
 
-        psgc_table = TableForItemAdditionalData(self.args, r=terminal.Run(verbose=False))
+        psgc_args = argparse.Namespace(**{**vars(self.args), 'target_data_group': 'psgc_composition'})
+        psgc_table = TableForItemAdditionalData(psgc_args, r=terminal.Run(verbose=False))
         psgc_table.add(psgc_data, psgc_keys, skip_check_names=True)
 
 
