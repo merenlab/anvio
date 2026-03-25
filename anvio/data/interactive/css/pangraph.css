@@ -230,7 +230,6 @@
 
 .scroll-wrapper {
   overflow-x: auto;
-  max-height: 200px;
 }
 
 .scrollable-content {
