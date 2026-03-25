@@ -69,9 +69,9 @@ function checked(letter){
     if (letter == undefined || letter == null){
         return false;
     }
-    box =  document.getElementById(letter)
+    var box = document.getElementById(letter);
     if (box == null){
-        return false;
+        return true;
     }
     return box.checked;
 }

@@ -1,28 +1,5 @@
 class PangenomeGraphUserInterface {
     constructor() {
-        this.amino_acid_color_code = {
-            'A': '<span style="color: #000000;">A</span>',
-            'R': '<span style="color: #ff0000;">R</span>',
-            'N': '<span style="color: #000000;">N</span>',
-            'D': '<span style="color: #000000;">D</span>',
-            'C': '<span style="color: #000000;">C</span>',
-            'Q': '<span style="color: #000000;">Q</span>',
-            'E': '<span style="color: #000000;">E</span>',
-            'G': '<span style="color: #ffa500;">G</span>',
-            'H': '<span style="color: #ff0000;">H</span>',
-            'I': '<span style="color: #00ff00;">I</span>',
-            'L': '<span style="color: #00ff00;">L</span>',
-            'K': '<span style="color: #ff0000;">K</span>',
-            'M': '<span style="color: #00ff00;">M</span>',
-            'F': '<span style="color: #00ff00;">F</span>',
-            'P': '<span style="color: #ffa500;">P</span>',
-            'S': '<span style="color: #ffa500;">S</span>',
-            'T': '<span style="color: #ffa500;">T</span>',
-            'W': '<span style="color: #00ffff;">W</span>',
-            'Y': '<span style="color: #00ffff;">Y</span>',
-            'V': '<span style="color: #00ff00;">V</span>',
-            '-': '<span style="color: #000000;">-</span>'
-        };
         this.bin_dict = {'bin_1': []};
         this.bin_group_dict = {};
         this.current_bin_id = 'bin_1';
@@ -82,7 +59,7 @@ class PangenomeGraphUserInterface {
         this.get_gene_cluster_functions_table = this.get_gene_cluster_functions_table.bind(this);
         this.get_region_data = this.get_region_data.bind(this)
         this.appendalignment = this.appendalignment.bind(this);
-        this.get_color_code = this.get_color_code.bind(this);
+        this.recolor_alignment = this.recolor_alignment.bind(this);
         this.alignment_download = this.alignment_download.bind(this);
         this.info_download = this.info_download.bind(this);
         this.add_info_to_bin = this.add_info_to_bin.bind(this);
@@ -2780,6 +2757,17 @@ class PangenomeGraphUserInterface {
         this.settings_dict['groupcompress'] = JSON.parse(JSON.stringify(this.data['states']['groupcompress']))
         this.settings_dict['state'] = JSON.parse(JSON.stringify(this.data['meta']['state']))
 
+        // Delegated handlers for amino acid conservation checkboxes in the alignment modal
+        $(document).on('change', '.pangraph-aa-checkbox', () => this.recolor_alignment());
+        $(document).on('click', '#pangraph-aa-check-all', () => {
+            document.querySelectorAll('.pangraph-aa-checkbox').forEach(cb => { cb.checked = true; });
+            this.recolor_alignment();
+        });
+        $(document).on('click', '#pangraph-aa-uncheck-all', () => {
+            document.querySelectorAll('.pangraph-aa-checkbox').forEach(cb => { cb.checked = false; });
+            this.recolor_alignment();
+        });
+
         // Keyboard shortcuts: D = Draw, S = toggle settings panel
         document.body.addEventListener('keydown', (ev) => {
             if ((/^(?:input|select|textarea|button)$/i).test(ev.target.nodeName)) return;
@@ -3335,40 +3323,93 @@ class PangenomeGraphUserInterface {
     
     }
 
-    get_color_code(matched) {
-        return this.amino_acid_color_code[matched]
-    }
-    
     async appendalignment(gene_cluster_id) {
+        var d = await this.fetchalignment([gene_cluster_id]);
+        var alignment = d['data'][gene_cluster_id];
+
+        // Collect sequences in display order to build conservation-based per-column colors
+        var sequence_entries = [];
+        for (var genome of this.genomes) {
+            if (genome in alignment) {
+                for (var [gene_call, sequence] of Object.entries(alignment[genome])) {
+                    sequence_entries.push({genome, gene_call, sequence});
+                }
+            }
+        }
+
+        // Build sequences_array[col][seq_idx] as required by determineColor; cache for recolor_alignment()
+        var max_len = sequence_entries.reduce((m, e) => Math.max(m, e.sequence.length), 0);
+        var sequences_array = [];
+        for (var col = 0; col < max_len; col++) {
+            sequences_array.push(sequence_entries.map(e => col < e.sequence.length ? e.sequence[col] : '-'));
+        }
+        this._alignment_sequence_entries = sequence_entries;
+        this._alignment_sequences_array = sequences_array;
+
+        var coded_positions = window.determineColor(sequences_array);
+
+        // Build checkbox controls (IDs match AA letters so checked() in color-coding.js finds them)
+        const aa_letters = ['A','C','D','E','F','G','H','I','K','L','M','N','P','Q','R','S','T','V','W','Y'];
+        var controls_html = `<div style="margin: 6px 0 10px 0; font-size: 12px;">`;
+        controls_html += `<span style="margin-right: 6px; font-weight: bold;">Color by conservation:</span>`;
+        for (var aa of aa_letters) {
+            controls_html += `<label style="margin-right: 5px; cursor: pointer;"><input type="checkbox" id="${aa}" class="pangraph-aa-checkbox" checked style="margin-right: 2px;">${aa}</label>`;
+        }
+        controls_html += ` <button type="button" id="pangraph-aa-check-all" class="btn btn-sm btn-outline-secondary" style="margin-left: 8px; font-size: 11px; padding: 0 6px;">All</button>`;
+        controls_html += ` <button type="button" id="pangraph-aa-uncheck-all" class="btn btn-sm btn-outline-secondary" style="font-size: 11px; padding: 0 6px;">None</button>`;
+        controls_html += `</div>`;
+
         var alignments_table = `<p class="bin-modal-header" style="background: #f8bbd078;">Sequence alignments</p>`;
-        alignments_table += `<div class="scroll-wrapper"><table class="table sortable" gc_id="` + gene_cluster_id + `" id="node_sequence_alignments_table">`;
+        alignments_table += controls_html;
+        alignments_table += `<div class="scroll-wrapper"><table class="table sortable" gc_id="${gene_cluster_id}" id="node_sequence_alignments_table">`;
         alignments_table += `<thead class="gc-table-header"><tr>`;
         alignments_table += `<th class="position-sticky" style="left:0px; z-index:2;" scope="col">Genome</th>`;
         alignments_table += `<th scope="col">Gene Call</th>`;
         alignments_table += `<th scope="col"><span id="th-sequence">Sequence</span></th>`;
         alignments_table += `</tr></thead><tbody>`;
-    
-        var d = await this.fetchalignment([gene_cluster_id])
 
-        var alignment = d['data'][gene_cluster_id]
-
-        for (var genome of this.genomes) {
-            if (genome in alignment) {
-                for (var [gene_call, sequence] of Object.entries(alignment[genome])) {
-                    var colored_sequence = sequence.replace(/A|R|N|D|C|Q|E|G|H|I|L|K|M|F|P|S|T|W|Y|V|-/gi, this.get_color_code);
-                    
-                    alignments_table += `<tr>`
-                    alignments_table += `<td id="td-genome-cell">` + genome + `</td>`
-                    alignments_table += `<td id="td-value-cell">` + gene_call + `</a></td>`
-                    alignments_table += `<td id="gc-alignment-font"><div class="scrollable-content">` + colored_sequence + `</div></td>`
-                    alignments_table += `</tr>`
+        for (var seq_idx = 0; seq_idx < sequence_entries.length; seq_idx++) {
+            var entry = sequence_entries[seq_idx];
+            var colored_sequence = '';
+            for (var col = 0; col < entry.sequence.length; col++) {
+                var aa = entry.sequence[col];
+                var color_name = 'black';
+                if (coded_positions[col] && coded_positions[col][seq_idx]) {
+                    color_name = coded_positions[col][seq_idx][aa] || 'black';
                 }
-                    
+                colored_sequence += `<span style="color: ${color_name};">${aa}</span>`;
             }
+            alignments_table += `<tr>`;
+            alignments_table += `<td id="td-genome-cell">${entry.genome}</td>`;
+            alignments_table += `<td id="td-value-cell">${entry.gene_call}</td>`;
+            alignments_table += `<td id="gc-alignment-font"><div class="scrollable-content">${colored_sequence}</div></td>`;
+            alignments_table += `</tr>`;
         }
 
-        alignments_table += `</tbody></table></div>`
+        alignments_table += `</tbody></table></div>`;
         return alignments_table;
+    }
+
+    recolor_alignment() {
+        if (!this._alignment_sequence_entries || !this._alignment_sequences_array) return;
+        var coded_positions = window.determineColor(this._alignment_sequences_array);
+        var rows = document.querySelectorAll('#node_sequence_alignments_table tbody tr');
+        for (var seq_idx = 0; seq_idx < rows.length; seq_idx++) {
+            var cell = rows[seq_idx].querySelector('#gc-alignment-font .scrollable-content');
+            if (!cell) continue;
+            var entry = this._alignment_sequence_entries[seq_idx];
+            if (!entry) continue;
+            var colored_sequence = '';
+            for (var col = 0; col < entry.sequence.length; col++) {
+                var aa = entry.sequence[col];
+                var color_name = 'black';
+                if (coded_positions[col] && coded_positions[col][seq_idx]) {
+                    color_name = coded_positions[col][seq_idx][aa] || 'black';
+                }
+                colored_sequence += `<span style="color: ${color_name};">${aa}</span>`;
+            }
+            cell.innerHTML = colored_sequence;
+        }
     }
 
     get_gene_cluster_region_data(gene_cluster_names) {
