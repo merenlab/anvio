@@ -83,7 +83,7 @@ class ComparePan:
         self.pan_db_path = A('pan_db')
         self.compared_pan_db_path = A('compared_pan_db')
         self.output_file_prefix = A('output_file')
-        self.skip_output_files= A('skip_output_files')
+        self.skip_output_files = A('skip_output_files')
 
         # load the first pansuperclass
         utils.is_pan_db(self.pan_db_path)
@@ -127,7 +127,6 @@ class ComparePan:
         if not self.compare_pan_dict:
             raise ConfigError("Anvi'o have not found any differences in the composition of the gene clusters "
                               "for both pan-db. Nothing to compare. BYE.")
-            return
 
         # find corresponding gene clusters in compared pan
         self.find_corresponding_gene_clusters()
@@ -237,26 +236,32 @@ class ComparePan:
 
 
     def detect_fragmentation_combination(self):
-        '''Per gene cluster, check it is "fragmented" or "combined" in the other pan.
-           If combined, then report the other gene clusters from this pan that contributed to the combined cluster'''
+        """Per gene cluster, determine if it is fragmented, combined, or has missing genes in the compared pan."""
 
-        # for a fragmentation, just check if the num of GC in other pan is greater than one, and move on.
+        clusters_with_no_compared_gcs = []
+
         for gene_cluster, gene_cluster_dict in self.compare_pan_dict.items():
             if gene_cluster_dict.get('missing_genes'):
                 gene_cluster_dict['status'] = 'missing_genes'
+                if not gene_cluster_dict.get('GCs_in_compared_pan'):
+                    clusters_with_no_compared_gcs.append(gene_cluster)
                 continue
 
             if len(gene_cluster_dict['GCs_in_compared_pan']) > 1:
                 gene_cluster_dict['status'] = 'fragmented'
                 continue
 
-            # for combination, we need to check the extra gene calls in corresponding pan single GC,
-            # and report the associated GCs from our current pan.
-            corresponding_gene_cluster = gene_cluster_dict['GCs_in_compared_pan'][0]  # "There can only be one"
+            # for combination, we need to check the extra gene calls in the corresponding
+            # compared-pan GC, and report the associated GCs from our current pan.
+            corresponding_gene_cluster = gene_cluster_dict['GCs_in_compared_pan'][0]
             list_gene_clusters = [gene_cluster]
             for genome, gene_callers_id in self.compared_pan.gene_clusters[corresponding_gene_cluster].items():
                 for gene in gene_callers_id:
-                    gc_found = self.pan.gene_callers_id_to_gene_cluster[genome][gene]
+                    try:
+                        gc_found = self.pan.gene_callers_id_to_gene_cluster[genome][gene]
+                    except KeyError:
+                        # the compared pan has a gene not present in the primary pan (asymmetric gene content)
+                        continue
                     if gc_found not in list_gene_clusters:
                         list_gene_clusters.append(gc_found)
 
@@ -264,11 +269,17 @@ class ComparePan:
                 gene_cluster_dict['status'] = 'combined'
                 gene_cluster_dict['related_GCs'] = list_gene_clusters
             else:
-                # Something has gone wrong, your gene cluster does not seems to be different
-                raise ConfigError(f"Something as gone wrong, anvi'o though that {gene_cluster} was different in the "
-                                  f"compared pangenome, but if you reached that part of the code it means that anvi'o "
-                                  f"was not able to identify why it was different (fragmentation, combination, missing "
-                                  f"genes). That's very bad and you should reach out to a developer.")
+                raise ConfigError(f"Something has gone wrong. anvi'o thought that {gene_cluster} was different in the "
+                                  f"compared pangenome, but it was not able to identify why (fragmentation, combination, "
+                                  f"missing genes). That's very bad and you should reach out to a developer.")
+
+        if clusters_with_no_compared_gcs:
+            self.run.warning(f"{len(clusters_with_no_compared_gcs)} gene cluster(s) have missing genes and no "
+                             f"corresponding gene clusters in the compared pan (all their genes are absent from the "
+                             f"compared pan). These will have empty function and composition columns in the output. "
+                             f"Here they are: {', '.join(clusters_with_no_compared_gcs[:10])}"
+                             f"{'...' if len(clusters_with_no_compared_gcs) > 10 else ''}.",
+                             header="CLUSTERS WITH ALL GENES MISSING")
 
 
     def add_function_summary_to_compare(self):
@@ -347,9 +358,7 @@ class ComparePan:
 
 
     def store_results_as_txt(self):
-        """Generate text file for the self.compare_pan_dict"""
-        # first we need to flatted the current dict
-        # TODO: maybe I don't need to have such a nested dict in the first place?
+        """Generate a flattened text file for the self.compare_pan_dict"""
         out_dict = {}
 
         for gene_cluster, gene_cluster_dict in self.compare_pan_dict.items():
@@ -365,26 +374,26 @@ class ComparePan:
             row = {'status': status,
                    'associated_GCs': gcs}
 
-            # Add columns for each functional annotation source
-            for func_source, func_data in gene_cluster_dict['function'].items():
-                # Convert sets to strings, filter out None
-                function_values = [str(x) for x in func_data['function']]
+            # Add columns for each functional annotation source (may be absent for missing_genes clusters)
+            for func_source, func_data in gene_cluster_dict.get('function', {}).items():
+                function_values = sorted(str(x) for x in func_data['function'])
                 function_str = '!!!'.join(function_values)
 
-                accession_values = [str(x) for x in func_data['accession']]
+                accession_values = sorted(str(x) for x in func_data['accession'])
                 accession_str = '!!!'.join(accession_values)
 
-                # Create columns with prefixes
                 row[f'{func_source}_function'] = function_str
                 row[f'{func_source}_accession'] = accession_str
                 row[f'{func_source}_heterogeneity'] = func_data['heterogeneity']
 
             out_dict[gene_cluster] = row
 
-        # We need to generated column order
-        # First we need to get the functional annotation source:
-        first_gc = next(iter(self.compare_pan_dict.values()))
-        function_types = list(first_gc['function'].keys())
+        # build column order from the first GC that has function data
+        function_types = []
+        for gc_dict in self.compare_pan_dict.values():
+            if 'function' in gc_dict:
+                function_types = list(gc_dict['function'].keys())
+                break
 
         column_order = ['GC_ID', 'status', 'associated_GCs']
         for func_source in function_types:
@@ -394,7 +403,6 @@ class ComparePan:
                 f'{func_source}_heterogeneity'
             ])
 
-        # then we write:
         utils.store_dict_as_TAB_delimited_file(out_dict, self.output_file_prefix, headers=column_order, key_header='GC_ID', none_value='')
 
 
