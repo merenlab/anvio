@@ -2189,7 +2189,7 @@ class PangenomeGraphUserInterface {
                 ).append(
                     $('<div class="col-2"></div>').append(
                         $('<input type="button" class="form-control float-end text-end flex-fill p-0 border-0 bin-count-btn" id="bin_' + this.current_bin_number + '_value" value=0 title="Click for functions summary">')
-                            .on('click', () => { this.show_bin_functions('bin_' + this.current_bin_number); })
+                            .on('click', ((bin_id) => () => { this.show_bin_functions(bin_id); })('bin_' + this.current_bin_number))
                     )
                 ).append(
                     $('<div class="d-flex col-2 align-items-center"></div>').append(
