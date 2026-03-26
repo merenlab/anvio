@@ -18,6 +18,8 @@ class PangenomeGraphUserInterface {
         this.cur_ypos = 0
         this.new_xpos = 0
         this.new_ypos = 0
+        this.drawing_zoom = false
+        this.zoomBox = {}
 
         this.svg_cur_xpos = 0
         this.svg_cur_ypos = 0
@@ -1555,13 +1557,13 @@ class PangenomeGraphUserInterface {
         this.diff = 0;
 
         var svgEl = document.getElementById('result');
-        if (instance.shiftKey && typeof(svgEl) != 'undefined' && svgEl != null) {
+        if (instance.altKey && typeof(svgEl) != 'undefined' && svgEl != null) {
             var svgEl = document.getElementById('result');
             var viewport = svgEl.querySelector('.svg-pan-zoom_viewport');
             var pt = svgEl.createSVGPoint();
             pt.x = instance.clientX;
             pt.y = instance.clientY;
-    
+
             var svgP = pt.matrixTransform(viewport.getScreenCTM().inverse());
             this.svg_cur_xpos = svgP.x
             this.svg_cur_ypos = svgP.y
@@ -1571,12 +1573,17 @@ class PangenomeGraphUserInterface {
             this.selection.setAttribute("y", 0);
             this.selection.setAttribute("width", 0);
             this.selection.setAttribute("height", 0);
-            
+
             var bin_color = $('#' + this.current_bin_id + '_color').attr('color')
             var fill_color = this.addAlpha(bin_color, 0.1);
 
             this.selection.setAttribute("fill", fill_color);
             viewport.appendChild(this.selection);
+        } else if (instance.shiftKey) {
+            this.drawing_zoom = true;
+            this.zoomBox = {start_x: instance.clientX, start_y: instance.clientY};
+            $('#divzoom').css({"top": 0, "left": 0, "width": 0, "height": 0});
+            $('#divzoom').show();
         }
     }
 
@@ -1588,27 +1595,40 @@ class PangenomeGraphUserInterface {
             this.diff += Math.sqrt((this.new_xpos-this.cur_xpos)^2+(this.new_ypos-this.cur_ypos)^2)
 
             var svgEl = document.getElementById('result');
-            if (!instance.shiftKey && typeof(this.panZoomInstance) != 'undefined' && this.panZoomInstance != null) {
-                this.panZoomInstance.panBy({x: this.new_xpos-this.cur_xpos, y: this.new_ypos-this.cur_ypos})
-            } else if (instance.shiftKey && typeof(svgEl) != 'undefined' && svgEl != null) {
+            if (instance.shiftKey && this.drawing_zoom) {
+                var _top = this.zoomBox.start_y > instance.clientY ? instance.clientY : this.zoomBox.start_y;
+                var _left = this.zoomBox.start_x > instance.clientX ? instance.clientX : this.zoomBox.start_x;
+                var _height = Math.abs(this.zoomBox.start_y - instance.clientY);
+                var _width = Math.abs(this.zoomBox.start_x - instance.clientX);
+
+                var divzoom = document.getElementById('divzoom');
+                divzoom.style.top = _top + "px";
+                divzoom.style.left = _left + "px";
+                divzoom.style.width = _width + "px";
+                divzoom.style.height = _height + "px";
+
+                clearTextSelection();
+            } else if (instance.altKey && typeof(svgEl) != 'undefined' && svgEl != null) {
                 var viewport = svgEl.querySelector('.svg-pan-zoom_viewport');
                 var pt = svgEl.createSVGPoint();
                 pt.x = instance.clientX;
                 pt.y = instance.clientY;
-        
+
                 var svgP = pt.matrixTransform(viewport.getScreenCTM().inverse());
                 this.svg_new_xpos = svgP.x
                 this.svg_new_ypos = svgP.y
-    
+
                 var min_svg_xpos = Math.min(this.svg_cur_xpos, this.svg_new_xpos);
                 var min_svg_ypos = Math.min(this.svg_cur_ypos, this.svg_new_ypos);
                 var width = Math.abs(this.svg_cur_xpos - this.svg_new_xpos);
                 var height = Math.abs(this.svg_cur_ypos - this.svg_new_ypos);
-                
+
                 this.selection.setAttribute("x", min_svg_xpos);
                 this.selection.setAttribute("y", min_svg_ypos);
                 this.selection.setAttribute("width", width);
                 this.selection.setAttribute("height", height);
+            } else if (!instance.altKey && !instance.shiftKey && typeof(this.panZoomInstance) != 'undefined' && this.panZoomInstance != null) {
+                this.panZoomInstance.panBy({x: this.new_xpos-this.cur_xpos, y: this.new_ypos-this.cur_ypos})
             }
 
             this.cur_xpos = this.new_xpos;
@@ -1621,24 +1641,56 @@ class PangenomeGraphUserInterface {
         if (this.isDown === true) {
             this.isDown = false
 
+            if (this.drawing_zoom) {
+                var zoom_rect = document.getElementById('divzoom').getBoundingClientRect();
+                var svgbox = document.getElementById('svgbox');
+                var svgbox_rect = svgbox.getBoundingClientRect();
+
+                if (zoom_rect.width > 2 && zoom_rect.height > 2 && this.panZoomInstance) {
+                    var sizes = this.panZoomInstance.getSizes();
+                    var currentZoom = this.panZoomInstance.getZoom();
+                    var currentPan = this.panZoomInstance.getPan();
+
+                    var zoomCenterX = zoom_rect.left + zoom_rect.width / 2 - svgbox_rect.left;
+                    var zoomCenterY = zoom_rect.top + zoom_rect.height / 2 - svgbox_rect.top;
+
+                    var svgCenterX = (zoomCenterX - currentPan.x) / currentZoom;
+                    var svgCenterY = (zoomCenterY - currentPan.y) / currentZoom;
+
+                    var zoomFactor = Math.min(svgbox_rect.width / zoom_rect.width, svgbox_rect.height / zoom_rect.height);
+                    var newZoom = currentZoom * zoomFactor;
+
+                    this.panZoomInstance.zoom(newZoom);
+
+                    var newPanX = svgbox_rect.width / 2 - svgCenterX * newZoom;
+                    var newPanY = svgbox_rect.height / 2 - svgCenterY * newZoom;
+                    this.panZoomInstance.pan({x: newPanX, y: newPanY});
+                }
+
+                this.drawing_zoom = false;
+                this.zoomBox = {};
+                $('#divzoom').hide();
+                return;
+            }
+
             if (this.diff < 10) {
                 if (instance.target.getAttribute('class') === 'group' || instance.target.getAttribute('class') === 'node') {
-                    if (instance.shiftKey) {
+                    if (instance.altKey) {
                         var bin_id = this.current_bin_id;
                         this.marknode(instance.target, bin_id);
                     } else {
                         this.nodeinfo(instance.target);
-                    }   
-                } 
+                    }
+                }
             } else {
-                if (instance.shiftKey) {
+                if (instance.altKey) {
                     var bin_id = this.current_bin_id;
 
                     var min_svg_xpos = Math.min(this.svg_cur_xpos, this.svg_new_xpos);
                     var min_svg_ypos = Math.min(this.svg_cur_ypos, this.svg_new_ypos);
                     var width = Math.abs(this.svg_cur_xpos - this.svg_new_xpos);
                     var height = Math.abs(this.svg_cur_ypos - this.svg_new_ypos);
-                    
+
                     var nodes = document.querySelectorAll(".node")
                     for (var n of nodes) {
                         var bbox = n.getBBox();
