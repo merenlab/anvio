@@ -69,7 +69,9 @@ class PangenomeGraphUserInterface {
         this.save_state = this.save_state.bind(this);
         this.load_state = this.load_state.bind(this);
         this.set_UI_settings = this.set_UI_settings.bind(this);
-        
+        this.draw_bin_rings = this.draw_bin_rings.bind(this);
+        this._render_bin_visuals = this._render_bin_visuals.bind(this);
+
         this.draw_newick = this.draw_newick.bind(this);
         this.generate_svg = this.generate_svg.bind(this);
 
@@ -1103,6 +1105,8 @@ class PangenomeGraphUserInterface {
         for (var item of svg_tree) svg_group.append(item);
         svg_core.append(svg_group);
 
+        svg_core.append($('<g id="bin-rings-group"></g>'));
+
         var svg_group = $('<g id="region-labels-group"></g>')
         for (var item of svg_region_labels) svg_group.append(item);
         svg_core.append(svg_group);
@@ -1110,7 +1114,21 @@ class PangenomeGraphUserInterface {
         var svg_group = $('<g></g>')
         for (var item of svg_text) svg_group.append(item);
         svg_core.append(svg_group);
-        
+
+        // Store layout parameters for dynamic bin ring drawing
+        this._layout = {
+            theta: theta,
+            start_angle: start_angle,
+            end_angle: end_angle,
+            node_distance_x: node_distance_x,
+            node_distance_y: node_distance_y,
+            sum_middle_layer: sum_middle_layer,
+            outer_layers: outer_layers,
+            linear: linear,
+            current_outer_stop: current_outer_stop,
+            start_offset: start_offset,
+        };
+
         return svg_core
     }
 
@@ -1734,6 +1752,7 @@ class PangenomeGraphUserInterface {
     }
 
     update_bin() {
+        this._suppress_bin_ring_draw = true;
         for (var bin_id of Object.keys(this.bin_dict)) {
             var nodes = this.bin_dict[bin_id];
             var updated_nodes = []
@@ -1769,6 +1788,315 @@ class PangenomeGraphUserInterface {
 
             }
         }
+        this._suppress_bin_ring_draw = false;
+    }
+
+    draw_bin_rings() {
+        if (!this._layout) return;
+        const L = this._layout;
+
+        // Collect per-bin data: runs, color, name, label midpoint
+        this._bin_ring_data = [];
+
+        for (const [bin_id, node_ids] of Object.entries(this.bin_dict)) {
+            if (!node_ids || node_ids.length === 0) continue;
+
+            const bin_color = $('#' + bin_id + '_color').attr('color') || '#000000';
+            const raw_name = $('#' + bin_id + '_text').val() || bin_id;
+            const bin_name = raw_name.replace(/_/g, ' ').replace(/^./, c => c.toUpperCase());
+
+            // Gather all x-positions for nodes in this bin
+            const x_positions = new Set();
+            for (const nid of node_ids) {
+                if (this.group_dict[nid]) {
+                    for (const member of this.group_dict[nid]) {
+                        if (this.data['nodes'][member]) {
+                            x_positions.add(this.data['nodes'][member]['position'][0]);
+                        }
+                    }
+                } else if (this.data['nodes'][nid]) {
+                    x_positions.add(this.data['nodes'][nid]['position'][0]);
+                }
+            }
+            if (x_positions.size === 0) continue;
+
+            // Sort and group into contiguous runs
+            const sorted_x = [...x_positions].sort((a, b) => a - b);
+            const runs = [];
+            let run_start = sorted_x[0], run_end = sorted_x[0];
+            for (let i = 1; i < sorted_x.length; i++) {
+                if (sorted_x[i] <= run_end + 1) {
+                    run_end = sorted_x[i];
+                } else {
+                    runs.push([run_start, run_end]);
+                    run_start = sorted_x[i];
+                    run_end = sorted_x[i];
+                }
+            }
+            runs.push([run_start, run_end]);
+
+            this._bin_ring_data.push({ bin_color, bin_name, runs });
+        }
+
+        // Now render everything with zoom-aware positioning
+        this._render_bin_visuals();
+    }
+
+    _render_bin_visuals() {
+        // Locate (or create) the SVG group for bin visuals
+        const svg_el = document.getElementById('result');
+        if (!svg_el) return;
+        const vp = svg_el.querySelector('.svg-pan-zoom_viewport') || svg_el;
+        let grp = vp.querySelector('#bin-rings-group');
+        if (!grp) {
+            grp = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            grp.setAttribute('id', 'bin-rings-group');
+            const rlg = vp.querySelector('#region-labels-group');
+            if (rlg) vp.insertBefore(grp, rlg);
+            else vp.appendChild(grp);
+        }
+        while (grp.firstChild) grp.removeChild(grp.firstChild);
+
+        if (!this._layout) return;
+        const L = this._layout;
+
+        // --- Compute the max region-label radius at the current zoom ---
+        const realZoom = this.panZoomInstance ? this.panZoomInstance.getSizes().realZoom : 1;
+        const DISTANCE = parseFloat($('#region_label_distance')[0].value) || 2;
+        const region_font_svg = (parseFloat($('#region_label_size')[0].value) || 13) / Math.pow(realZoom, 0.6);
+
+        // Compute the true radial extent of each visible region label
+        // analytically.  Labels are horizontal (non-rotated) text centred
+        // at radius r_center.  For such text at angle θ the outward radial
+        // projection of the bounding-box corners is:
+        //   r_center + (text_width/2)*|sin θ| + (font_size/2)*|cos θ|
+        // This avoids getBBox() whose axis-aligned boxes overestimate the
+        // radial extent for text placed at angles around the circle.
+        let max_region_label_edge = 0;
+        document.querySelectorAll('.region-label').forEach(el => {
+            if (el.style.display === 'none') return;
+            const outer_r = parseFloat(el.dataset.outerR);
+            const r_center = outer_r + Math.max(region_font_svg * DISTANCE, outer_r * 0.005);
+            if (el.dataset.layout === 'circular') {
+                const angle_rad = parseFloat(el.dataset.angle) * Math.PI / 180;
+                let text_w;
+                try { text_w = el.getComputedTextLength(); } catch (_) { text_w = region_font_svg * 3; }
+                const edge = r_center
+                    + (text_w / 2) * Math.abs(Math.sin(angle_rad))
+                    + (region_font_svg / 2) * Math.abs(Math.cos(angle_rad));
+                if (edge > max_region_label_edge) max_region_label_edge = edge;
+            } else {
+                // Linear layout: radial extent is just the centre plus half the font height
+                const edge = r_center + region_font_svg * 0.5;
+                if (edge > max_region_label_edge) max_region_label_edge = edge;
+            }
+        });
+
+        // If no region labels are visible, fall back to the content edge
+        if (max_region_label_edge === 0) {
+            let max_y = 0;
+            for (const [nid, ndata] of Object.entries(this.nodes)) {
+                if (ndata['position'][1] > max_y) max_y = ndata['position'][1];
+            }
+            max_region_label_edge = L.current_outer_stop + L.sum_middle_layer + max_y * L.node_distance_y;
+        }
+
+        // Ring sits beyond the outermost region label edge with a clear gap
+        const ring_gap = region_font_svg * 0.8;
+        const ring_thickness = L.node_distance_y * (parseFloat($('#bin_ring_height')[0].value) || 4);
+        const ring_inner = max_region_label_edge + ring_gap;
+        const ring_outer = ring_inner + ring_thickness;
+
+        // Background fill starts from the innermost graph content
+        const bg_inner_r = L.start_offset;
+
+        // Cache radii so the region-label hover highlight can match bin pie size
+        this._hover_bg_inner_r = bg_inner_r;
+        this._hover_ring_outer = ring_outer;
+
+        if (!this._bin_ring_data || this._bin_ring_data.length === 0) return;
+
+        // Bin label font
+        const bin_font_svg = (parseFloat($('#bin_label_size')[0].value) || 19.5) / Math.pow(realZoom, 0.6);
+        // Label sits just beyond the ring
+        const label_r = ring_outer + bin_font_svg * 0.4;
+
+        // Ring and edge appearance
+        const ring_opacity = parseFloat($('#bin_ring_opacity')[0].value) || 0.8;
+        const show_edges = $('#flexbinedges').prop('checked');
+        const edge_thickness = parseFloat($('#bin_edge_thickness')[0].value) || 4;
+        const edge_color = $('#bin_edge_color').attr('color') || '#FFFFFF';
+        const edge_opacity = parseFloat($('#bin_edge_opacity')[0].value) || 1;
+
+        let clip_counter = 0;
+        const deferred_ring_els = [];
+        for (const { bin_color, bin_name, runs } of this._bin_ring_data) {
+            for (const [rx_min, rx_max] of runs) {
+                const run_x_mid = (rx_min + rx_max + 1) / 2;
+
+                if (L.linear == 0) {
+                    const a1_deg = L.theta * rx_min + L.start_angle;
+                    const a2_deg = L.theta * (rx_max + 1) + L.start_angle;
+                    const a1 = this.deg2rad(a1_deg);
+                    const a2 = this.deg2rad(a2_deg);
+                    const span_deg = a2_deg - a1_deg;
+                    const large_arc = span_deg > 180 ? 1 : 0;
+
+                    // Background fill wedge
+                    const bg_d = this._arc_path(bg_inner_r, ring_outer, a1, a2, large_arc);
+                    const bg_el = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    bg_el.setAttribute('d', bg_d);
+                    bg_el.setAttribute('fill', bin_color);
+                    bg_el.setAttribute('fill-opacity', '0.08');
+                    if (show_edges) {
+                        // Double stroke-width + clip to shape = inside-only stroke
+                        const clip_id = 'bin-clip-' + (clip_counter++);
+                        const clipPath = document.createElementNS('http://www.w3.org/2000/svg', 'clipPath');
+                        clipPath.setAttribute('id', clip_id);
+                        const clipUse = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                        clipUse.setAttribute('d', bg_d);
+                        clipPath.appendChild(clipUse);
+                        grp.appendChild(clipPath);
+                        bg_el.setAttribute('clip-path', 'url(#' + clip_id + ')');
+                        bg_el.setAttribute('stroke', edge_color);
+                        bg_el.setAttribute('stroke-width', edge_thickness * 2);
+                        bg_el.setAttribute('stroke-opacity', edge_opacity);
+                    } else {
+                        bg_el.setAttribute('stroke-width', '0');
+                    }
+                    bg_el.setAttribute('pointer-events', 'none');
+                    grp.appendChild(bg_el);
+
+                    // Solid outer ring arc (deferred so it paints on top of all edges)
+                    const ring_d = this._arc_path(ring_inner, ring_outer, a1, a2, large_arc);
+                    const ring_el = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                    ring_el.setAttribute('d', ring_d);
+                    ring_el.setAttribute('fill', bin_color);
+                    ring_el.setAttribute('fill-opacity', ring_opacity);
+                    ring_el.setAttribute('stroke-width', '0');
+                    ring_el.setAttribute('pointer-events', 'none');
+                    deferred_ring_els.push(ring_el);
+                } else {
+                    const x1 = rx_min * L.node_distance_x;
+                    const x2 = (rx_max + 1) * L.node_distance_x;
+
+                    // Background fill
+                    const bg_rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    bg_rect.setAttribute('x', Math.min(x1, x2));
+                    bg_rect.setAttribute('y', -(ring_outer));
+                    bg_rect.setAttribute('width', Math.abs(x2 - x1));
+                    bg_rect.setAttribute('height', ring_outer - bg_inner_r);
+                    bg_rect.setAttribute('fill', bin_color);
+                    bg_rect.setAttribute('fill-opacity', '0.08');
+                    if (show_edges) {
+                        const clip_id = 'bin-clip-' + (clip_counter++);
+                        const clipPath = document.createElementNS('http://www.w3.org/2000/svg', 'clipPath');
+                        clipPath.setAttribute('id', clip_id);
+                        const clipRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                        clipRect.setAttribute('x', Math.min(x1, x2));
+                        clipRect.setAttribute('y', -(ring_outer));
+                        clipRect.setAttribute('width', Math.abs(x2 - x1));
+                        clipRect.setAttribute('height', ring_outer - bg_inner_r);
+                        clipPath.appendChild(clipRect);
+                        grp.appendChild(clipPath);
+                        bg_rect.setAttribute('clip-path', 'url(#' + clip_id + ')');
+                        bg_rect.setAttribute('stroke', edge_color);
+                        bg_rect.setAttribute('stroke-width', edge_thickness * 2);
+                        bg_rect.setAttribute('stroke-opacity', edge_opacity);
+                    } else {
+                        bg_rect.setAttribute('stroke-width', '0');
+                    }
+                    bg_rect.setAttribute('pointer-events', 'none');
+                    grp.appendChild(bg_rect);
+
+                    // Solid outer ring strip (deferred so it paints on top of all edges)
+                    const rect_el = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    rect_el.setAttribute('x', Math.min(x1, x2));
+                    rect_el.setAttribute('y', -(ring_outer));
+                    rect_el.setAttribute('width', Math.abs(x2 - x1));
+                    rect_el.setAttribute('height', ring_thickness);
+                    rect_el.setAttribute('fill', bin_color);
+                    rect_el.setAttribute('fill-opacity', ring_opacity);
+                    rect_el.setAttribute('stroke-width', '0');
+                    rect_el.setAttribute('pointer-events', 'none');
+                    deferred_ring_els.push(rect_el);
+                }
+
+                // Bin label — one per run so split bins each get their own label
+                if ($('#flexbinlabels').prop('checked')) {
+                    const label_el = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    label_el.textContent = bin_name;
+                    label_el.setAttribute('text-anchor', 'middle');
+                    label_el.setAttribute('dominant-baseline', 'middle');
+                    label_el.setAttribute('fill', bin_color);
+                    label_el.setAttribute('opacity', '0.9');
+                    label_el.setAttribute('pointer-events', 'none');
+                    label_el.setAttribute('font-family', 'HelveticaNeue-CondensedBold, Helvetica Neue, Helvetica, sans-serif');
+                    label_el.setAttribute('font-weight', 'bold');
+                    label_el.setAttribute('font-size', bin_font_svg);
+
+                    const orientation = $('#bin_label_orientation')[0].value || 'natural';
+
+                    if (L.linear == 0) {
+                        const angle_rad = this.deg2rad(L.theta * (run_x_mid + 0.5) + L.start_angle);
+                        const sin_a = Math.sin(angle_rad);
+                        const cos_a = Math.cos(angle_rad);
+                        const lx = label_r * sin_a;
+                        const ly = label_r * cos_a;
+
+                        if (orientation === 'radial') {
+                            // Rotate text along the radial direction; flip on the
+                            // left side so it never reads upside-down.
+                            let rot = Math.atan2(cos_a, sin_a) * 180 / Math.PI;
+                            if (sin_a >= 0) {
+                                label_el.setAttribute('text-anchor', 'start');
+                            } else {
+                                label_el.setAttribute('text-anchor', 'end');
+                                rot += 180;
+                            }
+                            label_el.setAttribute('x', lx);
+                            label_el.setAttribute('y', ly);
+                            label_el.setAttribute('transform', `rotate(${rot}, ${lx}, ${ly})`);
+                        } else {
+                            // Natural: smart text-anchor based on position
+                            if (sin_a > 0.25) label_el.setAttribute('text-anchor', 'start');
+                            else if (sin_a < -0.25) label_el.setAttribute('text-anchor', 'end');
+                            label_el.setAttribute('x', lx);
+                            label_el.setAttribute('y', ly);
+                        }
+                    } else {
+                        const lx = run_x_mid * L.node_distance_x;
+                        const ly = -label_r;
+
+                        if (orientation === 'radial') {
+                            label_el.setAttribute('text-anchor', 'start');
+                            label_el.setAttribute('x', lx);
+                            label_el.setAttribute('y', ly);
+                            label_el.setAttribute('transform', `rotate(-90, ${lx}, ${ly})`);
+                        } else {
+                            label_el.setAttribute('x', lx);
+                            label_el.setAttribute('y', ly);
+                        }
+                    }
+                    grp.appendChild(label_el);
+                }
+            }
+        }
+
+        // Append solid ring elements on top of all backgrounds and edges
+        for (const el of deferred_ring_els) grp.appendChild(el);
+    }
+
+    // Helper: build an SVG arc-ring path between two radii at two angles
+    _arc_path(r_inner, r_outer, a1, a2, large_arc) {
+        const ox1 = r_outer * Math.sin(a1), oy1 = r_outer * Math.cos(a1);
+        const ox2 = r_outer * Math.sin(a2), oy2 = r_outer * Math.cos(a2);
+        const ix1 = r_inner * Math.sin(a1), iy1 = r_inner * Math.cos(a1);
+        const ix2 = r_inner * Math.sin(a2), iy2 = r_inner * Math.cos(a2);
+        return `M ${ix1} ${iy1} L ${ox1} ${oy1}
+                A ${r_outer} ${r_outer} 0 ${large_arc} 0 ${ox2} ${oy2}
+                L ${ix2} ${iy2}
+                A ${r_inner} ${r_inner} 0 ${large_arc} 1 ${ix1} ${iy1} Z`;
     }
 
     fit_aspect() {
@@ -1843,7 +2171,7 @@ class PangenomeGraphUserInterface {
             controlIconsEnabled: false,
             minZoom: 0.1,
             maxZoom: 100,
-            onZoom: this.refresh_region_label_visibility
+            onZoom: () => { this.refresh_region_label_visibility(); this._render_bin_visuals(); }
         });
 
         // Restore pan/zoom from before the redraw (e.g. after a color change).
@@ -1875,6 +2203,7 @@ class PangenomeGraphUserInterface {
                 const container_width = document.getElementById('result').clientWidth || window.innerWidth;
                 const auto_px = Math.round(16 * Math.pow(2 * max_outer_r / container_width, 0.4));
                 $('#region_label_size')[0].value = Math.max(8, Math.min(200, auto_px));
+                $('#bin_label_size')[0].value = Math.max(12, Math.min(300, Math.round(auto_px * 1.5)));
             }
         }
 
@@ -1902,26 +2231,11 @@ class PangenomeGraphUserInterface {
                 remove_highlight();
 
                 const layout = el.dataset.layout;
-                // outer_r: derive from the label's current live position so the
-                // highlight always reaches the label regardless of zoom level.
-                const lx = parseFloat(el.getAttribute('x'));
-                const ly = parseFloat(el.getAttribute('y'));
-                // getBBox() returns the exact rendered bounding box in SVG coordinates.
-                // This is available because mouseover only fires on visible elements.
-                const bbox = el.getBBox();
-                let outer_r;
-                if (layout === 'circular') {
-                    // Furthest corner of the text bounding box from the SVG center (0,0).
-                    outer_r = Math.max(
-                        Math.sqrt( bbox.x                  ** 2 +  bbox.y                  ** 2),
-                        Math.sqrt((bbox.x + bbox.width)    ** 2 +  bbox.y                  ** 2),
-                        Math.sqrt( bbox.x                  ** 2 + (bbox.y + bbox.height)   ** 2),
-                        Math.sqrt((bbox.x + bbox.width)    ** 2 + (bbox.y + bbox.height)   ** 2)
-                    );
-                } else {
-                    // Top edge of the text is bbox.y (most negative y = furthest from baseline).
-                    outer_r = Math.abs(bbox.y);
-                }
+                // Use the same radii as the bin pie so hover preview matches bin visuals
+                const outer_r = this._hover_ring_outer || parseFloat(el.dataset.outerR) || 0;
+                const inner_r = this._hover_bg_inner_r || parseFloat(el.dataset.innerR) || 0;
+                // Active bin color
+                const bin_color = $('#' + this.current_bin_id + '_color').attr('color') || '#000000';
 
                 let path_d;
                 if (layout === 'circular') {
@@ -1929,35 +2243,24 @@ class PangenomeGraphUserInterface {
                     const a2 = parseFloat(el.dataset.angleEnd)   * Math.PI / 180;
                     const span = parseFloat(el.dataset.angleEnd) - parseFloat(el.dataset.angleStart);
                     const large_arc = span > 180 ? 1 : 0;
-                    const inner_r = parseFloat(el.dataset.innerR) || 0;
-                    const ox1 = outer_r * Math.sin(a1), oy1 = outer_r * Math.cos(a1);
-                    const ox2 = outer_r * Math.sin(a2), oy2 = outer_r * Math.cos(a2);
-                    const ix1 = inner_r * Math.sin(a1), iy1 = inner_r * Math.cos(a1);
-                    const ix2 = inner_r * Math.sin(a2), iy2 = inner_r * Math.cos(a2);
-                    // Annular sector: outer arc sweep=0 (counter-clockwise in SVG coords,
-                    // which traces angle_start→angle_end the short way in our system),
-                    // inner arc sweep=1 (clockwise, tracing back angle_end→angle_start).
                     if (inner_r <= 0) {
+                        const ox1 = outer_r * Math.sin(a1), oy1 = outer_r * Math.cos(a1);
+                        const ox2 = outer_r * Math.sin(a2), oy2 = outer_r * Math.cos(a2);
                         path_d = `M 0 0 L ${ox1} ${oy1} A ${outer_r} ${outer_r} 0 ${large_arc} 0 ${ox2} ${oy2} Z`;
                     } else {
-                        path_d = `M ${ix1} ${iy1} L ${ox1} ${oy1}
-                                  A ${outer_r} ${outer_r} 0 ${large_arc} 0 ${ox2} ${oy2}
-                                  L ${ix2} ${iy2}
-                                  A ${inner_r} ${inner_r} 0 ${large_arc} 1 ${ix1} ${iy1} Z`;
+                        path_d = this._arc_path(inner_r, outer_r, a1, a2, large_arc);
                     }
                 } else {
                     const xs = parseFloat(el.dataset.xStart);
                     const xe = parseFloat(el.dataset.xEnd);
-                    // bbox.y is the top of the text (most negative y), use it directly.
-                    path_d = `M ${xs} 0 L ${xe} 0 L ${xe} ${bbox.y} L ${xs} ${bbox.y} Z`;
+                    path_d = `M ${xs} ${-inner_r} L ${xe} ${-inner_r} L ${xe} ${-outer_r} L ${xs} ${-outer_r} Z`;
                 }
 
                 const highlight = document.createElementNS('http://www.w3.org/2000/svg', 'path');
                 highlight.setAttribute('id', 'region-hover-highlight');
                 highlight.setAttribute('d', path_d);
-                highlight.setAttribute('fill', '#4a90d9');
-                highlight.setAttribute('fill-opacity', '0.12');
-                highlight.setAttribute('stroke', '#4a90d9');
+                highlight.setAttribute('fill', bin_color);
+                highlight.setAttribute('fill-opacity', '0.08');
                 highlight.setAttribute('stroke-width', '0');
                 highlight.setAttribute('pointer-events', 'none');
                 // Insert at the bottom of the viewport so it sits behind all graph elements
@@ -1996,8 +2299,9 @@ class PangenomeGraphUserInterface {
         };
 
         this.update_bin();
+        this.draw_bin_rings();
     }
-    
+
     rerun_JSON(new_data) {
         $.ajax({
             url: "/pangraph/rerun_pangraph_json_data",
@@ -2133,8 +2437,10 @@ class PangenomeGraphUserInterface {
             this.bin_dict[bin_id].push(id)
             
             $('#' + bin_id + '_value')[0].value = this.bin_dict[bin_id].length
-            $('#' + current + '_value')[0].value = this.bin_dict[current].length 
-        }     
+            $('#' + current + '_value')[0].value = this.bin_dict[current].length
+        }
+
+        if (!this._suppress_bin_ring_draw) this.draw_bin_rings();
     }
 
     
@@ -2155,15 +2461,18 @@ class PangenomeGraphUserInterface {
     
     remove_bin() {
         var bin_id = this.current_bin_id;
-        
+
+        this._suppress_bin_ring_draw = true;
         for (var node of this.bin_dict[bin_id]) {
             var element = document.getElementById(node);
             this.marknode(element, bin_id);
         }
-        
+        this._suppress_bin_ring_draw = false;
+
         $("#" + bin_id + "_grid").remove();
         delete this.bin_dict[bin_id];
-        
+        this.draw_bin_rings();
+
         if (Object.keys(this.bin_dict).length !== 0) {
             var next_bin_id = Object.keys(this.bin_dict)[0];
             $('#' + next_bin_id + '_radio').click();
@@ -2175,7 +2484,8 @@ class PangenomeGraphUserInterface {
     add_bin() {
         this.current_bin_number += 1;
         this.current_bin_id = "bin_" + this.current_bin_number
-        
+        const new_color = randomColor({luminosity: 'dark'});
+
         $('#bingrid').append(
             $('<div class="col-12" id="bin_' + this.current_bin_number + '_grid" style="padding: 3px 0;"></div>').append(
                 $('<div class="row align-items-center" id="row' + this.current_bin_number + '"></div>').append(
@@ -2193,7 +2503,7 @@ class PangenomeGraphUserInterface {
                     )
                 ).append(
                     $('<div class="d-flex col-2 align-items-center"></div>').append(
-                        $('<div class="pangraph-colorpicker" id="bin_' + this.current_bin_number + '_color" color="#000000" style="background-color: #000000; width: 100%; height: 22px; cursor: pointer; border: 1px solid #ccc;"></div>')
+                        $('<div class="pangraph-colorpicker" id="bin_' + this.current_bin_number + '_color" color="' + new_color + '" style="background-color: ' + new_color + '; width: 100%; height: 22px; cursor: pointer; border: 1px solid #ccc;"></div>')
                     )
                 )
             )
@@ -2300,12 +2610,15 @@ class PangenomeGraphUserInterface {
                 $(el).attr('color', '#' + hex);
             },
             onHide: () => {
+                this._suppress_bin_ring_draw = true;
                 const nodes = [...(this.bin_dict[bin_id] || [])];
                 for (var node of nodes) {
                     this.bin_dict[bin_id] = this.bin_dict[bin_id].filter(item => item !== node);
                     var element = document.getElementById(node);
                     this.marknode(element, bin_id);
                 }
+                this._suppress_bin_ring_draw = false;
+                this.draw_bin_rings();
             }
         });
     }
@@ -2753,9 +3066,22 @@ class PangenomeGraphUserInterface {
 
         // Initialize main buttons with "this" bound functions
         
+        // Assign a random color to bin_1 and initialize its colorpicker
+        const bin1_color = randomColor({luminosity: 'dark'});
+        $('#bin_1_color').css('background-color', bin1_color).attr('color', bin1_color);
         this._init_bin_colorpicker('bin_1');
         $('#bin_1_radio').on("click", this.switch_bin)
         $('#bin_1_value').on("click", () => this.show_bin_functions('bin_1'))
+
+        // Replace spaces with underscores in bin name inputs (delegated for dynamic bins too)
+        $('#bingrid').on('input', 'input[id$="_text"]', function () {
+            const el = this;
+            const pos = el.selectionStart;
+            el.value = el.value.replace(/ /g, '_');
+            el.setSelectionRange(pos, pos);
+        });
+        // Update bin labels live when a bin name is changed
+        $('#bingrid').on('change', 'input[id$="_text"]', () => this.draw_bin_rings());
 
         $('#flextree').on("change", this.flextree_change)
         $('#flexsaturation').on("change", () => this.main_draw())
@@ -2765,6 +3091,7 @@ class PangenomeGraphUserInterface {
                 this.refresh_region_label_visibility();
             }
         })
+        $('#flexbinlabels, #bin_label_orientation, #bin_label_size, #bin_ring_height, #bin_ring_opacity, #flexbinedges, #bin_edge_thickness, #bin_edge_opacity').on("change", () => this._render_bin_visuals())
 
         $('#binadd').on("click", this.add_bin);
         $('#binremove').on("click", this.remove_bin);
@@ -3181,9 +3508,8 @@ class PangenomeGraphUserInterface {
             }
         }
 
-        const bin_name = document.getElementById(bin_id + '_text')?.value
-                      || document.getElementById(bin_id + '_name')?.value
-                      || bin_id;
+        const raw_name = document.getElementById(bin_id + '_text')?.value || bin_id;
+        const bin_name = raw_name.replace(/_/g, ' ').replace(/^./, c => c.toUpperCase());
 
         waitingDialog.show('Fetching functions and metabolism data...', { dialogSize: 'sm' });
 

@@ -1726,6 +1726,15 @@ class PangenomeGraph():
                  'region_label_size': 13,
                  'region_label_min_width': 80,
                  'region_label_distance': 2,
+                 'flexbinlabels': True,
+                 'bin_label_orientation': 'natural',
+                 'bin_label_size': 19.5,
+                 'bin_ring_height': 4,
+                 'bin_ring_opacity': 0.8,
+                 'flexbinedges': True,
+                 'bin_edge_thickness': 4,
+                 'bin_edge_color': '#FFFFFF',
+                 'bin_edge_opacity': 1,
                  **{'flex' + genome: True for genome in self.genome_names},
                  **{genome: '#000000' for genome in self.genome_names}
         }

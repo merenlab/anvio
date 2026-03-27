@@ -46,6 +46,7 @@
     <script type="text/javascript" src="lib/colpick/colpick.js" onerror='alertDependencyError("colpick")'></script>
     <script type="text/javascript" src="js/utils.js"></script>
     <script type="text/javascript" src="js/constants.js"></script>
+    <script type="text/javascript" src="./node_modules/randomcolor/randomColor.js" onerror='alertDependencyError("random-color")'></script>
 
   </head>
 
@@ -320,6 +321,100 @@
                         </div>
                         <div class="d-flex col-2">
                           <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style="background-color: #e9ecef;" id="region_label_distance" name="region_label_distance" value=2>
+                        </div>
+                      </div>
+                    </div>
+
+                    <span class="settings-secondary-header mb-3 mt-3">Bin Labels & Rings</span>
+
+                    <div class="row align-items-center">
+                      <div class="col-12 d-flex mb-1 py-1">
+                        <div class="col-1 d-flex align-items-center">
+                          <input type="checkbox" id="flexbinlabels" name="flexbinlabels" checked>
+                        </div>
+                        <div class="col-11 d-flex align-items-center">
+                          Display bin labels
+                        </div>
+                      </div>
+                      <div class="col-12 d-flex mb-1">
+                        <div class="col-1 d-flex align-items-center">
+                        </div>
+                        <div class="col-9 d-flex align-items-center">
+                          Label orientation
+                        </div>
+                        <div class="d-flex col-2">
+                          <select class="form-control flex-fill p-0 border-0" style="background-color: #e9ecef;" id="bin_label_orientation" name="bin_label_orientation">
+                            <option value="natural" selected>Natural</option>
+                            <option value="radial">Radial</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div class="col-12 d-flex mb-1">
+                        <div class="col-1 d-flex align-items-center">
+                        </div>
+                        <div class="col-9 d-flex align-items-center">
+                          Label size (px)
+                        </div>
+                        <div class="d-flex col-2">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style="background-color: #e9ecef;" id="bin_label_size" name="bin_label_size" value=19.5>
+                        </div>
+                      </div>
+                      <div class="col-12 d-flex mb-1">
+                        <div class="col-1 d-flex align-items-center">
+                        </div>
+                        <div class="col-9 d-flex align-items-center">
+                          Ring height
+                        </div>
+                        <div class="d-flex col-2">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style="background-color: #e9ecef;" id="bin_ring_height" name="bin_ring_height" value=4>
+                        </div>
+                      </div>
+                      <div class="col-12 d-flex mb-1">
+                        <div class="col-1 d-flex align-items-center">
+                        </div>
+                        <div class="col-9 d-flex align-items-center">
+                          Ring opacity
+                        </div>
+                        <div class="d-flex col-2">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style="background-color: #e9ecef;" id="bin_ring_opacity" name="bin_ring_opacity" value=0.8>
+                        </div>
+                      </div>
+                      <div class="col-12 d-flex mb-1 py-1">
+                        <div class="col-1 d-flex align-items-center">
+                          <input type="checkbox" id="flexbinedges" name="flexbinedges" checked>
+                        </div>
+                        <div class="col-11 d-flex align-items-center">
+                          Show edges
+                        </div>
+                      </div>
+                      <div class="col-12 d-flex mb-1">
+                        <div class="col-1 d-flex align-items-center">
+                        </div>
+                        <div class="col-9 d-flex align-items-center">
+                          Edge thickness
+                        </div>
+                        <div class="d-flex col-2">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style="background-color: #e9ecef;" id="bin_edge_thickness" name="bin_edge_thickness" value=4>
+                        </div>
+                      </div>
+                      <div class="col-12 d-flex mb-1">
+                        <div class="col-1 d-flex align-items-center">
+                        </div>
+                        <div class="col-9 d-flex align-items-center">
+                          Edge color
+                        </div>
+                        <div class="d-flex col-2">
+                          <div class="pangraph-colorpicker" id="bin_edge_color" color="#FFFFFF" style="background-color: #FFFFFF; width: 100%; height: 22px; cursor: pointer; border: 1px solid #ccc;"></div>
+                        </div>
+                      </div>
+                      <div class="col-12 d-flex mb-1">
+                        <div class="col-1 d-flex align-items-center">
+                        </div>
+                        <div class="col-9 d-flex align-items-center">
+                          Edge opacity
+                        </div>
+                        <div class="d-flex col-2">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style="background-color: #e9ecef;" id="bin_edge_opacity" name="bin_edge_opacity" value=1>
                         </div>
                       </div>
                     </div>
@@ -635,7 +730,7 @@
                               <input type="radio" name="binradio" id="bin_1_radio" bin_id="bin_1" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top" checked>
                             </div>
                             <div class="col-7">
-                              <input type="text" class="form-control flex-fill p-0 border-0" style= "background-color: #e9ecef;" value="Bin_1" id="bin_1_name" aria-describedby="">
+                              <input type="text" class="form-control flex-fill p-0 border-0" style= "background-color: #e9ecef;" value="Bin_1" id="bin_1_text" aria-describedby="">
                             </div>
                             <div class="d-flex col-2">
                               <input type="button" class="form-control float-end text-end flex-fill p-0 border-0 bin-count-btn" id="bin_1_value" value=0 title="Click for functions summary">
