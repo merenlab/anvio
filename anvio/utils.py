@@ -230,7 +230,7 @@ def get_predicted_type_of_items_in_a_dict(d, key):
     This is a shitty function, but there was a real need for it, so here we are :/
     """
 
-    items = [x[key] for x in d.values()]
+    items = [x.get(key) for x in d.values()]
 
     if not items:
         # there is nothing to see here
