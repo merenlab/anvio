@@ -64,15 +64,16 @@ additional_param_sets_for_sequence_search = {'diamond'   : '--masking 0',
 
 
 class ComparePan:
-    """ Compare a pan to another one made with the same genomes.
-    Create a dict with the key corresponding to the name of the compared pan.
+    """Compare a pan to another one made with the same genomes.
 
-    The compared pan are refered to as p1 (self) and p2 (compared pan).
+    The two pans are referred to as p1 (self.pan, primary) and p2 (self.compared_pan).
+
+    Note
+    ----
+    This class writes item additional data to BOTH pan databases: gene cluster type
+    classifications are added to both the primary and compared pan-dbs so that each
+    database is self-contained when opened with anvi-display-pan.
     """
-    # TODO: add init_gene_cluster_types and find_gene_cluster_type and self.gene_cluster_type
-    # for Core, SCG, Acces, or Singleton
-    # add to the comparison
-    # also add the num of GC combined for frag
 
     def __init__(self, args, run=run, progress=progress):
         self.args = args
@@ -96,6 +97,10 @@ class ComparePan:
 
         # to be filled from the pan-db
         self.compare_pan_dict = {}
+
+        # built once by build_gene_cluster_mapping(), reused by all methods
+        self.primary_to_compared = {}
+        self.missing_genes_by_gc = {}
 
         # get compared pan name
         self.compared_pan_name = self.compared_pan.p_meta['project_name']
@@ -128,17 +133,16 @@ class ComparePan:
             raise ConfigError("Anvi'o have not found any differences in the composition of the gene clusters "
                               "for both pan-db. Nothing to compare. BYE.")
 
-        # find corresponding gene clusters in compared pan
+        # populate GCs_in_compared_pan for each differing gene cluster and detect fragmentation/combination
         self.find_corresponding_gene_clusters()
-
-        # report gene cluster status in compared pangenome: fragmented or combined?
         self.detect_fragmentation_combination()
+
+        # classify gene clusters as core/singleton/accessory in both pans
+        # (must run before composition metrics since it computes self.compared_gc_types)
+        self.add_gene_cluster_type_data()
 
         # for each GC in primary pan, report composition of corresponding GCs in compared pan
         self.add_cluster_composition_metrics()
-
-        # classify gene clusters as core/singleton/accessory in both pans
-        self.add_gene_cluster_type_data()
 
         # add summary of function
         self.add_function_summary_to_compare()
@@ -151,88 +155,90 @@ class ComparePan:
             self.store_results_as_txt()
 
 
-    def init_compare_pan(self):
-        '''Identify and report the unique gene clusters based on the gene call content when compared to another pan.
-        Initialized the self.compare_pan_dict'''
+    def build_gene_cluster_mapping(self):
+        """Build a full mapping from primary pan gene clusters to compared pan gene clusters.
 
-        # check if gene cluster are initialized
+        For each gene cluster in the primary pan, finds all corresponding gene clusters in
+        the compared pan based on shared gene calls. Also tracks genes missing from the
+        compared pan. The results are stored as self.primary_to_compared and
+        self.missing_genes_by_gc and reused by init_compare_pan, find_corresponding_gene_clusters,
+        and add_cluster_composition_metrics.
+        """
+        self.primary_to_compared = {}
+        self.missing_genes_by_gc = {}
+
+        for gc_name, gc_data in self.pan.gene_clusters.items():
+            compared_gcs = set()
+            for genome, gene_ids in gc_data.items():
+                for gene in gene_ids:
+                    try:
+                        compared_gc = self.compared_pan.gene_callers_id_to_gene_cluster[genome][gene]
+                        compared_gcs.add(compared_gc)
+                    except KeyError:
+                        self.missing_genes_by_gc.setdefault(gc_name, {}).setdefault(genome, []).append(gene)
+            self.primary_to_compared[gc_name] = compared_gcs
+
+
+    def init_compare_pan(self):
+        """Identify gene clusters that differ between the two pans.
+
+        Initializes gene clusters for both pans, builds the gene cluster mapping,
+        and populates self.compare_pan_dict with gene clusters whose composition
+        differs between the two pans.
+        """
+
+        # check if gene clusters are initialized
         for p in [self.pan, self.compared_pan]:
             if not p.gene_clusters_initialized:
                 p.init_gene_clusters()
 
-        # Normalize cluster dict for stable comparison
+        # build the mapping once — reused by all downstream methods
+        self.build_gene_cluster_mapping()
+
+        # normalize cluster dict for stable comparison
         def normalize_cluster_dict(d):
             return {
                 genome: tuple(sorted(genes))
                 for genome, genes in sorted(d.items())
             }
 
-        # Pre-normalize compared pan clusters for fast lookup
+        # pre-normalize compared pan clusters for fast lookup
         normalized_compared = {
             gc_name: normalize_cluster_dict(gc_dict)
             for gc_name, gc_dict in self.compared_pan.gene_clusters.items()
         }
 
-        # list of matching gene clusters
+        # find matching (identical) gene clusters
         matches = set()
-        # track missing genes to report later
-        missing_genes_by_gc = {}
 
-        # find a keep non-identical gene clusters
         for gene_cluster, gene_cluster_dict in self.pan.gene_clusters.items():
-            list_compared_gc = set()
-            missing_gene_calls = False
-            for genome, gene_callers_id in gene_cluster_dict.items():
-                for gene in gene_callers_id:
-                    try:
-                        compared_gene_cluster = self.compared_pan.gene_callers_id_to_gene_cluster[genome][gene]
-                        list_compared_gc.add(compared_gene_cluster)
-                    except KeyError:
-                        missing_gene_calls = True
-                        missing_genes_by_gc.setdefault(gene_cluster, {}).setdefault(genome, []).append(gene)
-                        continue
-
-            if missing_gene_calls:
-                # clusters with missing genes automatically counted as "differ"
+            # clusters with missing genes automatically count as differing
+            if gene_cluster in self.missing_genes_by_gc:
                 continue
 
-            # Normalize this cluster
-            norm_gc = normalize_cluster_dict(gene_cluster_dict)
+            # use the precomputed mapping
+            compared_gcs = self.primary_to_compared[gene_cluster]
 
-            for compared_gene_cluster in list_compared_gc:
+            # normalize this cluster and check for exact match
+            norm_gc = normalize_cluster_dict(gene_cluster_dict)
+            for compared_gene_cluster in compared_gcs:
                 if compared_gene_cluster in normalized_compared and norm_gc == normalized_compared[compared_gene_cluster]:
                     matches.add(gene_cluster)
-                    break  # No need to check more
+                    break
 
-        # keep only the gene cluster that differ
+        # keep only the gene clusters that differ
         for gene_cluster in self.pan.gene_cluster_names:
             if gene_cluster not in matches:
                 self.compare_pan_dict[gene_cluster] = {}
-                if gene_cluster in missing_genes_by_gc:
-                    self.compare_pan_dict[gene_cluster]['missing_genes'] = missing_genes_by_gc[gene_cluster]
+                if gene_cluster in self.missing_genes_by_gc:
+                    self.compare_pan_dict[gene_cluster]['missing_genes'] = self.missing_genes_by_gc[gene_cluster]
 
 
     def find_corresponding_gene_clusters(self):
-        '''For each unique gene cluster, identify the corresponding gene cluster(s) in the compared pan, based on the gene calls content
-           Also add info of gene_cluster type'''
+        """For each differing gene cluster, populate GCs_in_compared_pan from the precomputed mapping."""
 
         for gene_cluster, gene_cluster_dict in self.compare_pan_dict.items():
-            gene_cluster_dict['GCs_in_compared_pan'] = []
-            missing_genes = gene_cluster_dict.get('missing_genes', {})
-            #gene_cluster_dict['GCs_type_in_compared_pan'] = []
-
-            # the code loops through each gene call & genome, looks for the corresponding GC in the other pan
-            for genome, gene_callers_id in self.pan.gene_clusters[gene_cluster].items():
-                for gene in gene_callers_id:
-                    try:
-                        corresponding_gene_cluster = self.compared_pan.gene_callers_id_to_gene_cluster[genome][gene]
-                    except KeyError:
-                        missing_genes.setdefault(genome, []).append(gene)
-                        continue
-                    if corresponding_gene_cluster not in gene_cluster_dict['GCs_in_compared_pan']:
-                        gene_cluster_dict['GCs_in_compared_pan'].append(corresponding_gene_cluster)
-            if missing_genes:
-                gene_cluster_dict['missing_genes'] = missing_genes
+            gene_cluster_dict['GCs_in_compared_pan'] = list(self.primary_to_compared.get(gene_cluster, set()))
 
 
     def detect_fragmentation_combination(self):
@@ -283,15 +289,22 @@ class ComparePan:
 
 
     def add_function_summary_to_compare(self):
-        '''For each compared gene cluster, report the summarized function of the associated GC in compared pan,
-           or of the other GC that were combined in the other pan.
+        """For each differing gene cluster, summarize functional annotations of the associated GCs.
 
-           We also compute an heterogeneity value starting at 0 if the same annotation is found accros all GC,
-           then 1 if two annotations, etc.'''
+        Computes a heterogeneity value starting at 0 if the same annotation is found across all GC,
+        then 1 if two annotations, etc.
+        """
 
-        # we can immediately init function summary, for the gene clusters of self
-        # for the compared pan, we will initiate the dict as we discover the GCs
-        self.pan.init_gene_clusters_functions_summary_dict(gene_clusters_of_interest = self.compare_pan_dict.keys())
+        # init function summary for the primary pan's differing gene clusters
+        self.pan.init_gene_clusters_functions_summary_dict(gene_clusters_of_interest=self.compare_pan_dict.keys())
+
+        # batch-init function summaries for all needed compared-pan GCs at once
+        compared_gcs_needed = set()
+        for gene_cluster_dict in self.compare_pan_dict.values():
+            if gene_cluster_dict['status'] in ('fragmented', 'missing_genes'):
+                compared_gcs_needed.update(gene_cluster_dict.get('GCs_in_compared_pan', []))
+        if compared_gcs_needed:
+            self.compared_pan.init_gene_clusters_functions_summary_dict(gene_clusters_of_interest=list(compared_gcs_needed))
 
         for gene_cluster, gene_cluster_dict in self.compare_pan_dict.items():
             if gene_cluster_dict['status'] == 'fragmented':
@@ -307,31 +320,29 @@ class ComparePan:
             function_summary = {}
             for source in self.pan.gene_clusters_function_sources:
                 function_summary[source] = {'function': set([]), 'accession': set([]), 'heterogeneity': 0}
-            for gc in gene_cluster_dict[GC_source]:
-                function = None
+
+            for gc in gene_cluster_dict.get(GC_source, []):
                 if GC_source == 'GCs_in_compared_pan':
-                    self.compared_pan.init_gene_clusters_functions_summary_dict(gene_clusters_of_interest = [gc])
-                    function = self.compared_pan.gene_clusters_functions_summary_dict[gc]
-                elif GC_source == 'related_GCs':
-                    function = self.pan.gene_clusters_functions_summary_dict[gc]
+                    function = self.compared_pan.gene_clusters_functions_summary_dict.get(gc)
+                else:
+                    function = self.pan.gene_clusters_functions_summary_dict.get(gc)
+
+                if not function:
+                    continue
 
                 for source, annotation in function.items():
-                    func = annotation['function']
-                    acc = annotation['accession']
-                    function_summary[source]['function'].add(func)
-                    function_summary[source]['accession'].add(acc)
+                    function_summary[source]['function'].add(annotation['function'])
+                    function_summary[source]['accession'].add(annotation['accession'])
 
-            # check for multiple annotation and report frequency, starting at 0 for one annotation
+            # check for multiple annotations and report frequency, starting at 0 for one annotation
             for source, annotation in function_summary.items():
                 annotation['heterogeneity'] = max(0, len(annotation['function']) - 1)
 
-            # add the function summary to the main dict
             gene_cluster_dict['function'] = function_summary
 
 
     def add_comparison_to_items_additional_data(self):
         items_additional_data_dict = {}
-        # TODO: list of keys is fixed right now and should include a check for annotations
         items_additional_data_keys = [f"{self.compared_pan_name}_status"]
         for source in self.pan.gene_clusters_function_sources:
             items_additional_data_keys.append(f"{self.compared_pan_name}_{source}")
@@ -341,7 +352,6 @@ class ComparePan:
             gene_cluster_data = self.compare_pan_dict.get(gene_cluster)
 
             if gene_cluster_data is None:
-                # Fill all keys with None or NA if GC is missing
                 summary.update({k: None for k in items_additional_data_keys})
             else:
                 summary[f"{self.compared_pan_name}_status"] = gene_cluster_data.get("status")
@@ -407,7 +417,11 @@ class ComparePan:
 
 
     def add_gene_cluster_type_data(self):
-        """Classify gene clusters as core/singleton/accessory in both pans and write as item additional data."""
+        """Classify gene clusters as core/singleton/accessory in both pans and write as item additional data.
+
+        Note: this writes to BOTH the primary and compared pan databases so that each
+        database is self-contained when opened with anvi-display-pan.
+        """
         num_genomes = self.pan.p_meta['num_genomes']
 
         # classify gene clusters in the primary pan
@@ -419,37 +433,13 @@ class ComparePan:
         pan_table = TableForItemAdditionalData(pan_gc_type_args, r=terminal.Run(verbose=False))
         pan_table.add(pan_type_data, pan_type_keys, skip_check_names=True)
 
-        # classify gene clusters in the compared pan
-        compared_gc_types = Pangenome.classify_gene_cluster_types(self.compared_pan.gene_clusters, num_genomes)
-        compared_type_data = {gc: {'gc_type': gc_type} for gc, gc_type in compared_gc_types.items()}
+        # classify gene clusters in the compared pan (stored for reuse by add_cluster_composition_metrics)
+        self.compared_gc_types = Pangenome.classify_gene_cluster_types(self.compared_pan.gene_clusters, num_genomes)
+        compared_type_data = {gc: {'gc_type': gc_type} for gc, gc_type in self.compared_gc_types.items()}
 
         compared_args = argparse.Namespace(**{**vars(self.args), 'pan_db': self.compared_pan_db_path, 'target_data_group': 'gene_cluster_stats'})
         compared_table = TableForItemAdditionalData(compared_args, r=terminal.Run(verbose=False))
         compared_table.add(compared_type_data, pan_type_keys, skip_check_names=True)
-
-
-    def build_gene_cluster_mapping(self):
-        """Build a full mapping from primary pan gene clusters to compared pan gene clusters.
-
-        For each gene cluster in the primary pan, finds all corresponding gene clusters in
-        the compared pan based on shared gene calls.
-
-        Returns
-        =======
-        dict : {primary_gc_name: set(compared_gc_names)}
-        """
-        mapping = {}
-        for gc_name, gc_data in self.pan.gene_clusters.items():
-            compared_gcs = set()
-            for genome, gene_ids in gc_data.items():
-                for gene in gene_ids:
-                    try:
-                        compared_gc = self.compared_pan.gene_callers_id_to_gene_cluster[genome][gene]
-                        compared_gcs.add(compared_gc)
-                    except KeyError:
-                        continue
-            mapping[gc_name] = compared_gcs
-        return mapping
 
 
     def add_cluster_composition_metrics(self):
@@ -460,19 +450,15 @@ class ComparePan:
         For each cluster in the primary pan, it reports how many compared-pan clusters map to it
         and their core/singleton/accessory gene breakdown.
         """
-        num_genomes = self.pan.p_meta['num_genomes']
         compared_name = self.compared_pan_name
 
-        # classify compared pan's gene clusters
-        compared_gc_types = Pangenome.classify_gene_cluster_types(self.compared_pan.gene_clusters, num_genomes)
-
-        # build full mapping: primary GC -> set of compared GCs
-        primary_to_compared = self.build_gene_cluster_mapping()
+        # reuse the classification computed by add_gene_cluster_type_data
+        compared_gc_types = self.compared_gc_types
 
         # compute per-primary-GC composition metrics
         composition_data = {}
         for gc_name in self.pan.gene_cluster_names:
-            compared_gcs = primary_to_compared.get(gc_name, set())
+            compared_gcs = self.primary_to_compared.get(gc_name, set())
 
             core_genes = 0
             singleton_genes = 0
