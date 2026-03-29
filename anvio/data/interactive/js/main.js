@@ -1730,8 +1730,8 @@ function buildLayersTable(order, settings)
             }
             else
             {
-                var height = '300';
-                var margin = getGroupLeadingMargin(layer_name, '15');
+                var height = getNamedLayerDefaults(layer_name, 'height', '300');
+                var margin = getGroupLeadingMargin(layer_name, getNamedLayerDefaults(layer_name, 'margin', '15'));
             }
 
             if (hasViewSettings)
@@ -1902,8 +1902,10 @@ function buildLayersTable(order, settings)
                 }
                 else
                 {
+                    // compare_pan group layers get warm amber defaults
+                    var is_compare_pan = (item_group === 'compare_pan');
                     var height = getNamedLayerDefaults(layer_name, 'height', '180');
-                    var color  = getNamedLayerDefaults(layer_name, 'color', '#000000');
+                    var color  = getNamedLayerDefaults(layer_name, 'color', is_compare_pan ? '#CC7A00' : '#000000');
                     var margin = getGroupLeadingMargin(layer_name, getNamedLayerDefaults(layer_name, 'margin', '15'));
                     if (mode == 'collection') {
                         var type = getNamedLayerDefaults(layer_name, 'type', 'intensity');

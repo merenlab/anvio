@@ -102,8 +102,14 @@ class ComparePan:
         self.primary_to_compared = {}
         self.missing_genes_by_gc = {}
 
-        # get compared pan name
-        self.compared_pan_name = self.compared_pan.p_meta['project_name']
+        # determine the label used in layer names: use the db variant if comparing structure vs sequence,
+        # otherwise fall back to the compared pan's project name
+        primary_variant = utils.get_db_variant(self.pan_db_path)
+        compared_variant = utils.get_db_variant(self.compared_pan_db_path)
+        if primary_variant == constants.PAN_STRUCTURE_MODE and compared_variant == constants.PAN_SEQUENCE_MODE:
+            self.compared_pan_name = 'sequence_based'
+        else:
+            self.compared_pan_name = self.compared_pan.p_meta['project_name']
 
         # check if compared pan was made from the same genome.db
         if self.pan.genomes_storage.get_storage_hash() != self.compared_pan.genomes_storage.get_storage_hash():
@@ -139,7 +145,7 @@ class ComparePan:
 
         # classify gene clusters as core/singleton/accessory in both pans
         # (must run before composition metrics since it computes self.compared_gc_types)
-        self.add_gene_cluster_type_data()
+        self.classify_gene_clusters_in_both_pans()
 
         # for each GC in primary pan, report composition of corresponding GCs in compared pan
         self.add_cluster_composition_metrics()
@@ -343,9 +349,11 @@ class ComparePan:
 
     def add_comparison_to_items_additional_data(self):
         items_additional_data_dict = {}
-        items_additional_data_keys = [f"{self.compared_pan_name}_status"]
+        # key order: functional sources first, then status (outermost ring)
+        items_additional_data_keys = []
         for source in self.pan.gene_clusters_function_sources:
             items_additional_data_keys.append(f"{self.compared_pan_name}_{source}")
+        items_additional_data_keys.append(f"{self.compared_pan_name}_status")
 
         for gene_cluster in self.pan.gene_cluster_names:
             summary = {}
@@ -416,30 +424,16 @@ class ComparePan:
         utils.store_dict_as_TAB_delimited_file(out_dict, self.output_file_prefix, headers=column_order, key_header='GC_ID', none_value='')
 
 
-    def add_gene_cluster_type_data(self):
-        """Classify gene clusters as core/singleton/accessory in both pans and write as item additional data.
+    def classify_gene_clusters_in_both_pans(self):
+        """Classify gene clusters as core/singleton/accessory in both pans.
 
-        Note: this writes to BOTH the primary and compared pan databases so that each
-        database is self-contained when opened with anvi-display-pan.
+        The compared pan classification is stored as self.compared_gc_types for reuse
+        by add_cluster_composition_metrics.
         """
         num_genomes = self.pan.p_meta['num_genomes']
 
-        # classify gene clusters in the primary pan
-        pan_gc_types = Pangenome.classify_gene_cluster_types(self.pan.gene_clusters, num_genomes)
-        pan_type_data = {gc: {'gc_type': gc_type} for gc, gc_type in pan_gc_types.items()}
-        pan_type_keys = ['gc_type']
-
-        pan_gc_type_args = argparse.Namespace(**{**vars(self.args), 'target_data_group': 'gene_cluster_stats'})
-        pan_table = TableForItemAdditionalData(pan_gc_type_args, r=terminal.Run(verbose=False))
-        pan_table.add(pan_type_data, pan_type_keys, skip_check_names=True)
-
-        # classify gene clusters in the compared pan (stored for reuse by add_cluster_composition_metrics)
+        self.pan_gc_types = Pangenome.classify_gene_cluster_types(self.pan.gene_clusters, num_genomes)
         self.compared_gc_types = Pangenome.classify_gene_cluster_types(self.compared_pan.gene_clusters, num_genomes)
-        compared_type_data = {gc: {'gc_type': gc_type} for gc, gc_type in self.compared_gc_types.items()}
-
-        compared_args = argparse.Namespace(**{**vars(self.args), 'pan_db': self.compared_pan_db_path, 'target_data_group': 'gene_cluster_stats'})
-        compared_table = TableForItemAdditionalData(compared_args, r=terminal.Run(verbose=False))
-        compared_table.add(compared_type_data, pan_type_keys, skip_check_names=True)
 
 
     def add_cluster_composition_metrics(self):
@@ -464,11 +458,13 @@ class ComparePan:
             singleton_genes = 0
             accessory_genes = 0
             gc_types_dict = {}
+            gene_counts_per_gc = []
 
             for compared_gc in compared_gcs:
                 gc_type = compared_gc_types.get(compared_gc, 'accessory')
                 gc_types_dict[compared_gc] = gc_type
                 gene_count = sum(len(genes) for genes in self.compared_pan.gene_clusters[compared_gc].values())
+                gene_counts_per_gc.append(gene_count)
                 if gc_type == 'core':
                     core_genes += gene_count
                 elif gc_type == 'singleton':
@@ -476,20 +472,31 @@ class ComparePan:
                 else:
                     accessory_genes += gene_count
 
+            # Gini-Simpson index: probability that two randomly chosen genes belong to different GCs.
+            # 0 = single GC (or empty), 1 = maximally even distribution across many GCs.
+            total_genes = core_genes + singleton_genes + accessory_genes
+            if total_genes > 0:
+                gini_simpson = 1 - sum((c / total_genes) ** 2 for c in gene_counts_per_gc)
+            else:
+                gini_simpson = 0
+
             composition_data[gc_name] = {
-                f'num_GCs_in_{compared_name}': len(compared_gcs),
-                f'composition_{compared_name}!core': core_genes,
-                f'composition_{compared_name}!singleton': singleton_genes,
-                f'composition_{compared_name}!accessory': accessory_genes,
-                f'gc_types_{compared_name}': json.dumps(gc_types_dict),
+                f'{compared_name}_num_GCs': len(compared_gcs),
+                f'{compared_name}_composition!comp_core': core_genes,
+                f'{compared_name}_composition!comp_singleton': singleton_genes,
+                f'{compared_name}_composition!comp_accessory': accessory_genes,
+                f'{compared_name}_composition_evenness': round(gini_simpson, 4),
+                f'{compared_name}_gc_types': json.dumps(gc_types_dict),
             }
 
+        # key order determines ring order (first = innermost): num_GCs, stackbar, evenness, gc_types
         composition_keys = [
-            f'num_GCs_in_{compared_name}',
-            f'composition_{compared_name}!core',
-            f'composition_{compared_name}!singleton',
-            f'composition_{compared_name}!accessory',
-            f'gc_types_{compared_name}',
+            f'{compared_name}_num_GCs',
+            f'{compared_name}_composition!comp_core',
+            f'{compared_name}_composition!comp_singleton',
+            f'{compared_name}_composition!comp_accessory',
+            f'{compared_name}_composition_evenness',
+            f'{compared_name}_gc_types',
         ]
 
         compare_args = argparse.Namespace(**{**vars(self.args), 'target_data_group': 'compare_pan'})

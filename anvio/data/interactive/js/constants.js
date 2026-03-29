@@ -602,6 +602,15 @@ named_category_colors = {
     'DISC'            : '#BCC8CC',
     'CORE'            : '#00AA00',
     'ACCESSORY'       : '#AA0000',
+    'core'            : '#00AA00',
+    'singleton'       : '#888888',
+    'accessory'       : '#AA0000',
+    'comp_core'       : '#CC7A00',
+    'comp_accessory'  : '#E8B866',
+    'comp_singleton'  : '#F5E0BB',
+    'fragmented'      : '#E8A838',
+    'combined'        : '#CC7A00',
+    'missing_genes'   : '#996633',
 };
 
 function getNamedCategoryColor(name)
@@ -730,6 +739,22 @@ function getNamedLayerDefaults(layer, attribute, default_value, group)
     if (layer.substring(0, 6) == "motif_") {
         if (attribute == 'norm')   return 'none';
         if (attribute == 'color')  return '#222288';
+    }
+
+    /* Compare-pan layers: warm amber gradient (deepest inner → lightest outer) */
+    if (layer.indexOf('_composition!') > -1) {
+        if (attribute == 'height') return '180';
+    }
+    if (layer.endsWith('_num_GCs')) {
+        if (attribute == 'color')  return '#CC7A00';
+        if (attribute == 'norm')   return 'none';
+    }
+    if (layer.endsWith('_composition_evenness')) {
+        if (attribute == 'color')  return '#CC7A00';
+        if (attribute == 'norm')   return 'none';
+        if (attribute == 'min')    return 0;
+        if (attribute == 'max')    return 1;
+        if (attribute == 'type')   return 'bar';
     }
 
     if (layer in named_layers)
