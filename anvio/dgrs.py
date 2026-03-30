@@ -5,11 +5,14 @@
 import re
 import csv
 import os
+import gc
+import queue
 import shutil
 import argparse
 import copy
 import bisect
 import numpy as np
+import pandas as pd
 import pytantan
 
 import anvio
@@ -550,6 +553,9 @@ class DGR_Finder:
         profile_db.disconnect()
 
         # apply SNV filters
+        # NOTE: this filtering logic is duplicated in process_bin_worker() where
+        # workers load their own SNVs from the profile DB. If you change the
+        # filters here, update them there too.
         if self.discovery_mode:
             self.run.info_single("Running discovery mode. Search for SNVs in all possible locations. You go Dora the explorer!")
             self.snv_panda = self.snv_panda.query("departure_from_reference >= @self.departure_from_reference_percentage")
@@ -604,6 +610,47 @@ class DGR_Finder:
         # Sort by start position for binary search
         for contig in self.gene_positions:
             self.gene_positions[contig].sort(key=lambda x: x[0])
+
+
+    def _clear_heavy_attrs_for_fork(self):
+        """Save and clear heavy attributes before forking workers to reduce COW surface.
+
+        When forking child processes, Python's reference counting triggers copy-on-write
+        page duplication on every attribute access in the child. This can cause each child
+        to materialize a private copy of the parent's entire address space. By clearing
+        heavy attributes before fork and restoring them after, we minimize the COW surface.
+
+        Returns
+        =======
+        saved : dict
+            Saved attribute references to be passed to _restore_heavy_attrs().
+        """
+
+        heavy_attrs = ('snv_panda', 'genes_in_contigs', 'gene_positions',
+                       'rt_gene_regions', 'rt_windows')
+
+        saved = {}
+        for attr in heavy_attrs:
+            if hasattr(self, attr):
+                saved[attr] = getattr(self, attr)
+                setattr(self, attr, None)
+
+        gc.collect()
+
+        try:
+            import ctypes
+            ctypes.CDLL("libc.so.6").malloc_trim(0)
+        except Exception:
+            pass
+
+        return saved
+
+
+    def _restore_heavy_attrs(self, saved):
+        """Restore attributes saved by _clear_heavy_attrs_for_fork()."""
+
+        for attr, val in saved.items():
+            setattr(self, attr, val)
 
 
     def load_rt_gene_regions(self):
@@ -1336,131 +1383,165 @@ class DGR_Finder:
 
 
     @staticmethod
-    def process_bin_worker(input_queue, output_queue, config, snv_panda_records, contigs_db_path, profile_db_path):
+    def process_bin_worker(input_queue, output_queue, config, contigs_db_path, profile_db_path):
         """
         Worker function for parallel bin processing. Processes bins from input_queue
         and puts results in output_queue.
 
         This is a static method to work with multiprocessing - all needed data is passed
-        explicitly rather than through self.
+        explicitly rather than through self. Each worker loads its own SNV data directly
+        from the profile database, filtered to the bin's splits.
         """
         import pandas as pd
         import bisect
 
-        # reconstruct snv_panda from records
-        snv_panda = pd.DataFrame.from_records(snv_panda_records)
-
-        # open the contigs DB once for the lifetime of this worker
+        # open the databases once for the lifetime of this worker
         contigs_db = dbops.ContigsDatabase(contigs_db_path, run=run_quiet, progress=progress_quiet)
+        profile_db = dbops.ProfileDatabase(profile_db_path)
 
-        while True:
-            bin_name, bin_splits_list = input_queue.get(True)
+        try:
+            while True:
+                item = input_queue.get(True)
 
-            try:
-                # === load_data_and_setup logic ===
-                bin_contigs_set = set(split.split('_split_')[0] for split in bin_splits_list)
-                bin_contig_sequences = contigs_db.db.smart_get(t.contig_sequences_table_name, 'contig', bin_contigs_set, string_the_key=True, error_if_no_data=False)
+                if item is None:
+                    break
 
-                split_names_unique = bin_splits_list
+                bin_name, bin_splits_list = item
 
-                sample_id_list = list(set(snv_panda.sample_id.unique()))
+                try:
+                    split_names_unique = set(bin_splits_list)
 
-                # === find_snv_clusters logic ===
-                min_diverse_bases = 3
-                diverse_base_counts = (snv_panda[nucleotides] > 0).sum(axis=1)
-                snv_panda_for_windows = snv_panda.loc[diverse_base_counts >= min_diverse_bases]
-                all_possible_windows = {}
-                grouped = snv_panda_for_windows.groupby(['split_name', 'sample_id'])
+                    # load only this bin's SNVs directly from the profile database
+                    snv_panda = profile_db.db.get_table_as_dataframe(
+                        t.variable_nts_table_name,
+                        columns_of_interest=config['snv_columns'],
+                        where_clause="split_name IN (%s)" % ','.join("'%s'" % s.replace("'", "''") for s in split_names_unique)
+                    )
 
-                for (split, sample), group in grouped:
-                    if split in split_names_unique and sample in sample_id_list:
-                        if group.shape[0] == 0:
-                            continue
+                    if snv_panda.empty:
+                        output_queue.put((bin_name, False, None, "No SNVs in bin"))
+                        continue
 
-                        contig_name = group.contig_name.unique()[0]
-                        pos_list = group.pos_in_contig.to_list()
+                    snv_panda = snv_panda.sort_values(by=['split_name', 'pos_in_contig'])
+                    snv_panda['contig_name'] = snv_panda['split_name'].str.split('_split_').str[0]
 
-                        if contig_name not in all_possible_windows:
-                            all_possible_windows[contig_name] = []
+                    # apply SNV filters (same as init_snv_table — see NOTE there)
+                    if config['discovery_mode']:
+                        snv_panda = snv_panda.query("departure_from_reference >= @config['departure_from_reference_percentage']")
+                    else:
+                        dep = config['departure_from_reference_percentage']
+                        snv_panda = snv_panda.query("departure_from_reference >= @dep and base_pos_in_codon in (1, 2)")
 
-                        # Sort positions for efficient binary search
-                        sorted_pos = sorted(pos_list)
+                    if snv_panda.empty:
+                        output_queue.put((bin_name, False, None, "No SNVs after filtering"))
+                        continue
 
-                        if not sorted_pos:
-                            continue
+                    # === load_data_and_setup logic ===
+                    bin_contigs_set = set(split.split('_split_')[0] for split in bin_splits_list)
+                    bin_contig_sequences = contigs_db.db.smart_get(t.contig_sequences_table_name, 'contig', bin_contigs_set, string_the_key=True, error_if_no_data=False)
 
-                        # Determine the range to scan with sliding windows
-                        min_pos = sorted_pos[0]
-                        max_pos = sorted_pos[-1]
-                        contig_len = len(bin_contig_sequences[contig_name]['sequence'])
+                    sample_id_list = list(set(snv_panda.sample_id.unique()))
 
-                        window_start_range = max(0, min_pos - config['snv_window_size'])
-                        window_end_range = min(max_pos, contig_len - config['snv_window_size'])
+                    # === find_snv_clusters logic ===
+                    min_diverse_bases = 3
+                    diverse_base_counts = (snv_panda[nucleotides] > 0).sum(axis=1)
+                    snv_panda_for_windows = snv_panda.loc[diverse_base_counts >= min_diverse_bases]
+                    all_possible_windows = {}
+                    grouped = snv_panda_for_windows.groupby(['split_name', 'sample_id'])
 
-                        # Slide the window across the region
-                        window_pos = window_start_range
-                        while window_pos <= window_end_range:
-                            window_end = window_pos + config['snv_window_size']
+                    for (split, sample), group in grouped:
+                        if split in split_names_unique and sample in sample_id_list:
+                            if group.shape[0] == 0:
+                                continue
 
-                            # Use binary search to count SNVs in window
-                            left_idx = bisect.bisect_left(sorted_pos, window_pos)
-                            right_idx = bisect.bisect_left(sorted_pos, window_end)
-                            snv_count = right_idx - left_idx
+                            contig_name = group.contig_name.unique()[0]
+                            pos_list = group.pos_in_contig.to_list()
 
-                            # Calculate density
-                            snv_density = snv_count / config['snv_window_size']
+                            if contig_name not in all_possible_windows:
+                                all_possible_windows[contig_name] = []
 
-                            if snv_density >= config['minimum_snv_density']:
-                                buffered_start = max(0, window_pos - config['variable_buffer_length'])
-                                buffered_end = min(contig_len, window_end + config['variable_buffer_length'])
-                                all_possible_windows[contig_name].append((buffered_start, buffered_end))
+                            # Sort positions for efficient binary search
+                            sorted_pos = sorted(pos_list)
 
-                            window_pos += config['snv_window_step']
+                            if not sorted_pos:
+                                continue
 
-                # merge overlapping windows
-                all_merged_snv_windows = {}
-                for contig_name, window_list in all_possible_windows.items():
-                    sorted_windows = sorted(window_list, key=lambda x: x[0])
-                    merged_windows = []
+                            # Determine the range to scan with sliding windows
+                            min_pos = sorted_pos[0]
+                            max_pos = sorted_pos[-1]
+                            contig_len = len(bin_contig_sequences[contig_name]['sequence'])
 
-                    for window in sorted_windows:
-                        if merged_windows and window[0] <= merged_windows[-1][1]:
-                            merged_windows[-1] = (merged_windows[-1][0], max(merged_windows[-1][1], window[1]))
-                        else:
-                            merged_windows.append(window)
+                            window_start_range = max(0, min_pos - config['snv_window_size'])
+                            window_end_range = min(max_pos, contig_len - config['snv_window_size'])
 
-                    all_merged_snv_windows[contig_name] = merged_windows
+                            # Slide the window across the region
+                            window_pos = window_start_range
+                            while window_pos <= window_end_range:
+                                window_end = window_pos + config['snv_window_size']
 
-                # extract subsequences
-                contig_records = {}
-                for contig_name in all_merged_snv_windows.keys():
-                    contig_sequence = bin_contig_sequences[contig_name]['sequence']
-                    for i, (start, end) in enumerate(all_merged_snv_windows[contig_name]):
-                        section_sequence = contig_sequence[start:end]
-                        section_name = f"{contig_name}_section_{i}_start_bp{start}_end_bp{end}"
-                        contig_records[section_name] = section_sequence
+                                # Use binary search to count SNVs in window
+                                left_idx = bisect.bisect_left(sorted_pos, window_pos)
+                                right_idx = bisect.bisect_left(sorted_pos, window_end)
+                                snv_count = right_idx - left_idx
 
-                if not contig_records:
-                    output_queue.put((bin_name, False, None, "No SNV clusters found"))
-                    continue
+                                # Calculate density
+                                snv_density = snv_count / config['snv_window_size']
 
-                # === run_blast logic ===
-                # Use the standalone execute_blast() function to avoid code duplication
-                blast_output_path = execute_blast(
-                    query_records=contig_records,
-                    target_sequences=bin_contig_sequences,
-                    temp_dir=config['temp_dir'],
-                    word_size=config['word_size'],
-                    num_threads=1,
-                    query_fasta_filename=f"bin_{bin_name}_subsequences.fasta",
-                    target_fasta_filename=f"bin_{bin_name}_reference_sequences.fasta",
-                    blast_output_filename=f"blast_output_activity_for_bin_{bin_name}_wordsize_{config['word_size']}.xml"
-                )
+                                if snv_density >= config['minimum_snv_density']:
+                                    buffered_start = max(0, window_pos - config['variable_buffer_length'])
+                                    buffered_end = min(contig_len, window_end + config['variable_buffer_length'])
+                                    all_possible_windows[contig_name].append((buffered_start, buffered_end))
 
-                output_queue.put((bin_name, True, blast_output_path, None))
+                                window_pos += config['snv_window_step']
 
-            except Exception as e:
-                output_queue.put((bin_name, False, None, str(e)))
+                    # merge overlapping windows
+                    all_merged_snv_windows = {}
+                    for contig_name, window_list in all_possible_windows.items():
+                        sorted_windows = sorted(window_list, key=lambda x: x[0])
+                        merged_windows = []
+
+                        for window in sorted_windows:
+                            if merged_windows and window[0] <= merged_windows[-1][1]:
+                                merged_windows[-1] = (merged_windows[-1][0], max(merged_windows[-1][1], window[1]))
+                            else:
+                                merged_windows.append(window)
+
+                        all_merged_snv_windows[contig_name] = merged_windows
+
+                    # extract subsequences
+                    contig_records = {}
+                    for contig_name in all_merged_snv_windows.keys():
+                        contig_sequence = bin_contig_sequences[contig_name]['sequence']
+                        for i, (start, end) in enumerate(all_merged_snv_windows[contig_name]):
+                            section_sequence = contig_sequence[start:end]
+                            section_name = f"{contig_name}_section_{i}_start_bp{start}_end_bp{end}"
+                            contig_records[section_name] = section_sequence
+
+                    if not contig_records:
+                        output_queue.put((bin_name, False, None, "No SNV clusters found"))
+                        continue
+
+                    # === run_blast logic ===
+                    # Use the standalone execute_blast() function to avoid code duplication
+                    blast_output_path = execute_blast(
+                        query_records=contig_records,
+                        target_sequences=bin_contig_sequences,
+                        temp_dir=config['temp_dir'],
+                        word_size=config['word_size'],
+                        num_threads=1,
+                        query_fasta_filename=f"bin_{bin_name}_subsequences.fasta",
+                        target_fasta_filename=f"bin_{bin_name}_reference_sequences.fasta",
+                        blast_output_filename=f"blast_output_activity_for_bin_{bin_name}_wordsize_{config['word_size']}.xml"
+                    )
+
+                    output_queue.put((bin_name, True, blast_output_path, None))
+
+                except Exception as e:
+                    output_queue.put((bin_name, False, None, str(e)))
+
+        finally:
+            contigs_db.disconnect()
+            profile_db.disconnect()
 
 
     @staticmethod
@@ -1488,60 +1569,69 @@ class DGR_Finder:
         # open the contigs DB once for the lifetime of this worker
         contigs_db = dbops.ContigsDatabase(contigs_db_path, run=run_quiet, progress=progress_quiet)
 
-        while True:
-            bin_name, bin_contigs_list = input_queue.get(True)
+        try:
+            while True:
+                item = input_queue.get(True)
 
-            try:
-                # Load only this bin's contig sequences
-                bin_contigs_set = set(bin_contigs_list)
-                bin_contig_sequences = contigs_db.db.smart_get(t.contig_sequences_table_name, 'contig', bin_contigs_set, string_the_key=True, error_if_no_data=False)
+                if item is None:
+                    break
 
-                if not bin_contig_sequences:
-                    output_queue.put((bin_name, False, None, "No contig sequences found for bin"))
-                    continue
+                bin_name, bin_contigs_list = item
 
-                # Filter RT windows to only those in this bin's contigs
-                query_records = {}
-                for window_info in rt_windows_list:
-                    contig = window_info['contig']
-                    if contig not in bin_contigs_set:
+                try:
+                    # Load only this bin's contig sequences
+                    bin_contigs_set = set(bin_contigs_list)
+                    bin_contig_sequences = contigs_db.db.smart_get(t.contig_sequences_table_name, 'contig', bin_contigs_set, string_the_key=True, error_if_no_data=False)
+
+                    if not bin_contig_sequences:
+                        output_queue.put((bin_name, False, None, "No contig sequences found for bin"))
                         continue
 
-                    window_start = window_info['window_start']
-                    window_end = window_info['window_end']
-                    window_id = window_info['window_id']
+                    # Filter RT windows to only those in this bin's contigs
+                    query_records = {}
+                    for window_info in rt_windows_list:
+                        contig = window_info['contig']
+                        if contig not in bin_contigs_set:
+                            continue
 
-                    if contig not in bin_contig_sequences:
+                        window_start = window_info['window_start']
+                        window_end = window_info['window_end']
+                        window_id = window_info['window_id']
+
+                        if contig not in bin_contig_sequences:
+                            continue
+
+                        # Extract window sequence
+                        contig_seq = bin_contig_sequences[contig]['sequence']
+                        window_seq = contig_seq[window_start:window_end + 1]
+
+                        # Create section_id compatible with existing parsing
+                        section_id = f"{contig}_section_{window_id}_start_bp{window_start}_end_bp{window_end}"
+                        query_records[section_id] = window_seq
+
+                    if not query_records:
+                        output_queue.put((bin_name, False, None, "No RT windows found in bin"))
                         continue
 
-                    # Extract window sequence
-                    contig_seq = bin_contig_sequences[contig]['sequence']
-                    window_seq = contig_seq[window_start:window_end + 1]
+                    # Run BLAST using the standalone execute_blast() function
+                    blast_output_path = execute_blast(
+                        query_records=query_records,
+                        target_sequences=bin_contig_sequences,
+                        temp_dir=config['temp_dir'],
+                        word_size=config['word_size'],
+                        num_threads=1,
+                        query_fasta_filename=f"bin_{bin_name}_homology_query.fasta",
+                        target_fasta_filename=f"bin_{bin_name}_homology_target.fasta",
+                        blast_output_filename=f"blast_output_homology_for_bin_{bin_name}_wordsize_{config['word_size']}.xml"
+                    )
 
-                    # Create section_id compatible with existing parsing
-                    section_id = f"{contig}_section_{window_id}_start_bp{window_start}_end_bp{window_end}"
-                    query_records[section_id] = window_seq
+                    output_queue.put((bin_name, True, blast_output_path, None))
 
-                if not query_records:
-                    output_queue.put((bin_name, False, None, "No RT windows found in bin"))
-                    continue
+                except Exception as e:
+                    output_queue.put((bin_name, False, None, str(e)))
 
-                # Run BLAST using the standalone execute_blast() function
-                blast_output_path = execute_blast(
-                    query_records=query_records,
-                    target_sequences=bin_contig_sequences,
-                    temp_dir=config['temp_dir'],
-                    word_size=config['word_size'],
-                    num_threads=1,
-                    query_fasta_filename=f"bin_{bin_name}_homology_query.fasta",
-                    target_fasta_filename=f"bin_{bin_name}_homology_target.fasta",
-                    blast_output_filename=f"blast_output_homology_for_bin_{bin_name}_wordsize_{config['word_size']}.xml"
-                )
-
-                output_queue.put((bin_name, True, blast_output_path, None))
-
-            except Exception as e:
-                output_queue.put((bin_name, False, None, str(e)))
+        finally:
+            contigs_db.disconnect()
 
 
     def process_collections_mode(self):
@@ -1620,7 +1710,8 @@ class DGR_Finder:
             self.run.info_single(f"Processing {num_bins} bins in parallel using {self.num_threads} threads "
                                 f"(each BLAST uses 1 thread).", nl_before=1)
 
-            # prepare config dict for workers
+            # prepare config dict for workers (includes SNV loading parameters
+            # so workers can load their own SNVs directly from the profile DB)
             config = {
                 'temp_dir': self.temp_dir,
                 'word_size': self.word_size,
@@ -1628,61 +1719,86 @@ class DGR_Finder:
                 'snv_window_step': self.snv_window_step,
                 'minimum_snv_density': self.minimum_snv_density,
                 'variable_buffer_length': self.variable_buffer_length,
+                'snv_columns': ['sample_id', 'split_name', 'pos_in_contig', 'base_pos_in_codon',
+                                'departure_from_reference', 'reference'] + nucleotides,
+                'departure_from_reference_percentage': self.departure_from_reference_percentage,
+                'discovery_mode': self.discovery_mode,
             }
 
-            # convert snv_panda to records for pickling
-            snv_panda_records = self.snv_panda.to_dict('records')
+            input_queue = multiprocessing.Queue()
+            output_queue = multiprocessing.Queue()
 
-            # setup queues
-            manager = multiprocessing.Manager()
-            input_queue = manager.Queue()
-            output_queue = manager.Queue()
-
-            # put all bins in input queue
+            # put lightweight bin identifiers in input queue — workers load
+            # their own SNV data directly from the profile database
             for bin_name, bin_splits_list in bin_splits_dict.items():
                 input_queue.put((bin_name, bin_splits_list))
+
+            # add one sentinel per worker so they exit gracefully
+            for _ in range(self.num_threads):
+                input_queue.put(None)
+
+            # clear heavy attributes from self before forking to minimize
+            # copy-on-write memory duplication in child processes
+            saved_attrs = self._clear_heavy_attrs_for_fork()
 
             # start workers
             workers = []
             for i in range(self.num_threads):
                 worker = multiprocessing.Process(
                     target=DGR_Finder.process_bin_worker,
-                    args=(input_queue, output_queue, config, snv_panda_records,
+                    args=(input_queue, output_queue, config,
                           self.contigs_db_path, self.profile_db_path))
                 workers.append(worker)
                 worker.start()
 
             # monitor progress
-            self.progress.new('Processing bins for BLAST (parallel)', progress_total_items=num_bins)
-            self.progress.update(f"Processing {num_bins} bins across {self.num_threads} workers...")
+            try:
+                self.progress.new('Processing bins for BLAST (parallel)', progress_total_items=num_bins)
+                self.progress.update(f"Processing {num_bins} bins across {self.num_threads} workers...")
 
-            bins_processed = 0
-            while bins_processed < num_bins:
-                try:
-                    bin_name, success, blast_path, error_msg = output_queue.get()
-                    bins_processed += 1
-                    self.progress.increment(increment_to=bins_processed)
+                bins_processed = 0
+                while bins_processed < num_bins:
+                    try:
+                        # use timeout so we can detect dead workers instead of blocking forever
+                        try:
+                            bin_name, success, blast_path, error_msg = output_queue.get(timeout=10)
+                        except queue.Empty:
+                            # check if all workers have died
+                            if not any(w.is_alive() for w in workers):
+                                self.progress.end()
+                                raise ConfigError(f"All worker processes died unexpectedly after processing "
+                                                  f"{bins_processed}/{num_bins} bins.")
+                            continue
 
-                    if success:
-                        successful_bins.append(bin_name)
-                        self.blast_output = blast_path
-                    else:
-                        skipped_bins[bin_name] = error_msg
+                        bins_processed += 1
+                        self.progress.increment(increment_to=bins_processed)
 
-                    if bins_processed < num_bins:
-                        self.progress.update(f"Processed {bins_processed}/{num_bins} bins...")
-                    else:
-                        self.progress.update("All done!")
+                        if success:
+                            successful_bins.append(bin_name)
+                            self.blast_output = blast_path
+                        else:
+                            skipped_bins[bin_name] = error_msg
 
-                except KeyboardInterrupt:
-                    self.run.info_single("Received kill signal, terminating workers...", nl_before=1)
-                    break
+                        if bins_processed < num_bins:
+                            self.progress.update(f"Processed {bins_processed}/{num_bins} bins...")
+                        else:
+                            self.progress.update("All done!")
 
-            self.progress.end()
+                    except KeyboardInterrupt:
+                        self.run.info_single("Received kill signal, terminating workers...", nl_before=1)
+                        break
 
-            # terminate workers
-            for worker in workers:
-                worker.terminate()
+                self.progress.end()
+
+            finally:
+                # gracefully join workers, then force-terminate any stragglers
+                for worker in workers:
+                    worker.join(timeout=5)
+                    if worker.is_alive():
+                        worker.terminate()
+
+                # restore heavy attributes for post-processing
+                self._restore_heavy_attrs(saved_attrs)
 
         else:
             # === SEQUENTIAL BIN PROCESSING (original behavior) ===
@@ -1837,14 +1953,20 @@ class DGR_Finder:
                 window_dict['window_id'] = window_id
                 rt_windows_list.append(window_dict)
 
-            # Setup queues
-            manager = multiprocessing.Manager()
-            input_queue = manager.Queue()
-            output_queue = manager.Queue()
+            input_queue = multiprocessing.Queue()
+            output_queue = multiprocessing.Queue()
 
             # Put all bins in input queue
             for bin_name, bin_contigs_list in bin_contigs_dict.items():
                 input_queue.put((bin_name, bin_contigs_list))
+
+            # add one sentinel per worker so they exit gracefully
+            for _ in range(self.num_threads):
+                input_queue.put(None)
+
+            # clear heavy attributes from self before forking to minimize
+            # copy-on-write memory duplication in child processes
+            saved_attrs = self._clear_heavy_attrs_for_fork()
 
             # Start workers
             workers = []
@@ -1856,36 +1978,52 @@ class DGR_Finder:
                 worker.start()
 
             # Monitor progress
-            self.progress.new('Processing bins for homology BLAST (parallel)', progress_total_items=num_bins)
-            self.progress.update(f"Processing {num_bins} bins across {self.num_threads} workers...")
+            try:
+                self.progress.new('Processing bins for homology BLAST (parallel)', progress_total_items=num_bins)
+                self.progress.update(f"Processing {num_bins} bins across {self.num_threads} workers...")
 
-            bins_processed = 0
-            while bins_processed < num_bins:
-                try:
-                    bin_name, success, blast_path, error_msg = output_queue.get()
-                    bins_processed += 1
-                    self.progress.increment(increment_to=bins_processed)
+                bins_processed = 0
+                while bins_processed < num_bins:
+                    try:
+                        # use timeout so we can detect dead workers instead of blocking forever
+                        try:
+                            bin_name, success, blast_path, error_msg = output_queue.get(timeout=10)
+                        except queue.Empty:
+                            if not any(w.is_alive() for w in workers):
+                                self.progress.end()
+                                raise ConfigError(f"All worker processes died unexpectedly after processing "
+                                                  f"{bins_processed}/{num_bins} bins.")
+                            continue
 
-                    if success:
-                        successful_bins.append(bin_name)
-                        blast_outputs[bin_name] = blast_path
-                    else:
-                        skipped_bins[bin_name] = error_msg
+                        bins_processed += 1
+                        self.progress.increment(increment_to=bins_processed)
 
-                    if bins_processed < num_bins:
-                        self.progress.update(f"Processed {bins_processed}/{num_bins} bins...")
-                    else:
-                        self.progress.update("All done!")
+                        if success:
+                            successful_bins.append(bin_name)
+                            blast_outputs[bin_name] = blast_path
+                        else:
+                            skipped_bins[bin_name] = error_msg
 
-                except KeyboardInterrupt:
-                    self.run.info_single("Received kill signal, terminating workers...", nl_before=1)
-                    break
+                        if bins_processed < num_bins:
+                            self.progress.update(f"Processed {bins_processed}/{num_bins} bins...")
+                        else:
+                            self.progress.update("All done!")
 
-            self.progress.end()
+                    except KeyboardInterrupt:
+                        self.run.info_single("Received kill signal, terminating workers...", nl_before=1)
+                        break
 
-            # Terminate workers
-            for worker in workers:
-                worker.terminate()
+                self.progress.end()
+
+            finally:
+                # gracefully join workers, then force-terminate any stragglers
+                for worker in workers:
+                    worker.join(timeout=5)
+                    if worker.is_alive():
+                        worker.terminate()
+
+                # restore heavy attributes for post-processing
+                self._restore_heavy_attrs(saved_attrs)
 
         else:
             # === SEQUENTIAL BIN PROCESSING ===
@@ -4948,10 +5086,8 @@ class DGR_Finder:
         # MULTITHREADING #
         ##################
 
-        # setup the input/output queues
-        manager = multiprocessing.Manager()
-        input_queue = manager.Queue()
-        output_queue = manager.Queue()
+        input_queue = multiprocessing.Queue()
+        output_queue = multiprocessing.Queue()
 
         self.dgr_activity = []
         # create directory for Primer matches
@@ -4960,6 +5096,14 @@ class DGR_Finder:
         # put all the sample names in our input queue
         for sample_name in sample_names:
             input_queue.put(sample_name)
+
+        # add one sentinel per worker so they exit gracefully
+        for _ in range(self.num_threads):
+            input_queue.put(None)
+
+        # clear heavy attributes from self before forking to minimize
+        # copy-on-write memory duplication in child processes
+        saved_attrs = self._clear_heavy_attrs_for_fork()
 
         # engage the proletariat, our hard-working wage-earner class
         workers = []
@@ -4976,36 +5120,53 @@ class DGR_Finder:
             worker.start()
 
         # monitor progress
-        self.progress.new('DGR variability profile', progress_total_items=num_samples)
-        if self.num_threads > 1:
-            self.progress.update(f"Processing {PL('sample', num_samples)} and {PL('primer', len(primers_dict))} in {PL('thread', self.num_threads)}.")
+        try:
+            self.progress.new('DGR variability profile', progress_total_items=num_samples)
+            if self.num_threads > 1:
+                self.progress.update(f"Processing {PL('sample', num_samples)} and {PL('primer', len(primers_dict))} in {PL('thread', self.num_threads)}.")
 
-        num_samples_processed = 0
-        while num_samples_processed < num_samples:
-            try:
-                sample_finished_processing = output_queue.get()
-                if anvio.DEBUG:
-                    self.progress.reset()
-                    self.run.info_single(f"Sample {sample_finished_processing} has finished processing.", nl_before=1)
-                num_samples_processed += 1
-                self.progress.increment(increment_to=num_samples_processed)
+            num_samples_processed = 0
+            while num_samples_processed < num_samples:
+                try:
+                    # use timeout so we can detect dead workers instead of blocking forever
+                    try:
+                        sample_finished_processing = output_queue.get(timeout=10)
+                    except queue.Empty:
+                        if not any(w.is_alive() for w in workers):
+                            if self.num_threads > 1:
+                                self.progress.end()
+                            raise ConfigError(f"All worker processes died unexpectedly after processing "
+                                              f"{num_samples_processed}/{num_samples} samples.")
+                        continue
 
-                if self.num_threads > 1:
-                    if num_samples_processed < num_samples:
-                        self.progress.update(f"Samples processed: {num_samples_processed} of {num_samples}. Still working ...")
-                    else:
-                        self.progress.update("All done!")
-            except KeyboardInterrupt:
-                self.run.info_single("Received kill signal, terminating all processes... Don't believe anything you see "
-                                    "below this and destroy all the output files with fire.", nl_before=1)
-                break
+                    if anvio.DEBUG:
+                        self.progress.reset()
+                        self.run.info_single(f"Sample {sample_finished_processing} has finished processing.", nl_before=1)
+                    num_samples_processed += 1
+                    self.progress.increment(increment_to=num_samples_processed)
 
-        if self.num_threads > 1:
-            self.progress.end()
+                    if self.num_threads > 1:
+                        if num_samples_processed < num_samples:
+                            self.progress.update(f"Samples processed: {num_samples_processed} of {num_samples}. Still working ...")
+                        else:
+                            self.progress.update("All done!")
+                except KeyboardInterrupt:
+                    self.run.info_single("Received kill signal, terminating all processes... Don't believe anything you see "
+                                        "below this and destroy all the output files with fire.", nl_before=1)
+                    break
 
-        # always double-tap?
-        for worker in workers:
-            worker.terminate()
+            if self.num_threads > 1:
+                self.progress.end()
+
+        finally:
+            # gracefully join workers, then force-terminate any stragglers
+            for worker in workers:
+                worker.join(timeout=5)
+                if worker.is_alive():
+                    worker.terminate()
+
+            # restore heavy attributes for post-processing
+            self._restore_heavy_attrs(saved_attrs)
 
         ######################
         # END MULTITHREADING #
