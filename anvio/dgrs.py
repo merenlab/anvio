@@ -1579,7 +1579,6 @@ class DGR_Finder:
                 bin_splits_dict[bin_name] = []
             bin_splits_dict[bin_name].append(split)
 
-        self.bin_names_list = list(bin_splits_dict.keys())
         num_bins = len(bin_splits_dict)
 
         # Initialize blast_output to None
@@ -1603,6 +1602,7 @@ class DGR_Finder:
 
         bin_splits_dict = bins_with_data
         num_bins = len(bin_splits_dict)
+        self.bin_names_list = list(bin_splits_dict.keys())
 
         if num_bins == 0:
             raise ConfigError(f"None of the {len(skipped_bins)} bins in collection '{self.collections_given}' "
