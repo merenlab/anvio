@@ -552,9 +552,6 @@ class DGR_Finder:
         profile_db.disconnect()
 
         # apply SNV filters
-        # NOTE: this filtering logic is duplicated in process_bin_worker() where
-        # workers load their own SNVs from the profile DB. If you change the
-        # filters here, update them there too.
         if self.discovery_mode:
             self.run.info_single("Running discovery mode. Search for SNVs in all possible locations. You go Dora the explorer!")
             self.snv_panda = self.snv_panda.query("departure_from_reference >= @self.departure_from_reference_percentage")
@@ -1342,255 +1339,205 @@ class DGR_Finder:
 
 
     @staticmethod
-    def process_bin_worker(input_queue, output_queue, config, contigs_db_path, profile_db_path):
+    def process_bin_worker(input_queue, output_queue, config):
         """
         Worker function for parallel bin processing. Processes bins from input_queue
         and puts results in output_queue.
 
         This is a static method to work with multiprocessing - all needed data is passed
-        explicitly rather than through self. Each worker loads its own SNV data directly
-        from the profile database, filtered to the bin's splits.
+        explicitly rather than through self. Each work item from the queue contains the
+        bin's pre-partitioned SNV records and contig sequences, so the worker never needs
+        to access any database file.
         """
         import pandas as pd
         import bisect
 
-        # open the databases once for the lifetime of this worker
-        contigs_db = dbops.ContigsDatabase(contigs_db_path, run=run_quiet, progress=progress_quiet)
-        profile_db = dbops.ProfileDatabase(profile_db_path)
+        while True:
+            item = input_queue.get(True)
 
-        try:
-            while True:
-                item = input_queue.get(True)
+            if item is None:
+                break
 
-                if item is None:
-                    break
+            bin_name, bin_splits_list, bin_snv_records, bin_contig_sequences = item
 
-                bin_name, bin_splits_list = item
+            try:
+                if not bin_snv_records:
+                    output_queue.put((bin_name, False, None, "No SNVs in bin"))
+                    continue
 
-                try:
-                    split_names_unique = set(bin_splits_list)
+                # reconstruct per-bin DataFrame (already filtered by parent's init_snv_table)
+                snv_panda = pd.DataFrame.from_records(bin_snv_records)
+                del bin_snv_records
 
-                    # load only this bin's SNVs directly from the profile database
-                    snv_panda = profile_db.db.get_table_as_dataframe(
-                        t.variable_nts_table_name,
-                        columns_of_interest=config['snv_columns'],
-                        where_clause="split_name IN (%s)" % ','.join("'%s'" % s.replace("'", "''") for s in split_names_unique)
-                    )
+                split_names_unique = set(bin_splits_list)
+                sample_id_list = list(set(snv_panda.sample_id.unique()))
 
-                    if snv_panda.empty:
-                        output_queue.put((bin_name, False, None, "No SNVs in bin"))
-                        continue
+                # === find_snv_clusters logic ===
+                min_diverse_bases = 3
+                diverse_base_counts = (snv_panda[nucleotides] > 0).sum(axis=1)
+                snv_panda_for_windows = snv_panda.loc[diverse_base_counts >= min_diverse_bases]
+                all_possible_windows = {}
+                grouped = snv_panda_for_windows.groupby(['split_name', 'sample_id'])
 
-                    snv_panda = snv_panda.sort_values(by=['split_name', 'pos_in_contig'])
-                    snv_panda['contig_name'] = snv_panda['split_name'].str.split('_split_').str[0]
+                for (split, sample), group in grouped:
+                    if split in split_names_unique and sample in sample_id_list:
+                        if group.shape[0] == 0:
+                            continue
 
-                    # apply SNV filters (same as init_snv_table — see NOTE there)
-                    if config['discovery_mode']:
-                        snv_panda = snv_panda.query("departure_from_reference >= @config['departure_from_reference_percentage']")
-                    else:
-                        dep = config['departure_from_reference_percentage']
-                        snv_panda = snv_panda.query("departure_from_reference >= @dep and base_pos_in_codon in (1, 2)")
+                        contig_name = group.contig_name.unique()[0]
+                        pos_list = group.pos_in_contig.to_list()
 
-                    if snv_panda.empty:
-                        output_queue.put((bin_name, False, None, "No SNVs after filtering"))
-                        continue
+                        if contig_name not in all_possible_windows:
+                            all_possible_windows[contig_name] = []
 
-                    # === load_data_and_setup logic ===
-                    bin_contigs_set = set(split.split('_split_')[0] for split in bin_splits_list)
-                    bin_contig_sequences = contigs_db.db.smart_get(t.contig_sequences_table_name, 'contig', bin_contigs_set, string_the_key=True, error_if_no_data=False)
+                        # Sort positions for efficient binary search
+                        sorted_pos = sorted(pos_list)
 
-                    sample_id_list = list(set(snv_panda.sample_id.unique()))
+                        if not sorted_pos:
+                            continue
 
-                    # === find_snv_clusters logic ===
-                    min_diverse_bases = 3
-                    diverse_base_counts = (snv_panda[nucleotides] > 0).sum(axis=1)
-                    snv_panda_for_windows = snv_panda.loc[diverse_base_counts >= min_diverse_bases]
-                    all_possible_windows = {}
-                    grouped = snv_panda_for_windows.groupby(['split_name', 'sample_id'])
+                        # Determine the range to scan with sliding windows
+                        min_pos = sorted_pos[0]
+                        max_pos = sorted_pos[-1]
+                        contig_len = len(bin_contig_sequences[contig_name]['sequence'])
 
-                    for (split, sample), group in grouped:
-                        if split in split_names_unique and sample in sample_id_list:
-                            if group.shape[0] == 0:
-                                continue
+                        window_start_range = max(0, min_pos - config['snv_window_size'])
+                        window_end_range = min(max_pos, contig_len - config['snv_window_size'])
 
-                            contig_name = group.contig_name.unique()[0]
-                            pos_list = group.pos_in_contig.to_list()
+                        # Slide the window across the region
+                        window_pos = window_start_range
+                        while window_pos <= window_end_range:
+                            window_end = window_pos + config['snv_window_size']
 
-                            if contig_name not in all_possible_windows:
-                                all_possible_windows[contig_name] = []
+                            # Use binary search to count SNVs in window
+                            left_idx = bisect.bisect_left(sorted_pos, window_pos)
+                            right_idx = bisect.bisect_left(sorted_pos, window_end)
+                            snv_count = right_idx - left_idx
 
-                            # Sort positions for efficient binary search
-                            sorted_pos = sorted(pos_list)
+                            # Calculate density
+                            snv_density = snv_count / config['snv_window_size']
 
-                            if not sorted_pos:
-                                continue
+                            if snv_density >= config['minimum_snv_density']:
+                                buffered_start = max(0, window_pos - config['variable_buffer_length'])
+                                buffered_end = min(contig_len, window_end + config['variable_buffer_length'])
+                                all_possible_windows[contig_name].append((buffered_start, buffered_end))
 
-                            # Determine the range to scan with sliding windows
-                            min_pos = sorted_pos[0]
-                            max_pos = sorted_pos[-1]
-                            contig_len = len(bin_contig_sequences[contig_name]['sequence'])
+                            window_pos += config['snv_window_step']
 
-                            window_start_range = max(0, min_pos - config['snv_window_size'])
-                            window_end_range = min(max_pos, contig_len - config['snv_window_size'])
+                # merge overlapping windows
+                all_merged_snv_windows = {}
+                for contig_name, window_list in all_possible_windows.items():
+                    sorted_windows = sorted(window_list, key=lambda x: x[0])
+                    merged_windows = []
 
-                            # Slide the window across the region
-                            window_pos = window_start_range
-                            while window_pos <= window_end_range:
-                                window_end = window_pos + config['snv_window_size']
+                    for window in sorted_windows:
+                        if merged_windows and window[0] <= merged_windows[-1][1]:
+                            merged_windows[-1] = (merged_windows[-1][0], max(merged_windows[-1][1], window[1]))
+                        else:
+                            merged_windows.append(window)
 
-                                # Use binary search to count SNVs in window
-                                left_idx = bisect.bisect_left(sorted_pos, window_pos)
-                                right_idx = bisect.bisect_left(sorted_pos, window_end)
-                                snv_count = right_idx - left_idx
+                    all_merged_snv_windows[contig_name] = merged_windows
 
-                                # Calculate density
-                                snv_density = snv_count / config['snv_window_size']
+                # extract subsequences
+                contig_records = {}
+                for contig_name in all_merged_snv_windows.keys():
+                    contig_sequence = bin_contig_sequences[contig_name]['sequence']
+                    for i, (start, end) in enumerate(all_merged_snv_windows[contig_name]):
+                        section_sequence = contig_sequence[start:end]
+                        section_name = f"{contig_name}_section_{i}_start_bp{start}_end_bp{end}"
+                        contig_records[section_name] = section_sequence
 
-                                if snv_density >= config['minimum_snv_density']:
-                                    buffered_start = max(0, window_pos - config['variable_buffer_length'])
-                                    buffered_end = min(contig_len, window_end + config['variable_buffer_length'])
-                                    all_possible_windows[contig_name].append((buffered_start, buffered_end))
+                if not contig_records:
+                    output_queue.put((bin_name, False, None, "No SNV clusters found"))
+                    continue
 
-                                window_pos += config['snv_window_step']
+                # === run_blast logic ===
+                # Use the standalone execute_blast() function to avoid code duplication
+                blast_output_path = execute_blast(
+                    query_records=contig_records,
+                    target_sequences=bin_contig_sequences,
+                    temp_dir=config['temp_dir'],
+                    word_size=config['word_size'],
+                    num_threads=1,
+                    query_fasta_filename=f"bin_{bin_name}_subsequences.fasta",
+                    target_fasta_filename=f"bin_{bin_name}_reference_sequences.fasta",
+                    blast_output_filename=f"blast_output_activity_for_bin_{bin_name}_wordsize_{config['word_size']}.xml"
+                )
 
-                    # merge overlapping windows
-                    all_merged_snv_windows = {}
-                    for contig_name, window_list in all_possible_windows.items():
-                        sorted_windows = sorted(window_list, key=lambda x: x[0])
-                        merged_windows = []
+                output_queue.put((bin_name, True, blast_output_path, None))
 
-                        for window in sorted_windows:
-                            if merged_windows and window[0] <= merged_windows[-1][1]:
-                                merged_windows[-1] = (merged_windows[-1][0], max(merged_windows[-1][1], window[1]))
-                            else:
-                                merged_windows.append(window)
-
-                        all_merged_snv_windows[contig_name] = merged_windows
-
-                    # extract subsequences
-                    contig_records = {}
-                    for contig_name in all_merged_snv_windows.keys():
-                        contig_sequence = bin_contig_sequences[contig_name]['sequence']
-                        for i, (start, end) in enumerate(all_merged_snv_windows[contig_name]):
-                            section_sequence = contig_sequence[start:end]
-                            section_name = f"{contig_name}_section_{i}_start_bp{start}_end_bp{end}"
-                            contig_records[section_name] = section_sequence
-
-                    if not contig_records:
-                        output_queue.put((bin_name, False, None, "No SNV clusters found"))
-                        continue
-
-                    # === run_blast logic ===
-                    # Use the standalone execute_blast() function to avoid code duplication
-                    blast_output_path = execute_blast(
-                        query_records=contig_records,
-                        target_sequences=bin_contig_sequences,
-                        temp_dir=config['temp_dir'],
-                        word_size=config['word_size'],
-                        num_threads=1,
-                        query_fasta_filename=f"bin_{bin_name}_subsequences.fasta",
-                        target_fasta_filename=f"bin_{bin_name}_reference_sequences.fasta",
-                        blast_output_filename=f"blast_output_activity_for_bin_{bin_name}_wordsize_{config['word_size']}.xml"
-                    )
-
-                    output_queue.put((bin_name, True, blast_output_path, None))
-
-                except Exception as e:
-                    output_queue.put((bin_name, False, None, str(e)))
-
-        finally:
-            contigs_db.disconnect()
-            profile_db.disconnect()
+            except Exception as e:
+                output_queue.put((bin_name, False, None, str(e)))
 
 
     @staticmethod
-    def process_bin_worker_homology(input_queue, output_queue, config, rt_windows_list, contigs_db_path):
+    def process_bin_worker_homology(input_queue, output_queue, config, rt_windows_list):
         """
-        Worker function for parallel bin processing in homology mode. Processes bins from input_queue
-        and puts results in output_queue.
+        Worker function for parallel bin processing in homology mode. Processes bins from
+        input_queue and puts results in output_queue.
 
         This is a static method to work with multiprocessing - all needed data is passed
-        explicitly rather than through self.
-
-        Parameters
-        ==========
-        input_queue : multiprocessing.Queue
-            Queue containing (bin_name, bin_contigs_list) tuples.
-        output_queue : multiprocessing.Queue
-            Queue for results as (bin_name, success, blast_path, error_msg) tuples.
-        config : dict
-            Configuration dict with 'temp_dir', 'word_size'.
-        rt_windows_list : list
-            List of RT window dicts (serializable format from rt_windows.values()).
-        contigs_db_path : str
-            Path to contigs database.
+        explicitly rather than through self. Each work item from the queue contains the
+        bin's pre-loaded contig sequences, so the worker never needs to access any database.
         """
-        # open the contigs DB once for the lifetime of this worker
-        contigs_db = dbops.ContigsDatabase(contigs_db_path, run=run_quiet, progress=progress_quiet)
 
-        try:
-            while True:
-                item = input_queue.get(True)
+        while True:
+            item = input_queue.get(True)
 
-                if item is None:
-                    break
+            if item is None:
+                break
 
-                bin_name, bin_contigs_list = item
+            bin_name, bin_contigs_list, bin_contig_sequences = item
 
-                try:
-                    # Load only this bin's contig sequences
-                    bin_contigs_set = set(bin_contigs_list)
-                    bin_contig_sequences = contigs_db.db.smart_get(t.contig_sequences_table_name, 'contig', bin_contigs_set, string_the_key=True, error_if_no_data=False)
+            try:
+                bin_contigs_set = set(bin_contigs_list)
 
-                    if not bin_contig_sequences:
-                        output_queue.put((bin_name, False, None, "No contig sequences found for bin"))
+                if not bin_contig_sequences:
+                    output_queue.put((bin_name, False, None, "No contig sequences found for bin"))
+                    continue
+
+                # Filter RT windows to only those in this bin's contigs
+                query_records = {}
+                for window_info in rt_windows_list:
+                    contig = window_info['contig']
+                    if contig not in bin_contigs_set:
                         continue
 
-                    # Filter RT windows to only those in this bin's contigs
-                    query_records = {}
-                    for window_info in rt_windows_list:
-                        contig = window_info['contig']
-                        if contig not in bin_contigs_set:
-                            continue
+                    window_start = window_info['window_start']
+                    window_end = window_info['window_end']
+                    window_id = window_info['window_id']
 
-                        window_start = window_info['window_start']
-                        window_end = window_info['window_end']
-                        window_id = window_info['window_id']
-
-                        if contig not in bin_contig_sequences:
-                            continue
-
-                        # Extract window sequence
-                        contig_seq = bin_contig_sequences[contig]['sequence']
-                        window_seq = contig_seq[window_start:window_end + 1]
-
-                        # Create section_id compatible with existing parsing
-                        section_id = f"{contig}_section_{window_id}_start_bp{window_start}_end_bp{window_end}"
-                        query_records[section_id] = window_seq
-
-                    if not query_records:
-                        output_queue.put((bin_name, False, None, "No RT windows found in bin"))
+                    if contig not in bin_contig_sequences:
                         continue
 
-                    # Run BLAST using the standalone execute_blast() function
-                    blast_output_path = execute_blast(
-                        query_records=query_records,
-                        target_sequences=bin_contig_sequences,
-                        temp_dir=config['temp_dir'],
-                        word_size=config['word_size'],
-                        num_threads=1,
-                        query_fasta_filename=f"bin_{bin_name}_homology_query.fasta",
-                        target_fasta_filename=f"bin_{bin_name}_homology_target.fasta",
-                        blast_output_filename=f"blast_output_homology_for_bin_{bin_name}_wordsize_{config['word_size']}.xml"
-                    )
+                    # Extract window sequence
+                    contig_seq = bin_contig_sequences[contig]['sequence']
+                    window_seq = contig_seq[window_start:window_end + 1]
 
-                    output_queue.put((bin_name, True, blast_output_path, None))
+                    # Create section_id compatible with existing parsing
+                    section_id = f"{contig}_section_{window_id}_start_bp{window_start}_end_bp{window_end}"
+                    query_records[section_id] = window_seq
 
-                except Exception as e:
-                    output_queue.put((bin_name, False, None, str(e)))
+                if not query_records:
+                    output_queue.put((bin_name, False, None, "No RT windows found in bin"))
+                    continue
 
-        finally:
-            contigs_db.disconnect()
+                # Run BLAST using the standalone execute_blast() function
+                blast_output_path = execute_blast(
+                    query_records=query_records,
+                    target_sequences=bin_contig_sequences,
+                    temp_dir=config['temp_dir'],
+                    word_size=config['word_size'],
+                    num_threads=1,
+                    query_fasta_filename=f"bin_{bin_name}_homology_query.fasta",
+                    target_fasta_filename=f"bin_{bin_name}_homology_target.fasta",
+                    blast_output_filename=f"blast_output_homology_for_bin_{bin_name}_wordsize_{config['word_size']}.xml"
+                )
+
+                output_queue.put((bin_name, True, blast_output_path, None))
+
+            except Exception as e:
+                output_queue.put((bin_name, False, None, str(e)))
 
 
     def process_collections_mode(self):
@@ -1669,8 +1616,6 @@ class DGR_Finder:
             self.run.info_single(f"Processing {num_bins} bins in parallel using {self.num_threads} threads "
                                 f"(each BLAST uses 1 thread).", nl_before=1)
 
-            # prepare config dict for workers (includes SNV loading parameters
-            # so workers can load their own SNVs directly from the profile DB)
             config = {
                 'temp_dir': self.temp_dir,
                 'word_size': self.word_size,
@@ -1678,11 +1623,23 @@ class DGR_Finder:
                 'snv_window_step': self.snv_window_step,
                 'minimum_snv_density': self.minimum_snv_density,
                 'variable_buffer_length': self.variable_buffer_length,
-                'snv_columns': ['sample_id', 'split_name', 'pos_in_contig', 'base_pos_in_codon',
-                                'departure_from_reference', 'reference'] + nucleotides,
-                'departure_from_reference_percentage': self.departure_from_reference_percentage,
-                'discovery_mode': self.discovery_mode,
             }
+
+            # pre-load contig sequences for all bins in one DB read (avoids 62
+            # workers competing for GPFS locks on the same SQLite file)
+            all_bin_contigs = set()
+            for bin_splits_list in bin_splits_dict.values():
+                all_bin_contigs.update(s.split('_split_')[0] for s in bin_splits_list)
+
+            contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
+            if len(all_bin_contigs) > 100000:
+                all_contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
+            else:
+                all_contig_sequences = contigs_db.db.smart_get(t.contig_sequences_table_name, 'contig', all_bin_contigs, string_the_key=True, error_if_no_data=False)
+            contigs_db.disconnect()
+
+            # partition SNV records by bin
+            snv_by_split = dict(list(self.snv_panda.groupby('split_name')))
 
             # use 'spawn' context so child processes start with a clean address
             # space instead of inheriting the parent's memory via fork()
@@ -1690,22 +1647,28 @@ class DGR_Finder:
             input_queue = ctx.Queue()
             output_queue = ctx.Queue()
 
-            # put lightweight bin identifiers in input queue — workers load
-            # their own SNV data directly from the profile database
+            # enqueue per-bin work items with all data workers need (zero DB access)
             for bin_name, bin_splits_list in bin_splits_dict.items():
-                input_queue.put((bin_name, bin_splits_list))
+                bin_splits_set = set(bin_splits_list)
+                bin_snv_frames = [snv_by_split[s] for s in bin_splits_set if s in snv_by_split]
+                bin_snv_records = pd.concat(bin_snv_frames).to_dict('records') if bin_snv_frames else []
+                bin_contigs_set = set(s.split('_split_')[0] for s in bin_splits_list)
+                bin_contig_seqs = {c: all_contig_sequences[c] for c in bin_contigs_set if c in all_contig_sequences}
+                input_queue.put((bin_name, bin_splits_list, bin_snv_records, bin_contig_seqs))
 
             # add one sentinel per worker so they exit gracefully
             for _ in range(self.num_threads):
                 input_queue.put(None)
+
+            # free intermediate data
+            del snv_by_split, all_contig_sequences
 
             # start workers
             workers = []
             for i in range(self.num_threads):
                 worker = ctx.Process(
                     target=DGR_Finder.process_bin_worker,
-                    args=(input_queue, output_queue, config,
-                          self.contigs_db_path, self.profile_db_path))
+                    args=(input_queue, output_queue, config))
                 workers.append(worker)
                 worker.start()
 
@@ -1895,7 +1858,6 @@ class DGR_Finder:
             self.run.info_single(f"Processing {num_bins} bins in parallel using {self.num_threads} threads "
                                 f"(homology mode, each BLAST uses 1 thread).", nl_before=1)
 
-            # Prepare config dict for workers
             config = {
                 'temp_dir': self.temp_dir,
                 'word_size': self.word_size,
@@ -1908,26 +1870,43 @@ class DGR_Finder:
                 window_dict['window_id'] = window_id
                 rt_windows_list.append(window_dict)
 
+            # pre-load contig sequences for all bins in one DB read (avoids 62
+            # workers competing for GPFS locks on the same SQLite file)
+            all_bin_contigs = set()
+            for bin_contigs_list in bin_contigs_dict.values():
+                all_bin_contigs.update(bin_contigs_list)
+
+            contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
+            if len(all_bin_contigs) > 100000:
+                all_contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
+            else:
+                all_contig_sequences = contigs_db.db.smart_get(t.contig_sequences_table_name, 'contig', all_bin_contigs, string_the_key=True, error_if_no_data=False)
+            contigs_db.disconnect()
+
             # use 'spawn' context so child processes start with a clean address
             # space instead of inheriting the parent's memory via fork()
             ctx = multiprocessing.get_context('spawn')
             input_queue = ctx.Queue()
             output_queue = ctx.Queue()
 
-            # Put all bins in input queue
+            # enqueue per-bin work items with pre-loaded contig sequences (zero DB access)
             for bin_name, bin_contigs_list in bin_contigs_dict.items():
-                input_queue.put((bin_name, bin_contigs_list))
+                bin_contig_seqs = {c: all_contig_sequences[c] for c in bin_contigs_list if c in all_contig_sequences}
+                input_queue.put((bin_name, bin_contigs_list, bin_contig_seqs))
 
             # add one sentinel per worker so they exit gracefully
             for _ in range(self.num_threads):
                 input_queue.put(None)
+
+            # free intermediate data
+            del all_contig_sequences
 
             # Start workers
             workers = []
             for i in range(self.num_threads):
                 worker = ctx.Process(
                     target=DGR_Finder.process_bin_worker_homology,
-                    args=(input_queue, output_queue, config, rt_windows_list, self.contigs_db_path))
+                    args=(input_queue, output_queue, config, rt_windows_list))
                 workers.append(worker)
                 worker.start()
 
