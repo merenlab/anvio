@@ -3336,10 +3336,52 @@ class DGR_Finder:
             self.run.warning("There are no functions for genes in your contigs database :/ Your reports on DGRs "
                             "will not include the function of genes with VRs. SHAME.")
 
-        # now we will go through each VRs to populate `self.vr_gene_info`
-        # with gene calls and functions
-        gene_calls_per_contig = {}
+        # collect all unique contigs referenced by DGR VRs so we can batch-load
+        # data in a few scoped queries instead of one per gene/contig/function
+        vr_contigs = set()
+        for tr in self.DGRs_found_dict.values():
+            for vr_data in tr['VRs'].values():
+                vr_contigs.add(vr_data['VR_contig'])
 
+        # batch-load gene calls for DGR contigs only
+        where_clause = (f'''source="{self.gene_caller_to_consider_in_context}" AND '''
+                        f'''contig IN ({','.join(f'"{c}"' for c in vr_contigs)})''')
+        all_gene_calls = contigs_db.db.get_some_rows_from_table_as_dict(t.genes_in_contigs_table_name, where_clause=where_clause, error_if_no_data=False)
+
+        # index gene calls by contig for fast overlap lookup
+        gene_calls_per_contig = {}
+        relevant_gene_ids = set()
+        for gene_callers_id, gene_call in all_gene_calls.items():
+            contig = gene_call['contig']
+            if contig not in gene_calls_per_contig:
+                gene_calls_per_contig[contig] = {}
+            gene_calls_per_contig[contig][gene_callers_id] = gene_call
+            relevant_gene_ids.add(gene_callers_id)
+
+        # batch-load contig sequences for VR contigs only
+        contig_sequences = contigs_db.db.smart_get(t.contig_sequences_table_name, 'contig', vr_contigs, string_the_key=True, error_if_no_data=False)
+
+        # batch-load gene functions scoped to relevant gene IDs only
+        all_gene_functions = {}
+        if function_sources_found and relevant_gene_ids:
+            where_clause = '''gene_callers_id IN (%s)''' % ','.join(str(g) for g in relevant_gene_ids)
+            functions_raw = contigs_db.db.get_some_rows_from_table_as_dict(t.gene_function_calls_table_name, where_clause=where_clause, error_if_no_data=False)
+            for entry in functions_raw.values():
+                gid = entry['gene_callers_id']
+                if gid not in all_gene_functions:
+                    all_gene_functions[gid] = []
+                all_gene_functions[gid].append(entry)
+
+        # batch-load AA sequences scoped to relevant gene IDs only
+        all_aa_sequences = {}
+        if relevant_gene_ids:
+            where_clause = '''gene_callers_id IN (%s)''' % ','.join(str(g) for g in relevant_gene_ids)
+            all_aa_sequences = contigs_db.db.get_some_rows_from_table_as_dict(t.gene_amino_acid_sequences_table_name, where_clause=where_clause, error_if_no_data=False)
+
+        contigs_db.disconnect()
+
+        # now go through each VR and populate self.vr_gene_info using the
+        # pre-loaded data (no more DB queries in this loop)
         for dgr, tr in self.DGRs_found_dict.items():
             for vr, vr_data in tr['VRs'].items():
                 contig_name = vr_data['VR_contig']
@@ -3350,56 +3392,43 @@ class DGR_Finder:
                 else:
                     self.vr_gene_info[dgr][vr] = {}
 
-                # get any genes overlapping the start and end position of the VR
-                if contig_name not in gene_calls_per_contig:
-                    where_clause = f'''contig="{contig_name}" and source="{self.gene_caller_to_consider_in_context}"'''
-                    gene_calls_per_contig[contig_name] = contigs_db.db.get_some_rows_from_table_as_dict(t.genes_in_contigs_table_name, where_clause=where_clause, error_if_no_data=False)
-
-                gene_calls_in_contig = gene_calls_per_contig[contig_name]
+                gene_calls_in_contig = gene_calls_per_contig.get(contig_name, {})
 
                 # find gene caller overlapping with VR
                 for gene_callers_id, gene_call in gene_calls_in_contig.items():
                     if gene_call['start'] <= vr_start and gene_call['stop'] >= vr_end:
                         gene_call['gene_callers_id'] = gene_callers_id
 
-                        # if there are function sources, let's recover them for our gene of interest
-                        if function_sources_found:
-                            where_clause = f'''gene_callers_id="{gene_callers_id}"'''
-                            hits = list(contigs_db.db.get_some_rows_from_table_as_dict(t.gene_function_calls_table_name, where_clause=where_clause, error_if_no_data=False).values())
-                            if hits:
-                                gene_call['functions'] = [h['function'] for h in hits]
-                                gene_call['sources'] = [h['source'] for h in hits]
-                                gene_call['accessions'] = [h['accession'] for h in hits]
-                            else:
-                                gene_call['functions'] = []
-                                gene_call['sources'] = []
-                                gene_call['accessions'] = []
+                        # recover functions for this gene
+                        if function_sources_found and gene_callers_id in all_gene_functions:
+                            hits = all_gene_functions[gene_callers_id]
+                            gene_call['functions'] = [h['function'] for h in hits]
+                            gene_call['sources'] = [h['source'] for h in hits]
+                            gene_call['accessions'] = [h['accession'] for h in hits]
                         else:
                             gene_call['functions'] = []
                             gene_call['sources'] = []
                             gene_call['accessions'] = []
 
-                        # while we are here, let's add more info about the gene
-                        # DNA sequence:
-                        where_clause = f'''contig == "{contig_name}"'''
-                        contig_sequence = contigs_db.db.get_some_rows_from_table_as_dict(t.contig_sequences_table_name, where_clause=where_clause, error_if_no_data=False)
-                        dna_sequence = contig_sequence[contig_name]['sequence'][gene_call['start']:gene_call['stop']]
+                        # DNA sequence
+                        contig_seq = contig_sequences.get(contig_name, {}).get('sequence', '')
+                        dna_sequence = contig_seq[gene_call['start']:gene_call['stop']]
                         if gene_call['direction'] == 'f':
                             gene_call['DNA_sequence'] = dna_sequence
                         else:
                             gene_call['DNA_sequence'] = utils.rev_comp(dna_sequence)
 
-                        # add AA sequence
-                        where_clause = f'''gene_callers_id == "{gene_callers_id}"'''
-                        aa_sequence = contigs_db.db.get_some_rows_from_table_as_dict(t.gene_amino_acid_sequences_table_name, where_clause=where_clause, error_if_no_data=False)
-                        gene_call['AA_sequence'] = aa_sequence[gene_callers_id]['sequence']
+                        # AA sequence
+                        if gene_callers_id in all_aa_sequences:
+                            gene_call['AA_sequence'] = all_aa_sequences[gene_callers_id]['sequence']
+                        else:
+                            gene_call['AA_sequence'] = ''
 
                         # gene length
                         gene_call['length'] = gene_call['stop'] - gene_call['start']
 
                         self.vr_gene_info[dgr][vr] = gene_call
                         break
-        contigs_db.disconnect()
 
         # write the results to TSV file
         self.write_dgr_genes_found_tsv()
@@ -4120,13 +4149,56 @@ class DGR_Finder:
                             "without any functional information. You can always run functional annotation programs "
                             "like `anvi-run-ncbi-cogs` and re-run this analysis to get richer output.")
 
+        # bulk-load data scoped to DGR contigs to avoid per-contig / per-gene
+        # DB queries on slow network filesystems
+        dgr_contigs = set()
+        for dgr_data in dgrs_dict.values():
+            dgr_contigs.add(dgr_data.get('TR_contig'))
+            for vr_data in dgr_data['VRs'].values():
+                dgr_contigs.add(vr_data.get('VR_contig'))
+        dgr_contigs.discard(None)
+
+        # gene calls for DGR contigs only
+        where_clause = (f'''source="{self.gene_caller_to_consider_in_context}" AND '''
+                        f'''contig IN ({','.join(f'"{c}"' for c in dgr_contigs)})''')
+        all_gene_calls = contigs_db.db.get_some_rows_from_table_as_dict(t.genes_in_contigs_table_name, where_clause=where_clause, error_if_no_data=False)
+
+        gene_calls_per_contig = {}
+        relevant_gene_ids = set()
+        for gene_callers_id, gene_call in all_gene_calls.items():
+            contig = gene_call['contig']
+            if contig not in gene_calls_per_contig:
+                gene_calls_per_contig[contig] = {}
+            gene_calls_per_contig[contig][gene_callers_id] = gene_call
+            relevant_gene_ids.add(gene_callers_id)
+
+        # contig sequences for DGR contigs only
+        all_contig_sequences = contigs_db.db.smart_get(t.contig_sequences_table_name, 'contig', dgr_contigs, string_the_key=True, error_if_no_data=False)
+
+        # gene functions scoped to relevant gene IDs only
+        all_gene_functions = {}
+        if function_sources_found and relevant_gene_ids:
+            where_clause = '''gene_callers_id IN (%s)''' % ','.join(str(g) for g in relevant_gene_ids)
+            functions_raw = contigs_db.db.get_some_rows_from_table_as_dict(t.gene_function_calls_table_name, where_clause=where_clause, error_if_no_data=False)
+            for entry in functions_raw.values():
+                gid = entry['gene_callers_id']
+                if gid not in all_gene_functions:
+                    all_gene_functions[gid] = []
+                all_gene_functions[gid].append(entry)
+
+        # AA sequences scoped to relevant gene IDs only
+        all_aa_sequences = {}
+        if relevant_gene_ids:
+            where_clause = '''gene_callers_id IN (%s)''' % ','.join(str(g) for g in relevant_gene_ids)
+            all_aa_sequences = contigs_db.db.get_some_rows_from_table_as_dict(t.gene_amino_acid_sequences_table_name, where_clause=where_clause, error_if_no_data=False)
+
+        contigs_db.disconnect()
+
         self.progress.new('Recovering genomic context surrounding the DGRs', progress_total_items=len(self.DGRs_found_dict))
         self.progress.update('...')
 
         # now we will go through each dgr to populate `self.genomic_context_surrounding_dgrs`
-        # with gene calls and functions
-        gene_calls_per_TR_contig = {}
-        gene_calls_per_VR_contig = {}
+        # with gene calls and functions (all lookups are in-memory, no DB queries)
         trs_with_no_gene_calls_around = set([])
         vrs_with_no_gene_calls_around = set([])
 
@@ -4144,11 +4216,7 @@ class DGR_Finder:
 
             is_tr_in_gene = False
 
-            if TR_contig_name not in gene_calls_per_TR_contig:
-                where_clause = f'''contig="{TR_contig_name}" and source="{self.gene_caller_to_consider_in_context}"'''
-                gene_calls_per_TR_contig[TR_contig_name] = contigs_db.db.get_some_rows_from_table_as_dict(t.genes_in_contigs_table_name, where_clause=where_clause, error_if_no_data=False)
-
-            gene_calls_in_TR_contig = gene_calls_per_TR_contig[TR_contig_name]
+            gene_calls_in_TR_contig = gene_calls_per_contig.get(TR_contig_name, {})
 
             if not gene_calls_in_TR_contig:
                 # case: TR has no genes
@@ -4178,30 +4246,16 @@ class DGR_Finder:
                                 closest_gene_call_to_TR_end + self.num_genes_to_consider_in_context)
                 tr_gene_caller_ids_of_interest = [c for c in TR_range if c in gene_calls_in_TR_contig]
 
-                # === BATCH QUERIES BEFORE THE LOOP (query once, use many times) ===
-                # 1. Fetch all functions for genes of interest in one query
+                # pre-index functions for genes of interest
                 tr_functions_by_gene = defaultdict(list)
-                if function_sources_found and tr_gene_caller_ids_of_interest:
-                    where_clause = '''gene_callers_id IN (%s)''' % (', '.join([str(g) for g in tr_gene_caller_ids_of_interest]))
-                    all_tr_function_hits = list(contigs_db.db.get_some_rows_from_table_as_dict(
-                        t.gene_function_calls_table_name, where_clause=where_clause, error_if_no_data=False).values())
-                    for hit in all_tr_function_hits:
-                        tr_functions_by_gene[hit['gene_callers_id']].append(hit)
+                if function_sources_found:
+                    for gid in tr_gene_caller_ids_of_interest:
+                        if gid in all_gene_functions:
+                            tr_functions_by_gene[gid] = all_gene_functions[gid]
 
-                # 2. Fetch contig sequence once
-                where_clause = f'''contig == "{TR_contig_name}"'''
-                tr_contig_seq_data = contigs_db.db.get_some_rows_from_table_as_dict(
-                    t.contig_sequences_table_name, where_clause=where_clause, error_if_no_data=False)
-                tr_contig_sequence = tr_contig_seq_data[TR_contig_name]['sequence'] if TR_contig_name in tr_contig_seq_data else ''
+                tr_contig_sequence = all_contig_sequences.get(TR_contig_name, {}).get('sequence', '')
 
-                # 3. Fetch all AA sequences in one query
-                tr_aa_sequences = {}
-                if tr_gene_caller_ids_of_interest:
-                    where_clause = '''gene_callers_id IN (%s)''' % (', '.join([str(g) for g in tr_gene_caller_ids_of_interest]))
-                    tr_aa_sequences = contigs_db.db.get_some_rows_from_table_as_dict(
-                        t.gene_amino_acid_sequences_table_name, where_clause=where_clause, error_if_no_data=False)
-
-                # === NOW LOOP - only in-memory operations ===
+                # === in-memory operations only ===
                 for gene_callers_id in tr_gene_caller_ids_of_interest:
                     gene_call = gene_calls_in_TR_contig[gene_callers_id]
                     gene_call['gene_callers_id'] = gene_callers_id
@@ -4220,8 +4274,7 @@ class DGR_Finder:
                         gene_call['DNA_sequence'] = utils.rev_comp(dna_sequence)
                         rev_compd = True
 
-                    # O(1) dict lookup instead of database query
-                    gene_call['AA_sequence'] = tr_aa_sequences.get(gene_callers_id, {}).get('sequence', '')
+                    gene_call['AA_sequence'] = all_aa_sequences.get(gene_callers_id, {}).get('sequence', '')
 
                     gene_call['length'] = gene_call['stop'] - gene_call['start']
 
@@ -4257,11 +4310,7 @@ class DGR_Finder:
                 # initialize VR context
                 vr_context_genes = {}
 
-                if VR_contig not in gene_calls_per_VR_contig:
-                    where_clause = f'''contig="{VR_contig}" and source="{self.gene_caller_to_consider_in_context}"'''
-                    gene_calls_per_VR_contig[VR_contig] = contigs_db.db.get_some_rows_from_table_as_dict(t.genes_in_contigs_table_name, where_clause=where_clause, error_if_no_data=False)
-
-                gene_calls_in_VR_contig = gene_calls_per_VR_contig[VR_contig]
+                gene_calls_in_VR_contig = gene_calls_per_contig.get(VR_contig, {})
 
                 if not len(gene_calls_in_VR_contig):
                     vrs_with_no_gene_calls_around.add(vr_id)
@@ -4270,7 +4319,6 @@ class DGR_Finder:
                 min_distance_to_VR_start, min_distance_to_VR_end = float('inf'), float('inf')
                 closest_gene_call_to_VR_start, closest_gene_call_to_VR_end = None, None
                 for gene_callers_id, gene_call in gene_calls_in_VR_contig.items():
-                    # cache distance calculations to avoid redundant abs() calls
                     dist_to_start = abs(gene_call['start'] - VR_start)
                     dist_to_end = abs(gene_call['start'] - VR_end)
 
@@ -4286,38 +4334,22 @@ class DGR_Finder:
                                 closest_gene_call_to_VR_end + self.num_genes_to_consider_in_context)
                 vr_gene_caller_ids_of_interest = [c for c in VR_range if c in gene_calls_in_VR_contig]
 
-                # === BATCH QUERIES BEFORE THE LOOP (query once, use many times) ===
-                # 1. Fetch all functions for genes of interest in one query
+                # pre-index functions for genes of interest
                 vr_functions_by_gene = defaultdict(list)
-                if function_sources_found and vr_gene_caller_ids_of_interest:
-                    where_clause = '''gene_callers_id IN (%s)''' % (', '.join([str(g) for g in vr_gene_caller_ids_of_interest]))
-                    all_vr_function_hits = list(contigs_db.db.get_some_rows_from_table_as_dict(
-                        t.gene_function_calls_table_name, where_clause=where_clause, error_if_no_data=False).values())
-                    for hit in all_vr_function_hits:
-                        vr_functions_by_gene[hit['gene_callers_id']].append(hit)
+                if function_sources_found:
+                    for gid in vr_gene_caller_ids_of_interest:
+                        if gid in all_gene_functions:
+                            vr_functions_by_gene[gid] = all_gene_functions[gid]
 
-                # 2. Fetch contig sequence once
-                where_clause = f'''contig == "{VR_contig}"'''
-                vr_contig_seq_data = contigs_db.db.get_some_rows_from_table_as_dict(
-                    t.contig_sequences_table_name, where_clause=where_clause, error_if_no_data=False)
-                vr_contig_sequence = vr_contig_seq_data[VR_contig]['sequence'] if VR_contig in vr_contig_seq_data else ''
+                vr_contig_sequence = all_contig_sequences.get(VR_contig, {}).get('sequence', '')
 
-                # 3. Fetch all AA sequences in one query
-                vr_aa_sequences = {}
-                if vr_gene_caller_ids_of_interest:
-                    where_clause = '''gene_callers_id IN (%s)''' % (', '.join([str(g) for g in vr_gene_caller_ids_of_interest]))
-                    vr_aa_sequences = contigs_db.db.get_some_rows_from_table_as_dict(
-                        t.gene_amino_acid_sequences_table_name, where_clause=where_clause, error_if_no_data=False)
-
-                # === NOW LOOP - only in-memory operations ===
+                # in-memory operations only
                 for gene_callers_id in vr_gene_caller_ids_of_interest:
                     gene_call = gene_calls_in_VR_contig[gene_callers_id]
                     gene_call['gene_callers_id'] = gene_callers_id
 
-                    # O(1) dict lookup instead of database query
                     gene_call['functions'] = vr_functions_by_gene.get(gene_callers_id, [])
 
-                    # Use pre-fetched contig sequence
                     dna_sequence = vr_contig_sequence[gene_call['start']:gene_call['stop']]
 
                     rev_compd = None
@@ -4328,8 +4360,7 @@ class DGR_Finder:
                         gene_call['DNA_sequence'] = utils.rev_comp(dna_sequence)
                         rev_compd = True
 
-                    # O(1) dict lookup instead of database query
-                    gene_call['AA_sequence'] = vr_aa_sequences.get(gene_callers_id, {}).get('sequence', '')
+                    gene_call['AA_sequence'] = all_aa_sequences.get(gene_callers_id, {}).get('sequence', '')
 
                     gene_call['length'] = gene_call['stop'] - gene_call['start']
 
@@ -4346,7 +4377,6 @@ class DGR_Finder:
 
                 self.genomic_context_surrounding_dgrs[dgr_id][vr_id] = copy.deepcopy(vr_context_genes)
 
-        contigs_db.disconnect()
         self.progress.end()
         self.run.info_single('Completed recovering genomic context surrounding the DGRs', nl_before=1)
 
