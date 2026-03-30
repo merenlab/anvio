@@ -551,12 +551,14 @@ class DGR_Finder:
         self.snv_panda['contig_name'] = self.snv_panda['split_name'].str.split('_split_').str[0]
         profile_db.disconnect()
 
-        # apply SNV filters
+        # filter on departure_from_reference only — keep all codon positions so
+        # analyze_snv_pattern() can assess 3rd codon position SNVs later.
+        # VR candidate detection (find_snv_clusters) applies the codon 1+2
+        # filter on the fly via a combined boolean mask.
+        self.snv_panda = self.snv_panda.query("departure_from_reference >= @self.departure_from_reference_percentage")
+
         if self.discovery_mode:
             self.run.info_single("Running discovery mode. Search for SNVs in all possible locations. You go Dora the explorer!")
-            self.snv_panda = self.snv_panda.query("departure_from_reference >= @self.departure_from_reference_percentage")
-        else:
-            self.snv_panda = self.snv_panda.query("departure_from_reference >= @self.departure_from_reference_percentage and base_pos_in_codon in (1, 2)")
 
 
     def load_gene_info(self):
@@ -732,33 +734,26 @@ class DGR_Finder:
                 'A', 'C', 'G', 'T': np.array of nucleotide coverage counts
             Returns None if no SNVs found.
         """
-        profile_db = dbops.ProfileDatabase(self.profile_db_path)
+        # filter self.snv_panda in memory instead of querying the profile DB
+        # (self.snv_panda already has all codon positions and departure_from_reference
+        # filtered — see init_snv_table)
+        mask = ((self.snv_panda['contig_name'] == contig_name) &
+                (self.snv_panda['pos_in_contig'] >= start_pos) &
+                (self.snv_panda['pos_in_contig'] <= end_pos))
+        region_df = self.snv_panda.loc[mask].sort_values('pos_in_contig')
 
-        # Query for specific region using split_name LIKE pattern (no codon position filter)
-        where_clause = f'''split_name LIKE "{contig_name}_split_%" AND pos_in_contig >= {start_pos} AND pos_in_contig <= {end_pos} AND departure_from_reference >= {self.departure_from_reference_percentage}'''
-
-        snv_data = profile_db.db.get_some_rows_from_table_as_dict(
-            t.variable_nts_table_name,
-            where_clause=where_clause,
-            error_if_no_data=False
-        )
-        profile_db.disconnect()
-
-        if not snv_data:
+        if region_df.empty:
             return None
 
-        # Convert to sorted numpy arrays
-        rows = sorted(snv_data.values(), key=lambda x: x['pos_in_contig'])
-
         return {
-            'positions': np.array([r['pos_in_contig'] for r in rows]),
-            'codon_pos': np.array([r['base_pos_in_codon'] for r in rows]),
-            'reference': np.array([r['reference'] for r in rows]),
-            'sample_ids': np.array([r['sample_id'] for r in rows]),
-            'A': np.array([r['A'] for r in rows]),
-            'C': np.array([r['C'] for r in rows]),
-            'G': np.array([r['G'] for r in rows]),
-            'T': np.array([r['T'] for r in rows]),
+            'positions': region_df['pos_in_contig'].values,
+            'codon_pos': region_df['base_pos_in_codon'].values,
+            'reference': region_df['reference'].values,
+            'sample_ids': region_df['sample_id'].values,
+            'A': region_df['A'].values,
+            'C': region_df['C'].values,
+            'G': region_df['G'].values,
+            'T': region_df['T'].values,
         }
 
 
@@ -1150,10 +1145,12 @@ class DGR_Finder:
         # reset possible windows each run
         self.all_possible_windows = {}
 
-        # For SNV windows, only keep SNVs with >= 3 distinct nucleotides within a sample.
+        # For VR candidate detection: keep SNVs at codon positions 1+2 with >= 3
+        # distinct nucleotides. Combined mask avoids creating intermediate copies.
         min_diverse_bases = 3
-        diverse_base_counts = (self.snv_panda[nucleotides] > 0).sum(axis=1)
-        snv_panda_for_windows = self.snv_panda.loc[diverse_base_counts >= min_diverse_bases]
+        diverse_mask = (self.snv_panda[nucleotides] > 0).sum(axis=1) >= min_diverse_bases
+        codon_mask = self.snv_panda['base_pos_in_codon'].isin([1, 2]) if not self.discovery_mode else True
+        snv_panda_for_windows = self.snv_panda.loc[diverse_mask & codon_mask]
 
         # group the DataFrame by 'split_name' and 'sample_id' upfront
         grouped = snv_panda_for_windows.groupby(['split_name', 'sample_id'])
@@ -1374,8 +1371,9 @@ class DGR_Finder:
 
                 # === find_snv_clusters logic ===
                 min_diverse_bases = 3
-                diverse_base_counts = (snv_panda[nucleotides] > 0).sum(axis=1)
-                snv_panda_for_windows = snv_panda.loc[diverse_base_counts >= min_diverse_bases]
+                diverse_mask = (snv_panda[nucleotides] > 0).sum(axis=1) >= min_diverse_bases
+                codon_mask = snv_panda['base_pos_in_codon'].isin([1, 2]) if not config.get('discovery_mode') else True
+                snv_panda_for_windows = snv_panda.loc[diverse_mask & codon_mask]
                 all_possible_windows = {}
                 grouped = snv_panda_for_windows.groupby(['split_name', 'sample_id'])
 
@@ -1623,6 +1621,7 @@ class DGR_Finder:
                 'snv_window_step': self.snv_window_step,
                 'minimum_snv_density': self.minimum_snv_density,
                 'variable_buffer_length': self.variable_buffer_length,
+                'discovery_mode': self.discovery_mode,
             }
 
             # pre-load contig sequences for all bins in one DB read (avoids 62
