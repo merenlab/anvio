@@ -5,7 +5,6 @@
 import re
 import csv
 import os
-import gc
 import queue
 import shutil
 import argparse
@@ -611,46 +610,6 @@ class DGR_Finder:
         for contig in self.gene_positions:
             self.gene_positions[contig].sort(key=lambda x: x[0])
 
-
-    def _clear_heavy_attrs_for_fork(self):
-        """Save and clear heavy attributes before forking workers to reduce COW surface.
-
-        When forking child processes, Python's reference counting triggers copy-on-write
-        page duplication on every attribute access in the child. This can cause each child
-        to materialize a private copy of the parent's entire address space. By clearing
-        heavy attributes before fork and restoring them after, we minimize the COW surface.
-
-        Returns
-        =======
-        saved : dict
-            Saved attribute references to be passed to _restore_heavy_attrs().
-        """
-
-        heavy_attrs = ('snv_panda', 'genes_in_contigs', 'gene_positions',
-                       'rt_gene_regions', 'rt_windows')
-
-        saved = {}
-        for attr in heavy_attrs:
-            if hasattr(self, attr):
-                saved[attr] = getattr(self, attr)
-                setattr(self, attr, None)
-
-        gc.collect()
-
-        try:
-            import ctypes
-            ctypes.CDLL("libc.so.6").malloc_trim(0)
-        except Exception:
-            pass
-
-        return saved
-
-
-    def _restore_heavy_attrs(self, saved):
-        """Restore attributes saved by _clear_heavy_attrs_for_fork()."""
-
-        for attr, val in saved.items():
-            setattr(self, attr, val)
 
 
     def load_rt_gene_regions(self):
@@ -1725,8 +1684,11 @@ class DGR_Finder:
                 'discovery_mode': self.discovery_mode,
             }
 
-            input_queue = multiprocessing.Queue()
-            output_queue = multiprocessing.Queue()
+            # use 'spawn' context so child processes start with a clean address
+            # space instead of inheriting the parent's memory via fork()
+            ctx = multiprocessing.get_context('spawn')
+            input_queue = ctx.Queue()
+            output_queue = ctx.Queue()
 
             # put lightweight bin identifiers in input queue — workers load
             # their own SNV data directly from the profile database
@@ -1737,14 +1699,10 @@ class DGR_Finder:
             for _ in range(self.num_threads):
                 input_queue.put(None)
 
-            # clear heavy attributes from self before forking to minimize
-            # copy-on-write memory duplication in child processes
-            saved_attrs = self._clear_heavy_attrs_for_fork()
-
             # start workers
             workers = []
             for i in range(self.num_threads):
-                worker = multiprocessing.Process(
+                worker = ctx.Process(
                     target=DGR_Finder.process_bin_worker,
                     args=(input_queue, output_queue, config,
                           self.contigs_db_path, self.profile_db_path))
@@ -1796,9 +1754,6 @@ class DGR_Finder:
                     worker.join(timeout=5)
                     if worker.is_alive():
                         worker.terminate()
-
-                # restore heavy attributes for post-processing
-                self._restore_heavy_attrs(saved_attrs)
 
         else:
             # === SEQUENTIAL BIN PROCESSING (original behavior) ===
@@ -1953,8 +1908,11 @@ class DGR_Finder:
                 window_dict['window_id'] = window_id
                 rt_windows_list.append(window_dict)
 
-            input_queue = multiprocessing.Queue()
-            output_queue = multiprocessing.Queue()
+            # use 'spawn' context so child processes start with a clean address
+            # space instead of inheriting the parent's memory via fork()
+            ctx = multiprocessing.get_context('spawn')
+            input_queue = ctx.Queue()
+            output_queue = ctx.Queue()
 
             # Put all bins in input queue
             for bin_name, bin_contigs_list in bin_contigs_dict.items():
@@ -1964,14 +1922,10 @@ class DGR_Finder:
             for _ in range(self.num_threads):
                 input_queue.put(None)
 
-            # clear heavy attributes from self before forking to minimize
-            # copy-on-write memory duplication in child processes
-            saved_attrs = self._clear_heavy_attrs_for_fork()
-
             # Start workers
             workers = []
             for i in range(self.num_threads):
-                worker = multiprocessing.Process(
+                worker = ctx.Process(
                     target=DGR_Finder.process_bin_worker_homology,
                     args=(input_queue, output_queue, config, rt_windows_list, self.contigs_db_path))
                 workers.append(worker)
@@ -2021,9 +1975,6 @@ class DGR_Finder:
                     worker.join(timeout=5)
                     if worker.is_alive():
                         worker.terminate()
-
-                # restore heavy attributes for post-processing
-                self._restore_heavy_attrs(saved_attrs)
 
         else:
             # === SEQUENTIAL BIN PROCESSING ===
@@ -5082,95 +5033,108 @@ class DGR_Finder:
         self.run.info_single("Computing the Variable Regions Primers and creating a 'DGR_Primers_used_for_VR_diversity.tsv' file.", nl_before=1)
         self.print_primers_dict_to_csv(primers_dict)
 
-        ##################
-        # MULTITHREADING #
-        ##################
-
-        input_queue = multiprocessing.Queue()
-        output_queue = multiprocessing.Queue()
-
         self.dgr_activity = []
         # create directory for Primer matches
         primer_folder= os.path.join(self.output_directory, "PRIMER_MATCHES")
 
-        # put all the sample names in our input queue
-        for sample_name in sample_names:
-            input_queue.put(sample_name)
-
-        # add one sentinel per worker so they exit gracefully
-        for _ in range(self.num_threads):
-            input_queue.put(None)
-
-        # clear heavy attributes from self before forking to minimize
-        # copy-on-write memory duplication in child processes
-        saved_attrs = self._clear_heavy_attrs_for_fork()
-
-        # engage the proletariat, our hard-working wage-earner class
-        workers = []
-        for i in range(self.num_threads):
-            worker = multiprocessing.Process(target=DGR_Finder.compute_dgr_variability_profiling_per_vr,
-                                            args=(input_queue,
-                                                output_queue,
-                                                self.samples_artifact,
-                                                primers_dict,
-                                                primer_folder),
-                                            kwargs=({'progress': self.progress if self.num_threads == 1 else progress_quiet
-                                                }))
-            workers.append(worker)
-            worker.start()
-
-        # monitor progress
-        try:
+        if self.num_threads <= 1:
+            # === SINGLE-THREAD: run inline without spawning a subprocess ===
             self.progress.new('DGR variability profile', progress_total_items=num_samples)
-            if self.num_threads > 1:
+            for sample_name in sample_names:
+                self.progress.update(f"Processing sample {sample_name}...")
+
+                # extract sample-specific primers
+                primers_for_sample = {}
+                for primer_name, samples_data in primers_dict.items():
+                    if sample_name in samples_data:
+                        primers_for_sample[primer_name] = samples_data[sample_name]
+
+                samples_dict = self.samples_artifact.as_dict()
+                samples_dict_for_sample = {sample_name: samples_dict[sample_name]}
+                sample_artifact = SamplesTxt.from_dict(samples_dict_for_sample)
+
+                args = argparse.Namespace(samples_artifact=sample_artifact,
+                                         primers_dict=primers_for_sample,
+                                         output_dir=primer_folder,
+                                         only_report_primer_matches=True)
+
+                s = PrimerSearch(args, run=run_quiet, progress=self.progress)
+                s.process(return_dicts=True)
+
+                self.progress.increment()
+                if anvio.DEBUG:
+                    self.progress.reset()
+                    self.run.info_single(f"Sample {sample_name} has finished processing.", nl_before=1)
+
+            self.progress.end()
+
+        else:
+            # === PARALLEL: use spawn context so children start with clean memory ===
+            ctx = multiprocessing.get_context('spawn')
+            input_queue = ctx.Queue()
+            output_queue = ctx.Queue()
+
+            for sample_name in sample_names:
+                input_queue.put(sample_name)
+
+            # add one sentinel per worker so they exit gracefully
+            for _ in range(self.num_threads):
+                input_queue.put(None)
+
+            workers = []
+            for i in range(self.num_threads):
+                worker = ctx.Process(target=DGR_Finder.compute_dgr_variability_profiling_per_vr,
+                                                args=(input_queue,
+                                                    output_queue,
+                                                    self.samples_artifact,
+                                                    primers_dict,
+                                                    primer_folder),
+                                                kwargs=({'progress': progress_quiet
+                                                    }))
+                workers.append(worker)
+                worker.start()
+
+            # monitor progress
+            try:
+                self.progress.new('DGR variability profile', progress_total_items=num_samples)
                 self.progress.update(f"Processing {PL('sample', num_samples)} and {PL('primer', len(primers_dict))} in {PL('thread', self.num_threads)}.")
 
-            num_samples_processed = 0
-            while num_samples_processed < num_samples:
-                try:
-                    # use timeout so we can detect dead workers instead of blocking forever
+                num_samples_processed = 0
+                while num_samples_processed < num_samples:
                     try:
-                        sample_finished_processing = output_queue.get(timeout=10)
-                    except queue.Empty:
-                        if not any(w.is_alive() for w in workers):
-                            if self.num_threads > 1:
+                        # use timeout so we can detect dead workers instead of blocking forever
+                        try:
+                            sample_finished_processing = output_queue.get(timeout=10)
+                        except queue.Empty:
+                            if not any(w.is_alive() for w in workers):
                                 self.progress.end()
-                            raise ConfigError(f"All worker processes died unexpectedly after processing "
-                                              f"{num_samples_processed}/{num_samples} samples.")
-                        continue
+                                raise ConfigError(f"All worker processes died unexpectedly after processing "
+                                                  f"{num_samples_processed}/{num_samples} samples.")
+                            continue
 
-                    if anvio.DEBUG:
-                        self.progress.reset()
-                        self.run.info_single(f"Sample {sample_finished_processing} has finished processing.", nl_before=1)
-                    num_samples_processed += 1
-                    self.progress.increment(increment_to=num_samples_processed)
+                        if anvio.DEBUG:
+                            self.progress.reset()
+                            self.run.info_single(f"Sample {sample_finished_processing} has finished processing.", nl_before=1)
+                        num_samples_processed += 1
+                        self.progress.increment(increment_to=num_samples_processed)
 
-                    if self.num_threads > 1:
                         if num_samples_processed < num_samples:
                             self.progress.update(f"Samples processed: {num_samples_processed} of {num_samples}. Still working ...")
                         else:
                             self.progress.update("All done!")
-                except KeyboardInterrupt:
-                    self.run.info_single("Received kill signal, terminating all processes... Don't believe anything you see "
-                                        "below this and destroy all the output files with fire.", nl_before=1)
-                    break
+                    except KeyboardInterrupt:
+                        self.run.info_single("Received kill signal, terminating all processes... Don't believe anything you see "
+                                            "below this and destroy all the output files with fire.", nl_before=1)
+                        break
 
-            if self.num_threads > 1:
                 self.progress.end()
 
-        finally:
-            # gracefully join workers, then force-terminate any stragglers
-            for worker in workers:
-                worker.join(timeout=5)
-                if worker.is_alive():
-                    worker.terminate()
-
-            # restore heavy attributes for post-processing
-            self._restore_heavy_attrs(saved_attrs)
-
-        ######################
-        # END MULTITHREADING #
-        ######################
+            finally:
+                # gracefully join workers, then force-terminate any stragglers
+                for worker in workers:
+                    worker.join(timeout=5)
+                    if worker.is_alive():
+                        worker.terminate()
 
 
 
