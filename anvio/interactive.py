@@ -2121,7 +2121,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
                 # (4) adding additional layers
                 if self.items_additional_data_keys:
-                    json_entry.extend([self.items_additional_data_dict[split_name][header] if split_name in self.items_additional_data_dict else None for header in self.items_additional_data_keys])
+                    json_entry.extend([self.items_additional_data_dict.get(split_name, {}).get(header) for header in self.items_additional_data_keys])
 
                 # (5) adding hmm stuff
                 if self.hmm_searches_dict:

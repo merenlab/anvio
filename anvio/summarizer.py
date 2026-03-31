@@ -651,7 +651,11 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
                     # populate the entry with item aditional data
                     for items_additional_data_key in self.items_additional_data_keys:
                         if gene_cluster_name in self.items_additional_data_dict:
-                            entry.append(self.items_additional_data_dict[gene_cluster_name][items_additional_data_key])
+                            # avoid KeyError in when only some of the items have a particular key
+                            if items_additional_data_key in self.items_additional_data_dict[gene_cluster_name]:
+                                entry.append(self.items_additional_data_dict[gene_cluster_name][items_additional_data_key])
+                            else:
+                                entry.append('')
                         else:
                             entry.append('')
 
