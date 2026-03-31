@@ -1,6 +1,6 @@
 This program generates synthetic sequencing reads from a reference %(fasta)s file. It supports Illumina paired-end and single-end short reads, PacBio HiFi, and Oxford Nanopore long reads, with optional SNV injection at controlled multi-allele frequencies.
 
-The key feature is **multi-allele SNV injection**: you can specify exactly which positions should be variable and what the base frequencies should be at each position. This is critical for benchmarking tools that rely on SNV patterns, such as %(anvi-report-dgrs)s, where real biological variability involves 3-4 different bases at a position rather than just 2.
+The key feature is **multi-allele SNV injection**: you can specify exactly which positions should be variable and what the base frequencies should be at each position. This is critical for benchmarking tools that rely on SNV patterns where real biological variability involves 3-4 different bases at a position rather than just 2.
 
 ## Quick start with presets
 
