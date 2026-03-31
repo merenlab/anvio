@@ -20,23 +20,23 @@ Available presets:
 
 | Preset | Read type | Length | Insert size | Error rate | Quality |
 |--------|-----------|--------|-------------|------------|---------|
-| `illumina-paired` | paired-end | 150 bp | 450 bp (std 50) | 0.5% | ? (Q30) |
-| `illumina-single` | single-end | 150 bp | - | 0.5% | ? (Q30) |
+| `illumina-paired` | paired-end | 150 bp | 450 bp (std 50) | 0.5%% | ? (Q30) |
+| `illumina-single` | single-end | 150 bp | - | 0.5%% | ? (Q30) |
 
 **Long reads (PacBio):**
 
 | Preset | Read type | Length | Distribution | Error rate | Quality | Notes |
 |--------|-----------|--------|--------------|------------|---------|-------|
-| `pacbio-hifi` | long-distributed | 15 kb (std 3.5 kb) | normal | 0.1% | F (Q37) | Modern HiFi circular consensus sequencing |
-| `pacbio-clr` | long-distributed | 15 kb (std 8 kb) | normal | 12% | . (Q13) | Legacy CLR (pre-HiFi), noisy but long |
+| `pacbio-hifi` | long-distributed | 15 kb (std 3.5 kb) | normal | 0.1%% | F (Q37) | Modern HiFi circular consensus sequencing |
+| `pacbio-clr` | long-distributed | 15 kb (std 8 kb) | normal | 12%% | . (Q13) | Legacy CLR (pre-HiFi), noisy but long |
 
 **Long reads (Oxford Nanopore):**
 
 | Preset | Read type | Length | Distribution | Error rate | Quality | Notes |
 |--------|-----------|--------|--------------|------------|---------|-------|
-| `ont-r9` | long-distributed | 5 kb (std 4 kb) | lognormal | 6% | 3 (Q18) | Legacy R9.4.1 chemistry |
-| `ont-r10` | long-distributed | 8 kb (std 5 kb) | lognormal | 1% | = (Q28) | Modern R10.4.1 with super-accuracy basecalling |
-| `ont-ultralong` | long-distributed | 50 kb (std 40 kb) | lognormal | 2% | : (Q25) | PromethION ultralong runs, very high variance |
+| `ont-r9` | long-distributed | 5 kb (std 4 kb) | lognormal | 6%% | 3 (Q18) | Legacy R9.4.1 chemistry |
+| `ont-r10` | long-distributed | 8 kb (std 5 kb) | lognormal | 1%% | = (Q28) | Modern R10.4.1 with super-accuracy basecalling |
+| `ont-ultralong` | long-distributed | 50 kb (std 40 kb) | lognormal | 2%% | : (Q25) | PromethION ultralong runs, very high variance |
 
 ONT presets use a **lognormal** length distribution, which produces the right-skewed shape typical of nanopore data (mode lower than mean, with a long tail of very long reads). PacBio presets use a normal distribution, which better reflects the tighter length control of SMRT sequencing.
 
@@ -84,7 +84,7 @@ anvi-script-gen-reads -f %(fasta)s \
                       --num-alleles 3
 {{ codestop }}
 
-This places SNVs at approximately 1% of positions (1 per 100 bp), each with 3 different alleles at random frequencies. `--num-alleles` can be 2, 3, or 4.
+This places SNVs at approximately 1%% of positions (1 per 100 bp), each with 3 different alleles at random frequencies. `--num-alleles` can be 2, 3, or 4.
 
 ## Custom read type (no preset)
 
