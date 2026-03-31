@@ -491,7 +491,7 @@ class PangenomeGraphManager():
             # if complexity == 0 and min_expansion == 0:
             #     motif = 'INDEL'
             if complexity == 0 and min_expansion != 0:
-                motif = 'BB'
+                motif = 'BR'
                 max_expansion = 0
                 min_expansion = 0
                 diversity = 0
