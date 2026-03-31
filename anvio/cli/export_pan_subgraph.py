@@ -5,9 +5,9 @@ import sys
 
 import anvio
 import anvio.terminal as terminal
-import anvio.pangenome_graph_preprocess as preprocess
 
 from anvio.argparse import ArgumentParser
+from anvio.panops import PangenomeGraphSubGraph
 from anvio.errors import ConfigError, FilesNPathsError
 
 __copyright__ = "Copyleft 2015-2026, The Anvi'o Project (http://anvio.org/)"
@@ -25,8 +25,8 @@ def main():
     args = get_args()
 
     try:
-        prep = preprocess.external_genomes_preprocess(args)
-        prep.process()
+        subgraph = PangenomeGraphSubGraph(args)
+        subgraph.export()
     except ConfigError as e:
         print(e)
         sys.exit(-1)
