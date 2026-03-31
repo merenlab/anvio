@@ -62,7 +62,6 @@ dependencies = [
     "illumina-utils",
     "tabulate",
     "rich-argparse",
-    "numba",
     "paste",
     "pyani",
     "psutil",
@@ -141,6 +140,7 @@ Contact = "https://anvio.org/people"
 "anvi-export-items-order"                           = "anvio.cli.export_items_order:main"
 "anvi-export-locus"                                 = "anvio.cli.export_locus:main"
 "anvi-export-misc-data"                             = "anvio.cli.export_misc_data:main"
+"anvi-export-pan-subgraph"                          = "anvio.cli.export_pan_subgraph:main"
 "anvi-export-splits-and-coverages"                  = "anvio.cli.export_splits_and_coverages:main"
 "anvi-export-splits-taxonomy"                       = "anvio.cli.export_splits_taxonomy:main"
 "anvi-export-state"                                 = "anvio.cli.export_state:main"

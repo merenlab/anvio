@@ -75,6 +75,30 @@ additional_param_sets_for_sequence_search = {'diamond'   : '--masking 0',
                                              'ncbi_blast': ''}
 
 
+class PangenomeGraphSubGraph:
+    """Takes in a pangenome graph, and exports the genomic loci between two nodes in it as contigs databases.
+
+        >>> import argparse
+        >>> args = argparse.Namespace(pan_graph_db="PATH/TO/PAN-GRAPH.db", graph_nodes="NODE_X,NODE_Y", output_dir="OUTPUT_DIR")
+        >>> subgraph = PangenomeGraphSubGraph(args)
+        >>> subgraph.export()
+
+    A client of this class is the program `anvi-export-pan-subgraph`
+    """
+
+    def __init__(self, args, run=run, progress=progress):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.pan_graph_db_path = A('pan_graph_db')
+        self.graph_nodes = A('graph_nodes').split(',') if A('graph_nodes') else None
+        self.output_dir = A('output_dir')
+
+        raise ConfigError("Not yet implemented :)")
+
+
 class RarefactionAnalysis:
     """Takes in a pangenome, calculates rarefaction curves and Heaps' Law fit to assess the openness of the pangenome.
 

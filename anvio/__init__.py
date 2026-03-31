@@ -2237,6 +2237,13 @@ D = {
              'required': True,
              'help': "Anvi'o pangenome graph database."}
                 ),
+    'graph-nodes': (   
+            ['--graph-nodes'],
+            {'metavar': "NODE_1,NODE_2",
+             'required': True,
+             'help': "Nodes in an anvi'o pangenome graph database..",
+             'type': str}
+                ),
     'output-file': (
             ['-o', '--output-file'],
             {'metavar': 'FILE_PATH',
