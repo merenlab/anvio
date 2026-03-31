@@ -17,8 +17,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['ahenoch']
-__provides__ = ['config-file']
-__requires__ = ['config-file']
+__provides__ = []
+__requires__ = []
 __description__ = "Modify the config-json file or any other file in JSON format."
 
 # Most of these functions wer created with the help of AI.

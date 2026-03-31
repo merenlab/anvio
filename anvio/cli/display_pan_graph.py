@@ -18,7 +18,7 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['ahenoch']
-__requires__ = ['pan-graph-json']
+__requires__ = ['pan-graph-db']
 __provides__ = ['interactive', 'svg']
 __description__ = "Start an anvi'o interactive interface to view pan graphs."
 

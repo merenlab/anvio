@@ -141,6 +141,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "pan-graph-db": {
+        "name": "PAN GRAPH",
+        "type": "DB",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "contigs-db": {
         "name": "CONTIGS",
         "type": "DB",
@@ -630,18 +636,6 @@ ANVIO_ARTIFACTS ={
     "kegg-pathway-map": {
         "name": "KEGG PATHWAY MAP",
         "type": "DISPLAY",
-        "provided_by_anvio": True,
-        "provided_by_user": False
-    },
-    "pan-graph-json": {
-        "name": "PAN GRAPH JSON",
-        "type": "JSON",
-        "provided_by_anvio": True,
-        "provided_by_user": False
-    },
-    "pan-graph": {
-        "name": "PAN GRAPH",
-        "type": "CONCEPT",
         "provided_by_anvio": True,
         "provided_by_user": False
     },
