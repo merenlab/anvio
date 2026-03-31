@@ -1451,7 +1451,7 @@ class PangenomeGraph():
         additional_info = pd.merge(region_sides_df.reset_index(drop=False), nodes_df.reset_index(drop=False), how="left", on="region_id").set_index('syn_cluster')
 
         for index, line in additional_info.iterrows():
-            if line["motif"] == "BB":
+            if line["region"] == "BR":
                 self.pangenome_graph.graph.nodes[index]['layer'] = self.pangenome_graph.graph.nodes[index]['layer'] | {'backbone': 1}
             else:
                 self.pangenome_graph.graph.nodes[index]['layer'] = self.pangenome_graph.graph.nodes[index]['layer'] | {'backbone': 0}

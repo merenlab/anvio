@@ -460,11 +460,11 @@ class PangenomeGraphManager():
             # expansion = max_expansion
 
             # if P == 0:
-            #     motif = 'BB'
+            #     region = 'BB'
             # elif P == 1 and min_expansion == 0:
-            #     motif = 'INDEL'
+            #     region = 'INDEL'
             # else:
-            #     motif = 'VR'
+            #     region = 'VR'
 
             # complexity = min(1, P / weight)
             # Option 2:
@@ -489,19 +489,19 @@ class PangenomeGraphManager():
                 diversity_scaled = 0
 
             # if complexity == 0 and min_expansion == 0:
-            #     motif = 'INDEL'
+            #     region = 'INDEL'
             if complexity == 0 and min_expansion != 0:
-                motif = 'BR'
+                region = 'BR'
                 max_expansion = 0
                 min_expansion = 0
                 diversity = 0
                 diversity_scaled = 0
             else:
-                motif = 'VR'
+                region = 'VR'
 
             regions_summary_dict[i] = {
                 'region_id': region_id,
-                'motif': motif,
+                'region': region,
                 'x_min': region_x_positions_min,
                 'x_max': region_x_positions_max,
                 'num_synteny_gene_clusters': K,
