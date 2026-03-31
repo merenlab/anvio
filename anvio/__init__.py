@@ -2235,7 +2235,7 @@ D = {
             ['--pan-graph-db'],
             {'metavar': "PAN_GRAPH_DB",
              'required': True,
-             'help': "Anvi'o pan database"}
+             'help': "Anvi'o pangenome graph database."}
                 ),
     'output-file': (
             ['-o', '--output-file'],
