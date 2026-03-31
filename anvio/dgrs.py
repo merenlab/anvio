@@ -1614,6 +1614,9 @@ class DGR_Finder:
             self.run.info_single(f"Processing {num_bins} bins in parallel using {self.num_threads} threads "
                                 f"(each BLAST uses 1 thread).", nl_before=1)
 
+            import time as _time
+            _t_prep = _time.time()
+
             config = {
                 'temp_dir': self.temp_dir,
                 'word_size': self.word_size,
@@ -1661,6 +1664,8 @@ class DGR_Finder:
 
             # free intermediate data
             del snv_by_split, all_contig_sequences
+
+            self.run.info('[TIMING] activity data prep + queue serialization', f"{_time.time() - _t_prep:.1f}s")
 
             # start workers
             workers = []
@@ -5541,6 +5546,9 @@ class DGR_Finder:
         # Run detection based on the selected mode
         self.run.info('Detection mode', self.detection_mode)
 
+        import time as _time
+        _t0 = _time.time()
+
         activity_hits = None
         homology_hits = None
 
@@ -5548,7 +5556,10 @@ class DGR_Finder:
         if self.detection_mode in ('activity', 'both'):
             self.run.info_single("Running activity-based DGR detection...", nl_before=1, mc='green')
             self.get_blast_results()
+            self.run.info('[TIMING] get_blast_results (SNV init + parallel BLAST)', f"{_time.time() - _t0:.1f}s")
+            _t1 = _time.time()
             self.process_blast_results(vr_in_query=True, apply_snv_filters=True)
+            self.run.info('[TIMING] process_blast_results (XML parse + SNV analysis)', f"{_time.time() - _t1:.1f}s")
 
             # Save activity hits for potential merging
             if self.collections_mode:
@@ -5562,7 +5573,9 @@ class DGR_Finder:
 
             if self.collections_mode:
                 # Run homology BLAST for each bin in the collection
+                _t1 = _time.time()
                 homology_blast_outputs = self.process_collections_mode_homology()
+                self.run.info('[TIMING] process_collections_mode_homology (parallel BLAST)', f"{_time.time() - _t1:.1f}s")
 
                 if homology_blast_outputs:
                     # Store bin names list for process_blast_results to iterate over
@@ -5570,7 +5583,9 @@ class DGR_Finder:
                     self.bin_names_list = list(homology_blast_outputs.keys())
 
                     # Process BLAST results for all bins (homology mode)
+                    _t1 = _time.time()
                     self.process_blast_results(vr_in_query=False, apply_snv_filters=False, mode='homology')
+                    self.run.info('[TIMING] process_blast_results homology (XML parse)', f"{_time.time() - _t1:.1f}s")
                     homology_hits = copy.deepcopy(self.merged_mismatch_hits)
                 else:
                     self.run.warning("No bins had successful homology-based BLAST runs.",
@@ -5609,16 +5624,25 @@ class DGR_Finder:
                 else:
                     self.mismatch_hits = defaultdict(lambda: defaultdict(dict))
 
+        _t1 = _time.time()
         self.filter_for_best_VR_TR()
+        self.run.info('[TIMING] filter_for_best_VR_TR', f"{_time.time() - _t1:.1f}s")
         if args.parameter_output:
             self.run.info_single("Writing to Parameters used file.", nl_before=1)
             self.parameter_output_sheet()
+        _t1 = _time.time()
         self.get_gene_info()
+        self.run.info('[TIMING] get_gene_info', f"{_time.time() - _t1:.1f}s")
+        _t1 = _time.time()
         self.get_hmm_info()
+        self.run.info('[TIMING] get_hmm_info', f"{_time.time() - _t1:.1f}s")
+        _t1 = _time.time()
         self.recover_genomic_context_surrounding_dgrs()
+        self.run.info('[TIMING] recover_genomic_context', f"{_time.time() - _t1:.1f}s")
         self.report_genomic_context_surrounding_dgrs()
         self.create_found_tr_vr_tsv()
         self.compute_dgr_variability_profiling()
         self.process_dgr_data_for_HTML_summary()
+        self.run.info('[TIMING] total', f"{_time.time() - _t0:.1f}s")
 
         return
