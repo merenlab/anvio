@@ -312,26 +312,15 @@ def get_tree_object_in_newick(tree, id_to_sample_dict=None):
     return new_tree.write(format=2)
 
 
-def order_contigs_simple(config, distance=None, linkage=None, progress=progress, run=run, debug=False):
-    """An anvi'o clustering config comes in, a (clustering_id, newick) tuple goes out.
+def scale_and_combine_matrices(config, progress=progress, run=run, debug=False):
+    """Scale individual matrices and combine them into a single merged matrix.
 
-       By default the `linkage` and `distance` is set to the system defaults, constants.linkage_method_default
-       and constants.distance_metric_default. If the `config` has either of them defined, the system defaults
-       are overwritten with the preference in the config file. If the function gets `linkage` or `distance` as
-       parameter, they overwrite both system defaults and config preferences.
+       This function populates `config.combined_vectors` and `config.combined_id_to_sample`
+       so that the merged matrix can be used for clustering or exported independently.
     """
 
     if not config.matrices_dict[config.matrices[0]]['ratio']:
         config = set_null_ratios_for_matrices(config)
-
-    distance = distance if distance else (config.distance or constants.distance_metric_default)
-    linkage = linkage if linkage else (config.linkage or constants.linkage_method_default)
-    clustering_id = ':'.join([config.name, distance, linkage])
-
-    if len(config.master_rows) == 1:
-        # there is a single item to cluster. which means there is nothing to cluster really.
-        # return that single item in a newick format:
-        return (clustering_id, '(%s);' % config.master_rows[0])
 
     if debug or anvio.DEBUG:
         run.info_single('Peak at the first 5 items in the first 5 rows in matrices:', mc='green', nl_before=2)
@@ -362,6 +351,30 @@ def order_contigs_simple(config, distance=None, linkage=None, progress=progress,
         combined_scaled_vectors_for_row = [m['scaled_vectors'][m['sample_to_id'][row]] for m in list(config.matrices_dict.values())]
         config.combined_vectors.append(np.concatenate(combined_scaled_vectors_for_row))
 
+    progress.end()
+
+
+def order_contigs_simple(config, distance=None, linkage=None, progress=progress, run=run, debug=False):
+    """An anvi'o clustering config comes in, a (clustering_id, newick) tuple goes out.
+
+       By default the `linkage` and `distance` is set to the system defaults, constants.linkage_method_default
+       and constants.distance_metric_default. If the `config` has either of them defined, the system defaults
+       are overwritten with the preference in the config file. If the function gets `linkage` or `distance` as
+       parameter, they overwrite both system defaults and config preferences.
+    """
+
+    distance = distance if distance else (config.distance or constants.distance_metric_default)
+    linkage = linkage if linkage else (config.linkage or constants.linkage_method_default)
+    clustering_id = ':'.join([config.name, distance, linkage])
+
+    if len(config.master_rows) == 1:
+        # there is a single item to cluster. which means there is nothing to cluster really.
+        # return that single item in a newick format:
+        return (clustering_id, '(%s);' % config.master_rows[0])
+
+    scale_and_combine_matrices(config, progress=progress, run=run, debug=debug)
+
+    progress.new('Clustering')
     progress.update('Clustering ...')
 
     tree = get_clustering_as_tree(config.combined_vectors, linkage, distance, progress=progress)
