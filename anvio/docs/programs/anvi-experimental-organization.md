@@ -59,3 +59,19 @@ anvi-experimental-organization %(clustering-configuration)s \
 {{ codestop }}
 
 This will scale and merge the matrices but skip the hierarchical clustering entirely.
+
+Let's assume you have a merged %(profile-db)s, and you wish to get the scaled and merged matrix for tetranucleotide frequency and coverage data. This is exactly what you could do to recover the primary data that would go into the clustering step for that dataset::
+
+```bash
+# locate the tnf-cov config file in the anvi'o source directory
+tnf_cov=$(python -c "from pathlib import Path; import anvio; print(Path(anvio.__file__).parent / 'data/clusterconfigs/merged/tnf-cov')")
+
+# run the experimental organization to get the merged matrix for tnf-cov without doing the clustering
+anvi-experimental-organization $tnf_cov \
+                               -c CONTIGS.db \
+                               -p PROFILE.db \
+                               --dry-run \
+                               --export-merged-matrix tnf_cov_merged_matrix.txt
+```
+
+Et voilà! You will have a file called `tnf_cov_merged_matrix.txt` that contains the merged and scaled data for tetranucleotide frequency and coverage for all contigs in your dataset.
