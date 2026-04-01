@@ -432,8 +432,15 @@ def check_output_directory(output_directory, ok_if_exists=False):
                                f"even if you use `--force-overwrite` (because that flag is only relevant for directories, "
                                f"and anvi'o is not *that* crazy).")
 
+    def user_has_permission_to_remove(path):
+        return os.access(os.path.dirname(path), os.W_OK) and os.access(path, os.W_OK)
+
     if os.path.exists(output_directory) and not ok_if_exists:
         if anvio.FORCE_OVERWRITE:
+            if not user_has_permission_to_remove(output_directory):
+                raise FilesNPathsError(f"You asked anvi'o to force-overwrite the directory at '{output_directory}', but you do "
+                                       f"not have the necessary permissions to remove it. Please choose a different output "
+                                       f"directory path, or ask your system administrator to update your permissions.")
             try:
                 shutil.rmtree(output_directory)
             except Exception as e:
@@ -441,11 +448,16 @@ def check_output_directory(output_directory, ok_if_exists=False):
                                        f"yet it failed (typical anvi'o?). Here is the error message from another programmer in "
                                        f"the matrix: {e}.")
         else:
-            raise FilesNPathsError(f"The output directory '{output_directory}' already exists (and anvi'o does not like "
-                                   f"overwriting stuff (except when it does (typical anvi'o))). But you can always use "
-                                   f"the flag `--force-overwrite` to assert your dominance. In which case anvi'o would "
-                                   f"first remove the existing output directory (a flag that deserves extreme caution "
-                                   f"for obvious reasons).")
+            if user_has_permission_to_remove(output_directory):
+                raise FilesNPathsError(f"The output directory '{output_directory}' already exists (and anvi'o does not like "
+                                       f"overwriting stuff (except when it does (typical anvi'o))). But you can always use "
+                                       f"the flag `--force-overwrite` to assert your dominance. In which case anvi'o would "
+                                       f"first remove the existing output directory (a flag that deserves extreme caution "
+                                       f"for obvious reasons).")
+            else:
+                raise FilesNPathsError(f"The output directory '{output_directory}' already exists, and anvi'o does not have "
+                                       f"the necessary permissions to remove it (so it will not even suggest using "
+                                       f"`--force-overwrite` here). Please choose a different output directory path.")
 
     # check whether we have write permission in the parent directory so we can
     # create the output directory when the time comes (without having to wait eons
