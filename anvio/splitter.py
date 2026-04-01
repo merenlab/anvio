@@ -892,9 +892,7 @@ class LocusSplitter:
         self.gene_caller_ids_of_interest = set(gene_caller_ids_of_interest)
 
         if len(self.gene_caller_ids_of_interest):
-            run.info('Matching genes',
-                     '%d genes matched your search' % len(self.gene_caller_ids_of_interest),
-                     mc='green', nl_after=1)
+            self.run.info('Matching genes', f"{len(self.gene_caller_ids_of_interest)} genes matched your search", mc='green', nl_after=1)
 
 
     def process(self, skip_init=False):
