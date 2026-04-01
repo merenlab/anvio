@@ -27,7 +27,6 @@ import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 import anvio.auxiliarydataops as auxiliarydataops
 
-from anvio.panops import Pangenome
 from anvio.errors import ConfigError
 from anvio.tables.views import TablesForViews
 from anvio.tables.kmers import KMerTablesForContigsAndSplits
@@ -406,6 +405,9 @@ class PanBinSplitter(summarizer.PanBin, XSplitter):
         bins_info_dict = {'ALL_SPLITS': {'html_color': '#FF0000', 'source': 'anvi-split'}}
         collections = TablesForCollections(self.bin_pan_db_path)
         collections.append('DEFAULT', collection_dict, bins_info_dict=bins_info_dict)
+
+        # this is here to avoid ciruclar imports as much as possible
+        from anvio.panops import Pangenome
 
         # clustering of items.. this is the most elegant way of doing this:
         p = Pangenome(argparse.Namespace(skip_hierarchical_clustering=self.skip_hierarchical_clustering,
