@@ -4363,7 +4363,7 @@ def sanity_check_hmm_model(model_path, genes, require_ACC_lines=False):
 
     with gzip.open(model_path, 'rt', encoding='utf-8') as f:
         for line in f:
-            if line.startswith('HMMER3/f'):
+            if line.startswith('HMMER3/'):
                 model_number += 1
                 model_num_to_details[model_number] = {'name': None, 'acc': None}
             if line.startswith('NAME'):
@@ -4387,7 +4387,7 @@ def sanity_check_hmm_model(model_path, genes, require_ACC_lines=False):
     if len(genes_in_model.difference(gene_names)):
         raise ConfigError(f"Some gene names in the genes.hmm.gz file do not seem to appear in genes.txt. "
                           f"Here is a list of the extra gene names: {', '.join(list(genes_in_model.difference(gene_names)))}")
-    
+
     if require_ACC_lines:
         models_no_acc = [(num, model_num_to_details[num]['name']) for num in model_num_to_details if not model_num_to_details[num]['acc']]
         if models_no_acc:
