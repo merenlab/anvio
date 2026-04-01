@@ -3263,6 +3263,26 @@ class PangenomeGraphUserInterface {
             menu.appendChild(li);
         }
 
+        const hr = document.createElement('li');
+        hr.innerHTML = '<hr class="dropdown-divider">';
+        menu.appendChild(hr);
+
+        const copyLi = document.createElement('li');
+        const copyA = document.createElement('a');
+        copyA.setAttribute('class', 'dropdown-item');
+        copyA.setAttribute('href', '#');
+        copyA.textContent = 'Copy SynGC name into clipboard';
+        copyA.addEventListener('click', (e) => {
+            e.preventDefault();
+            const { gene_cluster_id: gcid } = this._resolve_node_ids(node_el);
+            navigator.clipboard.writeText(gcid).then(() => {
+                toastr.info(`'${gcid}' copied to clipboard.`);
+            });
+            menu.remove();
+        });
+        copyLi.appendChild(copyA);
+        menu.appendChild(copyLi);
+
         document.body.appendChild(menu);
 
         const maxLeft = window.innerWidth - menu.clientWidth;
