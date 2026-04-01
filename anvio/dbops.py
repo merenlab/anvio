@@ -3504,17 +3504,9 @@ class PanGraphSuperclass(PanSuperclass):
 
         self.synteny_gene_cluster_summary_info = {}
 
-        # self.items_additional_data_dict = None
-        # self.items_additional_data_keys = None
-
         args = argparse.Namespace(pan_or_profile_db=self.pan_graph_db_path, target_data_table="items")
         items_additional_data = TableForItemAdditionalData(args)
         self.items_additional_data_keys, self.items_additional_data_dict = items_additional_data.get()
-
-        # k = TableForItemAdditionalData(self.args).get_available_data_keys()
-        # self.functional_homogeneity_info_is_available = 'functional_homogeneity_index' in k
-        # self.geometric_homogeneity_info_is_available = 'geometric_homogeneity_index' in k
-        # self.combined_homogeneity_info_is_available = 'combined_homogeneity_index' in k
 
         self.num_synteny_gene_clusters = None
         self.num_genes_in_synteny_gene_clusters = None
@@ -3570,9 +3562,6 @@ class PanGraphSuperclass(PanSuperclass):
 
         pan_graph_db.disconnect()
 
-        # create an instance of states table
-        # self.states_table = TablesForStates(self.pan_graph_db_path)
-
         self.progress.end()
 
         if self.genomes_storage_path:
@@ -3593,7 +3582,6 @@ class PanGraphSuperclass(PanSuperclass):
     def save_state(self, state_dict, state_name):
         last_modified = datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S")
         TablesForStates(self.pan_graph_db_path).store_state(state_name, json.dumps(state_dict), last_modified)
-        # self.p_meta['state'] = state_name
         self.states[state_name] = {'content': json.dumps(state_dict), 'last_modified': last_modified}
 
 
@@ -3751,7 +3739,6 @@ class PanGraphSuperclass(PanSuperclass):
         return self.gene_callers_id_to_synteny_gene_cluster
 
     def init_synteny_gene_clusters(self):
-
         for node, data in self.nodes.items():
             if data['gene_cluster_id'] != 'GC_00000000':
                 self.synteny_gene_clusters[node] = {}
