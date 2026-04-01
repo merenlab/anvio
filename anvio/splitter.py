@@ -766,8 +766,10 @@ class LocusSplitter:
         # unless we are in debug mode, let's keep things quiet.
         if anvio.DEBUG:
             self.run_object = terminal.Run()
+            self.progress_object = terminal.Progress(verbose=False)
         else:
             self.run_object = terminal.Run(verbose=False)
+            self.progress_object = terminal.Progress(verbose=False)
 
 
     def sanity_check(self):
@@ -862,7 +864,7 @@ class LocusSplitter:
         else:
             self.run.info('Mode', 'Function search')
 
-            contigs_db = dbops.ContigsSuperclass(self.args, r=self.run_object)
+            contigs_db = dbops.ContigsSuperclass(self.args, r=self.run_object, p=self.progress_object)
             contigs_db.init_functions()
 
             # use functional annotation
@@ -907,7 +909,7 @@ class LocusSplitter:
                              "expected outcome of some weird processes somewhere.")
             return
 
-        self.contigs_db = dbops.ContigsSuperclass(self.args, r=self.run_object)
+        self.contigs_db = dbops.ContigsSuperclass(self.args, r=self.run_object, p=self.progress_object)
         self.contigs_db.init_functions()
 
         # Here we will differentiate between being in default-mode OR flank-mode. If in
@@ -1039,7 +1041,7 @@ class LocusSplitter:
 
         # if not already initiated, re-initiate contigsDB
         if not self.contigs_db:
-            self.contigs_db = dbops.ContigsSuperclass(self.args, r=self.run_object)
+            self.contigs_db = dbops.ContigsSuperclass(self.args, r=self.run_object, p=self.progress_object)
             self.contigs_db.init_functions()
 
         # Query for gene_call, contig_name, and genes_in_contig_sorted
@@ -1229,7 +1231,7 @@ class LocusSplitter:
                                   external_gene_calls=locus_external_gene_calls,
                                   ignore_internal_stop_codons=True)
 
-        dbops.ContigsDatabase(locus_output_db_path, run=self.run_object).create(args)
+        dbops.ContigsDatabase(locus_output_db_path, run=self.run_object, progress=self.progress_object).create(args)
 
         # while we are at it, here we generate a blank profile, too. so visualization of the
         # new contigs database for debugging or other purposes through anvi'o.
@@ -1265,7 +1267,7 @@ class LocusSplitter:
         for entry_id in function_calls:
             function_calls[entry_id]['gene_callers_id'] = G(function_calls[entry_id]['gene_callers_id'])
 
-        gene_function_calls_table = TableForGeneFunctions(locus_output_db_path, run=self.run_object)
+        gene_function_calls_table = TableForGeneFunctions(locus_output_db_path, run=self.run_object, progress=self.progress_object)
         gene_function_calls_table.create(function_calls)
 
         self.run.info("Output contigs DB path", locus_output_db_path)
