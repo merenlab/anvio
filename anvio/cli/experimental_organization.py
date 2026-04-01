@@ -34,18 +34,19 @@ def main():
     split_names = []
 
     try:
-        if not args.skip_store_in_db and not args.profile_db:
-            raise ConfigError("OK. When you don't use the --skip-store-in-db flag, you need to define a "
-                               "profile database to be explicit about where to store the resulting tree.")
+        if not args.skip_store_in_db and not args.profile_db and not args.dry_run:
+            raise ConfigError("If you are not using --skip-store-in-db or --dry-run in your call, you need to define a "
+                               "profile database to be explicit about where to store the clustering result.")
 
         if args.profile_db:
             utils.is_profile_db(args.profile_db)
         utils.is_contigs_db(args.contigs_db)
 
-        if not args.skip_store_in_db and not args.name:
-            raise ConfigError("Since you have not used the --skip-store-in-db flag, this program will attempt "
-                               "store resulting clustering into the profile database, and it needs a name for "
-                               "this tree. Please use the --name flag to provide one.")
+        if not args.skip_store_in_db and not args.name and not args.dry_run:
+            raise ConfigError("Since you have not used the --skip-store-in-db or --dry-run flags, this program "
+                               "will perform clustering, and attempt to store the results in the profile database. "
+                               "When it attempts to do it, it will need a name for this new clustering results. "
+                               "Please use the --name flag to provide one.")
 
         if args.name:
             utils.is_this_name_OK_for_database('--name parameter', args.name)
