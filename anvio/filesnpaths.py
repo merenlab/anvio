@@ -424,6 +424,14 @@ def check_output_directory(output_directory, ok_if_exists=False):
 
     output_directory = os.path.abspath(output_directory)
 
+    # I just managed to pass /etc/passwd as an output directory to anvi'o and I was not happy about it,
+    # so let's start with a simple sanity check
+    if os.path.isfile(output_directory):
+        raise FilesNPathsError(f"The path '{output_directory}' already exists as a regular file. Anvi'o was expecting "
+                               f"to use this path as a directory, but it will not overwrite a file with a directory "
+                               f"even if you use `--force-overwrite` (because that flag is only relevant for directories, "
+                               f"and anvi'o is not *that* crazy).")
+
     if os.path.exists(output_directory) and not ok_if_exists:
         if anvio.FORCE_OVERWRITE:
             try:
@@ -438,6 +446,16 @@ def check_output_directory(output_directory, ok_if_exists=False):
                                    f"the flag `--force-overwrite` to assert your dominance. In which case anvi'o would "
                                    f"first remove the existing output directory (a flag that deserves extreme caution "
                                    f"for obvious reasons).")
+
+    # check whether we have write permission in the parent directory so we can
+    # create the output directory when the time comes (without having to wait eons
+    # just to fail at the very end :/
+    parent_directory = os.path.dirname(output_directory)
+    if not os.access(parent_directory, os.W_OK):
+        raise FilesNPathsError(f"You do not have permission to create the output directory '{output_directory}'. "
+                               f"The parent directory '{parent_directory}' is not writable by you. Please choose "
+                               f"a different output directory path, or ask your system administrator to update "
+                               f"your permissions.")
 
     return output_directory
 
@@ -601,7 +619,7 @@ class AppendableFile:
             Pointer to the file, opened in append mode. The calling function should take care of the
             open() and pass the handle here
         """
-        
+
         import anvio.utils as utils
         if is_file_empty(self.path):
             utils.store_dict_as_TAB_delimited_file(dict_to_append, None, headers=self.headers, file_obj=file_handle, \
