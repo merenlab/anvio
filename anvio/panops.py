@@ -1677,19 +1677,15 @@ class PangenomeGraph():
 
         x_max = max([data['position'][0] for node, data in self.pangenome_graph.graph.nodes(data=True)])
         y_max = max([data['position'][1] for node, data in self.pangenome_graph.graph.nodes(data=True)])
-        distx = 45
-        disty = 45
-
         for i, j, data in self.pangenome_graph.graph.edges(data=True):
             if data['route']:
                 for x, y in data['route']:
                     y_max = y if y > y_max else y_max
 
+        distx = 45
         full_radius = int(180 * (distx * x_max) / (math.pi * 270))
-
         tracks_radius = int((2 * full_radius / 3))
         inner = int((1 * full_radius / 3))
-
         tracks_layer = int(tracks_radius / (3/2 * len(self.genome_names) + (5/2)))
 
         inner_margin = int(tracks_layer / 2)
@@ -1698,9 +1694,6 @@ class PangenomeGraph():
         search = int(tracks_layer / 2)
 
         label = int(arrow * 0.25)
-        # Prevent division by zero when all nodes have y position of 0
-        # Use tracks_layer as default when y_max is 0 (single layer case)
-        # disty = int(tracks_layer / y_max) if y_max > 0 else tracks_layer
 
         state = {'rearranged_color': '#8FF0A4',
                  'accessory_color': '#DC8ADD',
@@ -1725,7 +1718,7 @@ class PangenomeGraph():
                  'tree_offset': int(inner_margin / 2),
                  'tree_thickness': 10,
                  'distx': distx,
-                 'disty': disty,
+                 'disty': 120,
                  'size': 15,
                  'circ': 5,
                  'edge': 5,
