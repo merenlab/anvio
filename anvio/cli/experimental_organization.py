@@ -58,21 +58,44 @@ def main():
 
         config.print_summary(run)
 
-        if args.dry_run:
+        if args.dry_run and not args.export_merged_matrix:
             sys.exit()
 
-        clustering_id, newick = clustering.order_contigs_simple(config, distance=args.distance, linkage=args.linkage, progress=progress, debug=True)
+        if args.dry_run and args.export_merged_matrix:
+            # the user wants the merged matrix without the costly clustering step
+            clustering.scale_and_combine_matrices(config, progress=progress, run=run, debug=True)
+        else:
+            clustering_id, newick = clustering.order_contigs_simple(config, distance=args.distance, linkage=args.linkage, progress=progress, debug=True)
 
-        _, distance, linkage = clustering_id.split(':')
+            _, distance, linkage = clustering_id.split(':')
 
-        run.info('Distance metric used', distance, mc='green')
-        run.info('Linkage method used', linkage, mc='green')
+            run.info('Distance metric used', distance, mc='green')
+            run.info('Linkage method used', linkage, mc='green')
 
-        if args.output_file:
-            open(args.output_file, 'w').write(newick + '\n')
-            run.info('Output', args.output_file, mc='green')
+            if args.output_file:
+                open(args.output_file, 'w').write(newick + '\n')
+                run.info('Output', args.output_file, mc='green')
 
-        if args.profile_db and not args.skip_store_in_db:
+        # this here exports the final merged data matrix (i.e., the combined and scaled data from all input
+        # matrices that will be used to generate dendrogram) as a TAB-delimited file, which can be useful for
+        # debugging and/or for users who want to use this merged matrix for other purposes (e.g., to generate
+        # a dendrogram using another software). this works with --dry-run so the user can get the matrix
+        # without paying for the clustering step.
+        if args.export_merged_matrix:
+            header = ['items']
+            for matrix in config.matrices:
+                m = config.matrices_dict[matrix]
+                n_cols = m['scaled_vectors'].shape[1]
+                header.extend(['%s_%04d' % (matrix, j) for j in range(n_cols)])
+
+            rows = []
+            for i in range(len(config.combined_vectors)):
+                rows.append([config.combined_id_to_sample[i]] + config.combined_vectors[i].tolist())
+
+            utils.store_array_as_TAB_delimited_file(rows, args.export_merged_matrix, header)
+            run.info('Merged matrix', args.export_merged_matrix, mc='green')
+
+        if args.profile_db and not args.skip_store_in_db and not args.dry_run:
             dbops.add_items_order_to_db(anvio_db_path=args.profile_db,
                                         order_name=args.name,
                                         order_data=newick,
