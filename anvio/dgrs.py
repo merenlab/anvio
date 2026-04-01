@@ -1600,7 +1600,6 @@ class DGR_Finder:
 
         bin_splits_dict = bins_with_data
         num_bins = len(bin_splits_dict)
-        self.bin_names_list = list(bin_splits_dict.keys())
 
         if num_bins == 0:
             raise ConfigError(f"None of the {len(skipped_bins)} bins in collection '{self.collections_given}' "
@@ -1758,6 +1757,9 @@ class DGR_Finder:
                             f"All {len(skipped_bins)} bins were skipped. "
                             f"Common causes: sequences too short for word_size={self.word_size}, "
                             f"insufficient SNV density, or BLAST failures.")
+
+        # only pass bins that produced BLAST output to process_blast_results
+        self.bin_names_list = successful_bins
 
         # summary message
         self.run.info_single(f"Processed {PL('bin', num_bins)}: {len(successful_bins)} successful, "
