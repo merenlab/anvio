@@ -45,10 +45,12 @@ from anvio.drivers import Aligners
 from anvio.drivers.blast import BLAST
 from anvio.drivers.diamond import Diamond
 
+from anvio.splitter import LocusSplitter
 from anvio.genomestorage import GenomeStorage
 from anvio.tables.views import TablesForViews
 from anvio.tables.states import TablesForStates
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.genomedescriptions import GenomeDescriptions
 from anvio.tables.geneclusters import TableForGeneClusters
 from anvio.tables.pangraphdata import TableForNodes, TableForEdges
 
@@ -70,6 +72,7 @@ run = terminal.Run()
 progress = terminal.Progress()
 pp = terminal.pretty_print
 aligners = Aligners()
+P = terminal.pluralize
 
 additional_param_sets_for_sequence_search = {'diamond'   : '--masking 0',
                                              'ncbi_blast': ''}
@@ -95,8 +98,100 @@ class PangenomeGraphSubGraph:
         self.pan_graph_db_path = A('pan_graph_db')
         self.graph_nodes = A('graph_nodes').split(',') if A('graph_nodes') else None
         self.output_dir = A('output_dir')
+        self.external_genomes_file_path = A('external_genomes')
 
-        raise ConfigError("Not yet implemented :)")
+        if not self.graph_nodes:
+            raise ConfigError("This program is useless without the `--graph-nodes` parameter :/")
+
+        if not self.pan_graph_db_path:
+            raise ConfigError("Please send a pangenome graph database")
+
+        if len(self.graph_nodes) != 2:
+            raise ConfigError(f"The `--graph-nodes` parameter must be set to two node names that are separated by a comma :/ "
+                              f"Your parameter, '{A('graph_nodes')}', does not really comply with that.")
+
+        utils.is_pan_graph_db(self.pan_graph_db_path)
+
+        filesnpaths.check_output_directory(self.output_dir)
+
+
+    def export(self):
+        """Export the genomic loci between self.node_names from every genome involved in pangenome graph"""
+
+        # get an instance of PanGraphSuperclass
+        pangraph = dbops.PanGraphSuperclass(self.args)
+        pangraph.init_synteny_gene_clusters()
+
+        missing_nodes = [node for node in self.graph_nodes if node not in pangraph.synteny_gene_cluster_names]
+        if len(missing_nodes) == 2:
+            raise ConfigError(f"Neither of the nodes you requested, '{self.graph_nodes[0]}' and '{self.graph_nodes[1]}', are "
+                              f"found in the pangenome graph database (congratulations) :(")
+        elif len(missing_nodes) == 1:
+            raise ConfigError(f"One of the nodes you requested, '{missing_nodes[0]}', is not found in the pangenome graph database :(")
+        else:
+            pass
+
+        # learn the genome names from the external genomes file and make sure the genome names in
+        # the pangenome graph db are consistent with those.
+        g = GenomeDescriptions(self.args, run=terminal.Run(verbose=False), progress=self.progress)
+        g.load_genomes_descriptions(skip_functions=True, init=False)
+
+        missing_genomes = [genome_name for genome_name in pangraph.genome_names if genome_name not in g.genomes]
+        if len(missing_genomes):
+            raise ConfigError(f"The following genomes are found in the pangenome graph database, but not in the "
+                              f"external genomes file: {', '.join(missing_genomes)}. So anvi'o is confuse "
+                              f"and not sure how to continue :(")
+
+        self.run.info('Pangenome graph database', pangraph.p_meta['project_name'])
+        self.run.info("Pan graph database", self.pan_graph_db_path)
+        self.run.info("Nodes to export", ', '.join(self.graph_nodes))
+        self.run.info("Loci", '')
+
+        d = {}
+        for genome_name in pangraph.genome_names:
+            d[genome_name] = []
+
+            for graph_node in self.graph_nodes:
+                if not len(pangraph.synteny_gene_clusters[graph_node][genome_name]):
+                    raise ConfigError(f"The curent implementation of this tool requires the graph nodes of interest to "
+                                      f"correspond to SynGCs that are present in all genomes (so we can select what is "
+                                      f"between them in each genome easily). Unfortunately, the graph node '{graph_node}' "
+                                      f"does not have any genes from the genome '{genome_name}'.")
+
+                d[genome_name].append(pangraph.synteny_gene_clusters[graph_node][genome_name][0])
+
+            d[genome_name] = sorted(d[genome_name])
+
+            # we know which genes we are interested in for the genome, let's report it to the user
+            # before moving on
+            self.run.info_single(f"{d[genome_name][0]} to {d[genome_name][1]} ({P('gene', d[genome_name][1] - d[genome_name][0])}) for {genome_name}", level=2)
+
+        # at this stage we have everything we need stored in `d` and `g` to start exporting loci
+        # from each contigs database. let's start by generating the output directory
+        filesnpaths.gen_output_directory(self.output_dir, delete_if_exists=True)
+
+        self.progress.new("Exporting", progress_total_items=len(pangraph.genome_names))
+        for genome_name in pangraph.genome_names:
+            progress.update(f"Working on {genome_name} ...", increment=1)
+
+            contigs_db_path = g.genomes[genome_name]['contigs_db_path']
+            first_gene_call = d[genome_name][0]
+            second_gene_call = d[genome_name][1]
+
+            # build the args for LocusSplitter
+            locus_args = argparse.Namespace(contigs_db=contigs_db_path,
+                                            gene_caller_ids=f"{first_gene_call},{second_gene_call}",
+                                            flank_mode=True,
+                                            output_dir=self.output_dir,
+                                            output_file_prefix=genome_name,
+                                            delimiter=',',
+                                            never_reverse_complement=False)
+
+            # let's go
+            locus_splitter = LocusSplitter(locus_args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+            locus_splitter.process()
+
+        self.progress.end()
 
 
 class RarefactionAnalysis:
