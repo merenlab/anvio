@@ -107,6 +107,9 @@ def get_args():
                        is %s.' % constants.linkage_method_default}))
     parser.add_argument(*anvio.A('skip-store-in-db'), **anvio.K('skip-store-in-db'))
     parser.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+    parser.add_argument('--export-merged-matrix', metavar='FILE', default=None, help="Export the final merged "
+                             "data matrix (the combined and scaled data from all input matrices that is used "
+                             "to generate the dendrogram) as a TAB-delimited file.")
     parser.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
 
     return parser.get_args(parser)
