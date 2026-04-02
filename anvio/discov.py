@@ -71,7 +71,7 @@ class DisCov:
         # compute all metrics
         ## window metrics
         window_scales = {
-            'fine': max(100, len(cov_array) // 100),      # ~1% of contig
+            'fine': max(300, len(cov_array) // 100),      # ~1% of contig
             'medium': max(500, len(cov_array) // 20),     # ~5% of contig  
             'coarse': max(1000, len(cov_array) // 10)     # ~10% of contig
         }
