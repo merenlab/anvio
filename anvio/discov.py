@@ -76,7 +76,7 @@ class DisCov:
             'coarse': max(1000, len(cov_array) // 10)     # ~10% of contig
         }
         sliding_window_metrics = self.sliding_window_evenness(cov_array, window_scales)
-        sw_prop_vals = [sliding_window_metrics[scale]['Proportion_Covered'] for scale in ['fine','medium','coarse']]
+        sw_prop_vals = [sliding_window_metrics[scale]['Proportion_Covered'] for scale in ['fine']]
         sw_prop = [f"{m:.04}" if m else "NA" for m in sw_prop_vals ]
         sliding_window_proportion_covered = "\t".join(sw_prop)
 
