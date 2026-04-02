@@ -29,35 +29,17 @@ class DisCov:
 
         # establish output files for testing
         unfilt_output = "TEST_UNFILTERED.txt"
-        filt_output = "TEST_FILTERED.txt"
-        filt_report = "FILTER_REMOVAL_REPORT.txt"
-        header = ["name", "sample", "Non-specific Filter Removed Bases", 
-                  "SW Depth Evenness MAD (fine)",
-                  "SW Depth Evenness MAD (medium)", "SW Depth Evenness MAD (coarse)",
-                  "SW Depth Evenness MAD Nonzero (fine)",
-                  "SW Depth Evenness MAD Nonzero (medium)", "SW Depth Evenness MAD Nonzero (coarse)",
-                  "SW Depth Evenness CV (fine)", "SW Depth Evenness CV (medium)",
-                  "SW Depth Evenness CV (coarse)", 
-                  "SW Depth Evenness CV Nonzero (fine)", "SW Depth Evenness CV Nonzero (medium)",
-                  "SW Depth Evenness CV Nonzero (coarse)", 
+        header = ["name", "sample", 
                   "SW Proportion Covered (fine)",
-                  "SW Proportion Covered (medium)", "SW Proportion Covered (coarse)",
-                  "Nonzero Depth Range", "Nonzero Depth IQR", 
-                  "Nonzero Depth IQR/median", "Nonzero Depth Variance",
-                  "Nonzero Depth Fold-Range Detection (Narrow: 0.5x - 2x)", "Nonzero Depth Fold-Range Detection (Wide: 0.25x - 4x)"]
-        for outfile in [unfilt_output, filt_output]:
+                  "Nonzero Depth Fold-Range Detection (Narrow: 0.5x - 2x)", 
+                  "Nonzero Depth Fold-Range Detection (Wide: 0.25x - 4x)"]
+        for outfile in [unfilt_output]:
             if not filesnpaths.is_file_exists(outfile, dont_raise=True):
                 with open(outfile, 'w') as f:
                     f.write("\t".join(header) + "\n")
-            
-        if self.contig_start_positions and not filesnpaths.is_file_exists(filt_report, dont_raise=True):
-            with open(filt_report, 'w') as f:
-                f.write("\t".join(["genome","sample","contig","filter_phase","removed_pos"]) + "\n")
 
         # compute all sub-metrics on regular coverage array
         self.compute_all(coverage, unfilt_output, filter_nonspecific_mapping=False)
-        # compute all sub-metrics on filtered coverage array
-        self.compute_all(coverage, filt_output, filter_nonspecific_mapping=True)
 
     def compute_all(self, cov_array, output_file, filter_nonspecific_mapping: bool = False):
         """Compute all metrics for the input coverage array and print to the specified output file"""
@@ -94,63 +76,21 @@ class DisCov:
             'coarse': max(1000, len(cov_array) // 10)     # ~10% of contig
         }
         sliding_window_metrics = self.sliding_window_evenness(cov_array, window_scales)
-        sw_mad_vals = [sliding_window_metrics[scale]['Depth_Evenness_MAD'] for scale in ['fine','medium','coarse']]
-        sw_mad = [f"{m:.04}" if m else "NA" for m in sw_mad_vals ]
-        sliding_window_evenness_mad = "\t".join(sw_mad)
-        sw_cv_vals = [sliding_window_metrics[scale]['Depth_Evenness_CV'] for scale in ['fine','medium','coarse']]
-        sw_cv = [f"{m:.04}" if m else "NA" for m in sw_cv_vals ]
-        sliding_window_evenness_cv = "\t".join(sw_cv)
         sw_prop_vals = [sliding_window_metrics[scale]['Proportion_Covered'] for scale in ['fine','medium','coarse']]
         sw_prop = [f"{m:.04}" if m else "NA" for m in sw_prop_vals ]
         sliding_window_proportion_covered = "\t".join(sw_prop)
-        # nonzero window metrics
-        if len(cov_array[cov_array > 0]) == 0:
-            sliding_window_metrics_nonzero = {'fine': {'Depth_Evenness_MAD': 0, 'Depth_Evenness_CV': 0 },
-            'medium': {'Depth_Evenness_MAD': 0, 'Depth_Evenness_CV': 0 },
-            'coarse': {'Depth_Evenness_MAD': 0, 'Depth_Evenness_CV': 0 }
-            }
-        else:
-            window_scales_nz = {
-                'fine': max(100, len(cov_array[cov_array > 0]) // 100),      # ~1% of contig
-                'medium': max(500, len(cov_array[cov_array > 0]) // 20),     # ~5% of contig  
-                'coarse': max(1000, len(cov_array[cov_array > 0]) // 10)     # ~10% of contig
-            }
-            sliding_window_metrics_nonzero = self.sliding_window_evenness(cov_array[cov_array > 0], window_scales_nz)
-        sw_mad_vals_nz = [sliding_window_metrics_nonzero[scale]['Depth_Evenness_MAD'] for scale in ['fine','medium','coarse']]
-        sw_mad_nz = [f"{m:.04}" if m else "NA" for m in sw_mad_vals_nz ]
-        sliding_window_evenness_mad_nz = "\t".join(sw_mad_nz)
-        sw_cv_vals_nz = [sliding_window_metrics_nonzero[scale]['Depth_Evenness_CV'] for scale in ['fine','medium','coarse']]
-        sw_cv_nz = [f"{m:.04}" if m else "NA" for m in sw_cv_vals_nz ]
-        sliding_window_evenness_cv_nz = "\t".join(sw_cv_nz)
 
         ## whole-sequence metrics
         if len(cov_array[cov_array > 0]) > 0:
-            nz_depth_range = np.max(cov_array[cov_array > 0]) - np.min(cov_array[cov_array > 0])
-            nz_depth_IQR = np.percentile(cov_array[cov_array > 0], 75) - np.percentile(cov_array[cov_array > 0], 25)
-            nz_depth_IQR_med_ratio = nz_depth_IQR / np.median(cov_array[cov_array > 0])
-            nz_depth_variance = np.var(cov_array[cov_array > 0])
             nz_depth_foldrange_narrow = self.fold_range_of_median_detection(cov_array[cov_array > 0], fold_lower=0.5, fold_upper=2)
             nz_depth_foldrange_wide = self.fold_range_of_median_detection(cov_array[cov_array > 0], fold_lower=0.25, fold_upper=4)
         else:
-            nz_depth_range = 0 # no bases with nonzero coverage
-            nz_depth_IQR = 0
-            nz_depth_IQR_med_ratio = 0.0
-            nz_depth_variance = None
             nz_depth_foldrange_narrow = 0.0
             nz_depth_foldrange_wide = 0.0
 
         # append all metrics to file
         output_list = [self.name, self.sample,
-                        f"{ns_filter_removed_something}",
-                        sliding_window_evenness_mad,
-                        sliding_window_evenness_mad_nz,
-                        sliding_window_evenness_cv,
-                        sliding_window_evenness_cv_nz,
                         sliding_window_proportion_covered,
-                        f"{nz_depth_range}",
-                        f"{nz_depth_IQR}",
-                        f"{nz_depth_IQR_med_ratio:.4}",
-                        f"{nz_depth_variance:.4}" if nz_depth_variance else "NA",
                         f"{nz_depth_foldrange_narrow:.4}",
                         f"{nz_depth_foldrange_wide:.4}",
                       ]
