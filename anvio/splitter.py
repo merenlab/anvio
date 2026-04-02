@@ -756,7 +756,7 @@ class LocusSplitter:
         self.annotation_sources = A('annotation_sources')
         self.remove_partial_hits = A('remove_partial_hits')
         self.reverse_complement_if_necessary = not A('never_reverse_complement')
-        self.include_fasta_output = True
+        self.include_fasta_output = A('include_fasta_output') or True
         self.is_in_flank_mode = bool(A('flank_mode'))
 
         if A('list_hmm_sources'):

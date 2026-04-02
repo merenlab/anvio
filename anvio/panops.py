@@ -185,7 +185,8 @@ class PangenomeGraphSubGraph:
                                             output_dir=self.output_dir,
                                             output_file_prefix=genome_name,
                                             delimiter=',',
-                                            never_reverse_complement=True)
+                                            never_reverse_complement=True,
+                                            include_fasta_output=False)
 
             # let's go
             locus_splitter = LocusSplitter(locus_args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
