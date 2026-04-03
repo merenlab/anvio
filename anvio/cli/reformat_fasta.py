@@ -507,11 +507,11 @@ def get_args():
 
     groupC = parser.add_argument_group('OPERATIONS: RENAME YOUR DEFLINES')
     groupC.add_argument('--simplify-names', default=False, action="store_true",
-                        help="Edit deflines to make sure they contigs have simple names.")
+                        help="Edit deflines to make sure the contigs have simple names.")
     groupC.add_argument('--prefix', default=None, metavar="PREFIX",
                         help="Use this parameter if you would like to add a prefix to your contig\
                               names while simplifying them. The prefix must be a single word (you\
-                              can use underscor character, but nothing more!).")
+                              can use the underscore character, but nothing more!).")
 
     groupD = parser.add_argument_group('OPERATIONS: TAME YOUR SEQUENCES')
     groupD.add_argument('-l', '--min-len', type=int, default=0, metavar='INT',
@@ -523,7 +523,7 @@ def get_args():
                               will not be included in the output file). If omitted, no upper bound \
                               is enforced.")
     groupD.add_argument('--exact-length', type=int, default=None, metavar='INT',
-                        help="Exact lenght of the sequences you wish to keep from a FASTA fille. Why \
+                        help="Exact length of the sequences you wish to keep from a FASTA fille. Why \
                               would anyone need that? Anvi'o does not know. But there you have it. This \
                               parameter is indeed incompatible with a lot of others, such as `--min-len` \
                               or `--max-len`.")
@@ -549,7 +549,7 @@ def get_args():
     groupD.add_argument('--seq-type', default=None, metavar="SEQ TYPE", choices={'AA', 'NT'},
                         help=("Supply either 'NT' or 'AA' (if you want). If 'NT', any characters besides {A,C,T,G} will "
                               "by replaced with 'N'. If 'AA', any characters that are not 1-letter amino acid "
-                              "characters will be replaced with 'X'. If you don't supply anything, no charaters will be "
+                              "characters will be replaced with 'X'. If you don't supply anything, no characters will be "
                               "modified."))
     groupD.add_argument('--ignore-empty-sequences', default=False, action="store_true",
                         help=("If your FASTA file contains entries with no sequences, you will either have to ask anvi'o "
