@@ -89,14 +89,20 @@ var min_branch_support_value_seen = null;
 var multiple_support_value_seen = false;
 
 var request_prefix = getParameterByName('request_prefix');
+
+var structure_pan_mode = false;
 //---------------------------------------------------------
 //  Init
 //---------------------------------------------------------
 
 $(window).resize(function() {
      // get current client size
-    VIEWER_WIDTH = document.getElementById('svg').clientWidth || document.getElementById('svg').width.baseVal.value;
-    VIEWER_HEIGHT = document.getElementById('svg').clientHeight || document.getElementById('svg').height.baseVal.value;
+    var svgElement = document.getElementById('svg');
+    
+    if (svgElement) {
+        VIEWER_WIDTH = svgElement.clientWidth || (svgElement.width && svgElement.width.baseVal.value) || 0;
+        VIEWER_HEIGHT = svgElement.clientHeight || (svgElement.height && svgElement.height.baseVal.value) || 0;
+    }
 });
 
 $(document).ready(function() {
@@ -232,6 +238,8 @@ function initData() {
             ANVIO_VERSION = response.version;
             mode = response.mode;
             server_mode = response.server_mode;
+            item_lengths = response.item_lengths;
+
             switchUserInterfaceMode(response.project, response.title);
             setupDescriptionPanel(response.description);
 
@@ -265,8 +273,6 @@ function initData() {
 
                 $('[disabled-in-read-only=true]').addClass('disabled').prop('disabled', true);
             }
-
-            item_lengths = response.item_lengths;
 
             var default_tree  = response.item_orders[0];
             var default_order = response.item_orders[1];
@@ -447,8 +453,6 @@ function switchUserInterfaceMode(project, title) {
     // hide all mode dependent divs:
     $('.full-mode, .pan-mode, .collection-mode, .manual-mode, .server-mode, .refine-mode').hide();
 
-    console.log("The running mode for the interface: " + mode);
-
     $('.' + mode + '-mode').show();
     $('<b title="This info shows your anvio mode" class="title-mode">' + mode + ' mode' + '<b/>').appendTo('#title-panel');
 
@@ -487,6 +491,14 @@ function switchUserInterfaceMode(project, title) {
                 }
             }
         })
+
+        // Manipulate the UI elements for the structure pan mode
+        // Structure pan is also pan mode but with a different data structure
+        if (Object.keys(item_lengths).some(key => key.startsWith("PSGC"))) {
+            structure_pan_mode = true;
+            $('#search-gc-filters-mode').text('Search PSGC using filters');
+            $('.title-mode').text('structure pan mode');
+        }
     }
 
     if (mode == 'full') {
@@ -1718,8 +1730,8 @@ function buildLayersTable(order, settings)
             }
             else
             {
-                var height = '300';
-                var margin = getGroupLeadingMargin(layer_name, '15');
+                var height = getNamedLayerDefaults(layer_name, 'height', '300');
+                var margin = getGroupLeadingMargin(layer_name, getNamedLayerDefaults(layer_name, 'margin', '15'));
             }
 
             if (hasViewSettings)
@@ -1890,8 +1902,10 @@ function buildLayersTable(order, settings)
                 }
                 else
                 {
+                    // compare_pan group layers get warm amber defaults
+                    var is_compare_pan = (item_group === 'compare_pan');
                     var height = getNamedLayerDefaults(layer_name, 'height', '180');
-                    var color  = getNamedLayerDefaults(layer_name, 'color', '#000000');
+                    var color  = getNamedLayerDefaults(layer_name, 'color', is_compare_pan ? '#CC7A00' : '#000000');
                     var margin = getGroupLeadingMargin(layer_name, getNamedLayerDefaults(layer_name, 'margin', '15'));
                     if (mode == 'collection') {
                         var type = getNamedLayerDefaults(layer_name, 'type', 'intensity');
@@ -2401,6 +2415,26 @@ function showCompleteness(bin_id, updateOnly) {
 }
 
 
+function getGCInPSGCInformation(gene_cluster_name) {
+    return $.ajax({
+        type: 'GET',
+        cache: false,
+        url: '/data/get_psgc_type_data/' + gene_cluster_name
+    }).then(function(psgc_response) {
+        if (psgc_response && psgc_response.data) {
+            // Check if the response is empty
+            const hasValidData = Object.keys(psgc_response.data).some(key => {
+                return Object.keys(psgc_response.data[key]).length > 0;
+            });
+            if (hasValidData) {
+                mode = 'structure';
+                return psgc_response.data;
+            }
+        }
+    });
+}
+
+
 // Shared configuration objects for the two function types
 const FUNCTION_CONFIGS = {
     individual_genes: {
@@ -2585,7 +2619,29 @@ function showItemFunctions(bin_id, config, updateOnly = false) {
                     showGeneFunctionsInSplitsSummaryTableDialog(dialogTitle, content);
                 } else if (config.dialogFunction === 'showGeneClusterFunctionsSummaryTableDialog') {
                     const dialogTitle = `A summary of functions for ${bin_info['items'].length} ${config.itemLabel} in "${bin_info['bin_name']}".`;
-                    showGeneClusterFunctionsSummaryTableDialog(dialogTitle, content);
+
+                    if (mode === 'structure') {
+                        // Fetch PSGC info for each gene cluster and append to content
+                        let additionalContent = '';
+                        let additionalDataPromises = Object.keys(response['functions']).map(gene_cluster_name => {
+                            return getGCInPSGCInformation(gene_cluster_name).then(result => {
+                                if (result) {
+                                    if (!additionalContent.includes("Gene Clusters Occur in Protein Structure Informed Gene Clusters")) {
+                                        additionalContent += `<div class="mt-5 mb-5 font-italic">
+                                                        Gene Clusters Occur in Protein Structure Informed Gene Clusters
+                                                    </div>`;
+                                    }
+                                    additionalContent += formatGenericData(result);
+                                }
+                            });
+                        });
+
+                        Promise.all(additionalDataPromises).then(() => {
+                            showGeneClusterFunctionsSummaryTableDialog(dialogTitle, content + additionalContent);
+                        });
+                    } else {
+                        showGeneClusterFunctionsSummaryTableDialog(dialogTitle, content);
+                    }
                 } else {
                     toastr.error('Unknown dialog function specified.', "The anvi'o headquarters is confused");
                     return;
@@ -2695,6 +2751,43 @@ function buildItemNamesContent(items, config) {
             `;
         }
     });
+}
+
+function formatGenericData(data) {
+    if(mode === 'structure'){
+        let formattedString = `
+            <div class="row">
+                <div class="col-12">
+                    <table class="table table-striped psgc-table">
+                            <tr>
+                                <th>PSGC ID</th>
+                                <th>Gene Cluster</th>
+                                <th>Type</th>
+                            </tr>
+                        </thead>
+                        <tbody>`;
+
+        for (const [psgcId, value] of Object.entries(data)) {
+            if (typeof value === 'object' && value !== null) {
+                for (const [geneClusterId, type] of Object.entries(value)) {
+                    formattedString += `
+                        <tr>
+                            <td class="col-4">${psgcId}</td>
+                            <td class="col-4">${geneClusterId}</td>
+                            <td class="col-4">${type}</td>
+                        </tr>`;
+                }
+            }
+        }
+
+        formattedString += `
+                </tbody>
+            </table>
+            </div>
+        </div>`;
+
+        return formattedString;
+    }
 }
 
 // Shared function to build the content HTML
@@ -3226,7 +3319,7 @@ async function exportSvg(dontDownload) {
                 'color': $('#bin_color_' + bin_id).attr('color'),
             };
 
-            if (mode == 'pan') {
+            if (mode == 'pan' || mode === 'structure') {
                 var geneClustersElement = $(bin).find('.num-gene-clusters');
                 if (geneClustersElement.length > 0) {
                     _bin_info['gene_clusters'] = geneClustersElement.attr('data-value');

@@ -939,8 +939,8 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
 
         # known groups in their intended display order; any unknown groups go at the end alphabetically
         preferred_order = ['default', 'gene_cluster_stats', 'SCG', 'AAI', 'homogeneity',
-                           'functional_annotation', 'bayesian_pan_core', 'metapangenome',
-                           'sequence_motifs']
+                           'functional_annotation', 'compare_pan',
+                           'bayesian_pan_core', 'metapangenome', 'sequence_motifs']
         known_set = set(preferred_order)
         group_order = [g for g in preferred_order if g in keys_by_group] + \
                       sorted([g for g in keys_by_group if g not in known_set])

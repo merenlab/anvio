@@ -38,11 +38,13 @@ from anvio.drivers.blast import BLAST
 from anvio.drivers.diamond import Diamond
 from anvio.drivers.mcl import MCL
 from anvio.drivers import Aligners
+from anvio.drivers.foldseek import Foldseek
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.genomestorage import GenomeStorage
-from anvio.tables.geneclusters import TableForGeneClusters
+from anvio.tables.geneclusters import TableForGeneClusters, TableForPSGCGCAssociations
 from anvio.tables.views import TablesForViews
+from anvio.tables.miscdata import TableForItemAdditionalData
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
@@ -59,6 +61,447 @@ aligners = Aligners()
 
 additional_param_sets_for_sequence_search = {'diamond'   : '--masking 0',
                                              'ncbi_blast': ''}
+
+
+class ComparePan:
+    """Compare a pan to another one made with the same genomes.
+
+    The two pans are referred to as p1 (self.pan, primary) and p2 (self.compared_pan).
+
+    Note
+    ----
+    This class writes item additional data to BOTH pan databases: gene cluster type
+    classifications are added to both the primary and compared pan-dbs so that each
+    database is self-contained when opened with anvi-display-pan.
+    """
+
+    def __init__(self, args, run=run, progress=progress):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.pan_db_path = A('pan_db')
+        self.compared_pan_db_path = A('compared_pan_db')
+        self.output_file_prefix = A('output_file')
+        self.skip_output_files = A('skip_output_files')
+
+        # load the first pansuperclass
+        utils.is_pan_db(self.pan_db_path)
+        self.pan = dbops.PanSuperclass(args, run, progress)
+
+        # make a new args and load the second pan to compare
+        utils.is_pan_db(self.compared_pan_db_path)
+        new_args = argparse.Namespace(**{**vars(args), 'pan_db': self.compared_pan_db_path})
+        self.compared_pan = dbops.PanSuperclass(new_args, run, progress)
+
+        # to be filled from the pan-db
+        self.compare_pan_dict = {}
+
+        # built once by build_gene_cluster_mapping(), reused by all methods
+        self.primary_to_compared = {}
+        self.missing_genes_by_gc = {}
+
+        # determine the label used in layer names: use the db variant if comparing structure vs sequence,
+        # otherwise fall back to the compared pan's project name
+        primary_variant = utils.get_db_variant(self.pan_db_path)
+        compared_variant = utils.get_db_variant(self.compared_pan_db_path)
+        if primary_variant == constants.PAN_STRUCTURE_MODE and compared_variant == constants.PAN_SEQUENCE_MODE:
+            self.compared_pan_name = 'sequence_based'
+        else:
+            self.compared_pan_name = self.compared_pan.p_meta['project_name']
+
+        # check if compared pan was made from the same genome.db
+        if self.pan.genomes_storage.get_storage_hash() != self.compared_pan.genomes_storage.get_storage_hash():
+            raise ConfigError("You are trying to compare to pan databases made from different genomes storage "
+                              "databases and that is a no no.")
+
+        # check if we have the same number of genes between the two pan.
+        # it is possible that some genes are discarded because of e-values threshold in the
+        # diamond step, or if the user provided user-defined gene-cluster with missing genes.
+        # The pan-db does not mind having less genes than what's in the genomes-storage, but at this time,
+        # we don't have a way to compare pan with a different gene content.
+        pan_num_genes = self.pan.p_meta['num_genes_in_gene_clusters']
+        compared_pan_num_genes = self.compared_pan.p_meta['num_genes_in_gene_clusters']
+        if pan_num_genes != compared_pan_num_genes:
+            self.run.warning(f"You are comparing pan databases with different numbers of genes "
+                             f"({pan_num_genes} in {A('pan_db')} vs {compared_pan_num_genes} in {A('compared_pan_db')}). "
+                             f"anvi'o will continue because the genomes storage hash matches; gene clusters with missing "
+                             f"genes will be reported so you know which ones were affected.")
+
+
+    def process(self):
+        # init the dictionaries self.compare_pan_dict
+        self.init_compare_pan()
+
+        # if no differences, let's stop here
+        if not self.compare_pan_dict:
+            raise ConfigError("Anvi'o have not found any differences in the composition of the gene clusters "
+                              "for both pan-db. Nothing to compare. BYE.")
+
+        # populate GCs_in_compared_pan for each differing gene cluster and detect fragmentation/combination
+        self.find_corresponding_gene_clusters()
+        self.detect_fragmentation_combination()
+
+        # classify gene clusters as core/singleton/accessory in both pans
+        # (must run before composition metrics since it computes self.compared_gc_types)
+        self.classify_gene_clusters_in_both_pans()
+
+        # for each GC in primary pan, report composition of corresponding GCs in compared pan
+        self.add_cluster_composition_metrics()
+
+        # add summary of function
+        self.add_function_summary_to_compare()
+
+        # add info to the items additional table
+        self.add_comparison_to_items_additional_data()
+
+        # report text file
+        if not self.skip_output_files:
+            self.store_results_as_txt()
+
+
+    def build_gene_cluster_mapping(self):
+        """Build a full mapping from primary pan gene clusters to compared pan gene clusters.
+
+        For each gene cluster in the primary pan, finds all corresponding gene clusters in
+        the compared pan based on shared gene calls. Also tracks genes missing from the
+        compared pan. The results are stored as self.primary_to_compared and
+        self.missing_genes_by_gc and reused by init_compare_pan, find_corresponding_gene_clusters,
+        and add_cluster_composition_metrics.
+        """
+        self.primary_to_compared = {}
+        self.missing_genes_by_gc = {}
+
+        for gc_name, gc_data in self.pan.gene_clusters.items():
+            compared_gcs = set()
+            for genome, gene_ids in gc_data.items():
+                for gene in gene_ids:
+                    try:
+                        compared_gc = self.compared_pan.gene_callers_id_to_gene_cluster[genome][gene]
+                        compared_gcs.add(compared_gc)
+                    except KeyError:
+                        self.missing_genes_by_gc.setdefault(gc_name, {}).setdefault(genome, []).append(gene)
+            self.primary_to_compared[gc_name] = compared_gcs
+
+
+    def init_compare_pan(self):
+        """Identify gene clusters that differ between the two pans.
+
+        Initializes gene clusters for both pans, builds the gene cluster mapping,
+        and populates self.compare_pan_dict with gene clusters whose composition
+        differs between the two pans.
+        """
+
+        # check if gene clusters are initialized
+        for p in [self.pan, self.compared_pan]:
+            if not p.gene_clusters_initialized:
+                p.init_gene_clusters()
+
+        # build the mapping once — reused by all downstream methods
+        self.build_gene_cluster_mapping()
+
+        # normalize cluster dict for stable comparison
+        def normalize_cluster_dict(d):
+            return {
+                genome: tuple(sorted(genes))
+                for genome, genes in sorted(d.items())
+            }
+
+        # pre-normalize compared pan clusters for fast lookup
+        normalized_compared = {
+            gc_name: normalize_cluster_dict(gc_dict)
+            for gc_name, gc_dict in self.compared_pan.gene_clusters.items()
+        }
+
+        # find matching (identical) gene clusters
+        matches = set()
+
+        for gene_cluster, gene_cluster_dict in self.pan.gene_clusters.items():
+            # clusters with missing genes automatically count as differing
+            if gene_cluster in self.missing_genes_by_gc:
+                continue
+
+            # use the precomputed mapping
+            compared_gcs = self.primary_to_compared[gene_cluster]
+
+            # normalize this cluster and check for exact match
+            norm_gc = normalize_cluster_dict(gene_cluster_dict)
+            for compared_gene_cluster in compared_gcs:
+                if compared_gene_cluster in normalized_compared and norm_gc == normalized_compared[compared_gene_cluster]:
+                    matches.add(gene_cluster)
+                    break
+
+        # keep only the gene clusters that differ
+        for gene_cluster in self.pan.gene_cluster_names:
+            if gene_cluster not in matches:
+                self.compare_pan_dict[gene_cluster] = {}
+                if gene_cluster in self.missing_genes_by_gc:
+                    self.compare_pan_dict[gene_cluster]['missing_genes'] = self.missing_genes_by_gc[gene_cluster]
+
+
+    def find_corresponding_gene_clusters(self):
+        """For each differing gene cluster, populate GCs_in_compared_pan from the precomputed mapping."""
+
+        for gene_cluster, gene_cluster_dict in self.compare_pan_dict.items():
+            gene_cluster_dict['GCs_in_compared_pan'] = list(self.primary_to_compared.get(gene_cluster, set()))
+
+
+    def detect_fragmentation_combination(self):
+        """Per gene cluster, determine if it is fragmented, combined, or has missing genes in the compared pan."""
+
+        clusters_with_no_compared_gcs = []
+
+        for gene_cluster, gene_cluster_dict in self.compare_pan_dict.items():
+            if gene_cluster_dict.get('missing_genes'):
+                gene_cluster_dict['status'] = 'missing_genes'
+                if not gene_cluster_dict.get('GCs_in_compared_pan'):
+                    clusters_with_no_compared_gcs.append(gene_cluster)
+                continue
+
+            if len(gene_cluster_dict['GCs_in_compared_pan']) > 1:
+                gene_cluster_dict['status'] = 'fragmented'
+                continue
+
+            # for combination, we need to check the extra gene calls in the corresponding
+            # compared-pan GC, and report the associated GCs from our current pan.
+            corresponding_gene_cluster = gene_cluster_dict['GCs_in_compared_pan'][0]
+            list_gene_clusters = [gene_cluster]
+            for genome, gene_callers_id in self.compared_pan.gene_clusters[corresponding_gene_cluster].items():
+                for gene in gene_callers_id:
+                    try:
+                        gc_found = self.pan.gene_callers_id_to_gene_cluster[genome][gene]
+                    except KeyError:
+                        # the compared pan has a gene not present in the primary pan (asymmetric gene content)
+                        continue
+                    if gc_found not in list_gene_clusters:
+                        list_gene_clusters.append(gc_found)
+
+            if len(list_gene_clusters) > 1:
+                gene_cluster_dict['status'] = 'combined'
+                gene_cluster_dict['related_GCs'] = list_gene_clusters
+            else:
+                raise ConfigError(f"Something has gone wrong. anvi'o thought that {gene_cluster} was different in the "
+                                  f"compared pangenome, but it was not able to identify why (fragmentation, combination, "
+                                  f"missing genes). That's very bad and you should reach out to a developer.")
+
+        if clusters_with_no_compared_gcs:
+            self.run.warning(f"{len(clusters_with_no_compared_gcs)} gene cluster(s) have missing genes and no "
+                             f"corresponding gene clusters in the compared pan (all their genes are absent from the "
+                             f"compared pan). These will have empty function and composition columns in the output. "
+                             f"Here they are: {', '.join(clusters_with_no_compared_gcs[:10])}"
+                             f"{'...' if len(clusters_with_no_compared_gcs) > 10 else ''}.",
+                             header="CLUSTERS WITH ALL GENES MISSING")
+
+
+    def add_function_summary_to_compare(self):
+        """For each differing gene cluster, summarize functional annotations of the associated GCs.
+
+        Computes a heterogeneity value starting at 0 if the same annotation is found across all GC,
+        then 1 if two annotations, etc.
+        """
+
+        # init function summary for the primary pan's differing gene clusters
+        self.pan.init_gene_clusters_functions_summary_dict(gene_clusters_of_interest=self.compare_pan_dict.keys())
+
+        # batch-init function summaries for all needed compared-pan GCs at once
+        compared_gcs_needed = set()
+        for gene_cluster_dict in self.compare_pan_dict.values():
+            if gene_cluster_dict['status'] in ('fragmented', 'missing_genes'):
+                compared_gcs_needed.update(gene_cluster_dict.get('GCs_in_compared_pan', []))
+        if compared_gcs_needed:
+            self.compared_pan.init_gene_clusters_functions_summary_dict(gene_clusters_of_interest=list(compared_gcs_needed))
+
+        for gene_cluster, gene_cluster_dict in self.compare_pan_dict.items():
+            if gene_cluster_dict['status'] == 'fragmented':
+                GC_source = 'GCs_in_compared_pan'
+            elif gene_cluster_dict['status'] == 'combined':
+                GC_source = 'related_GCs'
+            elif gene_cluster_dict['status'] == 'missing_genes':
+                GC_source = 'GCs_in_compared_pan'
+            else:
+                raise ConfigError("SOMEONE added an illegal value to the 'status' entry in self.compare_pan_dict. "
+                                  "Very illegal. Here is the culprit value: '%s'" % gene_cluster_dict['status'])
+
+            function_summary = {}
+            for source in self.pan.gene_clusters_function_sources:
+                function_summary[source] = {'function': set([]), 'accession': set([]), 'heterogeneity': 0}
+
+            for gc in gene_cluster_dict.get(GC_source, []):
+                if GC_source == 'GCs_in_compared_pan':
+                    function = self.compared_pan.gene_clusters_functions_summary_dict.get(gc)
+                else:
+                    function = self.pan.gene_clusters_functions_summary_dict.get(gc)
+
+                if not function:
+                    continue
+
+                for source, annotation in function.items():
+                    function_summary[source]['function'].add(annotation['function'])
+                    function_summary[source]['accession'].add(annotation['accession'])
+
+            # check for multiple annotations and report frequency, starting at 0 for one annotation
+            for source, annotation in function_summary.items():
+                annotation['heterogeneity'] = max(0, len(annotation['function']) - 1)
+
+            gene_cluster_dict['function'] = function_summary
+
+
+    def add_comparison_to_items_additional_data(self):
+        items_additional_data_dict = {}
+        # key order: functional sources first, then status (outermost ring)
+        items_additional_data_keys = []
+        for source in self.pan.gene_clusters_function_sources:
+            items_additional_data_keys.append(f"{self.compared_pan_name}_{source}")
+        items_additional_data_keys.append(f"{self.compared_pan_name}_status")
+
+        for gene_cluster in self.pan.gene_cluster_names:
+            summary = {}
+            gene_cluster_data = self.compare_pan_dict.get(gene_cluster)
+
+            if gene_cluster_data is None:
+                summary.update({k: None for k in items_additional_data_keys})
+            else:
+                summary[f"{self.compared_pan_name}_status"] = gene_cluster_data.get("status")
+
+                for source, func_info in gene_cluster_data.get("function", {}).items():
+                    summary[f"{self.compared_pan_name}_{source}"] = func_info.get("heterogeneity")
+
+            items_additional_data_dict[gene_cluster] = summary
+
+        # everything to the items additional table, in the 'compare_pan' group:
+        compare_args = argparse.Namespace(**{**vars(self.args), 'target_data_group': 'compare_pan'})
+        items_additional_data_table = TableForItemAdditionalData(compare_args, r=terminal.Run(verbose=False))
+        items_additional_data_table.add(items_additional_data_dict, items_additional_data_keys, skip_check_names=True)
+
+
+    def store_results_as_txt(self):
+        """Generate a flattened text file for the self.compare_pan_dict"""
+        out_dict = {}
+
+        for gene_cluster, gene_cluster_dict in self.compare_pan_dict.items():
+            status = gene_cluster_dict['status']
+            gcs = ''
+            if status == 'fragmented':
+                gcs = ', '.join(gene_cluster_dict['GCs_in_compared_pan'])
+            elif status == 'combined':
+                gcs = ', '.join(gene_cluster_dict['related_GCs'])
+            elif status == 'missing_genes':
+                gcs = ', '.join(gene_cluster_dict.get('GCs_in_compared_pan', []))
+
+            row = {'status': status,
+                   'associated_GCs': gcs}
+
+            # Add columns for each functional annotation source (may be absent for missing_genes clusters)
+            for func_source, func_data in gene_cluster_dict.get('function', {}).items():
+                function_values = sorted(str(x) for x in func_data['function'])
+                function_str = '!!!'.join(function_values)
+
+                accession_values = sorted(str(x) for x in func_data['accession'])
+                accession_str = '!!!'.join(accession_values)
+
+                row[f'{func_source}_function'] = function_str
+                row[f'{func_source}_accession'] = accession_str
+                row[f'{func_source}_heterogeneity'] = func_data['heterogeneity']
+
+            out_dict[gene_cluster] = row
+
+        # build column order from the first GC that has function data
+        function_types = []
+        for gc_dict in self.compare_pan_dict.values():
+            if 'function' in gc_dict:
+                function_types = list(gc_dict['function'].keys())
+                break
+
+        column_order = ['GC_ID', 'status', 'associated_GCs']
+        for func_source in function_types:
+            column_order.extend([
+                f'{func_source}_function',
+                f'{func_source}_accession',
+                f'{func_source}_heterogeneity'
+            ])
+
+        utils.store_dict_as_TAB_delimited_file(out_dict, self.output_file_prefix, headers=column_order, key_header='GC_ID', none_value='')
+
+
+    def classify_gene_clusters_in_both_pans(self):
+        """Classify gene clusters as core/singleton/accessory in both pans.
+
+        The compared pan classification is stored as self.compared_gc_types for reuse
+        by add_cluster_composition_metrics.
+        """
+        num_genomes = self.pan.p_meta['num_genomes']
+
+        self.pan_gc_types = Pangenome.classify_gene_cluster_types(self.pan.gene_clusters, num_genomes)
+        self.compared_gc_types = Pangenome.classify_gene_cluster_types(self.compared_pan.gene_clusters, num_genomes)
+
+
+    def add_cluster_composition_metrics(self):
+        """For each GC in the primary pan, report the composition of corresponding GCs in the compared pan.
+
+        This is useful any time one pan has coarser clusters than another (e.g., structure-informed
+        PSGCs vs sequence-based GCs, or two sequence-based pans with different MCL inflation values).
+        For each cluster in the primary pan, it reports how many compared-pan clusters map to it
+        and their core/singleton/accessory gene breakdown.
+        """
+        compared_name = self.compared_pan_name
+
+        # reuse the classification computed by add_gene_cluster_type_data
+        compared_gc_types = self.compared_gc_types
+
+        # compute per-primary-GC composition metrics
+        composition_data = {}
+        for gc_name in self.pan.gene_cluster_names:
+            compared_gcs = self.primary_to_compared.get(gc_name, set())
+
+            core_genes = 0
+            singleton_genes = 0
+            accessory_genes = 0
+            gc_types_dict = {}
+            gene_counts_per_gc = []
+
+            for compared_gc in compared_gcs:
+                gc_type = compared_gc_types.get(compared_gc, 'accessory')
+                gc_types_dict[compared_gc] = gc_type
+                gene_count = sum(len(genes) for genes in self.compared_pan.gene_clusters[compared_gc].values())
+                gene_counts_per_gc.append(gene_count)
+                if gc_type == 'core':
+                    core_genes += gene_count
+                elif gc_type == 'singleton':
+                    singleton_genes += gene_count
+                else:
+                    accessory_genes += gene_count
+
+            # Gini-Simpson index: probability that two randomly chosen genes belong to different GCs.
+            # 0 = single GC (or empty), 1 = maximally even distribution across many GCs.
+            total_genes = core_genes + singleton_genes + accessory_genes
+            if total_genes > 0:
+                gini_simpson = 1 - sum((c / total_genes) ** 2 for c in gene_counts_per_gc)
+            else:
+                gini_simpson = 0
+
+            composition_data[gc_name] = {
+                f'{compared_name}_num_GCs': len(compared_gcs),
+                f'{compared_name}_composition!comp_core': core_genes,
+                f'{compared_name}_composition!comp_singleton': singleton_genes,
+                f'{compared_name}_composition!comp_accessory': accessory_genes,
+                f'{compared_name}_composition_evenness': round(gini_simpson, 4),
+                f'{compared_name}_gc_types': json.dumps(gc_types_dict),
+            }
+
+        # key order determines ring order (first = innermost): num_GCs, stackbar, evenness, gc_types
+        composition_keys = [
+            f'{compared_name}_num_GCs',
+            f'{compared_name}_composition!comp_core',
+            f'{compared_name}_composition!comp_singleton',
+            f'{compared_name}_composition!comp_accessory',
+            f'{compared_name}_composition_evenness',
+            f'{compared_name}_gc_types',
+        ]
+
+        compare_args = argparse.Namespace(**{**vars(self.args), 'target_data_group': 'compare_pan'})
+        composition_table = TableForItemAdditionalData(compare_args, r=terminal.Run(verbose=False))
+        composition_table.add(composition_data, composition_keys, skip_check_names=True)
 
 
 class RarefactionAnalysis:
@@ -301,6 +744,13 @@ class Pangenome(object):
         self.enforce_hierarchical_clustering = A('enforce_hierarchical_clustering')
         self.enforce_the_analysis_of_excessive_number_of_genomes = anvio.USER_KNOWS_IT_IS_NOT_A_GOOD_IDEA
 
+        self.pan_mode = A('pan_mode') or constants.pangenome_mode_default
+        self.prostt5_data_dir = A('prostt5_data_dir')
+        self.foldseek_search_results_output_file = A('foldseek_search_results')
+        self.de_novo_gene_clusters_dict = None
+        self.skip_sequence_pan = A('skip_sequence_pan')
+        self.conventional_pan_db_path = None
+
         self.additional_params_for_seq_search = A('additional_params_for_seq_search')
         self.additional_params_for_seq_search_processed = False
 
@@ -320,8 +770,15 @@ class Pangenome(object):
         self.additional_view_data = {}
         self.aligner = None
 
+        # this is to fill a table that will only be relevant in structure mode.
+        self.gc_psgc_associations = []
+
         # we don't know what we are about
         self.description = None
+
+        # quick accession variables to mode
+        self.STRUCTURE_MODE = False if self.pan_mode == constants.pangenome_mode_default else True
+        self.SEQUENCE_MODE = not self.STRUCTURE_MODE
 
 
     def load_genomes(self):
@@ -370,10 +827,43 @@ class Pangenome(object):
                        'description': self.description if self.description else '_No description is provided_',
                       }
 
-        dbops.PanDatabase(self.pan_db_path, quiet=False).create(meta_values)
+        filesnpaths.is_output_file_writable(self.pan_db_path, ok_if_exists=False)
+
+        dbops.PanDatabase(self.pan_db_path, quiet=False).create(meta_values, db_variant=self.pan_mode)
 
         # know thyself.
         self.args.pan_db = self.pan_db_path
+
+
+    def generate_conventional_pan_db(self):
+        """Generate a conventional sequence-based pan-db alongside the structure pan-db."""
+        meta_values = {'internal_genome_names': ','.join(self.internal_genome_names),
+                       'external_genome_names': ','.join(self.external_genome_names),
+                       'num_genomes': len(self.genomes),
+                       'min_percent_identity': self.min_percent_identity,
+                       'gene_cluster_min_occurrence': self.gene_cluster_min_occurrence,
+                       'mcl_inflation': self.mcl_inflation,
+                       'user_provided_gene_clusters_txt': True if self.user_defined_gene_clusters else False,
+                       'default_view': 'gene_cluster_presence_absence',
+                       'use_ncbi_blast': self.use_ncbi_blast,
+                       'additional_params_for_seq_search': self.additional_params_for_seq_search,
+                       'minbit': self.minbit,
+                       'exclude_partial_gene_calls': self.exclude_partial_gene_calls,
+                       'gene_alignments_computed': False if self.skip_alignments else True,
+                       'genomes_storage_hash': self.genomes_storage.get_storage_hash(),
+                       'project_name': self.project_name,
+                       'items_ordered': False,
+                       'reaction_network_ko_annotations_hash': None,
+                       'reaction_network_kegg_database_release': None,
+                       'reaction_network_modelseed_database_sha': None,
+                       'reaction_network_consensus_threshold': None,
+                       'reaction_network_discard_ties': None,
+                       'description': self.description if self.description else '_No description is provided_',
+                      }
+
+        filesnpaths.is_output_file_writable(self.conventional_pan_db_path, ok_if_exists=False)
+
+        dbops.PanDatabase(self.conventional_pan_db_path, quiet=False).create(meta_values, db_variant=constants.PAN_SEQUENCE_MODE)
 
 
     def get_output_file_path(self, file_name, delete_if_exists=False):
@@ -428,6 +918,13 @@ class Pangenome(object):
         filesnpaths.is_output_file_writable(self.log_file_path)
         os.remove(self.log_file_path) if os.path.exists(self.log_file_path) else None
 
+        if self.pan_mode not in constants.pangenome_modes_available:
+            raise ConfigError(f"The pangenome mode '{self.pan_mode}' is not something anvi'o recognizes :/ Something is wrong here.")
+
+        if self.STRUCTURE_MODE and self.user_defined_gene_clusters:
+            raise ConfigError("You are confusing anvi'o :/ You can't use `pan-mode --structure` and `gene_clusters_txt` at the same time."
+                                "When `structure` is active, please skip setting `gene_clusters_txt`.")
+
         if self.user_defined_gene_clusters:
             filesnpaths.is_gene_clusters_txt(self.user_defined_gene_clusters)
 
@@ -457,7 +954,17 @@ class Pangenome(object):
             filesnpaths.is_file_plain_text(self.description_file_path)
             self.description = open(os.path.abspath(self.description_file_path), 'r').read()
 
-        self.pan_db_path = self.get_output_file_path(self.project_name + '-PAN.db')
+        if self.STRUCTURE_MODE:
+            self.pan_db_path = self.get_output_file_path(self.project_name + '-STRUCTURE-PAN.db')
+            if not self.skip_sequence_pan:
+                self.conventional_pan_db_path = self.get_output_file_path(self.project_name + '-PAN.db')
+        elif self.SEQUENCE_MODE or self.user_defined_gene_clusters:
+            self.pan_db_path = self.get_output_file_path(self.project_name + '-PAN.db')
+        else:
+            raise ConfigError("Anvi'o is confused since it ended up somewhere that doesn't exist :(")
+
+        if self.foldseek_search_results_output_file:
+            filesnpaths.is_file_tab_delimited(self.foldseek_search_results_output_file)
 
 
     def process_additional_params(self):
@@ -521,7 +1028,23 @@ class Pangenome(object):
         return blast.get_blast_results()
 
 
-    def run_search(self, unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict):
+    def run_foldseek(self, fasta_path):
+        """ Running Foldseek """
+        fs = Foldseek(query_fasta=fasta_path,
+                      run=self.run,
+                      progress=self.progress,
+                      num_threads=self.num_threads,
+                      weight_dir=self.prostt5_data_dir,
+                      overwrite_output_destinations=self.overwrite_output_destinations)
+
+        # FIXME this tmp is necessarry for easy-search instead of giving like that we can set default tempfile.gettempdir() in foldseek driver
+
+        fs.process(self.output_dir)
+
+        return fs.get_foldseek_results()
+
+
+    def run_search_de_novo(self, unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict):
         if self.use_ncbi_blast:
             return self.run_blast(unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict)
         else:
@@ -668,6 +1191,12 @@ class Pangenome(object):
         self.progress.new('Generating view data')
         self.progress.update('...')
 
+        # reset view data dicts so a second call (e.g. for the conventional pan-db)
+        # does not carry over entries from a previous call
+        self.view_data = {}
+        self.view_data_presence_absence = {}
+        self.additional_view_data = {}
+
         gene_clusters = list(gene_clusters_dict.keys())
 
         for genome_name in self.genomes:
@@ -767,6 +1296,139 @@ class Pangenome(object):
         #                   RETURN THE -LIKELY- UPDATED PROTEIN CLUSTERS DICT
         ########################################################################################
         return gene_clusters_dict
+
+
+    @staticmethod
+    def classify_gene_cluster_types(gene_clusters_dict, num_genomes):
+        """Classify gene clusters as core, singleton, or accessory based on genome occurrence.
+
+        Accepts both the list-of-dicts format (from Pangenome: [{gene_entry dicts}]) and the
+        dict-of-dicts format (from PanSuperclass: {genome_name: [gene_ids]}).
+        """
+        gc_types = {}
+        for gc_name, gc_data in gene_clusters_dict.items():
+            if isinstance(gc_data, dict):
+                # PanSuperclass format: {genome_name: [gene_ids]}
+                genomes_with_hits = set(g for g, genes in gc_data.items() if genes)
+            else:
+                # Pangenome format: [{genome_name: ..., ...}]
+                genomes_with_hits = set(e['genome_name'] for e in gc_data)
+
+            if len(genomes_with_hits) == num_genomes:
+                gc_types[gc_name] = 'core'
+            elif len(genomes_with_hits) == 1:
+                gc_types[gc_name] = 'singleton'
+            else:
+                gc_types[gc_name] = 'accessory'
+        return gc_types
+
+
+    def add_psgc_layers(self, gene_clusters_dict, item_additional_data_keys):
+        """Add PSGC-related layers to the additional view data.
+
+        Args:
+            gene_clusters_dict: Dictionary containing gene cluster information
+            item_additional_data_keys: List to store the names of additional data keys
+        """
+        psgc_gc_counts = self.count_gene_clusters_per_psgc()
+        psgc_gc_types = self.classify_gene_types(gene_clusters_dict)
+
+        self.add_layers_to_view(psgc_gc_counts)
+        item_additional_data_keys.extend([
+            'number_gc_in_psgc',
+            'psgc_composition!core',
+            'psgc_composition!singleton',
+            'psgc_composition!accessory',
+            'gc_types'
+        ])
+
+
+    def count_gene_clusters_per_psgc(self):
+        """Count the number of gene clusters in each PSGC."""
+        psgc_gc_counts = {}
+        for gc_name, psgc_name in self.gc_psgc_associations:
+            if psgc_name:
+                psgc_gc_counts[psgc_name] = psgc_gc_counts.get(psgc_name, 0) + 1
+        return psgc_gc_counts
+
+
+    def count_genes_per_psgc(self, gene_clusters_dict):
+        """Count the total number of genes in each PSGC."""
+        psgc_gene_counts = {}
+
+        for gc_name, genes in gene_clusters_dict.items():
+            psgc_gene_counts[gc_name] = len(genes)
+
+        return psgc_gene_counts
+
+
+    def classify_gene_types(self, gene_clusters_dict):
+        """Classify original gene clusters as core, singleton, or other."""
+
+        self.run.warning(None, header="GENE TYPE CLASSIFICATION", lc="green")
+
+        de_novo_gc_types = {}
+        psgc_count = 0
+        psgcs_with_genes = 0
+
+        for gc_name in self.de_novo_gene_clusters_dict:
+            genomes_with_hits = set()
+            for gene_entry in self.de_novo_gene_clusters_dict[gc_name]:
+                genomes_with_hits.add(gene_entry['genome_name'])
+
+            if len(genomes_with_hits) == len(self.genomes):
+                de_novo_gc_types[gc_name] = 'core'
+            elif len(genomes_with_hits) == 1:
+                de_novo_gc_types[gc_name] = 'singleton'
+            else:
+                de_novo_gc_types[gc_name] = 'accessory'
+
+        gc_type_counts = {'core': 0, 'singleton': 0, 'accessory': 0}
+        for gc_type in de_novo_gc_types.values():
+            gc_type_counts[gc_type] += 1
+
+        for psgc_name in gene_clusters_dict:
+            self.additional_view_data[psgc_name].update({'psgc_composition!core': 0,'psgc_composition!singleton': 0,'psgc_composition!accessory': 0,'gc_types': '{}'})
+
+        for psgc_name in gene_clusters_dict:
+            psgc_count += 1
+
+            gc_types_dict = {}
+            de_novo_gcs = []
+            for gc, psgc in self.gc_psgc_associations:
+                if psgc == psgc_name and gc in de_novo_gc_types:
+                    de_novo_gcs.append(gc)
+                    gc_types_dict[gc] = de_novo_gc_types[gc]
+
+            core_genes = 0
+            singleton_genes = 0
+            accessory_genes = 0
+
+            for gc in de_novo_gcs:
+                gc_type = de_novo_gc_types[gc]
+                gene_count = len(self.de_novo_gene_clusters_dict[gc])
+
+                if gc_type == 'core':
+                    core_genes += gene_count
+                elif gc_type == 'singleton':
+                    singleton_genes += gene_count
+                else:
+                    accessory_genes += gene_count
+
+            self.additional_view_data[psgc_name]['gc_types'] = json.dumps(gc_types_dict)
+
+            if core_genes > 0 or singleton_genes > 0 or accessory_genes > 0:
+                psgcs_with_genes += 1
+                self.additional_view_data[psgc_name].update({'psgc_composition!core': core_genes,'psgc_composition!singleton': singleton_genes,'psgc_composition!accessory': accessory_genes})
+
+        self.run.info('PSGCs classified', f"{psgcs_with_genes} of {psgc_count}")
+        self.run.info('Gene cluster types', f"Core: {gc_type_counts['core']}, "f"Singleton: {gc_type_counts['singleton']}, "f"Accessory: {gc_type_counts['accessory']}")
+
+
+    def add_layers_to_view(self, psgc_gc_counts):
+        """Add all PSGC layers to the view data."""
+        for gene_cluster in self.view_data:
+            self.additional_view_data[gene_cluster].update({ 'number_gc_in_psgc': psgc_gc_counts.get(gene_cluster, 0) })
 
 
     def gen_synteny_based_ordering_of_gene_clusters(self, gene_clusters_dict):
@@ -877,7 +1539,7 @@ class Pangenome(object):
         miscdata.TableForItemAdditionalData(homogeneity_args, r=terminal.Run(verbose=False)).add(d, homogeneity_keys, skip_check_names=True)
 
         aai_args = argparse.Namespace(**{**vars(self.args), 'target_data_group': 'AAI'})
-        aai_keys = ['AAI_min', 'AAI_max', 'AAI_avg']
+        aai_keys = ['AAI_min', 'AAI_min_nonzero', 'AAI_max', 'AAI_avg']
         miscdata.TableForItemAdditionalData(aai_args, r=terminal.Run(verbose=False)).add(d, aai_keys, skip_check_names=True)
 
 
@@ -973,6 +1635,23 @@ class Pangenome(object):
         self.run.info('Args', (str(self.args)), quiet=True)
 
 
+    def populate_gene_cluster_tracker_table(self, gene_clusters_dict):
+        self.progress.new('Storing de novo gene clusters for future references')
+        self.progress.update('...')
+
+        table_for_gene_clusters = TableForGeneClusters(self.pan_db_path, gc_tracker_table=True, run=self.run, progress=self.progress)
+
+        num_genes_in_gene_clusters = 0
+        for gene_cluster_name in gene_clusters_dict:
+            for gene_entry in gene_clusters_dict[gene_cluster_name]:
+                table_for_gene_clusters.add(gene_entry)
+                num_genes_in_gene_clusters += 1
+
+        self.progress.end()
+
+        table_for_gene_clusters.store()
+
+
     def store_gene_clusters(self, gene_clusters_dict):
         self.progress.new('Storing gene clusters in the database')
         self.progress.update('...')
@@ -989,13 +1668,93 @@ class Pangenome(object):
 
         table_for_gene_clusters.store()
 
+        self.progress.new('Storing gc <-> psgc associations in the database')
+        self.progress.update('...')
+
+        if self.STRUCTURE_MODE and utils.get_db_variant(self.pan_db_path) == constants.PAN_STRUCTURE_MODE:
+            # if we are in structure mode and writing to the structure pan-db, we also need to update the `TableForPSGCGCAssociations`
+            table_for_gc_psgc_associations = TableForPSGCGCAssociations(self.pan_db_path, run=self.run, progress=self.progress)
+
+            for gc_name, psgc_name in self.gc_psgc_associations:
+                table_for_gc_psgc_associations.add({'gene_cluster_id': gc_name, 'protein_structure_informed_gene_cluster_id': psgc_name})
+
+            self.progress.end()
+
+            table_for_gc_psgc_associations.store()
+
+
         pan_db = dbops.PanDatabase(self.pan_db_path, quiet=True)
         pan_db.db.set_meta_value('num_gene_clusters', len(gene_clusters_dict))
         pan_db.db.set_meta_value('num_genes_in_gene_clusters', num_genes_in_gene_clusters)
         pan_db.disconnect()
 
 
-    def gen_gene_clusters_dict_from_mcl_clusters(self, mcl_clusters):
+    def gen_protein_structure_informed_gene_clusters_dict_from_mcl_clusters(self, mcl_clusters, gene_clusters_de_novo, name_prefix="PSGC"):
+        """Turn MCL clusters from structure search into a gene clusters dict
+
+        The only difference between this function and `gen_de_novo_gene_clusters_dict_from_mcl_clusters` is that
+        the latter takes in de novo gene clusters, where hashes must be replaced with actual genome names. In
+        contrast, this function takes clusters of gene clusters, which must be turned into a dictionary where
+        gene clusters resolved back to individual genes they had originally.
+        """
+
+        # we will build the following dictionary here from the MCL results and de novo gene clusters
+        protein_structure_informed_gene_clusters_dict = {}
+
+        counter = 0
+        for gene_cluster_group in mcl_clusters.values():
+            counter += 1
+            psgc_name = f"{name_prefix}_{counter:08d}"
+
+            protein_structure_informed_gene_clusters_dict[psgc_name] = []
+
+            # For each MCL gene cluster group, retrieve gene entries from gene_clusters_de_novo and add them to the new dictionary.
+            for gc_name in gene_cluster_group:
+
+                # as we are now going through de novo gene clusters that are represented in protein structure-informed
+                # clusters, we will update our talbe to track psgc <-> gc associations table
+                self.gc_psgc_associations.append((gc_name, psgc_name))
+
+                # go through every gene entry in de novo clusters
+                for gene_entry in gene_clusters_de_novo[gc_name]:
+                    protein_structure_informed_gene_clusters_dict[psgc_name].append({
+                        'gene_caller_id': int(gene_entry['gene_caller_id']),
+                        'gene_cluster_id': psgc_name,
+                        'genome_name': gene_entry['genome_name'],
+                        'alignment_summary': gene_entry.get('alignment_summary', '')
+                    })
+
+        # there is one last house-keeping business to do here. now we have our psgc <-> gc assocaitions
+        # table for downsteram steps. as we went through psgcs and matched gcs that were contained in
+        # them with the de novo gcs, we don't know if there are any de novo gcs that did not end up in
+        # any of the psgcs. this is an extremely unlikely scenario, but those are the kinds of things
+        # we are here for. so we will go t
+        known_gcs = set(list(gene_clusters_de_novo.keys()))
+        gcs_found_in_psgcs = set([tpl[0] for tpl in self.gc_psgc_associations])
+        gcs_not_reprsented_in_psgcs = known_gcs.difference(gcs_found_in_psgcs)
+        if gcs_not_reprsented_in_psgcs:
+            self.run.warning(f"Anvi'o noticed something unexpected, and she wants you to know about it. It seems "
+                             f"{pp(len(gcs_not_reprsented_in_psgcs))} of {pp(len(known_gcs))} gene clusters anvi'o "
+                             f"computed based on their amino acid sequences somehow were lost when protein "
+                             f"structure-informed gene clusters were computed from their representatives. We are "
+                             f"not sure under what circumstances this can happen. If you are seeing this error "
+                             f"message, you can help us implement more functionality in this class to debug it "
+                             f"properly. Here is the list of de novo gene clusters that were lost along the way: "
+                             f"{', '.join(gcs_not_reprsented_in_psgcs)}")
+
+            for gc_name in gcs_not_reprsented_in_psgcs:
+                self.gc_psgc_associations.append((gc_name, None))
+
+        self.run.warning(f"Hi! Anvi'o just finished calculating your protein structure-informed gene clusters dictionary "
+                         f"that consolidated {pp(len(known_gcs))} gene clusters (that were generated based on the good ol' "
+                         f"amino acid sequence homology considerations) into {pp(len(protein_structure_informed_gene_clusters_dict))} "
+                         f"protein structure-informed gene clusters. We keep our fingers crossed that something will not "
+                         f"explode after this.", header="🎉 GCs TO PSGCs IS WORKING 🎉", lc='green')
+
+        return protein_structure_informed_gene_clusters_dict
+
+
+    def gen_de_novo_gene_clusters_dict_from_mcl_clusters(self, mcl_clusters):
         self.progress.new('Generating the gene clusters dictionary from raw MCL clusters')
         self.progress.update('...')
 
@@ -1150,8 +1909,162 @@ class Pangenome(object):
             output_queue.put(output)
 
 
-    def get_gene_clusters_de_novo(self):
+    def get_gene_cluster_representative_sequences(self, gene_clusters_dict):
+        """Select representative sequences per GC.
+
+        Strategy:
+            1) exclude length outliers using median length of non-partial genes (fallback to all genes).
+            2) compute a medoid based on pairwise similarity of aligned sequences.
+            3) prefer non-partial genes; if all are partial, fall back to the best partial medoid.
+            4) if only one sequence exists, return it.
+        """
+
+        representative_sequences = {}
+
+        for gc_name in gene_clusters_dict:
+            sequence_entries = []
+            non_partial_lengths = []
+
+            for gc_info in gene_clusters_dict[gc_name]:
+                # recover key data
+                genome_name = gc_info['genome_name']
+                gene_caller_id = gc_info['gene_caller_id']
+                alignment_summary = gc_info['alignment_summary']
+
+                # recover restored alignment for sequence
+                aa_sequence = self.genomes_storage.gene_info[genome_name][gene_caller_id]['aa_sequence']
+                sequence = utils.restore_alignment(aa_sequence, alignment_summary)
+                is_partial = self.genomes_storage.is_partial_gene_call(genome_name, gene_caller_id)
+                length = len(aa_sequence)
+
+                if not is_partial:
+                    non_partial_lengths.append(length)
+
+                sequence_entries.append({
+                    'sequence': sequence,
+                    'length': length,
+                    'gap_count': sequence.count('-'),
+                    'is_partial': bool(is_partial)
+                })
+
+            # short-circuit: single-member cluster
+            if len(sequence_entries) == 1:
+                representative_sequences[gc_name] = {'sequence': sequence_entries[0]['sequence']}
+                continue
+
+            # compute median length excluding partials if possible
+            lengths_for_median = non_partial_lengths if len(non_partial_lengths) else [e['length'] for e in sequence_entries]
+            median_length = np.median(lengths_for_median) if len(lengths_for_median) else 0
+
+            # exclude length outliers (+/-20% of median). If everything is excluded, fall back to all.
+            filtered_entries = sequence_entries
+            if median_length:
+                lower, upper = 0.8 * median_length, 1.2 * median_length
+                filtered_entries = [e for e in sequence_entries if lower <= e['length'] <= upper]
+                if not len(filtered_entries):
+                    filtered_entries = sequence_entries
+
+            # compute pairwise similarities (identity over aligned positions without gaps)
+            def pairwise_similarity(seq_a, seq_b):
+                matches, positions = 0, 0
+                for aa, bb in zip(seq_a, seq_b):
+                    if aa == '-' or bb == '-':
+                        continue
+                    positions += 1
+                    if aa == bb:
+                        matches += 1
+                if positions == 0:
+                    return 0
+                return matches / positions
+
+            def average_distance(entry, entries):
+                if len(entries) == 1:
+                    return 0
+                total = 0
+                for other in entries:
+                    if other is entry:
+                        continue
+                    sim = pairwise_similarity(entry['sequence'], other['sequence'])
+                    total += (1 - sim)
+                return total / (len(entries) - 1)
+
+            # rank candidates by average distance, then gaps, then length (longer preferred)
+            ranked = []
+            for entry in filtered_entries:
+                avg_dist = average_distance(entry, filtered_entries)
+                ranked.append((avg_dist, entry['gap_count'], -entry['length'], entry['is_partial'], entry['sequence']))
+
+            ranked.sort()
+
+            # prefer non-partial medoid if available
+            representative_sequence = None
+            for _, _, _, is_partial, seq in ranked:
+                if not is_partial:
+                    representative_sequence = seq
+                    break
+            if representative_sequence is None:
+                representative_sequence = ranked[0][4]  # all sequences are partial
+
+            representative_sequences[gc_name] = {'sequence': representative_sequence}
+
+        return representative_sequences
+
+
+    def get_structure_informed_gene_clusters(self):
         """Function to compute gene clusters de novo"""
+
+        # get de novo gene clusters first to reduce search space for structure
+        self.de_novo_gene_clusters_dict = self.get_sequence_based_gene_clusters()  # Store as class variable
+
+        # store gene clusters dict into the db. this one is the de novo gene cluster dictionary,
+        # not the structure one yet. but this dict will give access to the details of how de novo gene
+        # clusters distributed across genomes in conjunction with the gc_psgc_associations table
+        self.populate_gene_cluster_tracker_table(self.de_novo_gene_clusters_dict)
+
+        # generate the conventional pan-db if requested
+        if not self.skip_sequence_pan:
+            self.generate_conventional_pan_db()
+
+        # next, we will align non-singleton gene clusters to make sure we have all the information
+        # we need to be able to pick an appropriate representative for each gene cluster.
+        skip_alignments = self.skip_alignments
+        self.skip_alignments = False
+        self.de_novo_gene_clusters_dict, unsuccessful_alignments = self.compute_alignments_for_gene_clusters(self.de_novo_gene_clusters_dict)
+        self.skip_alignments = skip_alignments
+
+        # now the `de_novo_gene_clusters_dict` contains entries with alignment summaries. time to  get gene cluster
+        # representative sequences
+        gene_cluster_representatives = self.get_gene_cluster_representative_sequences(self.de_novo_gene_clusters_dict)
+
+        # next, we will generate a FASTA file for gene cluster representatives, which will be analyzed
+        # with foldseek
+        gene_cluster_representatives_FASTA_path = self.get_output_file_path('gene-cluster-representatives-aa.fa')
+        with open(gene_cluster_representatives_FASTA_path, 'w') as output:
+            for gc_name in gene_cluster_representatives:
+                sequence = gene_cluster_representatives[gc_name]['sequence'].replace('-', '')
+                output.write(f">{gc_name}\n{sequence}\n")
+
+        # get foldseek search results (please NOTE that if there is a user-provided search output, we utilize that here)
+        if not self.foldseek_search_results_output_file:
+            self.foldseek_search_results_output_file = self.run_foldseek(gene_cluster_representatives_FASTA_path)
+
+        # generate MCL input from filtered foldseek_result
+        mcl_input_file_path = self.gen_mcl_input(self.foldseek_search_results_output_file)
+
+        # get clusters from MCL
+        mcl_clusters = self.run_mcl(mcl_input_file_path)
+
+        # we have the raw gene clusters dict, but we need to re-format it for following steps
+        protein_structure_informed_gene_clusters_dict = self.gen_protein_structure_informed_gene_clusters_dict_from_mcl_clusters(mcl_clusters, self.de_novo_gene_clusters_dict)
+
+        # invoke the garbage collector to clean up some mess
+        del mcl_clusters
+
+        return protein_structure_informed_gene_clusters_dict
+
+
+    def get_sequence_based_gene_clusters(self):
+        """Function to compute gene clusters de novo based on amino acid sequences"""
 
         # get all amino acid sequences:
         combined_aas_FASTA_path = self.get_output_file_path('combined-aas.fa')
@@ -1166,7 +2079,7 @@ class Pangenome(object):
         self.run.info('Unique AA sequences FASTA', unique_aas_FASTA_path)
 
         # run search
-        blastall_results = self.run_search(unique_aas_FASTA_path, unique_aas_names_dict)
+        blastall_results = self.run_search_de_novo(unique_aas_FASTA_path, unique_aas_names_dict)
 
         # generate MCL input from filtered blastall_results
         mcl_input_file_path = self.gen_mcl_input(blastall_results)
@@ -1175,7 +2088,7 @@ class Pangenome(object):
         mcl_clusters = self.run_mcl(mcl_input_file_path)
 
         # we have the raw gene clusters dict, but we need to re-format it for following steps
-        gene_clusters_dict = self.gen_gene_clusters_dict_from_mcl_clusters(mcl_clusters)
+        gene_clusters_dict = self.gen_de_novo_gene_clusters_dict_from_mcl_clusters(mcl_clusters)
         del mcl_clusters
 
         return gene_clusters_dict
@@ -1219,6 +2132,47 @@ class Pangenome(object):
         return gene_clusters_dict
 
 
+    def _run_full_pan_pipeline(self, gene_clusters_dict, pan_db_path, unsuccessful_alignments=None):
+        """Run the complete pan-db population pipeline for a given gene clusters dict and pan-db path."""
+        if unsuccessful_alignments is None:
+            unsuccessful_alignments = set()
+
+        original_pan_db_path = self.pan_db_path
+        original_args_pan_db = self.args.pan_db
+
+        self.pan_db_path = pan_db_path
+        self.args.pan_db = pan_db_path
+
+        try:
+            gene_clusters_dict = self.process_gene_clusters(gene_clusters_dict)
+            self.store_gene_clusters(gene_clusters_dict)
+            self.gen_hierarchical_clustering_of_gene_clusters()
+            self.gen_synteny_based_ordering_of_gene_clusters(gene_clusters_dict)
+            self.populate_layers_additional_data_and_orders()
+            self.populate_gene_cluster_homogeneity_index(gene_clusters_dict, gene_clusters_failed_to_align=unsuccessful_alignments)
+        finally:
+            self.pan_db_path = original_pan_db_path
+            self.args.pan_db = original_args_pan_db
+
+        return gene_clusters_dict
+
+
+    def _compare_structure_and_sequence_pans(self):
+        """Compare the structure and conventional pan-dbs, adding comparison layers to both."""
+        self.run.warning(None, header="COMPARING STRUCTURE AND SEQUENCE PAN DATABASES", lc="cyan")
+
+        compare_args = argparse.Namespace(
+            pan_db=self.pan_db_path,
+            compared_pan_db=self.conventional_pan_db_path,
+            genomes_storage=self.genomes_storage_path,
+            output_file=self.get_output_file_path('structure-vs-sequence-comparison.txt'),
+            skip_output_files=False,
+        )
+
+        comparer = ComparePan(compare_args, run=self.run, progress=self.progress)
+        comparer.process()
+
+
     def process(self):
         # start by processing the additional params user may have passed for the blast step
         self.process_additional_params()
@@ -1236,8 +2190,10 @@ class Pangenome(object):
         # get them from the user themselves through gene-clusters-txt
         if self.user_defined_gene_clusters:
             gene_clusters_dict = self.get_gene_clusters_from_gene_clusters_txt()
+        elif self.STRUCTURE_MODE:
+            gene_clusters_dict = self.get_structure_informed_gene_clusters()
         else:
-            gene_clusters_dict = self.get_gene_clusters_de_novo()
+            gene_clusters_dict = self.get_sequence_based_gene_clusters()
 
         # compute alignments for genes within each gene_cluster (or don't)
         gene_clusters_dict, unsuccessful_alignments = self.compute_alignments_for_gene_clusters(gene_clusters_dict)
@@ -1264,23 +2220,17 @@ class Pangenome(object):
                                 f"into temporary FASTA files and will print out their locations. Here is the name of those gene clusters: "
                                 f"{', '.join(unsuccessful_alignments)}.", header="GENE CLUSTERS SEQUENCE ALIGNMENT WARNING")
 
-        # populate the pan db with results
-        gene_clusters_dict = self.process_gene_clusters(gene_clusters_dict)
+        # --- Process the primary pan-db ---
+        gene_clusters_dict = self._run_full_pan_pipeline(gene_clusters_dict, self.pan_db_path, unsuccessful_alignments)
 
-        # store gene clusters dict into the db
-        self.store_gene_clusters(gene_clusters_dict)
+        # --- If structure mode, process conventional pan-db and compare ---
+        if self.STRUCTURE_MODE and not self.skip_sequence_pan:
+            self.run.warning(None, header="PROCESSING SEQUENCE-BASED PAN DATABASE", lc="cyan")
+            # de_novo_gene_clusters_dict already has alignments from get_structure_informed_gene_clusters
+            self._run_full_pan_pipeline(self.de_novo_gene_clusters_dict, self.conventional_pan_db_path)
 
-        # generate a hierarchical clustering of gene clusters (or don't)
-        self.gen_hierarchical_clustering_of_gene_clusters()
-
-        # generate orderings of gene_clusters based on synteny of genes
-        self.gen_synteny_based_ordering_of_gene_clusters(gene_clusters_dict)
-
-        # populate layers additional data and orders
-        self.populate_layers_additional_data_and_orders()
-
-        # work with gene cluster homogeneity index
-        self.populate_gene_cluster_homogeneity_index(gene_clusters_dict, gene_clusters_failed_to_align=unsuccessful_alignments)
+            # compare the two pan-dbs
+            self._compare_structure_and_sequence_pans()
 
         # let people know if they have too much data for their own comfort
         if len(gene_clusters_dict) > 20000 or len(self.genomes) > 150:
