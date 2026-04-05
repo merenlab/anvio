@@ -100,6 +100,7 @@ Contact = "https://anvio.org/people"
 # example of a script (because it is so well written). At the end, this is a suggestive
 # boundary, and at the discretion of the developer
 "anvi-analyze-synteny"                              = "anvio.cli.analyze_synteny:main"
+"anvi-annotate-fragmented-genes"                    = "anvio.cli.annotate_fragmented_genes:main"
 "anvi-cluster-contigs"                              = "anvio.cli.cluster_contigs:main"
 "anvi-compute-ani"                                  = "anvio.cli.compute_ani:main"
 "anvi-compute-completeness"                         = "anvio.cli.compute_completeness:main"
