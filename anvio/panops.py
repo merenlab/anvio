@@ -42,6 +42,7 @@ from anvio.drivers import Aligners
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.genomestorage import GenomeStorage
 from anvio.tables.geneclusters import TableForGeneClusters
+from anvio.tables.genefunctions import TableForGeneFunctions
 from anvio.tables.views import TablesForViews
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -1310,3 +1311,465 @@ class Pangenome(object):
 
 
         self.run.quit()
+
+
+class FragmentedGeneAnnotator():
+    """Identifies fragmented genes (pseudogenes) across a pangenome.
+
+    In pangenomes, a gene that is intact in some genomes may be split into two or more
+    adjacent open reading frames in others -- typically due to a premature stop codon
+    introduced by a point mutation or transposon insertion. The MCL algorithm correctly
+    groups the fragments with the full-length gene into one gene cluster, but their
+    presence creates spurious singleton nodes in the pangenome graph.
+
+    This class detects such cases by looking for multiple genes from the same genome
+    within a single gene cluster that are adjacent on the same contig. It then compares
+    the lengths of these fragments against the full-length representative (the longest
+    gene in the cluster from a genome where the gene is not split) and annotates them
+    under a 'PSEUDO_GENES' function source in each relevant contigs database.
+
+    Labels assigned:
+        - `fragmented_gene`: the longest fragment in a genome, likely still functional
+          (only if it is >= min_full_length_ratio of the full-length representative)
+        - `gene_fragment`: shorter fragments, or all fragments if none meets the
+          length threshold
+    """
+
+    def __init__(self, args, run=run, progress=progress):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+
+        self.pan_db_path = A('pan_db')
+        self.genomes_storage_path = A('genomes_storage')
+        self.external_genomes_path = A('external_genomes')
+        self.min_full_length_ratio = A('min_full_length_ratio') or 0.70
+        self.skip_reporting = A('skip_reporting') or False
+        self.report_only = A('report_only') or False
+
+        if not self.pan_db_path:
+            raise ConfigError("You must provide a pan database path.")
+        if not self.genomes_storage_path:
+            raise ConfigError("You must provide a genomes storage path.")
+        if not self.external_genomes_path:
+            raise ConfigError("You must provide an external genomes file.")
+
+
+    def process(self):
+        """Main entry point for fragmented gene annotation."""
+
+        # initialize pan superclass and gene clusters
+        pan_args = argparse.Namespace(pan_db=self.pan_db_path, genomes_storage=self.genomes_storage_path)
+        self.pan_super = dbops.PanSuperclass(pan_args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+        self.pan_super.init_gene_clusters()
+
+        # initialize genomes storage for sequence access
+        self.genomes_storage = GenomeStorage(self.genomes_storage_path, run=terminal.Run(verbose=False), progress=terminal.Progress(verbose=False))
+
+        # parse external genomes file to get {genome_name: contigs_db_path}
+        filesnpaths.is_file_tab_delimited(self.external_genomes_path)
+        external_genomes_df = pd.read_csv(self.external_genomes_path, sep='\t', header=0)
+        self.genome_name_to_contigs_db_path = dict(zip(external_genomes_df['name'], external_genomes_df['contigs_db_path']))
+
+        # load genes_in_contigs_dict for each genome so we know contig membership and positions
+        self.genes_in_contigs = {}
+        self.contig_gene_order = {}  # {genome_name: {contig: [gene_ids sorted by start]}}
+        for genome_name, contigs_db_path in self.genome_name_to_contigs_db_path.items():
+            contigs_db_args = argparse.Namespace(contigs_db=contigs_db_path)
+            contigs_super = dbops.ContigsSuperclass(contigs_db_args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+            self.genes_in_contigs[genome_name] = contigs_super.genes_in_contigs_dict
+
+            # pre-compute sorted gene order per contig for fast adjacency lookups
+            genes_by_contig = {}
+            for gene_id, gene_info in self.genes_in_contigs[genome_name].items():
+                contig = gene_info['contig']
+                if contig not in genes_by_contig:
+                    genes_by_contig[contig] = []
+                genes_by_contig[contig].append(gene_id)
+
+            for contig in genes_by_contig:
+                genes_by_contig[contig].sort(key=lambda g: self.genes_in_contigs[genome_name][g]['start'])
+
+            self.contig_gene_order[genome_name] = genes_by_contig
+
+        # find fragmentation events across all gene clusters
+        self.run.warning(None, header="IDENTIFYING FRAGMENTED GENES", lc="green")
+        self.run.info_single("Please read the documentation of this program to familiarize yourelf with its "
+                             "assumptions and how to make sense of the results displayed below. You can find "
+                             "the documentation at https://anvio.org/m/anvi-annotate-fragmented-genes",
+                             level=0, mc='green')
+
+        # annotations_per_genome will be {genome_name: {entry_counter: {gene_callers_id, source, accession, function, e_value}}}
+        annotations_per_genome = {g: {} for g in self.genome_name_to_contigs_db_path}
+        entry_counter_per_genome = {g: 0 for g in self.genome_name_to_contigs_db_path}
+
+        total_fragmented_genes = 0
+        total_gene_fragments = 0
+        gene_clusters_with_fragmentation = 0
+
+        gene_clusters = self.pan_super.gene_clusters
+
+        # Phase 1: scan all gene clusters and collect fragmentation events
+        # (we do this in a progress-bar loop, then report afterwards so terminal output is clean)
+        all_events = []
+
+        self.progress.new('Scanning gene clusters for fragmentation', progress_total_items=len(gene_clusters))
+
+        for gene_cluster_id in gene_clusters:
+            self.progress.increment()
+            self.progress.update(f"processing {gene_cluster_id} ...")
+
+            fragmentation_events = self.find_fragmentation_events(gene_cluster_id)
+
+            if not fragmentation_events:
+                continue
+
+            reference_length, reference_genome, reference_gene_id = self.get_full_length_reference(gene_cluster_id, fragmentation_events)
+
+            if reference_length is None:
+                continue
+
+            all_events.append((gene_cluster_id, fragmentation_events, reference_length, reference_genome, reference_gene_id))
+
+        self.progress.end()
+
+        # Phase 2: report and annotate
+        for gene_cluster_id, fragmentation_events, reference_length, reference_genome, reference_gene_id in all_events:
+            gene_clusters_with_fragmentation += 1
+
+            if not self.skip_reporting:
+                self.report_gene_cluster(gene_cluster_id, fragmentation_events, reference_length, reference_genome, reference_gene_id)
+
+            for genome_name, adjacent_group in fragmentation_events:
+                gene_lengths = []
+                for gene_callers_id in adjacent_group:
+                    gene_info = self.genes_in_contigs[genome_name][gene_callers_id]
+                    gene_length = gene_info['stop'] - gene_info['start']
+                    gene_lengths.append((gene_callers_id, gene_length))
+
+                gene_lengths.sort(key=lambda x: x[1], reverse=True)
+
+                longest_gene_id, longest_length = gene_lengths[0]
+                ratio = longest_length / reference_length
+
+                for gene_callers_id, gene_length in gene_lengths:
+                    frag_ratio = gene_length / reference_length
+
+                    if gene_callers_id == longest_gene_id and ratio >= self.min_full_length_ratio:
+                        label = 'fragmented_gene'
+                        function_text = (f"Putative fragmented gene ({ratio * 100:.1f}% of full-length), "
+                                         f"based on a homologous gene in {reference_genome} with gene caller id {reference_gene_id}")
+                        total_fragmented_genes += 1
+                    else:
+                        label = 'gene_fragment'
+                        function_text = (f"Putative gene fragment ({frag_ratio * 100:.1f}% of full-length), "
+                                         f"based on a homologous gene in {reference_genome} with gene caller id {reference_gene_id}")
+                        total_gene_fragments += 1
+
+                    entry_id = entry_counter_per_genome[genome_name]
+                    annotations_per_genome[genome_name][entry_id] = {
+                        'gene_callers_id': gene_callers_id,
+                        'source': 'PSEUDO_GENES',
+                        'accession': label,
+                        'function': function_text,
+                        'e_value': 0,
+                    }
+                    entry_counter_per_genome[genome_name] += 1
+
+        self.run.info('Gene clusters with fragmentation', gene_clusters_with_fragmentation, nl_before=1)
+        self.run.info('Total fragmented genes', total_fragmented_genes)
+        self.run.info('Total gene fragments', total_gene_fragments)
+
+        if self.report_only:
+            self.run.warning("The --report-only flag is set, so no annotations have been written to any contigs database.",
+                             header="REPORT ONLY MODE", lc="yellow")
+            return
+
+        # write annotations to each contigs-db
+        self.progress.new("Annotating contigs-dbs", progress_total_items=len(self.genome_name_to_contigs_db_path))
+        genomes_annotated = 0
+        for genome_name, contigs_db_path in self.genome_name_to_contigs_db_path.items():
+            self.progress.update(f"Working on {genome_name} ...", increment=True)
+            functions_dict = annotations_per_genome[genome_name]
+
+            if not len(functions_dict):
+                continue
+
+            gene_functions_table = TableForGeneFunctions(contigs_db_path, terminal.Run(verbose=False), terminal.Progress(verbose=False))
+            gene_functions_table.create(functions_dict)
+
+            genomes_annotated += 1
+
+        self.run.info('Contigs databases annotated', genomes_annotated, nl_before=1)
+
+
+    def find_fragmentation_events(self, gene_cluster_id):
+        """For a given gene cluster, find groups of adjacent genes from the same genome on
+        the same contig that likely represent a fragmented gene.
+
+        Returns a list of (genome_name, [gene_callers_id, ...]) tuples, where each inner
+        list is a group of 2+ adjacent genes forming a fragmentation event.
+        """
+
+        gene_clusters = self.pan_super.gene_clusters
+        fragmentation_events = []
+
+        for genome_name in gene_clusters[gene_cluster_id]:
+            gene_ids = gene_clusters[gene_cluster_id][genome_name]
+
+            # only genomes with 2+ genes in this cluster can have fragmentation
+            if len(gene_ids) < 2:
+                continue
+
+            genes_in_contigs = self.genes_in_contigs[genome_name]
+
+            # group genes by contig
+            genes_by_contig = {}
+            for gene_id in gene_ids:
+                if gene_id not in genes_in_contigs:
+                    continue
+                contig = genes_in_contigs[gene_id]['contig']
+                if contig not in genes_by_contig:
+                    genes_by_contig[contig] = []
+                genes_by_contig[contig].append(gene_id)
+
+            for contig, contig_gene_ids in genes_by_contig.items():
+                if len(contig_gene_ids) < 2:
+                    continue
+
+                # use precomputed contig gene order for fast adjacency lookups
+                all_genes_on_contig = self.contig_gene_order[genome_name].get(contig, [])
+                gene_to_position = {g: i for i, g in enumerate(all_genes_on_contig)}
+
+                # find groups of genes that are adjacent (consecutive positions on the contig)
+                positions = [(gene_id, gene_to_position[gene_id]) for gene_id in contig_gene_ids]
+                positions.sort(key=lambda x: x[1])
+
+                # walk through and build groups of consecutive positions
+                current_group = [positions[0][0]]
+                for i in range(1, len(positions)):
+                    if positions[i][1] == positions[i - 1][1] + 1:
+                        current_group.append(positions[i][0])
+                    else:
+                        if len(current_group) >= 2:
+                            fragmentation_events.append((genome_name, current_group))
+                        current_group = [positions[i][0]]
+
+                if len(current_group) >= 2:
+                    fragmentation_events.append((genome_name, current_group))
+
+        return fragmentation_events
+
+
+    def get_full_length_reference(self, gene_cluster_id, fragmentation_events):
+        """Find the full-length representative for a gene cluster.
+
+        The reference is the longest gene from a genome where the gene cluster has exactly
+        one gene (i.e., an unfragmented genome). Returns (length, genome_name, gene_callers_id)
+        or (None, None, None) if no suitable reference exists.
+        """
+
+        gene_clusters = self.pan_super.gene_clusters
+
+        # collect genomes with fragmentation for this cluster
+        fragmented_genomes = set(genome_name for genome_name, _ in fragmentation_events)
+
+        best_length = 0
+        best_genome = None
+        best_gene_id = None
+
+        for genome_name in gene_clusters[gene_cluster_id]:
+            gene_ids = gene_clusters[gene_cluster_id][genome_name]
+
+            if len(gene_ids) != 1:
+                continue
+
+            if genome_name in fragmented_genomes:
+                continue
+
+            gene_id = gene_ids[0]
+            gene_info = self.genes_in_contigs[genome_name][gene_id]
+            gene_length = gene_info['stop'] - gene_info['start']
+
+            if gene_length > best_length:
+                best_length = gene_length
+                best_genome = genome_name
+                best_gene_id = gene_id
+
+        if best_length == 0:
+            return None, None, None
+
+        return best_length, best_genome, best_gene_id
+
+
+    def report_gene_cluster(self, gene_cluster_id, fragmentation_events, reference_length, reference_genome, reference_gene_id):
+        """Print a terminal visualization for a gene cluster with fragmentation events.
+
+        Shows each genome's gene(s) as colored bars proportional to length, with fragment
+        positioning based on actual start/stop offsets within each genome.
+        """
+
+        from anvio.ttycolors import color_text
+
+        gene_clusters = self.pan_super.gene_clusters
+        genes_in_contigs = self.genes_in_contigs
+
+        # collect all genomes and their genes for this cluster
+        fragmented_genomes = {}
+        for genome_name, adjacent_group in fragmentation_events:
+            if genome_name not in fragmented_genomes:
+                fragmented_genomes[genome_name] = []
+            fragmented_genomes[genome_name].append(adjacent_group)
+
+        # determine the longest fragment per genome for labeling
+        longest_fragment_per_genome = {}
+        for genome_name, groups in fragmented_genomes.items():
+            for group in groups:
+                gene_lengths = [(g, genes_in_contigs[genome_name][g]['stop'] - genes_in_contigs[genome_name][g]['start']) for g in group]
+                gene_lengths.sort(key=lambda x: x[1], reverse=True)
+                longest_id = gene_lengths[0][0]
+                longest_length = gene_lengths[0][1]
+                ratio = longest_length / reference_length
+                longest_fragment_per_genome.setdefault(genome_name, set())
+                if ratio >= self.min_full_length_ratio:
+                    longest_fragment_per_genome[genome_name].add(longest_id)
+
+        # determine bar width (terminal characters for the reference gene)
+        bar_width = 50
+
+        # collect rows for display
+        rows = []
+
+        # determine column widths
+        max_genome_len = 0
+        max_gene_id_len = 0
+
+        for genome_name in gene_clusters[gene_cluster_id]:
+            gene_ids = gene_clusters[gene_cluster_id][genome_name]
+            if not gene_ids:
+                continue
+            if len(genome_name) > max_genome_len:
+                max_genome_len = len(genome_name)
+            for gene_id in gene_ids:
+                gene_id_str = str(gene_id)
+                if len(gene_id_str) > max_gene_id_len:
+                    max_gene_id_len = len(gene_id_str)
+
+        for genome_name in sorted(gene_clusters[gene_cluster_id].keys()):
+            gene_ids = gene_clusters[gene_cluster_id][genome_name]
+            if not gene_ids:
+                continue
+
+            is_fragmented_genome = genome_name in fragmented_genomes
+
+            if is_fragmented_genome:
+                # for fragmented genomes, get all gene positions relative to the group span
+                all_fragment_genes = set()
+                for group in fragmented_genomes[genome_name]:
+                    all_fragment_genes.update(group)
+
+                for gene_id in sorted(gene_ids, key=lambda g: genes_in_contigs[genome_name][g]['start']):
+                    gene_info = genes_in_contigs[genome_name][gene_id]
+                    gene_length = gene_info['stop'] - gene_info['start']
+
+                    if gene_id in all_fragment_genes:
+                        # find the group this gene belongs to
+                        group_for_gene = None
+                        for group in fragmented_genomes[genome_name]:
+                            if gene_id in group:
+                                group_for_gene = group
+                                break
+
+                        # compute span of this fragment group
+                        group_starts = [genes_in_contigs[genome_name][g]['start'] for g in group_for_gene]
+                        group_stops = [genes_in_contigs[genome_name][g]['stop'] for g in group_for_gene]
+                        span_start = min(group_starts)
+                        span_length = max(group_stops) - span_start
+
+                        # position within the span, scaled to bar_width
+                        if span_length > 0:
+                            rel_start = (gene_info['start'] - span_start) / span_length
+                            rel_end = (gene_info['stop'] - span_start) / span_length
+                        else:
+                            rel_start = 0
+                            rel_end = 1
+
+                        # scale to reference length proportion
+                        span_ratio = span_length / reference_length if reference_length > 0 else 1
+                        scaled_bar_width = int(bar_width * min(span_ratio, 1.0))
+                        if scaled_bar_width < 1:
+                            scaled_bar_width = bar_width
+
+                        bar_start = int(rel_start * scaled_bar_width)
+                        bar_end = int(rel_end * scaled_bar_width)
+                        if bar_end == bar_start:
+                            bar_end = bar_start + 1
+
+                        bar = list('░' * scaled_bar_width + '░' * (bar_width - scaled_bar_width))
+                        for i in range(bar_start, min(bar_end, len(bar))):
+                            bar[i] = '█'
+
+                        bar_str = ''.join(bar)
+
+                        if gene_id == reference_gene_id:
+                            color = 'green'
+                            label = 'reference'
+                        elif gene_id in longest_fragment_per_genome.get(genome_name, set()):
+                            color = 'blue'
+                            label = 'fragmented_gene'
+                        else:
+                            color = 'red'
+                            label = 'gene_fragment'
+
+                        length_pct = f"{gene_length / reference_length * 100:.1f}%"
+
+                        rows.append((genome_name, str(gene_id), color_text(bar_str, color), f"{gene_length:>6} nt  {length_pct:>6}  {label}"))
+                    else:
+                        # gene in this genome but not part of a fragment group
+                        gene_ratio = gene_length / reference_length if reference_length > 0 else 1
+                        filled = max(1, int(bar_width * min(gene_ratio, 1.0)))
+                        bar_str = '█' * filled + '░' * (bar_width - filled)
+
+                        rows.append((genome_name, str(gene_id), color_text(bar_str, 'gray'), f"{gene_length:>6} nt"))
+            else:
+                # non-fragmented genome
+                for gene_id in gene_ids:
+                    gene_info = genes_in_contigs[genome_name][gene_id]
+                    gene_length = gene_info['stop'] - gene_info['start']
+                    gene_ratio = gene_length / reference_length if reference_length > 0 else 1
+                    filled = max(1, int(bar_width * min(gene_ratio, 1.0)))
+                    bar_str = '█' * filled + '░' * (bar_width - filled)
+
+                    length_pct = f"{gene_length / reference_length * 100:.1f}%"
+
+                    if gene_id == reference_gene_id:
+                        color = 'green'
+                        label = 'reference'
+                    else:
+                        color = 'gray'
+                        label = ''
+
+                    rows.append((genome_name, str(gene_id), color_text(bar_str, color), f"{gene_length:>6} nt  {length_pct:>6}  {label}"))
+
+        # compute the total content width from known column sizes
+        max_info_len = max(len(info) for _, _, _, info in rows) if rows else 0
+        content_width = 2 + max_genome_len + 2 + max_gene_id_len + 2 + bar_width + 2 + max_info_len
+
+        # print the report anvi'o way
+        run_width = self.run.width
+        self.run.width = content_width
+        self.run.warning(None, header=f"{gene_cluster_id}")
+        self.run.width = run_width
+
+        prev_genome = None
+        for genome_name, gene_id_str, bar_str, info in rows:
+            if prev_genome is not None and genome_name != prev_genome:
+                nl_before=1
+            else:
+                nl_before=0
+
+            prev_genome = genome_name
+            self.run.info_single(f"   {genome_name:<{max_genome_len}}  {gene_id_str:>{max_gene_id_len}}  {bar_str}  {info}",
+                                 cut_after=None, nl_before=nl_before, pretty_indentation=False, level=0)
