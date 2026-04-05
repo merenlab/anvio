@@ -17,7 +17,7 @@ Genome B gene m: --------------------------------------xxxxxxxxxxxx
 Genome C gene z: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
-In this example, gene `n` and gene `m` in Genome B are adjacent on the same contig and together correspond to the full-length gene represented by `x` in Genome A and `z` in Genome C. Due to the adjacency of `n` and `m`, and their overlapping nature with other genes, one can assume that the gene in Genome B was likely split by a mutation that disrupted the original reading frame.
+In this example, gene `n` and gene `m` in Genome B are adjacent on the same contig and together correspond to the full-length gene represented by `x` in Genome A and `z` in Genome C. Due to the adjacency of `n` and `m`, and their overlap with other genes in the cluster, one can assume that the gene in Genome B was likely split by a mutation that disrupted the original reading frame.
 
 Gene fragmentation can occur in any group, but it is more common in some clades than others. For instance, *Brucella* are known for having many pseudogenes (and in fact this program is coming to life because [Sean Crosson](https://directory.natsci.msu.edu/directory/Profiles/Person/101773), who studies *Brucella* asked for it -- so thank you, Sean!). The anvi'o pangenomics workflow correctly groups the fragments with the full-length gene into a single gene cluster thanks to the all-vs-all BLAST search. But excessive gene fragments create a problem for downstream analyses when the issue is not accounted for: they clutter the analysis results with spurious singletons and obscure truly unique genes.
 
@@ -27,7 +27,7 @@ Gene fragmentation can occur in any group, but it is more common in some clades 
 
 Each fragment is then classified as one of the following:
 
-- **`fragmented_gene`**: The longest fragment in a genome, which likely retains gene function. Or not. It is impossible to say, of course, but the assumption here is that if the gene that has undergone fragmentation, the longest fragment of it is the most likely to continue retaining its function. This label is only assigned if the fragment is at least a certain fraction of the full-length reference, controlled by the `--min-full-length-ratio` flag. The deafult value here is 0.7, which means this label is assigned to a fragment only if it is longer than 70%% of the reference gene.
+- **`fragmented_gene`**: The longest fragment in a genome, which likely retains gene function. Or not. It is impossible to say, of course, but the assumption here is that if a gene has undergone fragmentation, the longest fragment of it is the most likely to continue retaining its function. This label is only assigned if the fragment is at least a certain fraction of the full-length reference, controlled by the `--min-full-length-ratio` flag (default: 0.7, which means the fragment must be longer than 70%% of the reference gene).
 
 - **`gene_fragment`**: Shorter fragments that are unlikely to be functional. If even the longest fragment in a genome falls below the length threshold, **all** fragments in that genome are labeled `gene_fragment`.
 
@@ -49,7 +49,7 @@ When the program runs, it prints a color-coded visualization for each gene clust
 
 ![terminal_output](../../images/anvi-annotate-fragmented-genes.png)
 
-In this particular example, four of the gene clusters in the pangenome had fragmented genes. The bars in the report show the relative length of each gene compared to the full-length reference, and their position reflects the actual layout of fragments on the contig. Bars colored in **green** represent the full-length reference gene determined by anvi'o, **blue** represent the longest fragment in a genome (labeled `fragmented_gene`), **red** represent shorter fragments, and **gray** bars represent genes from genomes where the gene is not fragmented. Genome names and anvi'o gene caller ids are also shown to double check things.
+In this particular example, four of the gene clusters in the pangenome had fragmented genes. The bars in the report show the relative length of each gene compared to the full-length reference, and their position reflects the actual layout of fragments on the contig. **Green** bars represent the full-length reference gene determined by anvi'o, **blue** bars represent the longest fragment in a genome (labeled `fragmented_gene`), **red** bars represent shorter fragments, and **gray** bars represent genes from genomes where the gene is not fragmented. Genome names and anvi'o gene caller ids are also shown to double check things.
 
 The purpose of this report is for you to go back to the pangenome with %(anvi-display-pan)s, search for some of the gene clusters, and inspect them to confirm that you are happy with the result.
 
