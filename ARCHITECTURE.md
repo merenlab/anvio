@@ -211,7 +211,9 @@ class ContigsSuperclass:
 
 ### Module-level singleton `run` and `progress`
 
-Most modules define module-level `run` and `progress` instances used for module-scope logging (not inside classes). Classes receive their own `run`/`progress` as constructor parameters and use those for instance-scope logging.
+Most modules define module-level `run` and `progress` instances used for module-scope logging (not inside classes), although this is not the best practice (and anvi'o developers intend to unify this behavior in the future).
+
+In an ideal world, anvi'o classes receive their own `run`/`progress` as constructor parameters and use those for instance-scope logging, and initiate other classes from within with their own `run`/`progress` objects. This ensures that if the programmer passes a `run` or `progress` object that they set to be 'quiet' when they first inherited (`verbose=False`), they would remain quiet the entire time as the same objects would be passed around across classes. Module-level definitions and their use in individual classes would naturally violate this behavior and lead to unexpected terminal outputs.
 
 ### `multiprocess` instead of `multiprocessing`
 
