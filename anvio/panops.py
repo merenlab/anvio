@@ -1351,10 +1351,14 @@ class FragmentedGeneAnnotator():
 
         if not self.pan_db_path:
             raise ConfigError("You must provide a pan database path.")
+
         if not self.genomes_storage_path:
             raise ConfigError("You must provide a genomes storage path.")
+
         if not self.external_genomes_path:
             raise ConfigError("You must provide an external genomes file.")
+
+        utils.is_pan_db_and_genomes_storage_db_compatible(self.pan_db_path, self.genomes_storage_path)
 
 
     def process(self):
