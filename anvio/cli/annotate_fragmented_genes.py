@@ -58,6 +58,14 @@ def get_args():
                              "'gene_fragment'. If the longest fragment in a genome is shorter than this "
                              "fraction of the reference, ALL fragments in that genome will be labeled "
                              "'gene_fragment'. Default: %(default).2f")
+    groupB.add_argument('--find-stray-fragments', default=False, action='store_true',
+                        help="Also look for out-of-frame gene fragments that ended up in different gene "
+                             "clusters. When a premature stop codon splits a gene and the downstream "
+                             "fragment is in a different reading frame, MCL places the fragment in a "
+                             "separate gene cluster. This flag enables a second scan that detects such "
+                             "cases by finding truncated genes whose adjacent neighbor on the same contig "
+                             "belongs to a different gene cluster and together they approximate the "
+                             "full-length reference.")
 
     groupC = parser.add_argument_group('REPORTING', "Control what this program reports and whether it gets to update "
                         "anything at all.")
