@@ -1412,6 +1412,11 @@ class FragmentedGeneAnnotator():
                              "assumptions and how to make sense of the results displayed below. You can find "
                              "the documentation at https://anvio.org/m/anvi-annotate-fragmented-genes",
                              level=0, mc='green')
+        self.run.info('Num genomes', len(self.genome_descriptions.genomes), nl_before=1)
+        self.run.info('Num gene clusters', len(gene_clusters))
+        self.run.info('Min full-length ratio', self.min_full_length_ratio)
+        self.run.info('Search for stray fragments', self.find_stray_fragments)
+        self.run.info('Report only', self.report_only)
 
         # annotations_per_genome will be {genome_name: {entry_counter: {gene_callers_id, source, accession, function, e_value}}}
         annotations_per_genome = {g: {} for g in self.genome_descriptions.genomes}
@@ -1438,6 +1443,8 @@ class FragmentedGeneAnnotator():
 
         total_fragmented_genes = 0
         total_gene_fragments = 0
+        total_stray_fragmented_genes = 0
+        total_stray_gene_fragments = 0
         gene_clusters_with_fragmentation = 0
 
         # report and annotate
@@ -1469,11 +1476,15 @@ class FragmentedGeneAnnotator():
                         function_text = (f"Putative fragmented gene ({ratio * 100:.1f}% of full-length), "
                                          f"based on a homologous gene in {reference_genome} with gene caller id {reference_gene_id}")
                         total_fragmented_genes += 1
+                        if is_stray:
+                            total_stray_fragmented_genes += 1
                     else:
                         label = 'gene_fragment'
                         function_text = (f"Putative gene fragment ({frag_ratio * 100:.1f}% of full-length), "
                                          f"based on a homologous gene in {reference_genome} with gene caller id {reference_gene_id}")
                         total_gene_fragments += 1
+                        if is_stray:
+                            total_stray_gene_fragments += 1
 
                     entry_id = entry_counter_per_genome[genome_name]
                     annotations_per_genome[genome_name][entry_id] = {
@@ -1488,6 +1499,10 @@ class FragmentedGeneAnnotator():
         self.run.info('Gene clusters with fragmentation', gene_clusters_with_fragmentation, nl_before=1)
         self.run.info('Total fragmented genes', total_fragmented_genes)
         self.run.info('Total gene fragments', total_gene_fragments)
+
+        if self.find_stray_fragments:
+            self.run.info('Stray fragmented genes', total_stray_fragmented_genes, nl_before=1)
+            self.run.info('Stray gene fragments', total_stray_gene_fragments)
 
         if self.report_only:
             self.run.warning("The --report-only flag is set, so no annotations have been written to any contigs database.",
@@ -1742,6 +1757,8 @@ class FragmentedGeneAnnotator():
 
                         bar_str = ''.join(bar)
 
+                        is_stray = (genome_name, gene_id) in stray_genes_info
+
                         if gene_id == reference_gene_id:
                             color = 'green'
                             label = 'reference'
@@ -1751,6 +1768,9 @@ class FragmentedGeneAnnotator():
                         else:
                             color = 'red'
                             label = 'gene_fragment'
+
+                        if is_stray:
+                            label += f" (stray, from {stray_genes_info[(genome_name, gene_id)]})"
 
                         length_pct = f"{gene_length / reference_length * 100:.1f}%"
 
