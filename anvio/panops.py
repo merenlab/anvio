@@ -1383,7 +1383,8 @@ class FragmentedGeneAnnotator():
         # load genes_in_contigs_dict for each genome so we know contig membership and positions
         self.genes_in_contigs = {}
         self.contig_gene_order = {}  # {genome_name: {contig: [gene_ids sorted by start]}}
-        for genome_name, contigs_db_path in self.genome_name_to_contigs_db_path.items():
+        for genome_name in self.genome_descriptions.genomes:
+            contigs_db_path = self.genome_descriptions.genomes[genome_name]['contigs_db_path']
             contigs_db_args = argparse.Namespace(contigs_db=contigs_db_path)
             contigs_super = dbops.ContigsSuperclass(contigs_db_args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
             self.genes_in_contigs[genome_name] = contigs_super.genes_in_contigs_dict
@@ -1409,8 +1410,8 @@ class FragmentedGeneAnnotator():
                              level=0, mc='green')
 
         # annotations_per_genome will be {genome_name: {entry_counter: {gene_callers_id, source, accession, function, e_value}}}
-        annotations_per_genome = {g: {} for g in self.genome_name_to_contigs_db_path}
-        entry_counter_per_genome = {g: 0 for g in self.genome_name_to_contigs_db_path}
+        annotations_per_genome = {g: {} for g in self.genome_descriptions.genomes}
+        entry_counter_per_genome = {g: 0 for g in self.genome_descriptions.genomes}
 
         total_fragmented_genes = 0
         total_gene_fragments = 0
@@ -1495,9 +1496,8 @@ class FragmentedGeneAnnotator():
             return
 
         # write annotations to each contigs-db
-        self.progress.new("Annotating contigs-dbs", progress_total_items=len(self.genome_name_to_contigs_db_path))
+        self.progress.new("Annotating contigs-dbs", progress_total_items=len(self.genome_descriptions.genomes))
         genomes_annotated = 0
-        for genome_name, contigs_db_path in self.genome_name_to_contigs_db_path.items():
             self.progress.update(f"Working on {genome_name} ...", increment=True)
             functions_dict = annotations_per_genome[genome_name]
 
