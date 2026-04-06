@@ -88,6 +88,40 @@ anvi-annotate-fragmented-genes -p %(pan-db)s \
                                --skip-reporting
 {{ codestop }}
 
+### Finding stray out-of-frame fragments
+
+By default, this program only detects fragmentation events where both fragments end up in the **same gene cluster**, which happens when the downstream fragment remains in the same reading frame as the original gene. However, if the premature stop codon shifts the reading frame (e.g., a single-nucleotide insertion or deletion rather than a substitution), the downstream fragment will be called in a different frame, and MCL will place it in a **different gene cluster**, since it no longer shares sequence similarity with the original gene. This is what that situation would look like compared to the example before; one gene cluster would look like this
+
+```
+Genome A gene x: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+Genome B gene n: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx--------------
+
+Genome C gene z: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+And another one would look like this:
+
+```
+Genome B gene m: xxxxxxxxxxxx
+```
+
+The program includes an optional flag, `--find-stray-fragments`, to search for these out-of-frame fragments:
+
+{{ codestart }}
+anvi-annotate-fragmented-genes -p %(pan-db)s \
+                               -g %(genomes-storage-db)s \
+                               -e %(external-genomes)s \
+                               --find-stray-fragments
+{{ codestop }}
+
+When this flag is set, %(anvi-annotate-fragmented-genes)s performs a second scan after the standard in-cluster analysis. For each gene cluster, it looks for genomes where the cluster contains a single gene that is significantly shorter than the full-length reference. It then checks whether an adjacent gene on the same contig (one that belongs to a **different** gene cluster) together with the truncated gene approximates the expected full-length gene. If so, both are annotated as fragments.
+
+This is a more aggressive search, and it may occasionally flag genes that are genuinely short rather than fragmented, so it is off by default. But while the algorithm worked well in our mock datasets, Meren's test with a large *B. fragilis* pangenome in which the program found over 100 gene clusters with fragmented genes, it found 0 stray fragments, so it is safe to assume that its false positive rate will be rather small if any.
+
+{:.notice}
+**A note from** {%% include person/display_mini_single.html github="meren" %%}: *The zero strays in a pangenome that contained over 100 regular fragmentation events likely indicates that the process is likely a result of biology rather than bioinformatics. As in, most premature stops likely come from substitutions, not frameshifts (i.e., C-to-T turning CAG (Gln) into TAG (stop) preserves the reading frame, and both fragments stay in-frame, and then BLAST clusters them together, and then the in-cluster scan catches them. It is also possible that most frameshifted downstream sequences often aren't called as genes by Prodigal. Even if a frameshift creates a new reading frame downstream, Prodigal needs to find a valid start codon, a [Shine-Dalgarno-like signal](https://en.wikipedia.org/wiki/Shine–Dalgarno_sequence), and a reasonable ORF length before it calls it a gene. Difficult to know which one is playing a more significant role, but if you are reading these lines, and if you feel that you have an interesting observation from your own pangenome or ideas about why out-of-frame / stray fragments occur in much less frequency compared to in-frame fragments, please let us know and so we can update the code if we are making a mistake, or this section with a better explanation*. 
+
 ### Re-running the program
 
 If the `PSEUDO_GENES` source already exists in a contigs database (from a previous run), the program will overwrite the existing annotations. This means you can safely re-run the program with different parameters without needing to manually remove old annotations first.

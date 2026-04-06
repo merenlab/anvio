@@ -2428,6 +2428,7 @@ class FragmentedGeneAnnotator():
         self.min_full_length_ratio = A('min_full_length_ratio') or 0.70
         self.skip_reporting = A('skip_reporting') or False
         self.report_only = A('report_only') or False
+        self.find_stray_fragments = A('find_stray_fragments') or False
 
         if not self.pan_db_path:
             raise ConfigError("You must provide a pan database path.")
@@ -2444,7 +2445,8 @@ class FragmentedGeneAnnotator():
     def process(self):
         """Main entry point for fragmented gene annotation."""
 
-        # load up the external genomes
+        # we import here to avoid circular imports since genomedescriptions imports dbops
+        # which imports panops
         import anvio.genomedescriptions as genomedescriptions
         genome_desc_args = argparse.Namespace(external_genomes=self.external_genomes_path, internal_genomes=None,
                                               skip_checking_genome_hashes=False, just_do_it=False, gene_caller=None,
@@ -2482,48 +2484,50 @@ class FragmentedGeneAnnotator():
 
             self.contig_gene_order[genome_name] = genes_by_contig
 
+        gene_clusters = self.pan_super.gene_clusters
+
         # find fragmentation events across all gene clusters
         self.run.warning(None, header="IDENTIFYING FRAGMENTED GENES", lc="green")
         self.run.info_single("Please read the documentation of this program to familiarize yourelf with its "
                              "assumptions and how to make sense of the results displayed below. You can find "
                              "the documentation at https://anvio.org/m/anvi-annotate-fragmented-genes",
                              level=0, mc='green')
+        self.run.info('Num genomes', len(self.genome_descriptions.genomes), nl_before=1)
+        self.run.info('Num gene clusters', len(gene_clusters))
+        self.run.info('Min full-length ratio', self.min_full_length_ratio)
+        self.run.info('Search for stray fragments', self.find_stray_fragments)
+        self.run.info('Report only', self.report_only)
 
         # annotations_per_genome will be {genome_name: {entry_counter: {gene_callers_id, source, accession, function, e_value}}}
         annotations_per_genome = {g: {} for g in self.genome_descriptions.genomes}
         entry_counter_per_genome = {g: 0 for g in self.genome_descriptions.genomes}
 
+        # collect all fragmentation events via in-cluster adjacency
+        in_cluster_events = self.scan_in_cluster_fragmentation(gene_clusters)
+
+        # if requested, also look for stray out-of-frame fragments adjacent to truncated genes
+        stray_events = []
+        if self.find_stray_fragments:
+            # build a set of gene_callers_ids already flagged by the in-cluster scan so we
+            # don't double-annotate them
+            already_flagged = set()
+            for _, fragmentation_events, _, _, _ in in_cluster_events:
+                for genome_name, adjacent_group in fragmentation_events:
+                    for gene_id in adjacent_group:
+                        already_flagged.add((genome_name, gene_id))
+
+            stray_events = self.scan_stray_fragment_events(gene_clusters, already_flagged)
+
+        all_events = in_cluster_events + stray_events
+        stray_gene_cluster_ids = set(gc_id for gc_id, _, _, _, _ in stray_events)
+
         total_fragmented_genes = 0
         total_gene_fragments = 0
+        total_stray_fragmented_genes = 0
+        total_stray_gene_fragments = 0
         gene_clusters_with_fragmentation = 0
 
-        gene_clusters = self.pan_super.gene_clusters
-
-        # Phase 1: scan all gene clusters and collect fragmentation events
-        # (we do this in a progress-bar loop, then report afterwards so terminal output is clean)
-        all_events = []
-
-        self.progress.new('Scanning gene clusters for fragmentation', progress_total_items=len(gene_clusters))
-
-        for gene_cluster_id in gene_clusters:
-            self.progress.increment()
-            self.progress.update(f"processing {gene_cluster_id} ...")
-
-            fragmentation_events = self.find_fragmentation_events(gene_cluster_id)
-
-            if not fragmentation_events:
-                continue
-
-            reference_length, reference_genome, reference_gene_id = self.get_full_length_reference(gene_cluster_id, fragmentation_events)
-
-            if reference_length is None:
-                continue
-
-            all_events.append((gene_cluster_id, fragmentation_events, reference_length, reference_genome, reference_gene_id))
-
-        self.progress.end()
-
-        # Phase 2: report and annotate
+        # report and annotate
         for gene_cluster_id, fragmentation_events, reference_length, reference_genome, reference_gene_id in all_events:
             gene_clusters_with_fragmentation += 1
 
@@ -2545,16 +2549,22 @@ class FragmentedGeneAnnotator():
                 for gene_callers_id, gene_length in gene_lengths:
                     frag_ratio = gene_length / reference_length
 
+                    is_stray = gene_cluster_id in stray_gene_cluster_ids
+
                     if gene_callers_id == longest_gene_id and ratio >= self.min_full_length_ratio:
                         label = 'fragmented_gene'
                         function_text = (f"Putative fragmented gene ({ratio * 100:.1f}% of full-length), "
                                          f"based on a homologous gene in {reference_genome} with gene caller id {reference_gene_id}")
                         total_fragmented_genes += 1
+                        if is_stray:
+                            total_stray_fragmented_genes += 1
                     else:
                         label = 'gene_fragment'
                         function_text = (f"Putative gene fragment ({frag_ratio * 100:.1f}% of full-length), "
                                          f"based on a homologous gene in {reference_genome} with gene caller id {reference_gene_id}")
                         total_gene_fragments += 1
+                        if is_stray:
+                            total_stray_gene_fragments += 1
 
                     entry_id = entry_counter_per_genome[genome_name]
                     annotations_per_genome[genome_name][entry_id] = {
@@ -2569,6 +2579,10 @@ class FragmentedGeneAnnotator():
         self.run.info('Gene clusters with fragmentation', gene_clusters_with_fragmentation, nl_before=1)
         self.run.info('Total fragmented genes', total_fragmented_genes)
         self.run.info('Total gene fragments', total_gene_fragments)
+
+        if self.find_stray_fragments:
+            self.run.info('Stray fragmented genes', total_stray_fragmented_genes, nl_before=1)
+            self.run.info('Stray gene fragments', total_stray_gene_fragments)
 
         if self.report_only:
             self.run.warning("The --report-only flag is set, so no annotations have been written to any contigs database.",
@@ -2590,6 +2604,8 @@ class FragmentedGeneAnnotator():
             gene_functions_table.create(functions_dict)
 
             genomes_annotated += 1
+
+        self.progress.end()
 
         self.run.info('Contigs databases annotated', genomes_annotated, nl_before=1)
 
@@ -2700,6 +2716,7 @@ class FragmentedGeneAnnotator():
         positioning based on actual start/stop offsets within each genome.
         """
 
+        # local import to avoid pulling ttycolors into every panops consumer
         from anvio.ttycolors import color_text
 
         gene_clusters = self.pan_super.gene_clusters
@@ -2711,6 +2728,16 @@ class FragmentedGeneAnnotator():
             if genome_name not in fragmented_genomes:
                 fragmented_genomes[genome_name] = []
             fragmented_genomes[genome_name].append(adjacent_group)
+
+        # identify stray fragment genes that belong to a different gene cluster so
+        # the report can show them alongside the truncated gene they were paired with
+        stray_genes_info = {}
+        for genome_name, adjacent_group in fragmentation_events:
+            cluster_gene_ids = set(gene_clusters[gene_cluster_id].get(genome_name, []))
+            for g in adjacent_group:
+                if g not in cluster_gene_ids:
+                    home_cluster = self.pan_super.gene_callers_id_to_gene_cluster.get(genome_name, {}).get(g, '?')
+                    stray_genes_info[(genome_name, g)] = home_cluster
 
         # determine the longest fragment per genome for labeling
         longest_fragment_per_genome = {}
@@ -2746,6 +2773,10 @@ class FragmentedGeneAnnotator():
                 if len(gene_id_str) > max_gene_id_len:
                     max_gene_id_len = len(gene_id_str)
 
+        for (_, gene_id) in stray_genes_info:
+            if len(str(gene_id)) > max_gene_id_len:
+                max_gene_id_len = len(str(gene_id))
+
         for genome_name in sorted(gene_clusters[gene_cluster_id].keys()):
             gene_ids = gene_clusters[gene_cluster_id][genome_name]
             if not gene_ids:
@@ -2759,7 +2790,11 @@ class FragmentedGeneAnnotator():
                 for group in fragmented_genomes[genome_name]:
                     all_fragment_genes.update(group)
 
-                for gene_id in sorted(gene_ids, key=lambda g: genes_in_contigs[genome_name][g]['start']):
+                # include stray fragment neighbors (from other clusters) in the display
+                stray_in_genome = {g for (gn, g) in stray_genes_info if gn == genome_name}
+                genes_to_show = list(gene_ids) + sorted(stray_in_genome - set(gene_ids))
+
+                for gene_id in sorted(genes_to_show, key=lambda g: genes_in_contigs[genome_name][g]['start']):
                     gene_info = genes_in_contigs[genome_name][gene_id]
                     gene_length = gene_info['stop'] - gene_info['start']
 
@@ -2802,6 +2837,8 @@ class FragmentedGeneAnnotator():
 
                         bar_str = ''.join(bar)
 
+                        is_stray = (genome_name, gene_id) in stray_genes_info
+
                         if gene_id == reference_gene_id:
                             color = 'green'
                             label = 'reference'
@@ -2811,6 +2848,9 @@ class FragmentedGeneAnnotator():
                         else:
                             color = 'red'
                             label = 'gene_fragment'
+
+                        if is_stray:
+                            label += f" (stray, from {stray_genes_info[(genome_name, gene_id)]})"
 
                         length_pct = f"{gene_length / reference_length * 100:.1f}%"
 
@@ -2862,3 +2902,176 @@ class FragmentedGeneAnnotator():
             prev_genome = genome_name
             self.run.info_single(f"   {genome_name:<{max_genome_len}}  {gene_id_str:>{max_gene_id_len}}  {bar_str}  {info}",
                                  cut_after=None, nl_before=nl_before, pretty_indentation=False, level=0)
+
+
+    def scan_in_cluster_fragmentation(self, gene_clusters):
+        """Scan all gene clusters for in-cluster fragmentation events.
+
+        This is the standard algorithm: for each gene cluster, look for genomes that
+        contribute 2+ adjacent genes on the same contig, which indicates a gene that has
+        been split by a premature stop codon.
+
+        Returns a list of tuples:
+            (gene_cluster_id, fragmentation_events, reference_length, reference_genome, reference_gene_id)
+        """
+
+        all_events = []
+
+        self.progress.new("Scanning gene clusters", progress_total_items=len(gene_clusters))
+        for gene_cluster_id in gene_clusters:
+            self.progress.update(f"Processing {gene_cluster_id} ...", increment=True)
+
+            fragmentation_events = self.find_fragmentation_events(gene_cluster_id)
+
+            if not fragmentation_events:
+                continue
+
+            reference_length, reference_genome, reference_gene_id = self.get_full_length_reference(gene_cluster_id, fragmentation_events)
+
+            if reference_length is None:
+                continue
+
+            all_events.append((gene_cluster_id, fragmentation_events, reference_length, reference_genome, reference_gene_id))
+
+        self.progress.end()
+
+        return all_events
+
+
+    def scan_stray_fragment_events(self, gene_clusters, already_flagged):
+        """Scan for out-of-frame gene fragments that ended up in different gene clusters.
+
+        When a premature stop codon splits a gene and the downstream fragment is in a
+        different reading frame, the fragment will not cluster with the original gene. Instead,
+        it appears as a short gene in a different gene cluster. This method detects such cases
+        by looking for genomes where a gene cluster contains a single gene that is significantly
+        shorter than the full-length reference, and then checking whether an adjacent gene on
+        the same contig (belonging to a different gene cluster) fills in the missing length.
+
+        Parameters
+        ----------
+        gene_clusters : dict
+            The gene_clusters dict from PanSuperclass.
+        already_flagged : set
+            Set of (genome_name, gene_callers_id) tuples already identified by the in-cluster
+            scan, to avoid double-annotation.
+
+        Returns a list of tuples with the same structure as scan_in_cluster_fragmentation.
+        """
+
+        stray_events = []
+
+        # reverse lookup: gene_callers_id -> gene_cluster_id per genome
+        gene_to_cluster = self.pan_super.gene_callers_id_to_gene_cluster
+
+        self.progress.new("Scanning for stray fragments", progress_total_items=len(gene_clusters))
+        for gene_cluster_id in gene_clusters:
+            self.progress.update(f"Processing {gene_cluster_id} ...", increment=True)
+
+            # first, determine the full-length reference for this cluster using genomes
+            # that contribute exactly one gene and are not fragmented
+            best_length = 0
+            best_genome = None
+            best_gene_id = None
+
+            for genome_name in gene_clusters[gene_cluster_id]:
+                gene_ids = gene_clusters[gene_cluster_id][genome_name]
+                if len(gene_ids) != 1:
+                    continue
+
+                gene_id = gene_ids[0]
+                if (genome_name, gene_id) in already_flagged:
+                    continue
+
+                gene_info = self.genes_in_contigs[genome_name][gene_id]
+                gene_length = gene_info['stop'] - gene_info['start']
+
+                if gene_length > best_length:
+                    best_length = gene_length
+                    best_genome = genome_name
+                    best_gene_id = gene_id
+
+            if best_length == 0:
+                continue
+
+            reference_length = best_length
+            reference_genome = best_genome
+            reference_gene_id = best_gene_id
+
+            fragmentation_events = []
+
+            for genome_name in gene_clusters[gene_cluster_id]:
+                gene_ids = gene_clusters[gene_cluster_id][genome_name]
+
+                # we are looking for genomes with a single, truncated gene in this cluster
+                if len(gene_ids) != 1:
+                    continue
+
+                gene_id = gene_ids[0]
+
+                if (genome_name, gene_id) in already_flagged:
+                    continue
+
+                gene_info = self.genes_in_contigs[genome_name][gene_id]
+                gene_length = gene_info['stop'] - gene_info['start']
+
+                # skip if this gene is already close to full length
+                if gene_length >= reference_length * self.min_full_length_ratio:
+                    continue
+
+                # check adjacent genes on the same contig
+                contig = gene_info['contig']
+                contig_genes = self.contig_gene_order[genome_name].get(contig, [])
+                if not contig_genes:
+                    continue
+
+                gene_position = {g: i for i, g in enumerate(contig_genes)}
+                if gene_id not in gene_position:
+                    continue
+
+                pos = gene_position[gene_id]
+
+                # look at immediate neighbors (upstream and downstream)
+                neighbor_ids = []
+                if pos > 0:
+                    neighbor_ids.append(contig_genes[pos - 1])
+                if pos < len(contig_genes) - 1:
+                    neighbor_ids.append(contig_genes[pos + 1])
+
+                for neighbor_id in neighbor_ids:
+                    if (genome_name, neighbor_id) in already_flagged:
+                        continue
+
+                    # the neighbor must be in a *different* gene cluster
+                    neighbor_cluster = gene_to_cluster.get(genome_name, {}).get(neighbor_id, None)
+                    if neighbor_cluster is None or neighbor_cluster == gene_cluster_id:
+                        continue
+
+                    # if the reference genome also has a gene in the neighbor's cluster, the
+                    # neighbor is a real independent gene, not a stray fragment (because, and
+                    # bear with me here, the genome with the intact full-length gene also has
+                    # separate gene in that family .. assumptions assumptions.. but this logic
+                    # really fixed the issue of over-identifying bona fide genes that are 
+                    # distinct asfragments)
+                    if reference_genome in gene_clusters.get(neighbor_cluster, {}):
+                        continue
+
+                    neighbor_info = self.genes_in_contigs[genome_name][neighbor_id]
+                    neighbor_length = neighbor_info['stop'] - neighbor_info['start']
+
+                    # check if the combined span of the truncated gene and its neighbor
+                    # approximates the full-length reference
+                    combined_length = gene_length + neighbor_length
+                    if combined_length >= reference_length * self.min_full_length_ratio:
+                        fragmentation_events.append((genome_name, [gene_id, neighbor_id]))
+                        # mark these so we don't flag them again from the neighbor's cluster
+                        already_flagged.add((genome_name, gene_id))
+                        already_flagged.add((genome_name, neighbor_id))
+                        break
+
+            if fragmentation_events:
+                stray_events.append((gene_cluster_id, fragmentation_events, reference_length, reference_genome, reference_gene_id))
+
+        self.progress.end()
+
+        return stray_events
