@@ -1498,6 +1498,8 @@ class FragmentedGeneAnnotator():
         # write annotations to each contigs-db
         self.progress.new("Annotating contigs-dbs", progress_total_items=len(self.genome_descriptions.genomes))
         genomes_annotated = 0
+        for genome_name in self.genome_descriptions.genomes:
+            contigs_db_path = self.genome_descriptions.genomes[genome_name]['contigs_db_path']
             self.progress.update(f"Working on {genome_name} ...", increment=True)
             functions_dict = annotations_per_genome[genome_name]
 
