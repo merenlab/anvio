@@ -1364,6 +1364,14 @@ class FragmentedGeneAnnotator():
     def process(self):
         """Main entry point for fragmented gene annotation."""
 
+        # load up the external genomes
+        import anvio.genomedescriptions as genomedescriptions
+        genome_desc_args = argparse.Namespace(external_genomes=self.external_genomes_path, internal_genomes=None,
+                                              skip_checking_genome_hashes=False, just_do_it=False, gene_caller=None,
+                                              list_hmm_sources=False, list_available_gene_names=False)
+        self.genome_descriptions = genomedescriptions.GenomeDescriptions(genome_desc_args, run=terminal.Run(verbose=False), progress=terminal.Progress(verbose=False))
+        self.genome_descriptions.load_genomes_descriptions(skip_functions=True, init=False)
+
         # initialize pan superclass and gene clusters
         pan_args = argparse.Namespace(pan_db=self.pan_db_path, genomes_storage=self.genomes_storage_path)
         self.pan_super = dbops.PanSuperclass(pan_args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
@@ -1371,11 +1379,6 @@ class FragmentedGeneAnnotator():
 
         # initialize genomes storage for sequence access
         self.genomes_storage = GenomeStorage(self.genomes_storage_path, run=terminal.Run(verbose=False), progress=terminal.Progress(verbose=False))
-
-        # parse external genomes file to get {genome_name: contigs_db_path}
-        filesnpaths.is_file_tab_delimited(self.external_genomes_path)
-        external_genomes_df = pd.read_csv(self.external_genomes_path, sep='\t', header=0)
-        self.genome_name_to_contigs_db_path = dict(zip(external_genomes_df['name'], external_genomes_df['contigs_db_path']))
 
         # load genes_in_contigs_dict for each genome so we know contig membership and positions
         self.genes_in_contigs = {}
