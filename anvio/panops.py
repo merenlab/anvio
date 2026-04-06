@@ -2431,14 +2431,26 @@ class FragmentedGeneAnnotator():
 
         if not self.pan_db_path:
             raise ConfigError("You must provide a pan database path.")
+
         if not self.genomes_storage_path:
             raise ConfigError("You must provide a genomes storage path.")
+
         if not self.external_genomes_path:
             raise ConfigError("You must provide an external genomes file.")
+
+        utils.is_pan_db_and_genomes_storage_db_compatible(self.pan_db_path, self.genomes_storage_path)
 
 
     def process(self):
         """Main entry point for fragmented gene annotation."""
+
+        # load up the external genomes
+        import anvio.genomedescriptions as genomedescriptions
+        genome_desc_args = argparse.Namespace(external_genomes=self.external_genomes_path, internal_genomes=None,
+                                              skip_checking_genome_hashes=False, just_do_it=False, gene_caller=None,
+                                              list_hmm_sources=False, list_available_gene_names=False)
+        self.genome_descriptions = genomedescriptions.GenomeDescriptions(genome_desc_args, run=terminal.Run(verbose=False), progress=terminal.Progress(verbose=False))
+        self.genome_descriptions.load_genomes_descriptions(skip_functions=True, init=False)
 
         # initialize pan superclass and gene clusters
         pan_args = argparse.Namespace(pan_db=self.pan_db_path, genomes_storage=self.genomes_storage_path)
@@ -2448,15 +2460,11 @@ class FragmentedGeneAnnotator():
         # initialize genomes storage for sequence access
         self.genomes_storage = GenomeStorage(self.genomes_storage_path, run=terminal.Run(verbose=False), progress=terminal.Progress(verbose=False))
 
-        # parse external genomes file to get {genome_name: contigs_db_path}
-        filesnpaths.is_file_tab_delimited(self.external_genomes_path)
-        external_genomes_df = pd.read_csv(self.external_genomes_path, sep='\t', header=0)
-        self.genome_name_to_contigs_db_path = dict(zip(external_genomes_df['name'], external_genomes_df['contigs_db_path']))
-
         # load genes_in_contigs_dict for each genome so we know contig membership and positions
         self.genes_in_contigs = {}
         self.contig_gene_order = {}  # {genome_name: {contig: [gene_ids sorted by start]}}
-        for genome_name, contigs_db_path in self.genome_name_to_contigs_db_path.items():
+        for genome_name in self.genome_descriptions.genomes:
+            contigs_db_path = self.genome_descriptions.genomes[genome_name]['contigs_db_path']
             contigs_db_args = argparse.Namespace(contigs_db=contigs_db_path)
             contigs_super = dbops.ContigsSuperclass(contigs_db_args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
             self.genes_in_contigs[genome_name] = contigs_super.genes_in_contigs_dict
@@ -2482,8 +2490,8 @@ class FragmentedGeneAnnotator():
                              level=0, mc='green')
 
         # annotations_per_genome will be {genome_name: {entry_counter: {gene_callers_id, source, accession, function, e_value}}}
-        annotations_per_genome = {g: {} for g in self.genome_name_to_contigs_db_path}
-        entry_counter_per_genome = {g: 0 for g in self.genome_name_to_contigs_db_path}
+        annotations_per_genome = {g: {} for g in self.genome_descriptions.genomes}
+        entry_counter_per_genome = {g: 0 for g in self.genome_descriptions.genomes}
 
         total_fragmented_genes = 0
         total_gene_fragments = 0
@@ -2568,9 +2576,10 @@ class FragmentedGeneAnnotator():
             return
 
         # write annotations to each contigs-db
-        self.progress.new("Annotating contigs-dbs", progress_total_items=len(self.genome_name_to_contigs_db_path))
+        self.progress.new("Annotating contigs-dbs", progress_total_items=len(self.genome_descriptions.genomes))
         genomes_annotated = 0
-        for genome_name, contigs_db_path in self.genome_name_to_contigs_db_path.items():
+        for genome_name in self.genome_descriptions.genomes:
+            contigs_db_path = self.genome_descriptions.genomes[genome_name]['contigs_db_path']
             self.progress.update(f"Working on {genome_name} ...", increment=True)
             functions_dict = annotations_per_genome[genome_name]
 
