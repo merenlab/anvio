@@ -1511,6 +1511,8 @@ class FragmentedGeneAnnotator():
 
             genomes_annotated += 1
 
+        self.progress.end()
+
         self.run.info('Contigs databases annotated', genomes_annotated, nl_before=1)
 
 
