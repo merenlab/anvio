@@ -1364,7 +1364,8 @@ class FragmentedGeneAnnotator():
     def process(self):
         """Main entry point for fragmented gene annotation."""
 
-        # load up the external genomes
+        # we import here to avoid circular imports since genomedescriptions imports dbops
+        # which imports panops
         import anvio.genomedescriptions as genomedescriptions
         genome_desc_args = argparse.Namespace(external_genomes=self.external_genomes_path, internal_genomes=None,
                                               skip_checking_genome_hashes=False, just_do_it=False, gene_caller=None,
@@ -1622,6 +1623,7 @@ class FragmentedGeneAnnotator():
         positioning based on actual start/stop offsets within each genome.
         """
 
+        # local import to avoid pulling ttycolors into every panops consumer
         from anvio.ttycolors import color_text
 
         gene_clusters = self.pan_super.gene_clusters
