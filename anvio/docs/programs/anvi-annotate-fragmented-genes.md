@@ -51,6 +51,17 @@ When the program runs, it prints a color-coded visualization for each gene clust
 
 In this particular example, four of the gene clusters in the pangenome had fragmented genes. The bars in the report show the relative length of each gene compared to the full-length reference, and their position reflects the actual layout of fragments on the contig. **Green** bars represent the full-length reference gene determined by anvi'o, **blue** bars represent the longest fragment in a genome (labeled `fragmented_gene`), **red** bars represent shorter fragments, and **gray** bars represent genes from genomes where the gene is not fragmented. Genome names and anvi'o gene caller ids are also shown to double check things.
 
+You can also include the consensus function annotation for each gene cluster in the report header by providing a functional annotation source with `--annotation-source`:
+
+{{ codestart }}
+anvi-annotate-fragmented-genes -p %(pan-db)s \
+                               -g %(genomes-storage-db)s \
+                               -e %(external-genomes)s \
+                               --annotation-source COG24_FUNCTION
+{{ codestop }}
+
+This will display the most common function name from that source next to each gene cluster ID, making it easier to identify which genes are affected without having to look them up separately in the pangenome.
+
 The purpose of this report is for you to go back to the pangenome with %(anvi-display-pan)s, search for some of the gene clusters, and inspect them to confirm that you are happy with the result.
 
 If you are satisfied and would like your pangenome to include this information, you will need to restart the pangenomics workflow with these newly annotated %(contigs-db)s files so %(anvi-summarize)s output can include the necessary data for you to be able to do functional enrichment analyses of genes that have `fragmented_gene` annotations.
