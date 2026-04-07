@@ -1777,7 +1777,7 @@ class FragmentedGeneAnnotator():
 
                         is_stray = (genome_name, gene_id) in stray_genes_info
 
-                        if gene_id == reference_gene_id:
+                        if gene_id == reference_gene_id and genome_name == reference_genome:
                             color = 'green'
                             label = 'reference'
                         elif gene_id in longest_fragment_per_genome.get(genome_name, set()):
@@ -1811,7 +1811,7 @@ class FragmentedGeneAnnotator():
 
                     length_pct = f"{gene_length / reference_length * 100:.1f}%"
 
-                    if gene_id == reference_gene_id:
+                    if gene_id == reference_gene_id and genome_name == reference_genome:
                         color = 'green'
                         label = 'reference'
                     else:
