@@ -27,7 +27,7 @@ Gene fragmentation can occur in any group, but it is more common in some clades 
 
 Each fragment is then classified as one of the following:
 
-- **`fragmented_gene`**: The longest fragment in a genome, which likely retains gene function. Or not. It is impossible to say, of course, but the assumption here is that if a gene has undergone fragmentation, the longest fragment of it is the most likely to continue retaining its function. This label is only assigned if the fragment is at least a certain fraction of the full-length reference, controlled by the `--min-full-length-ratio` flag (default: 0.7, which means the fragment must be longer than 70%% of the reference gene).
+- **`fragmented_gene`**: The longest fragment in a genome, which likely retains gene function. Or not. It is impossible to say, of course, but the assumption here is that if a gene has undergone fragmentation, the longest fragment of it is the most likely to continue retaining its function. This label is only assigned if the fragment is at least a certain fraction of the full-length reference, controlled by the `--min-full-length-ratio` flag (default: 0.5, which means the fragment must be longer than 50%% of the reference gene).
 
 - **`gene_fragment`**: Shorter fragments that are unlikely to be functional. If even the longest fragment in a genome falls below the length threshold, **all** fragments in that genome are labeled `gene_fragment`.
 

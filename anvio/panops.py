@@ -1345,7 +1345,7 @@ class FragmentedGeneAnnotator():
         self.pan_db_path = A('pan_db')
         self.genomes_storage_path = A('genomes_storage')
         self.external_genomes_path = A('external_genomes')
-        self.min_full_length_ratio = A('min_full_length_ratio') or 0.70
+        self.min_full_length_ratio = A('min_full_length_ratio') or 0.50
         self.skip_reporting = A('skip_reporting') or False
         self.report_only = A('report_only') or False
         self.find_stray_fragments = A('find_stray_fragments') or False
