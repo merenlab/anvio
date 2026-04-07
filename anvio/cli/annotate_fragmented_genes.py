@@ -69,6 +69,11 @@ def get_args():
 
     groupC = parser.add_argument_group('REPORTING', "Control what this program reports and whether it gets to update "
                         "anything at all.")
+    groupC.add_argument(*anvio.A('annotation-source'), **anvio.K('annotation-source', {'help': "If "
+                             "provided, the consensus function from this annotation source will be "
+                             "shown next to each gene cluster name in the terminal report. You can "
+                             "always run `anvi-db-info` on your genome storage db to remember what "
+                             "function annotation sources available and what they are called."}))
     groupC.add_argument('--skip-reporting', default=False, action='store_true',
                         help="Do not print per-gene-cluster visualizations to the terminal. Annotations "
                              "will still be written to contigs databases.")

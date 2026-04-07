@@ -1349,6 +1349,7 @@ class FragmentedGeneAnnotator():
         self.skip_reporting = A('skip_reporting') or False
         self.report_only = A('report_only') or False
         self.find_stray_fragments = A('find_stray_fragments') or False
+        self.annotation_source = A('annotation_source')
 
         if not self.pan_db_path:
             raise ConfigError("You must provide a pan database path.")
@@ -1378,6 +1379,15 @@ class FragmentedGeneAnnotator():
         pan_args = argparse.Namespace(pan_db=self.pan_db_path, genomes_storage=self.genomes_storage_path)
         self.pan_super = dbops.PanSuperclass(pan_args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
         self.pan_super.init_gene_clusters()
+
+        # if the user wants gene cluster functions in the report, initialize them now
+        if self.annotation_source:
+            self.pan_super.init_gene_clusters_functions()
+
+            if self.annotation_source not in self.pan_super.gene_clusters_function_sources:
+                available_sources = ', '.join(sorted(self.pan_super.gene_clusters_function_sources)) if self.pan_super.gene_clusters_function_sources else 'None'
+                raise ConfigError(f"The annotation source '{self.annotation_source}' is not available in the genomes storage. "
+                                  f"Here are the sources that are available: {available_sources}.")
 
         # initialize genomes storage for sequence access
         self.genomes_storage = GenomeStorage(self.genomes_storage_path, run=terminal.Run(verbose=False), progress=terminal.Progress(verbose=False))
@@ -1416,6 +1426,7 @@ class FragmentedGeneAnnotator():
         self.run.info('Num gene clusters', len(gene_clusters))
         self.run.info('Min full-length ratio', self.min_full_length_ratio)
         self.run.info('Search for stray fragments', self.find_stray_fragments)
+        self.run.info('Annotation source for report', self.annotation_source or 'None')
         self.run.info('Report only', self.report_only)
 
         # annotations_per_genome will be {genome_name: {entry_counter: {gene_callers_id, source, accession, function, e_value}}}
@@ -1452,7 +1463,12 @@ class FragmentedGeneAnnotator():
             gene_clusters_with_fragmentation += 1
 
             if not self.skip_reporting:
-                self.report_gene_cluster(gene_cluster_id, fragmentation_events, reference_length, reference_genome, reference_gene_id)
+                # get consensus function for this gene cluster if an annotation source was provided
+                gc_function = None
+                if self.annotation_source:
+                    _, gc_function = self.pan_super.get_gene_cluster_function_summary(gene_cluster_id, self.annotation_source)
+
+                self.report_gene_cluster(gene_cluster_id, fragmentation_events, reference_length, reference_genome, reference_gene_id, gc_function=gc_function)
 
             for genome_name, adjacent_group in fragmentation_events:
                 gene_lengths = []
@@ -1629,7 +1645,7 @@ class FragmentedGeneAnnotator():
         return best_length, best_genome, best_gene_id
 
 
-    def report_gene_cluster(self, gene_cluster_id, fragmentation_events, reference_length, reference_genome, reference_gene_id):
+    def report_gene_cluster(self, gene_cluster_id, fragmentation_events, reference_length, reference_genome, reference_gene_id, gc_function=None):
         """Print a terminal visualization for a gene cluster with fragmentation events.
 
         Shows each genome's gene(s) as colored bars proportional to length, with fragment
@@ -1809,7 +1825,8 @@ class FragmentedGeneAnnotator():
         # print the report anvi'o way
         run_width = self.run.width
         self.run.width = content_width
-        self.run.warning(None, header=f"{gene_cluster_id}")
+        header = f"{gene_cluster_id} ({gc_function})" if gc_function else f"{gene_cluster_id}"
+        self.run.warning(None, header=header)
         self.run.width = run_width
 
         prev_genome = None
