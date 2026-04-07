@@ -1468,7 +1468,8 @@ class FragmentedGeneAnnotator():
                 # get consensus function for this gene cluster if an annotation source was provided
                 gc_function = None
                 if self.annotation_source:
-                    _, gc_function = self.pan_super.get_gene_cluster_function_summary(gene_cluster_id, self.annotation_source)
+                    _acc, _func = self.pan_super.get_gene_cluster_function_summary(gene_cluster_id, self.annotation_source)
+                    gc_function=(_acc.split('!!!')[0] if _acc else _acc, _func.split('!!!')[0] if _func else _func)
 
                 self.report_gene_cluster(gene_cluster_id, fragmentation_events, reference_length, reference_genome, reference_gene_id, gc_function=gc_function)
 
@@ -1691,7 +1692,7 @@ class FragmentedGeneAnnotator():
                     longest_fragment_per_genome[genome_name].add(longest_id)
 
         # determine bar width (terminal characters for the reference gene)
-        bar_width = 50
+        bar_width = 80
 
         # collect rows for display
         rows = []
@@ -1827,9 +1828,16 @@ class FragmentedGeneAnnotator():
         # print the report anvi'o way
         run_width = self.run.width
         self.run.width = content_width
-        header = f"{gene_cluster_id} ({gc_function})" if gc_function else f"{gene_cluster_id}"
+        header = f"{gene_cluster_id}"
         self.run.warning(None, header=header)
         self.run.width = run_width
+
+        if self.annotation_source:
+            if gc_function:
+                func_str = f"{self.annotation_source} Consensus: {gc_function[0]} | {gc_function[1]}"
+            else:
+                func_str = f"{self.annotation_source} Consensus: Unknown"
+            self.run.info_single(func_str, level=0, mc='red', nl_after=1, cut_after=None)
 
         prev_genome = None
         for genome_name, gene_id_str, bar_str, info in rows:
