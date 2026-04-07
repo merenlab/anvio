@@ -1515,7 +1515,11 @@ class FragmentedGeneAnnotator():
                     }
                     entry_counter_per_genome[genome_name] += 1
 
-        self.run.info('Gene clusters with fragmentation', gene_clusters_with_fragmentation, nl_before=1)
+        num_non_singleton_gene_clusters = sum(1 for gc_id in gene_clusters if sum(1 for g in gene_clusters[gc_id] if gene_clusters[gc_id][g]) > 1)
+        pct_with_fragmentation = gene_clusters_with_fragmentation / num_non_singleton_gene_clusters * 100 if num_non_singleton_gene_clusters else 0
+
+        self.run.info('Non-singleton gene clusters', num_non_singleton_gene_clusters, nl_before=1)
+        self.run.info('Gene clusters with fragmentation', f"{gene_clusters_with_fragmentation} ({pct_with_fragmentation:.1f}% of non-singleton GCs)")
         self.run.info('Total fragmented genes', total_fragmented_genes)
         self.run.info('Total gene fragments', total_gene_fragments)
 
