@@ -67,6 +67,8 @@ def get_args():
                              "gene duplications (paralogs?) rather than fragments of a single gene. "
                              "Groups whose combined length exceeds this ratio times the reference "
                              "length will be skipped. Default should work well for most cases, and it "
+                             "is %(default).2f. Please adjust it if your terminal output reveals "
+                             "any issues with your dataset.")
     groupB.add_argument('--find-stray-fragments', default=False, action='store_true',
                         help="Also look for out-of-frame gene fragments that ended up in different gene "
                              "clusters. When a premature stop codon splits a gene and the downstream "
