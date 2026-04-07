@@ -1233,14 +1233,14 @@ D = {
                 ),
     'hmm-source': (
             ['--hmm-source'],
-            {'metavar': 'SOURCE NAME',
+            {'metavar': 'HMM_ANNOTATION_SOURCE',
              'default': None,
              'help': "Use a specific HMM source. You can use '--list-hmm-sources' flag to see "
                      "a list of available resources. The default is '%(default)s'."}
                 ),
     'hmm-sources': (
             ['--hmm-sources'],
-            {'metavar': 'SOURCE NAME',
+            {'metavar': 'HMM_ANNOTATION_SOURCE[S]',
              'help': "Get sequences for a specific list of HMM sources. You can list one or more "
                      "sources by separating them from each other with a comma character (i.e., "
                      "'--hmm-sources source_1,source_2,source_3'). If you would like to see a list "
@@ -1255,14 +1255,14 @@ D = {
                 ),
     'annotation-source': (
             ['--annotation-source'],
-            {'metavar': 'SOURCE NAME',
+            {'metavar': 'FUNCTION_ANNOTATION_SOURCE',
              'default': None,
              'help': "Get functional annotations for a specific annotation source. You can use the flag "
                      "'--list-annotation-sources' to learn about what sources are available."}
                 ),
     'annotation-sources': (
             ['--annotation-sources'],
-            {'metavar': 'SOURCE NAME[S]',
+            {'metavar': 'FUNCTION_ANNOTATION_SOURCE[S]',
              'default': None,
              'help': "Get functional annotations for a specific list of annotation sources. You "
                      "can specify one or more sources by separating them from each other with a comma "

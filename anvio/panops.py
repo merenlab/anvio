@@ -2425,10 +2425,12 @@ class FragmentedGeneAnnotator():
         self.pan_db_path = A('pan_db')
         self.genomes_storage_path = A('genomes_storage')
         self.external_genomes_path = A('external_genomes')
-        self.min_full_length_ratio = A('min_full_length_ratio') or 0.70
+        self.min_full_length_ratio = A('min_full_length_ratio') or 0.50
+        self.max_combined_length_ratio = A('max_combined_length_ratio') or 1.20
         self.skip_reporting = A('skip_reporting') or False
         self.report_only = A('report_only') or False
         self.find_stray_fragments = A('find_stray_fragments') or False
+        self.annotation_source = A('annotation_source')
 
         if not self.pan_db_path:
             raise ConfigError("You must provide a pan database path.")
@@ -2458,6 +2460,15 @@ class FragmentedGeneAnnotator():
         pan_args = argparse.Namespace(pan_db=self.pan_db_path, genomes_storage=self.genomes_storage_path)
         self.pan_super = dbops.PanSuperclass(pan_args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
         self.pan_super.init_gene_clusters()
+
+        # if the user wants gene cluster functions in the report, initialize them now
+        if self.annotation_source:
+            self.pan_super.init_gene_clusters_functions()
+
+            if self.annotation_source not in self.pan_super.gene_clusters_function_sources:
+                available_sources = ', '.join(sorted(self.pan_super.gene_clusters_function_sources)) if self.pan_super.gene_clusters_function_sources else 'None'
+                raise ConfigError(f"The annotation source '{self.annotation_source}' is not available in the genomes storage. "
+                                  f"Here are the sources that are available: {available_sources}.")
 
         # initialize genomes storage for sequence access
         self.genomes_storage = GenomeStorage(self.genomes_storage_path, run=terminal.Run(verbose=False), progress=terminal.Progress(verbose=False))
@@ -2495,7 +2506,9 @@ class FragmentedGeneAnnotator():
         self.run.info('Num genomes', len(self.genome_descriptions.genomes), nl_before=1)
         self.run.info('Num gene clusters', len(gene_clusters))
         self.run.info('Min full-length ratio', self.min_full_length_ratio)
+        self.run.info('Max combined length ratio', self.max_combined_length_ratio)
         self.run.info('Search for stray fragments', self.find_stray_fragments)
+        self.run.info('Annotation source for report', self.annotation_source or 'None')
         self.run.info('Report only', self.report_only)
 
         # annotations_per_genome will be {genome_name: {entry_counter: {gene_callers_id, source, accession, function, e_value}}}
@@ -2532,7 +2545,13 @@ class FragmentedGeneAnnotator():
             gene_clusters_with_fragmentation += 1
 
             if not self.skip_reporting:
-                self.report_gene_cluster(gene_cluster_id, fragmentation_events, reference_length, reference_genome, reference_gene_id)
+                # get consensus function for this gene cluster if an annotation source was provided
+                gc_function = None
+                if self.annotation_source:
+                    _acc, _func = self.pan_super.get_gene_cluster_function_summary(gene_cluster_id, self.annotation_source)
+                    gc_function=(_acc.split('!!!')[0] if _acc else _acc, _func.split('!!!')[0] if _func else _func)
+
+                self.report_gene_cluster(gene_cluster_id, fragmentation_events, reference_length, reference_genome, reference_gene_id, gc_function=gc_function)
 
             for genome_name, adjacent_group in fragmentation_events:
                 gene_lengths = []
@@ -2576,7 +2595,11 @@ class FragmentedGeneAnnotator():
                     }
                     entry_counter_per_genome[genome_name] += 1
 
-        self.run.info('Gene clusters with fragmentation', gene_clusters_with_fragmentation, nl_before=1)
+        num_non_singleton_gene_clusters = sum(1 for gc_id in gene_clusters if sum(1 for g in gene_clusters[gc_id] if gene_clusters[gc_id][g]) > 1)
+        pct_with_fragmentation = gene_clusters_with_fragmentation / num_non_singleton_gene_clusters * 100 if num_non_singleton_gene_clusters else 0
+
+        self.run.info('Non-singleton gene clusters', num_non_singleton_gene_clusters, nl_before=1)
+        self.run.info('Gene clusters with fragmentation', f"{gene_clusters_with_fragmentation} ({pct_with_fragmentation:.1f}% of non-singleton GCs)")
         self.run.info('Total fragmented genes', total_fragmented_genes)
         self.run.info('Total gene fragments', total_gene_fragments)
 
@@ -2709,7 +2732,7 @@ class FragmentedGeneAnnotator():
         return best_length, best_genome, best_gene_id
 
 
-    def report_gene_cluster(self, gene_cluster_id, fragmentation_events, reference_length, reference_genome, reference_gene_id):
+    def report_gene_cluster(self, gene_cluster_id, fragmentation_events, reference_length, reference_genome, reference_gene_id, gc_function=None):
         """Print a terminal visualization for a gene cluster with fragmentation events.
 
         Shows each genome's gene(s) as colored bars proportional to length, with fragment
@@ -2753,7 +2776,7 @@ class FragmentedGeneAnnotator():
                     longest_fragment_per_genome[genome_name].add(longest_id)
 
         # determine bar width (terminal characters for the reference gene)
-        bar_width = 50
+        bar_width = 80
 
         # collect rows for display
         rows = []
@@ -2839,7 +2862,7 @@ class FragmentedGeneAnnotator():
 
                         is_stray = (genome_name, gene_id) in stray_genes_info
 
-                        if gene_id == reference_gene_id:
+                        if gene_id == reference_gene_id and genome_name == reference_genome:
                             color = 'green'
                             label = 'reference'
                         elif gene_id in longest_fragment_per_genome.get(genome_name, set()):
@@ -2873,7 +2896,7 @@ class FragmentedGeneAnnotator():
 
                     length_pct = f"{gene_length / reference_length * 100:.1f}%"
 
-                    if gene_id == reference_gene_id:
+                    if gene_id == reference_gene_id and genome_name == reference_genome:
                         color = 'green'
                         label = 'reference'
                     else:
@@ -2889,8 +2912,16 @@ class FragmentedGeneAnnotator():
         # print the report anvi'o way
         run_width = self.run.width
         self.run.width = content_width
-        self.run.warning(None, header=f"{gene_cluster_id}")
+        header = f"{gene_cluster_id}"
+        self.run.warning(None, header=header)
         self.run.width = run_width
+
+        if self.annotation_source:
+            if gc_function:
+                func_str = f"{self.annotation_source} Consensus: {gc_function[0]} | {gc_function[1]}"
+            else:
+                func_str = f"{self.annotation_source} Consensus: Unknown"
+            self.run.info_single(func_str, level=0, mc='red', nl_after=1, cut_after=None)
 
         prev_genome = None
         for genome_name, gene_id_str, bar_str, info in rows:
@@ -2931,7 +2962,20 @@ class FragmentedGeneAnnotator():
             if reference_length is None:
                 continue
 
-            all_events.append((gene_cluster_id, fragmentation_events, reference_length, reference_genome, reference_gene_id))
+            # filter out groups whose combined gene length far exceeds the reference,
+            # which indicates tandem paralogs (gene duplications) rather than a gene
+            # split by a premature stop codon. in a true fragmentation event the
+            # fragments should sum to roughly the reference length, not 2x or more.
+            filtered_events = []
+            for genome_name, adjacent_group in fragmentation_events:
+                combined_length = sum(self.genes_in_contigs[genome_name][g]['stop'] - self.genes_in_contigs[genome_name][g]['start'] for g in adjacent_group)
+                if combined_length <= reference_length * self.max_combined_length_ratio:
+                    filtered_events.append((genome_name, adjacent_group))
+
+            if not filtered_events:
+                continue
+
+            all_events.append((gene_cluster_id, filtered_events, reference_length, reference_genome, reference_gene_id))
 
         self.progress.end()
 
@@ -3060,9 +3104,10 @@ class FragmentedGeneAnnotator():
                     neighbor_length = neighbor_info['stop'] - neighbor_info['start']
 
                     # check if the combined span of the truncated gene and its neighbor
-                    # approximates the full-length reference
+                    # approximates the full-length reference (but does not far exceed it,
+                    # which would indicate paralogs rather than fragments)
                     combined_length = gene_length + neighbor_length
-                    if combined_length >= reference_length * self.min_full_length_ratio:
+                    if combined_length >= reference_length * self.min_full_length_ratio and combined_length <= reference_length * self.max_combined_length_ratio:
                         fragmentation_events.append((genome_name, [gene_id, neighbor_id]))
                         # mark these so we don't flag them again from the neighbor's cluster
                         already_flagged.add((genome_name, gene_id))

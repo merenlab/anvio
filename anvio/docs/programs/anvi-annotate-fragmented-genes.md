@@ -27,7 +27,7 @@ Gene fragmentation can occur in any group, but it is more common in some clades 
 
 Each fragment is then classified as one of the following:
 
-- **`fragmented_gene`**: The longest fragment in a genome, which likely retains gene function. Or not. It is impossible to say, of course, but the assumption here is that if a gene has undergone fragmentation, the longest fragment of it is the most likely to continue retaining its function. This label is only assigned if the fragment is at least a certain fraction of the full-length reference, controlled by the `--min-full-length-ratio` flag (default: 0.7, which means the fragment must be longer than 70%% of the reference gene).
+- **`fragmented_gene`**: The longest fragment in a genome, which likely retains gene function. Or not. It is impossible to say, of course, but the assumption here is that if a gene has undergone fragmentation, the longest fragment of it is the most likely to continue retaining its function. This label is only assigned if the fragment is at least a certain fraction of the full-length reference, controlled by the `--min-full-length-ratio` flag (default: 0.5, which means the fragment must be longer than 50%% of the reference gene).
 
 - **`gene_fragment`**: Shorter fragments that are unlikely to be functional. If even the longest fragment in a genome falls below the length threshold, **all** fragments in that genome are labeled `gene_fragment`.
 
@@ -51,22 +51,50 @@ When the program runs, it prints a color-coded visualization for each gene clust
 
 In this particular example, four of the gene clusters in the pangenome had fragmented genes. The bars in the report show the relative length of each gene compared to the full-length reference, and their position reflects the actual layout of fragments on the contig. **Green** bars represent the full-length reference gene determined by anvi'o, **blue** bars represent the longest fragment in a genome (labeled `fragmented_gene`), **red** bars represent shorter fragments, and **gray** bars represent genes from genomes where the gene is not fragmented. Genome names and anvi'o gene caller ids are also shown to double check things.
 
-The purpose of this report is for you to go back to the pangenome with %(anvi-display-pan)s, search for some of the gene clusters, and inspect them to confirm that you are happy with the result.
-
-If you are satisfied and would like your pangenome to include this information, you will need to restart the pangenomics workflow with these newly annotated %(contigs-db)s files so %(anvi-summarize)s output can include the necessary data for you to be able to do functional enrichment analyses of genes that have `fragmented_gene` annotations.
-
-### Adjusting the length threshold
-
-By default, the longest fragment in a genome must be at least 70%% of the full-length reference to receive the `fragmented_gene` label. You can adjust this threshold:
+You can also include the consensus function annotation for each gene cluster in the report header by providing a functional annotation source with `--annotation-source`:
 
 {{ codestart }}
 anvi-annotate-fragmented-genes -p %(pan-db)s \
                                -g %(genomes-storage-db)s \
                                -e %(external-genomes)s \
-                               --min-full-length-ratio 0.50
+                               --annotation-source COG24_FUNCTION
 {{ codestop }}
 
-Setting a lower value is more permissive (more fragments will be labeled `fragmented_gene` rather than `gene_fragment`). Setting a higher value is more conservative.
+This will display the consensus functional annotation for each gene cluster (i.e., the most common function across all genes in it) for you to have a quick idea about their potential role:
+
+![terminal_output](../../images/anvi-annotate-fragmented-genes-w-functions.png)
+
+The purpose of the terminal output is to give you a sense of the decisions made and how they look in the context of the pangenome in general. It would be useful to go back to the pangenome with %(anvi-display-pan)s, search for some of the gene clusters, and inspect them to confirm that you are happy with the results.
+
+If you are satisfied and would like your pangenome to include this information, you will need to restart the pangenomics workflow with these newly annotated %(contigs-db)s files so %(anvi-summarize)s output can include the necessary data for you to be able to do functional enrichment analyses of genes that have `fragmented_gene` annotations.
+
+### Adjusting the length threshold
+
+By default, the longest fragment in a genome must be at least 50%% of the full-length reference to receive the `fragmented_gene` label. You can adjust this threshold to be more stringent or more permissive with the `--min-full-length-ratio` flag:
+
+{{ codestart }}
+anvi-annotate-fragmented-genes -p %(pan-db)s \
+                               -g %(genomes-storage-db)s \
+                               -e %(external-genomes)s \
+                               --min-full-length-ratio 0.75
+{{ codestop }}
+
+Setting a lower value is more permissive (more fragments will be labeled `fragmented_gene` rather than `gene_fragment`). Setting a higher value is more conservative. The latter will risk losing the representation of more fragmented genes in downstream analyses and that's why the default is set to 0.5, but the final call may depend on your survey of the terminal report (so please take time to study your terminal output).
+
+### Distinguishing fragmentation from duplication
+
+Not every pair of adjacent genes in the same gene cluster is a fragmentation event. When a gene has been **duplicated** in tandem (producing two near-full-length paralogs side by side on the contig), both copies end up in the same gene cluster because they share high sequence similarity. Since they are adjacent to one another, they will look like a potential fragmentatin even to our algorithm. The critical insight that will distinguish gene duplication from gene fragmentation will come from the difference between the combined length of adjacent genes compared to the reference: while fragmentatinon will roughly sum to the full lenght of the reference (e.g., a 60%% fragment + a 40%% fragment ≈ 100%% of the reference), duplicated genes will sum to a much larger length than the referenc esince each copy of the gene will be near-full-length, so together they will be closer to ~200%% of the reference (or more, for higher-copy tandem repeats).
+
+By default, %(anvi-annotate-fragmented-genes)s skips any group of adjacent genes whose combined length exceeds 1.2× the full-length reference, treating them as probable paralogs. You can adjust this threshold with the `--max-combined-length-ratio` flag:
+
+{{ codestart }}
+anvi-annotate-fragmented-genes -p %(pan-db)s \
+                               -g %(genomes-storage-db)s \
+                               -e %(external-genomes)s \
+                               --max-combined-length-ratio 1.30
+{{ codestop }}
+
+A higher value is more permissive (fewer groups will be excluded as paralogs). A lower value is more conservative. The default of 1.20 allows for some overlap at the fragment boundary while still catching obvious duplications, which appear to be a good idea based on our tests.
 
 ### Report-only and skip-reporting modes
 
@@ -120,7 +148,7 @@ When this flag is set, %(anvi-annotate-fragmented-genes)s performs a second scan
 This is a more aggressive search, and it may occasionally flag genes that are genuinely short rather than fragmented, so it is off by default. But while the algorithm worked well in our mock datasets, Meren's test with a large *B. fragilis* pangenome in which the program found over 100 gene clusters with fragmented genes, it found 0 stray fragments, so it is safe to assume that its false positive rate will be rather small if any.
 
 {:.notice}
-**A note from** {%% include person/display_mini_single.html github="meren" %%}: *The zero strays in a pangenome that contained over 100 regular fragmentation events likely indicates that the process is likely a result of biology rather than bioinformatics. As in, most premature stops likely come from substitutions, not frameshifts (i.e., C-to-T turning CAG (Gln) into TAG (stop) preserves the reading frame, and both fragments stay in-frame, and then BLAST clusters them together, and then the in-cluster scan catches them. It is also possible that most frameshifted downstream sequences often aren't called as genes by Prodigal. Even if a frameshift creates a new reading frame downstream, Prodigal needs to find a valid start codon, a [Shine-Dalgarno-like signal](https://en.wikipedia.org/wiki/Shine–Dalgarno_sequence), and a reasonable ORF length before it calls it a gene. Difficult to know which one is playing a more significant role, but if you are reading these lines, and if you feel that you have an interesting observation from your own pangenome or ideas about why out-of-frame / stray fragments occur in much less frequency compared to in-frame fragments, please let us know and so we can update the code if we are making a mistake, or this section with a better explanation*. 
+**A note from** {%% include person/display_mini_single.html github="meren" %%}: *The zero strays in a pangenome that contained over 100 regular fragmentation events likely indicates that the process is likely a result of biology rather than bioinformatics. As in, most premature stops likely come from substitutions, not frameshifts (i.e., C-to-T turning CAG (Gln) into TAG (stop) preserves the reading frame, and both fragments stay in-frame, and then BLAST clusters them together, and then the in-cluster scan catches them. It is also possible that most frameshifted downstream sequences often aren't called as genes by Prodigal. Even if a frameshift creates a new reading frame downstream, Prodigal needs to find a valid start codon, a [Shine-Dalgarno-like signal](https://en.wikipedia.org/wiki/Shine–Dalgarno_sequence), and a reasonable ORF length before it calls it a gene. Difficult to know which one is playing a more significant role, but if you are reading these lines, and if you feel that you have an interesting observation from your own pangenome or ideas about why out-of-frame / stray fragments occur in much less frequency compared to in-frame fragments, please let us know and so we can update the code if we are making a mistake, or this section with a better explanation*.
 
 ### Re-running the program
 

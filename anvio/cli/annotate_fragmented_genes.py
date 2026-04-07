@@ -52,12 +52,23 @@ def get_args():
     groupA.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
 
     groupB = parser.add_argument_group('PARAMETERS', "Fine-tune the fragmentation detection logic.")
-    groupB.add_argument('--min-full-length-ratio', default=0.70, type=float,
+    groupB.add_argument('--min-full-length-ratio', default=0.50, type=float,
                         help="Minimum ratio of the longest fragment length to the full-length reference "
                              "gene length for that fragment to be labeled 'fragmented_gene' rather than "
                              "'gene_fragment'. If the longest fragment in a genome is shorter than this "
                              "fraction of the reference, ALL fragments in that genome will be labeled "
                              "'gene_fragment'. Default: %(default).2f")
+    groupB.add_argument('--max-combined-length-ratio', default=1.20, type=float,
+                        help="Maximum ratio of the combined length of adjacent genes in a candidate "
+                             "fragmentation group to the full-length reference gene length. When a "
+                             "gene is truly split by a premature stop codon, the resulting fragments "
+                             "should sum to roughly the reference length. If the combined length far "
+                             "exceeds the reference, the adjacent genes are more likely tandem "
+                             "gene duplications (paralogs?) rather than fragments of a single gene. "
+                             "Groups whose combined length exceeds this ratio times the reference "
+                             "length will be skipped. Default should work well for most cases, and it "
+                             "is %(default).2f. Please adjust it if your terminal output reveals "
+                             "any issues with your dataset.")
     groupB.add_argument('--find-stray-fragments', default=False, action='store_true',
                         help="Also look for out-of-frame gene fragments that ended up in different gene "
                              "clusters. When a premature stop codon splits a gene and the downstream "
@@ -69,6 +80,11 @@ def get_args():
 
     groupC = parser.add_argument_group('REPORTING', "Control what this program reports and whether it gets to update "
                         "anything at all.")
+    groupC.add_argument(*anvio.A('annotation-source'), **anvio.K('annotation-source', {'help': "If "
+                             "provided, the consensus function from this annotation source will be "
+                             "shown next to each gene cluster name in the terminal report. You can "
+                             "always run `anvi-db-info` on your genome storage db to remember what "
+                             "function annotation sources available and what they are called."}))
     groupC.add_argument('--skip-reporting', default=False, action='store_true',
                         help="Do not print per-gene-cluster visualizations to the terminal. Annotations "
                              "will still be written to contigs databases.")
