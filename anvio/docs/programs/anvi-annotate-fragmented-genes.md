@@ -57,16 +57,16 @@ If you are satisfied and would like your pangenome to include this information, 
 
 ### Adjusting the length threshold
 
-By default, the longest fragment in a genome must be at least 70%% of the full-length reference to receive the `fragmented_gene` label. You can adjust this threshold:
+By default, the longest fragment in a genome must be at least 50%% of the full-length reference to receive the `fragmented_gene` label. You can adjust this threshold to be more stringent or more permissive with the `--min-full-length-ratio` flag:
 
 {{ codestart }}
 anvi-annotate-fragmented-genes -p %(pan-db)s \
                                -g %(genomes-storage-db)s \
                                -e %(external-genomes)s \
-                               --min-full-length-ratio 0.50
+                               --min-full-length-ratio 0.75
 {{ codestop }}
 
-Setting a lower value is more permissive (more fragments will be labeled `fragmented_gene` rather than `gene_fragment`). Setting a higher value is more conservative.
+Setting a lower value is more permissive (more fragments will be labeled `fragmented_gene` rather than `gene_fragment`). Setting a higher value is more conservative. The latter will risk losing the representation of more fragmented genes in downstream analyses and that's why the default is set to 0.5, but the final call may depend on your survey of the terminal report (so please take time to study your terminal output).
 
 ### Report-only and skip-reporting modes
 

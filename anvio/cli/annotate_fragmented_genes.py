@@ -52,7 +52,7 @@ def get_args():
     groupA.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
 
     groupB = parser.add_argument_group('PARAMETERS', "Fine-tune the fragmentation detection logic.")
-    groupB.add_argument('--min-full-length-ratio', default=0.70, type=float,
+    groupB.add_argument('--min-full-length-ratio', default=0.50, type=float,
                         help="Minimum ratio of the longest fragment length to the full-length reference "
                              "gene length for that fragment to be labeled 'fragmented_gene' rather than "
                              "'gene_fragment'. If the longest fragment in a genome is shorter than this "
