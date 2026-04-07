@@ -1346,6 +1346,7 @@ class FragmentedGeneAnnotator():
         self.genomes_storage_path = A('genomes_storage')
         self.external_genomes_path = A('external_genomes')
         self.min_full_length_ratio = A('min_full_length_ratio') or 0.50
+        self.max_combined_length_ratio = A('max_combined_length_ratio') or 1.20
         self.skip_reporting = A('skip_reporting') or False
         self.report_only = A('report_only') or False
         self.find_stray_fragments = A('find_stray_fragments') or False
@@ -1425,6 +1426,7 @@ class FragmentedGeneAnnotator():
         self.run.info('Num genomes', len(self.genome_descriptions.genomes), nl_before=1)
         self.run.info('Num gene clusters', len(gene_clusters))
         self.run.info('Min full-length ratio', self.min_full_length_ratio)
+        self.run.info('Max combined length ratio', self.max_combined_length_ratio)
         self.run.info('Search for stray fragments', self.find_stray_fragments)
         self.run.info('Annotation source for report', self.annotation_source or 'None')
         self.run.info('Report only', self.report_only)
@@ -1868,7 +1870,20 @@ class FragmentedGeneAnnotator():
             if reference_length is None:
                 continue
 
-            all_events.append((gene_cluster_id, fragmentation_events, reference_length, reference_genome, reference_gene_id))
+            # filter out groups whose combined gene length far exceeds the reference,
+            # which indicates tandem paralogs (gene duplications) rather than a gene
+            # split by a premature stop codon. in a true fragmentation event the
+            # fragments should sum to roughly the reference length, not 2x or more.
+            filtered_events = []
+            for genome_name, adjacent_group in fragmentation_events:
+                combined_length = sum(self.genes_in_contigs[genome_name][g]['stop'] - self.genes_in_contigs[genome_name][g]['start'] for g in adjacent_group)
+                if combined_length <= reference_length * self.max_combined_length_ratio:
+                    filtered_events.append((genome_name, adjacent_group))
+
+            if not filtered_events:
+                continue
+
+            all_events.append((gene_cluster_id, filtered_events, reference_length, reference_genome, reference_gene_id))
 
         self.progress.end()
 
@@ -1997,9 +2012,10 @@ class FragmentedGeneAnnotator():
                     neighbor_length = neighbor_info['stop'] - neighbor_info['start']
 
                     # check if the combined span of the truncated gene and its neighbor
-                    # approximates the full-length reference
+                    # approximates the full-length reference (but does not far exceed it,
+                    # which would indicate paralogs rather than fragments)
                     combined_length = gene_length + neighbor_length
-                    if combined_length >= reference_length * self.min_full_length_ratio:
+                    if combined_length >= reference_length * self.min_full_length_ratio and combined_length <= reference_length * self.max_combined_length_ratio:
                         fragmentation_events.append((genome_name, [gene_id, neighbor_id]))
                         # mark these so we don't flag them again from the neighbor's cluster
                         already_flagged.add((genome_name, gene_id))

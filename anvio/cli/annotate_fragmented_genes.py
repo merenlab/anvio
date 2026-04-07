@@ -58,6 +58,15 @@ def get_args():
                              "'gene_fragment'. If the longest fragment in a genome is shorter than this "
                              "fraction of the reference, ALL fragments in that genome will be labeled "
                              "'gene_fragment'. Default: %(default).2f")
+    groupB.add_argument('--max-combined-length-ratio', default=1.20, type=float,
+                        help="Maximum ratio of the combined length of adjacent genes in a candidate "
+                             "fragmentation group to the full-length reference gene length. When a "
+                             "gene is truly split by a premature stop codon, the resulting fragments "
+                             "should sum to roughly the reference length. If the combined length far "
+                             "exceeds the reference, the adjacent genes are more likely tandem "
+                             "gene duplications (paralogs?) rather than fragments of a single gene. "
+                             "Groups whose combined length exceeds this ratio times the reference "
+                             "length will be skipped. Default should work well for most cases, and it "
     groupB.add_argument('--find-stray-fragments', default=False, action='store_true',
                         help="Also look for out-of-frame gene fragments that ended up in different gene "
                              "clusters. When a premature stop codon splits a gene and the downstream "
