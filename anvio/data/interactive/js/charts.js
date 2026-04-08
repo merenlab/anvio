@@ -329,6 +329,8 @@ function loadAll() {
 
                 // on initial load from main interface
                 if(state['state-name'] != current_state_name) {
+                    current_state_name = state['state-name'];
+
                     $.ajax({
                         type: 'GET',
                         cache: false,
@@ -349,9 +351,6 @@ function loadAll() {
                                 clusteringData = response[1]['data'];
                                 info("Loading ordering data");
                                 loadOrderingAdditionalData(response[1]);
-
-                                info("Processing state data from the server");
-                                processState(state['state-name'], response[0]);
                             } catch (e) {
                                 console.error("Exception thrown", e.stack);
                                 toastr.error('Failed to parse state data, ' + e);
