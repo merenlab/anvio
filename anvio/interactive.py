@@ -2059,6 +2059,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             # (2) then add length and GC content IF we have sequences available
             if self.splits_basic_info:
                 basic_info_headers = ['length', 'gc_content']
+                if '__parent__' in view_headers:
+                    basic_info_headers.append('__parent__')
+                    view_headers = [h for h in view_headers if h != '__parent__']
                 json_header.extend(basic_info_headers)
                 self.items_additional_data_groups['basic_info'] = list(basic_info_headers)
 
@@ -2113,7 +2116,11 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
                 # (2)
                 if self.splits_basic_info:
-                    json_entry.extend([self.splits_basic_info[split_name][header] for header in basic_info_headers])
+                    for header in basic_info_headers:
+                        if header == '__parent__':
+                            json_entry.append(view_dict[split_name].get('__parent__'))
+                        else:
+                            json_entry.append(self.splits_basic_info[split_name][header])
 
                 # (3) adding essential data for the view
                 json_entry.extend([view_dict[split_name][header] if header in view_dict[split_name] else 0 for header in view_headers])

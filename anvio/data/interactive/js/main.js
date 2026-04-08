@@ -1685,7 +1685,7 @@ function buildLayersTable(order, settings)
                 var margin = '15';
             }
 
-            var template = '<tr>' +
+            var template = '<tr' + item_group_attr + '>' +
                 '<td><img src="images/drag.gif" /></td>' +
                 '<td>Parent</td>' +
                 '<td>n/a</td>' +
