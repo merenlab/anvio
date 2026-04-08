@@ -459,15 +459,18 @@ def check_output_directory(output_directory, ok_if_exists=False):
                                        f"the necessary permissions to remove it (so it will not even suggest using "
                                        f"`--force-overwrite` here). Please choose a different output directory path.")
 
-    # check whether we have write permission in the parent directory so we can
-    # create the output directory when the time comes (without having to wait eons
-    # just to fail at the very end :/
-    parent_directory = os.path.dirname(output_directory)
-    if not os.access(parent_directory, os.W_OK):
-        raise FilesNPathsError(f"You do not have permission to create the output directory '{output_directory}'. "
-                               f"The parent directory '{parent_directory}' is not writable by you. Please choose "
-                               f"a different output directory path, or ask your system administrator to update "
-                               f"your permissions.")
+    # check whether we have write permission in the nearest existing ancestor directory
+    # so we can create the output directory when the time comes (without having to wait
+    # eons just to fail at the very end :/ we walk up the path because the immediate
+    # parent may not exist yet either (e.g., creating /x/y/z/t when only /x/y exists)
+    nearest_existing_ancestor = os.path.dirname(output_directory)
+    while nearest_existing_ancestor and not os.path.exists(nearest_existing_ancestor):
+        nearest_existing_ancestor = os.path.dirname(nearest_existing_ancestor)
+
+    if not nearest_existing_ancestor or not os.access(nearest_existing_ancestor, os.W_OK):
+        raise FilesNPathsError(f"You do not have permission to create the output directory '{output_directory}' since "
+                               f"The nearest existing parent directory, '{nearest_existing_ancestor}', is not writable "
+                               f"by you :/")
 
     return output_directory
 

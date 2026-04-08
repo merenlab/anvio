@@ -136,6 +136,14 @@ anvi-get-sequences-for-gene-clusters -p TEST/TEST-PAN.db \
                                      --concatenate-gene-clusters \
                                      --no-progress
 
+INFO "Annotating fragmented genes in genomes using the pangenome"
+anvi-annotate-fragmented-genes -p TEST/TEST-PAN.db \
+                               -g TEST-GENOMES.db \
+                               -e external-genomes.txt \
+                               --find-stray-fragments \
+                               --annotation-source COG20_FUNCTION
+
+
 INFO "Summarizing the pan, using the test collection (in quick mode)"
 anvi-summarize -p TEST/TEST-PAN.db \
                -g TEST-GENOMES.db \
