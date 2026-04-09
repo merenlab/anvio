@@ -52,44 +52,12 @@ Beyond the core view data, you can decorate your display with **additional data*
 
 See [this article](https://merenlab.org/2017/12/11/additional-data-tables/) for a detailed guide on extending anvi'o displays with additional data tables.
 
-## Programs that give interactive access
+## Settings panel
 
-Several anvi'o programs produce an interactive display. The most commonly used ones are:
+The interactive interface has two major areas of interaction: (1) the space for visualization in the middle area, described in the previous section and (2) the Settings panel on the left of the screen.
 
-- %(anvi-interactive)s is the main interactive interface. It displays information from a %(profile-db)s and %(contigs-db)s, and supports manual binning, gene mode, collection mode, and a fully flexible manual mode for visualizing any data.
 
-- %(anvi-display-pan)s displays pangenomic data from a %(pan-db)s. It shows gene cluster distributions across genomes and supports gene cluster inspection and binning.
-
-- %(anvi-inspect)s provides a detailed, nucleotide-level view of a single contig across samples, including coverage, SNVs, and gene calls.
-
-- %(anvi-display-contigs-stats)s shows summary statistics for contigs in a %(contigs-db)s.
-
-- %(anvi-display-functions)s lets you browse the functional pool for a set of genomes or metagenomes.
-
-- %(anvi-display-metabolism)s provides an interactive view of metabolism estimation data.
-
-- %(anvi-display-structure)s lets you examine protein structures along with SCVs and SAAVs.
-
-And a few others, including %(anvi-script-snvs-to-interactive)s.
-
-## Artifacts that give interactive access
-
-- %(contig-inspection)s shows detailed contig information (coverage, SNVs, gene calls).
-
-- %(gene-cluster-inspection)s lets you examine individual gene clusters (alignments, genomic context, functional annotations).
-
-## An overview of the display
-
-The interactive interface has two major areas of interaction:
-
-* The space for visualization in the middle area,
-* The Settings panel on the left of the screen,
-
-We will spend most of our time in the `Settings` panel.
-
-### Settings panel
-
-<img align="left" height="350px" src="../../images/interactive_interface/interactive_interface_tabs.png" style="margin-right: 20px;">
+<img align="left" src="../../images/interactive_interface/lower_tabs.png" style="height: 425px; width: auto; margin-right: 20px;">
 
 If closed, the settings panel can be opened by clicking on the little button on the left-middle part of your browser. When opened, you will see multiple tabs:
 
@@ -97,13 +65,13 @@ But before we start talking about these tabs, it is worthwhile to mention that a
 
 Through these controls you can,
 
-* __Create or refresh__ the display when necessary using the Draw button (or just press ***D***),
+* __Draw__: create or refresh the display.
 
-* __Load or Save__ the current state of the display using the buttons below the State section,
+* __Load or Save__: to save the current state of the display or load another state. The state include all the aesthetic choices of your figure: from the heights and colors of your layers, to the choice of items/layer organisation. It does not include bins and collections! These have to be saved and loaded separately in the Bins tab.
 
-* __Download your display as an SVG file__ (or just press ***E***),
+* __Export__: to download an SVG file of the current figure.
 
-* __Center__ the display.
+* __Align__: center the display.
 
 💡  Before talking about Tabs, here's a  *useful tip*: you can conveniently switch between tabs using your keypad. For instance, pressing `1` will navigate you to the Main tab, `2` to the Options tab, and so forth.
 
@@ -114,82 +82,125 @@ OK. Let's talk about each tab you will find in the settings panel.
 
 ### Main Tab
 
-This is one of the most frequently used tabs in the interface, and there are multiple sections in it (keeps growing over time, so things may be missing here).
+This is one of the most frequently used tabs in the interface, and there are multiple sections in it.
 
-![an anvi'o main tab](../../images/interactive_interface/interactive-settings-panel-main.png){:.center-img}
 
 - #### Items subsection
-  - Provides high level options for adjusting _drawing type_, _items order_ and _data type_.
-  - Display part of the interface is where you can adjust individual layer attributes like _color_, display _type_, _height_  and _min/max_ values. Click + drag each layer to rearrange how layers are ordered. Or _edit attributes for multiple lpngayers_ as well.
+
+![main items](../../images/interactive_interface/main_items.png){:.center-img .width-70}
+
+  - __Drawing type__: change from Circle Phylogram to Phylogram (rectangular/square figure)
+  - __Order__: change how the items are ordered. Some orders are already computed according to the type of interface you are using, like "Seq. Composition + Diff. Coverage" or "Gene cluster presence absence", or any user provided item order with %(anvi-import-items-order)s.
+  - __Data__: also called "Views", it represents the data you wish you visualized in the main figure. In the context of read-recruitment, the options would include "mean coverage" or "detection" for instance.
+  - __Item Data Group__: some layers describing your items come as group which you can choose to toggle on/off to either keep them or remove them from the main figure.
+  - __Display__: this is where you can extensively modify the aesthetics of the layers displayed on your figure. You can drag and rearrange the order of these layers. You can also change their color, type (bar, intensity, line), normalization (none, log, square root), height, margin, min and max value.
+  - __Edit attribute for multiple layers__: if you select multiple layers using the check boxes, you can change values for multiple layers at once. Very useful if you want to change the color/height/whatever or a group of layers.
+
+{:.notice}
+If you want to remove a layer from the interface, simply change the height to a value of 0.
 
 - #### Layers subsection
-  - __Change general settings for the tree__ (i.e., switching between circle or rectangular displays, changing tree radius or width), __and layers__ (i.e., editing layer margins, or activating custom layer margins).
-  - __Load or save states__ to store all visual settings, or load a previously saved state.
-  - Display usage is same as Items subsection.
-  - Change the order of layers using automatically-generated or user-provided orders of layers using the Sample order combo box.
-  - Customize individual samples information entries. Changes in this tab can be reflected to the current display without re-drawing the entire tree unless the sample order is changed.
+
+![main layers](../../images/interactive_interface/main_layers.png){:.center-img .width-70}
+
+  - __Order by__: similar to how you can reorder the items in the previous section, you can re-order the layers based on multiple features. The default order is alphabetical and it is often worth changing to something more meaningful.
+  - __Layer Groups__: just like for __Item Data Group__, some layer additional data come as group that you can choose to select/unselect to keep them or remove them from the interface.
+  - __Display__: once again, very similar to the equivalent section in the item subsection. You can manually reorganises the layer additional information, as well as modify the set of aesthetics features such as color, height, etc.
+  - __Edit attribute for multiple layers__: if you select multiple layers using the check boxes, you can change values for multiple layers at once.
 
 - #### Legends subsection
-  - This subsection enables users to easily change individual or batch legend colors for any of their additional data items.d
+
+![main legends](../../images/interactive_interface/main_legends.png){:.center-img .width-70}
+
+  - This subsection enables users to easily change individual or batch legend colors for any of their additional data.
 
 ### Options tab
 
-In the Options tab, just like in the Main tab, we have two sections: Items and Layers, providing a separation for these components.,
+In the Options tab, just like in the Main tab, we have two sections: Items and Layers.
 
-![an anvi'o options items](../../images/interactive_interface/interactive-settings-options-items.png){:.center-img}
+![options items](../../images/interactive_interface/options_items.png){:.center-img .width-70}
 
-* **Bins Selection subsection**. Allows us to customize the bins.
-* **Cosmetics subsection**. _Margin and Background Opacity_ adjustments on the chart.
-* **Dendrogram subsection**. _Radius_ and _Angle_ , and _Edge length normalization_ adjustments for the dendrogram.
-* **Branch support subsection**. Settings for displaying _bootstrap values_ on the dendrogram.
-* **Selections subsection**. To adjust _height_, _grid_ and/or _shade_ display, as well as selection _name_ settings.
-* **Performance subsection**. Whether the SVG output is optimized for performance or granularity (very advanced stuff).
+  - __Bins Selection__: Allows us to customize the bins aesthetics like size, margin, text size, grids, opacity levels, and more
+  - __Cosmetics__: adjust the background opacity.
+  - __Dendrogram__: when using the circle phylogram, this is where you can change the _Radius_, _Angle_ and _Edge length normalization_ adjustments for the figure. When using the "Phylogram" type, this is where you can adjust the _Height_ and _Width_ of the figure.
+  - __Branch support__: Settings for displaying _bootstrap values_ on the dendrogram when applicable. If you have branch support values, then this section expends and you can choose to display the bootstrap values as text or as colored dots (size proportional to value). You can also control the range of displayed values.
+  - __Performance__. Whether the SVG output is optimized for performance or granularity (very advanced stuff).
 
-![an anvi'o options items](../../images/interactive_interface/interactive-settings-options-layers.png){:.center-img}
+![options layers](../../images/interactive_interface/options_layers.png){:.center-img .width-70}
 
-* **Tree/Dendogram subsection**. _Height and Edge length normalization_ adjustments on the Tree.
-* **Label subsection**. Settings for maximum font size on the Layer.
+  - __Tree/Dendrogram__: change the  _height and edge length normalization_ of the layer's dendrogram.
+  - __Label__: settings for maximum font size on the Layer.
 
 Mastering these in the Options Tab will minimize the post-processing of your anvi'o figures for high-quality and good-looking publication ready images.
 
 ### Bins tab
 
-Anvi'o allows you to create selections of items shown in the display (whether they are contigs, gene clusters, or any other type of data shown in the display). Bins tab allow you to maintain these selections. Any selection on the tree will be added to active bin in this tab (the state radio button next to a bin defines its activity). Through this tab you can,
+Anvi'o allows you to create selections of items shown in the display (whether they are contigs, gene clusters, or any other type of data shown in the display). Bins tab allows you to maintain these selections. Any selection on the tree will be added to active bin in this tab, visible by the selection button on the left of the bin's name.
 
-![an anvi'o options items](../../images/interactive_interface/interactive-settings-bins-tabs.png){:.center-img}
+![bins](../../images/interactive_interface/bins.png){:.center-img .width-70}
 
-- __Create or delete bins, set bin names, change the color of a given bin__, or sort bins based on their name, the number of units they carry, or completion and contamination estimates (completion / contamination estimates are only computed for genomic or metagenomic analyses).
-
-- View the __number of selected units__ in a given bin, and see the __list of names in the selection__ by clicking the button that shows the number of units described in the bin.
-
-- __Store a collection of bins__, or __load a previously stored collection.__
+  - __Create a new bin__: click on the green "plus" button. You can also hold "Ctrl" or "Cmd" when selecting items to create a new bin automatically.
+  - __Change a bin's color and name__: simply select a color and type a name for your bin.
+  - __Number of contigs, length, Comp. Red.__: (only visible when using %(anvi-interactive)s)various information regarding the bin, like the number of contigs it contains, the cumulative length, the completion and redundancy estimation.
+  - __Gene Clusters and Gene Calls__: (only visible when using %(anvi-display-pan)s), number of gene clusters and cumulative number of gene calls included in the bin selection.
+  - __Edit color for multiple bins__: allow you to change the color of multiple bins. By default it will change the color for all bins, but you can use the text box to search for bins with specific letters/numbers and automatically give them the same color.
+  - __Load / Store bins collection__: when you are satisfied with your collection of bins, you can save them. You can have as many collections of bins as you want and you can load them later.
+  - __Generate a static summary page__: runs %(anvi-summarize)s in the background with the collection of your choice. For more information check %(anvi-summarize)s.
+  - __Recalculate / Show Taxonomy for Bins__: (only visible when using %(anvi-interactive)s) related to the top most checkbox "Realtime taxonomy estimation for bins". If you ran %(anvi-run-scg-taxonomy)s, then anvi'o will be able to display realtime taxonomy estimation of your bin based on the consensus taxonomy of annotated Ribosomal Proteins included in the bins. Not available if you did not run %(anvi-run-scg-taxonomy)s and if there are no compatible Ribosomal Proteins. When clicking on the Show Taxonomy for Bins, you can get a detailed view of individual Ribosomal Proteins gene per bins, and their individual taxonomy estimation as well as the bin's consensus taxonomy estimation. It is a great complement to the completion/redundancy estimation when assessing bin's completeness and potential contamination.
 
 ### Data tab
 
-The data tab displays the value of items underneath the mouse pointer while the user browse the tree.
+The data tab displays the value of items underneath the mouse pointer while the user browses the tree.
+
+![data](../../images/interactive_interface/data.png){:.center-img}
 
 Displaying the numerical or categorical value of an item shown on the tree is not an easy task. We originally thought that displaying pop-up windows would solve it, but besides the great overhead, it often became a nuisance while browsing parts of the tree. We could show those pop-up displays only when use clicks on the tree, however click-behavior is much more appropriate to add or remove individual items from a bin, hence, it wasn’t the best solution either. So we came up with the ‘data tab’. You have a better idea? I am not surprised! We would love to try improve your experience: please enter an issue, and let’s discuss.
-
-### Search tab
-
-It does what the name suggests. Using this tab you can,
-
-- __Build expressions to search items__ visualized in the main display.
-
-- __Highlight matches__, and __append__ them to, or __remove__ them from the __selected bin__ in the Bins tab.
-
-### News tab
-
-The news panel provides information and external links tracking major Anvi'o releases and development updates.
 
 ### Notes tab
 
 - The notes tab is a flexible, multipurpose space where users can,
 - Store notes, comments, and any other stray items related to their project, in a feature-rich markdown environment.
 - Display context, references, reproducibility instructions, and any other salient details for published figures.
-- This section moved under Settings panel. `Settings > Notes`
 
-![The Description panel in action](../../images/interactive_interface/interactive-settings-description-panel.png){:.center-img}
+![notes](../../images/interactive_interface/notes.png){:.center-img .width-70}
+
+### Search tab
+
+#### Search with expression
+
+The first section of the search tab allows you to search using any term/expression in a multitude of fields. These fields include the items' name, which are contigs/splits when using %(anvi-interactive)s, or gene clusters when using %(anvi-display-pan)s. You can also select a layer of interest and search for every item matching an expression, like finding all contigs with a mean coverage above 10x, find gene clusters with a min AAI under 50%%, etc.
+
+![search expression](../../images/interactive_interface/search_expression.png){:.center-img .width-70}
+
+#### Search functions
+
+In this section, you can search for functional annotations across all functional annotation sources available in your databases. You can search for one or multiple terms, and select specific annotation sources.
+
+![search functions](../../images/interactive_interface/search_functions.png){:.center-img .width-70}
+
+#### Search gene clusters using filters
+
+This is specific to %(anvi-display-pan)s. There you can select gene clusters based on multiple filters.
+
+![search gene clusters](../../images/interactive_interface/search_gene_clusters.png){:.center-img .width-70}
+
+#### Display the search results
+
+At the very bottom of the Search tab are a few buttons to view and explore the results of your search:
+
+![search view](../../images/interactive_interface/search_view.png){:.center-img .width-70}
+
+  - __List Results__: there you can choose to display the detail of the searched items. By clicking on that button, a table will appear with the details of the items matching your search.
+  - __Highlight the search__: you can highlight the items matching the search by clicking, change the color of the highlight and remove any existing highlight.
+  - __Append/Remove items from selected bin__: you can choose to add the items matching your search to the current bin, or to remove them from your current bin.
+
+### News tab
+
+The news panel provides information and external links tracking major Anvi'o releases and development updates. (We don't update this news section very often).
+
+### Anvi'o tab
+
+In this tab, you will find the links to the authors, the project page, the github's list of issues, how to cite anvi'o, an access to the discord server and the github repository.
 
 ## Interactive interface tips + tricks
 
@@ -214,8 +225,4 @@ The interactive interface recognizes a handful of keyboard shortcuts to help spe
 - The `T` key toggles showing the Title panel
 - Keys `1` through `8` will toggle between tabs within the Settings panel, granted the Settings panel is currently shown.
 - `CTRL`+`Z` and `CTRL`+`SHIFT`+`Z` will undo or redo bin actions, respectively.
-
-
-
-
 
