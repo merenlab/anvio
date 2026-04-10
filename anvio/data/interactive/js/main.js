@@ -3980,7 +3980,7 @@ function processState(state_name, state) {
     }
 
     // bootstrap values
-    if (!(state.hasOwnProperty('show-support-values'))){
+    if (state.hasOwnProperty('show-support-values')){
         $('#support_value_checkbox').prop('checked', state['show-support-values'])
         if ($('#support_value_checkbox').is(':checked')){
             $('#support_value_params').show()
