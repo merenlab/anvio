@@ -522,9 +522,36 @@ class CoverageStats:
     """A class to return coverage stats for an array of nucleotide level coverages.
 
     FIXME: This class should replace `coverage_c` function in bamops to avoid redundancy.
+
+    In addition to the classic stats, this class also computes a distribution of coverage (DisCov)
+    score, which combines a metric for assessing spread of coverage across the sequence (proportion
+    of fixed-length windows with at least some coverage, S) and a metric for assessing the 
+    evenness of nonzero coverage depth (proportion of bases with nonzero coverage that are within some 
+    fold-range of the median nonzero coverage, E). These metrics are combined linearly with a weight α
+    following the formula: DisCov = αS + (1-α)E.
+
+    Parameters
+    ==========
+    coverage : array
+        Nucleotide-level coverages. The only required parameter.
+    skip_outliers : boolean
+        Whether or not to compute the self.is_outlier attribute
+    discov_window_length : int
+        How long to make the windows for computing S
+    discov_window_percentage : int
+        If provided, window length will be computed dynamically as a percentage of the input sequence length
+    discov_min_window_len : int
+        Specifies the minimum window length when discov_window_percentage is used.
+    discov_foldrange_lower : float
+        When computing E, count any bases with coverage over this value * the median nonzero coverage
+    discov_foldrange_upper : float
+        When computing E, count any bases with coverage under this value * the median nonzero coverage
+    discov_alpha : float
+        A value in [0,1] that indicates how much to weight S over E in the Discov score
     """
 
-    def __init__(self, coverage, skip_outliers=False):
+    def __init__(self, coverage, skip_outliers=False, discov_window_length=10000, discov_window_percentage=None, 
+                discov_min_window_len=500, discov_foldrange_lower=0.25, discov_foldrange_upper=4, discov_alpha=0.5):
         self.min: float = np.amin(coverage)
         self.max: float = np.amax(coverage)
         self.median: float = np.median(coverage)
@@ -544,6 +571,64 @@ class CoverageStats:
             self.is_outlier = None
         else:
             self.is_outlier = get_list_of_outliers(coverage, median=self.median) # this is an array not a list
+
+        # compute proportion of windows that have at least some coverage
+        if discov_window_percentage:
+            discov_window_length = len(coverage) * discov_window_percentage / 100
+            if discov_window_length < discov_min_window_len:
+                discov_window_length = discov_min_window_len
+        windows = self.get_window_regions(coverage, window_length=discov_window_length)
+        final_window_len = windows[-1][1] - windows[-1][0]
+        if final_window_len < 0.1*discov_window_length: # don't count the last window if it is too small
+            windows = windows[:-1]
+        nonzero_window_means = [x for x in windows if x[2] > 0]
+        self.num_windows = len(windows)
+        self.prop_win_covered = len(nonzero_window_means) / self.num_windows
+
+        self.fold_range_coverage_depth = self.fold_range_of_median_detection(coverage[coverage > 0], fold_lower=discov_foldrange_lower, fold_upper=discov_foldrange_upper)
+
+        self.discov = discov_alpha * self.prop_win_covered + (1-discov_alpha) * self.fold_range_coverage_depth
+
+    
+    def get_window_regions(self, coverage, window_length):
+        """Given an array of coverage values, divides it into non-overlapping windows of the requested length.
+
+        Each region is described as a tuple of (start_position, stop_position, mean_coverage), with start and stop 
+        positions following Python indexing rules to enable slicing. If the array doesn't divide equally by the 
+        window length, the final window will be shorter than the rest.
+        """
+        if window_length > len(coverage):
+            raise ConfigError(f"While computing distribution of coverage, the get_window_regions() function was "
+                              f"requested to make windows of length {window_length}, but the input coverage array "
+                              f"is smaller than that (length {len(coverage)}).")
+        elif window_length == 0:
+            raise ConfigError(f"The get_window_regions() function was requested to make zero-length windows. Impossible!")
+        
+        windows = []
+        current_start = 0
+        current_stop = current_start + window_length
+        while current_stop <= len(coverage):
+            
+            region_data = (current_start, current_stop, np.mean(coverage[current_start:current_stop]))
+            windows.append(region_data)
+            current_start = current_stop
+            current_stop = current_start + window_length
+            # EDGE CASE: final region is incomplete window
+            if current_stop > len(coverage) and current_start < len(coverage):
+                final_region = (current_start, len(coverage), np.mean(coverage[current_start:]))
+                windows.append(final_region)
+
+        return windows
+
+
+    def fold_range_of_median_detection(self, coverage, fold_lower=0.25, fold_upper=4):
+        """Returns the fraction of bases within the fold-range of the median coverage."""
+
+        if not len(coverage):
+            return 0.0
+        median = np.median(coverage)
+        num_within_range = len(coverage[(coverage >= fold_lower*median) & (coverage <= fold_upper*median)])
+        return num_within_range/len(coverage)
 
 
 class RunInDirectory(object):
