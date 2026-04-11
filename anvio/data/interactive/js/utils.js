@@ -468,6 +468,47 @@ function createCookie(name, value, days) {
 // ============================================================================
 
 /**
+ * Force-hide the bootstrap-waitingfor dialog and clean up its backdrop.
+ *
+ * Bootstrap 4's modal('hide') silently does nothing when the modal is still
+ * in its show-transition (_isTransitioning === true).  If the server responds
+ * faster than the 300 ms fade-in animation, waitingDialog.hide() is ignored
+ * and the overlay stays on screen forever.
+ *
+ * This function works around the race by removing the DOM elements directly.
+ * It identifies waiting-dialog modals by the striped progress bar that
+ * bootstrap-waitingfor injects.
+ *
+ * NOTE: main.js defines its own version of this function (using CSS-class
+ * hooks) which overrides this one on pages that load main.js.  On pages that
+ * do NOT load main.js (e.g. pangraph.html), this fallback is used instead.
+ */
+function hideWaitingDialogSafely() {
+    try {
+        waitingDialog.hide();
+    } catch (err) {
+        // waitingDialog may not be available on every page
+    }
+
+    try {
+        // Find modals created by bootstrap-waitingfor (they contain a striped progress bar)
+        $('.modal').filter(function() {
+            return $(this).find('.progress.progress-striped.active').length > 0;
+        }).each(function() {
+            $(this).remove();
+        });
+
+        // Clean up any stray backdrops if no modals are visible
+        if ($('.modal.show').length === 0) {
+            $('.modal-backdrop').remove();
+            $('body').removeClass('modal-open');
+        }
+    } catch (err) {
+        console.error('Failed to clean waiting dialog remnants', err);
+    }
+}
+
+/**
  * Generic modal dialog creator
  * @param {Object} options - Modal configuration options
  * @private
