@@ -747,7 +747,7 @@ class BAMProfilerQuick:
             if self.report_minimal:
                 return ['bin', 'sample', 'length', 'gc_content', 'num_mapped_reads', 'detection', 'mean_cov']
             else:
-                return ['bin', 'sample', 'length', 'gc_content', 'num_mapped_reads', 'detection', 'mean_cov', 'q2q3_cov', 'median_cov', 'min_cov', 'max_cov', 'std_cov']
+                return ['bin', 'sample', 'length', 'gc_content', 'num_mapped_reads', 'detection', 'mean_cov', 'q2q3_cov', 'median_cov', 'min_cov', 'max_cov', 'std_cov', 'num_windows', 'prop_windows_covered', 'prop_cov_within_foldrange', 'dis_cov']
 
         elif reporting_genes:
             if self.report_minimal:
@@ -759,7 +759,7 @@ class BAMProfilerQuick:
             if self.report_minimal:
                 return ['contig', 'sample', 'length', 'gc_content', 'num_mapped_reads', 'detection', 'mean_cov']
             else:
-                return ['contig', 'sample', 'length', 'gc_content', 'num_mapped_reads', 'detection', 'mean_cov', 'q2q3_cov', 'median_cov', 'min_cov', 'max_cov', 'std_cov']
+                return ['contig', 'sample', 'length', 'gc_content', 'num_mapped_reads', 'detection', 'mean_cov', 'q2q3_cov', 'median_cov', 'min_cov', 'max_cov', 'std_cov', 'num_windows', 'prop_windows_covered', 'prop_cov_within_foldrange', 'dis_cov']
 
         raise ConfigError("This function reached a point it should have never :(")
 
@@ -894,7 +894,10 @@ class BAMProfilerQuick:
             detection = np.sum(coverage_array > 0) / len(coverage_array)
             self._write_bin_stats_minimal(output, bin_name, bam_file_name, bin_data, mean, detection, num_reads)
         else:
-            C = utils.CoverageStats(coverage_array, skip_outliers=True)
+            C = utils.CoverageStats(coverage_array, skip_outliers=True, discov_window_length=self.window_length,
+                        discov_window_percentage = self.window_length_as_percentage, discov_min_window_len = self.min_window_length,
+                        discov_foldrange_lower=self.foldrange_lower, discov_foldrange_upper=self.foldrange_upper, 
+                        discov_alpha=self.alpha)
             output.write(f"{bin_name}\t"
                          f"{bam_file_name}\t"
                          f"{bin_data['length']}\t"
@@ -906,7 +909,11 @@ class BAMProfilerQuick:
                          f"{C.median}\t"
                          f"{C.min}\t"
                          f"{C.max}\t"
-                         f"{C.std:.4}\n")
+                         f"{C.std:.4}\t"
+                         f"{C.num_windows}\t"
+                         f"{C.prop_win_covered:.4}\t"
+                         f"{C.fold_range_coverage_depth:.4}\t"
+                         f"{C.discov:.4}\n")
 
 
     def _write_bin_stats_minimal(self, output, bin_name, bam_file_name, bin_data, mean, detection, num_reads):
@@ -931,7 +938,10 @@ class BAMProfilerQuick:
                          f"{detection:.4}\t"
                          f"{mean:.4}\n")
         else:
-            C = utils.CoverageStats(coverage_obj.c, skip_outliers=True)
+            C = utils.CoverageStats(coverage_obj.c, skip_outliers=True, discov_window_length=self.window_length,
+                        discov_window_percentage = self.window_length_as_percentage, discov_min_window_len = self.min_window_length,
+                        discov_foldrange_lower=self.foldrange_lower, discov_foldrange_upper=self.foldrange_upper, 
+                        discov_alpha=self.alpha)
             output.write(f"{contig_name}\t"
                          f"{bam_file_name}\t"
                          f"{self.contigs_basic_info[contig_name]['length']}\t"
@@ -943,7 +953,11 @@ class BAMProfilerQuick:
                          f"{C.median}\t"
                          f"{C.min}\t"
                          f"{C.max}\t"
-                         f"{C.std:.4}\n")
+                         f"{C.std:.4}\t"
+                         f"{C.num_windows}\t"
+                         f"{C.prop_win_covered:.4}\t"
+                         f"{C.fold_range_coverage_depth:.4}\t"
+                         f"{C.discov:.4}\n")
 
 
     def _write_gene_stats(self, output, gene_callers_id, contig_name, bam_file_name, gene_length, num_mapped_reads, coverage_array):
