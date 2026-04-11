@@ -4090,7 +4090,59 @@ D = {
             {'default': False,
              'action': 'store_true',
              'help': "Use this flag to report all C/R estimates, from all domains."}
-    )
+    ),
+    'window-length': (
+            ['--window-length'],
+            {'default': None,
+             'type': int,
+             'metavar': 'INTEGER',
+             'help': "How long to make the windows for computing the spread metric: S = # windows with coverage / # windows."}
+    ),
+    'window-length-as-percentage': (
+            ['--window-length-as-percentage'],
+            {'default': None,
+             'type': int,
+             'metavar': 'INTEGER',
+             'help': "With this option you can set the window length for the spread metric (S) dynamically as a percentage "
+                     "of a given input sequence length. This works well when your input sequences (contigs or genomes) have "
+                     "a wide size distribution and you don't have a one-size-fits-all window length to use. For instance, if "
+                     "you want the window size to be 5%% of the contig length, you would use `--window-length-as-percentage 5`. "
+                     "You may want to consider also specifying a reasonable minimum window length with the --min-window-length "
+                     "parameter."}
+    ),
+    'min-window-length': (
+            ['--min-window-length'],
+            {'default': 0,
+             'type': int,
+             'metavar': 'INTEGER',
+             'help': "Use with --window-length-as-percentage to ensure that percentage-based window lengths never fall below this value."}
+    ),
+    'foldrange-lower': (
+            ['--foldrange-lower'],
+            {'default': 0.25,
+             'type': float,
+             'metavar': 'FLOAT',
+             'help': "When computing evenness of coverage depth (E), count any bases with coverage OVER this value * the "
+                     "median nonzero coverage. In typical use-cases, this value will be the inverse of --foldrange-upper. "
+                     "The default is '%(default)s'."}
+    ),
+    'foldrange-upper': (
+            ['--foldrange-upper'],
+            {'default': 4.0,
+             'type': float,
+             'metavar': 'FLOAT',
+             'help': "When computing evenness of coverage depth (E), count any bases with coverage UNDER this value * the "
+                     "median nonzero coverage. In typical use-cases, this value will be the inverse of --foldrange-lower. "
+                     "The default is '%(default)s'."}
+    ),
+    'alpha': (
+            ['--alpha'],
+            {'default': 0.5,
+             'type': float,
+             'metavar': 'FLOAT',
+             'help': "How much to weight S over E in the DisCov score. Should be a value in the range [0,1]. The default "
+                     "is '%(default)s'."}
+    ),
 }
 
 # two functions that works with the dictionary above.

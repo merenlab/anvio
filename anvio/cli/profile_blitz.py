@@ -74,6 +74,17 @@ def get_args():
                         "can cut your processing time in half. See the help docs for example output files for contigs "
                         "and gene mode."}))
 
+    groupE = parser.add_argument_group('DISCOV SCORE', "Parameters related to computing the distribution of coverage score: "
+                                        "DisCov = αS + (1-α)E, where S = proportion of windows with coverage and E = proportion "
+                                        "of covered bases within a fold-range of the median nonzero coverage. Does not apply to "
+                                        "--gene-mode.")
+    groupE.add_argument(*anvio.A('window-length'), **anvio.K('window-length'))
+    groupE.add_argument(*anvio.A('window-length-as-percentage'), **anvio.K('window-length-as-percentage'))
+    groupE.add_argument(*anvio.A('min-window-length'), **anvio.K('min-window-length'))
+    groupE.add_argument(*anvio.A('foldrange-lower'), **anvio.K('foldrange-lower'))
+    groupE.add_argument(*anvio.A('foldrange-upper'), **anvio.K('foldrange-upper'))
+    groupE.add_argument(*anvio.A('alpha'), **anvio.K('alpha'))
+
     return parser.get_args(parser)
 
 
