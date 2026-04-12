@@ -420,6 +420,12 @@ class BAMProfilerQuick:
         self.run.info('Contigs DB', self.contigs_db_path)
         self.run.info('Num BAM files', len(self.bam_file_paths))
         self.run.info('Reporting', 'MINIMAL' if self.report_minimal else 'EVERYTHING', mc="red" if self.report_minimal else "green")
+        if not self.report_minimal and not self.gene_level_stats: # report parameters for DisCov
+            self.run.info('DisCov window length', self.window_length if self.window_length else f"{self.window_length_as_percentage}% of sequence")
+            if self.window_length_as_percentage:
+                self.run.info('Minimum window length', self.min_window_length)
+            self.run.info('DisCov fold-range', f"{self.foldrange_lower}x to {self.foldrange_upper}x of median nonzero coverage")
+            self.run.info('DisCov alpha value', self.alpha)
 
         # if requested, load genes of interest
         self.gene_ids_of_interest = set([])

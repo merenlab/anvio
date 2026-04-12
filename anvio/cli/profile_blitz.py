@@ -24,10 +24,19 @@ __description__ = ("FAST profiling of BAM files to get gene-, contig-, or genome
                    "the program `anvi-script-get-coverage-from-bam` for recovery of data from BAM files "
                    "without an anvi'o contigs database")
 
+# default window sizes for DisCov
+COLLECTION_WLEN_DEFAULT=10000
+CONTIG_WLEN_DEFAULT=500
 
 @terminal.time_program
 def main():
     args = get_args()
+
+    # set default window size for DisCov if no related arguments are provided
+    if not args.window_length and not args.window_length_as_percentage:
+        args.window_length = CONTIG_WLEN_DEFAULT
+        if args.collection_txt:
+            args.window_length = COLLECTION_WLEN_DEFAULT
 
     try:
         p = BAMProfilerQuick(args)
@@ -78,7 +87,11 @@ def get_args():
                                         "DisCov = αS + (1-α)E, where S = proportion of windows with coverage and E = proportion "
                                         "of covered bases within a fold-range of the median nonzero coverage. Does not apply to "
                                         "--gene-mode.")
-    groupE.add_argument(*anvio.A('window-length'), **anvio.K('window-length'))
+    groupE.add_argument(*anvio.A('window-length'), **anvio.K('window-length', {'help': f"How long to make the windows "
+                        f"for computing the spread metric: S = # windows with coverage / # windows. This is the default "
+                        f"when no window length parameters are provided. For contig-level stats, the default window size "
+                        f"is {CONTIG_WLEN_DEFAULT}, and for genome/bin-level stats the default window size is "
+                        f"{COLLECTION_WLEN_DEFAULT}."}))
     groupE.add_argument(*anvio.A('window-length-as-percentage'), **anvio.K('window-length-as-percentage'))
     groupE.add_argument(*anvio.A('min-window-length'), **anvio.K('min-window-length'))
     groupE.add_argument(*anvio.A('foldrange-lower'), **anvio.K('foldrange-lower'))
