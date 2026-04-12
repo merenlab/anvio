@@ -574,7 +574,7 @@ class CoverageStats:
 
         # compute proportion of windows that have at least some coverage
         if discov_window_percentage:
-            discov_window_length = len(coverage) * discov_window_percentage / 100
+            discov_window_length = int(len(coverage) * discov_window_percentage / 100)
             if discov_window_length < discov_min_window_len:
                 discov_window_length = discov_min_window_len
         windows = self.get_window_regions(coverage, window_length=discov_window_length)
@@ -608,7 +608,6 @@ class CoverageStats:
         current_start = 0
         current_stop = current_start + window_length
         while current_stop <= len(coverage):
-            
             region_data = (current_start, current_stop, np.mean(coverage[current_start:current_stop]))
             windows.append(region_data)
             current_start = current_stop
