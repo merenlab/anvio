@@ -308,7 +308,11 @@ class PangenomeGraphManager():
             core_pos_num_y[core_position] = len(edge_pos_dict[core_position])
 
         core_pos_num_y_values = list(core_pos_num_y.values())
-        mode_position = max(set(core_pos_num_y_values), key=core_pos_num_y_values.count)
+
+        if core_pos_num_y_values:
+            mode_position = max(set(core_pos_num_y_values), key=core_pos_num_y_values.count)
+        else:
+            mode_position = 0
 
         for core_position, num_y_positions in core_pos_num_y.items():
             if num_y_positions > mode_position:
