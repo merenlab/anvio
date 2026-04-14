@@ -1685,7 +1685,7 @@ function buildLayersTable(order, settings)
                 var margin = '15';
             }
 
-            var template = '<tr>' +
+            var template = '<tr' + item_group_attr + '>' +
                 '<td><img src="images/drag.gif" /></td>' +
                 '<td>Parent</td>' +
                 '<td>n/a</td>' +
@@ -3493,7 +3493,7 @@ function processState(state_name, state) {
     }
 
     // bootstrap values
-    if (!(state.hasOwnProperty('show-support-values'))){
+    if (state.hasOwnProperty('show-support-values')){
         $('#support_value_checkbox').prop('checked', state['show-support-values'])
         if ($('#support_value_checkbox').is(':checked')){
             $('#support_value_params').show()
