@@ -20,16 +20,30 @@
 $(document).ready(function() {
     $('.select_layer').on('change', function() {
         var table = $(this).closest('table');
-        var layer_name = this.value;
+        var input = this.value;
         // clean prior selections
         $(table).find('.layer_selectors:visible').prop('checked', false);
 
-        if(layer_name){ // if layer_name is empty, there is nothing to select, move on.
+        if(input){ // if input is empty, there is nothing to select, move on.
+            // split on semicolons so users can provide multiple search terms
+            var terms = input.split(';').map(function(t){ return t.trim(); }).filter(function(t){ return t.length > 0; });
+
+            // build a regex for each term: escape regex-special chars, then
+            // turn user-facing '*' wildcards into '.*'
+            var patterns = terms.map(function(term){
+                var escaped = term.replace(/([.+?^${}()|[\]\\])/g, '\\$1');
+                escaped = escaped.replace(/\*/g, '.*');
+                return new RegExp(escaped, 'i');
+            });
+
             $(table).find('.titles').each(
                 function(){
-                    if (this.title.toLowerCase().indexOf(layer_name.toLowerCase()) > -1)
-                    {
-                        $(this).parent().find('.layer_selectors').prop('checked','checked');
+                    var title = this.title;
+                    for (var i = 0; i < patterns.length; i++) {
+                        if (patterns[i].test(title)) {
+                            $(this).parent().find('.layer_selectors').prop('checked','checked');
+                            break;
+                        }
                     }
                 }
             );

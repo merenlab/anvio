@@ -94,7 +94,7 @@ This is one of the most frequently used tabs in the interface, and there are mul
   - __Data__: also called "Views", it represents the data you wish you visualized in the main figure. In the context of read-recruitment, the options would include "mean coverage" or "detection" for instance.
   - __Item Data Group__: some layers describing your items come as group which you can choose to toggle on/off to either keep them or remove them from the main figure.
   - __Display__: this is where you can extensively modify the aesthetics of the layers displayed on your figure. You can drag and rearrange the order of these layers. You can also change their color, type (bar, intensity, line), normalization (none, log, square root), height, margin, min and max value.
-  - __Edit attribute for multiple layers__: if you select multiple layers using the check boxes, you can change values for multiple layers at once. Very useful if you want to change the color/height/whatever or a group of layers.
+  - __Edit attribute for multiple layers__: if you select multiple layers using the check boxes, you can change values for multiple layers at once. Very useful if you want to change the color/height/whatever of a group of layers. The search box supports multiple search terms separated by semicolons (e.g., `abundance;coverage;detection` will select all layers matching any of those terms), `*` wildcards for pattern matching (e.g., `GC_*` will match `GC_content`, `GC_skew`, etc), or any combination of these (e.g., `hmms;DAY*18`) for flexible layer selection.
 
 {:.notice}
 If you want to remove a layer from the interface, simply change the height to a value of 0.
@@ -106,7 +106,7 @@ If you want to remove a layer from the interface, simply change the height to a 
   - __Order by__: similar to how you can reorder the items in the previous section, you can re-order the layers based on multiple features. The default order is alphabetical and it is often worth changing to something more meaningful.
   - __Layer Groups__: just like for __Item Data Group__, some layer additional data come as group that you can choose to select/unselect to keep them or remove them from the interface.
   - __Display__: once again, very similar to the equivalent section in the item subsection. You can manually reorganises the layer additional information, as well as modify the set of aesthetics features such as color, height, etc.
-  - __Edit attribute for multiple layers__: if you select multiple layers using the check boxes, you can change values for multiple layers at once.
+  - __Edit attribute for multiple layers__: if you select multiple layers using the check boxes, you can change values for multiple layers at once. The search box has the same features explained above.
 
 - #### Legends subsection
 
