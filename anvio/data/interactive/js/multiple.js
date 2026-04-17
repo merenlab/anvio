@@ -137,6 +137,36 @@ $(document).ready(function() {
             }
         );
     });
+
+    // per-layer visibility toggle
+    $(document).on('click', '.layer-visibility', function() {
+        var $icon = $(this);
+        var $row = $icon.closest('tr');
+        $icon.toggleClass('bi-eye bi-eye-slash');
+        $row.toggleClass('layer-hidden');
+    });
+
+    // bulk hide selected layers
+    $('.layer-visibility-hide-multiple').on('click', function() {
+        var table = $(this).closest('table');
+        table.find('.layer_selectors:checked:visible').each(function() {
+            var $row = $(this).closest('tr');
+            var $icon = $row.find('.layer-visibility');
+            $icon.removeClass('bi-eye').addClass('bi-eye-slash');
+            $row.addClass('layer-hidden');
+        });
+    });
+
+    // bulk show selected layers
+    $('.layer-visibility-show-multiple').on('click', function() {
+        var table = $(this).closest('table');
+        table.find('.layer_selectors:checked:visible').each(function() {
+            var $row = $(this).closest('tr');
+            var $icon = $row.find('.layer-visibility');
+            $icon.removeClass('bi-eye-slash').addClass('bi-eye');
+            $row.removeClass('layer-hidden');
+        });
+    });
 });
 
 $(document).ready(function() {

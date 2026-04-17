@@ -963,6 +963,21 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
     width: 90px;
 }
 
+tr.layer-hidden {
+    opacity: 0.4;
+}
+
+.layer-visibility {
+    cursor: pointer;
+    font-size: 12px;
+}
+
+#table_layers td:nth-child(2),
+#table_samples td:nth-child(2) {
+    width: 16px;
+    padding: 0 2px;
+}
+
 #nav-bottom{
     position: absolute;
     bottom: 0;

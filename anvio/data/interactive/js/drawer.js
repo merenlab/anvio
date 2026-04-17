@@ -1103,7 +1103,7 @@ Drawer.prototype.initialize_screen = function() {
 
 Drawer.prototype.draw_categorical_layers = function() {
     this.iterate_layers(function(layer) {
-        if (layer.get_visual_attribute('height') == 0)
+        if (layer.get_visual_attribute('height') == 0 || layer.get_visual_attribute('visible') === false)
             return;
 
         if (!(layer.is_categorical || layer.is_parent))
@@ -1281,12 +1281,14 @@ Drawer.prototype.calculate_layer_boundaries = function() {
     }
 
     this.iterate_layers(function(layer) {
-        if (layer.is_categorical && layer.get_visual_attribute('type') == 'text' && layer.get_visual_attribute('height') == 0) {
+        var is_visible = layer.get_visual_attribute('visible') !== false;
+
+        if (is_visible && layer.is_categorical && layer.get_visual_attribute('type') == 'text' && layer.get_visual_attribute('height') == 0) {
             this.calculate_font_size_for_text_layer(layer);
         }
 
         var margin = parseFloat(this.settings['layer-margin']) ? parseFloat(layer.get_visual_attribute('margin')) : parseFloat(this.settings['layer-margin']);
-        var height = parseFloat(layer.get_visual_attribute('height'));
+        var height = is_visible ? parseFloat(layer.get_visual_attribute('height')) : 0;
 
         var ending_of_previous_layer = this.layer_boundaries[layer.order - 1][1];
 
@@ -1441,7 +1443,7 @@ Drawer.prototype.draw_guide_lines = function() {
 
 Drawer.prototype.draw_numerical_layers = function() {
     this.iterate_layers(function(layer) {
-        if (layer.get_visual_attribute('height') == 0)
+        if (layer.get_visual_attribute('height') == 0 || layer.get_visual_attribute('visible') === false)
             return;
 
         if (!layer.is_numerical)
@@ -1642,7 +1644,7 @@ Drawer.prototype.draw_numerical_layers = function() {
 
 Drawer.prototype.draw_stack_bar_layers = function() {
     this.iterate_layers(function(layer) {
-        if (layer.get_visual_attribute('height') == 0)
+        if (layer.get_visual_attribute('height') == 0 || layer.get_visual_attribute('visible') === false)
             return;
 
         if (!layer.is_stackbar)
@@ -1764,7 +1766,7 @@ Drawer.prototype.draw_layer_names = function() {
     this.iterate_layers(function(layer) {
         var height = parseFloat(layer.get_visual_attribute('height'));
 
-        if (height == 0)
+        if (height == 0 || layer.get_visual_attribute('visible') === false)
             return;
 
         var layer_title = " " + getPrettyLayerTitle(layerdata[0][layer.index]);

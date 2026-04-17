@@ -1174,7 +1174,7 @@ function showSetMaxValuesDialog() {
         var layer_name = layers_ordered[i];
         var layer_index = layers.indexOf(layer_name);
 
-        if (!(state['layers'].hasOwnProperty(layer_name) && parseFloat(state['layers'][layer_name]['height']) == 0)) {
+        if (!(state['layers'].hasOwnProperty(layer_name) && (parseFloat(state['layers'][layer_name]['height']) == 0 || state['layers'][layer_name]['visible'] === false))) {
             var max_val
             var actual_max_val = GetMaxMin(coverage[layer_index])['Max'];
             if (has_max_coverage_values) {
@@ -1680,7 +1680,7 @@ function createCharts(state){
     for(var i = 0; i < layersCount; i++){
         var layer_index = layers.indexOf(layers_ordered[i]);
 
-        if (parseFloat(state['layers'][layers_ordered[i]]['height']) == 0) {
+        if (parseFloat(state['layers'][layers_ordered[i]]['height']) == 0 || state['layers'][layers_ordered[i]]['visible'] === false) {
             continue;
         }
 
