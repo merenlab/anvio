@@ -1653,7 +1653,6 @@ function buildLayersTable(order, settings)
         var item_group_attr = item_group ? ' items-group-name="' + item_group + '"' : '';
 
         var short_name = (layer_name.indexOf('!') > -1) ? layer_name.split('!')[0] : layer_name;
-        short_name = (short_name.length > 10) ? short_name.slice(0,10) + "..." : short_name;
 
         var hasViewSettings = false;
         if (typeof settings !== 'undefined' && typeof settings[layer_id] !== 'undefined') {

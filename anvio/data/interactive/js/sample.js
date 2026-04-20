@@ -306,7 +306,7 @@ function buildSamplesTable(samples_layer_order, samples_layers) {
         var pretty_name = getNamedLayerDefaults(layer_name, 'pretty_name', layer_name);
         pretty_name = (pretty_name.indexOf('!') > -1) ? pretty_name.split('!')[0] : pretty_name;
 
-        var short_name = (pretty_name.length > 10) ? pretty_name.slice(0,10) + "..." : pretty_name;
+        var short_name = pretty_name;
 
         var hasSettings = false;
         if (typeof(samples_layers) !== 'undefined' &&

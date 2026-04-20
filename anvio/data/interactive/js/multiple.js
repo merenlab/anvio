@@ -138,6 +138,11 @@ $(document).ready(function() {
         );
     });
 
+    // click any layer name to expand/collapse all names in that table
+    $(document).on('click', '.titles', function() {
+        $(this).closest('table').find('.titles').toggleClass('titles-expanded');
+    });
+
     // per-layer visibility toggle
     $(document).on('click', '.layer-visibility', function() {
         var $icon = $(this);

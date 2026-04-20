@@ -960,7 +960,16 @@ div#tooltip_content tr:nth-child(odd) {background: rgba(220,220,220,0.1);}
 }
 
 .titles{
-    width: 90px;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.titles.titles-expanded{
+    max-width: none;
+    overflow: visible;
 }
 
 tr.layer-hidden {
@@ -1002,6 +1011,11 @@ tr.layer-hidden {
 #tree-settings .input-align{
     width: 100%;
     max-width: 100%;
+}
+
+#table_layers_container,
+#table_samples_container{
+    overflow-x: auto;
 }
 
 #table_layers_container table{
