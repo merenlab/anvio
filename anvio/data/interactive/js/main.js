@@ -2273,6 +2273,16 @@ function drawTree() {
                     $('#tree-radius').val(Math.max(VIEWER_HEIGHT, VIEWER_WIDTH));
                 }
 
+                if (settings['tree-height'] == 0)
+                {
+                    $('#tree_height').val(VIEWER_HEIGHT);
+                }
+
+                if (settings['tree-width'] == 0)
+                {
+                    $('#tree_width').val(VIEWER_WIDTH);
+                }
+
                 a_display_is_drawn = true;
 
                 waitingDialog.hide();
