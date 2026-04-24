@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """List misc data keys in pan or profile databases"""
 
 import sys

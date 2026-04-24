@@ -1,5 +1,4 @@
 #! /usr/bin/env python
-# -*- coding: utf-8
 """A module of classes to keep track of anvi'o databases
 
 The module includes to major classes: DBInfo, and FindAnvioDBs.

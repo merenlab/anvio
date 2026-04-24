@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Core estimation algorithms for the metabolism module. NO BD ACCESS FROM HERE."""
 
 import re

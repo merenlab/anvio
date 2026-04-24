@@ -1,4 +1,3 @@
-# -*- coding: utf-8
 # pylint: disable=line-too-long
 """tRNA identification from a nucleotide sequence."""
 

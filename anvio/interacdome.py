@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Setup and utilize InteracDome.
 
 The InteracDome is from Mona Singh's group at Princeton. In brief, they attribute empirical

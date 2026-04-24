@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """A script to export a FASTA files from sequence sources and compute genome similarity matrices."""
 
 import sys

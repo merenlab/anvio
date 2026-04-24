@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """A script to run automatic binning algorithms on a merged anvi'o profile"""
 import os
 import sys

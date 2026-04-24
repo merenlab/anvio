@@ -1,4 +1,3 @@
-# coding: utf-8
 """Interface to MCL."""
 
 import os

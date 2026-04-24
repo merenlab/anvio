@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Takes an anvi'o profile or pan database and returns a quick text summary
 of bins and collections found in it."""
 

@@ -1,4 +1,3 @@
-# -*- coding: utf-8
 # pylint: disable=line-too-long
 """Classes and functions for handling, storing, and retrieving atomic data
    from contigs and splits. Also includes classes to deal with external

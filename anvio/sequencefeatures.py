@@ -1,4 +1,3 @@
-# -*- coding: utf-8
 # pylint: disable=line-too-long
 
 """Classes to deal with sequence features"""

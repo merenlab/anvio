@@ -1,4 +1,3 @@
-# coding: utf-8
 """Interface to eggnog-mapper (https://github.com/jhcepas/eggnog-mapper)."""
 
 import os

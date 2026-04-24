@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """De novo prediction of tRNAs and their properties from a single tRNA-seq library"""
 
 import sys

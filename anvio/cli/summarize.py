@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Generate summary output from anvi'o datbases"""
 
 import os

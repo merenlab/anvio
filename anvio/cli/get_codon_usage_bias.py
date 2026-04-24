@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Get codon usage bias (CUB) of genes and functions."""
 
 

@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Returns sequences for a given list of gene caller ids"""
 
 import sys

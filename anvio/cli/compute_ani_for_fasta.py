@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """A script to export run ANI on every contig in a FASTA file."""
 
 import os
