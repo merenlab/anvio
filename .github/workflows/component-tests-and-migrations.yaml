@@ -1,12 +1,13 @@
-name: Daily Component Tests and Migrations
+name: Component Tests and Migrations
 
 on:
+  workflow_dispatch:
   schedule:
     - cron: "0 9 * * *"
 
 jobs:
   build:
-    name: Daily Component Tests (Python ${{ matrix.python-version }})
+    name: Component Tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
