@@ -59,7 +59,7 @@ def migrate(db_path):
         message = (f"Your contigs database is now version {next_version}. Sadly this update removed all SCG taxonomy "
                    f"data in this contigs-db due to a change in the set of SCGs anvi'o now uses for taxonomy estimation. "
                    f"As a result, you will need to re-run anvi-run-scg-taxonomy command on this contigs-db :/ If you "
-                   f"would like to learn why this was necessary, please visit https://github.com/merenlab/anvio/issues/2211. "
+                   f"would like to learn why this was necessary, please visit https://github.com/merenlab/anvio/issues/2211 . "
                    f"We thank you for your patience!")
     else:
         message = ("Since you have already updated your contigs-db with new SCGs, anvi'o simply bumped the version of your "
