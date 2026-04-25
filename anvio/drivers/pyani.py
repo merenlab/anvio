@@ -22,7 +22,7 @@ class PyANI:
     def __init__(self, args={}, run=terminal.Run(), progress=terminal.Progress(), program_name='average_nucleotide_identity.py'):
         self.run = run
         self.progress = progress
-        self.program_name = program_name 
+        self.program_name = program_name
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.num_threads = A('num_threads') or 1

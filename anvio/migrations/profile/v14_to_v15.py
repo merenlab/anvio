@@ -7,7 +7,7 @@ import argparse
 import anvio.db as db
 import anvio.utils as utils
 import anvio.dictio as dictio
-import anvio.terminal as terminal 
+import anvio.terminal as terminal
 
 from anvio.errors import ConfigError
 

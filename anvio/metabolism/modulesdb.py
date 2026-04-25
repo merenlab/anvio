@@ -784,7 +784,7 @@ class ModulesDatabase(KeggContext):
             the data_definitions corresponding to the module/data_name pair
         """
 
-        where_clause_string = f"module = '{module_num}' and data_name = '{data_name}'" 
+        where_clause_string = f"module = '{module_num}' and data_name = '{data_name}'"
         dict_from_mod_table = self.db.get_some_rows_from_table_as_dict(self.module_table_name, where_clause_string, row_num_as_key=True,
                                                                 error_if_no_data=raise_error_if_no_data)
 

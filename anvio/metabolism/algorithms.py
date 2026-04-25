@@ -928,7 +928,7 @@ class KeggEstimationAlgorithms:
             if profile_db:
                 self.coverage_sample_list = profile_db.p_meta['samples']
             elif enzymes_of_interest_df:
-                self.coverage_sample_list = [self.contigs_db_project_name] 
+                self.coverage_sample_list = [self.contigs_db_project_name]
 
         for s in self.coverage_sample_list:
             meta_dict_for_bin[mod]["genes_to_coverage"][s] = {}
@@ -1011,7 +1011,7 @@ class KeggEstimationAlgorithms:
                 stepwise_complete_mods.add(mod)
 
             if add_coverage:
-                self.add_module_coverage(mod, metabolism_dict_for_list_of_splits, profile_db=self.profile_db, 
+                self.add_module_coverage(mod, metabolism_dict_for_list_of_splits, profile_db=self.profile_db,
                                         enzymes_of_interest_df=self.enzymes_of_interest_df)
 
         # go back and adjust completeness/copy number of modules that are defined by other modules
