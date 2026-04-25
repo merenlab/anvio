@@ -605,7 +605,7 @@ class InteracDomeSetup(object):
         or Pfam-A.hmm.gz exists.
         """
 
-        if (os.path.exists(os.path.join(self.interacdome_data_dir, 'Pfam-A.hmm') or 
+        if (os.path.exists(os.path.join(self.interacdome_data_dir, 'Pfam-A.hmm') or
             os.path.exists(os.path.join(self.interacdome_data_dir, 'Pfam-A.hmm.gz')))):
             raise ConfigError("It seems you already have the InteracDome data downloaded in '%s', please "
                               "use --reset flag if you want to re-download it." % self.interacdome_data_dir)

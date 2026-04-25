@@ -5115,7 +5115,7 @@ def split_by_delim_not_within_parens(d, delims, return_delims=False):
             parens_level += 1
         elif d[i] == ")":
             parens_level -= 1
-            if delims == "" and parens_level == 0: 
+            if delims == "" and parens_level == 0:
                 splits.append(d[last_split_index+1:i]) # we don't include the parentheses characters
                 last_split_index = i + 1
         elif delims == "" and parens_level == 0: # allow the use of "" as delimiter to split each character

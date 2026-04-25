@@ -740,7 +740,7 @@ class GenomeDescriptions(object):
             contigs_db = dbops.ContigsSuperclass(args, r=anvio.terminal.Run(verbose=False))
             genome_matching_item_names_dict, genome_verbose_output = contigs_db.search_for_gene_functions(search_terms, requested_sources=requested_sources, verbose=verbose, full_report=full_report, delimiter=delimiter, case_sensitive=case_sensitive, exact_match=exact_match, genes_as_split_names=genes_as_split_names)
             
-            # convert each item to a tuple of (genome name, item) to allow for separating the results later 
+            # convert each item to a tuple of (genome name, item) to allow for separating the results later
             for term, item_list in genome_matching_item_names_dict.items():
                 if item_list: # only add non-empty lists to the combined dictionary of matches
                     genome_matching_item_names_dict[term] = [(genome_name, l) for l in item_list]

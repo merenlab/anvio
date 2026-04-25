@@ -3463,10 +3463,10 @@ D = {
                     "pathwise vs stepwise completeness."}
                 ),
     'use-equivalent-amino-acids': (
-            ['--use-equivalent-amino-acids'], 
+            ['--use-equivalent-amino-acids'],
             {'default': False,
              'action': 'store_true',
-             'required': False, 
+             'required': False,
              'help': "Some amino acid metabolic interactions can be missed because there are different "
                      "compound IDs in the ModelSEED database for L- and non-stereo-specific versions of amino acids (like "
                      "'Valine' vs 'L-Valine'. If you choose this option, anvi'o will find these pairs of equivalent amino acid "
@@ -3474,38 +3474,38 @@ D = {
                      "showing you which compounds were considered equivalent, so that you can complain if you don't agree with them."}
                 ),
      'custom-equivalent-compounds-file': (
-            ['--custom-equivalent-compounds-file'], 
+            ['--custom-equivalent-compounds-file'],
             {'default': False,
              'metavar': 'FILE',
-             'required': False, 
+             'required': False,
              'help': "If you have your own set of equivalent ModelSEED compound IDs, you can make sure "
                      "we use them by providing them in a tab-delimited file to this parameter. The file should have at least the following "
                      "columns: 'compound_id' and 'equivalent_id'. Note that this option is not compatible with --use-equivalent-amino-acids, "
                      "so if you want amino acid equivalents to be used, include them in this file."}
                 ),
     'maximum-gaps': (
-            ['--maximum-gaps'], 
+            ['--maximum-gaps'],
             {'default': 0,
              'type': int,
              'metavar': 'INT',
-             'required': False, 
+             'required': False,
              'help': "We'll look for the longest chain of reactions surrounding each potentially-exchanged "
                      "metabolite to help rank the output by likelihood of the interaction. This parameter allows "
                      "you to choose how many gaps there can be in the chain on either side of the metabolite in "
                      "the network. Very conservatively set to 0, as in no gaps allowed."}
                 ),
     'add-reactions-to-output': (
-            ['--add-reactions-to-output'], 
+            ['--add-reactions-to-output'],
             {'default': False,
              'action': 'store_true',
-             'required': False, 
+             'required': False,
              'help': "Do you want relevant reaction IDs and chemical equations to be added to the output? Use this flag."}
                 ),
     'report-compounds-with-no-prediction': (
-            ['--report-compounds-with-no-prediction'], 
+            ['--report-compounds-with-no-prediction'],
             {'default': False,
              'action': 'store_true',
-             'required': False, 
+             'required': False,
              'help': "By default, metabolic compounds that are not predicted to be either potentially-exchanged or "
                      "unique will not be present in the output files of this program. If you want to see what those are, "
                      "then you can use this flag to get an additional output file listing the compounds for which there "
@@ -3513,19 +3513,19 @@ D = {
                      "plus side, you can haz moar data. Brought to you by the anvi'o Hall of Fame for Long Parameter Names."}
                 ),
     'no-pathway-walk': (
-            ['--no-pathway-walk'], 
+            ['--no-pathway-walk'],
             {'default': False,
              'action': 'store_true',
-             'required': False, 
+             'required': False,
              'help': "Skip walking KEGG Pathway Maps and instead predict exchanges entirely from the reaction network. "
                      "This is not recommended, since Pathway Maps are much more curated and lead to more accurate predictions. "
                      "But they also could be time-consuming, so, you do you, I guess."}
                 ),
     'pathway-walk-only': (
-            ['--pathway-walk-only'], 
+            ['--pathway-walk-only'],
             {'default': False,
              'action': 'store_true',
-             'required': False, 
+             'required': False,
              'help': "ONLY use KEGG Pathway Map walks to predict exchanges. That is, don't predict anything from the "
                      "reaction network alone -- these predictions are less confident anyway. The downside is that "
                      "you'll miss any predictions for compounds not in Pathway Maps."}

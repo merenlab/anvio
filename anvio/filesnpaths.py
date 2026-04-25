@@ -108,7 +108,7 @@ def is_proper_external_gene_calls_file(file_path):
             if not has_aa_sequences and i == 9:
                 break
             if headers[i] != h:
-                raise FilesNPathsError(f"The headers in your external gene calls file are out of order, so we can't associate each line's fields " 
+                raise FilesNPathsError(f"The headers in your external gene calls file are out of order, so we can't associate each line's fields "
                                        f"to the right data type. Please re-order the columns to match this order: \"{', '.join(headers_proper)}. "
                                        f"Anvi'o is sorry to make you jump through these hoops, but promises that it is the best way for more "
                                        f"efficient processing of your data.")

@@ -285,7 +285,7 @@ class TestFindPalindrome(unittest.TestCase):
 
     def test_split(self):
         pal_for = 'AACTGGAGCTCGAACTG'
-        #          |||||||| |||||||| 
+        #          |||||||| ||||||||
         pal_rev = 'AACTGGAGGTCGAACTG'
         pal_rev = anvio.utils.rev_comp(pal_rev)
 

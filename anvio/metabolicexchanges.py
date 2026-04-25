@@ -1283,7 +1283,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                     potentially_exchanged_compounds[compound_id]['consumption_overlap_proportion'] = None
                     potentially_exchanged_compounds[compound_id]['production_chain_pathway_map'] = None
                     potentially_exchanged_compounds[compound_id]['consumption_chain_pathway_map'] = None
-            else: # no prediction for this compound. 
+            else: # no prediction for this compound.
                 if self.report_compounds_with_no_prediction:
                     no_prediction_compounds[compound_id] = {'compound_name': compound_name,
                                                         'genomes': all_genome_names if all_genome_names else None,
