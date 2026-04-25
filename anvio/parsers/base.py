@@ -1,4 +1,3 @@
-# -*- coding: utf-8
 """
     Base class for parsers to take care of the boring stuff.
 """

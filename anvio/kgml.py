@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """
 Manipulate KEGG KGML files, which store certain KEGG pathway map data and can be used to create
 customized map images.

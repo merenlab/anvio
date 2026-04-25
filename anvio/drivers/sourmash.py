@@ -1,4 +1,3 @@
-# coding: utf-8
 """Interface to sourmash"""
 
 import os

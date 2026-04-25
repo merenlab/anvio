@@ -1,4 +1,3 @@
-# -*- coding: utf-8
 # pylint: disable=line-too-long
 """Module for codon usage analyses at the levels of genes, groups of genes, and genomes"""
 

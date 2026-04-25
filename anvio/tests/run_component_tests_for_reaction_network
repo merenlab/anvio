@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 DESCRIPTION = """Run by the shell script of the same name that tests anvi'o reaction networks."""
 
 from argparse import Namespace

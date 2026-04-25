@@ -1,4 +1,3 @@
-# -*- coding: utf-8
 # pylint: disable=line-too-long
 
 """Classes to make sense of single nucleotide variation"""

@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """anvi-analyze-synteny ... let's extract some order from this chaos!
 
 What do we say to loci that appear to have no coherent synteny patterns...?

@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """A program to import an items order into an anvi'o database"""
 
 import sys

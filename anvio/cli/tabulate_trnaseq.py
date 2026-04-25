@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Tabulate data on tRNA seeds from a set of tRNA-seq samples"""
 
 

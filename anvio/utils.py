@@ -1,4 +1,3 @@
-# -*- coding: utf-8
 # pylint: disable=line-too-long
 
 """Lonely, helper functions that are broadly used and don't fit anywhere"""
