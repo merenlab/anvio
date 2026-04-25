@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """A program to display the distribution of functions across genomes."""
 
 import sys

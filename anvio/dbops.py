@@ -1,4 +1,3 @@
-# -*- coding: utf-8
 # pylint: disable=line-too-long
 """
     Classes to create, access, and/or populate contigs, tRNASeq, and profile databases.

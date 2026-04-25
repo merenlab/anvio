@@ -1,4 +1,3 @@
-# -*- coding: utf-8
 # pylint: disable=line-too-long
 """
     Unit tests for the HomogeneityCalculator class.

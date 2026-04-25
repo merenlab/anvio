@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# coding: utf-8
 """Reorient circular genomes to match a reference genome coordinate system."""
 
 import os

@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """
 This script converts a file with a list of KOs (one KO per line) into a modules file. The file should be tab-delimited and
 contain 3 columns: the KO identifier, the orthology, and the annotation source. If annotation source is KOfam, the orthology

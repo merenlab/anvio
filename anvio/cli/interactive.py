@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Entry point to the interactive interface.
 
 The massage of the data is being taken care of in the interactive module,

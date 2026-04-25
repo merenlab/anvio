@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8
 """
 Classes to setup remote SCG databases in local, use local databases to affiliate SCGs in anvi'o
 contigs databases with taxon names, and estimate taxonomy for genomes and metagenomes.

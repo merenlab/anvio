@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Entering anvi'o metapangenomic workflow"""
 
 import sys

@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Script to quickly summarize many single profiles."""
 
 import sys

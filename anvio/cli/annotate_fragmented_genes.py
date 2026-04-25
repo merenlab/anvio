@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Identify and annotate fragmented genes (pseudogenes) in pangenomes"""
 
 import sys

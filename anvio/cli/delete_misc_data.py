@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Remove stuff from misc data tables"""
 
 import sys

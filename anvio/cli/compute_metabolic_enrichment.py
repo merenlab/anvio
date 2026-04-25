@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """A program that computes metabolic enrichment across groups of genomes and metagenomes"""
 
 import sys

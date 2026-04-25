@@ -1,4 +1,3 @@
-# -*- coding: utf-8
 # pylint: disable=line-too-long
 """Overloading Python argparse for anvi'o purposes"""
 

@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 DESCRIPTION = "Write KEGG pathway map files incorporating data sourced from anvi'o databases"
 
 import os

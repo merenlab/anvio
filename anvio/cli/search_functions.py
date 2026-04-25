@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Searches contigs database for a given function"""
 
 import sys

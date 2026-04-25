@@ -1,4 +1,3 @@
-# -*- coding: utf-8
 """Everything about anvi'o workflows and artifacts"""
 
 # when defining a new anvi'o workflow, it is essential to document most critical
