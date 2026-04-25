@@ -31,7 +31,6 @@ jobs:
       run: |
         conda info
         conda list
-    - uses: actions/checkout@v6
     - name: "Install anvi'o from the codebase"
       shell: bash -l {0}
       run: |
