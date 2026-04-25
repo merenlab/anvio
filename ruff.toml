@@ -3,4 +3,6 @@
 select = [
     # https://docs.astral.sh/ruff/rules/utf8-encoding-declaration/
     "UP009",
+    # https://docs.astral.sh/ruff/rules/trailing-whitespace/
+    "W291",
 ]
