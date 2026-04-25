@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Compute a graph representation of a pangenome"""
 
 import sys
