@@ -1,0 +1,6 @@
+[lint]
+# https://docs.astral.sh/ruff/rules/
+select = [
+    # https://docs.astral.sh/ruff/rules/utf8-encoding-declaration/
+    "UP009",
+]
