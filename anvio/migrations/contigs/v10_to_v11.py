@@ -43,8 +43,8 @@ def migrate(db_path):
     contigs_db.create_table(genes_in_splits_table_name + '_temp', genes_in_splits_table_structure, genes_in_splits_table_types)
 
     progress.update("Moving unique records")
-    contigs_db._exec("INSERT INTO %s SELECT * FROM %s GROUP BY %s;" % (genes_in_splits_table_name + '_temp', 
-                                                                      genes_in_splits_table_name, 
+    contigs_db._exec("INSERT INTO %s SELECT * FROM %s GROUP BY %s;" % (genes_in_splits_table_name + '_temp',
+                                                                      genes_in_splits_table_name,
                                                                       ", ".join(genes_in_splits_table_structure[1:]) ))
     progress.update("Updating entry_id")
     contigs_db._exec("UPDATE %s SET entry_id = rowid - 1;" % (genes_in_splits_table_name + '_temp'))

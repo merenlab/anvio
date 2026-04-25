@@ -68,7 +68,7 @@ def get_args():
                                         "These parameters will define which short reads from a BAM file will be considered "
                                         "during anvi'o profiling.")
     #############################################################################################################################
-    groupJ.add_argument(*anvio.A('min-percent-identity'), **anvio.K('min-percent-identity', {'help': 
+    groupJ.add_argument(*anvio.A('min-percent-identity'), **anvio.K('min-percent-identity', {'help':
                             'Ignore any reads with a percent identity to the reference less '
                             'than this number, e.g. 95. If not provided, all reads in the BAM '
                             'file will be used (and things will run faster).', 'default': None}))

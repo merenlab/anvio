@@ -163,7 +163,7 @@ class tRNAScanSE:
                         d[entry_no]['intron_end'] = int(fields[7]) - int(fields[6])
                     else:
                         d[entry_no]['intron_start'] = d[entry_no]['start'] - int(fields[6])
-                        d[entry_no]['intron_end'] = int(fields[6]) - int(fields[7]) 
+                        d[entry_no]['intron_end'] = int(fields[6]) - int(fields[7])
 
         self.progress.end()
 
