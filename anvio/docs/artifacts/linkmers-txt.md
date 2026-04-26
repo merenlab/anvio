@@ -11,7 +11,7 @@ For instance, if %(anvi-report-linkmers)s was run on three samples (`SAMPLE-01.b
   </tbody>
 </table>
 
-Then the output would be the following: 
+Then the output would be the following:
 
 |entry_id|sample_id|request_id|contig_name|pos_in_contig|pos_in_read|base|read_unique_id|read_X|reverse|sequence|
 |:--|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--|

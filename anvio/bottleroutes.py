@@ -1070,7 +1070,7 @@ class BottleApplication(Bottle):
 
         path = "summary/%s/index.html" % (collection_name)
         return json.dumps({'path': path})
-        
+
 
     def send_summary_static(self, collection_name, filename):
         if self.interactive.mode == 'pan':

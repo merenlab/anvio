@@ -124,12 +124,12 @@ class FAMSA:
             cmd_line += additional_params
 
         output = utils.run_command(cmd_line, log_file_path)
-        
+
         if not os.path.exists(output_file_path) or os.path.getsize(output_file_path) == 0:
             with open(log_file_path, "a") as log_file: log_file.write('# THIS IS THE OUTPUT YOU ARE LOOKING FOR:\n\n%s\n' % (output))
             raise ConfigError("Drivers::FAMSA: Something went wrong with this alignment that was working on %d "
                               "sequences :/ You can find the output in this log file: %s" % (len(sequences_list), log_file_path))
-        
+
         alignments = {}
 
         # parse the output, and fill alignments

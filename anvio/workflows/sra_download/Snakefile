@@ -30,7 +30,7 @@ Workflow Steps:
    against the expected hash from the NCBI `locate` API.
 3. **fasterq_dump**: Converts .sra files into FASTQ format using `fasterq-dump`.
 4. **pigz**: Compresses FASTQ files using parallel gzip (pigz).
-5. **generate_samples_txt**: Generates `samples.txt` and `samples_single_reads.txt` files 
+5. **generate_samples_txt**: Generates `samples.txt` and `samples_single_reads.txt` files
    describing paired-end and single-end reads, respectively.
 
 The input for this workflow is a file of SRA accessions e.g.
@@ -131,7 +131,7 @@ rule check_md5sum:
         calculated_md5 = M.calculate_md5(file_path=params.sra_file)
 
         # Compare expected and calculated md5 and log the result
-        with open(log_path, 'a') as log_file:   
+        with open(log_path, 'a') as log_file:
             if calculated_md5 == expected_md5:
                 log_file.write(f"Checksums match: {calculated_md5}\n")
             else:
@@ -159,7 +159,7 @@ rule fasterq_dump:
 
     version: 1.0
     log: os.path.join(dirs_dict['LOGS_DIR'], "{accession}_fasterq_dump.log")
-    input: 
+    input:
         ancient(rules.check_md5sum.output.md5sum_DONE)
     output:
         FASTERQDUMP_DONE = touch(os.path.join(dirs_dict['FASTAS'], "{accession}-fasterq-dump.done")),

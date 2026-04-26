@@ -176,7 +176,7 @@ class ExchangePredictorArgs():
                 header_list = exchange_header
             if mode == 'compounds-with-no-prediction':
                 header_list = base_header
-            
+
             if len(output_dicts[mode]):
                 if mode == 'evidence':
                     file_obj.append(output_dicts[mode], do_not_write_key_column=True, none_value="None")
@@ -351,7 +351,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                 data_dicts['compounds-with-no-prediction'].update(no_prediction_rn)
                 self.run.warning(f"Identified {len(data_dicts['compounds-with-no-prediction'])} compounds with no prediction",
                                  header='COMPOUNDS WITH NO PREDICTION', lc='green')
-            
+
             # clean up to spare some memory
             del pot_exchanged_rn, uniq_rn, no_prediction_rn
 
@@ -935,7 +935,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         no_prediction_compounds = {}
         pathway_walk_evidence = {}
         pathway_walk_dict_key = 0
-        
+
         num_compounds_to_process = len(self.compound_to_pathway_walk_chains)
         processed_count = 0
         num_skipped = 0
@@ -1090,7 +1090,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                             cur_max, cur_overlap, cur_prop, cur_map = current_chain
                             comp_max, comp_overlap, comp_prop, comp_map = comparison_chain
                             best_evidence = current_chain # by default we don't update anything
-                            
+
                             if cur_max is not None:
                                 if comp_max is not None and comp_max >= cur_max: # look for the longest chain
                                     if comp_max == cur_max: # if they have the same length, take the one that has smallest real number overlap proportion

@@ -14,9 +14,9 @@ The expected input is any combination of %(external-genomes)s, %(internal-genome
 The program outputs a directory with %(genome-similarity)s data. The specific contents will depend on how similarity scores are computed (specified with `--program`), but generally contains tab-separated files of similarity scores between genomes and related metrics.
 
 
-You also have the option to provide a %(pan-db)s, in which case the output data will additionally be stored in the database as %(misc-data-layers)s and %(misc-data-layer-orders)s data. This was done in the [pangenomic tutorial](http://merenlab.org/2016/11/08/pangenomics-v2/#computing-the-average-nucleotide-identity-for-genomes-and-other-genome-similarity-metrics-too).  
+You also have the option to provide a %(pan-db)s, in which case the output data will additionally be stored in the database as %(misc-data-layers)s and %(misc-data-layer-orders)s data. This was done in the [pangenomic tutorial](http://merenlab.org/2016/11/08/pangenomics-v2/#computing-the-average-nucleotide-identity-for-genomes-and-other-genome-similarity-metrics-too).
 
-Here is an example run with pyANI from an %(external-genomes)s without any parameter changes: 
+Here is an example run with pyANI from an %(external-genomes)s without any parameter changes:
 
 {{ codestart }}
 anvi-compute-genome-similarity -e %(external-genomes)s \
@@ -59,11 +59,11 @@ You can change any of the following fastANI parameters:
 
 #### sourmash
 
-You have the option to change the `kmer-size`. This value should depend on the relationship between your samples. The default is 31 ([as recommended by sourmash for genus-level distances](https://sourmash.readthedocs.io/en/latest/using-sourmash-a-guide.html), but we found that 13 most closely parallels the results from an ANI alignment.  
+You have the option to change the `kmer-size`. This value should depend on the relationship between your samples. The default is 31 ([as recommended by sourmash for genus-level distances](https://sourmash.readthedocs.io/en/latest/using-sourmash-a-guide.html), but we found that 13 most closely parallels the results from an ANI alignment.
 
-You can also set the compression ratio for your fasta files. Decreasing this from the default (1000) will decrease sensitivity.  
+You can also set the compression ratio for your fasta files. Decreasing this from the default (1000) will decrease sensitivity.
 
-### Other Parameters 
+### Other Parameters
 
 Once calculated, the similarity matrix is used to create dendrograms via hierarchical clustering, which are stored in the output directory (and in the %(pan-db)s, if provided). You can choose to change the distance metric or linkage algorithm used for this clustering.
 

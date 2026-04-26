@@ -33,7 +33,7 @@ class TaxonNamesTable(object):
         self.run = run
         self.progress = progress
 
- 
+
     def populate_taxon_names_table(self):
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
@@ -231,4 +231,4 @@ class TablesForGeneLevelTaxonomy(Table, TaxonNamesTable):
 
 
 
-        
+

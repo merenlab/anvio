@@ -572,7 +572,7 @@ class InteracDomeSetup(object):
             # was to create a static, permanent link
             'representable_interactions.txt': 'https://ndownloader.figshare.com/files/24019757',
             'confident_interactions.txt': 'https://ndownloader.figshare.com/files/24019694',
- 
+
         }
 
         if self.interacdome_data_dir and args.reset:

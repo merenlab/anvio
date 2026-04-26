@@ -64,7 +64,7 @@ RUN curl -L https://github.com/merenlab/anvio/releases/download/v8/anvio-8.tar.g
         --output anvio-8.tar.gz
 RUN pip install anvio-8.tar.gz
 
-# Install METABAT and DAS_TOOL 
+# Install METABAT and DAS_TOOL
 #RUN mamba install metabat2 das_tool
 
 # Install CONCOCT

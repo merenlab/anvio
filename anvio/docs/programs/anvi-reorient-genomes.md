@@ -56,7 +56,7 @@ For the most up-to-date list of parameters and their default values, please see 
 
 ### Example terminal output
 
-Outputs in the terminal will help you figure out what is going on, so please keep an eye on them. 
+Outputs in the terminal will help you figure out what is going on, so please keep an eye on them.
 
 Here is an example output for two circular genomes where the query nicely aligned to the reference (the alignment plots always show before and after the alignment):
 

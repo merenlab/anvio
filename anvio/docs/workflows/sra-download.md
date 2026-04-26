@@ -83,7 +83,7 @@ The power of Snakemake shines when you can leverage a High Performance Computing
 
 ### MD5 Checksum verification
 
-The `sra_download` workflow verifies that `prefetch` properly download all the `.sra` files you requested by comparing MD5 checksum values. 
+The `sra_download` workflow verifies that `prefetch` properly download all the `.sra` files you requested by comparing MD5 checksum values.
 
 If the workflow successfully runs then everything checked out! You can find the checksum messages by doing this:
 
@@ -95,7 +95,7 @@ $ grep "Checksums match" 00_LOGS/*_check_md5sum.log
 00_LOGS/SRR5965623_check_md5sum.log:Checksums match: 95b69957f6381047763fb50782959cd8
 {{ codestop }}
 
-If a SRA accession fails to download properly, the workflow will stop and show you an error like this: 
+If a SRA accession fails to download properly, the workflow will stop and show you an error like this:
 {{ codestart }}
 RuleException:
 ValueError in file /Users/mschechter/github/anvio/anvio/workflows/sra_download/Snakefile, line 122:

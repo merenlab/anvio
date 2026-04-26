@@ -1803,7 +1803,7 @@ class ModulesDatabase(KeggContext):
             d = d.strip()
             combined_def_line += d + " "
         combined_def_line = combined_def_line.strip()
-        
+
         try:
             def_line_paths = self.recursive_definition_unroller(combined_def_line)
         except RecursionError as re:

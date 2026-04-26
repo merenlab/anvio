@@ -2773,7 +2773,7 @@ class ReactionNetwork:
     def _get_pathway_map_set(self, map_ids_to_exclude: set[str] = None,
             id_selection_prefix: str = None) -> set[str]:
         """Returns a set of KEGG Pathway Maps associated with the KOs in the network.
-        
+
         Parameters
         ==========
         map_ids_to_exclude : set[str]
