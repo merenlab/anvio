@@ -524,8 +524,8 @@ class CoverageStats:
 
     In addition to the classic stats, this class also computes a distribution of coverage (DisCov)
     score, which combines a metric for assessing spread of coverage across the sequence (proportion
-    of fixed-length windows with at least some coverage, S) and a metric for assessing the 
-    evenness of nonzero coverage depth (proportion of bases with nonzero coverage that are within some 
+    of fixed-length windows with at least some coverage, S) and a metric for assessing the
+    evenness of nonzero coverage depth (proportion of bases with nonzero coverage that are within some
     fold-range of the median nonzero coverage, E). These metrics are combined linearly with a weight α
     following the formula: DisCov = αS + (1-α)E.
 
@@ -549,7 +549,7 @@ class CoverageStats:
         A value in [0,1] that indicates how much to weight S over E in the Discov score
     """
 
-    def __init__(self, coverage, skip_outliers=False, discov_window_length=10000, discov_window_percentage=None, 
+    def __init__(self, coverage, skip_outliers=False, discov_window_length=10000, discov_window_percentage=None,
                 discov_min_window_len=500, discov_foldrange_lower=0.25, discov_foldrange_upper=4, discov_alpha=0.5):
         self.min: float = np.amin(coverage)
         self.max: float = np.amax(coverage)
@@ -592,8 +592,8 @@ class CoverageStats:
     def get_window_regions(self, coverage, window_length):
         """Given an array of coverage values, divides it into non-overlapping windows of the requested length.
 
-        Each region is described as a tuple of (start_position, stop_position, mean_coverage), with start and stop 
-        positions following Python indexing rules to enable slicing. If the array doesn't divide equally by the 
+        Each region is described as a tuple of (start_position, stop_position, mean_coverage), with start and stop
+        positions following Python indexing rules to enable slicing. If the array doesn't divide equally by the
         window length, the final window will be shorter than the rest.
         """
         if window_length > len(coverage):
