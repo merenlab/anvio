@@ -837,7 +837,7 @@ class FilterHmmHitsTable(object):
         Filter the hmm_hits table based on HMM model coverage, gene coverage, or open reading frame completeness.
 
         Returns:
-            CSV: Filtered domtblout file from hmmsearch. 
+            CSV: Filtered domtblout file from hmmsearch.
             str: The file path of the temporary file where the filtered DataFrame is saved.
         """
 

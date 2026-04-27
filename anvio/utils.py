@@ -3876,7 +3876,7 @@ def to_jsonable(obj):
 
     Examples
     ========
-    >>> d = {...} # some dict of any size and level of nestedness 
+    >>> d = {...} # some dict of any size and level of nestedness
     >>> json.dumps(f, default=utils.to_jsonable)
     """
 
@@ -4998,7 +4998,7 @@ def split_by_delim_not_within_parens(d, delims, return_delims=False):
     d : str
         string to split
     delims : str or list of str
-        a single delimiter, or a list of delimiters, to split on. Note that if delims is the empty string (""), every 
+        a single delimiter, or a list of delimiters, to split on. Note that if delims is the empty string (""), every
         individual character in the string that is not within parentheses will be returned in the list of splits.
     return_delims : boolean
         if this is true then the list of delimiters found between each split is also returned

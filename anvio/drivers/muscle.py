@@ -50,7 +50,7 @@ class Muscle:
         PARAMETERS
         ==========
         sequences_list : List of tuples
-            each tuple should contain the sequence name as the first element, and the sequence itself 
+            each tuple should contain the sequence name as the first element, and the sequence itself
             as the second element
         debug : Boolean
             controls whether or not the temporary directory is removed after execution. Probably a good

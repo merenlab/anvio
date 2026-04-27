@@ -702,8 +702,8 @@ class GenomeDescriptions(object):
 
 
     def search_for_gene_functions(self, search_terms, requested_sources=None, verbose=False, full_report=False, delimiter=',', case_sensitive=False, exact_match=False, genes_as_split_names=False):
-        """Search for gene functions matching the given terms in all contigs databases. Returns dictionaries 
-        in which the genome name has been added to the item matches and to the verbose (gene call) information 
+        """Search for gene functions matching the given terms in all contigs databases. Returns dictionaries
+        in which the genome name has been added to the item matches and to the verbose (gene call) information
         so that downstream reports can specify in which genome each match has been found.
         """
 

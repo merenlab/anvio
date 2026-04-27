@@ -1340,8 +1340,8 @@ class Inversions:
 
 
     def parse_motif_output(self, meme_output_path, meme_log):
-        """ After searching for conserved motifs in the inverted repeats, we want to report 
-        the motif's group for each inversions. Then we can see in the report (txt summary and 
+        """ After searching for conserved motifs in the inverted repeats, we want to report
+        the motif's group for each inversions. Then we can see in the report (txt summary and
         html output) which inversions are linked together by site-specific invertase
         """
 
