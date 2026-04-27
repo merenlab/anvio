@@ -7,6 +7,7 @@ class PangenomeGraphUserInterface {
         this.data = null;
         this.settings_dict = {};
         this.state = 'default';
+        this.server_offline = false;
 
         this.selection = null;
         this.panZoomInstance = null;
@@ -2328,6 +2329,8 @@ class PangenomeGraphUserInterface {
             dataType: "json",
             success: (data) => {
                 this.data = data['data'];
+                this.session_id = data['session_id'];
+                setTimeout(() => this.checkBackgroundProcess(), 5000);
                 console.log('JSON loaded.');
                 this.initialize_variables();
                 console.log('Initialized main variables.');
@@ -2338,6 +2341,28 @@ class PangenomeGraphUserInterface {
             },
             error: (err) => {
                 console.error('Failed to load JSON:', err);
+            }
+        });
+    }
+
+    checkBackgroundProcess() {
+        const errorMessage = "It seems the server that's been serving this page is no longer accessible. " +
+                             "You may lose your unsaved changes in this window.";
+        $.ajax({
+            type: 'GET',
+            cache: false,
+            url: '/pangraph/session_id',
+            success: (data) => {
+                if (data != this.session_id) {
+                    this.server_offline = true;
+                    toastr.error(errorMessage, "", { 'timeOut': '0', 'extendedTimeOut': '0' });
+                } else {
+                    setTimeout(() => this.checkBackgroundProcess(), 5000);
+                }
+            },
+            error: () => {
+                this.server_offline = true;
+                toastr.error(errorMessage, "", { 'timeOut': '0', 'extendedTimeOut': '0' });
             }
         });
     }
@@ -3209,6 +3234,10 @@ class PangenomeGraphUserInterface {
     async nodeinfo_with_functions(e, gene_cluster_id='') {
         const { gene_cluster_id: gcid, gene_cluster_context } = this._resolve_node_ids(e, gene_cluster_id);
 
+        if (this.server_offline) {
+            toastr.error('The server is no longer accessible.', 'Request failed');
+            return;
+        }
         waitingDialog.show('Fetching functions and metabolism data...', { dialogSize: 'sm' });
         let all_info;
         try {
@@ -3492,6 +3521,7 @@ class PangenomeGraphUserInterface {
             data: JSON.stringify({ synteny_gene_clusters: sgc_ids }),
             contentType: 'application/json',
             dataType: 'json',
+            timeout: 10000,
         });
         return response;
     }
@@ -3531,6 +3561,10 @@ class PangenomeGraphUserInterface {
         const raw_name = document.getElementById(bin_id + '_text')?.value || bin_id;
         const bin_name = raw_name.replace(/_/g, ' ').replace(/^./, c => c.toUpperCase());
 
+        if (this.server_offline) {
+            toastr.error('The server is no longer accessible.', 'Request failed');
+            return;
+        }
         waitingDialog.show('Fetching functions and metabolism data...', { dialogSize: 'sm' });
 
         let response;
@@ -3631,6 +3665,10 @@ class PangenomeGraphUserInterface {
             }
         }
 
+        if (this.server_offline) {
+            toastr.error('The server is no longer accessible.', 'Request failed');
+            return;
+        }
         waitingDialog.show('Fetching functions and metabolism data...', { dialogSize: 'sm' });
 
         let response;
@@ -3811,16 +3849,17 @@ class PangenomeGraphUserInterface {
     }
 
     get_gene_cluster_region_data(gene_cluster_names) {
-        
+
         var func = {};
         func['synteny_gene_clusters'] = gene_cluster_names
-    
+
         var d = $.ajax({
             url: "/pangraph/get_pangraph_synteny_gene_cluster_region",
             type: "POST",
             data: JSON.stringify(func),
             contentType: "application/json",
             dataType: "json",
+            timeout: 10000,
             error: function(){
                 console.log('Error while attempting to fetch region.')
             },
@@ -3828,21 +3867,22 @@ class PangenomeGraphUserInterface {
                 console.log('Successfully fetched alignment.')
             }
         })
-        
+
         return d
     }
-    
+
     get_gene_cluster_consensus_functions(gene_cluster_names) {
-    
+
         var func = {};
         func['synteny_gene_clusters'] = gene_cluster_names
-        
+
         var d = $.ajax({
             url: "/pangraph/get_pangraph_synteny_gene_cluster_function",
             type: "POST",
             data: JSON.stringify(func),
             contentType: "application/json",
             dataType: "json",
+            timeout: 10000,
             error: function(){
                 console.log('Error while attempting to fetch function.')
             },
@@ -3853,18 +3893,19 @@ class PangenomeGraphUserInterface {
 
         return d
         }
-    
+
     fetchalignment(gene_cluster_names) {
-        
+
         var func = {};
         func['synteny_gene_clusters'] = gene_cluster_names
-    
+
         var d = $.ajax({
             url: "/pangraph/get_pangraph_synteny_gene_cluster_alignment",
             type: "POST",
             data: JSON.stringify(func),
             contentType: "application/json",
             dataType: "json",
+            timeout: 10000,
             error: function(){
                 console.log('Error while attempting to fetch alignment.')
             },

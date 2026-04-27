@@ -209,6 +209,7 @@ class BottleApplication(Bottle):
         self.route('/pangraph/get_pangraph_synteny_gene_cluster_region',          callback=self.get_pangraph_synteny_gene_cluster_region, method="POST")
         self.route('/pangraph/get_pangraph_synteny_gene_cluster_search_result',   callback=self.get_pangraph_synteny_gene_cluster_search_result, method="POST")
         self.route('/pangraph/get_pangraph_synteny_gc_functions_and_metabolism',  callback=self.get_pangraph_synteny_gc_functions_and_metabolism, method="POST")
+        self.route('/pangraph/session_id',                                        callback=self.get_pangraph_session_id)
 
 
     def run_application(self, ip, port):
@@ -1678,11 +1679,15 @@ class BottleApplication(Bottle):
             return(json.dumps({'status': 1, 'data': ''}))
 
 
+    def get_pangraph_session_id(self):
+        return json.dumps(self.session_id)
+
+
     def initial_pangraph_json_data(self):
         try:
             self.interactive.load_state('default', 'default')
             data = self.interactive.get_json()
-            return(json.dumps({'status': 0, 'data': data}))
+            return(json.dumps({'status': 0, 'data': data, 'session_id': self.session_id}))
         except:
             return(json.dumps({'status': 1, 'data': ''}))
 
