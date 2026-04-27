@@ -22,7 +22,7 @@ __description__ = "Create the fasta.txt file"
 def main():
     args = get_args()
 
-    try:  
+    try:
         run_program()
     except ConfigError as e:
         print(e)

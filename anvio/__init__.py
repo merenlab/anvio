@@ -2230,13 +2230,13 @@ D = {
              'type': str,
              'help': "A yaml file containing raw gene cluster order for testing the anvi'o pan graph."}
                 ),
-    'pan-graph-db': (   
+    'pan-graph-db': (
             ['--pan-graph-db'],
             {'metavar': "PAN_GRAPH_DB",
              'required': True,
              'help': "Anvi'o pangenome graph database."}
                 ),
-    'graph-nodes': (   
+    'graph-nodes': (
             ['--graph-nodes'],
             {'metavar': "NODE_1,NODE_2",
              'required': True,

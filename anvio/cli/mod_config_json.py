@@ -25,7 +25,7 @@ __description__ = "Modify the config-json file or any other file in JSON format.
 def main():
     args = get_args()
 
-    try:  
+    try:
         run_program()
     except ConfigError as e:
         print(e)
