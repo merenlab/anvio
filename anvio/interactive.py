@@ -3313,16 +3313,11 @@ class PangraphInteractive(PanGraphSuperclass):
         if not self.pan_graph_db_path:
             raise ConfigError("Unfortunately you can only use this program with a pangenome graph database.")
 
-        if A('pan_graph_db'):
-            PanGraphSuperclass.__init__(self, self.args)
-            self.init_pangenome_graph()
-            self.init_synteny_gene_clusters()
-            self.init_synteny_gene_clusters_functions()
-            self.init_synteny_gene_clusters_functions_summary_dict()
-        else:
-            self.run.warning("Since you did not provide anvi'o with a pan-db file, this program will initiate "
-                             "the pangenome graph interface with the JSON file you have provided",
-                             header="NO PAN DB, BUT ALL GOOD 👍", lc="yellow")
+        PanGraphSuperclass.__init__(self, self.args)
+        self.init_pangenome_graph()
+        self.init_synteny_gene_clusters()
+        self.init_synteny_gene_clusters_functions()
+        self.init_synteny_gene_clusters_functions_summary_dict()
 
 
 class ContigsInteractive():

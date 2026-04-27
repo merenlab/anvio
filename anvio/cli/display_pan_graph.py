@@ -56,18 +56,14 @@ def get_args():
     groupA.add_argument(*anvio.A('pan-graph-db'), **anvio.K('pan-graph-db', {'required': False}))
     groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
 
-    groupB = parser.add_argument_group('OPTIONAL INPUT', "By default, this program will read the pan graph data from the pan-db tables. However, "
-                                "you can also provide it with a JSON file that you have generated previously, in which case the program will skip "
-                                "attempting to read anything from the pan-db and will use the input file to initialize an interface.")
-
-    groupC = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
-    groupC.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
-    groupC.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
-    groupC.add_argument(*anvio.A('port-number'), **anvio.K('port-number'))
-    groupC.add_argument(*anvio.A('browser-path'), **anvio.K('browser-path'))
-    groupC.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
-    groupC.add_argument(*anvio.A('password-protected'), **anvio.K('password-protected'))
-    groupC.add_argument(*anvio.A('export-svg'), **anvio.K('export-svg'))
+    groupB = parser.add_argument_group('SERVER CONFIGURATION', "For power users.")
+    groupB.add_argument(*anvio.A('dry-run'), **anvio.K('dry-run'))
+    groupB.add_argument(*anvio.A('ip-address'), **anvio.K('ip-address'))
+    groupB.add_argument(*anvio.A('port-number'), **anvio.K('port-number'))
+    groupB.add_argument(*anvio.A('browser-path'), **anvio.K('browser-path'))
+    groupB.add_argument(*anvio.A('server-only'), **anvio.K('server-only'))
+    groupB.add_argument(*anvio.A('password-protected'), **anvio.K('password-protected'))
+    groupB.add_argument(*anvio.A('export-svg'), **anvio.K('export-svg'))
 
     return parser.get_args(parser)
 
