@@ -1003,4 +1003,3 @@ class GenbankToAnvio:
         return {'external_gene_calls': self.output_gene_calls_path,
                 'gene_functional_annotation': self.output_functions_path,
                 'path': self.output_fasta_path}
-

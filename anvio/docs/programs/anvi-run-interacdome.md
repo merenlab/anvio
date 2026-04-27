@@ -41,10 +41,8 @@ anvi-run-interacdome -c %(contigs-db)s \
                      -T 8
 {{ codestop }}
 
-Additionally, there are numerous thresholds that you can set: 
+Additionally, there are numerous thresholds that you can set:
 
-1. [`--min-binding-frequency` to ignore very low frequencies](https://merenlab.org/2020/07/22/interacdome/#filtering-low-binding-frequency-scores). The InteracDome scale is from 0 (most likely not involved in binding) to 1 (most likely involved in binding). The default cutoff is 0.200000. 
+1. [`--min-binding-frequency` to ignore very low frequencies](https://merenlab.org/2020/07/22/interacdome/#filtering-low-binding-frequency-scores). The InteracDome scale is from 0 (most likely not involved in binding) to 1 (most likely involved in binding). The default cutoff is 0.200000.
 2. [`--min-hit-fraction` to remove poor quality HMM hits]((https://merenlab.org/2020/07/22/interacdome/#filtering-partial-hits)). The default value is 0.5, so at least half of a profile HMM's length must align to your gene, otherwise the hit will be discarded.
 3. [`--information-content-cutoff` to ignore low-qulaity domain hits](https://merenlab.org/2020/07/22/interacdome/#filtering-bad-hits-with-information-content). The default value is 4, which means every amino acid of your gene must match the consensus amino acid of the match state for each mate state with [information content](https://en.wikipedia.org/wiki/Sequence_logo) greater than 4. Decreasing this cutoff yields an increasingly stringent filter.
-
-

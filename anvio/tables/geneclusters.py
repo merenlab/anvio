@@ -61,5 +61,3 @@ class TableForGeneClusters(Table):
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
         database._exec_many('''INSERT INTO %s VALUES (?,?,?,?)''' % t.pan_gene_clusters_table_name, db_entries)
         database.disconnect()
-
-

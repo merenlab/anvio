@@ -931,5 +931,3 @@ def check_MODELLER(executable=None):
                           "`--modeller-executable`." % (executable, " ".join(command)))
 
     return executable
-
-

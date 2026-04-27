@@ -344,5 +344,3 @@ class Diamond:
             cols = tuple(self.outfmt.split(" ")[1:])
 
         return pd.read_csv(results_path, sep='\t', comment='#', names=cols, index_col=False)
-
-

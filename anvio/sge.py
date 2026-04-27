@@ -255,4 +255,3 @@ class SGE:
                 break
 
         return info_dict
-

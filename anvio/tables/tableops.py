@@ -132,5 +132,3 @@ class Table(object):
         database.disconnect()
 
         self.progress.end()
-
-

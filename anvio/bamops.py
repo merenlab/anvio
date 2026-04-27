@@ -2298,5 +2298,3 @@ def _trim(cigartuples, cigar_consumption, query_sequence, reference_sequence, re
         reference_start += ref_positions_trimmed
 
     return cigartuples, query_sequence, reference_sequence, reference_start, reference_end
-
-
