@@ -1,4 +1,3 @@
-# -*- coding: utf-8
 # pylint: disable=line-too-long
 """A library to help anvi'o describe itself"""
 

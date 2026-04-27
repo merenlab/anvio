@@ -1,4 +1,3 @@
-#!/usr/bin/env python # -*- coding: utf-8
 # pylint: disable=line-too-long
 
 """Classes to work with ngrams of contig functions.
@@ -139,7 +138,7 @@ class NGram(object):
         # number of genomes in genome-storage
         if self.genome_names_to_focus:
             self.num_contigs_in_external_genomes_with_genes = len(self.genome_names_to_focus)
-        else:   
+        else:
             self.num_contigs_in_external_genomes_with_genes = len(self.genomes_storage.get_all_genome_names())
 
         if not skip_sanity_check:

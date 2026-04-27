@@ -1,4 +1,3 @@
-# -*- coding: utf-8
 # pylint: disable=line-too-long
 """Library for tRNA-seq dataset operations
 

@@ -1,4 +1,3 @@
-# -*- coding: utf-8
 # pylint: disable=line-too-long
 
 """Lonely, helper functions that are broadly used and don't fit anywhere"""
@@ -3961,7 +3960,7 @@ def to_jsonable(obj):
 
     Examples
     ========
-    >>> d = {...} # some dict of any size and level of nestedness 
+    >>> d = {...} # some dict of any size and level of nestedness
     >>> json.dumps(f, default=utils.to_jsonable)
     """
 
@@ -5083,7 +5082,7 @@ def split_by_delim_not_within_parens(d, delims, return_delims=False):
     d : str
         string to split
     delims : str or list of str
-        a single delimiter, or a list of delimiters, to split on. Note that if delims is the empty string (""), every 
+        a single delimiter, or a list of delimiters, to split on. Note that if delims is the empty string (""), every
         individual character in the string that is not within parentheses will be returned in the list of splits.
     return_delims : boolean
         if this is true then the list of delimiters found between each split is also returned
@@ -5111,7 +5110,7 @@ def split_by_delim_not_within_parens(d, delims, return_delims=False):
             parens_level += 1
         elif d[i] == ")":
             parens_level -= 1
-            if delims == "" and parens_level == 0: 
+            if delims == "" and parens_level == 0:
                 splits.append(d[last_split_index+1:i]) # we don't include the parentheses characters
                 last_split_index = i + 1
         elif delims == "" and parens_level == 0: # allow the use of "" as delimiter to split each character

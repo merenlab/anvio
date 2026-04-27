@@ -1,4 +1,3 @@
-# -*- coding: utf-8
 """Parser for HMMER's various outputs"""
 
 import anvio

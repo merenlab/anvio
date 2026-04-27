@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 # pylint: disable=line-too-long
 """To make sense of config files for mixed clustering"""
 

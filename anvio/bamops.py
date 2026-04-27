@@ -1,4 +1,3 @@
-# -*- coding: utf-8
 # pylint: disable=line-too-long
 
 """Classes for anything BAM-related"""
@@ -1801,7 +1800,7 @@ class CircularityPredictor:
                 continue
 
             # Check if this read is in an edge zone (for edge coherence calculation)
-            read_in_edge_zone = (read.reference_start < edge_zone_start or 
+            read_in_edge_zone = (read.reference_start < edge_zone_start or
                                 read.reference_start >= edge_zone_end)
 
             if read_in_edge_zone:

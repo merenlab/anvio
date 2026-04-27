@@ -1,4 +1,3 @@
-# -*- coding: utf-8
 # pylint: disable=line-too-long
 """
     Classes for pan operations.
@@ -2015,7 +2014,7 @@ class FragmentedGeneAnnotator():
                     # neighbor is a real independent gene, not a stray fragment (because, and
                     # bear with me here, the genome with the intact full-length gene also has
                     # separate gene in that family .. assumptions assumptions.. but this logic
-                    # really fixed the issue of over-identifying bona fide genes that are 
+                    # really fixed the issue of over-identifying bona fide genes that are
                     # distinct asfragments)
                     if reference_genome in gene_clusters.get(neighbor_cluster, {}):
                         continue

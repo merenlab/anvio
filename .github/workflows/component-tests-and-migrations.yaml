@@ -1,20 +1,21 @@
-name: Daily Component Tests and Migrations
+name: Component Tests and Migrations
 
 on:
+  workflow_dispatch:
   schedule:
     - cron: "0 9 * * *"
 
 jobs:
   build:
-    name: Daily Component Tests (Python ${{ matrix.python-version }})
+    name: Component Tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: ["3.10"]
       fail-fast: false
     steps:
-    - uses: actions/checkout@v4
-    - uses: conda-incubator/setup-miniconda@v3
+    - uses: actions/checkout@v6
+    - uses: conda-incubator/setup-miniconda@v4
       with:
         miniconda-version: 'latest'
         auto-update-conda: true
@@ -30,7 +31,6 @@ jobs:
       run: |
         conda info
         conda list
-    - uses: actions/checkout@v4
     - name: "Install anvi'o from the codebase"
       shell: bash -l {0}
       run: |
@@ -40,7 +40,7 @@ jobs:
       run: |
         interactive_dir=$(python -c "import site; print(site.getsitepackages()[0] + '/anvio/data/interactive')")
         echo "interactive_dir_path=$interactive_dir" >> $GITHUB_ENV
-    - uses: actions/setup-node@v4
+    - uses: actions/setup-node@v6
       with:
         node-version: 18
     - name: "Install npm dependencies for Anvi'o interactive interfaces"

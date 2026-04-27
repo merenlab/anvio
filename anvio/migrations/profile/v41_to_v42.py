@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 """Migration script to remove zero-value rows from view tables into zero_coverage tables.
 

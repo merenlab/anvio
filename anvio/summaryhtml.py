@@ -1,4 +1,3 @@
-# coding: utf-8
 # pylint: disable=line-too-long
 """Creates an HTML output to act as a front-end for the static summary directory."""
 
@@ -48,7 +47,7 @@ try:
 except ImportError:
     raise ConfigError('You need to have Django module (http://djangoproject.com) installed on your system to generate HTML output.')
 
-# It seems this really wants to be here in the global context :/ 
+# It seems this really wants to be here in the global context :/
 settings.configure(**local_settings)
 django.setup()
 

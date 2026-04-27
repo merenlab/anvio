@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """This file contains classes for predicting metabolic exchanges via the reaction network and KGML processing subsystems."""
 
 import os
@@ -1086,7 +1085,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
 
                         def update_reported_pathway_evidence_for_chain(current_chain, comparison_chain):
                             """Updates variables like overall_max_prior with values from the current pathway map as the new 'best'
-                            evidence for an exchange. current_chain and comparison_chain store the length, overlap length, overlap proportion, and map id of 
+                            evidence for an exchange. current_chain and comparison_chain store the length, overlap length, overlap proportion, and map id of
                             the current 'best' reaction chain and the comparison chain, respectively."""
                             cur_max, cur_overlap, cur_prop, cur_map = current_chain
                             comp_max, comp_overlap, comp_prop, comp_map = comparison_chain
@@ -1284,7 +1283,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                     potentially_exchanged_compounds[compound_id]['consumption_overlap_proportion'] = None
                     potentially_exchanged_compounds[compound_id]['production_chain_pathway_map'] = None
                     potentially_exchanged_compounds[compound_id]['consumption_chain_pathway_map'] = None
-            else: # no prediction for this compound. 
+            else: # no prediction for this compound.
                 if self.report_compounds_with_no_prediction:
                     no_prediction_compounds[compound_id] = {'compound_name': compound_name,
                                                         'genomes': all_genome_names if all_genome_names else None,

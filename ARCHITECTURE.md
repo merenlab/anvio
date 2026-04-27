@@ -643,6 +643,39 @@ See https://anvio.org/install/
 
 The development mode installation will allow editing the code and immediately testing it without re-installing anything.
 
+### Linting
+
+Anvi'o uses [Ruff](https://docs.astral.sh/ruff/) for linting, configured in `ruff.toml`, and linting is enforced via a GitHub Actions workflow which is described at `.github/workflows/git-hooks.yaml`. The linting check will runs on every pull request, and if a PR introduces code that violates any of the rules in `ruff.toml`, the CI job will fail and the PR will be blocked until it is fixed. If you directly commit to `master`, even if your changes violate the rules, your commit will go through, but the repository admins will get an email about it. So the best strategy here is to **catch these violations before pushing anything** to `master`.
+
+To catch violations locally **before pushing**, please install [pre-commit](https://pre-commit.com/) and set up the git hook so it is in effect. For this you need to run the following commands in your anvi'o environment:
+
+```bash
+pip install pre-commit
+pre-commit install
+```
+
+After that, `ruff` will run automatically every time you run `git commit`. If it finds and auto-fixes something, the commit will be aborted so you can review the fix, re-stage, and commit again.
+
+You can run the linter manually at any time:
+
+```bash
+pre-commit run --all-files
+```
+
+You can also run `ruff` directly, which will go much faster than running pre-commit, but it will require you to also install `ruff` in your environment:
+
+```bash
+ruff check .
+```
+
+You can install `ruff` using `pip`:
+
+```
+pip install ruff
+```
+
+One issue with pre-commit is that if you wish to do partial commits (i.e., staging only one file while other files have unstaged changes) you may run into issues. There are multiple ways to solve this, but the simplest (and laziest) is to add `--no-verify` to your `git commit` command.
+
 ### Running Tests
 
 Tests are shell scripts that run actual anvi'o commands end-to-end for component testing. They are under,

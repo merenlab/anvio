@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8
 """
 Classes to use local databases for tRNA taxonomy to affiliate tRNA seqeunces in anvi'o
 databases with taxon names.

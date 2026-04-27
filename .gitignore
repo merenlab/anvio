@@ -1,18 +1,32 @@
-.*
+# system / OS-specific helper files
+.DS_Store
+
+# Python artifacts and compiled files
 *.pyc
 *.so
+/*.egg-info/
+anvio/__pycache__/
+
+# configuration files, indexes, binary databases, etc
+.env
 *.nhr
 *.nin
 *.nsq
-.env
+.snakemake
+anvio/data/misc/SCG_TAXONOMY/GTDB/SCG_SEARCH_DATABASES/*.dmnd
+
+# Python build and component test outputs
 /build/
 /dist/
 test-output/
-node_modules/
 package-lock.json
-/*.egg-info/
-anvio/__pycache__/
-anvio/extensions/concoct/vbgmm.c
+anvio/tests/sandbox/update-contigs-and-bams-for-mini-test/output
+anvio/tests/sandbox/test_visualize_split_coverages/TEST_OUTDIR
+
+# external modules
+node_modules/
+
+# domain-specific anvi'o assets
 anvio/data/misc/COG/
 anvio/data/misc/Pfam/
 anvio/data/misc/PDB.db
@@ -20,16 +34,11 @@ anvio/data/misc/Interacdome/
 anvio/data/misc/MODELLER/db/
 anvio/data/misc/CAZyme/
 anvio/data/misc/ModelSEED/
-anvio/data/interactive/lib/ngl/
-smtp_config.ini
-.snakemake
+anvio/data/misc/SCG
+anvio/data/misc/SCG/
 anvio/data/misc/SCG_test
 anvio/data/misc/SCG_old.tar.gz
-anvio/data/misc/SCG
 anvio/data/misc/KEGG
-diamond-log-file.txt
-anvio/data/misc/SCG_TAXONOMY/GTDB/SCG_SEARCH_DATABASES/*.dmnd
-anvio/tests/sandbox/update-contigs-and-bams-for-mini-test/output
-anvio/tests/sandbox/test_visualize_split_coverages/TEST_OUTDIR
 anvio/data/misc/KEGG/
+anvio/data/interactive/lib/ngl/
 anvio/data/misc/TRNA_TAXONOMY/

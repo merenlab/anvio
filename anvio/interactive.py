@@ -1,4 +1,3 @@
-# -*- coding: utf-8
 # pylint: disable=line-too-long
 """The module that curates data for the interactive interface"""
 
@@ -765,7 +764,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.views[self.default_view] = {'header': view_data_columns[1:],
                                              'dict': utils.get_TAB_delimited_file_as_dictionary(view_data_path)}
             
-            # sanity check for items order stored in database, since we cannot check the consistency of items 
+            # sanity check for items order stored in database, since we cannot check the consistency of items
             # when we import items orders as the view data is not stored in the profile db
             if item_orders_in_db:
                 for item_order in item_orders_in_db:

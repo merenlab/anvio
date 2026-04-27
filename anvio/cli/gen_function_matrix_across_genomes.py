@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """A program that uses AggregateFunctions class to generate human-readable output for functions across genomes."""
 
 import os

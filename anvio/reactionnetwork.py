@@ -1,4 +1,3 @@
-# -*- coding: utf-8
 # pylint: disable=line-too-long
 """Generate, manipulate, and export metabolic reaction networks from gene annotations."""
 
@@ -2771,7 +2770,7 @@ class ReactionNetwork:
 
         return reaction_pathways
 
-    def _get_pathway_map_set(self, map_ids_to_exclude: set[str] = None, 
+    def _get_pathway_map_set(self, map_ids_to_exclude: set[str] = None,
             id_selection_prefix: str = None) -> set[str]:
         """Returns a set of KEGG Pathway Maps associated with the KOs in the network.
         

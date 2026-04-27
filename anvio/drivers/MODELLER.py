@@ -1,4 +1,3 @@
-# coding: utf-8
 """
 Interface to MODELLER (https://salilab.org/modeller/).
 """
@@ -846,7 +845,7 @@ def check_MODELLER(executable=None):
 
     Checks the executable exists, that a license exists, and can produce the expected output of a
     modeller executable. Exists outside of the class MODELLER so it does not have to be checked
-    everytime the class is initialized. 
+    everytime the class is initialized.
 
     Parameters
     ==========

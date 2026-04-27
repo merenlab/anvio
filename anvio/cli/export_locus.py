@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """anvi-export-locus, first of its name, splitter of loci, and generator of mini contigs databases
 
   You want to play with it? This is how you could quickly test it:

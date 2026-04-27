@@ -1,6 +1,6 @@
 <p align="center"><img src="https://github.com/merenlab/anvio/raw/master/anvio/data/interactive/images/logo-fancy.png" height="256" /></p>
 
-[![Daily Component Tests and Migrations](https://github.com/merenlab/anvio/actions/workflows/daily-component-tests-and-migrations.yaml/badge.svg)](https://github.com/merenlab/anvio/actions/workflows/daily-component-tests-and-migrations.yaml)
+[![Daily Component Tests and Migrations](https://github.com/merenlab/anvio/actions/workflows/component-tests-and-migrations.yaml/badge.svg)](https://github.com/merenlab/anvio/actions/workflows/component-tests-and-migrations.yaml)
 
 ### Releases
 

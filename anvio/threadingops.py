@@ -1,4 +1,3 @@
-# coding: utf-8
 """A namespace for various threading operations.
 
 Exports

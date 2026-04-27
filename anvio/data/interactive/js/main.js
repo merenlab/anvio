@@ -1560,6 +1560,7 @@ function syncViews() {
             layers[layer_id]["margin"] = $(layer).find('.input-margin').val();
             layers[layer_id]["type"] = $(layer).find('.type').val();
             layers[layer_id]["color-start"] = $(layer).find('.colorpicker:first').attr('color');
+            layers[layer_id]["visible"] = $(layer).find('.layer-visibility').hasClass('bi-eye');
 
             if (layers[layer_id]["type"] === 'text')
                 layers[layer_id]["height"] = '0';
@@ -1652,7 +1653,6 @@ function buildLayersTable(order, settings)
         var item_group_attr = item_group ? ' items-group-name="' + item_group + '"' : '';
 
         var short_name = (layer_name.indexOf('!') > -1) ? layer_name.split('!')[0] : layer_name;
-        short_name = (short_name.length > 10) ? short_name.slice(0,10) + "..." : short_name;
 
         var hasViewSettings = false;
         if (typeof settings !== 'undefined' && typeof settings[layer_id] !== 'undefined') {
@@ -1678,15 +1678,18 @@ function buildLayersTable(order, settings)
             {
                 var height = layer_settings['height'];
                 var margin = layer_settings['margin'];
+                var visible = (layer_settings['visible'] !== undefined) ? layer_settings['visible'] : true;
             }
             else
             {
                 var height = '50';
                 var margin = '15';
+                var visible = true;
             }
 
-            var template = '<tr' + item_group_attr + '>' +
+            var template = '<tr' + item_group_attr + ' class="{hidden-class}">' +
                 '<td><img src="images/drag.gif" /></td>' +
+                '<td><i class="bi {eye-class} layer-visibility" title="Toggle visibility"></i></td>' +
                 '<td>Parent</td>' +
                 '<td>n/a</td>' +
                 '<td>n/a</td>' +
@@ -1700,7 +1703,9 @@ function buildLayersTable(order, settings)
 
             template = template.replace(new RegExp('{id}', 'g'), layer_id)
                                .replace(new RegExp('{height}', 'g'), height)
-                               .replace(new RegExp('{margin}', 'g'), margin);
+                               .replace(new RegExp('{margin}', 'g'), margin)
+                               .replace(new RegExp('{eye-class}', 'g'), visible ? 'bi-eye' : 'bi-eye-slash')
+                               .replace(new RegExp('{hidden-class}', 'g'), visible ? '' : 'layer-hidden');
 
             $('#tbody_layers').prepend(template);
         }
@@ -1715,11 +1720,13 @@ function buildLayersTable(order, settings)
             {
                 var height = layer_settings['height'];
                 var margin = layer_settings['margin'];
+                var visible = (layer_settings['visible'] !== undefined) ? layer_settings['visible'] : true;
             }
             else
             {
                 var height = '300';
                 var margin = getGroupLeadingMargin(layer_name, '15');
+                var visible = true;
             }
 
             if (hasViewSettings)
@@ -1731,8 +1738,9 @@ function buildLayersTable(order, settings)
                 var norm = (mode == 'full') ? 'log' : 'none';
             }
 
-            var template = '<tr' + item_group_attr + '>' +
+            var template = '<tr' + item_group_attr + ' class="{hidden-class}">' +
                 '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
+                '<td><i class="bi {eye-class} layer-visibility" title="Toggle visibility"></i></td>' +
                 '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
                 '<td></td>' +
                 '<td style="width: 50px;">n/a</td>' +
@@ -1756,7 +1764,9 @@ function buildLayersTable(order, settings)
                                .replace(new RegExp('{option-' + norm + '}', 'g'), ' selected')
                                .replace(new RegExp('{option-([a-z]*)}', 'g'), '')
                                .replace(new RegExp('{height}', 'g'), height)
-                               .replace(new RegExp('{margin}', 'g'), margin);
+                               .replace(new RegExp('{margin}', 'g'), margin)
+                               .replace(new RegExp('{eye-class}', 'g'), visible ? 'bi-eye' : 'bi-eye-slash')
+                               .replace(new RegExp('{hidden-class}', 'g'), visible ? '' : 'layer-hidden');
 
             $('#tbody_layers').append(template);
         }
@@ -1788,9 +1798,11 @@ function buildLayersTable(order, settings)
                     var type = layer_settings['type'];
                     var color = layer_settings['color'];
                     var color_start = layer_settings['color-start'];
+                    var visible = (layer_settings['visible'] !== undefined) ? layer_settings['visible'] : true;
                 }
                 else
                 {
+                    var visible = true;
                     var height = getNamedLayerDefaults(layer_name, 'height', '90');
                     var margin = getGroupLeadingMargin(layer_name, getNamedLayerDefaults(layer_name, 'margin', '15'));
                     var color = "#000000";
@@ -1823,8 +1835,9 @@ function buildLayersTable(order, settings)
                     }
                 }
 
-                var template = '<tr' + item_group_attr + '>' +
+                var template = '<tr' + item_group_attr + ' class="{hidden-class}">' +
                     '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
+                    '<td><i class="bi {eye-class} layer-visibility" title="Toggle visibility"></i></td>' +
                     '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
                     '<td><div id="picker_start{id}" class="colorpicker picker_start" color="{color-start}" style="background-color: {color-start}; {color-start-hide}"></div><div id="picker{id}" class="colorpicker picker_end" color="{color}" style="background-color: {color}; {color-hide}"></div></td>' +
                     '<td style="width: 50px;">' +
@@ -1852,7 +1865,9 @@ function buildLayersTable(order, settings)
                                    .replace(new RegExp('{color-start-hide}', 'g'), (type!='text') ? '; visibility: hidden;' : '')
                                    .replace(new RegExp('{height-hide}', 'g'), (type=='text') ? '; visibility: hidden;' : '')
                                    .replace(new RegExp('{height}', 'g'), height)
-                                   .replace(new RegExp('{margin}', 'g'), margin);
+                                   .replace(new RegExp('{margin}', 'g'), margin)
+                                   .replace(new RegExp('{eye-class}', 'g'), visible ? 'bi-eye' : 'bi-eye-slash')
+                                   .replace(new RegExp('{hidden-class}', 'g'), visible ? '' : 'layer-hidden');
 
                 $('#tbody_layers').append(template);
             }
@@ -1887,12 +1902,14 @@ function buildLayersTable(order, settings)
                     var margin = layer_settings['margin'];
                     var color_start = layer_settings['color-start'];
                     var type = layer_settings['type'];
+                    var visible = (layer_settings['visible'] !== undefined) ? layer_settings['visible'] : true;
                 }
                 else
                 {
                     var height = getNamedLayerDefaults(layer_name, 'height', '180');
                     var color  = getNamedLayerDefaults(layer_name, 'color', '#000000');
                     var margin = getGroupLeadingMargin(layer_name, getNamedLayerDefaults(layer_name, 'margin', '15'));
+                    var visible = true;
                     if (mode == 'collection') {
                         var type = getNamedLayerDefaults(layer_name, 'type', 'intensity');
                         var color_start = "#EEEEEE";
@@ -1902,8 +1919,9 @@ function buildLayersTable(order, settings)
                     }
                 }
 
-                var template = '<tr' + item_group_attr + '>' +
+                var template = '<tr' + item_group_attr + ' class="{hidden-class}">' +
                     '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
+                    '<td><i class="bi {eye-class} layer-visibility" title="Toggle visibility"></i></td>' +
                     '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
                     '<td><div id="picker_start{id}" class="colorpicker picker_start" color="{color-start}" style="background-color: {color-start}; {color-start-hide}"></div><div id="picker{id}" class="colorpicker" color="{color}" style="background-color: {color}"></div></td>' +
                     '<td style="width: 50px;">' +
@@ -1942,7 +1960,9 @@ function buildLayersTable(order, settings)
                                    .replace(new RegExp('{max}', 'g'), max)
                                    .replace(new RegExp('{min-disabled}', 'g'), (min_disabled) ? ' disabled': '')
                                    .replace(new RegExp('{max-disabled}', 'g'), (max_disabled) ? ' disabled': '')
-                                   .replace(new RegExp('{margin}', 'g'), margin);
+                                   .replace(new RegExp('{margin}', 'g'), margin)
+                                   .replace(new RegExp('{eye-class}', 'g'), visible ? 'bi-eye' : 'bi-eye-slash')
+                                   .replace(new RegExp('{hidden-class}', 'g'), visible ? '' : 'layer-hidden');
 
 
                 $('#tbody_layers').append(template);
@@ -2169,6 +2189,7 @@ function serializeSettings(use_layer_names) {
                 'max'           : {'value': parseFloat($(tr).find('.input-max').val()), 'disabled': $(tr).find('.input-max').is(':disabled') },
                 'type'          : $(tr).find('.type').val(),
                 'color-start'   : $(tr).find('.colorpicker:first').attr('color'),
+                'visible'       : $(tr).find('.layer-visibility').hasClass('bi-eye'),
             };
         }
     );
@@ -2250,6 +2271,16 @@ function drawTree() {
                 {
                     $('#tree-radius-container').show();
                     $('#tree-radius').val(Math.max(VIEWER_HEIGHT, VIEWER_WIDTH));
+                }
+
+                if (settings['tree-height'] == 0)
+                {
+                    $('#tree_height').val(VIEWER_HEIGHT);
+                }
+
+                if (settings['tree-width'] == 0)
+                {
+                    $('#tree_width').val(VIEWER_WIDTH);
                 }
 
                 a_display_is_drawn = true;

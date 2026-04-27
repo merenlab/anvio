@@ -1,4 +1,3 @@
-# coding: utf-8
 # pylint: disable=line-too-long
 """Provides the necessary class to profile BAM files."""
 
@@ -569,7 +568,7 @@ class BAMProfilerQuick:
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path)
         genes_where_clause = f"source == '{self.gene_caller}'"
         if self.gene_ids_of_interest:
-            genes_where_clause += f" and gene_callers_id in ({', '.join([str(g) for g in self.gene_ids_of_interest])})" 
+            genes_where_clause += f" and gene_callers_id in ({', '.join([str(g) for g in self.gene_ids_of_interest])})"
         self.genes_in_contigs = contigs_db.db.get_some_rows_from_table_as_dict(t.genes_in_contigs_table_name, where_clause=genes_where_clause, error_if_no_data=True)
 
         # little sanity check to make sure we got all the gene calls the user asked for
