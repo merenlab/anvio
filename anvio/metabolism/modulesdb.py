@@ -2009,6 +2009,3 @@ class BriteTable:
 
     def get_total_entries(self):
         return self.total_entries
-
-
-

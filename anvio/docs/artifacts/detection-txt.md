@@ -9,7 +9,3 @@ This is a tab-delimited file where each row describes a specific gene and each c
     13948     0.895842    0.828481    0.3721947
     23026     0.949383    0.983923    1.0000000
     ...
-
-
-
-

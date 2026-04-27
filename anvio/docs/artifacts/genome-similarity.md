@@ -18,4 +18,3 @@ For example, if you used `pyANI`'s `ANIb` (the default program), the output dire
 -`ANIb_similarity_errors.newick` and `ANIb_similarity_errors.txt`: contains similarity errors (total number of mismatches, not including indels)
 
 -`ANIb_hadamard.newick` and `ANIb_hadamard.txt`: contains the hadamard matrix (dot product of identity and coverage matrices)
-

@@ -12,4 +12,3 @@ A %(pdb-db)s can be created via the program %(anvi-setup-pdb-database)s. Alterna
 ## Notes
 
 The %(pdb-db)s generated via %(anvi-setup-pdb-database)s is ~20GB.
-

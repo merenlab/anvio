@@ -6,4 +6,3 @@ For example:
     1         Eukarya      Chordata       Mammalia
     2         Prokarya     Bacteroidetes  Bacteroidia
     ...
-

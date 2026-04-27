@@ -9,4 +9,3 @@ For more information on the structure database, see [this blog post](http://mere
 
 {:.notice}
 This artifact is currently a stub. I'm looking at you, Evan. - Evan
-

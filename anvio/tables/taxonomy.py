@@ -227,8 +227,3 @@ class TablesForGeneLevelTaxonomy(Table, TaxonNamesTable):
         self.run.info('Splits taxonomy', 'Input data from "%s" annotated %d of %d splits (%.1f%%) with taxonomy.'\
                                             % (self.source, num_splits_with_taxonomy, num_splits_processed,
                                                num_splits_with_taxonomy * 100.0 / num_splits_processed))
-
-
-
-
-

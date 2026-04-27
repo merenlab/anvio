@@ -139,4 +139,3 @@ You can use this program to look at the available information in your databases,
 - views (using `--show-views`)
 - states (using `--show-states`)
 - collections (using `--list-collections`)
-

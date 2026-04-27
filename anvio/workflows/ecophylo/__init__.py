@@ -550,4 +550,3 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             raise ConfigError(f"You have one or more 'group' in your HMM list file (or multiple identical entries - but you "
                               f"shouldn't be doing that) and at the moment it is not compatible with anvi-estimate-scg-taxonomy. "
                               f"The good news is that you can turn off anvi-run-scg-taxonmy in your config file.")
-

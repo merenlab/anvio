@@ -675,4 +675,3 @@ class SamplesTxt:
         Convenience wrapper that returns list(self.iter_readsets(...)).
         """
         return list(self.iter_readsets(read_type_suffix=read_type_suffix))
-

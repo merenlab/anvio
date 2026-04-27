@@ -69,5 +69,3 @@ You also have the option to
 - Skip the use of DSSP, which predicts beta sheets, alpha helices, certain bond angles, and relative
   solvent acessibility of residues.
 - Output **all** the raw data, just provide a path to the desired directory with the flag `--dump-dir`.
-
-

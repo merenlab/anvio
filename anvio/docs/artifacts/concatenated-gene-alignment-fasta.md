@@ -11,4 +11,3 @@ A concatenated gene alignment fasta contains multiple of these gene alignments, 
 This information can then be used to generate a phylogenomic tree using %(anvi-gen-phylogenomic-tree)s or through programs like [FastTree](http://www.microbesonline.org/fasttree/).
 
 In Anvi'o, this is an output of %(anvi-get-sequences-for-gene-clusters)s (for generating a tree based off of gene clusters in your workflow) as well as %(anvi-get-sequences-for-hmm-hits)s (for generating a tree based off of the genes that got HMM hits).
-

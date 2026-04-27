@@ -24,7 +24,3 @@ This artifact is really only used when taking information out of anvi'o, so enjo
     13948     34.89584    6.284812    3.3721947
     23026     23.94938    9.239235    13.238569
     ...
-
-
-
-

@@ -53,4 +53,3 @@ Here is an example of a `.gff` file for the [Homo sapiens RNAP III subunit D seq
     ###
     # command line:
     # /data/www/augustus/augustus/bin/augustus --species=human --strand=both --singlestrand=false --genemodel=partial --codingseq=on --sample=100 --keep_viterbi=true --alternatives-from-sampling=true --minexonintronprob=0.2 --minmeanexonintronprob=0.5 --maxtracks=2 /data/www/augustus/webservice/data/AUG-707407769/input.fa --exonnames=on
-

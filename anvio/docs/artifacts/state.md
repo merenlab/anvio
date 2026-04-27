@@ -12,4 +12,3 @@ Here is the information stored in a state:
     * This includes whether your display is in circles or rectangles
 
 No more having to manually set parameters like your layer order for each bin you look at! Just save a state when the interface is adjusted to your liking, and using anvi'o will be that much easier.
-

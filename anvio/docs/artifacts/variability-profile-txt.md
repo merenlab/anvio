@@ -45,5 +45,3 @@ If you provided %(anvi-gen-variability-profile)s with the flag `--include-additi
 
 {:.notice}
 This is currently only implemented for `--engine AA` and `--engine CDN`. `--include-additional-data` will not currently append %(misc-data-nucleotides)s data to your matrix output when `--engine NT` is used.
-
-

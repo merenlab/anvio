@@ -66,5 +66,3 @@ You can change how anvi'o picks the representative sequence from each cluster wi
 - `centrality` (default): picks the genome with highest average similiarty to every other genome in the cluster
 
 You can also choose to skip checking genome hashes (which will warn you if you have identical sequences in separate genomes with different names), provide a log path for debug messages or use multithreading (relevant only if not providing `--ani-dir` or `--mash-dir`).
-
-

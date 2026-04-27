@@ -10,5 +10,3 @@ anvi-export-structures -s %(structure-db)s \
 {{ codestop }}
 
 You can also provide a list of gene caller IDs, either directly through the parameter `--gene-caller-ids` or through a file with one gene caller ID per line.
-
-

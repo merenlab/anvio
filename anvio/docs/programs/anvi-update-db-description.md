@@ -8,4 +8,3 @@ Simply write out the description that you would prefer in a plain text file (wit
 anvi-update-db-description --description my_description.txt \
                            %(contigs-db)s
 {{ codestop }}
-

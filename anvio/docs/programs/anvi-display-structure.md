@@ -55,5 +55,3 @@ If you're choosing to have %(anvi-display-structure)s calculate variability on-t
 ### Other parameters
 
 Power users can also change the server configuration (i.e. set the IP address, port number, browser path, server password, etc.)
-
-

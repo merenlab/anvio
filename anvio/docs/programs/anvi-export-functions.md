@@ -12,4 +12,3 @@ You can also get annotations for only a specific list of sources. For example:
 anvi-export-functions -c %(contigs-db)s \
                       --annotation-sources source_1,source_2,source_3
 {{ codestop }}
-

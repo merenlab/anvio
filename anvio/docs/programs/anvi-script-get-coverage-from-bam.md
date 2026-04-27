@@ -24,4 +24,3 @@ You must provide a BAM file, but there are three ways you can choose contigs to 
                                      -C %(collection-txt)s \
                                      -m bin
     {{ codestop }}
-

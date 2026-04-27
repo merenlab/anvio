@@ -28,4 +28,3 @@ anvi-setup-pdb-database --update
 ## Notes
 
 The output %(pdb-db)s database is ~20GB and its contents may take several hours to download.
-

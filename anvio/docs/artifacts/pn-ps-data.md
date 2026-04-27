@@ -40,4 +40,3 @@ This describes a directory that contains the following four files:
 | 1 | 1744                    | ANE_004_40M | 166      |
 | 2 | 1744                    | ANE_150_05M | 162      |
 | 3 | 1744                    | ANE_150_40M | 160      |
-

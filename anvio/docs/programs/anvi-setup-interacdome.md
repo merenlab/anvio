@@ -24,4 +24,3 @@ If you want to overwrite any data that you have already downloaded (for example 
 anvi-setup-interacdome  --interacdome-data-dir path/to/directory \
                         --reset
 {{ codestop }}
-

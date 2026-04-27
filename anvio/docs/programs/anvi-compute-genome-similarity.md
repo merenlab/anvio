@@ -69,6 +69,3 @@ Once calculated, the similarity matrix is used to create dendrograms via hierarc
 
 
 If you're getting a lot of debug/output messages, you can turn them off with `--just-do-it` or helpfully store them into a file with `--log-file`.
-
-
-
