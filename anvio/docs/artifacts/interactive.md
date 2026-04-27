@@ -225,4 +225,3 @@ The interactive interface recognizes a handful of keyboard shortcuts to help spe
 - The `T` key toggles showing the Title panel
 - Keys `1` through `8` will toggle between tabs within the Settings panel, granted the Settings panel is currently shown.
 - `CTRL`+`Z` and `CTRL`+`SHIFT`+`Z` will undo or redo bin actions, respectively.
-

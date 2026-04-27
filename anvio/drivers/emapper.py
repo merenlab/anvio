@@ -453,4 +453,3 @@ class EggNOGMapper:
 
         # alright. store annotations into the database
         self.store_annotations_in_db(drop_previous_annotations=drop_previous_annotations)
-

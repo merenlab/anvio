@@ -114,7 +114,7 @@ class SRADownloadWorkflow(WorkflowSuperClass):
 
         return target_files
 
-    
+
     def calculate_md5(self, file_path):
         """Calculate the md5sum of a file"""
         hash_md5 = hashlib.md5()

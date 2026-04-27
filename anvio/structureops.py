@@ -2042,5 +2042,3 @@ class ExternalStructuresFile(object):
 
         self.progress.end()
         return True
-
-

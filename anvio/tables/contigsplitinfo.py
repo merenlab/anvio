@@ -65,6 +65,3 @@ class TableForSplitsInfo:
     def store(self, db):
         if len(self.db_entries):
             db._exec_many('''INSERT INTO %s VALUES (%s)''' % (t.splits_info_table_name, (','.join(['?'] * len(self.db_entries[0])))), self.db_entries)
-
-
-

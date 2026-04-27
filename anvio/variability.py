@@ -466,5 +466,3 @@ class ProcessIndelCounts(object):
             self.indels[indel_hash]['coverage'] = cov
 
         self.indels = {k: v for k, v in self.indels.items() if k not in indel_hashes_to_remove}
-
-

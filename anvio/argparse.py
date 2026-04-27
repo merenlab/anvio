@@ -419,5 +419,3 @@ class PopulateAnvioDBArgs(FindAnvioDBs):
                 self.run.info(variable, reason, nl_after= (1 if (variable, reason) == self.__args_failed[-1] else 0), lc="yellow")
 
         return self.args
-
-

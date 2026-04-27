@@ -521,4 +521,3 @@ class NGram(object):
             gene_callers_id_windows.append(window)
 
         return gene_callers_id_windows
-

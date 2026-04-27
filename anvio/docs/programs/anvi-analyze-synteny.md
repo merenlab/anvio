@@ -19,7 +19,7 @@ anvi-analyze-synteny -g %(genomes-storage-db)s \
 {{ codestop }}
 
 
-### Handling genes with unknown functions 
+### Handling genes with unknown functions
 
 By default, %(anvi-analyze-synteny)s will ignore genes with unknown functions based on the annotation source of interest. However, this can be circumvented either by providing a %(pan-db)s, so the program would use gene cluster identities as function names:
 
@@ -44,7 +44,7 @@ The disadvantage of the latter strategy is that since all genes with unknown fun
 
 ### Run with multiple annotations
 
-If multiple gene annotation sources are provided (i.e., a pangenome for gene clusters identities as well as a functional annotation source), the user must define which annotation source will be used to create the %(ngrams)s using the parameter `--ngram-source`. The resulting %(ngrams)s will then be re-annotated with the second annotation source and also reported. 
+If multiple gene annotation sources are provided (i.e., a pangenome for gene clusters identities as well as a functional annotation source), the user must define which annotation source will be used to create the %(ngrams)s using the parameter `--ngram-source`. The resulting %(ngrams)s will then be re-annotated with the second annotation source and also reported.
 
 {{ codestart }}
 anvi-analyze-synteny -g %(genomes-storage-db)s \

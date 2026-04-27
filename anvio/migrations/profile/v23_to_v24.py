@@ -135,7 +135,7 @@ def migrate(db_path):
         else:
             total_reads_mapped = int(total_reads_mapped)
             layer_additional_data_table.add({samples: {'total_reads_mapped': total_reads_mapped}}, ['total_reads_mapped'])
-        
+
         full_upgrade = True
     else:
         full_upgrade = False
