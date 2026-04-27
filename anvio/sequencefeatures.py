@@ -896,37 +896,37 @@ class Palindromes:
 
             >>> from anvio.sequencefeatures import Palindromes as P
             >>> from anvio.terminal import Run
-            >>> 
+            >>>
             >>> p = P(run=Run(verbose=False))
-            >>> 
+            >>>
             >>> s = 'ooxooooooooooooooooxoooxoxxoxxoxoooooooooxoxxoxooooooooo--ooo-o-xoxoooxoooooooooooooooooo'
-            >>> 
+            >>>
             >>> RESOLUTION = lambda: [s[start:end] for start, end in p.resolve_mismatch_map(s, max_num_mismatches=max_num_mismatches, min_mismatch_distance_to_first_base=min_mismatch_distance_to_first_base, min_palindrome_length=min_palindrome_length)]
-            >>> 
+            >>>
             >>> max_num_mismatches=1
             >>> min_mismatch_distance_to_first_base=1
             >>> min_palindrome_length=5
             >>> print(RESOLUTION())
             ['ooooooooooooooooxooo', 'oxooooooooo', 'oxooooooooo', 'oooxoooooooooooooooooo']
-            >>> 
+            >>>
             >>> max_num_mismatches=1
             >>> min_mismatch_distance_to_first_base=2
             >>> min_palindrome_length=5
             >>> print(RESOLUTION())
             ['ooooooooooooooooxooo', 'ooooooooo', 'ooooooooo', 'oooxoooooooooooooooooo']
-            >>> 
+            >>>
             >>> max_num_mismatches=1
             >>> min_mismatch_distance_to_first_base=5
             >>> min_palindrome_length=5
             >>> print(RESOLUTION())
             ['oooooooooooooooo', 'ooooooooo', 'ooooooooo', 'oooooooooooooooooo']
-            >>> 
+            >>>
             >>> max_num_mismatches=5
             >>> min_mismatch_distance_to_first_base=1
             >>> min_palindrome_length=5
             >>> print(RESOLUTION())
             ['ooxooooooooooooooooxoooxoxxo', 'oxoooooooooxoxxoxooooooooo', 'oxoooxoooooooooooooooooo']
-            >>> 
+            >>>
             >>> max_num_mismatches=5
             >>> min_mismatch_distance_to_first_base=2
             >>> min_palindrome_length=5

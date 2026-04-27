@@ -898,7 +898,7 @@ class KeggEstimationAlgorithms:
     def add_module_coverage(self, mod, meta_dict_for_bin, profile_db=None, enzymes_of_interest_df=None):
         """This function updates the metabolism dictionary with coverage values for the given module.
 
-        For profile DB input, this function must be called after dbaccess.init_gene_coverage() so that the 
+        For profile DB input, this function must be called after dbaccess.init_gene_coverage() so that the
         relevant gene coverage values are initialized.
 
         NEW KEYS ADDED TO METABOLISM COMPLETENESS DICT

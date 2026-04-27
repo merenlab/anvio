@@ -1085,7 +1085,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
 
                         def update_reported_pathway_evidence_for_chain(current_chain, comparison_chain):
                             """Updates variables like overall_max_prior with values from the current pathway map as the new 'best'
-                            evidence for an exchange. current_chain and comparison_chain store the length, overlap length, overlap proportion, and map id of 
+                            evidence for an exchange. current_chain and comparison_chain store the length, overlap length, overlap proportion, and map id of
                             the current 'best' reaction chain and the comparison chain, respectively."""
                             cur_max, cur_overlap, cur_prop, cur_map = current_chain
                             comp_max, comp_overlap, comp_prop, comp_map = comparison_chain
