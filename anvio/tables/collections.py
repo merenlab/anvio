@@ -220,7 +220,7 @@ class TablesForCollections(Table):
                         "item in your database. This is likely a very bad idea, but anvi'o trusts that you know what you are "
                         "doing.")
 
-        utils.is_pan_or_profile_db(self.db_path)
+        utils.is_pan_or_profile_db(self.db_path, pan_graph_db_is_also_accepted=True)
 
         if utils.get_db_type(self.db_path) == 'profile' and utils.is_blank_profile(self.db_path):
             if not contigs_db_path:

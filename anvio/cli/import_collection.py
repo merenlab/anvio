@@ -48,18 +48,18 @@ def run_program():
     # <SANITY CHECKS>
     #################################################################################################
     if not args.pan_or_profile_db:
-        raise ConfigError("You must provide an anvi'o pan or profile database for this to work :(")
+        raise ConfigError("You must provide an anvi'o pan, pan-graph, or profile database for this to work :(")
 
-    utils.is_pan_or_profile_db(args.pan_or_profile_db)
+    utils.is_pan_or_profile_db(args.pan_or_profile_db, pan_graph_db_is_also_accepted=True)
 
     filesnpaths.is_output_file_writable(args.pan_or_profile_db)
 
     if args.contigs_db:
         utils.is_contigs_db(args.contigs_db)
 
-    if args.pan_or_profile_db and utils.get_db_type(args.pan_or_profile_db) == 'pan' and args.contigs_db:
+    if args.pan_or_profile_db and utils.get_db_type(args.pan_or_profile_db) in ['pan', 'pan-graph'] and args.contigs_db:
         raise ConfigError("There is no need to provide a contigs database when you are working with an anvi'o pan "
-                           "database")
+                           "or pan-graph database")
 
     if not args.contigs_db and args.contigs_mode:
         raise ConfigError("There is no reason for you to use the `--contigs-mode` flag when you have "
@@ -78,7 +78,7 @@ def run_program():
     if not args.collection_name:
         raise ConfigError("You must give a name for this collection.")
 
-    if not args.contigs_db:
+    if not args.contigs_db and utils.get_db_type(args.pan_or_profile_db) == 'profile':
         run.warning("You did not provide a contigs database. Fine. So be it. But know this: anvi'o has no way to check "
                     "the consistency of names you provide in the input file. So if you made a mistake while generating "
                     "this collection, it probably will cause issues later on.")

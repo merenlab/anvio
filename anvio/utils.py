@@ -4513,6 +4513,8 @@ def get_all_item_names_from_the_database(db_path, run=run):
                 all_items.update(database.get_single_column_from_table('zero_coverage_splits', 'item'))
     elif db_type == 'pan':
         all_items = set(database.get_single_column_from_table(t.pan_gene_clusters_table_name, 'gene_cluster_id'))
+    elif db_type == 'pan-graph':
+        all_items = set(database.get_single_column_from_table(t.pan_graph_nodes_table_name, 'node_id'))
     elif db_type == 'contigs':
         all_items = set(database.get_single_column_from_table(t.splits_info_table_name, 'split'))
     elif db_type == 'genes':
@@ -4566,8 +4568,8 @@ def is_trnaseq_db(db_path):
     return True
 
 
-def is_pan_or_profile_db(db_path, genes_db_is_also_accepted=False):
-    ok_db_types = ['pan', 'profile'] + (['genes'] if genes_db_is_also_accepted else [])
+def is_pan_or_profile_db(db_path, genes_db_is_also_accepted=False, pan_graph_db_is_also_accepted=False):
+    ok_db_types = ['pan', 'profile'] + (['genes'] if genes_db_is_also_accepted else []) + (['pan-graph'] if pan_graph_db_is_also_accepted else [])
     dbi(db_path, expecting=ok_db_types)
     return True
 

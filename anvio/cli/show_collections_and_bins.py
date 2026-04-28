@@ -17,8 +17,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
-__requires__ = ["pan-db", "profile-db"]
-__description__ = "A script to display collections stored in an anvi'o profile or pan database"
+__requires__ = ["pan-db", "profile-db", "pan-graph-db"]
+__description__ = "A script to display collections stored in an anvi'o profile, pan, or pan-graph database"
 
 
 def main():
@@ -36,7 +36,7 @@ def run_program():
     run = terminal.Run()
     progress = terminal.Progress()
 
-    utils.is_pan_or_profile_db(args.pan_or_profile_db)
+    utils.is_pan_or_profile_db(args.pan_or_profile_db, pan_graph_db_is_also_accepted=True)
 
     progress.new('Accessing to the collections table')
     progress.update('...')
