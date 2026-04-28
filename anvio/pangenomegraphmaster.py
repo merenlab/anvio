@@ -6,18 +6,15 @@
 """
 
 import os
-import math
 import numpy as np
 import pandas as pd
 import networkx as nx
 import itertools as it
 import statistics as stat
-# import matplotlib.pyplot as plt
 from collections import Counter
-from statistics import mean, multimode
 
 from scipy.spatial.distance import squareform
-from scipy.cluster.hierarchy import linkage, dendrogram, to_tree
+from scipy.cluster.hierarchy import linkage, to_tree
 
 import anvio
 import anvio.terminal as terminal
