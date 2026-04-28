@@ -4990,7 +4990,7 @@ def run_selenium_and_export_svg(url, output_file_path, browser_path=None, run=ru
     try:
         WebDriverWait(driver, 300).until(EC.text_to_be_present_in_element((By.ID, "title-panel-second-line"), wait_text))
     except TimeoutException:
-        print(f"Timeout occurred, could not get the SVG drawing in 300 seconds.")
+        print("Timeout occurred, could not get the SVG drawing in 300 seconds.")
         driver.quit()
         raise
 
