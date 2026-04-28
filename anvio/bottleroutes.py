@@ -1006,9 +1006,11 @@ class BottleApplication(Bottle):
         for bin_name in data:
             bins_info_dict[bin_name] = {'html_color': colors[bin_name], 'source': "anvi-interactive"}
 
-        # the db here is either a profile db, or a pan db, but it can't be both:
+        # the db here is either a profile db, pan db, or pan-graph db, but it can't be both:
         if self.interactive.mode == 'gene':
             db_path = self.interactive.genes_db_path
+        elif self.interactive.mode == 'pangraph':
+            db_path = self.interactive.pan_graph_db_path
         else:
             db_path = self.interactive.pan_db_path or self.interactive.profile_db_path
 

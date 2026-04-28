@@ -40,7 +40,8 @@ class PangenomeGraphUserInterface {
         this.functional_annotation_sources_available = [];
 
         this.add_bin = this.add_bin.bind(this);
-        this.remove_bin = this.remove_bin.bind(this);
+        this.delete_bin = this.delete_bin.bind(this);
+        this.delete_all_bins = this.delete_all_bins.bind(this);
         this.update_bin = this.update_bin.bind(this);
         this.switch_bin = this.switch_bin.bind(this);
 
@@ -67,6 +68,8 @@ class PangenomeGraphUserInterface {
         this.info_download = this.info_download.bind(this);
         this.add_info_to_bin = this.add_info_to_bin.bind(this);
         this.flextree_change = this.flextree_change.bind(this);
+        this.save_bin = this.save_bin.bind(this);
+        this.load_bin = this.load_bin.bind(this);
         this.save_state = this.save_state.bind(this);
         this.load_state = this.load_state.bind(this);
         this.set_UI_settings = this.set_UI_settings.bind(this);
@@ -2484,9 +2487,7 @@ class PangenomeGraphUserInterface {
         this.marknode(element, bin_id);
     }
     
-    remove_bin() {
-        var bin_id = this.current_bin_id;
-
+    delete_bin(bin_id) {
         this._suppress_bin_ring_draw = true;
         for (var node of this.bin_dict[bin_id]) {
             var element = document.getElementById(node);
@@ -2502,41 +2503,48 @@ class PangenomeGraphUserInterface {
             var next_bin_id = Object.keys(this.bin_dict)[0];
             $('#' + next_bin_id + '_radio').click();
         } else {
-            $('#binadd').click();
+            this.add_bin();
         }
     }
-    
+
+    delete_all_bins() {
+        this._suppress_bin_ring_draw = true;
+        for (var bin_id of Object.keys(this.bin_dict)) {
+            for (var node of this.bin_dict[bin_id]) {
+                var element = document.getElementById(node);
+                this.marknode(element, bin_id);
+            }
+        }
+        this._suppress_bin_ring_draw = false;
+
+        $('#bingrid').empty();
+        this.bin_dict = {};
+        this.bin_group_dict = {};
+        this.current_bin_number = 0;
+        this.add_bin();
+        this.draw_bin_rings();
+    }
+
     add_bin() {
         this.current_bin_number += 1;
-        this.current_bin_id = "bin_" + this.current_bin_number
+        this.current_bin_id = "bin_" + this.current_bin_number;
+        const n = this.current_bin_number;
         const new_color = randomColor({luminosity: 'dark'});
 
-        $('#bingrid').append(
-            $('<div class="col-12" id="bin_' + this.current_bin_number + '_grid" style="padding: 3px 0;"></div>').append(
-                $('<div class="row align-items-center" id="row' + this.current_bin_number + '"></div>').append(
-                    $('<div class="col-1"></div>').append(
-                        $('<input type="radio" name="binradio" id="bin_' + this.current_bin_number + '_radio" bin_id="bin_' + this.current_bin_number + '" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top" checked></input>')
-                    )
-                ).append(
-                    $('<div class="col-7"></div>').append(
-                        $('<input type="text" class="form-control flex-fill p-0 border-0" style="background-color: #e9ecef;" value="Bin_' + this.current_bin_number + '" id="bin_' + this.current_bin_number + '_text" aria-describedby=""></input>')
-                    )
-                ).append(
-                    $('<div class="col-2"></div>').append(
-                        $('<input type="button" class="form-control float-end text-end flex-fill p-0 border-0 bin-count-btn" id="bin_' + this.current_bin_number + '_value" value=0 title="Click for functions summary">')
-                            .on('click', ((bin_id) => () => { this.show_bin_functions(bin_id); })('bin_' + this.current_bin_number))
-                    )
-                ).append(
-                    $('<div class="d-flex col-2 align-items-center"></div>').append(
-                        $('<div class="pangraph-colorpicker" id="bin_' + this.current_bin_number + '_color" color="' + new_color + '" style="background-color: ' + new_color + '; width: 100%; height: 22px; cursor: pointer; border: 1px solid #ccc;"></div>')
-                    )
-                )
-            )
-        );
+        const $row = $(`<tr class="bin-row" id="bin_${n}_grid">
+            <td><input type="radio" name="binradio" id="bin_${n}_radio" bin_id="bin_${n}" checked></td>
+            <td><div class="pangraph-colorpicker" id="bin_${n}_color" color="${new_color}" style="background-color: ${new_color}; width: 30px; height: 22px; cursor: pointer; border: 1px solid #ccc;"></div></td>
+            <td><input type="text" class="form-control form-control-sm p-0 border-0" style="background-color: #e9ecef;" value="Bin_${n}" id="bin_${n}_text"></td>
+            <td><input type="button" class="form-control form-control-sm p-0 border-0 bin-count-btn" id="bin_${n}_value" value=0 title="Click for functions summary"></td>
+            <td><center><span class="default-bin-icon bi bi-trash-fill fa-lg" aria-hidden="true" title="Delete this bin" onclick="pgui.delete_bin('bin_${n}');"></span></center></td>
+        </tr>`);
 
-        $('#bin_' + this.current_bin_number + '_radio').on("click", this.switch_bin)
-        this._init_bin_colorpicker('bin_' + this.current_bin_number);
-        this.bin_dict['bin_' + this.current_bin_number] = [];
+        $row.find(`#bin_${n}_value`).on('click', ((bin_id) => () => { this.show_bin_functions(bin_id); })(`bin_${n}`));
+        $('#bingrid').append($row);
+
+        $(`#bin_${n}_radio`).on("click", this.switch_bin);
+        this._init_bin_colorpicker(`bin_${n}`);
+        this.bin_dict[`bin_${n}`] = [];
     }
     
     initialize_variables() {
@@ -3119,7 +3127,7 @@ class PangenomeGraphUserInterface {
         $('#flexbinlabels, #bin_label_orientation, #bin_label_size, #bin_ring_height, #bin_ring_opacity, #flexbinedges, #bin_edge_thickness, #bin_edge_opacity').on("change", () => this._render_bin_visuals())
 
         $('#binadd').on("click", this.add_bin);
-        $('#binremove').on("click", this.remove_bin);
+        $('#binremove').on("click", this.delete_all_bins);
         $('#redraw').on("click", this.start_draw);
         $('#fit').on('click', this.fit_aspect);
         $('#svgDownload').on('click', this.svg_download);
@@ -3995,12 +4003,67 @@ class PangenomeGraphUserInterface {
         this.download_blob(blob, title + ".fa");
     }
 
-    save_bin () {
-        $('#SaveBin').modal('show');
+    save_bin() {
+        const exportFn = () => {
+            const data = {};
+            const colors = {};
+            for (const [bin_id, node_ids] of Object.entries(this.bin_dict)) {
+                if (!node_ids.length) continue;
+                const bin_name = $('#' + bin_id + '_text').val() || bin_id;
+                data[bin_name] = node_ids;
+                colors[bin_name] = $('#' + bin_id + '_color').attr('color') || '#000000';
+            }
+            return { data, colors };
+        };
+
+        new StoreCollectionDialog(exportFn).Show();
     }
 
-    load_bin () {
-        $('#LoadBin').modal('show');
+    load_bin() {
+        const importFn = (collection_data) => {
+            const bin_data = collection_data['data'];
+            const colors   = collection_data['colors'];
+
+            this._suppress_bin_ring_draw = true;
+
+            // Uncolor and clear all existing bins
+            for (const [bin_id, node_ids] of Object.entries(this.bin_dict)) {
+                for (const node of [...node_ids]) {
+                    const el = document.getElementById(node);
+                    if (el) this.marknode(el, bin_id);
+                }
+                $('#' + bin_id + '_grid').remove();
+            }
+
+            this.bin_dict = {};
+            this.bin_group_dict = {};
+            this.current_bin_number = 0;
+
+            // Recreate bins from the loaded collection
+            for (const [bin_name, node_ids] of Object.entries(bin_data)) {
+                this.add_bin();
+                const bin_id = this.current_bin_id;
+                const color = colors[bin_name] || '#000000';
+
+                $('#' + bin_id + '_text').val(bin_name);
+                $('#' + bin_id + '_color').css('background-color', color).attr('color', color);
+
+                for (const node_id of node_ids) {
+                    const el = document.getElementById(node_id);
+                    if (el) this.marknode(el, bin_id);
+                }
+            }
+
+            // If nothing was loaded, add an empty default bin
+            if (!Object.keys(this.bin_dict).length) {
+                this.add_bin();
+            }
+
+            this._suppress_bin_ring_draw = false;
+            this.draw_bin_rings();
+        };
+
+        new LoadCollectionDialog(importFn).Show();
     }
 
     load_state () {
