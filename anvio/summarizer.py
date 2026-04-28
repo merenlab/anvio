@@ -250,6 +250,10 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         if not self.genomes_storage_is_available:
             raise ConfigError("No genomes storage no summary. Yes. Very simple stuff.")
 
+        if not args.__dict__.get('output_dir'):
+            project_name = self.p_meta.get('project_name') or 'PROJECT'
+            args.output_dir = f'{project_name}-PAN-SUMMARY'
+
         SummarizerSuperClass.__init__(self, args, self.run, self.progress)
 
         # init gene clusters and functions from Pan super.
