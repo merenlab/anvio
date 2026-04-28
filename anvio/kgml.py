@@ -16,26 +16,24 @@ from __future__ import annotations
 import os
 import re
 import uuid
-import numpy as np
 import xml.etree.ElementTree as ET
-
-from io import StringIO
 from argparse import Namespace
-from Bio.KEGG.KGML import KGML_parser
-from Bio.Graphics.KGML_vis import KGMLCanvas
-from matplotlib.colors import Colormap, rgb2hex
-
+from io import StringIO
 from typing import Dict, Iterable, List, Literal, Tuple, Union
 
+import numpy as np
+from Bio.Graphics.KGML_vis import KGMLCanvas
+from Bio.KEGG.KGML import KGML_parser
+from matplotlib.colors import Colormap, rgb2hex
+
 import anvio.terminal as terminal
-
+from anvio import FORCE_OVERWRITE
+from anvio import __version__ as VERSION
 from anvio.errors import ConfigError
-from anvio import FORCE_OVERWRITE, __version__ as VERSION
 from anvio.filesnpaths import is_file_exists, is_output_file_writable
-
+from anvio.metabolism.constants import GLOBAL_MAP_ID_PATTERN, OVERVIEW_MAP_ID_PATTERN
 from anvio.metabolism.context import KeggContext
 from anvio.metabolism.downloads import download_org_pathway_image_files
-from anvio.metabolism.constants import GLOBAL_MAP_ID_PATTERN, OVERVIEW_MAP_ID_PATTERN
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2024, the Meren Lab (http://merenlab.org/)"

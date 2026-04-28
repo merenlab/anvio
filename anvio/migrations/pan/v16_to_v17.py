@@ -1,11 +1,10 @@
 #!/usr/bin/env python
 
-import sys
 import argparse
+import sys
 
 import anvio.dbinfo as dbinfo
 import anvio.terminal as terminal
-
 from anvio.errors import ConfigError
 
 run = terminal.Run()

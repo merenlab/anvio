@@ -2,11 +2,10 @@
 """A script to remove replicated genomes from a list of internal and external genome databases or fasta files"""
 
 import sys
-from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.terminal as terminal
-
+from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.genomesimilarity import Dereplicate
 

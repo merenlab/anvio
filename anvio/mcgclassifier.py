@@ -7,23 +7,25 @@
 
 
 import os
-import anvio
+
+import matplotlib
 import numpy as np
 import pandas as pd
-import matplotlib
+
+import anvio
+
 # TODO: according to the warning, this call to set the back-hand is meaningless
 # I need to experiment to see what happens if I delete it.
 matplotlib.use('pdf')
-import anvio.utils as utils
 import matplotlib.pyplot as plt
-import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
-
-from scipy import odr as odr
-from anvio.mcgops import MCGPlots
-from anvio.errors import ConfigError, FilesNPathsError
 from matplotlib.backends.backend_pdf import PdfPages
+from scipy import odr as odr
 
+import anvio.filesnpaths as filesnpaths
+import anvio.terminal as terminal
+import anvio.utils as utils
+from anvio.errors import ConfigError, FilesNPathsError
+from anvio.mcgops import MCGPlots
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

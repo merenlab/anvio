@@ -2,14 +2,12 @@
 
 """Classes to make sense of genes and variability within the context of protein structure"""
 
-import os
-import time
-import numpy as np
-import shutil
-import pandas as pd
-import sqlite3
-import warnings
 import datetime
+import os
+import shutil
+import sqlite3
+import time
+import warnings
 
 # multiprocess is a fork of multiprocessing that uses the dill serializer instead of pickle
 # using the multiprocessing module directly results in a pickling error in Python 3.10 which
@@ -18,26 +16,27 @@ import datetime
 #   >>> AttributeError: Can't pickle local object 'SOMEFUNCTION.<locals>.<lambda>' multiprocessing
 #
 import multiprocess as multiprocessing
-
+import numpy as np
+import pandas as pd
 from Bio.PDB import DSSP, PDBParser
 
 import anvio
-import anvio.db as db
-import anvio.utils as utils
-import anvio.dbops as dbops
-import anvio.tables as t
-import anvio.fastalib as u
-import anvio.terminal as terminal
 import anvio.constants as constants
-import anvio.filesnpaths as filesnpaths
+import anvio.db as db
+import anvio.dbops as dbops
 import anvio.drivers.MODELLER as MODELLER
-
-from anvio.errors import ConfigError, FilesNPathsError
+import anvio.fastalib as u
+import anvio.filesnpaths as filesnpaths
+import anvio.tables as t
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.dbops import ContigsSuperclass
+from anvio.errors import ConfigError, FilesNPathsError
 
 J = lambda x, y: os.path.join(x, y)
 
 from Bio.PDB.PDBExceptions import PDBConstructionWarning
+
 warnings.simplefilter(action='ignore', category=PDBConstructionWarning)
 
 
@@ -382,7 +381,8 @@ class StructureSuperclass(object):
             params_dict = self.structure_db.get_run_params_dict()
             for param, value in params_dict.items():
                 self.run.info(param, value)
-            import sys; sys.exit()
+            import sys
+            sys.exit()
 
         # Determine the modeller parameters and store in db
         # NOTE self.skip_DSSP is down here because get_modeller_params has the potential to

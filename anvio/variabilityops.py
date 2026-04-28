@@ -3,33 +3,31 @@
 """Classes to make sense of sequence variation"""
 
 
-import os
-import sys
-import copy
-import random
-import inspect
 import argparse
+import copy
+import inspect
+import operator as op
+import os
+import random
+import sys
+
 import numpy as np
 import pandas as pd
-import operator as op
-
 from numba import jit
 from scipy.stats import entropy
 
 import anvio
-import anvio.tables as t
-import anvio.dbops as dbops
-import anvio.utils as utils
-import anvio.terminal as terminal
-import anvio.constants as constants
-import anvio.filesnpaths as filesnpaths
-import anvio.ccollections as ccollections
-import anvio.structureops as structureops
 import anvio.auxiliarydataops as auxiliarydataops
-
+import anvio.ccollections as ccollections
+import anvio.constants as constants
+import anvio.dbops as dbops
+import anvio.filesnpaths as filesnpaths
+import anvio.structureops as structureops
+import anvio.tables as t
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.errors import ConfigError
 from anvio.tables.miscdata import TableForAminoAcidAdditionalData
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = ['Alon Shaiber']

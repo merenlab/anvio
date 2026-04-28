@@ -4,10 +4,9 @@ import sys
 
 import anvio
 import anvio.terminal as terminal
-
 from anvio.argparse import ArgumentParser
-from anvio.genomereorientation import GenomeReorienter
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.genomereorientation import GenomeReorienter
 
 __copyright__ = "Copyleft 2015-2025, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

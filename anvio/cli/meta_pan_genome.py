@@ -2,14 +2,12 @@
 """Entering anvi'o metapangenomic workflow"""
 
 import sys
-from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.metapanops as metapanops
 import anvio.terminal as terminal
-
+from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError, HDF5Error
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

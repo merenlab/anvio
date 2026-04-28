@@ -1,28 +1,26 @@
 # pylint: disable=line-too-long
 """ Classes to define and work with anvi'o ecophylo workflows. """
 
-from distutils.command.config import config
-import os
-import anvio
 import argparse
+import os
+from distutils.command.config import config
+
 import pandas as pd
 
 import anvio
-import anvio.utils as u
-import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
+import anvio.terminal as terminal
+import anvio.utils as u
 
 with terminal.SuppressAllOutput():
     import anvio.data.hmm
 
-from anvio.errors import ConfigError
-from anvio.workflows import WorkflowSuperClass
-from anvio.genomedescriptions import GenomeDescriptions
-from anvio.genomedescriptions import MetagenomeDescriptions
-from anvio.artifacts.samples_txt import SamplesTxt
-
 import anvio.constants as constants
+from anvio.artifacts.samples_txt import SamplesTxt
+from anvio.errors import ConfigError
+from anvio.genomedescriptions import GenomeDescriptions, MetagenomeDescriptions
+from anvio.workflows import WorkflowSuperClass
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = ['mschecht']

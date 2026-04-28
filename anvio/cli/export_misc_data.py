@@ -2,13 +2,11 @@
 """Export misc data from target tables into TAB-delimited files"""
 
 import sys
-from anvio.argparse import ArgumentParser
 
 import anvio
-
+from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.tables.miscdata import MiscDataTableFactory
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

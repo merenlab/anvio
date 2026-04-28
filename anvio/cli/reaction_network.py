@@ -2,14 +2,14 @@
 DESCRIPTION = """This program generates a metabolic reaction network in an anvi'o contigs or pan database"""
 
 import sys
-
 from argparse import Namespace
 
+from anvio import A as A
+from anvio import K as K
+from anvio import __version__ as VERSION
 from anvio.argparse import ArgumentParser
-from anvio.reactionnetwork import Constructor
 from anvio.errors import ConfigError, FilesNPathsError
-from anvio import A as A, K as K, __version__ as VERSION
-
+from anvio.reactionnetwork import Constructor
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"

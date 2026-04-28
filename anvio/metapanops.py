@@ -9,14 +9,15 @@ import numpy as numpy
 
 import anvio
 import anvio.dbops as dbops
-import anvio.utils as utils
-import anvio.terminal as terminal
-import anvio.summarizer as summarizer
 import anvio.genomedescriptions as genomedescriptions
-
+import anvio.summarizer as summarizer
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.errors import ConfigError
-from anvio.tables.miscdata import TableForLayerAdditionalData, TableForItemAdditionalData
-
+from anvio.tables.miscdata import (
+    TableForItemAdditionalData,
+    TableForLayerAdditionalData,
+)
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

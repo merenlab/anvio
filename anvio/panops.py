@@ -5,16 +5,13 @@
     anvi-pan-genome is the default client using this module
 """
 
-import os
+import argparse
+import copy
 import json
 import math
-import copy
-import argparse
-import numpy as np
-import pandas as pd
-
+import os
 from itertools import chain
-from scipy.optimize import curve_fit
+
 # multiprocess is a fork of multiprocessing that uses the dill serializer instead of pickle
 # using the multiprocessing module directly results in a pickling error in Python 3.10 which
 # goes like this:
@@ -22,22 +19,23 @@ from scipy.optimize import curve_fit
 #   >>> AttributeError: Can't pickle local object 'SOMEFUNCTION.<locals>.<lambda>' multiprocessing
 #
 import multiprocess as multiprocessing
+import numpy as np
+import pandas as pd
+from scipy.optimize import curve_fit
 
 import anvio
-import anvio.tables as t
-import anvio.utils as utils
-import anvio.dbops as dbops
-import anvio.terminal as terminal
-import anvio.constants as constants
 import anvio.clustering as clustering
+import anvio.constants as constants
+import anvio.dbops as dbops
 import anvio.filesnpaths as filesnpaths
+import anvio.tables as t
 import anvio.tables.miscdata as miscdata
-
+import anvio.terminal as terminal
+import anvio.utils as utils
+from anvio.drivers import Aligners
 from anvio.drivers.blast import BLAST
 from anvio.drivers.diamond import Diamond
 from anvio.drivers.mcl import MCL
-from anvio.drivers import Aligners
-
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.genomestorage import GenomeStorage
 from anvio.tables.geneclusters import TableForGeneClusters
@@ -201,8 +199,8 @@ class RarefactionAnalysis:
     def store_results_as_svg(self):
         """Stores a nice visualization of the rarefaction curves"""
 
-        import seaborn as sns
         import matplotlib.pyplot as plt
+        import seaborn as sns
 
         # Generate fitted values for plotting
         x_fit = np.linspace(1, self.num_genomes, 100)

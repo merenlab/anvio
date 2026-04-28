@@ -3,17 +3,15 @@
 
 import os
 import sys
-from anvio.argparse import ArgumentParser
 
 import anvio
-import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-from anvio.fastalib import ReadFasta, SequenceSource
+import anvio.terminal as terminal
+from anvio.argparse import ArgumentParser
 from anvio.drivers import driver_modules
-
+from anvio.errors import ConfigError, DictIOError, FilesNPathsError
+from anvio.fastalib import ReadFasta, SequenceSource
 from anvio.utils import check_contig_names
-from anvio.errors import ConfigError, FilesNPathsError, DictIOError
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

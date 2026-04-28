@@ -1,11 +1,11 @@
 # pylint: disable=line-too-long
 """Tests for Palindromes"""
 
+import argparse
+import unittest
+
 import anvio
 from anvio.sequencefeatures import Palindromes
-
-import unittest
-import argparse
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

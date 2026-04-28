@@ -3,21 +3,19 @@
 
 import sys
 import textwrap
-import pandas as pd
-
 from itertools import groupby
 from operator import itemgetter
-from colored import Fore, Back, Style
+
+import pandas as pd
+from colored import Back, Fore, Style
 
 import anvio
-import anvio.programs as p
-import anvio.utils as utils
-import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-
-from anvio.terminal import tabulate
+import anvio.programs as p
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.errors import ConfigError
-
+from anvio.terminal import tabulate
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

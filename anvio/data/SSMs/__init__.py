@@ -1,13 +1,12 @@
 # pylint: disable=line-too-long
 """Gather data from SSMs"""
 
-import os
 import glob
+import os
 
-import anvio.utils as u
-import anvio.terminal as terminal
 import anvio.constants as constants
-
+import anvio.terminal as terminal
+import anvio.utils as u
 from anvio.errors import ConfigError
 
 run = terminal.Run()

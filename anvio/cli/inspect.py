@@ -4,10 +4,9 @@
 import sys
 
 import anvio
-import anvio.utils as utils
-import anvio.terminal as terminal
 import anvio.interactive as interactive
-
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.argparse import ArgumentParser
 from anvio.bottleroutes import BottleApplication
 from anvio.errors import ConfigError, FilesNPathsError

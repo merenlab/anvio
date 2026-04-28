@@ -1,17 +1,15 @@
 #!/usr/bin/env python
 
+import argparse
 import os
 import sys
 import time
-import argparse
 
 import anvio.db as db
-import anvio.utils as utils
-import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.errors import ConfigError
-
 
 current_version = '4'
 next_version    = '5'

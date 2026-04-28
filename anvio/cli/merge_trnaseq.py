@@ -3,9 +3,8 @@
 import sys
 
 import anvio
-import anvio.trnaseq as trnaseq
 import anvio.terminal as terminal
-
+import anvio.trnaseq as trnaseq
 from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
 

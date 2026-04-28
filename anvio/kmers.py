@@ -5,13 +5,10 @@
 """
 
 import itertools
-
 from collections import Counter
 
 import anvio
-
 from anvio.constants import complements
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

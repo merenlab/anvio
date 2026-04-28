@@ -1,15 +1,13 @@
 #!/usr/bin/env python
 
 import sys
+
 import anvio
-from anvio.argparse import ArgumentParser
-
-import anvio.utils as utils
 import anvio.filesnpaths as filesnpaths
-
+import anvio.utils as utils
+from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.structureops import StructureDatabase
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

@@ -3,25 +3,24 @@
 """Classes for anything BAM-related"""
 
 
+import hashlib
 import os
 import sys
-import pysam
-import numpy as np
-import hashlib
-
-from numba import jit
 from collections import Counter
 from dataclasses import dataclass, field
 
-import anvio
-import anvio.tables as t
-import anvio.utils as utils
-import anvio.dbops as dbops
-import anvio.terminal as terminal
-import anvio.constants as constants
-import anvio.filesnpaths as filesnpaths
-import anvio.ccollections as ccollections
+import numpy as np
+import pysam
+from numba import jit
 
+import anvio
+import anvio.ccollections as ccollections
+import anvio.constants as constants
+import anvio.dbops as dbops
+import anvio.filesnpaths as filesnpaths
+import anvio.tables as t
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.errors import ConfigError
 
 run = terminal.Run()

@@ -6,21 +6,18 @@
 
 import os
 import shutil
-
 from collections import Counter
 
 import anvio
-import anvio.utils as utils
+import anvio.constants as constants
+import anvio.drivers.trnscan_se as trnascan_se
+import anvio.filesnpaths as filesnpaths
 import anvio.hmmops as hmmops
 import anvio.terminal as terminal
-import anvio.constants as constants
-import anvio.filesnpaths as filesnpaths
-import anvio.drivers.trnscan_se as trnascan_se
-
+import anvio.utils as utils
 from anvio.errors import ConfigError
-from anvio.tables.hmmhits import TablesForHMMHits
 from anvio.tables.genefunctions import TableForGeneFunctions
-
+from anvio.tables.hmmhits import TablesForHMMHits
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

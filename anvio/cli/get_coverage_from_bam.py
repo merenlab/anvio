@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 
 import sys
+
 import numpy as np
 import pandas as pd
 
 import anvio
 import anvio.bamops as bamops
-import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-
+import anvio.terminal as terminal
 from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
 

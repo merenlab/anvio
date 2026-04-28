@@ -3,20 +3,20 @@
     Classes to create, access, and/or populate contigs, tRNASeq, and profile databases.
 """
 
+import argparse
+import copy
+import itertools
+import json
 import os
+import random
 import re
 import sys
-import time
-import copy
-import json
-import numpy
-import random
-import argparse
 import textwrap
 import threading
-import itertools
-import scipy.signal
-import pandas as pd
+import time
+from collections import Counter
+from functools import wraps
+from io import StringIO
 
 # multiprocess is a fork of multiprocessing that uses the dill serializer instead of pickle
 # using the multiprocessing module directly results in a pickling error in Python 3.10 which
@@ -25,37 +25,36 @@ import pandas as pd
 #   >>> AttributeError: Can't pickle local object 'SOMEFUNCTION.<locals>.<lambda>' multiprocessing
 #
 import multiprocess as multiprocessing
-
-from io import StringIO
-from functools import wraps
-from collections import Counter
+import numpy
+import pandas as pd
+import scipy.signal
 
 import anvio
-import anvio.db as db
-import anvio.tables as t
-import anvio.fastalib as u
-import anvio.utils as utils
-import anvio.terminal as terminal
+import anvio.auxiliarydataops as auxiliarydataops
+import anvio.ccollections as ccolections
 import anvio.constants as constants
 import anvio.contigops as contigops
+import anvio.db as db
+import anvio.fastalib as u
 import anvio.filesnpaths as filesnpaths
-import anvio.ccollections as ccolections
 import anvio.genomestorage as genomestorage
-import anvio.auxiliarydataops as auxiliarydataops
 import anvio.homogeneityindex as homogeneityindex
-
+import anvio.tables as t
+import anvio.terminal as terminal
+import anvio.utils as utils
+from anvio.dbinfo import DBInfo as dbi
 from anvio.drivers import Aligners
 from anvio.errors import ConfigError
-from anvio.dbinfo import DBInfo as dbi
-
-from anvio.tables.states import TablesForStates
-from anvio.tables.genecalls import TablesForGeneCalls
-from anvio.tables.ntpositions import TableForNtPositions
-from anvio.tables.miscdata import TableForItemAdditionalData
-from anvio.tables.miscdata import TableForLayerAdditionalData
-from anvio.tables.kmers import KMerTablesForContigsAndSplits
-from anvio.tables.genelevelcoverages import TableForGeneLevelCoverages
 from anvio.tables.contigsplitinfo import TableForContigsInfo, TableForSplitsInfo
+from anvio.tables.genecalls import TablesForGeneCalls
+from anvio.tables.genelevelcoverages import TableForGeneLevelCoverages
+from anvio.tables.kmers import KMerTablesForContigsAndSplits
+from anvio.tables.miscdata import (
+    TableForItemAdditionalData,
+    TableForLayerAdditionalData,
+)
+from anvio.tables.ntpositions import TableForNtPositions
+from anvio.tables.states import TablesForStates
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
@@ -5750,8 +5749,8 @@ def do_hierarchical_clustering_of_items(anvio_db_path, clustering_configs, split
        Ugly but useful --yet another one of those moments in which we sacrifice
        important principles for simple conveniences."""
 
-    from anvio.clusteringconfuguration import ClusteringConfiguration
     from anvio.clustering import order_contigs_simple
+    from anvio.clusteringconfuguration import ClusteringConfiguration
 
     for config_name in clustering_configs:
         config_path = clustering_configs[config_name]

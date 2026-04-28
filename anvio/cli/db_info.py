@@ -1,19 +1,17 @@
 #!/usr/bin/env python
 
 import sys
-from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.db as db
-import anvio.tables as t
 import anvio.dbinfo as dbi
-import anvio.utils as utils
 import anvio.dbops as dbops
-import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-
+import anvio.tables as t
+import anvio.terminal as terminal
+import anvio.utils as utils
+from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"

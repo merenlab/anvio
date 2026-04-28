@@ -1,21 +1,19 @@
 #!/usr/bin/env python
 
+import copy
 import os
 import sys
-import copy
 
 import anvio
-import anvio.utils as utils
-import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
-
-from anvio.learning import RF
+import anvio.filesnpaths as filesnpaths
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.completeness import Completeness
+from anvio.dbops import ContigsSuperclass
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.hmmops import SequencesForHMMHits
-from anvio.dbops import ContigsSuperclass
-
+from anvio.learning import RF
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = ["Tom O. Delmont"]

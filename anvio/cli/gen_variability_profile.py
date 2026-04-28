@@ -2,14 +2,12 @@
 """Fetches information from the variable positions table"""
 
 import sys
-from anvio.argparse import ArgumentParser
 
 import anvio
-
+from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.terminal import time_program
 from anvio.variabilityops import variability_engines
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

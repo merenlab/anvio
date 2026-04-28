@@ -1,15 +1,13 @@
 #!/usr/bin/env python
 
-import sys
 import argparse
+import sys
+
 import anvio
-from anvio.argparse import ArgumentParser
-
-import anvio.terminal as terminal
 import anvio.structureops as structops
-
+import anvio.terminal as terminal
+from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError, ModellerError
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

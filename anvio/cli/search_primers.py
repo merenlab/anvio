@@ -3,7 +3,6 @@
 import sys
 
 import anvio
-
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.sequencefeatures import PrimerSearch
 

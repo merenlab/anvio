@@ -7,16 +7,15 @@ to analyze conserved genes and synteny structures across loci.
 """
 
 import sys
-import pandas as pd
-
 from collections import Counter
 
+import pandas as pd
+
 import anvio
-import anvio.utils as utils
-import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.genomestorage as genomestorage
-
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.dbops import PanDatabase
 from anvio.errors import ConfigError
 

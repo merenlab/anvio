@@ -4,19 +4,21 @@
 import pandas as pd
 
 import anvio
-import anvio.tables as t
-import anvio.utils as utils
-import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
-
+import anvio.filesnpaths as filesnpaths
+import anvio.tables as t
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.dbinfo import DBInfo
 from anvio.errors import ConfigError
-
+from anvio.metabolism.constants import (
+    DEFAULT_OUTPUT_MODE,
+    OUTPUT_HEADERS,
+    OUTPUT_MODES,
+    STRAY_KO_ANVIO_SUFFIX,
+)
 from anvio.metabolism.context import KeggContext
 from anvio.metabolism.modulesdb import ModulesDatabase
-from anvio.metabolism.constants import DEFAULT_OUTPUT_MODE, OUTPUT_MODES, OUTPUT_HEADERS, STRAY_KO_ANVIO_SUFFIX
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
@@ -482,7 +484,9 @@ class KeggDataLoader(KeggContext):
                                  f"purposes of estimating metabolism.")
 
         self.progress.update('Loading gene call data from contigs DB')
-        from anvio.dbops import ContigsDatabase # <- import here to avoid circular import
+        from anvio.dbops import (
+            ContigsDatabase,  # <- import here to avoid circular import
+        )
         contigs_db = ContigsDatabase(contigs_db_path, run=self.run, progress=self.progress)
 
         split_list = ','.join(["'%s'" % split_name for split_name in splits_to_use])
@@ -581,7 +585,7 @@ class KeggDataLoader(KeggContext):
             (enzyme_accession, gene_cluster_id, split, contig) tuples in which split and contig are both NAs
         """
 
-        from anvio.dbops import PanSuperclass # <- import here to avoid circular import
+        from anvio.dbops import PanSuperclass  # <- import here to avoid circular import
 
         pan_super = PanSuperclass(self.args)
         pan_super.init_gene_clusters(gene_cluster_ids_to_focus = gene_cluster_list)

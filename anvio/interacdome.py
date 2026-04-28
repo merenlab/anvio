@@ -15,26 +15,25 @@ References
   47: 582-593.
 """
 
-import anvio
-import anvio.pfam as pfam
-import anvio.dbops as dbops
-import anvio.utils as utils
-import anvio.tables as tables
-import anvio.terminal as terminal
-import anvio.constants as constants
-import anvio.filesnpaths as filesnpaths
-
-from anvio.pfam import Pfam
-from anvio.errors import ConfigError
-from anvio.parsers import parser_modules
-from anvio.drivers.hmmer import HMMer
-
+import argparse
 import os
 import shutil
-import argparse
+
 import numpy as np
 import pandas as pd
 
+import anvio
+import anvio.constants as constants
+import anvio.dbops as dbops
+import anvio.filesnpaths as filesnpaths
+import anvio.pfam as pfam
+import anvio.tables as tables
+import anvio.terminal as terminal
+import anvio.utils as utils
+from anvio.drivers.hmmer import HMMer
+from anvio.errors import ConfigError
+from anvio.parsers import parser_modules
+from anvio.pfam import Pfam
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"

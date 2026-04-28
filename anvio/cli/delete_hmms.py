@@ -5,11 +5,9 @@ import sys
 import anvio
 import anvio.hmmops as hmmops
 import anvio.terminal as terminal
-
+from anvio.dbops import ContigsDatabase
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.tables.hmmhits import TablesForHMMHits
-from anvio.dbops import ContigsDatabase
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

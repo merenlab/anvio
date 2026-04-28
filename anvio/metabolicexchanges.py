@@ -1,21 +1,20 @@
 #!/usr/bin/env python
 """This file contains classes for predicting metabolic exchanges via the reaction network and KGML processing subsystems."""
 
+import multiprocessing
 import os
 import sys
-import multiprocessing
-from copy import deepcopy
 from argparse import Namespace
 from collections import defaultdict
+from copy import deepcopy
 
 import anvio
+import anvio.filesnpaths as filesnpaths
 import anvio.kgml as kgml
-import anvio.utils as utils
-import anvio.terminal as terminal
 import anvio.kgmlnetworkops as nw
 import anvio.reactionnetwork as rn
-import anvio.filesnpaths as filesnpaths
-
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.dbops import ContigsDatabase
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.genomedescriptions import GenomeDescriptions

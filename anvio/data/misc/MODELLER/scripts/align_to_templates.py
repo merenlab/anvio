@@ -5,6 +5,7 @@
 # and compare them. Then align the target sequence with this block of
 # aligned structures to generate an alignment suitable for modeling.
 import sys
+
 TARGET_PIR            = sys.argv[1]
 TARGET_ID             = sys.argv[2]
 TEMPLATE_IDS_FILE     = sys.argv[3]

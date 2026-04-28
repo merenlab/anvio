@@ -2,26 +2,24 @@
 
 """Classes to deal with sequence features"""
 
+import argparse
+import copy
 import os
 import re
-import copy
-import argparse
 import subprocess
 import xml.etree.ElementTree as ET
 
+import IlluminaUtils.lib.fastqlib as u
 from numba import jit
 from numba.typed import List
 
 import anvio
-import anvio.utils as utils
 import anvio.dbops as dbops
-import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-
-from anvio.errors import ConfigError
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.artifacts.samples_txt import SamplesTxt
-import IlluminaUtils.lib.fastqlib as u
-
+from anvio.errors import ConfigError
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

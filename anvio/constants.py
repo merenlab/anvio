@@ -1,12 +1,12 @@
 # pylint: disable=line-too-long
 
-import os
-import sys
 import glob
-import numpy
+import os
 import string
-
+import sys
 from collections import Counter
+
+import numpy
 
 import anvio
 

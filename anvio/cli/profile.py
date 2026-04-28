@@ -1,15 +1,13 @@
 #!/usr/bin/env python
 
-import sys
 import argparse
-import anvio.profiler as profiler
+import sys
 
 import anvio
-
-from anvio.terminal import time_program
+import anvio.profiler as profiler
 from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
-
+from anvio.terminal import time_program
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

@@ -9,12 +9,10 @@ import sys
 import numpy as np
 
 import anvio
-
-import anvio.dbops as dbops
-import anvio.terminal as terminal
 import anvio.constants as constants
+import anvio.dbops as dbops
 import anvio.filesnpaths as filesnpaths
-
+import anvio.terminal as terminal
 from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.variabilityops import VariabilityData

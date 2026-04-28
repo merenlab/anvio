@@ -1,23 +1,22 @@
 #!/usr/bin/env python
 DESCRIPTION = "Write KEGG pathway map files incorporating data sourced from anvi'o databases"
 
+import functools
+import importlib
 import os
 import re
 import sys
-import functools
-import importlib
-import pandas as pd
-
 from argparse import Namespace
 
+import pandas as pd
+
 import anvio.filesnpaths as filesnpaths
-
-from anvio.keggmapping import Mapper
+from anvio import A, K
+from anvio import __version__ as VERSION
 from anvio.argparse import ArgumentParser
-from anvio import A, K, __version__ as VERSION
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.keggmapping import Mapper
 from anvio.metabolism.context import KeggContext
-
 
 __authors__ = ["semiller10"]
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"

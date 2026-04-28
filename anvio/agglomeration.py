@@ -1,19 +1,16 @@
 #!/usr/bin/env python
 
-import gc
-import os
-import math
 import argparse
-
+import gc
+import math
+import os
 from collections import deque
 
 import anvio
-import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-
+import anvio.terminal as terminal
 from anvio.drivers.vmatch import Vmatch
-from anvio.sequence import Alignment, AlignedQuery, AlignedTarget
-
+from anvio.sequence import AlignedQuery, AlignedTarget, Alignment
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

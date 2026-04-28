@@ -2,25 +2,23 @@
 """Module for codon usage analyses at the levels of genes, groups of genes, and genomes"""
 
 
+import argparse
 import copy
 import inspect
-import argparse
+from collections import Counter
+from functools import partial
+
 import numpy as np
 import pandas as pd
 
-from functools import partial
-from collections import Counter
-
 import anvio
-import anvio.utils as utils
-import anvio.terminal as terminal
-import anvio.constants as constants
 import anvio.ccollections as ccollections
-
-from anvio.errors import ConfigError
+import anvio.constants as constants
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.dbops import ContigsSuperclass
+from anvio.errors import ConfigError
 from anvio.genomedescriptions import GenomeDescriptions
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

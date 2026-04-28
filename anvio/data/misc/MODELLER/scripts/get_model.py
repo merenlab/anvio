@@ -1,5 +1,6 @@
 # Step 4: model building
 import sys
+
 ALIGNMENT          = sys.argv[1]
 TARGET_ID          = sys.argv[2]
 TEMPLATE_IDS_FILE  = sys.argv[3]
@@ -12,7 +13,7 @@ MODEL_INFO         = sys.argv[7]
 template_ids = tuple(["".join(x.strip().split("\t")) for x in open(TEMPLATE_IDS_FILE).readlines()])
 
 from modeller import *
-from modeller.automodel import *    # Load the automodel class
+from modeller.automodel import *  # Load the automodel class
 
 log.verbose()
 env = environ(rand_seed=-12312)

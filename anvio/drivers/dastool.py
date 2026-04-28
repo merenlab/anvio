@@ -4,12 +4,10 @@
 import os
 
 import anvio
-import anvio.utils as utils
-import anvio.terminal as terminal
 import anvio.ccollections as ccollections
-
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.errors import ConfigError
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

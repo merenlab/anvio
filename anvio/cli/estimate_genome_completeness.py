@@ -4,16 +4,14 @@ import os
 import sys
 
 import anvio
-import anvio.utils as utils
-import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
+import anvio.filesnpaths as filesnpaths
 import anvio.genomedescriptions as genomedescriptions
-
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.completeness import Completeness
-from anvio.errors import ConfigError, FilesNPathsError
 from anvio.dbops import ContigsSuperclass
-
+from anvio.errors import ConfigError, FilesNPathsError
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

@@ -4,6 +4,7 @@ Positional arguments:
 2. OUTPUT - BINARY database
 """
 import sys
+
 PIR = sys.argv[1]
 BIN = sys.argv[2]
 

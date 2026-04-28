@@ -1,18 +1,15 @@
 #!/usr/bin/env python
 
 import sys
-
-import anvio
-import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
-
 from functools import partial
 from itertools import combinations, product
 
-from anvio.dbinfo import DBInfo
+import anvio
+import anvio.filesnpaths as filesnpaths
+import anvio.terminal as terminal
 from anvio.argparse import ArgumentParser
+from anvio.dbinfo import DBInfo
 from anvio.errors import ConfigError, FilesNPathsError
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

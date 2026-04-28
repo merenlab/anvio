@@ -5,14 +5,12 @@ import sys
 import xml.etree.ElementTree as ET
 
 import anvio
-import anvio.terminal as terminal
 import anvio.fastalib as fastalib
 import anvio.filesnpaths as filesnpaths
-
+import anvio.terminal as terminal
 from anvio.argparse import ArgumentParser
-from anvio.errors import ConfigError, FilesNPathsError
 from anvio.drivers.blast import BLAST
-
+from anvio.errors import ConfigError, FilesNPathsError
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

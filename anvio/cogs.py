@@ -3,23 +3,22 @@
     Making sense of COGs
 """
 
-import os
-import gzip
 import glob
-import shutil
+import gzip
 import hashlib
+import os
+import shutil
 
 import anvio
-import anvio.fastalib as u
-import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.dictio as dictio
-import anvio.terminal as terminal
+import anvio.fastalib as u
 import anvio.filesnpaths as filesnpaths
-
-from anvio.errors import ConfigError
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.drivers.blast import BLAST
 from anvio.drivers.diamond import Diamond
+from anvio.errors import ConfigError
 from anvio.tables.genefunctions import TableForGeneFunctions
 
 # just to make sure things don't break too far when they do:

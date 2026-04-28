@@ -9,18 +9,15 @@ other to initiate interactive jobs automatically, even when no db
 parameters are provided by the user.
 """
 
-import os
 import json
-
+import os
 from abc import ABC
 
 import anvio
-
 from anvio.db import DB
 from anvio.errors import ConfigError
-from anvio.terminal import Run, Progress
+from anvio.terminal import Progress, Run
 from anvio.version import versions_for_db_types
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

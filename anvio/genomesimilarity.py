@@ -1,26 +1,24 @@
 #!/usr/bin/env python
 """Code for genome similarity calculation"""
 
+import argparse
 import os
 import shutil
-import argparse
+from itertools import combinations
+
 import pandas as pd
 
 import anvio
-import anvio.db as db
-import anvio.utils as utils
-import anvio.terminal as terminal
-import anvio.constants as constants
 import anvio.clustering as clustering
+import anvio.constants as constants
+import anvio.db as db
 import anvio.filesnpaths as filesnpaths
 import anvio.genomedescriptions as genomedescriptions
-
-from itertools import combinations
-
+import anvio.terminal as terminal
+import anvio.utils as utils
+from anvio.drivers import fastani, pyani, sourmash
 from anvio.errors import ConfigError
-from anvio.drivers import pyani, sourmash, fastani
-from anvio.tables.miscdata import TableForLayerAdditionalData
-from anvio.tables.miscdata import TableForLayerOrders
+from anvio.tables.miscdata import TableForLayerAdditionalData, TableForLayerOrders
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

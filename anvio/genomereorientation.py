@@ -1,21 +1,18 @@
 #!/usr/bin/env python
 """Reorient circular genomes to match a reference genome coordinate system."""
 
-import os
 import gzip
+import os
 import shutil
-
 from pathlib import Path
 
 import anvio
-import anvio.utils as utils
-import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.drivers.hmmer import HMMer
-from anvio.genecalling import GeneCaller
 from anvio.errors import ConfigError, FilesNPathsError
-
+from anvio.genecalling import GeneCaller
 
 __copyright__ = "Copyleft 2015-2025, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

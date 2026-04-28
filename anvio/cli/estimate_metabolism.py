@@ -3,10 +3,12 @@
 import sys
 
 import anvio
-
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.metabolism.estimate import (
+    KeggMetabolismEstimator,
+    KeggMetabolismEstimatorMulti,
+)
 from anvio.terminal import time_program
-from anvio.metabolism.estimate import KeggMetabolismEstimator, KeggMetabolismEstimatorMulti
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"

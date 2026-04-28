@@ -2,16 +2,14 @@
     Base class for parsers to take care of the boring stuff.
 """
 
-import os
 import hashlib
+import os
 
 import anvio.terminal as terminal
-
-from anvio.errors import ConfigError, StupidHMMError
 from anvio.constants import levels_of_taxonomy
-from anvio.utils import get_TAB_delimited_file_as_dictionary as get_dict
+from anvio.errors import ConfigError, StupidHMMError
 from anvio.utils import get_FASTA_file_as_dictionary as get_dict_f
-
+from anvio.utils import get_TAB_delimited_file_as_dictionary as get_dict
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

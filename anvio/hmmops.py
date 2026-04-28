@@ -11,11 +11,10 @@ from scipy import stats
 
 import anvio
 import anvio.db as db
-import anvio.tables as t
-import anvio.utils as utils
-import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-
+import anvio.tables as t
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.errors import ConfigError
 
 run = terminal.Run()

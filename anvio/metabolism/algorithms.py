@@ -7,9 +7,8 @@ import statistics
 from scipy import stats
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
-
+import anvio.utils as utils
 from anvio.errors import ConfigError
 from anvio.metabolism.constants import STRAY_KO_ANVIO_SUFFIX
 

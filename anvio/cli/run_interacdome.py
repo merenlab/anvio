@@ -4,7 +4,6 @@ import sys
 
 import anvio
 import anvio.interacdome as interacdome
-
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.terminal import time_program
 

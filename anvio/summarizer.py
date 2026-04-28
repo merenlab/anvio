@@ -23,34 +23,37 @@ import anvio.summarizer as summarizer
 
 """
 
+import argparse
+import gzip
 import os
 import sys
-import gzip
-import numpy
-import mistune
-import argparse
 import textwrap
-import pandas as pd
-
 from collections import Counter
 
+import mistune
+import numpy
+import pandas as pd
+
 import anvio
-import anvio.utils as utils
-import anvio.hmmops as hmmops
-import anvio.sequence as seqlib
-import anvio.terminal as terminal
-import anvio.constants as constants
-import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
 import anvio.completeness as completeness
+import anvio.constants as constants
+import anvio.filesnpaths as filesnpaths
+import anvio.hmmops as hmmops
+import anvio.sequence as seqlib
 import anvio.taxonomyops.scg as scgtaxonomyops
-
+import anvio.terminal as terminal
+import anvio.utils as utils
+from anvio.dbops import (
+    ContigsDatabase,
+    ContigsSuperclass,
+    DatabasesMetaclass,
+    PanSuperclass,
+)
 from anvio.errors import ConfigError
-from anvio.dbops import DatabasesMetaclass, ContigsDatabase, ContigsSuperclass, PanSuperclass
 from anvio.hmmops import SequencesForHMMHits
 from anvio.summaryhtml import SummaryHTMLOutput, humanize_n, pretty
-from anvio.tables.miscdata import TableForLayerAdditionalData, MiscDataTableFactory
-
+from anvio.tables.miscdata import MiscDataTableFactory, TableForLayerAdditionalData
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

@@ -2,10 +2,10 @@
 # v.140713
 """A very lightweight FASTA I/O library"""
 
-import io
-import sys
 import gzip
 import hashlib
+import io
+import sys
 
 import anvio
 

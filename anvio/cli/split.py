@@ -2,14 +2,12 @@
 """Split an anvi'o profile into smaller pieces."""
 
 import sys
-from anvio.argparse import ArgumentParser
 
 import anvio
-import anvio.splitter as splitter
 import anvio.constants as constants
-
+import anvio.splitter as splitter
+from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

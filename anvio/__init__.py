@@ -2,11 +2,17 @@
 
 """Lots of under-the-rug, operational garbage in here. Run. Run away."""
 
-from anvio.version import anvio_version, anvio_codename, major_python_version_required, minor_python_version_required, get_versions
-
-import sys
 import inspect
 import platform
+import sys
+
+from anvio.version import (
+    anvio_codename,
+    anvio_version,
+    get_versions,
+    major_python_version_required,
+    minor_python_version_required,
+)
 
 # make sure anvi'o runs in the right Python environment:
 try:
@@ -42,9 +48,9 @@ except Exception:
 # we are in the right Python environment. import the rest of the libraries
 # and do all the other boring stuff.
 
-import os
-import json
 import copy
+import json
+import os
 
 # very important variable to determine which help docs are relevant for
 # this particlar anvi'o environment
@@ -171,7 +177,6 @@ def TABULATE(table, header, numalign="right", max_width=0):
 
 
 import anvio.constants as constants
-
 
 # a comprehensive arguments dictionary that provides easy access from various programs that interface anvi'o modules:
 D = {

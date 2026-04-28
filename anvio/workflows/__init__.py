@@ -1,21 +1,20 @@
 # pylint: disable=line-too-long
 """Helper functions for the anvi'o snakemake workflows"""
 
+import copy
+import json
 import os
 import sys
-import json
-import copy
+
 import snakemake
 
 import anvio
-import anvio.utils as u
 import anvio.errors as errors
-import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-
+import anvio.terminal as terminal
+import anvio.utils as u
 from anvio.errors import ConfigError
 from anvio.version import versions_for_db_types
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
@@ -778,12 +777,12 @@ def get_fields_for_fasta_information():
 
 def get_workflow_module_dict():
     from anvio.workflows.contigs import ContigsDBWorkflow
+    from anvio.workflows.ecophylo import EcoPhyloWorkflow
     from anvio.workflows.metagenomics import MetagenomicsWorkflow
     from anvio.workflows.pangenomics import PangenomicsWorkflow
     from anvio.workflows.phylogenomics import PhylogenomicsWorkflow
-    from anvio.workflows.trnaseq import TRNASeqWorkflow
-    from anvio.workflows.ecophylo import EcoPhyloWorkflow
     from anvio.workflows.sra_download import SRADownloadWorkflow
+    from anvio.workflows.trnaseq import TRNASeqWorkflow
 
     workflows_dict = {'contigs': ContigsDBWorkflow,
                       'metagenomics': MetagenomicsWorkflow,

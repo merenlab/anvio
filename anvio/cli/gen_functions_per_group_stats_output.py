@@ -2,14 +2,12 @@
 """A program to generate a functions across groups stats output."""
 
 import sys
-from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.terminal as terminal
-
+from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.genomedescriptions import AggregateFunctions
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

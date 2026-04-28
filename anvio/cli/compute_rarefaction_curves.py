@@ -5,10 +5,9 @@ import sys
 
 import anvio
 import anvio.terminal as terminal
-
 from anvio.argparse import ArgumentParser
-from anvio.panops import RarefactionAnalysis
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.panops import RarefactionAnalysis
 
 __copyright__ = "Copyleft 2015-2025, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

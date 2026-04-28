@@ -4,12 +4,10 @@
 import sys
 
 import anvio
-import anvio.summarizer as summarizer
 import anvio.filesnpaths as filesnpaths
-
+import anvio.summarizer as summarizer
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.mcgclassifier import MetagenomeCentricGeneClassifier
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

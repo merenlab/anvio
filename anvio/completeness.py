@@ -9,12 +9,11 @@ import argparse
 from collections import Counter
 
 import anvio
-import anvio.tables as t
 import anvio.dbops as dbops
-import anvio.utils as utils
-import anvio.terminal as terminal
 import anvio.scgdomainclassifier as scgdomainclassifier
-
+import anvio.tables as t
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.errors import ConfigError, remove_spaces
 
 with terminal.SuppressAllOutput():

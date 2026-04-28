@@ -1,20 +1,18 @@
 #!/usr/bin/env python
 
-import os
-import sys
-import math
-import random
 import bisect
+import math
+import os
+import random
+import sys
 
 import anvio
-import anvio.utils as utils
-import anvio.terminal as terminal
 import anvio.fastalib as fastalib
 import anvio.filesnpaths as filesnpaths
-
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
-
 
 __copyright__ = "Copyleft 2015-2026, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

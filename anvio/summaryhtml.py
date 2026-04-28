@@ -1,15 +1,14 @@
 # pylint: disable=line-too-long
 """Creates an HTML output to act as a front-end for the static summary directory."""
 
-import os
-import json
-import zlib
 import base64
+import json
+import os
 import shutil
+import zlib
 
 import anvio
 import anvio.terminal as terminal
-
 from anvio.errors import ConfigError
 
 # get django imported
@@ -42,8 +41,8 @@ try:
     except:
         pass
 
-    from django.template.loader import render_to_string
     from django.template.defaultfilters import register
+    from django.template.loader import render_to_string
 except ImportError:
     raise ConfigError('You need to have Django module (http://djangoproject.com) installed on your system to generate HTML output.')
 

@@ -2,19 +2,18 @@
 """Script to quickly summarize many single profiles."""
 
 import sys
+
 import numpy as np
-from anvio.argparse import ArgumentParser
 
 import anvio
+import anvio.constants as constants
 import anvio.db as db
 import anvio.tables as t
-import anvio.utils as utils
 import anvio.terminal as terminal
-import anvio.constants as constants
-
+import anvio.utils as utils
+from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.filesnpaths import AppendableFile
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

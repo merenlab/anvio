@@ -3,13 +3,11 @@
 import sys
 
 import anvio
+import anvio.parsers as parsers
 import anvio.tables as t
 import anvio.terminal as terminal
-import anvio.parsers as parsers
-
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.tables.taxonomy import TablesForGeneLevelTaxonomy
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

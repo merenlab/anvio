@@ -10,18 +10,14 @@ Exports
 
 # todo check args of everything!
 
-import os
 import abc
-import anvio
-
-from anvio import utils
-from anvio import fastalib
-from anvio import filesnpaths
-
-from anvio.errors import ConfigError, CommandError
+import os
 from collections import UserDict
 from threading import Thread
 
+import anvio
+from anvio import fastalib, filesnpaths, utils
+from anvio.errors import CommandError, ConfigError
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

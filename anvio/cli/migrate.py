@@ -1,21 +1,19 @@
 #!/usr/bin/env python
 
-import os
-import sys
 import copy
-from anvio.argparse import ArgumentParser
+import os
 import shutil
+import sys
 
 import anvio
 import anvio.db as db
-import anvio.utils as utils
-import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-
+import anvio.terminal as terminal
+import anvio.utils as utils
+from anvio.argparse import ArgumentParser
+from anvio.errors import ConfigError, FilesNPathsError
 from anvio.migrations import migration_scripts
 from anvio.version import versions_for_db_types
-from anvio.errors import ConfigError, FilesNPathsError
-
 
 __description__ = "Migrates any anvi'o artifact, whether it is a database or a config file, to a newer version. Pure magic."
 __authors__ = ['meren', 'ozcan', 'ekiefl', 'ivagljiva', 'semiller10', 'mschecht']

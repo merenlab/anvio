@@ -4,36 +4,33 @@
 The default client of this library is under bin/anvi-split"""
 
 
+import argparse
+import copy
 import os
 import sys
-import copy
-import argparse
-
 from collections import Counter
 
 import anvio
+import anvio.auxiliarydataops as auxiliarydataops
+import anvio.ccollections as ccollections
+import anvio.clustering as clustering
+import anvio.constants as constants
 import anvio.db as db
-import anvio.tables as t
 import anvio.dbops as dbops
-import anvio.utils as utils
+import anvio.filesnpaths as filesnpaths
 import anvio.hmmops as hmmops
 import anvio.profiler as profiler
-import anvio.terminal as terminal
-import anvio.constants as constants
-import anvio.clustering as clustering
 import anvio.summarizer as summarizer
-import anvio.filesnpaths as filesnpaths
-import anvio.ccollections as ccollections
-import anvio.auxiliarydataops as auxiliarydataops
-
-from anvio.panops import Pangenome
+import anvio.tables as t
+import anvio.terminal as terminal
+import anvio.utils as utils
+from anvio.clusteringconfuguration import ClusteringConfiguration
 from anvio.errors import ConfigError
-from anvio.tables.views import TablesForViews
-from anvio.tables.kmers import KMerTablesForContigsAndSplits
+from anvio.panops import Pangenome
 from anvio.tables.collections import TablesForCollections
 from anvio.tables.genefunctions import TableForGeneFunctions
-from anvio.clusteringconfuguration import ClusteringConfiguration
-
+from anvio.tables.kmers import KMerTablesForContigsAndSplits
+from anvio.tables.views import TablesForViews
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

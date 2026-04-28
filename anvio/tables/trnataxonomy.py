@@ -3,13 +3,11 @@
 import anvio
 import anvio.db as db
 import anvio.tables as t
-import anvio.utils as utils
 import anvio.terminal as terminal
-
+import anvio.utils as utils
+from anvio.constants import anticodon_to_AA
 from anvio.errors import ConfigError
 from anvio.tables.tableops import Table
-
-from anvio.constants import anticodon_to_AA
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

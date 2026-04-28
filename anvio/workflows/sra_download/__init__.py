@@ -1,18 +1,17 @@
 # pylint: disable=line-too-long
 """ Classes to define and work with anvi'o SRA_downloads workflow. """
 
-import os
-import anvio
 import hashlib
+import os
+
 import pandas as pd
 
-import anvio.utils as utils
-import anvio.terminal as terminal
+import anvio
 import anvio.filesnpaths as filesnpaths
-
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.errors import ConfigError
 from anvio.workflows import WorkflowSuperClass
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = ['mschecht']

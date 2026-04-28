@@ -3,13 +3,12 @@ DESCRIPTION = """Run by the shell script of the same name that tests anvi'o reac
 
 from argparse import Namespace
 
-import anvio.terminal as terminal
 import anvio.reactionnetwork as rn
-
-from anvio.errors import ConfigError
+import anvio.terminal as terminal
+from anvio import A, K
+from anvio import __version__ as VERSION
 from anvio.argparse import ArgumentParser
-from anvio import A, K, __version__ as VERSION
-
+from anvio.errors import ConfigError
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2024, the Meren Lab (http://merenlab.org/)"

@@ -4,7 +4,6 @@ import sys
 
 from anvio.errors import ConfigError
 
-
 __description__ = ("This program has been superseded by the beefier `anvi-compute-genome-similarity`")
 
 

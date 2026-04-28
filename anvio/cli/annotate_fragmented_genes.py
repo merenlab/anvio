@@ -6,9 +6,7 @@ import sys
 import anvio
 import anvio.panops as panops
 import anvio.terminal as terminal
-
 from anvio.errors import ConfigError, FilesNPathsError
-
 
 __copyright__ = "Copyleft 2015-2026, The Anvi'o Project (http://anvio.org/)"
 __credits__ = ["Sean Crosson"]

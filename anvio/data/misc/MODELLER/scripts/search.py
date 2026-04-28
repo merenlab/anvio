@@ -5,6 +5,7 @@ Positional arguments:
 3. OUTPUT - Alignment table
 """
 import sys
+
 TARGET = sys.argv[1]
 DATABASE = sys.argv[2]
 ALIGNMENT_TABLE = sys.argv[3]

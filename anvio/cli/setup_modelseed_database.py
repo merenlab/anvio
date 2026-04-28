@@ -2,17 +2,14 @@
 DESCRIPTION = """This program downloads and sets up the ModelSEED Biochemistry database."""
 
 import os
-
-from sys import exit
 from argparse import Namespace
+from sys import exit
 
 import anvio.reactionnetwork as reactionnetwork
-
 from anvio import A, K
-from anvio.errors import ConfigError
 from anvio import __version__ as VERSION
 from anvio.argparse import ArgumentParser
-
+from anvio.errors import ConfigError
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

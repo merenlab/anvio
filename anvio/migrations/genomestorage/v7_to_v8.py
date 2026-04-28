@@ -6,12 +6,11 @@ migration. In Python 3, h5py returns bytes for string data. The v4-to-v5 script
 called str() on those bytes values, producing literal 'b"..."' or "b'...'" text
 in the database instead of clean strings."""
 
-import sys
 import argparse
+import sys
 
 import anvio.db as db
 import anvio.terminal as terminal
-
 from anvio.errors import ConfigError
 
 current_version, next_version = [x[1:] for x in __name__.split('_to_')]

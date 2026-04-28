@@ -1,15 +1,14 @@
 #!/usr/bin/env python
 
+import argparse
+import gzip
 import os
 import sys
-import gzip
 import time
-import argparse
 
 import anvio.db as db
-import anvio.utils as utils
 import anvio.terminal as terminal
-
+import anvio.utils as utils
 from anvio.errors import ConfigError
 
 current_version = "21"

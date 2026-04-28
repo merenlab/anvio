@@ -1,14 +1,12 @@
 #!/usr/bin/env python
 
-import sys
 import shutil
+import sys
 
 import anvio
 import anvio.filesnpaths as filesnpaths
-
 from anvio.drivers.emapper import EggNOGMapper
 from anvio.errors import ConfigError, FilesNPathsError
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
