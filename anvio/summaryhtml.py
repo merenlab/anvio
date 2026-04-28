@@ -146,6 +146,8 @@ def lookup(d, index):
 
 @register.filter(name='humanize')
 def humanize(s):
+    if s is None:
+        return ''
     return s.replace('_', ' ')
 
 @register.filter(name='monospace')
