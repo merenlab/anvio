@@ -24,3 +24,9 @@ repos:
     rev: 0.37.1
     hooks:
       - id: check-github-workflows
+
+  - repo: https://github.com/zizmorcore/zizmor-pre-commit
+    rev: v1.24.1
+    hooks:
+      - id: zizmor
+        args: ["--no-progress"]
