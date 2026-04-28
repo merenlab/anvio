@@ -1,12 +1,10 @@
 #!/usr/bin/env python
 
 import sys
-import os
 import json
 from urllib.parse import unquote
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
 from anvio.errors import ConfigError, FilesNPathsError
 import anvio.filesnpaths as filesnpaths
@@ -18,15 +16,12 @@ __version__ = anvio.__version__
 __authors__ = ['ahenoch']
 __provides__ = []
 __requires__ = []
-__description__ = "Modify the config-json file or any other file in JSON format."
+__description__ = "Modify any file in JSON format."
 
-# Most of these functions wer created with the help of AI.
 
-def main():
-    args = get_args()
-
+def main(args):
     try:
-        run_program()
+        run_program(args)
     except ConfigError as e:
         print(e)
         sys.exit(-1)
@@ -36,7 +31,6 @@ def main():
 
 
 def find_patch_leaf_path(patch):
-    
     if not isinstance(patch, dict) or not patch:
         raise ConfigError("Patch must be a non-empty dict.")
 
@@ -55,7 +49,6 @@ def find_patch_leaf_path(patch):
 
 
 def try_update_from_patch(node, patch_path, new_value, base_path):
-    
     if not isinstance(node, dict):
         return None
 
@@ -76,7 +69,6 @@ def try_update_from_patch(node, patch_path, new_value, base_path):
 
 
 def global_update(root, patch, run):
-    
     patch_path, new_value = find_patch_leaf_path(patch)
 
     changed_paths = []
@@ -134,8 +126,7 @@ def local_update(target, patch, run, only_existing=True, path=()):
             run.info_single(f"Successfully changed JSON at path {'/'.join(current_path)} from {old_value} to {value}")
 
 
-def run_program():
-    args = get_args()
+def run_program(args):
     run = terminal.Run()
 
     filesnpaths.is_file_json_formatted(args.config_file)
@@ -158,7 +149,7 @@ def run_program():
             local_update(config_file_dict, json_dict, run)
 
     json.dump(config_file_dict, open(args.config_file, 'w'), indent=4, ensure_ascii=False)
-    run.info_single(f"Successfully saved JSON")
+    run.info_single("Successfully saved JSON")
 
 
 def get_args():
@@ -173,4 +164,4 @@ def get_args():
 
 
 if __name__ == '__main__':
-    main()
+    main(get_args())
