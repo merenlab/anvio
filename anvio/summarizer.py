@@ -110,8 +110,10 @@ class SummarizerSuperClass(object):
 
         if self.summary_type == 'pan':
             self.collections.populate_collections_dict(self.pan_db_path)
+        elif self.summary_type == 'pan-graph':
+            self.collections.populate_collections_dict(self.pan_graph_db_path)
         else:
-            self.collections.populate_collections_dict(self.pan_db_path if self.summary_type == 'pan' else self.profile_db_path)
+            self.collections.populate_collections_dict(self.profile_db_path)
             self.collections.populate_collections_dict(self.contigs_db_path) if self.contigs_db_path else None
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
@@ -160,7 +162,12 @@ class SummarizerSuperClass(object):
 
         run_obj = terminal.Run(verbose=False)
 
-        db_path = self.pan_db_path if self.summary_type == 'pan' else self.profile_db_path
+        if self.summary_type == 'pan':
+            db_path = self.pan_db_path
+        elif self.summary_type == 'pan-graph':
+            db_path = self.pan_graph_db_path
+        else:
+            db_path = self.profile_db_path
         additional_data = MiscDataTableFactory(argparse.Namespace(pan_or_profile_db=db_path, target_data_table=target_table), r=run_obj)
 
         data_groups, data_dict = additional_data.get_all()
