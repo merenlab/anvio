@@ -53,10 +53,8 @@ def get_args():
     groupB = parser.add_argument_group('OUTPUT', "Where the resulting pan-graph-db should be written. If you don't specify a path, "
                                 "anvi'o will write the database into the current working directory using the project name as the "
                                 "filename (i.e., './<project_name>-PAN-GRAPH.db').")
-    groupB.add_argument(*anvio.A('pan-graph-db'), **anvio.K('pan-graph-db', {'required': False,
-                                'help': "Output path for the pan-graph-db this program produces. Specify both the directory and the "
-                                        "filename (e.g., '/path/to/MY-PAN-GRAPH.db'). If omitted, defaults to "
-                                        "'./<project_name>-PAN-GRAPH.db' in the current working directory."}))
+    groupB.add_argument(*anvio.A('output-file'), **anvio.K('output-file', {'required': False,
+                                'help': "Output file path for the pan-graph-db this program will generate."}))
 
     groupC = parser.add_argument_group('GRAPH BUILDING & SPLITTING', "Controls how SynGC are generated and filtered.")
 
