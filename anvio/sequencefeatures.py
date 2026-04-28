@@ -695,9 +695,15 @@ class Palindromes:
                                     -strand minus"""
 
         p = subprocess.Popen(search_command, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.DEVNULL, shell=True, executable='/bin/bash')
-        BLAST_output = p.communicate()[0]
+        com_result = p.communicate()
+        BLAST_output = com_result[0]
 
         # parse the BLAST XML output
+        # Debug
+        if not BLAST_output:
+            print(f"p.communicate() result: {com_result}")
+            raise Exception("BLAST_output is empty.")
+
         root = ET.fromstring(BLAST_output.decode())
         for query_sequence_xml in root.findall('BlastOutput_iterations/Iteration'):
             for hit_xml in query_sequence_xml.findall('Iteration_hits/Hit'):
