@@ -4,25 +4,23 @@
 The default client of this library is under bin/anvi-merge"""
 
 
+import argparse
 import gc
 import os
-import argparse
 
 import anvio
+import anvio.auxiliarydataops as auxiliarydataops
+import anvio.clustering as clustering
+import anvio.constants as constants
 import anvio.db as db
-import anvio.utils as utils
 import anvio.dbops as dbops
+import anvio.filesnpaths as filesnpaths
 import anvio.tables as tables
 import anvio.terminal as terminal
-import anvio.constants as constants
-import anvio.clustering as clustering
-import anvio.filesnpaths as filesnpaths
-import anvio.auxiliarydataops as auxiliarydataops
-
+import anvio.utils as utils
 from anvio.errors import ConfigError
-from anvio.tables.miscdata import TableForLayerOrders, TableForLayerAdditionalData
+from anvio.tables.miscdata import TableForLayerAdditionalData, TableForLayerOrders
 from anvio.tables.views import TablesForViews
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

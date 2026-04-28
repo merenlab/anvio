@@ -2,14 +2,13 @@
 
 import os
 import sys
+
 import pysam
 
-
 import anvio
-import anvio.utils as utils
-import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.errors import ConfigError, FilesNPathsError
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"

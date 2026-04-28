@@ -5,7 +5,6 @@ import sys
 import anvio
 import anvio.programs as programs
 import anvio.terminal as terminal
-
 from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
 

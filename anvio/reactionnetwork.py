@@ -3,45 +3,45 @@
 
 from __future__ import annotations
 
-import os
-import re
-import glob
-import json
-import math
-import time
-import random
-import shutil
-import hashlib
-import tarfile
-import zipfile
 import argparse
-import tempfile
+import collections
 import fractions
 import functools
-import collections
+import glob
+import hashlib
+import json
+import math
+import multiprocessing as mp
+import os
+import random
+import re
+import shutil
+import tarfile
+import tempfile
+import time
+import zipfile
+from argparse import Namespace
+from copy import deepcopy
+from dataclasses import dataclass, field
+from typing import Any, Dict, Iterable, List, Set, Tuple, Union
+
 import numpy as np
 import pandas as pd
-import multiprocessing as mp
 
-from copy import deepcopy
-from argparse import Namespace
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Set, Tuple, Union, Iterable
-
-import anvio.utils as utils
 import anvio.dbinfo as dbinfo
+import anvio.filesnpaths as filesnpaths
 import anvio.tables as tables
 import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
-
+import anvio.utils as utils
+from anvio import DEBUG
+from anvio import __file__ as ANVIO_PATH
+from anvio import __version__ as VERSION
 from anvio.db import DB
-from anvio.errors import ConfigError
-from anvio import DEBUG, __file__ as ANVIO_PATH, __version__ as VERSION
 from anvio.dbops import ContigsDatabase, PanDatabase, PanSuperclass, ProfileDatabase
-
+from anvio.errors import ConfigError
 from anvio.metabolism.context import KeggContext
-from anvio.metabolism.modulesdb import ModulesDatabase
 from anvio.metabolism.downloads import _download_worker
+from anvio.metabolism.modulesdb import ModulesDatabase
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2024, the Meren Lab (http://merenlab.org/)"

@@ -1,19 +1,17 @@
 #!/usr/bin/env python
 
 import sys
-from anvio.argparse import ArgumentParser
 
 import anvio
-import anvio.tables as t
 import anvio.dbops as dbops
-import anvio.utils as utils
 import anvio.parsers as parsers
+import anvio.tables as t
 import anvio.terminal as terminal
-
+import anvio.utils as utils
+from anvio.argparse import ArgumentParser
 from anvio.constants import levels_of_taxonomy
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.tables.miscdata import TableForLayerAdditionalData
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

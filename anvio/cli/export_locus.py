@@ -19,13 +19,11 @@
 """
 
 import sys
-from anvio.argparse import ArgumentParser
 
 import anvio
-
-from anvio.splitter import LocusSplitter
+from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
-
+from anvio.splitter import LocusSplitter
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

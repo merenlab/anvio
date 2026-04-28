@@ -5,19 +5,19 @@
 
 
 import os
-import anvio
 import shutil
-import pandas as pd
-import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
 
+import pandas as pd
+
+import anvio
+import anvio.filesnpaths as filesnpaths
+import anvio.terminal as terminal
 from anvio import utils as u
+from anvio.artifacts.samples_txt import SamplesTxt
 from anvio.drivers import driver_modules
+from anvio.errors import ConfigError
 from anvio.workflows import WorkflowSuperClass
 from anvio.workflows.contigs import ContigsDBWorkflow
-from anvio.errors import ConfigError
-from anvio.artifacts.samples_txt import SamplesTxt
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

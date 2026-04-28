@@ -7,14 +7,12 @@ import sys
 import pandas as pd
 
 import anvio
-import anvio.db as db
-import anvio.utils as utils
-import anvio.terminal as terminal
 import anvio.constants as constants
+import anvio.db as db
 import anvio.filesnpaths as filesnpaths
-
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.errors import ConfigError, FilesNPathsError
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

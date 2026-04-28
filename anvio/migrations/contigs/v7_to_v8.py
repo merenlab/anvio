@@ -1,15 +1,13 @@
 #!/usr/bin/env python
 
-import sys
 import argparse
+import sys
 
 import anvio.db as db
 import anvio.tables as t
-import anvio.utils as utils
 import anvio.terminal as terminal
-
+import anvio.utils as utils
 from anvio.errors import ConfigError
-
 
 run = terminal.Run()
 progress = terminal.Progress()

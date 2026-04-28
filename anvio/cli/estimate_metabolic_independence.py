@@ -1,18 +1,17 @@
 #!/usr/bin/env python
 
+import argparse
 import os
 import sys
-import anvio
-import argparse
 
 import pandas as pd
-import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
 
+import anvio
+import anvio.filesnpaths as filesnpaths
+import anvio.terminal as terminal
 from anvio.dbinfo import DBInfo as dbi
 from anvio.dbops import ContigsDatabase
 from anvio.errors import ConfigError, FilesNPathsError
-
 from anvio.metabolism.context import KeggContext
 from anvio.metabolism.estimate import KeggMetabolismEstimator
 

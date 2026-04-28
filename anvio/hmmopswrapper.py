@@ -6,14 +6,11 @@
 import argparse
 import hashlib
 
-import anvio.terminal as terminal
 import anvio.ccollections as ccollections
-
+import anvio.terminal as terminal
+from anvio.errors import ConfigError
 from anvio.genomedescriptions import GenomeDescriptions
 from anvio.hmmops import SequencesForHMMHits
-
-
-from anvio.errors import ConfigError
 
 
 class SequencesForHMMHitsWrapperForMultipleContigs(SequencesForHMMHits, GenomeDescriptions):

@@ -4,12 +4,9 @@
 import sys
 
 import anvio
-
 from anvio.argparse import ArgumentParser
-from anvio.variabilityops import variability_engines
 from anvio.errors import ConfigError, FilesNPathsError
-from anvio.variabilityops import VariabilityFixationIndex
-
+from anvio.variabilityops import VariabilityFixationIndex, variability_engines
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

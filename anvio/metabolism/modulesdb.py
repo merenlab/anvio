@@ -1,20 +1,18 @@
-import re
-import os
 import copy
-import json
-import time
 import hashlib
+import json
+import os
+import re
+import time
 
 import anvio
 import anvio.db as db
 import anvio.tables as t
-import anvio.utils as utils
 import anvio.terminal as terminal
-
+import anvio.utils as utils
 from anvio.errors import ConfigError
-from anvio.terminal import pluralize as P
-
 from anvio.metabolism.context import KeggContext
+from anvio.terminal import pluralize as P
 
 
 class ModulesDatabase(KeggContext):

@@ -2,18 +2,16 @@ import os
 import shutil
 
 import anvio
-import anvio.utils as utils
-import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-
-from anvio.errors import ConfigError
-from anvio.drivers.hmmer import HMMer
-from anvio.parsers import parser_modules
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.dbops import ContigsDatabase, ContigsSuperclass
-from anvio.tables.genefunctions import TableForGeneFunctions
-
+from anvio.drivers.hmmer import HMMer
+from anvio.errors import ConfigError
 from anvio.metabolism.context import KeggContext
 from anvio.metabolism.modulesdb import ModulesDatabase
+from anvio.parsers import parser_modules
+from anvio.tables.genefunctions import TableForGeneFunctions
 
 
 class RunKOfams(KeggContext):

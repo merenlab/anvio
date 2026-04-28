@@ -7,13 +7,12 @@ import sys
 from collections import Counter
 
 import anvio
-import anvio.utils as utils
-import anvio.terminal as terminal
 import anvio.ccollections as ccollections
 import anvio.filesnpaths as filesnpaths
-
-from anvio.errors import ConfigError
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.dbinfo import FindAnvioDBs
+from anvio.errors import ConfigError
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

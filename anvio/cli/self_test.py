@@ -1,20 +1,18 @@
 #!/usr/bin/env python
 
-import os
-import sys
 import glob
+import itertools
+import os
 import shutil
 import signal
-import itertools
 import subprocess
+import sys
 
 import anvio
-import anvio.tests as tests
-import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-
-from anvio.errors import FilesNPathsError, ConfigError
-
+import anvio.terminal as terminal
+import anvio.tests as tests
+from anvio.errors import ConfigError, FilesNPathsError
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

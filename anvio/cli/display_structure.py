@@ -3,14 +3,12 @@
 import sys
 
 import anvio
-import anvio.utils as utils
-import anvio.terminal as terminal
 import anvio.interactive as interactive
-from anvio.bottleroutes import BottleApplication
-
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.argparse import ArgumentParser
-from anvio.errors import ConfigError, FilesNPathsError, DictIOError
-
+from anvio.bottleroutes import BottleApplication
+from anvio.errors import ConfigError, DictIOError, FilesNPathsError
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

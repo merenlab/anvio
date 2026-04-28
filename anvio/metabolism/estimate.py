@@ -1,24 +1,28 @@
 #!/usr/bin/env python
 """Main KEGG metabolism estimator classes."""
 
-import os
-import re
 import copy
 import json
-import anvio
-import anvio.utils as utils
-import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
-import anvio.ccollections as ccollections
+import os
+import re
 
+import anvio
+import anvio.ccollections as ccollections
+import anvio.filesnpaths as filesnpaths
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.dbinfo import DBInfo
 from anvio.errors import ConfigError
-from anvio.genomedescriptions import MetagenomeDescriptions, GenomeDescriptions
-
-from anvio.metabolism.modulesdb import ModulesDatabase
+from anvio.genomedescriptions import GenomeDescriptions, MetagenomeDescriptions
 from anvio.metabolism.algorithms import KeggEstimationAlgorithms
-from anvio.metabolism.dbaccess import KeggEstimatorArgs, KeggDataLoader
-from anvio.metabolism.constants import OUTPUT_MODES, MODULE_METADATA_HEADERS, KO_METADATA_HEADERS, STEP_METADATA_HEADERS
+from anvio.metabolism.constants import (
+    KO_METADATA_HEADERS,
+    MODULE_METADATA_HEADERS,
+    OUTPUT_MODES,
+    STEP_METADATA_HEADERS,
+)
+from anvio.metabolism.dbaccess import KeggDataLoader, KeggEstimatorArgs
+from anvio.metabolism.modulesdb import ModulesDatabase
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
@@ -239,7 +243,9 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
             utils.is_contigs_db(self.contigs_db_path)
             # here we load the contigs DB just for sanity check purposes.
             # We will need to load it again later just before accessing data to avoid SQLite error that comes from different processes accessing the DB
-            from anvio.dbops import ContigsDatabase # <- import here to avoid circular import
+            from anvio.dbops import (
+                ContigsDatabase,  # <- import here to avoid circular import
+            )
             contigs_db = ContigsDatabase(self.contigs_db_path, run=self.run, progress=self.progress)
             self.contigs_db_project_name = contigs_db.meta['project_name']
         elif self.enzymes_txt:
@@ -249,7 +255,9 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
         elif self.estimate_from_json:
             self.contigs_db_project_name = "json_input"
         elif self.pan_db_path:
-            from anvio.dbops import PanDatabase # <- import here to avoid circular import
+            from anvio.dbops import (
+                PanDatabase,  # <- import here to avoid circular import
+            )
             pan_db = PanDatabase(self.pan_db_path, run=self.run, progress=self.progress)
             self.contigs_db_project_name = pan_db.meta['project_name']
         else:
@@ -485,7 +493,9 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
             if not self.profile_db:
                 self.args.skip_consider_gene_dbs = True
 
-                from anvio.dbops import ProfileSuperclass # <- import here to avoid circular import
+                from anvio.dbops import (
+                    ProfileSuperclass,  # <- import here to avoid circular import
+                )
                 self.profile_db = ProfileSuperclass(self.args)
 
             self.coverage_sample_list = self.profile_db.p_meta['samples']

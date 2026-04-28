@@ -1,21 +1,19 @@
 # pylint: disable=line-too-long
 """Module to submit/track jobs for SUN Grid Engine"""
 
-import os
-import time
 import glob
+import os
 import random
 import string
 import subprocess
+import time
 
 import anvio
 import anvio.fastalib as u
-import anvio.utils as utils
 import anvio.filesnpaths as filesnpaths
-
+import anvio.utils as utils
 from anvio.errors import ConfigError
 from anvio.terminal import pretty_print as pp
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

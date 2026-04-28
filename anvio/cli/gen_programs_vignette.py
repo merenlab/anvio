@@ -4,7 +4,6 @@ import sys
 
 import anvio
 import anvio.programs as programs
-
 from anvio.errors import ConfigError, FilesNPathsError
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"

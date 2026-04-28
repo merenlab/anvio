@@ -1,25 +1,24 @@
 # pylint: disable=line-too-long
 """Relations with the console output, Progress and Run classes"""
 
+import datetime
+import fcntl
 import os
 import re
-import sys
-import time
-import fcntl
-import numpy as np
 import struct
-import pandas as pd
+import sys
 import termios
-import datetime
 import textwrap
-
-from colored import Fore, Back, Style
+import time
 from collections import OrderedDict
 
-import anvio
-import anvio.dictio as dictio
-import anvio.constants as constants
+import numpy as np
+import pandas as pd
+from colored import Back, Fore, Style
 
+import anvio
+import anvio.constants as constants
+import anvio.dictio as dictio
 from anvio.errors import TerminalError
 from anvio.ttycolors import color_text as c
 

@@ -5,14 +5,13 @@ The massage of the data is being taken care of in the interactive module,
 and this file implements the bottle callbacks."""
 
 import sys
-from anvio.argparse import ArgumentParser
 
 import anvio
-import anvio.utils as utils
-import anvio.terminal as terminal
 import anvio.interactive as interactive
+import anvio.terminal as terminal
+import anvio.utils as utils
+from anvio.argparse import ArgumentParser
 from anvio.bottleroutes import BottleApplication
-
 from anvio.errors import ConfigError, FilesNPathsError, GenesDBError
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"

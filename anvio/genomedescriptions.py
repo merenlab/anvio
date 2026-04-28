@@ -7,25 +7,22 @@
     Ad hoc access to make sense of internal or external genome descriptions is also welcome.
 """
 
-import os
-import sys
+import argparse
 import copy
 import hashlib
-import argparse
-
+import os
+import sys
 from collections import Counter
 
 import anvio
-import anvio.db as db
-import anvio.tables as t
-import anvio.utils as utils
-import anvio.dbops as dbops
-import anvio.terminal as terminal
 import anvio.ccollections as ccollections
+import anvio.db as db
+import anvio.dbops as dbops
 import anvio.filesnpaths as filesnpaths
-
+import anvio.tables as t
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.errors import ConfigError
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

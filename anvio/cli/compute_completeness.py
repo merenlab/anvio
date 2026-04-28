@@ -1,17 +1,15 @@
 #!/usr/bin/env python
 
 import sys
-from anvio.argparse import ArgumentParser
 
 import anvio
-import anvio.tables as t
-import anvio.utils as utils
 import anvio.dbops as dbops
+import anvio.tables as t
 import anvio.terminal as terminal
-
-from anvio.errors import ConfigError, FilesNPathsError
+import anvio.utils as utils
+from anvio.argparse import ArgumentParser
 from anvio.completeness import Completeness
-
+from anvio.errors import ConfigError, FilesNPathsError
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

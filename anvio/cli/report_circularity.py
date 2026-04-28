@@ -4,7 +4,6 @@ import sys
 
 import anvio
 import anvio.terminal as terminal
-
 from anvio.argparse import ArgumentParser
 from anvio.bamops import CircularityPredictor
 from anvio.errors import ConfigError, FilesNPathsError

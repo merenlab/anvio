@@ -4,7 +4,6 @@ import sys
 
 import anvio
 import anvio.cazymes as cazymes
-
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.terminal import time_program
 

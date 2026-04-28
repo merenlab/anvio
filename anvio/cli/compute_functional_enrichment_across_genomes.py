@@ -5,9 +5,8 @@ import os
 import sys
 
 import anvio
-import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-
+import anvio.terminal as terminal
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.genomedescriptions import AggregateFunctions
 

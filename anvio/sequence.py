@@ -2,10 +2,13 @@
 
 """Classes for sequence properties and manipulations"""
 
-import gc
 import functools
+import gc
 import itertools
-import numpy as np
+from collections import defaultdict
+from hashlib import sha1
+from itertools import groupby
+from operator import itemgetter
 
 # multiprocess is a fork of multiprocessing that uses the dill serializer instead of pickle
 # using the multiprocessing module directly results in a pickling error in Python 3.10 which
@@ -14,18 +17,12 @@ import numpy as np
 #   >>> AttributeError: Can't pickle local object 'SOMEFUNCTION.<locals>.<lambda>' multiprocessing
 #
 import multiprocess as multiprocessing
-
-from hashlib import sha1
-from itertools import groupby
-from operator import itemgetter
-from collections import defaultdict
+import numpy as np
 
 import anvio
-import anvio.terminal as terminal
 import anvio.constants as constants
-
+import anvio.terminal as terminal
 from anvio.errors import ConfigError
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

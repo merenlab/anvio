@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 
 import sys
+
 import anvio
 import anvio.metabolicexchanges as me
-
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.terminal import time_program
 

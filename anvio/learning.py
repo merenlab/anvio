@@ -2,13 +2,13 @@
 """A simple module with classes for learning operations"""
 
 import pickle
+
 import numpy as np
 
 import anvio
-import anvio.utils as utils
-import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.errors import ConfigError
 
 with terminal.SuppressAllOutput():

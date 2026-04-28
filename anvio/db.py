@@ -3,19 +3,19 @@
     Low-level db operations.
 """
 
-import os
-import time
 import math
-import numpy
-import pandas as pd
+import os
 import sqlite3
+import time
 import warnings
 
+import numpy
+import pandas as pd
+
 import anvio
+import anvio.filesnpaths as filesnpaths
 import anvio.tables as tables
 import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
-
 from anvio.errors import ConfigError
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"

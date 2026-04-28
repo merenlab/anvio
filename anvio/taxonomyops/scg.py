@@ -4,26 +4,27 @@ Classes to setup remote SCG databases in local, use local databases to affiliate
 contigs databases with taxon names, and estimate taxonomy for genomes and metagenomes.
 """
 
-import os
 import copy
+import os
 import shutil
+
 import pandas as pd
 import scipy.sparse as sps
 
 import anvio
-import anvio.utils as utils
-import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
-
-from anvio.errors import ConfigError
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.dbops import ContigsDatabase, ContigsSuperclass
 from anvio.drivers.diamond import Diamond
+from anvio.errors import ConfigError
 from anvio.genomedescriptions import GenomeDescriptions, MetagenomeDescriptions
-
-from anvio.taxonomyops import AccessionIdToTaxonomy
-from anvio.taxonomyops import TaxonomyEstimatorSingle
-from anvio.taxonomyops import PopulateContigsDatabaseWithTaxonomy
+from anvio.taxonomyops import (
+    AccessionIdToTaxonomy,
+    PopulateContigsDatabaseWithTaxonomy,
+    TaxonomyEstimatorSingle,
+)
 
 run_quiet = terminal.Run(log_file_path=None, verbose=False)
 progress_quiet = terminal.Progress(verbose=False)
@@ -1186,7 +1187,8 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyArgs, SanityCheck):
 
             # then, we will have to copy all relevant files from the anvi'o source directory to
             # the new setup database
-            import shutil, glob
+            import glob
+            import shutil
             shutil.copy(ctx.accession_to_taxonomy_file_path, self.SCGs_taxonomy_data_dir)
             shutil.copy(ctx.database_version_file_path, self.SCGs_taxonomy_data_dir)
 

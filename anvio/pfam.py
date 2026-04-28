@@ -1,28 +1,26 @@
 #!/usr/bin/env python
 """This file contains PfamSetup and Pfam classes."""
 
-import anvio
-import anvio.dbops as dbops
-import anvio.utils as utils
-import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
-
-from anvio.drivers.hmmer import HMMer
-from anvio.parsers import parser_modules
-from anvio.errors import ConfigError
-from anvio.tables.genefunctions import TableForGeneFunctions
-
-import os
+import glob
 import gzip
+import os
+import shutil
+from io import BytesIO
+
 import numpy as np
 import pandas as pd
-import shutil
 import requests
-import glob
-
-from io import BytesIO
 from scipy.stats import entropy
 
+import anvio
+import anvio.dbops as dbops
+import anvio.filesnpaths as filesnpaths
+import anvio.terminal as terminal
+import anvio.utils as utils
+from anvio.drivers.hmmer import HMMer
+from anvio.errors import ConfigError
+from anvio.parsers import parser_modules
+from anvio.tables.genefunctions import TableForGeneFunctions
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"

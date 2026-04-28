@@ -1,8 +1,8 @@
 """Interface to HMMer."""
 
-import os
-import io
 import glob
+import io
+import os
 import shutil
 
 # multiprocess is a fork of multiprocessing that uses the dill serializer instead of pickle
@@ -14,12 +14,10 @@ import shutil
 import multiprocess as multiprocessing
 
 import anvio
-import anvio.utils as utils
-import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.errors import ConfigError
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

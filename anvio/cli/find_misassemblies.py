@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 
 import sys
-import anvio
+
+import multiprocess as multiprocessing
 import numpy as np
 
+import anvio
 import anvio.bamops as bamops
 import anvio.terminal as terminal
-import multiprocess as multiprocessing
-
 from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
 

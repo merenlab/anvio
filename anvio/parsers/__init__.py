@@ -2,18 +2,15 @@
 
 import anvio
 import anvio.terminal as terminal
-
 from anvio.errors import ConfigError
-
-from anvio.parsers.krakenuniq import KrakenUniq
-from anvio.parsers.defaultmatrix import DefaultMatrix
-from anvio.parsers.centrifuge import Centrifuge
-from anvio.parsers.kaiju import Kaiju
-from anvio.parsers.hmmer import HMMERTableOutput, HMMERStandardOutput
-from anvio.parsers.concoct import CONCOCT
-from anvio.parsers.interproscan import InterProScan
 from anvio.parsers.agnostos import AGNOSTOS
-
+from anvio.parsers.centrifuge import Centrifuge
+from anvio.parsers.concoct import CONCOCT
+from anvio.parsers.defaultmatrix import DefaultMatrix
+from anvio.parsers.hmmer import HMMERStandardOutput, HMMERTableOutput
+from anvio.parsers.interproscan import InterProScan
+from anvio.parsers.kaiju import Kaiju
+from anvio.parsers.krakenuniq import KrakenUniq
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

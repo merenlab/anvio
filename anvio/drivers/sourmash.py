@@ -1,19 +1,17 @@
 """Interface to sourmash"""
 
 import os
-import numpy as np
-import pandas as pd
 import shutil
 
+import numpy as np
+import pandas as pd
+from scipy.stats import entropy, kurtosis, skew
+
 import anvio
-import anvio.utils as utils
-import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-
-from scipy.stats import entropy, skew, kurtosis
-
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.errors import ConfigError
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

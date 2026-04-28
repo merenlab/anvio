@@ -4,12 +4,10 @@
 import sys
 
 import anvio
+import anvio.constants as constants
 import anvio.panops as panops
 import anvio.terminal as terminal
-import anvio.constants as constants
-
 from anvio.errors import ConfigError, FilesNPathsError, HDF5Error
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

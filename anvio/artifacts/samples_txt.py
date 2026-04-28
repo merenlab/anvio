@@ -1,11 +1,11 @@
 # pylint: disable=line-too-long
 
 import os
-import anvio.utils as utils
-import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
-
 from pathlib import Path
+
+import anvio.filesnpaths as filesnpaths
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.errors import ConfigError
 
 

@@ -4,7 +4,6 @@ import sys
 
 from anvio.errors import ConfigError
 
-
 __description__ = ("This program has been superseded by `anvi-estimate-scg-taxonomy`")
 
 

@@ -6,11 +6,10 @@ import sys
 from ete3 import Tree
 
 import anvio
-import anvio.utils as utils
+import anvio.filesnpaths as filesnpaths
 import anvio.tables as tables
 import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
-
+import anvio.utils as utils
 from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
 

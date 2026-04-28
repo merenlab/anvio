@@ -4,24 +4,24 @@ Classes to use local databases for tRNA taxonomy to affiliate tRNA seqeunces in 
 databases with taxon names.
 """
 
-import os
 import glob
-import shutil
 import hashlib
+import os
+import shutil
 
 import anvio
-import anvio.utils as utils
-import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
-
-from anvio.errors import ConfigError
-from anvio.drivers.blast import BLAST
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.dbops import ContigsDatabase
-
-from anvio.taxonomyops import AccessionIdToTaxonomy
-from anvio.taxonomyops import TaxonomyEstimatorSingle
-from anvio.taxonomyops import PopulateContigsDatabaseWithTaxonomy
+from anvio.drivers.blast import BLAST
+from anvio.errors import ConfigError
+from anvio.taxonomyops import (
+    AccessionIdToTaxonomy,
+    PopulateContigsDatabaseWithTaxonomy,
+    TaxonomyEstimatorSingle,
+)
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"

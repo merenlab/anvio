@@ -7,12 +7,11 @@ field can be left blank because the script can look it up.
 Users can pass the ENTRY, NAME, DEFINITION, and CLASS lines as parameters.
 """
 
-import sys
 import os
+import sys
 
 import anvio
 import anvio.utils as utils
-
 from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.metabolism.estimate import module_definition_to_enzyme_accessions

@@ -4,11 +4,9 @@ import sys
 
 import anvio
 import anvio.terminal as terminal
-
-from anvio.tables.trnahits import TablesForTransferRNAs
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.tables.trnahits import TablesForTransferRNAs
 from anvio.terminal import time_program
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

@@ -3,14 +3,13 @@
     Common functions and classes for SCG/TRNA taxonomy.
 """
 
+import argparse
+import copy
+import gzip
+import hashlib
 import os
 import sys
-import gzip
-import copy
-import hashlib
-import argparse
-import numpy as np
-import pandas as pd
+from collections import Counter, OrderedDict
 
 # multiprocess is a fork of multiprocessing that uses the dill serializer instead of pickle
 # using the multiprocessing module directly results in a pickling error in Python 3.10 which
@@ -19,25 +18,29 @@ import pandas as pd
 #   >>> AttributeError: Can't pickle local object 'SOMEFUNCTION.<locals>.<lambda>' multiprocessing
 #
 import multiprocess as multiprocessing
-
-from collections import OrderedDict, Counter
+import numpy as np
+import pandas as pd
 
 import anvio
-import anvio.tables as t
-import anvio.utils as utils
-import anvio.hmmops as hmmops
-import anvio.terminal as terminal
+import anvio.ccollections as ccollections
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
-import anvio.ccollections as ccollections
-
-from anvio.errors import ConfigError
+import anvio.hmmops as hmmops
+import anvio.tables as t
+import anvio.terminal as terminal
+import anvio.utils as utils
+from anvio.dbops import (
+    ContigsDatabase,
+    ContigsSuperclass,
+    ProfileDatabase,
+    ProfileSuperclass,
+)
 from anvio.drivers.blast import BLAST
 from anvio.drivers.diamond import Diamond
+from anvio.errors import ConfigError
+from anvio.tables.miscdata import TableForLayerAdditionalData
 from anvio.tables.scgtaxonomy import TableForSCGTaxonomy
 from anvio.tables.trnataxonomy import TableForTRNATaxonomy
-from anvio.tables.miscdata import TableForLayerAdditionalData
-from anvio.dbops import ContigsSuperclass, ContigsDatabase, ProfileSuperclass, ProfileDatabase
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

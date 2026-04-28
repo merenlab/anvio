@@ -1,15 +1,10 @@
 # pylint: disable=line-too-long
 """Provides the necessary class to profile BAM files."""
 
-import gc
-import os
-import sys
-import copy
-import json
-import queue
-import shutil
 import argparse
-import numpy as np
+import copy
+import gc
+import json
 
 # We use TWO multiprocessing libraries:
 #
@@ -25,30 +20,33 @@ import numpy as np
 # This combination works because Process uses fork() on Linux/macOS, so Queue objects
 # are inherited by child processes rather than serialized.
 import multiprocessing as stdlib_multiprocessing
-import multiprocess as multiprocessing
-
+import os
+import queue
+import shutil
+import sys
 from collections import OrderedDict
 
-import anvio
-import anvio.db as db
-import anvio.tables as t
-import anvio.dbops as dbops
-import anvio.utils as utils
-import anvio.bamops as bamops
-import anvio.terminal as terminal
-import anvio.contigops as contigops
-import anvio.constants as constants
-import anvio.clustering as clustering
-import anvio.filesnpaths as filesnpaths
-import anvio.auxiliarydataops as auxiliarydataops
+import multiprocess as multiprocessing
+import numpy as np
 
+import anvio
+import anvio.auxiliarydataops as auxiliarydataops
+import anvio.bamops as bamops
+import anvio.clustering as clustering
+import anvio.constants as constants
+import anvio.contigops as contigops
+import anvio.db as db
+import anvio.dbops as dbops
+import anvio.filesnpaths as filesnpaths
+import anvio.tables as t
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.errors import ConfigError
-from anvio.tables.views import TablesForViews
+from anvio.tables.codonfrequencies import TableForCodonFrequencies
 from anvio.tables.indels import TableForIndels
 from anvio.tables.miscdata import TableForLayerAdditionalData
 from anvio.tables.variability import TableForVariability
-from anvio.tables.codonfrequencies import TableForCodonFrequencies
-
+from anvio.tables.views import TablesForViews
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
@@ -297,8 +295,8 @@ class SharedDataStore:
     @classmethod
     def from_existing(cls, shm_name, index, mode='bytes'):
         """Attach to an existing shared memory segment (for use in workers)."""
-        from multiprocessing.shared_memory import SharedMemory
         from multiprocessing import resource_tracker
+        from multiprocessing.shared_memory import SharedMemory
 
         obj = cls.__new__(cls)
         obj.mode = mode

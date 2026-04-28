@@ -4,12 +4,11 @@ import copy
 import multiprocessing.pool
 
 import anvio
-import anvio.fastalib as f
-import anvio.utils as utils
-import anvio.terminal as terminal
 import anvio.constants as constants
+import anvio.fastalib as f
 import anvio.filesnpaths as filesnpaths
-
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.errors import ConfigError
 
 try:

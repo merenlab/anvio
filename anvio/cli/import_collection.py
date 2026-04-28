@@ -1,19 +1,17 @@
 #!/usr/bin/env python
 """A script to import collections (and their colors)"""
 
-import sys
 import copy
+import sys
 from collections import Counter
 
 import anvio
 import anvio.dbops as dbops
-import anvio.utils as utils
-import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.tables.collections import TablesForCollections
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

@@ -3,9 +3,8 @@
 import sys
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
-
+import anvio.utils as utils
 from anvio.errors import ConfigError, FilesNPathsError
 
 SOME_GENOME_SIZE = 42

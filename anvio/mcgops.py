@@ -6,11 +6,12 @@
 """
 
 import os
-import anvio
-import numpy as np
-import matplotlib.pyplot as plt
-import anvio.terminal as terminal
 
+import matplotlib.pyplot as plt
+import numpy as np
+
+import anvio
+import anvio.terminal as terminal
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

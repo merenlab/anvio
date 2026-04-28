@@ -4,10 +4,9 @@ import sys
 
 import anvio
 import anvio.dbops as dbops
-import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 import anvio.genomestorage as genomestorage
-
+import anvio.terminal as terminal
 from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.tables.miscdata import TableForItemAdditionalData

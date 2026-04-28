@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-import os
 import importlib
+import os
 from pathlib import Path
 
 migration_scripts = {}

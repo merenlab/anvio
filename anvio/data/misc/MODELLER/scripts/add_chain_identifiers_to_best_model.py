@@ -1,6 +1,8 @@
 # Step 5: adds chain identifier to a single model structure
 import sys
+
 from modeller import *
+
 ENV = sys.argv[1]
 NAME = sys.argv[2]
 

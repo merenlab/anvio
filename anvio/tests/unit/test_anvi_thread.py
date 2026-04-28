@@ -6,7 +6,6 @@ import subprocess
 import unittest
 
 import anvio
-
 from anvio.threadingops import AnviThread
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"

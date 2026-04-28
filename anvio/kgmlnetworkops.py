@@ -1,20 +1,20 @@
 import os
 import sys
+from argparse import Namespace
+from copy import deepcopy
+from dataclasses import dataclass, field
+from typing import Any, Literal, Union
+
 import pandas as pd
 
-from copy import deepcopy
-from argparse import Namespace
-from typing import Any, Literal, Union
-from dataclasses import dataclass, field
-
-import anvio.metabolism.context as kcontext
 import anvio.kgml as kgml
-import anvio.terminal as terminal
+import anvio.metabolism.context as kcontext
 import anvio.reactionnetwork as rn
-
-from anvio.dbops import ContigsDatabase
+import anvio.terminal as terminal
 from anvio.argparse import ArgumentParser
+from anvio.dbops import ContigsDatabase
 from anvio.errors import ConfigError, FilesNPathsError
+
 
 @dataclass
 class Chain:

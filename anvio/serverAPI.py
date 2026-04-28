@@ -1,10 +1,11 @@
 """A simple anvi'server API."""
 
 import json
+
 import requests
 
-from anvio.terminal import Run
 from anvio.errors import AnviServerError
+from anvio.terminal import Run
 
 run = Run()
 

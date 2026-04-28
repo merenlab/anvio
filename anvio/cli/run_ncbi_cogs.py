@@ -1,17 +1,14 @@
 #!/usr/bin/env python
 
 import sys
-
 from argparse import Namespace
 
 import anvio
 import anvio.terminal as terminal
-
-from anvio.cogs import COGs
-from anvio.terminal import time_program
 from anvio.argparse import ArgumentParser
+from anvio.cogs import COGs
 from anvio.errors import ConfigError, FilesNPathsError
-
+from anvio.terminal import time_program
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"

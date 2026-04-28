@@ -101,18 +101,22 @@ Uif: Ui derived from Uf
 Uim: Ui derived from Um
 """
 
+import argparse
 import gc
-import os
-import sys
 import math
-import time
+import os
+import pickle as pkl
 import queue
 import random
 import shutil
-import argparse
-import numpy as np
-import pandas as pd
-import pickle as pkl
+import sys
+import time
+from bisect import bisect_left
+from collections import OrderedDict, defaultdict, deque
+from functools import partial
+from hashlib import sha1
+from itertools import chain
+
 import matplotlib.pyplot as plt
 
 # multiprocess is a fork of multiprocessing that uses the dill serializer instead of pickle
@@ -122,36 +126,30 @@ import matplotlib.pyplot as plt
 #   >>> AttributeError: Can't pickle local object 'SOMEFUNCTION.<locals>.<lambda>' multiprocessing
 #
 import multiprocess as multiprocessing
-
-from hashlib import sha1
-from itertools import chain
-from functools import partial
-from bisect import bisect_left
+import numpy as np
+import pandas as pd
 from matplotlib.gridspec import GridSpec
 from matplotlib.ticker import MaxNLocator
-from collections import defaultdict, deque, OrderedDict
 
 import anvio
-import anvio.dbops as dbops
-import anvio.utils as utils
-import anvio.tables as tables
-import anvio.fastalib as fastalib
-import anvio.terminal as terminal
-import anvio.constants as constants
-import anvio.clustering as clustering
-import anvio.filesnpaths as filesnpaths
-import anvio.tables.miscdata as miscdata
-import anvio.trnaidentifier as trnaidentifier
 import anvio.auxiliarydataops as auxiliarydataops
-
+import anvio.clustering as clustering
+import anvio.constants as constants
+import anvio.dbops as dbops
+import anvio.fastalib as fastalib
+import anvio.filesnpaths as filesnpaths
+import anvio.tables as tables
+import anvio.tables.miscdata as miscdata
+import anvio.terminal as terminal
+import anvio.trnaidentifier as trnaidentifier
+import anvio.utils as utils
+from anvio.agglomeration import Agglomerator
 from anvio.dbinfo import DBInfo
+from anvio.drivers.vmatch import Vmatch
 from anvio.errors import ConfigError
 from anvio.sequence import Dereplicator
-from anvio.drivers.vmatch import Vmatch
-from anvio.agglomeration import Agglomerator
-from anvio.tables.views import TablesForViews
 from anvio.tables.miscdata import TableForLayerOrders
-
+from anvio.tables.views import TablesForViews
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

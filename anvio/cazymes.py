@@ -1,19 +1,18 @@
 #!/usr/bin/env python
 """This file contains CAZyme related classes."""
 
-import os
 import glob
+import os
 import shutil
 
 import anvio
 import anvio.dbops as dbops
-import anvio.utils as utils
-import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-
-from anvio.errors import ConfigError
-from anvio.drivers.hmmer import HMMer
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.dbops import ContigsDatabase
+from anvio.drivers.hmmer import HMMer
+from anvio.errors import ConfigError
 from anvio.parsers import parser_modules
 from anvio.tables.genefunctions import TableForGeneFunctions
 

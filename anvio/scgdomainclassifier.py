@@ -1,20 +1,19 @@
 # pylint: disable=line-too-long
 
-import os
 import glob
-import random
 import itertools
+import os
+import random
 from collections import Counter
 
 import anvio
 import anvio.db as db
-import anvio.tables as t
-import anvio.utils as utils
-import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-
-from anvio.learning import RF
+import anvio.tables as t
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.errors import ConfigError
+from anvio.learning import RF
 
 with terminal.SuppressAllOutput():
     import anvio.data.hmm as hmm_data

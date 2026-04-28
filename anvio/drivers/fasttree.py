@@ -1,12 +1,11 @@
 """Interface to FastTree."""
 
-from subprocess import Popen, PIPE
+from subprocess import PIPE, Popen
 
 import anvio
-import anvio.utils as utils
-import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-
+import anvio.terminal as terminal
+import anvio.utils as utils
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

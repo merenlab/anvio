@@ -1,12 +1,11 @@
 # pylint: disable=line-too-long
 """A module to characterize Florian's inversions"""
 
-import os
-import copy
 import argparse
-import numpy as np
+import copy
+import os
 import xml.etree.ElementTree as ET
-from collections import OrderedDict, Counter
+from collections import Counter, OrderedDict
 
 # multiprocess is a fork of multiprocessing that uses the dill serializer instead of pickle
 # using the multiprocessing module directly results in a pickling error in Python 3.10 which
@@ -15,24 +14,21 @@ from collections import OrderedDict, Counter
 #   >>> AttributeError: Can't pickle local object 'SOMEFUNCTION.<locals>.<lambda>' multiprocessing
 #
 import multiprocess as multiprocessing
-
-
+import numpy as np
 
 import anvio
-import anvio.tables as t
+import anvio.auxiliarydataops as auxiliarydataops
+import anvio.bamops as bamops
 import anvio.dbinfo as dbi
 import anvio.dbops as dbops
-import anvio.utils as utils
-import anvio.bamops as bamops
-import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-import anvio.auxiliarydataops as auxiliarydataops
-
-from anvio.errors import ConfigError
-from anvio.summaryhtml import SummaryHTMLOutput
+import anvio.tables as t
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.artifacts.samples_txt import SamplesTxt
+from anvio.errors import ConfigError
 from anvio.sequencefeatures import Palindromes, PrimerSearch
-
+from anvio.summaryhtml import SummaryHTMLOutput
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

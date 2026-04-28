@@ -2,13 +2,11 @@
 """Takes a contigs database, and export taxonomy information from it."""
 
 import sys
-from anvio.argparse import ArgumentParser
 
 import anvio
 import anvio.dbops as dbops
-
+from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

@@ -7,19 +7,17 @@
     Ad hoc access to make sene of internal or external genome descriptions is also welcome.
 """
 
-import time
 import hashlib
+import time
 
 import anvio
 import anvio.db as db
-import anvio.tables as t
-import anvio.utils as utils
 import anvio.fastalib as fastalib
-import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-
+import anvio.tables as t
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.errors import ConfigError
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

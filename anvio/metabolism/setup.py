@@ -1,20 +1,18 @@
+import glob
 import os
 import re
-import glob
 import shutil
 
 import anvio
 import anvio.db as db
-import anvio.utils as utils
 import anvio.filesnpaths as filesnpaths
 import anvio.terminal as terminal
-
+import anvio.utils as utils
 from anvio.errors import ConfigError
-from anvio.version import versions_for_db_types
-from anvio.terminal import pluralize as P
-
 from anvio.metabolism.context import KeggContext
 from anvio.metabolism.modulesdb import ModulesDatabase
+from anvio.terminal import pluralize as P
+from anvio.version import versions_for_db_types
 
 
 class KeggSetup(KeggContext):

@@ -9,44 +9,44 @@
 # imported from so many other modules, it is kind of an appropriate place
 # for this
 try:
-    import os
-    import sys
-    import ssl
-    import yaml
-    import gzip
-    import time
     import copy
-    import socket
-    import shutil
-    import tarfile
+    import gzip
     import hashlib
-    import textwrap
-    import linecache
-    import webbrowser
-    import subprocess
-    import tracemalloc
-    import urllib.request, urllib.error, urllib.parse
-
-    import numpy as np
-    import pandas as pd
-    import Bio.PDB as PDB
     import itertools as it
-
-    from numba import jit
+    import linecache
+    import os
+    import shutil
+    import socket
+    import ssl
+    import subprocess
+    import sys
+    import tarfile
+    import textwrap
+    import time
+    import tracemalloc
+    import urllib.error
+    import urllib.parse
+    import urllib.request
+    import webbrowser
     from collections import Counter
 
-    import anvio
-    import anvio.db as db
-    import anvio.tables as t
-    import anvio.fastalib as u
-    import anvio.constants as constants
-    import anvio.filesnpaths as filesnpaths
+    import Bio.PDB as PDB
+    import numpy as np
+    import pandas as pd
+    import yaml
+    from numba import jit
 
+    import anvio
+    import anvio.constants as constants
+    import anvio.db as db
+    import anvio.fastalib as u
+    import anvio.filesnpaths as filesnpaths
+    import anvio.tables as t
     from anvio.dbinfo import DBInfo as dbi
-    from anvio.sequence import Composition
-    from anvio.version import versions_for_db_types
     from anvio.errors import ConfigError, FilesNPathsError
-    from anvio.terminal import Run, Progress, SuppressAllOutput, get_date, TimeCode
+    from anvio.sequence import Composition
+    from anvio.terminal import Progress, Run, SuppressAllOutput, TimeCode, get_date
+    from anvio.version import versions_for_db_types
 except ModuleNotFoundError as e:
     # Extract just the module name from "No module named 'modulename'"
     module_name = str(e).split("'")[1] if "'" in str(e) else str(e)
@@ -3179,7 +3179,7 @@ def check_contig_names(contig_names, dont_raise=False):
 def create_fasta_dir_from_sequence_sources(genome_desc, fasta_txt=None):
     """genome_desc is an instance of GenomeDescriptions"""
 
-    from anvio.summarizer import ArgsTemplateForSummarizerClass, ProfileSummarizer, Bin
+    from anvio.summarizer import ArgsTemplateForSummarizerClass, Bin, ProfileSummarizer
 
     if genome_desc is None and fasta_txt is None:
         raise ConfigError("Anvi'o was given no internal genomes, no external genomes, and no fasta "
@@ -4761,8 +4761,9 @@ def download_file(url, output_file_path, check_certificate=True, progress=progre
 
 
 def get_remote_file_content(url, gzipped=False, timeout=None):
-    import requests
     from io import BytesIO
+
+    import requests
 
     if timeout:
         remote_file = requests.get(url, timeout=timeout)
@@ -4916,10 +4917,10 @@ def run_selenium_and_export_svg(url, output_file_path, browser_path=None, run=ru
 
     try:
         from selenium import webdriver
-        from selenium.webdriver.common.by import By
-        from selenium.webdriver.support.ui import WebDriverWait
-        from selenium.webdriver.support import expected_conditions as EC
         from selenium.common.exceptions import TimeoutException
+        from selenium.webdriver.common.by import By
+        from selenium.webdriver.support import expected_conditions as EC
+        from selenium.webdriver.support.ui import WebDriverWait
     except:
         raise ConfigError("You want to export SVGs? Well, you need the Python library 'selenium' to be able to "
                           "do that but you don't have it. If you are lucky, you probably can install it by "

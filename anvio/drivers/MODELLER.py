@@ -2,21 +2,26 @@
 Interface to MODELLER (https://salilab.org/modeller/).
 """
 
-import os
-import anvio
-import shutil
 import argparse
+import os
+import shutil
 import subprocess
 
 import pandas as pd
-import anvio.utils as utils
-import anvio.fastalib as u
-import anvio.terminal as terminal
-import anvio.constants as constants
-import anvio.filesnpaths as filesnpaths
 
+import anvio
+import anvio.constants as constants
+import anvio.fastalib as u
+import anvio.filesnpaths as filesnpaths
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.drivers import diamond
-from anvio.errors import ConfigError, ModellerError, ModellerScriptError, FilesNPathsError
+from anvio.errors import (
+    ConfigError,
+    FilesNPathsError,
+    ModellerError,
+    ModellerScriptError,
+)
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

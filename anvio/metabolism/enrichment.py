@@ -1,13 +1,11 @@
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 import anvio
-import anvio.utils as utils
-import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.errors import ConfigError
-
 from anvio.metabolism.context import KeggContext
 
 

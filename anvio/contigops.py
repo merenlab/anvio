@@ -3,26 +3,29 @@
    from contigs and splits. Also includes classes to deal with external
    contig data such as GenbankToAnvio."""
 
+import argparse
+import gzip
+import io
 import os
 import re
-import io
-import gzip
-import numpy as np
 import string
-import argparse
-
-from Bio import SeqIO
 from collections import OrderedDict
 
+import numpy as np
+from Bio import SeqIO
+
 import anvio
-import anvio.utils as utils
-import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
-
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.errors import ConfigError
-from anvio.variability import VariablityTestFactory, ProcessNucleotideCounts, ProcessCodonCounts, ProcessIndelCounts
-
+from anvio.variability import (
+    ProcessCodonCounts,
+    ProcessIndelCounts,
+    ProcessNucleotideCounts,
+    VariablityTestFactory,
+)
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = ["Mike Lee", "Faruk Uzun"]

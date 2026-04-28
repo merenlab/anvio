@@ -1,15 +1,14 @@
 import sys
 
 import anvio.terminal as terminal
-
-from anvio.drivers.fasttree import FastTree
-from anvio.drivers.muscle import Muscle
-from anvio.drivers.famsa import FAMSA
-from anvio.drivers.concoct import CONCOCT
-from anvio.drivers.metabat2 import MetaBAT2
-from anvio.drivers.maxbin2 import MaxBin2
-from anvio.drivers.dastool import DAS_Tool
 from anvio.drivers.binsanity import BinSanity
+from anvio.drivers.concoct import CONCOCT
+from anvio.drivers.dastool import DAS_Tool
+from anvio.drivers.famsa import FAMSA
+from anvio.drivers.fasttree import FastTree
+from anvio.drivers.maxbin2 import MaxBin2
+from anvio.drivers.metabat2 import MetaBAT2
+from anvio.drivers.muscle import Muscle
 from anvio.errors import ConfigError
 
 run = terminal.Run()

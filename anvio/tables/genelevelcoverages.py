@@ -5,12 +5,10 @@ import numpy as np
 import anvio
 import anvio.db as db
 import anvio.tables as t
-import anvio.utils as utils
 import anvio.terminal as terminal
-
-from anvio.tables.tableops import Table
+import anvio.utils as utils
 from anvio.errors import ConfigError
-
+from anvio.tables.tableops import Table
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

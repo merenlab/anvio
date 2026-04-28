@@ -1,25 +1,22 @@
 # pylint: disable=line-too-long
 """A library to help anvi'o describe itself"""
 
+import argparse
+import copy
+import importlib
+import json
 import os
 import sys
-import json
-import copy
-import argparse
-import importlib
-
 from collections import Counter
 
 import anvio
-import anvio.utils as utils
-import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-
-from anvio.errors import ConfigError
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.authors import AnvioAuthors
 from anvio.docs import ANVIO_ARTIFACTS, ANVIO_WORKFLOWS, THIRD_PARTY_PROGRAMS
+from anvio.errors import ConfigError
 from anvio.summaryhtml import SummaryHTMLOutput
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

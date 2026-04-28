@@ -4,9 +4,7 @@ import argparse
 
 import anvio.db as db
 import anvio.terminal as terminal
-
 from anvio.errors import ConfigError
-
 
 current_version, next_version = [x[1:] for x in __name__.split('_to_')]
 

@@ -2,10 +2,10 @@
 """An interface for Vmatch"""
 
 import os
-import time
 import queue
 import shutil
-import pandas as pd
+import time
+from collections import defaultdict
 
 # multiprocess is a fork of multiprocessing that uses the dill serializer instead of pickle
 # using the multiprocessing module directly results in a pickling error in Python 3.10 which
@@ -14,16 +14,13 @@ import pandas as pd
 #   >>> AttributeError: Can't pickle local object 'SOMEFUNCTION.<locals>.<lambda>' multiprocessing
 #
 import multiprocess as multiprocessing
-
-from collections import defaultdict
+import pandas as pd
 
 import anvio
-import anvio.utils as utils
-import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.errors import ConfigError
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

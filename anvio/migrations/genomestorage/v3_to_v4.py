@@ -1,13 +1,11 @@
 #!/usr/bin/env python
 
-import sys
 import argparse
+import sys
 
-import anvio.utils as utils
 import anvio.terminal as terminal
-
+import anvio.utils as utils
 from anvio.errors import ConfigError
-
 
 current_version = '3'
 next_version    = '4'

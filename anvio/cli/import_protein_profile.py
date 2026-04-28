@@ -1,19 +1,17 @@
 #!/usr/bin/env python
 DESCRIPTION = """This program imports protein abundance data into a profile database."""
 
+from argparse import Namespace
+from sys import exit
+
 import pandas as pd
 
-from sys import exit
-from argparse import Namespace
-
 import anvio.tables as tables
-
 from anvio import A, K
-from anvio.errors import ConfigError
-from anvio.dbops import ProfileDatabase
 from anvio import __version__ as VERSION
 from anvio.argparse import ArgumentParser
-
+from anvio.dbops import ProfileDatabase
+from anvio.errors import ConfigError
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

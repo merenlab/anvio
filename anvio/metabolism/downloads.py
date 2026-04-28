@@ -1,26 +1,24 @@
-import os
-import re
 import glob
 import json
-import time
-import shutil
-import pandas as pd
 import multiprocessing as mp
+import os
+import re
+import shutil
+import time
 from typing import Dict, List, Tuple, Union
 
-import anvio
-import anvio.utils as utils
-import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
+import pandas as pd
 
-from anvio.errors import ConfigError
-from anvio.parsers import parser_modules
+import anvio
+import anvio.filesnpaths as filesnpaths
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.drivers.hmmer import HMMer
 from anvio.drivers.muscle import Muscle
-
+from anvio.errors import ConfigError
+from anvio.metabolism.constants import GLOBAL_MAP_ID_PATTERN, STRAY_KO_ANVIO_SUFFIX
 from anvio.metabolism.setup import KeggSetup
-from anvio.metabolism.constants import STRAY_KO_ANVIO_SUFFIX, GLOBAL_MAP_ID_PATTERN
-
+from anvio.parsers import parser_modules
 
 run_quiet = terminal.Run(log_file_path=None, verbose=False)
 progress_quiet = terminal.Progress(verbose=False)

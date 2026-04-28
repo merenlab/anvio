@@ -1,9 +1,8 @@
-import os
 import glob
+import os
 
-import anvio.utils as u
 import anvio.terminal as terminal
-
+import anvio.utils as u
 from anvio.terminal import pluralize as P
 
 run = terminal.Run()

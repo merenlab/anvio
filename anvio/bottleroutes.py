@@ -6,26 +6,21 @@
     anvi-interactive, or anvi-refine.
 """
 
-import os
-import re
-import io
-import sys
-import math
-import copy
-import time
-import json
-import base64
-import random
-import getpass
 import argparse
+import base64
+import copy
 import datetime
+import getpass
 import importlib
-
+import io
+import json
+import math
+import os
+import random
+import re
+import sys
+import time
 from hashlib import md5
-from ete3 import Tree
-from bottle import Bottle
-from bottle import BaseRequest
-from bottle import redirect, static_file
 
 # multiprocess is a fork of multiprocessing that uses the dill serializer instead of pickle
 # using the multiprocessing module directly results in a pickling error in Python 3.10 which
@@ -34,23 +29,23 @@ from bottle import redirect, static_file
 #   >>> AttributeError: Can't pickle local object 'SOMEFUNCTION.<locals>.<lambda>' multiprocessing
 #
 import multiprocess as multiprocessing
+from bottle import BaseRequest, Bottle, redirect, static_file
+from ete3 import Tree
 
 import anvio
-import anvio.dbops as dbops
-import anvio.utils as utils
-import anvio.drivers as drivers
-import anvio.terminal as terminal
-import anvio.constants as constants
-import anvio.summarizer as summarizer
-import anvio.filesnpaths as filesnpaths
-import anvio.taxonomyops.scg as scgtaxonomyops
 import anvio.auxiliarydataops as auxiliarydataops
-
+import anvio.constants as constants
+import anvio.dbops as dbops
+import anvio.drivers as drivers
+import anvio.filesnpaths as filesnpaths
+import anvio.summarizer as summarizer
+import anvio.taxonomyops.scg as scgtaxonomyops
+import anvio.terminal as terminal
+import anvio.utils as utils
+from anvio.errors import ConfigError, RefineError
 from anvio.serverAPI import AnviServerAPI
-from anvio.errors import RefineError, ConfigError
-from anvio.tables.miscdata import TableForLayerOrders
 from anvio.tables.collections import TablesForCollections
-
+from anvio.tables.miscdata import TableForLayerOrders
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = ["A. Murat Eren"]
@@ -109,7 +104,7 @@ class BottleApplication(Bottle):
             request = mock_request
             response = mock_response
         else:
-            from bottle import response, request
+            from bottle import request, response
 
         # if there is a contigs database, and scg taxonomy was run on it get an instance
         # of the SCG Taxonomy class early on:

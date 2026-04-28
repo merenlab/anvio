@@ -6,14 +6,11 @@
 import shutil
 
 import anvio
-import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-
-from anvio.errors import ConfigError
-
+import anvio.terminal as terminal
 from anvio.drivers.prodigal import Prodigal
 from anvio.drivers.pyrodigal import Pyrodigal_gv
-
+from anvio.errors import ConfigError
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

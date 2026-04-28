@@ -1,15 +1,14 @@
 #!/usr/bin/env python
 
-import os
-import sys
-import shutil
-import tempfile
 import argparse
+import os
+import shutil
+import sys
+import tempfile
 
 import anvio.db as db
-import anvio.utils as utils
 import anvio.terminal as terminal
-
+import anvio.utils as utils
 from anvio.errors import ConfigError
 
 current_version, next_version = [x[1:] for x in __name__.split('_to_')]

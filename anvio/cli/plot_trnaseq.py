@@ -5,10 +5,8 @@ import sys
 
 import anvio
 import anvio.trnaseq as trnaseq
-
-from anvio.errors import ConfigError
 from anvio.argparse import ArgumentParser
-
+from anvio.errors import ConfigError
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

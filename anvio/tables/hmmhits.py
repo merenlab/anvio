@@ -1,30 +1,28 @@
 # pylint: disable=line-too-long
 
-import os
-import sys
 import gzip
-import shutil
 import hashlib
+import os
+import shutil
+import sys
+
 import pandas as pd
 
 import anvio
-import anvio.db as db
-import anvio.tables as t
-import anvio.utils as utils
-import anvio.hmmops as hmmops
-import anvio.terminal as terminal
 import anvio.constants as constants
+import anvio.db as db
 import anvio.filesnpaths as filesnpaths
-
+import anvio.hmmops as hmmops
+import anvio.tables as t
+import anvio.terminal as terminal
+import anvio.utils as utils
+from anvio.dbops import ContigsDatabase, ContigsSuperclass
 from anvio.drivers.hmmer import HMMer
-from anvio.tables.tableops import Table
-from anvio.dbops import ContigsDatabase
-from anvio.parsers import parser_modules
-from anvio.dbops import ContigsSuperclass
 from anvio.errors import ConfigError, StupidHMMError
+from anvio.parsers import parser_modules
 from anvio.tables.genecalls import TablesForGeneCalls
 from anvio.tables.genefunctions import TableForGeneFunctions
-
+from anvio.tables.tableops import Table
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

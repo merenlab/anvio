@@ -1,22 +1,18 @@
 # pylint: disable=line-too-long
 """File/Path operations"""
 
-import os
 import json
-import time
+import os
 import shutil
 import tarfile
 import tempfile
+import time
 
 import anvio
-import anvio.fastalib as u
 import anvio.constants as constants
-
-from anvio.terminal import Run
-from anvio.terminal import Progress
-from anvio.terminal import SuppressAllOutput
+import anvio.fastalib as u
 from anvio.errors import FilesNPathsError
-
+from anvio.terminal import Progress, Run, SuppressAllOutput
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

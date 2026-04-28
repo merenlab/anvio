@@ -3,20 +3,18 @@
 
 import numpy as np
 import pandas as pd
-
-from sklearn import manifold
-from sklearn import preprocessing
 from scipy.cluster import hierarchy
 from scipy.spatial import distance as scipy_distance
 from scipy.spatial.distance import pdist, squareform
+from sklearn import manifold, preprocessing
 
 import anvio
-import anvio.utils as utils
-import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
-
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.errors import ConfigError
+
 with terminal.SuppressAllOutput():
     from ete3 import Tree
 

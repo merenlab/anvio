@@ -37,18 +37,16 @@ import os
 import sys
 
 import anvio
-import anvio.utils as utils
-import anvio.hmmops as hmmops
-import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
-import anvio.hmmopswrapper as hmmopswrapper
+import anvio.filesnpaths as filesnpaths
 import anvio.genomedescriptions as genomedescriptions
-
-from anvio.dbops import ContigsSuperclass, ContigsDatabase
+import anvio.hmmops as hmmops
+import anvio.hmmopswrapper as hmmopswrapper
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.argparse import ArgumentParser
+from anvio.dbops import ContigsDatabase, ContigsSuperclass
 from anvio.errors import ConfigError, FilesNPathsError
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

@@ -1,38 +1,36 @@
 #!/usr/bin/env python
 """Make KEGG pathway maps incorporating data sourced from anvi'o databases."""
 
-import os
-import re
-import fitz
+import functools
 import json
 import math
+import os
+import re
 import shutil
-import functools
-import numpy as np
-import pandas as pd
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-import matplotlib.colors as mcolors
-
 from argparse import Namespace
 from itertools import combinations
 from typing import Dict, Iterable, List, Literal, Set, Tuple, Union
 
-import anvio.kgml as kgml
-import anvio.utils as utils
-import anvio.dbinfo as dbinfo
-import anvio.terminal as terminal
-import anvio.reactionnetwork as rn
-import anvio.filesnpaths as filesnpaths
+import fitz
+import matplotlib as mpl
+import matplotlib.colors as mcolors
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 
+import anvio.dbinfo as dbinfo
+import anvio.filesnpaths as filesnpaths
+import anvio.kgml as kgml
+import anvio.reactionnetwork as rn
+import anvio.terminal as terminal
+import anvio.utils as utils
+from anvio import FORCE_OVERWRITE, QUIET
+from anvio import __version__ as VERSION
+from anvio.dbops import ContigsDatabase, PanSuperclass
 from anvio.errors import ConfigError
 from anvio.genomestorage import GenomeStorage
-from anvio.dbops import ContigsDatabase, PanSuperclass
-from anvio import FORCE_OVERWRITE, QUIET, __version__ as VERSION
-
-from anvio.metabolism.context import KeggContext
 from anvio.metabolism.constants import GLOBAL_MAP_ID_PATTERN, OVERVIEW_MAP_ID_PATTERN
-
+from anvio.metabolism.context import KeggContext
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"
 __copyright__ = "Copyleft 2015-2024, the Meren Lab (http://merenlab.org/)"

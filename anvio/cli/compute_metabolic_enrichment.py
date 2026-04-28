@@ -4,12 +4,10 @@
 import sys
 
 import anvio
-import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-
+import anvio.terminal as terminal
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.metabolism.enrichment import KeggModuleEnrichment
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

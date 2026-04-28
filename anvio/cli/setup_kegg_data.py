@@ -1,17 +1,14 @@
 #!/usr/bin/env python
 
-import sys
 import argparse
+import sys
 
 import anvio
-
+from anvio.errors import ConfigError, FilesNPathsError
+from anvio.metabolism.downloads import KOfamDownload, ModulesDownload
+from anvio.metabolism.setup import KeggSetup
 from anvio.terminal import time_program
 from anvio.ttycolors import color_text as c
-from anvio.errors import ConfigError, FilesNPathsError
-
-from anvio.metabolism.setup import KeggSetup
-from anvio.metabolism.downloads import KOfamDownload, ModulesDownload
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"

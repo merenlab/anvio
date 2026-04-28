@@ -5,10 +5,8 @@ import sys
 
 import anvio
 import anvio.terminal as terminal
-
-from anvio.errors import ConfigError, FilesNPathsError
 from anvio.dbops import AA_counts
-
+from anvio.errors import ConfigError, FilesNPathsError
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

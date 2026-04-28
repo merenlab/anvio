@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 
+import argparse
 import os
 import sys
-import argparse
+
 import pandas as pd
 
 import anvio.db as db
 import anvio.terminal as terminal
-
 from anvio.errors import ConfigError
 from anvio.reactionnetwork import ModelSEEDDatabase
 

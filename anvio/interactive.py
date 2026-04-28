@@ -1,43 +1,51 @@
 # pylint: disable=line-too-long
 """The module that curates data for the interactive interface"""
 
+import argparse
+import copy
 import os
 import sys
-import copy
-import numpy
-import argparse
 import textwrap
+
+import numpy
 import pandas as pd
 
 import anvio
-import anvio.tables as t
-import anvio.utils as utils
-import anvio.dbops as dbops
-import anvio.hmmops as hmmops
-import anvio.terminal as terminal
-import anvio.constants as constants
-import anvio.summarizer as summarizer
-import anvio.clustering as clustering
-import anvio.filesnpaths as filesnpaths
 import anvio.ccollections as ccollections
+import anvio.clustering as clustering
+import anvio.constants as constants
+import anvio.dbops as dbops
+import anvio.filesnpaths as filesnpaths
+import anvio.hmmops as hmmops
 import anvio.structureops as structureops
+import anvio.summarizer as summarizer
+import anvio.tables as t
+import anvio.terminal as terminal
+import anvio.utils as utils
 import anvio.variabilityops as variabilityops
-
-from anvio.completeness import Completeness
-from anvio.dbops import get_description_in_db
-from anvio.tables.views import TablesForViews
-from anvio.variabilityops import VariabilitySuper
-from anvio.variabilityops import variability_engines
-from anvio.dbops import get_default_item_order_name
-from anvio.genomedescriptions import AggregateFunctions
-from anvio.tables.collections import TablesForCollections
-from anvio.metabolism.estimate import KeggMetabolismEstimator
-from anvio.errors import ConfigError, RefineError, GenesDBError
 from anvio.clusteringconfuguration import ClusteringConfiguration
-from anvio.dbops import ProfileSuperclass, ContigsSuperclass, PanSuperclass, TablesForStates, ProfileDatabase
-from anvio.tables.miscdata import TableForItemAdditionalData, TableForLayerAdditionalData
-from anvio.tables.miscdata import TableForLayerOrders, TableForAminoAcidAdditionalData
-
+from anvio.completeness import Completeness
+from anvio.dbops import (
+    ContigsSuperclass,
+    PanSuperclass,
+    ProfileDatabase,
+    ProfileSuperclass,
+    TablesForStates,
+    get_default_item_order_name,
+    get_description_in_db,
+)
+from anvio.errors import ConfigError, GenesDBError, RefineError
+from anvio.genomedescriptions import AggregateFunctions
+from anvio.metabolism.estimate import KeggMetabolismEstimator
+from anvio.tables.collections import TablesForCollections
+from anvio.tables.miscdata import (
+    TableForAminoAcidAdditionalData,
+    TableForItemAdditionalData,
+    TableForLayerAdditionalData,
+    TableForLayerOrders,
+)
+from anvio.tables.views import TablesForViews
+from anvio.variabilityops import VariabilitySuper, variability_engines
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
@@ -900,8 +908,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # some mode specific imports
         from collections import Counter
 
-        from anvio.dbinfo import DBInfo
         import anvio.codonusage as codonusage
+        from anvio.dbinfo import DBInfo
 
         # these are all going to be filled later nicely.
         self.p_meta['item_orders'] = {}

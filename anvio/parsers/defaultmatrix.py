@@ -2,11 +2,8 @@
 
 import anvio
 import anvio.terminal as terminal
-
-from anvio.parsers.base import Parser
-from anvio.parsers.base import TaxonomyHelper
 from anvio.constants import levels_of_taxonomy
-
+from anvio.parsers.base import Parser, TaxonomyHelper
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

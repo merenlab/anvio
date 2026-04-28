@@ -3,14 +3,13 @@
 
    Takes multiple files in, sends them to the server."""
 
-import sys
 import getpass
-from anvio.argparse import ArgumentParser
+import sys
 
 import anvio
-
-from anvio.serverAPI import AnviServerAPI
+from anvio.argparse import ArgumentParser
 from anvio.errors import AnviServerError
+from anvio.serverAPI import AnviServerAPI
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

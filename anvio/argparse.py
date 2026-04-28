@@ -1,22 +1,20 @@
 # pylint: disable=line-too-long
 """Overloading Python argparse for anvi'o purposes"""
 
+import argparse
 import os
 import sys
-import argparse
 import textwrap
 
-from colored import fg, attr
+from colored import attr, fg
 from rich_argparse import RichHelpFormatter
 
 import anvio
 import anvio.docs as docs
 import anvio.terminal as terminal
-
-from anvio.programs import Program
-from anvio.errors import ConfigError
 from anvio.dbinfo import FindAnvioDBs
-
+from anvio.errors import ConfigError
+from anvio.programs import Program
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

@@ -4,11 +4,9 @@
 import sys
 
 import anvio
-import anvio.genomestorage as genomestorage
 import anvio.genomedescriptions as genomedescriptions
-
+import anvio.genomestorage as genomestorage
 from anvio.errors import ConfigError, FilesNPathsError
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

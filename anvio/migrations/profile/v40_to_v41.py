@@ -16,13 +16,12 @@ The entire operation is wrapped in a single SQLite transaction so that a crash a
 leaves the database unchanged.
 """
 
+import argparse
 import re
 import sys
-import argparse
 
 import anvio.dbinfo as dbinfo
 import anvio.terminal as terminal
-
 from anvio.errors import ConfigError
 
 current_version, next_version = [x[1:] for x in __name__.split('_to_')]

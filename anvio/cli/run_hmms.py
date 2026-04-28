@@ -4,8 +4,8 @@ import os
 import sys
 
 import anvio
-import anvio.utils as utils
 import anvio.terminal as terminal
+import anvio.utils as utils
 
 with terminal.SuppressAllOutput():
     import anvio.data.hmm as hmm_data
@@ -14,10 +14,9 @@ with terminal.SuppressAllOutput():
 available_hmm_sources = list(hmm_data.sources.keys())
 
 from anvio.errors import ConfigError, FilesNPathsError
-from anvio.terminal import time_program
 from anvio.tables.hmmhits import TablesForHMMHits
 from anvio.tables.trnahits import TablesForTransferRNAs
-
+from anvio.terminal import time_program
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

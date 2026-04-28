@@ -5,12 +5,10 @@ of bins and collections found in it."""
 import sys
 
 import anvio
-import anvio.utils as utils
-import anvio.terminal as terminal
 import anvio.ccollections as ccollections
-
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.errors import ConfigError, FilesNPathsError
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

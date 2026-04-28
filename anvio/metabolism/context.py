@@ -1,9 +1,8 @@
-import os
 import collections
+import os
 
 import anvio
 import anvio.utils as utils
-
 from anvio.errors import ConfigError
 
 

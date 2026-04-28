@@ -4,17 +4,16 @@
 
 import os
 import sys
+
 import pandas as pd
 
 import anvio
-import anvio.terminal as terminal
-import anvio.constants as constants
 import anvio.codonusage as codonusage
+import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
-
+import anvio.terminal as terminal
 from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []

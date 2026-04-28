@@ -1,15 +1,14 @@
 #!/usr/bin/env python
 
 import sys
+
 import numpy as numpy
 
 import anvio
-import anvio.utils as utils
-import anvio.terminal as terminal
 import anvio.summarizer as summarizer
-
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.errors import ConfigError, FilesNPathsError
-
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"

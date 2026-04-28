@@ -1,23 +1,21 @@
 #!/usr/bin/env python
 """A script to run automatic binning algorithms on a merged anvi'o profile"""
-import os
-import sys
-import shutil
-import random
 import argparse
+import os
+import random
+import shutil
+import sys
 
 import anvio
-import anvio.tables as t
 import anvio.dbops as dbops
-import anvio.utils as utils
-import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-
+import anvio.tables as t
+import anvio.terminal as terminal
+import anvio.utils as utils
 from anvio.drivers import driver_modules
-from anvio.ttycolors import color_text as c
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.tables.collections import TablesForCollections
-
+from anvio.ttycolors import color_text as c
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = ["Christopher Quince"]

@@ -1,14 +1,13 @@
 #!/usr/bin/env python
 
-import sys
-import json
 import argparse
+import json
+import sys
 
 import anvio
-import anvio.workflows as w
-import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-
+import anvio.terminal as terminal
+import anvio.workflows as w
 from anvio.errors import ConfigError
 
 current_version, next_version = [x[1:] for x in __name__.split('_to_')]
