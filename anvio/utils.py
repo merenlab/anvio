@@ -4714,7 +4714,7 @@ def get_yaml_as_dict(file_path):
                           f"{file_path} as a YAML file. It is likely that it is not a properly "
                           f"formatted YAML file and it needs editing, but here is the error "
                           f"message in case it clarifies things: '{e}'.")
-    
+
 def save_dict_as_yaml(data, file_path):
     """YAML parser"""
 

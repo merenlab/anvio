@@ -167,5 +167,3 @@ class TableForGenomeDistances(Table):
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
         database._exec_many(f'''INSERT INTO {t.pan_graph_genome_distances_table_name} VALUES ({placeholders})''', db_entries)
         database.disconnect()
-
-

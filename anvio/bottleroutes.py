@@ -1717,7 +1717,7 @@ class BottleApplication(Bottle):
         except:
             return(json.dumps({'status': 1, 'data': ''}))
 
-    
+
     def get_pangraph_synteny_gene_cluster_region(self):
 
         try:

@@ -35,7 +35,7 @@ def main():
 def run_program():
     args = get_args()
     run = terminal.Run()
-    
+
     filesnpaths.is_output_file_writable(args.fasta_text_file, ok_if_exists=False)
 
     fasta_text_file_dict = {}
