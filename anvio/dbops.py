@@ -3547,6 +3547,8 @@ class PanGraphSuperclass(PanSuperclass):
 
         self.nodes = pan_graph_db.db.get_table_as_dict(t.pan_graph_nodes_table_name)
         self.edges = pan_graph_db.db.get_table_as_dict(t.pan_graph_edges_table_name)
+        self.regions = pan_graph_db.db.get_table_as_dict(t.pan_graph_regions_table_name)
+        self.genome_distances = pan_graph_db.db.get_table_as_dict(t.pan_graph_genome_distances_table_name)
         self.states = pan_graph_db.db.get_table_as_dict(t.states_table_name)
 
         self.pangenome_graph = PangenomeGraphManager()
