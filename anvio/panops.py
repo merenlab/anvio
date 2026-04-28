@@ -1513,8 +1513,15 @@ class PangenomeGraph():
                                   "even have a pan-db).")
 
         # ANVI'O OUTPUTS
-        self.output_dir = A('output_dir')
-        self.pan_graph_db_path = os.path.join(self.output_dir, self.project_name + '-PAN-GRAPH.db')
+        user_pan_graph_db_path = A('pan_graph_db')
+        if user_pan_graph_db_path:
+            self.pan_graph_db_path = user_pan_graph_db_path
+        else:
+            self.pan_graph_db_path = os.path.join('.', self.project_name + '-PAN-GRAPH.db')
+
+        self.output_dir = os.path.dirname(self.pan_graph_db_path) or '.'
+        args.output_dir = self.output_dir
+
         self.output_synteny_gene_cluster_dendrogram = A('output_synteny_gene_cluster_dendrogram')
         self.output_hybrid_genome = A('output_hybrid_genome')
         self.circularize = A('circularize')
@@ -1710,6 +1717,11 @@ class PangenomeGraph():
 
         # make sure the output directory is there
         filesnpaths.gen_output_directory(self.output_dir)
+
+        # fail fast if the user has pointed --pan-graph-db at a non-`.db` filename
+        # or at a path that already exists (so we don't burn CPU before crashing
+        # inside `PanGraphDatabase.touch()`)
+        dbops.is_db_ok_to_create(self.pan_graph_db_path, 'pan-graph')
 
         # a round of sanity check
         self.sanity_check()

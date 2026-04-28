@@ -48,17 +48,17 @@ def get_args():
     groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
     groupA.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes', {'required': False}))
     groupA.add_argument(*anvio.A('genomes-names'), **anvio.K('genomes-names', {'required': False}))
-    groupA.add_argument(*anvio.A('pan-graph-db'), **anvio.K('pan-graph-db', {'required': False}))
     groupA.add_argument(*anvio.A('pan-graph-yaml'), **anvio.K('pan-graph-yaml', {'required': False}))
 
-    groupB = parser.add_argument_group('OUTPUT', "By default, this program will store the resulting pangraph into the anvi'o pan-db "
-                                "you have provided as input above, so it is accessible to downstream analyses seamlessly. Using the "
-                                "the parameters below, you can ask anvi'o to store the resulting graph into a text output file (which "
-                                "may be useful for developers for debugging purposes) or you can ask anvi'o to skip adding the results "
-                                "to the pan-db.")
-    groupB.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required': True}))
+    groupB = parser.add_argument_group('OUTPUT', "Where the resulting pan-graph-db should be written. If you don't specify a path, "
+                                "anvi'o will write the database into the current working directory using the project name as the "
+                                "filename (i.e., './<project_name>-PAN-GRAPH.db').")
+    groupB.add_argument(*anvio.A('pan-graph-db'), **anvio.K('pan-graph-db', {'required': False,
+                                'help': "Output path for the pan-graph-db this program produces. Specify both the directory and the "
+                                        "filename (e.g., '/path/to/MY-PAN-GRAPH.db'). If omitted, defaults to "
+                                        "'./<project_name>-PAN-GRAPH.db' in the current working directory."}))
     groupB.add_argument('--output-synteny-gene-cluster-dendrogram', default=False, action="store_true", help="Write a dendrogram (.svg) "
-                                "and distance matrix (.tsv) for each split SynGC to the output directory (for debugging "
+                                "and distance matrix (.tsv) for each split SynGC alongside the pan-graph-db (for debugging "
                                 "the multi-copy gene splitter).")
 
     groupC = parser.add_argument_group('GRAPH BUILDING & SPLITTING', "Controls how SynGC are generated and filtered.")
