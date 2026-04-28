@@ -3781,6 +3781,20 @@ class PanGraphSuperclass(PanSuperclass):
         return(super().get_gene_cluster_function_summary(gene_cluster_id, functional_annotation_source, discard_ties, consensus_threshold))
 
 
+    def init_collection_profile(self, collection_name):
+        if not self.synteny_gene_clusters:
+            raise ConfigError("init_collection_profile wants to initialize the collection profile for '%s', but "
+                              "synteny gene clusters have not been initialized yet :/" % collection_name)
+
+        collection, bins_info, self.gene_clusters_in_pan_db_but_not_binned = \
+            self.collections.get_trimmed_dicts(collection_name, set(self.synteny_gene_clusters.keys()))
+
+        for bin_id in collection:
+            self.collection_profile[bin_id] = {}
+
+        return collection, bins_info
+
+
 class ProfileSuperclass(object):
     """Fancy super class to deal with profile db stuff.
 

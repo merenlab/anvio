@@ -3314,6 +3314,10 @@ class PangraphInteractive(PanGraphSuperclass):
             raise ConfigError("Unfortunately you can only use this program with a pangenome graph database.")
 
         PanGraphSuperclass.__init__(self, self.args)
+
+        self.collections = ccollections.Collections()
+        self.collections.populate_collections_dict(self.pan_graph_db_path)
+
         self.init_pangenome_graph()
         self.init_synteny_gene_clusters()
         self.init_synteny_gene_clusters_functions()
