@@ -18,7 +18,7 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
-__requires__ = ['profile-db', 'contigs-db', 'collection', 'pan-db', 'genomes-storage-db',]
+__requires__ = ['profile-db', 'contigs-db', 'collection', 'pan-db', 'pan-graph-db', 'genomes-storage-db',]
 __provides__ = ['summary']
 __description__ = ("Summarizer for anvi'o pan or profile db's. Essentially, this program takes a collection id along with either "
                    "a profile database and a contigs database or a pan database and a genomes storage and generates a static HTML "
@@ -58,6 +58,9 @@ def run_program():
     if db_type == 'pan':
         args.pan_db = args.pan_or_profile_db
         summary = summarizer.PanSummarizer(args)
+    elif db_type == 'pan-graph':
+        args.pan_graph_db = args.pan_or_profile_db
+        summary = summarizer.PanGraphSummarizer(args)
     elif db_type == 'profile':
         args.profile_db = args.pan_or_profile_db
         profile_db = dbops.ProfileDatabase(args.profile_db)
@@ -75,7 +78,7 @@ def run_program():
 
         summary = summarizer.ProfileSummarizer(args)
     else:
-        raise ConfigError("Well. '%s' is neither an anvi'o pan database, nor an anvi'o profile database. There is nothing this "
+        raise ConfigError("Well. '%s' is not an anvi'o pan, pan-graph, or profile database. There is nothing this "
                            "program can't do for you if you feed it with the right stuff. Just sayin'" % args.pan_or_profile_db)
 
     summary.process()
