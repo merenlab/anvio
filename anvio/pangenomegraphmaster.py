@@ -1,8 +1,12 @@
 # pylint: disable=line-too-long
 """
-    Classes for pan operations.
+Classes for pangenome graph operations.
 
-    anvi-pan-genome is the default client using this module
+This module provides PangenomeGraphManager, a directed graph (nx.DiGraph)
+representation of a pangenome where nodes are synteny gene clusters and
+edges capture gene order relationships across genomes. It supports graph
+construction, connectivity checks, region classification (backbone vs.
+variable), and graph-based genome distance calculations.
 """
 
 import os
