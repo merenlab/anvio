@@ -51,7 +51,7 @@ jobs:
     - name: "Install npm dependencies for Anvi'o interactive interfaces"
       shell: bash -l {0}
       run: |
-        cd ${{ env.interactive_dir_path }}
+        cd ${ interactive_dir_path }
         npm install
         cd -
     - name: "Run component tests"
