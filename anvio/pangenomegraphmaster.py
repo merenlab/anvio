@@ -624,7 +624,13 @@ class PangenomeGraphManager():
         return(cutted_edges)
 
 
-    def calculate_graph_distance(self, output_dir=''):
+    def calculate_graph_distance(self):
+        """Compute graph-based pairwise genome distances.
+
+           Returns a (newick, distance_df, genome_names) tuple. `distance_df` is a square
+           pandas DataFrame indexed and columned by genome names. `newick` may be an empty
+           string if all pairwise distances are zero (i.e. genomes are graph-identical).
+        """
         self.run.warning(None, header="COMPUTING GRAPH-BASED GENOME DISTANCES", lc="green")
         genome_names = list(set(it.chain(*[list(d.keys()) for node, d in self.graph.nodes(data='gene_calls')])))
 
@@ -656,38 +662,23 @@ class PangenomeGraphManager():
 
             self.run.info_single(f"d({genome_i},{genome_j}) = {round(X[i][j], 3)}", cut_after=None)
 
+        distance_matrix = pd.DataFrame(X, index=genome_names, columns=genome_names)
+
         # Check if all distances are zero (identical genomes)
         if np.all(X == 0):
             self.run.warning("All pairwise distances are zero (genomes are identical). No dendrogram will be generated.")
             self.run.info_single("Done.")
-            return ''
+            return('', distance_matrix, genome_names)
 
         condensed_X = squareform(X)
         Z = linkage(condensed_X, 'ward')
 
-        if output_dir:
-            # fig = plt.figure(figsize=(25, 10))
-            # ax = plt.axes()
-            # dendrogram(Z, ax=ax, labels=genome_names, orientation='right')
-            # plt.tight_layout()
-            # fig.savefig(os.path.join(output_dir, 'synteny_distance_dendrogram.svg'))
-            # plt.close(fig)
-
-            distance_matrix = pd.DataFrame(X, index=genome_names, columns=genome_names)
-            distance_matrix.to_csv(os.path.join(output_dir, 'synteny_distance_matrix.tsv'), sep='\t')
-
-            self.run.info_single(f"Exported distance dendrogram to {os.path.join(output_dir, 'synteny_distance_dendrogram.svg')}.")
-            self.run.info_single(f"Exported distance matrix to {os.path.join(output_dir, 'synteny_distance_matrix.tsv')}.")
-
         tree = to_tree(Z, False)
         newick = clustering.get_newick(tree, tree.dist, genome_names)
 
-        with open(os.path.join(output_dir, 'synteny_distance_dendrogram.newick'), "w") as text_file:
-            text_file.write(newick)
-        self.run.info_single(f"Exported newick tree to {os.path.join(output_dir, 'synteny_distance_dendrogram.tree')}.")
         self.run.info_single("Done.")
 
-        return(newick)
+        return(newick, distance_matrix, genome_names)
 
     # TODO still empty..
     def generate_hybrid_genome(self, output_dir):

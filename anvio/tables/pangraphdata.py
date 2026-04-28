@@ -58,8 +58,9 @@ class TableForNodes(Table):
 
         db_entries = [tuple(entry) for entry in self.entries]
 
+        placeholders = ','.join(['?'] * len(t.pan_graph_nodes_table_structure))
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?)''' % t.pan_graph_nodes_table_name, db_entries)
+        database._exec_many(f'''INSERT INTO {t.pan_graph_nodes_table_name} VALUES ({placeholders})''', db_entries)
         database.disconnect()
 
 
