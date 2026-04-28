@@ -46,10 +46,10 @@ import anvio.completeness as completeness
 import anvio.taxonomyops.scg as scgtaxonomyops
 
 from anvio.errors import ConfigError
-from anvio.dbops import DatabasesMetaclass, ContigsDatabase, ContigsSuperclass, PanSuperclass
 from anvio.hmmops import SequencesForHMMHits
 from anvio.summaryhtml import SummaryHTMLOutput, humanize_n, pretty
-from anvio.tables.miscdata import TableForLayerAdditionalData, MiscDataTableFactory
+from anvio.tables.miscdata import TableForLayerAdditionalData, TableForLayerOrders, MiscDataTableFactory
+from anvio.dbops import DatabasesMetaclass, ContigsDatabase, ContigsSuperclass, PanSuperclass, PanGraphSuperclass
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
