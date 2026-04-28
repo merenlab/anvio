@@ -1520,9 +1520,7 @@ class PangenomeGraph():
             self.pan_graph_db_path = os.path.join('.', self.project_name + '-PAN-GRAPH.db')
 
         self.output_dir = os.path.dirname(self.pan_graph_db_path) or '.'
-        args.output_dir = self.output_dir
 
-        self.output_synteny_gene_cluster_dendrogram = A('output_synteny_gene_cluster_dendrogram')
         self.output_hybrid_genome = A('output_hybrid_genome')
         self.circularize = A('circularize')
         self.just_do_it = A('just_do_it')

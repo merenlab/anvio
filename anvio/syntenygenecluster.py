@@ -67,7 +67,6 @@ class SyntenyGeneCluster():
         self.external_genomes = A('external_genomes')
         self.genomes_storage = A('genomes_storage')
         self.pan_graph_yaml = A('pan_graph_yaml')
-        self.output_dir = A('output_dir')
 
         self.n = A('n')
         self.alpha = A('alpha')
@@ -78,7 +77,6 @@ class SyntenyGeneCluster():
         self.max_num_multi_copy_genes = A('max_num_multi_copy_genes')
         self.max_num_multi_copy_genes_per_genome = A('max_num_multi_copy_genes_per_genome')
         self.min_k = A('min_k')
-        self.output_synteny_gene_cluster_dendrogram = A('output_synteny_gene_cluster_dendrogram')
 
         if self.pan_graph_yaml:
             with open(self.pan_graph_yaml) as file:
@@ -350,45 +348,11 @@ class SyntenyGeneCluster():
         if gene_cluster == "GC_00000000":
             synteny_gene_cluster_type = 'rna'
 
-        labels = []
         synteny_gene_cluster_id_contig_positions = []
         for cluster, (genome, contig, position, gene_caller_id, gene_cluster_kmer) in zip(clusters, gene_cluster_k_mer_contig_positions):
             k = int(len(gene_cluster_kmer)/2)
             gene_cluster_id = gene_cluster_kmer[k] + '_' + str(cluster)
             synteny_gene_cluster_id_contig_positions += [(genome, contig, position, gene_caller_id, gene_cluster_id)]
-            labels += [gene_cluster_id + ' ' + str(gene_cluster_kmer)]
-
-        num_cluster = len(set(clusters.tolist()))
-        # if len(gene_cluster_k_mer_contig_positions) != 1:
-        if self.output_synteny_gene_cluster_dendrogram and num_cluster > 1:
-        # if output_synteny_gene_cluster_dendrogram and len(gene_cluster_k_mer_contig_positions) != 1:
-            # cmap = plt.cm.tab20(np.linspace(0, 1, num_cluster))
-            # colors = [mcolors.rgb2hex(rgb) for rgb in cmap]
-            colors = ["#%06x" % random.randint(0, 0xFFFFFF) for _ in range(num_cluster)]
-            label_colors = {label: colors[cluster-1] for label, cluster in zip(labels, clusters)}
-
-            fig = plt.figure(figsize=(15+1+k*8, len(label_colors)))
-            ax = plt.gca()
-            dendrogram(Z, ax=ax, labels=labels, orientation='right')
-
-            #new_labels = []
-            y_tick_labels = ax.get_ymajorticklabels()
-            for label in y_tick_labels:
-                label_text = label.get_text()
-                label.set_color(label_colors[label_text])
-
-                #label_match = re.search(r'\((.+)\)', label_text)
-                #new_label = label_match.group(0)
-                #new_labels += [new_label]
-
-            # ax.set_yticklabels(new_labels)
-            plt.tight_layout()
-            fig.savefig(os.path.join(self.output_dir, gene_cluster + '.svg'))
-            plt.close(fig)
-
-            labels_matrix = [re.search(r'\((.+)\)', label_matrix).group(0) for label_matrix in labels]
-            synteny_gene_cluster_matrix = pd.DataFrame(X, index=labels_matrix, columns=labels_matrix)
-            synteny_gene_cluster_matrix.to_csv(os.path.join(self.output_dir, gene_cluster + '.tsv'), sep='\t')
 
         return(synteny_gene_cluster_id_contig_positions, synteny_gene_cluster_type)
 

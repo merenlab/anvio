@@ -57,9 +57,6 @@ def get_args():
                                 'help': "Output path for the pan-graph-db this program produces. Specify both the directory and the "
                                         "filename (e.g., '/path/to/MY-PAN-GRAPH.db'). If omitted, defaults to "
                                         "'./<project_name>-PAN-GRAPH.db' in the current working directory."}))
-    groupB.add_argument('--output-synteny-gene-cluster-dendrogram', default=False, action="store_true", help="Write a dendrogram (.svg) "
-                                "and distance matrix (.tsv) for each split SynGC alongside the pan-graph-db (for debugging "
-                                "the multi-copy gene splitter).")
 
     groupC = parser.add_argument_group('GRAPH BUILDING & SPLITTING', "Controls how SynGC are generated and filtered.")
 
