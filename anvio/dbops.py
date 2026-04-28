@@ -5184,6 +5184,8 @@ class PanGraphDatabase:
         # creating empty default tables for pan graph specific operations:
         self.db.create_table(t.pan_graph_nodes_table_name, t.pan_graph_nodes_table_structure, t.pan_graph_nodes_table_types)
         self.db.create_table(t.pan_graph_edges_table_name, t.pan_graph_edges_table_structure, t.pan_graph_edges_table_types)
+        self.db.create_table(t.pan_graph_regions_table_name, t.pan_graph_regions_table_structure, t.pan_graph_regions_table_types)
+        self.db.create_table(t.pan_graph_genome_distances_table_name, t.pan_graph_genome_distances_table_structure, t.pan_graph_genome_distances_table_types)
 
         return self.db
 
