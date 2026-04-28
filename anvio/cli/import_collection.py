@@ -20,7 +20,7 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
-__requires__ = ['contigs-db', 'profile-db', 'pan-db', 'collection-txt',]
+__requires__ = ['contigs-db', 'profile-db', 'pan-db', 'pan-graph-db', 'collection-txt',]
 __provides__ = ['collection',]
 __description__ = "Import an external binning result into anvi'o"
 __resources__ = [("Another description as part of the metagenomic workflow", "http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-import-collection")]
@@ -248,14 +248,21 @@ def get_args():
     from anvio.argparse import ArgumentParser
     parser = ArgumentParser(description=__description__)
 
-    parser.add_argument('data', metavar = "TAB DELIMITED FILE",
-                        help = 'The input file that describes bin IDs for each split or contig.')
+    groupA = parser.add_argument_group('INPUT DATA', "The input file that maps item names to bin names.")
+    groupA.add_argument('data', metavar='TAB DELIMITED FILE',
+                        help='A two-column, tab-delimited file where column one has item names (splits, '
+                             'gene clusters, or synteny gene clusters) and column two has bin names.')
+    groupA.add_argument(*anvio.A('bins-info'), **anvio.K('bins-info'))
+    groupA.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'required': True}))
 
-    parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
-    parser.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db', {'required': False}))
-    parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'required': True}))
-    parser.add_argument(*anvio.A('bins-info'), **anvio.K('bins-info'))
-    parser.add_argument(*anvio.A('contigs-mode'), **anvio.K('contigs-mode'))
+    groupB = parser.add_argument_group('TARGET DATABASE', "Where should the collection be stored?")
+    groupB.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db', {'required': False}))
+    groupB.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
+
+    groupC = parser.add_argument_group('EXOTIC OPTIONS', "These parameters are only relevant "
+                                       "when importing into a profile database associated with a contigs "
+                                       "database and have no effect otherwise.")
+    groupC.add_argument(*anvio.A('contigs-mode'), **anvio.K('contigs-mode'))
 
     return parser.get_args(parser)
 
