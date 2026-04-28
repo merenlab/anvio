@@ -269,10 +269,18 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         if self.collection_name:
             self.collection_dict, self.bins_info_dict = self.init_collection_profile(self.collection_name)
             self.bin_ids = sorted(self.collection_dict.keys())
+        else:
+            self.gene_clusters_in_pan_db_but_not_binned = list(self.gene_clusters.keys())
 
         # see if COG functions or categories are available
         self.cog_functions_are_called = 'COG_FUNCTION' in self.gene_clusters_function_sources
         self.cog_categories_are_called = 'COG_CATEGORY' in self.gene_clusters_function_sources
+
+
+    def sanity_check(self):
+        """Collection is optional for pan summaries; validate only when supplied."""
+        if self.collection_name and self.collection_name not in self.collections.collections_dict:
+            raise ConfigError("%s is not a valid collection ID. See a list of available ones with '--list-collections' flag" % self.collection_name)
 
 
     def get_occurrence_of_functions_in_pangenome(self, gene_clusters_functions_summary_dict):
@@ -598,7 +606,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         self.summary['files'] = {}
         self.summary['collection_profile'] = self.collection_profile # reminder; collection_profile comes from the superclass!
 
-        self.generate_gene_clusters_file(self.collection_dict)
+        self.generate_gene_clusters_file(self.collection_dict or {})
 
         self.report_misc_data_files(target_table='layers')
         self.report_misc_data_files(target_table='items')
