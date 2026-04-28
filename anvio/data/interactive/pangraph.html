@@ -46,6 +46,8 @@
     <script type="text/javascript" src="lib/colpick/colpick.js" onerror='alertDependencyError("colpick")'></script>
     <script type="text/javascript" src="js/utils.js"></script>
     <script type="text/javascript" src="js/constants.js"></script>
+    <script type="text/javascript" src="js/dialogs/store-collection.js"></script>
+    <script type="text/javascript" src="js/dialogs/load-collection.js"></script>
     <script type="text/javascript" src="./node_modules/randomcolor/randomColor.js" onerror='alertDependencyError("random-color")'></script>
 
   </head>
@@ -148,7 +150,7 @@
                 <div id="tree-settings" class="form-horizontal">
                   <span id="toggle-chevron-item" class="settings-header btn d-flex chart-icon-padding align-items-center" data-toggle="collapse" href="#item-collapse-main" role="button" aria-expanded="true" aria-controls="item-collapse-option" onclick="$('#toggle-chevron-item').children('i').toggleClass('bi-chevron-up bi-chevron-down');">
                     <img src="images/item-chart.svg" alt="Item Icon"/>
-                    Display Settings
+                    Main Display
                     <i class="text-secondary ml-1 d-flex pt-1 align-items-center bi bi-chevron-down"></i>
                   </span>
 
@@ -718,67 +720,42 @@
             <div role="tabpanel" class="tab-pane fade show" id="bin_settings">
               <div id="bin-settings" class="form-horizontal mt-3">
                 <div class="panel-body">
-                  <span class="settings-secondary-header mb-3 mt-3">Bins</span>
 
-                  <div class="row align-items-center ml-2 mr-3">
-                    <div class="col-12">
+                  <span class="settings-header mb-3 mt-3"><img src="images/bins-icon-graph.svg" alt="Item Icon"/>Bins</span>
 
-                      <div class="row grid align-items-center" id="bingrid">
-                        <div class="col-12" id="bin_1_grid" style="padding: 3px 0;">
-                          <div class="row align-items-center">
-                            <div class="col-1">
-                              <input type="radio" name="binradio" id="bin_1_radio" bin_id="bin_1" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top" checked>
-                            </div>
-                            <div class="col-7">
-                              <input type="text" class="form-control flex-fill p-0 border-0" style= "background-color: #e9ecef;" value="Bin_1" id="bin_1_text" aria-describedby="">
-                            </div>
-                            <div class="d-flex col-2">
-                              <input type="button" class="form-control float-end text-end flex-fill p-0 border-0 bin-count-btn" id="bin_1_value" value=0 title="Click for functions summary">
-                            </div>
-                            <div class="d-flex col-2 align-items-center">
-                              <div class="pangraph-colorpicker" id="bin_1_color" color="#000000" style="background-color: #000000; width: 100%; height: 22px; cursor: pointer; border: 1px solid #ccc;"></div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                  <table class="table" id="bins-table">
+                    <thead>
+                      <tr>
+                        <th><span class="new-bin-icon bi bi-plus-circle-fill fa-lg" aria-hidden="true" title="Add bin" id="binadd"></span></th>
+                        <th></th>
+                        <th>Name</th>
+                        <th>Nodes</th>
+                        <th><span class="del-bin-icon bi bi-trash-fill fa-lg" aria-hidden="true" title="Delete all bins" id="binremove"></span></th>
+                      </tr>
+                    </thead>
+                    <tbody id="bingrid">
+                      <tr class="bin-row" id="bin_1_grid">
+                        <td><input type="radio" name="binradio" id="bin_1_radio" bin_id="bin_1" checked></td>
+                        <td><div class="pangraph-colorpicker" id="bin_1_color" color="#000000" style="background-color: #000000; width: 30px; height: 22px; cursor: pointer; border: 1px solid #ccc;"></div></td>
+                        <td><input type="text" class="form-control form-control-sm p-0 border-0" style="background-color: #e9ecef;" value="Bin_1" id="bin_1_text"></td>
+                        <td><input type="button" class="form-control form-control-sm p-0 border-0 bin-count-btn" id="bin_1_value" value=0 title="Click for functions summary"></td>
+                        <td><center><span class="default-bin-icon bi bi-trash-fill fa-lg" aria-hidden="true" title="Delete this bin" onclick="pgui.delete_bin('bin_1');"></span></center></td>
+                      </tr>
+                    </tbody>
+                  </table>
+
+                  <div class="btn-group col-md-12" role="group">
+                    <button type="button" class="btn btn-outline-secondary btn-md" style="width: 50%;" id="binload"><span class="bi bi-file-arrow-up fa-lg" aria-hidden="true"></span> Load collection</button>
+                    <button type="button" class="btn btn-outline-secondary btn-md" style="width: 50%;" id="binsave"><span class="bi bi-file-arrow-down fa-lg" aria-hidden="true"></span> Store collection</button>
                   </div>
-                  <div class="pt-5">
-                    <div class="col-12 pt-2 border-top d-flex align-items-center justify-content-center">
-                      <button type="button" class="col-6 btn btn-outline-success btn-md mr-2 align-items-center justify-content-center" id="binadd">
-                        <i class="bi bi-archive-fill fa-lg bin-icon-size" aria-hidden="true"></i>
-                        <span class="font-weight-bold">Add bin</span>
-                      </button>
-                      <button type="button" class="col-6 btn btn-outline-danger btn-md align-items-center justify-content-center" id="binremove">
-                        <i class="bi bi-trash3-fill fa-lg bin-icon-size" aria-hidden="true"></i>
-                        <span class="font-weight-bold">Delete bin</span>
-                      </button>
-                    </div>
-                    <div class="col-12 pt-2 d-flex align-items-center justify-content-center">
-                      <button type="button" class="col-3 btn btn-outline-secondary btn-md mr-1 align-items-center justify-content-center" id="binload">
-                        <i class="bi bi-arrow-up-square fa-lg bin-icon-size" aria-hidden="true"></i>
-                        <span class="font-weight-normal">Load bins</span>
-                      </button>
-                      <button type="button" class="col-3 btn btn-outline-secondary btn-md mr-1 align-items-center justify-content-center" id="binsave">
-                        <i class="bi bi-arrow-down-square fa-lg bin-icon-size" aria-hidden="true"></i>
-                        <span class="font-weight-normal">Store bins</span>
-                      </button>
-                      <button type="button" class="col-6 btn btn-outline-secondary btn-md align-items-center justify-content-center" id="bininfo">
-                        <i class="bi bi-info-square fa-lg bin-icon-size" aria-hidden="true"></i>
-                        <span class="font-weight-normal">Bin info</span>
-                      </button>
-                      <!-- <button type="button" class="col-6 btn btn-outline-secondary btn-md align-items-center justify-content-center" id="binanalyse">
-                        <i class="bi bi-info-square fa-lg bin-icon-size" aria-hidden="true"></i>
-                        <span class="font-weight-normal">Analyze bins</span>
-                      </button> -->
-                    </div>
-                  </div>
+
                 </div>
               </div>
             </div>
 
             <!-- DATA TAB -->
             <div role="tabpanel" class="tab-pane fade show" id="data_tab">
+              <span class="settings-header mb-3 mt-3"><img src="images/data-panel-icon.svg" alt="Item Icon"/>Data</span>
               <p class="mt-3" style="color: #AAAAAA; padding: 5px;">This panel will show you information for splits when you hover them with your mouse pointer on the pangraph.</p>
               <div id="mouse_hover">
                 <div class="offcanvas-body p-0" id="rightoffcanvas-body">
@@ -804,6 +781,7 @@
 
             <!-- SEARCH Tab -->
             <div role="tabpanel" class="tab-pane fade show" id="search_tab">
+              <span class="settings-header mb-3 mt-3"><img src="images/search-panel-icon.svg" alt="Item Icon"/>Search</span>
               <div class="mt-1 p-2" id="search_tab_content" tabindex="-1">
                 <div class="shadow-box focus-box pb-3 pr-3 pl-3 mb-3 rounded search-box-expression">
                   <span class="settings-header mb-3 pt-2" data-help='search-expression'>Search with expression</span>
@@ -1025,55 +1003,6 @@
       </div>
     </div>
 
-    <div class="modal fade" id="SaveBin" aria-hidden="true" aria-labelledby="exampleModalToggleLabel" tabindex="-1">
-      <div class="modal-dialog modal-dialog-centered modal">
-        <div class="modal-content modal-content-small">
-          <div class="modal-header">
-            <h5 class="modal-title border-bottom-0 settings-header" style="font-size: x-large;">Store bin collection</h5>
-            <!-- <button type="button" class="close d-flex" data-dismiss="modal" aria-label="Close" aria-hidden="true">
-              <i class="bi bi-x-lg"></i>
-            </button> -->
-          </div>
-          <div class="modal-body overflow-auto" id="SaveBinBody">
-          </div>
-            <div class="modal-footer d-flex justify-content-center" id="SaveBinFooter">
-            <div class="d-flex btn-group">
-              <button class="btn btn-outline-success" id="SaveBinButton">
-                <i class="bi bi-download"> Store</i>
-              </button>
-              <button class="btn btn-outline-danger" data-dismiss="modal" aria-label="Close" aria-hidden="true">
-                  <i class="bi bi-x-lg">Close</i>
-                </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="modal fade" id="LoadBin" aria-hidden="true" aria-labelledby="exampleModalToggleLabel" tabindex="-1">
-      <div class="modal-dialog modal-dialog-centered modal">
-        <div class="modal-content modal-content-small">
-          <div class="modal-header">
-            <h5 class="modal-title border-bottom-0 settings-header" style="font-size: x-large;">Load bin collection</h5>
-            <!-- <button type="button" class="close d-flex" data-dismiss="modal" aria-label="Close" aria-hidden="true">
-              <i class="bi bi-x-lg"></i>
-            </button> -->
-          </div>
-          <div class="modal-body overflow-auto" id="LoadBinBody">
-          </div>
-          <div class="modal-footer d-flex justify-content-center" id="LoadBinFooter">
-            <div class="d-flex btn-group">
-              <button class="btn btn-outline-success" id="LoadBinButton">
-                <i class="bi bi-download"> Store</i>
-              </button>
-              <button class="btn btn-outline-danger" data-dismiss="modal" aria-label="Close" aria-hidden="true">
-                  <i class="bi bi-x-lg">Close</i>
-                </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
 
     <div class="modal fade" id="BinAnalyse" aria-hidden="true" aria-labelledby="exampleModalToggleLabel" tabindex="-1">
       <div class="modal-dialog modal-dialog-centered modal-xl">
