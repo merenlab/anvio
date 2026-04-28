@@ -324,10 +324,6 @@ class PangenomeGraphManager():
             regions_dict |= {pos: 0 for pos in overlap}
             regions_id = 1
 
-            # print(overlap)
-
-            # regions_dict |= {pos:-1 for pos in core_positions}
-
             core_positions_pairs = map(tuple, zip(core_positions, core_positions[1:]))
         else:
             regions_id = 0
@@ -400,31 +396,6 @@ class PangenomeGraphManager():
             region_x_positions_min = min(region_x_positions)
             region_x_positions_max = max(region_x_positions)
 
-            # if region_x_positions_min in set(core_positions) and region_x_positions_max in set(core_positions):
-            #     P = 0
-            # elif region_x_positions_min not in set(core_positions) and region_x_positions_max not in set(core_positions):
-
-            #     if region_x_positions_min != all_positions_min:
-            #         prior_core_region_id = regions_dict[region_x_positions_min - 1]
-            #         prior_core_region = regions_info_dict[prior_core_region_id]
-            #         predecessor = [item[2] for item in prior_core_region if item[0] == region_x_positions_min - 1][0]
-            #         P_pred = sum([len(list(self.graph.successors(node))) - 1 for node in nodes_sets + [predecessor]])
-            #     else:
-            #         P_pred = 0
-
-            #     if region_x_positions_max != all_positions_max:
-            #         latter_core_region_id = regions_dict[region_x_positions_max + 1]
-            #         latter_core_region = regions_info_dict[latter_core_region_id]
-            #         successor = [item[2] for item in latter_core_region if item[0] == region_x_positions_max + 1][0]
-            #         P_succ = sum([len(list(self.graph.predecessors(node))) - 1 for node in nodes_sets + [successor]])
-            #     else:
-            #         P_succ = 0
-
-            #     P = max(P_pred, P_succ)
-
-            # else:
-            #     print('Summary error.')
-
             genome_occurences = list(it.chain(*genomes_sets))
             counts = Counter(genome_occurences)
 
@@ -432,43 +403,12 @@ class PangenomeGraphManager():
             K = len(nodes_sets)
             T = len(genome_occurences)
 
-            # p = (1/K) * sum([len(genome_set)/weight for genome_set in genomes_sets])
-            # # Option 2:
-            # # p = (1/K) * sum([len(genome_set) for genome_set in genomes_sets])
-
-            # var = (1/K) * sum([(len(genome_set)/weight - p)**2 for genome_set in genomes_sets])
-            # # Option 2:
-            # # var = (1/K) * sum([(len(genome_set) - p)**2 for genome_set in genomes_sets])
-
-            # if p != 1:
-            #     diversity = 1 - math.sqrt(var / (p * (1 - p)))
-            #     # Option 2:
-            #     # diversity = (weight - p) / (weight - 1) * (1 - math.sqrt(var / ((weight - 1)**2)))
-
-            # else:
-            #     diversity = 0
 
             genome_counts = {item: counts.get(item, 0) for item in genomes_involved}
             values = list(genome_counts.values())
             max_expansion = max(values)
 
             min_expansion = 0 if len(genomes_involved) != len(genome_names) else min(values)
-            mean_expansion = sum(values) / len(values)
-
-            # expansion = math.sqrt(max_expansion * mean_expansion)
-            # Option 2:
-            # expansion = max_expansion
-
-            # if P == 0:
-            #     region = 'BB'
-            # elif P == 1 and min_expansion == 0:
-            #     region = 'INDEL'
-            # else:
-            #     region = 'VR'
-
-            # complexity = min(1, P / weight)
-            # Option 2:
-            # complexity = P / num_genomes
 
             sum_of_genomes = set()
             complexity = -1
@@ -488,8 +428,6 @@ class PangenomeGraphManager():
                 diversity = 0
                 diversity_scaled = 0
 
-            # if complexity == 0 and min_expansion == 0:
-            #     region = 'INDEL'
             if complexity == 0 and min_expansion != 0:
                 region = 'BR'
                 max_expansion = 0
@@ -507,13 +445,8 @@ class PangenomeGraphManager():
                 'num_synteny_gene_clusters': K,
                 'num_gene_clusters': num_gene_clusters,
                 'num_gene_calls': T,
-                # 'pathways': P,
-                # 'expansion': expansion,
-                # 'mean_expansion': mean_expansion,
                 'max_expansion': max_expansion,
                 'min_expansion': min_expansion,
-                # 'prevalence': p,
-                # 'prevalence_variance': var,
                 'complexity': complexity,
                 'complexity_normalized': complexity_scaled,
                 'diversity': diversity,
@@ -535,8 +468,6 @@ class PangenomeGraphManager():
         region_sides_df = pd.DataFrame.from_dict(regions_summary_dict, orient='index').set_index('region_id')
 
         region_sides_df[['composite_variability_score', 'complexity_mm_scaled', 'diversity_mm_scaled', 'expansion_mm_scaled', 'weight_mm_scaled']] = region_sides_df.apply(PangenomeGraphManager.composite_variability_score(region_sides_df), axis=1, result_type='expand')
-
-        # region_sides_df[['composite_variability_score', 'complexity_normalized', 'expansion_normalized', 'weight_factor']] = region_sides_df.apply(PangenomeGraphManager.composite_variability_score(region_sides_df, num_genomes), axis=1, result_type='expand')
 
         return(region_sides_df, nodes_df, gene_calls_df)
 
