@@ -867,12 +867,12 @@ class SingleGenomeCodonUsage(object):
     #############################################
     def _establish_function_sources(self, from_function_sources):
         """Gets `function_sources` for methods that take the argument, `from_function_sources`."""
-        if from_function_sources == True:
+        if from_function_sources:
             function_sources = list(self.function_sources)
             if not function_sources:
                 raise ConfigError(
                     "All function sources were requested, but none exist for the object.")
-        elif from_function_sources != False:
+        elif from_function_sources:
             function_sources = list(from_function_sources)
         else:
             function_sources = None

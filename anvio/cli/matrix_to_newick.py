@@ -38,7 +38,7 @@ def main():
         # a quick check of the data to see if there are any missing
         # values
         _, _, _, vectors = utils.get_vectors_from_TAB_delim_matrix(args.input_matrix, run=run)
-        num_missing_data = len([item for sublist in vectors for item in sublist if item == None])
+        num_missing_data = len([item for sublist in vectors for item in sublist if item is None])
         if num_missing_data:
             run.warning(f"Oy. Your file contains {PL('missing data item', num_missing_data)}. Anvi'o will do its "
                         f"best to accomodate for it, but you should take a careful look at your output tree (that, "

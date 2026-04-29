@@ -317,7 +317,7 @@ class ProcessAlleleCounts:
 
     def get_positions_with_competing_items(self, competing_items):
 
-        return np.where(competing_items != None)[0]
+        return np.where(competing_items is not None)[0]
 
 
     def rename_key(self, from_this, to_that):

@@ -24,7 +24,7 @@ __description__ = "A script to generate completeness info for a given list of _s
 
 def compute_completeness(args):
     run = terminal.Run()
-    progress = terminal.Progress()
+    terminal.Progress()
 
     utils.is_contigs_db(args.contigs_db)
 

@@ -234,10 +234,10 @@ class Completeness:
         # for further filtering down below.
         if best_matching_domain in domains_in_hmm_hits:
             source = self.SCG_domain_predictor.SCG_domain_to_source[best_matching_domain]
-            best_mathcing_domain_completion, best_matching_domain_redundancy = hmm_hits[best_matching_domain][source]['percent_completion'], \
+            _best_mathcing_domain_completion, best_matching_domain_redundancy = hmm_hits[best_matching_domain][source]['percent_completion'], \
                                                                                hmm_hits[best_matching_domain][source]['percent_redundancy']
         else:
-            best_mathcing_domain_completion, best_matching_domain_redundancy = None, None
+            _best_mathcing_domain_completion, best_matching_domain_redundancy = None, None
 
         # figure shit out
         info_text = ''

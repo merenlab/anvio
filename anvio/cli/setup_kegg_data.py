@@ -156,7 +156,7 @@ def get_args():
     groupE.add_argument(*anvio.A('reset'), **anvio.K('reset'))
     groupE.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
-    groupA = parser.add_argument_group('MODE-SPECIFIC PARAMS', "Each section (underneath the program details) "
+    parser.add_argument_group('MODE-SPECIFIC PARAMS', "Each section (underneath the program details) "
                                                                "below lists the parameters for one mode.")
 
 

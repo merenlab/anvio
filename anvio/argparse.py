@@ -287,7 +287,7 @@ class PopulateAnvioDBArgs(FindAnvioDBs):
 
 
     def fill_in_contigs_db(self, db_hash=None):
-        if not 'contigs_db' in self.args:
+        if 'contigs_db' not in self.args:
             return
 
         if self.args.contigs_db:
@@ -309,7 +309,7 @@ class PopulateAnvioDBArgs(FindAnvioDBs):
 
 
     def fill_in_genomes_storage_db(self, db_hash=None):
-        if not 'genomes_storage' in self.args:
+        if 'genomes_storage' not in self.args:
             return
 
         if self.args.genomes_storage:
@@ -335,7 +335,7 @@ class PopulateAnvioDBArgs(FindAnvioDBs):
             return
 
         FindAnvioDBs.__init__(self, run=self.run, progress=self.progress) if not self.anvio_dbs_found else None
-        if not 'profile' in self.anvio_dbs:
+        if 'profile' not in self.anvio_dbs:
             self.__args_failed.append(('profile_db', 'No profile databases around :/'))
             return
 
@@ -380,7 +380,7 @@ class PopulateAnvioDBArgs(FindAnvioDBs):
             return
 
         FindAnvioDBs.__init__(self, run=self.run, progress=self.progress) if not self.anvio_dbs_found else None
-        if not 'pan' in self.anvio_dbs:
+        if 'pan' not in self.anvio_dbs:
             return self.__args_failed.append(('pan_db', 'No pan databases around :/'))
 
         pan_dbs = self.anvio_dbs['pan']

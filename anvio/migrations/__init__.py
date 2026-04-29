@@ -15,7 +15,7 @@ for script_full_path in Path(base_path).glob('*/v*_to_v*.py'):
     script_name = script_filename[:-3]
     db_type = os.path.basename(script_path)
 
-    if not db_type in migration_scripts:
+    if db_type not in migration_scripts:
         migration_scripts[db_type] = {}
 
     spec = importlib.util.spec_from_file_location(script_name, script_full_path)

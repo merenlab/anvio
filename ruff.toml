@@ -1,8 +1,15 @@
+# https://docs.astral.sh/ruff/configuration/
+
 [lint]
 # https://docs.astral.sh/ruff/rules/
-select = [
+extend-select = [
     # https://docs.astral.sh/ruff/rules/utf8-encoding-declaration/
     "UP009",
     # https://docs.astral.sh/ruff/rules/trailing-whitespace/
     "W291",
+]
+ignore = [
+    # https://docs.astral.sh/ruff/rules/lambda-assignment/
+    # https://github.com/merenlab/anvio/pull/2582#issuecomment-4337119754
+    "E731",
 ]

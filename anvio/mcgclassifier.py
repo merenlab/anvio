@@ -152,7 +152,7 @@ class MetagenomeCentricGeneClassifier:
             if self.gen_figures:
                 plot_dir = self.output_file_prefix + '-nucleotide-coverage-distribution-plots'
                 os.makedirs(plot_dir, exist_ok=self.overwrite_output_destinations)
-        except FileExistsError as e:
+        except FileExistsError:
             raise FilesNPathsError("%s already exists, if you would like to overwrite it, then use -W (see help menu)." % plot_dir)
 
         # checking alpha
@@ -240,7 +240,7 @@ class MetagenomeCentricGeneClassifier:
                 samples_information['presence'][sample] = False
             if samples_information['presence'][sample]:
                 positive_samples.append(sample)
-            elif samples_information['presence'][sample] == False:
+            elif not samples_information['presence'][sample]:
                 negative_samples.append(sample)
 
             samples_information['detection'][sample] = detection[sample]
@@ -372,7 +372,7 @@ class MetagenomeCentricGeneClassifier:
                 self.progress.update('%d of %d genes...' % (counter, num_genes))
 
             # samples in which the gene is present
-            _samples = self.gene_presence_absence_in_samples.loc[gene_id,self.gene_presence_absence_in_samples.loc[gene_id,]==True].index
+            _samples = self.gene_presence_absence_in_samples.loc[gene_id,self.gene_presence_absence_in_samples.loc[gene_id,]].index
             # mean and std of non-outlier nt in each sample
             x = list(self.samples_coverage_stats_dicts.loc[_samples,'non_outlier_mean_coverage'].values)
             if "non_outlier_coverage_std" in self.samples_coverage_stats_dicts:
@@ -484,9 +484,9 @@ class MetagenomeCentricGeneClassifier:
         self.gene_class_df = pd.DataFrame(index=gene_ids)
         for gene_id in gene_ids:
             # determine the number of occurences in positive samples
-            self.gene_class_df.loc[gene_id, 'occurence_in_positive_samples'] = len([s for s in self.positive_samples if self.gene_presence_absence_in_samples.loc[gene_id,s] == True])
+            self.gene_class_df.loc[gene_id, 'occurence_in_positive_samples'] = len([s for s in self.positive_samples if self.gene_presence_absence_in_samples.loc[gene_id,s]])
             # determine the number of occurences in negative samples
-            self.gene_class_df.loc[gene_id, 'occurence_in_negative_samples'] = len([s for s in self.negative_samples if self.gene_presence_absence_in_samples.loc[gene_id,s] == True])
+            self.gene_class_df.loc[gene_id, 'occurence_in_negative_samples'] = len([s for s in self.negative_samples if self.gene_presence_absence_in_samples.loc[gene_id,s]])
             # set the occurence_in_positive_and_negative_samples
             self.gene_class_df.loc[gene_id, 'occurence_in_positive_and_negative_samples'] = self.gene_class_df.loc[gene_id, 'occurence_in_positive_samples'] + self.gene_class_df.loc[gene_id, 'occurence_in_negative_samples']
 

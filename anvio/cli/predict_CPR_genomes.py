@@ -76,7 +76,7 @@ def run_program():
     if not len(completeness.sources):
         raise ConfigError("HMM's were not run for this contigs database :/")
 
-    if not 'Campbell_et_al' in completeness.sources:
+    if 'Campbell_et_al' not in completeness.sources:
         raise ConfigError("This classifier uses Campbell et al. single-copy gene collections, and it is not among the available HMM sources in your "
                            "contigs database :/ Bad news.")
 

@@ -211,7 +211,7 @@ def cluster_contigs(args, unknown, subparsers, modules):
 
     merged_profile_db = dbops.ProfileDatabase(args.profile_db)
 
-    if(merged_profile_db.meta['merged'] != True):
+    if(not merged_profile_db.meta['merged']):
         raise ConfigError("'%s' does not seem to be a merged profile database :/" % args.profile_db)
 
     contigs_db = dbops.ContigsDatabase(args.contigs_db)

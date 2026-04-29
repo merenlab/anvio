@@ -1910,7 +1910,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
     def generate_output_destination(self, postfix, directory=False):
         return_path = os.path.join(self.output_directory, postfix)
 
-        if directory == True:
+        if directory:
             if os.path.exists(return_path):
                 shutil.rmtree(return_path)
             os.makedirs(return_path)

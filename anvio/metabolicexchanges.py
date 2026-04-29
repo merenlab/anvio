@@ -6,18 +6,15 @@ import sys
 import multiprocessing
 from copy import deepcopy
 from argparse import Namespace
-from collections import defaultdict
 
 import anvio
-import anvio.kgml as kgml
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.kgmlnetworkops as nw
 import anvio.reactionnetwork as rn
 import anvio.filesnpaths as filesnpaths
 
-from anvio.dbops import ContigsDatabase
-from anvio.errors import ConfigError, FilesNPathsError
+from anvio.errors import ConfigError
 from anvio.genomedescriptions import GenomeDescriptions
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -1252,8 +1249,8 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
             consumer_names = ",".join([self.genomes_to_compare[consumer]['name'] for consumer in genomes_consume])
             all_genome_names = ",".join([self.genomes_to_compare[x]['name'] for x in genomes_produce.union(genomes_consume) if x])
             if producer or consumer:
-                producer_name = self.genomes_to_compare[producer]['name'] if producer else None
-                consumer_name = self.genomes_to_compare[consumer]['name'] if consumer else None
+                self.genomes_to_compare[producer]['name'] if producer else None
+                self.genomes_to_compare[consumer]['name'] if consumer else None
                 if producer == consumer or (not producer) or (not consumer): # unique to one genome
                     unique_compounds[compound_id] = {'compound_name': compound_name,
                                                     'genomes': all_genome_names,

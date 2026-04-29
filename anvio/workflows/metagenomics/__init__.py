@@ -227,9 +227,9 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
 
         self.use_scaffold_from_metaspades = self.get_param_value_from_config(['metaspades', 'use_scaffolds'])
         self.use_scaffold_from_idba_ud = self.get_param_value_from_config(['idba_ud', 'use_scaffolds'])
-        self.run_qc = self.get_param_value_from_config(['iu_filter_quality_minoche', 'run']) == True
-        self.run_summary = self.get_param_value_from_config(['anvi_summarize', 'run']) == True
-        self.run_split = self.get_param_value_from_config(['anvi_split', 'run']) == True
+        self.run_qc = self.get_param_value_from_config(['iu_filter_quality_minoche', 'run'])
+        self.run_summary = self.get_param_value_from_config(['anvi_summarize', 'run'])
+        self.run_split = self.get_param_value_from_config(['anvi_split', 'run'])
         self.references_mode = self.get_param_value_from_config('references_mode')
         self.fasta_txt_file = self.get_param_value_from_config('fasta_txt')
         self.profile_databases = {}
@@ -314,7 +314,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         if self.run_split:
             split = [os.path.join(self.dirs_dict["SPLIT_PROFILES_DIR"],\
                                   g + "-split.done")\
-                                  for g in self.collections.keys() if not 'default_collection' in self.collections[g]]
+                                  for g in self.collections.keys() if 'default_collection' not in self.collections[g]]
             target_files.extend(split)
 
         targets_files_for_binning = self.get_target_files_for_anvi_cluster_contigs()
@@ -419,7 +419,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
             self.group_sizes = dict.fromkeys(self.group_names, len(self.sample_names))
 
         # 6) Assembly mode requires reformat_fasta (saves assembler output out of tmp)
-        if (not self.references_mode) and not (self.get_param_value_from_config(['anvi_script_reformat_fasta', 'run']) is True):
+        if (not self.references_mode) and self.get_param_value_from_config(['anvi_script_reformat_fasta', 'run']) is not True:
             raise ConfigError("You are running the metagenomics workflow in assembly mode. In this mode you can't skip "
                               "`anvi_script_reformat_fasta`. Please add this rule to your config with `'run': true`.")
 
@@ -514,10 +514,10 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
     def init_kraken(self):
         '''Making sure the sample names and file paths the provided kraken.txt file are valid'''
         kraken_txt = self.get_param_value_from_config('kraken_txt')
-        self.run_krakenuniq = self.get_param_value_from_config(['krakenuniq', 'run']) == True
+        self.run_krakenuniq = self.get_param_value_from_config(['krakenuniq', 'run'])
 
         if kraken_txt:
-            if self.get_param_value_from_config(['krakenuniq', 'run']) == True:
+            if self.get_param_value_from_config(['krakenuniq', 'run']):
                 raise ConfigError("You supplied a kraken_txt file (\"%s\") but you set krakenuniq "
                                   "to run in the config file. anvi'o is confused and "
                                   "is officially going on a strike. Ok, let's clarify, "
@@ -790,7 +790,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         if not pre_ref_removal:
             post_ref_removal = self.remove_short_reads_based_on_references
 
-        zipped = self.get_param_value_from_config(['gzip_fastqs', 'run']) == True
+        zipped = self.get_param_value_from_config(['gzip_fastqs', 'run'])
 
         rs = self.readsets_by_id.get(readset)
 
@@ -843,7 +843,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
     def get_target_files_for_anvi_cluster_contigs(self):
         import anvio.workflows as w
         w.D(self.get_param_value_from_config(['anvi_cluster_contigs', 'run']))
-        if self.get_param_value_from_config(['anvi_cluster_contigs', 'run']) != True:
+        if not self.get_param_value_from_config(['anvi_cluster_contigs', 'run']):
             # the user doesn't want to run this
             return
         w.D('hi2')

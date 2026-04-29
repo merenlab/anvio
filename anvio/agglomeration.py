@@ -204,7 +204,7 @@ class Agglomerator:
 
             while remapping_stack:
                 remapping_item = remapping_stack.pop()
-                current_ref_name = remapping_item[0]
+                remapping_item[0]
                 current_aligned_ref = remapping_item[1]
                 # Record mismatches between query sequences and the agglomerated reference sequence,
                 # with the coordinate system being nucleotide positions in the agglomerated reference.
@@ -298,7 +298,6 @@ class Agglomerator:
                     # Sort mismatches by position.
                     query_mismatches_to_agglom_ref_in_alignment_frame.sort(key=lambda query_mismatch_item: query_mismatch_item[0])
                     prev_alignment_pos = -1
-                    prev_agglom_ref_nt = ''
                     for alignment_pos, agglom_ref_nt in query_mismatches_to_agglom_ref_in_alignment_frame:
                         if alignment_pos > prev_alignment_pos + 1:
                             cigartuples.append((7, alignment_pos - prev_alignment_pos - 1))
@@ -310,7 +309,6 @@ class Agglomerator:
                         else:
                             cigartuples.append((8, 1))
                         prev_alignment_pos = alignment_pos
-                        prev_agglom_ref_nt = agglom_ref_nt
                     if alignment_length > prev_alignment_pos + 1:
                         cigartuples.append((7, alignment_length - prev_alignment_pos - 1))
 

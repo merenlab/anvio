@@ -44,7 +44,7 @@ def main():
                               "You don't know which state name you want to get rid of? We heard that the '--list-states' "
                               "flag helps for that.")
 
-        if not args.state in states:
+        if args.state not in states:
             raise ConfigError("The state name '%s' does not seem to appear in this database. But we have %s instead: "
                                "%s." % ((args.state, 'this one' if len(states) == 1 else 'these ones', ', '.join(list(states.keys())))))
 

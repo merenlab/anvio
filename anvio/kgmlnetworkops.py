@@ -1,10 +1,9 @@
 import os
-import sys
 import pandas as pd
 
 from copy import deepcopy
 from argparse import Namespace
-from typing import Any, Literal, Union
+from typing import Any, Union
 from dataclasses import dataclass, field
 
 import anvio.metabolism.context as kcontext
@@ -13,8 +12,7 @@ import anvio.terminal as terminal
 import anvio.reactionnetwork as rn
 
 from anvio.dbops import ContigsDatabase
-from anvio.argparse import ArgumentParser
-from anvio.errors import ConfigError, FilesNPathsError
+from anvio.errors import ConfigError
 
 @dataclass
 class Chain:
@@ -1906,7 +1904,7 @@ class GapAnalyzer:
                     # The gappy chain is partly cyclic. The branch index records the position in the
                     # chain of the particular occurrence of the reaction that enters or exits the
                     # cycle.
-                    gappy_kgml_compound_id = gappy_chain.kgml_compound_entries[branch_index].id
+                    gappy_chain.kgml_compound_entries[branch_index].id
                     segments: list[tuple[int]] = []
                     for ungappy_chain, overlap in zip(
                         gap_chain_relations.ungappy_chains, gap_chain_relations.overlaps
@@ -3121,7 +3119,7 @@ class GapFiller:
             json_full_gene['ko_top_hits'] = json_ko_top_hits
             ko_df = self.top_gene_kos_df[self.top_gene_kos_df['gene_callers_id'] == gcid]
             for ko_row in ko_df.itertuples():
-                json_ko_top_hits['ko_id'] = ko_id = ko_row.accession
+                json_ko_top_hits['ko_id'] = ko_row.accession
                 json_ko_top_hits['ko_name'] = ko_row.function
                 json_ko_top_hits['e_value'] = ko_row.e_value
 
@@ -3330,7 +3328,6 @@ class GapFiller:
             json_gap_kos_via_cog_top_hits.append(json_gap_ko_via_cog_top_hits)
             json_gap_ko_via_cog_top_hits['ko_id'] = ko_id
             json_gap_ko_via_cog_top_hits['ko_name'] = ko_name
-            json_associated_cog_hits: list[dict] = []
             json_gap_ko_via_cog_top_hits['cog_ids'] = hits_df['accession'].tolist()
 
         return json_candidate_genes
