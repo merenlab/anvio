@@ -1,46 +1,14 @@
 Anvi-summarize lets you export a **comprehensive overview of your data** from an anvi'o database. Depending on the input, it can summarize a %(collection)s of binned contigs (from a %(profile-db)s), a %(collection)s of binned gene clusters (from a %(pan-db)s), or the full contents of a %(pan-graph-db)s. The output is a directory of flat files and an HTML index that conveniently displays them for you. This makes the program useful for sharing information with collaborators, generating supplementary files for manuscripts, and exporting data for use in downstream analyses.
 
+See also %(anvi-summarize-blitz)s.
+
 ## Output files
 
-### When run on a profile database
+What this program produces as output depends on its inputs:
 
-Running on a %(profile-db)s produces:
-
-* An overall table of bin statistics (`bins_summary.txt`) like length, GC content, completion and redundancy
-* A per-bin folder of bin-specific information (`bin_by_bin/`), including:
-    * %(fasta)s files of their contigs
-    * information about their %(hmm-hits)s
-    * coverage, detection, and other read-recruitment statistics in each sample stored in the %(profile-db)s
-    * domain and taxonomy predictions from single-copy core genes (see %(anvi-run-scg-taxonomy)s)
-    * the bin-specific value of each statistic in `bins_summary.txt`
-* Matrix files compiling information about all bins across all samples (`bins_across_samples/`)
-* Miscellaneous data exported from the %(profile-db)s (`misc_data_items/` and `misc_data_layers/`)
-
-**Confused about the read-recruitment statistics?**
-
-In case you want to learn about the definitions of statistics like coverage, detection, abundance, variability, and so on, you should first read [Mike Lee's explanation of these statistics](https://merenlab.org/2017/05/08/anvio-views/). Our [vocabulary page](https://anvio.org/vocabulary/) might also be helpful. Then, keep in mind that anvi'o computes these values on a per-contig (and per-split) basis. When you run %(anvi-summarize)s, the program will summarize this information for a given bin by taking the average of a statistic's value across all splits in the bin, weighting that average by split length.
-
-### When run on a pan database
-
-Running on a %(pan-db)s produces a large table (`[NAME]_gene_clusters_summary.txt`) describing every gene in every gene cluster of your pangenome, including:
-
-* gene-cluster-specific information like the number of genomes contributing to that cluster, maximum number of paralogs in any participating genome, and cluster homogeneity metrics
-* gene-specific information like functional annotations and amino acid sequence
-* a `bin_name` column indicating which collection bin each gene cluster belongs to (empty when no collection is provided — see below)
-
-It also exports any miscellaneous data imported into the %(pan-db)s (`misc_data_items/` and `misc_data_layers/`).
-
-### When run on a pan-graph database
-
-Running on a %(pan-graph-db)s produces a directory (by default named `[PROJECT]-PAN-GRAPH-SUMMARY`) containing the following files:
-
-* `SYNGCs.txt` — one row per synteny gene cluster (SynGC), with columns for its identity, region membership, node type, number of genomes in which it is present, items additional data, and per-source function consensus annotations
-* `GENESxSYNGCs.txt` — long-format table with one row per (genome × gene call), linking each gene call to its SynGC, region, per-gene functional annotations, and amino acid sequence (or DNA sequence if `--report-DNA-sequences` is used; omitted when `--quick-summary` is set)
-* `REGIONS.txt` — one row per genomic region (backbone or variable), with all region-level statistics including the composite variability score
-* `GENOMES_DIST_MAT.txt` — square genome × genome synteny distance matrix
-* `GENOMES_DIST.newick` — newick tree over genomes derived from the distance matrix
-
-It also exports miscellaneous data from the %(pan-graph-db)s (`misc_data_items/` and `misc_data_layers/`).
+* Running it on a %(profile-db)s will produce a %(profile-summary)s output.
+* Running it on a %(pan-db)s and %(genomes-storage-db)s will produce a %(pan-summary)s output.
+* Running it on a %(pan-graph-db)s and %(genomes-storage-db)s will produce a %(pan-graph-summary)s output.
 
 ## Running anvi-summarize
 
