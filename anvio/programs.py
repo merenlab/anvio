@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 """A library to help anvi'o describe itself"""
 
 import os

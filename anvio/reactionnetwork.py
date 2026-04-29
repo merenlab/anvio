@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 """Generate, manipulate, and export metabolic reaction networks from gene annotations."""
 
 from __future__ import annotations

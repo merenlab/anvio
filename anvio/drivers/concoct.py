@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 """Anvi'o - CONCOCT interface for unsupervised clustering"""
 import os
 

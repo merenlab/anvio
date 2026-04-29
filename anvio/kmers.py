@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 """Simple KMers class to compute kmer frequecies
 
    This module should not be used for k > 4.

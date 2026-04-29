@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 
 """Classes to work with ngrams of contig functions.
 

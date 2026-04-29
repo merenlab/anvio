@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 """
     Common routes for bottle web server.
 

@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 
 from collections import Counter
 

@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 """Sets up an anvi'o tRNA-seq snakemake workflow."""
 
 import os

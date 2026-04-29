@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 """Provides the necessary class to profile BAM files."""
 
 import gc
