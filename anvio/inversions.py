@@ -920,7 +920,7 @@ class Inversions:
                     sum_freq[inversion_id][oligo_primer] = {'reference': None,
                                                             'non_reference': {}}
 
-                if reference == False:
+                if not reference:
                     if oligo not in sum_freq[inversion_id][oligo_primer]:
                         sum_freq[inversion_id][oligo_primer]['non_reference'][oligo] = frequency
                     else:
@@ -990,7 +990,7 @@ class Inversions:
                         if oligo_primer not in self.summary['inversions'][inversion_id]['activity'][sample]:
                             continue
                         ref_id = all_oligo['reference']
-                        previous_width = self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][ref_id]['width'];
+                        previous_width = self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer][ref_id]['width']
                         for i, x in all_oligo['non_reference']:
                             i_start = previous_width
                             if i not in self.summary['inversions'][inversion_id]['activity'][sample][oligo_primer]:

@@ -1186,7 +1186,8 @@ class SetupLocalSCGTaxonomyData(SCGTaxonomyArgs, SanityCheck):
 
             # then, we will have to copy all relevant files from the anvi'o source directory to
             # the new setup database
-            import shutil, glob
+            import shutil
+            import glob
             shutil.copy(ctx.accession_to_taxonomy_file_path, self.SCGs_taxonomy_data_dir)
             shutil.copy(ctx.database_version_file_path, self.SCGs_taxonomy_data_dir)
 

@@ -1399,7 +1399,7 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
         """Takes a dictionary that includes a key `accession` and populates the dictionary with taxonomy"""
 
         if not mode:
-            if not 'accession' in d:
+            if 'accession' not in d:
                 raise ConfigError("`add_taxonomy_to_dict` is speaking: the dictionary sent here does not have a member "
                                   "with key `accession`.")
 

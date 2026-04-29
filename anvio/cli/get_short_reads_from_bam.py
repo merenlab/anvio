@@ -47,7 +47,6 @@ def get_args():
     parser.add_argument('input_bams', metavar = 'BAM FILE[S]', nargs='+',
                         help = 'BAM file(s) to access to recover short reads')
 
-    output_file_kwargs = {'help': 'File path(s) to store results. Multiple files should be separated by commas (no spaces).'}
 
     groupA = parser.add_argument_group('INPUT OPTION #1', "Work with good'ol anvi'o databases, collections, and bins, and get all the reads from "
                                             "one or more BAM files that match to the contigs matching to your selections.")

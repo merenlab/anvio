@@ -247,7 +247,7 @@ def parse_select_functions_table(args, from_function_sources):
     if args.function_sources is None:
         args.function_sources = []
         from_function_sources = []
-    if args.function_sources == True:
+    if args.function_sources:
         pass
     else:
         # Add the sources from the file to the list of all function sources to check for and load in

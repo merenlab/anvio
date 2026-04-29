@@ -4488,7 +4488,7 @@ class TRNASeqDataset(object):
                     spec_short_5prime_read_count_M += seq_M.spec_read_xtra_5prime_count
             if seq_M.nonspec_read_xtra_5prime_count:
                 if seq_M.nonspec_long_5prime_extension_dict:
-                    nonspec_long_5prime_read_count = sum(seq_M.nonspec_long_5prime_extension_dict.values())
+                    sum(seq_M.nonspec_long_5prime_extension_dict.values())
             length_M = len(seq_M.consensus_string)
             mean_spec_cov = seq_M.mean_spec_cov
             mean_nonspec_cov = seq_M.mean_nonspec_cov
@@ -7368,7 +7368,7 @@ class ResultTabulator(object):
         self.spec_aux_db_info = DBInfo(self.spec_aux_db_path, expecting='auxiliary data for coverages')
         self.nonspec_aux_db_path = os.path.join(os.path.dirname(self.nonspec_profile_db_path), 'AUXILIARY-DATA.db') if self.nonspec_profile_db_path else None
         if self.nonspec_aux_db_path:
-            nonspec_aux_db_info = DBInfo(self.nonspec_aux_db_path, expecting='auxiliary data for coverages')
+            DBInfo(self.nonspec_aux_db_path, expecting='auxiliary data for coverages')
 
         filesnpaths.is_output_dir_writable(self.out_dir)
 
@@ -8064,7 +8064,7 @@ class ResultPlotter(object):
                     continue
 
                 if not taxon_rank_filter and not loop_ranks:
-                    warning(f"A taxon or at least one rank must be given.", "PROGRAM REQUIREMENT")
+                    warning("A taxon or at least one rank must be given.", "PROGRAM REQUIREMENT")
                     continue
 
                 loop_ranks = sorted(loop_ranks, key=lambda rank: RANKS.index(rank))
@@ -8075,7 +8075,7 @@ class ResultPlotter(object):
 
                 if single_aa and single_anticodon:
                     if ANTICODON_AA_DICT[single_anticodon] == single_aa:
-                        warning(f"An amino acid is not needed with the anticodon.", "UNNECESSARY FIELD")
+                        warning("An amino acid is not needed with the anticodon.", "UNNECESSARY FIELD")
                         single_aa = None
                     else:
                         warning(f"The anticodon ('{single_anticodon}') does not decode the amino acid ('{single_aa}').", "INVALID FIELD")
@@ -8306,7 +8306,6 @@ class ResultPlotter(object):
     def print_formatting_options(self):
         self.run.warning("", header="FORMAT OPTIONS", lc='green')
         info_single = self.run.info_single
-        DEFAULT_FORMAT_PARAM_DICT = self.DEFAULT_FORMAT_PARAM_DICT
         info_single("The name and default value of the option is given.", mc='magenta', level=1)
         for param, value in self.DEFAULT_FORMAT_PARAM_DICT.items():
             info_single(f"{param}, {value}", mc='yellow', level=2)
@@ -8340,9 +8339,9 @@ class ResultPlotter(object):
 
         sample_spec_gb = spec_df.groupby(('sample_name', '', ''))
         sample_mod_gb = mod_df.groupby('sample_name')
-        sample_nonspec_gb = nonspec_df.groupby(('sample_name', '', '')) if self.nonspec_txt_path else None
+        nonspec_df.groupby(('sample_name', '', '')) if self.nonspec_txt_path else None
 
-        fig = plt.figure(1)
+        plt.figure(1)
         num_samples = self.num_samples
         GridSpec(num_samples, 1)
 
@@ -8358,7 +8357,6 @@ class ResultPlotter(object):
 
         format_param_dict = self.format_param_dict
         cov_index = self.cov_index
-        cov_cutoff = self.cov_cutoff
         cov_length = self.cov_length
         cov_x_values = self.cov_x_values
         cov_x_labels = self.cov_x_labels

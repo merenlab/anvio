@@ -12,8 +12,7 @@ from collections import OrderedDict
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import TRNAIdentifierError
-from anvio.filesnpaths import is_file_exists, is_output_file_writable
-from anvio.constants import WC_BASE_PAIRS, WC_PLUS_WOBBLE_BASE_PAIRS, anticodon_to_AA as ANTICODON_TO_AA
+from anvio.constants import WC_PLUS_WOBBLE_BASE_PAIRS, anticodon_to_AA as ANTICODON_TO_AA
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"

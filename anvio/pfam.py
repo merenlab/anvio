@@ -115,7 +115,7 @@ class PfamSetup(object):
             try:
                 with gzip.open(input_file,'rt') as f:
                     content = f.read()
-            except gzip.BadGzipFile as err:
+            except gzip.BadGzipFile:
                 raise Exception ("BadGzipFile", input_file)
         else:
             content = read_remote_file(self.database_url + '/Pfam.version.gz')
@@ -307,7 +307,7 @@ class Pfam(object):
         if '.' in accession:
             accession = accession.split('.')[0]
 
-        if not accession in self.function_catalog:
+        if accession not in self.function_catalog:
             if ok_if_missing_from_catalog:
                 return "Unknown function with PFAM accession %s" % accession
             else:
@@ -601,8 +601,8 @@ class HMMProfile(object):
             emission = emission_line.split()
 
             # These are not used currently but maybe someday will be
-            insertion = insertion_line.split()
-            state = state_line.split()
+            insertion_line.split()
+            state_line.split()
 
             assign_type = lambda x, t: t(x) if x != '-' else '-'
             profile['MATCH_STATES']['MATCH_STATE'].append(int(emission.pop(0)))

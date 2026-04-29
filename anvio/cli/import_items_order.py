@@ -37,7 +37,7 @@ def main():
 def run_program():
     args = get_args()
     run = terminal.Run()
-    progress = terminal.Progress()
+    terminal.Progress()
 
     A = lambda x: args.__dict__[x] if x in args.__dict__ else None
     input_file_path = A('input_order')

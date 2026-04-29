@@ -448,7 +448,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.progress.update('for "%s" ...' % layer)
             layer_type = utils.get_predicted_type_of_items_in_a_dict(self.items_additional_data_dict, layer)
 
-            if layer_type == None:
+            if layer_type is None:
                 skipped_additional_data_layers.append(layer)
                 continue
 
@@ -462,7 +462,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                     else:
                         item_layer_data_tuple.append(('', item))
                 else:
-                    if self.items_additional_data_dict[item][layer] == None:
+                    if self.items_additional_data_dict[item][layer] is None:
                         if layer_type != str:
                             items_for_which_we_put_zeros_for_missing_values.add(item)
                             item_layer_data_tuple.append((0.0, item))
@@ -1661,7 +1661,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         # if the user specifies a view, set it as default:
         if self.view:
-            if not self.view in self.views:
+            if self.view not in self.views:
                 raise ConfigError("The requested view ('%s') is not available for this run. Please see "
                                          "available views by running this program with --show-views flag." % self.view)
 
@@ -1690,7 +1690,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                              "by using `anvi-script-generate-auxiliary-data-from-summary-cp` script."))
 
         if self.state_autoload:
-            if not self.state_autoload in self.states_table.states:
+            if self.state_autoload not in self.states_table.states:
                 raise ConfigError("The requested state ('%s') is not available for this run. Please see "
                                          "available states by running this program with --show-states flag." % self.state_autoload)
 
@@ -2010,7 +2010,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 if layer_name in layer_names_considered:
                     continue
 
-                if layer_types[layer_name] == None:
+                if layer_types[layer_name] is None:
                     # all items in this layer has type None, there can't possibly
                     # be anything worth showing here.
                     layer_names_considered.add(layer_name)
@@ -2445,7 +2445,7 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
             remove_column = True
 
             # If there is a "!" it is of stacked-bar type
-            if not "!" in layer_name:
+            if "!" not in layer_name:
                 for sample_name in samples_in_layer_data:
                     # loops through samples until it finds evidence the column is string-type
                     if isinstance(additional_layer_dict[sample_name][layer_name], str):

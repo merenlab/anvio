@@ -31,7 +31,7 @@ def display_miscellaneous_models(run=None):
         from anvio.terminal import Run
         run = Run()
 
-    misc_dir = os.path.abspath(os.path.dirname(__file__))
+    os.path.abspath(os.path.dirname(__file__))
 
     run.warning(None, header='Miscellaneous HMM models', lc='green')
     run.info_single("These models are not run by default, but shipped with anvi'o due to their "

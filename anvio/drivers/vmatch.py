@@ -216,7 +216,7 @@ class Vmatch(object):
 
         pid = "Vmatch"
         self.progress.new(pid)
-        self.progress.update(f"Setting up search")
+        self.progress.update("Setting up search")
 
         with open(self.fasta_query_path) as query_file:
             for line_num, line in enumerate(query_file, 1):
@@ -304,7 +304,6 @@ class Vmatch(object):
         num_unparsed_chunks = 0
 
         query_file = open(self.fasta_query_path)
-        output_dfs = []
         if unprocessed_chunk_dict:
             self.progress.update_pid(pid)
             self.progress.update(f"Queuing queries 1-{pp_total_lines}/{pp_total_lines}")

@@ -1174,7 +1174,6 @@ class BottleApplication(Bottle):
                 'aa_sequences_in_gene_cluster': {},
                 'previous_gene_cluster_name': None,
                 'next_gene_cluster_name': None,
-                'index': None,
                 'total': None
                 }
 

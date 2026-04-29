@@ -476,7 +476,7 @@ class TRNASeqWorkflow(WorkflowSuperClass):
                 target_files.append(os.path.join(out_dir, "IDENT.done"))
 
         if self.run_anvi_merge_trnaseq:
-            project_name = self.get_param_value_from_config(['anvi_merge_trnaseq', '--project-name'])
+            self.get_param_value_from_config(['anvi_merge_trnaseq', '--project-name'])
             target_files.append(os.path.join(self.dirs_dict['CONVERT_DIR'], "CONVERT.done"))
 
         if self.run_anvi_run_trna_taxonomy:

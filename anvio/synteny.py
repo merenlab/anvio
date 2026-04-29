@@ -283,7 +283,7 @@ class NGram(object):
                 ngram = self.order_window(annotated_window_dict['gene_clusters'])
 
             # flip annotation if the ngram was flipped
-            if ngram[1] == True:
+            if ngram[1]:
                 annotated_window_dict_ordered = {}
                 for annotation_source, annotation in annotated_window_dict.items():
                     annotated_window_flipped = annotation[::-1]

@@ -62,7 +62,7 @@ def run_program():
     # this extra flag is necessary for avoiding args.gene_caller_id == 0 which could evaluate to False
     # when gene caller id is 0 :)
     has_valid_gene_caller_id_arg = False
-    if args.gene_caller_id != None:
+    if args.gene_caller_id is not None:
         has_valid_gene_caller_id_arg = utils.is_gene_caller_id(args.gene_caller_id)
         if not args.contigs_db:
             raise ConfigError("If you wish to work with a gene caller id, you also need to provide "

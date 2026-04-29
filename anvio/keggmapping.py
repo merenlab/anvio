@@ -10,7 +10,6 @@ import shutil
 import functools
 import numpy as np
 import pandas as pd
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 
@@ -983,12 +982,12 @@ class Mapper:
             return drawn
 
         # Determine the individual maps to draw.
-        if draw_individual_files == True:
+        if draw_individual_files:
             if groups_txt is None:
                 draw_files_categories = list(project_name_contigs_db)
             else:
                 draw_files_categories = list(group_sources)
-        elif draw_individual_files == False:
+        elif not draw_individual_files:
             draw_files_categories = []
         else:
             draw_files_categories = draw_individual_files
@@ -999,12 +998,12 @@ class Mapper:
         ]
 
         # Determine the map grids to draw.
-        if draw_grid == True:
+        if draw_grid:
             if groups_txt is None:
                 draw_grid_categories = list(project_name_contigs_db)
             else:
                 draw_grid_categories = list(group_sources)
-        elif draw_grid == False:
+        elif not draw_grid:
             draw_grid_categories = []
         else:
             draw_grid_categories = draw_grid
@@ -1128,7 +1127,7 @@ class Mapper:
                 self.run = run
                 self.progress.end()
 
-        if draw_grid == False:
+        if not draw_grid:
             # Our work here is done.
             if groups_txt is None:
                 category_message = "contigs databases"
@@ -1883,12 +1882,12 @@ class Mapper:
             return drawn
 
         # Determine the individual maps to draw.
-        if draw_individual_files == True:
+        if draw_individual_files:
             if groups_txt is None:
                 draw_files_categories = all_genome_names
             else:
                 draw_files_categories = list(group_sources)
-        elif draw_individual_files == False:
+        elif not draw_individual_files:
             draw_files_categories = []
         else:
             draw_files_categories = draw_individual_files
@@ -1899,12 +1898,12 @@ class Mapper:
         ]
 
         # Determine the map grids to draw.
-        if draw_grid == True:
+        if draw_grid:
             if groups_txt is None:
                 draw_grid_categories = all_genome_names
             else:
                 draw_grid_categories = list(group_sources)
-        elif draw_grid == False:
+        elif not draw_grid:
             draw_grid_categories = []
         else:
             draw_grid_categories = draw_grid
@@ -2049,7 +2048,7 @@ class Mapper:
                 self.progress.end()
             drawn['individual'][category] = drawn_category
 
-        if draw_grid == False:
+        if not draw_grid:
             # Our work here is done.
             if groups_txt is None:
                 category_message = "genomes"
@@ -2788,7 +2787,6 @@ class Mapper:
 
         group_source_count: Dict[str, int] = {}
         source_group: Dict[str, str] = {}
-        ko_groups: Dict[str, List[str]] = {}
         if group_sources:
             get_categories = _get_qualifying_groups
 
@@ -3138,11 +3136,10 @@ class Mapper:
         """
         # KOs correspond to arrows rather than boxes in global and overview maps.
         is_global_map = False
-        is_overview_map = False
         if re.match(GLOBAL_MAP_ID_PATTERN, pathway_number):
             is_global_map = True
         elif re.match(OVERVIEW_MAP_ID_PATTERN, pathway_number):
-            is_overview_map = True
+            pass
 
         # A 1x resolution global 'KO' image is used as the base of the drawing, whereas a 2x
         # overview or standard 'map' image is used as the base. The global 'KO' image grays out
@@ -3269,7 +3266,6 @@ class Mapper:
         """
         rectangle_count = 0
         for compound_entry in pathway.get_entries(entry_type='compound'):
-            compound_rectangle_uuids: List[str] = []
             for uuid in compound_entry.children['graphics']:
                 graphics: kgml.Graphics = pathway.uuid_element_lookup[uuid]
                 if graphics.type == 'rectangle':
@@ -3371,11 +3367,11 @@ class ColorbarDrawer:
                 length_in_data_coords = 1 / len(colors)
                 origin_in_points = ax.transData.transform((0, 0))
                 if self.orientation == 'vertical':
-                    size_value = height_in_points = (
+                    size_value = (
                         ax.transData.transform((0, length_in_data_coords)) - origin_in_points
                     )[1]
                 elif self.orientation == 'horizontal':
-                    size_value = width_in_points = (
+                    size_value = (
                         ax.transData.transform((length_in_data_coords, 0)) - origin_in_points
                     )[0]
                 else:

@@ -43,7 +43,7 @@ class MCGPlots:
         self.samples_nuc_coverage_dict = {}
         self.gene_id = gene_id
 
-        self.samples = set(mcg.gene_presence_absence_in_samples.loc[gene_id, mcg.gene_presence_absence_in_samples.loc[gene_id,]==True].index)
+        self.samples = set(mcg.gene_presence_absence_in_samples.loc[gene_id, mcg.gene_presence_absence_in_samples.loc[gene_id,]].index)
         # taking only the positive samples in which the gene is present
         self.samples = self.samples.intersection(mcg.positive_samples)
         if not self.samples:

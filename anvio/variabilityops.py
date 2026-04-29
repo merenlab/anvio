@@ -949,7 +949,7 @@ class VariabilitySuper(VariabilityFilter, object):
             self.sample_ids_of_interest = self.get_sample_ids_of_interest()
 
         if not self.genes_of_interest:
-            self.progress.update('Setting up genes of interest ...');
+            self.progress.update('Setting up genes of interest ...')
             # self.genes_of_interest can be injected into this class programatically; this
             # conditional method call prevents overwriting
             self.genes_of_interest = self.get_genes_of_interest()

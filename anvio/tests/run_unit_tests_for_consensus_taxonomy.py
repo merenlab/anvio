@@ -40,7 +40,7 @@ scg_raw_hits = [{'percent_identity': 100.0, 't_domain': 'A', 't_phylum': 'B', 't
                 {'percent_identity': 100.0, 't_domain': 'A', 't_phylum': 'B', 't_class': 'C', 't_order': 'D', 't_family': 'E', 't_genus': 'F', 't_species': 'T x'},
                 {'percent_identity': 100.0, 't_domain': 'A', 't_phylum': 'B', 't_class': 'C', 't_order': 'D', 't_family': 'E', 't_genus': 'F', 't_species': 'T x'}]
 
-assert cT('t_species') == None
+assert cT('t_species') is None
 assert cT('t_genus') == 'F'
 
 #########################################
@@ -49,8 +49,8 @@ scg_raw_hits = [{'percent_identity': 100.0, 't_domain': 'A', 't_phylum': 'B', 't
                 {'percent_identity': 100.0, 't_domain': 'A', 't_phylum': 'B', 't_class': 'C', 't_order': 'D', 't_family': 'E', 't_genus': 'F', 't_species': 'G x'},
                 {'percent_identity': 100.0, 't_domain': 'A', 't_phylum': 'B', 't_class': 'C', 't_order': 'D', 't_family': 'E', 't_genus': 'W', 't_species': 'T x'}]
 
-assert cT('t_species') == None
-assert cT('t_genus') == None
+assert cT('t_species') is None
+assert cT('t_genus') is None
 assert cT('t_family') == 'E'
 
 #########################################
@@ -76,7 +76,7 @@ assert cT('t_species') == 'G x'
 scg_dict = {1: {'t_domain': 'A', 't_phylum': 'B', 't_class': 'C', 't_order': 'D', 't_family': 'E', 't_genus': 'F', 't_species': 'G x'},
             3: {'t_domain': 'A', 't_phylum': 'B', 't_class': 'C', 't_order': 'D', 't_family': 'E', 't_genus': 'F', 't_species': 'T x'}}
 
-assert pT('t_species') == None
+assert pT('t_species') is None
 assert pT('t_genus') == 'F'
 
 #########################################
@@ -96,7 +96,7 @@ scg_dict = {1: {'t_domain': 'A', 't_phylum': 'B', 't_class': 'C', 't_order': 'D'
             5: {'t_domain': 'A', 't_phylum': 'B', 't_class': 'C', 't_order': 'D', 't_family': 'E', 't_genus': 'W', 't_species': 'T x'},
             6: {'t_domain': 'A', 't_phylum': 'B', 't_class': 'C', 't_order': 'D', 't_family': 'E', 't_genus': 'W', 't_species': 'T x'}}
 
-assert pT('t_species') == None
-assert pT('t_genus') == None
-assert pT('t_family') == None
+assert pT('t_species') is None
+assert pT('t_genus') is None
+assert pT('t_family') is None
 assert pT('t_order') == 'D'

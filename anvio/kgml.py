@@ -1623,7 +1623,6 @@ class XMLOps:
                         indented_output += f' {attr}="{v}"'
                     else:
                         indented_output += f'\n{" " * attr_indentation}{attr}="{v}"'
-                prev_attr = attr
         else:
             indented_output = f'{" " * tag_indentation}<{tag}'
             raise AssertionError(
@@ -1962,7 +1961,6 @@ class Drawer:
                 if kwargs.get('fontsize') is None:
                     kwargs['fontsize'] = 9
             else:
-                map_dir = self.kegg_context.png_2x_map_dir
                 map_filepath = os.path.join(
                     self.kegg_context.png_2x_map_dir, f'map{pathway.number}.png'
                 )

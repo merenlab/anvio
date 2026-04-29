@@ -808,7 +808,7 @@ class ContigsSuperclass(object):
                 hmm_hit = hmm_hits_table[e['hmm_hit_entry_id']]
                 hmm_source = e['source']
 
-                if not e['split'] in self.hmm_searches_dict:
+                if e['split'] not in self.hmm_searches_dict:
                     self.hmm_searches_dict[e['split']] = copy.deepcopy(sources_tmpl)
 
                 search_type = 'hmms_%s' % self.hmm_sources_info[e['source']]['search_type']
@@ -835,7 +835,7 @@ class ContigsSuperclass(object):
         _ = self.nt_positions_info
 
         if (not self.a_meta['genes_are_called']) or \
-           (not contig_name in self.nt_positions_info) or \
+           (contig_name not in self.nt_positions_info) or \
            (not len(self.nt_positions_info[contig_name])):
             return (0, 0, 0)
 
@@ -1416,7 +1416,7 @@ class ContigsSuperclass(object):
         _ = self.nt_positions_info
 
         if (not self.a_meta['genes_are_called']) or \
-           (not contig_name in self.nt_positions_info) or \
+           (contig_name not in self.nt_positions_info) or \
            (not len(self.nt_positions_info[contig_name])):
             # In these cases everything gets 0
             pass
@@ -3426,7 +3426,7 @@ class PanSuperclass(object):
                 # of the final gene clusters stored in the pan database due to various reasons. for
                 # instance, if the user set a min occurrence parameter, a singleton will not be found
                 # in the pan db yet it will return a functional hit.
-                if not gene_caller_id in self.gene_callers_id_to_gene_cluster[genome_name]:
+                if gene_caller_id not in self.gene_callers_id_to_gene_cluster[genome_name]:
                     gene_cluster_id = 'n/a'
                     found_mismatch = True
                 else:
@@ -4237,7 +4237,7 @@ class ProfileSuperclass(object):
 
 
     def get_variability_information_for_split(self, split_name, skip_outlier_SNVs=False, return_raw_results=False):
-        if not split_name in self.split_names:
+        if split_name not in self.split_names:
             raise ConfigError("get_variability_information_for_split: The split name '%s' does not seem to be "
                                "represented in this profile database. Are you sure you are looking for it "
                                "in the right database?" % split_name)
@@ -4270,7 +4270,7 @@ class ProfileSuperclass(object):
         return d
 
     def get_indels_information_for_split(self, split_name):
-        if not split_name in self.split_names:
+        if split_name not in self.split_names:
             raise ConfigError("get_indels_information_for_split: The split name '%s' does not seem to be "
                                "represented in this profile database. Are you sure you are looking for it "
                                "in the right database?" % split_name)
@@ -5611,7 +5611,7 @@ class AA_counts(ContigsSuperclass):
         if not len(collections_info_table):
             raise ConfigError("There are no collections stored in the profile database :/")
 
-        if not self.collection_name in collections_info_table:
+        if self.collection_name not in collections_info_table:
             valid_collections = ', '.join(list(collections_info_table.keys()))
             raise ConfigError("'%s' is not a valid collection name. But %s: '%s'." \
                                     % (self.collection_name,
