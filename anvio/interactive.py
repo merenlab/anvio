@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 """The module that curates data for the interactive interface"""
 
 import os

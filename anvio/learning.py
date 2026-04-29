@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 """A simple module with classes for learning operations"""
 
 import pickle

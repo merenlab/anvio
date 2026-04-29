@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 """Overloading Python argparse for anvi'o purposes"""
 
 import os

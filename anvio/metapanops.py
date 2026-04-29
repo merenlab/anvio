@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 """
     The anvi'o metapangenome module.
 
