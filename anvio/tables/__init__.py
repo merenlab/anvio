@@ -54,7 +54,7 @@ pan_graph_edges_table_types          = [  'str'  ,   'str' ,   'str' , 'numeric'
 
 pan_graph_regions_table_name         = 'pan_graph_regions'
 pan_graph_regions_table_structure    = ['region_id', 'region_type', 'x_min'  , 'x_max'  , 'num_synteny_gene_clusters', 'num_gene_clusters', 'num_gene_calls', 'max_expansion', 'min_expansion', 'complexity', 'complexity_normalized', 'diversity', 'diversity_normalized', 'weight' , 'weight_normalized', 'composite_variability_score', 'complexity_mm_scaled', 'diversity_mm_scaled', 'expansion_mm_scaled', 'weight_mm_scaled']
-pan_graph_regions_table_types        = [ 'numeric' ,     'str'    , 'numeric', 'numeric',          'numeric'         ,      'numeric'     ,    'numeric'   ,    'numeric'   ,    'numeric'   ,  'numeric'  ,        'numeric'       ,  'numeric'  ,        'numeric'      , 'numeric',      'numeric'     ,            'numeric'         ,        'numeric'      ,        'numeric'      ,        'numeric'      ,      'numeric'    ]
+pan_graph_regions_table_types        = [ 'numeric' ,     'str'    , 'numeric', 'numeric',          'numeric'         ,      'numeric'     ,     'numeric'   ,    'numeric'   ,    'numeric'   ,  'numeric'  ,        'numeric'       ,  'numeric' ,        'numeric'      , 'numeric',      'numeric'     ,            'numeric'         ,        'numeric'      ,        'numeric'     ,        'numeric'     ,      'numeric'    ]
 
 pan_graph_genome_distances_table_name      = 'pan_graph_genome_distances'
 pan_graph_genome_distances_table_structure = ['genome_a', 'genome_b', 'distance']
