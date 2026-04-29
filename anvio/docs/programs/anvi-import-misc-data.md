@@ -1,4 +1,4 @@
-This program enables extending anvi'o projects with many kinds of **additional data**. Additional data will extend anvio' %(interactive)s displays, and appear in %(summary)s files, and become accessible to other anvi'o programs thorughout.
+This program enables extending anvi'o projects with many kinds of **additional data**. Additional data will extend anvio' %(interactive)s displays, and appear in %(pan-summary)s, %(pan-graph-summary)s, or %(profile-summary)s files, and become accessible to other anvi'o programs thorughout.
 
 This program can add additional data for your items or layers in a %(pan-db)s or %(profile-db)s, or add additional data for your nucleotides or amino acids in a %(contigs-db)s
 
