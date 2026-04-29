@@ -6,18 +6,15 @@ import sys
 import multiprocessing
 from copy import deepcopy
 from argparse import Namespace
-from collections import defaultdict
 
 import anvio
-import anvio.kgml as kgml
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.kgmlnetworkops as nw
 import anvio.reactionnetwork as rn
 import anvio.filesnpaths as filesnpaths
 
-from anvio.dbops import ContigsDatabase
-from anvio.errors import ConfigError, FilesNPathsError
+from anvio.errors import ConfigError
 from anvio.genomedescriptions import GenomeDescriptions
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"

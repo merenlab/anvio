@@ -5,7 +5,6 @@ import sys
 from anvio.argparse import ArgumentParser
 
 import anvio
-import anvio.terminal as terminal
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.tables.miscdata import MiscDataTableFactory

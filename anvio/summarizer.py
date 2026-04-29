@@ -1129,7 +1129,6 @@ class ContigSummarizer(SummarizerSuperClass):
         # import things that are only relevant for this context where we will
         # use the power of direct access to contigs-db tables to avoid long wait times
         # when we just need simple summaries of the contigs-db contents.
-        import anvio.db as db
         import anvio.tables as t
 
         # open contigs-db directly
