@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 """Module to make sense of samples information and samples order input"""
 
 import os

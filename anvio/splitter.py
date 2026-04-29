@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 """The library to split merged profiles into smaller profiles.
 
 The default client of this library is under bin/anvi-split"""

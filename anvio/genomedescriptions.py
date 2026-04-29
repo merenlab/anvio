@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 """
     A module for dealing with genome storages.
 
@@ -1303,7 +1302,9 @@ class AggregateFunctions:
         already_in_the_dict = [g for g in layer_names if g in self.layer_names_considered]
         if len(already_in_the_dict):
             raise ConfigError(f"Anvi'o is not happy because there are some genome or metagenome names that are not unique "
-                              f"across all input databases :/ Here is an example: {already_in_the_dict[0]}.")
+                              f"across all input databases and files. Note that if you provide multiple input types (like "
+                              f"both an external genomes file and a genomes storage database), anvi'o expects the inputs "
+                              f"to contain different genomes. :/ Here is an example duplicated (meta)genome name: {already_in_the_dict[0]}.")
         else:
             # you good fam
             pass

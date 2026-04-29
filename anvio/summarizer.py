@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 """Summarizes information for a collection.
 
 It also gives access to bin data that may be useful. For instance, did you know
