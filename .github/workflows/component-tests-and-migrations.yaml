@@ -22,7 +22,11 @@ jobs:
         persist-credentials: false
     - uses: conda-incubator/setup-miniconda@8ee1f361103df19b6f8c8655fd3967a8ecb162d5 # v4.0.1
       with:
-        miniconda-version: 'latest'
+        # FIXME:
+        #   The next version (26.3.2-2) causes https://github.com/merenlab/anvio/issues/2590
+        #   Release notes: https://www.anaconda.com/docs/getting-started/miniconda/release-notes
+        #   Available versions: https://repo.continuum.io/miniconda/
+        miniconda-version: "py310_26.1.1-1"
         auto-update-conda: true
         activate-environment: anvio_env
         environment-file: .conda/environment.yaml
