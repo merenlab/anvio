@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 """
     The purpose of this module is to help the dealing with tRNA genes
     in contigs.

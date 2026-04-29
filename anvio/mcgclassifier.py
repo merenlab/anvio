@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 """
     Classes to classify genes based on coverages across metagenomes.
 

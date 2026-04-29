@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 
 """Lots of under-the-rug, operational garbage in here. Run. Run away."""
 

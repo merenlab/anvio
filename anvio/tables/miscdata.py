@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 
 """The fancy additioanl data module"""
 

@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 """ Classes to define and work with anvi'o ecophylo workflows. """
 
 from distutils.command.config import config

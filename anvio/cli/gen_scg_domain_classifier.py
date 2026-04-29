@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# pylint: disable=line-too-long
 
 """
     Generate a random forest classifier to predict SCG domain

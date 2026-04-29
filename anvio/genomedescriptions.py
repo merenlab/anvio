@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 """
     A module for dealing with genome storages.
 

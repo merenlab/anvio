@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 """
     Making sense of COGs
 """

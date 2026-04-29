@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 """To make sense of config files for mixed clustering"""
 
 import os

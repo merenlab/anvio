@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 """
     Classes for gene calling.
 """

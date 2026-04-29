@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 # v.140713
 """A very lightweight FASTA I/O library"""
 

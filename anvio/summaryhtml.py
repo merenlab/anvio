@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 """Creates an HTML output to act as a front-end for the static summary directory."""
 
 import os

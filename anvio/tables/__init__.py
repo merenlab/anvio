@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 """ Table schemas for databases."""
 
 from anvio.constants import codons, nucleotides, essential_genome_info, TRNA_FEATURE_NAMES
