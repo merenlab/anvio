@@ -2014,7 +2014,7 @@ class PanSuperclass(object):
                       mc="cyan")
 
 
-    def get_sequences_for_gene_clusters(self, gene_clusters_dict=None, gene_cluster_names=set([]), skip_alignments=False, report_DNA_sequences=False):
+    def get_sequences_for_gene_clusters(self, gene_clusters_dict=None, gene_cluster_names=set([]), skip_alignments=False, report_DNA_sequences=False, no_sequence_GCs_are_OK=False):
         """Returns a dictionary of sequences (aligned or not) in a given gene cluster:
 
         {
@@ -2088,10 +2088,18 @@ class PanSuperclass(object):
             gene_clusters_dict = self.gene_clusters
 
         missing_gene_cluster_names = [p for p in gene_cluster_names if p not in gene_clusters_dict]
-        if len(missing_gene_cluster_names[0:5]):
-            raise ConfigError("get_sequences_for_gene_clusters: %d of %d gene clusters are missing in your data. Not good :/ "
-                              "Here are some of the missing ones; %s" \
-                                        % (len(missing_gene_cluster_names), len(gene_cluster_names), ', '.join(missing_gene_cluster_names[0:5])))
+        if len(missing_gene_cluster_names):
+            example_names=', '.join(missing_gene_cluster_names[0:5])
+            if no_sequence_GCs_are_OK:
+                self.run.warning(f"There were {len(missing_gene_cluster_names)} gene clusters for which anvi'o did not have any "
+                                 f"sequences. Since it seems it is OK to have gene clusters with no sequences for this part of "
+                                 f"the code, anvi'o will let this one slip. This situation may arise if you are working with "
+                                 f"pan-graph-db files, which may include tRNA and rRNAs as nodes, for which there are indeed no "
+                                 f"amino acid sequences. Here are a few examples of such clusters: {example_names}")
+            else:
+                raise ConfigError(f"get_sequences_for_gene_clusters: {len(missing_gene_cluster_names)} of {len(gene_cluster_names)} "
+                                  f"gene clusters are missing in your data. Not good :/ Here are some of the missing ones: "
+                                  f"{example_names}.")
 
         self.progress.new('Accessing gene cluster sequences', progress_total_items=len(gene_cluster_names))
 
@@ -2099,6 +2107,18 @@ class PanSuperclass(object):
             self.progress.increment()
             self.progress.update("processing '%s' ..." % gene_cluster_name )
             sequences[gene_cluster_name] = {}
+
+            # the following line can only happen if there are gene clusters without sequences
+            # which may happen in pan-graph workflows which include tRNA and rRNAs as bona fide
+            # gene clusters and the programmer called this funtion with no_sequence_GCs_are_OK=True
+            # meren would like to note that returning a dictionary from here that is lacking entries
+            # for some of the gene calls may cause downstream issues, but they must be handled there
+            # and not here. The reason for that is that we CAN'T update the 'sequences' dict below
+            # with blank sequences since the gene_callers_ids for these entries are not available
+            # to us here.
+            if gene_cluster_name in missing_gene_cluster_names:
+                continue
+
             for genome_name in gene_clusters_dict[gene_cluster_name]:
                 sequences[gene_cluster_name][genome_name] = {}
                 for gene_callers_id in gene_clusters_dict[gene_cluster_name][genome_name]:
@@ -3777,7 +3797,7 @@ class PanGraphSuperclass(PanSuperclass):
         return super().search_for_gene_functions(search_terms, requested_sources, verbose, full_report, case_sensitive, exact_match)
 
     def get_sequences_for_synteny_gene_clusters(self, gene_clusters_dict=None, gene_cluster_names=set([]), skip_alignments=False, report_DNA_sequences=False):
-        return(super().get_sequences_for_gene_clusters(gene_clusters_dict, gene_cluster_names, skip_alignments, report_DNA_sequences))
+        return(super().get_sequences_for_gene_clusters(gene_clusters_dict, gene_cluster_names, skip_alignments, report_DNA_sequences, no_sequence_GCs_are_OK=True))
 
     def get_synteny_gene_cluster_function_summary(self, gene_cluster_id, functional_annotation_source, discard_ties: bool = False, consensus_threshold: float = None):
         return(super().get_gene_cluster_function_summary(gene_cluster_id, functional_annotation_source, discard_ties, consensus_threshold))

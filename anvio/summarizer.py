@@ -936,9 +936,7 @@ class PanGraphSummarizer(PanGraphSuperclass, SummarizerSuperClass):
         sequences = None
         if not self.quick:
             header.append('dna_sequence' if self.report_DNA_sequences else 'aa_sequence')
-            sequences = self.get_sequences_for_synteny_gene_clusters(
-                gene_cluster_names=set(self.nodes.keys()),
-                report_DNA_sequences=self.report_DNA_sequences)
+            sequences = self.get_sequences_for_synteny_gene_clusters(gene_cluster_names=set(self.nodes.keys()), report_DNA_sequences=self.report_DNA_sequences)
 
         self.progress.new('Writing GENESxSYNGCs.txt')
         self.progress.update('...')
