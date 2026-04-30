@@ -5,18 +5,13 @@
     anvi-pan-genome is the default client using this module
 """
 
-import os
-import re
 import yaml
-import random
 import argparse
 import numpy as np
 import pandas as pd
-import itertools as it
-import matplotlib.pyplot as plt
 
 from scipy.spatial.distance import squareform
-from scipy.cluster.hierarchy import linkage, fcluster, dendrogram
+from scipy.cluster.hierarchy import linkage, fcluster
 
 from warnings import simplefilter
 simplefilter("ignore", category=pd.errors.PerformanceWarning)

@@ -36,7 +36,6 @@ import multiprocess as multiprocessing
 
 import anvio
 import anvio.dbops as dbops
-import anvio.panops as panops
 import anvio.utils as utils
 import anvio.drivers as drivers
 import anvio.terminal as terminal

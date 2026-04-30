@@ -9,7 +9,6 @@ construction, connectivity checks, region classification (backbone vs.
 variable), and graph-based genome distance calculations.
 """
 
-import os
 import numpy as np
 import pandas as pd
 import networkx as nx
