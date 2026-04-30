@@ -2713,8 +2713,12 @@ class PangenomeGraphUserInterface {
         for(var [layer, min_value] of Object.entries(this.layers_min)) {
             $('#' + layer + '_min')[0].value = min_value;
         }
+
+        const isLinear = $('#flexlinear').prop('checked');
+        $('#drawing_type_select').val(isLinear ? 'linear' : 'circular');
+        $('#radius_row').toggle(!isLinear);
     }
-    
+
     initialize_user_interface() {
         
         $('#RightOffcanvasBodyTop').append(
@@ -3020,7 +3024,13 @@ class PangenomeGraphUserInterface {
                 $('#inner').prop('disabled', false);
             }
         })
-        
+
+        $('#drawing_type_select').on('change', () => {
+            const isLinear = $('#drawing_type_select').val() === 'linear';
+            $('#flexlinear').prop('checked', isLinear).trigger('change');
+            $('#radius_row').toggle(!isLinear);
+        });
+
         $('#flexglobalbackbone').change(function() {
             if ($(this).prop('checked') == true){
                 $('#globalbackbone')[0].value = 100;
