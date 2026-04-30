@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Code for genome similarity calculation"""
 
 import os
@@ -552,7 +551,7 @@ class Dereplicate:
 
         # calculate the maximum substantive completion value found
         max_substantive_completion = max([e[1] for e in substantive_completion_and_length_values])
-        
+
         # get all the genomes with that exact completion value, sorted by their length (in case there are more than one genomes with identical completion estimates)
         genomes_with_max_substantive_completion = sorted([e for e in substantive_completion_and_length_values if e[1] == max_substantive_completion], key=lambda x: x[2], reverse=True)
 

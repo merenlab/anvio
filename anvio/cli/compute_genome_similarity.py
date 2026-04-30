@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """A script to export a FASTA files from sequence sources and compute genome similarity matrices."""
 
 import sys
@@ -119,6 +118,7 @@ def get_args():
     group_OTHER = parser.add_argument_group('OTHER IMPORTANT STUFF', "Yes. You're almost done.")
     group_OTHER.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     group_OTHER.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
+    group_OTHER.add_argument(*anvio.A('skip-checking-genome-hashes'), **anvio.K('skip-checking-genome-hashes'))
     group_OTHER.add_argument(*anvio.A('log-file'), **anvio.K('log-file'))
 
     return parser.get_args(parser)

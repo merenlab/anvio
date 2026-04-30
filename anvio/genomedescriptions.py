@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """
     A module for dealing with genome storages.
 
@@ -458,6 +456,17 @@ class GenomeDescriptions(object):
                                      "downstream analyses and is very proud of you: '%s'." % (', '.join(self.function_annotation_sources)), lc='green')
 
 
+    def list_function_sources(self):
+        if not self.initialized:
+            self.load_genomes_descriptions()
+        if not self.functions_are_available or not len(self.function_annotation_sources):
+            self.run.info_single('No common functional annotations found across all input databases :/', nl_before=1, nl_after=1, mc='red')
+        else:
+            self.run.warning('', 'AVAILABLE FUNCTION SOURCES COMMON TO ALL DATABASES (%d FOUND)' % (len(self.function_annotation_sources)), lc='yellow')
+            for source in self.function_annotation_sources:
+                self.run.info_single('%s' % (source), nl_after = 0)
+
+
     def get_genome_hash_for_external_genome(self, entry):
         self.is_proper_db(entry['contigs_db_path'], db_type='contigs')
         genome_hash = db.DB(entry['contigs_db_path'], None, ignore_version=True).get_meta_value('contigs_db_hash')
@@ -689,6 +698,68 @@ class GenomeDescriptions(object):
                                   f"the right source for gene calls, you can always take a look at what is available in a given "
                                   f"contigs database by running the program `anvi-db-info`.")
         self.progress.end()
+
+
+    def search_for_gene_functions(self, search_terms, requested_sources=None, verbose=False, full_report=False, delimiter=',', case_sensitive=False, exact_match=False, genes_as_split_names=False):
+        """Search for gene functions matching the given terms in all contigs databases. Returns dictionaries
+        in which the genome name has been added to the item matches and to the verbose (gene call) information
+        so that downstream reports can specify in which genome each match has been found.
+        """
+
+        if requested_sources:
+            if isinstance(requested_sources, str):
+                requested_sources = list(set([source.strip() for source in requested_sources.split(delimiter)]))
+            elif isinstance(requested_sources, list):
+                pass
+            else:
+                raise ConfigError("Requested sources for annotations must be of type 'list' or 'str'")
+
+        if not self.initialized:
+            self.load_genomes_descriptions()
+        if not self.functions_are_available:
+            raise ConfigError("Unfortunately, there are no functional annotation sources common to all of your input databases and "
+                              "therefore no search results to report :( ")
+
+        missing_srcs = set(requested_sources).difference(self.function_annotation_sources)
+        if missing_srcs:
+            missing_str = ", ".join(list(missing_srcs))
+            raise ConfigError(f"At least one of the annotation sources you requested is not available in all "
+                              f"of your input databases. Anvi'o suggests you either remove the missing source(s) "
+                              f"from the list or check your databases and update those that are lacking the "
+                              f"requested annotations. These are the missing source(s): {missing_str}")
+
+
+        all_matching_item_names = {}
+        all_verbose_output = []
+        self.progress.new("Searching across all databases")
+        for genome_name in self.genomes:
+            self.progress.update(f"Processing '{genome_name}' ...", increment=True)
+            args = argparse.Namespace()
+            args.contigs_db = self.genomes[genome_name]['contigs_db_path']
+            contigs_db = dbops.ContigsSuperclass(args, r=anvio.terminal.Run(verbose=False))
+            genome_matching_item_names_dict, genome_verbose_output = contigs_db.search_for_gene_functions(search_terms, requested_sources=requested_sources, verbose=verbose, full_report=full_report, delimiter=delimiter, case_sensitive=case_sensitive, exact_match=exact_match, genes_as_split_names=genes_as_split_names)
+
+            # convert each item to a tuple of (genome name, item) to allow for separating the results later
+            for term, item_list in genome_matching_item_names_dict.items():
+                if item_list: # only add non-empty lists to the combined dictionary of matches
+                    genome_matching_item_names_dict[term] = [(genome_name, l) for l in item_list]
+                    if term in all_matching_item_names:
+                        all_matching_item_names[term].extend(genome_matching_item_names_dict[term])
+                    else:
+                        all_matching_item_names[term] = genome_matching_item_names_dict[term]
+
+            # add genome name to the verbose output tuple as well
+            genome_verbose_output_modified = [(gene_tuple[0],) + (genome_name,) + gene_tuple[1:] for gene_tuple in genome_verbose_output]
+
+            all_verbose_output.extend(genome_verbose_output_modified)
+        self.progress.end()
+
+        # if any search term was not found in any of the genomes, let's include an empty list to avoid KeyErrors later
+        for term in search_terms:
+            if term not in all_matching_item_names:
+                all_matching_item_names[term] = []
+
+        return all_matching_item_names, all_verbose_output
 
 
 class MetagenomeDescriptions(object):
@@ -1231,7 +1302,9 @@ class AggregateFunctions:
         already_in_the_dict = [g for g in layer_names if g in self.layer_names_considered]
         if len(already_in_the_dict):
             raise ConfigError(f"Anvi'o is not happy because there are some genome or metagenome names that are not unique "
-                              f"across all input databases :/ Here is an example: {already_in_the_dict[0]}.")
+                              f"across all input databases and files. Note that if you provide multiple input types (like "
+                              f"both an external genomes file and a genomes storage database), anvi'o expects the inputs "
+                              f"to contain different genomes. :/ Here is an example duplicated (meta)genome name: {already_in_the_dict[0]}.")
         else:
             # you good fam
             pass

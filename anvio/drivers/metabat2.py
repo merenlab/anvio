@@ -1,4 +1,3 @@
-# coding: utf-8
 """Interface to MetaBAT2."""
 import os
 import glob
@@ -142,5 +141,5 @@ class MetaBAT2:
                 pretty_bin_name = os.path.basename(bin_file).replace('.', '_')
                 if pretty_bin_name != "METABAT__BinInfo_txt":
                     clusters[pretty_bin_name] = [l.split("\t")[0] for l in f.readlines()]
-                    
+
         return clusters

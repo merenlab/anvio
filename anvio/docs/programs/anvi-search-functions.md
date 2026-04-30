@@ -1,13 +1,30 @@
-You can use this program to search for genes that encode specific functions in a %(contigs-db)s, %(genomes-storage-db)s or %(pan-db)s.
+You can use this program to search for genes that encode specific functions in a %(contigs-db)s, %(genomes-storage-db)s + %(pan-db)s pair, or multiple databases in an %(external-genomes)s file.
 
-## Search
+## Input options
 
-For example, you could search for all genes in a given %(contigs-db)s that encode a function related to the keyword 'kinase' the following way:
+You could search for all genes in a given %(contigs-db)s that encode a function related to the keyword 'kinase' the following way:
 
 {{ codestart }}
 anvi-search-functions -c %(contigs-db)s \
                       --search-terms kinase
 {{ codestop }}
+
+If you want to search gene clusters in a pangenome instead, you should provide both the %(pan-db)s and its corresponding %(genomes-storage-db)s:
+
+{{ codestart }}
+anvi-search-functions -g %(genomes-storage-db)s \
+                      -p %(pan-db)s \
+                      --search-terms kinase
+{{ codestop }}
+
+Or, if you want to search across multiple %(contigs-db)ss at once, you can provide an %(external-genomes)s file:
+
+{{ codestart }}
+anvi-search-functions -e %(external-genomes)s \
+                      --search-terms kinase
+{{ codestop }}
+
+## Search options
 
 If you include `--verbose` flag in your command, %(anvi-search-functions)s will offer you a quick look at the matching function names:
 
@@ -195,7 +212,7 @@ Items additional data compatible output ......: search_results.txt
 
 ## Output
 
-By default, the output will be a fairly barren, and will only show which contigs contain genes that matched to a given. This output file will be most helpful as an additional layer in the anvi'o interactive interface to quickly see the items that include genes with functions that match to the search terms.
+By default, the output will be a fairly barren, and will only show which contigs (or gene clusters) contain genes that matched to a given search term (if you used %(external-genomes)s input, it will also indicate which genome the match occurred in). This output file will be most helpful as an additional layer in the anvi'o interactive interface to quickly see the items that include genes with functions that match to the search terms.
 
 However, generating a more comprehensive report is also an option through the parameter `--full-report`:
 
@@ -305,7 +322,7 @@ This will result in an output file that will look like this:
 |3770|KOfam|K14060|putative DNA-invertase from lambdoid prophage Rac|Phage|Day17a_QCcontig25_split_00001|
 |4519|KOfam|K06909|phage terminase large subunit|Phage|Day17a_QCcontig33_split_00009|
 
-It is also possible to include sequences of genes into this output:
+It is also possible to include sequences of genes into the full report output:
 
 {{ codestart }}
 anvi-search-functions -c %(contigs-db)s \

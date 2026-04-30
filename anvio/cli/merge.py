@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Script to merge multiple profiles."""
 
 import sys

@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """Relations with the console output, Progress and Run classes"""
 
 import os

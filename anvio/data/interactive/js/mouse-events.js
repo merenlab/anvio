@@ -194,7 +194,7 @@ function mouseMoveHandler(event) {
         var _q = _n.Begin();
 
         write_mouse_table(`<tr><td>Label</td><td>${node.label ? node.label : 'N/A'}</td></tr>
-                           <tr><td>Support</td><td>${node.branch_support}</td></tr>
+                           ${node.branch_support !== null ? `<tr><td>Support</td><td>${node.branch_support}</td></tr>` : ''}
                            <tr><td>Edge length</td><td>${node.original_edge_length}</td></tr>`, 'Layers order branch', '', 0);
 
         while (_q != null)
@@ -299,7 +299,7 @@ function mouseMoveHandler(event) {
 
     if (!p.IsLeaf()) {
         write_mouse_table(`<tr><td>Label</td><td>${p.label ? p.label : 'N/A'}</td></tr>
-                           <tr><td>Branch support</td><td>${p.branch_support}</td></tr>
+                           ${p.branch_support !== null ? `<tr><td>Branch support</td><td>${p.branch_support}</td></tr>` : ''}
                            <tr><td>Edge length</td><td>${p.original_edge_length}</td></tr>`, 'Branch', '', 0);
     }
 

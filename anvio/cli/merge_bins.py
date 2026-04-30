@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Allows you to merge multiple bins in a collection"""
 
 import sys

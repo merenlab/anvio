@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """
     Low-level db operations.
 """
@@ -738,6 +736,27 @@ class DB:
         return results
 
 
+    def get_most_frequent_value_from_table(self, table_name, column_name, where_clause=None):
+        """Return the most frequent value for `column_name` in `table_name`.
+
+        Uses SQL aggregation to avoid pulling the entire column into memory.
+        """
+        self.is_table_exists(table_name)
+
+        if where_clause:
+            where_clause = where_clause.replace('"', "'")
+            query = '''SELECT %s, COUNT(*) as cnt FROM %s WHERE %s GROUP BY %s ORDER BY cnt DESC LIMIT 1''' % \
+                        (column_name, table_name, where_clause, column_name)
+        else:
+            query = '''SELECT %s, COUNT(*) as cnt FROM %s GROUP BY %s ORDER BY cnt DESC LIMIT 1''' % \
+                        (column_name, table_name, column_name)
+
+        response = self._exec(query)
+        results = self._fetchall(response, table_name)
+
+        return results[0][0] if len(results) else None
+
+
     def get_table_column_types(self, table_name):
         self.is_table_exists(table_name)
 
@@ -771,7 +790,8 @@ class DB:
         return self.get_all_rows_from_table(table_name)
 
 
-    def get_view_data(self, view_table_name, split_names_of_interest=None, splits_basic_info=None, log_norm_numeric_values=False):
+    def get_view_data(self, view_table_name, split_names_of_interest=None, splits_basic_info=None,
+                      log_norm_numeric_values=False, expand_to_splits=True):
         """A wrapper function to get view data.
 
         Anvi'o keeps view data in long format while most tools in it work with view data
@@ -782,7 +802,76 @@ class DB:
         contig of each split. While anvi'o reports clean view data by default, if the user
         provides a `splits_basic_info` dictionary, this function will add the `__parent__`
         key to each item.
+
+        For `_contigs` view tables (which store one row per contig with contig-level values),
+        the `expand_to_splits` parameter controls the output format:
+          - If True (default), contig-keyed rows are expanded to split-keyed rows using
+            `splits_basic_info` (required in this case). This is used by the clustering
+            system which operates on splits.
+          - If False, contig-keyed data is returned directly. No `splits_basic_info` needed.
         """
+
+        is_contigs_table = view_table_name.endswith('_contigs')
+
+        if is_contigs_table and expand_to_splits and splits_basic_info is None:
+            raise ConfigError(f"get_view_data() was called on '{view_table_name}' (a _contigs view table) "
+                              f"with expand_to_splits=True but without providing `splits_basic_info`. "
+                              f"Either provide `splits_basic_info` from the associated contigs database, "
+                              f"or set expand_to_splits=False to get contig-keyed data directly.")
+
+        if is_contigs_table and expand_to_splits:
+            return self._get_view_data_contigs_expanded(view_table_name, split_names_of_interest,
+                                                        splits_basic_info, log_norm_numeric_values)
+        else:
+            return self._get_view_data_standard(view_table_name, split_names_of_interest,
+                                                splits_basic_info, log_norm_numeric_values)
+
+
+    def _get_zero_cov_dict(self, zero_cov_table_name, items_of_interest=None):
+        """Read a zero_coverage table and return {item: set_of_layers}.
+
+        Returns an empty dict if the table does not exist in the database (e.g. when
+        called on a pan database or a database that predates v42).
+        """
+
+        if zero_cov_table_name not in self.get_table_names():
+            return {}
+
+        if items_of_interest:
+            items_formatted = ', '.join([f"'{i}'" for i in items_of_interest])
+            where_clause = f"item IN ({items_formatted})"
+            rows = self.get_some_rows_from_table(zero_cov_table_name, where_clause=where_clause)
+        else:
+            rows = self.get_all_rows_from_table(zero_cov_table_name)
+
+        result = {}
+        for item, layer in rows:
+            if item not in result:
+                result[item] = set()
+            result[item].add(layer)
+
+        return result
+
+
+    def _get_view_data_standard(self, view_table_name, split_names_of_interest=None,
+                                splits_basic_info=None, log_norm_numeric_values=False):
+        """Read view data directly from a table, returning items as stored.
+
+        For profile database view tables (_splits or _contigs), also consults
+        the corresponding zero_coverage table to include items that have no
+        coverage (whose rows are not stored in the view table).
+        """
+
+        # Determine which zero-coverage table to consult, if any
+        if view_table_name.endswith('_splits'):
+            zero_cov_table = 'zero_coverage_splits'
+        elif view_table_name.endswith('_contigs'):
+            zero_cov_table = 'zero_coverage_contigs'
+        else:
+            zero_cov_table = None
+
+        # Read zero-coverage entries: {item: {layer1, layer2, ...}}
+        zero_cov = self._get_zero_cov_dict(zero_cov_table, split_names_of_interest) if zero_cov_table else {}
 
         if split_names_of_interest:
             split_names_formatted = ', '.join([f"'{split_name}'" for split_name in split_names_of_interest])
@@ -792,7 +881,7 @@ class DB:
             d = self.get_all_rows_from_table(view_table_name)
 
         data = {}
-        layers = set([])
+        layers = set()
 
         # this looks dumb, but actually much faster than better looking alternatives
         for entry_id, item, layer, value in d:
@@ -805,6 +894,17 @@ class DB:
             else:
                 data[item][layer] = value
 
+        # Add zero-coverage items. First collect their layers so the header is complete,
+        # then populate the data dict with zero values.
+        for item, zero_cov_layers in zero_cov.items():
+            layers.update(zero_cov_layers)
+
+        for item, zero_cov_layers in zero_cov.items():
+            if item not in data:
+                data[item] = {}
+            for layer in zero_cov_layers:
+                data[item][layer] = 0
+
         # add `__parent__` layer if asked:
         if splits_basic_info:
             for split_name in data:
@@ -814,6 +914,91 @@ class DB:
             header = sorted(list(layers))
 
         # fly away, lil birb, flai awai.
+        return (data, header)
+
+
+    def _get_view_data_contigs_expanded(self, view_table_name, split_names_of_interest=None,
+                                         splits_basic_info=None, log_norm_numeric_values=False):
+        """Read a _contigs view table (contig-keyed) and expand to split-keyed rows.
+
+        Each contig row is replicated for every split belonging to that contig, using
+        the contig-to-splits mapping derived from `splits_basic_info`. Zero-coverage
+        contigs (from the zero_coverage_contigs table) are expanded the same way, with
+        all their splits receiving a value of 0.
+        """
+
+        # Build contig -> [split_names] mapping
+        contig_to_splits = {}
+        for split_name, info in splits_basic_info.items():
+            parent = info['parent']
+            if parent not in contig_to_splits:
+                contig_to_splits[parent] = []
+            contig_to_splits[parent].append(split_name)
+
+        # Determine contig_names_of_interest from split_names_of_interest
+        if split_names_of_interest:
+            contig_names_of_interest = set(splits_basic_info[s]['parent']
+                                           for s in split_names_of_interest
+                                           if s in splits_basic_info)
+            if not contig_names_of_interest:
+                return ({}, [])
+        else:
+            contig_names_of_interest = None
+
+        # Read zero-coverage contigs
+        zero_cov = self._get_zero_cov_dict('zero_coverage_contigs', contig_names_of_interest)
+
+        # Query view table for non-zero contig data
+        if contig_names_of_interest:
+            contig_names_formatted = ', '.join([f"'{c}'" for c in contig_names_of_interest])
+            where_clause = f"""item IN ({contig_names_formatted})"""
+            d = self.get_some_rows_from_table(view_table_name, where_clause=where_clause)
+        else:
+            d = self.get_all_rows_from_table(view_table_name)
+
+        # Build contig data and collect layers in a single pass
+        contig_data = {}
+        layers = set()
+
+        for entry_id, contig_name, layer, value in d:
+            if contig_name not in contig_data:
+                contig_data[contig_name] = {}
+            layers.add(layer)
+            contig_data[contig_name][layer] = math.log10(value + 1) if log_norm_numeric_values else value
+
+        # Collect layers from zero-coverage contigs
+        for contig_name, zero_cov_layers in zero_cov.items():
+            layers.update(zero_cov_layers)
+
+        # Expand non-zero contig rows to split rows
+        data = {}
+        split_names_of_interest_set = set(split_names_of_interest) if split_names_of_interest else None
+
+        for contig_name, contig_values in contig_data.items():
+            if contig_name not in contig_to_splits:
+                continue
+
+            for split_name in contig_to_splits[contig_name]:
+                if split_names_of_interest_set and split_name not in split_names_of_interest_set:
+                    continue
+                data[split_name] = dict(contig_values)
+                data[split_name]['__parent__'] = contig_name
+
+        # Expand zero-coverage contigs to split rows with zero values
+        for contig_name, zero_cov_layers in zero_cov.items():
+            if contig_name not in contig_to_splits:
+                continue
+
+            for split_name in contig_to_splits[contig_name]:
+                if split_names_of_interest_set and split_name not in split_names_of_interest_set:
+                    continue
+                if split_name not in data:
+                    data[split_name] = {'__parent__': contig_name}
+                for layer in zero_cov_layers:
+                    data[split_name][layer] = 0
+
+        header = sorted(list(layers)) + ['__parent__']
+
         return (data, header)
 
 

@@ -1,4 +1,4 @@
-A `JSON`-formated configuration file that describes steps and parameters to be considered by an anvio %(workflow)s.
+A `JSON`-formatted configuration file that describes steps and parameters to be considered by an anvio %(workflow)s.
 
 You can create a default config file for a given workflow using the following command:
 
@@ -47,4 +47,3 @@ On the other hand, the default config file for the [contigs workflow](../../work
 Note that the empty string `""` here means that the default parameter for the program %(anvi-gen-contigs-database)s will be used.
 
 For more details on the anvi'o snakemake workflows, please refer to [this tutorial](https://merenlab.org/2018/07/09/anvio-snakemake-workflows/).
-

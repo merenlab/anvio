@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """A DIAMOND and MCL-based pangenome workflow"""
 
 import sys

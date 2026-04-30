@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """A script to export a FASTA file and the coverage table from a merged database.
 
 The purpose of this script is to export two critical files for most genome binning

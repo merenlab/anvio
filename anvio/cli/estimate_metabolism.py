@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import sys
 
@@ -99,7 +98,7 @@ def get_args():
                                                    "metabolic capabilities encoded by this list of enzymes.")
     groupX.add_argument(*anvio.A('enzymes-txt'), **anvio.K('enzymes-txt', {'required': False}))
 
-    groupN = parser.add_argument_group('INPUT #5 - ESTIMATION ON A PANGENOME', 
+    groupN = parser.add_argument_group('INPUT #5 - ESTIMATION ON A PANGENOME',
                                                    "If you have a collection of binned gene clusters in a pangenome, you can estimate "
                                                    "metabolism on each bin. You will need to provide the collection name (and optionally, "
                                                    "bin name(s)) -- see INPUT #2 section above. This program will use the most common "
@@ -149,6 +148,7 @@ def get_args():
     groupD.add_argument(*anvio.A('get-raw-data-as-json'), **anvio.K('get-raw-data-as-json'))
     groupD.add_argument(*anvio.A('store-json-without-estimation'), **anvio.K('store-json-without-estimation'))
     groupD.add_argument(*anvio.A('estimate-from-json'), **anvio.K('estimate-from-json'))
+    groupD.add_argument(*anvio.A('skip-checking-genome-hashes'), **anvio.K('skip-checking-genome-hashes'))
     groupD.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
     return parser.get_args(parser)

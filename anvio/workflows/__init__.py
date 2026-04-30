@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """Helper functions for the anvi'o snakemake workflows"""
 
 import os

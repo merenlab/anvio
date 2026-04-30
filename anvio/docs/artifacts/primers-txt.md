@@ -1,4 +1,4 @@
-A **TAB-delimited** file to describe primer sequences. A primer sequence can be exact (such as `ATCG`), or fuzzy (such as `AT.G`, which would match any combination of `ATAG`, `ATTG`, `ATCG`, or `ATGG`). Fuzzy primers are defined by regular expressions, properties of which are explained best in [the Python documentation](https://docs.python.org/3/library/re.html), or cheatsheets like [this one](https://www.debuggex.com/cheatsheet/regex/python).
+A **TAB-delimited** file to describe primer sequences. A primer sequence can be exact (such as `ATCG`), or fuzzy (such as `AT.G`, which would match any combination of `ATAG`, `ATTG`, `ATCG`, or `ATGG`). Fuzzy primers are defined by regular expressions, properties of which are explained best in [the Python documentation](https://docs.python.org/3/library/re.html), or cheat sheets like [this one](https://www.debuggex.com/cheatsheet/regex/python).
 
 This file type includes two required and any number of user-defined optional columns.
 

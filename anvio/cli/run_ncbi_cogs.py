@@ -1,12 +1,10 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import sys
 
 from argparse import Namespace
 
 import anvio
-import anvio.terminal as terminal
 
 from anvio.cogs import COGs
 from anvio.terminal import time_program

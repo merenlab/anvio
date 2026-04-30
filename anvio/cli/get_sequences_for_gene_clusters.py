@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Export aligned sequences from anvi'o pan genomes"""
 
 import os

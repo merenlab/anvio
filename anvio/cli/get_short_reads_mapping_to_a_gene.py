@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 """Return short reads from BAM files mapping to gene."""
 

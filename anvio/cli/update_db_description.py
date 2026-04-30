@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """A script to upgrade the description in an anvi'o db"""
 
 import sys

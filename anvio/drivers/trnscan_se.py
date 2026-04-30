@@ -1,4 +1,3 @@
-# coding: utf-8
 """An interface for tRNAScan-SE"""
 
 import anvio
@@ -218,5 +217,3 @@ class tRNAScanSE:
         d = self.parse_output()
 
         return d
-
-

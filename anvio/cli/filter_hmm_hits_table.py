@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 """
 This script removes the hmm_hits table and replaces it with a filtered version. Filtering of hmm_hits

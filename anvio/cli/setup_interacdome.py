@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import sys
 
@@ -39,7 +38,7 @@ def get_args():
     parser.add_argument(*anvio.A('interacdome-data-dir'), **anvio.K('interacdome-data-dir'))
     parser.add_argument(*anvio.A('reset'), **anvio.K('reset'))
 
-    args = parser.get_args(parser)
+    return parser.get_args(parser)
 
 
 if __name__ == '__main__':

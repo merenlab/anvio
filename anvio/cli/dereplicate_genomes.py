@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """A script to remove replicated genomes from a list of internal and external genome databases or fasta files"""
 
 import sys

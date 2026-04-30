@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Gives you back items in a collection.
 
    Output files can directly be used by anvi-import-collection"""

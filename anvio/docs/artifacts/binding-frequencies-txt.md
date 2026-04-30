@@ -1,6 +1,6 @@
 When the user runs %(anvi-run-interacdome)s, it stores binding frequencies directly into the %(contigs-db)s as %(misc-data-amino-acids)s. Yet %(anvi-run-interacdome)s also outputs tabular data directly accessible by the user--this data is what is meant by %(binding-frequencies-txt)s.
 
-Specifically, this artifact refers to 2 files named `INTERACDOME-match_state_contributors.txt` and `INTERACDOME-domain_hits.txt` (the `INTERACDOME` prefix can be changed with `-O`). 
+Specifically, this artifact refers to 2 files named `INTERACDOME-match_state_contributors.txt` and `INTERACDOME-domain_hits.txt` (the `INTERACDOME` prefix can be changed with `-O`).
 
 `INTERACDOME-match_state_contributors.txt` displays the binding frequencies in the following format:
 
@@ -17,7 +17,7 @@ Specifically, this artifact refers to 2 files named `INTERACDOME-match_state_con
 |                 1 |                   187 | PF13692   |            27 | ADP      |      0.201761  |
 |                 1 |                   189 | PF00534   |            47 | ADP      |      0.0697656 |
 
-Each binding frequency is associated with both the exact residue of the user's gene sequences (from their %(contigs-db)s) and the exact match states (from the Pfam database) that contributed the binding frequency. 
+Each binding frequency is associated with both the exact residue of the user's gene sequences (from their %(contigs-db)s) and the exact match states (from the Pfam database) that contributed the binding frequency.
 
 `INTERACDOME-match_state_contributors.txt` is a parsed summary of the `hmmsearch` output in the following format:
 
@@ -33,6 +33,6 @@ Each binding frequency is associated with both the exact residue of the user's g
 | Ribosomal_S14   | PF00253   |                      1565 |        1 | !      |    83.3 |    0.1 |    3.9e-28 |    1.3e-25 |           2 |         54 | .]           |          36 |         88 | ..           |          35 |         88 | ..           |             0.98 | laklprnssptrirnrCrvtGrprGvirkfgLsRicfRelAlkgelpGvkKaS                                                                                                                                                                 | laklpr+s+p+r+r r++ +GrprG++rkfg+sRi+fRel ++g +pGvkKaS                                                                                                                                                                 | LAKLPRDSNPNRLRLRDQTDGRPRGYMRKFGMSRIKFRELDHQGLIPGVKKAS                                                                                                                                                                 |        20 |
 | Polysacc_synt_C | PF14667   |                      1593 |        1 | !      |    61.4 |   19.2 |    5.4e-21 |    1.9e-18 |           2 |        139 | ..           |         371 |        516 | ..           |         370 |        519 | ..           |             0.83 | LailalsiiflslstvlssiLqglgrqkialkalvigalvklilnllliplfgivGaaiatvlallvvavlnlyalrrllgikl...llrrllkpllaalvmgivvylllllllglllla...al..alllavlvgalvYllllll                                                                    | L+  ++s+ +l+++t++ siLq+l  +k+a+ ++ i++l+kli+++++i+lf  +G +iat+++ ++++++ +++l+r++ i++    ++   +++ +++vm i+ +l+l+++ ++   +   +l   + l +++g++v+ + l++                                                                    | LSATIISTSLLGIFTIVLSILQALSFHKKAMQITSITLLLKLIIQIPCIYLFKGYGLSIATIICTMFTTIIAYRFLSRKFDINPikyNRKYYSRLVYSTIVMTILSLLMLKIISSVYKFEstlQLffLISLIGCLGGVVFSVTLFR                                                                    |         5 |
 
-For each hit, this table includes how good the hit was, the alignment of the user gene to the exact HMM match states, and more! In fact, it includes all of hte domain hit summary information, the sequence of the consensus match states, the comparison string for the hit, and the sequence of the user's gene. 
+For each hit, this table includes how good the hit was, the alignment of the user gene to the exact HMM match states, and more! In fact, it includes all of hte domain hit summary information, the sequence of the consensus match states, the comparison string for the hit, and the sequence of the user's gene.
 
-For more information, check out [this blogpost](https://merenlab.org/2020/07/22/interacdome/#6-storing-the-per-residue-binding-frequencies-into-the-contigs-database). 
+For more information, check out [this blogpost](https://merenlab.org/2020/07/22/interacdome/#6-storing-the-per-residue-binding-frequencies-into-the-contigs-database).

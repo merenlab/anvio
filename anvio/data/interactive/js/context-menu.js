@@ -203,7 +203,19 @@ ContextMenu = function(options) {
         'collapse': {
             'title': 'Collapse these items',
             'action': (node, layer, param) => {
-                new CollapseNodeDialog(node);
+                let [left_most, right_most] = this.node.GetBorderNodes();
+
+                collapsedNodes.push({
+                    'left_most': left_most.label,
+                    'right_most': right_most.label,
+                    'label': `Collapsed Node ${collapsedNodes.length + 1}`,
+                    'size': 0.25,
+                    'font_size': 100,
+                    'color': '#888888'
+                });
+
+                refreshCollapsedNodesTable();
+                markCollapsedNodesChanged(true);
             }
         },
         'expand': {
@@ -215,6 +227,7 @@ ContextMenu = function(options) {
                         break;
                     }
                 }
+                refreshCollapsedNodesTable();
                 drawTree();
             }
         },
@@ -229,11 +242,8 @@ ContextMenu = function(options) {
                 drawTree();
             }
         },
-        'reroot_disabled': {
-            'title': 'Reroot the tree/dendogram here'
-        },
-        'reroot_default': {
-            'title': 'Reroot (default)',
+        'reroot_with_support_values': {
+            'title': 'Reroot (preserve support values)',
             'action': (node, layer, param) => {
                 let [left_most, right_most] = this.node.GetBorderNodes();
 
@@ -250,13 +260,14 @@ ContextMenu = function(options) {
                         collapsedNodes = [];
                         clusteringData = data['newick'];
                         $('#tree_modified_warning').show();
+                        refreshCollapsedNodesTable();
                         drawTree();
                     }
                 });
             }
         },
         'reroot_with_internal_node': {
-            'title': 'Tree has internal node names',
+            'title': 'Reroot (preserve node names)',
             'action': (node, layer, param) => {
                 let [left_most, right_most] = this.node.GetBorderNodes();
 
@@ -274,29 +285,7 @@ ContextMenu = function(options) {
                         collapsedNodes = [];
                         clusteringData = data['newick'];
                         $('#tree_modified_warning').show();
-                        drawTree();
-                    }
-                });
-            }
-        },
-        'reroot_with_support_values': {
-            'title': 'Tree has branch support values',
-            'action': (node, layer, param) => {
-                let [left_most, right_most] = this.node.GetBorderNodes();
-
-                $.ajax({
-                    type: 'POST',
-                    cache: false,
-                    url: '/data/reroot_tree',
-                    data: {
-                        'newick': clusteringData,
-                        'left_most': left_most.label,
-                        'right_most': right_most.label
-                    },
-                    success: function(data) {
-                        collapsedNodes = [];
-                        clusteringData = data['newick'];
-                        $('#tree_modified_warning').show();
+                        refreshCollapsedNodesTable();
                         drawTree();
                     }
                 });
@@ -532,10 +521,8 @@ ContextMenu.prototype.BuildMenu = function() {
             }
 
             else if (mode == 'manual'){
-                menu.push('reroot_disabled');
-                menu.push('reroot_default');
-                menu.push('reroot_with_internal_node');
                 menu.push('reroot_with_support_values');
+                menu.push('reroot_with_internal_node');
             }
         }
         else
@@ -553,8 +540,8 @@ ContextMenu.prototype.BuildMenu = function() {
                 menu.push('rotate');
 
                 menu.push('divider');
-                menu.push('reroot_disabled');
-                menu.push('reroot_default');
+                menu.push('reroot_with_support_values');
+                menu.push('reroot_with_internal_node');
             }
         }
 

@@ -1,10 +1,9 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """The library to merge multiple profiles.
 
 The default client of this library is under bin/anvi-merge"""
 
 
+import gc
 import os
 import argparse
 
@@ -557,19 +556,35 @@ class MultipleRuns:
     def populate_misc_data_tables(self):
         self.run.info_single("Additional data and layer orders...", nl_before=1, nl_after=1, mc="blue")
 
-        # initialize views.
-        args = argparse.Namespace(profile_db = self.merged_profile_db_path)
-        profile_db_super = dbops.ProfileSuperclass(args)
-        profile_db_super.load_views(omit_parent_column=True)
+        args = argparse.Namespace(profile_db=self.merged_profile_db_path)
 
-        # figure out layer orders dictionary
+        # get the view name → table name mapping (tiny dict, no data loaded yet)
+        profile_db = dbops.ProfileDatabase(self.merged_profile_db_path)
+        views_table = profile_db.db.get_table_as_dict(tables.views_table_name)
+        profile_db.disconnect()
+
+        # figure out layer orders dictionary by loading one view at a time, so we don't
+        # hold all view data in memory simultaneously. for large datasets with many splits
+        # and samples, loading all views at once can require 100+ GB of memory due to
+        # Python dict overhead.
         layer_orders_data_dict = {}
         failed_attempts = []
         self.progress.new('Working on layer orders')
+        profile_db = dbops.ProfileDatabase(self.merged_profile_db_path)
         for essential_field in self.essential_fields:
             self.progress.update('recovering order for "%s"' % (essential_field))
+
+            if essential_field not in views_table:
+                failed_attempts.append(essential_field)
+                continue
+
+            table_name = views_table[essential_field]['target_table']
+
+            # load this single view from the merged profile DB
+            view_data, _header = profile_db.db.get_view_data(table_name)
+
             try:
-                data_value = clustering.get_newick_tree_data_for_dict(profile_db_super.views[essential_field]['dict'],
+                data_value = clustering.get_newick_tree_data_for_dict(view_data,
                                                                       distance=self.distance,
                                                                       linkage=self.linkage,
                                                                       transpose=True)
@@ -577,6 +592,12 @@ class MultipleRuns:
                 layer_orders_data_dict[essential_field] = {'data_value': data_value, 'data_type': 'newick'}
             except:
                 failed_attempts.append(essential_field)
+
+            # free this view's data before loading the next one
+            del view_data
+            gc.collect()
+
+        profile_db.disconnect()
         self.progress.end()
 
         if not len(layer_orders_data_dict):
@@ -611,6 +632,22 @@ class MultipleRuns:
 
     def gen_view_data_tables_from_atomic_data(self):
         self.progress.new('Views')
+
+        # Merge zero_coverage tables from all input profiles
+        for zero_cov_table in [tables.zero_coverage_splits_table_name, tables.zero_coverage_contigs_table_name]:
+            for input_profile_db_path in self.profile_dbs_info_dict:
+                sample_id = self.profile_dbs_info_dict[input_profile_db_path]['sample_id']
+                self.progress.update(f"Merging '{zero_cov_table}' from '{sample_id}'")
+
+                profile_db = db.DB(input_profile_db_path, utils.get_required_version_for_db(input_profile_db_path), skip_rowid_prepend=True)
+                rows = profile_db.get_all_rows_from_table(zero_cov_table)
+                profile_db.disconnect()
+
+                if rows:
+                    merged_db = db.DB(self.merged_profile_db_path, utils.get_required_version_for_db(self.merged_profile_db_path))
+                    merged_db._exec_many('INSERT INTO %s VALUES (?,?)' % zero_cov_table, rows)
+                    merged_db.disconnect()
+
         for target in ['contigs', 'splits']:
             for essential_field in self.essential_fields:
                 table_name_to_read_from = '_'.join([essential_field, target])

@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 
 """
     Classes to compute completeness estimates based on the information stored in search tables in the
