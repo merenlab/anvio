@@ -43,7 +43,8 @@ jobs:
     - name: "Install anvi'o from the codebase"
       shell: bash -l {0}
       run: |
-        pip install .
+        pip install uv
+        uv pip install .
     - name: "Set Anvi'o interactive directory path"
       shell: bash -l {0}
       run: |
