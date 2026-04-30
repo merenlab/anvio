@@ -3628,6 +3628,11 @@ class PanGraphSuperclass(PanSuperclass):
         self.p_meta['order'] = order
         self.p_meta['state'] = state
 
+        if not len(self.states) or 'default' not in self.states:
+            raise ConfigError("Ouch. The pan-graph-db is missing a default state .. This is very bad news as anvi'o has no "
+                              "means to contiue :( Someone needs to re-generate the pan-graph-db file and NOT delete the "
+                              "default state this time :/")
+
         state_dict = json.loads(self.states[state]['content'])
 
         gene_cluster_grouping_threshold = state_dict['condtr']
@@ -3648,6 +3653,7 @@ class PanGraphSuperclass(PanSuperclass):
         region_sides_df, nodes_df, gene_calls_df = self.pangenome_graph.summarize()
         self.synteny_gene_cluster_summary_info = pd.merge(nodes_df.reset_index(drop=False), region_sides_df.reset_index(drop=False), how="left", on="region_id").set_index('syn_cluster').to_dict(orient='index')
         self.region_sides_info = region_sides_df.reset_index()[['region_id', 'x_min', 'x_max', 'num_synteny_gene_clusters', 'region']].set_index('region_id').to_dict(orient='index')
+
 
     def rerun_state(self, gene_cluster_grouping_threshold, groupcompress, max_edge_length_filter):
 
