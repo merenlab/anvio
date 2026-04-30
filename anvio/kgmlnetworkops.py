@@ -1,10 +1,9 @@
 import os
-import sys
 import pandas as pd
 
 from copy import deepcopy
 from argparse import Namespace
-from typing import Any, Literal, Union
+from typing import Any, Union
 from dataclasses import dataclass, field
 
 import anvio.metabolism.context as kcontext
@@ -13,8 +12,7 @@ import anvio.terminal as terminal
 import anvio.reactionnetwork as rn
 
 from anvio.dbops import ContigsDatabase
-from anvio.argparse import ArgumentParser
-from anvio.errors import ConfigError, FilesNPathsError
+from anvio.errors import ConfigError
 
 @dataclass
 class Chain:
