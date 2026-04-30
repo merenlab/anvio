@@ -94,9 +94,9 @@ class TablesForCollections(Table):
 
         if bins_info_dict:
             if set(collection_dict.keys()) - set(bins_info_dict.keys()):
-                raise ConfigError(f"Bins in the collection dict do not match to the ones in the bins info dict. "
-                                  f"They do not have to be identical, but for each bin id, there must be a unique "
-                                  f"entry in the bins informaiton dict. There is something wrong with your input :/")
+                raise ConfigError("Bins in the collection dict do not match to the ones in the bins info dict. "
+                                  "They do not have to be identical, but for each bin id, there must be a unique "
+                                  "entry in the bins informaiton dict. There is something wrong with your input :/")
 
         if drop_collection:
             # remove any pre-existing information for 'collection_name'

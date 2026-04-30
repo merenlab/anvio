@@ -8063,7 +8063,7 @@ class ResultPlotter(object):
                     continue
 
                 if not taxon_rank_filter and not loop_ranks:
-                    warning(f"A taxon or at least one rank must be given.", "PROGRAM REQUIREMENT")
+                    warning("A taxon or at least one rank must be given.", "PROGRAM REQUIREMENT")
                     continue
 
                 loop_ranks = sorted(loop_ranks, key=lambda rank: RANKS.index(rank))
@@ -8074,7 +8074,7 @@ class ResultPlotter(object):
 
                 if single_aa and single_anticodon:
                     if ANTICODON_AA_DICT[single_anticodon] == single_aa:
-                        warning(f"An amino acid is not needed with the anticodon.", "UNNECESSARY FIELD")
+                        warning("An amino acid is not needed with the anticodon.", "UNNECESSARY FIELD")
                         single_aa = None
                     else:
                         warning(f"The anticodon ('{single_anticodon}') does not decode the amino acid ('{single_aa}').", "INVALID FIELD")

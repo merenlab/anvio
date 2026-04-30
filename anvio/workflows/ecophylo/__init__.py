@@ -205,8 +205,8 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                     with open(sanity_checked_metagenomes_file, 'w') as fp:
                         pass
                 else:
-                    self.run.warning(f"You have declared run_genomes_sanity_check == false. anvi'o takes no responsibility "
-                                     f"for any genomes or metagenomes that cause issues downstream in ecophylo.")
+                    self.run.warning("You have declared run_genomes_sanity_check == false. anvi'o takes no responsibility "
+                                     "for any genomes or metagenomes that cause issues downstream in ecophylo.")
                     self.metagenomes_name_list = self.metagenomes_df.name.to_list()
                     self.metagenomes_path_list = self.metagenomes_df.contigs_db_path.to_list()
             else:
@@ -281,8 +281,8 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                 raise ConfigError("You provided a samples.txt so you're in profile mode! Please change AA_mode to false.")
 
         else:
-            self.run.warning(f"Since you did not provide a samples.txt, EcoPhylo will assume you do not want "
-                             f"to profile the ecology of your proteins and will just be making trees for now!")
+            self.run.warning("Since you did not provide a samples.txt, EcoPhylo will assume you do not want "
+                             "to profile the ecology of your proteins and will just be making trees for now!")
 
         # Pick which tree algorithm
         self.run_iqtree = self.get_param_value_from_config(['iqtree', 'run'])
@@ -325,11 +325,11 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                               f"Please check your config file {self.config_file} and change cluster_representative_method to one of the following: 'mmseqs' and 'cluster_rep_with_coverages'")
 
         if self.cluster_representative_method == 'cluster_rep_with_coverages' and len(self.contigs_db_name_bam_dict) == 0:
-            raise ConfigError(f"The EcoPhylo workflow can't use the cluster representative method cluster_rep_with_coverages without BAM files..."
-                              f"Please edit your metagenomes.txt or external-genomes.txt and add BAM files.")
+            raise ConfigError("The EcoPhylo workflow can't use the cluster representative method cluster_rep_with_coverages without BAM files..."
+                              "Please edit your metagenomes.txt or external-genomes.txt and add BAM files.")
 
         if self.cluster_representative_method == 'cluster_rep_with_coverages' and self.AA_mode == True:
-            raise ConfigError(f"The EcoPhylo workflow can't use the cluster representative method cluster_rep_with_coverages in AA_mode")
+            raise ConfigError("The EcoPhylo workflow can't use the cluster representative method cluster_rep_with_coverages in AA_mode")
 
         # Parse clustering parameter space
         self.clustering_param_space = self.get_param_value_from_config(['cluster_X_percent_sim_mmseqs', 'clustering_threshold_for_OTUs'])
@@ -543,6 +543,6 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         # TODO: I hope we can change that in the future, probably by making a contigs.db for the representative sequence,
         # in tree mode or not.
         if len(unique_group) < len(self.hmm_dict) and self.run_scg_taxonomy:
-            raise ConfigError(f"You have one or more 'group' in your HMM list file (or multiple identical entries - but you "
-                              f"shouldn't be doing that) and at the moment it is not compatible with anvi-estimate-scg-taxonomy. "
-                              f"The good news is that you can turn off anvi-run-scg-taxonmy in your config file.")
+            raise ConfigError("You have one or more 'group' in your HMM list file (or multiple identical entries - but you "
+                              "shouldn't be doing that) and at the moment it is not compatible with anvi-estimate-scg-taxonomy. "
+                              "The good news is that you can turn off anvi-run-scg-taxonmy in your config file.")
