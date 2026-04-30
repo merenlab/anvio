@@ -1512,7 +1512,7 @@ class PangenomeGraph():
                                   "even have a pan-db).")
 
         # ANVI'O OUTPUTS
-        user_pan_graph_db_path = A('pan_graph_db')
+        user_pan_graph_db_path = A('output_file') or A('pan_graph_db')
         if user_pan_graph_db_path:
             self.pan_graph_db_path = user_pan_graph_db_path
         else:
