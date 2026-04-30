@@ -727,7 +727,7 @@ class PangenomeGraphUserInterface {
                 } else if (node_type == 'rna') {
                     var node_color = trna_color
                 } else {
-                    console.log(node_type)
+                    console.warn('Unexpected node type:', node_type)
                 }
     
                 if (saturation == 1) {
@@ -1458,16 +1458,14 @@ class PangenomeGraphUserInterface {
             dataType: "json",
             success: (data) => {
                 this.data = data['data'];
-                console.log('JSON loaded.');
                 this.initialize_variables();
-                console.log('Initialized main variables.');
                 this.settings_dict = JSON.parse(JSON.stringify(new_settings_dict));
                 this.main_draw();
                 $('#svgbox').css('opacity', '');
             },
             error: (err) => {
                 $('#svgbox').css('opacity', '');
-                console.error('Failed to load JSON:', err);
+                toastr.error('Failed to reload pan-graph data.', 'Error');
             }
         })
     }
@@ -2320,11 +2318,9 @@ class PangenomeGraphUserInterface {
             contentType: "application/json",
             dataType: "json",
             error: function(){
-                console.log('Error while attempting to update JSON data.')
+                toastr.error('Failed to update pan-graph data.', 'Error');
             },
-            success: function(json){
-                console.log('Successfully updated JSON data.')
-            }
+            success: function(json){}
         });
     }
 
@@ -2343,16 +2339,11 @@ class PangenomeGraphUserInterface {
                 this.data = data['data'];
                 this.session_id = data['session_id'];
                 setTimeout(() => this.checkBackgroundProcess(), 5000);
-                console.log('JSON loaded.');
                 this.initialize_variables();
-                console.log('Initialized main variables.');
                 this.initialize_user_interface();
-                console.log('Initialized user interface values.');
                 this.set_UI_settings();
-                console.log('Load settings.');
             },
             error: (err) => {
-                console.error('Failed to load JSON:', err);
                 toastr.error('Could not reach the server during initialization.', 'Initialization error', { 'timeOut': '0', 'extendedTimeOut': '0' });
             }
         });
@@ -3495,7 +3486,6 @@ class PangenomeGraphUserInterface {
     async get_region_data(gene_cluster_id, add_align) {
 
       var d = await this.get_gene_cluster_region_data([gene_cluster_id]);
-      console.log(d)
       var region_info = d['data'][gene_cluster_id]
         
       if (add_align == 1) {
@@ -3889,11 +3879,9 @@ class PangenomeGraphUserInterface {
             dataType: "json",
             timeout: 10000,
             error: function(){
-                console.log('Error while attempting to fetch region.')
+                toastr.error('Failed to fetch region data.', 'Error');
             },
-            success: function(){
-                console.log('Successfully fetched alignment.')
-            }
+            success: function(){}
         })
 
         return d
@@ -3912,11 +3900,9 @@ class PangenomeGraphUserInterface {
             dataType: "json",
             timeout: 10000,
             error: function(){
-                console.log('Error while attempting to fetch function.')
+                toastr.error('Failed to fetch function data.', 'Error');
             },
-            success: function(){
-                console.log('Successfully fetched function.')
-            }
+            success: function(){}
         })
 
         return d
@@ -3935,11 +3921,9 @@ class PangenomeGraphUserInterface {
             dataType: "json",
             timeout: 10000,
             error: function(){
-                console.log('Error while attempting to fetch alignment.')
+                toastr.error('Failed to fetch alignment data.', 'Error');
             },
-            success: function(){
-                console.log('Successfully fetched alignment.')
-            }
+            success: function(){}
         })
         
         return d
@@ -4113,7 +4097,6 @@ class PangenomeGraphUserInterface {
             })
             
             $('#loadstatemodal').modal('hide');
-            console.log('Successfully load state.')
         }
     }
     
