@@ -2120,15 +2120,20 @@ class PangenomeGraphUserInterface {
         var svg_core = this.generate_svg();
         var genome_size = this.genomes.length;
 
-        // TODO this is just a temporary fix the whole generate_svg() has to be rewritten in either 
+        // TODO this is just a temporary fix the whole generate_svg() has to be rewritten in either
         // createElementNS or raw html string fashion. FML.
         // Save current pan/zoom so a redraw (e.g. color change) doesn't snap back.
+        // Only restore if the drawing type hasn't changed — circular↔linear have incompatible coordinate systems.
+        const currentLinear = $('#flexlinear').prop('checked');
         var savedPan = null, savedZoom = null;
         if (this.panZoomInstance !== null) {
-            savedPan  = this.panZoomInstance.getPan();
-            savedZoom = this.panZoomInstance.getZoom();
+            if (currentLinear === this._lastLinear) {
+                savedPan  = this.panZoomInstance.getPan();
+                savedZoom = this.panZoomInstance.getZoom();
+            }
             this.panZoomInstance.destroy();
         }
+        this._lastLinear = currentLinear;
 
         $('#svgbox').empty().html(svg_core[0].outerHTML);
 
