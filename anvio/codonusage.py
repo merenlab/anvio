@@ -2420,7 +2420,10 @@ class MultiGenomeCodonUsage(object):
         for genome_info in self.genome_info_dict.values():
             genome_info['function_sources'] = self.function_sources
             genome_info['all_brite_categories'] = self.all_brite_categories
-            genome_info['codon_to_amino_acid'] = self.args.codon_to_amino_acid
+            if 'codon_to_amino_acid' in self.args:
+                genome_info['codon_to_amino_acid'] = self.args.codon_to_amino_acid
+            else:
+                genome_info['codon_to_amino_acid'] = default_codon_amino_acid_dict
             genome_info['ignore_start_codons'] = self.args.ignore_start_codons
 
         # There are memory- and CPU-efficient ways of setting up the object. `preload_genomes` loads
