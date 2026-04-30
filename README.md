@@ -14,13 +14,13 @@ The [anvi'o project page](https://anvio.org) gives access to installation manual
 
 [The anvi'o help pages](https://anvio.org/help) describe individual anvi'o programs as well as artifacts they consume or produce.
 
-### Coding style considerations
-
-Please see [relevant discussions](https://github.com/merenlab/anvio/issues?q=label%3A%22coding+style%22+).
-
 ### Community chat
 
 Click [this link](https://discord.gg/C6He6mSNY4) to join the anvi'o Discord channel.
+
+### Information for developers
+
+Please see the [ARCHITECTURE.md](https://github.com/merenlab/anvio/blob/master/ARCHITECTURE.md) to get a sense of the anvi'o design, coding patterns and idioms, and so on.
 
 ### Others on anvi'o
 
