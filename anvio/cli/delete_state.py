@@ -29,11 +29,12 @@ def main():
     try:
         utils.is_pan_or_profile_db(args.pan_or_profile_db, genes_db_is_also_accepted=True, pan_graph_db_is_also_accepted=True)
 
+        db_type = utils.get_db_type(args.pan_or_profile_db)
         states_access = TablesForStates(args.pan_or_profile_db)
         states = states_access.states
 
         if not len(states):
-            raise ConfigError("But there are no states in this %s database :/" % utils.get_db_type(args.pan_or_profile_db))
+            raise ConfigError(f"But there are no states in this {db_type} database :/")
 
         if args.list_states:
             states_access.list_states()
@@ -47,6 +48,14 @@ def main():
         if not args.state in states:
             raise ConfigError("The state name '%s' does not seem to appear in this database. But we have %s instead: "
                                "%s." % ((args.state, 'this one' if len(states) == 1 else 'these ones', ', '.join(list(states.keys())))))
+
+        if args.state == 'default' and db_type == 'pan-graph':
+            if anvio.USER_KNOWS_IT_IS_NOT_A_GOOD_IDEA:
+                pass
+            else:
+                raise ConfigError("It is a very bad idea to delete the default state from a pan-graph-db since the graph "
+                                  "initialization process in the front-end really needs it :/ If you want to do it anyway "
+                                  "just include '--I-know-this-is-not-a-good-idea' in your command, and see what happens.")
 
         states_access.remove_state(args.state)
 
