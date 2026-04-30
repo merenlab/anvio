@@ -553,6 +553,18 @@ class BAMProfilerQuick:
 
         if self.collection_txt_path:
             self.init_collection_bins()
+        elif self.window_length:
+            # sanity check contig lengths for DisCov
+            contigs_smaller_than_window = []
+            for cname in self.contig_names_to_process:
+                if self.contigs_basic_info[cname]['length'] < self.window_length:
+                    contigs_smaller_than_window.append(cname)
+            if contigs_smaller_than_window:
+                self.run.warning(f"{len(contigs_smaller_than_window)} out of {len(self.contig_names_to_process)} contigs "
+                                 f"({(len(contigs_smaller_than_window)/len(self.contig_names_to_process)):.2f}%) are smaller "
+                                 f"than the requested window size for the DisCov metric. These contigs will not be split into "
+                                 f"multiple windows when computing DisCov. Just so you know. One of the culprits (in case you "
+                                 f"want to check): {contigs_smaller_than_window[0]}")
 
         if self.gene_level_stats:
             self.recover_gene_data()

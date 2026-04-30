@@ -594,12 +594,11 @@ class CoverageStats:
 
         Each region is described as a tuple of (start_position, stop_position, mean_coverage), with start and stop
         positions following Python indexing rules to enable slicing. If the array doesn't divide equally by the
-        window length, the final window will be shorter than the rest.
+        window length, the final window will be shorter than the rest. And if the input array is smaller than the
+        window length, this function will return a single window covering the entire array.
         """
-        if window_length > len(coverage):
-            raise ConfigError(f"While computing distribution of coverage, the get_window_regions() function was "
-                              f"requested to make windows of length {window_length}, but the input coverage array "
-                              f"is smaller than that (length {len(coverage)}).")
+        if window_length > len(coverage): # if the input is smaller than the window size, make it one window
+            window_length = len(coverage)
         elif window_length == 0:
             raise ConfigError(f"The get_window_regions() function was requested to make zero-length windows. Impossible!")
         
