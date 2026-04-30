@@ -1236,7 +1236,7 @@ class ProgramsNetwork(AnvioPrograms):
         for program in self.programs.values():
             for artifact in program.meta_info['provides']['value'] + program.meta_info['requires']['value']:
                 artifacts_seen[artifact.id] += 1
-                if not artifact.id in artifact_names_seen:
+                if artifact.id not in artifact_names_seen:
                     all_artifacts.append(artifact)
                     artifact_names_seen.add(artifact.id)
 

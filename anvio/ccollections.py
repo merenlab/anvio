@@ -222,7 +222,7 @@ class Collections:
         bins_info_dict = self.get_bins_info_dict(collection_name)
         collection_dict = self.get_collection_dict(collection_name)
 
-        invalid_bin_names = [b for b in bin_names_list if not b in collection_dict]
+        invalid_bin_names = [b for b in bin_names_list if b not in collection_dict]
         if invalid_bin_names:
             raise ConfigError("Some of the bin names you want to merge is not in the collection %s :/ Here "
                               "is a list of them: %s" % (collection_name, ', '.join(invalid_bin_names)))

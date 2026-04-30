@@ -55,7 +55,7 @@ def run_program():
 
     combined_dict = {}
     for contig_name in contig_names:
-        if not contig_name in contig_name_to_splits:
+        if contig_name not in contig_name_to_splits:
             raise ConfigError("Oh. You have the wrong stuff. Probably. Because, the contig '%s' does not match to any of "
                                "the contig names in your database. Here is a random contig name you have in it in "
                                "comparison: '%s'." % (contig_name, list(contig_name_to_splits.keys())[0]))

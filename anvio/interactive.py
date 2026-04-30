@@ -1660,7 +1660,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         # if the user specifies a view, set it as default:
         if self.view:
-            if not self.view in self.views:
+            if self.view not in self.views:
                 raise ConfigError("The requested view ('%s') is not available for this run. Please see "
                                          "available views by running this program with --show-views flag." % self.view)
 
@@ -1689,7 +1689,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                              "by using `anvi-script-generate-auxiliary-data-from-summary-cp` script."))
 
         if self.state_autoload:
-            if not self.state_autoload in self.states_table.states:
+            if self.state_autoload not in self.states_table.states:
                 raise ConfigError("The requested state ('%s') is not available for this run. Please see "
                                          "available states by running this program with --show-states flag." % self.state_autoload)
 
@@ -2444,7 +2444,7 @@ class StructureInteractive(VariabilitySuper, ContigsSuperclass):
             remove_column = True
 
             # If there is a "!" it is of stacked-bar type
-            if not "!" in layer_name:
+            if "!" not in layer_name:
                 for sample_name in samples_in_layer_data:
                     # loops through samples until it finds evidence the column is string-type
                     if isinstance(additional_layer_dict[sample_name][layer_name], str):

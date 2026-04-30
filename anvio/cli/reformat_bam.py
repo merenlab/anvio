@@ -45,7 +45,7 @@ def load_dict_from_tsv(path):
         for line in fh:
             if line.startswith("#"):
                 continue
-            if not '\t' in line:
+            if '\t' not in line:
                 raise Exception(f"ERROR: Invalid line in {path} (missing tab): {line}")
             new, old = line.strip().split("\t")
             utils.is_this_name_OK_for_database('contig name prefix', new)

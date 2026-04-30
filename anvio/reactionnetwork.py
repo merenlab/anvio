@@ -6644,7 +6644,7 @@ class Constructor:
         cdb = ContigsDatabase(contigs_db, run=self.run)
         cdb_db: DB = cdb.db
         sources: List[str] = cdb.meta['gene_function_sources']
-        if not sources or not 'KOfam' in sources:
+        if not sources or 'KOfam' not in sources:
             raise ConfigError(
                 "The contigs database indicates that genes were never annotated with KOs. This is "
                 "especially strange since to load a reaction network means that a network had to "
@@ -7222,7 +7222,7 @@ class Constructor:
                     network.kegg_modelseed_aliases[kegg_reaction_id] = [reaction_id]
                 modelseed_kegg_aliases.append(kegg_reaction_id)
                 for ko in kos:
-                    if not reaction_id in ko.reaction_ids:
+                    if reaction_id not in ko.reaction_ids:
                         # This is the first time encountering the reaction as a reference of the KO.
                         ko.reaction_ids.append(reaction_id)
                     try:
@@ -7249,7 +7249,7 @@ class Constructor:
                     network.ec_number_modelseed_aliases[ec_number] = [reaction_id]
                 modelseed_ec_number_aliases.append(ec_number)
                 for ko in kos:
-                    if not reaction_id in ko.reaction_ids:
+                    if reaction_id not in ko.reaction_ids:
                         # This is the first time encountering the reaction as a reference of the KO.
                         ko.reaction_ids.append(reaction_id)
                     try:
@@ -7754,7 +7754,7 @@ class Constructor:
         cdb = ContigsDatabase(contigs_db)
         cdb_db: DB = cdb.db
         sources: List[str] = cdb.meta['gene_function_sources']
-        if not sources or not 'KOfam' in sources:
+        if not sources or 'KOfam' not in sources:
             raise ConfigError(
                 "The contigs database indicates that genes were never annotated with KOs, which is "
                 "required to build a reaction network. This can be solved by running "
@@ -8788,10 +8788,10 @@ class Constructor:
                 network.modelseed_ec_number_aliases[modelseed_reaction_id] = []
 
             if DEBUG:
-                assert not modelseed_reaction_id in ko.kegg_reaction_aliases
+                assert modelseed_reaction_id not in ko.kegg_reaction_aliases
             ko.kegg_reaction_aliases[modelseed_reaction_id] = kegg_reaction_ids
             if DEBUG:
-                assert not modelseed_reaction_id in ko.ec_number_aliases
+                assert modelseed_reaction_id not in ko.ec_number_aliases
             ko.ec_number_aliases[modelseed_reaction_id] = []
 
         # Add ModelSEED reactions aliasing newly encountered EC numbers to the network.

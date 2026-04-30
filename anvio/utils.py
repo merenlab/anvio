@@ -742,7 +742,7 @@ def store_array_as_TAB_delimited_file(a, output_path, header, exclude_columns=[]
         raise ConfigError("store array: header length (%d) differs from data (%d)..." % (len(header), num_fields))
 
     for col in exclude_columns:
-        if not col in header:
+        if col not in header:
             raise ConfigError("store array: column %s is not in the header array...")
 
     exclude_indices = set([header.index(c) for c in exclude_columns])
@@ -3821,7 +3821,7 @@ def get_groups_txt_file_as_dict(file_path, run=run, progress=progress, include_m
                               f"downstream, so we will stop you right there. Please remove all duplicate items from this file. :)")
         item_to_group_dict[item] = group_name
 
-        if not group_name in group_to_item_dict:
+        if group_name not in group_to_item_dict:
             group_to_item_dict[group_name] = []
         group_to_item_dict[group_name].append(item)
 
