@@ -1774,12 +1774,22 @@ def generate_general_codon_frequencies(args, affinities_dict):
                         function_name_dict[source].append(name)
                     except KeyError:
                         function_name_dict[source] = [name]
-            codon_frequency_df = codon_usage.get_frequencies(
-                from_function_sources=not args.gene_affinity,
-                return_functions=not args.gene_affinity,
-                gene_caller_ids=gene_caller_ids,
-                function_accessions=function_accession_dict,
-                function_names=function_name_dict)
+            if isinstance(codon_usage, codonusage.SingleGenomeCodonUsage) and not args.gene_affinity:
+                codon_args.function_sources = [source]
+                codon_usage = codonusage.SingleGenomeCodonUsage(codon_args, r=run_quiet)
+            if isinstance(codon_usage, codonusage.SingleGenomeCodonUsage):
+                codon_frequency_df = codon_usage.get_frequencies(
+                    from_function_sources=not args.gene_affinity,
+                    return_functions=not args.gene_affinity,
+                    gene_caller_ids=gene_caller_ids,
+                    function_accessions=function_accession_dict,
+                    function_names=function_name_dict)
+            else:
+                codon_frequency_df = codon_usage.get_frequencies(
+                    from_function_sources=not args.gene_affinity,
+                    return_functions=not args.gene_affinity,
+                    function_accessions=function_accession_dict,
+                    function_names=function_name_dict)
             if not multi_genome_info_dict:
                 # An index column consisting of the single provided genome name must be added to the
                 # table returned for a single genome.
