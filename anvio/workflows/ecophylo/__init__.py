@@ -1,15 +1,12 @@
 """ Classes to define and work with anvi'o ecophylo workflows. """
 
-from distutils.command.config import config
 import os
-import anvio
 import argparse
 import pandas as pd
 
 import anvio
 import anvio.utils as u
 import anvio.terminal as terminal
-import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
 with terminal.SuppressAllOutput():
