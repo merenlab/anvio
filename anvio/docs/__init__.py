@@ -818,6 +818,24 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "pan-summary": {
+        "name": "PAN SUMMARY",
+        "type": "SUMMARY",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "pan-graph-summary": {
+        "name": "PAN GRAPH SUMMARY",
+        "type": "SUMMARY",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "profile-summary": {
+        "name": "PROFILE SUMMARY",
+        "type": "SUMMARY",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "quick-summary": {
         "name": "QUICK SUMMARY",
         "type": "TXT",

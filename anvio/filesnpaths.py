@@ -284,11 +284,15 @@ def is_file_fasta_formatted(file_path, dont_raise=False):
         f = u.SequenceSource(file_path)
     except u.FastaLibError as e:
         if dont_raise:
-            f.close()
             return False
         else:
             raise FilesNPathsError("Someone is not happy with your FASTA file '%s' (this is "
                                "what the lib says: '%s'." % (file_path, e))
+    except UnicodeDecodeError:
+        if dont_raise:
+            return False
+        else:
+            raise FilesNPathsError(f"The file at '{file_path}' does not seem to be a FASTA-formatted text file (it may be a binary file).")
 
     f.close()
 

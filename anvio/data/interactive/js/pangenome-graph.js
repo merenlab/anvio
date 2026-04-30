@@ -727,7 +727,7 @@ class PangenomeGraphUserInterface {
                 } else if (node_type == 'rna') {
                     var node_color = trna_color
                 } else {
-                    console.log(node_type)
+                    console.warn('Unexpected node type:', node_type)
                 }
     
                 if (saturation == 1) {
@@ -1458,16 +1458,14 @@ class PangenomeGraphUserInterface {
             dataType: "json",
             success: (data) => {
                 this.data = data['data'];
-                console.log('JSON loaded.');
                 this.initialize_variables();
-                console.log('Initialized main variables.');
                 this.settings_dict = JSON.parse(JSON.stringify(new_settings_dict));
                 this.main_draw();
                 $('#svgbox').css('opacity', '');
             },
             error: (err) => {
                 $('#svgbox').css('opacity', '');
-                console.error('Failed to load JSON:', err);
+                toastr.error('Failed to reload pan-graph data.', 'Error');
             }
         })
     }
@@ -2120,15 +2118,20 @@ class PangenomeGraphUserInterface {
         var svg_core = this.generate_svg();
         var genome_size = this.genomes.length;
 
-        // TODO this is just a temporary fix the whole generate_svg() has to be rewritten in either 
+        // TODO this is just a temporary fix the whole generate_svg() has to be rewritten in either
         // createElementNS or raw html string fashion. FML.
         // Save current pan/zoom so a redraw (e.g. color change) doesn't snap back.
+        // Only restore if the drawing type hasn't changed — circular↔linear have incompatible coordinate systems.
+        const currentLinear = $('#flexlinear').prop('checked');
         var savedPan = null, savedZoom = null;
         if (this.panZoomInstance !== null) {
-            savedPan  = this.panZoomInstance.getPan();
-            savedZoom = this.panZoomInstance.getZoom();
+            if (currentLinear === this._lastLinear) {
+                savedPan  = this.panZoomInstance.getPan();
+                savedZoom = this.panZoomInstance.getZoom();
+            }
             this.panZoomInstance.destroy();
         }
+        this._lastLinear = currentLinear;
 
         $('#svgbox').empty().html(svg_core[0].outerHTML);
 
@@ -2315,11 +2318,9 @@ class PangenomeGraphUserInterface {
             contentType: "application/json",
             dataType: "json",
             error: function(){
-                console.log('Error while attempting to update JSON data.')
+                toastr.error('Failed to update pan-graph data.', 'Error');
             },
-            success: function(json){
-                console.log('Successfully updated JSON data.')
-            }
+            success: function(json){}
         });
     }
 
@@ -2331,19 +2332,19 @@ class PangenomeGraphUserInterface {
             contentType: "application/json",
             dataType: "json",
             success: (data) => {
+                if (data['status'] != 0) {
+                    toastr.error(data['message'], 'Initialization error', { 'timeOut': '0', 'extendedTimeOut': '0' });
+                    return;
+                }
                 this.data = data['data'];
                 this.session_id = data['session_id'];
                 setTimeout(() => this.checkBackgroundProcess(), 5000);
-                console.log('JSON loaded.');
                 this.initialize_variables();
-                console.log('Initialized main variables.');
                 this.initialize_user_interface();
-                console.log('Initialized user interface values.');
                 this.set_UI_settings();
-                console.log('Load settings.');
             },
             error: (err) => {
-                console.error('Failed to load JSON:', err);
+                toastr.error('Could not reach the server during initialization.', 'Initialization error', { 'timeOut': '0', 'extendedTimeOut': '0' });
             }
         });
     }
@@ -2713,8 +2714,12 @@ class PangenomeGraphUserInterface {
         for(var [layer, min_value] of Object.entries(this.layers_min)) {
             $('#' + layer + '_min')[0].value = min_value;
         }
+
+        const isLinear = $('#flexlinear').prop('checked');
+        $('#drawing_type_select').val(isLinear ? 'linear' : 'circular');
+        $('#radius_row').toggle(!isLinear);
     }
-    
+
     initialize_user_interface() {
         
         $('#RightOffcanvasBodyTop').append(
@@ -3020,7 +3025,13 @@ class PangenomeGraphUserInterface {
                 $('#inner').prop('disabled', false);
             }
         })
-        
+
+        $('#drawing_type_select').on('change', () => {
+            const isLinear = $('#drawing_type_select').val() === 'linear';
+            $('#flexlinear').prop('checked', isLinear).trigger('change');
+            $('#radius_row').toggle(!isLinear);
+        });
+
         $('#flexglobalbackbone').change(function() {
             if ($(this).prop('checked') == true){
                 $('#globalbackbone')[0].value = 100;
@@ -3475,7 +3486,6 @@ class PangenomeGraphUserInterface {
     async get_region_data(gene_cluster_id, add_align) {
 
       var d = await this.get_gene_cluster_region_data([gene_cluster_id]);
-      console.log(d)
       var region_info = d['data'][gene_cluster_id]
         
       if (add_align == 1) {
@@ -3869,11 +3879,9 @@ class PangenomeGraphUserInterface {
             dataType: "json",
             timeout: 10000,
             error: function(){
-                console.log('Error while attempting to fetch region.')
+                toastr.error('Failed to fetch region data.', 'Error');
             },
-            success: function(){
-                console.log('Successfully fetched alignment.')
-            }
+            success: function(){}
         })
 
         return d
@@ -3892,11 +3900,9 @@ class PangenomeGraphUserInterface {
             dataType: "json",
             timeout: 10000,
             error: function(){
-                console.log('Error while attempting to fetch function.')
+                toastr.error('Failed to fetch function data.', 'Error');
             },
-            success: function(){
-                console.log('Successfully fetched function.')
-            }
+            success: function(){}
         })
 
         return d
@@ -3915,11 +3921,9 @@ class PangenomeGraphUserInterface {
             dataType: "json",
             timeout: 10000,
             error: function(){
-                console.log('Error while attempting to fetch alignment.')
+                toastr.error('Failed to fetch alignment data.', 'Error');
             },
-            success: function(){
-                console.log('Successfully fetched alignment.')
-            }
+            success: function(){}
         })
         
         return d
@@ -4082,19 +4086,17 @@ class PangenomeGraphUserInterface {
                 data: JSON.stringify(state),
                 success: (data) => {
                     this.data = data['data'];
-                    console.log('JSON loaded.');
                     this.initialize_variables();
-                    console.log('Initialized main variables.');
-                    this.set_UI_settings();      
+                    this.set_UI_settings();
                     this.main_draw();
+                    toastr.success(`State "${this.state}" has been loaded.`, 'State loaded');
                 },
                 error: (err) => {
-                    console.error('Failed to load JSON:', err);
+                    toastr.error('Failed to load state.', 'Error');
                 }
             })
             
             $('#loadstatemodal').modal('hide');
-            console.log('Successfully load state.')
         }
     }
     
@@ -4137,10 +4139,10 @@ class PangenomeGraphUserInterface {
             contentType: "application/json",
             dataType: "json",
             error: function(){
-                console.log('Error while attempting to save state.')
+                toastr.error('Failed to save state.', 'Error');
             },
             success: function(){
-                console.log('Successfully saved state.')
+                toastr.success(`State "${result['state_name']}" has been saved.`, 'State saved');
             }
         })
         

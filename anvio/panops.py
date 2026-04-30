@@ -51,7 +51,7 @@ from anvio.errors import ConfigError, FilesNPathsError
 from anvio.genomedescriptions import GenomeDescriptions
 from anvio.tables.geneclusters import TableForGeneClusters
 from anvio.tables.genefunctions import TableForGeneFunctions
-from anvio.tables.pangraphdata import TableForNodes, TableForEdges
+from anvio.tables.pangraphdata import TableForNodes, TableForEdges, TableForRegions, TableForGenomeDistances
 
 from anvio.directedforce import DirectedForce
 from anvio.topologicallayout import TopologicalLayout
@@ -1512,9 +1512,14 @@ class PangenomeGraph():
                                   "even have a pan-db).")
 
         # ANVI'O OUTPUTS
-        self.output_dir = A('output_dir')
-        self.pan_graph_db_path = os.path.join(self.output_dir, self.project_name + '-PAN-GRAPH.db')
-        self.output_synteny_gene_cluster_dendrogram = A('output_synteny_gene_cluster_dendrogram')
+        user_pan_graph_db_path = A('output_file') or A('pan_graph_db')
+        if user_pan_graph_db_path:
+            self.pan_graph_db_path = user_pan_graph_db_path
+        else:
+            self.pan_graph_db_path = os.path.join('.', self.project_name + '-PAN-GRAPH.db')
+
+        self.output_dir = os.path.dirname(self.pan_graph_db_path) or '.'
+
         self.output_hybrid_genome = A('output_hybrid_genome')
         self.circularize = A('circularize')
         self.just_do_it = A('just_do_it')
@@ -1570,20 +1575,14 @@ class PangenomeGraph():
         additional_info = pd.merge(region_sides_df.reset_index(drop=False), nodes_df.reset_index(drop=False), how="left", on="region_id").set_index('syn_cluster')
 
         for index, line in additional_info.iterrows():
-            if line["region"] == "BR":
-                self.pangenome_graph.graph.nodes[index]['layer'] = self.pangenome_graph.graph.nodes[index]['layer'] | {'backbone': 1}
-            else:
-                self.pangenome_graph.graph.nodes[index]['layer'] = self.pangenome_graph.graph.nodes[index]['layer'] | {'backbone': 0}
+            is_backbone = 1 if line["region"] == "BR" else 0
+            self.pangenome_graph.graph.nodes[index]['layer'] = self.pangenome_graph.graph.nodes[index]['layer'] | {'backbone': is_backbone}
 
-        gene_calls_df.to_csv(os.path.join(self.output_dir, 'gene_calls_df.tsv'), sep='\t')
-        region_sides_df.to_csv(os.path.join(self.output_dir, 'region_sides_df.tsv'), sep='\t')
-        nodes_df.to_csv(os.path.join(self.output_dir, 'nodes_df.tsv'), sep='\t')
-        self.pangenome_data_df.set_index('position').to_csv(os.path.join(self.output_dir, 'synteny_cluster.tsv'), sep='\t')
+        # stash the region-level summary for `generate_pan_graph_db` to persist into
+        # the pan_graph_regions table (translating BR/VR -> backbone/variable on the way in)
+        self.region_sides_df = region_sides_df
 
-        self.run.info_single(f"Functions table saved in {os.path.join(self.output_dir, 'synteny_cluster.tsv')}.")
-        self.run.info_single(f"Gene calls summary table saved in {os.path.join(self.output_dir, 'gene_calls_df.tsv')}.")
-        self.run.info_single(f"Regions summary table saved in {os.path.join(self.output_dir, 'region_sides_df.tsv')}.")
-        self.run.info_single(f"Nodes summary table saved in {os.path.join(self.output_dir, 'nodes_df.tsv')}.")
+        self.run.info_single(f"{len(region_sides_df)} region(s) summarized; backbone/variable labels and region IDs attached to nodes.")
 
     def layout_pangenome_graph(self):
         self.run.warning(None, header="Running maximum force layout algorithm", lc="green")
@@ -1716,6 +1715,11 @@ class PangenomeGraph():
         # make sure the output directory is there
         filesnpaths.gen_output_directory(self.output_dir)
 
+        # fail fast if the user has pointed --pan-graph-db at a non-`.db` filename
+        # or at a path that already exists (so we don't burn CPU before crashing
+        # inside `PanGraphDatabase.touch()`)
+        dbops.is_db_ok_to_create(self.pan_graph_db_path, 'pan-graph')
+
         # a round of sanity check
         self.sanity_check()
 
@@ -1733,17 +1737,20 @@ class PangenomeGraph():
 
         self.add_layers()
 
-        # generate flat text file summaries for downstream
-        # analyses
+        # compute region-level summaries; results are stashed on `self` so they can be
+        # written to the pan_graph_regions table during db generation
         self.summarize_pangenome_graph()
 
         # calculate the display
         # self.layout_pangenome_graph()
 
-        # if the user has not provided a tree file,
-        # calculate one from the graph properties
+        # if the user has not provided a tree file calculate one from the graph properties
+        # whuile at it, take the distance matrix is captured here and get ready to store
+        # it into the pan_graph_genome_distances table
+        self.distance_matrix = pd.DataFrame()
+        self.distance_genome_names = []
         if not self.newick:
-            self.newick = self.pangenome_graph.calculate_graph_distance(self.output_dir)
+            self.newick, self.distance_matrix, self.distance_genome_names = self.pangenome_graph.calculate_graph_distance()
 
         # FIXME: not currently engaged
         if self.output_hybrid_genome:
@@ -1859,7 +1866,7 @@ class PangenomeGraph():
 
         """Generates an empty pan-graph-db and populates it with essential information"""
 
-        # generate an empty pan-graph-db
+        # generate an empty pan-graph-db.
         meta_values = {
             'project_name': self.project_name,
             'state': self.load_state,
@@ -1882,11 +1889,70 @@ class PangenomeGraph():
         # populate edges in pan-graph-db
         self.store_edges_in_pan_graph_db()
 
+        # populate regions (backbone / variable, with CVS) in pan-graph-db
+        self.store_regions_in_pan_graph_db()
+
+        # populate pairwise graph-based genome distances in pan-graph-db
+        self.store_genome_distances_in_pan_graph_db()
+
         # store items additional data
         self.update_pan_graph_db_with_items_additional_data()
 
         # store layer orders (the newick tree computed from the graph)
         self.update_pan_graph_db_with_layer_orders()
+
+
+    def store_regions_in_pan_graph_db(self):
+        """Persists `region_sides_df` (computed by `summarize_pangenome_graph`) into the
+           pan_graph_regions table, translating the BR/VR shorthand into 'backbone' /
+           'variable' for human-friendly downstream consumption."""
+
+        if not hasattr(self, 'region_sides_df') or self.region_sides_df is None or self.region_sides_df.empty:
+            self.run.info_single("No regions to store in the pan-graph-db (skipping).")
+            return
+
+        self.progress.new('Storing regions in pan-graph-db')
+        self.progress.update('...')
+
+        region_label = {'BR': 'backbone', 'VR': 'variable'}
+
+        df = self.region_sides_df.reset_index(drop=False).rename(columns={'region': 'region_type'})
+        df['region_type'] = df['region_type'].map(lambda x: region_label.get(x, x))
+
+        table_for_regions = TableForRegions(self.pan_graph_db_path, run=self.run, progress=self.progress)
+        for _, row in df.iterrows():
+            entry = {col: row[col] for col in t.pan_graph_regions_table_structure}
+            table_for_regions.add(entry)
+
+        self.progress.end()
+
+        table_for_regions.store()
+
+
+    def store_genome_distances_in_pan_graph_db(self):
+        """Persists the pairwise genome distance matrix into the pan_graph_genome_distances
+           table. Both directions (A,B) and (B,A) are stored so consumers can index either
+           way without reconstruction."""
+
+        if not hasattr(self, 'distance_matrix') or self.distance_matrix is None or self.distance_matrix.empty:
+            self.run.info_single("No graph-based genome distances to store in the pan-graph-db (skipping).")
+            return
+
+        self.progress.new('Storing genome distances in pan-graph-db')
+        self.progress.update('...')
+
+        table_for_distances = TableForGenomeDistances(self.pan_graph_db_path, run=self.run, progress=self.progress)
+        for genome_a in self.distance_matrix.index:
+            for genome_b in self.distance_matrix.columns:
+                if genome_a == genome_b:
+                    continue
+                table_for_distances.add({'genome_a': genome_a,
+                                         'genome_b': genome_b,
+                                         'distance': float(self.distance_matrix.loc[genome_a, genome_b])})
+
+        self.progress.end()
+
+        table_for_distances.store()
 
 
     def update_pan_graph_db_with_layer_orders(self):
@@ -1926,10 +1992,13 @@ class PangenomeGraph():
             node_entry = {
                 'node_id': node,
                 'node_type': data['type'],
+                'region_id': int(data['region_id']) if data.get('region_id') is not None else -1,
                 'gene_cluster_id': data['gene_cluster'],
                 'synteny_position_json': json.dumps(data['synteny']),
                 'gene_calls_json': json.dumps(data['gene_calls']),
-                'alignment_summary': json.dumps(data['alignment'])
+                'alignment_summary': json.dumps(data['alignment']),
+                'node_x': data['position'][0],
+                'node_y': data['position'][1],
             }
 
             table_for_nodes.add(node_entry)

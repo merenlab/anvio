@@ -15,7 +15,7 @@ item_06    bin_3
 
 ### The optional bins info file
 
-In addition to the essential file above, you can associate an optional TAB-delimited file with three columns with a collection to provide information about 'bins' in it, such as their source, and/or color to be used when they are displayed in %(summary)s outputs or anvi'o %(interactive)s interfaces. Here is an example:
+In addition to the essential file above, you can associate an optional TAB-delimited file with three columns with a collection to provide information about 'bins' in it, such as their source, and/or color to be used when they are displayed in %(pan-summary)s, %(pan-graph-summary)s, or %(profile-summary)s outputs or anvi'o %(interactive)s interfaces. Here is an example:
 
 ```
 bin_1	CONCOCT	 #c9d433

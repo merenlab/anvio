@@ -21,7 +21,6 @@
     <script type="text/javascript" src="./node_modules/html5sortable/dist/html5sortable.min.js" onerror='alertDependencyError("html5sortable")'></script>
 
     <script>$.uiBackCompat = false; //Do not change the order of jquery-ui files</script>
-    <script type="text/javascript" src="./node_modules/jquery-ui/ui/jquery-patch.js" onerror='alertDependencyError("jquery-patch")'></script>
     <script type="text/javascript" src="./node_modules/jquery-ui/ui/widget.js" onerror='alertDependencyError("jquery-widget")'></script>
     <script type="text/javascript" src="./node_modules/jquery-ui/ui/widgets/mouse.js" onerror='alertDependencyError("jquery-mouse")'></script>
     <script type="text/javascript" src="./node_modules/jquery-ui/ui/plugin.js" onerror='alertDependencyError("jquery-plugin")'></script>
@@ -155,6 +154,29 @@
                   </span>
 
                   <div id="item-collapse-main" class="ml-2 mr-3 collapse multi-collapse show">
+                    <span class="settings-secondary-header mb-3 mt-3">Drawing Type</span>
+                    <div class="form-group mt-2">
+                      <div class="col-10 menu-padding">
+                        <select id="drawing_type_select" class="form-control">
+                          <option value="circular" selected>Circular</option>
+                          <option value="linear">Linear</option>
+                        </select>
+                      </div>
+                    </div>
+                    <input type="checkbox" id="flexlinear" name="flexlinear" style="display: none;">
+                    <div class="row align-items-center mt-2" id="radius_row">
+                      <div class="col-12 d-flex mb-1">
+                        <div class="col-1 d-flex align-items-center">
+                        </div>
+                        <div class="col-9 d-flex align-items-center">
+                          Radius
+                        </div>
+                        <div class="d-flex col-2">
+                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style="background-color: #e9ecef;" id="inner" name="inner" value=0>
+                        </div>
+                      </div>
+                    </div>
+
                     <span class="settings-secondary-header mb-3 mt-3">Node Colors</span>
 
                     <div class="row align-items-center">
@@ -548,14 +570,6 @@
                     <span class="settings-secondary-header mb-3 mt-3">Others</span>
 
                     <div class="row align-items-center mb-3">
-                      <div class="col-12 d-flex mb-1 py-1">
-                        <div class="col-1 d-flex align-items-center">
-                          <input type="checkbox" id="flexlinear" name="flexlinear" aria-label="..." data-toggle="tooltip" data-placement="top" title="Tooltip on top">
-                        </div>
-                        <div class="col-11 d-flex align-items-center">
-                          Linear graph layout
-                        </div>
-                      </div>
                       <div class="col-12 d-flex mb-1">
                         <div class="col-1">
                         </div>
@@ -614,16 +628,6 @@
                         </div>
                         <div class="d-flex col-2">
                           <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="outer_margin" name="outer_margin" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
-                        </div>
-                      </div>
-                      <div class="col-12 d-flex mb-1">
-                        <div class="col-1 d-flex align-items-center">
-                        </div>
-                        <div class="col-9 d-flex align-items-center">
-                          Additional inner radius
-                        </div>
-                        <div class="d-flex col-2">
-                          <input type="text" class="form-control float-end text-end flex-fill p-0 border-0" style= "background-color: #e9ecef;" id="inner" name="inner" value=0 aria-label="..." data-toggle="tooltip" data-placement="top" title="Choose your color">
                         </div>
                       </div>
                       <div class="col-12 d-flex mb-1">

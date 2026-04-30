@@ -45,10 +45,10 @@ import anvio.completeness as completeness
 import anvio.taxonomyops.scg as scgtaxonomyops
 
 from anvio.errors import ConfigError
-from anvio.dbops import DatabasesMetaclass, ContigsDatabase, ContigsSuperclass, PanSuperclass
 from anvio.hmmops import SequencesForHMMHits
 from anvio.summaryhtml import SummaryHTMLOutput, humanize_n, pretty
-from anvio.tables.miscdata import TableForLayerAdditionalData, MiscDataTableFactory
+from anvio.tables.miscdata import TableForLayerAdditionalData, TableForLayerOrders, MiscDataTableFactory
+from anvio.dbops import DatabasesMetaclass, ContigsDatabase, ContigsSuperclass, PanSuperclass, PanGraphSuperclass
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -109,8 +109,10 @@ class SummarizerSuperClass(object):
 
         if self.summary_type == 'pan':
             self.collections.populate_collections_dict(self.pan_db_path)
+        elif self.summary_type == 'pan-graph':
+            self.collections.populate_collections_dict(self.pan_graph_db_path)
         else:
-            self.collections.populate_collections_dict(self.pan_db_path if self.summary_type == 'pan' else self.profile_db_path)
+            self.collections.populate_collections_dict(self.profile_db_path)
             self.collections.populate_collections_dict(self.contigs_db_path) if self.contigs_db_path else None
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
@@ -159,7 +161,12 @@ class SummarizerSuperClass(object):
 
         run_obj = terminal.Run(verbose=False)
 
-        db_path = self.pan_db_path if self.summary_type == 'pan' else self.profile_db_path
+        if self.summary_type == 'pan':
+            db_path = self.pan_db_path
+        elif self.summary_type == 'pan-graph':
+            db_path = self.pan_graph_db_path
+        else:
+            db_path = self.profile_db_path
         additional_data = MiscDataTableFactory(argparse.Namespace(pan_or_profile_db=db_path, target_data_table=target_table), r=run_obj)
 
         data_groups, data_dict = additional_data.get_all()
@@ -242,6 +249,10 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         if not self.genomes_storage_is_available:
             raise ConfigError("No genomes storage no summary. Yes. Very simple stuff.")
 
+        if not args.__dict__.get('output_dir'):
+            project_name = self.p_meta.get('project_name') or 'PROJECT'
+            args.output_dir = f'{project_name}-PAN-SUMMARY'
+
         SummarizerSuperClass.__init__(self, args, self.run, self.progress)
 
         # init gene clusters and functions from Pan super.
@@ -257,10 +268,18 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         if self.collection_name:
             self.collection_dict, self.bins_info_dict = self.init_collection_profile(self.collection_name)
             self.bin_ids = sorted(self.collection_dict.keys())
+        else:
+            self.gene_clusters_in_pan_db_but_not_binned = list(self.gene_clusters.keys())
 
         # see if COG functions or categories are available
         self.cog_functions_are_called = 'COG_FUNCTION' in self.gene_clusters_function_sources
         self.cog_categories_are_called = 'COG_CATEGORY' in self.gene_clusters_function_sources
+
+
+    def sanity_check(self):
+        """Collection is optional for pan summaries; validate only when supplied."""
+        if self.collection_name and self.collection_name not in self.collections.collections_dict:
+            raise ConfigError("%s is not a valid collection ID. See a list of available ones with '--list-collections' flag" % self.collection_name)
 
 
     def get_occurrence_of_functions_in_pangenome(self, gene_clusters_functions_summary_dict):
@@ -586,7 +605,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         self.summary['files'] = {}
         self.summary['collection_profile'] = self.collection_profile # reminder; collection_profile comes from the superclass!
 
-        self.generate_gene_clusters_file(self.collection_dict)
+        self.generate_gene_clusters_file(self.collection_dict or {})
 
         self.report_misc_data_files(target_table='layers')
         self.report_misc_data_files(target_table='items')
@@ -686,6 +705,341 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         output_file_obj.close()
 
         self.progress.end()
+
+
+class PanGraphSummarizer(PanGraphSuperclass, SummarizerSuperClass):
+    """Generates a summary directory for an anvi'o pan-graph database.
+
+       Layout written to `self.output_directory`:
+
+         - SYNGCs.txt              one row per node (SynGC) with region/backbone/CVS join
+         - GENESxSYNGCs.txt        long format (node_id, genome, gene_caller_id) with functions
+         - REGIONS.txt             copy of the pan_graph_regions table
+         - GENOMES_DIST_MAT.txt    wide reconstruction from pan_graph_genome_distances
+         - GENOMES_DIST.newick     newick read from layer_orders
+    """
+
+    def __init__(self, args=None, lazy_init=False, r=run, p=progress):
+        self.summary_type = 'pan-graph'
+        self.debug = False
+        self.quick = False
+        self.pan_graph_db_path = None
+        self.lazy_init = lazy_init
+        self.output_directory = None
+        self.genomes_storage_path = None
+
+        self.run = r
+        self.progress = p
+
+        PanGraphSuperclass.__init__(self, args, self.run, self.progress)
+
+        if not self.genomes_storage_is_available:
+            raise ConfigError("No genomes storage no summary. Yes. Very simple stuff.")
+
+        # quick hack here to update the args object before it goes deeper with a meaningful
+        # defeault output directory (unless the user already explicitly set one).
+        if not args.__dict__.get('output_dir'):
+            project_name = self.p_meta.get('project_name') or 'PROJECT'
+            args.output_dir = f'{project_name}-PAN-GRAPH-SUMMARY'
+
+        SummarizerSuperClass.__init__(self, args, self.run, self.progress)
+
+        # populate synteny gene clusters and (optionally) their functions
+        self.init_synteny_gene_clusters()
+
+        if not self.skip_init_functions:
+            self.init_synteny_gene_clusters_functions()
+
+        self.collection_dict, self.bins_info_dict, self.bin_ids = None, None, None
+        if self.collection_name:
+            self.collection_dict, self.bins_info_dict = self.init_collection_profile(self.collection_name)
+            self.bin_ids = sorted(self.collection_dict.keys())
+
+        # newick layer order is stored in the layer_orders table; surface it here so the
+        # summary directory can write it as a stand-alone .newick file
+        self.newick = self._get_newick_from_layer_orders()
+
+
+    def sanity_check(self):
+        """Collection is optional for pan-graph summaries; validate only when supplied."""
+        if self.collection_name and self.collection_name not in self.collections.collections_dict:
+            raise ConfigError("%s is not a valid collection ID. See a list of available ones with '--list-collections' flag" % self.collection_name)
+
+
+    def _get_newick_from_layer_orders(self):
+        """Returns the 'default' newick stored in layer_orders, or '' if none."""
+
+        args = argparse.Namespace(pan_or_profile_db=self.pan_graph_db_path, target_data_table='layer_orders')
+        layer_orders = TableForLayerOrders(args, r=terminal.Run(verbose=False)).get()
+
+        if 'default' in layer_orders and layer_orders['default']['newick'] is not None:
+            return layer_orders['default']['newick']
+        else:
+            return ''
+
+
+    def _function_consensus(self, syn_cluster_id, source):
+        """Returns (accession_consensus, annotation_consensus) for a SynGC + source.
+
+           Picks the single most-frequent annotation across genomes/copies. Returns
+           ('', '') when no genome carries an annotation for this source on this SynGC."""
+
+        if not getattr(self, 'gene_clusters_functions_dict', None):
+            return ('', '')
+
+        accession_counts = Counter()
+        annotation_counts = Counter()
+
+        per_genome = self.gene_clusters_functions_dict.get(syn_cluster_id, {})
+        for genome_name, gene_calls in per_genome.items():
+            for _gene_caller_id, anns in gene_calls.items():
+                blob = anns.get(source)
+                if not blob:
+                    continue
+                if isinstance(blob, bytes):
+                    blob = blob.decode('utf-8')
+                accs, annots = [piece.split('!!!') for piece in blob.split('|||')]
+                for a in accs:
+                    accession_counts[a] += 1
+                for a in annots:
+                    annotation_counts[a] += 1
+
+        acc = accession_counts.most_common(1)[0][0] if accession_counts else ''
+        ann = annotation_counts.most_common(1)[0][0] if annotation_counts else ''
+        return (acc, ann)
+
+
+    def process(self):
+        # we urrently do not generate an HTML output for pan-graph-db summaries,
+        # but since this class follows the previously existed PanSummarizer, we
+        # can also stash some metadata for any future HTML/index generation here.
+        self.summary['meta'] = {
+            'summary_type': self.summary_type,
+            'output_directory': self.output_directory,
+            'project_name': self.p_meta.get('project_name'),
+            'num_genomes': self.p_meta.get('num_genomes'),
+            'num_nodes': self.p_meta.get('num_nodes'),
+            'num_edges': self.p_meta.get('num_edges'),
+            'num_regions': len(self.regions),
+            'genome_names': self.genome_names,
+            'function_sources': sorted(self.gene_function_sources),
+            'collection_name': self.collection_name,
+            'num_bins': len(self.bin_ids) if self.bin_ids else 0,
+        }
+        self.summary['files'] = {}
+
+        node_to_bin = self._build_node_to_bin_map()
+
+        self.run.warning(None, header="SUMMARY OUTPUT FILES", lc="cyan")
+        self.generate_synteny_gene_clusters_file(node_to_bin)
+        self.generate_gene_calls_file(node_to_bin)
+        self.generate_regions_file()
+        self.generate_genome_distance_matrix_file()
+        self.write_newick_file()
+
+        # bin assignments live in the `bin_name` column of SYNGCs.txt and
+        # GENESxSYNGCs.txt, so any per-bin view the user wants is one filter away --
+        # no need to scatter redundant copies into a bins/ subfolder.
+
+        # dump misc-data (items / layers) the same way PanSummarizer does
+        self.report_misc_data_files(target_table='layers')
+        self.report_misc_data_files(target_table='items')
+
+        self.run.info('Summary output directory', self.output_directory, nl_before=1, mc='green')
+
+
+    def _build_node_to_bin_map(self):
+        node_to_bin = {node_id: '' for node_id in self.synteny_gene_cluster_names}
+        if self.collection_dict:
+            for bin_id, node_ids in self.collection_dict.items():
+                for node_id in node_ids:
+                    node_to_bin[node_id] = bin_id
+        return node_to_bin
+
+
+    def generate_synteny_gene_clusters_file(self, node_to_bin):
+        """One row per SynGC: identity, region/backbone, CVS, items_additional_data layers,
+           per-source function consensus, and (when collection given) bin assignment."""
+
+        path = os.path.join(self.output_directory, 'SYNGCs.txt')
+
+        header = ['node_id', 'bin_name', 'source_gene_cluster_id', 'node_type', 'region_id', 'region_type',
+                  'node_x', 'node_y', 'num_genomes_present', 'genomes_present']
+
+        # items_additional_data layers (e.g. backbone), in stable order
+        layer_keys = list(self.items_additional_data_keys) if self.items_additional_data_keys else []
+        header += layer_keys
+
+        # function consensus columns: ACC + annotation per source
+        function_sources = sorted(self.gene_function_sources)
+        for source in function_sources:
+            header.append(source + '_ACC')
+            header.append(source)
+
+        self.progress.new('Writing SYNGCs.txt')
+        self.progress.update('...')
+
+        with open(path, 'w') as out:
+            out.write('\t'.join(header) + '\n')
+
+            for node_id in sorted(self.nodes.keys()):
+                node = self.nodes[node_id]
+                region_id = node.get('region_id')
+                region_row = self.regions.get(region_id) if region_id is not None else None
+                region_type = region_row['region_type'] if region_row else ''
+
+                genomes_present = sorted([g for g, gcs in self.synteny_gene_clusters.get(node_id, {}).items() if gcs])
+
+                row = [node_id,
+                       node_to_bin.get(node_id, ''),
+                       node.get('gene_cluster_id', ''),
+                       node.get('node_type', ''),
+                       region_id if region_id is not None else '',
+                       region_type,
+                       node.get('node_x', ''),
+                       node.get('node_y', ''),
+                       len(genomes_present),
+                       ','.join(genomes_present)]
+
+                # items_additional_data
+                node_layers = self.items_additional_data_dict.get(node_id, {}) if self.items_additional_data_dict else {}
+                for key in layer_keys:
+                    val = node_layers.get(key, '')
+                    row.append('' if val is None else val)
+
+                # function consensus
+                for source in function_sources:
+                    acc, ann = self._function_consensus(node_id, source)
+                    row.append(acc)
+                    row.append(ann)
+
+                out.write('\t'.join(['' if e is None else str(e) for e in row]) + '\n')
+
+        self.progress.end()
+        self.summary['files']['SYNGCs'] = os.path.basename(path)
+        self.run.info('SynGCs file', path)
+
+
+    def generate_gene_calls_file(self, node_to_bin):
+        """Long-format `(node_id, gene_cluster_id, genome, gene_caller_id, region_id,
+           region_type, bin_name, <function-source ACC + annotation columns>)`."""
+
+        path = os.path.join(self.output_directory, 'GENESxSYNGCs.txt')
+
+        function_sources = sorted(self.gene_function_sources)
+
+        header = ['node_id', 'bin_name', 'source_gene_cluster_id', 'genome_name', 'gene_caller_id',
+                  'region_id', 'region_type']
+        for source in function_sources:
+            header.append(source + '_ACC')
+            header.append(source)
+
+        sequences = None
+        if not self.quick:
+            header.append('dna_sequence' if self.report_DNA_sequences else 'aa_sequence')
+            sequences = self.get_sequences_for_synteny_gene_clusters(gene_cluster_names=set(self.nodes.keys()), report_DNA_sequences=self.report_DNA_sequences)
+
+        self.progress.new('Writing GENESxSYNGCs.txt')
+        self.progress.update('...')
+
+        with open(path, 'w') as out:
+            out.write('\t'.join(header) + '\n')
+
+            for node_id in sorted(self.nodes.keys()):
+                node = self.nodes[node_id]
+                gene_cluster_id = node.get('gene_cluster_id', '')
+                region_id = node.get('region_id')
+                region_row = self.regions.get(region_id) if region_id is not None else None
+                region_type = region_row['region_type'] if region_row else ''
+                bin_name = node_to_bin.get(node_id, '')
+
+                per_genome = self.synteny_gene_clusters.get(node_id, {})
+                for genome_name in self.genome_names:
+                    for gene_caller_id in per_genome.get(genome_name, []):
+                        row = [node_id, bin_name, gene_cluster_id, genome_name, gene_caller_id,
+                               region_id if region_id is not None else '',
+                               region_type]
+
+                        # per-call functions if available
+                        gene_anns = ((self.gene_clusters_functions_dict or {})
+                                     .get(node_id, {}).get(genome_name, {}).get(gene_caller_id, {}))
+                        for source in function_sources:
+                            blob = gene_anns.get(source)
+                            if blob is None:
+                                row.append('')
+                                row.append('')
+                                continue
+                            if isinstance(blob, bytes):
+                                blob = blob.decode('utf-8')
+                            accs, annots = [p.split('!!!') for p in blob.split('|||')]
+                            row.append('|'.join(accs))
+                            row.append('|'.join(annots))
+
+                        if sequences is not None:
+                            row.append(sequences.get(node_id, {}).get(genome_name, {}).get(gene_caller_id, ''))
+
+                        out.write('\t'.join(['' if e is None else str(e) for e in row]) + '\n')
+
+        self.progress.end()
+        self.summary['files']['GENESxSYNGCs'] = os.path.basename(path)
+        self.run.info('Genes x SynGCs file', path)
+
+
+    def generate_regions_file(self):
+        """Dumps the pan_graph_regions table 1:1."""
+
+        path = os.path.join(self.output_directory, 'REGIONS.txt')
+
+        if not self.regions:
+            self.run.info_single("No regions in the pan-graph-db; skipping REGIONS.txt")
+            return
+
+        df = pd.DataFrame.from_dict(self.regions, orient='index')
+        df.index.name = 'region_id'
+        df.to_csv(path, sep='\t')
+
+        self.summary['files']['REGIONS'] = os.path.basename(path)
+        self.run.info('Regions file', path)
+
+
+    def generate_genome_distance_matrix_file(self):
+        """Reconstructs a square genome×genome distance matrix from the long-format table."""
+
+        path = os.path.join(self.output_directory, 'GENOMES_DIST_MAT.txt')
+
+        if not self.genome_distances:
+            self.run.info_single("No genome distances in the pan-graph-db; skipping GENOMES_DIST_MAT.txt")
+            return
+
+        rows = list(self.genome_distances.values())
+        long_df = pd.DataFrame(rows, columns=['genome_a', 'genome_b', 'distance'])
+        wide = long_df.pivot(index='genome_a', columns='genome_b', values='distance')
+
+        # diagonal isn't in the table; fill with zero so the matrix is complete
+        for g in self.genome_names:
+            if g not in wide.index:
+                wide.loc[g] = 0
+            if g not in wide.columns:
+                wide[g] = 0
+        wide = wide.reindex(index=self.genome_names, columns=self.genome_names).fillna(0)
+
+        wide.to_csv(path, sep='\t')
+        self.summary['files']['GENOMES_DIST_MAT'] = os.path.basename(path)
+        self.run.info('Genome distance matrix', path)
+
+
+    def write_newick_file(self):
+        path = os.path.join(self.output_directory, 'GENOMES_DIST.newick')
+
+        if not self.newick:
+            self.run.info_single("No newick tree stored in the pan-graph-db; skipping the .newick file.")
+            return
+
+        with open(path, 'w') as out:
+            out.write(self.newick + '\n')
+
+        self.summary['files']['newick'] = os.path.basename(path)
+        self.run.info('Newick tree', path)
 
 
 class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
