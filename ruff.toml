@@ -7,6 +7,8 @@ select = [
     "E713",
     # https://docs.astral.sh/ruff/rules/unused-import/
     "F401",
+    # https://docs.astral.sh/ruff/rules/f-string-missing-placeholders/
+    "F541",
     # https://docs.astral.sh/ruff/rules/utf8-encoding-declaration/
     "UP009",
     # https://docs.astral.sh/ruff/rules/trailing-whitespace/
