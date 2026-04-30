@@ -4092,14 +4092,13 @@ class PangenomeGraphUserInterface {
                 data: JSON.stringify(state),
                 success: (data) => {
                     this.data = data['data'];
-                    console.log('JSON loaded.');
                     this.initialize_variables();
-                    console.log('Initialized main variables.');
-                    this.set_UI_settings();      
+                    this.set_UI_settings();
                     this.main_draw();
+                    toastr.success(`State "${this.state}" has been loaded.`, 'State loaded');
                 },
                 error: (err) => {
-                    console.error('Failed to load JSON:', err);
+                    toastr.error('Failed to load state.', 'Error');
                 }
             })
             
@@ -4147,10 +4146,10 @@ class PangenomeGraphUserInterface {
             contentType: "application/json",
             dataType: "json",
             error: function(){
-                console.log('Error while attempting to save state.')
+                toastr.error('Failed to save state.', 'Error');
             },
             success: function(){
-                console.log('Successfully saved state.')
+                toastr.success(`State "${result['state_name']}" has been saved.`, 'State saved');
             }
         })
         
