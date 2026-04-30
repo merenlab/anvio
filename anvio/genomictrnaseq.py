@@ -998,7 +998,8 @@ class Integrator(object):
         seed_id_df = trnaseq_contigs_db.get_table_as_dataframe(
             'genes_in_contigs',
             columns_of_interest=['gene_callers_id', 'contig'],
-            where_clause=contigs_where_clause)
+            where_clause=contigs_where_clause,
+            error_if_no_data=False)
         seed_id_df = seed_id_df.rename(
             {'gene_callers_id': 'seed_gene_callers_id', 'contig': 'seed_contig_name'}, axis=1)
         # Find the index of position 34 in each of the seed sequences.
@@ -1008,7 +1009,8 @@ class Integrator(object):
         seed_wobble_df = trnaseq_contigs_db.get_table_as_dataframe(
             'trna_feature',
             columns_of_interest=['gene_callers_id', 'anticodon_loop_start'],
-            where_clause=ids_where_clause)
+            where_clause=ids_where_clause,
+            error_if_no_data=False)
         seed_wobble_df = seed_wobble_df.rename(
             {'gene_callers_id': 'seed_gene_callers_id',
              'anticodon_loop_start': 'seed_anticodon_loop_start'}, axis=1)
@@ -1017,7 +1019,7 @@ class Integrator(object):
         seed_wobble_df = seed_id_df.merge(seed_wobble_df, on='seed_gene_callers_id')
         # Get the seed consensus sequence strings.
         seed_consensus_sequence_df = trnaseq_contigs_db.get_table_as_dataframe(
-            'contig_sequences', where_clause=contigs_where_clause)
+            'contig_sequences', where_clause=contigs_where_clause, error_if_no_data=False)
         trnaseq_contigs_db.disconnect()
         seed_consensus_sequence_df = seed_consensus_sequence_df.rename(
             {'contig': 'seed_contig_name', 'sequence': 'seed_sequence'}, axis=1)
