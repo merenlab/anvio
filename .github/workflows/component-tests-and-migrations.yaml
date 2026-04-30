@@ -62,9 +62,9 @@ jobs:
     - name: "Run component tests"
       shell: bash -l {0}
       run: |
-        anvi-self-test --suite metagenomics-full --no-interactive
-        anvi-self-test --suite pangenomics --no-interactive
-        anvi-self-test --suite inversions --no-interactive
+        anvi-self-test --suite metagenomics-full --no-interactive --num-threads 2
+        anvi-self-test --suite pangenomics --no-interactive --num-threads 2
+        anvi-self-test --suite inversions --no-interactive --num-threads 2
 # the following steps cause our actions to fail on GitHub runners
 # due to space limitations :/ please do not uncomment this until we
 # have a solution for this :/
