@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 
 from itertools import combinations, product
-from scipy.stats import pearsonr, spearmanr
+from scipy.stats import pearsonr, spearmanr, linregress
 
 import anvio
 import anvio.utils as utils
@@ -2645,8 +2645,16 @@ class Affinitizer:
 
                 sample_affinities_dict[trnaseq_sample_name] = \
                     genome_relative_isoacceptor_codon_weights_df[abund_ratios.index].apply(
-                        lambda relative_isoacceptor_codon_weights: self.affinity_function(
-                            log_abund_ratios, relative_isoacceptor_codon_weights), axis=1)
+                        lambda relative_isoacceptor_codon_weights:
+                            linregress(log_abund_ratios, relative_isoacceptor_codon_weights).slope,
+                        axis=1
+                    )
+
+                # The old mistaken affinity was the correlation coefficient when it should have been the slope
+                # sample_affinities_dict[trnaseq_sample_name] = \
+                #     genome_relative_isoacceptor_codon_weights_df[abund_ratios.index].apply(
+                #         lambda relative_isoacceptor_codon_weights: self.affinity_function(
+                #             log_abund_ratios, relative_isoacceptor_codon_weights), axis=1)
 
             genome_affinities_df = pd.DataFrame.from_dict(sample_affinities_dict)
             genome_affinities_dfs.append(genome_affinities_df)
