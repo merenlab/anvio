@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import sys
 import argparse
@@ -33,7 +32,7 @@ def divide_stackedbar_to_multiple_entries(table_dict):
                 stackbar_name = table_dict[entry_id]['data_key'].split('!')[0]
 
                 for i in range(len(data_keys)):
-                    table_dict[key_counter] = {'item_name': item_name, 
+                    table_dict[key_counter] = {'item_name': item_name,
                                                 'data_key': stackbar_name + '!' + data_keys[i],
                                                 'data_value': data_values[i],
                                                 'data_type': 'stackedbar',

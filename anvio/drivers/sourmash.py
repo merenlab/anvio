@@ -1,17 +1,11 @@
-# coding: utf-8
 """Interface to sourmash"""
 
 import os
-import numpy as np
-import pandas as pd
-import shutil
 
 import anvio
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
-
-from scipy.stats import entropy, skew, kurtosis
 
 from anvio.errors import ConfigError
 

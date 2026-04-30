@@ -182,7 +182,7 @@ This directory contains miscellaneous data created from the flow to help you int
     └── HMM_SOURCE_PROTEIN_scg_taxonomy_data.tsv
 ```
 
-- `HMM_SOURCE_PROTEIN_misc.tsv`: This file contains basic information about each representative sequence in the workflow including: 
+- `HMM_SOURCE_PROTEIN_misc.tsv`: This file contains basic information about each representative sequence in the workflow including:
   - contigs_db_type: genome or metagenomic assembly
   - genomic_seq_in_cluster: YES/NO a sequence that originate from an input genome is in the cluster
   - cluster_size: number of sequences in mmseqs cluster
@@ -203,7 +203,7 @@ This directory contains the output of the EcoPhylo sequences profiled with metag
 The first step to removing bad %(hmm-hits)s is to filter out hits with low quality alignment coverage. This is done with the rule `filter_hmm_hits_by_model_coverage` which leverages %(anvi-script-filter-hmm-hits-table)s. This tool uses the output of hmmsearch to filter out hits basedon the model and/or gene coverage. We recommend 80%% model coverage filter for most cases. However, it is always recommended to explore the distribution of model coverage with any new HMM which will help you determine a proper cutoff (citation). To adjust this parameter, go to the `filter_hmm_hits_by_model_coverage` rule and change the parameter `--min-model-coverage`. You can also adjust the gene coverage by change the parameter `--min-gene-coverage`. This can help remove ORFs with outlier lengths but completely depends on the HMM you are using.
 
 {:.notice}
-Please consider exploring the distribution of alignment coverages before choosing HMM alignment coverage filtering values. [Interproscan](https://www.ebi.ac.uk/interpro/) is a great way to visualize how publicly available HMMs align to proteins. Additionally, you can parse the domtblout files from hmmsearch to explore these values in high throughput. 
+Please consider exploring the distribution of alignment coverages before choosing HMM alignment coverage filtering values. [Interproscan](https://www.ebi.ac.uk/interpro/) is a great way to visualize how publicly available HMMs align to proteins. Additionally, you can parse the domtblout files from hmmsearch to explore these values in high throughput.
 
 ```bash
 {
@@ -252,7 +252,7 @@ Below is the default settings in the ecophylo %(workflow-config)s file.
 However, maybe you're a risk taker, a maverick explorer of metagenomes. Complete or partial you accept all genes and their potential tree bending shortcomings! In this case, set `--filter-out-partial-gene-calls false` in the %(workflow-config)s.
 
 {:.notice}
-Simultaneously exploring complete and partial ORFs will increase the distribution of sequence lengths and thus impact sequence clustering. By default, we used mmseqs `"--cov-mode": 1` in the rule  `cluster_X_percent_sim_mmseqs` to help insure ORFs of all lengths properly cluster together. Please refer to the [MMseqs2 user guide description of --cov-mode](https://mmseqs.com/latest/userguide.pdf) for more details and adjust the parameter to suite your scientific endeavors. 
+Simultaneously exploring complete and partial ORFs will increase the distribution of sequence lengths and thus impact sequence clustering. By default, we used mmseqs `"--cov-mode": 1` in the rule  `cluster_X_percent_sim_mmseqs` to help insure ORFs of all lengths properly cluster together. Please refer to the [MMseqs2 user guide description of --cov-mode](https://mmseqs.com/latest/userguide.pdf) for more details and adjust the parameter to suite your scientific endeavors.
 
 ```bash
 {
@@ -283,7 +283,7 @@ It's common that not all genomes or metagenomes will have the gene family of int
 
 ### Multiple sequence alignment step with MUSCLE
 
-One step of ecophylo is to perform a multiple sequence alignment of the recruited homologs and depending on your application, this could recruit thousands of ORFs which make the MSA a challenging feat. By default, the ecophylo is designed for quick insights, and thus the %(workflow-config)s file uses MUSCLE parameters to perform a large MSA, swiftly: 
+One step of ecophylo is to perform a multiple sequence alignment of the recruited homologs and depending on your application, this could recruit thousands of ORFs which make the MSA a challenging feat. By default, the ecophylo is designed for quick insights, and thus the %(workflow-config)s file uses MUSCLE parameters to perform a large MSA, swiftly:
 
 ```bash
 "align_sequences": {
@@ -292,7 +292,7 @@ One step of ecophylo is to perform a multiple sequence alignment of the recruite
 },
 ```
 
-However, these parameters may not be optimal for your use case. For example, maybe you are trying to explore branches patterns of a specific protein family and would prefer to have mulitple interations of the MSA. Please explore the MUSCLE documentation to [documentation](https://www.drive5.com/muscle/muscle.html) customize the MSA step for your needs. You can replace the `additional_params` with whatever MUSCLE parameters that are best for you. 
+However, these parameters may not be optimal for your use case. For example, maybe you are trying to explore branches patterns of a specific protein family and would prefer to have mulitple interations of the MSA. Please explore the MUSCLE documentation to [documentation](https://www.drive5.com/muscle/muscle.html) customize the MSA step for your needs. You can replace the `additional_params` with whatever MUSCLE parameters that are best for you.
 
 ## tree-mode: Insights into the evolutionary patterns of target genes
 
@@ -345,7 +345,7 @@ PROTEIN="" # Replace with name of protein from hmm_list.txt
 anvi-interactive -t 05_TREES/"${PROTEIN}"/"${PROTEIN}"_renamed.nwk \
                  -p 05_TREES/"${PROTEIN}"/"${PROTEIN}"-PROFILE.db \
                  --fasta 05_TREES/"${PROTEIN}"/"${PROTEIN}"_renamed.faa \
-                 --manual 
+                 --manual
 ```
 
 ## profile-mode: Insights into the ecological and evolutionary patterns of target genes and environments
@@ -373,7 +373,7 @@ To visualize the output of [profile-mode](#profile-mode-insights-into-the-ecolog
 ```bash
 PROTEIN="" # Replace with name of protein from hmm_list.txt
 anvi-interactive -p METAGENOMICS_WORKFLOW/06_MERGED/"${PROTEIN}"/PROFILE.db \
-                 -c METAGENOMICS_WORKFLOW/03_CONTIGS/"${PROTEIN}"-contigs.db \
+                 -c METAGENOMICS_WORKFLOW/03_CONTIGS/"${PROTEIN}".db \
                  --manual
 ```
 
@@ -385,13 +385,13 @@ PROTEIN="" # Replace with name of protein from hmm_list.txt
 anvi-interactive -t 05_TREES/"${PROTEIN}"/"${PROTEIN}"_renamed.nwk \
                  -p 05_TREES/"${PROTEIN}"/"${PROTEIN}"-PROFILE.db \
                  --fasta 05_TREES/"${PROTEIN}"/"${PROTEIN}"_renamed.faa \
-                 --manual 
+                 --manual
 ```
 
 ## Manual curation of the ecophylo phylogeny
 
 Calculating a phylogeny from ORFs recruited from a metagenomic assembly can result in some unnatural long branches. This can be caused by a variety of reasons including a misassembled sequences that ecophylo couldn't removed automatically :(
-    
+
 To remove branches from the phylogenetic tree in the ecophylo interface, you can manually curate the tree and reimport it into anvi'o. At the moment, anvi'o does not have an automated program to do this but here is a workflow:
 
 {:.notice}
@@ -417,7 +417,7 @@ anvi-export-collection -C bad_branches -p METAGENOMICS_WORKFLOW/06_MERGED/"${PRO
 # Clean fasta headers
 cut -f 1 SUBSET_TREE/bad_branches | sed 's|_split_00001||' > SUBSET_TREE/bad_branches_headers.txt
 
-anvi-script-reformat-fasta 02_NR_FASTAS/"${PROTEIN}"/"${PROTEIN}"-AA_subset.fa --exclude-ids bad_branches_headers.txt \ 
+anvi-script-reformat-fasta 02_NR_FASTAS/"${PROTEIN}"/"${PROTEIN}"-AA_subset.fa --exclude-ids bad_branches_headers.txt \
                                                                                -o SUBSET_TREE/"${PROTEIN}"-AA_subset_remove_bad_branches.fa
 
 ALIGNMENT_PREFIX=""${PROTEIN}"-AA_subset_remove_bad_branches"
@@ -441,12 +441,12 @@ grep -v -f SUBSET_TREE/bad_branches_headers.txt SUBSET_TREE/collection-DEFAULT.t
 
 anvi-import-collection SUBSET_TREE/my_bins.txt -C curated \
                                                -p METAGENOMICS_WORKFLOW/06_MERGED/"${PROTEIN}"/PROFILE.db \
-                                               -c METAGENOMICS_WORKFLOW/03_CONTIGS/"${PROTEIN}"-contigs.db
-                        
+                                               -c METAGENOMICS_WORKFLOW/03_CONTIGS/"${PROTEIN}".db
+
 anvi-split -C curated \
            --bin-id EVERYTHING_curated \
            -p METAGENOMICS_WORKFLOW/06_MERGED/"${PROTEIN}"/PROFILE.db \
-           -c METAGENOMICS_WORKFLOW/03_CONTIGS/"${PROTEIN}"-contigs.db \
+           -c METAGENOMICS_WORKFLOW/03_CONTIGS/"${PROTEIN}".db \
            --output-dir SUBSET_TREE/"${PROTEIN}"_curated
 ```
 
@@ -457,20 +457,20 @@ packages <- c("tidyverse", "ape", "phytools", "glue")
 suppressMessages(lapply(packages, library, character.only = TRUE))
 
 add_split_string_to_tree <- function(IN_PATH, OUT_PATH) {
-  
+
   # Import tree
   tree <- read.tree(IN_PATH)
-  
+
   # Create DF with tree tip metadata
-  tree_tip_metadata <- tree$tip.label %%>%% 
+  tree_tip_metadata <- tree$tip.label %%>%%
     as_tibble() %%>%%
     rename(tip_label = value) %%>%%
     mutate(tip_label = str_c(tip_label, "_split_00001"))
-  
-  
+
+
   tree$tip.label <- tree_tip_metadata$tip_label
-  
-  # Write DF 
+
+  # Write DF
   print(OUT_PATH)
   write.tree(tree, file = OUT_PATH)
 }
@@ -575,7 +575,7 @@ To visualize the results of the different ecophylo runs, just change the paths t
 
 ```bash
 PROTEIN="" # Replace with name of protein from hmm_list.txt
-anvi-interactive -c METAGENOMICS_WORKFLOW/03_CONTIGS/"${PROTEIN}"-contigs.db -p METAGENOMICS_WORKFLOW/06_MERGED/"${PROTEIN}"/PROFILE.db
+anvi-interactive -c METAGENOMICS_WORKFLOW/03_CONTIGS/"${PROTEIN}".db -p METAGENOMICS_WORKFLOW/06_MERGED/"${PROTEIN}"/PROFILE.db
 ```
 
 However, if you are interested in comparing the outputs of different parameters on the same protein, make a new %(workflow-config)s file, otherwise ecophylo will try and fail to overwrite your original run.
@@ -650,7 +650,7 @@ rm -rf "${HOME_DIR}"/METAGENOMICS_WORKFLOW/
 
 ### Ecophylo data generation sandbox
 
-Here is how to make an *in silico* dataset of genomes and metagenomes from the [Infant gut dataset](https://merenlab.org/tutorials/infant-gut/) to test and further develop the ecophylo workflow. This test dataset contains the Infant gut metagenomic co-assembly, MAGs generated from that co-assembly, and isolate genomes. 
+Here is how to make an *in silico* dataset of genomes and metagenomes from the [Infant gut dataset](https://merenlab.org/tutorials/infant-gut/) to test and further develop the ecophylo workflow. This test dataset contains the Infant gut metagenomic co-assembly, MAGs generated from that co-assembly, and isolate genomes.
 
 #### 1. Get ORFs from Infant Gut Dataset
 
@@ -685,7 +685,7 @@ mkdir 00_FASTA
 anvi-get-sequences-for-hmm-hits --contigs-db CONTIGS.db --hmm-sources Bacteria_71 --output-file 00_FASTAS/infant_gut_tutorial_Bacteria_71.fna
 
 # Makes list of proteins of interest
-echo -e "Ribosomal_S11\nRibosomal_L16" > 00_FASTAS/test_proteins.txt 
+echo -e "Ribosomal_S11\nRibosomal_L16" > 00_FASTAS/test_proteins.txt
 
 # Get contig names that contain proteins of interest
 grep ">" infant_gut_tutorial_Bacteria_71.fna | grep -f 00_FASTAS/test_proteins.txt | sed 's|contig:|\t|' | cut -f 2 | sed 's/|gene_callers_id:/\t/' | cut -f 1 | sort -u > 00_FASTAS/my_favorite_contigs.txt
@@ -852,6 +852,6 @@ anvi-run-workflow -w ecophylo -c config_RP_L16.json
 anvi-run-workflow -w ecophylo -c config_RP_S11.json
 
 # Visualize
-anvi-interactive -c 03_CONTIGS/Ribosomal_L16-contigs.db -p 06_MERGED/Ribosomal_L16/PROFILE.db
-anvi-interactive -c 03_CONTIGS/Ribosomal_S11-contigs.db -p 06_MERGED/Ribosomal_S11/PROFILE.db
+anvi-interactive -c 03_CONTIGS/Ribosomal_L16.db -p 06_MERGED/Ribosomal_L16/PROFILE.db
+anvi-interactive -c 03_CONTIGS/Ribosomal_S11.db -p 06_MERGED/Ribosomal_S11/PROFILE.db
 ```

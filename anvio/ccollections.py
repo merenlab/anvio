@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 
 """Implements the collections class (the file name has an extra 'c' to avoid
 masking the standard collections library).

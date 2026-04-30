@@ -88,19 +88,16 @@ function loadAll() {
     highlight_gene = getParameterByName('highlight_gene') === 'true';
     gene_mode = getParameterByName('gene_mode') === 'true';
 
-    if (typeof localStorage.state === 'undefined') {
-        state = {
-            snvs_enabled: false,
-            show_highlights: true
-        };
-    } else {
-        state = JSON.parse(localStorage.state);
+    state = typeof localStorage.state === 'undefined' ? {} : JSON.parse(localStorage.state);
+
+    // Give URL parameter priority so `anvi-inspect` can force SNVs on initial load.
+    const showSnvsParam = getParameterByName('show_snvs');
+    if (showSnvsParam !== null && showSnvsParam !== '') {
+        state['snvs_enabled'] = showSnvsParam === 'true';
+    } else if (state['snvs_enabled'] == null) {
+        state['snvs_enabled'] = false;
     }
 
-    // Ensure state properties are defined
-    if (state['snvs_enabled'] == null) {
-        state['snvs_enabled'] = getParameterByName('show_snvs') === 'true';
-    }
     if (state['show_highlights'] == null) {
         state['show_highlights'] = true;
     }
@@ -116,6 +113,15 @@ function loadAll() {
             success: function(response) {
                 info("Received split data from the server");
                 state = response['state'];
+
+                // Initialize SNV visibility before processing variability so maxVariability is computed correctly.
+                const showSnvsParam = getParameterByName('show_snvs');
+                if (showSnvsParam !== null && showSnvsParam !== '') {
+                    state['snvs_enabled'] = showSnvsParam === 'true';
+                } else if (state['snvs_enabled'] == null) {
+                    state['snvs_enabled'] = false;
+                }
+
                 page_header = response.title;
                 layers = response.layers;
                 coverage = response.coverage;
@@ -323,6 +329,8 @@ function loadAll() {
 
                 // on initial load from main interface
                 if(state['state-name'] != current_state_name) {
+                    current_state_name = state['state-name'];
+
                     $.ajax({
                         type: 'GET',
                         cache: false,
@@ -334,18 +342,15 @@ function loadAll() {
                                 // In this case there is no state, and no other data to be read from, and we
                                 // fail to show SNVs and INDELs even when they are there, which is not the best
                                 // behavior here. leaving this here so we remember:
-                                
+
                                 if (!response || response.length < 2) {
-                                    toastr.error("Invalid response received from the server.");
+                                   // We didn't get what we expect -- let's go back?
                                     return;
                                 }
 
                                 clusteringData = response[1]['data'];
                                 info("Loading ordering data");
                                 loadOrderingAdditionalData(response[1]);
-
-                                info("Processing state data from the server");
-                                processState(state['state-name'], response[0]);
                             } catch (e) {
                                 console.error("Exception thrown", e.stack);
                                 toastr.error('Failed to parse state data, ' + e);
@@ -1169,7 +1174,7 @@ function showSetMaxValuesDialog() {
         var layer_name = layers_ordered[i];
         var layer_index = layers.indexOf(layer_name);
 
-        if (!(state['layers'].hasOwnProperty(layer_name) && parseFloat(state['layers'][layer_name]['height']) == 0)) {
+        if (!(state['layers'].hasOwnProperty(layer_name) && (parseFloat(state['layers'][layer_name]['height']) == 0 || state['layers'][layer_name]['visible'] === false))) {
             var max_val
             var actual_max_val = GetMaxMin(coverage[layer_index])['Max'];
             if (has_max_coverage_values) {
@@ -1407,13 +1412,23 @@ function loadOrderingAdditionalData(order) {
     if (order.hasOwnProperty('additional')) {
         let orders_additional = order['additional'];
 
-        if (typeof orders_additional === 'string') {
-            orders_additional = JSON.parse(orders_additional);
+        try {
+            // Additional data may arrive as JSON, a JSON-encoded string, or double-encoded
+            while (typeof orders_additional === 'string') {
+                orders_additional = JSON.parse(orders_additional);
+            }
+        } catch (error) {
+            console.warn('Failed to parse additional order data', error, orders_additional);
+            orders_additional = {};
         }
 
-        if (orders_additional.hasOwnProperty('collapsedNodes')) {
+        if (orders_additional && orders_additional.hasOwnProperty('collapsedNodes')) {
             collapsedNodes = orders_additional['collapsedNodes'];
         }
+    }
+
+    if (typeof refreshCollapsedNodesTable === 'function') {
+        refreshCollapsedNodesTable();
     }
 }
 
@@ -1665,7 +1680,7 @@ function createCharts(state){
     for(var i = 0; i < layersCount; i++){
         var layer_index = layers.indexOf(layers_ordered[i]);
 
-        if (parseFloat(state['layers'][layers_ordered[i]]['height']) == 0) {
+        if (parseFloat(state['layers'][layers_ordered[i]]['height']) == 0 || state['layers'][layers_ordered[i]]['visible'] === false) {
             continue;
         }
 

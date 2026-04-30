@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """
     Classes to define and work with anvi'o pangenomics workflows.
 """
@@ -65,7 +63,7 @@ class PangenomicsWorkflow(PhylogenomicsWorkflow, ContigsDBWorkflow, WorkflowSupe
                      "--minbit", "--mcl-inflation", "--min-occurrence",\
                      "--min-percent-identity", "--description",\
                      "--overwrite-output-destinations", "--skip-hierarchical-clustering",\
-                     "--enforce-hierarchical-clustering", "--distance", "--linkage"]
+                     "--enforce-hierarchical-clustering", "--distance", "--linkage", "--I-know-this-is-not-a-good-idea"]
         self.rule_acceptable_params_dict['anvi_pan_genome'] = pan_params
 
         storage_params = ["--gene-caller"]

@@ -244,5 +244,3 @@ STEP_METADATA_HEADERS = ["step_definition"]
 # Global and overview map IDs have certain ranges of numbers.
 GLOBAL_MAP_ID_PATTERN = re.compile(r'\d{1}11\d{2}')
 OVERVIEW_MAP_ID_PATTERN = re.compile(r'\d{1}1[23]\d{2}')
-
-

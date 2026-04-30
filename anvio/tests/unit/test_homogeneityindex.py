@@ -1,4 +1,3 @@
-# -*- coding: utf-8
 # pylint: disable=line-too-long
 """
     Unit tests for the HomogeneityCalculator class.
@@ -199,9 +198,9 @@ class ComputeGeometrixIndexTestCase(unittest.TestCase):
 
         self.calculator = homogeneityindex.HomogeneityCalculator(quick_homogeneity=False)
         
-        # For the geometric homogeneity index.  This looks like a lot, but it is good to double check that the 
-        # by-hand calculation matches the code, and to list it out explicitly so it is clearer how the algorithm 
-        # works. 
+        # For the geometric homogeneity index.  This looks like a lot, but it is good to double check that the
+        # by-hand calculation matches the code, and to list it out explicitly so it is clearer how the algorithm
+        # works.
         num_seqs = len(self.gene_sequences)
         num_aln_cols = len(self.gene_sequences[0])
 

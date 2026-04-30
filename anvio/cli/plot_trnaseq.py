@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Plot coverage and modification data from flexible groups of tRNA-seq seeds"""
 
 import sys

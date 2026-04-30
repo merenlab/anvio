@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """This file contains classes for predicting metabolic exchanges via the reaction network and KGML processing subsystems."""
 
 import os
@@ -7,18 +6,15 @@ import sys
 import multiprocessing
 from copy import deepcopy
 from argparse import Namespace
-from collections import defaultdict
 
 import anvio
-import anvio.kgml as kgml
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.kgmlnetworkops as nw
 import anvio.reactionnetwork as rn
 import anvio.filesnpaths as filesnpaths
 
-from anvio.dbops import ContigsDatabase
-from anvio.errors import ConfigError, FilesNPathsError
+from anvio.errors import ConfigError
 from anvio.genomedescriptions import GenomeDescriptions
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -177,7 +173,7 @@ class ExchangePredictorArgs():
                 header_list = exchange_header
             if mode == 'compounds-with-no-prediction':
                 header_list = base_header
-            
+
             if len(output_dicts[mode]):
                 if mode == 'evidence':
                     file_obj.append(output_dicts[mode], do_not_write_key_column=True, none_value="None")
@@ -352,7 +348,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                 data_dicts['compounds-with-no-prediction'].update(no_prediction_rn)
                 self.run.warning(f"Identified {len(data_dicts['compounds-with-no-prediction'])} compounds with no prediction",
                                  header='COMPOUNDS WITH NO PREDICTION', lc='green')
-            
+
             # clean up to spare some memory
             del pot_exchanged_rn, uniq_rn, no_prediction_rn
 
@@ -936,7 +932,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         no_prediction_compounds = {}
         pathway_walk_evidence = {}
         pathway_walk_dict_key = 0
-        
+
         num_compounds_to_process = len(self.compound_to_pathway_walk_chains)
         processed_count = 0
         num_skipped = 0
@@ -1086,12 +1082,12 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
 
                         def update_reported_pathway_evidence_for_chain(current_chain, comparison_chain):
                             """Updates variables like overall_max_prior with values from the current pathway map as the new 'best'
-                            evidence for an exchange. current_chain and comparison_chain store the length, overlap length, overlap proportion, and map id of 
+                            evidence for an exchange. current_chain and comparison_chain store the length, overlap length, overlap proportion, and map id of
                             the current 'best' reaction chain and the comparison chain, respectively."""
                             cur_max, cur_overlap, cur_prop, cur_map = current_chain
                             comp_max, comp_overlap, comp_prop, comp_map = comparison_chain
                             best_evidence = current_chain # by default we don't update anything
-                            
+
                             if cur_max is not None:
                                 if comp_max is not None and comp_max >= cur_max: # look for the longest chain
                                     if comp_max == cur_max: # if they have the same length, take the one that has smallest real number overlap proportion
@@ -1284,7 +1280,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                     potentially_exchanged_compounds[compound_id]['consumption_overlap_proportion'] = None
                     potentially_exchanged_compounds[compound_id]['production_chain_pathway_map'] = None
                     potentially_exchanged_compounds[compound_id]['consumption_chain_pathway_map'] = None
-            else: # no prediction for this compound. 
+            else: # no prediction for this compound.
                 if self.report_compounds_with_no_prediction:
                     no_prediction_compounds[compound_id] = {'compound_name': compound_name,
                                                         'genomes': all_genome_names if all_genome_names else None,

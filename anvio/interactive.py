@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """The module that curates data for the interactive interface"""
 
 import os
@@ -155,11 +153,14 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # get additional data for items and layers, and get layer orders data.
         try:
             a_db_is_found = (os.path.exists(self.pan_db_path) if self.pan_db_path else False) or (os.path.exists(self.profile_db_path) if self.profile_db_path else False)
-            self.items_additional_data_keys, self.items_additional_data_dict = TableForItemAdditionalData(self.args).get() if a_db_is_found else ([], {})
+            if a_db_is_found:
+                self.items_additional_data_keys, self.items_additional_data_dict, self.items_additional_data_groups = TableForItemAdditionalData(self.args).get_all_flattened()
+            else:
+                self.items_additional_data_keys, self.items_additional_data_dict, self.items_additional_data_groups = [], {}, {}
             self.layers_additional_data_keys, self.layers_additional_data_dict = TableForLayerAdditionalData(self.args).get_all() if a_db_is_found else ([], {})
             self.layers_order_data_dict = TableForLayerOrders(self.args).get() if a_db_is_found else {}
         except GenesDBError as e:
-            self.items_additional_data_keys, self.items_additional_data_dict = [], {}
+            self.items_additional_data_keys, self.items_additional_data_dict, self.items_additional_data_groups = [], {}, {}
             self.layers_additional_data_keys, self.layers_additional_data_dict = [], {}
             self.layers_order_data_dict = {}
 
@@ -761,8 +762,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.default_view = self.p_meta['default_view']
             self.views[self.default_view] = {'header': view_data_columns[1:],
                                              'dict': utils.get_TAB_delimited_file_as_dictionary(view_data_path)}
-            
-            # sanity check for items order stored in database, since we cannot check the consistency of items 
+
+            # sanity check for items order stored in database, since we cannot check the consistency of items
             # when we import items orders as the view data is not stored in the profile db
             if item_orders_in_db:
                 for item_order in item_orders_in_db:
@@ -861,7 +862,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                                             row_ids_of_interest=self.split_names_of_interest)
 
             try:
-                clustering_id, newick = clustering.order_contigs_simple(config, progress=progress)
+                clustering_id, newick = clustering.order_contigs_simple(config, distance=self.distance, linkage=self.linkage, progress=progress)
             except Exception as e:
                 run.warning('Clustering has failed for "%s": "%s"' % (config_name, e))
                 progress.end()
@@ -2056,14 +2057,25 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             # (2) then add length and GC content IF we have sequences available
             if self.splits_basic_info:
                 basic_info_headers = ['length', 'gc_content']
+                if '__parent__' in view_headers:
+                    basic_info_headers.append('__parent__')
+                    view_headers = [h for h in view_headers if h != '__parent__']
                 json_header.extend(basic_info_headers)
+                self.items_additional_data_groups['basic_info'] = list(basic_info_headers)
 
             # (3) then add the view!
             json_header.extend(view_headers)
 
+            # add view headers to the 'default' group so they get a checkbox in the interface
+            if view_headers:
+                if 'default' not in self.items_additional_data_groups:
+                    self.items_additional_data_groups['default'] = []
+                self.items_additional_data_groups['default'] = list(view_headers) + self.items_additional_data_groups['default']
+
             # (4) then add 'additional' headers as the outer ring:
             if self.items_additional_data_keys:
-                self.items_additional_data_keys = sorted(self.get_layer_names_with_at_least_one_hit_for_splits(self.items_additional_data_keys, self.items_additional_data_dict))
+                keys_with_hits = set(self.get_layer_names_with_at_least_one_hit_for_splits(self.items_additional_data_keys, self.items_additional_data_dict))
+                self.items_additional_data_keys = [k for k in self.items_additional_data_keys if k in keys_with_hits]
                 json_header.extend(self.items_additional_data_keys)
 
             # (5) finally add hmm search results
@@ -2085,7 +2097,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 # let's sort these layers alphabetically
                 self.hmm_searches_header = sorted(self.hmm_searches_header)
 
-                json_header.extend([tpl[0] for tpl in self.hmm_searches_header])
+                hmm_layer_names = [tpl[0] for tpl in self.hmm_searches_header]
+                json_header.extend(hmm_layer_names)
+                self.items_additional_data_groups['HMM'] = hmm_layer_names
 
             # (6) add taxonomy, if exitsts:
             if len(self.splits_taxonomy_dict):
@@ -2100,14 +2114,18 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
                 # (2)
                 if self.splits_basic_info:
-                    json_entry.extend([self.splits_basic_info[split_name][header] for header in basic_info_headers])
+                    for header in basic_info_headers:
+                        if header == '__parent__':
+                            json_entry.append(view_dict[split_name].get('__parent__'))
+                        else:
+                            json_entry.append(self.splits_basic_info[split_name][header])
 
                 # (3) adding essential data for the view
                 json_entry.extend([view_dict[split_name][header] if header in view_dict[split_name] else 0 for header in view_headers])
 
                 # (4) adding additional layers
                 if self.items_additional_data_keys:
-                    json_entry.extend([self.items_additional_data_dict[split_name][header] if split_name in self.items_additional_data_dict else None for header in self.items_additional_data_keys])
+                    json_entry.extend([self.items_additional_data_dict.get(split_name, {}).get(header) for header in self.items_additional_data_keys])
 
                 # (5) adding hmm stuff
                 if self.hmm_searches_dict:
@@ -3339,10 +3357,7 @@ class ContigsInteractive():
         MIN_L = lambda: [min(lengths) for lengths in contig_lengths_for_all]
         basic_stats.append(['Longest Contig'] + MAX_L())
         basic_stats.append(['Shortest Contig'] + MIN_L())
-
-        self.progress.update('Number of genes ...')
-        contig_lengths_for_all = [c['contig_lengths'] for c in self.contigs_stats.values()]
-        basic_stats.append(['Num Genes'] + [c['num_genes'] for c in self.contigs_stats.values()])
+        basic_stats.append(['Mean Contig Length (trim 10%)'] + [f"{c['contig_length_trimmed_mean_10pct']:.2f}" if isinstance(c['contig_length_trimmed_mean_10pct'], (int, float)) else c['contig_length_trimmed_mean_10pct'] for c in self.contigs_stats.values()])
 
         self.progress.update('N/L values ...')
         n_values = [c['n_values'] for c in self.contigs_stats.values()]
@@ -3355,8 +3370,18 @@ class ContigsInteractive():
         basic_stats.append(['N75'] + L(74))
         basic_stats.append(['N90'] + L(89))
 
+        # gene stats in their own section
+        self.progress.update('Gene stats ...')
+        gene_stats = []
+        gene_stats.append(['Num Genes'] + [c['num_genes'] for c in self.contigs_stats.values()])
+        gene_stats.append(['Avg Gene Length'] + [f"{c['avg_gene_length']:.2f}" if isinstance(c['avg_gene_length'], (int, float)) else c['avg_gene_length'] for c in self.contigs_stats.values()])
+        gene_stats.append(['Avg Gene Length (trim 10%)'] + [f"{c['avg_gene_length_trimmed_10pct']:.2f}" if isinstance(c['avg_gene_length_trimmed_10pct'], (int, float)) else c['avg_gene_length_trimmed_10pct'] for c in self.contigs_stats.values()])
+        gene_stats.append(['Min Gene Length'] + [c['min_gene_length'] for c in self.contigs_stats.values()])
+        gene_stats.append(['Max Gene Length'] + [c['max_gene_length'] for c in self.contigs_stats.values()])
+
         self.tables['basic_stats'] = basic_stats
-        self.human_readable_keys.extend([e[0] for e in basic_stats])
+        self.tables['gene_stats'] = gene_stats
+        self.human_readable_keys.extend([e[0] for e in basic_stats + gene_stats])
 
         ##
         ##  Table for hmm hits

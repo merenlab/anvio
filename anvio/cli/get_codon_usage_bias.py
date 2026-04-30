@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Get codon usage bias (CUB) of genes and functions."""
 
 
@@ -583,6 +582,7 @@ def get_args():
         help="Only allow CUB to be calculated for a genome if the set of reference genes contains "
              "at least this many codons. This filter applies after excluding codons for individual "
              "amino acids using `--reference-exclude-amino-acid-count`.")
+    groupH.add_argument(*anvio.A('skip-checking-genome-hashes'), **anvio.K('skip-checking-genome-hashes'))
 
     return parser.get_args(parser)
 

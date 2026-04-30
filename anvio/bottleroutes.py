@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """
     Common routes for bottle web server.
 
@@ -366,7 +364,7 @@ class BottleApplication(Bottle):
                         item_lengths[gene_cluster] += len(self.interactive.gene_clusters[gene_cluster][genome])
 
             functions_sources = []
-            if self.interactive.mode == 'full' or self.interactive.mode == 'gene' or self.interactive.mode == 'refine':
+            if self.interactive.mode in ['full', 'gene', 'refine', 'codon-frequencies']:
                 functions_sources = list(self.interactive.gene_function_call_sources)
             elif self.interactive.mode == 'pan':
                 functions_sources = list(self.interactive.gene_clusters_function_sources)
@@ -387,6 +385,7 @@ class BottleApplication(Bottle):
                                  "layers_order":                       self.interactive.layers_order_data_dict,
                                  "layers_information":                 self.interactive.layers_additional_data_dict,
                                  "layers_information_default_order":   self.interactive.layers_additional_data_keys,
+                                 "items_additional_data_groups":       getattr(self.interactive, 'items_additional_data_groups', {}),
                                  "check_background_process":           True,
                                  "autodraw":                           autodraw,
                                  "inspection_available":               inspection_available,
@@ -1070,7 +1069,7 @@ class BottleApplication(Bottle):
 
         path = "summary/%s/index.html" % (collection_name)
         return json.dumps({'path': path})
-        
+
 
     def send_summary_static(self, collection_name, filename):
         if self.interactive.mode == 'pan':

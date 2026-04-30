@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-# pylint: disable=line-too-long
 """To make sense of config files for mixed clustering"""
 
 import os
@@ -10,6 +8,8 @@ import anvio
 import anvio.db as db
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
+
+import anvio.tables as t
 
 from anvio.utils import check_sample_id
 from anvio.utils import store_array_as_TAB_delimited_file as store_array
@@ -231,6 +231,10 @@ class ClusteringConfiguration:
 
     def check_for_db_requests(self, config):
         sections = self.get_other_sections(config)
+
+        # cache for splits_basic_info, loaded lazily when a _contigs view table is encountered
+        _cached_splits_basic_info = None
+
         # look for requests from the database, create temporary tab delimited files:
         for section in sections:
             alias, matrix = section.split()
@@ -274,7 +278,25 @@ class ClusteringConfiguration:
                 table_form = self.get_option(config, section, 'table_form', str)
 
                 if table_form == 'view':
-                    table_rows, _ = dbc.get_view_data(table, split_names_of_interest=self.row_ids_of_interest)
+                    if table.endswith('_contigs'):
+                        # _contigs view tables store one row per contig. for clustering we need
+                        # split-keyed rows, so we expand using splits_basic_info from the contigs DB.
+                        if _cached_splits_basic_info is None:
+                            contigs_db_path = self.db_paths.get('CONTIGS.db')
+                            if contigs_db_path is None:
+                                raise ConfigError("The clustering config references the _contigs view table '%s', "
+                                                  "but no contigs database path was provided (expected key 'CONTIGS.db' "
+                                                  "in db_paths)." % table)
+                            contigs_dbc = db.DB(contigs_db_path, None, ignore_version=True)
+                            _cached_splits_basic_info = contigs_dbc.get_table_as_dict(t.splits_info_table_name)
+                            contigs_dbc.disconnect()
+
+                        table_rows, _ = dbc.get_view_data(table,
+                                                          split_names_of_interest=self.row_ids_of_interest,
+                                                          splits_basic_info=_cached_splits_basic_info,
+                                                          expand_to_splits=True)
+                    else:
+                        table_rows, _ = dbc.get_view_data(table, split_names_of_interest=self.row_ids_of_interest)
                 else:
                     if self.row_ids_of_interest:
                         if table_form == 'dataframe':
@@ -297,7 +319,13 @@ class ClusteringConfiguration:
                 if table_form == 'dataframe':
                     args = argparse.Namespace(pan_or_profile_db=database_path, table_name=table)
                     table = TableForItemAdditionalData(args)
-                    table_keys_list, table_data_dict = table.get()
+                    keys_by_group, data_by_group = table.get_all()
+                    table_data_dict = {}
+                    for group_data in data_by_group.values():
+                        for item_name, item_data in group_data.items():
+                            if item_name not in table_data_dict:
+                                table_data_dict[item_name] = {}
+                            table_data_dict[item_name].update(item_data)
                     store_dict_as_TAB_delimited_file(table_data_dict, tmp_file_path)
                 elif table_form == 'view':
                     store_dict_as_TAB_delimited_file(table_rows, tmp_file_path)
@@ -349,5 +377,3 @@ class ClusteringConfiguration:
                                'configuration only %d of %d matrices have ratio values defined. Either remove '
                                'all, or complete the remaining one%s.' % (with_ratio, len(sections),
                                                                           's' if (len(sections) - with_ratio) > 1 else ''))
-
-

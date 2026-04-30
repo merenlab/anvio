@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """A library to process anvi'o authors file"""
 
 import os

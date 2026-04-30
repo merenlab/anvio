@@ -1,6 +1,4 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
-"""Codon usage analyses at the levels of genes, functional groups of genes, and genomes"""
+"""Module for codon usage analyses at the levels of genes, groups of genes, and genomes"""
 
 import os
 import copy

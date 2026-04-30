@@ -12,7 +12,7 @@ The column names may be one of these:
 * `length`: Depending on the context, the length of the gene or contig.
 * `num_mapped_reads`: The actual number of short reads mapping to a gene or contig in a given sample. Useful for those who wish to do TPM/RPKM normalizations.
 * `detection`: Proportion of nucleotides that have at least 1X coverage.
-* `mean_cov`: Mean covearge.
+* `mean_cov`: Mean coverage.
 * `q2q3_cov`: Mean of the coverage (inner quartiles).
 * `median_cov`: Median coverage.
 * `min_cov`: Minimum coverage value observed for the gene or the contig.
@@ -168,4 +168,4 @@ then go into the directory,
 cd TEST
 ```
 
-and run %(anvi-profile-blitz)s in coresponding modes.
+and run %(anvi-profile-blitz)s in corresponding modes.

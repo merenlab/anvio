@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """A script to run automatic binning algorithms on a merged anvi'o profile"""
 import os
 import sys
@@ -94,20 +93,13 @@ def prepare_input_files(temp_path, profile_db, contigs_db):
 
     splits_basic_info = contigs_db.db.get_table_as_dict(t.splits_info_table_name)
 
-    split_coverages, _ = profile_db.db.get_view_data('mean_coverage_contigs', splits_basic_info=splits_basic_info)
-    split_coverages_log_norm, _ = profile_db.db.get_view_data('mean_coverage_contigs', splits_basic_info=splits_basic_info, log_norm_numeric_values=True)
+    # get contig-level coverages directly from _contigs tables
+    contig_coverages, _ = profile_db.db.get_view_data('mean_coverage_contigs', expand_to_splits=False)
+    contig_coverages_log_norm, _ = profile_db.db.get_view_data('mean_coverage_contigs', expand_to_splits=False, log_norm_numeric_values=True)
 
-    contig_coverages = {}
-    contig_coverages_log_norm = {}
-    contig_names = set([x['__parent__'] for x in split_coverages.values()])
-
-    for split_name in split_coverages:
-        entry = split_coverages[split_name]
-        entry_log_norm = split_coverages_log_norm[split_name]
-        c = entry['__parent__']
-        if c in contig_names and c not in contig_coverages:
-            contig_coverages[c] = entry
-            contig_coverages_log_norm[c] = entry_log_norm
+    # get split-level views (expanded from _contigs tables so splits carry their parent contig's value)
+    split_coverages, _ = profile_db.db.get_view_data('mean_coverage_contigs', splits_basic_info=splits_basic_info, expand_to_splits=True)
+    split_coverages_log_norm, _ = profile_db.db.get_view_data('mean_coverage_contigs', splits_basic_info=splits_basic_info, expand_to_splits=True, log_norm_numeric_values=True)
 
     # Write output files
     utils.store_dict_as_TAB_delimited_file(split_coverages, input_files.split_coverages, ['contig', *sample_names])

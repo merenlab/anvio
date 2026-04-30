@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """File/Path operations"""
 
 import os
@@ -109,7 +107,7 @@ def is_proper_external_gene_calls_file(file_path):
             if not has_aa_sequences and i == 9:
                 break
             if headers[i] != h:
-                raise FilesNPathsError(f"The headers in your external gene calls file are out of order, so we can't associate each line's fields " 
+                raise FilesNPathsError(f"The headers in your external gene calls file are out of order, so we can't associate each line's fields "
                                        f"to the right data type. Please re-order the columns to match this order: \"{', '.join(headers_proper)}. "
                                        f"Anvi'o is sorry to make you jump through these hoops, but promises that it is the best way for more "
                                        f"efficient processing of your data.")
@@ -355,8 +353,9 @@ def is_file_bam_file(file_path, dont_raise=False, ok_if_not_indexed=False):
     return True
 
 
-def is_program_exists(program):
+def is_program_exists(program, advice_if_not_exists=None):
     """adapted from http://stackoverflow.com/a/377028"""
+
     def is_exe(fpath):
         return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
 
@@ -371,7 +370,12 @@ def is_program_exists(program):
             if is_exe(exe_file):
                 return True
 
-    raise FilesNPathsError("'%s' is not found" % program)
+    # so the program doesn't exist ..
+    error_msg = (f"The program '{program}' is not found in your path, "
+                 f"but it is needed for the task you set out to do :/"
+                 f"{' ' + advice_if_not_exists if advice_if_not_exists else ''}")
+
+    raise FilesNPathsError(error_msg)
 
 
 def get_temp_directory_path(just_the_path=False):
@@ -414,8 +418,23 @@ def check_output_directory(output_directory, ok_if_exists=False):
 
     output_directory = os.path.abspath(output_directory)
 
+    # I just managed to pass /etc/passwd as an output directory to anvi'o and I was not happy about it,
+    # so let's start with a simple sanity check
+    if os.path.isfile(output_directory):
+        raise FilesNPathsError(f"The path '{output_directory}' already exists as a regular file. Anvi'o was expecting "
+                               f"to use this path as a directory, but it will not overwrite a file with a directory "
+                               f"even if you use `--force-overwrite` (because that flag is only relevant for directories, "
+                               f"and anvi'o is not *that* crazy).")
+
+    def user_has_permission_to_remove(path):
+        return os.access(os.path.dirname(path), os.W_OK) and os.access(path, os.W_OK)
+
     if os.path.exists(output_directory) and not ok_if_exists:
         if anvio.FORCE_OVERWRITE:
+            if not user_has_permission_to_remove(output_directory):
+                raise FilesNPathsError(f"You asked anvi'o to force-overwrite the directory at '{output_directory}', but you do "
+                                       f"not have the necessary permissions to remove it. Please choose a different output "
+                                       f"directory path, or ask your system administrator to update your permissions.")
             try:
                 shutil.rmtree(output_directory)
             except Exception as e:
@@ -423,11 +442,29 @@ def check_output_directory(output_directory, ok_if_exists=False):
                                        f"yet it failed (typical anvi'o?). Here is the error message from another programmer in "
                                        f"the matrix: {e}.")
         else:
-            raise FilesNPathsError(f"The output directory '{output_directory}' already exists (and anvi'o does not like "
-                                   f"overwriting stuff (except when it does (typical anvi'o))). But you can always use "
-                                   f"the flag `--force-overwrite` to assert your dominance. In which case anvi'o would "
-                                   f"first remove the existing output directory (a flag that deserves extreme caution "
-                                   f"for obvious reasons).")
+            if user_has_permission_to_remove(output_directory):
+                raise FilesNPathsError(f"The output directory '{output_directory}' already exists (and anvi'o does not like "
+                                       f"overwriting stuff (except when it does (typical anvi'o))). But you can always use "
+                                       f"the flag `--force-overwrite` to assert your dominance. In which case anvi'o would "
+                                       f"first remove the existing output directory (a flag that deserves extreme caution "
+                                       f"for obvious reasons).")
+            else:
+                raise FilesNPathsError(f"The output directory '{output_directory}' already exists, and anvi'o does not have "
+                                       f"the necessary permissions to remove it (so it will not even suggest using "
+                                       f"`--force-overwrite` here). Please choose a different output directory path.")
+
+    # check whether we have write permission in the nearest existing ancestor directory
+    # so we can create the output directory when the time comes (without having to wait
+    # eons just to fail at the very end :/ we walk up the path because the immediate
+    # parent may not exist yet either (e.g., creating /x/y/z/t when only /x/y exists)
+    nearest_existing_ancestor = os.path.dirname(output_directory)
+    while nearest_existing_ancestor and not os.path.exists(nearest_existing_ancestor):
+        nearest_existing_ancestor = os.path.dirname(nearest_existing_ancestor)
+
+    if not nearest_existing_ancestor or not os.access(nearest_existing_ancestor, os.W_OK):
+        raise FilesNPathsError(f"You do not have permission to create the output directory '{output_directory}' since "
+                               f"The nearest existing parent directory, '{nearest_existing_ancestor}', is not writable "
+                               f"by you :/")
 
     return output_directory
 

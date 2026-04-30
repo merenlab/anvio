@@ -1,5 +1,3 @@
-# coding: utf-8
-# pylint: disable=line-too-long
 """Creates an HTML output to act as a front-end for the static summary directory."""
 
 import os
@@ -48,7 +46,7 @@ try:
 except ImportError:
     raise ConfigError('You need to have Django module (http://djangoproject.com) installed on your system to generate HTML output.')
 
-# It seems this really wants to be here in the global context :/ 
+# It seems this really wants to be here in the global context :/
 settings.configure(**local_settings)
 django.setup()
 
@@ -209,4 +207,3 @@ def pretty_join(data, and_or="and"):
     else:
         all_but_last = ", ".join(d[:-1])
         return f"{all_but_last}, {and_or} {d[-1]}"
-

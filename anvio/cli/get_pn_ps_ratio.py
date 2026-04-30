@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """
 Citations: doi:10.1126/science.aaz9642, doi:10.1038/nature11711
 """

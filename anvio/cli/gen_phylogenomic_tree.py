@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Generate phylogenomic tree from aligment file"""
 
 import os
@@ -80,7 +79,12 @@ def main():
         run.info("Output file path", output_file_path)
 
         alignments = ReadFasta(input_file_path, quiet=True)
-        run.info("Alignment names", ", ".join([i.split()[0] for i in alignments.ids]))
+        alignment_names = [i.split()[0] for i in alignments.ids]
+        if len(alignment_names) > 3:
+            display_names = ", ".join(alignment_names[:3]) + f", ... ({len(alignment_names) - 3} more)."
+        else:
+            display_names = ", ".join(alignment_names)
+        run.info("Alignment names", display_names)
 
         alignment_lengths = [len(x) for x in alignments.sequences]
         if len(set(alignment_lengths)) == 1:

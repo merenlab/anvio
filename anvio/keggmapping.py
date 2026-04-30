@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Make KEGG pathway maps incorporating data sourced from anvi'o databases."""
 
 import os
@@ -11,7 +10,6 @@ import shutil
 import functools
 import numpy as np
 import pandas as pd
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 

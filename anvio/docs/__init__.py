@@ -1,4 +1,3 @@
-# -*- coding: utf-8
 """Everything about anvi'o workflows and artifacts"""
 
 # when defining a new anvi'o workflow, it is essential to document most critical
@@ -231,6 +230,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": True
     },
+    "single-end-fastq": {
+        "name": "SHORT READS",
+        "type": "FASTQ",
+        "provided_by_anvio": True,
+        "provided_by_user": True
+    },
     "genes-fasta": {
         "name": "GENES",
         "type": "FASTA",
@@ -380,6 +385,12 @@ ANVIO_ARTIFACTS ={
         "type": "TXT",
         "provided_by_anvio": True,
         "provided_by_user":True
+    },
+    "genes-of-interest-txt": {
+        "name": "GENES OF INTEREST",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
     },
     "pfam-accession": {
         "name": "PFAM ACCESSION",

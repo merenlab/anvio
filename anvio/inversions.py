@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """A module to characterize Florian's inversions"""
 
 import os
@@ -108,6 +106,8 @@ class Inversions:
         self.min_stretch_length = A('min_stretch_length') or 50
         self.min_distance_between_independent_stretches = A('min_distance_between_independent_stretches') or 2000
         self.num_nts_to_pad_a_stretch = A('num_nts_to_pad-a_stretch') or 100
+        self.min_ratio_of_normal_to_special_coverage = A('min_ratio_of_normal_to_special_coverage') or 0.05
+        self.min_detection_to_report_coverage_ratio = A('min_detection_to_report_coverage_ratio') or 0.10
 
         # palindrome search parameters
         self.palindrome_search_algorithm = A('palindrome_search_algorithm')
@@ -232,6 +232,16 @@ class Inversions:
         profile_db = dbops.ProfileSuperclass(argparse.Namespace(profile_db=profile_db_path, contigs_db=self.contigs_db_path), r=run_quiet, p=progress_quiet)
         auxiliary_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(profile_db.auxiliary_data_path, profile_db.p_meta['contigs_db_hash'])
         sample_id = profile_db.p_meta['sample_id']
+
+        # load per-contig detection values from the profile DB. these represent the fraction
+        # of each contig covered by FWD/FWD or REV/REV reads, which is useful for identifying
+        # potential template-switching artifacts where such reads uniformly cover entire contigs.
+        contig_detections = {}
+        profile_db_obj = dbops.ProfileDatabase(profile_db_path)
+        detection_data, _ = profile_db_obj.db.get_view_data('detection_contigs', expand_to_splits=False)
+        profile_db_obj.disconnect()
+        for contig_name in self.contig_names:
+            contig_detections[contig_name] = detection_data.get(contig_name, {}).get(sample_id, 0)
 
         # here we open our bam file with an inversions fetch filter.
         # we will access to it later when it is time to get the FWD/FWD and
@@ -374,7 +384,37 @@ class Inversions:
                                                                               'start_stop': f"{start}-{stop}",
                                                                               'max_coverage': int(max(stretch_sequence_coverage)),
                                                                               'num_palindromes_found': 0,
-                                                                              'true_inversions_found': False}
+                                                                              'true_inversions_found': False,
+                                                                              'mean_coverage_special': 'NA',
+                                                                              'mean_coverage_total': 'NA',
+                                                                              'coverage_ratio': 'NA'}
+
+                # if the contig has significant detection of FWD/FWD or REV/REV reads,
+                # compute the ratio of special-read coverage to total BAM coverage at this stretch.
+                # a low ratio with high detection suggests template-switching artifacts rather than
+                # true inversions. stretches below the coverage ratio cutoff are skipped entirely.
+                contig_detection = contig_detections.get(contig_name, 0)
+                if contig_detection > self.min_detection_to_report_coverage_ratio:
+                    mean_coverage_special = float(np.mean(stretch_sequence_coverage))
+
+                    mean_coverage_total = self.get_total_mean_coverage_for_region(bam_file, contig_name, start, stop)
+
+                    if mean_coverage_total > 0:
+                        coverage_ratio = mean_coverage_special / mean_coverage_total
+                    else:
+                        coverage_ratio = 0.0
+
+                    self.stretches_considered[f"{entry_name}_{sequence_name}"]['mean_coverage_special'] = f"{mean_coverage_special:.2f}"
+                    self.stretches_considered[f"{entry_name}_{sequence_name}"]['mean_coverage_total'] = f"{mean_coverage_total:.2f}"
+                    self.stretches_considered[f"{entry_name}_{sequence_name}"]['coverage_ratio'] = f"{coverage_ratio:.4f}"
+
+                    if coverage_ratio < self.min_ratio_of_normal_to_special_coverage:
+                        if anvio.DEBUG or self.verbose:
+                            self.progress.reset()
+                            self.run.info_single(f"Skipping {sequence_name}: coverage ratio ({coverage_ratio:.4f}) is below "
+                                                 f"the cutoff ({self.min_ratio_of_normal_to_special_coverage}), which suggests "
+                                                 f"template-switching artifacts rather than true inversions.", mc="red")
+                        continue
 
                 ################################################################################
                 self.progress.update(f"{contig_name}: looking for palindromes")
@@ -775,7 +815,7 @@ class Inversions:
                                 'output_directory': self.output_directory,
                                 'genomic_context_recovered': not self.skip_recovering_genomic_context,
                                 'inversion_activity_computed': not self.skip_compute_inversion_activity,
-                                # if no function source, it says 'the contigs.db' because it fits with the message 
+                                # if no function source, it says 'the contigs.db' because it fits with the message
                                 # displayed in the final index.html. See the inversion template, line 215
                                 # if it works, it works
                                 'gene_function_sources': contigs_db.meta['gene_function_sources'] or ['the contigs.db']}
@@ -1299,8 +1339,8 @@ class Inversions:
 
 
     def parse_motif_output(self, meme_output_path, meme_log):
-        """ After searching for conserved motifs in the inverted repeats, we want to report 
-        the motif's group for each inversions. Then we can see in the report (txt summary and 
+        """ After searching for conserved motifs in the inverted repeats, we want to report
+        the motif's group for each inversions. Then we can see in the report (txt summary and
         html output) which inversions are linked together by site-specific invertase
         """
 
@@ -1308,7 +1348,7 @@ class Inversions:
         tree = ET.parse(os.path.join(meme_output_path, "meme.xml"))
         root = tree.getroot()
 
-        # for each inversion, we created 4 sequences. And MEME gave them a different id. 
+        # for each inversion, we created 4 sequences. And MEME gave them a different id.
         # it looks like this
         # INV_0001_first_IR: sequence_0
         # INV_0001_first_IR_rc: sequence_1
@@ -1350,7 +1390,7 @@ class Inversions:
                                  f"{meme_output_path}. If you want to fix this issue, you should look at the log output of MEME: {meme_log}",
                                  level=0, nl_after=1)
 
-        # anvi'o provides 4 sequences per inversions site. we want to keep only 
+        # anvi'o provides 4 sequences per inversions site. we want to keep only
         # motifs that occur on all 4 sequences.
         for sites in root.findall('scanned_sites_summary/scanned_sites'):
             for inversion_id, inversion_dict in self.motifs.items():
@@ -1615,6 +1655,25 @@ class Inversions:
         self.run.info('Long-format reporting file for inversion activity', output_path, mc='green')
 
 
+    def get_total_mean_coverage_for_region(self, bam_file, contig_name, start, end):
+        """Compute mean coverage from ALL reads (not just FWD/FWD and REV/REV) over a region.
+
+        This temporarily removes the fetch filter on the BAM file so that all reads are counted,
+        then restores the original filter. The resulting mean coverage is used to compute the ratio
+        of special-read coverage to total coverage, helping identify template-switching artifacts.
+        """
+
+        saved_fetch_filter = bam_file.fetch_filter
+        bam_file.fetch_filter = None
+
+        coverage = bamops.Coverage()
+        coverage.run(bam_file, contig_name, start=start, end=end, read_iterator='fetch_and_trim')
+
+        bam_file.fetch_filter = saved_fetch_filter
+
+        return coverage.mean
+
+
     def plot_coverage(self, sequence_name, coverage, num_bins=100):
         if anvio.QUIET:
             return
@@ -1628,7 +1687,7 @@ class Inversions:
             return
 
         try:
-            plt.clp()
+            plt.clf()
             plt.title(f"{sequence_name}")
             plt.xlabel("Position")
             plt.ylabel("Coverage")
@@ -1679,7 +1738,9 @@ class Inversions:
         self.run.info("[Defining stretches] Min FF/RR coverage to qualify", self.min_coverage_to_define_stretches)
         self.run.info("[Defining stretches] Min length", self.min_stretch_length)
         self.run.info("[Defining stretches] Min dist between independent stretches", self.min_distance_between_independent_stretches)
-        self.run.info("[Defining stretches] Num nts to pad a stretch", self.num_nts_to_pad_a_stretch, nl_after=1)
+        self.run.info("[Defining stretches] Num nts to pad a stretch", self.num_nts_to_pad_a_stretch)
+        self.run.info("[Defining stretches] Min detection for coverage ratio check", self.min_detection_to_report_coverage_ratio)
+        self.run.info("[Defining stretches] Min coverage ratio cutoff", self.min_ratio_of_normal_to_special_coverage, nl_after=1)
 
         self.run.info('[Finding palindromes] Algorithm', self.palindrome_search_algorithm or "[will be dynamically determined based on sequence length]", mc="red")
         self.run.info("[Finding palindromes] Min palindrome length", self.min_palindrome_length)
@@ -1891,7 +1952,7 @@ class Inversions:
         # All stretches considered
         ################################################################################################
         output_path = os.path.join(self.output_directory, 'ALL-STRETCHES-CONSIDERED.txt')
-        headers = ['entry_id', 'sequence_name', 'sample_name', 'contig_name', 'start_stop', 'max_coverage', 'num_palindromes_found', 'true_inversions_found']
+        headers = ['entry_id', 'sequence_name', 'sample_name', 'contig_name', 'start_stop', 'max_coverage', 'num_palindromes_found', 'true_inversions_found', 'mean_coverage_special', 'mean_coverage_total', 'coverage_ratio']
         utils.store_dict_as_TAB_delimited_file(self.stretches_considered, output_path, headers=headers)
         self.run.info('Reporting file on all stretches considered', output_path, nl_before=1, nl_after=1)
 

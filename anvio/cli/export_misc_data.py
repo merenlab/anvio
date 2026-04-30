@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Export misc data from target tables into TAB-delimited files"""
 
 import sys

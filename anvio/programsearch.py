@@ -1,4 +1,3 @@
-# -*- coding: utf-8
 # A library to search anvi'o programs based on keywords or input/output files
 # see `anvi-help` for its default client
 
@@ -264,4 +263,3 @@ class ProgramSearch:
             row.loc[header] = formatted_info
 
         return row
-

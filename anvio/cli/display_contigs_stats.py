@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import sys
 from anvio.argparse import ArgumentParser
@@ -27,7 +26,7 @@ __description__ = "Start the anvi'o interactive interface for viewing or compari
 def write_stats_to_file(tables, output_file):
     run = terminal.Run()
     filesnpaths.is_output_file_writable(output_file)
-    output_table = [['contigs_db'] + tables['header']] + tables['basic_stats'] + tables['hmm'] + tables['scg']
+    output_table = [['contigs_db'] + tables['header']] + tables['basic_stats'] + tables.get('gene_stats', []) + tables['hmm'] + tables['scg']
 
     f = open(output_file, 'w')
 

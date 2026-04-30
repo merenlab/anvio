@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """
     The anvi'o metapangenome module.
 
@@ -303,6 +301,7 @@ class MetaPangenome(object):
 
         # add that bad boy to the database
         self.args.just_do_it = True
+        self.args.target_data_group = 'metapangenome'
         items_additional_data_keys = [('%s!%s' % (key_ECGs_and_EAGs, status)) for status in list_ECG_EAG_keys] + [key_ECG_EAG_ratio]
         TableForItemAdditionalData(self.args).add(items_additional_data_dict, items_additional_data_keys)
 
@@ -313,4 +312,3 @@ class MetaPangenome(object):
         self.add_genomes_across_metagenomes_dict_into_pan_database()
 
         self.add_ECG_EAG_ratio_per_gene_cluster_into_pan_database()
-

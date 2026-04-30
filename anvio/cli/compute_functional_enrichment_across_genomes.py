@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """A program that computes function enrichment across genomees"""
 
 import os
@@ -84,6 +83,7 @@ def get_args():
 
     groupE = parser.add_argument_group('OPTIONAL THINGIES', "If you want it, here it is, come and get it.")
     groupE.add_argument(*anvio.A('qlambda'), **anvio.K('qlambda'))
+    groupE.add_argument(*anvio.A('skip-checking-genome-hashes'), **anvio.K('skip-checking-genome-hashes'))
     groupE.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
 
     return parser.get_args(parser)

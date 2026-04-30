@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 
 """Lots of under-the-rug, operational garbage in here. Run. Run away."""
 
@@ -906,6 +904,16 @@ D = {
              'help': "When this flag is declared, anvi'o will go back to the profile database to learn coverage "
                      "statistics of single-copy core genes for which we have taxonomy information."}
                 ),
+    'presence-absence-only': (
+            ['--presence-absence-only'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "When this flag is declared, anvi'o will report only binary presence/absence information for "
+                     "each taxon rather than the number of times each SCG was observed. This is particularly useful "
+                     "when working with external genomes files to generate matrix outputs, where raw SCG frequencies "
+                     "may be difficult to interpret. If you use this flag together with `--compute-scg-coverages` "
+                     "will make anvi'o disappoint."}
+                ),
     'compute-anticodon-coverages': (
             ['--compute-anticodon-coverages'],
             {'default': False,
@@ -1221,14 +1229,14 @@ D = {
                 ),
     'hmm-source': (
             ['--hmm-source'],
-            {'metavar': 'SOURCE NAME',
+            {'metavar': 'HMM_ANNOTATION_SOURCE',
              'default': None,
              'help': "Use a specific HMM source. You can use '--list-hmm-sources' flag to see "
                      "a list of available resources. The default is '%(default)s'."}
                 ),
     'hmm-sources': (
             ['--hmm-sources'],
-            {'metavar': 'SOURCE NAME',
+            {'metavar': 'HMM_ANNOTATION_SOURCE[S]',
              'help': "Get sequences for a specific list of HMM sources. You can list one or more "
                      "sources by separating them from each other with a comma character (i.e., "
                      "'--hmm-sources source_1,source_2,source_3'). If you would like to see a list "
@@ -1243,14 +1251,14 @@ D = {
                 ),
     'annotation-source': (
             ['--annotation-source'],
-            {'metavar': 'SOURCE NAME',
+            {'metavar': 'FUNCTION_ANNOTATION_SOURCE',
              'default': None,
              'help': "Get functional annotations for a specific annotation source. You can use the flag "
                      "'--list-annotation-sources' to learn about what sources are available."}
                 ),
     'annotation-sources': (
             ['--annotation-sources'],
-            {'metavar': 'SOURCE NAME[S]',
+            {'metavar': 'FUNCTION_ANNOTATION_SOURCE[S]',
              'default': None,
              'help': "Get functional annotations for a specific list of annotation sources. You "
                      "can specify one or more sources by separating them from each other with a comma "
@@ -1336,6 +1344,16 @@ D = {
                      "be multiple RecA hits in a genome bin from Campbell et al.. Using this flag, will go through all of "
                      "the gene names that appear multiple times, and remove all but the one with the lowest e-value. Good "
                      "for whenever you really need to get only a single copy of single-copy core genes from a genome bin."}
+                ),
+    'return-best-hit-per-contig': (
+            ['--return-best-hit-per-contig'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Similar to `--return-best-hit`, but resolves ties at the contig level. If a contig has multiple hits "
+                     "for the same gene name and HMM source, only the hit with the lowest e-value will be kept. Please be "
+                     "CAREFUL using this flag, as it may remove legitimate copies of genes that are meant to be multi-copy, "
+                     "such as transfer RNAs, etc, and its behavior will be dependent on the nature of the HMM source being used."
+             }
                 ),
     'return-all-function-hits-for-each-gene': (
             ['--return-all-function-hits-for-each-gene'],
@@ -2046,6 +2064,13 @@ D = {
                      "those with legitimate variation to be reported) remain unchanged. This flag can only be used with `--engine AA` "
                      "or `--engine CDN` and is incompatible wth --quince-mode."}
                 ),
+    'exclude-intergenic': (
+            ['--exclude-intergenic'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Use this flag to exclude SNVs that occur in intergenic regions (i.e., nucleotide positions that do not "
+                     "fall within any gene call, whether coding or non-coding). This flag can only be used with `--engine NT`."}
+                ),
     'include-contig-names': (
             ['--include-contig-names'],
             {'default': False,
@@ -2678,9 +2703,22 @@ D = {
                      "This way you can run HMM profiles that are not included in anvi'o. See the online "
                      "to find out about the specifics of this directory structure ."}
                 ),
+    'miscellaneous-model': (
+            ['-M', '--miscellaneous-model'],
+            {'metavar': 'CATEGORY:MODEL',
+             'help': "Use a miscellaneous HMM model installed with anvi'o by its key. See '--list-miscellaneous-models' "
+                     "for available options."}
+                ),
     'installed-hmm-profile': (
             ['-I', '--installed-hmm-profile'],
             {'metavar': 'HMM PROFILE NAME(S)'}
+                ),
+    'list-miscellaneous-models': (
+            ['--list-miscellaneous-models'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "List the miscellaneous HMM profiles that are shipped with anvi'o but not run by default, "
+                     "including their categories, notes, and full paths to use with '-H'."}
                 ),
     'hmmer-output-dir': (
             ['--hmmer-output-dir'],
@@ -2949,7 +2987,7 @@ D = {
                 ),
     'write-buffer-size': (
             ['--write-buffer-size'],
-            {'default': 500,
+            {'default': 5000,
              'metavar': 'INT',
              'required': False,
              'help': "How many items should be kept in memory before they are written to the disk. The default is "
@@ -2965,13 +3003,9 @@ D = {
             {'default': 500,
              'metavar': 'INT',
              'required': False,
-             'help': "How many items should be kept in memory before they are written do the disk. The default is "
-                     "%(default)d per thread. So a single-threaded job would have a write buffer size of "
-                     "%(default)d, whereas a job with 4 threads would have a write buffer size of 4*%(default)d. "
-                     "The larger the buffer size, the less frequent the program will access to the disk, yet the more memory "
-                     "will be consumed since the processed items will be cleared off the memory only after they are written "
-                     "to the disk. The default buffer size will likely work for most cases. Please keep an eye on the memory "
-                     "usage output to make sure the memory use never exceeds the size of the physical memory."}
+             'help': "DEPRECATED: Use --write-buffer-size instead. This flag is kept for backward compatibility. "
+                     "If --write-buffer-size is not provided, this value will be used as the write buffer size "
+                     "(without thread multiplication)."}
                 ),
     'export-gff3': (
             ['--export-gff3'],
@@ -3416,10 +3450,10 @@ D = {
                     "pathwise vs stepwise completeness."}
                 ),
     'use-equivalent-amino-acids': (
-            ['--use-equivalent-amino-acids'], 
+            ['--use-equivalent-amino-acids'],
             {'default': False,
              'action': 'store_true',
-             'required': False, 
+             'required': False,
              'help': "Some amino acid metabolic interactions can be missed because there are different "
                      "compound IDs in the ModelSEED database for L- and non-stereo-specific versions of amino acids (like "
                      "'Valine' vs 'L-Valine'. If you choose this option, anvi'o will find these pairs of equivalent amino acid "
@@ -3427,38 +3461,38 @@ D = {
                      "showing you which compounds were considered equivalent, so that you can complain if you don't agree with them."}
                 ),
      'custom-equivalent-compounds-file': (
-            ['--custom-equivalent-compounds-file'], 
+            ['--custom-equivalent-compounds-file'],
             {'default': False,
              'metavar': 'FILE',
-             'required': False, 
+             'required': False,
              'help': "If you have your own set of equivalent ModelSEED compound IDs, you can make sure "
                      "we use them by providing them in a tab-delimited file to this parameter. The file should have at least the following "
                      "columns: 'compound_id' and 'equivalent_id'. Note that this option is not compatible with --use-equivalent-amino-acids, "
                      "so if you want amino acid equivalents to be used, include them in this file."}
                 ),
     'maximum-gaps': (
-            ['--maximum-gaps'], 
+            ['--maximum-gaps'],
             {'default': 0,
              'type': int,
              'metavar': 'INT',
-             'required': False, 
+             'required': False,
              'help': "We'll look for the longest chain of reactions surrounding each potentially-exchanged "
                      "metabolite to help rank the output by likelihood of the interaction. This parameter allows "
                      "you to choose how many gaps there can be in the chain on either side of the metabolite in "
                      "the network. Very conservatively set to 0, as in no gaps allowed."}
                 ),
     'add-reactions-to-output': (
-            ['--add-reactions-to-output'], 
+            ['--add-reactions-to-output'],
             {'default': False,
              'action': 'store_true',
-             'required': False, 
+             'required': False,
              'help': "Do you want relevant reaction IDs and chemical equations to be added to the output? Use this flag."}
                 ),
     'report-compounds-with-no-prediction': (
-            ['--report-compounds-with-no-prediction'], 
+            ['--report-compounds-with-no-prediction'],
             {'default': False,
              'action': 'store_true',
-             'required': False, 
+             'required': False,
              'help': "By default, metabolic compounds that are not predicted to be either potentially-exchanged or "
                      "unique will not be present in the output files of this program. If you want to see what those are, "
                      "then you can use this flag to get an additional output file listing the compounds for which there "
@@ -3466,19 +3500,19 @@ D = {
                      "plus side, you can haz moar data. Brought to you by the anvi'o Hall of Fame for Long Parameter Names."}
                 ),
     'no-pathway-walk': (
-            ['--no-pathway-walk'], 
+            ['--no-pathway-walk'],
             {'default': False,
              'action': 'store_true',
-             'required': False, 
+             'required': False,
              'help': "Skip walking KEGG Pathway Maps and instead predict exchanges entirely from the reaction network. "
                      "This is not recommended, since Pathway Maps are much more curated and lead to more accurate predictions. "
                      "But they also could be time-consuming, so, you do you, I guess."}
                 ),
     'pathway-walk-only': (
-            ['--pathway-walk-only'], 
+            ['--pathway-walk-only'],
             {'default': False,
              'action': 'store_true',
-             'required': False, 
+             'required': False,
              'help': "ONLY use KEGG Pathway Map walks to predict exchanges. That is, don't predict anything from the "
                      "reaction network alone -- these predictions are less confident anyway. The downside is that "
                      "you'll miss any predictions for compounds not in Pathway Maps."}

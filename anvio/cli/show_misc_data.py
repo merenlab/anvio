@@ -1,12 +1,10 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """List misc data keys in pan or profile databases"""
 
 import sys
 from anvio.argparse import ArgumentParser
 
 import anvio
-import anvio.terminal as terminal
 
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.tables.miscdata import MiscDataTableFactory

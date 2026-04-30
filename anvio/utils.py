@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 
 """Lonely, helper functions that are broadly used and don't fit anywhere"""
 
@@ -47,7 +45,7 @@ try:
     from anvio.sequence import Composition
     from anvio.version import versions_for_db_types
     from anvio.errors import ConfigError, FilesNPathsError
-    from anvio.terminal import Run, Progress, SuppressAllOutput, get_date, TimeCode, pluralize
+    from anvio.terminal import Run, Progress, SuppressAllOutput, get_date, TimeCode
 except ModuleNotFoundError as e:
     # Extract just the module name from "No module named 'modulename'"
     module_name = str(e).split("'")[1] if "'" in str(e) else str(e)
@@ -230,7 +228,7 @@ def get_predicted_type_of_items_in_a_dict(d, key):
     This is a shitty function, but there was a real need for it, so here we are :/
     """
 
-    items = [x[key] for x in d.values()]
+    items = [x.get(key) for x in d.values()]
 
     if not items:
         # there is nothing to see here
@@ -291,6 +289,31 @@ def human_readable_file_size(nbytes):
         i += 1
     f = ('%.2f' % nbytes).rstrip('0').rstrip('.')
     return '%s %s' % (f, suffixes[i])
+
+
+def human_readable_number(value, decimals=2, suffixes=None):
+    """Return a compact string for large numbers (e.g., 12340 -> 12.3K)."""
+
+    suffixes = suffixes or ['', 'K', 'M', 'G', 'T', 'P']
+
+    try:
+        num = float(value)
+    except (TypeError, ValueError):
+        return str(value)
+
+    negative = num < 0
+    num = abs(num)
+
+    if num == 0:
+        return '0'
+
+    i = 0
+    while num >= 1000 and i < len(suffixes) - 1:
+        num /= 1000.0
+        i += 1
+
+    fmt = f"{{:.{decimals}f}}".format(num).rstrip('0').rstrip('.')
+    return f"{'-' if negative else ''}{fmt}{suffixes[i]}"
 
 
 def get_port_num(port_num = 0, ip='0.0.0.0', run=run):
@@ -643,6 +666,71 @@ def get_command_output_from_shell(cmd_line):
         ret_code = e.returncode
 
     return out_bytes, ret_code
+
+
+def run_command_and_get_output(cmdline, raise_on_error=True, log_file_path=None):
+    """Run a command and return its stdout as a string.
+
+    This is a modern utility function using subprocess.run() that captures
+    stdout for parsing while optionally logging stderr to a file. At some point
+    we will have to migrate all run_command functionality to this style and stop
+    using the older `subprocess.Popen()` approach.
+
+    Parameters
+    ==========
+    cmdline : str or list
+        The command to be run, e.g. "echo hello" or ["echo", "hello"]
+    raise_on_error : bool, True
+        If True, raises ConfigError when command exits with non-zero status
+    log_file_path : str or Path-like, None
+        Optional path to log stderr output. If None, stderr is captured to stdout.
+
+    Returns
+    =======
+    stdout : str
+        The stdout from the command as a decoded string
+
+    Raises
+    ======
+    ConfigError
+        If raise_on_error is True and command returns non-zero exit code
+    """
+    cmdline = format_cmdline(cmdline)
+
+    if anvio.DEBUG:
+        Progress().reset()
+        Run().info("[DEBUG] `run_command_and_get_output` is running",
+                   ' '.join(['%s' % (('"%s"' % str(x)) if ' ' in str(x) else ('%s' % str(x))) for x in cmdline]),
+                   nl_before=1, nl_after=1, mc='red', lc='yellow')
+
+    try:
+        proc = subprocess.run(
+            cmdline,
+            check=False,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+
+        if proc.returncode != 0:
+            error_msg = f"Command failed (exit {proc.returncode}): {' '.join(cmdline)}"
+            if proc.stderr:
+                error_msg += f"\n{proc.stderr.strip()}"
+
+            if log_file_path:
+                filesnpaths.is_output_file_writable(log_file_path)
+                with open(log_file_path, 'w') as f:
+                    f.write(f"# DATE: {get_date()}\n# CMD LINE: {' '.join(cmdline)}\n")
+                    f.write(f"# EXIT CODE: {proc.returncode}\n")
+                    f.write(proc.stderr)
+
+            if raise_on_error:
+                raise ConfigError(error_msg)
+
+        return proc.stdout
+
+    except OSError as e:
+        raise ConfigError(f"Command failed for the following reason: '{e}' ('{' '.join(cmdline)}')")
 
 
 def store_array_as_TAB_delimited_file(a, output_path, header, exclude_columns=[]):
@@ -1381,7 +1469,7 @@ def run_functional_enrichment_stats(functional_occurrence_stats_input_file_path,
                           f"log file offers some clues: {log_file_path}")
 
     enrichment_stats = get_TAB_delimited_file_as_dictionary(enrichment_output_file_path)
-    
+
     # here we will naively try to cast every column that matches `p_*` to float, and every
     # column that matches `N_*` to int.
     column_names = list(enrichment_stats.values())[0].keys()
@@ -1414,7 +1502,7 @@ def run_functional_enrichment_stats(functional_occurrence_stats_input_file_path,
                                   f"entry `{entry}` in your output file contained a value of `{enrichment_stats[entry][column_name]}`. "
                                   f"We have no idea how this happened, but it is not good :/ If you would like to mention this "
                                   f"to someone, please attach to your inquiry the following file: '{enrichment_output_file_path}'.")
-    
+
     # if everything went okay, we remove the log file
     if anvio.DEBUG or num_NA_qvals:
         run.warning(f"Due to the `--debug` flag or the presence of 'NA' q-values, anvi'o keeps the log file at '{log_file_path}'.", lc='green', header="JUST FYI")
@@ -2275,14 +2363,9 @@ def get_default_gene_caller(contigs_db_path):
 
     is_contigs_db(contigs_db_path)
 
-    contigs_db = db.DB(contigs_db_path, anvio.__contigs__version__)
+    contigs_db = db.DB(contigs_db_path, anvio.__contigs__version__, read_only=True)
 
-    gene_call_sources_in_contigs_db = contigs_db.get_single_column_from_table(t.genes_in_contigs_table_name, 'source')
-
-    try:
-        most_frequent_gene_caller = Counter(gene_call_sources_in_contigs_db).most_common(1)[0][0]
-    except IndexError:
-        most_frequent_gene_caller = None
+    most_frequent_gene_caller = contigs_db.get_most_frequent_value_from_table(t.genes_in_contigs_table_name, 'source')
 
     contigs_db.disconnect()
 
@@ -3806,7 +3889,7 @@ def to_jsonable(obj):
 
     Examples
     ========
-    >>> d = {...} # some dict of any size and level of nestedness 
+    >>> d = {...} # some dict of any size and level of nestedness
     >>> json.dumps(f, default=utils.to_jsonable)
     """
 
@@ -4129,10 +4212,18 @@ def get_pruned_HMM_hits_dict(hmm_hits_dict):
     return hmm_hits_dict
 
 
-def get_HMM_sources_dictionary(source_dirs=[]):
+def get_HMM_sources_dictionary(source_dirs=[], check_for_ACC_lines_in_HMM=False):
     """An anvi'o HMM source directory importer.
 
-       The directory must have five files:
+       Parameters
+       ==========
+       source_dirs : list
+            Paths to each directory of HMMs
+       check_for_ACC_lines_in_HMM : bool
+            If True, this function will throw an error if it finds any model without an `ACC`
+            line in the genes.hmm.gz file
+
+       Each input 'source' directory must have five files:
 
        - genes.hmm.gz: compressed HMM for each gene.
        - genes.txt: three column file lists all gene names appear in the genes.hmm.gz, accession numbers if there
@@ -4216,7 +4307,7 @@ def get_HMM_sources_dictionary(source_dirs=[]):
 
         genes = get_TAB_delimited_file_as_dictionary(os.path.join(source, 'genes.txt'), column_names=['gene', 'accession', 'hmmsource'])
 
-        sanity_check_hmm_model(os.path.join(source, 'genes.hmm.gz'), genes)
+        sanity_check_hmm_model(os.path.join(source, 'genes.hmm.gz'), genes, require_ACC_lines=check_for_ACC_lines_in_HMM)
 
         sources[os.path.basename(source)] = {'ref': ref,
                                              'kind': kind,
@@ -4274,30 +4365,57 @@ def check_misc_data_keys_for_format(data_keys_list):
                                              ', '.join(['"%s"' % k for k in new_rule_compatible_data_keys])))
 
 
-def sanity_check_hmm_model(model_path, genes):
-    genes = set(genes)
+def sanity_check_hmm_model(model_path, genes, require_ACC_lines=False):
+    gene_names = set(genes.keys())
     genes_in_model = set([])
     accession_ids_in_model = []
 
+    model_num_to_details = {}
+    model_number = 0
+
     with gzip.open(model_path, 'rt', encoding='utf-8') as f:
         for line in f:
+            if line.startswith('HMMER3/'):
+                model_number += 1
+                model_num_to_details[model_number] = {'name': None, 'acc': None}
             if line.startswith('NAME'):
-                genes_in_model.add(line.split()[1])
+                name = line.split()[1]
+                genes_in_model.add(name)
+                model_num_to_details[model_number]['name'] = name
             if line.startswith('ACC'):
-                accession_ids_in_model.append(line.split()[1])
+                acc = line.split()[1]
+                accession_ids_in_model.append(acc)
+                model_num_to_details[model_number]['acc'] = acc
 
     if len(accession_ids_in_model) != len(set(accession_ids_in_model)):
-        raise ConfigError("Accession IDs in your HMM model should be unique, however, the `genes.hmm.gz` "
-                          "file for `%s` seems to have the same accession ID (the line that starts with `ACC`) "
-                          "more than once :(" % (os.path.abspath(model_path).split('/')[-2]))
+        raise ConfigError(f"Accession IDs in your HMM model should be unique, however, the `genes.hmm.gz` "
+                          f"file for `{os.path.abspath(model_path).split('/')[-2]}` seems to have the same accession ID "
+                          f"(the line that starts with `ACC`) more than once :(")
 
-    if len(genes.difference(genes_in_model)):
-        raise ConfigError("Some gene names in genes.txt file does not seem to be appear in genes.hmm.gz. "
-                          "Here is a list of missing gene names: %s" % ', '.join(list(genes.difference(genes_in_model))))
+    if len(gene_names.difference(genes_in_model)):
+        raise ConfigError(f"Some gene names in the genes.txt file do not seem to appear in genes.hmm.gz. "
+                          f"Here is a list of missing gene names: {', '.join(list(gene_names.difference(genes_in_model)))}")
 
-    if len(genes_in_model.difference(genes)):
-        raise ConfigError("Some gene names in genes.hmm.gz file does not seem to be appear in genes.txt. "
-                          "Here is a list of missing gene names: %s" % ', '.join(list(genes_in_model.difference(genes))))
+    if len(genes_in_model.difference(gene_names)):
+        raise ConfigError(f"Some gene names in the genes.hmm.gz file do not seem to appear in genes.txt. "
+                          f"Here is a list of the extra gene names: {', '.join(list(genes_in_model.difference(gene_names)))}")
+
+    if require_ACC_lines:
+        models_no_acc = [(num, model_num_to_details[num]['name']) for num in model_num_to_details if not model_num_to_details[num]['acc']]
+        if models_no_acc:
+            raise ConfigError(f"At least one of the models in your genes.hmm.gz file does not have an `ACC` line describing its "
+                              f"accession. This can cause problems downstream as no accession for the model will be reported "
+                              f"in the HMMER output or stored into your database, so we recommend updating these models to have "
+                              f"the `ACC` line. Here is the name of each model with a missing accession, as well as its order in "
+                              f"the genes.hmm file: {', '.join([f'{name} (model {num} in file)' for (num, name) in models_no_acc])}")
+
+        for n, model in model_num_to_details.items():
+            name = model['name']
+            acc = model['acc']
+            if genes[name]['accession'] != acc:
+                raise ConfigError(f"Your HMM model for the gene named {name} was supposed to have an accession value of "
+                                  f"'{genes[name]['accession']}' according to the genes.txt file, but the `ACC` listed for "
+                                  f"this model in genes.hmm.gz is {acc} instead. Please fix the mismatch.")
 
 
 def sanity_check_pfam_accessions(pfam_accession_ids):
@@ -4401,6 +4519,11 @@ def get_all_item_names_from_the_database(db_path, run=run):
             return set([])
         else:
             all_items = set(database.get_single_column_from_table('mean_coverage_Q2Q3_splits', 'item'))
+
+            # zero-coverage splits are stored in a separate table rather than in the view tables,
+            # so we need to include them here to get the complete set of split names.
+            if 'zero_coverage_splits' in database.get_table_names():
+                all_items.update(database.get_single_column_from_table('zero_coverage_splits', 'item'))
     elif db_type == 'pan':
         all_items = set(database.get_single_column_from_table(t.pan_gene_clusters_table_name, 'gene_cluster_id'))
     elif db_type == 'contigs':
@@ -4888,7 +5011,7 @@ def split_by_delim_not_within_parens(d, delims, return_delims=False):
     d : str
         string to split
     delims : str or list of str
-        a single delimiter, or a list of delimiters, to split on. Note that if delims is the empty string (""), every 
+        a single delimiter, or a list of delimiters, to split on. Note that if delims is the empty string (""), every
         individual character in the string that is not within parentheses will be returned in the list of splits.
     return_delims : boolean
         if this is true then the list of delimiters found between each split is also returned
@@ -4916,7 +5039,7 @@ def split_by_delim_not_within_parens(d, delims, return_delims=False):
             parens_level += 1
         elif d[i] == ")":
             parens_level -= 1
-            if delims == "" and parens_level == 0: 
+            if delims == "" and parens_level == 0:
                 splits.append(d[last_split_index+1:i]) # we don't include the parentheses characters
                 last_split_index = i + 1
         elif delims == "" and parens_level == 0: # allow the use of "" as delimiter to split each character

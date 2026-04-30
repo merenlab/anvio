@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import os
 import sys
@@ -127,7 +126,7 @@ def get_args():
     parser = ArgumentParser(description=__description__)
 
     parser.add_argument('--hmm-list', nargs='+', metavar='FILES',
-                        help="One or more paths to HMM files. These should have been generated using hmmbuild" 
+                        help="One or more paths to HMM files. These should have been generated using hmmbuild"
                              " in HMMER3, or otherwise be in the same format.")
     parser.add_argument('--hmm-source', nargs='+', metavar='SOURCES',
                         help="The source of these HMMs (e.g. pfam.xfam.org). Specify either one or as many as"

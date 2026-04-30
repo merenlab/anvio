@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Setup and utilize InteracDome.
 
 The InteracDome is from Mona Singh's group at Princeton. In brief, they attribute empirical
@@ -573,7 +572,7 @@ class InteracDomeSetup(object):
             # was to create a static, permanent link
             'representable_interactions.txt': 'https://ndownloader.figshare.com/files/24019757',
             'confident_interactions.txt': 'https://ndownloader.figshare.com/files/24019694',
- 
+
         }
 
         if self.interacdome_data_dir and args.reset:
@@ -606,7 +605,7 @@ class InteracDomeSetup(object):
         or Pfam-A.hmm.gz exists.
         """
 
-        if (os.path.exists(os.path.join(self.interacdome_data_dir, 'Pfam-A.hmm') or 
+        if (os.path.exists(os.path.join(self.interacdome_data_dir, 'Pfam-A.hmm') or
             os.path.exists(os.path.join(self.interacdome_data_dir, 'Pfam-A.hmm.gz')))):
             raise ConfigError("It seems you already have the InteracDome data downloaded in '%s', please "
                               "use --reset flag if you want to re-download it." % self.interacdome_data_dir)
