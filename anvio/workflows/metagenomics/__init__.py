@@ -6,7 +6,6 @@
 import os
 import anvio
 import shutil
-import pandas as pd
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 

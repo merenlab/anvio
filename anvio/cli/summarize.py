@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 """Generate summary output from anvi'o datbases"""
 
-import os
 import sys
 
 import anvio
