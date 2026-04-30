@@ -243,7 +243,7 @@ def get_predicted_type_of_items_in_a_dict(d, key):
         # it is either list or dict. we will go through items
         # and return the type of first item that is not None:
         for item in items:
-            if item == None:
+            if item is None:
                 continue
             else:
                 return type(item)
@@ -3973,7 +3973,7 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
 
         line_fields = [f if f else None for f in line.strip('\n').split(separator)]
 
-        if line_fields and line_fields[0] == None:
+        if line_fields and line_fields[0] is None:
             raise ConfigError("The line number %d in '%s' has no data in its first column, and this doesn't "
                               "seem right at all :/" % (line_counter + 1, file_path))
 
@@ -3982,7 +3982,7 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
             updated_line_fields = []
             for i in range(0, len(line_fields)):
                 try:
-                    if line_fields[i] == None and column_mapping[i] in [float, int]:
+                    if line_fields[i] is None and column_mapping[i] in [float, int]:
                         updated_line_fields.append(column_mapping[i](0))
                     else:
                         updated_line_fields.append(column_mapping[i](line_fields[i]))

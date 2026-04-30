@@ -131,7 +131,7 @@ def parse_help_output(output):
 
         section, desc, _params = get_param_set(output)
 
-        if section == None:
+        if section is None:
             break
 
         if _params == '':

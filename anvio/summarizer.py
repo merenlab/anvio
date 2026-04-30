@@ -139,7 +139,7 @@ class SummarizerSuperClass(object):
         self.cog_data_dir = A('cog_data_dir')
         self.report_aa_seqs_for_gene_calls = A('report_aa_seqs_for_gene_calls')
         self.report_DNA_sequences = A('report_DNA_sequences')
-        self.delete_output_directory_if_exists = False if A('delete_output_directory_if_exists') == None else A('delete_output_directory_if_exists')
+        self.delete_output_directory_if_exists = False if A('delete_output_directory_if_exists') is None else A('delete_output_directory_if_exists')
         self.just_do_it = A('just_do_it')
         self.reformat_contig_names = A('reformat_contig_names')
 
@@ -791,7 +791,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         # I am not sure whether this is the best place to do this,
         T = lambda x: 'True' if x else 'False'
 
-        J = lambda x: x in self.p_meta and self.p_meta[x] != None
+        J = lambda x: x in self.p_meta and self.p_meta[x] is not None
 
         self.summary['basics_pretty'] = {'profile': [
                                                      ('Created on', self.p_meta['creation_date']),

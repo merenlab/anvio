@@ -106,7 +106,7 @@ def get_vectors_for_vectors_with_missing_data(vectors):
     Modified from the solution at https://stackoverflow.com/questions/31420912/python-hierarchical-clustering-with-missing-values
     """
 
-    vectors[vectors == None] = np.nan
+    vectors[vectors is None] = np.nan
 
     Npat = vectors.shape[0]
     dist = np.ndarray(shape=(Npat,Npat))

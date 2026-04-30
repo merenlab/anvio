@@ -447,7 +447,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.progress.update('for "%s" ...' % layer)
             layer_type = utils.get_predicted_type_of_items_in_a_dict(self.items_additional_data_dict, layer)
 
-            if layer_type == None:
+            if layer_type is None:
                 skipped_additional_data_layers.append(layer)
                 continue
 
@@ -461,7 +461,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                     else:
                         item_layer_data_tuple.append(('', item))
                 else:
-                    if self.items_additional_data_dict[item][layer] == None:
+                    if self.items_additional_data_dict[item][layer] is None:
                         if layer_type != str:
                             items_for_which_we_put_zeros_for_missing_values.add(item)
                             item_layer_data_tuple.append((0.0, item))
@@ -2009,7 +2009,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 if layer_name in layer_names_considered:
                     continue
 
-                if layer_types[layer_name] == None:
+                if layer_types[layer_name] is None:
                     # all items in this layer has type None, there can't possibly
                     # be anything worth showing here.
                     layer_names_considered.add(layer_name)

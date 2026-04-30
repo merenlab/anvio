@@ -4082,7 +4082,7 @@ class GenomicNetwork(ReactionNetwork):
             if remove_missing_objective_metabolites:
                 self.remove_missing_objective_metabolites(objective_dict)
             json_reactions.append(objective_dict)
-        elif objective != None:
+        elif objective is not None:
             raise ConfigError(
                 f"Anvi'o does not recognize an objective with the name, '{objective}'."
             )
@@ -5279,7 +5279,7 @@ class PangenomicNetwork(ReactionNetwork):
             if remove_missing_objective_metabolites:
                 self.remove_missing_objective_metabolites(objective_dict)
             json_reactions.append(objective_dict)
-        elif objective != None:
+        elif objective is not None:
             raise ConfigError(
                 f"Anvi'o does not recognize an objective with the name, '{objective}'."
             )
