@@ -1996,7 +1996,9 @@ class PangenomeGraph():
                 'gene_cluster_id': data['gene_cluster'],
                 'synteny_position_json': json.dumps(data['synteny']),
                 'gene_calls_json': json.dumps(data['gene_calls']),
-                'alignment_summary': json.dumps(data['alignment'])
+                'alignment_summary': json.dumps(data['alignment']),
+                'node_x': data['position'][0],
+                'node_y': data['position'][1],
             }
 
             table_for_nodes.add(node_entry)
