@@ -8,23 +8,26 @@ By default the directory is named `[PROJECT]-PAN-GRAPH-SUMMARY`. It contains a s
 
 One row per SynGC. Columns include:
 
-- `node_id` — the SynGC identifier
-- `bin_name` — the bin the SynGC was assigned to in the provided %(collection)s, or empty if no collection was given
-- `source_gene_cluster_id` — the gene cluster in the source pangenome from which this SynGC was derived
-- `node_type`, `region_id`, `region_type` — structural context in the pan-graph
-- `num_genomes_present`, `genomes_present` — which genomes carry this SynGC
-- items additional data keys carried over from the %(pan-graph-db)s
-- per-source function consensus accessions and annotations
+- `node_id`: the SynGC identifier
+- `bin_name`: the bin the SynGC was assigned to in the provided %(collection)s, or empty if no collection was given
+- `source_gene_cluster_id`: the gene cluster in the source pangenome from which this SynGC was derived
+- `node_type`, `region_id`, `region_type`: — structural context in the pan-graph
+- `node_x`, `node_y`: 2D layout coordinates of the node in the pan-graph (produced by the topological layout algorithm)
+- `num_genomes_present`: the number of genomes in which the SynGC is present
+- `genomes_present`: the genome names in which the SynGC is present
+
+Additional columns in this file include items additional data keys carried over from the %(pan-graph-db)s, and the per-source %(function)s consensus accessions and annotations.
 
 ### GENESxSYNGCs.txt
 
 Long-format table with one row per (genome × gene call). Columns include:
 
-- `node_id`, `bin_name`, `source_gene_cluster_id` — links back to `SYNGCs.txt`
-- `genome_name`, `gene_caller_id` — the genome and gene call for this row
-- `region_id`, `region_type` — region membership
-- per-source per-gene-call function accessions and annotations
-- `aa_sequence` or `dna_sequence` (omitted when `--quick-summary` is used)
+- `node_id`, `bin_name`, `source_gene_cluster_id`: valyes that link genes back to `SYNGCs.txt`
+- `genome_name`, `gene_caller_id`: the anvi'o gene call id and the genome in which the gene is found
+- `region_id`, `region_type`: details of the graph region the gene is found
+- `aa_sequence` or `dna_sequence` (omitted when `--quick-summary` is used): the gene sequence
+
+Additional columns in this file include per-source %(function)s data for each gene.
 
 ### REGIONS.txt
 

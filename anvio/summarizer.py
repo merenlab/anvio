@@ -864,7 +864,7 @@ class PanGraphSummarizer(PanGraphSuperclass, SummarizerSuperClass):
         path = os.path.join(self.output_directory, 'SYNGCs.txt')
 
         header = ['node_id', 'bin_name', 'source_gene_cluster_id', 'node_type', 'region_id', 'region_type',
-                  'num_genomes_present', 'genomes_present']
+                  'node_x', 'node_y', 'num_genomes_present', 'genomes_present']
 
         # items_additional_data layers (e.g. backbone), in stable order
         layer_keys = list(self.items_additional_data_keys) if self.items_additional_data_keys else []
@@ -896,6 +896,8 @@ class PanGraphSummarizer(PanGraphSuperclass, SummarizerSuperClass):
                        node.get('node_type', ''),
                        region_id if region_id is not None else '',
                        region_type,
+                       node.get('node_x', ''),
+                       node.get('node_y', ''),
                        len(genomes_present),
                        ','.join(genomes_present)]
 
