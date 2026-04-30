@@ -2123,7 +2123,9 @@ class Affinitizer:
             genome_id_name_dict[genome_id] = genome_name
         trna_gene_hits_df = trna_gene_hits_df.set_index(
             ['gene_contigs_db_hash', 'profile_db_sample_id', 'collection_name', 'bin_id'])
-        trna_gene_hits_df = trna_gene_hits_df.loc[select_genome_ids]
+        trna_gene_hits_df = trna_gene_hits_df.loc[
+            trna_gene_hits_df.index.intersection(select_genome_ids)
+        ]
         trna_gene_hits_df = trna_gene_hits_df.reset_index()
         trna_gene_hits_df['genome_name'] = [
             genome_id_name_dict[genome_id] for genome_id in zip(
