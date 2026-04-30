@@ -12,11 +12,15 @@ One row per SynGC. Columns include:
 - `bin_name`: the bin the SynGC was assigned to in the provided %(collection)s, or empty if no collection was given
 - `source_gene_cluster_id`: the gene cluster in the source pangenome from which this SynGC was derived
 - `node_type`, `region_id`, `region_type`: — structural context in the pan-graph
-- `node_x`, `node_y`: 2D layout coordinates of the node in the pan-graph (produced by the topological layout algorithm)
+- `node_x`, `node_y`: 2D layout coordinates of the node in the pan-graph.
+
+  {:.warning}
+  **Please note**: The `node_x` and `node_y` variables stored in the database and reported in the summary output are **not** to be relied upon for any serious anlaysis as the x values are arbitrary, and **will not give you 'homologous' or 'OK to compare' nodes on the graph** *UNLESS* you are working with (1) a backbone region, (2) a tower with an exapnsion value of precisely one, or (3) some other case where you fully understand the context and able to say "it will work in this case". They are produced by Alex's topological layout algorithm during the first initialization of the %(pan-graph-db)s, and determine how the nodes are initially displayed when you first run %(anvi-display-pan-graph)s. Another thing to remember that changes you make in the interface may change those initial values, but those updates will not be reported in the summary output.
+
 - `num_genomes_present`: the number of genomes in which the SynGC is present
 - `genomes_present`: the genome names in which the SynGC is present
 
-Additional columns in this file include items additional data keys carried over from the %(pan-graph-db)s, and the per-source %(function)s consensus accessions and annotations.
+Additional columns in this file include items additional data keys carried over from the %(pan-graph-db)s, and the consensus %(functions)s.
 
 ### GENESxSYNGCs.txt
 
@@ -27,7 +31,7 @@ Long-format table with one row per (genome × gene call). Columns include:
 - `region_id`, `region_type`: details of the graph region the gene is found
 - `aa_sequence` or `dna_sequence` (omitted when `--quick-summary` is used): the gene sequence
 
-Additional columns in this file include per-source %(function)s data for each gene.
+Additional columns in this file include %(functions)s for each gene.
 
 ### REGIONS.txt
 
