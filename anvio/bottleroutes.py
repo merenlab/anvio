@@ -1688,8 +1688,8 @@ class BottleApplication(Bottle):
             self.interactive.load_state('default', 'default')
             data = self.interactive.get_json()
             return(json.dumps({'status': 0, 'data': data, 'session_id': self.session_id}))
-        except:
-            return(json.dumps({'status': 1, 'data': ''}))
+        except Exception as e:
+            return json.dumps({'status': 1, 'message': str(e)})
 
 
     def rerun_pangraph_json_data(self):

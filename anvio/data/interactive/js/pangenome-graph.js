@@ -2336,6 +2336,10 @@ class PangenomeGraphUserInterface {
             contentType: "application/json",
             dataType: "json",
             success: (data) => {
+                if (data['status'] != 0) {
+                    toastr.error(data['message'], 'Initialization error', { 'timeOut': '0', 'extendedTimeOut': '0' });
+                    return;
+                }
                 this.data = data['data'];
                 this.session_id = data['session_id'];
                 setTimeout(() => this.checkBackgroundProcess(), 5000);
@@ -2349,6 +2353,7 @@ class PangenomeGraphUserInterface {
             },
             error: (err) => {
                 console.error('Failed to load JSON:', err);
+                toastr.error('Could not reach the server during initialization.', 'Initialization error', { 'timeOut': '0', 'extendedTimeOut': '0' });
             }
         });
     }
