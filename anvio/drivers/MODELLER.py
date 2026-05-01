@@ -359,7 +359,7 @@ class MODELLER:
         "gene_2_ModelAvg.pdb"
         """
 
-        if not "get_model.py" in self.scripts.keys():
+        if "get_model.py" not in self.scripts.keys():
             raise ConfigError("You are out of line calling tidyup without running get_model.py")
 
         # remove all copies of all scripts that were ran

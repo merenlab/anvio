@@ -49,7 +49,7 @@ def main():
                                "did you try '--list-states' flag? You can press `1` for yes, `2` for no, and `3` for "
                                "maybe.")
 
-        if not args.state in states:
+        if args.state not in states:
             raise ConfigError("The state name '%s' does not seem to appear in this database. But we have %s instead: "
                                "%s." % ((args.state, 'this one' if len(states) == 1 else 'these ones', ', '.join(list(states.keys())))))
 

@@ -85,7 +85,7 @@ class Centrifuge(Parser):
             gene_callers_id = hit['gene_callers_id']
             taxon_id = hit['taxon_id']
 
-            if not taxon_id in report:
+            if taxon_id not in report:
                 continue
 
             taxon = report[taxon_id]['t_species']

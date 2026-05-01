@@ -224,7 +224,7 @@ class StructureDatabase(object):
     def get_pdb_content(self, corresponding_gene_call):
         """Returns the file content (as a string) of a pdb for a given gene"""
 
-        if not corresponding_gene_call in self.genes_with_structure:
+        if corresponding_gene_call not in self.genes_with_structure:
             raise ConfigError('The gene caller id {} was not found in the structure database :('.format(corresponding_gene_call))
 
         return self.db.get_single_column_from_table(

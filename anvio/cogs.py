@@ -1084,7 +1084,7 @@ class COGsSetup:
             open(self.COG_data_dir_version, 'w').write(COG_DATA_VERSION)
 
         for file_name in self.files:
-            if not 'url' in self.files[file_name]:
+            if 'url' not in self.files[file_name]:
                 continue
 
             file_path = os.path.join(self.raw_NCBI_files_dir, file_name)
@@ -1099,7 +1099,7 @@ class COGsSetup:
         for file_name in self.files:
             file_path = os.path.join(self.raw_NCBI_files_dir, file_name)
 
-            if not 'func' in self.files[file_name]:
+            if 'func' not in self.files[file_name]:
                 continue
 
             self.files[file_name]['func'](file_path, os.path.join(self.COG_data_dir, self.files[file_name]['formatted_file_name']))

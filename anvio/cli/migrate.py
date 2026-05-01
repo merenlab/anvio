@@ -242,7 +242,7 @@ class Migrater(object):
         for i in range(self.artifact_version, self.target_version):
             script_name = "v%s_to_v%s" % (i, i + 1)
 
-            if not self.artifact_type in migration_scripts or not script_name in migration_scripts[self.artifact_type]:
+            if self.artifact_type not in migration_scripts or script_name not in migration_scripts[self.artifact_type]:
                 raise ConfigError("Anvi'o can not find a migrate script required for this operation. (Artifact Type: %s, Script name: %s) " % (self.artifact_type, script_name))
 
             tasks.append(script_name)

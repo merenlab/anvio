@@ -109,7 +109,7 @@ class SRADownloadWorkflow(WorkflowSuperClass):
     def get_target_files(self):
         """Get list of target files for snakemake target rule"""
 
-        target_files = [os.path.join(self.dirs_dict['FASTAS'], f"generate_samples_txt.done")]
+        target_files = [os.path.join(self.dirs_dict['FASTAS'], "generate_samples_txt.done")]
 
         return target_files
 

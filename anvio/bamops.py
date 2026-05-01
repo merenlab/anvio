@@ -1443,7 +1443,7 @@ class ReadsMappingToARange:
                         L.reverse = pileupread.alignment.is_reverse
                         L.sequence = pileupread.alignment.query
 
-                        if not L.read_unique_id in read_ids:
+                        if L.read_unique_id not in read_ids:
                             data.append(L)
                             read_ids.add(L.read_unique_id)
 

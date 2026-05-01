@@ -243,7 +243,7 @@ def get_predicted_type_of_items_in_a_dict(d, key):
         # it is either list or dict. we will go through items
         # and return the type of first item that is not None:
         for item in items:
-            if item == None:
+            if item is None:
                 continue
             else:
                 return type(item)
@@ -742,7 +742,7 @@ def store_array_as_TAB_delimited_file(a, output_path, header, exclude_columns=[]
         raise ConfigError("store array: header length (%d) differs from data (%d)..." % (len(header), num_fields))
 
     for col in exclude_columns:
-        if not col in header:
+        if col not in header:
             raise ConfigError("store array: column %s is not in the header array...")
 
     exclude_indices = set([header.index(c) for c in exclude_columns])
@@ -3821,7 +3821,7 @@ def get_groups_txt_file_as_dict(file_path, run=run, progress=progress, include_m
                               f"downstream, so we will stop you right there. Please remove all duplicate items from this file. :)")
         item_to_group_dict[item] = group_name
 
-        if not group_name in group_to_item_dict:
+        if group_name not in group_to_item_dict:
             group_to_item_dict[group_name] = []
         group_to_item_dict[group_name].append(item)
 
@@ -3973,7 +3973,7 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
 
         line_fields = [f if f else None for f in line.strip('\n').split(separator)]
 
-        if line_fields and line_fields[0] == None:
+        if line_fields and line_fields[0] is None:
             raise ConfigError("The line number %d in '%s' has no data in its first column, and this doesn't "
                               "seem right at all :/" % (line_counter + 1, file_path))
 
@@ -3982,7 +3982,7 @@ def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_t
             updated_line_fields = []
             for i in range(0, len(line_fields)):
                 try:
-                    if line_fields[i] == None and column_mapping[i] in [float, int]:
+                    if line_fields[i] is None and column_mapping[i] in [float, int]:
                         updated_line_fields.append(column_mapping[i](0))
                     else:
                         updated_line_fields.append(column_mapping[i](line_fields[i]))

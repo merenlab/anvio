@@ -266,7 +266,7 @@ class ClusteringConfiguration:
 
                 dbc = db.DB(database_path, None, ignore_version=True)
 
-                if not table in dbc.get_table_names():
+                if table not in dbc.get_table_names():
                     raise ConfigError('The table you requested (%s) does not seem to be in %s :/' % (table, database))
 
                 # here we know we are working with a database table that we have access to. however, in anvi'o database

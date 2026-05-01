@@ -307,7 +307,7 @@ class Pfam(object):
         if '.' in accession:
             accession = accession.split('.')[0]
 
-        if not accession in self.function_catalog:
+        if accession not in self.function_catalog:
             if ok_if_missing_from_catalog:
                 return "Unknown function with PFAM accession %s" % accession
             else:

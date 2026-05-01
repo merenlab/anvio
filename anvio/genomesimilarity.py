@@ -173,11 +173,11 @@ class Dereplicate:
                         "are now burdened with the responsibility of knowing what parameters you used to generate "
                         "these results.%s" % additional_msg)
 
-        if self.ani_dir and not self.program_name in ['pyANI', 'fastANI']:
+        if self.ani_dir and self.program_name not in ['pyANI', 'fastANI']:
             raise ConfigError("You provided a pre-existing directory of ANI results (--ani-dir), but also provided a program "
                               "name ('%s') that was not compatible with ANI." % self.program_name)
 
-        if self.mash_dir and not self.program_name in ['sourmash']:
+        if self.mash_dir and self.program_name not in ['sourmash']:
             raise ConfigError("You provided a pre-existing directory of mash results (--mash-dir), but also provided a program "
                               "name ('%s') that was not compatible with mash." % self.program_name)
 

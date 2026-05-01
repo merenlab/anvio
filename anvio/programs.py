@@ -131,7 +131,7 @@ def parse_help_output(output):
 
         section, desc, _params = get_param_set(output)
 
-        if section == None:
+        if section is None:
             break
 
         if _params == '':
@@ -1236,7 +1236,7 @@ class ProgramsNetwork(AnvioPrograms):
         for program in self.programs.values():
             for artifact in program.meta_info['provides']['value'] + program.meta_info['requires']['value']:
                 artifacts_seen[artifact.id] += 1
-                if not artifact.id in artifact_names_seen:
+                if artifact.id not in artifact_names_seen:
                     all_artifacts.append(artifact)
                     artifact_names_seen.add(artifact.id)
 

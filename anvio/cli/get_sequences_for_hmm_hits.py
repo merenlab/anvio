@@ -91,7 +91,7 @@ def run_program():
         defline_data_dict = hmmops.SequencesForHMMHits(None).defline_data_dict
         defline_format = hmmops.SequencesForHMMHits(None).defline_format
 
-        run.warning(f"Here are the variables you can use to provide a user-defined defline template: ")
+        run.warning("Here are the variables you can use to provide a user-defined defline template: ")
         for key in defline_data_dict.keys():
             run.info_single("{%s}" % key)
         run.info_single("Remember, by default, anvi'o will use the following template to format the deflines of "
