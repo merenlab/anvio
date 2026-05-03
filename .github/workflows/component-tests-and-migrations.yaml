@@ -65,12 +65,9 @@ jobs:
 
     - name: "Install npm dependencies for Anvi'o interactive interfaces"
       shell: bash -l {0}
-      env:
-        interactive_dir_path: ${{ env.SITE_PACKAGES_PATH }}/anvio/data/interactive
+      working-directory: ${{ env.SITE_PACKAGES_PATH }}/anvio/data/interactive
       run: |
-        cd "$interactive_dir_path"
         npm install
-        cd -
 
     - name: "Run component tests"
       shell: bash -l {0}
