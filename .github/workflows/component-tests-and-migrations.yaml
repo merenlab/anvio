@@ -16,10 +16,12 @@ jobs:
       matrix:
         python-version: ["3.10"]
       fail-fast: false
+
     steps:
     - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       with:
         persist-credentials: false
+
     - uses: conda-incubator/setup-miniconda@8ee1f361103df19b6f8c8655fd3967a8ecb162d5 # v4.0.1
       with:
         # FIXME:
@@ -31,37 +33,44 @@ jobs:
         activate-environment: anvio_env
         environment-file: .conda/environment.yaml
         python-version: ${{ matrix.python-version }}
+
     - name: "Install Bioconductor qvalue package for R"
       shell: bash -l {0}
       run: |
         Rscript -e 'install.packages("BiocManager", repos="https://cran.rstudio.com"); BiocManager::install("qvalue")'
+
     - name: "Conda environment summary"
       shell: bash -l {0}
       run: |
         conda info
         conda list
+
     - name: "Install anvi'o from the codebase"
       shell: bash -l {0}
       run: |
         pip install uv
         uv pip install .
+
     - name: "Set Anvi'o interactive directory path"
       shell: bash -l {0}
       run: |
         interactive_dir=$(python -c "import site; print(site.getsitepackages()[0] + '/anvio/data/interactive')")
         echo "interactive_dir_path=$interactive_dir" >> $GITHUB_ENV
+
     - name: "Install npm dependencies for Anvi'o interactive interfaces"
       shell: bash -l {0}
       run: |
         cd "$interactive_dir_path"
         npm install
         cd -
+
     - name: "Run component tests"
       shell: bash -l {0}
       run: |
         anvi-self-test --suite metagenomics-full --no-interactive
         anvi-self-test --suite pangenomics --no-interactive
         anvi-self-test --suite inversions --no-interactive
+
 # the following steps cause our actions to fail on GitHub runners
 # due to space limitations :/ please do not uncomment this until we
 # have a solution for this :/
@@ -69,6 +78,7 @@ jobs:
     #  shell: bash -l {0}
     #  run: |
     #    anvi-self-test --suite metabolism --no-interactive
+
     #- name: "Migrate ancient anvi'o databases"
     #  shell: bash -l {0}
     #  run: |
