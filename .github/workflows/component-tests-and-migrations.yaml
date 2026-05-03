@@ -40,6 +40,15 @@ jobs:
       run: |
         conda info
         conda list
+        echo $(python -c "import site; print(site.getsitepackages()[0] + '/anvio/data/interactive')")
+    - name: "Cache Python packages"
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      id: python-package-cache
+      with:
+        path: /usr/share/miniconda/envs/anvio_env/lib/python${{ matrix.python-version }}/site-packages
+        key: pip-py${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
+        restore-keys: |
+            pip-py${{ matrix.python-version }}-
     - name: "Install anvi'o from the codebase"
       shell: bash -l {0}
       run: |
