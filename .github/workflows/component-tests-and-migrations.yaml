@@ -40,16 +40,16 @@ jobs:
         interactive_dir=$(python -c "import site; print(site.getsitepackages()[0] + '/anvio/data/interactive')")
         echo "interactive_dir_path=$interactive_dir" >> $GITHUB_ENV
 
-    - name: "Install Bioconductor qvalue package for R"
-      shell: bash -l {0}
-      run: |
-        Rscript -e 'install.packages("BiocManager", repos="https://cran.rstudio.com"); BiocManager::install("qvalue")'
-
     - name: "Conda environment summary"
       shell: bash -l {0}
       run: |
         conda info
         conda list
+
+    - name: "Install Bioconductor qvalue package for R"
+      shell: bash -l {0}
+      run: |
+        Rscript -e 'install.packages("BiocManager", repos="https://cran.rstudio.com"); BiocManager::install("qvalue")'
 
     - name: "Install anvi'o from the codebase"
       shell: bash -l {0}
