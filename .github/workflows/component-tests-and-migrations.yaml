@@ -34,11 +34,12 @@ jobs:
         environment-file: .conda/environment.yaml
         python-version: ${{ matrix.python-version }}
 
-    - name: "Set Anvi'o interactive directory path"
+    - name: "Export Python paths"
       shell: bash -l {0}
+      # TODO: Consider using platlib/purelib: https://docs.python.org/3/library/sysconfig.html#installation-paths
       run: |
-        interactive_dir=$(python -c "import site; print(site.getsitepackages()[0] + '/anvio/data/interactive')")
-        echo "interactive_dir_path=$interactive_dir" >> $GITHUB_ENV
+        SITE_PACKAGES=$(python -c 'import site; print(site.getsitepackages()[0])')
+        echo "SITE_PACKAGES_PATH=$SITE_PACKAGES" >> $GITHUB_ENV
 
     - name: "Conda environment summary"
       shell: bash -l {0}
@@ -59,6 +60,8 @@ jobs:
 
     - name: "Install npm dependencies for Anvi'o interactive interfaces"
       shell: bash -l {0}
+      env:
+        interactive_dir_path: ${{ env.SITE_PACKAGES_PATH }}/anvio/data/interactive
       run: |
         cd "$interactive_dir_path"
         npm install
