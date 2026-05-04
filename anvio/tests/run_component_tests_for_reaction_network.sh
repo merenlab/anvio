@@ -24,7 +24,6 @@ anvi-gen-genomes-storage -e external-genomes.txt -o TEST-GENOMES.db --no-progres
 
 INFO "Running the pangenome analysis with default parameters"
 anvi-pan-genome -g TEST-GENOMES.db \
-                -o TEST/ \
                 -n TEST \
                 --use-ncbi-blast \
                 --description example_description.md \
@@ -59,7 +58,7 @@ anvi-get-metabolic-model-file --contigs-db E_faecalis_6240.db \
 
 INFO "Testing a pangenomic reaction network generated from the pan and genomes storage databases"
 args=()
-args+=( "--pan-db" "TEST/TEST-PAN.db" )
+args+=( "--pan-db" "TEST-PAN.db" )
 args+=( "--genomes-storage" "TEST-GENOMES.db" )
 args+=( "--test-dir" ${output_dir} )
 if [ ${use_default_modelseed_db} == "False" ]
@@ -70,7 +69,7 @@ args+=( "--no-progress" )
 ${python_script} "${args[@]}"
 
 INFO "Exporting the pangenomic reaction network to a file"
-anvi-get-metabolic-model-file --pan-db TEST/TEST-PAN.db \
+anvi-get-metabolic-model-file --pan-db TEST-PAN.db \
                               --genomes-storage TEST-GENOMES.db \
                               --record-genomes \
                               --output-file TEST-PAN-network.json

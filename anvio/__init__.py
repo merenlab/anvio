@@ -2255,6 +2255,14 @@ D = {
              'type': str,
              'help': "Output file path for the new database."}
                 ),
+    'intermediate-data-dir': (
+            ['--intermediate-data-dir'],
+            {'metavar': 'PATH',
+             'type': str,
+             'help': "A directory path to store intermediate data files or to read them from. If you don't provide "
+                     "anything here, this program will come up with a temporary directory path by itself to store "
+                     "intermediate files, and most likely clean it later (unless you used the `--debug` flag)."}
+                ),
     'temporary-dir-path': (
             ['--temporary-dir-path'],
             {'metavar': 'PATH',
