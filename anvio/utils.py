@@ -577,9 +577,10 @@ class CoverageStats:
             if discov_window_length < discov_min_window_len:
                 discov_window_length = discov_min_window_len
         windows = self.get_window_regions(coverage, window_length=discov_window_length)
-        final_window_len = windows[-1][1] - windows[-1][0]
-        if final_window_len < 0.1*discov_window_length: # don't count the last window if it is too small
-            windows = windows[:-1]
+        if len(windows) > 1:
+            final_window_len = windows[-1][1] - windows[-1][0]
+            if final_window_len < 0.1*discov_window_length: # don't count the last window if it is too small
+                windows = windows[:-1]
         nonzero_window_means = [x for x in windows if x[2] > 0]
         self.num_windows = len(windows)
         self.prop_win_covered = len(nonzero_window_means) / self.num_windows
