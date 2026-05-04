@@ -24,7 +24,7 @@ __description__ = ("FAST profiling of BAM files to get gene-, contig-, or genome
                    "without an anvi'o contigs database")
 
 # default window sizes for DisCov
-COLLECTION_WLEN_DEFAULT=10000
+COLLECTION_WLEN_DEFAULT=1000
 CONTIG_WLEN_DEFAULT=500
 
 @terminal.time_program

@@ -4118,7 +4118,7 @@ D = {
     ),
     'foldrange-lower': (
             ['--foldrange-lower'],
-            {'default': 0.25,
+            {'default': 0.5,
              'type': float,
              'metavar': 'FLOAT',
              'help': "When computing evenness of coverage depth (E), count any bases with coverage OVER this value * the "
@@ -4127,7 +4127,7 @@ D = {
     ),
     'foldrange-upper': (
             ['--foldrange-upper'],
-            {'default': 4.0,
+            {'default': 2.0,
              'type': float,
              'metavar': 'FLOAT',
              'help': "When computing evenness of coverage depth (E), count any bases with coverage UNDER this value * the "
