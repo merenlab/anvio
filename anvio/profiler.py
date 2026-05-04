@@ -563,7 +563,9 @@ class BAMProfilerQuick:
                 self.run.warning(f"{len(contigs_smaller_than_window)} out of {len(self.contig_names_to_process)} contigs "
                                  f"({(len(contigs_smaller_than_window)/len(self.contig_names_to_process)):.2f}%) are smaller "
                                  f"than the requested window size for the DisCov metric. These contigs will not be split into "
-                                 f"multiple windows when computing DisCov. Just so you know. One of the culprits (in case you "
+                                 f"multiple windows when computing DisCov. Just so you know. In case the percentage of affected "
+                                 f"contigs is very high, you probably want to consider using a percentage-based window length "
+                                 f"instead (ie, with `--window-length-as-percentage`). Here is one of the affected contigs (in case you "
                                  f"want to check): {contigs_smaller_than_window[0]}")
 
         if self.gene_level_stats:
