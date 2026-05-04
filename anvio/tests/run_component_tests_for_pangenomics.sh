@@ -166,7 +166,7 @@ anvi-split -p TEST-PAN.db \
            -o TEST_SPLIT_PAN
 
 INFO "Resulting split pans"
-ls -l TEST_SPLIT_PAN/*-PAN-db
+ls -l TEST_SPLIT_PAN/*-PAN.db
 
 INFO "Taking a look at the make up one of the split pans"
 anvi-db-info TEST_SPLIT_PAN/GENE_CLUSTER_BIN_1_CORE-PAN.db
