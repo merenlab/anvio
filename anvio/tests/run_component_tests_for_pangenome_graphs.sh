@@ -27,7 +27,6 @@ anvi-gen-genomes-storage -e external-genomes.txt \
 
 INFO "Running the pangenome analysis with default parameters"
 anvi-pan-genome -g TEST-GENOMES.db \
-                -o TEST/ \
                 -n TEST \
                 --use-ncbi-blast \
                 --description example_description.md \
@@ -39,28 +38,32 @@ anvi-compute-genome-similarity -e external-genomes.txt \
                                --program pyANI \
                                -o ANI_TEST \
                                --log-file ANI_LOG.txt \
-                               -p TEST/TEST-PAN.db \
+                               -p TEST-PAN.db \
                                --no-progress \
                                $thread_controller
 
 INFO "Generating a pangenome graph from a YAML file"
 anvi-pan-genome-graph --pan-graph-yaml example-pangenome-graph.yaml \
-                      -o FROM-YAML
-
-INFO "Generating a pangenome graph from a JSON file"
-anvi-pan-genome-graph -i example-pangenome-graph.json \
-                      -o FROM-JSON
+                      --project-name FROM-YAML
 
 INFO "Generating a pangenome graph from a pan-db"
-anvi-pan-genome-graph -p TEST/TEST-PAN.db \
+anvi-pan-genome-graph -p TEST-PAN.db \
                       -g TEST-GENOMES.db \
-                      -o FROM-PAN \
                       --project-name TEST \
                       -e external-genomes.txt \
                       $thread_controller
 
-INFO "Displaying pangenome graph"
-anvi-display-pan-graph -i FROM-PAN/TEST-JSON.json \
-                       -p TEST/TEST-PAN.db \
+INFO "Generating a summary output for the pangenome graph"
+anvi-summarize -p TEST-PAN-GRAPH.db \
+               -g TEST-GENOMES.db \
+               -o TEST-PAN-GRAPH-SUMMARY
+SHOW_FILE TEST-PAN-GRAPH-SUMMARY/REGIONS.txt
+SHOW_FILE TEST-PAN-GRAPH-SUMMARY/SYNGCs.txt
+
+INFO "Displaying bona fide pangenome graph from a PAN database"
+anvi-display-pan-graph -p TEST-PAN-GRAPH.db \
                        -g TEST-GENOMES.db \
                        $dry_run_controller
+
+INFO "Displaying pangenome graph from a YAML file"
+anvi-display-pan-graph -p FROM-YAML-PAN-GRAPH.db
