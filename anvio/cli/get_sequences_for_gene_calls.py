@@ -45,7 +45,7 @@ def main():
         if contigs_db_path:
             export_from_contigs(args)
         elif genomes_storage_db_path:
-            export_from_genomes_storage(genomes_storage_db_path, output_file_path)
+            export_from_genomes_storage(args, genomes_storage_db_path, output_file_path)
         else:
             raise ConfigError("o_O")
     except ConfigError as e:
@@ -100,7 +100,7 @@ def export_from_contigs(args):
                                              list_defline_variables=args.list_defline_variables)
 
 
-def export_from_genomes_storage(genomes_storage_db_path, output_file_path):
+def export_from_genomes_storage(args, genomes_storage_db_path, output_file_path):
     if args.export_gff3:
         raise ConfigError("GFF output is only relevant if you are working with a contigs database :/")
 
