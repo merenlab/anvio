@@ -342,16 +342,12 @@ class PanBinSplitter(summarizer.PanBin, XSplitter):
             raise ConfigError("You are confusing anvi'o :/ You can't tell anvi'o to skip hierarchical clustering "
                               "while also asking it to enforce it.")
 
-        # set the output directory, and output file paths
-        self.bin_output_directory = os.path.join(self.output_directory, bin_name)
-        filesnpaths.gen_output_directory(self.bin_output_directory)
-
         # let's see whether we are going to do any hierarchical clustering:
         self.max_num_splits_for_hierarchical_clustering = constants.max_num_items_for_hierarchical_clustering
         self.skip_hierarchical_clustering = self.is_hierarchical_clustering_for_bin_OK()
 
         # set your own db paths
-        self.bin_pan_db_path = os.path.join(self.bin_output_directory, 'PAN.db')
+        self.bin_pan_db_path = os.path.join(self.output_directory, f'{bin_name}-PAN.db')
 
 
     def do_pan_db(self):
@@ -409,7 +405,7 @@ class PanBinSplitter(summarizer.PanBin, XSplitter):
 
         # clustering of items.. this is the most elegant way of doing this:
         p = Pangenome(argparse.Namespace(skip_hierarchical_clustering=self.skip_hierarchical_clustering,
-                                         output_dir=self.bin_output_directory,
+                                         output_file=self.bin_pan_db_path,
                                          distance=self.distance,
                                          linkage=self.linkage,
                                          run=self.run,
