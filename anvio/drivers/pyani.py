@@ -95,4 +95,3 @@ class PyANI:
         os.chdir(old_wd)
 
         return matrices
-

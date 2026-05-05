@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 """
     A class to compute homogeneity indices for a dictionary of gene clusters using a novel algorithm
 """

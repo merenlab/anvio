@@ -1,4 +1,4 @@
-Anvi-summarize lets you look at a **comprehensive overview of your %(collection)s** and its many statistics that anvi'o has calculated. 
+Anvi-summarize lets you look at a **comprehensive overview of your %(collection)s** and its many statistics that anvi'o has calculated.
 
 It will create a folder (by default called `SUMMARY`) that contains many different summary files, including an HTML output that conviently displays them all for you. The exact contents of this folder will depend on whether you run the program on a %(profile-db)s (i.e., to summarize a %(collection)s of binned contigs, such as metagenome-assembled genomes) or on a %(pan-db)s (i.e., to summarize a %(collection)s of binned gene clusters, such as when you want to compare accessory vs core genome). Due to the extensive set of output files it produces, this program can be useful for sharing information with collaborators, generating supplementary files for manuscripts, and exporting data for use as input to downstream programs/scripts.
 
@@ -23,11 +23,11 @@ In case you want to learn about the definitions of statistics like coverage, det
 
 When run on a %(pan-db)s, this program will:
 * generate a _huge_ table (`[NAME]_gene_clusters_summary.txt`) describing every gene in every gene cluster of your pangenome (even those not in the specified %(collection)s), including:
-    * gene-cluster-specific information like the number of genomes contributing to that cluster, maximum number of paralogs in any partipating genome, and cluster homogeneity metrics. 
+    * gene-cluster-specific information like the number of genomes contributing to that cluster, maximum number of paralogs in any partipating genome, and cluster homogeneity metrics.
     * gene-specific information like functional annotations and amino acid sequence
 * export any tables of miscellaneous data that were imported into the %(pan-db)s with %(anvi-import-misc-data)s (in the directories `misc_data_items` and `misc_data_layers`)
 
-## Running anvi-summarize 
+## Running anvi-summarize
 
 ### Running on a profile database
 
@@ -40,21 +40,21 @@ anvi-summarize -c %(contigs-db)s \
                -C %(collection)s
 {{ codestop }}
 
-This will name the output directory `MY_SUMMARY` instead of the standard `SUMMARY`. 
+This will name the output directory `MY_SUMMARY` instead of the standard `SUMMARY`.
 
-When running on a profile database, you also have options to 
+When running on a profile database, you also have options to
 * output very accurate (but intensely processed) coverage and detection data for each gene (using `--init-gene-coverages`)
 * edit your contig names so that they contain the name of the bin that the contig is in (using `--reformat-contig-names`)
 * also display the amino acid sequeunces for your gene calls.  (using `--report-aa-seqs-for-gene-calls`)
 
 ### Running on a pan database
 
-When running on a %(pan-db)s, you'll want to instead provide the associated genomes storage database. 
+When running on a %(pan-db)s, you'll want to instead provide the associated genomes storage database.
 
 {{ codestart }}
 anvi-summarize -g %(genomes-storage-db)s \
                -p %(pan-db)s \
-               -C %(collection)s 
+               -C %(collection)s
 {{ codestop }}
 
 You can also choose to display DNA sequences for your gene clusters instead of amino acid sequences with the flag `--report-DNA-sequences`
@@ -63,4 +63,4 @@ You can also choose to display DNA sequences for your gene clusters instead of a
 
 If you're unsure what collections are in your database, you can run this program with the flag `--list-collections` or by running %(anvi-show-collections-and-bins)s. Don't have a collection at all? If you want to summarize everything in the database, you can generate a default collection of everything by running %(anvi-script-add-default-collection)s.
 
-You can also use the flag `--quick-summary` to get a less comprehensive summary with a much shorter processing time. 
+You can also use the flag `--quick-summary` to get a less comprehensive summary with a much shorter processing time.

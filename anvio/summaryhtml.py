@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 """Creates an HTML output to act as a front-end for the static summary directory."""
 
 import os
@@ -208,4 +207,3 @@ def pretty_join(data, and_or="and"):
     else:
         all_but_last = ", ".join(d[:-1])
         return f"{all_but_last}, {and_or} {d[-1]}"
-

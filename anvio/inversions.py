@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 """A module to characterize Florian's inversions"""
 
 import os

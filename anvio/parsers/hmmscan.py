@@ -768,4 +768,3 @@ class HMMERTableOutput(Parser):
             return annotations_dict, bit_score_info_dict
 
         return annotations_dict
-

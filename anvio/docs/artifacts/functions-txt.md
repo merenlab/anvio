@@ -1,8 +1,8 @@
-This artifact is a TAB-delimited file that **associates genes and functions**. 
+This artifact is a TAB-delimited file that **associates genes and functions**.
 
 The user can generate this file to import gene functions into a %(contigs-db)s via %(anvi-import-functions)s or can acquire this file by recovering it from a %(contigs-db)s via %(anvi-export-functions)s. It is also the output of %(anvi-search-functions)s which searches for specific terms in your functional annotations.
 
-In general, this is the simplest way to get gene functions into anvi'o, and all downstream analyses, including pangenomics. For other ways to get gene functions into anvi'o you can take a look at [this page](http://merenlab.org/2016/06/18/importing-functions/). 
+In general, this is the simplest way to get gene functions into anvi'o, and all downstream analyses, including pangenomics. For other ways to get gene functions into anvi'o you can take a look at [this page](http://merenlab.org/2016/06/18/importing-functions/).
 
 
 ## Simple matrix file format

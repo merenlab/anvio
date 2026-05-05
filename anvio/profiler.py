@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 """Provides the necessary class to profile BAM files."""
 
 import gc
@@ -438,7 +437,7 @@ class BAMProfilerQuick:
         if nonnumeric:
             raise ConfigError("Some of the gene caller IDs you requested do not look like gene caller IDs. Here they are "
                              f"so you can remove them from your request: {', '.join(nonnumeric)}")
-        
+
         # to be filled later if necessary
         self.contigs_basic_info = {}
         self.gene_calls_per_contig = {}

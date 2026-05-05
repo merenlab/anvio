@@ -1,5 +1,5 @@
 
-## Basic usage 
+## Basic usage
 
 This program creates a %(pdb-db)s local database that holds PDB structures from [this sequence database](https://salilab.org/modeller/supplemental.html), which is hosted by the [Sali lab](https://salilab.org/).  Their database comprises all PDB RCSB sequences that have been clustered at 95%% sequence similarity. They seem to update their database every couple of months (thank you guys!).
 
@@ -13,13 +13,13 @@ Running this program is easy:
 anvi-setup-pdb-database --just-do-it
 {{ codestop }}
 
-If you already have a %(pdb-db)s artifact and are trying to redownload this data, run 
+If you already have a %(pdb-db)s artifact and are trying to redownload this data, run
 
 {{ codestart }}
 anvi-setup-pdb-database --reset
 {{ codestop }}
 
-Or if you just want to update your database, run 
+Or if you just want to update your database, run
 
 {{ codestart }}
 anvi-setup-pdb-database --update
@@ -28,4 +28,3 @@ anvi-setup-pdb-database --update
 ## Notes
 
 The output %(pdb-db)s database is ~20GB and its contents may take several hours to download.
-

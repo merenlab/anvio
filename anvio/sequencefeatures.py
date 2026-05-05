@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 
 """Classes to deal with sequence features"""
 
@@ -1378,5 +1377,3 @@ def get_state(seq, i, j, k):
     state[len(seq)-1-j] = 'j'
     state[k+i] = 'k'
     print(''.join(state))
-
-

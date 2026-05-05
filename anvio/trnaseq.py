@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 """Library for tRNA-seq dataset operations
 
 `bin/anvi-trnaseq` and `bin/anvi-merge-trnaseq` are the default clients using this module.

@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 
 import anvio
 import anvio.tables as t

@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 """
     Common functions and classes for SCG/TRNA taxonomy.
 """

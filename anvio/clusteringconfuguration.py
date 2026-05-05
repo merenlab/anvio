@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 """To make sense of config files for mixed clustering"""
 
 import os
@@ -378,5 +377,3 @@ class ClusteringConfiguration:
                                'configuration only %d of %d matrices have ratio values defined. Either remove '
                                'all, or complete the remaining one%s.' % (with_ratio, len(sections),
                                                                           's' if (len(sections) - with_ratio) > 1 else ''))
-
-

@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 
 """Classes to make sense of genes and variability within the context of protein structure"""
 
@@ -2042,5 +2041,3 @@ class ExternalStructuresFile(object):
 
         self.progress.end()
         return True
-
-

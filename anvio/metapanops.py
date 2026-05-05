@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 """
     The anvi'o metapangenome module.
 
@@ -313,4 +312,3 @@ class MetaPangenome(object):
         self.add_genomes_across_metagenomes_dict_into_pan_database()
 
         self.add_ECG_EAG_ratio_per_gene_cluster_into_pan_database()
-

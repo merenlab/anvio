@@ -213,5 +213,3 @@ class tRNAScanSE:
         d = self.parse_output()
 
         return d
-
-

@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 """
     Classes to define and work with anvi'o contigs workflows.
 """
@@ -7,7 +6,6 @@
 import os
 import anvio
 import shutil
-import pandas as pd
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
 

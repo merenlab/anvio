@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 """A simple module with classes for learning operations"""
 
 import pickle
@@ -114,4 +113,3 @@ class RF:
         self.classifier_initialized = True
 
         self.run.info('Random Forest Classifier', "Initialized with %d features grouped into %d classes." % (len(self.features), len(self.classes)))
-

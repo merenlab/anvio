@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 
 """Classes to make sense of sequence variation"""
 
@@ -797,7 +796,7 @@ class VariabilitySuper(VariabilityFilter, object):
         else:
             # Ensure we are working with a copy to avoid modifying the original DataFrame in place
             self.data = self.data.copy()
-            
+
             # Convert counts to frequencies in place
             self.data.loc[:, self.items] = self.data.loc[:, self.items].divide(self.data['coverage'], axis=0)
 

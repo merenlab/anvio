@@ -263,4 +263,3 @@ class ProgramSearch:
             row.loc[header] = formatted_info
 
         return row
-

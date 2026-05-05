@@ -3,7 +3,6 @@
 import sys
 
 import anvio
-import anvio.terminal as terminal
 
 from anvio.tables.trnahits import TablesForTransferRNAs
 from anvio.errors import ConfigError, FilesNPathsError

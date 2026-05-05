@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 
 """Classes to work with ngrams of contig functions.
 
@@ -521,4 +520,3 @@ class NGram(object):
             gene_callers_id_windows.append(window)
 
         return gene_callers_id_windows
-

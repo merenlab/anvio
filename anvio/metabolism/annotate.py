@@ -644,5 +644,3 @@ class RunKOfams(KeggContext):
                             "like to keep it for testing purposes)", nl_before=1, nl_after=1)
             shutil.rmtree(tmp_directory_path)
             hmmer.clean_tmp_dirs()
-
-

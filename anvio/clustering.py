@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 """Clustering operations and helper functions"""
 
 import numpy as np

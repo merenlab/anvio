@@ -1,4 +1,3 @@
-# pylint: disable=line-too-long
 """Module to deal with HDF5 files"""
 
 import time
