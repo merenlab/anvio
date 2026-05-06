@@ -588,7 +588,7 @@ class CoverageStats:
 
         self.discov = discov_alpha * self.prop_win_covered + (1-discov_alpha) * self.fold_range_coverage_depth
 
-    
+
     def get_window_regions(self, coverage, window_length):
         """Given an array of coverage values, divides it into non-overlapping windows of the requested length.
 
@@ -601,7 +601,7 @@ class CoverageStats:
             window_length = len(coverage)
         elif window_length == 0:
             raise ConfigError(f"The get_window_regions() function was requested to make zero-length windows. Impossible!")
-        
+
         windows = []
         current_start = 0
         current_stop = current_start + window_length
