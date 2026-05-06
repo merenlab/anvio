@@ -550,6 +550,16 @@ anvi-experimental-organization $files/example_clustering_configuration.ini \
                                --linkage complete \
                                --no-progress
 
+INFO "Use anvi-experimental-organization to report a merged and scaled data matrix from a non-default configuration"
+anvi-experimental-organization $files/example_clustering_configuration.ini \
+                               -i $output_dir/SAMPLES-MERGED \
+                               -c $output_dir/CONTIGS.db \
+                               -p $output_dir/SAMPLES-MERGED/PROFILE.db \
+                               --dry-run \
+                               --export-merged-matrix $output_dir/experimental_clustering_data_matrix_output.txt \
+                               --no-progress
+SHOW_FILE $output_dir/experimental_clustering_data_matrix_output.txt
+
 INFO "Adding a 'DEFAULT' collection that describes all splits in an 'EVERYTHING' bin to the merged profile"
 anvi-script-add-default-collection -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                                    --no-progress

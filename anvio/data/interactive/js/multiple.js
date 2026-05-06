@@ -20,16 +20,30 @@
 $(document).ready(function() {
     $('.select_layer').on('change', function() {
         var table = $(this).closest('table');
-        var layer_name = this.value;
+        var input = this.value;
         // clean prior selections
         $(table).find('.layer_selectors:visible').prop('checked', false);
 
-        if(layer_name){ // if layer_name is empty, there is nothing to select, move on.
+        if(input){ // if input is empty, there is nothing to select, move on.
+            // split on semicolons so users can provide multiple search terms
+            var terms = input.split(';').map(function(t){ return t.trim(); }).filter(function(t){ return t.length > 0; });
+
+            // build a regex for each term: escape regex-special chars, then
+            // turn user-facing '*' wildcards into '.*'
+            var patterns = terms.map(function(term){
+                var escaped = term.replace(/([.+?^${}()|[\]\\])/g, '\\$1');
+                escaped = escaped.replace(/\*/g, '.*');
+                return new RegExp(escaped, 'i');
+            });
+
             $(table).find('.titles').each(
                 function(){
-                    if (this.title.toLowerCase().indexOf(layer_name.toLowerCase()) > -1)
-                    {
-                        $(this).parent().find('.layer_selectors').prop('checked','checked');
+                    var title = this.title;
+                    for (var i = 0; i < patterns.length; i++) {
+                        if (patterns[i].test(title)) {
+                            $(this).parent().find('.layer_selectors').prop('checked','checked');
+                            break;
+                        }
                     }
                 }
             );
@@ -122,6 +136,41 @@ $(document).ready(function() {
                 this.checked = new_val;
             }
         );
+    });
+
+    // click any layer name to expand/collapse all names in that table
+    $(document).on('click', '.titles', function() {
+        $(this).closest('table').find('.titles').toggleClass('titles-expanded');
+    });
+
+    // per-layer visibility toggle
+    $(document).on('click', '.layer-visibility', function() {
+        var $icon = $(this);
+        var $row = $icon.closest('tr');
+        $icon.toggleClass('bi-eye bi-eye-slash');
+        $row.toggleClass('layer-hidden');
+    });
+
+    // bulk hide selected layers
+    $('.layer-visibility-hide-multiple').on('click', function() {
+        var table = $(this).closest('table');
+        table.find('.layer_selectors:checked:visible').each(function() {
+            var $row = $(this).closest('tr');
+            var $icon = $row.find('.layer-visibility');
+            $icon.removeClass('bi-eye').addClass('bi-eye-slash');
+            $row.addClass('layer-hidden');
+        });
+    });
+
+    // bulk show selected layers
+    $('.layer-visibility-show-multiple').on('click', function() {
+        var table = $(this).closest('table');
+        table.find('.layer_selectors:checked:visible').each(function() {
+            var $row = $(this).closest('tr');
+            var $icon = $row.find('.layer-visibility');
+            $icon.removeClass('bi-eye-slash').addClass('bi-eye');
+            $row.removeClass('layer-hidden');
+        });
     });
 });
 

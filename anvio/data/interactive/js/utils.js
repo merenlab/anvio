@@ -389,7 +389,10 @@ function renderMarkdown(content) {
     const renderer = new marked.Renderer();
 
     renderer.link = function(hrefObj, title, text) {
+        // marked v14+ passes a single token object instead of separate arguments
         const href = typeof hrefObj === 'string' ? hrefObj : hrefObj.href;
+        text = typeof hrefObj === 'object' ? hrefObj.text : text;
+        title = typeof hrefObj === 'object' ? (hrefObj.title || '') : (title || '');
 
         if (typeof href !== 'string') {
             console.error('Expected href to be a string, got:', hrefObj);

@@ -211,7 +211,31 @@ class ContigsSuperclass:
 
 ### Module-level singleton `run` and `progress`
 
-Most modules define module-level `run` and `progress` instances used for module-scope logging (not inside classes). Classes receive their own `run`/`progress` as constructor parameters and use those for instance-scope logging.
+Most modules define module-level `run` and `progress` instances used for module-scope logging (not inside classes), although this is not the best practice (and anvi'o developers intend to unify this behavior in the future).
+
+In an ideal world, anvi'o classes receive their own `run`/`progress` as constructor parameters and use those for instance-scope logging, and initiate other classes from within with their own `run`/`progress` objects. This ensures that if the programmer passes a `run` or `progress` object that they set to be 'quiet' when they first inherited (`verbose=False`), they would remain quiet the entire time as the same objects would be passed around across classes. Module-level definitions and their use in individual classes would naturally violate this behavior and lead to unexpected terminal outputs.
+
+### Consuming Anvi'o Artifacts Through Proper Classes
+
+Many anvi'o artifacts (tab-delimited input files, databases, etc.) *can* be read with generic tools like `pandas.read_csv()` or via raw SQLite queries, but **should not be**. The codebase provides dedicated classes that parse most artifacts and perform essential validation, path resolution, sanity checks, and normalization that a raw read of the artifact would skip.
+
+Always look for the appropriate class before writing ad-hoc parsing logic. Key examples include the following:
+
+| Artifact | Wrong way | Right way |
+|---|---|---|
+| External/internal genomes file | `pd.read_csv(path, sep='\t')` | `genomedescriptions.GenomeDescriptions(args)` then `.load_genomes_descriptions()` |
+| Contigs database | `db.DB(path)` for high-level queries | `dbops.ContigsDatabase(path)` or `dbops.ContigsSuperclass(args)` |
+| Profile database | `db.DB(path)` for high-level queries | `dbops.ProfileDatabase(path)` or `dbops.ProfileSuperclass(args)` |
+| Pan database | `db.DB(path)` for high-level queries | `dbops.PanDatabase(path)` or `dbops.PanSuperclass(args)` |
+| Collections | `pd.read_csv(path, sep='\t')` | `ccollections.Collections(args)` |
+
+For instance, `GenomeDescriptions` resolves relative paths to absolute, validates that each referenced database exists and is the correct type, checks genome hash uniqueness, and populates metadata. None of this will happen when a `pd.read_csv()` reads the external genomes file. Skipping these checks leads to subtle bugs that surface far from the actual problem.
+
+When adding code that consumes an artifact, search the codebase for existing usage patterns to see how other modules handle it, and follow that pattern. For instance, running this in the codebase directory will give you a good idea about how `GenomeDescriptions` class is typically used:
+
+```
+grep 'GenomeDescriptions(' * -nr --exclude-dir data
+```
 
 ### `multiprocess` instead of `multiprocessing`
 

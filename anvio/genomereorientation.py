@@ -562,6 +562,7 @@ class GenomeReorienter:
             # Step 2: Align each contig to reference
             self.progress.update(f"{genome_name}: Aligning {num_contigs_after_filter} contigs")
             contig_alignments = {}
+            unaligned_contigs = []
             ref_length = self._get_total_length(self.reference_path)
             num_wrap_around_contigs = 0
 
@@ -576,7 +577,8 @@ class GenomeReorienter:
                     paf_records = self._minimap2_align(self.reference_path, temp_contig_fa)
 
                     if not paf_records:
-                        self.log_run.info_single(f"'{contig['id']}': no alignment", level=2)
+                        self.log_run.info_single(f"'{contig['id']}': no alignment to reference", level=2)
+                        unaligned_contigs.append(contig)
                         continue
 
                     # Check for wrap-around: contig spans the circularization point
@@ -660,27 +662,28 @@ class GenomeReorienter:
                                 f"strand={best.strand} alen={best.aligned_bases}", level=2)
                         else:
                             self.log_run.info_single(f"'{contig['id']}': no primary alignment", level=2)
+                            unaligned_contigs.append(contig)
 
                 except RuntimeError as e:
                     self.log_run.info_single(f"'{contig['id']}': alignment failed ({e})", level=2)
+                    unaligned_contigs.append(contig)
 
-            # Count unique original contigs that aligned
-            # (accounting for split wrap-around contigs)
-            aligned_original_contigs = set()
-            for contig_id, info in contig_alignments.items():
-                original_id = info['contig_data'].get('original_id', info['contig_data']['id'])
-                aligned_original_contigs.add(original_id)
-
-            num_aligned_original = len(aligned_original_contigs)
-            num_unaligned = num_contigs_after_filter - num_aligned_original
-            num_alignment_pieces = len(contig_alignments)  # Total pieces (including split contigs)
+            num_aligned = len(contig_alignments)
+            num_unaligned = len(unaligned_contigs)
 
             self.log_run.info_single(
-                f"Alignment summary: {num_aligned_original} contigs aligned "
-                f"({num_alignment_pieces} pieces total, {num_wrap_around_contigs} split for wrap-around)",
+                f"Alignment summary: {num_aligned} contigs aligned "
+                f"({num_wrap_around_contigs} rotated for wrap-around)",
                 level=2)
 
-            if num_aligned_original == 0:
+            if num_unaligned > 0:
+                total_unaligned_bp = sum(c['length'] for c in unaligned_contigs)
+                self.run.warning(f"{num_unaligned} contig(s) ({total_unaligned_bp:,} nts) in '{genome_name}' had no "
+                                 f"alignment to the reference genome and will be appended to the output FASTA as-is "
+                                 f"without reorientation.",
+                                 header="UNALIGNED CONTIGS DETECTED")
+
+            if num_aligned == 0:
                 raise ConfigError("No contigs aligned to reference")
 
             # Step 3: Order contigs by reference position
@@ -781,13 +784,25 @@ class GenomeReorienter:
                     # Write in 80-character lines
                     for i in range(0, len(full_scaffold), 80):
                         out_fa.write(full_scaffold[i:i+80] + '\n')
+                    # Append unaligned contigs as separate entries
+                    for contig in unaligned_contigs:
+                        out_fa.write(f">{contig['id']}\n")
+                        seq = contig['seq']
+                        for i in range(0, len(seq), 80):
+                            out_fa.write(seq[i:i+80] + '\n')
             else:
-                # Write as separate contigs (ordered and oriented)
+                # Write as separate contigs (ordered and oriented), then unaligned contigs
                 with open(output_path, 'w') as out_fa:
                     for idx, contig_info in enumerate(oriented_contigs):
                         out_fa.write(f">{contig_info['id']}\n")
                         # Write in 80-character lines
                         seq = contig_info['seq']
+                        for i in range(0, len(seq), 80):
+                            out_fa.write(seq[i:i+80] + '\n')
+                    # Append unaligned contigs as-is
+                    for contig in unaligned_contigs:
+                        out_fa.write(f">{contig['id']}\n")
+                        seq = contig['seq']
                         for i in range(0, len(seq), 80):
                             out_fa.write(seq[i:i+80] + '\n')
 
@@ -827,23 +842,24 @@ class GenomeReorienter:
 
             avg_ani = sum(ani_values) / len(ani_values) if ani_values else 0.0
 
-            actions_summary = f"ordered {num_aligned_original} contigs by reference position"
+            actions_summary = f"ordered {num_aligned} contigs by reference position"
             if num_wrap_around_contigs > 0:
-                actions_summary += f" ({num_wrap_around_contigs} split for wrap-around)"
+                actions_summary += f" ({num_wrap_around_contigs} rotated for wrap-around)"
             if self.scaffold_fragmented:
                 actions_summary += f", inserted {total_gap_size:,} nts of N-padding"
+            if unaligned_contigs:
+                actions_summary += f", appended {num_unaligned} unaligned contig(s) as-is"
 
             # Return results
             return {
                 'num_contigs_processed': num_contigs_after_filter,
-                'num_contigs_aligned': num_aligned_original,
+                'num_contigs_aligned': num_aligned,
                 'num_contigs_unaligned': num_unaligned,
                 'reference_coverage_pct': reference_coverage_pct,
                 'gaps': gaps,
                 'total_gap_size': total_gap_size,
                 'avg_ani': avg_ani,
                 'actions_summary': actions_summary,
-                'num_wrap_around_contigs': num_wrap_around_contigs
             }
 
         finally:

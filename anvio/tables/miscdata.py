@@ -959,6 +959,14 @@ class AdditionalDataBaseClass(AdditionalAndOrderDataBaseClass, object):
                     data[item_name] = {}
                 data[item_name].update(item_data)
 
+        # backfill missing keys across groups: if an item was absent from a group,
+        # it won't have that group's keys after the merge above. we set them to None
+        # so every item has a consistent set of keys.
+        for item_name in data:
+            for key in keys:
+                if key not in data[item_name]:
+                    data[item_name][key] = None
+
         return keys, data, groups
 
 

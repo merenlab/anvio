@@ -226,7 +226,7 @@ async function createDisplay(display_table){
         for (var layer_id = 0; layer_id < state['layer-order'].length; layer_id++) {
             var layer = state['layer-order'][layer_id];
 
-            if (state['layers'][layer]['height'] == 0)
+            if (state['layers'][layer]['height'] == 0 || state['layers'][layer]['visible'] === false)
                 continue;
 
             if (gene_cluster_data.genomes.indexOf(layer) === -1 || (filter_genome.length > 0 && !filter_genome.includes(layer) && !filter_genome.some(term => layer.includes(term)))) {
