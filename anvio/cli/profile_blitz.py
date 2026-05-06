@@ -25,7 +25,8 @@ __description__ = ("FAST profiling of BAM files to get gene-, contig-, or genome
 
 # default window sizes for DisCov
 COLLECTION_WLEN_DEFAULT=1000
-CONTIG_WLEN_DEFAULT=500
+CONTIG_MIN_WLEN_DEFAULT=300
+CONTIG_PERCENTAGE_LEN_DEFAULT=1 # 1% of contig length
 
 @terminal.time_program
 def main():
@@ -33,9 +34,11 @@ def main():
 
     # set default window size for DisCov if no related arguments are provided
     if not args.window_length and not args.window_length_as_percentage:
-        args.window_length = CONTIG_WLEN_DEFAULT
         if args.collection_txt:
             args.window_length = COLLECTION_WLEN_DEFAULT
+        else:
+            args.window_length_as_percentage = CONTIG_PERCENTAGE_LEN_DEFAULT
+            args.min_window_length = CONTIG_MIN_WLEN_DEFAULT
 
     try:
         p = BAMProfilerQuick(args)
@@ -88,11 +91,19 @@ def get_args():
                                         "--gene-mode.")
     groupE.add_argument(*anvio.A('window-length'), **anvio.K('window-length', {'help': f"How long to make the windows "
                         f"for computing the spread metric: S = # windows with coverage / # windows. This is the default "
-                        f"when no window length parameters are provided. For contig-level stats, the default window size "
-                        f"is {CONTIG_WLEN_DEFAULT}, and for genome/bin-level stats the default window size is "
+                        f"when no window length parameters are provided. For genome/bin-level stats, the default window size is "
                         f"{COLLECTION_WLEN_DEFAULT}."}))
-    groupE.add_argument(*anvio.A('window-length-as-percentage'), **anvio.K('window-length-as-percentage'))
-    groupE.add_argument(*anvio.A('min-window-length'), **anvio.K('min-window-length'))
+    groupE.add_argument(*anvio.A('window-length-as-percentage'), **anvio.K('window-length-as-percentage', {'help':
+                        f"With this option you can set the window length for the spread metric (S) dynamically as a percentage "
+                        f"of a given input sequence length. This works well when your input sequences (contigs or genomes) have "
+                        f"a wide size distribution and you don't have a one-size-fits-all window length to use. For instance, if "
+                        f"you want the window size to be 5%% of the contig length, you would use `--window-length-as-percentage 5`. "
+                        f"You may want to consider also specifying a reasonable minimum window length with the --min-window-length "
+                        f"parameter. This is the default window-sizing strategy for contig-level stats, and the default percentage "
+                        f"is {CONTIG_PERCENTAGE_LEN_DEFAULT}."}))
+    groupE.add_argument(*anvio.A('min-window-length'), **anvio.K('min-window-length', {'help': f"Use with "
+                        f"--window-length-as-percentage to ensure that percentage-based window lengths never fall below this value. "
+                        f"This parameter is set by default to {CONTIG_MIN_WLEN_DEFAULT} for contig-level stats."}))
     groupE.add_argument(*anvio.A('foldrange-lower'), **anvio.K('foldrange-lower'))
     groupE.add_argument(*anvio.A('foldrange-upper'), **anvio.K('foldrange-upper'))
     groupE.add_argument(*anvio.A('alpha'), **anvio.K('alpha'))
