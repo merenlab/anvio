@@ -167,7 +167,7 @@ class Train(SCGDomainClassifier):
                 self.run.warning("The number of contigs databases found for the domain '%s' is %d. You should consider "
                             "increasing the number of genomes you include for this domain. A robust classifier "
                             "will require similar number of genomes for each domain that capture the diversity "
-                            "of the domain they represent. Say, at least 20 genomes per domain is a good start." \
+                            "of the domain they represent. Say, at least 20 genomes per domain is a good start."
                                     % (domain, len(self.contigs_dbs[domain])))
 
             self.progress.update("Making sure contigs dbs are contigs dbs")
@@ -243,7 +243,7 @@ class Predict(SCGDomainClassifier):
             raise ConfigError("The classifier on your disk is missing some of the mandatory information in it :/ For instance, the "
                               "following SCG domains are not defined in it: '%s'. One way to fix this could be re-training the "
                               "random forest with `anvi-script-gen-scg-domain-classifier` with a reasonable set of genomes. Don't "
-                              "forget to store the resulting classifier at the default anvi'o path of /blah/blah/anvio/data/%s." \
+                              "forget to store the resulting classifier at the default anvi'o path of /blah/blah/anvio/data/%s."
                                         % (', '.join(missing_classes), self.input_classifier_path))
 
 

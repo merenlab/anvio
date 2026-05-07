@@ -50,7 +50,7 @@ def get_args():
 
     groupD = parser.add_argument_group('DATABASES', 'Declaring relevant anvi\'o databases. First things first.')
     groupD.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
-    groupD.add_argument("--pdb-db", type=str, default=None, help = \
+    groupD.add_argument("--pdb-db", type=str, default=None, help =
                         """By default, this program accesses the structure files it needs from an
                         internal anvi'o database that can be set up with anvi-setup-pdb-database. If
                         a required structure is not in this database, it will instead be
@@ -70,7 +70,7 @@ def get_args():
     groupI.add_argument(*anvio.A('external-structures'), **anvio.K('external-structures'))
 
     groupM = parser.add_argument_group('MODELLER PARAMS', 'Parameters for MODELLER\'s homology modeling.')
-    groupM.add_argument("--num-models", "-N", type=int, default=1, help = \
+    groupM.add_argument("--num-models", "-N", type=int, default=1, help =
                         """This parameter determines the number of predicted structures that are
                         solved for a given protein.  The original atomic positions for each model
                         are perturbed by an amount defined by --deviation, which leads to
@@ -80,14 +80,14 @@ def get_args():
                         should be kept in mind that the largest determinant of a model's accuracy is
                         determined by the protein templates used, so no need to go overboard with an
                         excessively large --num-models. The default is %(default)d.""")
-    groupM.add_argument("--deviation", "-d", type=float, default=4.0, help = \
+    groupM.add_argument("--deviation", "-d", type=float, default=4.0, help =
                         """Deviation (angstroms)""")
-    groupM.add_argument("--modeller-database", "-D", type=str, default="pdb_95", help = \
+    groupM.add_argument("--modeller-database", "-D", type=str, default="pdb_95", help =
                         """Which database do you want to search the structures of? Default is
                         "%(default)s". If you have your own database it must have either the extension
                         .bin or .pir. If you don't have a database or don't know what this
                         means, don't worry, we will both inform you and take care of you.""")
-    groupM.add_argument("--scoring-method", "-b", type=str, default="DOPE_score", help = \
+    groupM.add_argument("--scoring-method", "-b", type=str, default="DOPE_score", help =
                         """How should the best model be decided? The metric used could be any of
                         GA341_score, DOPE_score, and molpdf. GA341 is an absolute measure,
                         where a good model will have a score near 1.0, whereas anything below 0.6
@@ -96,23 +96,23 @@ def get_args():
                         distinguisher between good and bad models than molpdf. The default is %(default)s.
                         To learn more see the MODELLER tutorial:
                         https://salilab.org/modeller/tutorial/basic.html.""")
-    groupM.add_argument("--very-fast", action = 'store_true', help = \
+    groupM.add_argument("--very-fast", action = 'store_true', help =
                         """If provided, a very fast optimization is done for each model at the cost
                         of accuracy. It is recommended to use a --num-models of 1, since the
                         optimization is so crude that all models will likely converge to the same
                         solution.""")
-    groupM.add_argument("--percent-cutoff", "-p", type=float, default=30, help = \
+    groupM.add_argument("--percent-cutoff", "-p", type=float, default=30, help =
                         """If a protein in the database has a percent identity to the gene of
                         interest that is less than this parameter, then
                         it is not considered as a template. The default is %(default)f.""")
-    groupM.add_argument("--alignment-fraction-cutoff", "-a", type=float, default=0.80, help = \
+    groupM.add_argument("--alignment-fraction-cutoff", "-a", type=float, default=0.80, help =
                         """If a protein in the database aligns to a fraction of the gene of interest
                         that is less than this parameter, the template is not considered. For example,
                         if --alignment-cutoff is set to 0.90, and the fraction of the gene of interest
                         that is covered by a potential template is 0.80 in their alignment, the template
                         does not align to enough of the gene of interest to be considered. The default
                         is %(default)f.""")
-    groupM.add_argument("--max-number-templates", "-t", type=int, default=5, help = \
+    groupM.add_argument("--max-number-templates", "-t", type=int, default=5, help =
                         """Generally speaking it is best to use as many templates as possible given
                         that they have high proper percent identity to the gene of interest. Taken
                         from https://salilab.org/modeller/methenz/andras/node4.html: 'The use of
@@ -130,16 +130,16 @@ def get_args():
                         default is %(default)d.""")
 
     groupE = parser.add_argument_group('EXTRA', 'Everything else.')
-    groupE.add_argument("--skip-DSSP", action = "store_true", help = \
+    groupE.add_argument("--skip-DSSP", action = "store_true", help =
                         """Dictionary of Secondary Structure of Proteins (DSSP) is a program that takes
                         as its input a protein structure file and outputs predicted secondary
                         structure (alpha helix, beta strand, etc.), measures of solvent
                         accessibility, and hydrogen bonds for each residue in the protein. If for
                         some reason you don't want this, provide this flag.""")
-    groupE.add_argument("--modeller-executable", type=str, help = \
+    groupE.add_argument("--modeller-executable", type=str, help =
                         """The MODELLER program to use. For example, `mod9.19`. Anvi'o will try and find
                         it if not provided""")
-    groupE.add_argument("--offline-mode", action = "store_true", help = \
+    groupE.add_argument("--offline-mode", action = "store_true", help =
                         """Anvi'o first tries to obtain template structures from a database (see
                         --pdb-db for details). If the requested template does not exist in the
                         database, its structure will be downloaded from the RCSB PDB server.
@@ -151,7 +151,7 @@ def get_args():
 
     params = {
         'default': 25,
-        'help': anvio.K('write-buffer-size')['help'] + \
+        'help': anvio.K('write-buffer-size')['help'] +
                 ' If --num-threads is 1, this parameter is ignored because the DB is written to after each gene'
     }
     groupE.add_argument(*anvio.A('write-buffer-size'), **anvio.K('write-buffer-size', params))

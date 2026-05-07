@@ -79,11 +79,11 @@ def migrate(db_path):
         run.info_single("Your profile db is now version %s. If you had amino acids profiled for this database,\
                          you just lost all of that content :( The only option is to re-profile all your databases\
                          and merge them again. We are very sorry about the inconvenience. If you don't know what\
-                         this message is talking about, then you have nothing to worry about." \
+                         this message is talking about, then you have nothing to worry about."
                                                             % next_version, nl_after=1, nl_before=1, mc='green')
     else:
         run.info_single("Your profile db is now version %s. But essentially nothing really happened to your "
-                        "database since it was a blank profile (which is OK, move along)." \
+                        "database since it was a blank profile (which is OK, move along)."
                                                             % next_version, nl_after=1, nl_before=1, mc='green')
 
 

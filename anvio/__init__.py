@@ -4118,13 +4118,13 @@ def K(param_id, params_dict={}):
 (__version__,
  __codename__,
  __contigs__version__,
- __profile__version__, \
- __genes__version__, \
- __pan__version__, \
- __auxiliary_data_version__, \
- __structure__version__, \
- __genomes_storage_version__ , \
- __trnaseq__version__, \
+ __profile__version__,
+ __genes__version__,
+ __pan__version__,
+ __auxiliary_data_version__,
+ __structure__version__,
+ __genomes_storage_version__ ,
+ __trnaseq__version__,
  __workflow_config_version__,
  __kegg_modules_version__) = get_versions()
 

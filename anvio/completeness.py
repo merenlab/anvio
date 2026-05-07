@@ -95,7 +95,7 @@ class Completeness:
                              "are not included when the anvi'o domain predictor was trained :/ Here is the list of domains that are making "
                              "us upset here: \"%s\". This means either you put a new HMM single-copy core gene collection to the anvi'o HMMs "
                              "directory, or gave it as a parameter, and run `anvi-run-hmms` without updating the classifier anvi'o uses to "
-                             "resolve domains for proper completion/redundancy estimates." % \
+                             "resolve domains for proper completion/redundancy estimates." %
                                            ('a domain' if num_domains_missing == 1 else '%s domains' % num_domains_missing,
                                             ', '.join(self.domains_missing_in_SCG_domain_predictor)))
             self.initialized_properly = False
@@ -133,7 +133,7 @@ class Completeness:
                                  "how they behave. That's all good and very exciting, but unfortunately anvi'o will not be able to predict domains "
                                  "due to this incompatibility here. Running `anvi-run-hmms` on this contigs database would've solved this problem "
                                  "but it is not an absolute necessity as anvi'o will continue running by not utilizing domain-specific HMMs for "
-                                 "completion/redundancy estimates, and report all the results all at once without prioritizing a single domain." % \
+                                 "completion/redundancy estimates, and report all the results all at once without prioritizing a single domain." %
                                                ('an HMM source' if num_sources_missing == 1 else '%s HMM sources' % num_sources_missing,
                                                 ', '.join(self.sources_missing_in_SCGs_run_for_contigs)))
             self.initialized_properly = False

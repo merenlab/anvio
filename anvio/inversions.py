@@ -335,7 +335,7 @@ class Inversions:
             # extend start and stop positions of merged stretches to ENSURE we are not
             # missing important information because bioinformatics.
             coverage_stretches_in_contigs[contig_name] = [(0 if (e[0] - self.num_nts_to_pad_a_stretch< 0) else e[0] - self.num_nts_to_pad_a_stretch,
-                                                           contig_length if (e[1] + self.num_nts_to_pad_a_stretch) > contig_length else e[1] + self.num_nts_to_pad_a_stretch) \
+                                                           contig_length if (e[1] + self.num_nts_to_pad_a_stretch) > contig_length else e[1] + self.num_nts_to_pad_a_stretch)
                                                                 for e in coverage_stretches_in_contigs[contig_name]]
 
         ################################################################################

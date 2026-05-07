@@ -193,7 +193,7 @@ class NGram(object):
             num_genes = len(gene_caller_ids)
 
             if self.window_range[1] > num_genes:
-                raise ConfigError("The largest window size you requested (%d) is larger than the number of genes found on this genome: %s" % \
+                raise ConfigError("The largest window size you requested (%d) is larger than the number of genes found on this genome: %s" %
                     (self.window_range[1], contigs_db_name))
 
 
