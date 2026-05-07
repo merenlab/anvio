@@ -541,7 +541,7 @@ class TablesForGeneCalls(Table):
 
                 if gene_caller_ids_for_source:
                     for table_name in [t.genes_in_contigs_table_name, t.genes_in_splits_table_name]:
-                        database._exec('''DELETE FROM %s WHERE gene_callers_id IN (%s)''' % \
+                        database._exec('''DELETE FROM %s WHERE gene_callers_id IN (%s)''' %
                                                     (table_name, ','.join([str(g) for g in gene_caller_ids_for_source])))
 
         self.progress.new('Processing')

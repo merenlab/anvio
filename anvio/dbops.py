@@ -726,7 +726,7 @@ class ContigsSuperclass(object):
                                   "contained %d split names. Note that if you have been using a `min_contig_length` cutoff "
                                   "that may have resulted in the removal of your splits from the primary dict of splits. "
                                   "Regardless, here is one of the split names that you requested and were missing: '%s'. "
-                                  "And here is one found in the splits basic info dict: '%s'." % \
+                                  "And here is one found in the splits basic info dict: '%s'." %
                                                 (len(missing_split_names), len(split_names_of_interest), len(self.splits_basic_info),
                                                  missing_split_names[0], list(self.splits_basic_info.keys())[0]))
 
@@ -961,7 +961,7 @@ class ContigsSuperclass(object):
             else:
                 self.progress.reset()
                 raise ConfigError("Some of the functional sources you requested are missing from the contigs database '%s'. Here "
-                                  "they are (or here it is, whatever): %s." % \
+                                  "they are (or here it is, whatever): %s." %
                                                  (self.contigs_db_path, ', '.join(["'%s'" % s for s in missing_sources])))
         else:
             # if we are here, we have all the sources present
@@ -1135,7 +1135,7 @@ class ContigsSuperclass(object):
                               "something must have gone very wrong somewhere in the code ..." % (gene_caller_id, contig_name))
 
         if not pos_in_contig >= gene_call['start'] or not pos_in_contig < gene_call['stop']:
-            raise ConfigError("get_corresponding_codon_order_in_gene :: position %d does not occur in gene call %d :(" \
+            raise ConfigError("get_corresponding_codon_order_in_gene :: position %d does not occur in gene call %d :("
                               % (pos_in_contig, gene_caller_id))
 
         start, stop = gene_call['start'], gene_call['stop']
@@ -2007,7 +2007,7 @@ class PanSuperclass(object):
 
         F = lambda x: '[YES]' if x else '[NO]'
         self.run.info('Pan DB', 'Initialized: %s (v. %s)' % (self.pan_db_path, anvio.__pan__version__))
-        self.run.info('Gene cluster homogeneity estimates', 'Functional: %s; Geometric: %s; Combined: %s' % \
+        self.run.info('Gene cluster homogeneity estimates', 'Functional: %s; Geometric: %s; Combined: %s' %
                          (F(self.functional_homogeneity_info_is_available), F(self.geometric_homogeneity_info_is_available),
                           F(self.combined_homogeneity_info_is_available)),
                       mc="cyan")
@@ -2078,7 +2078,7 @@ class PanSuperclass(object):
 
         if not self.genomes_storage_is_available:
             raise ConfigError("The pan anvi'o super class for is upset. You are attempting to get AA sequences for %s,\
-                               but there is not genomes storage is available to get it." \
+                               but there is not genomes storage is available to get it."
                                     % 'a gene cluster' if len(gene_cluster_names) > 1 else '%d gene_clusters' % len(gene_cluster_names))
 
         if gene_clusters_dict is None:
@@ -2279,7 +2279,7 @@ class PanSuperclass(object):
             output_queue.put(indices_dict)
 
 
-    def write_sequences_in_gene_clusters_to_file(self, gene_clusters_dict=None, gene_cluster_names=set([]), \
+    def write_sequences_in_gene_clusters_to_file(self, gene_clusters_dict=None, gene_cluster_names=set([]),
                                                   skip_alignments=False, output_file_path=None, report_DNA_sequences=False):
         if output_file_path:
             filesnpaths.is_output_file_writable(output_file_path)
@@ -2314,8 +2314,8 @@ class PanSuperclass(object):
         self.run.info('Output FASTA file', output_file_path, mc='green', nl_after=1)
 
 
-    def write_sequences_in_gene_clusters_for_phylogenomics(self, gene_clusters_dict=None, skip_alignments=False, \
-                                                output_file_path=None, report_DNA_sequences=False, align_with=None, \
+    def write_sequences_in_gene_clusters_for_phylogenomics(self, gene_clusters_dict=None, skip_alignments=False,
+                                                output_file_path=None, report_DNA_sequences=False, align_with=None,
                                                 separator=None, partition_file_path=None):
         if output_file_path:
             filesnpaths.is_output_file_writable(output_file_path)
@@ -3055,7 +3055,7 @@ class PanSuperclass(object):
                                --max-geometric-homogeneity-index %(max_gh)f, --min-combined-homogeneity-index %(min_ch)f, and --max-combined-homogeneity-index %(max_ch)f. \
                                None of your %(all_gcs)d gene clusters in your %(all_gs)d genomes that were included this analysis matched to this combination \
                                (please note that number of genomes may be smaller than the actual number of genomes in the original pan genome \
-                               if other filters were applied to the gene clusters dictionary prior)." % \
+                               if other filters were applied to the gene clusters dictionary prior)." %
                                             {'min_oc': min_num_genomes_gene_cluster_occurs, 'max_oc': max_num_genomes_gene_cluster_occurs,
                                              'min_g': min_num_genes_from_each_genome, 'max_g': max_num_genes_from_each_genome,
                                              'min_fh': min_functional_homogeneity_index, 'max_fh': max_functional_homogeneity_index,
@@ -3128,7 +3128,7 @@ class PanSuperclass(object):
         if len(genomes_to_remove) == len(all_genomes):
             raise ConfigError("Bad news: using --max-num-gene-clusters-missing-from-genome paramter with '%d' removed all of your "
                               "%d genomes from the analysis. This means every genome you have in your pangenome misses at least %d "
-                              "of your %d gene clusters. Now you know :/" \
+                              "of your %d gene clusters. Now you know :/"
                                     % (max_num_gene_clusters_missing_from_genome,
                                        len(all_genomes),
                                        max_num_gene_clusters_missing_from_genome,
@@ -3179,7 +3179,7 @@ class PanSuperclass(object):
             gene_clusters_dict = copy.deepcopy(self.gene_clusters)
 
         if not isinstance(gene_clusters_dict, dict):
-            raise ConfigError("Houston, we have a problem. The gene clusters dict seems to be of type %s and not dict :/"\
+            raise ConfigError("Houston, we have a problem. The gene clusters dict seems to be of type %s and not dict :/"
                             % type(gene_clusters_dict))
 
         # let's see what the user wants.
@@ -3308,7 +3308,7 @@ class PanSuperclass(object):
         else:
             self.run.info_single("A short announcement for the curious: anvi'o found %d gene clusters in the database, attempted to "
                                  "initialize a gene clusters dictionary for %d of them as requested by the user or the programmer, and "
-                                 "managed to get back a gene clusters dictionary with %d items. We just hope all these make sense to you." \
+                                 "managed to get back a gene clusters dictionary with %d items. We just hope all these make sense to you."
                                 % (len(self.gene_cluster_names_in_db), len(gene_cluster_ids_to_focus), len(self.gene_clusters)), nl_after=1, nl_before=1)
 
         # gene cluster names were set when we first initialized the class, but if we are here, it means the user may have
@@ -3383,7 +3383,7 @@ class PanSuperclass(object):
 
         if not self.gene_clusters:
             raise ConfigError("init_collection_profile wants to initialize the collection profile for '%s', but the "
-                               "the gene clusters dict is kinda empty :/ Someone forgot to initialize something maybe?" \
+                               "the gene clusters dict is kinda empty :/ Someone forgot to initialize something maybe?"
                                         % collection_name)
 
         # get trimmed collection and bins_info dictionaries
@@ -3978,7 +3978,7 @@ class ProfileSuperclass(object):
         elif self.collection_name and not utils.is_blank_profile(self.profile_db_path):
             self.run.warning("ProfileSuperClass found a collection focus, which means it will be initialized using only "
                              "the splits in the profile database that are affiliated with the collection %s and "
-                             "%s it describes." % (self.collection_name, \
+                             "%s it describes." % (self.collection_name,
                                                    'bins "%s" ' % ', '.join(self.bin_names) if self.bin_names else 'all bins'))
             self.split_names_of_interest = ccolections.GetSplitNamesInBins(self.args).get_split_names_only()
 
@@ -5367,7 +5367,7 @@ class ContigsDatabase:
         if len(missing_gene_calls):
             raise ConfigError("Your contigs database has %d genes, but it's missing %d of %d gene calls "
                               "you want to remove from it :/ This doesn't make sense. Here is one of those "
-                              "gene calls that were not in your database: %d" % \
+                              "gene calls that were not in your database: %d" %
                                     (len(gene_calls_in_db), len(missing_gene_calls), len(gene_caller_ids_to_remove), gene_caller_ids_to_remove[-1]))
 
         self.run.warning('%d gene calls %d is being removed from your contigs '
@@ -5537,7 +5537,7 @@ class ContigsDatabase:
                 raise ConfigError("At least one of the deflines in your FASTA File does not comply with the 'simple deflines' "
                                   "requirement of anvi'o. You can either use the script `anvi-script-reformat-fasta` to take "
                                   "care of this issue, or read this section in the tutorial to understand the reason behind "
-                                  "this requirement (anvi'o is very upset for making you do this): %s" % \
+                                  "this requirement (anvi'o is very upset for making you do this): %s" %
                                        ('http://merenlab.org/2016/06/22/anvio-tutorial-v2/#take-a-look-at-your-fasta-file'))
 
             if len(fasta.seq) < kmer_size:
@@ -5788,8 +5788,8 @@ class ContigsDatabase:
         self.run.info('Gene calling step skipped', skip_gene_calling, quiet=self.quiet)
         self.run.info("Splits broke genes (non-mindful mode)", skip_mindful_splitting, quiet=self.quiet)
         self.run.info('Desired split length (what the user wanted)', split_length, quiet=self.quiet)
-        self.run.info("Average split length (what anvi'o gave back)", (int(round(numpy.mean(recovered_split_lengths)))) \
-                                                                        if recovered_split_lengths \
+        self.run.info("Average split length (what anvi'o gave back)", (int(round(numpy.mean(recovered_split_lengths))))
+                                                                        if recovered_split_lengths
                                                                             else "(Anvi'o did not create any splits)", quiet=self.quiet)
 
 
@@ -6057,7 +6057,7 @@ class AA_counts(ContigsSuperclass):
 
         if not self.collection_name in collections_info_table:
             valid_collections = ', '.join(list(collections_info_table.keys()))
-            raise ConfigError("'%s' is not a valid collection name. But %s: '%s'." \
+            raise ConfigError("'%s' is not a valid collection name. But %s: '%s'."
                                     % (self.collection_name,
                                        'these are' if len(valid_collections) > 1 else 'this is',
                                        valid_collections))
@@ -6070,7 +6070,7 @@ class AA_counts(ContigsSuperclass):
 
             missing_bins = [b for b in bin_names_of_interest if b not in bin_names_in_collection]
             if len(missing_bins):
-                raise ConfigError("Some bin names you declared do not appear to be in the collection %s." \
+                raise ConfigError("Some bin names you declared do not appear to be in the collection %s."
                                             % self.collection_name)
         else:
             bin_names_of_interest = bin_names_in_collection
@@ -6186,7 +6186,7 @@ def update_description_in_db(anvio_db_path, description, run=run):
                     "and %d characters." % (db_type, len(description.split()), len(description)))
 
 
-def do_hierarchical_clustering_of_items(anvio_db_path, clustering_configs, split_names=[], database_paths={}, input_directory=None, default_clustering_config=None, \
+def do_hierarchical_clustering_of_items(anvio_db_path, clustering_configs, split_names=[], database_paths={}, input_directory=None, default_clustering_config=None,
                                 distance=constants.distance_metric_default, linkage=constants.linkage_method_default, run=run, progress=progress):
     """This is just an orphan function that computes hierarchical clustering w results
        and calls the `add_items_order_to_db` function with correct input.

@@ -42,7 +42,7 @@ def migrate(db_path):
 
     progress.end()
     run.info_single("The contigs database is now %s. We just updated the self table of the contigs database with a small "
-                    "bit of information to be able to track SCG taxonomy version changes more accurately going forward" % \
+                    "bit of information to be able to track SCG taxonomy version changes more accurately going forward" %
                                     (next_version), nl_after=1, nl_before=1, mc='green')
 
 

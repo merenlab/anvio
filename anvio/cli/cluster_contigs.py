@@ -280,7 +280,7 @@ def cluster_contigs(args, unknown, subparsers, modules):
 
     store_clusters_in_db(args.contigs_db, args.profile_db, clusters, collection_name, driver, cluster_type)
 
-    run.info_single("%s formed %d clusters, which are being added to the database as a collection named %s." % \
+    run.info_single("%s formed %d clusters, which are being added to the database as a collection named %s." %
                             (driver, len(clusters), collection_name), nl_before=1, nl_after=1, mc="green")
 
 

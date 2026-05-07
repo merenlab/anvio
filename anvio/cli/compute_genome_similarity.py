@@ -91,7 +91,7 @@ def get_args():
                          the pyANI help for v0.2.7 at https://github.com/widdowquinn/pyani, the method 'ANIm' uses\
                          MUMmer (NUCmer) to align the input sequences. 'ANIb' uses BLASTN+ to align 1020nt fragments\
                          of the input sequences. 'ANIblastall': uses the legacy BLASTN to align 1020nt fragments\
-                         Finally, 'TETRA': calculates tetranucleotide frequencies of each input sequence",\
+                         Finally, 'TETRA': calculates tetranucleotide frequencies of each input sequence",
                          choices=['ANIm', 'ANIb', 'ANIblastall', 'TETRA'])
     group_PYANI.add_argument(*anvio.A('min-alignment-fraction'), **anvio.K('min-alignment-fraction'))
     group_PYANI.add_argument(*anvio.A('significant-alignment-length'), **anvio.K('significant-alignment-length'))

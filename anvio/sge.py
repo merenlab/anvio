@@ -246,7 +246,7 @@ class SGE:
                             found = True
                             info_dict[s] += 1
                     if not found:
-                        raise ConfigError("Unknown state for qstat: '%s' (known states: '%s')"\
+                        raise ConfigError("Unknown state for qstat: '%s' (known states: '%s')"
                                  % (state, ', '.join(list(info_dict.keys()))))
 
                 line_no += 1

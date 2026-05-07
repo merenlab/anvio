@@ -426,14 +426,14 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         if not values_that_are_not_none:
             raise ConfigError("The variable '%s' contains only values of type None,\
                                this is probably a mistake, surely you didn't mean to provide an empty category.\
-                               Do you think this is a mistake on our part? Let us know." % \
+                               Do you think this is a mistake on our part? Let us know." %
                                                                     category_variable)
 
         type_category_variable = type(values_that_are_not_none[0][category_variable])
         if type_category_variable != str:
             raise ConfigError("The variable '%s' does not seem to resemble anything that could be a category. "
                               "Anvi'o expects these variables to be of type string, yet yours is type %s :/ "
-                              "Do you think this is a mistake on our part? Let us know." % \
+                              "Do you think this is a mistake on our part? Let us know." %
                                                                     (category_variable, type_category_variable))
 
         gene_clusters_functions_summary_dict = self.get_gene_clusters_functions_summary_dict(functional_annotation_source)
@@ -464,7 +464,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         functions_in_categories = occurrence_of_functions_in_pangenome_dataframe.groupby('category').sum()
 
         # unique names of categories
-        categories = set([str(categories_dict[g][category_variable]) for g in categories_dict.keys() if\
+        categories = set([str(categories_dict[g][category_variable]) for g in categories_dict.keys() if
                             (categories_dict[g][category_variable] is not None or include_ungrouped)])
 
         categories_to_genomes_dict = {}
@@ -561,7 +561,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         genome_names = ', '.join(list(self.gene_clusters.values())[0].keys())
 
         # set up the initial summary dictionary
-        self.summary['meta'] = { \
+        self.summary['meta'] = {
                 'quick': self.quick,
                 'cog_functions_are_called': self.cog_functions_are_called,
                 'cog_categories_are_called': self.cog_categories_are_called,
@@ -581,7 +581,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         }
 
         # I am not sure whether this is the best place to do this,
-        self.summary['basics_pretty'] = { \
+        self.summary['basics_pretty'] = {
                 'pan': [('Created on', self.p_meta['creation_date']),
                         ('Version', anvio.__pan__version__),
                         ('Number of genes', pretty(int(self.p_meta['num_genes_in_gene_clusters']))),
@@ -1394,9 +1394,9 @@ class ContigSummarizer(SummarizerSuperClass):
             run.info_single('PLEASE READ CAREFULLY. Contigs db info summary will not include %d gene calls that were '
                             'not identified by "%s", the default gene caller. Other gene calls found in this contigs '
                             'database include, %s. If you are more interested in gene calls in any of those, you should '
-                            'indicate that through the `--gene-caller` parameter in your program.' \
-                                                                % (sum(gene_calls_from_other_gene_callers.values()), \
-                                                                   gene_caller_to_use, \
+                            'indicate that through the `--gene-caller` parameter in your program.'
+                                                                % (sum(gene_calls_from_other_gene_callers.values()),
+                                                                   gene_caller_to_use,
                                                                    ', '.join(['%d gene calls by %s' % (tpl[1], tpl[0]) for tpl in gene_calls_from_other_gene_callers.items()])))
 
         if len(impossible_gene_calls_missing_from_contigs_db):
@@ -1679,7 +1679,7 @@ class Bin:
                              'any sense, you may need make sure everything is in order. The thing is, '
                              'sometimes external clustering results that are added to the contigs via '
                              '`anvi-populate-collections-table` may include split names that are not used '
-                             'while the contigs database was generated.'\
+                             'while the contigs database was generated.'
                                                 % (len(missing_ids), bin_id, self.summary.collection_name))
 
 

@@ -88,7 +88,7 @@ def migrate(db_path):
     contigs_db.disconnect()
 
     run.info_single("Your contigs db is now %s. This update carried one more issue into the graveyard "
-                    "of bad design decisions we've made years ago by altering %d tables in your database." \
+                    "of bad design decisions we've made years ago by altering %d tables in your database."
                             % (next_version, len(tables)), nl_after=1, nl_before=1, mc='green')
 
 if __name__ == '__main__':

@@ -526,7 +526,7 @@ class InteracDomeTableData(object):
         }
 
         if kind not in self.files:
-            raise ConfigError("Unknown kind '%s' of InteracDome data. Known kinds: %s" \
+            raise ConfigError("Unknown kind '%s' of InteracDome data. Known kinds: %s"
                               % (kind, ','.join(list(self.files.keys()))))
 
         self.filepath = self.files[self.kind]

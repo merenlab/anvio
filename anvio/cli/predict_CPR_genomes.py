@@ -59,7 +59,7 @@ def run_program():
 
     if args.output_file and ( not args.just_do_it and filesnpaths.is_file_exists(args.output_file, dont_raise=True) ):
         raise ConfigError("The output file '%s' already exists. Please either remove it, or provide a different name. "
-                          "Anvi'o does not like overwriting your stuff (well, only whenever it is convenient to do so)."\
+                          "Anvi'o does not like overwriting your stuff (well, only whenever it is convenient to do so)."
                                     % args.output_file)
 
     if args.profile_db and not args.collection_name:

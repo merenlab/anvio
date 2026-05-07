@@ -69,7 +69,7 @@ def get_args():
 
     groupC.add_argument('--search-with', default=default_search_method, metavar="SEARCH_METHOD",
                         help="What program to use for database searching. The default search uses %(default)s.\
-                              All available options include: %(serach_methods)s." \
+                              All available options include: %(serach_methods)s."
                                         % {'serach_methods': ', '.join(available_search_methods),
                                            'default': default_search_method})
 

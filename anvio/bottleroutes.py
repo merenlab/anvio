@@ -216,7 +216,7 @@ class BottleApplication(Bottle):
             raise ConfigError("Anvi'o uses `%(wsgi)s` as a web server gateway interface, and you don't seem to have it. Which "
                               "means bad news. But the good news is that you can actually install it very easily. If you are "
                               "in a conda environment, try 'conda install %(wsgi)s'. If you are in a Python environment "
-                              "try 'pip install %(wsgi)s'. If you are not sure, start with conda, if it doesn't work, try pip." \
+                              "try 'pip install %(wsgi)s'. If you are not sure, start with conda, if it doesn't work, try pip."
                                     % {'wsgi': self._wsgi_for_bottle})
 
         try:

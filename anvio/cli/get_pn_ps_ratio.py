@@ -170,11 +170,11 @@ def get_args():
                                                       to generate variability table.'}))
 
     groupE = parser.add_argument_group('TUNABLES', "Successfully tune one or more of these parameters to unlock the badge 'Advanced anvian'.")
-    groupE.add_argument(*anvio.A('min-departure-from-consensus'), **anvio.K('min-departure-from-consensus', {'default': 0.0, 'help': \
+    groupE.add_argument(*anvio.A('min-departure-from-consensus'), **anvio.K('min-departure-from-consensus', {'default': 0.0, 'help':
                             'SCVs will be ignored if they have a departure from consensus less than this \
                             value. Note: Keep in mind you may have already supplied this parameter during anvi-gen-variability-profile.\
                             The default value is %(default).2f.'}))
-    groupE.add_argument(*anvio.A('min-departure-from-reference'), **anvio.K('min-departure-from-reference', {'default': 0.0, 'help': \
+    groupE.add_argument(*anvio.A('min-departure-from-reference'), **anvio.K('min-departure-from-reference', {'default': 0.0, 'help':
                             'SCVs will be ignored if they have a departure from reference less than this \
                             value. Note: Keep in mind you may have already supplied this parameter during anvi-gen-variability-profile.\
                             The default value is %(default).2f.'}))
@@ -188,7 +188,7 @@ def get_args():
 
     groupO = parser.add_argument_group('OUTPUT', 'The output of this program is a folder directory with several tables.')
     groupO.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required':True}))
-    groupO.add_argument('-p', '--pivot', action='store_true', help = \
+    groupO.add_argument('-p', '--pivot', action='store_true', help =
                             'By default the output is in long format, however you can \
                              choose the output to be in matrix form with this flag. If you\'re not sure which one is right for you, \
                              just try one and take a look at the output--there is no cost for making a mistake :)')

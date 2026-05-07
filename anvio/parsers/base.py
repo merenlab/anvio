@@ -51,7 +51,7 @@ class Parser(object):
                                    "don't know how to generate them" % (self.annotation_source,
                                                                         ', '.join(list(self.files_expected.values()))))
 
-            raise ConfigError("%s parser requires %d files (%s). %s missing from your input: %s"\
+            raise ConfigError("%s parser requires %d files (%s). %s missing from your input: %s"
                                      % (self.annotation_source,
                                         len(self.files_expected),
                                         ', '.join(list(self.files_expected.values())),
@@ -99,7 +99,7 @@ class Parser(object):
                                 "even know what file it is. But in general this error occurs when the mapping function "
                                 "does not find what its looking for in a line. For instance, a value that was supposed to "
                                 "be an integer ends up being actually a piece of text or something. Well. Here are the "
-                                "line numbers if you care and can make sense of this information: %s" % \
+                                "line numbers if you care and can make sense of this information: %s" %
                                                         (self.annotation_source, len(failed_lines), failed_lines_text))
 
 

@@ -311,7 +311,7 @@ class MetagenomeCentricGeneClassifier:
             fig.suptitle("%s - histogram of non-outliers" % sample)
             # adding the mean and std of the non-outliers as text to the plot
             text_for_hist = u'$\mu = %d$\n $\sigma = %d$' %\
-                                (self.samples_coverage_stats_dicts['non_outlier_mean_coverage'][sample],\
+                                (self.samples_coverage_stats_dicts['non_outlier_mean_coverage'][sample],
                                  self.samples_coverage_stats_dicts['non_outlier_coverage_std'][sample])
             ax.text(0.8, 0.9, text_for_hist, ha='center', va='center', transform=ax.transAxes)
             plt.savefig(pdf_output_file, format='pdf')
@@ -505,7 +505,7 @@ class MetagenomeCentricGeneClassifier:
         # the results of the classifier per sample
 
         for sample in self.samples_detection_information:
-            TSC = [g for g in self.gene_class_df.index if (self.gene_class_df.loc[g,'coverage_consistency'] and \
+            TSC = [g for g in self.gene_class_df.index if (self.gene_class_df.loc[g,'coverage_consistency'] and
                                                             self.gene_class_df.loc[g,'core'])]
             self.samples_detection_information['number_of_taxon_specific_core_detected'] = len(TSC)
 
@@ -618,11 +618,11 @@ def get_non_outliers_information(v, MAD_threshold=2.5, zeros_are_outliers=False)
     return non_outlier_indices, d
 
 # The order of the strings is very important since it is used in get_class_string
-class_short_names = ['NNA', 'SNA', 'NCA',\
-                     'SCA', 'NNC', 'SNC',\
+class_short_names = ['NNA', 'SNA', 'NCA',
+                     'SCA', 'NNC', 'SNC',
                      'NCC', 'SCC']
-class_long_names = ['Non-specific_Non-consistent_Accessory', 'Specific_Non-consistent_Accessory', 'Non-specific_Consistent_Accessory',\
-                    'Specific_Consistent_Accessory', 'Non-specific_Non-consistent_Core', 'Specific_Non-consistent_Core',\
+class_long_names = ['Non-specific_Non-consistent_Accessory', 'Specific_Non-consistent_Accessory', 'Non-specific_Consistent_Accessory',
+                    'Specific_Consistent_Accessory', 'Non-specific_Non-consistent_Core', 'Specific_Non-consistent_Core',
                     'Non-specific_Consistent_Core', 'Specific_Consistent_Core']
 class_short_name_long_name_dict = dict(zip(class_short_names,class_long_names))
 

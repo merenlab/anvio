@@ -751,8 +751,8 @@ class Pangenome(object):
             self.run.warning("%s did not retun search results for %d of %d the amino acid sequences in your input FASTA file. "
                              "Anvi'o will do some heuristic magic to complete the missing data in the search output to recover "
                              "from this. But since you are a scientist, here are the amino acid sequence IDs for which %s "
-                             "failed to report self search results: %s." \
-                                                    % (search_tool, len(ids_without_self_search), len(all_ids), \
+                             "failed to report self search results: %s."
+                                                    % (search_tool, len(ids_without_self_search), len(all_ids),
                                                        search_tool, ', '.join(ids_without_self_search)))
 
         # HEURISTICS TO ADD MISSING SELF SEARCH RESULTS
@@ -899,7 +899,7 @@ class Pangenome(object):
                 self.run.warning("It seems you have %s gene clusters in your pangenome. This exceeds the soft limit "
                                  "of %s for anvi'o to attempt to create a hierarchical clustering of your gene clusters "
                                  "(which becomes the center tree in all anvi'o displays). If you want a hierarchical "
-                                 "clustering to be done anyway, please see the flag `--enforce-hierarchical-clustering`." \
+                                 "clustering to be done anyway, please see the flag `--enforce-hierarchical-clustering`."
                                             % (pp(len(gene_clusters_dict)), pp(self.max_num_gene_clusters_for_hierarchical_clustering)))
                 self.skip_hierarchical_clustering = True
 
@@ -1114,7 +1114,7 @@ class Pangenome(object):
             raise ConfigError("self.genomes must be a dict. Anvi'o needs an adult :(")
 
         if len(self.genomes) < 2:
-            raise ConfigError("There must be at least two genomes for this workflow to work. You have like '%d' of them :/" \
+            raise ConfigError("There must be at least two genomes for this workflow to work. You have like '%d' of them :/"
                     % len(self.genomes))
 
         if len(self.genomes) > 100:
@@ -1136,7 +1136,7 @@ class Pangenome(object):
             raise ConfigError("You are asking anvi'o to skip aligning sequences within your gene clusters, and then you "
                               "are also asking it to use '%s' for aligning sequences within your gene clusters. It is easy "
                               "to ignore this and skip the alignment, but anvi'o gets nervous when it realizes her users are "
-                              "being inconsistent. Please make up your mind, and come back as the explicit person you are" \
+                              "being inconsistent. Please make up your mind, and come back as the explicit person you are"
                                                                             % self.align_with)
 
         self.check_params()

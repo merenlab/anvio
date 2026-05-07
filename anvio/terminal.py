@@ -257,16 +257,16 @@ class Progress:
 
                 # see a full list of color codes: https://gitlab.com/dslackw/colored
                 if p_length >= break_point:
-                    sys.stderr.write(Back.CYAN + Fore.BLACK + c[:break_point] + \
-                                     Back.GREY_30 + Fore.WHITE + c[break_point:end_point] + \
-                                     Back.CYAN + Fore.CYAN + c[end_point] + \
-                                     Back.GREY_50 + Fore.LIGHT_CYAN + c[end_point:] + \
+                    sys.stderr.write(Back.CYAN + Fore.BLACK + c[:break_point] +
+                                     Back.GREY_30 + Fore.WHITE + c[break_point:end_point] +
+                                     Back.CYAN + Fore.CYAN + c[end_point] +
+                                     Back.GREY_50 + Fore.LIGHT_CYAN + c[end_point:] +
                                      Style.RESET)
                 else:
-                    sys.stderr.write(Back.CYAN + Fore.BLACK + c[:break_point - p_length] + \
-                                     Back.SALMON_1 + Fore.BLACK + p_text + \
-                                     Back.GREY_30 + Fore.WHITE + c[break_point:end_point] + \
-                                     Back.GREY_50 + Fore.LIGHT_CYAN + c[end_point:] + \
+                    sys.stderr.write(Back.CYAN + Fore.BLACK + c[:break_point - p_length] +
+                                     Back.SALMON_1 + Fore.BLACK + p_text +
+                                     Back.GREY_30 + Fore.WHITE + c[break_point:end_point] +
+                                     Back.GREY_50 + Fore.LIGHT_CYAN + c[end_point:] +
                                      Style.RESET)
                 sys.stderr.flush()
             else:
@@ -753,7 +753,7 @@ class Timer:
 
         for unit in format_order:
             if unit not in unit_hierarchy:
-                raise TerminalError('Timer.format_time :: \'%s\' is not a valid unit. Use any of %s.'\
+                raise TerminalError('Timer.format_time :: \'%s\' is not a valid unit. Use any of %s.'
                                      % (unit, ', '.join(unit_hierarchy)))
 
         # calculate the value for each unit (e.g. 'seconds', 'days', etc) found in fmt
