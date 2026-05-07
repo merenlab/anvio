@@ -2,7 +2,7 @@
 
 <p><img src="https://github.com/merenlab/anvio/raw/master/anvio/data/interactive/images/logo-fancy.png" height="256" /></p>
 
-![GitHub Release](https://img.shields.io/github/v/release/merenlab/anvio?label=latest%20release&color=blue)
+[![GitHub Release](https://img.shields.io/github/v/release/merenlab/anvio?label=latest%20release&color=blue)](https://github.com/merenlab/anvio/releases)
 ![Last Commit](https://img.shields.io/github/last-commit/merenlab/anvio?color=blue)
 [![CodeFactor](https://img.shields.io/codefactor/grade/github/merenlab/anvio?logo=codefactor&color=blue)](https://www.codefactor.io/repository/github/merenlab/anvio/overview/master)
 
