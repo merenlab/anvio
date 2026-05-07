@@ -3,7 +3,7 @@ source 00.sh
 
 SETUP_WITH_OUTPUT_DIR $1 $2 $3
 
-python_script=`readlink -f run_component_tests_for_reaction_network`
+python_script=$(readlink -f run_component_tests_for_reaction_network)
 
 INFO "Checking for the required KEGG database set up by anvi'o in a default location"
 ${python_script} --check-default-kegg-database
@@ -30,13 +30,13 @@ anvi-pan-genome -g TEST-GENOMES.db \
                 --no-progress \
                 ${thread_controller}
 
-use_default_modelseed_db=`${python_script} --check-default-modelseed-database`
+use_default_modelseed_db=$(${python_script} --check-default-modelseed-database)
 if [ "${use_default_modelseed_db}" == "True" ]
 then
     INFO "Using the ModelSEED Biochemistry database already set up by anvi'o in a default location"
 else
     INFO "Setting up the ModelSEED Biochemistry database in a temporary directory (a permanent ModelSEED database can be installed in the default location with 'anvi-setup-modelseed-database')"
-    data_dir=`mktemp -d`
+    data_dir=$(mktemp -d)
     anvi-setup-modelseed-database --dir ${data_dir}
     modelseed_data_dir=${data_dir}/MODELSEED
 fi

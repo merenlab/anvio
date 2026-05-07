@@ -217,6 +217,6 @@ cat test-output/consensus_sequence_contig.fa
 
 INFO "Do you want the interactive interface? Run the following:"
 
-echo "anvi-interactive -p `pwd`/test-output/SAMPLES-MERGED/PROFILE.db -c `pwd`/test-output/single_contig.db"
+echo "anvi-interactive -p $(pwd)/test-output/SAMPLES-MERGED/PROFILE.db -c $(pwd)/test-output/single_contig.db"
 echo
 echo

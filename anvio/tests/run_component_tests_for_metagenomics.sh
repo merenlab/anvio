@@ -1123,7 +1123,7 @@ anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                  --no-progress
 
 INFO "A dry run to fill in anvi'o dbs"
-curdir=`pwd`
+curdir=$(pwd)
 cd $output_dir
 anvi-display-pan --dry-run --no-progress
 cd $curdir
