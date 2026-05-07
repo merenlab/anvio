@@ -8,7 +8,6 @@ is done using model and/or gene coverage
 import sys
 
 import anvio
-import anvio.data.hmm
 import anvio.terminal as terminal
 
 from anvio.tables.hmmhits import FilterHmmHitsTable

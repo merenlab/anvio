@@ -74,7 +74,7 @@ def run_program():
                from the contigs database you are using. " % (len(missing_gene_caller_ids), len(genes_of_interest))
 
         if anvio.DEBUG:
-            raise ConfigError(msg + "Here are the list of gene caller IDs that's making anvi'o upset: %s" % \
+            raise ConfigError(msg + "Here are the list of gene caller IDs that's making anvi'o upset: %s" %
                                     (", ".join([str(g) for g in missing_gene_caller_ids])))
         else:
             error_msg = msg + "Since this can be a long list in some cases, anvi'o will not show you what\

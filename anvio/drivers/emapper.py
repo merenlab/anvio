@@ -121,13 +121,13 @@ class EggNOGMapper:
 
         if version_to_use not in self.available_parsers:
             if self.annotation:
-                raise ConfigError("Anvi'o does not know about the version you requested. Here are the ones available: %s" % \
+                raise ConfigError("Anvi'o does not know about the version you requested. Here are the ones available: %s" %
                                                         (', '.join(list(self.available_parsers.keys()))))
             else:
                 raise ConfigError("Bad news :( This version of anvi'o does not have a parser for the eggnog-mapper installed "
                                    "on your system. This is the version you have on your system (if this looks totally alien "
                                    "to you it may indicate another problem, in which case consider writing to anvi'o developers): "
-                                   "%s. For your reference, these are the versions anvi'o knows what to do with: %s" % \
+                                   "%s. For your reference, these are the versions anvi'o knows what to do with: %s" %
                                                         (version_to_use, ', '.join(list(self.available_parsers.keys()))))
 
         self.version_to_use = version_to_use
@@ -154,7 +154,7 @@ class EggNOGMapper:
             gene_callers_id = int(fields[0][len(self.gene_caller_id_prefix):])
         except:
             raise ConfigError("At least one gene caller id in this annotation file (%s) does not look like how anvi'o likes its gene calls. "
-                              "Hint: what should remain after removing gene caller id prefix (%s) should be an integer value." %\
+                              "Hint: what should remain after removing gene caller id prefix (%s) should be an integer value." %
                                                 (fields[0], self.gene_caller_id_prefix))
 
         return gene_callers_id

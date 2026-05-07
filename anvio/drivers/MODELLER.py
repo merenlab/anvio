@@ -537,7 +537,7 @@ class MODELLER:
         # Find best match for align fraction and pident
         code_chain_id_of_best = tuple(search_df.iloc[search_df['proper_pident'].argmax()][['code', 'chain']].values)
         best_hit = search_df.loc[
-            (search_df['code'] == code_chain_id_of_best[0]) & \
+            (search_df['code'] == code_chain_id_of_best[0]) &
             (search_df['chain'] == code_chain_id_of_best[1]), ['pident', 'align_fraction']
         ].iloc[0]
 
@@ -555,7 +555,7 @@ class MODELLER:
         if not matches_after_filter:
             self.run.warning("Gene {} did not have a search result with percent identicalness above or equal "
                              "to {}% and alignment fraction above {}%. The best match was chain {} of https://www.rcsb.org/structure/{}, which had a "
-                             "percent identicalness of {:.2f}% and an alignment fraction of {:.3f}. No structure will be modelled.".\
+                             "percent identicalness of {:.2f}% and an alignment fraction of {:.3f}. No structure will be modelled.".
                               format(self.corresponding_gene_call,
                                      self.percent_cutoff,
                                      self.alignment_fraction_cutoff,
@@ -811,7 +811,7 @@ class MODELLER:
                 self.out["structure_exists"] = False
 
             raise ModellerScriptError("The MODELLER script {} did not execute properly. Hopefully it is clear "
-                                      "from the above error message. No structure is going to be modelled."\
+                                      "from the above error message. No structure is going to be modelled."
                                        .format(script_name))
 
         # If we made it this far, the MODELLER script ran to completion. Now check outputs exist

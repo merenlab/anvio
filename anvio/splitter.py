@@ -243,14 +243,14 @@ class XSplitter(object):
                              "(which becomes the center tree in all anvi'o displays). If you want a hierarchical "
                              "clustering to be done anyway, you can re-run the splitting process only for this bin "
                              "by adding these parameters to your run: '--bin-id %s --enforce-hierarchical-clustering'. "
-                             "If you feel like you are lost, don't hesitate to get in touch with anvi'o developers." \
+                             "If you feel like you are lost, don't hesitate to get in touch with anvi'o developers."
                                                         % (pp(self.max_num_splits_for_hierarchical_clustering), self.bin_id))
             skip_hierarchical_clustering = True
 
         if self.num_splits > self.max_num_splits_for_hierarchical_clustering and self.enforce_hierarchical_clustering:
             self.run.warning("Becasue you have used the flag `--enforce-hierarchical-clustering`, anvi'o will attempt "
                              "to create a hierarchical clustering of your %s splits for this bin. It may take a bit of "
-                             "time, and it is not even anvi'o's fault, you know  :/" \
+                             "time, and it is not even anvi'o's fault, you know  :/"
                                                         % pp(self.max_num_splits_for_hierarchical_clustering))
 
         return skip_hierarchical_clustering
@@ -679,9 +679,9 @@ class BinSplitter(summarizer.Bin, XSplitter):
         self.progress.end()
 
         if not self.skip_hierarchical_clustering:
-            dbops.do_hierarchical_clustering_of_items(self.bin_profile_db_path, constants.clustering_configs['merged' if merged else 'single'], self.split_names, \
-                                                      self.database_paths, input_directory=self.bin_output_directory, \
-                                                      default_clustering_config=constants.merged_default, distance=self.distance, \
+            dbops.do_hierarchical_clustering_of_items(self.bin_profile_db_path, constants.clustering_configs['merged' if merged else 'single'], self.split_names,
+                                                      self.database_paths, input_directory=self.bin_output_directory,
+                                                      default_clustering_config=constants.merged_default, distance=self.distance,
                                                       linkage=self.linkage, run=terminal.Run(verbose=False), progress=self.progress)
 
         # add a collection

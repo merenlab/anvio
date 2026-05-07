@@ -535,8 +535,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         contig_name_to_splits_dict = utils.get_contig_name_to_splits_dict(self.contigs_db_path)
 
         # get a list of contig names based on their lengths
-        contig_names_sorted_by_length = [tpl[0] \
-                for tpl in sorted([(k, self.contigs_basic_info[k]['length']) \
+        contig_names_sorted_by_length = [tpl[0]
+                for tpl in sorted([(k, self.contigs_basic_info[k]['length'])
                 for k in self.contigs_basic_info], key = lambda x: x[1], reverse=True)]
 
         split_names = set(self.displayed_item_names_ordered)
@@ -1762,7 +1762,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                              "this step. Another way to do it is the good ol' way of ignoring these warnings as you usually "
                              "do. If you do the latter, you will probably be fine. But we wanted to keep you in the loop "
                              "just in case you are not fine and the code does not realize that yet. The sources for gene "
-                             "calls that will not be included in your gene view include these ones: '%s'." % \
+                             "calls that will not be included in your gene view include these ones: '%s'." %
                                     (len(gene_caller_ids_missing_in_gene_level_cov_stats_dict),
                                      ', '.join(gene_caller_sources_for_missing_gene_caller_ids_in_gene_level_cov_stats_dict)))
 
@@ -1922,7 +1922,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             raise ConfigError("There are some split names in your additional view data file ('%s') that are missing from "
                                "split names characterized in the database. There are in fact %d of them. For instance, "
                                "here is a random split name that is in your additional view data, yet not in the database: "
-                               "'%s'. This is not going to work for anvi'o :/" \
+                               "'%s'. This is not going to work for anvi'o :/"
                                     % (self.additional_view_path, len(splits_in_additional_view_but_not_in_tree), splits_in_additional_view_but_not_in_tree.pop()))
 
         if splits_in_tree_but_not_in_view_data:
@@ -1935,7 +1935,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         if splits_in_tree_but_not_in_database:
             raise ConfigError('Some split names found in your tree are missing from your database. Hard to '
-                               'know why is this the case, but here is a couple of them: %s'\
+                               'know why is this the case, but here is a couple of them: %s'
                                     % ', '.join(list(splits_in_tree_but_not_in_database)[0:5]))
 
         if self.additional_layers_path:

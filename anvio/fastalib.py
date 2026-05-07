@@ -125,7 +125,7 @@ class SequenceSource():
                                                'seq': self.seq,
                                                'count': 1}
 
-        self.unique_hash_list = [i[1] for i in sorted([(self.unique_hash_dict[hash]['count'], hash)\
+        self.unique_hash_list = [i[1] for i in sorted([(self.unique_hash_dict[hash]['count'], hash)
                         for hash in self.unique_hash_dict], reverse=True)]
 
 

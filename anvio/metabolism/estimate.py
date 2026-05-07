@@ -1647,8 +1647,8 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                                   "for the %s output mode. Something is terribly wrong, and it is probably a developer's fault. :("
                                   % (mode))
             if self.available_modes[mode]["data_dict"] == 'modules':
-                output_dict = self.generate_output_dict_for_modules(module_superdict_for_list_of_splits, headers_to_include=header_list, \
-                                                                    only_complete_modules=self.only_complete, \
+                output_dict = self.generate_output_dict_for_modules(module_superdict_for_list_of_splits, headers_to_include=header_list,
+                                                                    only_complete_modules=self.only_complete,
                                                                     exclude_zero_completeness=self.exclude_zero_modules)
             elif self.available_modes[mode]["data_dict"] == 'kofams':
                 output_dict = self.generate_output_dict_for_kofams(ko_superdict_for_list_of_splits, headers_to_include=header_list)
@@ -1683,8 +1683,8 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                                   "for the %s output mode. Something is terribly wrong, and it is probably a developer's fault. :("
                                   % (mode))
             if self.available_modes[mode]["data_dict"] == 'modules':
-                output_dict = self.generate_output_dict_for_modules(module_superdict, headers_to_include=header_list, \
-                                                                    only_complete_modules=self.only_complete, \
+                output_dict = self.generate_output_dict_for_modules(module_superdict, headers_to_include=header_list,
+                                                                    only_complete_modules=self.only_complete,
                                                                     exclude_zero_completeness=self.exclude_zero_modules)
             elif self.available_modes[mode]["data_dict"] == 'kofams':
                 output_dict = self.generate_output_dict_for_kofams(ko_superdict, headers_to_include=header_list)
@@ -2105,12 +2105,12 @@ class KeggMetabolismEstimatorMulti(KeggEstimatorArgs, KeggDataLoader):
             if not self.matrix_format:
                 KeggMetabolismEstimator(args, progress=progress_quiet, run=run_quiet).estimate_metabolism(output_files_dictionary=files_dict)
             else:
-                metabolism_super_dict[metagenome_name], ko_hits_super_dict[metagenome_name], module_steps_super_dict[metagenome_name] = KeggMetabolismEstimator(args, \
-                                                                                                    progress=progress_quiet, \
-                                                                                                    run=run_quiet).estimate_metabolism(skip_storing_data=True, \
-                                                                                                    return_subset_for_matrix_format=True, \
-                                                                                                    all_modules_in_db=self.all_modules_in_db, \
-                                                                                                    all_kos_in_db=self.all_kos_in_db, \
+                metabolism_super_dict[metagenome_name], ko_hits_super_dict[metagenome_name], module_steps_super_dict[metagenome_name] = KeggMetabolismEstimator(args,
+                                                                                                    progress=progress_quiet,
+                                                                                                    run=run_quiet).estimate_metabolism(skip_storing_data=True,
+                                                                                                    return_subset_for_matrix_format=True,
+                                                                                                    all_modules_in_db=self.all_modules_in_db,
+                                                                                                    all_kos_in_db=self.all_kos_in_db,
                                                                                                     module_paths_dict=self.module_paths_dict)
 
             self.progress.increment()
@@ -2316,22 +2316,22 @@ class KeggMetabolismEstimatorMulti(KeggEstimatorArgs, KeggDataLoader):
         module_list.sort()
 
         for stat, key in module_matrix_stats.items():
-            self.write_stat_to_matrix(stat_name=stat, stat_header='module', stat_key=key, stat_dict=module_superdict_multi, \
-                                      item_list=module_list, stat_metadata_headers=MODULE_METADATA_HEADERS, \
+            self.write_stat_to_matrix(stat_name=stat, stat_header='module', stat_key=key, stat_dict=module_superdict_multi,
+                                      item_list=module_list, stat_metadata_headers=MODULE_METADATA_HEADERS,
                                       write_rows_with_all_zeros=include_zeros)
 
         module_step_list = list(steps_superdict_multi[first_sample][first_bin].keys())
         module_step_list.sort()
         for stat, key in module_step_matrix_stats.items():
-            self.write_stat_to_matrix(stat_name=stat, stat_header='module_step', stat_key=key, stat_dict=steps_superdict_multi, \
-                                      item_list=module_step_list, stat_metadata_headers=STEP_METADATA_HEADERS, \
+            self.write_stat_to_matrix(stat_name=stat, stat_header='module_step', stat_key=key, stat_dict=steps_superdict_multi,
+                                      item_list=module_step_list, stat_metadata_headers=STEP_METADATA_HEADERS,
                                       write_rows_with_all_zeros=include_zeros)
 
         # now we make a KO hit count matrix
         ko_list = list(self.ko_dict.keys())
         ko_list.sort()
-        self.write_stat_to_matrix(stat_name='enzyme_hits', stat_header='enzyme', stat_key='num_hits', stat_dict=ko_superdict_multi, \
-                                  item_list=ko_list, stat_metadata_headers=KO_METADATA_HEADERS, \
+        self.write_stat_to_matrix(stat_name='enzyme_hits', stat_header='enzyme', stat_key='num_hits', stat_dict=ko_superdict_multi,
+                                  item_list=ko_list, stat_metadata_headers=KO_METADATA_HEADERS,
                                   write_rows_with_all_zeros=include_zeros)
 
         # if necessary, make module specific KO matrices
@@ -2385,8 +2385,8 @@ class KeggMetabolismEstimatorMulti(KeggEstimatorArgs, KeggDataLoader):
                     step_comments = None
 
                 stat = f"{mod}_enzyme_hits"
-                self.write_stat_to_matrix(stat_name=stat, stat_header="enzyme", stat_key='num_hits', stat_dict=ko_superdict_multi, \
-                                          item_list=kos_in_mod, stat_metadata_headers=KO_METADATA_HEADERS, \
+                self.write_stat_to_matrix(stat_name=stat, stat_header="enzyme", stat_key='num_hits', stat_dict=ko_superdict_multi,
+                                          item_list=kos_in_mod, stat_metadata_headers=KO_METADATA_HEADERS,
                                           write_rows_with_all_zeros=True, comment_dictionary=step_comments)
 
             if skipped_mods:

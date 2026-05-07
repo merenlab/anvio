@@ -444,7 +444,7 @@ def is_program_exists(program, dont_raise=False):
 
     raise ConfigError("An anvi'o function needs '%s' to be installed on your system, but it doesn't seem to appear "
                        "in your path :/ If you are certain you have it on your system (for instance you can run it "
-                       "by typing '%s' in your terminal window), you may want to send a detailed bug report. Sorry!"\
+                       "by typing '%s' in your terminal window), you may want to send a detailed bug report. Sorry!"
                         % (program, program))
 
 
@@ -584,8 +584,8 @@ def run_command(cmdline, log_file_path, first_line_of_log_is_cmdline=True, remov
 
     if anvio.DEBUG:
         Progress().reset()
-        Run().info("[DEBUG] `run_command` is running", \
-                   ' '.join(['%s' % (('"%s"' % str(x)) if ' ' in str(x) else ('%s' % str(x))) for x in cmdline]), \
+        Run().info("[DEBUG] `run_command` is running",
+                   ' '.join(['%s' % (('"%s"' % str(x)) if ' ' in str(x) else ('%s' % str(x))) for x in cmdline]),
                    nl_before=1, nl_after=1, mc='red', lc='yellow')
 
     filesnpaths.is_output_file_writable(log_file_path)
@@ -3061,7 +3061,7 @@ def is_amino_acid_functionally_conserved(amino_acid_residue_1, amino_acid_residu
 
     if group == 'Polar and Nonpolar':
         #they fall in more than one group, multiple tests needed
-        if amino_acid_residue_1 == 'H' and (amino_acid_residue_2 in constants.conserved_amino_acid_groups['Nonpolar'] \
+        if amino_acid_residue_1 == 'H' and (amino_acid_residue_2 in constants.conserved_amino_acid_groups['Nonpolar']
                                             or amino_acid_residue_2 in constants.conserved_amino_acid_groups['Bases']):
             return True
 
@@ -3168,7 +3168,7 @@ def check_contig_names(contig_names, dont_raise=False):
                            "digits. Names can also contain underscore ('_'), dash ('-') and dot ('.') "
                            "characters. anvio knows how much work this may require for you to go back and "
                            "re-generate your BAM files and is very sorry for asking you to do that, however, "
-                           "it is critical for later steps in the analysis." \
+                           "it is critical for later steps in the analysis."
                                 % ("contains multiple characters" if len(characters_anvio_doesnt_like) > 1 else "contains a character",
                                    ", ".join(['"%s"' % c for c in characters_anvio_doesnt_like])))
 
@@ -3487,13 +3487,13 @@ def export_sequences_from_contigs_db(contigs_db_path, output_file_path, seq_name
           if just_do_it:
               run.warning("Not all the sequences you requested are %s in this CONTIGS.db. %d names are contigs, "
                           "%d are splits, and %d are neither. BUT you're in just-do-it mode and we know you're in charge, so we'll "
-                          "proceed using any appropriate names." % \
+                          "proceed using any appropriate names." %
                           (mode, len(contig_names), len(split_names), len(missing_names),))
               seq_names_to_export = appropriate_seq_names
           else:
               raise ConfigError("Not all the sequences you requested are %s in this CONTIGS.db. %d names are contigs, "
                                 "%d are splits, and %d are neither. If you want to live on the edge and try to "
-                                "proceed using any appropriate names, try out the `--just-do-it` flag." % \
+                                "proceed using any appropriate names, try out the `--just-do-it` flag." %
                                 (mode, len(contig_names), len(split_names), len(missing_names)))
 
     for seq_name in seq_names_to_export:
@@ -3594,7 +3594,7 @@ def gen_gexf_network_file(units, samples_dict, output_file, sample_mapping_dict=
         output.write('''        <viz:size value="%d"/>\n''' % sample_size)
 
         if sample_mapping_dict and 'colors' in sample_mapping_dict[sample]:
-            output.write('''        <viz:color r="%d" g="%d" b="%d" a="1"/>\n''' %\
+            output.write('''        <viz:color r="%d" g="%d" b="%d" a="1"/>\n''' %
                                              HTMLColorToRGB(sample_mapping_dict[sample]['colors'], scaled=False))
 
         if sample_mapping_categories:
@@ -3893,9 +3893,9 @@ def to_jsonable(obj):
     raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
 
 
-def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_to_append=None, column_names=None,\
-                                        column_mapping=None, indexing_field=0, separator='\t', no_header=False,\
-                                        ascii_only=False, only_expected_fields=False, assign_none_for_missing=False,\
+def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_to_append=None, column_names=None,
+                                        column_mapping=None, indexing_field=0, separator='\t', no_header=False,
+                                        ascii_only=False, only_expected_fields=False, assign_none_for_missing=False,
                                         none_value=None, empty_header_columns_are_OK=False, return_failed_lines=False,
                                         ignore_duplicated_keys=False, key_prefix=None):
     """Takes a file path, returns a dictionary.
@@ -4260,7 +4260,7 @@ def get_HMM_sources_dictionary(source_dirs=[], check_for_ACC_lines_in_HMM=False)
                               "counfusion around these parts of the code. Anvi'o could set some defualts for you, "
                               "but it would be much better if you set your own defaults explicitly. You're not "
                               "sure what would make a good default for your HMM collection? Reach out to "
-                              "a developer, and they will help you! Here are the files that are empty: %s." % \
+                              "a developer, and they will help you! Here are the files that are empty: %s." %
                                     (os.path.basename(source), ', '.join(empty_files)))
 
         ref = R('reference.txt')
@@ -4344,7 +4344,7 @@ def check_misc_data_keys_for_format(data_keys_list):
         raise ConfigError("Oh no :( We recently changed the description of the stacked bar data type, and your input data "
                           "file still has the older version. Here is the list of those that are violating the new format: "
                           "%s. To avoid this issue and to turn them into the new format, you could take '%s', and present "
-                          "it as %d separate TAB-delimited entries that look like this: %s. Sorry!" % \
+                          "it as %d separate TAB-delimited entries that look like this: %s. Sorry!" %
                                             (', '.join(['"%s"' % k for k in obsolete_stackedbar_keys]),
                                              key_violates_new_rule,
                                              len(new_rule_compatible_data_keys),
@@ -4658,7 +4658,7 @@ def is_structure_db_and_contigs_db_compatible(structure_db_path, contigs_db_path
     if cdb.hash != sdb.hash:
         raise ConfigError('The contigs and structure databases do not seem compatible. '
                           'More specifically, the contigs database is not the one that '
-                          'was used when the structure database was created (%s != %s).'\
+                          'was used when the structure database was created (%s != %s).'
                                % (cdb.hash, sdb.hash))
 
     return True

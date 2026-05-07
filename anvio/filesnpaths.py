@@ -491,7 +491,7 @@ def gen_output_directory(output_directory, progress=Progress(verbose=False), run
             os.makedirs(output_directory)
         except:
             progress.end()
-            raise FilesNPathsError("Output directory does not exist (attempt to create one failed as well): '%s'" % \
+            raise FilesNPathsError("Output directory does not exist (attempt to create one failed as well): '%s'" %
                                                             (output_directory))
     if not os.access(output_directory, os.W_OK):
         progress.end()
@@ -631,10 +631,10 @@ class AppendableFile:
 
         import anvio.utils as utils
         if is_file_empty(self.path):
-            utils.store_dict_as_TAB_delimited_file(dict_to_append, None, headers=self.headers, file_obj=file_handle, \
-                                                    key_header=self.key_header, keys_order=self.keys_order, \
-                                                    header_item_conversion_dict=self.header_item_conversion_dict, \
-                                                    do_not_close_file_obj=True, do_not_write_key_column=self.do_not_write_key_column, \
+            utils.store_dict_as_TAB_delimited_file(dict_to_append, None, headers=self.headers, file_obj=file_handle,
+                                                    key_header=self.key_header, keys_order=self.keys_order,
+                                                    header_item_conversion_dict=self.header_item_conversion_dict,
+                                                    do_not_close_file_obj=True, do_not_write_key_column=self.do_not_write_key_column,
                                                     none_value=self.none_value)
         else:
             # if dictionary is empty, just return

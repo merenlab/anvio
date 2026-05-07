@@ -1427,7 +1427,7 @@ class ExchangePredictorMulti(ExchangePredictorArgs):
             self.run.info_single(f"Child process is starting prediction with an ExchangePredictorSingle class using {args_single.num_threads} threads."
                                  f"If this value is one less than the number provided to the --num-threads parameter, everything is fine. The child "
                                  f"process itself is using 1 thread so we don't let it spawn more than N-1 additional processes.")
-        data_dicts_for_one_pair, failed_maps_list = ExchangePredictorSingle(args_single, progress=progress_quiet, run=run_quiet \
+        data_dicts_for_one_pair, failed_maps_list = ExchangePredictorSingle(args_single, progress=progress_quiet, run=run_quiet
                                                             ).predict_exchanges(output_files_dictionary=self.output_file_dict,
                                                             return_data_dicts=True)
 
