@@ -37,6 +37,16 @@ Please note that when a reference genome is chosen automatically, the program wi
 
 If you have a reference genome that you trust (downloaded from a reliable source or manually circularized), you can ask the program to use that as a reference. In which case the program will not be tinkering with the reference, and do its best to match every other genome to it.
 
+If you want anvi'o to still auto-select the reference (fewest contigs, longest total length) but use it **without any rotation**, you can use `--use-auto-reference-as-is`:
+
+{{ codestart }}
+anvi-reorient-genomes --fasta-txt %(fasta-txt)s \
+                      --use-auto-reference-as-is \
+                      --output-dir REORIENTED-FASTA-FILES/
+{{ codestop }}
+
+This flag is incompatible with `--reference` (you cannot specify a reference and also ask for auto-selection) and with `--use-dnaa-for-reference-orientation` (which would rotate the reference, defeating the purpose of using it as-is).
+
 ### Using DnaA gene for biologically meaningful reference orientation
 
 {:.notice}
@@ -124,6 +134,7 @@ Here is a more detailed description of what is going on behind the scenes when y
    - **DnaA-based orientation** (if `--use-dnaa-for-reference-orientation` is set): Calls genes with `prodigal`, searches for the DnaA gene using `hmmsearch` with the Bac_DnaA_C HMM profile, and rotates the reference to start at the DnaA gene position. This provides biologically meaningful orientation for bacterial genomes.
    - **De novo optimal position** (if reference is auto-selected without DnaA flag): Aligns each genome to the reference using minimap2 with `--secondary=yes -N 100 -p 0.5` to capture **all possible good alignments** (not just the best one). Builds a coverage map using 1,000 bp bins showing which positions are covered by alignments from each genome. Identifies the position with maximum coverage across all genomes (stopping early if it finds 100%% coverage). The reference is then rotated to start at this optimal position, ensuring all genomes will start at a conserved region that is genuinely shared across the dataset.
    - **User-specified reference** (if `--reference` is set): Uses the reference genome as-is without rotation.
+   - **Auto-selected reference used as-is** (if `--use-auto-reference-as-is` is set): Auto-selects the reference (fewest contigs, longest total length) but skips any rotation, treating the auto-chosen genome exactly like a user-specified one.
 
 **For circular genomes (single-contig):**
 
@@ -164,7 +175,7 @@ Here is a more detailed description of what is going on behind the scenes when y
 
 * **Scaffolding fragmented genomes**: By default, fragmented genomes are written with contigs as separate sequences (ordered and oriented). Use `--scaffold-fragmented` to concatenate them into a single sequence with N-padding representing gaps. While this maximizes gene synteny for comparative analyses, **do not submit N-scaffolded MAGs as complete genomes** to public databases. The scaffolding is reference-based and may not represent the true genomic structure.
 
-* **Auto-selected reference and optimal start**: When you don't specify `--reference`, the program picks the genome with the fewest contigs (ties broken by longest total length), preferring complete circular genomes over fragmented ones. It then rotates the reference to a conserved position across your dataset using secondary alignments to capture all conserved regions (not just the single best alignment). This is especially useful for sets of closely related genomes where you want them all to start at a biologically meaningful position. For bacterial genomes, consider using `--use-dnaa-for-reference-orientation` for even more consistent results based on the replication origin. If you want a specific genome or starting position, use `--reference` to override this behavior.
+* **Auto-selected reference and optimal start**: When you don't specify `--reference`, the program picks the genome with the fewest contigs (ties broken by longest total length), preferring complete circular genomes over fragmented ones. It then rotates the reference to a conserved position across your dataset using secondary alignments to capture all conserved regions (not just the single best alignment). This is especially useful for sets of closely related genomes where you want them all to start at a biologically meaningful position. For bacterial genomes, consider using `--use-dnaa-for-reference-orientation` for even more consistent results based on the replication origin. If you want a specific genome or starting position, use `--reference` to override this behavior. If you want anvi'o to auto-select the reference but skip the rotation step (i.e., keep it exactly as it appears in the input FASTA), use `--use-auto-reference-as-is`.
 
 * **DnaA-based orientation benefits**: When working with bacterial genomes, the `--use-dnaa-for-reference-orientation` flag typically produces highly consistent alignments (e.g., all genomes starting within a few base pairs of each other) because it uses biological knowledge (the replication origin) rather than purely sequence-based heuristics. This can be particularly valuable for downstream synteny analyses or when comparing gene order across closely related strains.
 
