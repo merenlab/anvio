@@ -6562,7 +6562,7 @@ class DatabaseMerger(object):
             entries.append(
                 (seed_num, # Entry ID
                  'Transfer_RNAs', # Source, à la tRNA gene prediction via tRNAScan-SE
-                 sha1(seed.string.encode('utf-8')).hexdigest(), # "Gene unique identifier"
+                 sha1(seed.string.encode('utf-8'), usedforsecurity=False).hexdigest(), # "Gene unique identifier"
                  seed_num, # "Gene callers ID"
                  ANTICODON_AA_DICT[seed.anticodon_string] + '_' + seed.anticodon_string, # "Gene name", à la tRNA gene prediction via tRNAScan-SE
                  '-', # "Gene HMM ID"

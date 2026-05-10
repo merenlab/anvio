@@ -9455,7 +9455,7 @@ class Constructor:
             gene_ko_hits_string += row.function
             gene_ko_hits_string += str(row.e_value)
 
-        hashed_gene_ko_hits = hashlib.sha1(gene_ko_hits_string.encode('utf-8')).hexdigest()
+        hashed_gene_ko_hits = hashlib.sha1(gene_ko_hits_string.encode('utf-8'), usedforsecurity=False).hexdigest()
         return hashed_gene_ko_hits
 
     def hash_pan_db_ko_annotations(
@@ -9519,7 +9519,7 @@ class Constructor:
         for ko_annotation in ko_annotations:
             ko_annotations_string += ''.join(ko_annotation)
 
-        hashed_ko_annotations = hashlib.sha1(ko_annotations_string.encode('utf-8')).hexdigest()
+        hashed_ko_annotations = hashlib.sha1(ko_annotations_string.encode('utf-8'), usedforsecurity=False).hexdigest()
         return hashed_ko_annotations
 
 class Tester:
