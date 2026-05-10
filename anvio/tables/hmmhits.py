@@ -575,6 +575,10 @@ class FilterHmmHitsTable(object):
             ContigsDatabase(self.contigs_db_path).list_available_hmm_sources()
             sys.exit()
 
+        # import default HMM sources quietly
+        with terminal.SuppressAllOutput():
+            import anvio.data.hmm
+
         if self.hmm_source not in anvio.data.hmm.sources and not self.hmm_profile_dir:
             raise ConfigError("Hold up, if you are using a external HMM source, you need to provide the path to the HMM directory "
                               "with the parameter --hmm-profile-dir")
