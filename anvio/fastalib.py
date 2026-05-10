@@ -115,7 +115,7 @@ class SequenceSource():
 
     def init_unique_hash(self):
         while self.next_regular():
-            hash = hashlib.sha1(self.seq.upper().encode('utf-8')).hexdigest()
+            hash = hashlib.sha1(self.seq.upper().encode('utf-8'), usedforsecurity=False).hexdigest()
             if hash in self.unique_hash_dict:
                 self.unique_hash_dict[hash]['ids'].append(self.id)
                 self.unique_hash_dict[hash]['count'] += 1

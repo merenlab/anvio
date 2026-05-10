@@ -116,7 +116,7 @@ class SRADownloadWorkflow(WorkflowSuperClass):
 
     def calculate_md5(self, file_path):
         """Calculate the md5sum of a file"""
-        hash_md5 = hashlib.md5()
+        hash_md5 = hashlib.md5(usedforsecurity=False)
         with open(file_path, "rb") as f:
             for chunk in iter(lambda: f.read(65536), b""):
                 hash_md5.update(chunk)

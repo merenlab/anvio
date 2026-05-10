@@ -1146,7 +1146,7 @@ class COGsSetup:
 
             # Check checksum
             if self.COG_version == 'COG20' and file_name != "checksum.md5.txt":
-                if not hashlib.md5(open(file_path, "rb").read()).hexdigest() == checksums[file_name]:
+                if not hashlib.md5(open(file_path, "rb").read(), usedforsecurity=False).hexdigest() == checksums[file_name]:
                     raise ConfigError(f"Something went wrong with your download :/ The checksum we calculated for `{file_name}` "
                                       f"anvi'o just finished downloading does not match to the checksum provided by the NCBI. "
                                       f"This is most likely due to an interrupted download, as the NCBI servers often prematurely "
