@@ -19,7 +19,6 @@
 [![Daily Component Tests and Migrations](https://github.com/merenlab/anvio/actions/workflows/component-tests-and-migrations.yaml/badge.svg)](https://github.com/merenlab/anvio/actions/workflows/component-tests-and-migrations.yaml)
 </div>
 
-
 ### Releases
 
 Github [releases page](https://github.com/merenlab/anvio/releases) lists all the stable releases of anvi'o.
