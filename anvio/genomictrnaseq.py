@@ -2039,7 +2039,7 @@ class Affinitizer:
                 f"{'genes' if self.gene_affinity else 'functions'} passing the codon filters.")
             return
 
-        affinities_df = self.get_affinities(
+        affinities_df, stderrs_df = self.get_affinities(
             isoacceptor_abund_ratios_df, isoacceptor_codon_weights_df)
         if len(affinities_df) == 0:
             run.warning(
@@ -2048,9 +2048,10 @@ class Affinitizer:
                 "frequency data.")
 
         if return_component_tables:
-            return affinities_df, isoacceptor_abund_ratios_df, isoacceptor_codon_weights_df
+            return (affinities_df, stderrs_df,
+                    isoacceptor_abund_ratios_df, isoacceptor_codon_weights_df)
         else:
-            return affinities_df
+            return affinities_df, stderrs_df
 
 
     def get_isoacceptors(self):
@@ -2574,7 +2575,8 @@ class Affinitizer:
 
     def get_affinities(self, isoacceptor_abund_ratios_df, isoacceptor_codon_weights_df):
         """
-        Calculate affinities of tRNA isoacceptors for functions or genes in each genome.
+        Calculate affinities of tRNA isoacceptors for functions or genes in each genome, along with
+        standard errors of the regression slope used as the affinity.
 
         Parameters
         ==========
@@ -2593,6 +2595,11 @@ class Affinitizer:
             function accession, function name -- or, if genes are analyzed, there are no function
             indices, but a gene callers ID index column. Columns are isoacceptor anticodons, with
             modified wobble nucleotide if applicable (e.g., ICG, LAT).
+        stderrs_df : pandas.core.frame.DataFrame
+            Standard errors of the regression slope, aligned 1:1 with `affinities_df` (same row
+            index and column structure). When the number of isoacceptors used in a regression is
+            two or fewer, the standard error is reported as NaN, since the slope has zero or
+            undefined residual degrees of freedom.
         """
         isoacceptor_abund_ratios_gb = isoacceptor_abund_ratios_df.groupby('genome_name')
         relative_isoacceptor_codon_weights_df = isoacceptor_codon_weights_df.div(
@@ -2602,6 +2609,7 @@ class Affinitizer:
 
         filtered_genome_names = []
         genome_affinities_dfs = []
+        genome_stderrs_dfs = []
         for genome_name in self.genome_info_dict:
             try:
                 genome_isoacceptor_abund_ratios_df = isoacceptor_abund_ratios_gb.get_group(
@@ -2617,12 +2625,12 @@ class Affinitizer:
                 continue
 
             sample_affinities_dict = {}
+            sample_stderrs_dict = {}
             for trnaseq_sample_name, sample_isoacceptor_abund_ratios_df in \
                 genome_isoacceptor_abund_ratios_df.groupby('nonreference_trnaseq_sample_name'):
-                # Take the dot product of the matrix of relative isoacceptor codon weights (m
-                # functions or genes x n isoacceptors) and the matrix of non-reference/reference
-                # sample isoacceptor abundance ratios (n isoacceptors x 1). This yields the affinity
-                # of the tRNA pool for each function or gene in the genome.
+                # For each function or gene in the genome, regress its relative isoacceptor codon
+                # weights on the log non-reference/reference isoacceptor abundance ratios. The slope
+                # is the affinity; the slope's standard error is also retained.
 
                 initiation_filter = sample_isoacceptor_abund_ratios_df['decoded_amino_acid'].isin(
                     ['iMet', 'fMet'])
@@ -2644,13 +2652,23 @@ class Affinitizer:
 
                 # Linearize abundance ratios.
                 log_abund_ratios = np.log2(abund_ratios.values)
+                # Standard error of the slope is undefined when residual degrees of freedom <= 0.
+                insufficient_dof = len(log_abund_ratios) <= 2
 
-                sample_affinities_dict[trnaseq_sample_name] = \
+                regression_results = \
                     genome_relative_isoacceptor_codon_weights_df[abund_ratios.index].apply(
                         lambda relative_isoacceptor_codon_weights:
-                            linregress(log_abund_ratios, relative_isoacceptor_codon_weights).slope,
-                        axis=1
-                    )
+                            linregress(log_abund_ratios, relative_isoacceptor_codon_weights),
+                        axis=1)
+
+                sample_affinities_dict[trnaseq_sample_name] = regression_results.apply(
+                    lambda r: r.slope)
+                if insufficient_dof:
+                    sample_stderrs_dict[trnaseq_sample_name] = regression_results.apply(
+                        lambda r: np.nan)
+                else:
+                    sample_stderrs_dict[trnaseq_sample_name] = regression_results.apply(
+                        lambda r: r.stderr)
 
                 # The old mistaken affinity was the correlation coefficient when it should have been the slope
                 # sample_affinities_dict[trnaseq_sample_name] = \
@@ -2659,7 +2677,9 @@ class Affinitizer:
                 #             log_abund_ratios, relative_isoacceptor_codon_weights), axis=1)
 
             genome_affinities_df = pd.DataFrame.from_dict(sample_affinities_dict)
+            genome_stderrs_df = pd.DataFrame.from_dict(sample_stderrs_dict)
             genome_affinities_dfs.append(genome_affinities_df)
+            genome_stderrs_dfs.append(genome_stderrs_df)
 
         if filtered_genome_names:
             self.run.info_single(
@@ -2668,10 +2688,12 @@ class Affinitizer:
 
         if genome_affinities_dfs:
             affinities_df = pd.concat(genome_affinities_dfs, axis=0)
+            stderrs_df = pd.concat(genome_stderrs_dfs, axis=0)
         else:
             affinities_df = pd.DataFrame()
+            stderrs_df = pd.DataFrame()
 
-        return affinities_df
+        return affinities_df, stderrs_df
 
 
     @staticmethod

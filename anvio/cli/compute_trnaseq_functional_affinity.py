@@ -82,9 +82,10 @@ def main():
     # Add an argument the opposite of `no_codon_dendrogram`.
     args.plot_codon_dendrogram = True if args.plot and not args.no_codon_dendrogram else False
 
-    affinities_dict, isoacceptor_abund_ratios_dict, isoacceptor_codon_weights_dict = \
-        get_affinities(args)
+    (affinities_dict, stderrs_dict,
+     isoacceptor_abund_ratios_dict, isoacceptor_codon_weights_dict) = get_affinities(args)
     write_affinity_tables(args, affinities_dict)
+    write_affinity_stderr_tables(args, stderrs_dict)
     write_isoacceptor_abundance_ratio_tables(args, isoacceptor_abund_ratios_dict)
     write_isoacceptor_codon_weights_tables(args, isoacceptor_codon_weights_dict)
 
@@ -240,7 +241,10 @@ def get_args():
              "`--separate-function-sources`.")
     group1E.add_argument(
         '--no-raw-affinity', default=False, action='store_true',
-        help="Do not store tables of raw affinity data.")
+        help="Do not store tables of raw affinity data. By default, sister tables of regression "
+             "slope standard errors are also written alongside the raw affinity tables, with "
+             "'-STDERR' inserted before the extension. This flag suppresses both the raw affinity "
+             "tables and their stderr companions.")
     group1E.add_argument(
         '--save-isoacceptor-abundance-ratios', default=False, action='store_true',
         help="Write a table of tRNA isoacceptor abundance ratios. Affinities are derived in part "
@@ -924,9 +928,9 @@ def parse_decoding_weights_table(decoding_weights_txt):
 def get_affinities(args):
     """
     Generate or load an affinity table, returning a dictionary containing one or more tables per
-    genome, function or gene source, and normalization method. Also return dictionaries of
-    isoacceptor abundance ratio and isoacceptor codon weight tables from which affinities are
-    derived.
+    genome, function or gene source, and normalization method. Also return dictionaries of standard
+    errors of the regression slopes used as affinities, plus isoacceptor abundance ratio and
+    isoacceptor codon weight tables from which affinities are derived.
 
     Parameters
     ==========
@@ -949,6 +953,13 @@ def get_affinities(args):
 
         The values of the innermost dictionary are affinity tables with rows representing functions
         or genes and columns representing tRNA-seq samples.
+    stderrs_dict : dict or None
+        This nested dictionary is structured as follows: genome name -> function or gene source ->
+        stderr table. Each stderr table is aligned 1:1 with the corresponding raw affinity table
+        and reports the standard error of the regression slope used as the affinity. Standard
+        errors are only meaningful for raw affinities and are not propagated through normalization.
+        `None` is returned in `--plot-affinity-file` mode, where affinities are loaded rather than
+        recomputed.
     isoacceptor_abund_ratios_dict : dict
         This dictionary is keyed by genome name and contains tables of isoacceptor abundance ratios.
         Affinities are calculated from isoacceptor abundance ratios in conjunction with isoacceptor
@@ -961,14 +972,16 @@ def get_affinities(args):
     if args.plot_affinity_file:
         # Affinities are being plotted for a single genome but not computed anew.
         affinities_dict = load_affinities(args)
+        stderrs_dict = None
         isoacceptor_abund_ratios_dict = None
         isoacceptor_codon_weights_dict = None
     else:
         # Compute affinities anew.
-        affinities_dict, isoacceptor_abund_ratios_dict, isoacceptor_codon_weights_dict = \
-            generate_affinities(args)
+        (affinities_dict, stderrs_dict,
+         isoacceptor_abund_ratios_dict, isoacceptor_codon_weights_dict) = generate_affinities(args)
 
-    return affinities_dict, isoacceptor_abund_ratios_dict, isoacceptor_codon_weights_dict
+    return (affinities_dict, stderrs_dict,
+            isoacceptor_abund_ratios_dict, isoacceptor_codon_weights_dict)
 
 
 def load_affinities(args):
@@ -1059,12 +1072,13 @@ def load_affinities(args):
 
 
 def generate_affinities(args):
-    """Generate affinities anew given one or more genomes. Also return the isoacceptor abundance
-    ratios and isoacceptor codon weights from which affinities are derived."""
+    """Generate affinities anew given one or more genomes. Also return per-genome/source standard
+    errors of the regression slopes used as affinities, plus the isoacceptor abundance ratios and
+    isoacceptor codon weights from which affinities are derived."""
     args.decoding_weights = parse_decoding_weights_table(args.decoding_weights_txt)
     affinitizer = genomictrnaseq.Affinitizer(args)
-    affinities_df, isoacceptor_abund_ratios_df, isoacceptor_codon_weights_df = affinitizer.go(
-        return_component_tables=True)
+    affinities_df, stderrs_df, isoacceptor_abund_ratios_df, isoacceptor_codon_weights_df = \
+        affinitizer.go(return_component_tables=True)
 
     if len(affinities_df) == 0:
         raise ConfigError(
@@ -1093,6 +1107,7 @@ def generate_affinities(args):
             (args.nonreference_samples.index(nonreference_sample), nonreference_sample)
             for nonreference_sample in affinities_df.columns])))[1])
         affinities_df = affinities_df[ordered_nonreference_samples]
+        stderrs_df = stderrs_df[ordered_nonreference_samples]
         isoacceptor_abund_ratios_df = isoacceptor_abund_ratios_df[ordered_nonreference_samples]
     else:
         args.nonreference_samples = list(isoacceptor_abund_ratios_df.columns)
@@ -1119,6 +1134,20 @@ def generate_affinities(args):
                     normalization_dict[normalization_method] = normalize_affinities_table(
                         source_df, normalization_method)
 
+    # Standard errors are reported only for the raw regression slopes; they are not propagated
+    # through affinity normalization. The dict is therefore one level shallower than
+    # `affinities_dict`: genome name -> source -> stderr table.
+    stderrs_dict = {}
+    for genome_name, genome_df in stderrs_df.groupby('genome_name'):
+        stderrs_dict[genome_name] = source_dict = {}
+        if args.gene_affinity:
+            source_dict['genes'] = genome_df
+        elif args.compare_all_function_sources:
+            source_dict['all_functions'] = genome_df
+        else:
+            for source, source_df in genome_df.groupby('function_source'):
+                source_dict[source] = source_df
+
     isoacceptor_abund_ratios_dict = {}
     for genome_name, genome_df in isoacceptor_abund_ratios_df.groupby('genome_name'):
         isoacceptor_abund_ratios_dict[genome_name] = genome_df
@@ -1134,7 +1163,8 @@ def generate_affinities(args):
             for source, source_df in genome_df.groupby('function_source'):
                 source_dict[source] = source_df
 
-    return affinities_dict, isoacceptor_abund_ratios_dict, isoacceptor_codon_weights_dict
+    return (affinities_dict, stderrs_dict,
+            isoacceptor_abund_ratios_dict, isoacceptor_codon_weights_dict)
 
 
 def normalize_affinities_table(affinities_df, normalization_method):
@@ -1438,6 +1468,109 @@ def write_affinity_tables(args, affinities_dict):
         run.info_single(valid_derived_output_path, level=2)
 
 
+def write_affinity_stderr_tables(args, stderrs_dict):
+    """Write sister tables to the raw affinity output, recording the standard error of the
+    regression slope used as the affinity. The output structure mirrors `write_affinity_tables`
+    splits across `--separate-genomes` and `--separate-function-sources`, but stderrs are reported
+    only for raw affinities, so there is no normalization-method dimension."""
+    if args.plot_affinity_file:
+        # Affinity data was loaded, not generated anew, so stderrs are unavailable.
+        return
+
+    if args.no_raw_affinity:
+        # Stderrs are only paired with the raw affinities.
+        return
+
+    # The output filepath serves as a template for the paths of other files that may be generated.
+    # Given the template, <root><extension>, substrings can be inserted in the derived filepaths,
+    # with the most elaborate such filepath being <root>-<genome_name>-<function_source>-STDERR
+    # <extension>.
+    output_root, output_extension = os.path.splitext(args.output_file)
+    valid_derived_output_paths = []
+    invalid_derived_output_paths = []
+
+    if args.separate_genomes and args.separate_function_sources:
+        # Split written stderr data by both genome and function source.
+        for genome_name, source_dict in stderrs_dict.items():
+            for source, stderrs_df in source_dict.items():
+                derived_output_path = (
+                    f"{output_root}-{genome_name.replace(' ', '_')}-{source}-STDERR"
+                    f"{output_extension}")
+                try:
+                    filesnpaths.is_output_file_writable(derived_output_path)
+                except FilesNPathsError:
+                    invalid_derived_output_paths.append(derived_output_path)
+                if invalid_derived_output_paths:
+                    continue
+                valid_derived_output_paths.append(derived_output_path)
+                stderrs_df.to_csv(derived_output_path, sep='\t')
+    elif args.separate_genomes:
+        # Split written stderr data by genome and not by function source.
+        for genome_name, source_dict in stderrs_dict.items():
+            derived_output_path = (
+                f"{output_root}-{genome_name.replace(' ', '_')}-STDERR{output_extension}")
+            try:
+                filesnpaths.is_output_file_writable(derived_output_path)
+            except FilesNPathsError:
+                invalid_derived_output_paths.append(derived_output_path)
+            if invalid_derived_output_paths:
+                continue
+            valid_derived_output_paths.append(derived_output_path)
+            if args.gene_affinity:
+                stderrs_df = source_dict['genes']
+            else:
+                stderrs_df = source_dict['all_functions']
+            stderrs_df.to_csv(derived_output_path, sep='\t')
+    elif args.separate_function_sources:
+        # Split written stderr data by function source and not by genome.
+        source_tables_dict = {}
+        for genome_name, source_dict in stderrs_dict.items():
+            for source, stderrs_df in source_dict.items():
+                try:
+                    source_tables_dict[source].append(stderrs_df)
+                except KeyError:
+                    source_tables_dict[source] = [stderrs_df]
+        for source, stderrs_dfs in source_tables_dict.items():
+            derived_output_path = f"{output_root}-{source}-STDERR{output_extension}"
+            try:
+                filesnpaths.is_output_file_writable(derived_output_path)
+            except FilesNPathsError:
+                invalid_derived_output_paths.append(derived_output_path)
+            if invalid_derived_output_paths:
+                continue
+            valid_derived_output_paths.append(derived_output_path)
+            stderrs_df = pd.concat(stderrs_dfs)
+            stderrs_df.to_csv(derived_output_path, sep='\t')
+    else:
+        # Write stderr data for all genomes and sources in a single table.
+        stderrs_dfs = []
+        for source_dict in stderrs_dict.values():
+            for stderrs_df in source_dict.values():
+                stderrs_dfs.append(stderrs_df)
+        derived_output_path = f"{output_root}-STDERR{output_extension}"
+        try:
+            filesnpaths.is_output_file_writable(derived_output_path)
+            stderrs_df = pd.concat(stderrs_dfs)
+            stderrs_df.to_csv(derived_output_path, sep='\t')
+            valid_derived_output_paths.append(derived_output_path)
+        except FilesNPathsError:
+            invalid_derived_output_paths.append(derived_output_path)
+
+    # Report invalid output paths and, if some paths were invalid, also remove files written to
+    # valid paths.
+    if invalid_derived_output_paths:
+        for derived_output_path in valid_derived_output_paths:
+            os.remove(derived_output_path)
+        paths_string = ', '.join(['\'' + path + '\'' for path in invalid_derived_output_paths])
+        raise ConfigError(
+            "The following tables of affinity standard errors could not be written to the "
+            f"following derived target paths: {paths_string}")
+
+    run.info_single("Saved affinity standard errors")
+    for valid_derived_output_path in sorted(valid_derived_output_paths, key=len):
+        run.info_single(valid_derived_output_path, level=2)
+
+
 def write_isoacceptor_abundance_ratio_tables(args, isoacceptor_abund_ratios_dict):
     """Write one or more tables of isoacceptor abundance ratios in non-reference versus reference
     samples. Affinities are derived from these abundance ratios and isoacceptor codon weights."""
@@ -1495,7 +1628,7 @@ def write_isoacceptor_abundance_ratio_tables(args, isoacceptor_abund_ratios_dict
     run.info_single("Saved isoacceptor abundance ratios")
     for valid_derived_output_path in sorted(valid_derived_output_paths, key=len):
         run.info_single(valid_derived_output_path, level=2)
-    run.info.warning(
+    run.warning(
         "Note that initiator tRNAs do not contribute to affinity, though they can be reported in "
         "the isoacceptor abundance ratio tables.")
 
