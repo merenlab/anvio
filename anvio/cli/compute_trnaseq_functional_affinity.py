@@ -124,19 +124,46 @@ def get_args():
 
     group1B = parser.add_argument_group(
         'TRNASEQ SAMPLES',
-        "A REFERENCE SAMPLE is required to compute affinities. Sample data is found in "
+        "A BASELINE for the isoacceptor abundance ratios that feed affinity must be defined. "
+        "Either designate one sample as the reference (`--reference-sample`), or use the "
+        "geometric mean of isoacceptor relative abundances across the analyzed samples "
+        "(`--reference-mean`); the two options are mutually exclusive. Sample data is found in "
         "`seeds-specific-txt`. For convenience, running the current program with the "
         "`--seeds-specific-txt` argument and the `--list-sample` flag prints all sample names to "
         "the terminal.")
     group1B.add_argument(
         '-r', '--reference-sample', metavar='SAMPLE_NAME', type=str,
         help="The name of the tRNA-seq sample to be used as the reference in the calculation of "
-             "affinities.")
+             "affinities. Mutually exclusive with `--reference-mean`.")
+    group1B.add_argument(
+        '--reference-mean', metavar='SAMPLE_NAME[S]', nargs='*', type=str, default=None,
+        help="Compare each analyzed sample's isoacceptor relative abundances to the geometric "
+             "mean of those abundances across the analyzed samples, rather than to a single "
+             "designated reference sample. This is the appropriate choice for datasets in which "
+             "no sample is naturally the reference. Under the geometric-mean centroid, the "
+             "log-ratios across samples sum to zero per isoacceptor, so no sample is privileged, "
+             "and every analyzed sample receives an affinity column in the output. Used as a "
+             "flag with no arguments, every sample in `seeds-specific-txt` is analyzed and "
+             "contributes to the geometric mean. Used with one or more sample names, only those "
+             "samples are analyzed and contribute to the geometric mean. Mutually exclusive with "
+             "`--reference-sample`. The companion option `--nonreference-samples` is for "
+             "`--reference-sample` mode only; in `--reference-mean` mode the sample subset is "
+             "passed directly to `--reference-mean`.")
     group1B.add_argument(
         '-n', '--nonreference-samples', metavar='SAMPLE_NAME[S]', nargs='+', type=str,
-        help="Names of tRNA-seq samples, beside the specified reference sample, to be analyzed. By "
-             "default, when this argument is not used, all of the samples in `seeds-specific-txt` "
-             "are analyzed.")
+        help="Names of tRNA-seq samples to be analyzed in `--reference-sample` mode, beside the "
+             "specified reference sample. By default, when this argument is not used, every "
+             "sample in `seeds-specific-txt` other than the reference is analyzed. Not valid in "
+             "`--reference-mean` mode (pass the sample subset to `--reference-mean` directly). "
+             "This argument selects samples but does NOT order them; use `--sample-order` to "
+             "control the column order of the output tables.")
+    group1B.add_argument(
+        '--sample-order', metavar='SAMPLE_NAME[S]', nargs='+', type=str,
+        help="Explicitly order the analyzed tRNA-seq samples in the output affinity tables. The "
+             "provided list must contain exactly the analyzed samples (i.e., the samples that "
+             "survive any `--nonreference-samples` subsetting); a mismatch is an error. By "
+             "default, when this argument is not used, sample columns are ordered "
+             "alphabetically in both `--reference-sample` and `--reference-mean` modes.")
 
     group1C = parser.add_argument_group(
         'GENOMIC INPUTS',
@@ -170,9 +197,10 @@ def get_args():
 
     group1D = parser.add_argument_group(
         'AFFINITY METRIC',
-        "Affinity measures the relationship between the non-reference/reference log isoacceptor "
-        "abundance ratios from the tRNA-seq data and the relative isoacceptor codon weights from "
-        "the function/gene codon frequency data.")
+        "Affinity measures the relationship between the log isoacceptor abundance ratios from "
+        "the tRNA-seq data (non-reference/reference in `--reference-sample` mode, "
+        "sample/geometric-mean in `--reference-mean` mode) and the relative isoacceptor codon "
+        "weights from the function/gene codon frequency data.")
     group1D.add_argument( # TODO: allow multiple affinity types, producing multiple output files
         '--affinity-type', type=str, choices=['pearson', 'spearman', 'dot'], default='pearson',
         help="Affinity can be calculated using the Pearson correlation coefficient, the Spearman "
@@ -248,14 +276,16 @@ def get_args():
     group1E.add_argument(
         '--save-isoacceptor-abundance-ratios', default=False, action='store_true',
         help="Write a table of tRNA isoacceptor abundance ratios. Affinities are derived in part "
-             "from the abundance ratios of tRNA isoacceptors in a non-reference sample versus the "
-             "reference sample. This table enables the inspection of data underlying affinities, "
-             "especially together with the output of `--save-isoacceptor-codon-weights`. If "
-             "`--separate-genomes` is used, then multiple files are written for each genome, with "
-             "paths derived from the provided `--output-file` template. In these paths, "
-             "'-ABUNDANCE_RATIOS' is added before the extension. The tables have row indices of "
-             "genome, decoded amino acid, and anticodon (including modified wobble nucleotide, if "
-             "applicable). The column headers are non-reference tRNA-seq sample names.")
+             "from these ratios: non-reference/reference in `--reference-sample` mode, "
+             "sample/geometric-mean across analyzed samples in `--reference-mean` mode. This "
+             "table enables the inspection of data underlying affinities, especially together "
+             "with the output of `--save-isoacceptor-codon-weights`. If `--separate-genomes` is "
+             "used, then multiple files are written for each genome, with paths derived from the "
+             "provided `--output-file` template. In these paths, '-ABUNDANCE_RATIOS' is added "
+             "before the extension. The tables have row indices of genome, decoded amino acid, "
+             "and anticodon (including modified wobble nucleotide, if applicable). The column "
+             "headers are tRNA-seq sample names (the analyzed non-reference samples in "
+             "`--reference-sample` mode; every analyzed sample in `--reference-mean` mode).")
     group1E.add_argument(
         '--save-isoacceptor-codon-weights', default=False, action='store_true',
         help="Write a table of tRNA isoacceptor codon weights, calculated for each isoacceptor "
@@ -575,9 +605,14 @@ def get_args():
         '--min-coverage', metavar='INT', type=int,
         default=genomictrnaseq.Affinitizer.default_min_coverage,
         help="The coverage threshold for detection of a tRNA isoacceptor. Coverage is measured at "
-             "the 3' (discriminator) nucleotide of the isoacceptor seeds. The threshold must be "
-             "met in both the sample being analyzed and reference sample for the isoacceptor to "
-             "contribute to affinity.")
+             "the 3' (discriminator) nucleotide of the isoacceptor seeds. In `--reference-sample` "
+             "mode the threshold must be met in the reference sample for the isoacceptor to enter "
+             "affinity calculations, and per-sample isoacceptor rows below the threshold are then "
+             "dropped from the analyzed sample's regression. In `--reference-mean` mode the "
+             "isoacceptor's mean `discriminator_1` across the analyzed samples (counting samples "
+             "without a row as zero) must clear the threshold; per-sample rows below the "
+             "threshold are again dropped orthogonally. The flag `--shared-isoacceptors` "
+             "tightens this to 'every analyzed sample must clear the threshold' in both modes.")
     group1J.add_argument(
         '--exclude-unmodified-anticodons', nargs='+', type=str,
         help="Remove tRNA isoacceptors with the given unmodified anticodons from calculation of "
@@ -603,12 +638,14 @@ def get_args():
              "isoacceptors is 5, there are two internal genomes, A and B, and 10 isoacceptors pass "
              "the minimum coverage threshold in A whereas 4 isoacceptors pass the threshold in B. "
              "Affinity will be calculated for genome A but not B.")
-    group1J.add_argument( # TODO: add this argument
+    group1J.add_argument(
         '--shared-isoacceptors', default=False, action='store_true',
-        help="Retain isoacceptors that are shared among all of the input tRNA-seq samples (and "
-             "that also pass the other isoacceptor filters). This facilitates the comparison of "
-             "raw affinity data between multiple (non-reference) samples, because affinity is "
-             "based on the same set of isoacceptors in each sample.")
+        help="Retain only isoacceptors that pass `--min-coverage` in EVERY analyzed sample (and "
+             "that also pass the other isoacceptor filters). In `--reference-sample` mode 'every "
+             "analyzed sample' means the reference plus all `--nonreference-samples`; in "
+             "`--reference-mean` mode it means every `--nonreference-samples` entry. This "
+             "facilitates the comparison of raw affinity data between samples, because the same "
+             "set of isoacceptors contributes to each sample's regression.")
     group1J.add_argument(
         '--decoding-weights-txt', metavar='FILE_PATH', type=str,
         help="A tab-delimited file of decoding weights, formatted identically to the file of "
@@ -817,9 +854,18 @@ def sanity_check(args):
     if args.trnaseq_contigs_db is None:
         raise ConfigError(
             "`--trnaseq-contigs-db` is a required argument for computation of affinities.")
-    if args.reference_sample is None:
+    if args.reference_sample is None and args.reference_mean is None:
         raise ConfigError(
-            "`--reference-sample` is a required argument of computation of affinities.")
+            "A baseline for the isoacceptor abundance ratios is required: pass either "
+            "`--reference-sample` or `--reference-mean`.")
+    if args.reference_sample and args.reference_mean is not None:
+        raise ConfigError(
+            "`--reference-sample` and `--reference-mean` are mutually exclusive.")
+    if args.reference_mean is not None and args.nonreference_samples:
+        raise ConfigError(
+            "`--nonreference-samples` is for `--reference-sample` mode only. In "
+            "`--reference-mean` mode, pass the sample subset directly to `--reference-mean` "
+            "(no arguments to `--reference-mean` analyzes every sample in `seeds-specific-txt`).")
 
     # The following are checks on combinations of genomic inputs.
     if ((args.internal_genomes or args.external_genomes) and
@@ -1098,19 +1144,37 @@ def generate_affinities(args):
     isoacceptor_abund_ratios_df = pd.pivot(
         isoacceptor_abund_ratios_df,
         index=['genome_name', 'decoded_amino_acid', 'anticodon'],
-        columns='nonreference_trnaseq_sample_name',
+        columns='trnaseq_sample_name',
         values='abundance_ratio')
 
-    if args.nonreference_samples:
-        # Ensure that results for samples are reported in the order provided.
-        ordered_nonreference_samples = list(tuple(zip(*sorted([
-            (args.nonreference_samples.index(nonreference_sample), nonreference_sample)
-            for nonreference_sample in affinities_df.columns])))[1])
-        affinities_df = affinities_df[ordered_nonreference_samples]
-        stderrs_df = stderrs_df[ordered_nonreference_samples]
-        isoacceptor_abund_ratios_df = isoacceptor_abund_ratios_df[ordered_nonreference_samples]
-    else:
-        args.nonreference_samples = list(isoacceptor_abund_ratios_df.columns)
+    # Default sample column order is alphabetic (produced by the groupby in `get_isoacceptors`
+    # and preserved through the pivot). `--sample-order` overrides this with an explicit
+    # ordering and requires set-equality with the analyzed samples.
+    if args.sample_order:
+        provided = set(args.sample_order)
+        actual = set(affinities_df.columns)
+        if provided != actual:
+            missing = sorted(actual - provided)
+            extra = sorted(provided - actual)
+            details = []
+            if missing:
+                details.append(f"missing: {', '.join(missing)}")
+            if extra:
+                details.append(f"extra: {', '.join(extra)}")
+            raise ConfigError(
+                "`--sample-order` must list exactly the analyzed tRNA-seq samples in the "
+                f"desired order ({'; '.join(details)}).")
+        if len(args.sample_order) != len(set(args.sample_order)):
+            raise ConfigError(
+                "`--sample-order` contains duplicate sample names; each analyzed sample must "
+                "appear exactly once.")
+        affinities_df = affinities_df[args.sample_order]
+        stderrs_df = stderrs_df[args.sample_order]
+        isoacceptor_abund_ratios_df = isoacceptor_abund_ratios_df[args.sample_order]
+
+    # Cache the final column list on `args` for downstream consumers (e.g., the sample-linkage
+    # warning), regardless of whether `--sample-order` was used.
+    args.nonreference_samples = list(affinities_df.columns)
 
     affinities_dict = {}
     for genome_name, genome_df in affinities_df.groupby('genome_name'):
@@ -2350,7 +2414,7 @@ def write_codon_newick_files(args, codon_linkage_dict):
 def get_sample_linkage(args, subset_affinities_dict):
     """Get clusters of tRNA-seq samples."""
     if len(args.nonreference_samples) == 1:
-        run.warning("tRNA-seq samples cannot be clustered given a single non-reference sample.")
+        run.warning("tRNA-seq samples cannot be clustered given only one analyzed sample.")
         return
 
     if args.plot_sample_tree_file:

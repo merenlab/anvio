@@ -1419,7 +1419,16 @@ class Affinitizer:
         self.seeds_specific_txt_path = A('seeds_specific_txt')
 
         self.reference_sample_name = A('reference_sample')
+        # `reference_mean` is the raw value handed in: None (sample-reference mode), [] (mean
+        # mode with no explicit subset, i.e. all samples in the input file), or a list of sample
+        # names (mean mode with explicit subset). The test "mean mode is active" is therefore
+        # `self.reference_mean is not None`; the test "subset was given explicitly" is
+        # `bool(self.reference_mean)`.
+        self.reference_mean = A('reference_mean')
         self.nonreference_sample_names = A('nonreference_samples')
+        self.shared_isoacceptors = A('shared_isoacceptors')
+        if self.shared_isoacceptors is None:
+            self.shared_isoacceptors = False
 
         self.genomic_contigs_db_path = A('contigs_db')
         self.genomic_profile_db_path = A('profile_db')
@@ -1632,18 +1641,34 @@ class Affinitizer:
             # No object attributes are assigned or modified in `sanity_check`.
             self.sanity_check()
 
-        # Find the names of the samples to analyze in addition to the reference sample. By default,
-        # every other sample will be a non-reference sample, but a subset of available samples can
-        # be provided instead.
-        if self.nonreference_sample_names is None:
-            self.nonreference_sample_names = pd.read_csv(
-                self.seeds_specific_txt_path,
-                sep='\t',
-                header=0,
-                skiprows=[1, 2],
-                usecols=['sample_name'])['sample_name'].unique().tolist()
-            self.nonreference_sample_names.remove(self.reference_sample_name)
-        self.sample_names = [self.reference_sample_name] + self.nonreference_sample_names
+        # Resolve the names of the samples to analyze. In sample-reference mode, `sample_names`
+        # is the reference followed by the non-reference samples (from `--nonreference-samples`
+        # or the full input file). In mean-reference mode, every sample contributes to the
+        # geometric-mean centroid AND receives an affinity column; the subset is taken from
+        # `--reference-mean`'s arguments (or the full input file if used as a bare flag). The
+        # `nonreference_sample_names` attribute is reused as the canonical "samples to analyze"
+        # list under both modes, to minimize downstream churn.
+        if self.reference_mean is not None:
+            if self.reference_mean:
+                self.nonreference_sample_names = list(self.reference_mean)
+            else:
+                self.nonreference_sample_names = pd.read_csv(
+                    self.seeds_specific_txt_path,
+                    sep='\t',
+                    header=0,
+                    skiprows=[1, 2],
+                    usecols=['sample_name'])['sample_name'].unique().tolist()
+            self.sample_names = list(self.nonreference_sample_names)
+        else:
+            if self.nonreference_sample_names is None:
+                self.nonreference_sample_names = pd.read_csv(
+                    self.seeds_specific_txt_path,
+                    sep='\t',
+                    header=0,
+                    skiprows=[1, 2],
+                    usecols=['sample_name'])['sample_name'].unique().tolist()
+                self.nonreference_sample_names.remove(self.reference_sample_name)
+            self.sample_names = [self.reference_sample_name] + self.nonreference_sample_names
 
         if not self.seek_all_function_sources:
             self.function_sources += \
@@ -1734,11 +1759,22 @@ class Affinitizer:
                     "by `anvi-integrate-trnaseq`.")
 
         ##################################################
-        # Check for tRNA-seq reference and non-reference samples.
+        # Check for tRNA-seq sample selection.
         filesnpaths.is_file_exists(self.seeds_specific_txt_path)
 
-        if self.reference_sample_name is None:
-            raise ConfigError("A reference sample must be provided.")
+        if self.reference_mean is not None and self.reference_sample_name:
+            raise ConfigError(
+                "`reference_sample` and `reference_mean` are mutually exclusive: use one or the "
+                "other to define the baseline against which isoacceptor abundances are compared.")
+        if self.reference_mean is None and self.reference_sample_name is None:
+            raise ConfigError(
+                "Either a reference sample (`reference_sample`) or the mean-reference mode "
+                "(`reference_mean`) must be provided.")
+        if self.reference_mean is not None and self.nonreference_sample_names is not None:
+            raise ConfigError(
+                "`nonreference_samples` is for sample-reference mode only. In mean-reference "
+                "mode, pass the sample subset directly to `reference_mean` (no arguments to "
+                "`reference_mean` analyzes every sample in `seeds_specific_txt`).")
 
         available_sample_names = pd.read_csv(
             self.seeds_specific_txt_path,
@@ -1747,38 +1783,57 @@ class Affinitizer:
             skiprows=[1, 2],
             usecols=['sample_name'])['sample_name'].unique().tolist()
 
-        if self.reference_sample_name not in available_sample_names:
+        if self.reference_sample_name and self.reference_sample_name not in available_sample_names:
             raise ConfigError(
                 f"The provided reference sample name, '{self.reference_sample_name}', is not found "
                 f"in `seeds_specific_txt`, '{self.seeds_specific_txt_path}', the table of specific "
                 "coverages of tRNA-seq seeds in different samples. Here are the samples provided "
                 f"in that table: {', '.join(sorted(available_sample_names))}")
 
-        if self.nonreference_sample_names:
-            nonreference_sample_names = self.nonreference_sample_names
-            bad_sample_names = set(self.nonreference_sample_names).difference(
-                set(available_sample_names))
+        # The user-supplied sample list lives in `--reference-mean`'s args when active, otherwise
+        # in `--nonreference-samples`. The validation rules (existence, no duplicates, no
+        # reference inclusion in sample mode) are identical.
+        user_samples = (self.reference_mean if self.reference_mean is not None
+                        else self.nonreference_sample_names)
+        if user_samples:
+            bad_sample_names = set(user_samples).difference(set(available_sample_names))
             if bad_sample_names:
                 raise ConfigError(
-                    "The following provided non-reference sample names were not found in "
+                    "The following provided sample names were not found in "
                     f"`seeds_specific_txt`, '{self.seeds_specific_txt_path}', the table of "
                     "specific coverages of tRNA-seq seeds in different samples: "
-                    f"{', '.join(bad_sample_names)}. Here are the samples provided in that table: "
-                    f"{', '.join(sorted(available_sample_names))}")
-
-            if self.reference_sample_name in self.nonreference_sample_names:
+                    f"{', '.join(sorted(bad_sample_names))}. Here are the samples provided in "
+                    f"that table: {', '.join(sorted(available_sample_names))}")
+            if len(user_samples) != len(set(user_samples)):
                 raise ConfigError(
-                    f"Please do not include the reference sample, '{self.reference_sample_name}' "
-                    f"in the subset of sample names: {', '.join(nonreference_sample_names)}. Sorry "
-                    "for the sclerotic idiocy.")
+                    "The provided sample list contains duplicates: "
+                    f"{', '.join(sorted(user_samples))}. Each analyzed sample must appear "
+                    "exactly once.")
+            if (self.reference_sample_name and
+                self.reference_sample_name in user_samples):
+                raise ConfigError(
+                    f"Please do not include the reference sample, '{self.reference_sample_name}', "
+                    f"in the subset of sample names: {', '.join(user_samples)}. Sorry for the "
+                    "sclerotic idiocy.")
+            nonreference_sample_names = list(user_samples)
         else:
-            nonreference_sample_names = available_sample_names
-            nonreference_sample_names.remove(self.reference_sample_name)
-        if len(nonreference_sample_names) == 0:
-            raise ConfigError(
-                "There must be one or more samples beside the reference sample in "
-                f"`seeds-specific-txt`, '{self.seeds_specific_txt}'. Only the reference sample, "
-                f"'{self.reference_sample_name}', was found.")
+            nonreference_sample_names = list(available_sample_names)
+            if self.reference_mean is None:
+                nonreference_sample_names.remove(self.reference_sample_name)
+
+        if self.reference_mean is not None:
+            if len(nonreference_sample_names) < 2:
+                raise ConfigError(
+                    "At least two analyzed samples are required in mean-reference mode "
+                    "(`reference_mean`), since the centroid is the geometric mean across samples. "
+                    f"Found in `seeds_specific_txt`, '{self.seeds_specific_txt_path}': "
+                    f"{', '.join(nonreference_sample_names) if nonreference_sample_names else '(none)'}.")
+        else:
+            if len(nonreference_sample_names) == 0:
+                raise ConfigError(
+                    "There must be one or more samples beside the reference sample in "
+                    f"`seeds-specific-txt`, '{self.seeds_specific_txt_path}'. Only the reference "
+                    f"sample, '{self.reference_sample_name}', was found.")
         ##################################################
 
         # Do basic checks of the combinations of (meta)genomic input arguments.
@@ -2369,22 +2424,41 @@ class Affinitizer:
                 ~isoacceptors_df['effective_anticodon'].isin(self.exclude_modified_anticodons)]
             isoacceptors_df = isoacceptors_df.drop('effective_anticodon', axis=1)
 
-        # Drop isoacceptors without data for the reference sample. Development note: It now looks
-        # like the reference sample will always have an entry for the isoacceptor in the genome,
-        # even with zero coverage, and therefore this filter is redundant with the next minimum
-        # coverage threshold filter. I am conservatively retaining it in case I'm missing something,
-        # since I now don't know why I decided to include this filter in the first place.
-        isoacceptors_df = isoacceptors_df.groupby(
-            ['genome_name', 'decoded_amino_acid', 'anticodon']).filter(
-                lambda genome_isoacceptor_df: self.reference_sample_name in genome_isoacceptor_df[
-                    'trnaseq_sample_name'].values)
+        # Genome-level isoacceptor filter. The threshold differs by reference mode:
+        #   - sample mode: the isoacceptor must have a row in the reference sample whose
+        #     `discriminator_1` clears `min_coverage`.
+        #   - mean mode (default): the mean of `discriminator_1` across the analyzed samples
+        #     must clear `min_coverage`. The mean is taken over `len(self.sample_names)`,
+        #     treating samples without a row for the isoacceptor as zero so that sparsely
+        #     detected isoacceptors get filtered out (a single high-coverage sample shouldn't
+        #     drag in an isoacceptor that other samples barely register).
+        #   - `--shared-isoacceptors` (either mode): every analyzed sample must have a row
+        #     whose `discriminator_1` clears `min_coverage`, so the same set of isoacceptors
+        #     contributes to every sample's regression.
+        sample_names_set = set(self.sample_names)
+        min_coverage = self.min_coverage
+        n_samples = len(self.sample_names)
 
-        # Drop isoacceptors that do not meet the minimum coverage threshold in the reference sample.
+        if self.shared_isoacceptors:
+            def passes_genome_iso_filter(iso_df):
+                passing_samples = set(
+                    iso_df.loc[iso_df['discriminator_1'] >= min_coverage,
+                               'trnaseq_sample_name'])
+                return sample_names_set.issubset(passing_samples)
+        elif self.reference_mean is not None:
+            def passes_genome_iso_filter(iso_df):
+                return iso_df['discriminator_1'].sum() / n_samples >= min_coverage
+        else:
+            reference_sample_name = self.reference_sample_name
+            def passes_genome_iso_filter(iso_df):
+                reference_rows = iso_df.loc[
+                    iso_df['trnaseq_sample_name'] == reference_sample_name, 'discriminator_1']
+                if len(reference_rows) == 0:
+                    return False
+                return (reference_rows >= min_coverage).all()
         isoacceptors_df = isoacceptors_df.groupby(
             ['genome_name', 'decoded_amino_acid', 'anticodon']).filter(
-                lambda genome_isoacceptor_df: genome_isoacceptor_df[
-                    genome_isoacceptor_df['trnaseq_sample_name'] == self.reference_sample_name][
-                        'discriminator_1'] >= self.min_coverage)
+                passes_genome_iso_filter)
 
         # Drop isoacceptors that have coverage in only one sample, preventing the isoacceptors from
         # contributing to affinity.
@@ -2402,14 +2476,39 @@ class Affinitizer:
             lambda genome_sample_df:
                 genome_sample_df['anticodon'].nunique() > self.min_isoacceptors)
 
-        # Drop genomes altogether if the reference sample lacked a minimum isoacceptor diversity.
-        isoacceptors_df = isoacceptors_df.groupby('genome_name').filter(
-            lambda genome_df: self.reference_sample_name in genome_df['trnaseq_sample_name'].values)
+        if self.reference_mean is None:
+            # In sample-reference mode, drop genomes whose reference sample didn't survive the
+            # genome+sample diversity filter; otherwise we'd have no denominator for the ratios.
+            isoacceptors_df = isoacceptors_df.groupby('genome_name').filter(
+                lambda genome_df: self.reference_sample_name in genome_df['trnaseq_sample_name'].values)
         ##################################################
 
-        # Create a table of isoacceptor non-reference/reference abundance ratios.
+        # Create a table of per-sample isoacceptor abundance ratios. The denominator is either
+        # the reference sample's `relative_discriminator_coverage` (sample mode) or the geometric
+        # mean of `relative_discriminator_coverage` across the surviving samples for the
+        # isoacceptor in the genome (mean mode). The log-ratios under the geometric-mean
+        # centroid sum to zero across samples per isoacceptor, the centered-log-ratio property
+        # from compositional data analysis. All retained isoacceptors have a positive denominator
+        # under both modes, so the ratio is well-defined.
         isoacceptor_abund_ratios_rows = []
         for genome_id, genome_df in isoacceptors_df.groupby('genome_name'):
+            if self.reference_mean is not None:
+                iso_key_cols = ['decoded_amino_acid', 'anticodon', 'effective_wobble_nucleotide']
+                for (decoded_amino_acid,
+                     anticodon,
+                     effective_wobble_nucleotide), iso_df in genome_df.groupby(iso_key_cols):
+                    # Geometric mean across surviving samples for this (genome, isoacceptor).
+                    log_values = np.log(iso_df['relative_discriminator_coverage'].values)
+                    geometric_mean = np.exp(log_values.mean())
+                    for row in iso_df.itertuples(index=False):
+                        isoacceptor_abund_ratios_rows.append((
+                            genome_id,
+                            decoded_amino_acid,
+                            effective_wobble_nucleotide + anticodon[1: ],
+                            row.trnaseq_sample_name,
+                            row.relative_discriminator_coverage / geometric_mean))
+                continue
+
             reference_sample_df = genome_df[
                 genome_df['trnaseq_sample_name'] == self.reference_sample_name]
             if len(reference_sample_df) == 0:
@@ -2461,7 +2560,7 @@ class Affinitizer:
                 'genome_name',
                 'decoded_amino_acid',
                 'anticodon',
-                'nonreference_trnaseq_sample_name',
+                'trnaseq_sample_name',
                 'abundance_ratio'])
 
         return isoacceptor_abund_ratios_df
@@ -2627,10 +2726,11 @@ class Affinitizer:
             sample_affinities_dict = {}
             sample_stderrs_dict = {}
             for trnaseq_sample_name, sample_isoacceptor_abund_ratios_df in \
-                genome_isoacceptor_abund_ratios_df.groupby('nonreference_trnaseq_sample_name'):
+                genome_isoacceptor_abund_ratios_df.groupby('trnaseq_sample_name'):
                 # For each function or gene in the genome, regress its relative isoacceptor codon
-                # weights on the log non-reference/reference isoacceptor abundance ratios. The slope
-                # is the affinity; the slope's standard error is also retained.
+                # weights on the log isoacceptor abundance ratios for the sample (ratios are
+                # non-reference/reference in sample mode and sample/geometric-mean in mean mode).
+                # The slope is the affinity; the slope's standard error is also retained.
 
                 initiation_filter = sample_isoacceptor_abund_ratios_df['decoded_amino_acid'].isin(
                     ['iMet', 'fMet'])
