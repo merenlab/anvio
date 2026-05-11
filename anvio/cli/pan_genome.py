@@ -155,7 +155,8 @@ def get_args():
     groupF.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'metavar':'PAN_DB_DIR'}))
     groupF.add_argument(*anvio.A('overwrite-output-destinations'), **anvio.K('overwrite-output-destinations'))
     groupF.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
-    groupF.add_argument(*anvio.A('prostt5-data-dir'), **anvio.K('prostt5-data-dir'))
+    groupF.add_argument(*anvio.A('structures-txt'), **anvio.K('structures-txt'))
+    groupF.add_argument(*anvio.A('min-tm-score'), **anvio.K('min-tm-score'))
     groupF.add_argument(*anvio.A('foldseek-search-results'), **anvio.K('foldseek-search-results'))
 
     groupG = parser.add_argument_group("ORGANIZING GENE CLUSTERs", "These are stuff that will change the clustering dendrogram of your gene clusters.")

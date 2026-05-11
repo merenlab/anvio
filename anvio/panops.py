@@ -44,6 +44,7 @@ from anvio.errors import ConfigError, FilesNPathsError
 from anvio.genomestorage import GenomeStorage
 from anvio.tables.geneclusters import TableForGeneClusters, TableForPSGCGCAssociations
 from anvio.tables.genefunctions import TableForGeneFunctions
+from anvio.artifacts.structures_txt import StructuresTxt
 from anvio.tables.views import TablesForViews
 from anvio.tables.miscdata import TableForItemAdditionalData
 
@@ -748,6 +749,8 @@ class Pangenome(object):
         self.pan_mode = A('pan_mode') or constants.pangenome_mode_default
         self.prostt5_data_dir = A('prostt5_data_dir')
         self.foldseek_search_results_output_file = A('foldseek_search_results')
+        self.structures_txt_path = A('structures_txt')
+        self.min_tm_score = A('min_tm_score')
         self.de_novo_gene_clusters_dict = None
         self.skip_sequence_pan = A('skip_sequence_pan')
         self.conventional_pan_db_path = None
@@ -942,6 +945,15 @@ class Pangenome(object):
             raise ConfigError("Minimum percent identity must be between 0%% and 100%%. Although your %.2f%% is "
                               "pretty cute, too." % self.min_percent_identity)
 
+        if self.STRUCTURE_MODE:
+            try:
+                self.min_tm_score = float(self.min_tm_score)
+            except (TypeError, ValueError):
+                raise ConfigError(f"--min-tm-score must be a number; got '{self.min_tm_score}'.")
+            if self.min_tm_score < 0 or self.min_tm_score > 1:
+                raise ConfigError(f"--min-tm-score must be between 0 and 1 (TM scores are length-normalized). "
+                                  f"Got {self.min_tm_score}.")
+
 
         if len([c for c in list(self.genomes.values()) if 'genome_hash' not in c]):
             raise ConfigError("self.genomes does not seem to be a properly formatted dictionary for "
@@ -1029,20 +1041,130 @@ class Pangenome(object):
         return blast.get_blast_results()
 
 
-    def run_foldseek(self, fasta_path):
-        """ Running Foldseek """
-        fs = Foldseek(query_fasta=fasta_path,
-                      run=self.run,
-                      progress=self.progress,
-                      num_threads=self.num_threads,
-                      weight_dir=self.prostt5_data_dir,
-                      overwrite_output_destinations=self.overwrite_output_destinations)
+    def run_foldseek(self, structures_dict=None, fasta_path=None):
+        """Build a foldseek DB and run easy-search self-vs-self.
 
-        # FIXME this tmp is necessarry for easy-search instead of giving like that we can set default tempfile.gettempdir() in foldseek driver
+        Exactly one of `structures_dict` (mapping gene_id -> structure file path) or
+        `fasta_path` (legacy ProstT5 input) must be provided. The structures path is the
+        canonical anvi-pan-genome workflow; the FASTA + ProstT5 path is kept for completeness
+        but is no longer reachable from the CLI.
+
+        For the structures path, anvi'o stages a directory of symlinks named `{gene_id}.{ext}`
+        and hands that single directory to foldseek's createdb. This (a) keeps us safely
+        below ARG_MAX regardless of how many structures the user has and (b) makes
+        foldseek's query/target columns use gene_ids verbatim, so the easy-search output is
+        directly indexable against the conventional pangenome's gene cluster IDs.
+        """
+        if (structures_dict is None) == (fasta_path is None):
+            raise ConfigError("run_foldseek :: provide exactly one of `structures_dict` or `fasta_path`.")
+
+        if structures_dict is not None:
+            structure_dir = self._stage_structures_for_foldseek(structures_dict)
+            fs = Foldseek(structure_dir=structure_dir,
+                          run=self.run,
+                          progress=self.progress,
+                          num_threads=self.num_threads,
+                          overwrite_output_destinations=self.overwrite_output_destinations)
+        else:
+            fs = Foldseek(query_fasta=fasta_path,
+                          run=self.run,
+                          progress=self.progress,
+                          num_threads=self.num_threads,
+                          weight_dir=self.prostt5_data_dir,
+                          overwrite_output_destinations=self.overwrite_output_destinations)
 
         fs.process(self.output_dir)
 
         return fs.get_foldseek_results()
+
+
+    def _stage_structures_for_foldseek(self, structures_dict):
+        """Create a directory of symlinks named `{gene_id}.{ext}` pointing at the user's
+        structure files. Returns the directory path.
+
+        foldseek's createdb uses the input file basenames as the query/target identifiers in
+        its easy-search output. By staging symlinks under names we control, we (a) ensure
+        the output is keyed on `gene_id` (the canonical anvi'o identifier) and not on
+        whatever the user happened to name their PDB files, and (b) collapse the command
+        line to a single positional argument so the ARG_MAX limit on argv doesn't bite
+        when there are tens of thousands of structures.
+
+        For now the structure-informed pangenome workflow restricts inputs to `.pdb` even
+        though the generic StructuresTxt artifact accepts CIF / mmCIF / FoldComp / gzipped
+        variants. We'll widen this once we've actually test-driven foldseek's behavior on
+        those formats against a real dataset; until then the safe path is to fail loudly
+        rather than silently produce something wrong.
+        """
+        # Workflow-level guard: PDB only for now. (See method docstring above.)
+        non_pdb = [(gid, p) for gid, p in structures_dict.items() if not p.lower().endswith('.pdb')]
+        if non_pdb:
+            preview = ', '.join(f"{g} -> {os.path.basename(p)}" for g, p in non_pdb[:5])
+            raise ConfigError(f"The structure-informed pangenome workflow currently accepts only .pdb files. "
+                              f"{len(non_pdb)} entry/entries in your structures-txt point at other formats "
+                              f"(.cif / .mmcif / .gz / .fcz). The generic structures-txt artifact accepts those, "
+                              f"but anvi-pan-genome has not yet been validated against them. First offenders: "
+                              f"{preview}.")
+
+        stage_dir = self.get_output_file_path('foldseek-input-structures')
+        filesnpaths.gen_output_directory(stage_dir, delete_if_exists=True, dont_warn=True)
+
+        for gene_id, src in structures_dict.items():
+            link_path = os.path.join(stage_dir, f"{gene_id}.pdb")
+            # src is already absolute (StructuresTxt resolves paths at parse time).
+            os.symlink(src, link_path)
+
+        self.run.info('Foldseek input staging directory', stage_dir)
+        return stage_dir
+
+
+    def resolve_structure_files_for_gcs(self, gene_cluster_ids):
+        """Load `--structures-txt` and return the structure files relevant to `gene_cluster_ids`.
+
+        - Warns on (and skips) gene clusters that have no entry in the structures-txt — these
+          are dropped from the foldseek DB and therefore from PSGC output.
+        - Warns on entries in the structures-txt that don't correspond to any gene cluster in
+          the conventional pan (typos / stale file). They're ignored.
+
+        Returns: (structures_dict, gcs_with_structures_set), where `structures_dict` is the
+        `{gene_id: path}` mapping restricted to GCs that have structures, preserving the
+        original order of `gene_cluster_ids` for deterministic symlink-farm naming.
+        """
+        if not self.structures_txt_path:
+            raise ConfigError("anvi-pan-genome was asked to run a structure-informed pangenome but you did not "
+                              "provide either --structures-txt (recommended: a TSV mapping GC IDs to predicted "
+                              "structure files) or --foldseek-search-results (a precomputed foldseek output). "
+                              "One of the two is required.")
+
+        structures = StructuresTxt(self.structures_txt_path, run=self.run, progress=self.progress)
+        full_structures_dict = structures.as_dict()
+
+        gc_set = set(gene_cluster_ids)
+        file_keys = set(full_structures_dict.keys())
+
+        missing_from_file = gc_set - file_keys
+        extra_in_file = file_keys - gc_set
+
+        if extra_in_file:
+            preview = ', '.join(sorted(extra_in_file)[:10])
+            self.run.warning(f"{len(extra_in_file)} entry/entries in '{self.structures_txt_path}' do not correspond "
+                             f"to any gene cluster in the conventional pangenome (likely a typo, or a stale file from "
+                             f"a different pan run). They will be ignored. First few: {preview}.")
+
+        if missing_from_file:
+            preview = ', '.join(sorted(missing_from_file)[:10])
+            self.run.warning(f"{len(missing_from_file)} of {len(gc_set)} gene clusters do not have a structure file "
+                             f"in '{self.structures_txt_path}'. Those gene clusters will be dropped from the "
+                             f"structural pangenome output (they remain present in the conventional pan-db). First "
+                             f"few skipped: {preview}.")
+
+        gcs_with_structures = gc_set & file_keys
+
+        # preserve the order of the gene_cluster_ids input (which mirrors the FASTA emission order)
+        structures_dict = {gc: full_structures_dict[gc] for gc in gene_cluster_ids if gc in gcs_with_structures}
+
+        self.run.info('GCs with predicted structure', f"{len(gcs_with_structures)} of {len(gc_set)}")
+
+        return structures_dict, gcs_with_structures
 
 
     def run_search_de_novo(self, unique_AA_sequences_fasta_path, unique_AA_sequences_names_dict):
@@ -1062,115 +1184,196 @@ class Pangenome(object):
         return mcl.get_clusters_dict()
 
 
-    def gen_mcl_input(self, blastall_results):
+    # Suffixes we'll defensively strip from foldseek's query/target columns. Built once,
+    # longest first, so '.cif.gz' wins over '.gz' even though we currently only emit '.pdb'.
+    # The list intentionally mirrors StructuresTxt.ALLOWED_EXTENSIONS so a future widening
+    # of the workflow only needs to drop the PDB-only guard in _stage_structures_for_foldseek.
+    _FOLDSEEK_ID_SUFFIXES = tuple(sorted(StructuresTxt.ALLOWED_EXTENSIONS, key=len, reverse=True))
+
+    @classmethod
+    def _strip_foldseek_id_ext(cls, name):
+        """Foldseek's chain identifier in easy-search output is derived from the input file's
+        basename. Different foldseek builds disagree on whether the extension is included
+        (some emit 'GC_001', others 'GC_001.pdb'). Strip a known structure suffix
+        case-insensitively so downstream code can compare against gene_ids directly.
+        """
+        lower = name.lower()
+        for ext in cls._FOLDSEEK_ID_SUFFIXES:
+            if lower.endswith(ext):
+                return name[:-len(ext)]
+        return name
+
+    def _parse_search_row(self, line, line_no, mode):
+        """Parse a single BLAST/foldseek output row.
+
+        Sequence mode returns (query, subject, perc_id, bit_score) from columns 0,1,2,11.
+        Structure mode returns (query, subject, qtmscore, ttmscore) from columns 0,1,12,13
+        of the 14-column foldseek easy-search output (see FOLDSEEK_OUTPUT_COLUMNS); the
+        query/subject identifiers are extension-stripped so they line up with gene_ids
+        regardless of which foldseek build produced the file.
+
+        Raises ConfigError on malformed input. Used by both passes so any parse error
+        surfaces as the same well-formed error regardless of which pass tripped on it.
+        """
+        fields = line.rstrip('\n').split('\t')
+        try:
+            if mode == 'sequence':
+                return fields[0], fields[1], float(fields[2]), float(fields[11])
+            else:
+                return (self._strip_foldseek_id_ext(fields[0]),
+                        self._strip_foldseek_id_ext(fields[1]),
+                        float(fields[12]), float(fields[13]))
+        except (IndexError, ValueError) as e:
+            raise ConfigError(f"Something went wrong while parsing the search output file at line {line_no}. "
+                              f"Underlying error: {e}. Offending line: {line!r}.")
+
+
+    def gen_mcl_input(self, search_results, mode='sequence', expected_ids=None):
+        """Filter a BLAST-like search output and write MCL input as a 3-column (q, t, w) ABC file.
+
+        Modes:
+            'sequence' (default): expects a 12-column BLAST/Diamond output. Filters on percent
+                identity (>= self.min_percent_identity) and ITEP-style minbit (>= self.minbit),
+                where minbit = bit_score / min(self_bit_score[q], self_bit_score[t]). MCL edge
+                weight is perc_id / 100.0.
+            'structure': expects a 14-column foldseek easy-search output (default 12 columns
+                plus qtmscore, ttmscore — see anvio.drivers.foldseek.FOLDSEEK_OUTPUT_COLUMNS).
+                Filters on tm = min(qtmscore, ttmscore) >= self.min_tm_score. MCL edge weight
+                is tm. Minbit and percent-identity filters do not apply because qtmscore /
+                ttmscore are already coverage-normalized.
+
+        `expected_ids`, if given, is the authoritative set of input IDs that should have been
+        searched. It's used to detect IDs that produced zero rows in the output (no self-hit
+        and no pair) — without it, we can only see IDs that appear in at least one row.
+        """
+
+        if mode not in ('sequence', 'structure'):
+            raise ConfigError(f"gen_mcl_input :: unknown mode '{mode}'.")
+
         self.run.warning(None, header="MCL INPUT", lc="green")
 
         self.progress.new('Processing search results')
         self.progress.update('...')
 
-        all_ids = set([])
-
-        # mapping for the fields in the blast output
-        mapping = [str, str, float, int, int, int, int, int, int, int, float, float]
-
-        # here we perform an initial pass on the blast results to fill the dict that will hold
-        # the bit score for each gene when it was blasted against itself. this dictionary
-        # will then be used to calculate the 'minbit' value between two genes, which I learned
-        # from ITEP (Benedict MN et al, doi:10.1186/1471-2164-15-8). ITEP defines minbit as
-        # 'bit score between target and query / min(selfbit for query, selbit for target)'. This
-        # heuristic approach provides a mean to set a cutoff to eliminate weak matches between
-        # two genes. minbit value reaches to 1 for hits between two genes that are almost identical.
+        # First pass: track every ID we see, plus per-mode self-search bookkeeping.
+        #   Sequence mode: collect self-bit-scores per query so we can compute ITEP-style
+        #     minbit on the second pass (Benedict MN et al, doi:10.1186/1471-2164-15-8).
+        #   Structure mode: just track which IDs got a self-hit so we can inject a self-loop
+        #     into MCL for any input ID that didn't.
+        all_ids = set()
         self_bit_scores = {}
-        line_no = 1
-        self.progress.update('(initial pass of the search results to set the self bit scores ...)')
-        for line in open(blastall_results):
-            fields = line.strip().split('\t')
+        ids_with_self_hit = set()
 
-            try:
-                query_id, subject_id, perc_id, aln_length, mismatches, gaps, q_start, q_end, s_start, s_end, e_val, bit_score = \
-                    [mapping[i](fields[i]) for i in range(0, len(mapping))]
-            except Exception as e:
-                self.progress.end()
-                raise ConfigError("Something went wrong while processing the blastall output file in line %d. "
-                                   "Here is the error from the uppoer management: '''%s'''" % (line_no, e))
-            line_no += 1
+        if mode == 'sequence':
+            self.progress.update('(initial pass of the search results to set the self bit scores ...)')
+        else:
+            self.progress.update('(initial pass of the foldseek results to track all gene_ids ...)')
+
+        for line_no, line in enumerate(open(search_results), start=1):
+            query_id, subject_id, val1, val2 = self._parse_search_row(line, line_no, mode)
             all_ids.add(query_id)
             all_ids.add(subject_id)
 
             if query_id == subject_id:
-                self_bit_scores[query_id] = bit_score
+                if mode == 'sequence':
+                    self_bit_scores[query_id] = val2  # bit_score
+                else:
+                    ids_with_self_hit.add(query_id)
 
         self.progress.end()
 
-        ids_without_self_search = all_ids - set(self_bit_scores.keys())
-        if len(ids_without_self_search):
-            search_tool = 'BLAST' if self.use_ncbi_blast else 'DIAMOND'
-            self.run.warning("%s did not retun search results for %d of %d the amino acid sequences in your input FASTA file. "
-                             "Anvi'o will do some heuristic magic to complete the missing data in the search output to recover "
-                             "from this. But since you are a scientist, here are the amino acid sequence IDs for which %s "
-                             "failed to report self search results: %s." \
-                                                    % (search_tool, len(ids_without_self_search), len(all_ids), \
-                                                       search_tool, ', '.join(ids_without_self_search)))
+        # Build the universe we expect to see. If the caller told us the full input ID set
+        # (e.g. gcs_with_structures), use that — it lets us detect IDs that produced zero
+        # output rows at all. Otherwise fall back to whatever showed up in the output.
+        universe = set(expected_ids) if expected_ids is not None else all_ids
+        if mode == 'sequence':
+            ids_without_self_search = universe - set(self_bit_scores.keys())
+        else:
+            ids_without_self_search = universe - ids_with_self_hit
+
+        if ids_without_self_search:
+            if mode == 'sequence':
+                search_tool = 'BLAST' if self.use_ncbi_blast else 'DIAMOND'
+                self.run.warning("%s did not return search results for %d of %d the amino acid sequences in your input FASTA file. "
+                                 "Anvi'o will do some heuristic magic to complete the missing data in the search output to recover "
+                                 "from this. But since you are a scientist, here are the amino acid sequence IDs for which %s "
+                                 "failed to report self search results: %s." \
+                                                        % (search_tool, len(ids_without_self_search), len(universe), \
+                                                           search_tool, ', '.join(ids_without_self_search)))
+            else:
+                preview = ', '.join(sorted(ids_without_self_search)[:10])
+                self.run.warning(f"Foldseek did not return self-hits for {len(ids_without_self_search)} of "
+                                 f"{len(universe)} structures (this can happen when the self-alignment falls below "
+                                 f"foldseek's internal coverage cutoff, or when foldseek produced no hits at all "
+                                 f"for that structure). Anvi'o will inject a self-loop with weight 1.0 for each so "
+                                 f"MCL keeps them as singleton clusters. First few: {preview}.")
 
         # HEURISTICS TO ADD MISSING SELF SEARCH RESULTS
-        # we are here, because amino acid sequences in ids_without_self_search did not have any hits in the search output
-        # although they were in the FASTA file the target database were built from. so we will make sure they are not
-        # missing from self_bit_scores dict, or mcl_input (additional mcl inputs will be stored in the following dict)
+        # IDs in ids_without_self_search either had only non-self hits, or were entirely absent
+        # from the search output. Either way we need them in self_bit_scores (sequence mode) and
+        # in MCL input (both modes), so we synthesize a self-loop with weight 1.0.
         additional_mcl_input_lines = {}
 
         for id_without_self_search in ids_without_self_search:
-            entry_hash, gene_caller_id = id_without_self_search.split('_')
+            if mode == 'sequence':
+                entry_hash, gene_caller_id = id_without_self_search.split('_')
 
-            try:
-                genome_name = self.hash_to_genome_name[entry_hash]
-            except KeyError:
-                raise ConfigError("Something horrible happened. This can only happend if you started a new analysis with "
-                                   "additional genomes without cleaning the previous work directory. Sounds familiar?")
+                try:
+                    genome_name = self.hash_to_genome_name[entry_hash]
+                except KeyError:
+                    raise ConfigError("Something horrible happened. This can only happend if you started a new analysis with "
+                                       "additional genomes without cleaning the previous work directory. Sounds familiar?")
 
-            # divide the DNA length of the gene by three to get the AA length, and multiply that by two to get an approximate
-            # bit score that would have recovered from a perfect match
-            gene_amino_acid_sequence_length = len(self.genomes_storage.get_gene_sequence(genome_name, int(gene_caller_id), report_DNA_sequences=False))
-            self_bit_scores[id_without_self_search] = gene_amino_acid_sequence_length * 2
+                # divide the DNA length of the gene by three to get the AA length, and multiply that by two to get an approximate
+                # bit score that would have recovered from a perfect match
+                gene_amino_acid_sequence_length = len(self.genomes_storage.get_gene_sequence(genome_name, int(gene_caller_id), report_DNA_sequences=False))
+                self_bit_scores[id_without_self_search] = gene_amino_acid_sequence_length * 2
 
-            # add this SOB into additional_mcl_input_lines dict.
             additional_mcl_input_lines[id_without_self_search] = '%s\t%s\t1.0\n' % (id_without_self_search, id_without_self_search)
 
 
         # CONTINUE AS IF NOTHING HAPPENED
-        self.run.info('Min percent identity', self.min_percent_identity)
-        self.run.info('Minbit', self.minbit)
+        if mode == 'sequence':
+            self.run.info('Min percent identity', self.min_percent_identity)
+            self.run.info('Minbit', self.minbit)
+        else:
+            self.run.info('Min TM score', self.min_tm_score)
+
         self.progress.new('Processing search results')
 
         mcl_input_file_path = self.get_output_file_path('mcl-input.txt')
         mcl_input = open(mcl_input_file_path, 'w')
 
-        line_no = 1
         num_edges_stored = 0
-        for line in open(blastall_results):
-            fields = line.strip().split('\t')
-
-            query_id, subject_id, perc_id, aln_length, mismatches, gaps, q_start, q_end, s_start, s_end, e_val, bit_score = \
-                [mapping[i](fields[i]) for i in range(0, len(mapping))]
-
-            line_no += 1
+        for line_no, line in enumerate(open(search_results), start=1):
+            query_id, subject_id, val1, val2 = self._parse_search_row(line, line_no, mode)
 
             if line_no % 5000 == 0:
                 self.progress.update('Lines processed %s ...' % pp(line_no))
 
-            #
-            # FILTERING BASED ON PERCENT IDENTITY
-            #
-            if perc_id < self.min_percent_identity:
-                continue
+            if mode == 'sequence':
+                perc_id, bit_score = val1, val2
 
-            #
-            # FILTERING BASED ON MINBIT
-            #
-            minbit = bit_score / min(self_bit_scores[query_id], self_bit_scores[subject_id])
-            if minbit < self.minbit:
-                continue
+                if perc_id < self.min_percent_identity:
+                    continue
 
-            mcl_input.write('%s\t%s\t%f\n' % (query_id, subject_id, perc_id / 100.0))
+                # ITEP-style minbit filter (coverage-normalizes bit score)
+                minbit = bit_score / min(self_bit_scores[query_id], self_bit_scores[subject_id])
+                if minbit < self.minbit:
+                    continue
+
+                weight = perc_id / 100.0
+            else:
+                qtmscore, ttmscore = val1, val2
+
+                # min(qtmscore, ttmscore) is already coverage-normalized, so no minbit step
+                tm = min(qtmscore, ttmscore)
+                if tm < self.min_tm_score:
+                    continue
+
+                weight = tm
+
+            mcl_input.write('%s\t%s\t%f\n' % (query_id, subject_id, weight))
             num_edges_stored += 1
 
         # add additional lines if there are any:
@@ -2037,26 +2240,50 @@ class Pangenome(object):
         # representative sequences
         gene_cluster_representatives = self.get_gene_cluster_representative_sequences(self.de_novo_gene_clusters_dict)
 
-        # next, we will generate a FASTA file for gene cluster representatives, which will be analyzed
-        # with foldseek
+        # next, we will generate a FASTA file for gene cluster representatives. This file is the
+        # deliverable users feed to AlphaFold/ColabFold/etc. to predict structures, and the
+        # FASTA deflines (the GC IDs) are exactly the gene_id column we expect in the
+        # structures-txt that comes back.
         gene_cluster_representatives_FASTA_path = self.get_output_file_path('gene-cluster-representatives-aa.fa')
         with open(gene_cluster_representatives_FASTA_path, 'w') as output:
             for gc_name in gene_cluster_representatives:
                 sequence = gene_cluster_representatives[gc_name]['sequence'].replace('-', '')
                 output.write(f">{gc_name}\n{sequence}\n")
+        self.run.info('GC representatives FASTA', gene_cluster_representatives_FASTA_path)
 
-        # get foldseek search results (please NOTE that if there is a user-provided search output, we utilize that here)
+        # Resolve the foldseek output. Three scenarios in priority order:
+        #   1. --foldseek-search-results was provided (precomputed result file): use it as-is.
+        #   2. --structures-txt was provided: load it, build a foldseek DB from those structure
+        #      files, run easy-search self-vs-self.
+        #   3. Neither: error (the legacy ProstT5 path is unreachable from the CLI on purpose).
+        gcs_with_structures = None
         if not self.foldseek_search_results_output_file:
-            self.foldseek_search_results_output_file = self.run_foldseek(gene_cluster_representatives_FASTA_path)
+            structures_dict, gcs_with_structures = self.resolve_structure_files_for_gcs(list(gene_cluster_representatives.keys()))
+            if not structures_dict:
+                raise ConfigError("After loading --structures-txt, no gene cluster ended up with a structure to "
+                                  "search against. There is nothing for foldseek to do.")
+            self.foldseek_search_results_output_file = self.run_foldseek(structures_dict=structures_dict)
 
-        # generate MCL input from filtered foldseek_result
-        mcl_input_file_path = self.gen_mcl_input(self.foldseek_search_results_output_file)
+        # generate MCL input from filtered foldseek_result; pass the full set of GCs we
+        # handed to foldseek so the heuristic step can also catch structures that produced
+        # zero output rows (not even a self-hit)
+        mcl_input_file_path = self.gen_mcl_input(self.foldseek_search_results_output_file,
+                                                 mode='structure',
+                                                 expected_ids=gcs_with_structures)
 
         # get clusters from MCL
         mcl_clusters = self.run_mcl(mcl_input_file_path)
 
+        # If a user-supplied structures-txt dropped some GCs, restrict the de-novo dict that
+        # gets handed to PSGC assembly so the "GCs lost on the way" warning only fires for
+        # genuinely unexpected losses (not the by-design subset).
+        if gcs_with_structures is not None:
+            de_novo_for_psgc = {gc: members for gc, members in self.de_novo_gene_clusters_dict.items() if gc in gcs_with_structures}
+        else:
+            de_novo_for_psgc = self.de_novo_gene_clusters_dict
+
         # we have the raw gene clusters dict, but we need to re-format it for following steps
-        protein_structure_informed_gene_clusters_dict = self.gen_protein_structure_informed_gene_clusters_dict_from_mcl_clusters(mcl_clusters, self.de_novo_gene_clusters_dict)
+        protein_structure_informed_gene_clusters_dict = self.gen_protein_structure_informed_gene_clusters_dict_from_mcl_clusters(mcl_clusters, de_novo_for_psgc)
 
         # invoke the garbage collector to clean up some mess
         del mcl_clusters

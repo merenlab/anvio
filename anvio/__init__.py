@@ -3962,6 +3962,26 @@ D = {
                      "sequence-based pan database alongside the structure pan database. Use this flag "
                      "to skip generating the sequence-based pan database."}
         ),
+   'structures-txt': (
+            ['--structures-txt'],
+            {'default': None,
+             'type': str,
+             'metavar': 'FILE PATH',
+             'help': "Path to a structures-txt file: a two-column TSV mapping a gene_id (gene cluster ID, in "
+                     "this context) to a predicted protein structure file (.pdb, .cif, .mmcif, optionally "
+                     "gzipped, or .fcz). Anvi'o uses these structures to build a foldseek database and run an "
+                     "all-vs-all structural search. Required for structure-informed pangenomics unless you "
+                     "are also passing --foldseek-search-results."}
+        ),
+   'min-tm-score': (
+            ['--min-tm-score'],
+            {'default': 0.5,
+             'type': float,
+             'metavar': 'FLOAT',
+             'help': "Minimum value of min(qtmscore, ttmscore) for a foldseek hit to be kept and used as the "
+                     "MCL edge weight in structure-informed pangenomics. TM-score is length-normalized; values "
+                     ">= 0.5 are conventionally considered to indicate the same fold. Default is %(default)g."}
+        ),
    'compared-pan-db': (
             ['--compared-pan-db'],
             {'default': None,
