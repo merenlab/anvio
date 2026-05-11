@@ -32,29 +32,53 @@ run = terminal.Run()
 progress = terminal.Progress()
 pp = terminal.pretty_print
 
+# Output column contract for foldseek easy-search. Default 12 columns plus
+# qtmscore and ttmscore. Downstream consumers (e.g. anvio.panops) unpack the
+# result file using this exact column order.
+FOLDSEEK_OUTPUT_COLUMNS = (
+    "query,target,fident,alnlen,mismatch,gapopen,"
+    "qstart,qend,tstart,tend,evalue,bits,qtmscore,ttmscore"
+)
+
+
 class Foldseek():
-    
-    def __init__(self, query_fasta=None, run=run, progress=progress, num_threads=1, weight_dir=None, overwrite_output_destinations=False):
+
+    def __init__(self, query_fasta=None, structure_dir=None, run=run, progress=progress,
+                 num_threads=1, weight_dir=None, overwrite_output_destinations=False):
         self.run = run
         self.progress = progress
 
         utils.is_program_exists('foldseek')
 
+        if (query_fasta is None) == (structure_dir is None):
+            raise ConfigError("The Foldseek driver requires exactly one of `query_fasta` (legacy ProstT5 path) "
+                              "or `structure_dir` (predicted-structure path: a directory of structure files). "
+                              "It got both or neither.")
+
+        if structure_dir is not None and not os.path.isdir(structure_dir):
+            raise ConfigError(f"`structure_dir` must be an existing directory; got '{structure_dir}'.")
+
         self.query_fasta = query_fasta
+        self.structure_dir = structure_dir
         self.num_threads = num_threads
-        self.weight_dir = weight_dir or constants.default_prostt5_weight_path
         self.overwrite_output_destinations = overwrite_output_destinations
         self.tmp_dir = tempfile.gettempdir()
 
-        try: 
-            filesnpaths.is_file_exists(self.weight_dir)
-        except FilesNPathsError:
-            run.warning("Anvi'o requires to have ProstT5 to run --pan-mode structure."
-                        " You can easily download that with the command down below.",
-                        header="⚠️  YOUR ATTENTION PLEASE ⚠️", overwrite_verbose=True, lc='yellow')
-            run.info_single("anvi-setup-prostt5", level=0, overwrite_verbose=True)
-            raise ConfigError("It seems like you forgot to download the ProstT5 model."
-                            " Please run 'anvi-setup-prostt5' and try again.")
+        # The ProstT5 weight check only applies to the FASTA path. The
+        # predicted-structure path does not need a model.
+        if self.query_fasta is not None:
+            self.weight_dir = weight_dir or constants.default_prostt5_weight_path
+            try:
+                filesnpaths.is_file_exists(self.weight_dir)
+            except FilesNPathsError:
+                run.warning("Anvi'o requires to have ProstT5 to run --pan-mode structure."
+                            " You can easily download that with the command down below.",
+                            header="⚠️  YOUR ATTENTION PLEASE ⚠️", overwrite_verbose=True, lc='yellow')
+                run.info_single("anvi-setup-prostt5", level=0, overwrite_verbose=True)
+                raise ConfigError("It seems like you forgot to download the ProstT5 model."
+                                " Please run 'anvi-setup-prostt5' and try again.")
+        else:
+            self.weight_dir = None
 
         self.output_file = None
         self.result_file_path = None
@@ -74,21 +98,37 @@ class Foldseek():
 
         filesnpaths.gen_output_directory(expected_output_dir, delete_if_exists=False)
 
-        cmd_line = ['foldseek',
-                    'createdb',
-                    self.query_fasta,
-                    expected_output_file,
-                    '--prostt5-model', self.weight_dir,
-                    '--threads', self.num_threads
-                    ]
+        if self.query_fasta is not None:
+            cmd_line = ['foldseek',
+                        'createdb',
+                        self.query_fasta,
+                        expected_output_file,
+                        '--prostt5-model', self.weight_dir,
+                        '--threads', self.num_threads
+                        ]
+        else:
+            # Passing a directory rather than splatting every file keeps us safely under
+            # ARG_MAX no matter how many structures the user has. Foldseek's createdb walks
+            # the directory and picks up every structure file in it.
+            cmd_line = ['foldseek',
+                        'createdb',
+                        self.structure_dir,
+                        expected_output_file,
+                        '--threads', self.num_threads
+                        ]
 
         try:
             utils.run_command(cmd_line, self.run.log_file_path)
         except ConfigError:
             self.progress.end()
-            raise ConfigError(f"Foldseek createdb failed. Please check the log file at '{self.run.log_file_path}' "
-                              f"for more details. This could be due to a wrong file path or a problem with the "
-                              f"ProstT5 model at '{self.weight_dir}'.")
+            if self.query_fasta is not None:
+                raise ConfigError(f"Foldseek createdb failed. Please check the log file at '{self.run.log_file_path}' "
+                                  f"for more details. This could be due to a wrong file path or a problem with the "
+                                  f"ProstT5 model at '{self.weight_dir}'.")
+            else:
+                raise ConfigError(f"Foldseek createdb failed. Please check the log file at '{self.run.log_file_path}' "
+                                  f"for more details. This could be due to malformed structure files in "
+                                  f"'{self.structure_dir}'.")
 
         self.progress.end()
         self.run.info('Command line', ' '.join([str(x) for x in cmd_line]), quiet=True)
@@ -111,6 +151,7 @@ class Foldseek():
             target_db,
             self.result_file_path,
             self.tmp_dir,
+            '--format-output', FOLDSEEK_OUTPUT_COLUMNS,
             '--threads', self.num_threads
         ]
 
