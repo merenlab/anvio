@@ -2,7 +2,6 @@
 """Relate changes in tRNA-seq seed abundances to the codon usage of gene functions"""
 
 import os
-import sys
 import warnings
 import pandas as pd
 import seaborn as sns
