@@ -361,6 +361,10 @@ AA_to_full_name = Counter({'Ala': 'Alanine', 'Arg': 'Arginine', 'Asn': 'Asparagi
 amino_acids = sorted(list(AA_to_single_letter_code.keys()))
 amino_acids_long = sorted(list(AA_to_full_name.values()))
 
+decoded_AA_types = list(amino_acids) + ['fMet', 'iMet', 'Ile2', 'SeC', 'Sup']
+decoded_AA_types.remove('STP')
+decoded_AA_types.sort()
+
 # Standard genetic code (translation table 1 at the following link)
 # https://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi?chapter=cgencodes
 codon_to_AA = Counter({'ATA': 'Ile', 'ATC': 'Ile', 'ATT': 'Ile', 'ATG': 'Met',
