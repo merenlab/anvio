@@ -927,7 +927,7 @@ class Pangenome(object):
         self.progress.update('Copmputing the hierarchical clustering of the (transposed) view data')
 
         layer_orders_data_dict = {}
-        for clustering_tuple in [('gene_cluster presence absence', self.view_data), ('gene_cluster frequencies', self.view_data_presence_absence)]:
+        for clustering_tuple in [('gene_cluster presence absence', self.view_data_presence_absence), ('gene_cluster frequencies', self.view_data)]:
             v, d = clustering_tuple
             newick = clustering.get_newick_tree_data_for_dict(d, transpose=True, distance = self.distance, linkage=self.linkage)
             layer_orders_data_dict[v] = {'data_type': 'newick', 'data_value': newick}
