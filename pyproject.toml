@@ -62,7 +62,6 @@ dependencies = [
     "illumina-utils",
     "tabulate",
     "rich-argparse",
-    "numba",
     "paste",
     "pyani",
     "psutil",
@@ -125,6 +124,7 @@ Contact = "https://anvio.org/people"
 "anvi-display-functions"                            = "anvio.cli.display_functions:main"
 "anvi-display-metabolism"                           = "anvio.cli.display_metabolism:main"
 "anvi-display-pan"                                  = "anvio.cli.display_pan:main"
+"anvi-display-pan-graph"                            = "anvio.cli.display_pan_graph:main"
 "anvi-display-structure"                            = "anvio.cli.display_structure:main"
 "anvi-draw-kegg-pathways"                           = "anvio.cli.draw_kegg_pathways:main"
 "anvi-estimate-genome-completeness"                 = "anvio.cli.estimate_genome_completeness:main"
@@ -142,6 +142,7 @@ Contact = "https://anvio.org/people"
 "anvi-export-items-order"                           = "anvio.cli.export_items_order:main"
 "anvi-export-locus"                                 = "anvio.cli.export_locus:main"
 "anvi-export-misc-data"                             = "anvio.cli.export_misc_data:main"
+"anvi-export-pan-subgraph"                          = "anvio.cli.export_pan_subgraph:main"
 "anvi-export-splits-and-coverages"                  = "anvio.cli.export_splits_and_coverages:main"
 "anvi-export-splits-taxonomy"                       = "anvio.cli.export_splits_taxonomy:main"
 "anvi-export-state"                                 = "anvio.cli.export_state:main"
@@ -192,6 +193,7 @@ Contact = "https://anvio.org/people"
 "anvi-migrate"                                      = "anvio.cli.migrate:main"
 "anvi-oligotype-linkmers"                           = "anvio.cli.oligotype_linkmers:main"
 "anvi-pan-genome"                                   = "anvio.cli.pan_genome:main"
+"anvi-pan-genome-graph"                             = "anvio.cli.pan_genome_graph:main"
 "anvi-plot-trnaseq"                                 = "anvio.cli.plot_trnaseq:main"
 "anvi-predict-metabolic-exchanges"                  = "anvio.cli.predict_metabolic_exchanges:main"
 "anvi-profile"                                      = "anvio.cli.profile:main"
@@ -282,6 +284,8 @@ Contact = "https://anvio.org/people"
 "anvi-script-tabulate"                                   = "anvio.cli.tabulate:main"
 "anvi-script-transpose-matrix"                           = "anvio.cli.transpose_matrix:main"
 "anvi-script-variability-to-vcf"                         = "anvio.cli.variability_to_vcf:main"
+"anvi-script-gen-fasta-txt"                              = "anvio.cli.gen_fasta_txt:main"
+"anvi-script-mod-config-json"                            = "anvio.cli.mod_config_json:main"
 
 [tool.setuptools.packages.find]
 where = ["."]

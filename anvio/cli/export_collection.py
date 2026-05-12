@@ -19,7 +19,7 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
-__requires__ = ['profile-db', 'collection']
+__requires__ = ['profile-db', 'collection', 'pan-graph-db']
 __provides__ = ['collection-txt']
 __description__ = "Export a collection from an anvi'o database"
 
@@ -30,7 +30,7 @@ def main():
     progress = terminal.Progress()
 
     try:
-        utils.is_pan_or_profile_db(args.pan_or_profile_db)
+        utils.is_pan_or_profile_db(args.pan_or_profile_db, pan_graph_db_is_also_accepted=True)
 
         c = ccollections.Collections(r=run, p=progress)
         c.populate_collections_dict(args.pan_or_profile_db)

@@ -33,7 +33,8 @@ from anvio.tables.collections import TablesForCollections
 from anvio.metabolism.estimate import KeggMetabolismEstimator
 from anvio.errors import ConfigError, RefineError, GenesDBError
 from anvio.clusteringconfuguration import ClusteringConfiguration
-from anvio.dbops import ProfileSuperclass, ContigsSuperclass, PanSuperclass, TablesForStates, ProfileDatabase
+
+from anvio.dbops import ProfileSuperclass, ContigsSuperclass, PanSuperclass, PanGraphSuperclass, TablesForStates, ProfileDatabase
 from anvio.tables.miscdata import TableForItemAdditionalData, TableForLayerAdditionalData
 from anvio.tables.miscdata import TableForLayerOrders, TableForAminoAcidAdditionalData
 
@@ -3295,6 +3296,31 @@ class MetabolismInteractive():
 
     def get_metabolism_data(self):
         return self.estimator.get_metabolism_data_for_visualization()
+
+
+class PangraphInteractive(PanGraphSuperclass):
+    def __init__(self, args, run=run, progress=progress):
+        self.mode = "pangraph"
+
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+        self.pan_graph_db_path = A('pan_graph_db')
+
+        if not self.pan_graph_db_path:
+            raise ConfigError("Unfortunately you can only use this program with a pangenome graph database.")
+
+        PanGraphSuperclass.__init__(self, self.args)
+
+        self.collections = ccollections.Collections()
+        self.collections.populate_collections_dict(self.pan_graph_db_path)
+
+        self.init_pangenome_graph()
+        self.init_synteny_gene_clusters()
+        self.init_synteny_gene_clusters_functions()
+        self.init_synteny_gene_clusters_functions_summary_dict()
 
 
 class ContigsInteractive():
