@@ -1974,6 +1974,20 @@ def get_time_to_date(local_time, fmt='%Y-%m-%d %H:%M:%S'):
     return time.strftime(fmt, time.localtime(local_time))
 
 
+def parse_epoch_time(epoch_time):
+    """Convert the epoch time (returned by `time.time()`) into pretty strings."""
+    try:
+        epoch_time = float(epoch_time)
+    except ValueError:
+        raise ConfigError("utils::parse_epoch_time was called with a bad epoch_time.")
+
+    ti = time.gmtime(epoch_time)
+    hour_min_sec = f'{"%02d" % ti.tm_hour}:{"%02d" % ti.tm_min}:{"%02d" % ti.tm_sec}'
+    month_day_year = f'{calendar.month_name[ti.tm_mon]} {ti.tm_mday}, {ti.tm_year}'
+
+    return hour_min_sec, month_day_year
+
+
 def compare_times(calls, as_matrix=False, iterations_per_call=1):
     """Compare times between function calls
 
@@ -2687,7 +2701,7 @@ def get_list_of_codons_for_gene_call(gene_call, contig_sequences_dict, **kwargs)
 
     if gene_call['contig'] not in contig_sequences_dict:
         raise ConfigError("get_list_of_AAs_for_gene_call: The contig sequences dict sent to "
-                           "this function does contain the contig name that appears in the gene call. "
+                           "this function does not contain the contig name that appears in the gene call. "
                            "Something is wrong here...")
 
     try:
@@ -2705,7 +2719,7 @@ def get_list_of_codons_for_gene_call(gene_call, contig_sequences_dict, **kwargs)
         reference_codon_sequence = contig_sequence[nt_positions[0]:nt_positions[2] + 1]
 
         # NOTE: here we make sure the codon sequence is composed of unambiguous nucleotides.
-        # and we will not inlcude those that contain anything other than proper
+        # and we will not include those that contain anything other than proper
         # nucleotides in the resulting list of codons.
         if set(reference_codon_sequence).issubset(constants.unambiguous_nucleotides):
             list_of_codons.append(constants.codon_to_codon_RC[reference_codon_sequence] if gene_call['direction'] == 'r' else reference_codon_sequence)
@@ -4144,7 +4158,7 @@ def get_pruned_HMM_hits_dict(hmm_hits_dict):
                 4: {'entry_id': 3, 'gene_name': 'Archaeal_16S_rRNA', 'contig_name': 'c_split_00001', 'start': 4988, 'stop': 3441, 'e_value': 7.7e-240}
            }
 
-       where entry 1 and entry 2 should be removed (becuse they overlap witth 3 and 4, respectively, and they are shorter).
+       where entry 1 and entry 2 should be removed (becuse they overlap with 3 and 4, respectively, and they are shorter).
     """
 
     # first create a simpler data structure where all hits in a single contig are accessible directly.

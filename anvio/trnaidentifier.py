@@ -19,7 +19,6 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __maintainer__ = "Samuel Miller"
 __email__ = "samuelmiller10@gmail.com"
-__status__ = "Development"
 
 
 class TRNAFeature(object):
