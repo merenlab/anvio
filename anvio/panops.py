@@ -1583,7 +1583,7 @@ class PangenomeGraph():
         self.delta = A('delta')
         self.min_k = A('min_k')
         self.inversion_aware = A('inversion_aware')
-        self.remerge = A('remerge')
+        self.skip_remerge = A('skip_remerge')
         self.max_num_multi_copy_genes = A('max_num_multi_copy_genes')
         self.max_num_multi_copy_genes_per_genome = A('max_num_multi_copy_genes_per_genome')
 
@@ -1778,7 +1778,7 @@ class PangenomeGraph():
 
         self.create_pangenome_graph()
 
-        if self.remerge:
+        if not self.skip_remerge:
             self.remerge_nodes()
 
         self.add_layers()

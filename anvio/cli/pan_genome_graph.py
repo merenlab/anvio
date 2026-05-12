@@ -76,8 +76,8 @@ def get_args():
                     "(values above delta are treated as mismatches; raise to be more permissive).")
     groupC.add_argument('--inversion-aware', default=False, action="store_true", help = "Also compare reversed k-mers, allowing inverted "
                     "contexts to cluster together (helps when inversions are common 🤞).")
-    groupC.add_argument('--remerge', default=False, action="store_true", help = "Remerge some nodes that were splitted in highly"
-                    "sensitive runs.")
+    groupC.add_argument('--skip-remerge', default=False, action="store_true", help = "Skip remerging nodes that may have been splitted in "
+                    "highly sensitive runs. Trying to remerge nodes is the default behavior.")
 
     groupC2 = parser.add_argument_group('EMERGENCY MULTI-COPY GENE REMOVAL', "Use these parameters as a last resort when your pangenome graph "
                     "has too many cycles or becomes uninterpretable due to multi-copy genes (such as transposons, repeats, or tandem "
