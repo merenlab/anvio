@@ -549,7 +549,8 @@ class CoverageStats:
     """
 
     def __init__(self, coverage, skip_outliers=False, discov_window_length=10000, discov_window_percentage=None,
-                discov_min_window_len=500, discov_foldrange_lower=0.25, discov_foldrange_upper=4, discov_alpha=0.5):
+                discov_min_window_len=500, discov_foldrange_lower=0.25, discov_foldrange_upper=4, discov_alpha=0.5,
+                return_window_info=False):
         self.min: float = np.amin(coverage)
         self.max: float = np.amax(coverage)
         self.median: float = np.median(coverage)
@@ -584,9 +585,15 @@ class CoverageStats:
         self.num_windows = len(windows)
         self.prop_win_covered = len(nonzero_window_means) / self.num_windows
 
-        self.fold_range_coverage_depth = self.fold_range_of_median_detection(coverage[coverage > 0], fold_lower=discov_foldrange_lower, fold_upper=discov_foldrange_upper)
+        nonzero_coverage = coverage[coverage > 0]
+        self.fold_range_coverage_depth = self.fold_range_of_median_detection(nonzero_coverage, fold_lower=discov_foldrange_lower, fold_upper=discov_foldrange_upper)
 
         self.discov = discov_alpha * self.prop_win_covered + (1-discov_alpha) * self.fold_range_coverage_depth
+
+        if return_window_info:
+            self.windows = self._get_window_info(coverage, windows, nonzero_coverage, discov_foldrange_lower, discov_foldrange_upper)
+        else:
+            self.windows = None
 
 
     def get_window_regions(self, coverage, window_length):
@@ -616,6 +623,52 @@ class CoverageStats:
                 windows.append(final_region)
 
         return windows
+
+
+    def _get_window_info(self, coverage, windows, nonzero_coverage, fold_lower, fold_upper):
+        """Return a dict-of-dicts with per-window stats for optional window-level output.
+
+        Parameters
+        ==========
+        coverage : array
+            Full nucleotide-level coverage array.
+        windows : list
+            List of (start, stop, mean_coverage) tuples from get_window_regions().
+        nonzero_coverage : array
+            coverage[coverage > 0], pre-computed by the caller.
+        fold_lower : float
+            Lower fold-range boundary (same as discov_foldrange_lower).
+        fold_upper : float
+            Upper fold-range boundary (same as discov_foldrange_upper).
+
+        Returns
+        =======
+        window_info : dict
+            Dict-of-dicts keyed by sequential integer index. Each inner dict has keys:
+            start, stop, length, has_coverage, num_bases_within_foldrange,
+            num_bases_with_coverage.
+        """
+        window_info = {}
+
+        if not len(nonzero_coverage):
+            for i, (start, stop, _) in enumerate(windows):
+                window_info[i] = {'start': start, 'stop': stop, 'length': stop - start,
+                                  'has_coverage': 0, 'num_bases_within_foldrange': 0,
+                                  'num_bases_with_coverage': 0}
+            return window_info
+
+        global_median = np.median(nonzero_coverage)
+        lower_bound = fold_lower * global_median
+        upper_bound = fold_upper * global_median
+
+        for i, (start, stop, mean_cov) in enumerate(windows):
+            window_cov = coverage[start:stop]
+            num_within = int(np.sum((window_cov >= lower_bound) & (window_cov <= upper_bound)))
+            window_info[i] = {'start': start, 'stop': stop, 'length': stop - start,
+                              'has_coverage': int(mean_cov > 0), 'num_bases_within_foldrange': num_within,
+                              'num_bases_with_coverage': int(np.count_nonzero(window_cov))}
+
+        return window_info
 
 
     def fold_range_of_median_detection(self, coverage, fold_lower=0.25, fold_upper=4):
