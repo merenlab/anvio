@@ -127,7 +127,7 @@ class Collections:
                              'collection, and some of the bins you have in that collection contain a small number '
                              'of contigs that were too short to make it into the merged profile. Well, if you would '
                              'like to figure out what might be the scenario for your experiment, here is the list of '
-                             'bin names that did not go through: %s.' \
+                             'bin names that did not go through: %s.'
                                 % (len(bins_with_zero_splits_in_profile_db), len(collection_dict), ", ".join(bins_with_zero_splits_in_profile_db)))
 
         return (collection_dict, bins_info_dict, split_names_in_db_but_missing_in_collection)
@@ -336,7 +336,7 @@ class GetSplitNamesInBins:
         if self.collection_name not in self.collections.collections_dict:
             progress.reset()
             raise ConfigError('The collection id "%s" does not seem to be in the profile database. These are the '
-                               'collections that are available through this profile database: "%s".'\
+                               'collections that are available through this profile database: "%s".'
                                                     % (self.collection_name, ', '.join(self.collections.collections_dict)))
 
         self.collection_dict = self.collections.get_collection_dict(self.collection_name)

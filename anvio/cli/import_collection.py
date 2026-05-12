@@ -99,7 +99,7 @@ def run_program():
     if max(num_occurences_of_entries.values()) != 1:
         raise ConfigError("Some %(item)s names occur more than once in the input file. A %(item)s cannot belong in two "
                            "bins, and neither there should be the same bin assignment for a given %(item)s. Long story "
-                           "short, each name should appear only once in your input file, and it is not the case :/" \
+                           "short, each name should appear only once in your input file, and it is not the case :/"
                                                                         % {'item': 'contig' if args.contigs_mode else 'split'})
     #################################################################################################
     # </SANITY CHECKS>

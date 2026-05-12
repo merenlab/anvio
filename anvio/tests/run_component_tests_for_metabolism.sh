@@ -11,7 +11,7 @@ SETUP_WITH_OUTPUT_DIR $1 $2 $3
 if [ x"${kegg_data_dir}" == "x" ]; then
  	INFO "Checking for KEGG database in default location"
     # Here we use Sam's clever function to check for default KEGG data dir
-    rn_python_script=`readlink -f run_component_tests_for_reaction_network`
+    rn_python_script=$(readlink -f run_component_tests_for_reaction_network)
     ${rn_python_script} --check-default-kegg-database
     source_dir=$(dirname -- "$( readlink -f -- "$0"; )";)
     kegg_data_dir=${source_dir%/tests}/data/misc/KEGG

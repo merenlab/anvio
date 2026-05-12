@@ -321,7 +321,7 @@ class WorkflowSuperClass:
 
         self.progress.new('Bleep bloop')
         self.progress.update('Quick dry run for an initial sanity check ...')
-        args = ['snakemake', '--snakefile', get_workflow_snake_file_path(self.name), \
+        args = ['snakemake', '--snakefile', get_workflow_snake_file_path(self.name),
                 '--configfile', self.config_file, '--dryrun', '--quiet']
 
         # if any conda yaml is provided for a rule, then add '--use-conda' to the snakemake command:
@@ -657,15 +657,15 @@ class WorkflowSuperClass:
 
 # The config file contains many essential configurations for the workflow
 # Setting the names of all directories
-dirs_dict = {"LOGS_DIR"     : "00_LOGS"         ,\
-             "QC_DIR"       : "01_QC"           ,\
-             "FASTA_DIR"    : "02_FASTA"     ,\
-             "CONTIGS_DIR"  : "03_CONTIGS"      ,\
-             "MAPPING_DIR"  : "04_MAPPING"      ,\
-             "PROFILE_DIR"  : "05_ANVIO_PROFILE",\
-             "MERGE_DIR"    : "06_MERGED"       ,\
-             "PAN_DIR"      : "07_PAN"          ,\
-             "LOCI_DIR"     : "04_LOCI_FASTAS"   \
+dirs_dict = {"LOGS_DIR"     : "00_LOGS"         ,
+             "QC_DIR"       : "01_QC"           ,
+             "FASTA_DIR"    : "02_FASTA"     ,
+             "CONTIGS_DIR"  : "03_CONTIGS"      ,
+             "MAPPING_DIR"  : "04_MAPPING"      ,
+             "PROFILE_DIR"  : "05_ANVIO_PROFILE",
+             "MERGE_DIR"    : "06_MERGED"       ,
+             "PAN_DIR"      : "07_PAN"          ,
+             "LOCI_DIR"     : "04_LOCI_FASTAS"
 }
 
 
@@ -726,8 +726,8 @@ def get_dir_names(config, dont_raise=False):
         # renaming folders according to the config file, if the user specified.
         if d not in DICT and not dont_raise:
             # making sure the user is asking to rename an existing folder.
-            raise ConfigError("You define a name for the directory '%s' in your "\
-                              "config file, but the only available folders are: "\
+            raise ConfigError("You define a name for the directory '%s' in your "
+                              "config file, but the only available folders are: "
                               "%s" % (d, DICT))
 
         DICT[d] = A(d,config["output_dirs"])

@@ -129,7 +129,7 @@ def get_args():
     parser = ArgumentParser(description=__description__)
 
     parser.add_argument('-f', '--fastq', required=True)
-    parser.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix', {'help': \
+    parser.add_argument(*anvio.A('output-file-prefix'), **anvio.K('output-file-prefix', {'help':
                         'If you want final FASTQs with the format myfastq_1.fastq and myfastq_2.fastq, '
                         'then this parameter should be set to myfastq'}))
 

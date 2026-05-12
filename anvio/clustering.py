@@ -22,9 +22,9 @@ with terminal.SuppressAllOutput():
     from ete3 import Tree
 
 
-distance_metrics = ['euclidean', 'cityblock', 'sqeuclidean', 'cosine', 'correlation', 'hamming',\
-                    'jaccard', 'chebyshev', 'canberra', 'braycurtis', 'yule', 'matching',\
-                    'dice', 'kulsinski', 'rogerstanimoto', 'russellrao', 'sokalmichener',\
+distance_metrics = ['euclidean', 'cityblock', 'sqeuclidean', 'cosine', 'correlation', 'hamming',
+                    'jaccard', 'chebyshev', 'canberra', 'braycurtis', 'yule', 'matching',
+                    'dice', 'kulsinski', 'rogerstanimoto', 'russellrao', 'sokalmichener',
                     'sokalsneath', 'minkowski']
 
 linkage_methods = ['single', 'complete', 'average', 'weighted', 'centroid', 'median', 'ward']

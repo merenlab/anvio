@@ -240,7 +240,7 @@ class SanityCheck(object):
                 if self.scg_name_for_metagenome_mode and self.scg_name_for_metagenome_mode not in self.ctx.SCGs:
                     raise ConfigError("We understand that you wish to work with '%s' to study the taxonomic make up of your contigs "
                                       "database in metagenome mode. But then this gene is not one of those anvi'o recognizes as "
-                                      "suitable SCGs to do that. Here is a list for you to choose from: '%s'." \
+                                      "suitable SCGs to do that. Here is a list for you to choose from: '%s'."
                                                             % (self.scg_name_for_metagenome_mode, ', '.join(self.ctx.SCGs.keys())))
 
                 if self.compute_scg_coverages and not self.profile_db_path:
@@ -404,14 +404,14 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
                              "to compare different versions of the database, and if you would like to ensure consistency, you can re-run "
                              "`anvi-run-scg-taxonomy` on contigs databases that have a different version than what is installed on your "
                              "system, which is '%s' (if you run `anvi-db-info` on any contigs database you can learn the SCG database "
-                             "version of it). Anvi'o found these versions across your genomes: '%s'." % \
+                             "version of it). Anvi'o found these versions across your genomes: '%s'." %
                                         (self.ctx.scg_taxonomy_database_version, ', '.join(list(set(scg_taxonomy_database_versions_in_genomes)))))
         elif scg_taxonomy_database_versions_in_genomes[0] != self.ctx.scg_taxonomy_database_version:
             self.progress.reset()
             self.run.warning("While all of your genomes agree with each other and have the SCG taxonomy database version of %s, "
                               "this version differs from what is installed on your system, which is %s. If you don't do anything, "
                               "things will continue to work. But if you would like to get rid of this warning you will need to "
-                              "re-run the program `anvi-run-scg-taxonomy` on each one of them 😬" % \
+                              "re-run the program `anvi-run-scg-taxonomy` on each one of them 😬" %
                                         (scg_taxonomy_database_versions_in_genomes[0], self.ctx.scg_taxonomy_database_version))
 
         # we keep these attribute names the same as for metagenomes so that we don't have to duplicate every function later
@@ -456,14 +456,14 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
                              "to compare different versions of the database, and if you would like to ensure consistency, you can re-run "
                              "`anvi-run-scg-taxonomy` on contigs databases that have a different version than what is installed on your "
                              "system, which is '%s' (if you run `anvi-db-info` on any contigs database you can learn the SCG database "
-                             "version of it). Anvi'o found these versions across your metagenomes: '%s'." % \
+                             "version of it). Anvi'o found these versions across your metagenomes: '%s'." %
                                         (self.ctx.scg_taxonomy_database_version, ', '.join(list(set(scg_taxonomy_database_versions_in_metagenomes)))))
         elif scg_taxonomy_database_versions_in_metagenomes[0] != self.ctx.scg_taxonomy_database_version:
             self.progress.reset()
             self.run.warning("While all of your metagenomes agree with each other and have the SCG taxonomy database version of %s, "
                               "this version differs from what is installed on your system, which is %s. If you don't do anything, "
                               "things will continue to work. But if you would like to get rid of this warning you will need to "
-                              "re-run the program `anvi-run-scg-taxonomy` on each one of them 😬" % \
+                              "re-run the program `anvi-run-scg-taxonomy` on each one of them 😬" %
                                         (scg_taxonomy_database_versions_in_metagenomes[0], self.ctx.scg_taxonomy_database_version))
 
         self.metagenomes = copy.deepcopy(g.metagenomes)
@@ -545,7 +545,7 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
                              "is nothing more than some heuristic for your convenience, and we strongly advice you to "
                              "run this program with the parameter `--report-scg-frequencies` and examine the output "
                              "to see if there is a better choice. As you can imagine, the most frequent SCG may not be "
-                             "the one that is more common across all genomes or metagenomes you are interested." % \
+                             "the one that is more common across all genomes or metagenomes you are interested." %
                                                 (self.scg_name_for_metagenome_mode, len(self.metagenomes)))
 
             self.run.info("SCG [determined by anvi'o]", self.scg_name_for_metagenome_mode, nl_after=1, mc="green")

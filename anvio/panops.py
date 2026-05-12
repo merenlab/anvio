@@ -278,9 +278,7 @@ class Pangenome(object):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.genome_names_to_focus = A('genome_names')
         self.genomes_storage_path = A('genomes_storage')
-        self.genomes = None
         self.project_name = A('project_name')
-        self.output_dir = A('output_dir')
         self.num_threads = A('num_threads')
         self.user_defined_gene_clusters = A('gene_clusters_txt')
         self.skip_alignments = A('skip_alignments')
@@ -306,10 +304,33 @@ class Pangenome(object):
         if not self.project_name:
             raise ConfigError("Please set a project name using --project-name or -n.")
 
+        # next, we figure out where to keep the intermediate data files
+        user_pan_db_path = A('output_file') or A('pan_db')
+        if user_pan_db_path:
+            if not user_pan_db_path.endswith('-PAN.db'):
+                raise ConfigError("Sorry. The output file names for anvi'o pan-db artifats must end with '-PAN.db'. No exceptions, no exclusions, "
+                                  "no creative interpretations. Anvi'o: freedom in data analyses, tyranny in output file suffixes ✊")
+            self.pan_db_path = user_pan_db_path
+        else:
+            # if the user did not specify an output directory for the pan-db, just put it next to the genomes storage
+            # file with a name that includes the project name.
+            self.pan_db_path = os.path.join(os.path.dirname(self.genomes_storage_path), self.project_name + '-PAN.db')
+
+        # only to keep intermediate data files
+        self.intermediate_data_dir = None
+        self.remove_intermediate_data_dir_at_the_end = False
+        if A('output_dir') or A('intermediate_data_dir'):
+            self.intermediate_data_dir = A('output_dir') or A('intermediate_data_dir')
+        else:
+            self.intermediate_data_dir = filesnpaths.get_temp_directory_path(just_the_path=True)
+            self.remove_intermediate_data_dir_at_the_end = True
+        self.intermediate_data_dir = os.path.abspath(self.intermediate_data_dir)
+
         # when it is time to organize gene_clusters
         self.linkage = A('linkage') or constants.linkage_method_default
         self.distance = A('distance') or constants.distance_metric_default
 
+        self.genomes = None
         self.log_file_path = None
 
         # to be filled during init:
@@ -321,6 +342,29 @@ class Pangenome(object):
 
         # we don't know what we are about
         self.description = None
+
+
+    def cleanup(self):
+        self.run.quit()
+
+        self.run.warning(None, header="CLEANUP (OR LACKTHEREOF)", lc="cyan")
+
+        if self.remove_intermediate_data_dir_at_the_end:
+            if anvio.DEBUG:
+                self.run.info_single(f"The intermediate data at {self.intermediate_data_dir} is kept because of the `--debug` flag. "
+                                     f"You can inspect these data, or re-use them with the `--intermediate-data-dir` parameter with "
+                                     f"`anvi-pan-genome`.", level=0, nl_after=2, mc='cyan')
+            elif self.intermediate_data_dir and os.path.exists(self.intermediate_data_dir):
+                self.run.info_single(f"'{self.intermediate_data_dir}', the intermediate data directory anvi'o used for this analysis, "
+                                     f"is now being cleaned up. But you *could* keep it for any reason, such as wanting to debug anvi'o, "
+                                     f"or to re-run `anvi-pan-genome` with different parameters using the same search results by simply "
+                                     f"defining an explicit output directory path for intermediate data files using the very aptly named "
+                                     f"parameter `--intermediate-data-dir`. All is good, but just FYI.", level=0, nl_after=2, mc='cyan')
+                import shutil
+                shutil.rmtree(self.intermediate_data_dir)
+        else:
+            self.run.info_single(f"No cleanup! The intermediate data at {self.intermediate_data_dir} is available for you to re-run the "
+                                 f"`anvi-pan-genome` with the `--intermediate-data-dir` parameter.", level=0, nl_after=2, mc='cyan')
 
 
     def load_genomes(self):
@@ -376,7 +420,7 @@ class Pangenome(object):
 
 
     def get_output_file_path(self, file_name, delete_if_exists=False):
-        output_file_path = os.path.join(self.output_dir, file_name)
+        output_file_path = os.path.join(self.intermediate_data_dir, file_name)
 
         if delete_if_exists:
             if os.path.exists(output_file_path):
@@ -408,18 +452,13 @@ class Pangenome(object):
 
 
     def check_params(self):
-        # if the user did not set a specific output directory name, use the project name
-        # for it:
-        self.output_dir = self.output_dir if self.output_dir else self.project_name
-
-        # deal with the output directory:
+        # deal with the intermediate data directory
         try:
-            filesnpaths.is_file_exists(self.output_dir)
+            filesnpaths.is_file_exists(self.intermediate_data_dir)
         except FilesNPathsError:
-            filesnpaths.gen_output_directory(self.output_dir, delete_if_exists=self.overwrite_output_destinations)
+            filesnpaths.gen_output_directory(self.intermediate_data_dir, delete_if_exists=self.overwrite_output_destinations)
 
-        filesnpaths.is_output_dir_writable(self.output_dir)
-        self.output_dir = os.path.abspath(self.output_dir)
+        filesnpaths.is_output_dir_writable(self.intermediate_data_dir)
 
         if not self.log_file_path:
             self.log_file_path = self.get_output_file_path('log.txt')
@@ -455,8 +494,6 @@ class Pangenome(object):
         if self.description_file_path:
             filesnpaths.is_file_plain_text(self.description_file_path)
             self.description = open(os.path.abspath(self.description_file_path), 'r').read()
-
-        self.pan_db_path = self.get_output_file_path(self.project_name + '-PAN.db')
 
 
     def process_additional_params(self):
@@ -583,8 +620,8 @@ class Pangenome(object):
             self.run.warning("%s did not retun search results for %d of %d the amino acid sequences in your input FASTA file. "
                              "Anvi'o will do some heuristic magic to complete the missing data in the search output to recover "
                              "from this. But since you are a scientist, here are the amino acid sequence IDs for which %s "
-                             "failed to report self search results: %s." \
-                                                    % (search_tool, len(ids_without_self_search), len(all_ids), \
+                             "failed to report self search results: %s."
+                                                    % (search_tool, len(ids_without_self_search), len(all_ids),
                                                        search_tool, ', '.join(ids_without_self_search)))
 
         # HEURISTICS TO ADD MISSING SELF SEARCH RESULTS
@@ -731,7 +768,7 @@ class Pangenome(object):
                 self.run.warning("It seems you have %s gene clusters in your pangenome. This exceeds the soft limit "
                                  "of %s for anvi'o to attempt to create a hierarchical clustering of your gene clusters "
                                  "(which becomes the center tree in all anvi'o displays). If you want a hierarchical "
-                                 "clustering to be done anyway, please see the flag `--enforce-hierarchical-clustering`." \
+                                 "clustering to be done anyway, please see the flag `--enforce-hierarchical-clustering`."
                                             % (pp(len(gene_clusters_dict)), pp(self.max_num_gene_clusters_for_hierarchical_clustering)))
                 self.skip_hierarchical_clustering = True
 
@@ -845,9 +882,14 @@ class Pangenome(object):
             # update the clustering configs:
             updated_clustering_configs[config_name] = enhanced_config_path
 
-            dbops.do_hierarchical_clustering_of_items(self.pan_db_path, updated_clustering_configs, database_paths={'PAN.db': self.pan_db_path},\
-                                                      input_directory=self.output_dir, default_clustering_config=constants.pan_default,\
-                                                      distance=self.distance, linkage=self.linkage, run=terminal.Run(verbose=False), progress=self.progress)
+            dbops.do_hierarchical_clustering_of_items(self.pan_db_path,
+                                                      updated_clustering_configs,
+                                                      database_paths={'PAN.db': self.pan_db_path},
+                                                      default_clustering_config=constants.pan_default,
+                                                      distance=self.distance,
+                                                      linkage=self.linkage,
+                                                      run=terminal.Run(verbose=False),
+                                                      progress=self.progress)
 
 
     def populate_gene_cluster_homogeneity_index(self, gene_clusters_dict, gene_clusters_failed_to_align=set([])):
@@ -941,7 +983,7 @@ class Pangenome(object):
             raise ConfigError("self.genomes must be a dict. Anvi'o needs an adult :(")
 
         if len(self.genomes) < 2:
-            raise ConfigError("There must be at least two genomes for this workflow to work. You have like '%d' of them :/" \
+            raise ConfigError("There must be at least two genomes for this workflow to work. You have like '%d' of them :/"
                     % len(self.genomes))
 
         if len(self.genomes) > 100:
@@ -963,7 +1005,7 @@ class Pangenome(object):
             raise ConfigError("You are asking anvi'o to skip aligning sequences within your gene clusters, and then you "
                               "are also asking it to use '%s' for aligning sequences within your gene clusters. It is easy "
                               "to ignore this and skip the alignment, but anvi'o gets nervous when it realizes her users are "
-                              "being inconsistent. Please make up your mind, and come back as the explicit person you are" \
+                              "being inconsistent. Please make up your mind, and come back as the explicit person you are"
                                                                             % self.align_with)
 
         self.check_params()
@@ -1303,12 +1345,15 @@ class Pangenome(object):
                              f"channel and consult the opinion of the anvi'o community. Despite all these, it is still a good idea to run "
                              f"`anvi-display-pan` and see what it says first.", lc="cyan", header="FRIENDLY WARNING")
 
+        # deal with the intermediate data output directory
+        self.cleanup()
+
         # done
+        self.run.log_file_path = None
+        self.run.info("The new pan-db", self.pan_db_path, nl_after=1)
+
         self.run.info_single(f"Your pangenome is ready with a total of {pp(len(gene_clusters_dict))} gene clusters across "
                              f"{len(self.genomes)} genomes 🎉", mc="green", nl_after=1)
-
-
-        self.run.quit()
 
 
 class FragmentedGeneAnnotator():

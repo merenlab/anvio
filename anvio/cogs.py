@@ -179,7 +179,7 @@ class COGs:
         if self.search_with not in self.available_search_methods:
             raise ConfigError("Let us start by making it clear that we probably like '%s' as much as you do, but it doesn't "
                               "seem to be available on your system OR recognized by the COGs class since anvi'o couldn't "
-                              "find it among the available search methods. You probably need to try something else :/" \
+                              "find it among the available search methods. You probably need to try something else :/"
                                                                                                     % self.search_with)
 
         if self.search_with not in self.available_db_search_program_targets:
@@ -395,7 +395,7 @@ class COGs:
                              "inspections before suggested that these hits are usually matching to very poorly described functions that "
                              "are not mature enough to warrant a new COG id, or to be associated with an existing one. While that is "
                              "our interpretation, we may be totally wrong, and we welcome you to double-check these. Here are the "
-                             "offending protein IDs if you would like to dig deeper: " % \
+                             "offending protein IDs if you would like to dig deeper: " %
                                         (hits_for_missing_ncbi_protein_ids, len(missing_ncbi_protein_ids_found)), lc='yellow')
 
             self.run.info_single(missing_ncbi_protein_ids_msg, nl_after=1, level=0, cut_after=0)
@@ -415,7 +415,7 @@ class COGs:
             self.run.warning("This is important. %s hits for your genes that appeared in the proteins FASTA file from the NCBI had protein "
                              "IDs that were not described in the CSV file from the NCBI that associates each protein ID with a COG function. "
                              "That's OK if you don't care. But if you would like to take a look, anvi'o stored a report "
-                             "file for you at %s" \
+                             "file for you at %s"
                         % (len(in_proteins_FASTA_not_in_cogs_CSV), report_output_file_path))
 
 
@@ -768,7 +768,7 @@ class COGsSetup:
             self.run.warning("%d of %d COG IDs that appear in the list of orthology domains file (which links protein IDs "
                              "to COG names), are missing from the COG names file (which links COG IDs to function names and "
                              "categories). Because clearly even the files that are distributed together should not be expected to "
-                             "be fully compatible. Anvi'o thanks everyone for their contributions." % \
+                             "be fully compatible. Anvi'o thanks everyone for their contributions." %
                                                         (len(missing_cog_ids), len(self.cogs_found_in_proteins_fasta)))
 
         dictio.write_serialized_object(missing_cog_ids, os.path.join(self.COG_data_dir, 'MISSING_COG_IDs.cPickle'))
@@ -1146,7 +1146,7 @@ class COGsSetup:
 
             # Check checksum
             if self.COG_version == 'COG20' and file_name != "checksum.md5.txt":
-                if not hashlib.md5(open(file_path, "rb").read()).hexdigest() == checksums[file_name]:
+                if not hashlib.md5(open(file_path, "rb").read(), usedforsecurity=False).hexdigest() == checksums[file_name]:
                     raise ConfigError(f"Something went wrong with your download :/ The checksum we calculated for `{file_name}` "
                                       f"anvi'o just finished downloading does not match to the checksum provided by the NCBI. "
                                       f"This is most likely due to an interrupted download, as the NCBI servers often prematurely "

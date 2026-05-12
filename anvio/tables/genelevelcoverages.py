@@ -76,7 +76,7 @@ class TableForGeneLevelCoverages(Table):
                 raise ConfigError("Bad news of the day: You have a genes database for the collection %s and bin %s. But "
                                   "clearly the parameters you used to generate these gene-level coverage data has little "
                                   "to do with the parameters you are using now. For instance, parameter '%s' was not even "
-                                  "stored in the database :/" % \
+                                  "stored in the database :/" %
                                         (self.collection_name, self.bin_name , str(parameter)))
 
             parameter_user_set = self.parameters[parameter]
@@ -96,7 +96,7 @@ class TableForGeneLevelCoverages(Table):
                               "matching the matching parameters you are using now. For instance, the database "
                               "has %s for %s, but the same parameter is currently set to %s in your workflow. "
                               "The best solution to this is to remove this database (which is at '%s'), and let "
-                              "anvi'o generate another one for you." % \
+                              "anvi'o generate another one for you." %
                                     (self.collection_name, self.bin_name, len(non_matching_parameters), str(e[1]),
                                     e[0], str(e[2]), self.db_path))
 
@@ -130,7 +130,7 @@ class TableForGeneLevelCoverages(Table):
                                   "who is creative. But what we know is that this genes database at '%s' is not one that you "
                                   "can use anymore. The easy solution is this: remove this database, and let anvi'o generate "
                                   "another one for you. Alternatively you can run the same exact command you run right before "
-                                  "you get this error. Sometimes that works too." % \
+                                  "you get this error. Sometimes that works too." %
                                         (self.collection_name, self.bin_name, self.db_path))
 
 

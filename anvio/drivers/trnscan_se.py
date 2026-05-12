@@ -98,7 +98,7 @@ class tRNAScanSE:
                              "with. Anvi'o will continue to try to run everything as if this didn't happen. If you see this warning "
                              "but everything works fine, let us know so we can include this version number into the list of 'tested' "
                              "version numbers. If you see an unexpected error, please consider installing one of these versions "
-                             "of tRNAScan-SE (and again please let us know anyway so we can address it for later): '%s'" % \
+                             "of tRNAScan-SE (and again please let us know anyway so we can address it for later): '%s'" %
                                            (self.program_name, version_found, ', '.join(list(self.tested_versions))))
 
         self.installed_version = version_found
@@ -147,7 +147,7 @@ class tRNAScanSE:
                 if not len(fields) == 10:
                     raise ConfigError("The expected output of tRNAScan-SE includes exactly 10 columns. However, the output "
                                       "anvi'o is working contains at least one line with %d columns :/ This doesn't look "
-                                      "good. Here is the list of columns data of that line for your reference: '%s'." \
+                                      "good. Here is the list of columns data of that line for your reference: '%s'."
                                                             % (len(fields), fields))
 
                 d[entry_no] = {'contig_name': fields[0],

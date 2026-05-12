@@ -213,7 +213,7 @@ class TablesForHMMHits(Table):
 
         # now we know our sequences
         self.run.info('Target sequences determined',
-                      '; '.join([f"{pp(utils.get_num_sequences_in_fasta(file_path))} sequences for {target}" \
+                      '; '.join([f"{pp(utils.get_num_sequences_in_fasta(file_path))} sequences for {target}"
                                     for target, file_path in target_files_dict.items()]))
 
         if have_hmm_sources_with_non_RNA_contig_context:
@@ -425,7 +425,7 @@ class TablesForHMMHits(Table):
 
             database.disconnect()
 
-            run.warning("%d gene caller ids that were added via the HMM source have been removed from \"%s\"" \
+            run.warning("%d gene caller ids that were added via the HMM source have been removed from \"%s\""
                         % (len(gene_caller_ids_to_remove), ', '.join(tables_with_gene_callers_id)))
 
 
@@ -574,6 +574,10 @@ class FilterHmmHitsTable(object):
         if self.list_hmm_sources:
             ContigsDatabase(self.contigs_db_path).list_available_hmm_sources()
             sys.exit()
+
+        # import default HMM sources quietly
+        with terminal.SuppressAllOutput():
+            import anvio.data.hmm
 
         if self.hmm_source not in anvio.data.hmm.sources and not self.hmm_profile_dir:
             raise ConfigError("Hold up, if you are using a external HMM source, you need to provide the path to the HMM directory "

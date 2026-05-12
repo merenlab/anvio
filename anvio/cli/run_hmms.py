@@ -72,7 +72,7 @@ def run_program():
         sources = utils.get_HMM_sources_dictionary([args.hmm_profile_dir], check_for_ACC_lines_in_HMM=args.add_to_functions_table)
         run.info('HMM profiles', '%d source%s been loaded: %s' % (len(sources),
                                                           's' if len(sources) > 1 else '',
-                                                          ', '.join(['%s (%d genes)' % (s, len(sources[s]['genes']))\
+                                                          ', '.join(['%s (%d genes)' % (s, len(sources[s]['genes']))
                                                                                                     for s in sources])))
     elif args.installed_hmm_profile:
         args.installed_hmm_profile = [p.strip() for p in args.installed_hmm_profile.split(',') if p.strip()]

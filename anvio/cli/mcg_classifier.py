@@ -57,7 +57,7 @@ def run_program():
                                "actually in your collection: %s" % (args.collection_name, missing_bins, bin_names_in_collection))
     elif args.bin_id:
         if args.bin_id not in bin_names_in_collection:
-            raise ConfigError("The bin you declared, %s, does not appear to be in the collection %s." \
+            raise ConfigError("The bin you declared, %s, does not appear to be in the collection %s."
                               % (args.bin_id, args.collection_name))
         bin_names_of_interest = [args.bin_id]
     else:
@@ -66,8 +66,8 @@ def run_program():
     for bin_name in bin_names_of_interest:
         # This is where things are happening
         _bin = summarizer.Bin(summary, bin_name)
-        mcg.init(gene_level_coverage_stats_dict = _bin.gene_level_coverage_stats_dict, \
-                    split_coverage_values_per_nt_dict = _bin.split_coverage_values_per_nt_dict, \
+        mcg.init(gene_level_coverage_stats_dict = _bin.gene_level_coverage_stats_dict,
+                    split_coverage_values_per_nt_dict = _bin.split_coverage_values_per_nt_dict,
                     additional_description = bin_name)
         if not args.get_samples_stats_only:
             mcg.classify()

@@ -2270,6 +2270,14 @@ D = {
              'type': str,
              'help': "Output file path for the new database."}
                 ),
+    'intermediate-data-dir': (
+            ['--intermediate-data-dir'],
+            {'metavar': 'PATH',
+             'type': str,
+             'help': "A directory path to store intermediate data files or to read them from. If you don't provide "
+                     "anything here, this program will come up with a temporary directory path by itself to store "
+                     "intermediate files, and most likely clean it later (unless you used the `--debug` flag)."}
+                ),
     'temporary-dir-path': (
             ['--temporary-dir-path'],
             {'metavar': 'PATH',
@@ -4132,13 +4140,13 @@ def K(param_id, params_dict={}):
 (__version__,
  __codename__,
  __contigs__version__,
- __profile__version__, \
- __genes__version__, \
- __pan__version__, \
- __auxiliary_data_version__, \
- __structure__version__, \
- __genomes_storage_version__ , \
- __trnaseq__version__, \
+ __profile__version__,
+ __genes__version__,
+ __pan__version__,
+ __auxiliary_data_version__,
+ __structure__version__,
+ __genomes_storage_version__ ,
+ __trnaseq__version__,
  __workflow_config_version__,
  __kegg_modules_version__) = get_versions()
 
