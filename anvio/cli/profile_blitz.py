@@ -84,6 +84,7 @@ def get_args():
                         "coverage, min/max values of coverage, GC-content and length of items, etc). Using this flag "
                         "can cut your processing time in half. See the help docs for example output files for contigs "
                         "and gene mode."}))
+    groupD.add_argument(*anvio.A('gen-window-level-output'), **anvio.K('gen-window-level-output'))
 
     groupE = parser.add_argument_group('DISCOV SCORE', "Parameters related to computing the distribution of coverage score: "
                                         "DisCov = αS + (1-α)E, where S = proportion of windows with coverage and E = proportion "

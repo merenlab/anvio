@@ -4149,6 +4149,16 @@ D = {
              'help': "How much to weight S over E in the DisCov score. Should be a value in the range [0,1]. The default "
                      "is '%(default)s'."}
     ),
+    'gen-window-level-output': (
+            ['--gen-window-level-output'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Generate an additional output file with per-window coverage statistics. For each window used to "
+                     "compute the DisCov metric, the output includes the window's start/stop positions in the "
+                     "sequence, its length, whether it has any coverage, and the number of bases within the fold-range "
+                     "of the median nonzero coverage. The file is named after the main output file with '-WINDOWS' "
+                     "inserted before the extension. Not compatible with --gene-mode or --report-minimal."}
+    ),
 }
 
 # two functions that works with the dictionary above.

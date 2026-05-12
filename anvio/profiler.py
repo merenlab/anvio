@@ -408,6 +408,11 @@ class BAMProfilerQuick:
         self.foldrange_lower = A('foldrange_lower')
         self.foldrange_upper = A('foldrange_upper')
         self.alpha = A('alpha')
+        self.gen_window_level_output = A('gen_window_level_output')
+        self.window_output_file_path = None
+        if self.gen_window_level_output and self.output_file_path:
+            base, ext = os.path.splitext(self.output_file_path)
+            self.window_output_file_path = f"{base}-WINDOWS{ext}"
 
         if not self.gene_caller:
             self.gene_caller = utils.get_default_gene_caller(self.contigs_db_path)
@@ -424,6 +429,8 @@ class BAMProfilerQuick:
                 self.run.info('Minimum window length', self.min_window_length)
             self.run.info('DisCov fold-range', f"{self.foldrange_lower}x to {self.foldrange_upper}x of median nonzero coverage")
             self.run.info('DisCov alpha value', self.alpha)
+        if self.gen_window_level_output:
+            self.run.info('Window-level output', self.window_output_file_path)
 
         # if requested, load genes of interest
         self.gene_ids_of_interest = set([])
@@ -524,6 +531,16 @@ class BAMProfilerQuick:
                 raise ConfigError("The --alpha parameter for DisCov should take a value between 0 and 1 (inclusive). Keep in "
                                 "mind that it is going to be used in the following equation: DisCov = αS + (1-α)E. Hopefully "
                                 "that helps explain these restrictions :)")
+
+        if self.gen_window_level_output:
+            if self.gene_level_stats:
+                raise ConfigError("The flag `--gen-window-level-output` is not compatible with `--gene-mode`, as there "
+                                  "are no windows to report for gene-level stats.")
+            if self.report_minimal:
+                raise ConfigError("The flag `--gen-window-level-output` requires full output (the DisCov windows must "
+                                  "be computed), and is therefore not compatible with `--report-minimal`.")
+            if self.window_output_file_path:
+                filesnpaths.is_output_file_writable(self.window_output_file_path, ok_if_exists=False)
 
 
     def process(self):
@@ -737,6 +754,8 @@ class BAMProfilerQuick:
         mem_tracker = terminal.TrackMemory(at_most_every=5)
         mem_usage, mem_diff = mem_tracker.start()
 
+        window_output = filesnpaths.AppendableFile(self.window_output_file_path, append_type=dict) if self.gen_window_level_output else None
+
         with open(self.output_file_path, 'w') as output:
             header = self._get_header(reporting_bins, reporting_genes)
 
@@ -749,15 +768,18 @@ class BAMProfilerQuick:
                 bam_file_name = os.path.splitext(os.path.basename(bam_file_path))[0]
 
                 if reporting_bins:
-                    mem_usage, mem_diff = self._process_bins_for_bam(bam, bam_file_name, output, mem_tracker, mem_usage, mem_diff, i, num_contigs, total_num_bam_files)
+                    mem_usage, mem_diff = self._process_bins_for_bam(bam, bam_file_name, output, mem_tracker, mem_usage, mem_diff, i, num_contigs, total_num_bam_files, window_output=window_output)
                 elif reporting_genes:
                     mem_usage, mem_diff = self._process_genes_for_bam(bam, bam_file_name, output, contig_names, mem_tracker, mem_usage, mem_diff, i, num_contigs, total_num_bam_files)
                 else:
-                    mem_usage, mem_diff = self._process_contigs_for_bam(bam, bam_file_name, output, contig_names, mem_tracker, mem_usage, mem_diff, i, num_contigs, total_num_bam_files)
+                    mem_usage, mem_diff = self._process_contigs_for_bam(bam, bam_file_name, output, contig_names, mem_tracker, mem_usage, mem_diff, i, num_contigs, total_num_bam_files, window_output=window_output)
 
                 bam.close()
 
             self.progress.end()
+
+        if window_output:
+            window_output.close()
 
 
     def _get_header(self, reporting_bins, reporting_genes):
@@ -782,7 +804,7 @@ class BAMProfilerQuick:
         raise ConfigError("This function reached a point it should have never :(")
 
 
-    def _process_bins_for_bam(self, bam, bam_file_name, output, mem_tracker, mem_usage, mem_diff, bam_index, num_contigs, total_num_bam_files):
+    def _process_bins_for_bam(self, bam, bam_file_name, output, mem_tracker, mem_usage, mem_diff, bam_index, num_contigs, total_num_bam_files, window_output=None):
         """Process bin-level reporting for a single BAM file."""
 
         contigs_processed = 0
@@ -795,6 +817,7 @@ class BAMProfilerQuick:
 
             combined_coverage = None
             cursor = 0
+            contig_boundaries = []  # list of (offset, contig_name) for window position translation
 
             for contig_name in bin_data['contigs']:
                 contigs_processed += 1
@@ -823,6 +846,7 @@ class BAMProfilerQuick:
                     if combined_coverage is None:
                         combined_coverage = np.empty(bin_data['length'], dtype=coverage_obj.c.dtype)
 
+                    contig_boundaries.append((cursor, contig_name))
                     combined_coverage[cursor:cursor + len(coverage_obj.c)] = coverage_obj.c
                     cursor += len(coverage_obj.c)
 
@@ -840,12 +864,12 @@ class BAMProfilerQuick:
 
             combined_coverage = combined_coverage[:cursor]
 
-            self._write_bin_stats(output, bin_name, bam_file_name, bin_data, combined_coverage, bin_num_reads)
+            self._write_bin_stats(output, bin_name, bam_file_name, bin_data, combined_coverage, bin_num_reads, window_output=window_output, contig_boundaries=contig_boundaries)
 
         return mem_usage, mem_diff
 
 
-    def _process_contigs_for_bam(self, bam, bam_file_name, output, contig_names, mem_tracker, mem_usage, mem_diff, bam_index, num_contigs, total_num_bam_files):
+    def _process_contigs_for_bam(self, bam, bam_file_name, output, contig_names, mem_tracker, mem_usage, mem_diff, bam_index, num_contigs, total_num_bam_files, window_output=None):
         """Process contig-level reporting for a single BAM file."""
 
         contigs_processed = 0
@@ -858,7 +882,7 @@ class BAMProfilerQuick:
             if coverage_obj is None:
                 continue
 
-            self._write_contig_stats(output, contig_name, bam_file_name, coverage_obj)
+            self._write_contig_stats(output, contig_name, bam_file_name, coverage_obj, window_output=window_output)
 
         return mem_usage, mem_diff
 
@@ -906,7 +930,7 @@ class BAMProfilerQuick:
         return coverage_obj
 
 
-    def _write_bin_stats(self, output, bin_name, bam_file_name, bin_data, coverage_array, num_reads):
+    def _write_bin_stats(self, output, bin_name, bam_file_name, bin_data, coverage_array, num_reads, window_output=None, contig_boundaries=None):
         if self.report_minimal:
             mean = np.mean(coverage_array)
             detection = np.sum(coverage_array > 0) / len(coverage_array)
@@ -915,7 +939,7 @@ class BAMProfilerQuick:
             C = utils.CoverageStats(coverage_array, skip_outliers=True, discov_window_length=self.window_length,
                         discov_window_percentage = self.window_length_as_percentage, discov_min_window_len = self.min_window_length,
                         discov_foldrange_lower=self.foldrange_lower, discov_foldrange_upper=self.foldrange_upper,
-                        discov_alpha=self.alpha)
+                        discov_alpha=self.alpha, return_window_info=window_output is not None)
             output.write(f"{bin_name}\t"
                          f"{bam_file_name}\t"
                          f"{bin_data['length']}\t"
@@ -932,6 +956,8 @@ class BAMProfilerQuick:
                          f"{C.prop_win_covered:.4}\t"
                          f"{C.fold_range_coverage_depth:.4}\t"
                          f"{C.discov:.4}\n")
+            if window_output:
+                self._write_window_rows(window_output, bam_file_name, C.windows, bin_name=bin_name, contig_boundaries=contig_boundaries)
 
 
     def _write_bin_stats_minimal(self, output, bin_name, bam_file_name, bin_data, mean, detection, num_reads):
@@ -944,7 +970,7 @@ class BAMProfilerQuick:
                      f"{mean:.4}\n")
 
 
-    def _write_contig_stats(self, output, contig_name, bam_file_name, coverage_obj):
+    def _write_contig_stats(self, output, contig_name, bam_file_name, coverage_obj, window_output=None):
         if self.report_minimal:
             mean = np.mean(coverage_obj.c)
             detection = np.sum(coverage_obj.c > 0) / len(coverage_obj.c)
@@ -959,7 +985,7 @@ class BAMProfilerQuick:
             C = utils.CoverageStats(coverage_obj.c, skip_outliers=True, discov_window_length=self.window_length,
                         discov_window_percentage = self.window_length_as_percentage, discov_min_window_len = self.min_window_length,
                         discov_foldrange_lower=self.foldrange_lower, discov_foldrange_upper=self.foldrange_upper,
-                        discov_alpha=self.alpha)
+                        discov_alpha=self.alpha, return_window_info=window_output is not None)
             output.write(f"{contig_name}\t"
                          f"{bam_file_name}\t"
                          f"{self.contigs_basic_info[contig_name]['length']}\t"
@@ -976,6 +1002,8 @@ class BAMProfilerQuick:
                          f"{C.prop_win_covered:.4}\t"
                          f"{C.fold_range_coverage_depth:.4}\t"
                          f"{C.discov:.4}\n")
+            if window_output:
+                self._write_window_rows(window_output, bam_file_name, C.windows, contig_name=contig_name)
 
 
     def _write_gene_stats(self, output, gene_callers_id, contig_name, bam_file_name, gene_length, num_mapped_reads, coverage_array):
@@ -1002,6 +1030,61 @@ class BAMProfilerQuick:
                          f"{GC.min}\t"
                          f"{GC.max}\t"
                          f"{GC.std:.4}\n")
+
+
+    def _write_window_rows(self, window_output, bam_file_name, windows, contig_name=None, bin_name=None, contig_boundaries=None):
+        """Append per-window stats to the window-level output file.
+
+        Parameters
+        ==========
+        window_output : AppendableFile
+            Open AppendableFile for window-level output.
+        bam_file_name : str
+            Sample name derived from the BAM filename.
+        windows : dict
+            Dict-of-dicts from CoverageStats.windows, keyed by sequential integer.
+        contig_name : str
+            For contig mode: the contig all windows belong to. Window positions are
+            already relative to this contig.
+        bin_name : str
+            For bin mode: the bin these windows belong to.
+        contig_boundaries : list
+            For bin mode: list of (offset, contig_name) pairs sorted by offset, used
+            to translate concatenated-array positions back to per-contig coordinates.
+        """
+        if contig_boundaries:
+            # bin mode: translate concatenated positions back to per-contig coordinates
+            offsets = np.array([b[0] for b in contig_boundaries])
+            enriched = {}
+            for i, w in windows.items():
+                idx = int(np.searchsorted(offsets, w['start'], side='right')) - 1
+                ctg_name = contig_boundaries[idx][1]
+                ctg_offset = contig_boundaries[idx][0]
+                enriched[i] = {'bin': bin_name,
+                               'contig': ctg_name,
+                               'sample': bam_file_name,
+                               'window_start': w['start'] - ctg_offset,
+                               'window_stop': w['stop'] - ctg_offset,
+                               'window_length': w['length'],
+                               'has_coverage': w['has_coverage'],
+                               'num_bases_with_coverage': w['num_bases_with_coverage'],
+                               'num_bases_within_foldrange': w['num_bases_within_foldrange']}
+            headers = ['key', 'bin', 'contig', 'sample', 'window_start', 'window_stop', 'window_length', 'has_coverage', 'num_bases_with_coverage', 'num_bases_within_foldrange']
+        else:
+            # contig mode: positions are already relative to the contig
+            enriched = {}
+            for i, w in windows.items():
+                enriched[i] = {'contig': contig_name,
+                               'sample': bam_file_name,
+                               'window_start': w['start'],
+                               'window_stop': w['stop'],
+                               'window_length': w['length'],
+                               'has_coverage': w['has_coverage'],
+                               'num_bases_with_coverage': w['num_bases_with_coverage'],
+                               'num_bases_within_foldrange': w['num_bases_within_foldrange']}
+            headers = ['key', 'contig', 'sample', 'window_start', 'window_stop', 'window_length', 'has_coverage', 'num_bases_with_coverage', 'num_bases_within_foldrange']
+
+        window_output.append(enriched, headers=headers, do_not_write_key_column=True)
 
 
 class BAMProfiler(dbops.ContigsSuperclass):
