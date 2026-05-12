@@ -4163,7 +4163,7 @@ def get_version_tuples():
             ("Genes DB version", __genes__version__),
             ("Auxiliary data storage version", __auxiliary_data_version__),
             ("Pan DB version", __pan__version__),
-            ("Pangraph JSON version", __pangraph__version__),
+            ("Pangraph DB version", __pangraph__version__),
             ("Genome data storage version", __genomes_storage_version__),
             ("Structure DB version", __structure__version__),
             ("KEGG Modules DB version", __kegg_modules_version__),
@@ -4178,7 +4178,7 @@ def print_version():
     run.info("Profile database", __profile__version__)
     run.info("Contigs database", __contigs__version__)
     run.info("Pan database", __pan__version__)
-    run.info("Pangraph JSON", __pangraph__version__)
+    run.info("Pangraph database", __pangraph__version__)
     run.info("Genome data storage", __genomes_storage_version__)
     run.info("Structure database", __structure__version__)
     run.info("Metabolic modules database", __kegg_modules_version__)
