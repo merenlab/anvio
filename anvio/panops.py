@@ -2427,10 +2427,10 @@ class PangenomeGraph():
 
     def remerge_nodes(self):
 
-        self.run.warning("The user requested remerging of nodes. This is extremely useful in case of a highly sensitive"
-                         "graph creation settings. The algorithm will attempt to find e.g. false rearrangement nodes and"
-                         "join them together as a single synteny gene cluster. Please only use this method if you want the"
-                         "absolute best result and be aware that things might not go entirely as expected",
+        self.run.warning("Remerging nodes. This is extremely useful in case of highly sensitive graph creation settings. "
+                         "The algorithm will attempt to find e.g. false rearrangement nodes and join them together as a "
+                         "single synteny gene cluster. Use --skip-remerge to disable this step if you experience "
+                         "unexpected results.",
                          header="REMERGING SENSITIVE NODES", lc="green")
 
         gene_cluster_to_synteny_gene_cluster = {}
