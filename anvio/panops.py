@@ -1912,16 +1912,41 @@ class PangenomeGraph():
 
         """Generates an empty pan-graph-db and populates it with essential information"""
 
-        # generate an empty pan-graph-db.
+        # generate an empty pan-graph-db with meta values that capture the settings and
+        # and the data that went into the graph construction so we have them for downstream
+        # analyeses and for the user to be able to revisit them if/when they need to.
         meta_values = {
-            'project_name': self.project_name,
-            'state': self.load_state,
+            # identity & versioning
+            'anvio_version': anvio.__version__,
             'version': self.version,
+            'project_name': self.project_name,
+            # genome provenance
             'genomes_storage_hash': self.genomes_storage_hash,
-            'priority_genome': self.priority_genome,
             'genome_names': ','.join(self.genome_names),
+            'num_genomes': len(self.genome_names),
             'gene_alignments_computed': self.gene_alignments_computed,
             'gene_function_sources': ','.join(self.functional_annotation_sources_available),
+            # graph-building algorithm parameters
+            'alpha': self.alpha,
+            'beta': self.beta,
+            'gamma': self.gamma,
+            'delta': self.delta,
+            'min_k': self.min_k,
+            'n': self.n,
+            'circularize': self.circularize,
+            'min_contig_chain': self.min_contig_chain,
+            'inversion_aware': self.inversion_aware,
+            'skip_remerge': self.skip_remerge,
+            # multi-copy gene removal parameters
+            'max_num_multi_copy_genes': self.max_num_multi_copy_genes,
+            'max_num_multi_copy_genes_per_genome': self.max_num_multi_copy_genes_per_genome,
+            # layout & simplification parameters
+            'max_edge_length_filter': self.max_edge_length_filter,
+            'gene_cluster_grouping_threshold': self.gene_cluster_grouping_threshold,
+            'grouping_compression': self.groupcompress,
+            # anchoring
+            'priority_genome': self.priority_genome,
+            'start_gene': self.start_gene,
         }
 
         dbops.PanGraphDatabase(self.pan_graph_db_path, run=self.run, progress=self.progress, quiet=False).create(meta_values)
