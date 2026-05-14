@@ -525,8 +525,10 @@ class CoverageStats:
     score, which combines a metric for assessing spread of coverage across the sequence (proportion
     of fixed-length windows with at least some coverage, S) and a metric for assessing the
     evenness of nonzero coverage depth (proportion of bases with nonzero coverage that are within some
-    fold-range of the median nonzero coverage, E). These metrics are combined linearly with a weight α
-    following the formula: DisCov = αS + (1-α)E.
+    fold-range of the median nonzero coverage, E).
+
+    These metrics can be combined linearly with a weight α following the formula: DisCov = αS + (1-α)E.
+    Or, they can be combined by taking a weighted geometric mean following the formula: DisCov = S^α * E^(1-α)
 
     Parameters
     ==========
@@ -546,11 +548,13 @@ class CoverageStats:
         When computing E, count any bases with coverage under this value * the median nonzero coverage
     discov_alpha : float
         A value in [0,1] that indicates how much to weight S over E in the Discov score
+    discov_formula : string
+        Can be 'linear' or 'geometric', to choose which formula to use.
     """
 
     def __init__(self, coverage, skip_outliers=False, discov_window_length=10000, discov_window_percentage=None,
                 discov_min_window_len=500, discov_foldrange_lower=0.25, discov_foldrange_upper=4, discov_alpha=0.5,
-                return_window_info=False):
+                return_window_info=False, discov_formula='geometric'):
         self.min: float = np.amin(coverage)
         self.max: float = np.amax(coverage)
         self.median: float = np.median(coverage)
@@ -588,7 +592,10 @@ class CoverageStats:
         nonzero_coverage = coverage[coverage > 0]
         self.fold_range_coverage_depth = self.fold_range_of_median_detection(nonzero_coverage, fold_lower=discov_foldrange_lower, fold_upper=discov_foldrange_upper)
 
-        self.discov = discov_alpha * self.prop_win_covered + (1-discov_alpha) * self.fold_range_coverage_depth
+        if discov_formula == 'linear':
+            self.discov = discov_alpha * self.prop_win_covered + (1-discov_alpha) * self.fold_range_coverage_depth
+        else: # 'geometric'
+            self.discov = (self.prop_win_covered ** discov_alpha) * (self.fold_range_coverage_depth ** (1-discov_alpha))
 
         if return_window_info:
             self.windows = self._get_window_info(coverage, windows, nonzero_coverage, discov_foldrange_lower, discov_foldrange_upper)
