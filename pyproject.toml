@@ -240,6 +240,7 @@ Contact = "https://anvio.org/people"
 "anvi-trnaseq"                                      = "anvio.cli.trnaseq:main"
 "anvi-update-db-description"                        = "anvio.cli.update_db_description:main"
 "anvi-update-structure-database"                    = "anvio.cli.update_structure_database:main"
+"anvi-compute-panrep"                               = "anvio.cli.compute_panrep:main"
 # Anvi'o scripts
 "anvi-script-add-default-collection"                     = "anvio.cli.add_default_collection:main"
 "anvi-script-as-markdown"                                = "anvio.cli.as_markdown:main"
