@@ -4149,6 +4149,14 @@ D = {
              'help': "How much to weight S over E in the DisCov score. Should be a value in the range [0,1]. The default "
                      "is '%(default)s'."}
     ),
+    'discov-formula': (
+            ['--discov-formula'],
+            {'default': 'geometric',
+             'type': str,
+             'metavar': 'STRING',
+             'help': "Which formula to use when combining S and E into the DisCov score. Options are 'linear' "
+                     "(DisCov = αS + (1-α)E) and 'geometric' (DisCov = S^α * E^(1-α)). The default is '%(default)s'."}
+    ),
     'gen-window-level-output': (
             ['--gen-window-level-output'],
             {'default': False,

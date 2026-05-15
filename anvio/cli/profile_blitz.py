@@ -86,10 +86,11 @@ def get_args():
                         "and gene mode."}))
     groupD.add_argument(*anvio.A('gen-window-level-output'), **anvio.K('gen-window-level-output'))
 
-    groupE = parser.add_argument_group('DISCOV SCORE', "Parameters related to computing the distribution of coverage score: "
-                                        "DisCov = αS + (1-α)E, where S = proportion of windows with coverage and E = proportion "
-                                        "of covered bases within a fold-range of the median nonzero coverage. Does not apply to "
-                                        "--gene-mode.")
+    groupE = parser.add_argument_group('DISCOV SCORE', "Parameters related to computing the distribution of coverage score "
+                                        "(DisCov), where S = proportion of windows with coverage and E = proportion of covered "
+                                        "bases within a fold-range of the median nonzero coverage. These can be combined as "
+                                        "DisCov = αS + (1-α)E (linear) or DisCov = S^α * E^(1-α) (geometric). Does not apply "
+                                        "to --gene-mode.")
     groupE.add_argument(*anvio.A('window-length'), **anvio.K('window-length', {'help': f"How long to make the windows "
                         f"for computing the spread metric: S = # windows with coverage / # windows. This is the default "
                         f"when no window length parameters are provided. For genome/bin-level stats, the default window size is "
@@ -108,6 +109,7 @@ def get_args():
     groupE.add_argument(*anvio.A('foldrange-lower'), **anvio.K('foldrange-lower'))
     groupE.add_argument(*anvio.A('foldrange-upper'), **anvio.K('foldrange-upper'))
     groupE.add_argument(*anvio.A('alpha'), **anvio.K('alpha'))
+    groupE.add_argument(*anvio.A('discov-formula'), **anvio.K('discov-formula'))
 
     return parser.get_args(parser)
 
