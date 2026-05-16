@@ -4151,7 +4151,7 @@ D = {
     ),
     'discov-formula': (
             ['--discov-formula'],
-            {'default': 'geometric',
+            {'default': 'linear',
              'type': str,
              'metavar': 'STRING',
              'help': "Which formula to use when combining S and E into the DisCov score. Options are 'linear' "
