@@ -1,11 +1,13 @@
 """Snakemake log handler for anvi'o workflow manifests."""
 
 import os
+import re
 
-from anvio.workflows.manifest import append_manifest_row
+from anvio.workflows.manifest import append_manifest_row, update_snakemake_log_path
 
 
 JOBS = {}
+SNAKEMAKE_LOG_PATH = ''
 
 
 def _as_dict(value):
@@ -69,6 +71,42 @@ def _log_path(message):
     return ','.join(str(log) for log in logs if log)
 
 
+def _message_strings(message):
+    strings = []
+
+    for value in message.values():
+        if isinstance(value, str):
+            strings.append(value)
+        elif isinstance(value, (list, tuple)):
+            strings.extend(str(item) for item in value if isinstance(item, str))
+
+    return strings
+
+
+def _snakemake_log_path(message):
+    for text in _message_strings(message):
+        match = re.search(r'Complete log:\s*(\S+)', text)
+        if match:
+            return match.group(1)
+
+    return ''
+
+
+def _remember_snakemake_log_path(message):
+    global SNAKEMAKE_LOG_PATH
+
+    snakemake_log_path = _snakemake_log_path(message)
+
+    if not snakemake_log_path:
+        return
+
+    SNAKEMAKE_LOG_PATH = snakemake_log_path
+
+    manifest_path = os.environ.get('ANVIO_WORKFLOW_MANIFEST_PATH')
+    if manifest_path:
+        update_snakemake_log_path(manifest_path, SNAKEMAKE_LOG_PATH)
+
+
 def _entry_from_message(message):
     wildcards = _wildcards(message)
 
@@ -106,12 +144,15 @@ def _record_job(message, status):
                         entry.get('rule', ''),
                         group=entry.get('group', ''),
                         read=entry.get('read', ''),
-                        log_path=entry.get('log_path', ''))
+                        log_path=entry.get('log_path', ''),
+                        snakemake_log_path=SNAKEMAKE_LOG_PATH)
 
 
 def log_handler(message):
     message = _as_dict(message)
     level = message.get('level')
+
+    _remember_snakemake_log_path(message)
 
     if level == 'job_info':
         _remember_job(message)
