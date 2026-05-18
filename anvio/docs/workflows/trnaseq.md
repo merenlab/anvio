@@ -45,3 +45,7 @@ Here is an equivalent tRNA-seq samples file with FASTA inputs.
 | ecoli_B1_DM | demethylase | FASTA/ecoli_B1_DM.fa.gz |
 
 Note that barcodes and other sequence prefixes should already be trimmed from FASTA sequences.
+
+## Logs
+
+Workflow logs will be under `00_LOGS` unless you renamed `LOGS_DIR` in your config. Logs are organized by rule name, so a sample-specific tRNA-seq run may write to a path such as `00_LOGS/anvi_trnaseq/ecoli_A1_noDM.log`. The workflow also writes `00_LOGS/trnaseq-workflow-manifest.tsv`, a tab-delimited file that records job status and points to the relevant rule log.

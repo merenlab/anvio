@@ -279,7 +279,7 @@ Simultaneously exploring complete and partial ORFs will increase the distributio
 Now that you have fine tuned the gene family input into the ecophylo workflow, it's time to decide what output best fits your science question at hand.
 
 {:.notice}
-It's common that not all genomes or metagenomes will have the gene family of interest either due to it not being detect by the input HMM or filtered out during the QC steps. Please check this log file for %(contigs-db)s that did not contain your gene family of interest: `00_LOGS/contigDBs_with_no_hmm_hit_*.log`
+It's common that not all genomes or metagenomes will have the gene family of interest either due to it not being detect by the input HMM or filtered out during the QC steps. Please check the `combine_sequence_data` logs for %(contigs-db)s that did not contain your gene family of interest: `00_LOGS/combine_sequence_data/contigDBs_with_no_hmm_hit_*.log`
 
 ### Multiple sequence alignment step with MUSCLE
 
@@ -525,7 +525,7 @@ Error in rule run_metagenomics_workflow:
 RuleException:
 CalledProcessError in file /Users/mschechter/github/anvio/anvio/workflows/ecophylo/rules/profile_mode.smk, line 87:
 
-Command 'set -euo pipefail;  cd ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params  --rerun-incomplete --latency-wait 100 --keep-going &> 00_LOGS/run_metagenomics_workflow.log && cd -' returned non-zero exit status 1.
+Command 'set -euo pipefail;  cd ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params  --rerun-incomplete --latency-wait 100 --keep-going &> 00_LOGS/run_metagenomics_workflow/log.log && cd -' returned non-zero exit status 1.
   File "/Users/mschechter/github/anvio/anvio/workflows/ecophylo/rules/profile_mode.smk", line 87, in __rule_run_metagenomics_workflow
   File "/Users/mschechter/miniconda3/envs/anvio-dev/lib/python3.10/concurrent/futures/thread.py", line 58, in run
 Shutting down, this might take some time.
@@ -535,8 +535,8 @@ Exiting because a job execution failed. Look above for error message
 One explanation for this error is none of the metagenomes in the %(samples-txt)s you provided mapped any reads to extracted target proteins. To test this run the following command and see if you get this error:
 
 ```bash
-$ grep "Nothing to merge" ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/00_LOGS/run_metagenomics_workflow.log
-Command 'set -euo pipefail;  echo Nothing to merge for Ribosomal_S11. This should only happen if all profiles were empty (you can check the log file: 00_LOGS/Ribosomal_S11-anvi_merge.log to see if that is indeed the case). This file was created just so that your workflow would continue with no error (snakemake expects to find these output files and if we don't create them, then it will be upset). As we see it, there is no reason to throw an error here, since you mapped your metagenome to some fasta files and you got your answer: whatever you have in your fasta file is not represented in your  metagenomes. Feel free to contact us if you think that this is our fault. sincerely, Meren Lab >> 00_LOGS/Ribosomal_S11-anvi_merge.log' returned non-zero exit status 1.
+$ grep "Nothing to merge" ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/00_LOGS/run_metagenomics_workflow/log.log
+Command 'set -euo pipefail;  echo Nothing to merge for Ribosomal_S11. This should only happen if all profiles were empty (you can check the log file: 00_LOGS/anvi_merge/Ribosomal_S11.log to see if that is indeed the case). This file was created just so that your workflow would continue with no error (snakemake expects to find these output files and if we don't create them, then it will be upset). As we see it, there is no reason to throw an error here, since you mapped your metagenome to some fasta files and you got your answer: whatever you have in your fasta file is not represented in your  metagenomes. Feel free to contact us if you think that this is our fault. sincerely, Meren Lab >> 00_LOGS/anvi_merge/Ribosomal_S11.log' returned non-zero exit status 1.
 ```
 
 ### Can I run multiple hmms on the same data?

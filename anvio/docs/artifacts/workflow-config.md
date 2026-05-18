@@ -17,6 +17,8 @@ The config file contains three types of information:
 2. **Rule specific parameters** which allow you to set the parameters on individual anvi'o programs that are run in the workflow.
 3. **Output directory names** which just tell anvi'o what to name all of the intermediate and final outputs (to help keep things organized).
 
+The `LOGS_DIR` entry controls where workflow logs are written. By default this is usually `00_LOGS`. During a workflow run, rule logs are organized under this directory by rule name, and a tab-delimited manifest named `<workflow-name>-workflow-manifest.tsv` is written there as well.
+
 For example, the default config file for the [contigs workflow](../../workflows/contigs) has no rule specific parameters and looks like this:
 
     {
