@@ -270,6 +270,16 @@ class WorkflowSuperClass:
         if self.dry_run_only:
             return
 
+        workflow_manifest_path = None
+        original_manifest_env_var = os.environ.get('ANVIO_WORKFLOW_MANIFEST_PATH')
+        if getattr(self.args, 'workflow', self.name) == 'metagenomics' and not self.list_dependencies:
+            from anvio.workflows.manifest import initialize_manifest
+
+            workflow_manifest_path = os.path.join(self.dirs_dict["LOGS_DIR"], "metagenomics-workflow-manifest.tsv")
+            initialize_manifest(workflow_manifest_path)
+            os.environ['ANVIO_WORKFLOW_MANIFEST_PATH'] = workflow_manifest_path
+            self.run.info('Workflow manifest', workflow_manifest_path)
+
         # snakemake.main() accepts an `argv` parameter, but then the code has mixed responses to
         # that, and at places continues to read from sys.argv in a hardcoded manner. so we have to
         # overwrite our argv here.
@@ -280,6 +290,10 @@ class WorkflowSuperClass:
                     get_workflow_snake_file_path(self.args.workflow),
                     '--configfile',
                     self.args.config_file]
+
+        if workflow_manifest_path:
+            sys.argv.extend(['--log-handler-script',
+                             os.path.join(get_path_to_workflows_dir(), 'snakemake_log_handler.py')])
 
         # if any conda yaml is provided for a rule, then add '--use-conda' to the snakemake command:
         if any(isinstance(v, dict) and v.get('conda_yaml') for v in (self.config or {}).values()):
@@ -293,18 +307,27 @@ class WorkflowSuperClass:
                 sys.argv.extend(['--dryrun', '--printshellcmds', '--cores', f'{max_num_cpus_requested_by_the_workflow}'])
             else:
                 sys.argv.extend(['--dryrun', '--printshellcmds'])
-            snakemake.main()
-            sys.exit(0)
+            try:
+                snakemake.main()
+                sys.exit(0)
+            finally:
+                sys.argv = original_sys_argv
         else:
             if max_num_cpus_requested_by_the_workflow:
                 sys.argv.extend(['-p', '--cores', f'{max_num_cpus_requested_by_the_workflow}'])
             else:
                 sys.argv.extend(['-p'])
-            snakemake.main()
+            try:
+                snakemake.main()
+            finally:
+                # restore the `sys.argv` to the original for the sake of sakity (totally made up word,
+                # but you already know what it means. you're welcome.)
+                sys.argv = original_sys_argv
 
-        # restore the `sys.argv` to the original for the sake of sakity (totally made up word,
-        # but you already know what it means. you're welcome.)
-        sys.argv = original_sys_argv
+                if original_manifest_env_var is None:
+                    os.environ.pop('ANVIO_WORKFLOW_MANIFEST_PATH', None)
+                else:
+                    os.environ['ANVIO_WORKFLOW_MANIFEST_PATH'] = original_manifest_env_var
 
 
     def dry_run(self, workflow_graph_output_file_path_prefix='workflow'):
