@@ -2,7 +2,7 @@ This program **downloads and organizes a local copy of the data from [dbCAN2 CAZ
 
 ### Set up cazymes data
 
-anvi'o will download the newest version of the database (V13) by default:
+anvi'o will download the newest version of the database (V14) by default:
 
 {{ codestart }}
 anvi-setup-cazymes
