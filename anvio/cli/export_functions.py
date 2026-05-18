@@ -59,14 +59,19 @@ def export_functions_in_matrix_format(functions_dict, sources_to_include, output
     run.info('Output file', output_file)
 
 
-def export_functions_in_long_format(functions_dict, output_file, run, progress):
+CONTIG_INFO_FIELDS = ['contig', 'start', 'stop', 'direction', 'partial', 'contig_length', 'contig_gc_content']
+
+
+def export_functions_in_long_format(functions_dict, output_file, run, progress, include_contig_info=False):
     """Export functions in long format: one row per annotation."""
 
     progress.new('Exporting functions')
     progress.update('...')
 
+    headers = t.gene_function_calls_table_structure + (CONTIG_INFO_FIELDS if include_contig_info else [])
+
     output = open(output_file, 'w')
-    output.write('\t'.join(t.gene_function_calls_table_structure) + '\n')
+    output.write('\t'.join(headers) + '\n')
 
     sorted_entries = sorted(functions_dict.values(), key=lambda x: x['gene_callers_id'])
 
@@ -75,7 +80,7 @@ def export_functions_in_long_format(functions_dict, output_file, run, progress):
         if entry['e_value'] is None:
             entry['e_value'] = 0.0
 
-        output.write('\t'.join([str(entry[key]) for key in t.gene_function_calls_table_structure]) + '\n')
+        output.write('\t'.join([str(entry[key]) for key in headers]) + '\n')
         num_entries_reported += 1
 
     output.close()
@@ -98,6 +103,9 @@ def main():
         contigs_db = dbops.ContigsDatabase(args.contigs_db)
         annotation_sources = contigs_db.meta['gene_function_sources']
         functions_dict = contigs_db.db.get_table_as_dict(t.gene_function_calls_table_name)
+        if args.include_contig_info:
+            genes_in_contigs_dict = contigs_db.db.get_table_as_dict(t.genes_in_contigs_table_name)
+            contigs_info_dict = contigs_db.db.get_table_as_dict(t.contigs_info_table_name)
         contigs_db.disconnect()
         progress.end()
 
@@ -148,6 +156,26 @@ def main():
             functions_dict = utils.get_filtered_dict(functions_dict, 'source', set(requested_sources))
             progress.end()
 
+        if args.include_contig_info and args.matrix_format:
+            raise ConfigError("The flag --include-contig-info has no effect with --matrix-format. Please "
+                              "remove one of these flags and try again.")
+
+        if args.include_contig_info and not args.matrix_format:
+            progress.new('Enriching output with contig info')
+            progress.update('...')
+            for entry in functions_dict.values():
+                gene_call = genes_in_contigs_dict.get(entry['gene_callers_id'], {})
+                contig_name = gene_call.get('contig', '')
+                contig_info = contigs_info_dict.get(contig_name, {})
+                entry['contig'] = contig_name
+                entry['start'] = gene_call.get('start', '')
+                entry['stop'] = gene_call.get('stop', '')
+                entry['direction'] = gene_call.get('direction', '')
+                entry['partial'] = gene_call.get('partial', '')
+                entry['contig_length'] = contig_info.get('length', '')
+                entry['contig_gc_content'] = contig_info.get('gc_content', '')
+            progress.end()
+
         if args.matrix_format:
             if args.annotation_sources:
                 sources_to_include = [s.strip() for s in args.annotation_sources.split(',')]
@@ -156,7 +184,7 @@ def main():
 
             export_functions_in_matrix_format(functions_dict, sources_to_include, args.output_file, run, progress)
         else:
-            export_functions_in_long_format(functions_dict, args.output_file, run, progress)
+            export_functions_in_long_format(functions_dict, args.output_file, run, progress, include_contig_info=args.include_contig_info)
     except ConfigError as e:
         print(e)
         sys.exit(-1)
@@ -177,6 +205,10 @@ def get_args():
     parser.add_argument(*anvio.A('genes-of-interest'), **anvio.K('genes-of-interest'))
     parser.add_argument(*anvio.A('matrix-format'), **anvio.K('matrix-format', {'help': "Export functions in wide format: "
                     "one row per gene, sources as columns."}))
+    parser.add_argument('--include-contig-info', action='store_true', default=False,
+                        help="Extend the long-format output with positional and contig-level columns: "
+                             "contig name, gene start/stop coordinates, strand direction, partial call "
+                             "flag, contig length, and contig GC content. Has no effect with --matrix-format.")
 
     return parser.get_args(parser)
 
