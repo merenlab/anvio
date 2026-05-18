@@ -136,7 +136,7 @@ class CAZymeSetup(object):
             self.hmmpress_files()
 
         self.run.info_single(f"The CAZyme database {self.db_version} is successfully setup on your computer for anvi'o to use 🎉 Now you "
-                             f"can use the program `anvi-run-cazyme` on any contigs-db file to annotate genes in them with CAZymes.",
+                             f"can use the program `anvi-run-cazymes` on any contigs-db file to annotate genes in them with CAZymes.",
                              nl_before=1, nl_after=1, mc='green')
 
 
