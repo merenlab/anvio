@@ -412,6 +412,11 @@ class Read:
                     ref_seq_length -= length
             self.reference_sequence = np.array([ord('N')] * ref_seq_length)
 
+        # SA tag — the sibling alignment(s) for split-aligned reads. Carried verbatim from
+        # the BAM and parsed downstream by the clip detector to fill the `partner_*` columns
+        # of the clippings table.
+        self.sa_tag = read.get_tag('SA') if read.has_tag('SA') else None
+
         # See self.vectorize
         self.v = None
 

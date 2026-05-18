@@ -477,7 +477,7 @@ class Auxiliary:
 
         if not self.skip_clip_profiling:
             clips = {}
-            get_clip_entry = lambda clip_type, side, seq, pos, length: OrderedDict([
+            get_clip_entry = lambda clip_type, side, seq, pos, length, partner_contig, partner_pos, partner_strand: OrderedDict([
                 ('split_name', self.split.name),
                 ('pos', pos),
                 ('pos_in_contig', pos + self.split.start),
@@ -494,7 +494,32 @@ class Auxiliary:
                 ('sequence', seq),
                 ('length', length),
                 ('count', 1),
+                # `coverage` is filled in by ProcessClipCounts after the read loop. The placeholder
+                # exists here to lock its position in the OrderedDict; without it, the late
+                # assignment would append `coverage` to the end and the per-row values would
+                # land in the wrong columns at INSERT time.
+                ('coverage', 0),
+                ('partner_contig', partner_contig),
+                ('partner_pos', partner_pos),
+                ('partner_strand', partner_strand),
             ])
+
+            # SA tag parser: returns (contig, pos_0based, strand) for the first sibling
+            # alignment listed in the read's SA tag, or ('', -1, '') if there is no SA tag
+            # or it cannot be parsed. The SA tag is a semicolon-delimited list of
+            # `rname,pos,strand,CIGAR,mapQ,NM` entries; SAM positions are 1-based so we
+            # subtract 1 to match anvi'o's 0-based convention.
+            def parse_sa_partner(sa_tag):
+                if not sa_tag:
+                    return ('', -1, '')
+                first = sa_tag.rstrip(';').split(';')[0]
+                fields = first.split(',')
+                if len(fields) < 3:
+                    return ('', -1, '')
+                try:
+                    return (fields[0], int(fields[1]) - 1, 'f' if fields[2] == '+' else 'r')
+                except (ValueError, IndexError):
+                    return ('', -1, '')
 
         # make an array with as many rows as there are nucleotides in the split, and as many rows as
         # there are nucleotide types. Each nucleotide (A, C, T, G, N) gets its own row which is
@@ -568,6 +593,12 @@ class Auxiliary:
                 # clips here are at breakpoints inside [split.start, split.end).
                 cigartuples = read.cigartuples
 
+                # The partner is the same SA-tag-derived sibling alignment for both ends of this
+                # read. For multi-way chimeras (3+ alignments) SA carries multiple entries; we
+                # only keep the first. Two clips at the same (pos, side) with different partners
+                # become distinct rows because partner_* is in the hash key.
+                p_contig, p_pos, p_strand = parse_sa_partner(read.sa_tag)
+
                 # left clip: first op, breakpoint at the first aligned base (read.reference_start)
                 left_op, left_len = cigartuples[0]
                 if left_op == 4 or left_op == 5:
@@ -578,7 +609,7 @@ class Auxiliary:
                     else:
                         clip_type = 'HARD'
                         clip_seq = ''
-                    clip_hash = hash((clip_pos, 'L', clip_type, clip_seq, left_len))
+                    clip_hash = hash((clip_pos, 'L', clip_type, clip_seq, left_len, p_contig, p_pos, p_strand))
 
                     if clip_hash in clips:
                         clips[clip_hash]['count'] += 1
@@ -589,6 +620,9 @@ class Auxiliary:
                             seq=clip_seq,
                             pos=clip_pos,
                             length=left_len,
+                            partner_contig=p_contig,
+                            partner_pos=p_pos,
+                            partner_strand=p_strand,
                         )
 
                 # right clip: last op, breakpoint at the last aligned base (reference_end - 1).
@@ -604,7 +638,7 @@ class Auxiliary:
                         else:
                             clip_type = 'HARD'
                             clip_seq = ''
-                        clip_hash = hash((clip_pos, 'R', clip_type, clip_seq, right_len))
+                        clip_hash = hash((clip_pos, 'R', clip_type, clip_seq, right_len, p_contig, p_pos, p_strand))
 
                         if clip_hash in clips:
                             clips[clip_hash]['count'] += 1
@@ -615,6 +649,9 @@ class Auxiliary:
                                 seq=clip_seq,
                                 pos=clip_pos,
                                 length=right_len,
+                                partner_contig=p_contig,
+                                partner_pos=p_pos,
+                                partner_strand=p_strand,
                             )
 
             read_count += 1
