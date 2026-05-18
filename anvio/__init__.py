@@ -578,6 +578,27 @@ D = {
                      "having this information, you can skip storing this information by providing this flag. Note: If "
                      "--skip-SNV-profiling is provided, --skip-INDEL-profiling will automatically be enforced."}
                 ),
+    'skip-clip-profiling': (
+            ['--skip-clip-profiling'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Read-edge clipping (soft and hard CIGAR clips) is a useful breakpoint signal: pile-ups of "
+                     "reads clipping at the same reference position can mark structural-variant breakpoints, mobile "
+                     "element insertion sites, or strain junctions in metagenomes. By default anvi'o stores each "
+                     "clip event in the `clippings` table of the profile database. Use this flag to skip that step "
+                     "if you do not need the data. Note: if --skip-SNV-profiling is provided, --skip-clip-profiling "
+                     "will automatically be enforced (the clip detector runs inside the SNV/indel pass)."}
+                ),
+    'min-clip-length': (
+            ['--min-clip-length'],
+            {'default': 5,
+             'type': int,
+             'metavar': 'INT',
+             'help': "Minimum length, in nucleotides, of a clip event for it to be reported. Clips shorter than this "
+                     "are usually quality-trim residue or aligner edge noise rather than real breakpoint signal. "
+                     "The default is %(default)d. Use 0 to report clips of any length. Ignored when "
+                     "--skip-clip-profiling is set."}
+                ),
     'return-AA-frequencies-instead': (
             ['--return-AA-frequencies-instead'],
             {'default': False,
