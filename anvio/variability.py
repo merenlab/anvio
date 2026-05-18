@@ -465,3 +465,75 @@ class ProcessIndelCounts(object):
             self.indels[indel_hash]['coverage'] = cov
 
         self.indels = {k: v for k, v in self.indels.items() if k not in indel_hashes_to_remove}
+
+
+class ProcessClipCounts(object):
+    def __init__(self, clips, coverage, min_clip_length=5, test_class=None, min_coverage_for_variability=1):
+        """A class to process raw read-edge clip events from BAM profiling.
+
+        Parameters
+        ==========
+        clips : dictionary
+            A dictionary keyed by a unique hash. Each value is an OrderedDict with at minimum the keys
+            `pos` (int, position relative to the split), `length` (int, number of clipped bases) and
+            `count` (int, number of reads contributing to this exact (pos, side, sequence-or-length)
+            signature).
+
+        coverage : array
+            Per-position coverage for the split (typically `allele_counts_array.sum(axis=0)`). The
+            length must equal the split length. Coverage at a clip's breakpoint position is taken
+            directly (no averaging) since a clip occurs at a single reference position.
+
+        min_clip_length : int, 5
+            Clip events shorter than this length are filtered out. Short clips are typically quality-
+            trim residue or aligner edge noise rather than meaningful breakpoint signal.
+
+        test_class : VariablityTestFactory, None
+            If not None, clip events will be filtered if `count/coverage` is below the threshold
+            returned by `get_min_acceptable_departure_from_reference(coverage)`. Mirrors the indel
+            filter logic (see `ProcessIndelCounts`).
+
+        min_coverage_for_variability : int, 1
+            Clip events at positions with coverage below this value are filtered out.
+        """
+
+        self.clips = clips
+        self.coverage = coverage
+        self.min_clip_length = min_clip_length
+        self.test_class = test_class if test_class is not None else VariablityTestFactory(params=None)
+        self.min_coverage_for_variability = min_coverage_for_variability
+
+
+    def process(self):
+        """Modify self.clips in place: drop short, low-coverage, or low-fraction clip events."""
+
+        clip_hashes_to_remove = set()
+        for clip_hash in self.clips:
+
+            clip = self.clips[clip_hash]
+
+            # filter short clips: these are usually quality-trim residue / aligner edge noise,
+            # not meaningful breakpoint signal.
+            if clip['length'] < self.min_clip_length:
+                clip_hashes_to_remove.add(clip_hash)
+                continue
+
+            # coverage at the breakpoint position. Unlike indels, a clip happens at a single
+            # reference position so no flanking-position averaging is needed.
+            pos = clip['pos']
+            cov = self.coverage[pos]
+
+            if cov < self.min_coverage_for_variability:
+                clip_hashes_to_remove.add(clip_hash)
+                continue
+
+            # NOTE same caveat as ProcessIndelCounts: we call get_min_acceptable_departure_from_reference
+            # but compare its output to count/coverage, since "departure from reference" does not apply
+            # to clip events.
+            if clip['count']/cov < self.test_class.get_min_acceptable_departure_from_reference(cov):
+                clip_hashes_to_remove.add(clip_hash)
+                continue
+
+            self.clips[clip_hash]['coverage'] = cov
+
+        self.clips = {k: v for k, v in self.clips.items() if k not in clip_hashes_to_remove}
