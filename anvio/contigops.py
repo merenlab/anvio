@@ -20,7 +20,7 @@ import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
-from anvio.variability import VariablityTestFactory, ProcessNucleotideCounts, ProcessCodonCounts, ProcessIndelCounts
+from anvio.variability import VariablityTestFactory, ProcessNucleotideCounts, ProcessCodonCounts, ProcessIndelCounts, ProcessClipCounts
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -160,10 +160,12 @@ class Split:
         self.auxiliary = None
         self.num_SNV_entries = 0
         self.num_INDEL_entries = 0
+        self.num_CLIP_entries = 0
         self.num_SCV_entries = {}
         self.SNV_profiles = {}
         self.SCV_profiles = {}
         self.INDEL_profiles = {}
+        self.CLIP_profiles = {}
         self.per_position_info = {} # stores per nt info that is not coverage
 
 
@@ -181,6 +183,7 @@ class Split:
 class Auxiliary:
     def __init__(self, split, min_coverage_for_variability=10, report_variability_full=False,
                  profile_SCVs=False, skip_INDEL_profiling=False, skip_SNV_profiling=False,
+                 skip_clip_profiling=False, min_clip_length=5,
                  min_percent_identity=None, skip_edges=0):
 
         if anvio.DEBUG:
@@ -193,6 +196,8 @@ class Auxiliary:
         self.skip_SNV_profiling = skip_SNV_profiling
         self.profile_SCVs = profile_SCVs
         self.skip_INDEL_profiling = skip_INDEL_profiling
+        self.skip_clip_profiling = skip_clip_profiling
+        self.min_clip_length = min_clip_length
         self.report_variability_full = report_variability_full
         self.skip_edges = skip_edges
 
@@ -470,6 +475,27 @@ class Auxiliary:
                 ('count', 1),
             ])
 
+        if not self.skip_clip_profiling:
+            clips = {}
+            get_clip_entry = lambda clip_type, side, seq, pos, length: OrderedDict([
+                ('split_name', self.split.name),
+                ('pos', pos),
+                ('pos_in_contig', pos + self.split.start),
+                ('corresponding_gene_call', additional_per_position_data['corresponding_gene_call'][pos]),
+                ('in_noncoding_gene_call', additional_per_position_data['in_noncoding_gene_call'][pos]),
+                ('in_coding_gene_call', additional_per_position_data['in_coding_gene_call'][pos]),
+                ('base_pos_in_codon', additional_per_position_data['base_pos_in_codon'][pos]),
+                ('codon_order_in_gene', additional_per_position_data['codon_order_in_gene'][pos]),
+                ('cov_outlier_in_split', additional_per_position_data['cov_outlier_in_split'][pos]),
+                ('cov_outlier_in_contig', additional_per_position_data['cov_outlier_in_contig'][pos]),
+                ('reference', self.split.sequence[pos]),
+                ('type', clip_type),
+                ('side', side),
+                ('sequence', seq),
+                ('length', length),
+                ('count', 1),
+            ])
+
         # make an array with as many rows as there are nucleotides in the split, and as many rows as
         # there are nucleotide types. Each nucleotide (A, C, T, G, N) gets its own row which is
         # defined by the self.nt_to_array_index dictionary
@@ -535,6 +561,62 @@ class Auxiliary:
                             length=del_len,
                         )
 
+            if not self.skip_clip_profiling:
+                # Scan the read's cigartuples directly (NOT the vectorized form, which conflates
+                # soft clips with insertions). Only the first and last cigar ops can be clips.
+                # Left-trim by fetch_and_trim already strips clips falling outside the split, so any
+                # clips here are at breakpoints inside [split.start, split.end).
+                cigartuples = read.cigartuples
+
+                # left clip: first op, breakpoint at the first aligned base (read.reference_start)
+                left_op, left_len = cigartuples[0]
+                if left_op == 4 or left_op == 5:
+                    clip_pos = read.reference_start - self.split.start
+                    if left_op == 4:
+                        clip_type = 'SOFT'
+                        clip_seq = ''.join([chr(x) for x in read.query_sequence[:left_len]])
+                    else:
+                        clip_type = 'HARD'
+                        clip_seq = ''
+                    clip_hash = hash((clip_pos, 'L', clip_type, clip_seq, left_len))
+
+                    if clip_hash in clips:
+                        clips[clip_hash]['count'] += 1
+                    else:
+                        clips[clip_hash] = get_clip_entry(
+                            clip_type=clip_type,
+                            side='L',
+                            seq=clip_seq,
+                            pos=clip_pos,
+                            length=left_len,
+                        )
+
+                # right clip: last op, breakpoint at the last aligned base (reference_end - 1).
+                # Guard against the degenerate case of a single-op cigar (impossible for a clipped
+                # read, but cheap to be safe).
+                if len(cigartuples) > 1:
+                    right_op, right_len = cigartuples[-1]
+                    if right_op == 4 or right_op == 5:
+                        clip_pos = (read.reference_end - 1) - self.split.start
+                        if right_op == 4:
+                            clip_type = 'SOFT'
+                            clip_seq = ''.join([chr(x) for x in read.query_sequence[-right_len:]])
+                        else:
+                            clip_type = 'HARD'
+                            clip_seq = ''
+                        clip_hash = hash((clip_pos, 'R', clip_type, clip_seq, right_len))
+
+                        if clip_hash in clips:
+                            clips[clip_hash]['count'] += 1
+                        else:
+                            clips[clip_hash] = get_clip_entry(
+                                clip_type=clip_type,
+                                side='R',
+                                seq=clip_seq,
+                                pos=clip_pos,
+                                length=right_len,
+                            )
+
             read_count += 1
 
         if anvio.DEBUG:
@@ -563,13 +645,26 @@ class Auxiliary:
             indel_profile.process()
             self.split.INDEL_profiles = indel_profile.indels
 
+        if not self.skip_clip_profiling:
+            clip_profile = ProcessClipCounts(
+                clips=clips,
+                coverage=allele_counts_array.sum(axis=0),
+                min_clip_length=self.min_clip_length,
+                test_class=variability_test_class_null if self.report_variability_full else variability_test_class_default,
+                min_coverage_for_variability=self.min_coverage_for_variability if not self.report_variability_full else 1,
+            )
+            clip_profile.process()
+            self.split.CLIP_profiles = clip_profile.clips
+
         self.split.num_SNV_entries = len(nt_profile.d['coverage'])
         self.split.num_INDEL_entries = len(self.split.INDEL_profiles)
+        self.split.num_CLIP_entries = len(self.split.CLIP_profiles)
         self.variation_density = self.split.num_SNV_entries * 1000.0 / self.split.length
 
         if anvio.DEBUG:
             self.run.info_single('%d SNVs to report' % (self.split.num_SNV_entries), nl_before=0, nl_after=0, level=2)
             self.run.info_single('%d INDELs to report' % (self.split.num_INDEL_entries), nl_before=0, nl_after=0, level=2)
+            self.run.info_single('%d CLIPs to report' % (self.split.num_CLIP_entries), nl_before=0, nl_after=0, level=2)
 
 
 class GenbankToAnvioWrapper:
