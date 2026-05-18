@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Fetches information from the variable positions table"""
 
 import sys

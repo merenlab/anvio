@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8
 """
 Classes to use local databases for tRNA taxonomy to affiliate tRNA seqeunces in anvi'o
 databases with taxon names.
@@ -234,7 +233,7 @@ class SanityCheck(object):
 
                 if self.anticodon_for_metagenome_mode and self.anticodon_for_metagenome_mode not in self.ctx.anticodons:
                     raise ConfigError("We understand that you wish to work with '%s' to study the taxonomic make up of your contigs "
-                                      "database in metagenome mode. But then anvi'o doesn't recognize this. Here is a list for you to choose from: '%s'." \
+                                      "database in metagenome mode. But then anvi'o doesn't recognize this. Here is a list for you to choose from: '%s'."
                                                             % (self.anticodon_for_metagenome_mode, ', '.join(self.ctx.anticodons.keys())))
 
                 if self.compute_anticodon_coverages and not self.profile_db_path:

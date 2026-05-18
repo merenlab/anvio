@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """
     Classes to define and work with anvi'o phylogenomics workflows.
 """
@@ -54,9 +52,9 @@ class PhylogenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                     'trimal': {'-gt': 0.5},
                                     'iqtree': {'threads': 8, '-m': 'WAG', '-bb': 1000}})
 
-        get_sequences_params = ['--return-best-hit', \
-                                '--separator', '--align-with', '--min-num-bins-gene-occurs', \
-                                '--max-num-genes-missing-from-bin', '--concatenate-genes', \
+        get_sequences_params = ['--return-best-hit',
+                                '--separator', '--align-with', '--min-num-bins-gene-occurs',
+                                '--max-num-genes-missing-from-bin', '--concatenate-genes',
                                 '--get-aa-sequences', '--gene-names', '--hmm-sources']
         self.rule_acceptable_params_dict['anvi_get_sequences_for_hmm_hits'] = get_sequences_params
         self.rule_acceptable_params_dict['trimal'] = ['-gt', 'additional_params']

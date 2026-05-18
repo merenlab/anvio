@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import anvio
 import anvio.terminal as terminal
@@ -42,7 +41,7 @@ def get_parser_names(module):
 def get_parser_module(module):
     if module not in parser_modules:
         raise ConfigError("Anvi'o parser modules do not recognize any module called '%s'. But it has "
-                          "these in case your honour would change their minds: '%s'." % \
+                          "these in case your honour would change their minds: '%s'." %
                                 (module, ', '.join(list(parser_modules.keys()))))
 
     return parser_modules[module]
@@ -53,7 +52,7 @@ def get_parser_obj(module, parser):
 
     if parser not in parser_module:
         raise ConfigError("Parser modules speaking: the parser module '%s' does exist (yay),\
-                           but there is no parser '%s' in it (boo). It has these instad: '%s'."\
+                           but there is no parser '%s' in it (boo). It has these instad: '%s'."
                                 % (module, parser, ', '.join(list(parser_module.keys()))))
 
     return parser_modules[module][parser]

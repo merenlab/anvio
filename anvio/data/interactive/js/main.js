@@ -79,6 +79,7 @@ var samples_tree_hover = false;
 var inspection_available = false;
 var sequences_available = false;
 var load_full_state = false;
+var items_additional_data_groups = {};
 var bbox;
 var functions_available = false;
 
@@ -301,6 +302,19 @@ function initData() {
             samples_order_dict = response.layers_order;
             samples_information_dict = merged['dict'];
             let samples_information_default_layer_order = merged['default_order'];
+            items_additional_data_groups = response.items_additional_data_groups || {};
+
+            let item_groups = Object.keys(items_additional_data_groups).sort();
+            if (item_groups.length > 1) {
+                $('#item_groups_header').show();
+                item_groups.forEach(function (group_name) {
+                    $('#item_groups_container').append(`
+                        <div class="mr-5 col-5">
+                            <input type="checkbox" onclick="toggleItemGroups();" id="item_group_${group_name}" value="${group_name}" checked="checked">
+                            <label onclick="toggleItemGroups();" for="item_group_${group_name}">${group_name}</label>
+                        </div>`);
+                });
+            }
 
             let samples_groups = Object.keys(samples_information_dict).sort();
 
@@ -1527,6 +1541,12 @@ function syncViews() {
     $('#tbody_layers tr').each(
         function(index, layer) {
             var layer_id = $(layer).find('.input-height')[0].id.replace('height', '');
+
+            var item_group = $(layer).attr('items-group-name');
+            if (item_group && !is_item_group_visible(item_group)) {
+                return;
+            }
+
             layers[layer_id] = {};
             layer_order.push(layer_id);
 
@@ -1540,6 +1560,7 @@ function syncViews() {
             layers[layer_id]["margin"] = $(layer).find('.input-margin').val();
             layers[layer_id]["type"] = $(layer).find('.type').val();
             layers[layer_id]["color-start"] = $(layer).find('.colorpicker:first').attr('color');
+            layers[layer_id]["visible"] = $(layer).find('.layer-visibility').hasClass('bi-eye');
 
             if (layers[layer_id]["type"] === 'text')
                 layers[layer_id]["height"] = '0';
@@ -1580,6 +1601,47 @@ function getComboBoxContent(default_item, available_items){
     return combo;
 }
 
+function getGroupLeadingMargin(layer_name, default_margin) {
+    // groups that should not get an automatic leading margin
+    var no_margin_groups = {'default': true, 'basic_info': true};
+    for (var gname in items_additional_data_groups) {
+        if (gname in no_margin_groups) continue;
+        var gkeys = items_additional_data_groups[gname];
+        if (gkeys.length > 0 && gkeys[0] === layer_name) {
+            return '45';
+        }
+    }
+    return default_margin;
+}
+
+function getItemGroupName(layer_name) {
+    for (var gname in items_additional_data_groups) {
+        if (items_additional_data_groups[gname].indexOf(layer_name) > -1) {
+            return gname;
+        }
+    }
+    return null;
+}
+
+function toggleItemGroups() {
+    $('#tbody_layers tr').each(function() {
+        var group = $(this).attr('items-group-name');
+        if (!group) return;
+
+        if (is_item_group_visible(group)) {
+            $(this).show();
+        } else {
+            $(this).hide();
+            $(this).find('.layer_selectors').prop('checked', false);
+        }
+    });
+}
+
+function is_item_group_visible(group_name) {
+    var checkbox = $('input:checkbox#item_group_' + group_name);
+    return checkbox.length === 0 || checkbox.is(':checked');
+}
+
 function buildLayersTable(order, settings)
 {
     for (var i = 0; i < order.length; i++)
@@ -1587,9 +1649,10 @@ function buildLayersTable(order, settings)
         // common layer variables
         var layer_id = order[i];
         var layer_name = layerdata[0][layer_id];
+        var item_group = getItemGroupName(layer_name);
+        var item_group_attr = item_group ? ' items-group-name="' + item_group + '"' : '';
 
         var short_name = (layer_name.indexOf('!') > -1) ? layer_name.split('!')[0] : layer_name;
-        short_name = (short_name.length > 10) ? short_name.slice(0,10) + "..." : short_name;
 
         var hasViewSettings = false;
         if (typeof settings !== 'undefined' && typeof settings[layer_id] !== 'undefined') {
@@ -1615,15 +1678,18 @@ function buildLayersTable(order, settings)
             {
                 var height = layer_settings['height'];
                 var margin = layer_settings['margin'];
+                var visible = (layer_settings['visible'] !== undefined) ? layer_settings['visible'] : true;
             }
             else
             {
                 var height = '50';
                 var margin = '15';
+                var visible = true;
             }
 
-            var template = '<tr>' +
+            var template = '<tr' + item_group_attr + ' class="{hidden-class}">' +
                 '<td><img src="images/drag.gif" /></td>' +
+                '<td><i class="bi {eye-class} layer-visibility" title="Toggle visibility"></i></td>' +
                 '<td>Parent</td>' +
                 '<td>n/a</td>' +
                 '<td>n/a</td>' +
@@ -1637,7 +1703,9 @@ function buildLayersTable(order, settings)
 
             template = template.replace(new RegExp('{id}', 'g'), layer_id)
                                .replace(new RegExp('{height}', 'g'), height)
-                               .replace(new RegExp('{margin}', 'g'), margin);
+                               .replace(new RegExp('{margin}', 'g'), margin)
+                               .replace(new RegExp('{eye-class}', 'g'), visible ? 'bi-eye' : 'bi-eye-slash')
+                               .replace(new RegExp('{hidden-class}', 'g'), visible ? '' : 'layer-hidden');
 
             $('#tbody_layers').prepend(template);
         }
@@ -1652,11 +1720,13 @@ function buildLayersTable(order, settings)
             {
                 var height = layer_settings['height'];
                 var margin = layer_settings['margin'];
+                var visible = (layer_settings['visible'] !== undefined) ? layer_settings['visible'] : true;
             }
             else
             {
                 var height = '300';
-                var margin = '15';
+                var margin = getGroupLeadingMargin(layer_name, '15');
+                var visible = true;
             }
 
             if (hasViewSettings)
@@ -1668,13 +1738,14 @@ function buildLayersTable(order, settings)
                 var norm = (mode == 'full') ? 'log' : 'none';
             }
 
-            var template = '<tr class="sortable">' +
+            var template = '<tr' + item_group_attr + ' class="{hidden-class}">' +
                 '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
+                '<td><i class="bi {eye-class} layer-visibility" title="Toggle visibility"></i></td>' +
                 '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
-                '<td>n/a</td>' +
-                '<td>n/a</td>' +
+                '<td></td>' +
+                '<td style="width: 50px;">n/a</td>' +
                 '<td>' +
-                '    <select id="normalization{id}" onChange="clearMinMax(this);" class="normalization">' +
+                '    <select id="normalization{id}" onChange="clearMinMax(this);" class="form-control form-control-sm col-12 select-sm normalization">' +
                 '        <option value="none"{option-none}>none</option>' +
                 '        <option value="sqrt"{option-sqrt}>sqrt</option>' +
                 '        <option value="log"{option-log}>log</option>' +
@@ -1682,8 +1753,8 @@ function buildLayersTable(order, settings)
                 '</td>' +
                 '<td><input class="form-control form-control-sm input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
                 '<td class="column-margin"><input class="form-control form-control-sm input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
-                '<td>n/a</td>' +
-                '<td>n/a</td>' +
+                '<td style="width:55px;">n/a</td>' +
+                '<td style="width:55px;">n/a</td>' +
                 '<td><input type="checkbox" class="layer_selectors"></input></td>' +
                 '</tr>';
 
@@ -1693,7 +1764,9 @@ function buildLayersTable(order, settings)
                                .replace(new RegExp('{option-' + norm + '}', 'g'), ' selected')
                                .replace(new RegExp('{option-([a-z]*)}', 'g'), '')
                                .replace(new RegExp('{height}', 'g'), height)
-                               .replace(new RegExp('{margin}', 'g'), margin);
+                               .replace(new RegExp('{margin}', 'g'), margin)
+                               .replace(new RegExp('{eye-class}', 'g'), visible ? 'bi-eye' : 'bi-eye-slash')
+                               .replace(new RegExp('{hidden-class}', 'g'), visible ? '' : 'layer-hidden');
 
             $('#tbody_layers').append(template);
         }
@@ -1725,11 +1798,13 @@ function buildLayersTable(order, settings)
                     var type = layer_settings['type'];
                     var color = layer_settings['color'];
                     var color_start = layer_settings['color-start'];
+                    var visible = (layer_settings['visible'] !== undefined) ? layer_settings['visible'] : true;
                 }
                 else
                 {
+                    var visible = true;
                     var height = getNamedLayerDefaults(layer_name, 'height', '90');
-                    var margin = getNamedLayerDefaults(layer_name, 'margin', '15');
+                    var margin = getGroupLeadingMargin(layer_name, getNamedLayerDefaults(layer_name, 'margin', '15'));
                     var color = "#000000";
                     var color_start = "#DDDDDD";
 
@@ -1760,8 +1835,9 @@ function buildLayersTable(order, settings)
                     }
                 }
 
-                var template = '<tr>' +
+                var template = '<tr' + item_group_attr + ' class="{hidden-class}">' +
                     '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
+                    '<td><i class="bi {eye-class} layer-visibility" title="Toggle visibility"></i></td>' +
                     '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
                     '<td><div id="picker_start{id}" class="colorpicker picker_start" color="{color-start}" style="background-color: {color-start}; {color-start-hide}"></div><div id="picker{id}" class="colorpicker picker_end" color="{color}" style="background-color: {color}; {color-hide}"></div></td>' +
                     '<td style="width: 50px;">' +
@@ -1789,7 +1865,9 @@ function buildLayersTable(order, settings)
                                    .replace(new RegExp('{color-start-hide}', 'g'), (type!='text') ? '; visibility: hidden;' : '')
                                    .replace(new RegExp('{height-hide}', 'g'), (type=='text') ? '; visibility: hidden;' : '')
                                    .replace(new RegExp('{height}', 'g'), height)
-                                   .replace(new RegExp('{margin}', 'g'), margin);
+                                   .replace(new RegExp('{margin}', 'g'), margin)
+                                   .replace(new RegExp('{eye-class}', 'g'), visible ? 'bi-eye' : 'bi-eye-slash')
+                                   .replace(new RegExp('{hidden-class}', 'g'), visible ? '' : 'layer-hidden');
 
                 $('#tbody_layers').append(template);
             }
@@ -1824,12 +1902,14 @@ function buildLayersTable(order, settings)
                     var margin = layer_settings['margin'];
                     var color_start = layer_settings['color-start'];
                     var type = layer_settings['type'];
+                    var visible = (layer_settings['visible'] !== undefined) ? layer_settings['visible'] : true;
                 }
                 else
                 {
                     var height = getNamedLayerDefaults(layer_name, 'height', '180');
                     var color  = getNamedLayerDefaults(layer_name, 'color', '#000000');
-                    var margin = getNamedLayerDefaults(layer_name, 'margin', '15');
+                    var margin = getGroupLeadingMargin(layer_name, getNamedLayerDefaults(layer_name, 'margin', '15'));
+                    var visible = true;
                     if (mode == 'collection') {
                         var type = getNamedLayerDefaults(layer_name, 'type', 'intensity');
                         var color_start = "#EEEEEE";
@@ -1839,8 +1919,9 @@ function buildLayersTable(order, settings)
                     }
                 }
 
-                var template = '<tr>' +
+                var template = '<tr' + item_group_attr + ' class="{hidden-class}">' +
                     '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
+                    '<td><i class="bi {eye-class} layer-visibility" title="Toggle visibility"></i></td>' +
                     '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
                     '<td><div id="picker_start{id}" class="colorpicker picker_start" color="{color-start}" style="background-color: {color-start}; {color-start-hide}"></div><div id="picker{id}" class="colorpicker" color="{color}" style="background-color: {color}"></div></td>' +
                     '<td style="width: 50px;">' +
@@ -1879,7 +1960,9 @@ function buildLayersTable(order, settings)
                                    .replace(new RegExp('{max}', 'g'), max)
                                    .replace(new RegExp('{min-disabled}', 'g'), (min_disabled) ? ' disabled': '')
                                    .replace(new RegExp('{max-disabled}', 'g'), (max_disabled) ? ' disabled': '')
-                                   .replace(new RegExp('{margin}', 'g'), margin);
+                                   .replace(new RegExp('{margin}', 'g'), margin)
+                                   .replace(new RegExp('{eye-class}', 'g'), visible ? 'bi-eye' : 'bi-eye-slash')
+                                   .replace(new RegExp('{hidden-class}', 'g'), visible ? '' : 'layer-hidden');
 
 
                 $('#tbody_layers').append(template);
@@ -2106,6 +2189,7 @@ function serializeSettings(use_layer_names) {
                 'max'           : {'value': parseFloat($(tr).find('.input-max').val()), 'disabled': $(tr).find('.input-max').is(':disabled') },
                 'type'          : $(tr).find('.type').val(),
                 'color-start'   : $(tr).find('.colorpicker:first').attr('color'),
+                'visible'       : $(tr).find('.layer-visibility').hasClass('bi-eye'),
             };
         }
     );
@@ -2113,6 +2197,11 @@ function serializeSettings(use_layer_names) {
     state['samples-groups'] = {};
     $('#sample_groups_container input:checkbox').each((index, checkbox) => {
         state['samples-groups'][$(checkbox).val()] = $(checkbox).is(':checked');
+    });
+
+    state['item-groups'] = {};
+    $('#item_groups_container input:checkbox').each((index, checkbox) => {
+        state['item-groups'][$(checkbox).val()] = $(checkbox).is(':checked');
     });
 
     return state;
@@ -2149,6 +2238,11 @@ function drawTree() {
             },
             onShow: function() {
                 try {
+                    if (layer_order.length === 0) {
+                        waitingDialog.hide();
+                        toastr.warning("No layers to draw. Please check at least one item data group.");
+                        return;
+                    }
                     drawer = new Drawer(settings);
                     drawer.draw();
                     refreshCollapsedNodesTable();
@@ -2177,6 +2271,16 @@ function drawTree() {
                 {
                     $('#tree-radius-container').show();
                     $('#tree-radius').val(Math.max(VIEWER_HEIGHT, VIEWER_WIDTH));
+                }
+
+                if (settings['tree-height'] == 0)
+                {
+                    $('#tree_height').val(VIEWER_HEIGHT);
+                }
+
+                if (settings['tree-width'] == 0)
+                {
+                    $('#tree_width').val(VIEWER_WIDTH);
                 }
 
                 a_display_is_drawn = true;
@@ -2534,70 +2638,13 @@ function showItemFunctions(bin_id, config, updateOnly = false) {
     });
 }
 
-// Copy helper for reusable "copy names" buttons with lightweight feedback.
-function copyTextWithFeedback(btn, text) {
-    if (typeof text !== 'string' || !text.length) {
-        return;
-    }
-
-    navigator.clipboard.writeText(text)
-        .then(function () {
-            const icon = btn.nextElementSibling;
-            if (!icon) return;
-            icon.textContent = "✔";
-            icon.style.color = "green";
-            icon.style.marginLeft = "4px";
-            setTimeout(function () { icon.textContent = ""; }, 2000);
-        })
-        .catch(function (err) {
-            console.error("Copy failed", err);
-        });
-}
-
-// Generic builder for a copy-enabled names section.
-function buildCopyableNamesSection(label, items, options = {}) {
-    const safeItems = Array.isArray(items) ? items : [];
-    const headerText = `${label} (${safeItems.length})`;
-    const background = options.background || '#ffe4c478';
-    const marginBottom = options.marginBottom || '20px';
-    const copySeparator = options.copySeparator || '\n';
-    const contentRenderer = options.contentRenderer;
-
-    const copyReadyNames = safeItems.join(copySeparator);
-
-    const header = `
-        <div class="bin-modal-header" style="background: ${background};">
-            <span style="font-size: large;">${headerText}</span>
-            <button class="btn btn-primary btn-sm"
-                onclick='copyTextWithFeedback(this, ${JSON.stringify(copyReadyNames)})'>Copy to Clipboard</button>
-            <span class="copy-feedback" style="min-width: 14px; font-size: 0.9em; line-height: 1;"></span>
-        </div>
-    `;
-
-    const body = typeof contentRenderer === 'function'
-        ? contentRenderer(safeItems)
-        : `<p style="margin-bottom: ${marginBottom};">${safeItems.join(', ') || 'No items found.'}</p>`;
-
-    return header + body;
-}
-
-// Small helper to render a copy button with inline feedback.
-function buildCopyButton(label, items) {
-    const safeItems = Array.isArray(items) ? items : [];
-    const copyText = safeItems.join('\n');
-
-    return `
-        <button class="btn btn-primary btn-sm"
-            style="margin-left: 12px;"
-            title="Copy ${label}"
-            onclick='copyTextWithFeedback(this, ${JSON.stringify(copyText)})'>
-            Copy ${label}
-        </button>
-        <span class="copy-feedback" style="min-width: 14px; font-size: 0.9em; line-height: 1;"></span>
-    `;
-}
+// copyTextWithFeedback, buildCopyButton, buildCopyableNamesSection,
+// buildFunctionsContent, buildContigAndSplitNamesTable, buildMetabolismTable,
+// buildFilterControls, buildFunctionsTable, and setupItemTableFiltering
+// live in utils.js (shared with anvi-display-pan-graph).
 
 // Fallback content when functions are unavailable (or when we are in manual mode).
+// Kept here (not in utils.js) because it references the pangenomics-only `mode` variable.
 function buildItemNamesContent(items, config) {
     const safeItems = Array.isArray(items) ? items : [];
     const itemLabelTitle = config.itemLabel.charAt(0).toUpperCase() + config.itemLabel.slice(1);
@@ -2622,436 +2669,6 @@ function buildItemNamesContent(items, config) {
             `;
         }
     });
-}
-
-// Shared function to build the content HTML
-function buildFunctionsContent(response, config) {
-    const fmtPct = (v) => (typeof v === 'number' && !isNaN(v)) ? (v * 100).toFixed(1) + '%' : 'NA';
-    let content = '';
-
-    // If we are in full mode, show contig and split names
-    if (config.dialogFunction === 'showGeneFunctionsInSplitsSummaryTableDialog') {
-        content += buildContigAndSplitNamesTable(response, config);
-    }
-
-    // Build metabolism summary table if present
-    content += buildMetabolismTable(response, config, fmtPct);
-
-    // Fancy spacer
-    content += '<hr style="margin: 30px !important;">';
-
-    // Build functions table
-    content += buildFunctionsTable(response, config);
-
-    return content;
-}
-
-// Shared function to build metabolism table
-function buildContigAndSplitNamesTable(response, config) {
-    const contigNames = response && response.contig_names;
-    const splitNames = response && response.split_names;
-
-    let contigAndSplitNamesContent = '';
-
-    contigAndSplitNamesContent += buildCopyableNamesSection('Contig Names', contigNames, {
-        background: '#f5f5dc9c',
-        marginBottom: '35px',
-        copySeparator: '\n',
-        contentRenderer: (names) => `<p style="margin-bottom: 35px;">${(names || []).join(', ')}</p>`
-    });
-
-    contigAndSplitNamesContent += buildCopyableNamesSection('Split Names', splitNames, {
-        background: '#f5f5dc9c',
-        marginBottom: '35px',
-        copySeparator: '\n',
-        contentRenderer: (names) => `<p style="margin-bottom: 35px;">${(names || []).join(', ')}</p>`
-    });
-
-    return contigAndSplitNamesContent;
-}
-
-
-// Shared function to build metabolism table
-function buildMetabolismTable(response, config, fmtPct) {
-    const metabolism = response && response.metabolism;
-
-    let metabolismContent = `
-        <p class="bin-modal-header" style="background: #f5f5dc9c">Metabolic module involvement</p>
-    `;
-
-    if (!metabolism || typeof metabolism !== 'object' || !Object.keys(metabolism).length) {
-        metabolismContent += '<p style="margin-bottom: 35px;">There are no metabolic insights to show here :/</p>';
-        return metabolismContent
-    }
-
-    metabolismContent += `
-        <p style="margin-bottom: 35px;">${config.metabolismDescription}</p>
-        <table class="table table-sm table-striped" style="width: 95%; margin-left: 10px;">
-            <thead class="thead-light">
-                <tr>
-                    <th>Metabolic module</th>
-                    <th style="text-align: center;">Contribution to pathway completeness</th>
-                    <th style="text-align: center;">Contribution to Stepwise completeness</th>
-                    <th style="text-align: center;">${config.itemLabel === 'gene clusters' ? 'Gene clusters' : 'Gene calls'} involved</th>
-                </tr>
-            </thead>
-            <tbody>`;
-
-    // Sort and process metabolism modules
-    Object.keys(metabolism)
-        .sort((a, b) => {
-            const pa = metabolism[a]?.pathwise_percent_complete ?? 0;
-            const pb = metabolism[b]?.pathwise_percent_complete ?? 0;
-
-            if (pb !== pa) return pb - pa;
-
-            const ga = Array.isArray(metabolism[a]?.gene_caller_ids) ? metabolism[a].gene_caller_ids.length : 0;
-            const gb = Array.isArray(metabolism[b]?.gene_caller_ids) ? metabolism[b].gene_caller_ids.length : 0;
-
-            return gb - ga;
-        })
-        .forEach((moduleId) => {
-            const m = metabolism[moduleId] || {};
-
-            // Sort genes numerically (even if they are strings)
-            const genes = Array.isArray(m.gene_caller_ids)
-              ? [...m.gene_caller_ids]                 // copy so we don't mutate original
-                  .map(String)                         // make sure everything is a string
-                  .sort((a, b) =>
-                    a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })
-                  )
-                  .join(", ")
-              : "NA";
-
-            const pathwayPct = fmtPct(m.pathwise_percent_complete);
-            const stepwisePct = fmtPct(m.stepwise_completeness);
-            const moduleName = m.NAME ?? 'NA';
-            const moduleClass = (typeof m.CLASS === 'string' ? m.CLASS : 'NA');
-            const complete = (m.pathwise_is_complete === true) || (m.stepwise_is_complete === true);
-            const badge = complete ? ` <span class="badge badge-success">complete</span>` : '';
-
-            metabolismContent += `
-                <tr>
-                    <td style="padding-left: 20px;">
-                       <b>${moduleId}</b>${badge}<br />
-                       - Module function: ${moduleName}<br />
-                       - Module class: ${
-                         moduleClass
-                           .split(";")
-                           .map((p,i,a)=> i===a.length-1 ? `<b>${p.trim()}</b>` : p)
-                           .join("; ")
-                       }
-                    </td>
-                    <td style="text-align: center; vertical-align: middle;">${pathwayPct}</td>
-                    <td style="text-align: center; vertical-align: middle;">${stepwisePct}</td>
-                    <td style="text-align: center; vertical-align: middle; max-width: 420px; word-break: break-word;">${genes}</td>
-                </tr>`;
-        });
-
-    metabolismContent += `</tbody></table>`;
-
-    return metabolismContent;
-}
-
-// Shared function to build filter controls
-function buildFilterControls(sources, functions, config) {
-    // Calculate total number of items (genes/clusters)
-    const totalItems = Object.keys(functions).length;
-
-    // Calculate annotation counts for each source
-    const sourceCounts = {};
-    Object.keys(sources).forEach(function(index) {
-        let source = sources[index];
-        sourceCounts[source] = 0;
-
-        // Count how many items have annotations for this source
-        Object.keys(functions).forEach(function(item_id) {
-            let d = functions[item_id] || {};
-
-            if (d[source]) {
-                // Use the config functions for consistency
-                const accession_string = config.getAccessionString(d, source);
-                const function_string = config.getFunctionString(d, source);
-
-                // Count as annotated if either accession or function is not N/A
-                if (accession_string !== 'N/A' || function_string !== 'N/A') {
-                    sourceCounts[source]++;
-                }
-            }
-        });
-    });
-
-    let filterControls = `
-        <div style="background-color: #f8f9fa; padding: 15px; margin: 20px 10px; border-radius: 5px;">
-            <div style="margin-bottom: 10px;">
-                <label>
-                    <input type="checkbox" id="hideNA"> Hide entries with no annotation to simplify the display
-                </label>
-            </div>
-            <hr>
-            <div>
-                <p>Annotation sources to display for a total of ${totalItems} ${config.itemLabel}:</p>
-                <div style="margin-top: 5px; display: flex; flex-wrap: wrap; gap: 15px;">`;
-                    Object.keys(sources).forEach(function(index) {
-                        let source = sources[index];
-                        let count = sourceCounts[source];
-                        filterControls += `
-                            <label style="margin-right: 15px;">
-                                <input type="checkbox" class="source-filter" data-source="${source}" checked>
-                                ${source} <span style="color: #666; font-size: 0.9em;">(${count})</span>
-                            </label>`;
-                    });
-
-    filterControls += `
-                </div>
-                <div style="margin-top: 10px;">
-                    <button type="button" class="btn btn-sm btn-outline-secondary" id="selectAllSources">Select All</button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" id="deselectAllSources">Deselect All</button>
-                </div>
-            </div>
-        </div>`;
-
-    return filterControls;
-}
-
-// Shared function to build functions table
-function buildFunctionsTable(response, config) {
-    // If we are in full mode, we don't show functions
-    if (config.dialogFunction === 'showGeneFunctionsInSplitsSummaryTableDialog')
-        return "";
-
-    const itemIds = Object.keys(response['functions'] || {});
-    const copyButton = (config.itemLabel === 'gene clusters')
-        ? buildCopyButton('gene cluster names', itemIds)
-        : '';
-
-    let content = `
-        <div class="bin-modal-header" style="background: #ffe4c478;">
-            <span style="font-size: large;">Functions per ${config.itemLabel}</span>
-            ${copyButton}
-        </div>
-
-        <p>${config.functionsDescription}</p>`;
-
-    content += buildFilterControls(response['sources'], response['functions'], config);
-
-    content += `
-        <table class="table" id="itemFunctionsTable" style="width: 95%; margin-left: 10px; table-layout: fixed;">
-           <thead class="thead-light">
-           <tr>
-             <th style="width: 10%;">${config.itemIdLabel}</th>
-             <th style="width: 10%;">Source</th>
-             <th style="width: 10%;">Accession</th>
-             <th style="width: 70%;">Function</th>
-           </tr>
-           </thead>
-           <tbody>`;
-
-    Object.keys(response['functions']).forEach(function(item_id) {
-        let d = response['functions'][item_id] || {};
-
-        Object.keys(response['sources']).forEach(function(index) {
-            let function_source = response['sources'][index];
-            let accession_string, function_string;
-            let hasAnnotation = false;
-
-            // Use config-specific logic for data extraction
-            if (d[function_source]) {
-                accession_string = config.getAccessionString(d, function_source);
-                function_string = config.getFunctionString(d, function_source);
-                hasAnnotation = (accession_string !== 'N/A' && function_string !== 'N/A');
-            } else {
-                accession_string = 'N/A';
-                function_string = 'N/A';
-            }
-
-            const dataAttrs = `data-source="${function_source}" data-has-annotation="${hasAnnotation}" data-item="${item_id}"`;
-
-            if (index == 0) {
-                content += `<tr style="border-top: 3px solid #d0d0d0;" ${dataAttrs}>
-                            <td rowspan="${Object.keys(response['sources']).length}" style="vertical-align: middle; word-wrap: break-word;"><b>${item_id}</b></td>
-                            <td style="word-wrap: break-word;">${function_source}</td>
-                            <td style="word-wrap: break-word;">${accession_string}</td>
-                            <td style="word-wrap: break-word;">${function_string}</td>
-                            </tr>`;
-            } else {
-                content += `<tr ${dataAttrs}>
-                            <td style="word-wrap: break-word;">${function_source}</td>
-                            <td style="word-wrap: break-word;">${accession_string}</td>
-                            <td style="word-wrap: break-word;">${function_string}</td>
-                            </tr>`;
-            }
-        });
-    });
-
-    content += `</tbody></table>`;
-    return content;
-}
-
-// Shared filtering functionality
-function setupItemTableFiltering() {
-    const table = document.getElementById('itemFunctionsTable');
-    if (!table) return;
-
-    const hideNACheckbox = document.getElementById('hideNA');
-    const sourceCheckboxes = document.querySelectorAll('.source-filter');
-    const selectAllBtn = document.getElementById('selectAllSources');
-    const deselectAllBtn = document.getElementById('deselectAllSources');
-
-    function applyFilters() {
-        const hideNA = hideNACheckbox.checked;
-        const activeSources = Array.from(sourceCheckboxes)
-            .filter(cb => cb.checked)
-            .map(cb => cb.dataset.source);
-
-        const rows = table.querySelectorAll('tbody tr');
-
-        rows.forEach(row => {
-            const hasAnnotation = row.dataset.hasAnnotation === 'true';
-            const source = row.dataset.source;
-
-            let shouldShow = true;
-
-            if (hideNA && !hasAnnotation) {
-                shouldShow = false;
-            }
-
-            if (!activeSources.includes(source)) {
-                shouldShow = false;
-            }
-
-            row.style.display = shouldShow ? '' : 'none';
-        });
-
-        updateItemRowspans();
-        updateTableStripes();
-    }
-
-    function updateTableStripes() {
-        // Get all visible rows grouped by gene
-        const visibleRows = Array.from(table.querySelectorAll('tbody tr')).filter(row =>
-            row.style.display !== 'none'
-        );
-
-        // Group visible rows by gene to handle borders
-        const geneGroups = {};
-        visibleRows.forEach(row => {
-            const gene = row.dataset.item;
-            if (!geneGroups[gene]) {
-                geneGroups[gene] = [];
-            }
-            geneGroups[gene].push(row);
-        });
-
-        visibleRows.forEach((row, index) => {
-            // Remove any existing stripe background and borders from all cells
-            const cells = row.querySelectorAll('td');
-            cells.forEach(cell => {
-                cell.style.backgroundColor = '';
-                cell.classList.remove('table-striped-manual');
-            });
-
-            // Remove any existing thick borders
-            row.style.borderTop = '';
-
-            // Apply stripe to odd rows (0-indexed, so even indices get the stripe)
-            if (index % 2 === 1) {
-                cells.forEach((cell, cellIndex) => {
-                    // Skip the first cell if it's a gene caller ID cell (has rowspan or is dynamic)
-                    if (cellIndex === 0 &&
-                        (cell.getAttribute('rowspan') || cell.classList.contains('dynamic-gene-cell'))) {
-                        return; // Don't stripe the gene caller ID cell
-                    }
-                    cell.style.backgroundColor = 'rgba(0,0,0,.05)';
-                    cell.classList.add('table-striped-manual');
-                });
-            }
-        });
-
-        // Add thick borders to separate gene groups
-        Object.keys(geneGroups).forEach(gene => {
-            const rows = geneGroups[gene];
-            if (rows.length > 0) {
-                // Add thick border to the first visible row of each gene group
-                rows[0].style.borderTop = '3px solid #d0d0d0';
-            }
-        });
-    }
-
-    function updateItemRowspans() {
-        // Get all rows and group them by item (gene/cluster), maintaining document order
-        const allRows = Array.from(table.querySelectorAll('tbody tr'));
-        const itemGroups = {};
-
-        // Group all rows by item, preserving original order
-        allRows.forEach(row => {
-            const item = row.dataset.item;
-            if (!itemGroups[item]) {
-                itemGroups[item] = [];
-            }
-            itemGroups[item].push(row);
-        });
-
-        // Process each item group
-        Object.keys(itemGroups).forEach(item => {
-            const allRowsForItem = itemGroups[item];
-            const visibleRowsForItem = allRowsForItem.filter(row => row.style.display !== 'none');
-
-            // First, clean up any existing gene cells and remove any previously added ones
-            allRowsForItem.forEach(row => {
-                const existingCells = row.querySelectorAll('td');
-                if (existingCells.length > 3) { // More than 3 cells means we have a gene cell
-                    const geneCell = existingCells[0];
-                    geneCell.style.display = 'none';
-                    geneCell.removeAttribute('rowspan');
-                }
-                // Remove any dynamically added gene cells
-                const dynamicGeneCell = row.querySelector('td.dynamic-gene-cell');
-                if (dynamicGeneCell) {
-                    dynamicGeneCell.remove();
-                }
-            });
-
-            // If there are visible rows, ensure the first one has a visible gene cell
-            if (visibleRowsForItem.length > 0) {
-                const firstVisibleRow = visibleRowsForItem[0];
-                let geneCell = firstVisibleRow.querySelector('td:first-child');
-
-                if (geneCell && firstVisibleRow.querySelectorAll('td').length > 3) {
-                    // This row originally had a gene cell, just show it
-                    geneCell.style.display = '';
-                    geneCell.style.verticalAlign = 'middle';
-                    geneCell.style.wordWrap = 'break-word';
-                    geneCell.setAttribute('rowspan', visibleRowsForItem.length);
-                } else {
-                    // This row doesn't have a gene cell, create one
-                    const newGeneCell = document.createElement('td');
-                    newGeneCell.innerHTML = `<b>${item}</b>`;
-                    newGeneCell.setAttribute('rowspan', visibleRowsForItem.length);
-                    newGeneCell.className = 'dynamic-gene-cell';
-                    newGeneCell.style.borderTop = '3px solid #d0d0d0';
-                    newGeneCell.style.verticalAlign = 'middle';
-                    newGeneCell.style.wordWrap = 'break-word';
-                    firstVisibleRow.insertBefore(newGeneCell, firstVisibleRow.firstChild);
-                }
-            }
-        });
-    }
-
-    hideNACheckbox.addEventListener('change', applyFilters);
-    sourceCheckboxes.forEach(cb => cb.addEventListener('change', applyFilters));
-
-    selectAllBtn.addEventListener('click', () => {
-        sourceCheckboxes.forEach(cb => cb.checked = true);
-        applyFilters();
-    });
-
-    deselectAllBtn.addEventListener('click', () => {
-        sourceCheckboxes.forEach(cb => cb.checked = false);
-        applyFilters();
-    });
-
-    applyFilters();
 }
 
 // Updated main functions - now much simpler!
@@ -3907,7 +3524,7 @@ function processState(state_name, state) {
     }
 
     // bootstrap values
-    if (!(state.hasOwnProperty('show-support-values'))){
+    if (state.hasOwnProperty('show-support-values')){
         $('#support_value_checkbox').prop('checked', state['show-support-values'])
         if ($('#support_value_checkbox').is(':checked')){
             $('#support_value_params').show()
@@ -4029,6 +3646,17 @@ function processState(state_name, state) {
         }
     }
 
+    if (state.hasOwnProperty('item-groups')) {
+        for (let group_name in state['item-groups']) {
+            let checkbox = document.getElementById('item_group_' + group_name);
+
+            if (checkbox) {
+                checkbox.checked = state['item-groups'][group_name];
+            }
+        }
+    }
+
+    toggleItemGroups();
     toggleSampleGroups();
 
     if (state.hasOwnProperty('samples-order') && $(`#samples_order option[value='${state['samples-order']}']`).length > 0) {

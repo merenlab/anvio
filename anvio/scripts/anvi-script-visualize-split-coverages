@@ -621,7 +621,7 @@ check_snv_data_header <- function(snv_data) {
 
 check_snv_proportions <- function(vals) {
   ## Divergence from ref must be between 0 and 1.
-  if (any(vals < 0 || vals > 1)) {
+  if (any(vals < 0 | vals > 1)) {
     abort("bad departure_from_reference values.  Should be between 0 and 1.")
   }
 

@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import os
 import sys
@@ -40,6 +39,14 @@ genome_gene_function_calls_table_structure = ['genome_name', ] + gene_function_c
 genome_gene_function_calls_table_types     = [    'str'    , ] + gene_function_calls_table_types[:]
 
 
+def decode_if_bytes(val):
+    """h5py returns bytes for string data in Python 3. This helper ensures we
+    always get a proper str."""
+    if isinstance(val, bytes):
+        return val.decode('utf-8')
+    return val
+
+
 def migrate(db_path):
     if db_path is None:
         raise ConfigError("No database path is given.")
@@ -53,7 +60,7 @@ def migrate(db_path):
         fp.close()
         raise ConfigError("Genome storage version is not %s." % current_version)
 
-    old_storage_hash = str(fp.attrs['hash'])
+    old_storage_hash = decode_if_bytes(fp.attrs['hash'])
     functions_are_available = fp.attrs['functions_are_available']
 
     run.info("Outdated genomes storage found (%s)" % old_storage_hash, db_path)
@@ -74,7 +81,7 @@ def migrate(db_path):
 
     I = lambda genome_name, key: fp['/info/genomes/%s/%s' % (genome_name, key)]
 
-    genome_names = [d for d in fp['/info/genomes']]
+    genome_names = [decode_if_bytes(d) for d in fp['/info/genomes']]
 
     progress.new('Bleep bloop')
     progress.update('Adding genomes')
@@ -84,7 +91,7 @@ def migrate(db_path):
 
         for column_name in genome_info_table_structure[1:]:
             # dirty workaround for backwards compatibility,
-            # "percent_completion" may be "percent_complete" in some old genome storages, 
+            # "percent_completion" may be "percent_complete" in some old genome storages,
             # because ozcan forgot to add that into upgrade script :(
             if column_name == 'percent_completion' and '/info/genomes/%s/percent_completion' % genome_name not in fp:
                 column_name = 'percent_complete'
@@ -96,7 +103,7 @@ def migrate(db_path):
             elif attr.dtype == 'float64':
                 values += (float(attr[()]), )
             else:
-                values += ((attr[()]), )
+                values += (decode_if_bytes(attr[()]), )
 
         genome_info_entries.append(values)
     genomes_db.insert_many(genome_info_table_name, entries=genome_info_entries)
@@ -106,7 +113,8 @@ def migrate(db_path):
     gene_entries = []
     for genome_name in genome_names:
         for gene_callers_id in fp['/data/genomes/%s' % genome_name]:
-            G = lambda key: fp['/data/genomes/%s/%s/%s' % (genome_name, gene_callers_id, key)][()]
+            gene_callers_id = decode_if_bytes(gene_callers_id)
+            G = lambda key, _gn=genome_name, _gid=gene_callers_id: decode_if_bytes(fp['/data/genomes/%s/%s/%s' % (_gn, _gid, key)][()])
             gene_entries.append((genome_name, gene_callers_id, G('aa_sequence'), G('dna_sequence'), int(G('partial')), int(G('length')), ))
     genomes_db.insert_many(gene_info_table_name, entries=gene_entries)
     del gene_entries
@@ -116,10 +124,13 @@ def migrate(db_path):
     entry_id_counter = 0
     for genome_name in genome_names:
         for gene_callers_id in fp['/data/genomes/%s' % genome_name]:
+            gene_callers_id = decode_if_bytes(gene_callers_id)
             functions_path = '/data/genomes/%s/%s/functions' % (genome_name, gene_callers_id)
             if functions_path in fp:
                 for source in fp[functions_path]:
-                    annotation_list = str(fp['/data/genomes/%s/%s/functions/%s' % (genome_name, gene_callers_id, source)][()]).split('|||')
+                    source = decode_if_bytes(source)
+                    annotation_blob = decode_if_bytes(fp['/data/genomes/%s/%s/functions/%s' % (genome_name, gene_callers_id, source)][()])
+                    annotation_list = annotation_blob.split('|||')
 
                     functions_entries.append((genome_name, entry_id_counter, gene_callers_id, source, annotation_list[0], annotation_list[1], 0, ))
                     entry_id_counter += 1

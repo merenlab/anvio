@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """Library for tRNA-seq dataset operations
 
 `bin/anvi-trnaseq` and `bin/anvi-merge-trnaseq` are the default clients using this module.
@@ -2080,17 +2078,18 @@ class TRNASeqDataset(object):
             mean_read_unpaired_freq_Uf += read_count * unpaired_freq
             mean_seq_extrap_freq_Uf += seq_Uf.num_extrap_5prime_nts
             mean_read_extrap_freq_Uf += read_count * seq_Uf.num_extrap_5prime_nts
-        mean_reads_Uf = read_count_Uf / seq_count_Uf
-        mean_read_3prime_length_Uf /= read_count_Uf
-        mean_read_5prime_length_Uf /= read_long_5prime_count_Uf
-        mean_seq_profiled_freq_Uf /= seq_count_Uf
-        mean_read_profiled_freq_Uf /= read_count_Uf
-        mean_seq_unconserved_freq_Uf /= seq_count_Uf
-        mean_read_unconserved_freq_Uf /= read_count_Uf
-        mean_seq_unpaired_freq_Uf /= seq_count_Uf
-        mean_read_unpaired_freq_Uf /= read_count_Uf
-        mean_seq_extrap_freq_Uf /= seq_count_Uf
-        mean_read_extrap_freq_Uf /= read_count_Uf
+        div_zero_as_nan = lambda x, y: x / y if y != 0 else np.nan
+        mean_reads_Uf = div_zero_as_nan(read_count_Uf, seq_count_Uf)
+        mean_read_3prime_length_Uf = div_zero_as_nan(mean_read_3prime_length_Uf, read_count_Uf)
+        mean_read_5prime_length_Uf = div_zero_as_nan(mean_read_5prime_length_Uf, read_long_5prime_count_Uf)
+        mean_seq_profiled_freq_Uf = div_zero_as_nan(mean_seq_profiled_freq_Uf, seq_count_Uf)
+        mean_read_profiled_freq_Uf = div_zero_as_nan(mean_read_profiled_freq_Uf, read_count_Uf)
+        mean_seq_unconserved_freq_Uf = div_zero_as_nan(mean_seq_unconserved_freq_Uf, seq_count_Uf)
+        mean_read_unconserved_freq_Uf = div_zero_as_nan(mean_read_unconserved_freq_Uf, read_count_Uf)
+        mean_seq_unpaired_freq_Uf = div_zero_as_nan(mean_seq_unpaired_freq_Uf, seq_count_Uf)
+        mean_read_unpaired_freq_Uf = div_zero_as_nan(mean_read_unpaired_freq_Uf, read_count_Uf)
+        mean_seq_extrap_freq_Uf = div_zero_as_nan(mean_seq_extrap_freq_Uf, seq_count_Uf)
+        mean_read_extrap_freq_Uf = div_zero_as_nan(mean_read_extrap_freq_Uf, read_count_Uf)
 
         seq_count_Uc = len(self.dict_Uc_nontrna)
         read_count_Uc = 0
@@ -2124,14 +2123,14 @@ class TRNASeqDataset(object):
             unpaired_freq = seq_Uc.num_unpaired / (seq_Uc.num_paired + seq_Uc.num_unpaired)
             mean_seq_unpaired_freq_Uc += unpaired_freq
             mean_read_unpaired_freq_Uc += read_count * unpaired_freq
-        mean_reads_Uc = read_count_Uc / seq_count_Uc
-        mean_read_3prime_length_Uc /= read_count_Uc
-        mean_seq_profiled_freq_Uc /= seq_count_Uc
-        mean_read_profiled_freq_Uc /= read_count_Uc
-        mean_seq_unconserved_freq_Uc /= seq_count_Uc
-        mean_read_unconserved_freq_Uc /= read_count_Uc
-        mean_seq_unpaired_freq_Uc /= seq_count_Uc
-        mean_read_unpaired_freq_Uc /= read_count_Uc
+        mean_reads_Uc = div_zero_as_nan(read_count_Uc, seq_count_Uc)
+        mean_read_3prime_length_Uc = div_zero_as_nan(mean_read_3prime_length_Uc, read_count_Uc)
+        mean_seq_profiled_freq_Uc = div_zero_as_nan(mean_seq_profiled_freq_Uc, seq_count_Uc)
+        mean_read_profiled_freq_Uc = div_zero_as_nan(mean_read_profiled_freq_Uc, read_count_Uc)
+        mean_seq_unconserved_freq_Uc = div_zero_as_nan(mean_seq_unconserved_freq_Uc, seq_count_Uc)
+        mean_read_unconserved_freq_Uc = div_zero_as_nan(mean_read_unconserved_freq_Uc, read_count_Uc)
+        mean_seq_unpaired_freq_Uc = div_zero_as_nan(mean_seq_unpaired_freq_Uc, seq_count_Uc)
+        mean_read_unpaired_freq_Uc = div_zero_as_nan(mean_read_unpaired_freq_Uc, read_count_Uc)
 
         seq_count_Un = len(self.dict_Un)
         read_count_Un = 0
@@ -2141,7 +2140,7 @@ class TRNASeqDataset(object):
             read_count_Un += read_count
             if read_count > max_reads_Un:
                 max_reads_Un = read_count
-        mean_reads_Un = read_count_Un / seq_count_Un
+        mean_reads_Un = div_zero_as_nan(read_count_Un, seq_count_Un)
 
         warning = self.run.warning
         info_single = self.run.info_single
@@ -2257,7 +2256,8 @@ class TRNASeqDataset(object):
         count_Tf = len(self.dict_Tf)
         anticodon_count_Tf = 0
         complete_count_Tf = 0
-        mean_uniq_seqs_Tf = len(self.dict_Uf) / count_Tf
+        div_zero_as_nan = lambda x, y: x / y if y != 0 else np.nan
+        mean_uniq_seqs_Tf = div_zero_as_nan(len(self.dict_Uf), count_Tf)
         single_count_Tf = 0
         mean_reads_Tf = 0
         max_reads_Tf = 0
@@ -2275,11 +2275,11 @@ class TRNASeqDataset(object):
                 max_reads_Tf = read_count
             if seq_Tf.long_5prime_extension_dict:
                 long_5prime_count_Tf += 1
-        mean_reads_Tf /= count_Tf
+        mean_reads_Tf = div_zero_as_nan(mean_reads_Tf, count_Tf)
 
         count_Tc = len(self.dict_Tc_nontrna)
         anticodon_count_Tc = 0
-        mean_uniq_seqs_Tc = len(self.dict_Uc_nontrna) / count_Tc
+        mean_uniq_seqs_Tc = div_zero_as_nan(len(self.dict_Uc_nontrna), count_Tc)
         single_uniq_seq_count_Tc = 0
         mean_reads_Tc = 0
         max_reads_Tc = 0
@@ -2292,7 +2292,7 @@ class TRNASeqDataset(object):
             mean_reads_Tc += read_count
             if read_count > max_reads_Tc:
                 max_reads_Tc = read_count
-        mean_reads_Tc /= count_Tc
+        mean_reads_Tc = div_zero_as_nan(mean_reads_Tc, count_Tc)
 
         warning = self.run.warning
         info_single = self.run.info_single
@@ -2803,20 +2803,21 @@ class TRNASeqDataset(object):
                 max_nonspec_reads_Nf = nonspec_reads
             if spec_reads + nonspec_reads > max_total_reads_Nf:
                 max_total_reads_Nf = spec_reads + nonspec_reads
-        mean_spec_T_Nf /= count_Nf
-        mean_nonspec_T_Nf /= count_Nf
-        mean_spec_U_Nf /= count_Nf
-        mean_nonspec_U_Nf /= count_Nf
-        spec_reads_Nf /= count_Nf
-        nonspec_reads_Nf /= count_Nf
+        div_zero_as_nan = lambda x, y: x / y if y != 0 else np.nan
+        mean_spec_T_Nf = div_zero_as_nan(mean_spec_T_Nf, count_Nf)
+        mean_nonspec_T_Nf = div_zero_as_nan(mean_nonspec_T_Nf, count_Nf)
+        mean_spec_U_Nf = div_zero_as_nan(mean_spec_U_Nf, count_Nf)
+        mean_nonspec_U_Nf = div_zero_as_nan(mean_nonspec_U_Nf, count_Nf)
+        spec_reads_Nf = div_zero_as_nan(spec_reads_Nf, count_Nf)
+        nonspec_reads_Nf = div_zero_as_nan(nonspec_reads_Nf, count_Nf)
         count_Tc_trna_Nf = len(self.dict_Tc_trna)
         count_Uc_trna_Nf = len(self.dict_Uc_trna)
         read_count_Uc_trna_Nf = 0
         for seq_Uc_trna in self.dict_Uc_trna.values():
             read_count_Uc_trna_Nf += seq_Uc_trna.read_count
-        mean_Tc_trna_Nf = count_Tc_trna_Nf / count_Nf
-        mean_Uc_trna_Nf = count_Uc_trna_Nf / count_Nf
-        mean_Uc_reads_Nf = read_count_Uc_trna_Nf / count_Nf
+        mean_Tc_trna_Nf = div_zero_as_nan(count_Tc_trna_Nf, count_Nf)
+        mean_Uc_trna_Nf = div_zero_as_nan(count_Uc_trna_Nf, count_Nf)
+        mean_Uc_reads_Nf = div_zero_as_nan(read_count_Uc_trna_Nf, count_Nf)
 
         count_Nc = len(self.dict_Nc)
         anticodon_count_Nc = 0
@@ -2843,12 +2844,12 @@ class TRNASeqDataset(object):
                     for name_U in seq_T.names_U:
                         mean_nonspec_U_Nc += 1
                         mean_nonspec_reads_Nc += dict_Uc_nontrna[name_U].read_count
-        mean_spec_T_Nc /= count_Nc
-        mean_nonspec_T_Nc /= count_Nc
-        mean_spec_U_Nc /= count_Nc
-        mean_nonspec_U_Nc /= count_Nc
-        mean_spec_reads_Nc /= count_Nc
-        mean_nonspec_reads_Nc /= count_Nc
+        mean_spec_T_Nc = div_zero_as_nan(mean_spec_T_Nc, count_Nc)
+        mean_nonspec_T_Nc = div_zero_as_nan(mean_nonspec_T_Nc, count_Nc)
+        mean_spec_U_Nc = div_zero_as_nan(mean_spec_U_Nc, count_Nc)
+        mean_nonspec_U_Nc = div_zero_as_nan(mean_nonspec_U_Nc, count_Nc)
+        mean_spec_reads_Nc = div_zero_as_nan(mean_spec_reads_Nc, count_Nc)
+        mean_nonspec_reads_Nc = div_zero_as_nan(mean_nonspec_reads_Nc, count_Nc)
 
         warning = self.run.warning
         info_single = self.run.info_single
@@ -3261,10 +3262,11 @@ class TRNASeqDataset(object):
             if seq_Nf.spec_map_seq_count or seq_Nf.nonspec_map_seq_count:
                 count_any_Nf += 1
         count_Nf = len(self.dict_Nf)
-        mean_spec_Tm_Nf /= count_Nf
-        mean_nonspec_Tm_Nf /= count_Nf
-        spec_reads_Nf /= count_Nf
-        nonspec_reads_Nf /= count_Nf
+        div_zero_as_nan = lambda x, y: x / y if y != 0 else np.nan
+        mean_spec_Tm_Nf = div_zero_as_nan(mean_spec_Tm_Nf, count_Nf)
+        mean_nonspec_Tm_Nf = div_zero_as_nan(mean_nonspec_Tm_Nf, count_Nf)
+        spec_reads_Nf = div_zero_as_nan(spec_reads_Nf, count_Nf)
+        nonspec_reads_Nf = div_zero_as_nan(nonspec_reads_Nf, count_Nf)
 
         count_spec_Tm = 0
         reads_spec_Tm = 0
@@ -3359,8 +3361,9 @@ class TRNASeqDataset(object):
                 max_nonspec_cov_Nf = mean_nonspec_cov
             if mean_spec_cov + mean_nonspec_cov > max_total_cov_Nf:
                 max_total_cov_Nf = mean_spec_cov + mean_nonspec_cov
-        mean_spec_cov_Nf /= total_length_Nf
-        mean_nonspec_cov_Nf /= total_length_Nf
+        div_zero_as_nan = lambda x, y: x / y if y != 0 else np.nan
+        mean_spec_cov_Nf = div_zero_as_nan(mean_spec_cov_Nf, total_length_Nf)
+        mean_nonspec_cov_Nf = div_zero_as_nan(mean_nonspec_cov_Nf, total_length_Nf)
 
         spec_read_Nc = 0
         mean_spec_cov_Nc = 0
@@ -3383,8 +3386,8 @@ class TRNASeqDataset(object):
                 max_nonspec_cov_Nc = mean_nonspec_cov
             if mean_spec_cov + mean_nonspec_cov > max_total_cov_Nc:
                 max_total_cov_Nc = mean_spec_cov + mean_nonspec_cov
-        mean_spec_cov_Nc /= total_length_Nc
-        mean_nonspec_cov_Nc /= total_length_Nc
+        mean_spec_cov_Nc = div_zero_as_nan(mean_spec_cov_Nc, total_length_Nc)
+        mean_nonspec_cov_Nc = div_zero_as_nan(mean_nonspec_cov_Nc, total_length_Nc)
 
         warning = self.run.warning
         info_single = self.run.info_single
@@ -3696,8 +3699,9 @@ class TRNASeqDataset(object):
             length_M = len(dict_Nf[seq_M.name].string)
             total_sub_count += len(seq_M.sub_positions)
             total_length_M += length_M
-        mean_sub_per_seq = total_sub_count / count_M
-        mean_sub_per_nt = total_sub_count / total_length_M
+        div_zero_as_nan = lambda x, y: x / y if y != 0 else np.nan
+        mean_sub_per_seq = div_zero_as_nan(total_sub_count, count_M)
+        mean_sub_per_nt = div_zero_as_nan(total_sub_count, total_length_M)
 
         warning = self.run.warning
         info = self.run.info
@@ -4502,8 +4506,9 @@ class TRNASeqDataset(object):
                 max_nonspec_cov_M = mean_nonspec_cov
             if mean_spec_cov + mean_nonspec_cov > max_total_cov_M:
                 max_total_cov_M = mean_spec_cov + mean_nonspec_cov
-        mean_spec_cov_M /= total_length_M
-        mean_nonspec_cov_M /= total_length_M
+        div_zero_as_nan = lambda x, y: x / y if y != 0 else np.nan
+        mean_spec_cov_M = div_zero_as_nan(mean_spec_cov_M, total_length_M)
+        mean_nonspec_cov_M = div_zero_as_nan(mean_nonspec_cov_M, total_length_M)
 
         if not self.skip_indel_profiling:
             count_indel_M = 0
@@ -6564,7 +6569,7 @@ class DatabaseMerger(object):
             entries.append(
                 (seed_num, # Entry ID
                  'Transfer_RNAs', # Source, à la tRNA gene prediction via tRNAScan-SE
-                 sha1(seed.string.encode('utf-8')).hexdigest(), # "Gene unique identifier"
+                 sha1(seed.string.encode('utf-8'), usedforsecurity=False).hexdigest(), # "Gene unique identifier"
                  seed_num, # "Gene callers ID"
                  ANTICODON_AA_DICT[seed.anticodon_string] + '_' + seed.anticodon_string, # "Gene name", à la tRNA gene prediction via tRNAScan-SE
                  '-', # "Gene HMM ID"
@@ -6597,7 +6602,7 @@ class DatabaseMerger(object):
                  0, # Is partial gene call: for now, say all seeds are "full tRNAs"
                  2, # Call type: 1 = coding, 2 = noncoding, 3 = unknown
                  'anvi-trnaseq', # Gene caller
-                 tables.trnaseq_db_version) # Version of caller
+                 anvio.version.trnaseq_db_version) # Version of caller
             )
         return entries
 
@@ -7123,14 +7128,22 @@ class DatabaseMerger(object):
                                 ('sample_' + db_cov_type.replace('specific', 'spec') + '_detection_dict', 'detection'),
                                 ('sample_mean_Q2Q3_' + db_cov_type.replace('specific', 'spec') + '_cov_dict', 'mean_coverage_Q2Q3')]
 
+            # identify zero-coverage (split_name, layer) pairs from the detection data so they
+            # are stored in zero_coverage_* tables instead of in the view tables.
+            detection_attr = 'sample_' + db_cov_type.replace('specific', 'spec') + '_detection_dict'
+            zero_cov_split_pairs = self._identify_zero_cov_pairs(self.get_specific_nonspecific_or_summed_data_dict(detection_attr))
+            self._store_zero_cov_pairs(profile_db, zero_cov_split_pairs)
+
             for attr, table_basename in tables_to_create:
                 data_dict = self.get_specific_nonspecific_or_summed_data_dict(attr)
+                data_dict = self._filter_zero_cov_entries(data_dict, zero_cov_split_pairs)
                 self.create_contigs_and_splits_tables(profile_db_path, table_basename, data_dict)
             # Variability is the measure of the frequency of inferred modification-induced
             # substitutions in seeds. Subs are only calculated from specific coverage -- nonspecific
             # coverage is ignored.
             variability_data_dict = self.get_specific_nonspecific_or_summed_data_dict('sample_variability_dict')
-            self.create_contigs_and_splits_tables(profile_db_path, 'variability', data_dict)
+            variability_data_dict = self._filter_zero_cov_entries(variability_data_dict, zero_cov_split_pairs)
+            self.create_contigs_and_splits_tables(profile_db_path, 'variability', variability_data_dict)
 
             profile_db.db._exec_many('''INSERT INTO %s VALUES (%s)'''
                                      % ('indels', ','.join('?' * len(tables.indels_table_structure))),
@@ -7142,14 +7155,20 @@ class DatabaseMerger(object):
                                 ('sample_spec_detection_dict', 'sample_nonspec_detection_dict', 'detection'),
                                 ('sample_mean_Q2Q3_spec_cov_dict', 'sample_mean_Q2Q3_nonspec_cov_dict', 'mean_coverage_Q2Q3')]
 
+            # identify zero-coverage (split_name, layer) pairs from the combined detection data
+            zero_cov_split_pairs = self._identify_zero_cov_pairs(self.get_combined_data_dict('sample_spec_detection_dict', 'sample_nonspec_detection_dict'))
+            self._store_zero_cov_pairs(profile_db, zero_cov_split_pairs)
+
             for spec_attr, nonspec_attr, table_basename in tables_to_create:
                 data_dict = self.get_combined_data_dict(spec_attr, nonspec_attr)
+                data_dict = self._filter_zero_cov_entries(data_dict, zero_cov_split_pairs)
                 self.create_contigs_and_splits_tables(profile_db_path, table_basename, data_dict)
             # Variability is the measure of the frequency of inferred modification-induced
             # substitutions in seeds. Subs are only calculated from specific coverage -- nonspecific
             # coverage is ignored.
             variability_data_dict = self.get_combined_data_dict('sample_variability_dict', 'sample_variability_dict')
-            self.create_contigs_and_splits_tables(profile_db_path, 'variability', data_dict)
+            variability_data_dict = self._filter_zero_cov_entries(variability_data_dict, zero_cov_split_pairs)
+            self.create_contigs_and_splits_tables(profile_db_path, 'variability', variability_data_dict)
 
             combined_indels_table_entries = []
             for entry in self.spec_indels_table_entries:
@@ -7235,11 +7254,57 @@ class DatabaseMerger(object):
         return data_dict
 
 
+    def _identify_zero_cov_pairs(self, detection_data_dict):
+        """Identify (split_name, layer) pairs with zero detection from a data_dict.
+
+        These pairs should be stored in zero_coverage_* tables rather than in the view
+        tables, consistent with how the profiler handles zero-coverage items."""
+        zero_cov_pairs = set()
+        for split_name, layer_values in detection_data_dict.items():
+            for layer, value in layer_values.items():
+                if value == 0 or value == 0.0:
+                    zero_cov_pairs.add((split_name, layer))
+        return zero_cov_pairs
+
+
+    def _store_zero_cov_pairs(self, profile_db, zero_cov_split_pairs):
+        """Write zero-coverage pairs to the zero_coverage_splits and zero_coverage_contigs tables.
+
+        Since tRNA seeds are never long enough to be split, each contig has exactly one split
+        (seed_name + '_split_00001'), so the contig name is derived by stripping that suffix."""
+        if not zero_cov_split_pairs:
+            return
+
+        zero_cov_contig_pairs = [(s.removesuffix('_split_00001'), l) for s, l in zero_cov_split_pairs]
+        profile_db.db._exec_many('INSERT INTO %s VALUES (?,?)' % tables.zero_coverage_splits_table_name,
+                                 list(zero_cov_split_pairs))
+        profile_db.db._exec_many('INSERT INTO %s VALUES (?,?)' % tables.zero_coverage_contigs_table_name,
+                                 zero_cov_contig_pairs)
+
+
+    def _filter_zero_cov_entries(self, data_dict, zero_cov_pairs):
+        """Remove zero-coverage entries from a data_dict before writing to view tables."""
+        if not zero_cov_pairs:
+            return data_dict
+
+        filtered = {}
+        for item, layer_values in data_dict.items():
+            filtered_layers = {layer: value for layer, value in layer_values.items()
+                               if (item, layer) not in zero_cov_pairs}
+            if filtered_layers:
+                filtered[item] = filtered_layers
+        return filtered
+
+
     def create_contigs_and_splits_tables(self, profile_db_path, table_basename, data_dict):
         """Create a pair of tables in a profile database. Contigs and splits tables contain the same
-        information since tRNA, unlike a metagenomic contig, is not long enough to be split."""
+        information since tRNA, unlike a metagenomic contig, is not long enough to be split.
+
+        The data_dict keys are split names (seed_name + '_split_00001'). For the _contigs table,
+        we re-key by contig name (stripping the '_split_00001' suffix)."""
+        contigs_data_dict = {k.removesuffix('_split_00001'): v for k, v in data_dict.items()}
         TablesForViews(profile_db_path).create_new_view(
-            view_data=data_dict,
+            view_data=contigs_data_dict,
             table_name=table_basename + '_contigs',
             view_name=None,
             from_matrix_form=True)
@@ -7469,28 +7534,44 @@ class ResultTabulator(object):
         self.sample_names = sample_names = get_meta_value('samples').split(', ')
         sample_total_mean_spec_covs = tuple(map(float, get_meta_value('sample_total_mean_specific_coverage').split(', ')))
         sample_total_discriminator_spec_covs = tuple(map(int, get_meta_value('sample_total_discriminator_specific_coverage').split(', ')))
-        mean_spec_cov_df = spec_profile_db.db.get_table_as_dataframe('mean_coverage_contigs')
+        mean_spec_cov_df = spec_profile_db.db.get_table_as_dataframe('mean_coverage_contigs', error_if_no_data=False)
+        # zero-coverage contigs are stored in a separate table since profile db v42
+        if 'zero_coverage_contigs' in spec_profile_db.db.get_table_names():
+            zero_cov_contigs_df = spec_profile_db.db.get_table_as_dataframe('zero_coverage_contigs', error_if_no_data=False)
+        else:
+            zero_cov_contigs_df = pd.DataFrame()
         spec_profile_db.disconnect()
-        mean_spec_cov_df['contig_name'] = mean_spec_cov_df['item'].apply(lambda s: s.split('_split_00001')[0])
-        mean_spec_cov_df = mean_spec_cov_df.drop(['item', 'layer'], axis=1)
-        mean_spec_cov_df = mean_spec_cov_df.rename({'value': 'mean_spec_cov'}, axis=1)
+        mean_spec_cov_df = mean_spec_cov_df[['item', 'layer', 'value']]
+        if not zero_cov_contigs_df.empty:
+            zero_cov_contigs_df = zero_cov_contigs_df[['item', 'layer']].copy()
+            zero_cov_contigs_df['value'] = 0.0
+            mean_spec_cov_df = pd.concat([mean_spec_cov_df, zero_cov_contigs_df], ignore_index=True)
         mean_spec_cov_dict = {}
-        for contig_name, contig_df in mean_spec_cov_df.groupby('contig_name'):
-            mean_spec_cov_dict[contig_name] = tuple(contig_df['mean_spec_cov'])
+        for contig_name, contig_df in mean_spec_cov_df.groupby('item'):
+            layer_values = dict(zip(contig_df['layer'], contig_df['value']))
+            mean_spec_cov_dict[contig_name] = tuple(layer_values.get(s, 0.0) for s in sample_names)
 
         do_nonspec = True if self.nonspec_profile_db_path else False
         if do_nonspec:
             nonspec_profile_db = dbops.ProfileDatabase(self.nonspec_profile_db_path, quiet=True)
             get_meta_value = nonspec_profile_db.db.get_meta_value
             self.sample_names = sample_names = get_meta_value('samples').split(', ')
-            mean_nonspec_cov_df = nonspec_profile_db.db.get_table_as_dataframe('mean_coverage_contigs')
+            mean_nonspec_cov_df = nonspec_profile_db.db.get_table_as_dataframe('mean_coverage_contigs', error_if_no_data=False)
+            # zero-coverage contigs are stored in a separate table since profile db v42
+            if 'zero_coverage_contigs' in nonspec_profile_db.db.get_table_names():
+                zero_cov_contigs_df = nonspec_profile_db.db.get_table_as_dataframe('zero_coverage_contigs', error_if_no_data=False)
+            else:
+                zero_cov_contigs_df = pd.DataFrame()
             nonspec_profile_db.disconnect()
-            mean_nonspec_cov_df['contig_name'] = mean_nonspec_cov_df['item'].apply(lambda s: s.split('_split_00001')[0])
-            mean_nonspec_cov_df = mean_nonspec_cov_df.drop(['item', 'layer'], axis=1)
-            mean_nonspec_cov_df = mean_nonspec_cov_df.rename({'value': 'mean_nonspec_cov'}, axis=1)
+            mean_nonspec_cov_df = mean_nonspec_cov_df[['item', 'layer', 'value']]
+            if not zero_cov_contigs_df.empty:
+                zero_cov_contigs_df = zero_cov_contigs_df[['item', 'layer']].copy()
+                zero_cov_contigs_df['value'] = 0.0
+                mean_nonspec_cov_df = pd.concat([mean_nonspec_cov_df, zero_cov_contigs_df], ignore_index=True)
             mean_nonspec_cov_dict = {}
-            for contig_name, contig_df in mean_nonspec_cov_df.groupby('contig_name'):
-                mean_nonspec_cov_dict[contig_name] = tuple(contig_df['mean_nonspec_cov'])
+            for contig_name, contig_df in mean_nonspec_cov_df.groupby('item'):
+                layer_values = dict(zip(contig_df['layer'], contig_df['value']))
+                mean_nonspec_cov_dict[contig_name] = tuple(layer_values.get(s, 0.0) for s in sample_names)
 
         anticodon_aa_items = [(anticodon, aa) for aa, anticodon in
                               [anticodon_aa_item.split('_') for anticodon_aa_item in

@@ -1,19 +1,16 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """ Classes to define and work with anvi'o ecophylo workflows. """
 
-from distutils.command.config import config
 import os
-import anvio
 import argparse
 import pandas as pd
 
 import anvio
-import anvio.data.hmm
 import anvio.utils as u
 import anvio.terminal as terminal
-import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
+
+with terminal.SuppressAllOutput():
+    import anvio.data.hmm
 
 from anvio.errors import ConfigError
 from anvio.workflows import WorkflowSuperClass
@@ -549,4 +546,3 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
             raise ConfigError(f"You have one or more 'group' in your HMM list file (or multiple identical entries - but you "
                               f"shouldn't be doing that) and at the moment it is not compatible with anvi-estimate-scg-taxonomy. "
                               f"The good news is that you can turn off anvi-run-scg-taxonmy in your config file.")
-

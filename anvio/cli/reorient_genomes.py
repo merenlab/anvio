@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# coding: utf-8
 
 import sys
 
@@ -45,12 +44,22 @@ def get_args():
                         help="Two-column TAB-delimited file with genome name and FASTA file path.")
     groupA.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required': True}))
 
-    groupRef = parser.add_argument_group('SELECTION OF REFERENCE',
+    groupRef = parser.add_argument_group('SELECTION & PROCESSING OF REFERENCE',
                                          "If you do not set --reference, the program will auto-select a reference by "
                                          "choosing the genome with the fewest contigs; ties are broken by the largest "
                                          "total length. This mirrors how anvi'o tools often prioritize more complete assemblies.")
     groupRef.add_argument('--reference', required=False,
                           help="Genome name in fasta-txt to use as the reference orientation. If omitted, auto-selection applies.")
+    groupRef.add_argument('--use-auto-reference-as-is', action='store_true',
+                          help="When anvi'o selects the reference genome automatically (i.e., when `--reference` parameter is not "
+                               "used) it first chooses the genome with the fewest contigs and then longest among those that have "
+                               "the same number of contigs, and THEN, it rotates this auto-picked reference to a reasonable start "
+                               "point by taking into consideration all the genomes. Using this flag, you can ask anvi'o to not "
+                               "tinker with the auto-picked reference orientation. This is most useful when the collection of "
+                               "genomes (or contigs) all start with an evolutionarily meaningful positions, and all you want to "
+                               "do is to reverse complement those that need it so all genomes (or contigs) have the same "
+                               "orientation. This flag is obviously not compatible with `--reference` and "
+                               "`--use-dnaa-for-reference-orientation`.")
     groupRef.add_argument('--use-dnaa-for-reference-orientation', action='store_true',
                           help="Use DnaA gene location to orient the reference genome. The program will identify the DnaA "
                                "gene using an HMM profile (Bac_DnaA_C from Pfam), and rotate the reference to start near "

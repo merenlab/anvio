@@ -1,6 +1,6 @@
-The purpose of this program is to exports your gene calls in a given %(contigs-db)s and a gene caller, in the form of a %(gene-calls-txt)s. 
+The purpose of this program is to exports your gene calls in a given %(contigs-db)s and a gene caller, in the form of a %(gene-calls-txt)s.
 
-To see the gene callers available in your contigs database, you can use %(anvi-db-info)s or use this program with the following flag: 
+To see the gene callers available in your contigs database, you can use %(anvi-db-info)s or use this program with the following flag:
 
 {{ codestart }}
 anvi-export-gene-calls -c %(contigs-db)s \
@@ -42,8 +42,8 @@ sqlite3 %(contigs-db)s
 Then run these lines,
 
 {{ codestart }}
-.mode csv 
-.headers on 
+.mode csv
+.headers on
 .out %(gene-calls-txt)s
 select gene_callers_id, contig, start, stop, direction, partial from genes_in_contigs;
 {{ codestop }}
@@ -51,8 +51,8 @@ select gene_callers_id, contig, start, stop, direction, partial from genes_in_co
 You can also continue with these lines to get the amino acid sequences for them:
 
 {{ codestart }}
-.mode csv 
-.headers on 
+.mode csv
+.headers on
 .out AMINO-ACID-SEQUENCES.txt
 select * from genes_in_contigs;
 {{ codestop }}

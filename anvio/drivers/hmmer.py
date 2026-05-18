@@ -1,4 +1,3 @@
-# coding: utf-8
 """Interface to HMMer."""
 
 import os
@@ -62,13 +61,13 @@ class HMMer:
         for source in target_files_dict:
             tmp_dir = filesnpaths.get_temp_directory_path()
             self.tmp_dirs.append(tmp_dir)
-            
+
             # create splitted fasta files inside tmp directory
             split_fastas, number_of_sequences = utils.split_fasta(target_files_dict[source],
                                                                parts=self.num_threads_to_use,
                                                                output_dir=tmp_dir,
                                                                return_number_of_sequences=True)
-            
+
             self.target_files_dict[source] = split_fastas
             self.number_of_sequences[source] = number_of_sequences
 
@@ -173,7 +172,7 @@ class HMMer:
                                           "desired output.")
 
         number_of_sequences = self.number_of_sequences[target]
-        
+
         self.run.warning('', header='HMM Profiling for %s' % source, lc='green')
         self.run.info('Reference', ref if ref else 'unknown')
         self.run.info('Kind', kind if kind else 'unknown')

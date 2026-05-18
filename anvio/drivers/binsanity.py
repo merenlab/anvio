@@ -1,4 +1,3 @@
-# coding: utf-8
 """Interface to BinSanity."""
 import os
 import glob

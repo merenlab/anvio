@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """A program that computes function enrichment across genomees"""
 
 import os

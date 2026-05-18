@@ -1,10 +1,9 @@
 import os
-import sys
 import pandas as pd
 
 from copy import deepcopy
 from argparse import Namespace
-from typing import Any, Literal, Union
+from typing import Any, Union
 from dataclasses import dataclass, field
 
 import anvio.metabolism.context as kcontext
@@ -13,8 +12,7 @@ import anvio.terminal as terminal
 import anvio.reactionnetwork as rn
 
 from anvio.dbops import ContigsDatabase
-from anvio.argparse import ArgumentParser
-from anvio.errors import ConfigError, FilesNPathsError
+from anvio.errors import ConfigError
 
 @dataclass
 class Chain:
@@ -1012,16 +1010,16 @@ class KGMLNetworkWalker:
                         kgml_compound_entries=current_chain.kgml_compound_entries.copy(),
                         is_consumed=is_explore_consumption,
                         kgml_reactions=current_chain.kgml_reactions + [kgml_reaction],
-                        kgml_reaction_directions=\
+                        kgml_reaction_directions=
                             current_chain.kgml_reaction_directions + [is_forward],
                         gaps=current_chain.gaps + [is_gap] if self.network else [],
-                        aliased_modelseed_compounds=\
-                            current_chain.aliased_modelseed_compounds.copy() \
+                        aliased_modelseed_compounds=
+                            current_chain.aliased_modelseed_compounds.copy()
                                 if self.network else [],
-                        network_kos=current_chain.network_kos + [tuple(network_kos)] \
+                        network_kos=current_chain.network_kos + [tuple(network_kos)]
                             if self.network else [],
-                        aliased_modelseed_reactions=\
-                            current_chain.aliased_modelseed_reactions + \
+                        aliased_modelseed_reactions=
+                            current_chain.aliased_modelseed_reactions +
                                 [tuple(modelseed_reactions)] if self.network else []
                     )
                     candidate_terminal_chain: Chain = \

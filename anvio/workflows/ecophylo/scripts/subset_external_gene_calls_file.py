@@ -5,12 +5,12 @@ import pandas as pd
 
 # Import tables
 #--------------
-external_gene_calls_all = pd.read_csv(snakemake.params.external_gene_calls_all, \
-                                      delim_whitespace=True, \
+external_gene_calls_all = pd.read_csv(snakemake.params.external_gene_calls_all,
+                                      delim_whitespace=True,
                                       index_col=False)
 
-headers = pd.read_csv(snakemake.input.headers, \
-                      sep="\t", \
+headers = pd.read_csv(snakemake.input.headers,
+                      sep="\t",
                       index_col=False,
                       names=["contig"])
 
@@ -24,7 +24,7 @@ external_gene_calls_subset['gene_callers_id'] = external_gene_calls_subset.index
 
 # Write file
 #-------------
-external_gene_calls_subset.to_csv(snakemake.output.external_gene_calls_subset, \
-                           sep="\t", \
-                           index=False, \
+external_gene_calls_subset.to_csv(snakemake.output.external_gene_calls_subset,
+                           sep="\t",
+                           index=False,
                            header=True)

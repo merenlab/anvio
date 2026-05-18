@@ -184,4 +184,3 @@ rule anvi_compute_genome_similarity:
                                             -o {output.output_dir} \
                                             -p {input.pan_db} \
                                             {params.additional_params} >> {log} 2>&1"
-

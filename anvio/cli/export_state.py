@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import sys
 
@@ -27,7 +26,7 @@ def main():
     run = terminal.Run()
 
     try:
-        utils.is_pan_or_profile_db(args.pan_or_profile_db, genes_db_is_also_accepted=True)
+        utils.is_pan_or_profile_db(args.pan_or_profile_db, genes_db_is_also_accepted=True, pan_graph_db_is_also_accepted=True)
 
         states_access = TablesForStates(args.pan_or_profile_db)
         states = states_access.states

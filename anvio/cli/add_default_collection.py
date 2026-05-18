@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Adds a DEAFULT collection with EVERYTHING in it into a pan or profile database."""
 
 import sys

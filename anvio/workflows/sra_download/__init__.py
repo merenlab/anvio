@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """ Classes to define and work with anvi'o SRA_downloads workflow. """
 
 import os
@@ -115,10 +113,10 @@ class SRADownloadWorkflow(WorkflowSuperClass):
 
         return target_files
 
-    
+
     def calculate_md5(self, file_path):
         """Calculate the md5sum of a file"""
-        hash_md5 = hashlib.md5()
+        hash_md5 = hashlib.md5(usedforsecurity=False)
         with open(file_path, "rb") as f:
             for chunk in iter(lambda: f.read(65536), b""):
                 hash_md5.update(chunk)

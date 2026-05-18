@@ -1,4 +1,3 @@
-# -*- coding: utf-8
 """Everything about anvi'o workflows and artifacts"""
 
 # when defining a new anvi'o workflow, it is essential to document most critical
@@ -141,6 +140,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "pan-graph-db": {
+        "name": "PAN GRAPH",
+        "type": "DB",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "contigs-db": {
         "name": "CONTIGS",
         "type": "DB",
@@ -226,6 +231,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_user": False
     },
     "paired-end-fastq": {
+        "name": "SHORT READS",
+        "type": "FASTQ",
+        "provided_by_anvio": True,
+        "provided_by_user": True
+    },
+    "single-end-fastq": {
         "name": "SHORT READS",
         "type": "FASTQ",
         "provided_by_anvio": True,
@@ -795,6 +806,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "trna-gene-hits": {
+        "name": "TRNA GENE HITS",
+        "type": "CONCEPT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "trnaseq-plot": {
         "name": "TRNASEQ PLOT",
         "type": "DISPLAY",
@@ -803,6 +820,24 @@ ANVIO_ARTIFACTS ={
     },
     "summary": {
         "name": "STATIC SUMMARY",
+        "type": "SUMMARY",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "pan-summary": {
+        "name": "PAN SUMMARY",
+        "type": "SUMMARY",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "pan-graph-summary": {
+        "name": "PAN GRAPH SUMMARY",
+        "type": "SUMMARY",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "profile-summary": {
+        "name": "PROFILE SUMMARY",
         "type": "SUMMARY",
         "provided_by_anvio": True,
         "provided_by_user": False

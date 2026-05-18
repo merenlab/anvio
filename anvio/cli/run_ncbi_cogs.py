@@ -1,12 +1,10 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import sys
 
 from argparse import Namespace
 
 import anvio
-import anvio.terminal as terminal
 
 from anvio.cogs import COGs
 from anvio.terminal import time_program
@@ -71,7 +69,7 @@ def get_args():
 
     groupC.add_argument('--search-with', default=default_search_method, metavar="SEARCH_METHOD",
                         help="What program to use for database searching. The default search uses %(default)s.\
-                              All available options include: %(serach_methods)s." \
+                              All available options include: %(serach_methods)s."
                                         % {'serach_methods': ', '.join(available_search_methods),
                                            'default': default_search_method})
 

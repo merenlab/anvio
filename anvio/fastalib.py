@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-# pylint: disable=line-too-long
 # v.140713
 """A very lightweight FASTA I/O library"""
 
@@ -92,6 +90,8 @@ class SequenceSource():
         self.unique_hash_list = []
         self.unique_next_hash = 0
 
+        self._next_header = None  # one-line push-back buffer; avoids backward seeks on compressed streams
+
         if self.compressed:
             self.file_pointer = gzip.open(self.fasta_file_path, mode="rt")
         else:
@@ -115,7 +115,7 @@ class SequenceSource():
 
     def init_unique_hash(self):
         while self.next_regular():
-            hash = hashlib.sha1(self.seq.upper().encode('utf-8')).hexdigest()
+            hash = hashlib.sha1(self.seq.upper().encode('utf-8'), usedforsecurity=False).hexdigest()
             if hash in self.unique_hash_dict:
                 self.unique_hash_dict[hash]['ids'].append(self.id)
                 self.unique_hash_dict[hash]['count'] += 1
@@ -125,7 +125,7 @@ class SequenceSource():
                                                'seq': self.seq,
                                                'count': 1}
 
-        self.unique_hash_list = [i[1] for i in sorted([(self.unique_hash_dict[hash]['count'], hash)\
+        self.unique_hash_list = [i[1] for i in sorted([(self.unique_hash_dict[hash]['count'], hash)
                         for hash in self.unique_hash_dict], reverse=True)]
 
 
@@ -159,7 +159,16 @@ class SequenceSource():
 
     def next_regular(self):
         self.seq = None
-        self.id = self.file_pointer.readline()[1:].strip()
+
+        if self._next_header is not None:
+            self.id = self._next_header[1:].strip()
+            self._next_header = None
+        else:
+            line = self.file_pointer.readline()
+            if not line:
+                return False
+            self.id = line[1:].strip()
+
         sequence = ''
 
         while True:
@@ -172,7 +181,8 @@ class SequenceSource():
                 else:
                     return False
             if line.startswith('>'):
-                self.file_pointer.seek(self.file_pointer.tell() - len(line))
+                # buffer it so no backward seek is needed
+                self._next_header = line
                 break
             sequence += line.strip()
 
@@ -199,6 +209,7 @@ class SequenceSource():
         self.id = None
         self.seq = None
         self.ids = []
+        self._next_header = None
         self.file_pointer.seek(0)
 
 

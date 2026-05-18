@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """
 Converts anvi'o variability output to VCF
 """

@@ -107,7 +107,7 @@ rule anvi_summarize:
     input:
         done = rules.add_default_collection.output.done
     params:
-        contigsDB = ancient(os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "03_CONTIGS", "{group}-contigs.db")),
+        contigsDB = ancient(os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "03_CONTIGS", "{group}.db")),
         profileDB = os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "06_MERGED", "{group}", "PROFILE.db"),
         output_dir = os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "07_SUMMARY", "{group}")
     output: touch(os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "07_SUMMARY", "{group}_summarize.done"))

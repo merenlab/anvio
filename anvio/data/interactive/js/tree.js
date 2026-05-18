@@ -34,7 +34,7 @@ function Node(label) {
     this.depth = 0;
     this.order = null;
     this.max_child_path = 0;
-    this.branch_support = 0;
+    this.branch_support = null;
 }
 
 
@@ -399,7 +399,9 @@ Tree.prototype.SerializeNode = function(node) {
     }
 
     if (!node.IsLeaf() && this.has_branch_supports) {
-        text += node.branch_support;
+        if (node.branch_support !== null) {
+            text += node.branch_support;
+        }
     } else {
         text += node.label;
     }

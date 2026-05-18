@@ -1,4 +1,3 @@
-# coding: utf-8
 """Interface to Prodigal."""
 
 # Note: The Prodigal command will be run in a "mutlithreaded" way even if the user selects only one thread.  In other
