@@ -60,6 +60,15 @@ def migrate(db_path):
 
     profile_db.create_table(clippings_table_name, clippings_table_structure, clippings_table_types)
 
+    # Seed the new self-table keys so consumers (e.g. anvi-merge's consistency
+    # checks at merger.py) can read `clips_profiled` / `min_clip_length` from
+    # every v43 db without KeyError. The migrated db has no clip data, so
+    # `clips_profiled` is False; `min_clip_length` gets the same default a
+    # fresh anvi-profile run uses.
+    progress.update("Seeding clip-profiling meta keys")
+    profile_db.set_meta_value('clips_profiled', 0)
+    profile_db.set_meta_value('min_clip_length', 5)
+
     progress.update("Updating version")
     profile_db.remove_meta_key_value_pair('version')
     profile_db.set_version(next_version)
