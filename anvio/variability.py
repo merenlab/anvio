@@ -505,35 +505,49 @@ class ProcessClipCounts(object):
 
 
     def process(self):
-        """Modify self.clips in place: drop short, low-coverage, or low-fraction clip events."""
+        """Modify self.clips in place: drop short, low-coverage, or low-fraction clip events.
 
-        clip_hashes_to_remove = set()
-        for clip_hash in self.clips:
+        The variability test is applied at the (pos, side) breakpoint level, not per individual
+        (pos, side, sequence, length) tuple. Real breakpoints often produce many distinct
+        clip-tail variants — each ending up as its own event with count=1 — so a per-event
+        filter would discard real hotspots whenever the tails diversify. We instead sum counts
+        across all tail variants at the same breakpoint and test that aggregate against the
+        threshold. Individual per-variant rows are preserved in storage so downstream consumers
+        can inspect tail diversity.
+        """
 
-            clip = self.clips[clip_hash]
+        # Step 1: drop clips below the minimum length threshold.
+        self.clips = {h: c for h, c in self.clips.items() if c['length'] >= self.min_clip_length}
+        if not self.clips:
+            return
 
-            # filter short clips: these are usually quality-trim residue / aligner edge noise,
-            # not meaningful breakpoint signal.
-            if clip['length'] < self.min_clip_length:
-                clip_hashes_to_remove.add(clip_hash)
-                continue
+        # Step 2: stamp per-event breakpoint coverage. A clip is a single-position event so
+        # no flanking averaging is needed.
+        for clip in self.clips.values():
+            clip['coverage'] = self.coverage[clip['pos']]
 
-            # coverage at the breakpoint position. Unlike indels, a clip happens at a single
-            # reference position so no flanking-position averaging is needed.
-            pos = clip['pos']
-            cov = self.coverage[pos]
+        # Step 3: drop clips at low-coverage breakpoints.
+        self.clips = {h: c for h, c in self.clips.items()
+                      if c['coverage'] >= self.min_coverage_for_variability}
+        if not self.clips:
+            return
 
-            if cov < self.min_coverage_for_variability:
-                clip_hashes_to_remove.add(clip_hash)
-                continue
+        # Step 4: aggregate clip counts per (pos, side) breakpoint.
+        bucket_total_count = {}
+        bucket_coverage = {}
+        for clip in self.clips.values():
+            key = (clip['pos'], clip['side'])
+            bucket_total_count[key] = bucket_total_count.get(key, 0) + clip['count']
+            bucket_coverage[key] = clip['coverage']
 
-            # NOTE same caveat as ProcessIndelCounts: we call get_min_acceptable_departure_from_reference
-            # but compare its output to count/coverage, since "departure from reference" does not apply
-            # to clip events.
-            if clip['count']/cov < self.test_class.get_min_acceptable_departure_from_reference(cov):
-                clip_hashes_to_remove.add(clip_hash)
-                continue
+        # Step 5: keep events whose breakpoint passes the variability test (same caveat as
+        # ProcessIndelCounts: get_min_acceptable_departure_from_reference is being compared to
+        # total_clip_count / coverage, since "departure from reference" does not apply here).
+        passing_buckets = set()
+        for key, total in bucket_total_count.items():
+            cov = bucket_coverage[key]
+            if total / cov >= self.test_class.get_min_acceptable_departure_from_reference(cov):
+                passing_buckets.add(key)
 
-            self.clips[clip_hash]['coverage'] = cov
-
-        self.clips = {k: v for k, v in self.clips.items() if k not in clip_hashes_to_remove}
+        self.clips = {h: c for h, c in self.clips.items()
+                      if (c['pos'], c['side']) in passing_buckets}
