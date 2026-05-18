@@ -121,6 +121,10 @@ trna_taxonomy_table_name                = 'trna_taxonomy'
 trna_taxonomy_table_structure           = ['gene_callers_id', 'amino_acid', 'anticodon', 'accession', 'percent_identity', 't_domain', "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"]
 trna_taxonomy_table_types               = [    'numeric'    ,    'text'   ,    'text'  ,    'text'  ,       'text'      ,   'text'  ,   'text'  ,   'text' ,  'text'  ,   'text'  ,   'text' ,   'text'   ]
 
+contig_classification_table_name        = 'contig_classification'
+contig_classification_table_structure   = ['contig', 'class', 'source', 'tool_classification', 'confidence']
+contig_classification_table_types       = [ 'text' ,'numeric', 'text',        'text'          ,   'text'   ]
+
 nt_position_info_table_name            = 'nt_position_info'
 nt_position_info_table_structure       = ['contig_name', 'position_info']
 nt_position_info_table_types           = [    'str'    ,      'blob'    ]
@@ -420,6 +424,7 @@ table_requires_unique_entry_id = {'self': False,
                                   templates_table_name: True,
                                   models_table_name: True,
                                   residue_info_table_name: True,
+                                  contig_classification_table_name: False,
                                   contig_sequences_table_name: False,
                                   contigs_info_table_name: False,
                                   splits_info_table_name: False,
