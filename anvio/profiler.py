@@ -44,6 +44,7 @@ import anvio.auxiliarydataops as auxiliarydataops
 from anvio.errors import ConfigError
 from anvio.tables.views import TablesForViews
 from anvio.tables.indels import TableForIndels
+from anvio.tables.clippings import TableForClippings
 from anvio.tables.miscdata import TableForLayerAdditionalData
 from anvio.tables.variability import TableForVariability
 from anvio.tables.codonfrequencies import TableForCodonFrequencies
@@ -964,6 +965,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.overwrite_output_destinations = A('overwrite_output_destinations')
         self.skip_SNV_profiling = A('skip_SNV_profiling')
         self.skip_INDEL_profiling = A('skip_INDEL_profiling')
+        self.skip_clip_profiling = A('skip_clip_profiling')
+        self.min_clip_length = int(A('min_clip_length') or 5)
         self.profile_SCVs = A('profile_SCVs')
         self.min_percent_identity = A('min_percent_identity')
         self.fetch_filter = A('fetch_filter')
@@ -1004,6 +1007,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
             raise ConfigError(f"You can't ask anvi'o to skip profiling of SNVs and also ask to ignore {self.skip_edges} "
                               f"nucleotides from the beginning and the end of short reads while profiling of SNVs. You "
                               f"either need to drop the `--skip-SNV-profiling` flag, or the `--skip-edges` flag :/")
+
+        if self.min_clip_length < 0:
+            raise ConfigError(f"`--min-clip-length` cannot be negative (you gave {self.min_clip_length}). Use 0 to "
+                              f"report clip events of any length, or a positive integer to drop clips shorter than "
+                              f"that many bases.")
 
         if not self.blank and self.contigs_shall_be_clustered and self.skip_hierarchical_clustering:
             raise ConfigError("You are confused, and confusing anvi'o, too. You can't as hierarchical clustering "
@@ -1235,6 +1243,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if self.skip_SNV_profiling:
             self.profile_SCVs = False
             self.skip_INDEL_profiling = True
+            # Clip detection lives inside the SNV/indel pass; if SNV profiling is off,
+            # the read loop never runs and clips cannot be collected either.
+            self.skip_clip_profiling = True
             self.skip_edges = 0
 
         meta_values = {'db_type': 'profile',
@@ -1250,6 +1261,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
                        'SNVs_profiled': not self.skip_SNV_profiling,
                        'SCVs_profiled': self.profile_SCVs,
                        'INDELs_profiled': not self.skip_INDEL_profiling,
+                       'clips_profiled': not self.skip_clip_profiling,
+                       'min_clip_length': self.min_clip_length,
                        'min_percent_identity': self.min_percent_identity or 0,
                        'fetch_filter': self.fetch_filter,
                        'min_coverage_for_variability': self.min_coverage_for_variability,
@@ -1277,6 +1290,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         if not self.skip_INDEL_profiling:
             self.indels_table = TableForIndels(self.profile_db_path, progress=null_progress)
+
+        if not self.skip_clip_profiling:
+            self.clippings_table = TableForClippings(self.profile_db_path, progress=null_progress)
 
 
 
@@ -1318,6 +1334,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
             self.run.info(' - How many edge nts ignore for SNV profiling?', self.skip_edges, mc='red')
         self.run.info('Profile single-codon variants (SCVs/+SAAVs)?', self.profile_SCVs)
         self.run.info('Profile insertion/deletions (INDELs)?', not self.skip_INDEL_profiling)
+        self.run.info('Profile read-edge clippings?', not self.skip_clip_profiling)
+        if not self.skip_clip_profiling:
+            self.run.info(' - Minimum clip length to report', self.min_clip_length)
         self.run.info('Minimum coverage to calculate SNVs', self.min_coverage_for_variability)
         self.run.info('Report FULL variability data?', self.report_variability_full)
 
@@ -1436,6 +1455,18 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     self.indels_table.append([self.sample_id] + list(entry.values()))
 
         self.indels_table.store()
+
+
+    def generate_clippings_table(self):
+        if self.skip_clip_profiling:
+            return
+
+        for contig in self.contigs:
+            for split in contig.splits:
+                for entry in split.CLIP_profiles.values():
+                    self.clippings_table.append([self.sample_id] + list(entry.values()))
+
+        self.clippings_table.store()
 
 
     def store_split_coverages(self):
@@ -1657,6 +1688,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
         # Profiling flags
         ctx.skip_SNV_profiling = self.skip_SNV_profiling
         ctx.skip_INDEL_profiling = self.skip_INDEL_profiling
+        ctx.skip_clip_profiling = self.skip_clip_profiling
+        ctx.min_clip_length = self.min_clip_length
         ctx.profile_SCVs = self.profile_SCVs
         ctx.min_coverage_for_variability = self.min_coverage_for_variability
         ctx.report_variability_full = self.report_variability_full
@@ -1993,6 +2026,8 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                                       profile_SCVs=self.profile_SCVs,
                                                       skip_INDEL_profiling=self.skip_INDEL_profiling,
                                                       skip_SNV_profiling=self.skip_SNV_profiling,
+                                                      skip_clip_profiling=self.skip_clip_profiling,
+                                                      min_clip_length=self.min_clip_length,
                                                       min_coverage_for_variability=self.min_coverage_for_variability,
                                                       report_variability_full=self.report_variability_full,
                                                       min_percent_identity=self.min_percent_identity,
@@ -2115,6 +2150,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
             self.layer_additional_data['num_INDELs_reported'] = self.indels_table.num_entries
             self.layer_additional_keys.append('num_INDELs_reported')
             self.run.info("Num INDELs reported", self.layer_additional_data['num_INDELs_reported'])
+
+        if not self.skip_clip_profiling:
+            self.layer_additional_data['num_CLIPs_reported'] = self.clippings_table.num_entries
+            self.layer_additional_keys.append('num_CLIPs_reported')
+            self.run.info("Num CLIPs reported", self.layer_additional_data['num_CLIPs_reported'])
 
         if self.profile_SCVs:
             self.layer_additional_data['num_SCVs_reported'] = self.variable_codons_table.num_entries
@@ -2316,6 +2356,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 self.layer_additional_keys.append('num_INDELs_reported')
                 self.run.info("Num INDELs reported", self.layer_additional_data['num_INDELs_reported'])
 
+            if not self.skip_clip_profiling:
+                self.layer_additional_data['num_CLIPs_reported'] = self.clippings_table.num_entries
+                self.layer_additional_keys.append('num_CLIPs_reported')
+                self.run.info("Num CLIPs reported", self.layer_additional_data['num_CLIPs_reported'])
+
             if self.profile_SCVs:
                 self.layer_additional_data['num_SCVs_reported'] = self.variable_codons_table.num_entries
                 self.layer_additional_keys.append('num_SCVs_reported')
@@ -2357,6 +2402,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.generate_variable_nts_table()
         self.generate_variable_codons_table()
         self.generate_indels_table()
+        self.generate_clippings_table()
         self.store_split_coverages()
 
         # Identify zero-coverage splits within covered contigs. These splits belong to
@@ -2478,6 +2524,7 @@ class WorkerContext:
         contig_sequences, contig_name_to_splits, splits_basic_info,
         contig_name_to_genes, genes_in_contigs_dict, nt_positions_info,
         a_meta, sample_id, skip_SNV_profiling, skip_INDEL_profiling,
+        skip_clip_profiling, min_clip_length,
         profile_SCVs, min_coverage_for_variability, report_variability_full,
         min_percent_identity, skip_edges, input_file_path, fetch_filter,
         contig_names, contig_lengths
