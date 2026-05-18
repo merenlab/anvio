@@ -11,7 +11,7 @@ anvi-setup-cazymes
 You can use `--cazyme-version`, if you want anvi'o to download a different version of the [dbCAN2 CAZyme HMMs](https://bcb.unl.edu/dbCAN2/download/Databases/) database:
 
 {:.warning}
-The following versions have been tested for download: V9-13
+The following versions have been tested for download: V9-14
 
 {{ codestart }}
 anvi-setup-cazymes --cazyme-version V10
