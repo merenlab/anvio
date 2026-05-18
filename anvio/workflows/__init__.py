@@ -272,10 +272,11 @@ class WorkflowSuperClass:
 
         workflow_manifest_path = None
         original_manifest_env_var = os.environ.get('ANVIO_WORKFLOW_MANIFEST_PATH')
-        if getattr(self.args, 'workflow', self.name) == 'metagenomics' and not self.list_dependencies:
+        workflow_name = getattr(self.args, 'workflow', self.name)
+        if not self.list_dependencies:
             from anvio.workflows.manifest import initialize_manifest
 
-            workflow_manifest_path = os.path.join(self.dirs_dict["LOGS_DIR"], "metagenomics-workflow-manifest.tsv")
+            workflow_manifest_path = os.path.join(self.dirs_dict["LOGS_DIR"], f"{workflow_name}-workflow-manifest.tsv")
             initialize_manifest(workflow_manifest_path)
             os.environ['ANVIO_WORKFLOW_MANIFEST_PATH'] = workflow_manifest_path
             self.run.info('Workflow manifest', workflow_manifest_path)
