@@ -599,6 +599,17 @@ D = {
                      "The default is %(default)d. Use 0 to report clips of any length. Ignored when "
                      "--skip-clip-profiling is set."}
                 ),
+    'force-clip-profiling': (
+            ['--force-clip-profiling'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Before profiling clips, anvi'o inspects the @PG records in the BAM header to confirm the aligner "
+                     "is one that emits soft/hard CIGAR clips. If it cannot tell (no @PG records, or no recognized "
+                     "aligner) OR the aligner is known not to emit clips (e.g. bowtie2 in default end-to-end mode), "
+                     "anvi'o auto-skips clip profiling and warns you, so you don't end up with a silently empty "
+                     "clippings table. Use this flag to force clip profiling anyway. If your aligner truly does not "
+                     "emit clips, the clippings table will simply be empty."}
+                ),
     'return-AA-frequencies-instead': (
             ['--return-AA-frequencies-instead'],
             {'default': False,
