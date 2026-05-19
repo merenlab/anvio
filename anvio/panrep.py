@@ -1,5 +1,4 @@
 from collections import defaultdict
-from glob import glob
 import hashlib
 
 import pandas as pd
@@ -11,24 +10,27 @@ import anvio.fastalib as u
 import anvio.dbops as dbops
 import anvio.utils as utils
 from anvio.genomestorage import GenomeStorage
+from anvio.genomedescriptions import GenomeDescriptions
 from anvio.tables.genefunctions import TableForGeneFunctions
+
 
 
 class PanRepresenter:
     def __init__(self, args, tmpdir):
+        self.args = args
         self.pan = dbops.PanSuperclass(args)
+        # print(self.pan.__dict__.keys())
+        
         self.pan.init_gene_clusters()
+        
+        g = self.pan.gene_clusters
+        print(self.pan.get_num_genes_contributed_per_genome_dict(g))
+        
         self.storage = GenomeStorage(args.genomes_storage)
-        self._external_genomes = args.external_genomes
-        self.genome_to_clusters = self.pan.get_gene_clusters_in_genomes_dict(
-            self.pan.gene_clusters
-        )
-        self.flat_lookup = {
-            (genome, gene_id): cluster
-            for genome, cluster_subset in self.genome_to_clusters.items()
-            for cluster in cluster_subset
-            for gene_id in self.pan.gene_clusters[cluster][genome]
-        }
+        self.external_genomes = GenomeDescriptions(self.args)
+        self.external_genomes.load_genomes_descriptions()
+        self.genome_to_clusters = self.pan.get_gene_clusters_in_genomes_dict(self.pan.gene_clusters)
+        self.flat_lookup = {(genome, gene_id): cluster for genome, cluster_subset in self.genome_to_clusters.items() for cluster in cluster_subset for gene_id in self.pan.gene_clusters[cluster][genome]}
         self.first_iteration = True
         self.current_id = 0
         self.current_pos = 0
@@ -38,16 +40,12 @@ class PanRepresenter:
         self.gene_calls = dict()
         self.best_sequences = dict()
         self.accessory_contig = list()
-        self.args = args
         self.tmpdir = tmpdir
         self.suplement_contig_name = ""
-
-    @property
-    def external_genomes(self):
-        # Read the external-genomes.txt file
-        df = pd.read_csv(self._external_genomes, sep="\t")
-        # Turn into a dictionary: {genome_name: contigs_db_path}
-        return dict(zip(df["name"], df["contigs_db_path"]))
+        self.keep_synteny = args.keep_synteny
+        self.keep_promoter = args.keep_promoter
+        self.gap_size = int(args.gap_size)
+        self.alpha = float(args.alpha)
 
     def get_most_common_genome(self):
         """
@@ -71,16 +69,18 @@ class PanRepresenter:
         )
         return sorted_dict[0][0]
 
-    def get_best_genome(self, alpha=0.8):
+    def get_best_genome(self):
         """
         Returns the name of the best genome based on completeness, redundancy and number of contigs.
         It maximizes completeness and minimizes redundancy and number of contigs.
 
-        :param alpha: The weigth given to completeness
         :return: The name of the best genome
         """
-        if self.args.best_genome:
-            return self.args.best_genome
+        
+        contigs_limit = self.args.max_num_contigs
+
+        if self.args.representative:
+            return self.args.representative
 
         genomes_dict = self.storage.get_genomes_dict()
         genomes = [
@@ -92,8 +92,10 @@ class PanRepresenter:
                 "num_genes": data.get("num_genes"),
             }
             for name, data in genomes_dict.items()
-            if data.get("num_contigs") < 5
+            if data.get("num_contigs")  < contigs_limit
         ]
+        if not genomes:
+            print("MadawaTskaaart?")
         # Extract values for normalization
         comp_values = [
             g["percent_completion"] - g["percent_redundancy"] for g in genomes
@@ -121,7 +123,7 @@ class PanRepresenter:
             contig_norm = normalize(
                 g["num_contigs"], contig_min, contig_max, maximize=False
             )
-            g["score"] = alpha * comp_norm + (1 - alpha) * contig_norm
+            g["score"] = self.alpha * comp_norm + (1 - self.alpha) * contig_norm
 
         # Return best genome using a tiebreaker
         return max(genomes, key=lambda g: (g["score"], g["num_genes"]))["name"]
@@ -137,7 +139,7 @@ class PanRepresenter:
             contigs_db: An instence of the DB class
         """
         # Create the contigs object for the genome
-        genome_db_path = self.external_genomes[genome]
+        genome_db_path = self.external_genomes.genomes.get(genome).get("contigs_db_path")
 
         # Instantiate a contigs database
         self.args.contigs_db = genome_db_path  # I have to do this
@@ -238,8 +240,10 @@ class PanRepresenter:
         gene_info = {
             "gene_callers_id": self.current_id,
             "contig": self.suplement_contig_name,
-            "start": start if start else self.current_pos,
-            "stop": stop if stop else self.current_pos + source.get("length"),
+            "start": start if start is not None else self.current_pos,
+            "stop": stop
+            if stop is not None
+            else self.current_pos + source.get("length"),
             "direction": source.get("direction"),
             "partial": source.get("partial"),
             "call_type": source.get("call_type"),
@@ -297,12 +301,12 @@ class PanRepresenter:
 
     def export_fasta(self):
         """Writes the DNA sequnces to a fasta file `output_file_path`
+        my
+                Args:
+                    output_file_path (str): the path to the output file
 
-        Args:
-            output_file_path (str): the path to the output file
-
-        Returns:
-            bool: retunrs true if successful
+                Returns:
+                    bool: retunrs true if successful
         """
         output_fasta = u.FastaOutput(self.args.contigs_fasta)
         for name, seq in self.best_sequences.items():
@@ -339,11 +343,13 @@ class PanRepresenter:
         contig_name_to_genes = self.build_contig_to_genes_dict(
             most_common_genome, contigs
         )
+
         filtered_funcs = self.build_functions_lookup(contigs_db)
         filtered_genes = self.get_filtered_genes(
             most_common_genome, contig_name_to_genes
         )
-        if self.args.keep_promoter:
+
+        if self.keep_promoter:
             raw_data = self.get_gene_calls_data(contigs)
         else:
             raw_data = self.get_gene_calls_data(contigs, filtered_genes)
@@ -353,18 +359,14 @@ class PanRepresenter:
             t.contig_sequences_table_name, string_the_key=True
         )
 
-        if not self.args.keep_senteny:
+        if not self.keep_synteny:
             for k, v in raw_data.items():
                 self.accessory_contig.append(v.get("sequence"))
                 self.add_gene_call(v)
                 self.add_function(most_common_genome, filtered_funcs, v, k)
                 self.current_id += 1
-                self.current_pos += v.get("length") + 20
+                self.current_pos += v.get("length") + self.gap_size
 
-            self.best_sequences[self.suplement_contig_name] = (
-                "NNNNNNNNNNNNNNNNNNNN".join(self.accessory_contig)
-            )
-            self.all_clusters -= self.seen_clusters
         else:
             for contig, limits in streches.items():
                 if not limits:
@@ -377,7 +379,7 @@ class PanRepresenter:
 
                     begin = first.get("start")
                     end = last.get("stop")
-                    if self.args.keep_promoter:
+                    if self.keep_promoter:
                         valid_ids = contig_name_to_genes.get(contig)
 
                         before = (
@@ -388,7 +390,12 @@ class PanRepresenter:
                         )
 
                         begin = before.get("stop") if before else 0
-                        end = after.get("start") if after else len(contig_seq)
+                        end = (
+                            max(last.get("stop"), after.get("start"))
+                            if after
+                            else len(contig_seq)
+                        )
+                        # end = after.get("start") if after else len(contig_seq)
 
                     extracted = contig_seq[begin:end]
                     self.accessory_contig.append(extracted)
@@ -404,40 +411,55 @@ class PanRepresenter:
                         )
                         self.current_id += 1
 
-                    self.current_pos += end - begin + 20
+                    for i in range(start, stop + 1):
+                        current = raw_data.get(i)
+                        new_start = current.get("start") - begin + self.current_pos
+                        new_stop = current.get("stop") - begin + self.current_pos
 
-    def assemble_sumplementary_contig(self, size=20):
-        gap = "N" * size
+                        if current.get("stop") > end:
+                            print(f"GENE {i} EXTENDS PAST end!")
+                            print(f"  current.start = {current.get('start')}")
+                            print(f"  current.stop  = {current.get('stop')}")
+                            print(
+                                f"  begin = {begin}  (before.stop = {before.get('stop') if before else 'None'})"
+                            )
+                            print(
+                                f"  end   = {end}    (after.start = {after.get('start') if after else 'None'})"
+                            )
+                            print(f"  overshoot = {current.get('stop') - end}")
+
+                    self.current_pos += end - begin + self.gap_size
+
+                    # joined = "NNNNNNNNNNNNNNNNNNNN".join(self.accessory_contig)
+                    # # print(f"DEBUG contig length    : {len(joined)}")
+                    # # print(f"DEBUG current_pos final: {self.current_pos}")
+                    # print(f"DEBUG difference       : {self.current_pos - len(joined)}")
+
+        # self.best_sequences[self.suplement_contig_name] = "NNNNNNNNNNNNNNNNNNNN".join(
+        #     self.accessory_contig
+        # )
+        self.all_clusters -= self.seen_clusters
+
+    def assemble_sumplementary_contig(self):
+        gap = "N" * self.gap_size
         self.best_sequences[self.suplement_contig_name] = gap.join(
             self.accessory_contig
         )
 
     def write_outputs(self):
         self.export_gene_calls()
-        #  self.export_functions()
+        self.export_functions()
 
         # self.export_fasta(f"{dir_path}/My_Perfect_FASTA.fasta")
         self.export_fasta()
 
     def build_contigs_db(self):
         # Create the contigs_db
+        if not self.args.project_name:
+            self.args.project_name = self.pan.p_meta.get('project_name')
+
         a = dbops.ContigsDatabase(self.args.output_file, quiet=False, skip_init=True)
         a.create(self.args)
 
         gene_function_calls_table = TableForGeneFunctions(self.args.output_file)
-        gene_function_calls_table.create(
-            self.functions, drop_previous_annotations_first=False
-        )
-
-    def main(self):
-        while self.all_clusters:
-            if self.first_iteration:
-                self.process_best_genome()
-
-            self.process_additional_genomes()
-            self.all_clusters -= self.seen_clusters
-        # end while
-
-        self.assemble_sumplementary_contig()
-        self.write_outputs()
-        self.build_contigs_db()
+        gene_function_calls_table.create(self.functions, drop_previous_annotations_first=False)
