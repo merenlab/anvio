@@ -493,6 +493,11 @@ table_requires_unique_entry_id = {'self': False,
                                   trnaseq_trimmed_table_name: False,
                                   trnaseq_normalized_table_name: False,
                                   trnaseq_modified_table_name: False,
+                                  contigs_sequence_features_table_name: False,
+                                  feature_types_table_name: False,
+                                  feature_relationships_table_name: False,
+                                  feature_qualifiers_table_name: False,
+                                  CDS_features_table_name: False,
                                   'a_test_table_that_may_or_may_not_be_there': False, # for weird programmers to be able to test weird things..
         }
 

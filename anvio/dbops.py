@@ -1891,6 +1891,233 @@ class ContigsSuperclass(object):
         self.run.info("Output", output_file_path)
 
 
+    @LazyProperty
+    @LazyProgress('sequence features')
+    def sequence_features_dict(self):
+        """Lazily load the `contigs_sequence_features` table as a dict keyed by feature_id."""
+
+        contigs_db = ContigsDatabase(self.contigs_db_path)
+        sequence_features = contigs_db.db.get_table_as_dict(t.contigs_sequence_features_table_name, error_if_no_data=False)
+        contigs_db.disconnect()
+
+        return sequence_features
+
+
+    @LazyProperty
+    @LazyProgress('feature types')
+    def feature_types_dict(self):
+        """Lazily load the `feature_types` registry as a dict keyed by feature_type."""
+
+        contigs_db = ContigsDatabase(self.contigs_db_path)
+        feature_types = contigs_db.db.get_table_as_dict(t.feature_types_table_name, error_if_no_data=False)
+        contigs_db.disconnect()
+
+        return feature_types
+
+
+    def _canonical_sequence_feature_id(self, anvio_db, feature_id):
+        """Resolve any segment's `feature_id` to its group's canonical row id, or None if absent.
+
+        For single-segment features, `feature_group_id` is NULL and the canonical id is the
+        feature_id itself. For multi-segment features, every row's `feature_group_id` equals
+        the canonical (segment_order=0) row's feature_id, so COALESCE returns that.
+        """
+
+        row = anvio_db._exec(f'''SELECT COALESCE(feature_group_id, feature_id) FROM {t.contigs_sequence_features_table_name} WHERE feature_id = ?''', (feature_id,)).fetchone()
+        return row[0] if row else None
+
+
+    def _sequence_feature_rows_to_dict(self, rows):
+        """Zip raw SELECT * rows from contigs_sequence_features into {feature_id: {column: value}}."""
+
+        columns = t.contigs_sequence_features_table_structure
+        out = {}
+        for row in rows:
+            entry = dict(zip(columns, row))
+            out[entry['feature_id']] = entry
+        return out
+
+
+    def get_sequence_features_in_contig(self, contig_name, feature_type=None):
+        """Return all sequence features on a contig as {feature_id: {column..., 'qualifiers': {key: [values]}}}.
+
+        Parameters
+        ==========
+        contig_name : str
+            Name of the contig (must match a row in `contigs_basic_info`).
+        feature_type : str, optional
+            If given, only features of this type are returned. The type need not be builtin —
+            any value present in `feature_types` will match.
+
+        Returns
+        =======
+        dict
+            Empty dict if no features match. Each value carries every column from
+            `contigs_sequence_features` plus a `qualifiers` sub-dict mapping qualifier keys
+            to ordered (by `position`) lists of values.
+        """
+
+        contigs_db = ContigsDatabase(self.contigs_db_path)
+
+        if feature_type is None:
+            sql_features = f'''SELECT * FROM {t.contigs_sequence_features_table_name} WHERE contig = ?'''
+            sql_quals    = f'''SELECT fq.feature_id, fq.key, fq.value, fq.position FROM {t.feature_qualifiers_table_name} fq JOIN {t.contigs_sequence_features_table_name} csf ON fq.feature_id = csf.feature_id WHERE csf.contig = ? ORDER BY fq.feature_id, fq.key, fq.position'''
+            feature_rows = contigs_db.db._fetchall(contigs_db.db._exec(sql_features, (contig_name,)), t.contigs_sequence_features_table_name)
+            qual_rows    = contigs_db.db._fetchall(contigs_db.db._exec(sql_quals,    (contig_name,)), t.feature_qualifiers_table_name)
+        else:
+            sql_features = f'''SELECT * FROM {t.contigs_sequence_features_table_name} WHERE contig = ? AND feature_type = ?'''
+            sql_quals    = f'''SELECT fq.feature_id, fq.key, fq.value, fq.position FROM {t.feature_qualifiers_table_name} fq JOIN {t.contigs_sequence_features_table_name} csf ON fq.feature_id = csf.feature_id WHERE csf.contig = ? AND csf.feature_type = ? ORDER BY fq.feature_id, fq.key, fq.position'''
+            feature_rows = contigs_db.db._fetchall(contigs_db.db._exec(sql_features, (contig_name, feature_type)), t.contigs_sequence_features_table_name)
+            qual_rows    = contigs_db.db._fetchall(contigs_db.db._exec(sql_quals,    (contig_name, feature_type)), t.feature_qualifiers_table_name)
+
+        contigs_db.disconnect()
+
+        out = self._sequence_feature_rows_to_dict(feature_rows)
+        for entry in out.values():
+            entry['qualifiers'] = {}
+        for fid, key, value, _position in qual_rows:
+            if fid in out:
+                out[fid]['qualifiers'].setdefault(key, []).append(value)
+        return out
+
+
+    def get_sequence_features_overlapping_range(self, contig_name, start, stop, feature_type=None):
+        """Return features on `contig_name` overlapping the half-open range [start, stop).
+
+        The two-clause overlap test (feature starts before the query ends AND feature ends
+        after the query starts) covers every overlap shape — containment, partial overlap
+        on either side, and identity. Equality of either side is handled correctly by
+        half-open semantics: `start < stop_q` excludes a feature whose start equals stop_q.
+        """
+
+        contigs_db = ContigsDatabase(self.contigs_db_path)
+
+        if feature_type is None:
+            sql = f'''SELECT * FROM {t.contigs_sequence_features_table_name} WHERE contig = ? AND start < ? AND stop > ?'''
+            rows = contigs_db.db._fetchall(contigs_db.db._exec(sql, (contig_name, stop, start)), t.contigs_sequence_features_table_name)
+        else:
+            sql = f'''SELECT * FROM {t.contigs_sequence_features_table_name} WHERE contig = ? AND start < ? AND stop > ? AND feature_type = ?'''
+            rows = contigs_db.db._fetchall(contigs_db.db._exec(sql, (contig_name, stop, start, feature_type)), t.contigs_sequence_features_table_name)
+
+        contigs_db.disconnect()
+        return self._sequence_feature_rows_to_dict(rows)
+
+
+    def get_children_of_sequence_feature(self, feature_id, relationship=None):
+        """Return child rows for any feature, auto-resolving non-canonical segments to canonical.
+
+        Children that are themselves multi-segment appear as one row per segment in the
+        result. To collapse to logical children, callers deduplicate by
+        `COALESCE(feature_group_id, feature_id)` on each returned row.
+        """
+
+        contigs_db = ContigsDatabase(self.contigs_db_path)
+
+        canonical_fid = self._canonical_sequence_feature_id(contigs_db.db, feature_id)
+        if canonical_fid is None:
+            contigs_db.disconnect()
+            return {}
+
+        if relationship is None:
+            sql = f'''SELECT csf.* FROM {t.contigs_sequence_features_table_name} csf JOIN {t.feature_relationships_table_name} fr ON csf.feature_id = fr.child_feature_id WHERE fr.parent_feature_id = ?'''
+            rows = contigs_db.db._fetchall(contigs_db.db._exec(sql, (canonical_fid,)), t.contigs_sequence_features_table_name)
+        else:
+            sql = f'''SELECT csf.* FROM {t.contigs_sequence_features_table_name} csf JOIN {t.feature_relationships_table_name} fr ON csf.feature_id = fr.child_feature_id WHERE fr.parent_feature_id = ? AND fr.relationship = ?'''
+            rows = contigs_db.db._fetchall(contigs_db.db._exec(sql, (canonical_fid, relationship)), t.contigs_sequence_features_table_name)
+
+        contigs_db.disconnect()
+        return self._sequence_feature_rows_to_dict(rows)
+
+
+    def get_parents_of_sequence_feature(self, feature_id, relationship=None):
+        """Return canonical parent rows for any child segment.
+
+        Each segment of a multi-segment child has its own row in `feature_relationships`,
+        so this is a single-table lookup that works regardless of which segment of a
+        multi-segment child is supplied. Parents are always represented by their canonical
+        row (segment_order=0 of a multi-segment parent, or the single row of a single-
+        segment parent) — callers walk to all parent segments via the group accessor if
+        they need every parent segment row.
+        """
+
+        contigs_db = ContigsDatabase(self.contigs_db_path)
+
+        if relationship is None:
+            sql = f'''SELECT csf.* FROM {t.contigs_sequence_features_table_name} csf JOIN {t.feature_relationships_table_name} fr ON csf.feature_id = fr.parent_feature_id WHERE fr.child_feature_id = ?'''
+            rows = contigs_db.db._fetchall(contigs_db.db._exec(sql, (feature_id,)), t.contigs_sequence_features_table_name)
+        else:
+            sql = f'''SELECT csf.* FROM {t.contigs_sequence_features_table_name} csf JOIN {t.feature_relationships_table_name} fr ON csf.feature_id = fr.parent_feature_id WHERE fr.child_feature_id = ? AND fr.relationship = ?'''
+            rows = contigs_db.db._fetchall(contigs_db.db._exec(sql, (feature_id, relationship)), t.contigs_sequence_features_table_name)
+
+        contigs_db.disconnect()
+        return self._sequence_feature_rows_to_dict(rows)
+
+
+    def get_sequence_feature_group(self, feature_id):
+        """Return the ordered list of segment rows belonging to the same logical feature.
+
+        Single-segment features return a one-element list. Multi-segment features return
+        every segment ordered by `segment_order` ascending (transcription order, not genomic
+        position). Empty list if `feature_id` is not found.
+        """
+
+        contigs_db = ContigsDatabase(self.contigs_db_path)
+
+        canonical_fid = self._canonical_sequence_feature_id(contigs_db.db, feature_id)
+        if canonical_fid is None:
+            contigs_db.disconnect()
+            return []
+
+        # NULL `segment_order` sorts before any non-NULL value in SQLite by default; that
+        # is what we want for single-segment features (the single row should come first
+        # in the trivial one-element list).
+        sql = f'''SELECT * FROM {t.contigs_sequence_features_table_name} WHERE COALESCE(feature_group_id, feature_id) = ? ORDER BY segment_order'''
+        rows = contigs_db.db._fetchall(contigs_db.db._exec(sql, (canonical_fid,)), t.contigs_sequence_features_table_name)
+        contigs_db.disconnect()
+
+        columns = t.contigs_sequence_features_table_structure
+        return [dict(zip(columns, row)) for row in rows]
+
+
+    def get_sequence_feature_qualifiers(self, feature_id):
+        """Return qualifiers for one feature as {key: [values_ordered_by_position]}.
+
+        Empty dict if the feature has no qualifiers. Each segment of a multi-segment
+        feature carries its own qualifier rows (the importer duplicates the source
+        SeqFeature's qualifiers onto every segment), so this method always reflects the
+        qualifiers actually stored on the given row rather than on the group.
+        """
+
+        contigs_db = ContigsDatabase(self.contigs_db_path)
+        sql = f'''SELECT key, value, position FROM {t.feature_qualifiers_table_name} WHERE feature_id = ? ORDER BY key, position'''
+        rows = contigs_db.db._fetchall(contigs_db.db._exec(sql, (feature_id,)), t.feature_qualifiers_table_name)
+        contigs_db.disconnect()
+
+        out = {}
+        for key, value, _position in rows:
+            out.setdefault(key, []).append(value)
+        return out
+
+
+    def get_cds_translation_for_feature(self, feature_id):
+        """Return the CDS translation string, auto-resolving to canonical for multi-segment CDSs.
+
+        Returns None if the feature has no translation stored, if the feature is not a CDS,
+        or if the feature_id does not exist.
+        """
+
+        contigs_db = ContigsDatabase(self.contigs_db_path)
+        canonical_fid = self._canonical_sequence_feature_id(contigs_db.db, feature_id)
+        if canonical_fid is None:
+            contigs_db.disconnect()
+            return None
+
+        sql = f'''SELECT translation FROM {t.CDS_features_table_name} WHERE feature_id = ?'''
+        row = contigs_db.db._exec(sql, (canonical_fid,)).fetchone()
+        contigs_db.disconnect()
+        return row[0] if row else None
+
+
 class PanSuperclass(object):
     def __init__(self, args, r=run, p=progress):
         self.args = args

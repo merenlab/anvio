@@ -106,5 +106,13 @@ fi
 echo "  OK [schema parity]: fresh-init and migration produce identical sqlite_master entries"
 
 ####################################################################################################
+# Test 2.5: ContigsSuperclass read accessor probe (manually-populated db)
+####################################################################################################
+INFO "Test 2.5: probing ContigsSuperclass sequence-features read accessors"
+
+cp $output_dir/FRESH.db $output_dir/PROBE.db
+python $files/sequence_features/probe_read_accessors.py $output_dir/PROBE.db
+
+####################################################################################################
 echo
-echo "Sequence-features component tests 1 & 2 PASSED."
+echo "Sequence-features component tests 1, 2 & 2.5 PASSED."
