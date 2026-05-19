@@ -144,7 +144,9 @@ class WorkflowManifestTestCase(unittest.TestCase):
         self.assertEqual(self.manifest.get_workflow_logs_dir('00_LOGS', 'phylogenomics'),
                          os.path.join('00_LOGS', 'phylogenomics'))
         self.assertEqual(self.manifest.get_workflow_logs_dir('00_LOGS_PHYLO', 'phylogenomics'),
-                         os.path.join('00_LOGS', 'PHYLO'))
+                         os.path.join('00_LOGS', 'phylogenomics'))
+        self.assertEqual(self.manifest.get_workflow_logs_dir('00_LOGS_FIVE_PAN', 'pangenomics'),
+                         os.path.join('00_LOGS', 'pangenomics'))
         self.assertEqual(self.manifest.get_workflow_logs_dir('00_LOGS-idba_ud', 'metagenomics'),
                          os.path.join('00_LOGS', 'idba_ud'))
         self.assertEqual(self.manifest.get_workflow_logs_dir('custom_logs', 'trnaseq'),

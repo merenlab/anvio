@@ -11,7 +11,9 @@ def get_workflow_logs_dir(logs_dir, workflow_name):
     logs_parent_dir = os.path.dirname(logs_dir)
     logs_dir_name = os.path.basename(logs_dir)
 
-    if logs_dir_name == '00_LOGS':
+    if workflow_name in ('pangenomics', 'phylogenomics'):
+        workflow_logs_dir_name = workflow_name
+    elif logs_dir_name == '00_LOGS':
         workflow_logs_dir_name = workflow_name
     elif logs_dir_name.startswith('00_LOGS-') or logs_dir_name.startswith('00_LOGS_'):
         workflow_logs_dir_name = logs_dir_name[len('00_LOGS') + 1:]
