@@ -41,11 +41,12 @@ progress = terminal.Progress()
 
 
 BUILTIN_FEATURE_TYPES = [
-    ('gene',   1, 0, 'A region transcribed as a unit; SO:0000704'),
-    ('mRNA',   1, 0, 'Mature messenger RNA; SO:0000234'),
-    ('CDS',    1, 1, 'Coding sequence; SO:0000316'),
-    ('exon',   1, 0, 'A region of a transcript that remains after splicing; SO:0000147'),
-    ('intron', 1, 0, 'A region removed during splicing; SO:0000188'),
+    ('gene',       1, 0, 'A region transcribed as a unit; SO:0000704'),
+    ('mRNA',       1, 0, 'Mature messenger RNA; SO:0000234'),
+    ('CDS',        1, 1, 'Coding sequence; SO:0000316'),
+    ('exon',       1, 0, 'A region of a transcript that remains after splicing; SO:0000147'),
+    ('intron',     1, 0, 'A region removed during splicing; SO:0000188'),
+    ('transcript', 1, 0, 'A region transcribed from a gene; SO:0000673. Includes any RNA product (mRNA, ncRNA, tRNA, rRNA, etc.)'),
 ]
 
 
@@ -88,6 +89,10 @@ def create_sequence_features_tables(db):
     db._exec(f'''CREATE INDEX IF NOT EXISTS idx_{t.contigs_sequence_features_table_name}_feature_type ON {t.contigs_sequence_features_table_name} (feature_type)''')
     db._exec(f'''CREATE INDEX IF NOT EXISTS idx_{t.contigs_sequence_features_table_name}_group_id     ON {t.contigs_sequence_features_table_name} (feature_group_id)''')
     db._exec(f'''CREATE INDEX IF NOT EXISTS idx_{t.contigs_sequence_features_table_name}_gcid         ON {t.contigs_sequence_features_table_name} (gene_callers_id)''')
+    # `derivation` is non-NULL only on synthesized rows; the partial predicate keeps
+    # the index small (NULL-only literal rows do not pay the index-write cost) while
+    # still accelerating the canonical "synthesized rows of type X" queries.
+    db._exec(f'''CREATE INDEX IF NOT EXISTS idx_{t.contigs_sequence_features_table_name}_derivation   ON {t.contigs_sequence_features_table_name} (derivation) WHERE derivation IS NOT NULL''')
 
     # parent_feature_id lookups are common ("what are the children of feature X");
     # child_feature_id is already covered by the leading column of the PK.

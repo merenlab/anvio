@@ -26,13 +26,14 @@ def _assert(cond, label):
     print(f"  OK   [{label}]")
 
 
-def feature(feature_id, contig, ftype, source, start, stop, direction='f', fg=None, so=None, ext=None):
+def feature(feature_id, contig, ftype, source, start, stop, direction='f', fg=None, so=None, ext=None, derivation=None, derived_from=None):
     return {
         'feature_id': feature_id, 'contig': contig, 'feature_type': ftype, 'source': source,
         'start': start, 'stop': stop, 'direction': direction,
         'partial_fiveprime': 0, 'partial_threeprime': 0,
         'feature_group_id': fg, 'segment_order': so,
         'external_id': ext, 'gene_callers_id': None,
+        'derivation': derivation, 'derived_from_feature_id': derived_from,
     }
 
 

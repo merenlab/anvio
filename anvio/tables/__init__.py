@@ -146,8 +146,8 @@ gene_level_inseq_stats_table_types     = [    'numeric'    ,     'text'   ,    '
 ####################################################################################################
 
 contigs_sequence_features_table_name      = 'contigs_sequence_features'
-contigs_sequence_features_table_structure = ['feature_id', 'contig', 'feature_type', 'source', 'start' , 'stop'  , 'direction', 'partial_fiveprime', 'partial_threeprime', 'feature_group_id', 'segment_order', 'external_id', 'gene_callers_id']
-contigs_sequence_features_table_types     = [   'text'   , 'text'  ,    'text'     , 'text'  ,'numeric','numeric',   'text'   ,      'numeric'    ,      'numeric'     ,      'text'      ,    'numeric'   ,    'text'   ,    'numeric'    ]
+contigs_sequence_features_table_structure = ['feature_id', 'contig', 'feature_type', 'source', 'start' , 'stop'  , 'direction', 'partial_fiveprime', 'partial_threeprime', 'feature_group_id', 'segment_order', 'external_id', 'gene_callers_id', 'derivation', 'derived_from_feature_id']
+contigs_sequence_features_table_types     = [   'text'   , 'text'  ,    'text'     , 'text'  ,'numeric','numeric',   'text'   ,      'numeric'    ,      'numeric'     ,      'text'      ,    'numeric'   ,    'text'   ,    'numeric'    ,    'text'   ,          'text'          ]
 
 feature_types_table_name      = 'feature_types'
 feature_types_table_structure = ['feature_type', 'is_builtin', 'has_dedicated_table', 'description']

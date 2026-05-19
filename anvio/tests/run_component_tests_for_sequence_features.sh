@@ -46,11 +46,17 @@ for tbl in $NEW_TABLES; do
     assert_query $output_dir/MIGRATED.db "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='$tbl'" "1" "$tbl table exists after migration"
 done
 
-assert_query $output_dir/MIGRATED.db "SELECT COUNT(*) FROM feature_types" "5" "feature_types has 5 builtin rows"
-assert_query $output_dir/MIGRATED.db "SELECT COUNT(*) FROM feature_types WHERE is_builtin=1" "5" "all 5 feature_types are builtin"
-assert_query $output_dir/MIGRATED.db "SELECT GROUP_CONCAT(feature_type, ',') FROM (SELECT feature_type FROM feature_types ORDER BY feature_type)" "CDS,exon,gene,intron,mRNA" "feature_types contains the five expected names"
+assert_query $output_dir/MIGRATED.db "SELECT COUNT(*) FROM feature_types" "6" "feature_types has 6 builtin rows"
+assert_query $output_dir/MIGRATED.db "SELECT COUNT(*) FROM feature_types WHERE is_builtin=1" "6" "all 6 feature_types are builtin"
+assert_query $output_dir/MIGRATED.db "SELECT GROUP_CONCAT(feature_type, ',') FROM (SELECT feature_type FROM feature_types ORDER BY feature_type)" "CDS,exon,gene,intron,mRNA,transcript" "feature_types contains the six expected names"
 assert_query $output_dir/MIGRATED.db "SELECT has_dedicated_table FROM feature_types WHERE feature_type='CDS'" "1" "CDS feature type is flagged has_dedicated_table"
 assert_query $output_dir/MIGRATED.db "SELECT has_dedicated_table FROM feature_types WHERE feature_type='gene'" "0" "gene feature type is not flagged has_dedicated_table"
+assert_query $output_dir/MIGRATED.db "SELECT is_builtin FROM feature_types WHERE feature_type='transcript'" "1" "transcript feature type is a builtin"
+assert_query $output_dir/MIGRATED.db "SELECT has_dedicated_table FROM feature_types WHERE feature_type='transcript'" "0" "transcript feature type does not have a dedicated table"
+
+# the two synthesis-related columns and the partial index on derivation
+assert_query $output_dir/MIGRATED.db "SELECT COUNT(*) FROM pragma_table_info('contigs_sequence_features') WHERE name='derivation'" "1" "contigs_sequence_features has the derivation column"
+assert_query $output_dir/MIGRATED.db "SELECT COUNT(*) FROM pragma_table_info('contigs_sequence_features') WHERE name='derived_from_feature_id'" "1" "contigs_sequence_features has the derived_from_feature_id column"
 
 for tbl in contigs_sequence_features feature_relationships feature_qualifiers CDS_features; do
     assert_query $output_dir/MIGRATED.db "SELECT COUNT(*) FROM $tbl" "0" "$tbl is empty after migration"
@@ -62,7 +68,7 @@ assert_query $output_dir/MIGRATED.db "SELECT COUNT(*) FROM splits_basic_info"  "
 assert_query $output_dir/MIGRATED.db "SELECT COUNT(*) FROM genes_in_contigs"   "$PRE_GENES"   "genes_in_contigs row count is preserved"
 
 # verify the indexes anvi'o expects on the new tables actually exist
-for idx in idx_pk_contigs_sequence_features idx_pk_feature_types idx_pk_feature_relationships idx_pk_feature_qualifiers idx_pk_CDS_features idx_contigs_sequence_features_contig_start idx_contigs_sequence_features_contig_stop idx_contigs_sequence_features_feature_type idx_contigs_sequence_features_group_id idx_contigs_sequence_features_gcid idx_feature_relationships_parent; do
+for idx in idx_pk_contigs_sequence_features idx_pk_feature_types idx_pk_feature_relationships idx_pk_feature_qualifiers idx_pk_CDS_features idx_contigs_sequence_features_contig_start idx_contigs_sequence_features_contig_stop idx_contigs_sequence_features_feature_type idx_contigs_sequence_features_group_id idx_contigs_sequence_features_gcid idx_contigs_sequence_features_derivation idx_feature_relationships_parent; do
     assert_query $output_dir/MIGRATED.db "SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name='$idx'" "1" "$idx exists after migration"
 done
 
@@ -85,10 +91,16 @@ for tbl in $NEW_TABLES; do
     assert_query $output_dir/FRESH.db "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='$tbl'" "1" "$tbl table exists in fresh db"
 done
 
-assert_query $output_dir/FRESH.db "SELECT COUNT(*) FROM feature_types" "5" "feature_types has 5 builtin rows in fresh db"
+assert_query $output_dir/FRESH.db "SELECT COUNT(*) FROM feature_types" "6" "feature_types has 6 builtin rows in fresh db"
+assert_query $output_dir/FRESH.db "SELECT GROUP_CONCAT(feature_type, ',') FROM (SELECT feature_type FROM feature_types ORDER BY feature_type)" "CDS,exon,gene,intron,mRNA,transcript" "fresh db feature_types contains the six expected builtins"
 for tbl in contigs_sequence_features feature_relationships feature_qualifiers CDS_features; do
     assert_query $output_dir/FRESH.db "SELECT COUNT(*) FROM $tbl" "0" "$tbl is empty in fresh db"
 done
+
+# fresh DB has the synthesis-related columns and partial index
+assert_query $output_dir/FRESH.db "SELECT COUNT(*) FROM pragma_table_info('contigs_sequence_features') WHERE name='derivation'" "1" "fresh db contigs_sequence_features has the derivation column"
+assert_query $output_dir/FRESH.db "SELECT COUNT(*) FROM pragma_table_info('contigs_sequence_features') WHERE name='derived_from_feature_id'" "1" "fresh db contigs_sequence_features has the derived_from_feature_id column"
+assert_query $output_dir/FRESH.db "SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name='idx_contigs_sequence_features_derivation'" "1" "fresh db has the partial index on derivation"
 
 # pre-existing tables behave normally
 assert_query $output_dir/FRESH.db "SELECT COUNT(*) FROM contigs_basic_info" "6" "fresh db has 6 contigs (matching contigs.fa)"

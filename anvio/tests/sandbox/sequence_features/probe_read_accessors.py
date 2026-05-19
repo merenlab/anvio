@@ -31,21 +31,21 @@ def hand_populate(db_path, contig_a, contig_b):
 
     feats = [
         # single-segment gene on contig A
-        ('feat_gene_ss',      contig_a, 'gene', 'probe', 100,  500,  'f', 0, 0, None,            None, 'GENE_SS', None),
+        ('feat_gene_ss',      contig_a, 'gene', 'probe', 100,  500,  'f', 0, 0, None,            None, 'GENE_SS', None,    None, None),
         # multi-segment CDS on contig A, forward (three segments, transcription = genomic order)
-        ('feat_cds_3seg_a',   contig_a, 'CDS',  'probe', 100,  200,  'f', 0, 0, 'feat_cds_3seg_a', 0,   'CDS_3SEG', None),
-        ('feat_cds_3seg_b',   contig_a, 'CDS',  'probe', 300,  400,  'f', 0, 0, 'feat_cds_3seg_a', 1,   'CDS_3SEG', None),
-        ('feat_cds_3seg_c',   contig_a, 'CDS',  'probe', 500,  600,  'f', 0, 0, 'feat_cds_3seg_a', 2,   'CDS_3SEG', None),
+        ('feat_cds_3seg_a',   contig_a, 'CDS',  'probe', 100,  200,  'f', 0, 0, 'feat_cds_3seg_a', 0,   'CDS_3SEG', None,  None, None),
+        ('feat_cds_3seg_b',   contig_a, 'CDS',  'probe', 300,  400,  'f', 0, 0, 'feat_cds_3seg_a', 1,   'CDS_3SEG', None,  None, None),
+        ('feat_cds_3seg_c',   contig_a, 'CDS',  'probe', 500,  600,  'f', 0, 0, 'feat_cds_3seg_a', 2,   'CDS_3SEG', None,  None, None),
         # multi-segment mRNA on contig A, forward (parent of the CDS above)
-        ('feat_mrna_2seg_a',  contig_a, 'mRNA', 'probe', 100,  200,  'f', 0, 0, 'feat_mrna_2seg_a', 0,  'MRNA_2SEG', None),
-        ('feat_mrna_2seg_b',  contig_a, 'mRNA', 'probe', 300,  600,  'f', 0, 0, 'feat_mrna_2seg_a', 1,  'MRNA_2SEG', None),
+        ('feat_mrna_2seg_a',  contig_a, 'mRNA', 'probe', 100,  200,  'f', 0, 0, 'feat_mrna_2seg_a', 0,  'MRNA_2SEG', None, None, None),
+        ('feat_mrna_2seg_b',  contig_a, 'mRNA', 'probe', 300,  600,  'f', 0, 0, 'feat_mrna_2seg_a', 1,  'MRNA_2SEG', None, None, None),
         # multi-segment CDS on contig A, reverse — segment_order=0 must be the genomic rightmost
-        ('feat_cds_rev_a',    contig_a, 'CDS',  'probe', 900,  1000, 'r', 0, 0, 'feat_cds_rev_a',  0,   'CDS_REV',  None),
-        ('feat_cds_rev_b',    contig_a, 'CDS',  'probe', 700,  800,  'r', 0, 0, 'feat_cds_rev_a',  1,   'CDS_REV',  None),
+        ('feat_cds_rev_a',    contig_a, 'CDS',  'probe', 900,  1000, 'r', 0, 0, 'feat_cds_rev_a',  0,   'CDS_REV',  None, None, None),
+        ('feat_cds_rev_b',    contig_a, 'CDS',  'probe', 700,  800,  'r', 0, 0, 'feat_cds_rev_a',  1,   'CDS_REV',  None, None, None),
         # orphan single-segment intron (no parent expected) on contig A
-        ('feat_intron_orphan', contig_a, 'intron', 'probe', 2000, 2500, 'f', 0, 0, None,           None, None,     None),
+        ('feat_intron_orphan', contig_a, 'intron', 'probe', 2000, 2500, 'f', 0, 0, None,           None, None,     None,  None, None),
         # single-segment feature on contig B (used to confirm contig filtering)
-        ('feat_gene_b',       contig_b, 'gene', 'probe', 50,   400,  'f', 0, 0, None,            None, None,      None),
+        ('feat_gene_b',       contig_b, 'gene', 'probe', 50,   400,  'f', 0, 0, None,            None, None,      None,   None, None),
     ]
 
     rels = [
@@ -79,7 +79,7 @@ def hand_populate(db_path, contig_a, contig_b):
 
     con = sqlite3.connect(db_path)
     cur = con.cursor()
-    cur.executemany(f"INSERT INTO {t.contigs_sequence_features_table_name} VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)", feats)
+    cur.executemany(f"INSERT INTO {t.contigs_sequence_features_table_name} VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", feats)
     cur.executemany(f"INSERT INTO {t.feature_relationships_table_name}      VALUES (?,?,?)", rels)
     cur.executemany(f"INSERT INTO {t.feature_qualifiers_table_name}         VALUES (?,?,?,?)", quals)
     cur.executemany(f"INSERT INTO {t.CDS_features_table_name}               VALUES (?,?,?,?)", cds)

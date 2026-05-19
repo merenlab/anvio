@@ -55,7 +55,9 @@ def migrate(db_path):
         f"`feature_relationships`, `feature_qualifiers`, and `CDS_features`) have been created "
         f"and the builtin feature-type registry has been populated. No existing rows in any "
         f"other table were touched. You can now use `anvi-import-genbank-features` to populate "
-        f"the new tables from a GenBank file."
+        f"the new tables from a GenBank file — the importer also synthesizes uniform `transcript` "
+        f"and `exon` rows so every gene is queryable through the same hierarchy regardless of how "
+        f"the source GenBank file structured its annotations."
     )
     run.info_single(message, nl_after=1, nl_before=1, mc='green')
 

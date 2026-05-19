@@ -337,19 +337,21 @@ class GenbankFeatureImporter:
                     break
                 fid = compute_feature_id(contig, ftype, self.source_name, seg_start, seg_stop, direction)
                 row = {
-                    'feature_id':         fid,
-                    'contig':             contig,
-                    'feature_type':       ftype,
-                    'source':             self.source_name,
-                    'start':              seg_start,
-                    'stop':               seg_stop,
-                    'direction':          direction,
-                    'partial_fiveprime':  partial_5p,
-                    'partial_threeprime': partial_3p,
-                    'feature_group_id':   None,
-                    'segment_order':      None,
-                    'external_id':        locus_tag,
-                    'gene_callers_id':    None,
+                    'feature_id':              fid,
+                    'contig':                  contig,
+                    'feature_type':            ftype,
+                    'source':                  self.source_name,
+                    'start':                   seg_start,
+                    'stop':                    seg_stop,
+                    'direction':               direction,
+                    'partial_fiveprime':       partial_5p,
+                    'partial_threeprime':      partial_3p,
+                    'feature_group_id':        None,
+                    'segment_order':           None,
+                    'external_id':             locus_tag,
+                    'gene_callers_id':         None,
+                    'derivation':              None,
+                    'derived_from_feature_id': None,
                 }
                 if multi_segment:
                     row['segment_order'] = idx
