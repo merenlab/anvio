@@ -47,14 +47,43 @@ BUILTIN_FEATURE_TYPE_NAMES = {row[0] for row in BUILTIN_FEATURE_TYPES}
 # be written to `feature_qualifiers`. Only applies to CDS features.
 CDS_DEDICATED_QUALIFIERS = {'translation', 'codon_start', 'transl_table'}
 
-# Feature-type pairs (child_type → ordered list of parent-type preferences plus the
-# relationship label that pairing produces). Only types we resolve relationships for.
-PARENT_RULES = {
-    'CDS':    [('mRNA', 'part_of'), ('gene', 'derives_from')],
-    'mRNA':   [('gene', 'part_of')],
-    'exon':   [('mRNA', 'part_of')],
-    'intron': [('mRNA', 'part_of')],
+# Feature types that represent transcript-source RNAs — used by step 13 to link
+# them all to gene parents (the v25 implementation only linked mRNA), and by
+# step 13.5 (synthesis) to find a gene's transcript-source children. The set
+# excludes literal `transcript` features in step 13.5a's case 1 lookups but
+# IS included here so that literal transcript features, if any, still receive
+# the same treatment as the other RNA types. New transcript-source feature
+# types should be added here.
+TRANSCRIPT_SOURCE_TYPES = {
+    'transcript', 'mRNA', 'primary_transcript', 'ncRNA', 'tRNA', 'rRNA',
+    'precursor_RNA', 'misc_RNA', 'tmRNA', 'snRNA', 'snoRNA', 'scRNA', 'antisense_RNA',
 }
+
+# Transcript-source types that step 13 sub-rule 4.1 links to gene parents. We
+# exclude literal `transcript` because synthesis treats it as a special case
+# (shadow-transcript pattern in step 13.5a) — see Section 4 of the prompt.
+TRANSCRIPT_SOURCE_TYPES_FOR_GENE_PARENTING = TRANSCRIPT_SOURCE_TYPES - {'transcript'}
+
+# Feature-type pairs (child_type → ordered list of (candidate parent types, relationship)
+# tuples). Each list entry is one precedence level; candidates from all listed parent
+# types at the same level are pooled and considered together. The first precedence
+# level that produces matches wins. Sub-rule 4.1 (every transcript-source type except
+# `transcript` parents to `gene`) is appended after the static rules.
+PARENT_RULES = {
+    'CDS':    [(['mRNA'], 'part_of'), (['gene'], 'derives_from')],
+    # Sub-rule 4.2: exon and intron features parent to any transcript-source feature
+    # (mRNA, ncRNA, tRNA, ..., and the rare literal `transcript`). The v25 rule only
+    # considered `mRNA`; this generalization lets an exon under an ncRNA, tRNA, etc.
+    # be linked correctly to that RNA.
+    'exon':   [(sorted(TRANSCRIPT_SOURCE_TYPES), 'part_of')],
+    'intron': [(sorted(TRANSCRIPT_SOURCE_TYPES), 'part_of')],
+}
+# Sub-rule 4.1: every transcript-source type except literal `transcript` parents to
+# `gene` with `part_of`. The literal `transcript` case is handled by the synthesis
+# layer (step 13.5) via the shadow-transcript pattern.
+for _ttype in TRANSCRIPT_SOURCE_TYPES_FOR_GENE_PARENTING:
+    PARENT_RULES[_ttype] = [(['gene'], 'part_of')]
+del _ttype
 
 
 HASH_INPUT_FIELDS = ('contig', 'feature_type', 'source', 'start', 'stop', 'direction',
@@ -652,8 +681,13 @@ class GenbankFeatureImporter:
 
             chosen_parents = []   # list of (parent_canonical_fid, relationship)
 
-            for parent_type, label in PARENT_RULES[ftype]:
-                candidates = by_type.get(parent_type, [])
+            for parent_types, label in PARENT_RULES[ftype]:
+                # candidates from every listed parent type at this precedence level are
+                # pooled — important for exon/intron which considers all transcript-source
+                # types together rather than cascading through them in order.
+                candidates = []
+                for pt in parent_types:
+                    candidates.extend(by_type.get(pt, []))
                 matches = self._match_parents(info, candidates)
                 if matches:
                     chosen_parents = [(p, label) for p in matches]
@@ -665,7 +699,9 @@ class GenbankFeatureImporter:
                 self.counts['cds_without_parents'] += 1
                 continue
             if not chosen_parents:
-                self.run.warning(f"{ftype} '{cfid}' on contig '{info['contig']}' has no {' or '.join(p for p, _ in PARENT_RULES[ftype])} parent.")
+                # flatten all candidate parent types into a unique, sorted list for the warning
+                parent_type_names = sorted({pt for parent_types, _ in PARENT_RULES[ftype] for pt in parent_types})
+                self.run.warning(f"{ftype} '{cfid}' on contig '{info['contig']}' has no {' or '.join(parent_type_names)} parent.")
                 continue
 
             for parent_cfid, label in chosen_parents:
