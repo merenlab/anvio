@@ -59,7 +59,7 @@ def export_functions_in_matrix_format(functions_dict, sources_to_include, output
     run.info('Output file', output_file)
 
 
-CONTIG_INFO_FIELDS = ['contig', 'start', 'stop', 'direction', 'partial', 'contig_length', 'contig_gc_content']
+CONTIG_INFO_FIELDS = ['contig_name', 'start', 'stop', 'direction', 'partial', 'contig_length', 'contig_gc_content']
 
 
 def export_functions_in_long_format(functions_dict, output_file, run, progress, include_contig_info=False):
@@ -167,7 +167,7 @@ def main():
                 gene_call = genes_in_contigs_dict.get(entry['gene_callers_id'], {})
                 contig_name = gene_call.get('contig', '')
                 contig_info = contigs_info_dict.get(contig_name, {})
-                entry['contig'] = contig_name
+                entry['contig_name'] = contig_name
                 entry['start'] = gene_call.get('start', '')
                 entry['stop'] = gene_call.get('stop', '')
                 entry['direction'] = gene_call.get('direction', '')
