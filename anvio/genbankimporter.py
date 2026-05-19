@@ -1198,3 +1198,23 @@ class GenbankFeatureImporter:
             self.run.warning(None, header="By feature type", lc='green')
             for ftype in sorted(self.types_seen):
                 self.run.info(ftype, self.types_seen[ftype])
+
+        # Step 13.5 synthesis stats. Reported by derivation so users can see how their
+        # genes' transcript hierarchies were derived (literal mRNAs vs. CDS fallback vs.
+        # lone-gene fallback). The genes-without-transcript count should always be zero —
+        # we emit it unconditionally so any nonzero value is immediately visible.
+        synth_t = self.synth_counts['transcripts_by_derivation']
+        synth_e = self.synth_counts['exons_by_derivation']
+        if synth_t or synth_e or self.synth_counts['genes_without_synthesized_transcript']:
+            self.run.warning(None, header="Synthesis (step 13.5)", lc='green')
+            self.run.info("Synthesized transcripts (total)", sum(synth_t.values()))
+            if synth_t:
+                for derivation in sorted(synth_t):
+                    self.run.info(f"  from {derivation}", synth_t[derivation])
+            self.run.info("Synthesized exons (total)",       sum(synth_e.values()))
+            if synth_e:
+                for derivation in sorted(synth_e):
+                    self.run.info(f"  from {derivation}", synth_e[derivation])
+            # This should be zero unless there is a bug; per-gene warnings during synthesis
+            # already named the offending genes, so here we just surface the aggregate count.
+            self.run.info("Genes with no synthesized transcript", self.synth_counts['genes_without_synthesized_transcript'])
