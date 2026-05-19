@@ -120,6 +120,14 @@ def env_prefix(tool):
     return f"conda run -n {name}" if name else ""
 
 
+def rule_log(rule_name, log_file_name='log'):
+    """Return a log path under 00_LOGS/<rule_name>/."""
+    if not log_file_name.endswith('.log'):
+        log_file_name = f"{log_file_name}.log"
+
+    return os.path.join(dirs_dict["LOGS_DIR"], rule_name, log_file_name)
+
+
 ruleorder: import_percent_of_reads_mapped > import_krakenuniq_taxonomy
 
 rule metagenomics_workflow_target_rule:
@@ -139,7 +147,7 @@ rule iu_gen_configs:
     then copy/symlink to {QC_DIR}/{readset}.ini so suffixed SR readsets exist.
     """
     version: 1.0
-    log: dirs_dict["LOGS_DIR"] + "/iu_gen_configs.log"
+    log: rule_log("iu_gen_configs")
     # one-time rule -> no wildcard constraints
     input:
         ancient(M.get_param_value_from_config(['samples_txt']))
@@ -191,7 +199,7 @@ qc_output_r2 = os.path.join(dirs_dict["QC_DIR"], "{readset}-QUALITY_PASSED_R2.fa
 rule iu_filter_quality_minoche:
     """ Run QC using iu-filter-quality-minoche """
     version: 1.0
-    log: dirs_dict["LOGS_DIR"] + "/{readset}-iu_filter_quality_minoche.log"
+    log: rule_log("iu_filter_quality_minoche", "{readset}")
     wildcard_constraints:
         readset = SR_RS_RE
     input:
@@ -287,7 +295,7 @@ def input_for_remove_short_reads_based_on_references(wildcards):
 gzip_suffix = '.gz' if run_gzip_fastqs else ''
 rule remove_short_reads_based_on_references:
     version: 1.0
-    log: os.path.join(dirs_dict["LOGS_DIR"], "{readset}-remove_short_reads_based_on_references.log")
+    log: rule_log("remove_short_reads_based_on_references", "{readset}")
     input: unpack(input_for_remove_short_reads_based_on_references)
     output:
         ids_to_remove = os.path.join(dirs_dict["QC_DIR"], '{readset}-ids-to-remove.txt'),
@@ -358,7 +366,7 @@ rule remove_short_reads_based_on_references:
 
 rule gen_report_for_mapping_to_references_for_removal:
     version: 1.0
-    log: os.path.join(dirs_dict["LOGS_DIR"], "gen_report_for_mapping_to_references_for_removal.log")
+    log: rule_log("gen_report_for_mapping_to_references_for_removal")
     input:
         ids_to_remove = expand(os.path.join(dirs_dict["QC_DIR"], '{readset}-ids-to-remove.txt'), readset=SR_READSETS),
     output:
@@ -372,7 +380,7 @@ rule gen_report_for_mapping_to_references_for_removal:
 
 rule gen_qc_report:
     version: 1.0
-    log: dirs_dict["LOGS_DIR"] + "/gen_qc_report.log"
+    log: rule_log("gen_qc_report")
     input: expand(dirs_dict["QC_DIR"] + "/{readset}-STATS.txt", readset=SR_READSETS)
     output: dirs_dict["QC_DIR"] + "/qc-report.txt"
     threads: M.T('gen_qc_report')
@@ -424,7 +432,7 @@ rule gen_qc_report:
 
 rule merge_fastas_for_co_assembly:
     version: 1.0
-    log: dirs_dict["LOGS_DIR"] + "/{group}-merge_fastas_for_co_assembly.log"
+    log: rule_log("merge_fastas_for_co_assembly", "{group}")
     input: unpack(lambda wildcards: M.get_sr_fastqs_for_group(wildcards.group))
     output: temp(dirs_dict["QC_DIR"] + "/{group}-merged.fa")
     threads: M.T('merge_fastas_for_co_assembly')
@@ -458,7 +466,7 @@ rule merge_fastas_for_co_assembly:
 
 rule merge_fastqs_for_co_assembly:
     version: 1.0
-    log: dirs_dict["LOGS_DIR"] + "/{group}-merge_fastqs_for_co_assembly.log"
+    log: rule_log("merge_fastqs_for_co_assembly", "{group}")
     input: unpack(lambda wildcards: M.get_sr_fastqs_for_group(wildcards.group))
     output:
         r1 = temp(os.path.join(dirs_dict["QC_DIR"], "{group}-merged_R1.fastq")),
@@ -481,7 +489,7 @@ gzip_fastq_output = os.path.join(dirs_dict["QC_DIR"],\
 rule gzip_fastqs:
     ''' Compressing the quality controlled fastq files'''
     version: 1.0
-    log: dirs_dict["LOGS_DIR"] + "/{readset}-{R}-gzip.log"
+    log: rule_log("gzip_fastqs", "{readset}-{R}")
     input:
         fastq = os.path.join(dirs_dict["QC_DIR"], "{readset}-QUALITY_PASSED_{R}.fastq")
     output: temp(gzip_fastq_output) if M.remove_short_reads_based_on_references \
@@ -508,7 +516,7 @@ if M.get_param_value_from_config(['flye', 'run']) and M.has_lr:
         version: 1.0
         conda: conda_yaml('flye')
         log:
-            M.dirs_dict["LOGS_DIR"] + "/{group}-flye.log"
+            rule_log("flye", "{group}")
         input:
             reads = lambda wildcards: M.get_lr_files_for_group(wildcards.group)
         output:
@@ -559,7 +567,7 @@ if M.get_param_value_from_config(['idba_ud', 'run']) and M.has_sr:
             group = SR_GRP_RE
         version: 1.0
         conda: conda_yaml('idba_ud')
-        log: dirs_dict["LOGS_DIR"] + "/{group}-idba_ud.log"
+        log: rule_log("idba_ud", "{group}")
         input:
             fasta = dirs_dict["QC_DIR"] + "/{group}-merged.fa"
         output:
@@ -639,7 +647,7 @@ if M.get_param_value_from_config(['metaspades','run']) and M.has_sr:
             group = SR_GRP_RE
         version: 1.0
         conda: conda_yaml('metaspades')
-        log: dirs_dict["LOGS_DIR"] + "/{group}-metaspades.log"
+        log: rule_log("metaspades", "{group}")
         input: unpack(input_for_metaspades)
         output:
             contigs = temp(os.path.join(dirs_dict["FASTA_DIR"], "{group}", "final.contigs.fa")),
@@ -688,7 +696,7 @@ if M.get_param_value_from_config(['megahit','run']) and M.has_sr:
         wildcard_constraints:
             group = SR_GRP_RE
         conda: conda_yaml('megahit')
-        log: dirs_dict["LOGS_DIR"] + "/{group}-megahit.log"
+        log: rule_log("megahit", "{group}")
         input:
             r1 = lambda wildcards: M.get_sr_fastqs_for_group(wildcards.group)['r1'],
             r2 = lambda wildcards: M.get_sr_fastqs_for_group(wildcards.group)['r2'],
@@ -768,7 +776,7 @@ rule bowtie_build:
     wildcard_constraints:
         readset = SR_RS_RE
     conda: conda_yaml('bowtie')
-    log: dirs_dict["LOGS_DIR"] + "/{group}-bowtie_build.log"
+    log: rule_log("bowtie_build", "{group}")
     input:
         contigs = M.get_fasta
     output:
@@ -790,7 +798,7 @@ rule bowtie_build:
 rule bowtie:
     """Map SR readsets with bowtie2 (extension handled via get_fastq)."""
     version: 1.0
-    log: dirs_dict["LOGS_DIR"] + "/{group}-{readset}-bowtie.log"
+    log: rule_log("bowtie", "{group}-{readset}")
     wildcard_constraints:
         readset = SR_RS_RE
     conda: conda_yaml('bowtie')
@@ -822,7 +830,7 @@ rule bowtie:
 rule minimap2_index:
     version: 1.0
     log:
-        dirs_dict["LOGS_DIR"] + "/{group}-minimap2_index.log"
+        rule_log("minimap2_index", "{group}")
     wildcard_constraints:
         readset = LR_RS_RE
     conda: conda_yaml('minimap2')
@@ -845,7 +853,7 @@ rule minimap2_index:
 
 rule minimap2:
     version: 1.0
-    log: dirs_dict["LOGS_DIR"] + "/{group}-{readset}-minimap2.log"
+    log: rule_log("minimap2", "{group}-{readset}")
     wildcard_constraints:
         readset = LR_RS_RE
     conda: conda_yaml('minimap2')
@@ -869,7 +877,7 @@ rule minimap2:
 rule samtools_view:
     """ sort sam file with samtools and create a RAW.bam file"""
     version: 1.0
-    log: dirs_dict["LOGS_DIR"] + "/{group}-{readset}-samtools_view.log"
+    log: rule_log("samtools_view", "{group}-{readset}")
     input:  M.dirs_dict["MAPPING_DIR"] + "/{group}/{readset}.sam"
     params: additional_params = M.get_param_value_from_config(["samtools_view", "additional_params"])
     # output as temp. we only keep the final bam file
@@ -882,7 +890,7 @@ rule samtools_view:
 rule anvi_init_bam:
     """ run anvi-init-bam on RAW bam file to create a bam file ready for anvi-profile"""
     version: 1.0 # later we can decide if we want the version to use the version of anvi'o
-    log: dirs_dict["LOGS_DIR"] + "/{group}-{readset}-anvi_init_bam.log"
+    log: rule_log("anvi_init_bam", "{group}-{readset}")
     input:  M.dirs_dict["MAPPING_DIR"] + "/{group}/{readset}-RAW.bam"
     output:
         bam = dirs_dict["MAPPING_DIR"] + "/{group}/{readset}.bam",
@@ -912,7 +920,7 @@ rule anvi_profile:
     """ run anvi-profile on the bam file"""
     # setting the rule version to be as the version of the profile database of anvi'o
     version: anvio.__profile__version__
-    log: dirs_dict["LOGS_DIR"] + "/{group}-{readset}-anvi_profile.log"
+    log: rule_log("anvi_profile", "{group}-{readset}")
     input:
         bam = dirs_dict["MAPPING_DIR"] + "/{group}/{readset}.bam",
         # marking the contigs.db as ancient in order to ignore timestamps.
@@ -1037,7 +1045,7 @@ def remove_empty_profile_databases(profiles, group):
 
 rule gen_readme_file_for_unmerged_groups:
     version: 1.0
-    log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-gen_readme_file_for_unmerged_groups.log")
+    log: rule_log("gen_readme_file_for_unmerged_groups", "{group}")
     input:
         contigs = ancient(M.get_contigs_db_path()),
         profiles = input_for_anvi_merge,
@@ -1067,7 +1075,7 @@ rule anvi_merge:
         anvi-interactive.
     '''
     version: anvio.__profile__version__
-    log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_merge.log"
+    log: rule_log("anvi_merge", "{group}")
     # The input are all profile databases that belong to the same group
     input:
         # marking the contigs.db as ancient in order to ignore timestamps.
@@ -1157,7 +1165,7 @@ rule anvi_merge:
 
 rule anvi_import_collection:
     version: 1.0
-    log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_import_collection.log"
+    log: rule_log("anvi_import_collection", "{group}")
     input:
         profile = lambda wildcards: M.profile_databases[wildcards.group],
         contigs = ancient(M.get_contigs_db_path()),
@@ -1185,7 +1193,7 @@ rule anvi_import_collection:
 
 rule anvi_import_default_collection:
     version: 1.0
-    log: dirs_dict["LOGS_DIR"] + "/{group}-anvi_import_default_collection.log"
+    log: rule_log("anvi_import_default_collection", "{group}")
     input:
         profile = lambda wildcards: M.profile_databases[wildcards.group],
         contigs = ancient(M.get_contigs_db_path()),
@@ -1205,7 +1213,7 @@ rule anvi_import_default_collection:
 
 rule anvi_summarize:
     version: 1.0
-    log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-anvi_summarize.log")
+    log: rule_log("anvi_summarize", "{group}")
     input:
         profile = lambda wildcards: M.profile_databases[wildcards.group],
         contigs = ancient(M.get_contigs_db_path()),
@@ -1230,7 +1238,7 @@ rule anvi_summarize:
 
 rule anvi_split:
     version: 1.0
-    log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-anvi_split.log")
+    log: rule_log("anvi_split", "{group}")
     input:
         profile = lambda wildcards: M.profile_databases[wildcards.group],
         contigs = ancient(M.get_contigs_db_path()),
@@ -1256,7 +1264,7 @@ rule anvi_split:
 
 rule dummy_rule_for_anvi_summarize:
     version: 1.0
-    log: dirs_dict["LOGS_DIR"] + "/{group}-dummy_rule_for_anvi_summarize.log"
+    log: rule_log("dummy_rule_for_anvi_summarize", "{group}")
     input:
         summary_done = os.path.join(dirs_dict["SUMMARY_DIR"], "{group}-summary.touch")
     output:
@@ -1270,7 +1278,7 @@ rule dummy_rule_for_anvi_summarize:
 
 rule krakenuniq:
     version: 1.0
-    log: dirs_dict["LOGS_DIR"] + "/{readset}-krakenuniq.log"
+    log: rule_log("krakenuniq", "{readset}")
     wildcard_constraints:
         readset = SR_RS_RE
     input: unpack(lambda wildcards: M.get_fastq(wildcards.readset))
@@ -1300,7 +1308,7 @@ rule krakenuniq:
 
 rule krakenuniq_mpa_report:
     version: 1.0
-    log: dirs_dict["LOGS_DIR"] + "/{readset}-krakenuniq_mpa_report.log"
+    log: rule_log("krakenuniq_mpa_report", "{readset}")
     input: os.path.join(dirs_dict["TAXONOMY_DIR"], "{readset}.krakenuniq"),
     output: os.path.join(dirs_dict["TAXONOMY_DIR"], "{readset}-krakenuniq.tsv")
     # FIXME: I need to see if more params should be available for krakenuniq_mpa_report
@@ -1335,7 +1343,7 @@ def input_for_import_krakenuniq_taxonomy(wildcards):
 
 rule import_krakenuniq_taxonomy:
     version: 1.0
-    log: dirs_dict["LOGS_DIR"] + "/{group}-{readset}-import_krakenuniq_taxonomy.log"
+    log: rule_log("import_krakenuniq_taxonomy", "{group}-{readset}")
     input:
         unpack(input_for_import_krakenuniq_taxonomy),
         profile = ancient(os.path.join(dirs_dict["PROFILE_DIR"], "{group}", "{readset}", "PROFILE.db"))
@@ -1356,7 +1364,7 @@ rule count_reads_in_fastq:
     the percent of reads mapping"""
     version: 1.0
     log:
-        dirs_dict["LOGS_DIR"] + "/{readset}-count_reads_in_fastq.log"
+        rule_log("count_reads_in_fastq", "{readset}")
     input:
         unpack(lambda wildcards: M.get_fastq(wildcards.readset)),
     output:
@@ -1392,7 +1400,7 @@ rule import_percent_of_reads_mapped:
     """Mapper-agnostic import of mapping stats into layers."""
     version: 1.0
     log:
-        dirs_dict["LOGS_DIR"] + "/{group}-{readset}-import_percent_of_reads_mapped.log"
+        rule_log("import_percent_of_reads_mapped", "{group}-{readset}")
     input:
         total_reads = dirs_dict["QC_DIR"] + "/{readset}-total_num_reads.txt",
         profiledb = dirs_dict["PROFILE_DIR"] + "/{group}/{readset}/PROFILE.db"
@@ -1439,7 +1447,7 @@ rule import_percent_of_reads_mapped:
 
 rule anvi_cluster_contigs:
     version: 1.0
-    log: os.path.join(dirs_dict["LOGS_DIR"], "{group}-{driver}-anvi_cluster_contigs.log")
+    log: rule_log("anvi_cluster_contigs", "{group}-{driver}")
     threads: M.T("anvi_cluster_contigs")
     resources: nodes = M.T("anvi_cluster_contigs")
     input:
