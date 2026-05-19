@@ -182,6 +182,25 @@ All exception classes inherit from `AnvioError` and automatically format with co
 - `TerminalError` — terminal/progress object misuse
 - `GenesDBError`, `TRNAIdentifierError`, etc. — domain-specific
 
+### Warnings vs. Errors
+
+`run.warning(...)` is for genuinely advisory information where the program can still proceed correctly and the user's intent is unambiguous. It is **not** a way to paper over bad input.
+
+**Conflicting or nonsensical flag combinations must always raise a `ConfigError`**, never issue a warning and silently ignore one of the flags. If a user passes two flags that are mutually exclusive or where one makes the other meaningless, they made a mistake — tell them clearly and stop:
+
+```python
+# correct
+if args.include_contig_info and args.matrix_format:
+    raise ConfigError("--include-contig-info has no effect with --matrix-format. "
+                      f"Please remove one of these flags and try again.")
+
+# wrong — silently discarding a flag the user explicitly passed
+if args.include_contig_info and args.matrix_format:
+    run.warning("--include-contig-info has no effect with --matrix-format and will be ignored.")
+```
+
+The same rule applies to any situation where a flag, parameter, or input value would be silently ignored. Silently ignoring user intent is always worse than stopping with a clear error.
+
 ### Global Flags from sys.argv
 
 Set at import time in `anvio/__init__.py` by inspecting `sys.argv` directly:
