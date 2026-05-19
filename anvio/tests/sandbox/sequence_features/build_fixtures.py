@@ -272,9 +272,9 @@ def build_pseudogene():
 
 def build_ncrna_trna():
     """Non-mRNA RNA annotations: one gene with an ncRNA child, one gene with a tRNA child.
-    Both RNA features are single-segment. Used by test 15 (verifies step 13 extension
-    links non-mRNA RNAs to gene parents AND synthesis produces transcripts with the
-    correct derivation labels)."""
+    Both RNA features are single-segment. Used by test 15 (verifies that the parent-
+    relationship rules link non-mRNA RNAs to gene parents AND that synthesis produces
+    transcripts with the correct derivation labels)."""
 
     seq = 'ACGT' * 500   # 2000 bp
 
@@ -298,8 +298,8 @@ def build_ncrna_trna():
 
 def build_lone_gene():
     """One linear contig with a single gene feature and no children. Used by test 16
-    (case 3 of synthesis — gene-only synthesizes one transcript + one exon, both
-    derivation='gene')."""
+    (the lone-gene synthesis case — a gene with no children gets one synthesized
+    transcript + one synthesized exon, both with derivation='gene')."""
 
     seq = 'ACGT' * 250   # 1000 bp
 

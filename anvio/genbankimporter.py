@@ -47,40 +47,43 @@ BUILTIN_FEATURE_TYPE_NAMES = {row[0] for row in BUILTIN_FEATURE_TYPES}
 # be written to `feature_qualifiers`. Only applies to CDS features.
 CDS_DEDICATED_QUALIFIERS = {'translation', 'codon_start', 'transl_table'}
 
-# Feature types that represent transcript-source RNAs — used by step 13 to link
-# them all to gene parents (the v25 implementation only linked mRNA), and by
-# step 13.5 (synthesis) to find a gene's transcript-source children. The set
-# excludes literal `transcript` features in step 13.5a's case 1 lookups but
-# IS included here so that literal transcript features, if any, still receive
-# the same treatment as the other RNA types. New transcript-source feature
-# types should be added here.
+# Feature types that represent a gene's transcribed product. Relationship resolution
+# (`_resolve_pass2`) links every type in this set (except literal `transcript`) to a
+# gene parent, and the synthesis pass (`_synthesize_pass2`) iterates over a gene's
+# children of these types to decide how many `transcript` rows to synthesize. Literal
+# `transcript` features (rare in NCBI GenBank but possible elsewhere) are kept in the
+# set so that synthesis treats them uniformly: a literal `transcript` gets its own
+# synthesized `transcript` row with `derivation = 'transcript'`, alongside the literal.
+# Add new transcript-source feature types here when they need to be recognized.
 TRANSCRIPT_SOURCE_TYPES = {
     'transcript', 'mRNA', 'primary_transcript', 'ncRNA', 'tRNA', 'rRNA',
     'precursor_RNA', 'misc_RNA', 'tmRNA', 'snRNA', 'snoRNA', 'scRNA', 'antisense_RNA',
 }
 
-# Transcript-source types that step 13 sub-rule 4.1 links to gene parents. We
-# exclude literal `transcript` because synthesis treats it as a special case
-# (shadow-transcript pattern in step 13.5a) — see Section 4 of the prompt.
+# Same set without literal `transcript` — used to install gene-parent rules below.
+# Literal `transcript` features are excluded from gene-parent matching because
+# synthesis always creates a fresh `transcript` row to represent the canonical
+# hierarchy, even when a literal one is present; the literal coexists in the
+# database (distinguished by `derivation IS NULL`) but is not itself linked to
+# the gene as a parent through the same matching rule.
 TRANSCRIPT_SOURCE_TYPES_FOR_GENE_PARENTING = TRANSCRIPT_SOURCE_TYPES - {'transcript'}
 
-# Feature-type pairs (child_type → ordered list of (candidate parent types, relationship)
-# tuples). Each list entry is one precedence level; candidates from all listed parent
-# types at the same level are pooled and considered together. The first precedence
-# level that produces matches wins. Sub-rule 4.1 (every transcript-source type except
-# `transcript` parents to `gene`) is appended after the static rules.
+# child_type → ordered list of (candidate parent types, relationship label) tuples.
+# Each list entry is one precedence level: candidates from all parent types named at
+# that level are pooled and considered together, and the first precedence level that
+# produces matches wins. `_match_parents` decides which candidates actually match
+# given the locus_tag / gene-qualifier / coordinate-containment cascade.
+#
+# CDS prefers an mRNA parent (linked with `part_of`); when no mRNA matches it falls
+# back to a `gene` parent (linked with `derives_from`). `exon` and `intron` accept
+# any transcript-source feature (mRNA, ncRNA, tRNA, …) as a parent so a non-coding
+# transcript's exons/introns are linked correctly. Every non-`transcript` member of
+# TRANSCRIPT_SOURCE_TYPES gets a `gene` parent rule installed in the loop below.
 PARENT_RULES = {
     'CDS':    [(['mRNA'], 'part_of'), (['gene'], 'derives_from')],
-    # Sub-rule 4.2: exon and intron features parent to any transcript-source feature
-    # (mRNA, ncRNA, tRNA, ..., and the rare literal `transcript`). The v25 rule only
-    # considered `mRNA`; this generalization lets an exon under an ncRNA, tRNA, etc.
-    # be linked correctly to that RNA.
     'exon':   [(sorted(TRANSCRIPT_SOURCE_TYPES), 'part_of')],
     'intron': [(sorted(TRANSCRIPT_SOURCE_TYPES), 'part_of')],
 }
-# Sub-rule 4.1: every transcript-source type except literal `transcript` parents to
-# `gene` with `part_of`. The literal `transcript` case is handled by the synthesis
-# layer (step 13.5) via the shadow-transcript pattern.
 for _ttype in TRANSCRIPT_SOURCE_TYPES_FOR_GENE_PARENTING:
     PARENT_RULES[_ttype] = [(['gene'], 'part_of')]
 del _ttype
@@ -104,11 +107,12 @@ def compute_feature_id(contig, feature_type, source, start, stop, direction,
     external_id, derivation, derived_from_feature_id. `external_id` disambiguates
     alternative-splicing isoforms whose shared exon coordinates would otherwise
     collide under the original 6-field convention. `derivation` and
-    `derived_from_feature_id` are NULL for literal features (read from the
-    GenBank file) and non-NULL for synthesized rows produced by step 13.5. NULL
-    values are encoded as the empty string in the hash input, and the trailing
-    empty TABs are appended unconditionally so the hash input string is
-    well-formed for every combination of NULL/non-NULL field values.
+    `derived_from_feature_id` are NULL for literal features (those read from the
+    GenBank file) and non-NULL for the `transcript` / `exon` rows produced by
+    `_synthesize_pass2`. NULL values are encoded as the empty string in the
+    hash input, and the trailing empty TABs are appended unconditionally so the
+    hash input string is well-formed for every combination of NULL/non-NULL
+    field values.
     """
 
     direction_str               = direction               if direction               is not None else ''
@@ -185,10 +189,11 @@ class GenbankFeatureImporter:
                                             #                  'contig', 'feature_type', 'min_start', 'max_stop',
                                             #                  'locus_tag', 'gene_q'}
 
-        # step 13.5 synthesis side-tables. Populated by `_synthesize_pass2` and merged
-        # into `self.features` / `self.relationships` once the per-gene loop and the
-        # uniqueness check are done. Kept separate during synthesis so the duplicate
-        # check operates only on the synthesized set.
+        # synthesis side-tables. Populated by `_synthesize_pass2` (which runs after
+        # `_resolve_pass2`) and merged into `self.features` / `self.relationships`
+        # once the per-gene loop and the post-synthesis uniqueness check are done.
+        # Kept separate during synthesis so the duplicate check operates only on
+        # the freshly synthesized set, not on every row in the database.
         self.synthesized_features = []
         self.synthesized_relationships = []
         self.synth_counts = {
@@ -227,7 +232,7 @@ class GenbankFeatureImporter:
             self._parse_genbank_pass1()
             self.progress.update("Resolving relationships (pass 2)...")
             self._resolve_pass2()
-            self.progress.update("Synthesizing transcript and exon hierarchy (step 13.5)...")
+            self.progress.update("Synthesizing transcript and exon hierarchy...")
             self._synthesize_pass2()
             self.progress.update("Writing features to the database...")
             self._write()
@@ -680,7 +685,7 @@ class GenbankFeatureImporter:
 
 
     def _resolve_relationships_on_contig(self, canonical_fids):
-        """Apply the prompt's matching rules to assign parent relationships."""
+        """Walk every canonical child on the contig and pick parent relationships per PARENT_RULES."""
 
         # Index by type for the contig
         by_type = {}
@@ -763,19 +768,51 @@ class GenbankFeatureImporter:
 
 
     # -----------------------------------------------------------------
-    # Pass 2 step 13.5: synthesis of transcript / exon hierarchy
+    # Pass 2 (continued): synthesis of transcript / exon hierarchy
     # -----------------------------------------------------------------
+    #
+    # `_resolve_pass2` (above) handles GCID reconciliation and parent-relationship
+    # resolution among the literal features. `_synthesize_pass2` runs immediately
+    # afterwards and adds `transcript` and `exon` rows so the database exposes a
+    # canonical gene → transcript → exon hierarchy regardless of which feature
+    # types the source GenBank file used. GenBank files vary widely on this front:
+    # bacterial files typically have only `gene` + `CDS`; eukaryotic NCBI RefSeq
+    # uses `gene` + `mRNA(join)` + `CDS(join)`, sometimes with explicit `exon`
+    # features; non-coding genes use `ncRNA`, `tRNA`, `rRNA`, …; pseudogenes may
+    # have `gene` + `mRNA(join)` with no `CDS`. The synthesis layer produces a
+    # uniform hierarchy without erasing any of the literal rows — synthesized
+    # rows are tagged by the `derivation` column (NULL for literal, set to the
+    # source feature_type otherwise) and pointed at their source via
+    # `derived_from_feature_id`.
 
     def _synthesize_pass2(self):
-        """Synthesize `transcript` and `exon` rows per gene so the database exposes a
-        uniform gene → transcript → exon hierarchy regardless of how the source GenBank
-        file structured its annotations.
+        """Synthesize `transcript` and `exon` rows per gene.
 
-        Runs once per gene canonical feature. The three cases (transcript-source children
-        present, only CDS children, no children) are dispatched by `_synthesize_for_gene`.
-        Synthesis writes into `self.synthesized_features` and `self.synthesized_relationships`
-        first; after a defensive uniqueness check (step 13.5e) the synthesized rows are
-        merged into the main lists for `populate_features` to consume in step 14.
+        For each gene canonical feature, picks one of three cases based on the
+        gene's children in `feature_relationships` (the relationships
+        `_resolve_pass2` produced):
+
+            - Transcript-source-child case: gene has at least one transcript-source
+              child (mRNA, ncRNA, tRNA, …). Synthesize one `transcript` per such
+              child, derivation = the source's feature_type. Re-parent the
+              source's literal children to the synthesized transcript. Synthesize
+              exons from the source's segments unless literal `exon` features
+              are already linked.
+            - CDS-only case: gene has only `CDS` children (no transcript-source
+              RNAs). Synthesize ONE `transcript` covering the gene's coordinates
+              with derivation='CDS', and one `exon` per CDS segment. The CDS
+              itself also gets a new `part_of` link to the synthesized transcript
+              so walking children of the synthesized transcript surfaces the CDS.
+            - Lone-gene case: gene has no children at all. Synthesize one
+              `transcript` and one `exon` per gene segment, both with derivation='gene'.
+
+        The per-gene work is delegated to `_synthesize_for_gene` and the three
+        case helpers (`_synthesize_from_transcript_source`,
+        `_synthesize_from_cds_only`, `_synthesize_lone_gene`). Synthesis writes
+        into `self.synthesized_features` and `self.synthesized_relationships`
+        first; once the per-gene loop is done we run a defensive uniqueness
+        check on synthesized feature_ids and merge the rows into `self.features`
+        / `self.relationships` for `populate_features` to consume.
         """
 
         # Index relationships by parent_feature_id so per-gene synthesis can find children
@@ -801,18 +838,20 @@ class GenbankFeatureImporter:
                                  f"transcript. Every gene should receive at least one — this almost certainly indicates "
                                  f"an anvi'o bug; please report.")
 
-        # Step 13.5e: defensive uniqueness check on synthesized feature_ids. Synthesized
-        # rows are designed to hash uniquely by construction; this guard catches bugs
-        # and unexpected edge cases rather than relying on the underlying UNIQUE INDEX
-        # to surface a duplicate at insert time.
+        # Defensive uniqueness check on synthesized feature_ids. Synthesized rows
+        # are designed to hash uniquely by construction (the 9-field hash includes
+        # `derivation` and `derived_from_feature_id`, which differ between any two
+        # synthesized rows that came from different sources); this guard catches
+        # bugs and unexpected edge cases rather than relying on the underlying
+        # UNIQUE INDEX to surface a duplicate at insert time.
         seen = set()
         for row in self.synthesized_features:
             if row['feature_id'] in seen:
                 self.progress.end()
-                raise ConfigError(f"Step 13.5e detected two synthesized features with the same feature_id "
-                                  f"'{row['feature_id']}'. Synthesized features are designed to hash uniquely "
-                                  f"by construction; encountering a collision indicates a bug in the synthesis "
-                                  f"layer or extremely pathological input. Refusing to silently merge.")
+                raise ConfigError(f"Two synthesized features ended up with the same feature_id '{row['feature_id']}'. "
+                                  f"Synthesized features are designed to hash uniquely by construction (the 9-field hash "
+                                  f"includes derivation and derived_from_feature_id), so encountering a collision indicates "
+                                  f"a bug in the synthesis layer or extremely pathological input. Refusing to silently merge.")
             seen.add(row['feature_id'])
 
         # Merge synthesized rows into the main lists. From here on populate_features
@@ -824,10 +863,14 @@ class GenbankFeatureImporter:
     def _synthesize_for_gene(self, gene_canonical_fid, children_by_parent, features_by_fid):
         """Synthesize transcript(s) and exon(s) for one gene canonical row.
 
-        Dispatches to one of three cases per step 13.5a:
-            1. Transcript-source literal children present → one transcript per source.
-            2. CDS literal children only → one transcript with the gene's coordinates.
-            3. No children at all → one transcript covering the gene.
+        Dispatches to one of three case helpers:
+            - Transcript-source-child case: gene has at least one mRNA / ncRNA /
+              tRNA / … child → one transcript per source
+              (`_synthesize_from_transcript_source`).
+            - CDS-only case: gene has only CDS children → one transcript with the
+              gene's coordinates (`_synthesize_from_cds_only`).
+            - Lone-gene case: gene has no children at all → one transcript covering
+              the gene (`_synthesize_lone_gene`).
 
         Returns True if at least one transcript was synthesized (which should always
         be the case; the explicit return lets the caller surface a warning if not).
@@ -838,9 +881,10 @@ class GenbankFeatureImporter:
         # when the gene is multi-segment (canonical-parent convention).
         canonical_children_by_type = self._gather_canonical_children(gene_canonical_fid, children_by_parent)
 
-        # Case 1: at least one transcript-source RNA among the gene's children.
-        # Order: by feature_type alphabetically, then by source min_start within type.
-        # This determinism keeps synthesized-row emission order stable across runs.
+        # Transcript-source-child case: at least one transcript-source RNA among the
+        # gene's children. Order: by feature_type alphabetically, then by source
+        # min_start within type. This determinism keeps synthesized-row emission
+        # order stable across runs.
         source_canonicals_in_order = []
         for ftype in sorted(TRANSCRIPT_SOURCE_TYPES):
             for fid in sorted(canonical_children_by_type.get(ftype, []),
@@ -849,20 +893,20 @@ class GenbankFeatureImporter:
 
         if source_canonicals_in_order:
             for src_canonical in source_canonicals_in_order:
-                self._synthesize_case1(gene_canonical_fid, src_canonical, children_by_parent, features_by_fid)
+                self._synthesize_from_transcript_source(gene_canonical_fid, src_canonical, children_by_parent, features_by_fid)
             return True
 
-        # Case 2: no transcript-source children, but CDS children present.
+        # CDS-only case: no transcript-source children, but CDS children present.
         cds_canonicals = canonical_children_by_type.get('CDS', [])
         if cds_canonicals:
             # Tie-breaker for the unusual multi-CDS-group-under-one-gene case: pick the
             # CDS group whose spanning extent has the smallest min_start.
             best_cds = min(cds_canonicals, key=lambda c: self.groups[c]['min_start'])
-            self._synthesize_case2(gene_canonical_fid, best_cds, features_by_fid)
+            self._synthesize_from_cds_only(gene_canonical_fid, best_cds, features_by_fid)
             return True
 
-        # Case 3: lone gene — no transcript-source, no CDS children.
-        self._synthesize_case3(gene_canonical_fid, features_by_fid)
+        # Lone-gene case: no transcript-source, no CDS children.
+        self._synthesize_lone_gene(gene_canonical_fid, features_by_fid)
         return True
 
 
@@ -871,7 +915,8 @@ class GenbankFeatureImporter:
 
         Multi-segment children appear once (by their canonical fid). Children whose
         canonical fid is not registered in `self.feature_meta` are skipped (defensive
-        — shouldn't happen in practice since step 13 only adds rows for known features).
+        — shouldn't happen since `_resolve_pass2` only emits relationships between
+        features it has seen and registered).
         """
 
         result = {}
@@ -889,8 +934,24 @@ class GenbankFeatureImporter:
         return result
 
 
-    def _synthesize_case1(self, gene_canonical_fid, src_canonical_fid, children_by_parent, features_by_fid):
-        """Case 1 of step 13.5a: synthesize one transcript from a transcript-source literal."""
+    def _synthesize_from_transcript_source(self, gene_canonical_fid, src_canonical_fid, children_by_parent, features_by_fid):
+        """Transcript-source-child case of `_synthesize_for_gene`: gene has a transcript-source literal child.
+
+        Synthesizes one transcript per source, derivation = the source's feature_type
+        (e.g. 'mRNA', 'ncRNA', 'tRNA'). For a non-origin-crossing source the synthesized
+        transcript is single-segment spanning the source's whole extent; an origin-crossing
+        source produces a multi-segment transcript that mirrors the source's segments.
+
+        Literal children of the source feature are then *re-parented* to the synthesized
+        transcript with `part_of` (the original relationships are NOT removed — both
+        coexist). This is how walking the synthesized transcript's children surfaces
+        the same literal CDS / exon / intron rows that were originally children of the
+        source mRNA / ncRNA / etc.
+
+        Finally, if any literal `exon` features were among the source's children, no
+        exon synthesis happens — the literal exons fulfil the canonical hierarchy.
+        Otherwise one exon is synthesized per source segment.
+        """
 
         src_info = self.groups[src_canonical_fid]
         src_canonical_row = features_by_fid[src_canonical_fid]
@@ -901,8 +962,10 @@ class GenbankFeatureImporter:
         src_segments = src_info['segments']
 
         # Origin-crossing sources synthesize a multi-segment transcript with 1:1 segment
-        # correspondence. Non-origin-crossing sources synthesize a single-segment transcript
-        # spanning the whole source extent; the per-segment structure goes to exons in 13.5b(ii).
+        # correspondence to the source (`[min_start, max_stop)` would span most of the
+        # contig and be biologically nonsense). Non-origin-crossing sources synthesize a
+        # single-segment transcript spanning the source's whole extent; the per-segment
+        # structure goes to exons instead.
         if self._is_origin_crossing_for_canonical(src_canonical_fid, features_by_fid):
             transcript_coords = [(features_by_fid[s]['start'], features_by_fid[s]['stop']) for s in src_segments]
         else:
@@ -918,9 +981,10 @@ class GenbankFeatureImporter:
             external_id, derivation, src_canonical_fid, partial_5p, partial_3p,
         )
 
-        # Step 13.5b(i): re-parent every literal child of the source to the synthesized
-        # transcript with `part_of`. The original relationship rows are not modified —
-        # both coexist.
+        # Re-parent every literal child of the source to the synthesized transcript with
+        # `part_of`. The original relationship rows are not modified — both coexist, so
+        # queries walking the literal mRNA's children still work AND queries walking the
+        # synthesized transcript's children surface the same set.
         for rel in children_by_parent.get(src_canonical_fid, []):
             self.synthesized_relationships.append({
                 'child_feature_id':  rel['child_feature_id'],
@@ -928,8 +992,10 @@ class GenbankFeatureImporter:
                 'relationship':      'part_of',
             })
 
-        # Step 13.5b(ii): synthesize exons unless any literal exon is reachable from the
-        # synthesized transcript (which is equivalent to: any literal exon child of the source).
+        # Synthesize exons unless any literal exon is reachable from the synthesized
+        # transcript (which is equivalent to: any literal exon child of the source).
+        # When literal exons are present they fulfil the canonical hierarchy; we don't
+        # produce parallel synthesized rows that would just shadow them.
         if not self._has_literal_exon_among_children(src_canonical_fid, children_by_parent):
             for src_seg_fid in src_segments:
                 src_seg_row = features_by_fid[src_seg_fid]
@@ -938,10 +1004,26 @@ class GenbankFeatureImporter:
                                    src_seg_row['external_id'], derivation, src_seg_fid)
 
 
-    def _synthesize_case2(self, gene_canonical_fid, cds_canonical_fid, features_by_fid):
-        """Case 2 of step 13.5a: synthesize ONE transcript from a CDS (gene has CDS children
-        but no transcript-source children). Coordinates are the GENE's, not the CDS's, since
-        gene coordinates capture the annotator's intent including UTRs (in eukaryotes).
+    def _synthesize_from_cds_only(self, gene_canonical_fid, cds_canonical_fid, features_by_fid):
+        """CDS-only case of `_synthesize_for_gene`: gene has CDS children but no transcript-source RNAs.
+
+        Synthesizes ONE transcript whose coordinates are the GENE's (not the CDS's): in
+        eukaryotic annotations the gene boundary includes UTRs that the CDS does not
+        cover, and using the gene's coordinates yields a more biologically faithful
+        transcript boundary. In bacterial inputs where gene and CDS coords are typically
+        identical, the distinction has no observable effect.
+
+        The CDS itself is then linked to the synthesized transcript with `part_of` (one
+        relationship row per CDS segment, following the canonical-parent convention) —
+        this is in addition to the CDS's existing `derives_from gene` relationship, so
+        the CDS now has TWO child-side rows in `feature_relationships`.
+
+        Exons are synthesized one per CDS segment, derivation='CDS'. UTRs are absent
+        from the synthesized exons (no signal for them in a CDS-only annotation) and
+        the `derivation` column tells consumers to expect that.
+
+        Tie-breaker for the unusual multi-CDS-group-under-one-gene case: the caller
+        picks the CDS group with the smallest min_start.
         """
 
         gene_info = self.groups[gene_canonical_fid]
@@ -965,9 +1047,9 @@ class GenbankFeatureImporter:
             external_id, 'CDS', cds_canonical_fid, partial_5p, partial_3p,
         )
 
-        # Step 13.5b(i) special case: the CDS is the *source* (not a child of one), so
-        # link every CDS segment to the synthesized transcript with `part_of`. This is
-        # in addition to the CDS's step-13 `derives_from gene` relationship.
+        # The CDS is the *source* of this synthesized transcript (not a child of one), so
+        # link every CDS segment to the synthesized transcript with `part_of`. This is in
+        # addition to the CDS's `derives_from gene` relationship from `_resolve_pass2`.
         for cds_seg_fid in cds_info['segments']:
             self.synthesized_relationships.append({
                 'child_feature_id':  cds_seg_fid,
@@ -975,8 +1057,8 @@ class GenbankFeatureImporter:
                 'relationship':      'part_of',
             })
 
-        # Step 13.5b(ii): one exon per CDS segment. UTRs absent — `derivation='CDS'` tells
-        # consumers these exons reflect only the coding portion.
+        # One exon per CDS segment. UTRs absent — `derivation='CDS'` tells consumers
+        # these exons reflect only the coding portion of the true exons.
         for cds_seg_fid in cds_info['segments']:
             cds_seg_row = features_by_fid[cds_seg_fid]
             self._add_exon_row(transcript_canonical_fid, contig, direction,
@@ -984,11 +1066,14 @@ class GenbankFeatureImporter:
                                cds_seg_row['external_id'], 'CDS', cds_seg_fid)
 
 
-    def _synthesize_case3(self, gene_canonical_fid, features_by_fid):
-        """Case 3 of step 13.5a: lone gene — no transcript-source, no CDS children.
+    def _synthesize_lone_gene(self, gene_canonical_fid, features_by_fid):
+        """Lone-gene case of `_synthesize_for_gene`: gene has no children at all.
 
         Synthesize one transcript covering the gene and one exon per gene segment
-        (almost always one, since multi-segment genes are exceedingly rare).
+        (almost always one — multi-segment genes are exceedingly rare). Both rows
+        get `derivation='gene'` and `derived_from_feature_id` = the gene's canonical
+        feature_id. This makes the canonical hierarchy queryable even for minimal
+        annotations that contain only a `gene` feature with no child features.
         """
 
         gene_info = self.groups[gene_canonical_fid]
@@ -1011,8 +1096,8 @@ class GenbankFeatureImporter:
             external_id, 'gene', gene_canonical_fid, partial_5p, partial_3p,
         )
 
-        # Step 13.5b(ii): one exon per gene segment. For the typical single-segment gene
-        # this collapses to one exon spanning the whole gene.
+        # One exon per gene segment. For the typical single-segment gene this collapses
+        # to one exon spanning the whole gene.
         for seg_fid in gene_segments:
             seg_row = features_by_fid[seg_fid]
             self._add_exon_row(transcript_canonical_fid, contig, direction,
@@ -1199,14 +1284,14 @@ class GenbankFeatureImporter:
             for ftype in sorted(self.types_seen):
                 self.run.info(ftype, self.types_seen[ftype])
 
-        # Step 13.5 synthesis stats. Reported by derivation so users can see how their
-        # genes' transcript hierarchies were derived (literal mRNAs vs. CDS fallback vs.
+        # Synthesis stats. Reported by derivation so users can see how their genes'
+        # transcript hierarchies were derived (literal mRNAs vs. CDS fallback vs.
         # lone-gene fallback). The genes-without-transcript count should always be zero —
         # we emit it unconditionally so any nonzero value is immediately visible.
         synth_t = self.synth_counts['transcripts_by_derivation']
         synth_e = self.synth_counts['exons_by_derivation']
         if synth_t or synth_e or self.synth_counts['genes_without_synthesized_transcript']:
-            self.run.warning(None, header="Synthesis (step 13.5)", lc='green')
+            self.run.warning(None, header="Synthesis", lc='green')
             self.run.info("Synthesized transcripts (total)", sum(synth_t.values()))
             if synth_t:
                 for derivation in sorted(synth_t):

@@ -86,8 +86,8 @@ def probe_bacterial(work):
     _assert(derives == 4, f"4 CDS→gene derives_from relationships (got {derives})")
 
     # locus_tag round-trips into external_id. Synthesized rows inherit external_id from
-    # source (case 2 transcripts inherit from the gene; case 2 exons inherit from the CDS
-    # segment). So all 16 rows are non-NULL.
+    # the source feature (in the CDS-only case the transcript inherits from the gene
+    # and the exons inherit from the CDS segment). So all 16 rows are non-NULL.
     ext_count = query_one(db, "SELECT COUNT(*) FROM contigs_sequence_features WHERE external_id IS NOT NULL")[0]
     _assert(ext_count == 16, f"every row has external_id populated (literal + inherited by synthesis) (got {ext_count})")
     ext_literal = query_one(db, "SELECT COUNT(*) FROM contigs_sequence_features WHERE external_id IS NOT NULL AND derivation IS NULL")[0]
@@ -145,9 +145,10 @@ def probe_eukaryotic(work):
     _assert(cds_with_trans == 1, f"forward CDS group has translation on only 1 row (got {cds_with_trans})")
 
     # canonical-parent convention: CDS segments link to the canonical literal mRNA via part_of.
-    # Step 13.5b(i) also re-parents every CDS segment to the synthesized transcript with part_of,
-    # so DISTINCT part_of parents is now 2. We restrict to literal-mRNA parents to verify the
-    # original canonical convention still holds.
+    # Synthesis also re-parents every CDS segment to the synthesized transcript with part_of
+    # (the literal mRNA's literal children are re-parented to the synthesized transcript that
+    # shadows it), so DISTINCT part_of parents is now 2. We restrict to literal-mRNA parents
+    # here to verify the original canonical convention still holds.
     cds_parents_literal_mrna = query_all(db, """SELECT DISTINCT fr.parent_feature_id
                                                 FROM feature_relationships fr
                                                 JOIN contigs_sequence_features csf  ON fr.child_feature_id  = csf.feature_id
@@ -168,7 +169,7 @@ def probe_eukaryotic(work):
 
     # every CDS segment generates its own row in feature_relationships pointing to the
     # canonical literal mRNA. Synthesis additionally re-parents every CDS segment to the
-    # synthesized transcript with `part_of` (step 13.5b(i)) — so total relationships are 6.
+    # synthesized transcript with `part_of` — so total relationships are 6.
     cds_rel_to_literal_mrna = query_one(db, """SELECT COUNT(*) FROM feature_relationships fr
                                                JOIN contigs_sequence_features csf  ON fr.child_feature_id  = csf.feature_id
                                                JOIN contigs_sequence_features pcsf ON fr.parent_feature_id = pcsf.feature_id
@@ -197,7 +198,7 @@ def probe_origin_crossing(work):
     _assert(seg1[0] == 0  and seg1[1] == 200  and seg1[2] == 1, f"literal segment_order=1 is [0,200) (got {seg1})")
     _assert(seg0[4] == seg1[4], f"both literal segments share feature_group_id (got {seg0[4]} vs {seg1[4]})")
 
-    # synthesis (case 3 — origin-crossing lone gene): the transcript mirrors the source's
+    # synthesis (lone-gene case with an origin-crossing source): the transcript mirrors the source's
     # 2-segment structure (per the origin-crossing rule), and exons are one per segment.
     synth_t = query_all(db, """SELECT start, stop, segment_order FROM contigs_sequence_features
                                WHERE feature_type='transcript' AND derivation='gene'

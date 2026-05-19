@@ -204,7 +204,8 @@ assert_query $output_dir/EUK_T4.db "SELECT GROUP_CONCAT(segment_order, ',') FROM
 # translation is stored only on segment_order=0
 assert_query $output_dir/EUK_T4.db "SELECT COUNT(*) FROM CDS_features cf JOIN contigs_sequence_features csf USING(feature_id) WHERE cf.translation IS NOT NULL AND csf.direction='f' AND csf.feature_type='CDS'" "1" "test 4: forward CDS translation only on segment_order=0"
 # canonical-parent convention: 3-segment CDS → 3 rows in feature_relationships pointing to the canonical
-# literal mRNA, and synthesis adds 3 more pointing to the canonical synthesized transcript (step 13.5b(i)).
+# literal mRNA, and synthesis adds 3 more pointing to the canonical synthesized transcript (the
+# literal mRNA's children are re-parented to the synthesized transcript that shadows it).
 assert_query $output_dir/EUK_T4.db "SELECT COUNT(*) FROM feature_relationships fr JOIN contigs_sequence_features csf ON fr.child_feature_id = csf.feature_id JOIN contigs_sequence_features pcsf ON fr.parent_feature_id = pcsf.feature_id WHERE csf.feature_type='CDS' AND csf.direction='f' AND pcsf.feature_type='mRNA' AND pcsf.derivation IS NULL" "3" "test 4: 3 CDS→literal-mRNA relationship rows (one per CDS segment)"
 assert_query $output_dir/EUK_T4.db "SELECT COUNT(*) FROM feature_relationships fr JOIN contigs_sequence_features csf ON fr.child_feature_id = csf.feature_id WHERE csf.feature_type='CDS' AND csf.direction='f'" "6" "test 4: 6 forward-CDS relationship rows total (3 to literal mRNA + 3 to synthesized transcript)"
 assert_query $output_dir/EUK_T4.db "SELECT COUNT(DISTINCT fr.parent_feature_id) FROM feature_relationships fr JOIN contigs_sequence_features csf ON fr.child_feature_id = csf.feature_id JOIN contigs_sequence_features pcsf ON fr.parent_feature_id = pcsf.feature_id WHERE csf.feature_type='CDS' AND csf.direction='f' AND pcsf.feature_type='mRNA' AND pcsf.derivation IS NULL" "1" "test 4: all forward CDS segments share one canonical literal mRNA parent"
@@ -235,7 +236,7 @@ assert_query $output_dir/CIRC_T5.db "SELECT start FROM contigs_sequence_features
 assert_query $output_dir/CIRC_T5.db "SELECT stop  FROM contigs_sequence_features WHERE segment_order=1 AND feature_type='gene'" "200" "test 5: literal gene segment_order=1 stop is 200"
 assert_query $output_dir/CIRC_T5.db "SELECT COUNT(DISTINCT feature_group_id) FROM contigs_sequence_features WHERE feature_type='gene'" "1" "test 5: literal gene segments share feature_group_id"
 assert_query $output_dir/CIRC_T5.db "SELECT COUNT(DISTINCT external_id) FROM contigs_sequence_features" "1" "test 5: every row (literal + synthesized) shares external_id (locus_tag)"
-# synthesis case 3 with origin-crossing source produces a multi-segment transcript mirroring the source
+# lone-gene-case synthesis with an origin-crossing source produces a multi-segment transcript mirroring the source
 assert_query $output_dir/CIRC_T5.db "SELECT COUNT(*) FROM contigs_sequence_features WHERE feature_type='transcript' AND derivation='gene'" "2" "test 5: origin-crossing gene → 2-segment synthesized transcript"
 assert_query $output_dir/CIRC_T5.db "SELECT start FROM contigs_sequence_features WHERE segment_order=0 AND feature_type='transcript'" "899" "test 5: synthesized transcript seg0 mirrors literal seg0 (start=899)"
 assert_query $output_dir/CIRC_T5.db "SELECT COUNT(*) FROM contigs_sequence_features WHERE feature_type='exon' AND derivation='gene'" "2" "test 5: origin-crossing gene → 2 synthesized exons (one per gene segment)"
@@ -403,9 +404,9 @@ anvi-import-genbank-features -c $output_dir/BACT_T3.db -i $files/sequence_featur
 assert_query $output_dir/BACT_T3.db "SELECT COUNT(*) FROM contigs_sequence_features WHERE source='bact_t3_other' AND derivation IS NULL" "8" "test 10f: different --source-name on same DB coexists (8 literal rows)"
 
 ####################################################################################################
-# Test 11: bacterial synthesis (gene + CDS, no mRNA, no exon) — case 2 of step 13.5a
+# Test 11: bacterial synthesis (gene + CDS, no mRNA, no exon) — the CDS-only synthesis case
 ####################################################################################################
-INFO "Test 11: bacterial synthesis (case 2 — gene + CDS, no mRNA / no exon)"
+INFO "Test 11: bacterial synthesis (CDS-only case — gene + CDS, no mRNA / no exon)"
 
 # reuse BACT_T3.db built earlier (4 genes + 4 CDSs, single-source 'bact_t3')
 # every gene → 1 synthesized transcript (derivation='CDS') and 1 synthesized exon (derivation='CDS')
@@ -428,14 +429,16 @@ echo "  OK [test 11: TST_001 synthesized transcript points to the canonical CDS 
 assert_query $output_dir/BACT_T3.db "SELECT COUNT(*) FROM feature_relationships fr JOIN contigs_sequence_features csf ON fr.child_feature_id = csf.feature_id JOIN contigs_sequence_features pcsf ON fr.parent_feature_id = pcsf.feature_id WHERE csf.derivation='CDS' AND csf.feature_type='transcript' AND csf.source='bact_t3' AND pcsf.feature_type='gene' AND pcsf.derivation IS NULL AND fr.relationship='part_of'" "4" "test 11: 4 synthesized-transcript → literal-gene part_of relationships (source=bact_t3)"
 assert_query $output_dir/BACT_T3.db "SELECT COUNT(*) FROM feature_relationships fr JOIN contigs_sequence_features csf ON fr.child_feature_id = csf.feature_id JOIN contigs_sequence_features pcsf ON fr.parent_feature_id = pcsf.feature_id WHERE csf.derivation='CDS' AND csf.feature_type='exon' AND csf.source='bact_t3' AND pcsf.derivation='CDS' AND pcsf.feature_type='transcript' AND fr.relationship='part_of'" "4" "test 11: 4 synthesized-exon → synthesized-transcript part_of relationships (source=bact_t3)"
 
-# the literal CDS now has two entries in feature_relationships as a child: derives_from gene (step 13)
-# and part_of synthesized transcript (step 13.5b's CDS-to-synthesized-transcript linking).
+# the literal CDS now has two child-side entries in feature_relationships: the original
+# `derives_from gene` link (from the parent-relationship resolution pass), and a new `part_of`
+# link to the synthesized transcript (the CDS-only synthesis case links every CDS segment to
+# the synthesized transcript it acted as the source for).
 assert_query $output_dir/BACT_T3.db "SELECT COUNT(*) FROM feature_relationships fr JOIN contigs_sequence_features csf ON fr.child_feature_id = csf.feature_id WHERE csf.feature_type='CDS' AND csf.external_id='TST_001' AND csf.source='bact_t3'" "2" "test 11: TST_001 CDS has 2 child-side relationship rows (derives_from gene + part_of synthesized transcript)"
 
 ####################################################################################################
 # Test 12: eukaryotic synthesis from mRNA (gene + mRNA(join) + CDS(join), no literal exons)
 ####################################################################################################
-INFO "Test 12: eukaryotic synthesis from mRNA (case 1 — mRNA child, no literal exons)"
+INFO "Test 12: eukaryotic synthesis from mRNA (transcript-source-child case — mRNA child, no literal exons)"
 
 anvi-gen-contigs-database -f $files/sequence_features/eukaryotic_no_exon.fa \
                           -o $output_dir/EUKNX_T12.db \
@@ -466,9 +469,9 @@ assert_query $output_dir/EUKNX_T12.db "SELECT COUNT(*) FROM contigs_sequence_fea
 assert_query $output_dir/EUKNX_T12.db "SELECT COUNT(*) FROM feature_relationships fr JOIN contigs_sequence_features csf ON fr.child_feature_id = csf.feature_id JOIN contigs_sequence_features pcsf ON fr.parent_feature_id = pcsf.feature_id WHERE csf.feature_type='CDS' AND pcsf.derivation='mRNA' AND pcsf.feature_type='transcript' AND fr.relationship='part_of'" "5" "test 12: 5 CDS-segment → synthesized-transcript part_of relationships (3+2)"
 
 ####################################################################################################
-# Test 13: eukaryotic synthesis from CDS when mRNA absent (case 2 with multi-segment CDS)
+# Test 13: eukaryotic synthesis from CDS when mRNA absent (CDS-only case with multi-segment CDS)
 ####################################################################################################
-INFO "Test 13: eukaryotic synthesis from CDS when mRNA absent (case 2 — gene + CDS, no mRNA, no exon)"
+INFO "Test 13: eukaryotic synthesis from CDS when mRNA absent (CDS-only case — gene + CDS, no mRNA, no exon)"
 
 anvi-gen-contigs-database -f $files/sequence_features/eukaryotic_no_mrna.fa \
                           -o $output_dir/EUKNM_T13.db \
@@ -498,7 +501,7 @@ assert_query $output_dir/EUKNM_T13.db "SELECT GROUP_CONCAT(start || '-' || stop,
 assert_query $output_dir/EUKNM_T13.db "SELECT COUNT(*) FROM feature_relationships fr JOIN contigs_sequence_features csf ON fr.child_feature_id = csf.feature_id WHERE csf.feature_type='CDS' AND csf.derivation IS NULL" "6" "test 13: each of 3 CDS segments has 2 relationships (derives_from gene + part_of synth transcript)"
 
 ####################################################################################################
-# Test 14: pseudogene synthesis from mRNA when CDS absent (case 1, no CDS)
+# Test 14: pseudogene synthesis from mRNA when CDS absent (transcript-source-child case, no CDS)
 ####################################################################################################
 INFO "Test 14: pseudogene synthesis from mRNA when CDS absent"
 
@@ -534,9 +537,10 @@ anvi-import-genbank-features -c $output_dir/NCRNA_T15.db \
                              -i $files/sequence_features/ncrna_trna.gb \
                              --source-name 'ncrna_t15' >/dev/null
 
-# step 13 extension: ncRNA and tRNA each have a part_of relationship to their gene parent
-assert_query $output_dir/NCRNA_T15.db "SELECT COUNT(*) FROM feature_relationships fr JOIN contigs_sequence_features csf ON fr.child_feature_id = csf.feature_id JOIN contigs_sequence_features pcsf ON fr.parent_feature_id = pcsf.feature_id WHERE csf.feature_type='ncRNA' AND pcsf.feature_type='gene' AND pcsf.derivation IS NULL AND fr.relationship='part_of'" "1" "test 15: ncRNA has part_of relationship to its gene parent (step 13 sub-rule 4.1)"
-assert_query $output_dir/NCRNA_T15.db "SELECT COUNT(*) FROM feature_relationships fr JOIN contigs_sequence_features csf ON fr.child_feature_id = csf.feature_id JOIN contigs_sequence_features pcsf ON fr.parent_feature_id = pcsf.feature_id WHERE csf.feature_type='tRNA' AND pcsf.feature_type='gene' AND pcsf.derivation IS NULL AND fr.relationship='part_of'" "1" "test 15: tRNA has part_of relationship to its gene parent (step 13 sub-rule 4.1)"
+# PARENT_RULES extension: every transcript-source RNA type (not just mRNA) now links to a
+# gene parent with `part_of`, so ncRNA and tRNA each have a `part_of` link to their gene
+assert_query $output_dir/NCRNA_T15.db "SELECT COUNT(*) FROM feature_relationships fr JOIN contigs_sequence_features csf ON fr.child_feature_id = csf.feature_id JOIN contigs_sequence_features pcsf ON fr.parent_feature_id = pcsf.feature_id WHERE csf.feature_type='ncRNA' AND pcsf.feature_type='gene' AND pcsf.derivation IS NULL AND fr.relationship='part_of'" "1" "test 15: ncRNA has part_of relationship to its gene parent"
+assert_query $output_dir/NCRNA_T15.db "SELECT COUNT(*) FROM feature_relationships fr JOIN contigs_sequence_features csf ON fr.child_feature_id = csf.feature_id JOIN contigs_sequence_features pcsf ON fr.parent_feature_id = pcsf.feature_id WHERE csf.feature_type='tRNA' AND pcsf.feature_type='gene' AND pcsf.derivation IS NULL AND fr.relationship='part_of'" "1" "test 15: tRNA has part_of relationship to its gene parent"
 
 # synthesis: one transcript per RNA child, derivation matches the source RNA type
 assert_query $output_dir/NCRNA_T15.db "SELECT COUNT(*) FROM contigs_sequence_features WHERE feature_type='transcript' AND derivation='ncRNA'" "1" "test 15: 1 synthesized transcript with derivation='ncRNA'"
@@ -550,7 +554,7 @@ assert_query $output_dir/NCRNA_T15.db "SELECT COUNT(*) FROM contigs_sequence_fea
 assert_query $output_dir/NCRNA_T15.db "SELECT COUNT(*) FROM contigs_sequence_features WHERE feature_type='exon' AND derivation='tRNA'" "1" "test 15: 1 synthesized exon with derivation='tRNA'"
 
 ####################################################################################################
-# Test 16: lone gene synthesis (gene only, no children) — case 3 of step 13.5a
+# Test 16: lone gene synthesis (gene only, no children) — the lone-gene synthesis case
 ####################################################################################################
 INFO "Test 16: lone gene synthesis (no children)"
 
@@ -588,8 +592,8 @@ assert_query $output_dir/EUK_T4.db "SELECT COUNT(*) FROM contigs_sequence_featur
 assert_query $output_dir/EUK_T4.db "SELECT COUNT(*) FROM contigs_sequence_features WHERE feature_type='exon' AND derivation IS NULL" "5" "test 17: all 5 exon rows are literal (derivation IS NULL)"
 
 # each literal exon has TWO entries in feature_relationships as a child:
-# (1) part_of literal mRNA (from step 13's relationship resolution),
-# (2) part_of synthesized transcript (from step 13.5b(i)'s re-parenting).
+# (1) part_of literal mRNA (from the parent-relationship resolution pass),
+# (2) part_of synthesized transcript (from synthesis's re-parenting of literal children).
 assert_query $output_dir/EUK_T4.db "SELECT COUNT(*) FROM feature_relationships fr JOIN contigs_sequence_features csf ON fr.child_feature_id = csf.feature_id WHERE csf.feature_type='exon' AND fr.relationship='part_of'" "10" "test 17: 10 exon part_of rows (5 to literal mRNA + 5 to synthesized transcript)"
 assert_query $output_dir/EUK_T4.db "SELECT COUNT(*) FROM feature_relationships fr JOIN contigs_sequence_features csf ON fr.child_feature_id = csf.feature_id JOIN contigs_sequence_features pcsf ON fr.parent_feature_id = pcsf.feature_id WHERE csf.feature_type='exon' AND pcsf.feature_type='mRNA' AND pcsf.derivation IS NULL" "5" "test 17: 5 exon → literal mRNA part_of rows"
 assert_query $output_dir/EUK_T4.db "SELECT COUNT(*) FROM feature_relationships fr JOIN contigs_sequence_features csf ON fr.child_feature_id = csf.feature_id JOIN contigs_sequence_features pcsf ON fr.parent_feature_id = pcsf.feature_id WHERE csf.feature_type='exon' AND pcsf.derivation='mRNA' AND pcsf.feature_type='transcript'" "5" "test 17: 5 exon → synthesized transcript part_of rows"
