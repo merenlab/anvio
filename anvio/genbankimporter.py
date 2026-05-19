@@ -57,23 +57,42 @@ PARENT_RULES = {
 }
 
 
-def compute_feature_id(contig, feature_type, source, start, stop, direction):
+HASH_INPUT_FIELDS = ('contig', 'feature_type', 'source', 'start', 'stop', 'direction',
+                     'external_id', 'derivation', 'derived_from_feature_id')
+
+
+def compute_feature_id(contig, feature_type, source, start, stop, direction,
+                       external_id=None, derivation=None, derived_from_feature_id=None):
     """Compute the 16-character hex `feature_id` for one row.
 
-    The hash input is the TAB-joined tuple. The TAB is mandatory — concatenating
-    fields without a separator would let adjacent coordinates blur into hash
-    collisions (start=12,stop=345 vs start=123,stop=45 both produce '12345').
-    Before hashing we assert no field contains TAB itself; silent hash divergence
-    would be a far worse failure mode than an explicit error.
+    The hash input is the TAB-joined tuple of nine fields. The TAB is mandatory —
+    concatenating fields without a separator would let adjacent coordinates blur
+    into hash collisions (start=12,stop=345 vs start=123,stop=45 both produce
+    '12345'). Before hashing we assert no field contains TAB itself; silent hash
+    divergence would be a far worse failure mode than an explicit error.
+
+    The nine fields are: contig, feature_type, source, start, stop, direction,
+    external_id, derivation, derived_from_feature_id. `external_id` disambiguates
+    alternative-splicing isoforms whose shared exon coordinates would otherwise
+    collide under the original 6-field convention. `derivation` and
+    `derived_from_feature_id` are NULL for literal features (read from the
+    GenBank file) and non-NULL for synthesized rows produced by step 13.5. NULL
+    values are encoded as the empty string in the hash input, and the trailing
+    empty TABs are appended unconditionally so the hash input string is
+    well-formed for every combination of NULL/non-NULL field values.
     """
 
-    direction_str = direction if direction is not None else ''
-    fields = [contig, feature_type, source, str(start), str(stop), direction_str]
+    direction_str               = direction               if direction               is not None else ''
+    external_id_str             = external_id             if external_id             is not None else ''
+    derivation_str              = derivation              if derivation              is not None else ''
+    derived_from_feature_id_str = derived_from_feature_id if derived_from_feature_id is not None else ''
+    fields = [contig, feature_type, source, str(start), str(stop), direction_str,
+              external_id_str, derivation_str, derived_from_feature_id_str]
     for field in fields:
         if '\t' in field:
             raise ConfigError(f"compute_feature_id refuses to hash an input field that contains a TAB character: '{field!r}'. "
                               f"This would create silent hash divergence. Please report this as an anvi'o bug if a TAB ever appears in a contig name, "
-                              f"feature type, or source name.")
+                              f"feature type, source name, external_id (locus_tag), derivation, or derived_from_feature_id.")
     return hashlib.sha224('\t'.join(fields).encode('utf-8')).hexdigest()[:16]
 
 
@@ -335,7 +354,10 @@ class GenbankFeatureImporter:
                     self.counts['skipped_no_extent'] += 1
                     new_segment_ids = []
                     break
-                fid = compute_feature_id(contig, ftype, self.source_name, seg_start, seg_stop, direction)
+                # literal features always have derivation=None / derived_from=None;
+                # external_id comes from locus_tag (None when the source feature lacks one)
+                fid = compute_feature_id(contig, ftype, self.source_name, seg_start, seg_stop, direction,
+                                         external_id=locus_tag)
                 row = {
                     'feature_id':              fid,
                     'contig':                  contig,
@@ -482,18 +504,26 @@ class GenbankFeatureImporter:
         """Append `row` to self.features unless it duplicates an existing row.
 
         Exact-match duplicates emit a warning and are silently dropped. Hash collisions
-        on different (contig, ftype, source, start, stop, direction) tuples are
-        astronomically unlikely with 16-char SHA-224 truncation at first-PR scales —
-        if one occurs we raise rather than silently merge data."""
+        on different hash-input tuples are astronomically unlikely with 16-char SHA-224
+        truncation at first-PR scales — if one occurs we raise rather than silently merge data.
+
+        The comparison covers every field that feeds the 9-field hash convention so
+        that a literal feature and another feature with the same coordinates but a
+        distinct `external_id` (or `derivation`, or `derived_from_feature_id`) is
+        correctly recognized as a distinct feature rather than misclassified as a
+        genuine hash collision.
+        """
 
         fid = row['feature_id']
         for existing in self.features:
             if existing['feature_id'] != fid:
                 continue
-            same = all(existing[k] == row[k] for k in ('contig', 'feature_type', 'source', 'start', 'stop', 'direction'))
+            same = all(existing[k] == row[k] for k in ('contig', 'feature_type', 'source', 'start', 'stop', 'direction',
+                                                       'external_id', 'derivation', 'derived_from_feature_id'))
             if same:
                 self.run.warning(f"Duplicate feature in GenBank input: contig={row['contig']}, type={row['feature_type']}, "
-                                 f"[{row['start']}, {row['stop']}), direction={row['direction']}. Dropping the duplicate.")
+                                 f"[{row['start']}, {row['stop']}), direction={row['direction']}, external_id={row['external_id']}. "
+                                 f"Dropping the duplicate.")
                 self.counts['duplicates_skipped'] += 1
                 return False
             raise ConfigError(f"Hash collision between two distinct features mapping to feature_id={fid}. Expected: at first-PR "
