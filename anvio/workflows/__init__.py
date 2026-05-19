@@ -782,6 +782,20 @@ def get_workflow_snake_file_path(workflow):
     return snakefile_path
 
 
+def get_workflow_rule_file_path(workflow, filename='main.smk'):
+    workflow_dir = os.path.join(get_path_to_workflows_dir(), workflow)
+
+    if not os.path.isdir(workflow_dir):
+        raise ConfigError("Anvi'o does not know about the workflow '%s' :/" % workflow)
+
+    rule_file_path = os.path.join(workflow_dir, 'rules', filename)
+
+    if not os.path.exists(rule_file_path):
+        raise ConfigError("The rules file '%s' for the workflow '%s' seems to be missing :/" % (filename, workflow))
+
+    return rule_file_path
+
+
 def check_for_risky_param_change(config, rule, param, wildcard, our_default=None):
     value = A([rule, param], config)
     if value != our_default:
