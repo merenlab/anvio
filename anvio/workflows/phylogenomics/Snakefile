@@ -30,12 +30,20 @@ if not this_workflow_is_inherited_by_another:
     include: w.get_workflow_snake_file_path('contigs')
 
 
+def rule_log(rule_name, log_file_name='log'):
+    """Return a log path under 00_LOGS/<rule_name>/."""
+    if not log_file_name.endswith('.log'):
+        log_file_name = f"{log_file_name}.log"
+
+    return os.path.join(dirs_dict["LOGS_DIR"], rule_name, log_file_name)
+
+
 rule phylogenomics_target_rule:
     input: M.get_phylogenomics_target_files()
 
 rule anvi_get_sequences_for_hmm_hits:
     version: 1.0
-    log: os.path.join(dirs_dict["LOGS_DIR"], M.project_name +"_anvi_get_sequences_for_hmm_hits.log")
+    log: rule_log("anvi_get_sequences_for_hmm_hits", M.project_name)
     input: unpack(lambda wildcards: M.input_for_anvi_get_sequences_for_hmm_hits) # The lambda function here is just a trick. from some reason without it, snakemake can't unpack the dict
     output: os.path.join(dirs_dict["PHYLO_DIR"], M.project_name + "-proteins.fa")
     params:
@@ -64,7 +72,7 @@ rule anvi_get_sequences_for_hmm_hits:
 
 rule trimal:
     version: 1.0
-    log: os.path.join(dirs_dict["LOGS_DIR"], M.project_name +"_trimal.log")
+    log: rule_log("trimal", M.project_name)
     input: M.phylogenomics_sequence_file
     output: os.path.join(dirs_dict["PHYLO_DIR"], M.project_name + "-proteins_GAPS_REMOVED.fa")
     params:
@@ -83,7 +91,7 @@ rule trimal:
 
 rule iqtree:
     version: 1.0
-    log: os.path.join(dirs_dict["LOGS_DIR"], M.project_name +"_iqtree.log")
+    log: rule_log("iqtree", M.project_name)
     input: os.path.join(dirs_dict["PHYLO_DIR"], M.project_name + "-proteins_GAPS_REMOVED.fa")
     output: os.path.join(dirs_dict["PHYLO_DIR"], M.project_name + "-proteins_GAPS_REMOVED.fa" + ".contree")
     params:
