@@ -206,5 +206,3 @@ class BLAST:
         utils.ununique_BLAST_tabular_output(self.search_output_path, self.names_dict)
 
         self.progress.end()
-
-

@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 import sys
 import argparse
 
@@ -8,8 +7,7 @@ import anvio.dgrs as dgrs
 import anvio.terminal as terminal
 
 # debugging + profiling
-import io
-import cProfile, pstats
+import cProfile
 profiler = cProfile.Profile()
 
 

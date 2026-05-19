@@ -9,5 +9,3 @@ Sequence type: Protein
 Keep MBits: T
 Maximum file size: 3000000000B
 Adding sequences from FASTA; added 3213025 sequences in 34.5814 seconds.
-
-
