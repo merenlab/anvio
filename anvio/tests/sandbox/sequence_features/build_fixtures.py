@@ -311,6 +311,59 @@ def build_lone_gene():
     _write_pair([rec], os.path.join(HERE, 'lone_gene.fa'), os.path.join(HERE, 'lone_gene.gb'))
 
 
+def build_literal_transcript():
+    """Two genes on one contig, both using literal `transcript` features instead of `mRNA`:
+
+      - LIT_T_001: gene + transcript(join) + CDS(join), no literal exons. Synthesis
+        promotes the literal transcript in place and synthesizes exons from its
+        segments with derivation='transcript'.
+      - LIT_T_002: gene + transcript(join) + exon×N + CDS(join). Synthesis promotes
+        the literal transcript in place; the literal exons fulfil the canonical
+        hierarchy so no synthesized exon rows are created.
+
+    Used by test 20 (literal-transcript promotion)."""
+
+    seq = 'ACGT' * 1500   # 6000 bp
+
+    features = [
+        # ---------- variant 1: literal transcript with no literal exons ----------
+        SeqFeature(SimpleLocation(99, 500, strand=1), type='gene',
+                   qualifiers={'locus_tag': ['LIT_T_001'], 'gene': ['litTNoExon']}),
+        SeqFeature(CompoundLocation([SimpleLocation(99, 200, strand=1), SimpleLocation(299, 500, strand=1)]),
+                   type='transcript',
+                   qualifiers={'locus_tag': ['LIT_T_001'], 'gene': ['litTNoExon']}),
+        SeqFeature(CompoundLocation([SimpleLocation(149, 200, strand=1), SimpleLocation(299, 400, strand=1)]),
+                   type='CDS',
+                   qualifiers={
+                       'locus_tag': ['LIT_T_001'], 'gene': ['litTNoExon'],
+                       'codon_start': ['1'], 'transl_table': ['1'],
+                       'product': ['Literal-transcript protein, no literal exons'],
+                       'translation': ['MLITTNX'],
+                   }),
+        # ---------- variant 2: literal transcript WITH literal exons ----------
+        SeqFeature(SimpleLocation(1099, 1700, strand=1), type='gene',
+                   qualifiers={'locus_tag': ['LIT_T_002'], 'gene': ['litTWithExon']}),
+        SeqFeature(CompoundLocation([SimpleLocation(1099, 1300, strand=1), SimpleLocation(1499, 1700, strand=1)]),
+                   type='transcript',
+                   qualifiers={'locus_tag': ['LIT_T_002'], 'gene': ['litTWithExon']}),
+        SeqFeature(SimpleLocation(1099, 1300, strand=1),  type='exon',
+                   qualifiers={'locus_tag': ['LIT_T_002']}),
+        SeqFeature(SimpleLocation(1499, 1700, strand=1), type='exon',
+                   qualifiers={'locus_tag': ['LIT_T_002']}),
+        SeqFeature(CompoundLocation([SimpleLocation(1149, 1300, strand=1), SimpleLocation(1499, 1600, strand=1)]),
+                   type='CDS',
+                   qualifiers={
+                       'locus_tag': ['LIT_T_002'], 'gene': ['litTWithExon'],
+                       'codon_start': ['1'], 'transl_table': ['1'],
+                       'product': ['Literal-transcript protein, with literal exons'],
+                       'translation': ['MLITTWX'],
+                   }),
+    ]
+
+    rec = _record('littrans_c01', seq, 'Two genes with literal `transcript` features (with and without literal exons)', features)
+    _write_pair([rec], os.path.join(HERE, 'literal_transcript.fa'), os.path.join(HERE, 'literal_transcript.gb'))
+
+
 def build_multi_isoform():
     """One gene with two mRNA isoforms sharing the first exon coordinate. The two mRNAs
     carry distinct `locus_tag` values per NCBI convention so the 9-field hash keeps them
@@ -360,5 +413,6 @@ if __name__ == '__main__':
     build_pseudogene()
     build_ncrna_trna()
     build_lone_gene()
+    build_literal_transcript()
     build_multi_isoform()
     print("All fixtures rebuilt.")

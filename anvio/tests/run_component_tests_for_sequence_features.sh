@@ -654,5 +654,91 @@ IDS_SYNTH_AFTER_FORCE=$(sqlite3 $output_dir/BACT_T7.db "SELECT GROUP_CONCAT(feat
 echo "  OK [test 19: synthesized feature_ids are deterministic across --force replays ($N_SYNTH_AFTER_FORCE synthesized rows)]"
 
 ####################################################################################################
+# Test 20: literal-transcript promotion (no shadow row)
+####################################################################################################
+INFO "Test 20: literal `transcript` features are promoted in place (no synthesized shadow)"
+
+anvi-gen-contigs-database -f $files/sequence_features/literal_transcript.fa \
+                          -o $output_dir/LITT_T20.db \
+                          --skip-gene-calling \
+                          --project-name "LiteralTranscriptTest20" \
+                          -L 1000 --no-progress $thread_controller >/dev/null
+
+anvi-import-genbank-features -c $output_dir/LITT_T20.db \
+                             -i $files/sequence_features/literal_transcript.gb \
+                             --source-name 'litt_t20' >/dev/null
+
+# --- Variant 1: literal transcript with NO literal exons (gene LIT_T_001) ---
+#
+# The literal transcript is multi-segment (join), so it appears as 2 segment rows
+# under v25's per-segment storage convention. To count *logical* transcripts we
+# filter to the canonical row of each transcript group (segment_order=0 or NULL).
+
+# exactly ONE logical transcript exists for this gene, and it is the literal
+# (derivation IS NULL). Regression check: no shadow row with derivation='transcript'
+# was produced for LIT_T_001 (neither as a canonical row nor as any segment).
+assert_query $output_dir/LITT_T20.db "SELECT COUNT(*) FROM contigs_sequence_features WHERE feature_type='transcript' AND external_id='LIT_T_001' AND (segment_order=0 OR segment_order IS NULL)" "1" "test 20: gene LIT_T_001 has exactly one logical transcript (the literal — no shadow)"
+assert_query $output_dir/LITT_T20.db "SELECT COUNT(*) FROM contigs_sequence_features WHERE feature_type='transcript' AND external_id='LIT_T_001' AND (segment_order=0 OR segment_order IS NULL) AND derivation IS NULL" "1" "test 20: gene LIT_T_001's logical transcript is the literal (derivation IS NULL)"
+assert_query $output_dir/LITT_T20.db "SELECT COUNT(*) FROM contigs_sequence_features WHERE feature_type='transcript' AND external_id='LIT_T_001' AND derivation='transcript'" "0" "test 20: regression — no shadow transcript row with derivation='transcript' exists for LIT_T_001 (neither canonical nor segment)"
+
+# the literal transcript has its part_of gene relationship from the parent-resolution pass.
+# Synthesis adds no new transcript-related relationship rows (no synthesized transcript exists).
+# Each segment of a multi-segment literal transcript gets its own child-side relationship row
+# pointing at the gene's canonical fid (canonical-parent convention), so we expect 2 rows here.
+assert_query $output_dir/LITT_T20.db "SELECT COUNT(*) FROM feature_relationships fr JOIN contigs_sequence_features csf ON fr.child_feature_id = csf.feature_id JOIN contigs_sequence_features pcsf ON fr.parent_feature_id = pcsf.feature_id WHERE csf.feature_type='transcript' AND csf.external_id='LIT_T_001' AND pcsf.feature_type='gene' AND fr.relationship='part_of'" "2" "test 20: each LIT_T_001 literal transcript segment has part_of gene (canonical-parent convention)"
+
+# two synthesized exon rows exist, one per literal transcript segment, each with
+# derivation='transcript' and derived_from_feature_id pointing to the corresponding literal segment.
+assert_query $output_dir/LITT_T20.db "SELECT COUNT(*) FROM contigs_sequence_features WHERE feature_type='exon' AND derivation='transcript' AND external_id='LIT_T_001'" "2" "test 20: LIT_T_001 produces 2 synthesized exons (one per literal transcript segment), derivation='transcript'"
+assert_query $output_dir/LITT_T20.db "SELECT GROUP_CONCAT(start || '-' || stop, ',') FROM (SELECT start, stop FROM contigs_sequence_features WHERE feature_type='exon' AND derivation='transcript' AND external_id='LIT_T_001' ORDER BY start)" "99-200,299-500" "test 20: LIT_T_001 synthesized-exon coords match the literal transcript's two segments"
+
+# every synthesized exon's derived_from_feature_id matches the feature_id of the corresponding
+# literal transcript segment (i.e. each exon cross-references its specific source segment).
+assert_query $output_dir/LITT_T20.db "SELECT COUNT(*) FROM contigs_sequence_features e WHERE e.feature_type='exon' AND e.derivation='transcript' AND e.external_id='LIT_T_001' AND e.derived_from_feature_id IN (SELECT feature_id FROM contigs_sequence_features WHERE feature_type='transcript' AND external_id='LIT_T_001' AND derivation IS NULL)" "2" "test 20: every LIT_T_001 synthesized exon points back to a literal transcript segment"
+
+# every synthesized exon is parented to the LITERAL transcript (not to a synthesized shadow).
+# The parent is the literal transcript's canonical row (segment_order=0) per the canonical-parent
+# convention, so the count is 2 (one parent row, two child exons).
+assert_query $output_dir/LITT_T20.db "SELECT COUNT(*) FROM feature_relationships fr JOIN contigs_sequence_features csf ON fr.child_feature_id = csf.feature_id JOIN contigs_sequence_features pcsf ON fr.parent_feature_id = pcsf.feature_id WHERE csf.feature_type='exon' AND csf.derivation='transcript' AND csf.external_id='LIT_T_001' AND pcsf.feature_type='transcript' AND pcsf.derivation IS NULL AND fr.relationship='part_of'" "2" "test 20: LIT_T_001 synthesized exons are parented to the literal transcript with part_of"
+
+# CDS linkage to literal transcripts is governed by the parent-resolution rules, not by synthesis.
+# The current PARENT_RULES has CDS preferring mRNA → falling back to gene, with no rule for
+# CDS → transcript. So the CDS here is linked to the gene with derives_from (a pre-existing
+# limitation outside this patch's scope).
+assert_query $output_dir/LITT_T20.db "SELECT COUNT(*) FROM feature_relationships fr JOIN contigs_sequence_features csf ON fr.child_feature_id = csf.feature_id JOIN contigs_sequence_features pcsf ON fr.parent_feature_id = pcsf.feature_id WHERE csf.feature_type='CDS' AND csf.external_id='LIT_T_001' AND pcsf.feature_type='gene' AND fr.relationship='derives_from'" "2" "test 20: LIT_T_001 CDS segments derive_from gene (the patch does not extend CDS linkage to literal transcripts)"
+
+# --- Variant 2: literal transcript WITH literal exons (gene LIT_T_002) ---
+
+# the literal transcript is the canonical row; no shadow.
+assert_query $output_dir/LITT_T20.db "SELECT COUNT(*) FROM contigs_sequence_features WHERE feature_type='transcript' AND external_id='LIT_T_002' AND (segment_order=0 OR segment_order IS NULL)" "1" "test 20: gene LIT_T_002 has exactly one logical transcript (the literal — no shadow)"
+assert_query $output_dir/LITT_T20.db "SELECT COUNT(*) FROM contigs_sequence_features WHERE feature_type='transcript' AND external_id='LIT_T_002' AND derivation='transcript'" "0" "test 20: regression — no shadow transcript row with derivation='transcript' exists for LIT_T_002"
+
+# literal exons retain derivation IS NULL. No synthesized exon rows were added for this gene.
+assert_query $output_dir/LITT_T20.db "SELECT COUNT(*) FROM contigs_sequence_features WHERE feature_type='exon' AND external_id='LIT_T_002' AND derivation IS NULL" "2" "test 20: LIT_T_002 has 2 literal exon rows (derivation IS NULL)"
+assert_query $output_dir/LITT_T20.db "SELECT COUNT(*) FROM contigs_sequence_features WHERE feature_type='exon' AND external_id='LIT_T_002' AND derivation IS NOT NULL" "0" "test 20: LIT_T_002 has no synthesized exon rows (literal exons fulfil the hierarchy)"
+
+# literal exons retain their part_of literal-transcript relationship from the parent-resolution pass.
+# Synthesis adds nothing (no new transcript was synthesized to re-parent under).
+assert_query $output_dir/LITT_T20.db "SELECT COUNT(*) FROM feature_relationships fr JOIN contigs_sequence_features csf ON fr.child_feature_id = csf.feature_id JOIN contigs_sequence_features pcsf ON fr.parent_feature_id = pcsf.feature_id WHERE csf.feature_type='exon' AND csf.external_id='LIT_T_002' AND pcsf.feature_type='transcript' AND pcsf.derivation IS NULL AND fr.relationship='part_of'" "2" "test 20: LIT_T_002 literal exons retain part_of literal-transcript (no re-parenting needed)"
+
+# the parent-resolution pass has placed the literal transcript under the gene.
+# Each of the 2 segments gets a child-side row (canonical-parent convention).
+assert_query $output_dir/LITT_T20.db "SELECT COUNT(*) FROM feature_relationships fr JOIN contigs_sequence_features csf ON fr.child_feature_id = csf.feature_id JOIN contigs_sequence_features pcsf ON fr.parent_feature_id = pcsf.feature_id WHERE csf.feature_type='transcript' AND csf.external_id='LIT_T_002' AND pcsf.feature_type='gene' AND fr.relationship='part_of'" "2" "test 20: each LIT_T_002 literal transcript segment has part_of gene (canonical-parent convention)"
+
+# --- Cross-cutting checks ---
+
+# logical transcript count across the DB = 2 literal transcripts + 0 synthesized = 2.
+assert_query $output_dir/LITT_T20.db "SELECT COUNT(*) FROM contigs_sequence_features WHERE feature_type='transcript' AND (segment_order=0 OR segment_order IS NULL)" "2" "test 20: total logical transcript count = 2 (one literal per gene, no shadows)"
+assert_query $output_dir/LITT_T20.db "SELECT COUNT(*) FROM contigs_sequence_features WHERE feature_type='transcript' AND derivation IS NOT NULL" "0" "test 20: no synthesized transcript rows exist in this DB (literal-transcript-promotion regression check)"
+
+# determinism: --force replay produces identical feature_ids (including the synthesized exons
+# from the literal transcript, which depend only on the stable literal-transcript feature_ids).
+IDS_BEFORE=$(sqlite3 $output_dir/LITT_T20.db "SELECT GROUP_CONCAT(feature_id, ',') FROM (SELECT feature_id FROM contigs_sequence_features WHERE source='litt_t20' ORDER BY feature_id)")
+anvi-import-genbank-features -c $output_dir/LITT_T20.db -i $files/sequence_features/literal_transcript.gb --source-name 'litt_t20' --force >/dev/null
+IDS_AFTER=$(sqlite3 $output_dir/LITT_T20.db "SELECT GROUP_CONCAT(feature_id, ',') FROM (SELECT feature_id FROM contigs_sequence_features WHERE source='litt_t20' ORDER BY feature_id)")
+[ "$IDS_BEFORE" = "$IDS_AFTER" ] || { echo "ASSERT FAILED [test 20: literal-transcript-derived synthesized feature_ids differ after --force; not deterministic]"; exit 1; }
+echo "  OK [test 20: feature_ids stable across --force replay (literal-transcript-derived exons are deterministic)]"
+
+####################################################################################################
 echo
-echo "Sequence-features component tests 1, 2, 2.5, 2.6, 2.7, and 3–19 PASSED."
+echo "Sequence-features component tests 1, 2, 2.5, 2.6, 2.7, and 3–20 PASSED."

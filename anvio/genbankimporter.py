@@ -48,25 +48,25 @@ BUILTIN_FEATURE_TYPE_NAMES = {row[0] for row in BUILTIN_FEATURE_TYPES}
 CDS_DEDICATED_QUALIFIERS = {'translation', 'codon_start', 'transl_table'}
 
 # Feature types that represent a gene's transcribed product. Relationship resolution
-# (`_resolve_pass2`) links every type in this set (except literal `transcript`) to a
-# gene parent, and the synthesis pass (`_synthesize_pass2`) iterates over a gene's
-# children of these types to decide how many `transcript` rows to synthesize. Literal
-# `transcript` features (rare in NCBI GenBank but possible elsewhere) are kept in the
-# set so that synthesis treats them uniformly: a literal `transcript` gets its own
-# synthesized `transcript` row with `derivation = 'transcript'`, alongside the literal.
-# Add new transcript-source feature types here when they need to be recognized.
+# (`_resolve_pass2`) links every type in this set to a gene parent so the gene →
+# transcript chain exists for every kind of RNA, including literal `transcript`
+# features. The set is also used to decide which features can act as parents for
+# exon / intron children (those parent relationships go through PARENT_RULES['exon']
+# and PARENT_RULES['intron'] below). Add new transcript-source feature types here
+# when they need to be recognized.
 TRANSCRIPT_SOURCE_TYPES = {
     'transcript', 'mRNA', 'primary_transcript', 'ncRNA', 'tRNA', 'rRNA',
     'precursor_RNA', 'misc_RNA', 'tmRNA', 'snRNA', 'snoRNA', 'scRNA', 'antisense_RNA',
 }
 
-# Same set without literal `transcript` — used to install gene-parent rules below.
-# Literal `transcript` features are excluded from gene-parent matching because
-# synthesis always creates a fresh `transcript` row to represent the canonical
-# hierarchy, even when a literal one is present; the literal coexists in the
-# database (distinguished by `derivation IS NULL`) but is not itself linked to
-# the gene as a parent through the same matching rule.
-TRANSCRIPT_SOURCE_TYPES_FOR_GENE_PARENTING = TRANSCRIPT_SOURCE_TYPES - {'transcript'}
+# Subset used by the synthesis pass (`_synthesize_pass2`) to decide when to create
+# a NEW `transcript` row from a literal source. Literal `transcript` features are
+# excluded from this set because they are already canonical: synthesis promotes
+# them in place (no shadow row), mirroring the way the synthesis pass treats
+# literal `exon` features. The literal transcript keeps `derivation IS NULL` and
+# its existing `part_of gene` relationship from `_resolve_pass2`; the synthesis
+# pass only adds exon rows underneath it if no literal exons are linked.
+TRANSCRIPT_SYNTHESIS_SOURCE_TYPES = TRANSCRIPT_SOURCE_TYPES - {'transcript'}
 
 # child_type → ordered list of (candidate parent types, relationship label) tuples.
 # Each list entry is one precedence level: candidates from all parent types named at
@@ -76,15 +76,16 @@ TRANSCRIPT_SOURCE_TYPES_FOR_GENE_PARENTING = TRANSCRIPT_SOURCE_TYPES - {'transcr
 #
 # CDS prefers an mRNA parent (linked with `part_of`); when no mRNA matches it falls
 # back to a `gene` parent (linked with `derives_from`). `exon` and `intron` accept
-# any transcript-source feature (mRNA, ncRNA, tRNA, …) as a parent so a non-coding
-# transcript's exons/introns are linked correctly. Every non-`transcript` member of
-# TRANSCRIPT_SOURCE_TYPES gets a `gene` parent rule installed in the loop below.
+# any transcript-source feature (mRNA, ncRNA, tRNA, …, transcript) as a parent so a
+# non-coding transcript's or literal transcript's exons/introns are linked correctly.
+# Every member of TRANSCRIPT_SOURCE_TYPES (including `transcript`) gets a `gene`
+# parent rule installed in the loop below.
 PARENT_RULES = {
     'CDS':    [(['mRNA'], 'part_of'), (['gene'], 'derives_from')],
     'exon':   [(sorted(TRANSCRIPT_SOURCE_TYPES), 'part_of')],
     'intron': [(sorted(TRANSCRIPT_SOURCE_TYPES), 'part_of')],
 }
-for _ttype in TRANSCRIPT_SOURCE_TYPES_FOR_GENE_PARENTING:
+for _ttype in TRANSCRIPT_SOURCE_TYPES:
     PARENT_RULES[_ttype] = [(['gene'], 'part_of')]
 del _ttype
 
@@ -863,17 +864,30 @@ class GenbankFeatureImporter:
     def _synthesize_for_gene(self, gene_canonical_fid, children_by_parent, features_by_fid):
         """Synthesize transcript(s) and exon(s) for one gene canonical row.
 
-        Dispatches to one of three case helpers:
-            - Transcript-source-child case: gene has at least one mRNA / ncRNA /
-              tRNA / … child → one transcript per source
-              (`_synthesize_from_transcript_source`).
-            - CDS-only case: gene has only CDS children → one transcript with the
-              gene's coordinates (`_synthesize_from_cds_only`).
-            - Lone-gene case: gene has no children at all → one transcript covering
-              the gene (`_synthesize_lone_gene`).
+        Dispatches between four mutually exclusive cases (the first three branches
+        below ensure at least one transcript exists; the fallback synthesizes one
+        when the input has nothing at all under the gene):
 
-        Returns True if at least one transcript was synthesized (which should always
-        be the case; the explicit return lets the caller surface a warning if not).
+            - Synth-source case: gene has at least one mRNA / ncRNA / tRNA / …
+              child → synthesize one transcript per such source
+              (`_synthesize_from_transcript_source`). If the gene ALSO has literal
+              `transcript` children, those are promoted as canonical in the same
+              pass — see literal-transcript promotion below.
+            - Literal-transcript promotion: gene has literal `transcript` children
+              (possibly alongside synth-source children). No new transcript rows
+              are created for the literals — they were already canonical when the
+              user provided them. Exon handling still runs on them
+              (`_handle_literal_transcript`) so a literal transcript without
+              literal exon children gets synthesized exons from its own segments.
+            - CDS-only case: gene has only CDS children (no transcript-source
+              RNAs and no literal transcripts) → one transcript with the gene's
+              coordinates (`_synthesize_from_cds_only`).
+            - Lone-gene case: gene has no children at all → one transcript and
+              one exon covering the gene (`_synthesize_lone_gene`).
+
+        Returns True if the gene now has at least one transcript (synthesized or
+        promoted-literal); always True under normal operation. The explicit return
+        lets the caller surface a warning if not.
         """
 
         # Collect this gene's canonical children, grouped by feature_type. The gene's
@@ -881,22 +895,29 @@ class GenbankFeatureImporter:
         # when the gene is multi-segment (canonical-parent convention).
         canonical_children_by_type = self._gather_canonical_children(gene_canonical_fid, children_by_parent)
 
-        # Transcript-source-child case: at least one transcript-source RNA among the
-        # gene's children. Order: by feature_type alphabetically, then by source
-        # min_start within type. This determinism keeps synthesized-row emission
-        # order stable across runs.
-        source_canonicals_in_order = []
-        for ftype in sorted(TRANSCRIPT_SOURCE_TYPES):
+        # Synth-source children (every transcript-source type except literal `transcript`).
+        # Order: by feature_type alphabetically, then by source min_start within type, so
+        # synthesized-row emission order stays stable across runs.
+        synth_source_canonicals = []
+        for ftype in sorted(TRANSCRIPT_SYNTHESIS_SOURCE_TYPES):
             for fid in sorted(canonical_children_by_type.get(ftype, []),
                               key=lambda c: self.groups[c]['min_start']):
-                source_canonicals_in_order.append(fid)
+                synth_source_canonicals.append(fid)
 
-        if source_canonicals_in_order:
-            for src_canonical in source_canonicals_in_order:
+        # Literal `transcript` children (rare in practice; promoted in place rather than
+        # shadowed by a synthesized row). Also ordered by min_start for determinism.
+        literal_transcript_canonicals = sorted(canonical_children_by_type.get('transcript', []),
+                                               key=lambda c: self.groups[c]['min_start'])
+
+        if synth_source_canonicals or literal_transcript_canonicals:
+            for src_canonical in synth_source_canonicals:
                 self._synthesize_from_transcript_source(gene_canonical_fid, src_canonical, children_by_parent, features_by_fid)
+            for lit_t_canonical in literal_transcript_canonicals:
+                self._handle_literal_transcript(lit_t_canonical, children_by_parent, features_by_fid)
             return True
 
-        # CDS-only case: no transcript-source children, but CDS children present.
+        # CDS-only case: no transcript children at all (synthesized or literal), but
+        # CDS children present.
         cds_canonicals = canonical_children_by_type.get('CDS', [])
         if cds_canonicals:
             # Tie-breaker for the unusual multi-CDS-group-under-one-gene case: pick the
@@ -905,7 +926,7 @@ class GenbankFeatureImporter:
             self._synthesize_from_cds_only(gene_canonical_fid, best_cds, features_by_fid)
             return True
 
-        # Lone-gene case: no transcript-source, no CDS children.
+        # Lone-gene case: no transcript children, no CDS children.
         self._synthesize_lone_gene(gene_canonical_fid, features_by_fid)
         return True
 
@@ -1103,6 +1124,38 @@ class GenbankFeatureImporter:
             self._add_exon_row(transcript_canonical_fid, contig, direction,
                                seg_row['start'], seg_row['stop'],
                                seg_row['external_id'], 'gene', seg_fid)
+
+
+    def _handle_literal_transcript(self, lit_t_canonical_fid, children_by_parent, features_by_fid):
+        """Literal-transcript-promotion case: a literal `transcript` feature is already canonical.
+
+        Mirrors how the synthesis pass treats literal `exon` features: when a literal
+        feature of the synthesized type exists, USE it rather than producing a shadow
+        row. No new `transcript` row is created here — the literal transcript keeps
+        `derivation IS NULL` and its existing `part_of gene` relationship from
+        `_resolve_pass2`. We only need to populate exons underneath it.
+
+        If literal `exon` features are already linked to the literal transcript, no
+        exon synthesis happens. Otherwise we synthesize one exon per literal transcript
+        segment, each tagged `derivation='transcript'` and `derived_from_feature_id`
+        pointing to the corresponding literal transcript segment's feature_id. This
+        is the only situation in which a synthesized exon carries `derivation='transcript'`;
+        synthesized transcripts never do (see TRANSCRIPT_SYNTHESIS_SOURCE_TYPES).
+        """
+
+        if self._has_literal_exon_among_children(lit_t_canonical_fid, children_by_parent):
+            return
+
+        lit_t_info = self.groups[lit_t_canonical_fid]
+        lit_t_canonical_row = features_by_fid[lit_t_canonical_fid]
+        contig = lit_t_info['contig']
+        direction = lit_t_canonical_row['direction']
+
+        for seg_fid in lit_t_info['segments']:
+            seg_row = features_by_fid[seg_fid]
+            self._add_exon_row(lit_t_canonical_fid, contig, direction,
+                               seg_row['start'], seg_row['stop'],
+                               seg_row['external_id'], 'transcript', seg_fid)
 
 
     def _add_transcript_rows(self, gene_canonical_fid, contig, direction, segment_coords,

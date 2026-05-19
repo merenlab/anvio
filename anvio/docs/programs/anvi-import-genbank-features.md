@@ -14,31 +14,34 @@ Parent relationships are resolved per contig using a three-rule precedence — `
 
 ## Synthesized `transcript` and `exon` hierarchy
 
-GenBank files are wildly inconsistent in how they represent transcript structure: bacterial files typically have only `gene` + `CDS`; eukaryotic NCBI RefSeq files have `gene` + `mRNA(join)` + `CDS(join)`, sometimes with explicit `exon` features; non-coding genes use `ncRNA`, `tRNA`, `rRNA`, or `precursor_RNA`; pseudogenes may have `gene` + `mRNA(join)` with no `CDS`. To make canonical "find all transcripts and their exons" queries possible without file-format-specific logic, this program synthesizes a uniform `gene → transcript → exon` hierarchy for every gene.
+GenBank files are wildly inconsistent in how they represent transcript structure: bacterial files typically have only `gene` + `CDS`; eukaryotic NCBI RefSeq files have `gene` + `mRNA(join)` + `CDS(join)`, sometimes with explicit `exon` features; non-coding genes use `ncRNA`, `tRNA`, `rRNA`, or `precursor_RNA`; pseudogenes may have `gene` + `mRNA(join)` with no `CDS`. To make canonical "find all transcripts and their exons" queries possible without file-format-specific logic, this program produces a uniform `gene → transcript → exon` hierarchy for every gene — synthesizing missing rows where needed and using literal rows in place wherever they already exist.
 
-Synthesized rows live alongside the literal rows. Two columns distinguish them:
+The literal rows and the synthesized rows share the same two tables and feature types. Two columns on `contigs_sequence_features` distinguish them:
 
-- `derivation` is NULL for literal features (those that appeared in the GenBank file). For synthesized features, it holds the literal source feature's type — e.g. `'mRNA'`, `'CDS'`, `'gene'`, `'ncRNA'`. The column answers both "is this synthesized?" (NULL vs. not) and "what was it synthesized from?".
+- `derivation` is NULL for literal features (those that appeared in the GenBank file with that feature type). For synthesized features, it holds the source feature's type — e.g. `'mRNA'`, `'CDS'`, `'gene'`, `'ncRNA'`, `'transcript'`. The column answers both "is this synthesized?" (NULL vs. not) and "what was it synthesized from?".
 - `derived_from_feature_id` is NULL for literal features and references the source feature's canonical `feature_id` for synthesized rows.
 
 ### Priority cascade
 
-For each gene, the synthesis layer determines transcripts using this cascade:
+For each gene, transcripts are populated using this cascade:
 
-1. **At least one transcript-source literal child** (any of `mRNA`, `ncRNA`, `tRNA`, `rRNA`, `primary_transcript`, `precursor_RNA`, `misc_RNA`, `tmRNA`, `snRNA`, `snoRNA`, `scRNA`, `antisense_RNA`, or the rare literal `transcript`): synthesize **one transcript per source child**. Multi-isoform genes get one synthesized transcript per isoform.
-2. **Only CDS children**: synthesize **one transcript** with the gene's coordinates (not the CDS's — gene coords capture annotated UTRs).
-3. **No children at all**: synthesize **one transcript** covering the gene.
+1. **At least one transcript-source literal child of any type other than `transcript`** (`mRNA`, `ncRNA`, `tRNA`, `rRNA`, `primary_transcript`, `precursor_RNA`, `misc_RNA`, `tmRNA`, `snRNA`, `snoRNA`, `scRNA`, or `antisense_RNA`): synthesize **one transcript per source child**, with `derivation` set to that source's feature type. Multi-isoform genes get one synthesized transcript per isoform.
+2. **At least one literal `transcript` child** (rare in NCBI files; some non-NCBI annotations include them): the literal transcript is already canonical — it is **promoted in place** rather than shadowed by a synthesized row. The literal keeps `derivation IS NULL` and retains the `part_of gene` relationship the parent-resolution pass gave it.
+3. **Only CDS children** (no transcript children of any kind): synthesize **one transcript** with the gene's coordinates (not the CDS's — gene coords capture annotated UTRs), `derivation='CDS'`.
+4. **No children at all**: synthesize **one transcript** covering the gene, `derivation='gene'`.
 
-For each synthesized transcript, exons are populated:
+Steps 1 and 2 can fire together for the same gene if both kinds of children are present.
 
-- If any literal `exon` features are reachable through the synthesized transcript (because they were children of the literal source mRNA), no exon synthesis happens — literal exons fulfill the canonical hierarchy.
-- Otherwise, synthesized exons follow the same cascade: **mRNA-derived** (one per mRNA segment) > **CDS-derived** (one per CDS segment) > **gene-derived** (one per gene segment, almost always one).
+For each transcript (whether synthesized or a promoted literal), exons are populated:
 
-So the overall priority is: **literal exons > mRNA-derived > CDS-derived > gene-derived**.
+- If literal `exon` features are linked to that transcript, no exon synthesis happens — literal exons fulfill the canonical hierarchy.
+- Otherwise, synthesized exons mirror the segments of the transcript's source feature. For a synthesized transcript that's the literal mRNA / ncRNA / etc.; for a promoted literal transcript that's the literal transcript itself; for a CDS-derived transcript that's the CDS; for a gene-derived transcript that's the gene.
+
+So the overall priority is: **literal exons > exons synthesized from the transcript's source segments**.
 
 ### Querying the canonical hierarchy
 
-The synthesized rows make uniform queries work across bacterial, eukaryotic, and non-coding inputs:
+All transcripts and exons are queryable through `feature_type` alone — literal and synthesized rows live in the same table and are equivalent for canonical-hierarchy queries:
 
 ```sql
 -- Every gene's transcript count and exon count, regardless of input style
@@ -48,17 +51,18 @@ SELECT g.feature_id            AS gene_id,
        COUNT(DISTINCT e.feature_id) AS n_exons
 FROM contigs_sequence_features g
 LEFT JOIN feature_relationships rt ON rt.parent_feature_id = g.feature_id AND rt.relationship = 'part_of'
-LEFT JOIN contigs_sequence_features t ON t.feature_id = rt.child_feature_id AND t.feature_type = 'transcript' AND t.derivation IS NOT NULL
+LEFT JOIN contigs_sequence_features t ON t.feature_id = rt.child_feature_id AND t.feature_type = 'transcript'
 LEFT JOIN feature_relationships re ON re.parent_feature_id = t.feature_id AND re.relationship = 'part_of'
 LEFT JOIN contigs_sequence_features e ON e.feature_id = re.child_feature_id AND e.feature_type = 'exon'
 WHERE g.feature_type = 'gene'
 GROUP BY g.feature_id;
 ```
 
-Filter on `derivation` to switch between canonical synthesized rows and the literal source rows:
+Filter on `derivation` only when you specifically want to separate literal-from-file rows from importer-synthesized rows:
 
-- `WHERE feature_type = 'transcript' AND derivation IS NOT NULL` — only synthesized canonical transcripts.
-- `WHERE feature_type = 'transcript' AND derivation IS NULL` — only literal `transcript` features (rare).
+- `WHERE feature_type = 'transcript'` — all transcripts (literal-promoted + synthesized).
+- `WHERE feature_type = 'transcript' AND derivation IS NULL` — only literal transcripts that came from the input file (rare).
+- `WHERE feature_type = 'transcript' AND derivation IS NOT NULL` — only synthesized transcripts.
 - `WHERE feature_type = 'exon' AND derivation IS NULL` — only literal exon features.
 - `WHERE feature_type = 'exon' AND derivation = 'mRNA'` — only synthesized exons derived from mRNAs.
 
