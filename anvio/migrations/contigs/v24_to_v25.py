@@ -41,6 +41,8 @@ def migrate(db_path):
     contigs_db.create_table(contig_classification_table_name,
                              contig_classification_table_structure,
                              contig_classification_table_types)
+    contigs_db.remove_meta_key_value_pair('contig_classification_sources')
+    contigs_db.set_meta_value('contig_classification_sources', None)
     progress.end()
 
     progress.new("Updating version")

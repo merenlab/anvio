@@ -5777,6 +5777,7 @@ class ContigsDatabase:
         self.db.set_meta_value('reaction_network_modelseed_database_sha', None)
         self.db.set_meta_value('reaction_network_consensus_threshold', None)
         self.db.set_meta_value('reaction_network_discard_ties', None)
+        self.db.set_meta_value('contig_classification_sources', None)
         self.db.set_meta_value('creation_date', self.get_date())
         self.disconnect()
 
