@@ -282,6 +282,23 @@ D = {
             {'metavar': 'FASTA file',
              'help': "A FASTA-formatted input file."}
                 ),
+    'input-genbank': (
+            ['-i', '--input-genbank'],
+            {'metavar': 'GENBANK_FILE',
+             'required': True,
+             'help': "A GenBank-formatted input file (`.gb` / `.gbk` / `.gbff`, optionally gzipped). "
+                     "Used by `anvi-import-genbank-features` to populate the `contigs_sequence_features` "
+                     "table and its companions in a contigs database."}
+                ),
+    'source-name': (
+            ['--source-name'],
+            {'default': 'genbank_import',
+             'metavar': 'NAME',
+             'help': "Value used in the `source` column of `contigs_sequence_features` for all rows "
+                     "imported in this run. Must match `^[A-Za-z0-9_-]+$` because the value is hashed "
+                     "into every `feature_id`. Multiple `--source-name` values can coexist in the same "
+                     "database; rerunning with a different source name is additive. Default: `genbank_import`."}
+                ),
     'fasta-text-file': (
             ['-f', '--fasta-text-file'],
             {'metavar': 'FASTA_TEXT_FILE',
