@@ -967,6 +967,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.skip_INDEL_profiling = A('skip_INDEL_profiling')
         self.skip_clip_profiling = A('skip_clip_profiling')
         self.min_clip_length = int(A('min_clip_length') or 5)
+        self.force_clip_profiling = A('force_clip_profiling')
         self.profile_SCVs = A('profile_SCVs')
         self.min_percent_identity = A('min_percent_identity')
         self.fetch_filter = A('fetch_filter')
@@ -1247,6 +1248,31 @@ class BAMProfiler(dbops.ContigsSuperclass):
             # the read loop never runs and clips cannot be collected either.
             self.skip_clip_profiling = True
             self.skip_edges = 0
+
+        # Defensive BAM @PG check: if the user still expects clip profiling at this point,
+        # verify the BAM came from an aligner that emits soft/hard CIGAR clips. A silently
+        # empty clippings table can mean either "no clips in the data" or "the aligner
+        # cannot emit clips" — these are very different findings, so we surface the latter
+        # as a warning + auto-skip. Skipped for blank profiles (no BAM), serialized
+        # profiles (no BAM), and when --force-clip-profiling is set.
+        if (not self.skip_clip_profiling
+                and not self.blank
+                and not self.force_clip_profiling
+                and self.input_file_path):
+            bam = bamops.BAMFileObject(self.input_file_path)
+            verdict, reason = bam.check_aligner_supports_clipping()
+            bam.close()
+            if verdict != 'allows':
+                self.run.warning(f"Anvi'o was going to profile read-edge clippings, but a quick inspection "
+                                 f"of the BAM header (the @PG records) suggests the aligner may not have "
+                                 f"emitted any clip events. Specifically: {reason}. To avoid handing you a "
+                                 f"silently empty clippings table — which would be ambiguous between 'no "
+                                 f"clips in this data' and 'this aligner cannot tell us about clips' — anvi'o "
+                                 f"will skip clip profiling for this run. If you know your BAM does contain "
+                                 f"clipping information and you want to profile it anyway, re-run with the "
+                                 f"`--force-clip-profiling` flag.",
+                                 header="CLIP PROFILING AUTO-SKIPPED", lc='yellow')
+                self.skip_clip_profiling = True
 
         meta_values = {'db_type': 'profile',
                        'anvio': __version__,
