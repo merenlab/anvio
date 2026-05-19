@@ -29,6 +29,7 @@ node_modules/
 # domain-specific anvi'o assets
 anvio/data/misc/COG/
 anvio/data/misc/Pfam/
+anvio/data/misc/GlobAA/
 anvio/data/misc/PDB.db
 anvio/data/misc/Interacdome/
 anvio/data/misc/MODELLER/db/
