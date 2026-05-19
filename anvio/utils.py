@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 
 """Lonely, helper functions that are broadly used and don't fit anywhere"""
 
@@ -230,7 +228,7 @@ def get_predicted_type_of_items_in_a_dict(d, key):
     This is a shitty function, but there was a real need for it, so here we are :/
     """
 
-    items = [x[key] for x in d.values()]
+    items = [x.get(key) for x in d.values()]
 
     if not items:
         # there is nothing to see here
@@ -446,7 +444,7 @@ def is_program_exists(program, dont_raise=False):
 
     raise ConfigError("An anvi'o function needs '%s' to be installed on your system, but it doesn't seem to appear "
                        "in your path :/ If you are certain you have it on your system (for instance you can run it "
-                       "by typing '%s' in your terminal window), you may want to send a detailed bug report. Sorry!"\
+                       "by typing '%s' in your terminal window), you may want to send a detailed bug report. Sorry!"
                         % (program, program))
 
 
@@ -586,8 +584,8 @@ def run_command(cmdline, log_file_path, first_line_of_log_is_cmdline=True, remov
 
     if anvio.DEBUG:
         Progress().reset()
-        Run().info("[DEBUG] `run_command` is running", \
-                   ' '.join(['%s' % (('"%s"' % str(x)) if ' ' in str(x) else ('%s' % str(x))) for x in cmdline]), \
+        Run().info("[DEBUG] `run_command` is running",
+                   ' '.join(['%s' % (('"%s"' % str(x)) if ' ' in str(x) else ('%s' % str(x))) for x in cmdline]),
                    nl_before=1, nl_after=1, mc='red', lc='yellow')
 
     filesnpaths.is_output_file_writable(log_file_path)
@@ -1471,7 +1469,7 @@ def run_functional_enrichment_stats(functional_occurrence_stats_input_file_path,
                           f"log file offers some clues: {log_file_path}")
 
     enrichment_stats = get_TAB_delimited_file_as_dictionary(enrichment_output_file_path)
-    
+
     # here we will naively try to cast every column that matches `p_*` to float, and every
     # column that matches `N_*` to int.
     column_names = list(enrichment_stats.values())[0].keys()
@@ -1504,7 +1502,7 @@ def run_functional_enrichment_stats(functional_occurrence_stats_input_file_path,
                                   f"entry `{entry}` in your output file contained a value of `{enrichment_stats[entry][column_name]}`. "
                                   f"We have no idea how this happened, but it is not good :/ If you would like to mention this "
                                   f"to someone, please attach to your inquiry the following file: '{enrichment_output_file_path}'.")
-    
+
     # if everything went okay, we remove the log file
     if anvio.DEBUG or num_NA_qvals:
         run.warning(f"Due to the `--debug` flag or the presence of 'NA' q-values, anvi'o keeps the log file at '{log_file_path}'.", lc='green', header="JUST FYI")
@@ -1974,6 +1972,20 @@ def get_time_to_date(local_time, fmt='%Y-%m-%d %H:%M:%S'):
         raise ConfigError("utils::get_time_to_date is called with bad local_time.")
 
     return time.strftime(fmt, time.localtime(local_time))
+
+
+def parse_epoch_time(epoch_time):
+    """Convert the epoch time (returned by `time.time()`) into pretty strings."""
+    try:
+        epoch_time = float(epoch_time)
+    except ValueError:
+        raise ConfigError("utils::parse_epoch_time was called with a bad epoch_time.")
+
+    ti = time.gmtime(epoch_time)
+    hour_min_sec = f'{"%02d" % ti.tm_hour}:{"%02d" % ti.tm_min}:{"%02d" % ti.tm_sec}'
+    month_day_year = f'{calendar.month_name[ti.tm_mon]} {ti.tm_mday}, {ti.tm_year}'
+
+    return hour_min_sec, month_day_year
 
 
 def compare_times(calls, as_matrix=False, iterations_per_call=1):
@@ -2689,7 +2701,7 @@ def get_list_of_codons_for_gene_call(gene_call, contig_sequences_dict, **kwargs)
 
     if gene_call['contig'] not in contig_sequences_dict:
         raise ConfigError("get_list_of_AAs_for_gene_call: The contig sequences dict sent to "
-                           "this function does contain the contig name that appears in the gene call. "
+                           "this function does not contain the contig name that appears in the gene call. "
                            "Something is wrong here...")
 
     try:
@@ -2707,7 +2719,7 @@ def get_list_of_codons_for_gene_call(gene_call, contig_sequences_dict, **kwargs)
         reference_codon_sequence = contig_sequence[nt_positions[0]:nt_positions[2] + 1]
 
         # NOTE: here we make sure the codon sequence is composed of unambiguous nucleotides.
-        # and we will not inlcude those that contain anything other than proper
+        # and we will not include those that contain anything other than proper
         # nucleotides in the resulting list of codons.
         if set(reference_codon_sequence).issubset(constants.unambiguous_nucleotides):
             list_of_codons.append(constants.codon_to_codon_RC[reference_codon_sequence] if gene_call['direction'] == 'r' else reference_codon_sequence)
@@ -3063,7 +3075,7 @@ def is_amino_acid_functionally_conserved(amino_acid_residue_1, amino_acid_residu
 
     if group == 'Polar and Nonpolar':
         #they fall in more than one group, multiple tests needed
-        if amino_acid_residue_1 == 'H' and (amino_acid_residue_2 in constants.conserved_amino_acid_groups['Nonpolar'] \
+        if amino_acid_residue_1 == 'H' and (amino_acid_residue_2 in constants.conserved_amino_acid_groups['Nonpolar']
                                             or amino_acid_residue_2 in constants.conserved_amino_acid_groups['Bases']):
             return True
 
@@ -3170,7 +3182,7 @@ def check_contig_names(contig_names, dont_raise=False):
                            "digits. Names can also contain underscore ('_'), dash ('-') and dot ('.') "
                            "characters. anvio knows how much work this may require for you to go back and "
                            "re-generate your BAM files and is very sorry for asking you to do that, however, "
-                           "it is critical for later steps in the analysis." \
+                           "it is critical for later steps in the analysis."
                                 % ("contains multiple characters" if len(characters_anvio_doesnt_like) > 1 else "contains a character",
                                    ", ".join(['"%s"' % c for c in characters_anvio_doesnt_like])))
 
@@ -3489,13 +3501,13 @@ def export_sequences_from_contigs_db(contigs_db_path, output_file_path, seq_name
           if just_do_it:
               run.warning("Not all the sequences you requested are %s in this CONTIGS.db. %d names are contigs, "
                           "%d are splits, and %d are neither. BUT you're in just-do-it mode and we know you're in charge, so we'll "
-                          "proceed using any appropriate names." % \
+                          "proceed using any appropriate names." %
                           (mode, len(contig_names), len(split_names), len(missing_names),))
               seq_names_to_export = appropriate_seq_names
           else:
               raise ConfigError("Not all the sequences you requested are %s in this CONTIGS.db. %d names are contigs, "
                                 "%d are splits, and %d are neither. If you want to live on the edge and try to "
-                                "proceed using any appropriate names, try out the `--just-do-it` flag." % \
+                                "proceed using any appropriate names, try out the `--just-do-it` flag." %
                                 (mode, len(contig_names), len(split_names), len(missing_names)))
 
     for seq_name in seq_names_to_export:
@@ -3596,7 +3608,7 @@ def gen_gexf_network_file(units, samples_dict, output_file, sample_mapping_dict=
         output.write('''        <viz:size value="%d"/>\n''' % sample_size)
 
         if sample_mapping_dict and 'colors' in sample_mapping_dict[sample]:
-            output.write('''        <viz:color r="%d" g="%d" b="%d" a="1"/>\n''' %\
+            output.write('''        <viz:color r="%d" g="%d" b="%d" a="1"/>\n''' %
                                              HTMLColorToRGB(sample_mapping_dict[sample]['colors'], scaled=False))
 
         if sample_mapping_categories:
@@ -3877,7 +3889,7 @@ def to_jsonable(obj):
 
     Examples
     ========
-    >>> d = {...} # some dict of any size and level of nestedness 
+    >>> d = {...} # some dict of any size and level of nestedness
     >>> json.dumps(f, default=utils.to_jsonable)
     """
 
@@ -3895,9 +3907,9 @@ def to_jsonable(obj):
     raise TypeError(f"Object of type {type(obj).__name__} is not JSON serializable")
 
 
-def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_to_append=None, column_names=None,\
-                                        column_mapping=None, indexing_field=0, separator='\t', no_header=False,\
-                                        ascii_only=False, only_expected_fields=False, assign_none_for_missing=False,\
+def get_TAB_delimited_file_as_dictionary(file_path, expected_fields=None, dict_to_append=None, column_names=None,
+                                        column_mapping=None, indexing_field=0, separator='\t', no_header=False,
+                                        ascii_only=False, only_expected_fields=False, assign_none_for_missing=False,
                                         none_value=None, empty_header_columns_are_OK=False, return_failed_lines=False,
                                         ignore_duplicated_keys=False, key_prefix=None):
     """Takes a file path, returns a dictionary.
@@ -4146,7 +4158,7 @@ def get_pruned_HMM_hits_dict(hmm_hits_dict):
                 4: {'entry_id': 3, 'gene_name': 'Archaeal_16S_rRNA', 'contig_name': 'c_split_00001', 'start': 4988, 'stop': 3441, 'e_value': 7.7e-240}
            }
 
-       where entry 1 and entry 2 should be removed (becuse they overlap witth 3 and 4, respectively, and they are shorter).
+       where entry 1 and entry 2 should be removed (becuse they overlap with 3 and 4, respectively, and they are shorter).
     """
 
     # first create a simpler data structure where all hits in a single contig are accessible directly.
@@ -4210,7 +4222,7 @@ def get_HMM_sources_dictionary(source_dirs=[], check_for_ACC_lines_in_HMM=False)
        check_for_ACC_lines_in_HMM : bool
             If True, this function will throw an error if it finds any model without an `ACC`
             line in the genes.hmm.gz file
-    
+
        Each input 'source' directory must have five files:
 
        - genes.hmm.gz: compressed HMM for each gene.
@@ -4262,7 +4274,7 @@ def get_HMM_sources_dictionary(source_dirs=[], check_for_ACC_lines_in_HMM=False)
                               "counfusion around these parts of the code. Anvi'o could set some defualts for you, "
                               "but it would be much better if you set your own defaults explicitly. You're not "
                               "sure what would make a good default for your HMM collection? Reach out to "
-                              "a developer, and they will help you! Here are the files that are empty: %s." % \
+                              "a developer, and they will help you! Here are the files that are empty: %s." %
                                     (os.path.basename(source), ', '.join(empty_files)))
 
         ref = R('reference.txt')
@@ -4346,7 +4358,7 @@ def check_misc_data_keys_for_format(data_keys_list):
         raise ConfigError("Oh no :( We recently changed the description of the stacked bar data type, and your input data "
                           "file still has the older version. Here is the list of those that are violating the new format: "
                           "%s. To avoid this issue and to turn them into the new format, you could take '%s', and present "
-                          "it as %d separate TAB-delimited entries that look like this: %s. Sorry!" % \
+                          "it as %d separate TAB-delimited entries that look like this: %s. Sorry!" %
                                             (', '.join(['"%s"' % k for k in obsolete_stackedbar_keys]),
                                              key_violates_new_rule,
                                              len(new_rule_compatible_data_keys),
@@ -4363,7 +4375,7 @@ def sanity_check_hmm_model(model_path, genes, require_ACC_lines=False):
 
     with gzip.open(model_path, 'rt', encoding='utf-8') as f:
         for line in f:
-            if line.startswith('HMMER3/f'):
+            if line.startswith('HMMER3/'):
                 model_number += 1
                 model_num_to_details[model_number] = {'name': None, 'acc': None}
             if line.startswith('NAME'):
@@ -4373,7 +4385,7 @@ def sanity_check_hmm_model(model_path, genes, require_ACC_lines=False):
             if line.startswith('ACC'):
                 acc = line.split()[1]
                 accession_ids_in_model.append(acc)
-                model_num_to_details[model_number]['acc'] = name
+                model_num_to_details[model_number]['acc'] = acc
 
     if len(accession_ids_in_model) != len(set(accession_ids_in_model)):
         raise ConfigError(f"Accession IDs in your HMM model should be unique, however, the `genes.hmm.gz` "
@@ -4387,7 +4399,7 @@ def sanity_check_hmm_model(model_path, genes, require_ACC_lines=False):
     if len(genes_in_model.difference(gene_names)):
         raise ConfigError(f"Some gene names in the genes.hmm.gz file do not seem to appear in genes.txt. "
                           f"Here is a list of the extra gene names: {', '.join(list(genes_in_model.difference(gene_names)))}")
-    
+
     if require_ACC_lines:
         models_no_acc = [(num, model_num_to_details[num]['name']) for num in model_num_to_details if not model_num_to_details[num]['acc']]
         if models_no_acc:
@@ -4507,8 +4519,15 @@ def get_all_item_names_from_the_database(db_path, run=run):
             return set([])
         else:
             all_items = set(database.get_single_column_from_table('mean_coverage_Q2Q3_splits', 'item'))
+
+            # zero-coverage splits are stored in a separate table rather than in the view tables,
+            # so we need to include them here to get the complete set of split names.
+            if 'zero_coverage_splits' in database.get_table_names():
+                all_items.update(database.get_single_column_from_table('zero_coverage_splits', 'item'))
     elif db_type == 'pan':
         all_items = set(database.get_single_column_from_table(t.pan_gene_clusters_table_name, 'gene_cluster_id'))
+    elif db_type == 'pan-graph':
+        all_items = set(database.get_single_column_from_table(t.pan_graph_nodes_table_name, 'node_id'))
     elif db_type == 'contigs':
         all_items = set(database.get_single_column_from_table(t.splits_info_table_name, 'split'))
     elif db_type == 'genes':
@@ -4562,8 +4581,8 @@ def is_trnaseq_db(db_path):
     return True
 
 
-def is_pan_or_profile_db(db_path, genes_db_is_also_accepted=False):
-    ok_db_types = ['pan', 'profile'] + (['genes'] if genes_db_is_also_accepted else [])
+def is_pan_or_profile_db(db_path, genes_db_is_also_accepted=False, pan_graph_db_is_also_accepted=False):
+    ok_db_types = ['pan', 'profile'] + (['genes'] if genes_db_is_also_accepted else []) + (['pan-graph'] if pan_graph_db_is_also_accepted else [])
     dbi(db_path, expecting=ok_db_types)
     return True
 
@@ -4589,6 +4608,11 @@ def is_blank_profile(db_path):
 
 def is_pan_db(db_path):
     dbi(db_path, expecting='pan')
+    return True
+
+
+def is_pan_graph_db(db_path):
+    dbi(db_path, expecting='pan-graph')
     return True
 
 
@@ -4655,7 +4679,7 @@ def is_structure_db_and_contigs_db_compatible(structure_db_path, contigs_db_path
     if cdb.hash != sdb.hash:
         raise ConfigError('The contigs and structure databases do not seem compatible. '
                           'More specifically, the contigs database is not the one that '
-                          'was used when the structure database was created (%s != %s).'\
+                          'was used when the structure database was created (%s != %s).'
                                % (cdb.hash, sdb.hash))
 
     return True
@@ -4698,6 +4722,21 @@ def get_yaml_as_dict(file_path):
 
     try:
         return yaml.load(open(file_path), Loader=yaml.FullLoader)
+    except Exception as e:
+        raise ConfigError(f"Anvi'o run into some trouble when trying to parse the file at "
+                          f"{file_path} as a YAML file. It is likely that it is not a properly "
+                          f"formatted YAML file and it needs editing, but here is the error "
+                          f"message in case it clarifies things: '{e}'.")
+
+def save_dict_as_yaml(data, file_path):
+    """YAML parser"""
+
+    filesnpaths.is_output_file_writable(file_path)
+
+    try:
+        with open(file_path, 'w') as outfile:
+            yaml.dump(data, outfile, default_flow_style=False)
+
     except Exception as e:
         raise ConfigError(f"Anvi'o run into some trouble when trying to parse the file at "
                           f"{file_path} as a YAML file. It is likely that it is not a properly "
@@ -4895,7 +4934,7 @@ def get_hash_for_list(l):
 
 
 def get_file_md5(file_path):
-    hash_md5 = hashlib.md5()
+    hash_md5 = hashlib.md5(usedforsecurity=False)
 
     with open(file_path, "rb") as f:
         for chunk in iter(lambda: f.read(4096), b""):
@@ -4904,7 +4943,28 @@ def get_file_md5(file_path):
     return hash_md5.hexdigest()
 
 
-def run_selenium_and_export_svg(url, output_file_path, browser_path=None, run=run):
+def run_selenium_and_export_svg(url, output_file_path, browser_path=None, run=run,
+                                 wait_text="Current view", pangraph_mode=False):
+    """Export SVG from anvi'o interactive interface using Selenium.
+
+    This function works for all anvi'o interactive interfaces. Use pangraph_mode=True
+    for pangenome graph visualizations which have a different rendering approach.
+
+    Parameters
+    ==========
+    url : str
+        The URL to the interactive interface page
+    output_file_path : str
+        Path where the SVG file should be saved
+    browser_path : str, optional
+        Path to alternative Chrome/Chromium browser executable
+    run : terminal.Run, optional
+        Run instance for logging
+    wait_text : str, optional
+        Text to wait for in title-panel-second-line element (default: "Current view")
+    pangraph_mode : bool, optional
+        Set to True for pangenome graph interface (default: False)
+    """
     if filesnpaths.is_file_exists(output_file_path, dont_raise=True):
         raise FilesNPathsError("The output file already exists. Anvi'o does not like overwriting stuff.")
 
@@ -4921,35 +4981,83 @@ def run_selenium_and_export_svg(url, output_file_path, browser_path=None, run=ru
                           "do that but you don't have it. If you are lucky, you probably can install it by "
                           "typing 'pip install selenium' or something :/")
 
+    # Configure Chrome options for headless operation (needed for HPC/servers without GUI)
+    chrome_options = webdriver.ChromeOptions()
+    chrome_options.add_argument('--headless=new')  # New headless mode
+    chrome_options.add_argument('--no-sandbox')  # Needed for running in restricted environments
+    chrome_options.add_argument('--disable-dev-shm-usage')  # Overcome limited resource problems
+    chrome_options.add_argument('--disable-gpu')  # Applicable to headless mode
+    chrome_options.add_argument('--window-size=1920,1080')
+
     if browser_path:
         filesnpaths.is_file_exists(browser_path)
         run.info_single('You are launching an alternative browser. Keep an eye on things!', mc='red', nl_before=1)
-        driver = webdriver.Chrome(executable_path=browser_path)
+        chrome_options.binary_location = browser_path
+        driver = webdriver.Chrome(options=chrome_options)
     else:
-        driver = webdriver.Chrome()
+        driver = webdriver.Chrome(options=chrome_options)
 
     driver.wait = WebDriverWait(driver, 10)
-    driver.set_window_size(1920, 1080)
     driver.get(url)
 
     try:
-        WebDriverWait(driver, 300).until(EC.text_to_be_present_in_element((By.ID, "title-panel-second-line"), "Current view"))
+        WebDriverWait(driver, 300).until(EC.text_to_be_present_in_element((By.ID, "title-panel-second-line"), wait_text))
     except TimeoutException:
-        print("Timeout occured, could not get the SVG drawing in 600 seconds.")
+        print("Timeout occurred, could not get the SVG drawing in 300 seconds.")
         driver.quit()
-    time.sleep(1)
+        raise
 
-    driver.execute_script("exportSvg(true);")
-    time.sleep(1)
+    # Extract SVG content - different approach for pangraph vs standard interfaces
+    try:
+        if pangraph_mode:
+            # Pangenome graph: generate SVG and insert into DOM, then wait for it to be ready
+            driver.execute_script("""
+                var svg = pgui.generate_svg(0);
+                $('#svgbox').empty().html(svg[0].outerHTML);
+            """)
 
-    svg = driver.find_element_by_id('panel-center')
+            # Wait for the SVG element to be present and have content
+            WebDriverWait(driver, 300).until(
+                EC.presence_of_element_located((By.ID, 'result'))
+            )
 
-    svg_file = open(output_file_path, 'w')
-    svg_file.write(svg.get_attribute('innerHTML'))
-    svg_file.close()
+            # Additional check: ensure SVG has actual content (not empty)
+            WebDriverWait(driver, 300).until(
+                lambda d: len(d.find_element(By.ID, 'result').get_attribute('outerHTML')) > 100
+            )
+
+            svg_content = driver.find_element(By.ID, 'result').get_attribute('outerHTML')
+        else:
+            # Standard interface: call exportSvg and wait for it to complete
+            driver.execute_script("exportSvg(true);")
+
+            # Wait for the SVG export to complete by checking if panel-center has SVG content
+            WebDriverWait(driver, 300).until(
+                lambda d: 'svg' in d.find_element(By.ID, 'panel-center').get_attribute('innerHTML').lower()
+            )
+
+            svg = driver.find_element(By.ID, 'panel-center')
+            svg_content = svg.get_attribute('innerHTML')
+    except Exception as e:
+        driver.quit()
+        raise ConfigError(f"Could not extract SVG from the page. Error: {e}")
+
+    # Write SVG to file
+    with open(output_file_path, 'w') as svg_file:
+        svg_file.write(svg_content)
+
     driver.quit()
 
     run.info_single('\'%s\' saved successfully.' % output_file_path)
+
+
+def run_selenium_and_export_svg_for_pangraph(url, output_file_path, browser_path=None, run=run):
+    """Export SVG from pangenome graph interface using Selenium.
+
+    This is a thin wrapper around run_selenium_and_export_svg with pangraph-specific settings.
+    """
+    return run_selenium_and_export_svg(url, output_file_path, browser_path=browser_path, run=run,
+                                       wait_text="Pangraph Detail", pangraph_mode=True)
 
 
 def open_url_in_browser(url, browser_path=None, run=run):
@@ -4994,7 +5102,7 @@ def split_by_delim_not_within_parens(d, delims, return_delims=False):
     d : str
         string to split
     delims : str or list of str
-        a single delimiter, or a list of delimiters, to split on. Note that if delims is the empty string (""), every 
+        a single delimiter, or a list of delimiters, to split on. Note that if delims is the empty string (""), every
         individual character in the string that is not within parentheses will be returned in the list of splits.
     return_delims : boolean
         if this is true then the list of delimiters found between each split is also returned
@@ -5022,7 +5130,7 @@ def split_by_delim_not_within_parens(d, delims, return_delims=False):
             parens_level += 1
         elif d[i] == ")":
             parens_level -= 1
-            if delims == "" and parens_level == 0: 
+            if delims == "" and parens_level == 0:
                 splits.append(d[last_split_index+1:i]) # we don't include the parentheses characters
                 last_split_index = i + 1
         elif delims == "" and parens_level == 0: # allow the use of "" as delimiter to split each character

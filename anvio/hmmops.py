@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """
     HMM related operations.
 """
@@ -221,15 +219,15 @@ class SequencesForHMMHits:
 
         self.progress.update('Recovering contig seqs for %d genes' % (len(gene_caller_ids_of_interest)))
         where_clause_for_contigs = "contig in (%s)" % ', '.join(['"%s"' % s for s in contig_names_of_interest])
-        self.contig_sequences = contigs_db.get_some_rows_from_table_as_dict(t.contig_sequences_table_name, \
-                                                                            string_the_key=True, \
+        self.contig_sequences = contigs_db.get_some_rows_from_table_as_dict(t.contig_sequences_table_name,
+                                                                            string_the_key=True,
                                                                             where_clause=where_clause_for_contigs)
 
         self.progress.update('Recovering amino acid seqs for %d genes' % (len(gene_caller_ids_of_interest)))
-        self.aa_sequences = contigs_db.get_some_rows_from_table_as_dict(t.gene_amino_acid_sequences_table_name, \
+        self.aa_sequences = contigs_db.get_some_rows_from_table_as_dict(t.gene_amino_acid_sequences_table_name,
                                                                         where_clause=where_clause_for_genes)
 
-        self.genes_in_contigs = contigs_db.get_some_rows_from_table_as_dict(t.genes_in_contigs_table_name, \
+        self.genes_in_contigs = contigs_db.get_some_rows_from_table_as_dict(t.genes_in_contigs_table_name,
                                                                             where_clause=where_clause_for_genes)
 
         self.splits_in_contigs = list(split_names_of_interest)
@@ -374,7 +372,7 @@ class SequencesForHMMHits:
             source    = entry['source']
             gene_name = entry['gene_name'].strip()
 
-            if source in sources and (not dont_include_models_with_multiple_domain_hits or (source not in models_to_remove) or \
+            if source in sources and (not dont_include_models_with_multiple_domain_hits or (source not in models_to_remove) or
                                                     gene_name not in models_to_remove[source]):
                 gene_hit_counts[source][gene_name] += 1
 
@@ -526,7 +524,7 @@ class SequencesForHMMHits:
 
         for gene_callers_id in hits_per_gene_caller_id:
             if len(hits_per_gene_caller_id[gene_callers_id]) > 1:
-                hit_ids_to_remove = [tpl[1] for tpl in sorted([(hmm_sequences_dict_for_splits[hit]['e_value'], hit) \
+                hit_ids_to_remove = [tpl[1] for tpl in sorted([(hmm_sequences_dict_for_splits[hit]['e_value'], hit)
                                                                     for hit in hits_per_gene_caller_id[gene_callers_id]])[1:]]
                 for hit_id_to_remove in hit_ids_to_remove:
                     hmm_sequences_dict_for_splits.pop(hit_id_to_remove)
@@ -758,7 +756,7 @@ class SequencesForHMMHits:
         self.run.info_single("Hi! The anvi'o function that was supposed to remove genes that were occurring in "
                              "less than X number of bins due to the use of `--min-num-bins-gene-occurs` is "
                              "speaking. What follows is a report of what happened after anvi'o tried to remove "
-                             "genes that were occurring in at least %d of the %d bins you had at this point." \
+                             "genes that were occurring in at least %d of the %d bins you had at this point."
                                     % (min_num_bins_gene_occurs, len(all_bins)), nl_before=1, nl_after=1)
 
         self.run.info('All genes (%d)' % len(all_genes), ', '.join(all_genes), nl_after=1)
@@ -924,7 +922,7 @@ class SequencesForHMMHits:
                 raise ConfigError("One or more gene names in the genes order list does seem to appear among the genes described "
                                   "by the HMM sources (which translates to 'terrible news'). Here are the genes that cause this "
                                   "issue if you want to fix this: '%s' (and here are the HMM sources you have been using for this "
-                                  "operation in case it helps: '%s')." \
+                                  "operation in case it helps: '%s')."
                                               % (', '.join(genes_in_genes_order_but_missing_in_hmm_source), ', '.join(self.sources)))
             gene_names = genes_order
         else:
@@ -955,8 +953,8 @@ class SequencesForHMMHits:
         for i in range(0, num_genes):
             gene_name = all_gene_names[i]
             self.progress.update('working on %s (%d of %d) ...' % (gene_name, i + 1, num_genes))
-            genes_list = [(bin_name, genes_in_bins_dict[gene_name][bin_name]) \
-                                                        for bin_name in genes_in_bins_dict[gene_name] \
+            genes_list = [(bin_name, genes_in_bins_dict[gene_name][bin_name])
+                                                        for bin_name in genes_in_bins_dict[gene_name]
                                                                            if bin_name in genes_in_bins_dict[gene_name]]
             genes_in_bins_dict[gene_name] = aligner(run=terminal.Run(verbose=False)).run_default(genes_list, debug=anvio.DEBUG)
             gene_lengths[gene_name] = len(list(genes_in_bins_dict[gene_name].values())[0])
@@ -994,7 +992,7 @@ class SequencesForHMMHits:
             run.warning("You asked for some genes that were missing from all bins this class had in the "
            "HMM hits dictionary (here is a list of them: '%s'). Not knowing what to do with this werid "
            "situation, anvi'o put gap characters for all of them and retained your order. Here are those "
-           "genes that missed the party: '%s'" % \
+           "genes that missed the party: '%s'" %
                 (', '.join(bin_names_in_dict), ', '.join(set(gene_names_missing_from_everywhere))))
 
         f.close()
@@ -1003,7 +1001,7 @@ class SequencesForHMMHits:
             utils.gen_NEXUS_format_partition_file_for_phylogenomics(partition_file_path, [(g, gene_lengths[g]) for g in gene_names], separator, run=self.run, progress=self.progress)
 
 
-    def __store_individual_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap=120, separator = 'XXX', genes_order=None, align_with=None):
+    def __store_individual_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap=120, separator = 'XXX', genes_order=None, align_with=None, header_section_separator=' ', sequence_in_header=False):
         """Stores every sequence in hmm_sequences_dict_for_splits into the `output_file_path`.
 
            Please do NOT directly access to this function, and use `store_hmm_sequences_into_FASTA`
@@ -1041,8 +1039,20 @@ class SequencesForHMMHits:
                 f.write('%s\n' % sequence)
 
 
-    def store_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap=120, concatenate_genes=False, partition_file_path=None, separator=None, genes_order=None, align_with=None, just_do_it=False):
-        """Stores HMM sequences into a FASTA file."""
+    def store_hmm_sequences_into_FASTA(self, hmm_sequences_dict_for_splits, output_file_path, wrap=120, concatenate_genes=False, partition_file_path=None, separator=None, genes_order=None, align_with=None, header_section_separator=' ', sequence_in_header=False, just_do_it=False):
+        """Stores HMM sequences into a FASTA file.
+
+        The parameters, `header_section_separator` and `sequence_in_header`, were added for the
+        benefit of `genomictrnaseq.Integrator`.
+
+        `header_section_separator` allows replacement of the default space separating sections of
+        information in the deflines. BLAST drops anything after the first space in writing the
+        defline to the output file, say, in the `sseqid` field.
+
+        `sequence_in_header` adds a section to the defline containing the sequence itself. This is
+        again useful in the BLAST output file, since there is no option to output the full query or
+        subject sequence.
+        """
 
         filesnpaths.is_output_file_writable(output_file_path)
         filesnpaths.is_output_file_writable(partition_file_path) if partition_file_path else None
@@ -1067,7 +1077,7 @@ class SequencesForHMMHits:
         if concatenate_genes:
             self.__store_concatenated_hmm_sequences_into_FASTA(hmm_sequences_dict_for_splits, output_file_path, partition_file_path, wrap, separator, genes_order, align_with, just_do_it)
         else:
-            self.__store_individual_hmm_sequences_into_FASTA(hmm_sequences_dict_for_splits, output_file_path, wrap, separator, genes_order, align_with)
+            self.__store_individual_hmm_sequences_into_FASTA(hmm_sequences_dict_for_splits, output_file_path, wrap, separator, genes_order, align_with, header_section_separator, sequence_in_header)
 
 
 class NumGenomesEstimator(SequencesForHMMHits):

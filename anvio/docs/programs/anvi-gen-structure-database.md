@@ -13,26 +13,26 @@ The output of this program is a %(structure-db)s, which contains all of the mode
 
 ### Basic standard run
 
-Here is a simple run: 
+Here is a simple run:
 
 {{ codestart }}
 anvi-gen-structure-database -c %(contigs-db)s \
                             --gene-caller-ids 1,2,3 \
-                            -o STRUCTURE.db 
+                            -o STRUCTURE.db
 {{ codestop }}
 
-Following this, you will have the structures for genes 1, 2, and 3 stored in `STRUCTURE.db`, assuming reasonable templates were found. Alternatively, you can provide a file name with the gene caller IDs (one ID per line) with the flag `--genes-of-interest`.  
+Following this, you will have the structures for genes 1, 2, and 3 stored in `STRUCTURE.db`, assuming reasonable templates were found. Alternatively, you can provide a file name with the gene caller IDs (one ID per line) with the flag `--genes-of-interest`.
 
-If you have already run %(anvi-setup-pdb-database)s and therefore have a local copy of representative PDB structures, make sure you use it by providing the `--offline` flag. If you put it in a non-default location, provide the path to your %(pdb-db)s: 
+If you have already run %(anvi-setup-pdb-database)s and therefore have a local copy of representative PDB structures, make sure you use it by providing the `--offline` flag. If you put it in a non-default location, provide the path to your %(pdb-db)s:
 
 {{ codestart }}
 anvi-gen-structure-database -c %(contigs-db)s \
                             --gene-caller-ids 1,2,3 \
                             --pdb-database %(pdb-db)s \
-                            -o STRUCTURE.db 
+                            -o STRUCTURE.db
 {{ codestop }}
 
-To quickly get a very rough estimate for your structures, you can run with the flag `--very-fast`. 
+To quickly get a very rough estimate for your structures, you can run with the flag `--very-fast`.
 
 ### Basic import run
 
@@ -41,7 +41,7 @@ If you already possess structures and would like to create a %(structure-db)s fo
 {{ codestart }}
 anvi-gen-structure-database -c %(contigs-db)s \
                             --external-structures %(external-structures)s \
-                            -o STRUCTURE.db 
+                            -o STRUCTURE.db
 {{ codestop }}
 
 {:.notice}
@@ -50,24 +50,22 @@ Please avoid using any MODELLER-specific parameters when using this mode, as the
 
 ### Advanced Parameters
 
-Here, we will go through a brief overview of the MODELLER parameters that you are able to change. See [this page](http://merenlab.org/2018/09/04/getting-started-with-anvio-structure/#description-of-all-modeller-parameters) for more information. 
+Here, we will go through a brief overview of the MODELLER parameters that you are able to change. See [this page](http://merenlab.org/2018/09/04/getting-started-with-anvio-structure/#description-of-all-modeller-parameters) for more information.
 
-- The number of models to be simulated. The default is 1. 
+- The number of models to be simulated. The default is 1.
 - The standard deviation of atomic perturbation of the initial structure (i.e. how much you change the position of the atoms before fine tuning with other analysis). The default is 4 angstroms.
 - The MODELLER database used. The default is `pdb_95`, which can be found [here](https://salilab.org/modeller/supplemental.html). This is the same database that is downloaded by %(anvi-setup-pdb-database)s.
 - The scoring function used to compare potential models. The default is `DOPE_score`.
 - The minimum percent identity cutoff for a template to be further considered.
 - The minimum alignment fraction that the sequence is covered by the template in order to be further considered.
-- The maximum number of templates that the program will consider. The default is 5. 
+- The maximum number of templates that the program will consider. The default is 5.
 - The MODELLER program to use. The default is `mod9.19`, but anvi'o is somewhat intelligent and will
   look for the most recent version it can find.
 
-For a case study on how some of these parameters matter, see [here](http://merenlab.org/2018/09/04/getting-started-with-anvio-structure/#a-quick-case-study-on-the-importance-of-key-parameters). 
+For a case study on how some of these parameters matter, see [here](http://merenlab.org/2018/09/04/getting-started-with-anvio-structure/#a-quick-case-study-on-the-importance-of-key-parameters).
 
 You also have the option to
 
 - Skip the use of DSSP, which predicts beta sheets, alpha helices, certain bond angles, and relative
   solvent acessibility of residues.
 - Output **all** the raw data, just provide a path to the desired directory with the flag `--dump-dir`.
-
-

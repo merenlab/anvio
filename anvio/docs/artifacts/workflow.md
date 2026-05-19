@@ -9,5 +9,3 @@ As of now, the available workflows include,
 * [tRNAseq workflow](../../workflows/trnaseq)
 * [EcoPhylo workflow](../../workflows/ecophylo)
 * [SRA-download workflow](../../workflows/sra-download)
-
-

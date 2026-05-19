@@ -11,7 +11,7 @@
 #     BUILDKIT_PROGRESS=plain docker build -t meren/anvio:$ANVIO_VERSION .
 #
 
-FROM continuumio/miniconda3:4.11.0
+FROM continuumio/miniconda3:26.1.1
 ENV ANVIO_VERSION "8"
 
 SHELL ["/bin/bash", "--login", "-c"]
@@ -64,7 +64,7 @@ RUN curl -L https://github.com/merenlab/anvio/releases/download/v8/anvio-8.tar.g
         --output anvio-8.tar.gz
 RUN pip install anvio-8.tar.gz
 
-# Install METABAT and DAS_TOOL 
+# Install METABAT and DAS_TOOL
 #RUN mamba install metabat2 das_tool
 
 # Install CONCOCT

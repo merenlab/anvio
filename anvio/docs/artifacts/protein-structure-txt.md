@@ -1,14 +1,14 @@
 This is a Protein Data Bank (`X.pdb`) file that describes the structure of a protein as stored in your %(structure-db)s. This is the output of running %(anvi-export-structures)s.
 
-This file format has its own [Wikipedia page](https://en.wikipedia.org/wiki/Protein_Data_Bank_(file_format)), as well as pages on PDB-101 [for beginners](https://pdb101.rcsb.org/learn/guide-to-understanding-pdb-data/beginner's-guide-to-pdb-structures-and-the-pdbx-mmcif-format) and for [coordinates specifically](https://pdb101.rcsb.org/learn/guide-to-understanding-pdb-data/dealing-with-coordinates), but is also briefly explained here. 
+This file format has its own [Wikipedia page](https://en.wikipedia.org/wiki/Protein_Data_Bank_(file_format)), as well as pages on PDB-101 [for beginners](https://pdb101.rcsb.org/learn/guide-to-understanding-pdb-data/beginner's-guide-to-pdb-structures-and-the-pdbx-mmcif-format) and for [coordinates specifically](https://pdb101.rcsb.org/learn/guide-to-understanding-pdb-data/dealing-with-coordinates), but is also briefly explained here.
 
-The header describes the title (if one exists), the type of data (denoted by `EXPDTA`), and any free-form annotations (denoted by `REMARK` ). In Anvi'o, these are primarily MODELLER information calculated when you ran %(anvi-gen-structure-database)s. 
+The header describes the title (if one exists), the type of data (denoted by `EXPDTA`), and any free-form annotations (denoted by `REMARK` ). In Anvi'o, these are primarily MODELLER information calculated when you ran %(anvi-gen-structure-database)s.
 
-Most of the data will describe the position of individual atoms (denoted by `ATOM`) in your protein, where columns 6, 7, and 8 describe the three dimensional coordinate of the atom. The rest of the columns describe information like what position that atom is in the amino acid. 
+Most of the data will describe the position of individual atoms (denoted by `ATOM`) in your protein, where columns 6, 7, and 8 describe the three dimensional coordinate of the atom. The rest of the columns describe information like what position that atom is in the amino acid.
 
 `TER` statements separate independent chains from each other.
 
-Here is an example: 
+Here is an example:
 
     EXPDTA    THEORETICAL MODEL, MODELLER 9.22 2020/10/13 14:38:54
     REMARK   6 MODELLER OBJECTIVE FUNCTION:       255.0071

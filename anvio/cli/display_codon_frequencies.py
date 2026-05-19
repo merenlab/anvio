@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Get codon or amino acid frequency statistics from genomes, genes, and functions."""
 
 import sys

@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """
     Classes for pan operations.
 
@@ -10,11 +8,17 @@ import os
 import json
 import math
 import copy
+import yaml
+import argparse
 import numpy as np
 import pandas as pd
+import seaborn as sns
+import networkx as nx
+import matplotlib.pyplot as plt
 
-from itertools import chain
+from itertools import chain, combinations
 from scipy.optimize import curve_fit
+
 # multiprocess is a fork of multiprocessing that uses the dill serializer instead of pickle
 # using the multiprocessing module directly results in a pickling error in Python 3.10 which
 # goes like this:
@@ -33,15 +37,27 @@ import anvio.clustering as clustering
 import anvio.filesnpaths as filesnpaths
 import anvio.tables.miscdata as miscdata
 
-from anvio.drivers.blast import BLAST
-from anvio.drivers.diamond import Diamond
+from anvio.dbinfo import DBInfo
 from anvio.drivers.mcl import MCL
 from anvio.drivers import Aligners
+from anvio.drivers.blast import BLAST
+from anvio.drivers.diamond import Diamond
 
-from anvio.errors import ConfigError, FilesNPathsError
+from anvio.splitter import LocusSplitter
 from anvio.genomestorage import GenomeStorage
-from anvio.tables.geneclusters import TableForGeneClusters
 from anvio.tables.views import TablesForViews
+from anvio.tables.states import TablesForStates
+from anvio.errors import ConfigError, FilesNPathsError
+from anvio.genomedescriptions import GenomeDescriptions
+from anvio.tables.geneclusters import TableForGeneClusters
+from anvio.tables.genefunctions import TableForGeneFunctions
+from anvio.tables.pangraphdata import TableForNodes, TableForEdges, TableForRegions, TableForGenomeDistances
+
+from anvio.directedforce import DirectedForce
+from anvio.topologicallayout import TopologicalLayout
+from anvio.syntenygenecluster import SyntenyGeneCluster
+from anvio.pangenomegraphmaster import PangenomeGraphManager
+
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
@@ -55,9 +71,127 @@ run = terminal.Run()
 progress = terminal.Progress()
 pp = terminal.pretty_print
 aligners = Aligners()
+P = terminal.pluralize
 
 additional_param_sets_for_sequence_search = {'diamond'   : '--masking 0',
                                              'ncbi_blast': ''}
+
+
+class PangenomeGraphSubGraph:
+    """Takes in a pangenome graph, and exports the genomic loci between two nodes in it as contigs databases.
+
+        >>> import argparse
+        >>> args = argparse.Namespace(pan_graph_db="PATH/TO/PAN-GRAPH.db", graph_nodes="NODE_X,NODE_Y", output_dir="OUTPUT_DIR")
+        >>> subgraph = PangenomeGraphSubGraph(args)
+        >>> subgraph.export()
+
+    A client of this class is the program `anvi-export-pan-subgraph`
+    """
+
+    def __init__(self, args, run=run, progress=progress):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.pan_graph_db_path = A('pan_graph_db')
+        self.graph_nodes = A('graph_nodes').split(',') if A('graph_nodes') else None
+        self.output_dir = A('output_dir')
+        self.external_genomes_file_path = A('external_genomes')
+
+        if not self.graph_nodes:
+            raise ConfigError("This program is useless without the `--graph-nodes` parameter :/")
+
+        if not self.pan_graph_db_path:
+            raise ConfigError("Please send a pangenome graph database")
+
+        if len(self.graph_nodes) != 2:
+            raise ConfigError(f"The `--graph-nodes` parameter must be set to two node names that are separated by a comma :/ "
+                              f"Your parameter, '{A('graph_nodes')}', does not really comply with that.")
+
+        utils.is_pan_graph_db(self.pan_graph_db_path)
+
+        filesnpaths.check_output_directory(self.output_dir)
+
+
+    def export(self):
+        """Export the genomic loci between self.node_names from every genome involved in pangenome graph"""
+
+        # get an instance of PanGraphSuperclass
+        pangraph = dbops.PanGraphSuperclass(self.args)
+        pangraph.init_synteny_gene_clusters()
+
+        missing_nodes = [node for node in self.graph_nodes if node not in pangraph.synteny_gene_cluster_names]
+        if len(missing_nodes) == 2:
+            raise ConfigError(f"Neither of the nodes you requested, '{self.graph_nodes[0]}' and '{self.graph_nodes[1]}', are "
+                              f"found in the pangenome graph database (congratulations) :(")
+        elif len(missing_nodes) == 1:
+            raise ConfigError(f"One of the nodes you requested, '{missing_nodes[0]}', is not found in the pangenome graph database :(")
+        else:
+            pass
+
+        # learn the genome names from the external genomes file and make sure the genome names in
+        # the pangenome graph db are consistent with those.
+        g = GenomeDescriptions(self.args, run=terminal.Run(verbose=False), progress=self.progress)
+        g.load_genomes_descriptions(skip_functions=True, init=False)
+
+        missing_genomes = [genome_name for genome_name in pangraph.genome_names if genome_name not in g.genomes]
+        if len(missing_genomes):
+            raise ConfigError(f"The following genomes are found in the pangenome graph database, but not in the "
+                              f"external genomes file: {', '.join(missing_genomes)}. So anvi'o is confuse "
+                              f"and not sure how to continue :(")
+
+        self.run.info('Pangenome graph database', pangraph.p_meta['project_name'])
+        self.run.info("Pan graph database", self.pan_graph_db_path)
+        self.run.info("Nodes to export", ', '.join(self.graph_nodes))
+        self.run.info("Loci", '')
+
+        d = {}
+        for genome_name in pangraph.genome_names:
+            d[genome_name] = []
+
+            for graph_node in self.graph_nodes:
+                if not len(pangraph.synteny_gene_clusters[graph_node][genome_name]):
+                    raise ConfigError(f"The curent implementation of this tool requires the graph nodes of interest to "
+                                      f"correspond to SynGCs that are present in all genomes (so we can select what is "
+                                      f"between them in each genome easily). Unfortunately, the graph node '{graph_node}' "
+                                      f"does not have any genes from the genome '{genome_name}'.")
+
+                d[genome_name].append(pangraph.synteny_gene_clusters[graph_node][genome_name][0])
+
+            d[genome_name] = sorted(d[genome_name])
+
+            # we know which genes we are interested in for the genome, let's report it to the user
+            # before moving on
+            self.run.info_single(f"{d[genome_name][0]} to {d[genome_name][1]} ({P('gene', d[genome_name][1] - d[genome_name][0])}) for {genome_name}", level=2)
+
+        # at this stage we have everything we need stored in `d` and `g` to start exporting loci
+        # from each contigs database. let's start by generating the output directory
+        filesnpaths.gen_output_directory(self.output_dir, delete_if_exists=True)
+
+        self.progress.new("Exporting", progress_total_items=len(pangraph.genome_names))
+        for genome_name in pangraph.genome_names:
+            progress.update(f"Working on {genome_name} ...", increment=1)
+
+            contigs_db_path = g.genomes[genome_name]['contigs_db_path']
+            first_gene_call = d[genome_name][0]
+            second_gene_call = d[genome_name][1]
+
+            # build the args for LocusSplitter
+            locus_args = argparse.Namespace(contigs_db=contigs_db_path,
+                                            gene_caller_ids=f"{first_gene_call},{second_gene_call}",
+                                            flank_mode=True,
+                                            output_dir=self.output_dir,
+                                            output_file_prefix=genome_name,
+                                            delimiter=',',
+                                            never_reverse_complement=True,
+                                            include_fasta_output=False)
+
+            # let's go
+            locus_splitter = LocusSplitter(locus_args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+            locus_splitter.process()
+
+        self.progress.end()
 
 
 class RarefactionAnalysis:
@@ -200,9 +334,6 @@ class RarefactionAnalysis:
     def store_results_as_svg(self):
         """Stores a nice visualization of the rarefaction curves"""
 
-        import seaborn as sns
-        import matplotlib.pyplot as plt
-
         # Generate fitted values for plotting
         x_fit = np.linspace(1, self.num_genomes, 100)
         y_fit = self.heap_law(x_fit, self.k, self.alpha)
@@ -278,9 +409,7 @@ class Pangenome(object):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.genome_names_to_focus = A('genome_names')
         self.genomes_storage_path = A('genomes_storage')
-        self.genomes = None
         self.project_name = A('project_name')
-        self.output_dir = A('output_dir')
         self.num_threads = A('num_threads')
         self.user_defined_gene_clusters = A('gene_clusters_txt')
         self.skip_alignments = A('skip_alignments')
@@ -306,10 +435,33 @@ class Pangenome(object):
         if not self.project_name:
             raise ConfigError("Please set a project name using --project-name or -n.")
 
+        # next, we figure out where to keep the intermediate data files
+        user_pan_db_path = A('output_file') or A('pan_db')
+        if user_pan_db_path:
+            if not user_pan_db_path.endswith('-PAN.db'):
+                raise ConfigError("Sorry. The output file names for anvi'o pan-db artifats must end with '-PAN.db'. No exceptions, no exclusions, "
+                                  "no creative interpretations. Anvi'o: freedom in data analyses, tyranny in output file suffixes ✊")
+            self.pan_db_path = user_pan_db_path
+        else:
+            # if the user did not specify an output directory for the pan-db, just put it next to the genomes storage
+            # file with a name that includes the project name.
+            self.pan_db_path = os.path.join(os.path.dirname(self.genomes_storage_path), self.project_name + '-PAN.db')
+
+        # only to keep intermediate data files
+        self.intermediate_data_dir = None
+        self.remove_intermediate_data_dir_at_the_end = False
+        if A('output_dir') or A('intermediate_data_dir'):
+            self.intermediate_data_dir = A('output_dir') or A('intermediate_data_dir')
+        else:
+            self.intermediate_data_dir = filesnpaths.get_temp_directory_path(just_the_path=True)
+            self.remove_intermediate_data_dir_at_the_end = True
+        self.intermediate_data_dir = os.path.abspath(self.intermediate_data_dir)
+
         # when it is time to organize gene_clusters
         self.linkage = A('linkage') or constants.linkage_method_default
         self.distance = A('distance') or constants.distance_metric_default
 
+        self.genomes = None
         self.log_file_path = None
 
         # to be filled during init:
@@ -321,6 +473,29 @@ class Pangenome(object):
 
         # we don't know what we are about
         self.description = None
+
+
+    def cleanup(self):
+        self.run.quit()
+
+        self.run.warning(None, header="CLEANUP (OR LACKTHEREOF)", lc="cyan")
+
+        if self.remove_intermediate_data_dir_at_the_end:
+            if anvio.DEBUG:
+                self.run.info_single(f"The intermediate data at {self.intermediate_data_dir} is kept because of the `--debug` flag. "
+                                     f"You can inspect these data, or re-use them with the `--intermediate-data-dir` parameter with "
+                                     f"`anvi-pan-genome`.", level=0, nl_after=2, mc='cyan')
+            elif self.intermediate_data_dir and os.path.exists(self.intermediate_data_dir):
+                self.run.info_single(f"'{self.intermediate_data_dir}', the intermediate data directory anvi'o used for this analysis, "
+                                     f"is now being cleaned up. But you *could* keep it for any reason, such as wanting to debug anvi'o, "
+                                     f"or to re-run `anvi-pan-genome` with different parameters using the same search results by simply "
+                                     f"defining an explicit output directory path for intermediate data files using the very aptly named "
+                                     f"parameter `--intermediate-data-dir`. All is good, but just FYI.", level=0, nl_after=2, mc='cyan')
+                import shutil
+                shutil.rmtree(self.intermediate_data_dir)
+        else:
+            self.run.info_single(f"No cleanup! The intermediate data at {self.intermediate_data_dir} is available for you to re-run the "
+                                 f"`anvi-pan-genome` with the `--intermediate-data-dir` parameter.", level=0, nl_after=2, mc='cyan')
 
 
     def load_genomes(self):
@@ -376,7 +551,7 @@ class Pangenome(object):
 
 
     def get_output_file_path(self, file_name, delete_if_exists=False):
-        output_file_path = os.path.join(self.output_dir, file_name)
+        output_file_path = os.path.join(self.intermediate_data_dir, file_name)
 
         if delete_if_exists:
             if os.path.exists(output_file_path):
@@ -408,18 +583,13 @@ class Pangenome(object):
 
 
     def check_params(self):
-        # if the user did not set a specific output directory name, use the project name
-        # for it:
-        self.output_dir = self.output_dir if self.output_dir else self.project_name
-
-        # deal with the output directory:
+        # deal with the intermediate data directory
         try:
-            filesnpaths.is_file_exists(self.output_dir)
+            filesnpaths.is_file_exists(self.intermediate_data_dir)
         except FilesNPathsError:
-            filesnpaths.gen_output_directory(self.output_dir, delete_if_exists=self.overwrite_output_destinations)
+            filesnpaths.gen_output_directory(self.intermediate_data_dir, delete_if_exists=self.overwrite_output_destinations)
 
-        filesnpaths.is_output_dir_writable(self.output_dir)
-        self.output_dir = os.path.abspath(self.output_dir)
+        filesnpaths.is_output_dir_writable(self.intermediate_data_dir)
 
         if not self.log_file_path:
             self.log_file_path = self.get_output_file_path('log.txt')
@@ -455,8 +625,6 @@ class Pangenome(object):
         if self.description_file_path:
             filesnpaths.is_file_plain_text(self.description_file_path)
             self.description = open(os.path.abspath(self.description_file_path), 'r').read()
-
-        self.pan_db_path = self.get_output_file_path(self.project_name + '-PAN.db')
 
 
     def process_additional_params(self):
@@ -583,8 +751,8 @@ class Pangenome(object):
             self.run.warning("%s did not retun search results for %d of %d the amino acid sequences in your input FASTA file. "
                              "Anvi'o will do some heuristic magic to complete the missing data in the search output to recover "
                              "from this. But since you are a scientist, here are the amino acid sequence IDs for which %s "
-                             "failed to report self search results: %s." \
-                                                    % (search_tool, len(ids_without_self_search), len(all_ids), \
+                             "failed to report self search results: %s."
+                                                    % (search_tool, len(ids_without_self_search), len(all_ids),
                                                        search_tool, ', '.join(ids_without_self_search)))
 
         # HEURISTICS TO ADD MISSING SELF SEARCH RESULTS
@@ -731,7 +899,7 @@ class Pangenome(object):
                 self.run.warning("It seems you have %s gene clusters in your pangenome. This exceeds the soft limit "
                                  "of %s for anvi'o to attempt to create a hierarchical clustering of your gene clusters "
                                  "(which becomes the center tree in all anvi'o displays). If you want a hierarchical "
-                                 "clustering to be done anyway, please see the flag `--enforce-hierarchical-clustering`." \
+                                 "clustering to be done anyway, please see the flag `--enforce-hierarchical-clustering`."
                                             % (pp(len(gene_clusters_dict)), pp(self.max_num_gene_clusters_for_hierarchical_clustering)))
                 self.skip_hierarchical_clustering = True
 
@@ -750,15 +918,17 @@ class Pangenome(object):
                                         view_name = 'gene_cluster_presence_absence',
                                         from_matrix_form=True)
 
-        item_additional_data_table = miscdata.TableForItemAdditionalData(self.args, r=terminal.Run(verbose=False))
-        item_additional_data_keys = ['num_genomes_gene_cluster_has_hits', 'num_genes_in_gene_cluster', 'max_num_paralogs', 'SCG']
-        item_additional_data_table.add(self.additional_view_data, item_additional_data_keys, skip_check_names=True)
-        #                                                                                    ^^^^^^^^^^^^^^^^^^^^^
-        #                                                                                   /
-        # here we say skip_check_names=True, simply because there is no gene_clusters table has not been
+        # write gene cluster stats and SCG data as items additional data in named groups.
+        # we say skip_check_names=True, simply because there is no gene_clusters table has not been
         # generated yet, but the check names functionality in dbops looks for the gene clsuters table to
         # be certain. it is not a big deal here, since we absoluely know what gene cluster names we are
         # working with.
+        stats_args = argparse.Namespace(**{**vars(self.args), 'target_data_group': 'gene_cluster_stats'})
+        stats_keys = ['num_genomes_gene_cluster_has_hits', 'num_genes_in_gene_cluster', 'max_num_paralogs']
+        miscdata.TableForItemAdditionalData(stats_args, r=terminal.Run(verbose=False)).add(self.additional_view_data, stats_keys, skip_check_names=True)
+
+        scg_args = argparse.Namespace(**{**vars(self.args), 'target_data_group': 'SCG'})
+        miscdata.TableForItemAdditionalData(scg_args, r=terminal.Run(verbose=False)).add(self.additional_view_data, ['SCG'], skip_check_names=True)
 
         ########################################################################################
         #                   RETURN THE -LIKELY- UPDATED PROTEIN CLUSTERS DICT
@@ -843,9 +1013,14 @@ class Pangenome(object):
             # update the clustering configs:
             updated_clustering_configs[config_name] = enhanced_config_path
 
-            dbops.do_hierarchical_clustering_of_items(self.pan_db_path, updated_clustering_configs, database_paths={'PAN.db': self.pan_db_path},\
-                                                      input_directory=self.output_dir, default_clustering_config=constants.pan_default,\
-                                                      distance=self.distance, linkage=self.linkage, run=terminal.Run(verbose=False), progress=self.progress)
+            dbops.do_hierarchical_clustering_of_items(self.pan_db_path,
+                                                      updated_clustering_configs,
+                                                      database_paths={'PAN.db': self.pan_db_path},
+                                                      default_clustering_config=constants.pan_default,
+                                                      distance=self.distance,
+                                                      linkage=self.linkage,
+                                                      run=terminal.Run(verbose=False),
+                                                      progress=self.progress)
 
 
     def populate_gene_cluster_homogeneity_index(self, gene_clusters_dict, gene_clusters_failed_to_align=set([])):
@@ -869,8 +1044,13 @@ class Pangenome(object):
                               without updating anything in the pan database...")
             return
 
-        keys = ['functional_homogeneity_index', 'geometric_homogeneity_index', 'combined_homogeneity_index', 'AAI_min', 'AAI_max', 'AAI_avg']
-        miscdata.TableForItemAdditionalData(self.args, r=terminal.Run(verbose=False)).add(d, keys, skip_check_names=True)
+        homogeneity_args = argparse.Namespace(**{**vars(self.args), 'target_data_group': 'homogeneity'})
+        homogeneity_keys = ['functional_homogeneity_index', 'geometric_homogeneity_index', 'combined_homogeneity_index']
+        miscdata.TableForItemAdditionalData(homogeneity_args, r=terminal.Run(verbose=False)).add(d, homogeneity_keys, skip_check_names=True)
+
+        aai_args = argparse.Namespace(**{**vars(self.args), 'target_data_group': 'AAI'})
+        aai_keys = ['AAI_min', 'AAI_max', 'AAI_avg']
+        miscdata.TableForItemAdditionalData(aai_args, r=terminal.Run(verbose=False)).add(d, aai_keys, skip_check_names=True)
 
 
     def populate_layers_additional_data_and_orders(self):
@@ -878,7 +1058,7 @@ class Pangenome(object):
         self.progress.update('Copmputing the hierarchical clustering of the (transposed) view data')
 
         layer_orders_data_dict = {}
-        for clustering_tuple in [('gene_cluster presence absence', self.view_data), ('gene_cluster frequencies', self.view_data_presence_absence)]:
+        for clustering_tuple in [('gene_cluster presence absence', self.view_data_presence_absence), ('gene_cluster frequencies', self.view_data)]:
             v, d = clustering_tuple
             newick = clustering.get_newick_tree_data_for_dict(d, transpose=True, distance = self.distance, linkage=self.linkage)
             layer_orders_data_dict[v] = {'data_type': 'newick', 'data_value': newick}
@@ -934,7 +1114,7 @@ class Pangenome(object):
             raise ConfigError("self.genomes must be a dict. Anvi'o needs an adult :(")
 
         if len(self.genomes) < 2:
-            raise ConfigError("There must be at least two genomes for this workflow to work. You have like '%d' of them :/" \
+            raise ConfigError("There must be at least two genomes for this workflow to work. You have like '%d' of them :/"
                     % len(self.genomes))
 
         if len(self.genomes) > 100:
@@ -956,7 +1136,7 @@ class Pangenome(object):
             raise ConfigError("You are asking anvi'o to skip aligning sequences within your gene clusters, and then you "
                               "are also asking it to use '%s' for aligning sequences within your gene clusters. It is easy "
                               "to ignore this and skip the alignment, but anvi'o gets nervous when it realizes her users are "
-                              "being inconsistent. Please make up your mind, and come back as the explicit person you are" \
+                              "being inconsistent. Please make up your mind, and come back as the explicit person you are"
                                                                             % self.align_with)
 
         self.check_params()
@@ -1296,9 +1476,1785 @@ class Pangenome(object):
                              f"channel and consult the opinion of the anvi'o community. Despite all these, it is still a good idea to run "
                              f"`anvi-display-pan` and see what it says first.", lc="cyan", header="FRIENDLY WARNING")
 
+        # deal with the intermediate data output directory
+        self.cleanup()
+
         # done
+        self.run.log_file_path = None
+        self.run.info("The new pan-db", self.pan_db_path, nl_after=1)
+
         self.run.info_single(f"Your pangenome is ready with a total of {pp(len(gene_clusters_dict))} gene clusters across "
                              f"{len(self.genomes)} genomes 🎉", mc="green", nl_after=1)
 
 
-        self.run.quit()
+# ANCHOR - PangenomeGraph
+class PangenomeGraph():
+    """The major backend class to create, solve and layout pangenome graphs in anvi'o.
+    Please read through individual steps for more in-depth explanaitions on algorithms
+    and data structures.
+    """
+
+    def __init__(self, args, run=run, progress=progress):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        # we seem to like longer messages in this class.
+        self.run.width = 60
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        # ANVI'O INPUTS
+        self.pan_db_path = A('pan_db')
+        self.genomes_storage = A('genomes_storage')
+        self.external_genomes_txt = A('external_genomes')
+        self.pan_graph_yaml = A('pan_graph_yaml')
+        self.project_name = A('project_name')
+
+        # learn the project name from the pan-db if the user did not
+        # provide another
+        if self.pan_graph_yaml:
+            with open(self.pan_graph_yaml) as file:
+                self.yaml_file = yaml.safe_load(file)
+        else:
+            self.yaml_file = {}
+
+        if A('genome_names'):
+            if filesnpaths.is_file_exists(A('genome_names'), dont_raise=True):
+                self.genome_names = utils.get_column_data_from_TAB_delim_file(A('genome_names'), column_indices=[0], expected_number_of_fields=1)[0]
+            else:
+                self.genome_names = [g.strip() for g in A('genome_names').split(',')]
+        elif self.external_genomes_txt:
+            filesnpaths.is_file_tab_delimited(self.external_genomes_txt, expected_number_of_fields=2)
+            self.genome_names = pd.read_csv(self.external_genomes_txt, header=0, sep="\t")['name'].to_list()
+        elif self.pan_graph_yaml:
+            self.genome_names = list(self.yaml_file.keys())
+        else:
+            self.genome_names = []
+
+        if self.pan_db_path:
+            if filesnpaths.is_file_exists(self.pan_db_path, dont_raise=False):
+                self.pan_db = dbops.PanDatabase(self.pan_db_path)
+                self.gene_alignments_computed = self.pan_db.meta['gene_alignments_computed']
+
+                self.pan_super = dbops.PanSuperclass(self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+                self.pan_super.init_gene_clusters()
+        else:
+            self.pan_db = None
+            self.pan_super = None
+            self.gene_alignments_computed = False
+
+        if self.genomes_storage:
+            if filesnpaths.is_file_exists(self.genomes_storage, dont_raise=False):
+                self.genomes_storage_hash = GenomeStorage(self.genomes_storage, storage_hash=None, genome_names_to_focus=self.genome_names).get_storage_hash()
+        else:
+            self.genomes_storage_hash = None
+
+        if not self.project_name:
+            if self.pan_db:
+                self.project_name = self.pan_db.meta['project_name']
+            else:
+                raise ConfigError("You need to explicitly define a `--project-name` for this "
+                                  "run (anvi'o would have figured it out for you, but you don't "
+                                  "even have a pan-db).")
+
+        # ANVI'O OUTPUTS
+        user_pan_graph_db_path = A('output_file') or A('pan_graph_db')
+        if user_pan_graph_db_path:
+            self.pan_graph_db_path = user_pan_graph_db_path
+        else:
+            self.pan_graph_db_path = os.path.join('.', self.project_name + '-PAN-GRAPH.db')
+
+        self.output_dir = os.path.dirname(self.pan_graph_db_path) or '.'
+
+        self.output_hybrid_genome = A('output_hybrid_genome')
+        self.circularize = A('circularize')
+        self.just_do_it = A('just_do_it')
+
+        # ANVI'O FLAGS
+        self.start_node = []
+        self.start_gene = A('start_gene')
+        self.start_column = A('start_column')
+        self.min_contig_chain = A('min_contig_chain')
+
+        self.n = A('n')
+        self.alpha = A('alpha')
+        self.beta = A('beta')
+        self.gamma = A('gamma')
+        self.delta = A('delta')
+        self.min_k = A('min_k')
+        self.inversion_aware = A('inversion_aware')
+        self.skip_remerge = A('skip_remerge')
+        self.max_num_multi_copy_genes = A('max_num_multi_copy_genes')
+        self.max_num_multi_copy_genes_per_genome = A('max_num_multi_copy_genes_per_genome')
+
+        self.max_edge_length_filter = A('max_edge_length_filter')
+        self.gene_cluster_grouping_threshold = A('gene_cluster_grouping_threshold')
+        self.groupcompress = A('grouping_compression')
+        self.priority_genome = A('priority_genome')
+        self.load_state = A('load_state')
+        self.import_values = A('import_values').split(',') if A('import_values') else []
+
+        # STANDARD CLASS VARIABLES
+        self.version = anvio.__pangraph__version__
+        self.functional_annotation_sources_available = DBInfo(self.genomes_storage, expecting='genomestorage').get_functional_annotation_sources() if self.genomes_storage else []
+        self.seed = None
+        self.pangenome_graph = PangenomeGraphManager()
+        self.pangenome_data_df = pd.DataFrame()
+
+        self.newick = ''
+        self.meta = {}
+        self.bins = {}
+        self.states = {}
+        self.layers_data = {}
+
+
+    def summarize_pangenome_graph(self):
+        self.run.warning(None, header="GENERATING SUMMARY TABLES", lc="green")
+
+        node_positions, edge_positions, node_groups = TopologicalLayout().run_synteny_layout_algorithm(F=self.pangenome_graph.graph)
+
+        self.pangenome_graph.set_node_positions(node_positions)
+        self.pangenome_graph.set_edge_positions(edge_positions)
+
+        region_sides_df, nodes_df, gene_calls_df = self.pangenome_graph.summarize()
+
+        additional_info = pd.merge(region_sides_df.reset_index(drop=False), nodes_df.reset_index(drop=False), how="left", on="region_id").set_index('syn_cluster')
+
+        for index, line in additional_info.iterrows():
+            is_backbone = 1 if line["region"] == "BR" else 0
+            self.pangenome_graph.graph.nodes[index]['layer'] = self.pangenome_graph.graph.nodes[index]['layer'] | {'backbone': is_backbone}
+
+        # stash the region-level summary for `generate_pan_graph_db` to persist into
+        # the pan_graph_regions table (translating BR/VR -> backbone/variable on the way in)
+        self.region_sides_df = region_sides_df
+
+        self.run.info_single(f"{len(region_sides_df)} region(s) summarized; backbone/variable labels and region IDs attached to nodes.")
+
+    def layout_pangenome_graph(self):
+        self.run.warning(None, header="Running maximum force layout algorithm", lc="green")
+
+        node_positions, edge_positions, node_groups = TopologicalLayout().run_synteny_layout_algorithm(
+            F=self.pangenome_graph.graph,
+            gene_cluster_grouping_threshold=self.gene_cluster_grouping_threshold,
+            groupcompress=self.groupcompress,
+        )
+
+        x_max = max([x for x,y in node_positions.values()])
+        y_max = max([y for x,y in node_positions.values()])
+        self.run.info_single(f"Pangenome graph length = {x_max}.")
+        self.run.info_single(f"Pangenome graph height = {y_max}.")
+        if y_max <= len(self.genome_names) * 2:
+            self.run.info_single("Pangenome graph height and length, looks fine :)")
+        else:
+            self.run.info_single("A high amount of layering might affect the readability.")
+
+        self.pangenome_graph.set_edge_positions(edge_positions)
+        self.pangenome_graph.set_node_positions(node_positions)
+        self.pangenome_graph.set_node_groups(node_groups)
+
+        length_info = {
+            '<10': 0,
+            '<50': 0,
+            '<100': 0,
+            '<500': 0,
+            '>500': 0,
+        }
+
+        for edge_i, edge_j in self.pangenome_graph.graph.edges():
+            length = self.pangenome_graph.graph[edge_i][edge_j]['length']
+            for length_filter in length_info.keys():
+                if eval(str(length) + length_filter) == True:
+                    length_info[length_filter] += 1
+                    break
+
+        self.run.info_single("Summary of edge length distribution:")
+        for length_filter, number in length_info.items():
+            self.run.info_single(f"{length_filter}: {number} edge(s)")
+
+        long_edges = self.pangenome_graph.cut_edges(self.max_edge_length_filter)
+
+        self.run.info_single(f"Removed {len(long_edges)} edges due to user defined length cutoff.")
+        self.run.info_single("Done.")
+
+
+    def print_settings(self):
+        self.run.warning(None, header="SETTINGS", lc="green")
+        self.run.info("Circularize genomes", self.circularize)
+        self.run.info("Graph starting gene", self.start_gene if self.start_gene else 'Auto (min avg. gene caller id)')
+        self.run.info("Functional annotation source for starting gene", self.start_column)
+        self.run.info("Minimum number of synteny clusters in contig", self.min_contig_chain)
+        self.run.info("Global context comparison window size", self.n)
+        self.run.info("Global context comparison treshold value alpha", self.alpha)
+        self.run.info("Local context comparison gap to gene value beta", self.beta)
+        self.run.info("Local context comparison gap to gap value gamma", self.gamma)
+        self.run.info("General context comparison max treshold dela", self.delta)
+        self.run.info("Synteny gene cluster min k", self.min_k)
+        self.run.info("Higher inversion awareness", self.inversion_aware)
+        self.run.info("Maximum number of multi-copy genes", self.max_num_multi_copy_genes)
+        self.run.info("Maximum number of multi-copy genes per genome", self.max_num_multi_copy_genes_per_genome)
+        self.run.info("Priority genome", self.priority_genome)
+
+
+    def get_pangenome_graph_from_scratch(self):
+        """Populates `self.pangenome_graph` from a pan-db (or a YAML file)"""
+
+        SynGC = SyntenyGeneCluster(self.args)
+
+        if self.pan_graph_yaml:
+            self.pangenome_data_df = SynGC.get_data_from_YAML()
+        else:
+            self.pangenome_data_df = SynGC.get_data_from_pan_db()
+
+        # Determine the first node of the graph
+        self.run.warning(None, header="FIRST NODE DETERMINATION", lc="green")
+        if self.start_gene and self.start_column:
+            # If a start gene is specified, try to work with that.
+            if self.start_column in self.pangenome_data_df.columns:
+                start_syn_cluster = self.pangenome_data_df[self.pangenome_data_df[self.start_column].str.contains(self.start_gene)]['syn_cluster'].to_list()
+                start_syn_type = self.pangenome_data_df[self.pangenome_data_df[self.start_column].str.contains(self.start_gene)]['syn_cluster_type'].to_list()
+                self.start_node += set(start_syn_cluster)
+
+                if len(set(start_syn_cluster)) > 1:
+                    self.run.info_single("There is more than one occurance of your start gene of preference, "
+                                         "we are assuming here that you know what you are doing.", level=0)
+
+                if len(start_syn_cluster) != len(self.genome_names):
+                    self.run.info_single("The number of genomes in the dataset does not equal the number of "
+                                         "occurances of the start gene. Weird.", level=0)
+
+                if any(node != 'core' for node in start_syn_type):
+                    self.run.info_single("At least one occurence of a start gene is not a core synteny cluster.", level=0)
+            else:
+                self.run.info_single("The column were we should search for your start gene does not exist...", level=0)
+        else:
+            # If no start gene specified, use the synteny cluster with the smallest average gene_caller_id
+            # while appearing in the most genomes. This works well for reoriented genomes where
+            # gene 0 is at the aligned position, avoiding singleton SynGCs with gene_caller_id=0
+            if 'gene_caller_id' in self.pangenome_data_df.columns:
+                # Calculate metrics for each synteny cluster
+                syn_cluster_stats = self.pangenome_data_df.groupby('syn_cluster').agg({'gene_caller_id': ['mean', 'min'], 'genome': 'nunique'})
+                syn_cluster_stats.columns = ['avg_gene_caller_id', 'min_gene_caller_id', 'num_genomes']
+
+                # Find the maximum number of genomes any SynGC appears in
+                max_genome_count = syn_cluster_stats['num_genomes'].max()
+
+                # Among SynGCs that appear in the most genomes, pick the one with smallest average gene_caller_id
+                most_core_syn_clusters = syn_cluster_stats[syn_cluster_stats['num_genomes'] == max_genome_count]
+                start_syn_cluster = most_core_syn_clusters['avg_gene_caller_id'].idxmin()
+
+                avg_gene_id = most_core_syn_clusters.loc[start_syn_cluster, 'avg_gene_caller_id']
+                num_genomes = most_core_syn_clusters.loc[start_syn_cluster, 'num_genomes']
+
+                self.run.info_single(f"No start gene was specified, so anvi'o automatically chose SynGC '{start_syn_cluster}' "
+                                     f"which is present in {int(num_genomes)} of {len(self.genome_names)} genome(s) and has "
+                                     f"an average gene caller ID of {avg_gene_id:.1f}, as the starting node for the graph", level=0)
+
+                self.start_node += [start_syn_cluster]
+            else:
+                self.run.info_single("No start gene specified and the `gene_caller_id` column is somehow not available "
+                                     "in the data frame. DirectedForce will choose a start node automatically.", level=0)
+
+
+    def process(self):
+        """Main processing method for pangenome graph analysis and creation"""
+
+        # make sure the output directory is there
+        filesnpaths.gen_output_directory(self.output_dir)
+
+        # fail fast if the user has pointed --pan-graph-db at a non-`.db` filename
+        # or at a path that already exists (so we don't burn CPU before crashing
+        # inside `PanGraphDatabase.touch()`)
+        dbops.is_db_ok_to_create(self.pan_graph_db_path, 'pan-graph')
+
+        # a round of sanity check
+        self.sanity_check()
+
+        # display some settings if applicable
+        self.print_settings()
+
+        # figure out if we will get the pangenome graph from
+        # a user-provided JSON file, or from sctratch
+        self.get_pangenome_graph_from_scratch()
+
+        self.create_pangenome_graph()
+
+        if not self.skip_remerge:
+            self.remerge_nodes()
+
+        self.add_layers()
+
+        # compute region-level summaries; results are stashed on `self` so they can be
+        # written to the pan_graph_regions table during db generation
+        self.summarize_pangenome_graph()
+
+        # calculate the display
+        # self.layout_pangenome_graph()
+
+        # if the user has not provided a tree file calculate one from the graph properties
+        # whuile at it, take the distance matrix is captured here and get ready to store
+        # it into the pan_graph_genome_distances table
+        self.distance_matrix = pd.DataFrame()
+        self.distance_genome_names = []
+        if not self.newick:
+            self.newick, self.distance_matrix, self.distance_genome_names = self.pangenome_graph.calculate_graph_distance()
+
+        # FIXME: not currently engaged
+        if self.output_hybrid_genome:
+            self.pangenome_graph.generate_hybrid_genome(self.output_dir)
+
+        # generate pan-graph-db and populate it with information
+        self.generate_pan_graph_db()
+
+        # Let the user know if we ended up with a zero-variation graph
+        if not self.newick:
+            self.run.warning("Your pangenome graph has no structure, which means the genomes you are working with "
+                             "have no gene-level variation. All the files are still generated (because that's how "
+                             "anvi'o rolls), but it will be a wasted effort to visualize these data since you will "
+                             "not see anything worth noting :/ If you were expecting variation, please double-check "
+                             "your input genomes, or take a look at the conventional pangenome using the program "
+                             "`anvi-display-pan` for good measure.", header="⚠️ SILLY GENOMES WARNING ⚠️", lc="red")
+
+
+    # TODO needs more sanity checks!
+    def sanity_check(self):
+        pass
+
+
+    def get_default_state(self):
+        """Calculates a default state for the pangenome graph"""
+
+        x_max = max([data['position'][0] for node, data in self.pangenome_graph.graph.nodes(data=True)])
+        y_max = max([data['position'][1] for node, data in self.pangenome_graph.graph.nodes(data=True)])
+        for i, j, data in self.pangenome_graph.graph.edges(data=True):
+            if data['route']:
+                for x, y in data['route']:
+                    y_max = y if y > y_max else y_max
+
+        distx = 45
+        full_radius = int(180 * (distx * x_max) / (math.pi * 270))
+        tracks_radius = int((2 * full_radius / 3))
+        inner = int((1 * full_radius / 3))
+        tracks_layer = int(tracks_radius / (3/2 * len(self.genome_names) + (5/2)))
+
+        inner_margin = int(tracks_layer / 2)
+        backbone = int(tracks_layer / 2)
+        arrow = int(tracks_layer / 2)
+        search = int(tracks_layer / 2)
+
+        label = int(arrow * 0.25)
+
+        state = {'rearranged_color': '#8FF0A4',
+                 'accessory_color': '#DC8ADD',
+                 'paralog_color': '#FFA348',
+                 'singleton_color': '#99C1F1',
+                 'core_color': '#BCBCBC',
+                 'trna_color': '#F66151',
+                 'layer_color': '#F5F5F5',
+                 'non_back_color': '#F8E45C',
+                 'back_color': '#3D70A0',
+                 'flexsaturation': True,
+                 'arrow': arrow,
+                 'flexarrow': True,
+                 'globalbackbone': backbone,
+                 'flexglobalbackbone': True,
+                 **{'flex' + layer: False for layer in self.import_values},
+                 **{layer: 0 for layer in self.import_values},
+                 **{'flex' + genome + 'layer': True for genome in self.genome_names},
+                 **{genome + 'layer': tracks_layer for genome in self.genome_names},
+                 'flextree': True,
+                 'tree_length': tracks_layer,
+                 'tree_offset': int(inner_margin / 2),
+                 'tree_thickness': 10,
+                 'distx': distx,
+                 'disty': 120,
+                 'size': 15,
+                 'circ': 5,
+                 'edge': 5,
+                 'flexlinear': False,
+                 'line': 5,
+                 'label': label,
+                 'label_offset': int(inner_margin / 2),
+                 'search_hit': search,
+                 'inner_margin': inner_margin,
+                 'outer_margin': 0,
+                 'inner': inner,
+                 'start_angle': 0,
+                 'end_angle': 270,
+                 'num_position': 20,
+                 'flexcondtr': True if self.gene_cluster_grouping_threshold != -1 else False,
+                 'condtr': self.gene_cluster_grouping_threshold,
+                 'flexmaxlength': True,
+                 'maxlength': self.max_edge_length_filter if self.max_edge_length_filter != -1 else 1000,
+                 'flexgroupcompress': True if self.groupcompress != 1.0 else False,
+                 'groupcompress': self.groupcompress,
+                 'track_line_width': 5,
+                 'region_label_size': 13,
+                 'region_label_min_width': 80,
+                 'region_label_distance': 2,
+                 'flexbinlabels': True,
+                 'bin_label_orientation': 'natural',
+                 'bin_label_size': 19.5,
+                 'bin_ring_height': 4,
+                 'bin_ring_opacity': 0.8,
+                 'flexbinedges': True,
+                 'bin_edge_thickness': 4,
+                 'bin_edge_color': '#FFFFFF',
+                 'bin_edge_opacity': 1,
+                 **{'flex' + genome: True for genome in self.genome_names},
+                 **{genome: '#000000' for genome in self.genome_names}
+        }
+
+        return state
+
+
+    def generate_pan_graph_db(self):
+        self.run.warning(None, header="STORING PAN-GRAPH-DB", lc="green")
+
+        """Generates an empty pan-graph-db and populates it with essential information"""
+
+        # generate an empty pan-graph-db with meta values that capture the settings and
+        # and the data that went into the graph construction so we have them for downstream
+        # analyeses and for the user to be able to revisit them if/when they need to.
+        meta_values = {
+            # identity & versioning
+            'anvio_version': anvio.__version__,
+            'version': self.version,
+            'project_name': self.project_name,
+            # genome provenance
+            'genomes_storage_hash': self.genomes_storage_hash,
+            'genome_names': ','.join(self.genome_names),
+            'num_genomes': len(self.genome_names),
+            'gene_alignments_computed': self.gene_alignments_computed,
+            'gene_function_sources': ','.join(self.functional_annotation_sources_available),
+            # graph-building algorithm parameters
+            'alpha': self.alpha,
+            'beta': self.beta,
+            'gamma': self.gamma,
+            'delta': self.delta,
+            'min_k': self.min_k,
+            'n': self.n,
+            'circularize': self.circularize,
+            'min_contig_chain': self.min_contig_chain,
+            'inversion_aware': self.inversion_aware,
+            'skip_remerge': self.skip_remerge,
+            # multi-copy gene removal parameters
+            'max_num_multi_copy_genes': self.max_num_multi_copy_genes,
+            'max_num_multi_copy_genes_per_genome': self.max_num_multi_copy_genes_per_genome,
+            # layout & simplification parameters
+            'max_edge_length_filter': self.max_edge_length_filter,
+            'gene_cluster_grouping_threshold': self.gene_cluster_grouping_threshold,
+            'grouping_compression': self.groupcompress,
+            # anchoring
+            'priority_genome': self.priority_genome,
+            'start_gene': self.start_gene,
+        }
+
+        dbops.PanGraphDatabase(self.pan_graph_db_path, run=self.run, progress=self.progress, quiet=False).create(meta_values)
+
+        # add a default state
+        TablesForStates(self.pan_graph_db_path).store_state('default', json.dumps(self.get_default_state()))
+
+        # populate nodes in pan-graph-db
+        self.store_nodes_in_pan_graph_db()
+
+        # populate edges in pan-graph-db
+        self.store_edges_in_pan_graph_db()
+
+        # populate regions (backbone / variable, with CVS) in pan-graph-db
+        self.store_regions_in_pan_graph_db()
+
+        # populate pairwise graph-based genome distances in pan-graph-db
+        self.store_genome_distances_in_pan_graph_db()
+
+        # store items additional data
+        self.update_pan_graph_db_with_items_additional_data()
+
+        # store layer orders (the newick tree computed from the graph)
+        self.update_pan_graph_db_with_layer_orders()
+
+
+    def store_regions_in_pan_graph_db(self):
+        """Persists `region_sides_df` (computed by `summarize_pangenome_graph`) into the
+           pan_graph_regions table, translating the BR/VR shorthand into 'backbone' /
+           'variable' for human-friendly downstream consumption."""
+
+        if not hasattr(self, 'region_sides_df') or self.region_sides_df is None or self.region_sides_df.empty:
+            self.run.info_single("No regions to store in the pan-graph-db (skipping).")
+            return
+
+        self.progress.new('Storing regions in pan-graph-db')
+        self.progress.update('...')
+
+        region_label = {'BR': 'backbone', 'VR': 'variable'}
+
+        df = self.region_sides_df.reset_index(drop=False).rename(columns={'region': 'region_type'})
+        df['region_type'] = df['region_type'].map(lambda x: region_label.get(x, x))
+
+        table_for_regions = TableForRegions(self.pan_graph_db_path, run=self.run, progress=self.progress)
+        for _, row in df.iterrows():
+            entry = {col: row[col] for col in t.pan_graph_regions_table_structure}
+            table_for_regions.add(entry)
+
+        self.progress.end()
+
+        table_for_regions.store()
+
+
+    def store_genome_distances_in_pan_graph_db(self):
+        """Persists the pairwise genome distance matrix into the pan_graph_genome_distances
+           table. Both directions (A,B) and (B,A) are stored so consumers can index either
+           way without reconstruction."""
+
+        if not hasattr(self, 'distance_matrix') or self.distance_matrix is None or self.distance_matrix.empty:
+            self.run.info_single("No graph-based genome distances to store in the pan-graph-db (skipping).")
+            return
+
+        self.progress.new('Storing genome distances in pan-graph-db')
+        self.progress.update('...')
+
+        table_for_distances = TableForGenomeDistances(self.pan_graph_db_path, run=self.run, progress=self.progress)
+        for genome_a in self.distance_matrix.index:
+            for genome_b in self.distance_matrix.columns:
+                if genome_a == genome_b:
+                    continue
+                table_for_distances.add({'genome_a': genome_a,
+                                         'genome_b': genome_b,
+                                         'distance': float(self.distance_matrix.loc[genome_a, genome_b])})
+
+        self.progress.end()
+
+        table_for_distances.store()
+
+
+    def update_pan_graph_db_with_layer_orders(self):
+        """Adds the newick tree calculated from the graph into the pan-graph-db"""
+
+        # Only add newick tree if one was generated (not empty for identical genomes)
+        if self.newick:
+            args = argparse.Namespace(pan_or_profile_db=self.pan_graph_db_path, target_data_table="layer_orders")
+            miscdata.TableForLayerOrders(args, r=terminal.Run(verbose=False)).add({"default": {'data_type': 'newick', 'data_value': self.newick}}, skip_check_names=True)
+
+
+    def update_pan_graph_db_with_items_additional_data(self):
+        """Updates the pan-graph-db with additional node information"""
+
+        data = {}
+        keys = set([])
+
+        # let's start with backbone
+        nodes = dict(self.pangenome_graph.graph.nodes(data=True))
+        for node in nodes:
+            data[node] = nodes[node]['layer']
+            keys.update(nodes[node]['layer'].keys())
+
+        # (...)
+
+        args = argparse.Namespace(pan_or_profile_db=self.pan_graph_db_path, target_data_table="items")
+        miscdata.TableForItemAdditionalData(args, r=terminal.Run(verbose=False)).add(data, list(keys), skip_check_names=True)
+
+
+    def store_nodes_in_pan_graph_db(self):
+
+        self.progress.new('Storing syn gene cluster nodes in pan-graph-db')
+        self.progress.update('...')
+
+        table_for_nodes = TableForNodes(self.pan_graph_db_path, run=self.run, progress=self.progress)
+        for node, data in self.pangenome_graph.graph.nodes(data=True):
+            node_entry = {
+                'node_id': node,
+                'node_type': data['type'],
+                'region_id': int(data['region_id']) if data.get('region_id') is not None else -1,
+                'gene_cluster_id': data['gene_cluster'],
+                'synteny_position_json': json.dumps(data['synteny']),
+                'gene_calls_json': json.dumps(data['gene_calls']),
+                'alignment_summary': json.dumps(data['alignment']),
+                'node_x': data['position'][0],
+                'node_y': data['position'][1],
+            }
+
+            table_for_nodes.add(node_entry)
+
+        self.progress.end()
+
+        table_for_nodes.store()
+
+        pan_graph_db = dbops.PanGraphDatabase(self.pan_graph_db_path, run=self.run, progress=self.progress, quiet=True,)
+        pan_graph_db.db.set_meta_value('num_nodes', len(self.pangenome_graph.graph.nodes()))
+        pan_graph_db.disconnect()
+
+
+    def store_edges_in_pan_graph_db(self):
+        """"""
+
+        self.progress.new('Storing syn gene cluster edges in pan-graph-db')
+        self.progress.update('...')
+
+        table_for_edges = TableForEdges(self.pan_graph_db_path, run=self.run, progress=self.progress)
+        for edge_i, edge_j, data in self.pangenome_graph.graph.edges(data=True):
+            edge_entry = {
+                'edge_id': data['name'],
+                'source': edge_i,
+                'target': edge_j,
+                'weight': data['weight'],
+                'directions': json.dumps(data['directions'])
+            }
+            table_for_edges.add(edge_entry)
+
+        self.progress.end()
+
+        table_for_edges.store()
+
+        pan_graph_db = dbops.PanGraphDatabase(self.pan_graph_db_path, run=self.run, progress=self.progress, quiet=True)
+        pan_graph_db.db.set_meta_value('num_edges', len(self.pangenome_graph.graph.edges(data=True)))
+        pan_graph_db.disconnect()
+
+
+    def create_pangenome_graph(self):
+        """
+        Here the pangenome graph is created. The initial graph is a cyclic graph holding the
+        synteny information of the genes present in the genomes. The pangenome graph is a
+        non-cyclic graph featured with (x,y) positions and grouped nodes for a layout
+        representation.
+
+        Parameters
+        ==========
+        None
+
+        Returns
+        =======
+        self.pangenome_graph: PangenomeGraphManager Object
+        """
+
+        # 2. step: Fill self.pangenome_graph with nodes and edges based on the synteny data
+        self.run.warning("The algorithm will now build a directed graph where nodes represent synteny gene clusters "
+                         "(SynGCs) and edges connect consecutive SynGCs so they follow the genomic context. Edge weights "
+                         "are computed to prioritize paths through core genes and the specified priority genome if provided. "
+                         "For circular genomes (when --circularize is used), wrap-around edges will connect the last "
+                         "gene back to the first gene to maintain circularity.",
+                         header="BUILDING PANGENOME GRAPH", lc="green")
+        factor = 0.00000001 / 2
+        decisison_making = {}
+
+        # TODO I guess it would be better to only use this on sigle edges not in general, like find nodes with equal edges and then give a smallest numpy number bonus.
+        # Unfortunately this part here is very arbitiary but necessary. Find better way later!
+        # INCLUDE CORE AND NOT CORE INFORMATION HERE!
+        for genome in self.genome_names:
+            decisison_making[genome] = factor
+            factor /= 2
+
+        import_values_found = []
+        if self.import_values:
+            for value in self.import_values:
+                if value in self.pangenome_data_df.columns and self.pangenome_data_df.dtypes[value] in ['int64', 'float64']:
+                    import_values_found += [value]
+                    self.run.info_single(f"Column {value} found and saved.")
+                else:
+                    self.run.info_single(f"Column {value} not found in the pangenome.")
+
+        self.import_values = import_values_found
+
+        number_gene_calls = {}
+        for genome, genome_group in self.pangenome_data_df.groupby(["genome"]):
+            extra_connections = []
+
+            for contig, group in genome_group.groupby(["contig"]):
+                group.reset_index(drop=False, inplace=True)
+                group.sort_values(["position"], axis=0, ascending=True, inplace=True)
+
+                syn_cluster_tuples = list(map(tuple, group[['index', 'syn_cluster', 'syn_cluster_type', 'gene_cluster', 'gene_caller_id', 'position']].values.tolist()))
+
+                group.set_index('index', inplace=True)
+
+                # TODO just multiplying by 100 is a bit arbitrary as well...
+                if genome == self.priority_genome:
+                    add_weight = 1.0 * 100
+                else:
+                    add_weight = 0
+
+                if len(syn_cluster_tuples) >= self.min_contig_chain:
+
+                    extra_connections += [syn_cluster_tuples[0], syn_cluster_tuples[-1]]
+                    add_weight += decisison_making[genome]
+
+                    if len(syn_cluster_tuples) > 1:
+                        syn_cluster_tuple_pairs = map(tuple, zip(syn_cluster_tuples, syn_cluster_tuples[1:]))
+                        for syn_cluster_tuple_pair in syn_cluster_tuple_pairs:
+                            index_i, syn_cluster_i, syn_cluster_type_i, gene_cluster_i, gene_caller_id_i, synteny_i = syn_cluster_tuple_pair[0]
+                            index_j, syn_cluster_j, syn_cluster_type_j, gene_cluster_j, gene_caller_id_j, synteny_j = syn_cluster_tuple_pair[1]
+
+                            node_attributes_i = {
+                                'gene_cluster': gene_cluster_i,
+                                'gene_calls': {genome: gene_caller_id_i},
+                                'synteny': {genome: synteny_i},
+                                'type': syn_cluster_type_i,
+                                # 'layer': group[self.import_values].loc[index_i].to_dict() if self.import_values else {}
+                            }
+
+                            layer_group_i = group[self.import_values].loc[index_i].to_dict()
+
+                            if 'start' in layer_group_i and 'stop' in layer_group_i:
+                                layer_group_i['length'] = abs(layer_group_i['stop'] - layer_group_i['start'])
+
+                            for layer, value in layer_group_i.items():
+                                if syn_cluster_i not in self.layers_data:
+                                    self.layers_data[syn_cluster_i] = {layer: [value]}
+                                else:
+                                    if layer not in self.layers_data[syn_cluster_i]:
+                                        self.layers_data[syn_cluster_i][layer] = [value]
+                                    else:
+                                        self.layers_data[syn_cluster_i][layer] += [value]
+
+                            node_attributes_j = {
+                                'gene_cluster': gene_cluster_j,
+                                'gene_calls': {genome: gene_caller_id_j},
+                                'synteny': {genome: synteny_j},
+                                'type': syn_cluster_type_j,
+                                # 'layer': group[self.import_values].loc[index_j].to_dict() if self.import_values else {}
+                            }
+
+                            layer_group_j = group[self.import_values].loc[index_i].to_dict()
+
+                            if 'start' in layer_group_j and 'stop' in layer_group_j:
+                                layer_group_j['length'] = abs(layer_group_j['stop'] - layer_group_j['start'])
+
+                            for layer, value in layer_group_j.items():
+                                if syn_cluster_j not in self.layers_data:
+                                    self.layers_data[syn_cluster_j] = {layer: [value]}
+                                else:
+                                    if layer not in self.layers_data[syn_cluster_j]:
+                                        self.layers_data[syn_cluster_j][layer] = [value]
+                                    else:
+                                        self.layers_data[syn_cluster_j][layer] += [value]
+
+                            edge_attributes = {
+                                'weight': 1.0 + add_weight,
+                                'directions': {genome: 'R'}
+                            }
+
+                            self.pangenome_graph.add_node_to_graph(syn_cluster_i, node_attributes_i)
+                            self.pangenome_graph.add_node_to_graph(syn_cluster_j, node_attributes_j)
+                            self.pangenome_graph.add_edge_to_graph(syn_cluster_i, syn_cluster_j, edge_attributes)
+
+                    else:
+                        index_i, syn_cluster_i, syn_cluster_type_i, gene_cluster_i, gene_caller_id_i, synteny_i = syn_cluster_tuples[0]
+
+                        node_attributes_i = {
+                            'gene_cluster': gene_cluster_i,
+                            'gene_calls': {genome: gene_caller_id_i},
+                            'synteny': {genome: synteny_i},
+                            'type': syn_cluster_type_i,
+                            # 'layer': group[self.import_values].loc[index_i].to_dict() if self.import_values else {}
+                        }
+
+                        layer_group_i = group[self.import_values].loc[index_i].to_dict()
+
+                        if 'start' in layer_group_i and 'stop' in layer_group_i:
+                                layer_group_i['length'] = abs(layer_group_i['stop'] - layer_group_i['start'])
+
+                        for layer, value in layer_group_i.items():
+                            if syn_cluster_i not in self.layers_data:
+                                self.layers_data[syn_cluster_i] = {layer: [value]}
+                            else:
+                                if layer not in self.layers_data[syn_cluster_i]:
+                                    self.layers_data[syn_cluster_i][layer] = [value]
+                                else:
+                                    self.layers_data[syn_cluster_i][layer] += [value]
+
+                        self.pangenome_graph.add_node_to_graph(syn_cluster_i, node_attributes_i)
+
+                    if genome not in number_gene_calls:
+                        number_gene_calls[genome] = len(syn_cluster_tuples)
+                    else:
+                        number_gene_calls[genome] += len(syn_cluster_tuples)
+                else:
+                    self.run.info_single(f"Skipped {contig} due to small contig size.")
+
+            if self.circularize:
+
+                extra_connections = extra_connections[1:] + [extra_connections[0]]
+                num = 0
+                while num < len(extra_connections):
+
+                    index_i, extra_connections_syn_i, extra_connections_type_i, extra_connections_gc_i, extra_connections_id_i, extra_connections_synteny_i = extra_connections[num]
+                    index_j, extra_connections_syn_j, extra_connections_type_j, extra_connections_gc_j, extra_connections_id_j, extra_connections_synteny_j = extra_connections[num+1]
+
+                    num += 2
+
+                    edge_attributes = {
+                        'weight': 1.0 + add_weight,
+                        'directions': {genome: 'R'}
+                    }
+
+                    if extra_connections_syn_i != extra_connections_syn_j:
+                        self.pangenome_graph.add_edge_to_graph(extra_connections_syn_i, extra_connections_syn_j, edge_attributes)
+
+        total_genes_added = sum(number_gene_calls.values())
+        self.run.info('Total genes added to graph', total_genes_added, nl_before=1)
+
+        if self.genome_names and len(self.genome_names) <= 10:
+            # Only show per-genome details if there are 10 or fewer genomes
+            for genome in number_gene_calls:
+                self.run.info(f' - {genome}', number_gene_calls[genome], lc='cyan', nl_before=0, nl_after=0)
+
+        edge_id = 0
+        for edge_i, edge_j, data in self.pangenome_graph.graph.edges(data=True):
+            data['name'] = 'E_' + str(edge_id).zfill(8)
+            edge_id += 1
+
+        num_syn_cluster = len(self.pangenome_data_df['syn_cluster'].unique())
+        num_graph_nodes = len(self.pangenome_graph.graph.nodes())
+        num_graph_edges = len(self.pangenome_graph.graph.edges())
+
+        self.run.info('Graph nodes (SynGCs)', num_graph_nodes, mc='green')
+        self.run.info('Graph edges', num_graph_edges)
+
+        if num_syn_cluster != num_graph_nodes:
+            nodes_not_added = abs(num_syn_cluster - num_graph_nodes)
+            self.run.info('SynGCs not added to graph', nodes_not_added, mc='red')
+            self.run.warning(f"{nodes_not_added} synteny cluster(s) were not added to the graph, likely due to "
+                             f"--min-contig-chain filtering. This is expected behavior if you set a minimum contig size.")
+
+        # 3. step: Check connectivity of the graph
+        self.pangenome_graph.run_connectivity_check()
+
+        # 4. step: Find edges to reverse to create maxmimum directed force
+        self.run.warning("The algorithm will now determine which edges need to be reversed to create a 'directed acyclic "
+                         "graph' that flows from the specified start node all the way to the end.. This process finds "
+                         "the optimal set of edge reversals to minimize conflicts while maintaining the maximum weighted "
+                         "path through core genes. Edge reversals are necessary to resolve cycles, and establish a "
+                         "consistent directional flow for anvi'o to be able to give you a biologically meaningful "
+                         "visualization of the pangenome.", header="OPTIMIZING GRAPH DIRECTIONALITY", lc="green")
+
+        selfloops = list(nx.selfloop_edges(self.pangenome_graph.graph))
+        if selfloops:
+            self.run.info('Self-loop edges found', len(selfloops), mc='red')
+            self.pangenome_graph.graph.remove_edges_from(selfloops)
+        else:
+            self.run.info('Self-loop edges found', 0, mc='green')
+
+        # changed_edges, removed_nodes, removed_edges = DirectedForce().return_optimum_complexity()
+        changed_edges = DirectedForce().return_optimum_complexity(
+            self.pangenome_graph.graph,
+            max_iterations=1,
+            start_node=self.start_node
+        )
+
+        self.pangenome_graph.reverse_edges(changed_edges)
+        # self.pangenome_graph.graph.remove_edges_from(removed_edges)
+        # self.pangenome_graph.graph.remove_nodes_from(removed_nodes)
+
+        # self.pangenome_data_df.drop(self.pangenome_data_df.loc[self.pangenome_data_df['syn_cluster'].isin(removed_nodes)].index, inplace=True)
+        # self.run.info_single(f"The pangenome graph is now a connected non-cyclic graph.")
+        if len(changed_edges) == 0:
+            self.run.info('Edges reversed', 0, mc='green')
+            self.run.warning("No edges needed to be reversed. This is unusual but can happen with perfectly linear "
+                             "or well-structured datasets where the initial graph already flows in the correct direction.")
+
+
+    def add_layers(self):
+
+        self.run.warning("The Algorithm will now add layers to the synteny gene clusters for downstream analysis.",
+                         header="ADDING LAYERS", lc="green")
+
+        layer_set = set()
+        for syn_cluster in self.pangenome_graph.graph.nodes():
+            layer_data = self.layers_data[syn_cluster]
+            for layer, value_list in layer_data.items():
+                layer_set.add(layer)
+                self.pangenome_graph.graph.nodes[syn_cluster]['layer'] = self.pangenome_graph.graph.nodes[syn_cluster]['layer'] | {layer: sum(value_list) / len(value_list)}
+
+        for layer in layer_set:
+            self.run.info_single(f"Successfully added {layer} as a layer to the pangenome graph.")
+
+        # variable to track nodes with differing alignment lengths
+        diff_len_nodes = []
+        # variable to track nodes with no alignments at all (which may happen as a function of
+        # how the original pangenome was computed)
+        no_alignment_nodes = []
+
+        for node, data in self.pangenome_graph.graph.nodes(data=True):
+            node_alignment_summaries = {}
+            node_alignment_lengths = []
+            node_alignments = {}
+            for genome_name, gene_caller_id in data['gene_calls'].items():
+                if self.gene_alignments_computed:
+                    genome_alignments = self.pan_super.gene_clusters_gene_alignments[genome_name]
+                    if gene_caller_id in genome_alignments:
+                        alignment_summary = genome_alignments[gene_caller_id]
+                        node_alignment_summaries[genome_name] = alignment_summary
+
+                        alignment_summary_list = alignment_summary.split('|')
+                        start = alignment_summary_list[0]
+                        summary_code = list(map(int, alignment_summary_list[1:]))
+
+                        if start == '-':
+                            sequence = sum(summary_code[1::2]) * 'N'
+                        else:
+                            sequence = sum(summary_code[0::2]) * 'N'
+
+                        alignment = utils.restore_alignment(sequence, alignment_summary)
+                        node_alignment_lengths += [len(alignment)]
+                    else:
+                        alignment_summary = ''
+                        node_alignment_summaries[genome_name] = alignment_summary
+
+                        sequence = ''
+                        alignment = ''
+                        node_alignment_lengths += [0]
+
+                    node_alignments[genome_name] = alignment
+
+            valid_alignment_lengths = {l for l in node_alignment_lengths if l > 0}
+            if not valid_alignment_lengths:
+                data['alignment'] = {genome_name: '' for genome_name in node_alignments.keys()}
+                if len(node_alignments) > 1:
+                    no_alignment_nodes.append(node)
+                continue
+
+            alignment_length = max(valid_alignment_lengths)
+            if len(valid_alignment_lengths) != 1:
+                diff_len_nodes.append(node)
+
+            # poor man's resolution to alignment issues: pad shorter alignments with gaps so all strings have the same length :(
+            padded_alignments = {genome_name: alignment.ljust(alignment_length, '-') for genome_name, alignment in node_alignments.items()}
+            cleaned_alignments = {genome_name: '' for genome_name in padded_alignments.keys()}
+
+            for i in range(alignment_length):
+                summary_code_list = [alignment[i] for alignment in padded_alignments.values()]
+                if not all(a == '-' for a in summary_code_list):
+                    for genome_name, alignment in padded_alignments.items():
+                        cleaned_alignments[genome_name] += alignment[i]
+
+            data['alignment'] = {genome_name: utils.summarize_alignment(alignment) if alignment else '' for genome_name, alignment in cleaned_alignments.items()}
+
+        # keep the user posted
+        if diff_len_nodes:
+            examples = ", ".join(diff_len_nodes[:10])
+            more = "" if len(diff_len_nodes) <= 10 else ", ..."
+            self.run.warning(f"Alignments have differing lengths for {len(diff_len_nodes)} SynGCs(s) (e.g., {examples}{more}). "
+                             f"This can happen for some gene clusters if the alignment step failed for them during the generation "
+                             f"of the input pangenome due to excessive number of genes or un-alignable sequences coming together "
+                             f"in gene clusters (such as due to user-defined GCs, or predicted protein structure-infrmed GC "
+                             f"formations where sequences could be so far from one another). The pangenome graph code simpply "
+                             f"padded the shorter sequences in such unfortunate SynGCs for you with gap characters to continue "
+                             f"the downstream processing of your data. This should not affect anything apart from the fact that "
+                             f"the padding strategy may lead to some undesireable (or even misleading) visualization of SynGC "
+                             f"sequence content in later stages of your analysis.")
+
+        if no_alignment_nodes:
+            examples = ", ".join(no_alignment_nodes[:10])
+            more = "" if len(no_alignment_nodes) <= 10 else ", ..."
+            self.run.warning(f"No alignments found for {len(no_alignment_nodes)} multi-gene syn cluster(s) (e.g., {examples}{more}). "
+                             f"Storing empty alignments and continuing.")
+        else:
+            self.run.info_single("Alignments were found for all nodes and successfully added.")
+
+
+    def remerge_nodes(self):
+
+        self.run.warning("Remerging nodes. This is extremely useful in case of highly sensitive graph creation settings. "
+                         "The algorithm will attempt to find e.g. false rearrangement nodes and join them together as a "
+                         "single synteny gene cluster. Use --skip-remerge to disable this step if you experience "
+                         "unexpected results.",
+                         header="REMERGING SENSITIVE NODES", lc="green")
+
+        gene_cluster_to_synteny_gene_cluster = {}
+        original_num_nodes = len(self.pangenome_graph.graph.nodes())
+        new_core_num = 0
+        new_accessory_num = 0
+
+        for synteny_gene_cluster, data in self.pangenome_graph.graph.nodes(data=True):
+            gene_cluster = data['gene_cluster']
+            if gene_cluster not in gene_cluster_to_synteny_gene_cluster:
+                gene_cluster_to_synteny_gene_cluster[gene_cluster] = [synteny_gene_cluster]
+            else:
+                gene_cluster_to_synteny_gene_cluster[gene_cluster] += [synteny_gene_cluster]
+
+        for gene_cluster, synteny_gene_clusters in gene_cluster_to_synteny_gene_cluster.items():
+            if len(synteny_gene_clusters) != 1:
+                for syn_cluster_a, syn_cluster_b in combinations(synteny_gene_clusters, 2):
+                    if syn_cluster_a in self.pangenome_graph.graph.nodes() and syn_cluster_b in self.pangenome_graph.graph.nodes():
+
+                        pass_node = True
+                        syn_cluster_list = [syn_cluster_a, syn_cluster_b]
+
+                        common_ancestor = nx.lowest_common_ancestor(self.pangenome_graph.graph, *syn_cluster_list)
+                        if common_ancestor in syn_cluster_list:
+                            pass_node = False
+
+                        node_a = self.pangenome_graph.graph.nodes[syn_cluster_a]
+                        node_b = self.pangenome_graph.graph.nodes[syn_cluster_b]
+
+                        if not set(node_a['gene_calls'].keys()).isdisjoint(node_b['gene_calls'].keys()):
+                            pass_node = False
+
+                        if not set(node_a['synteny'].keys()).isdisjoint(node_b['synteny'].keys()):
+                            pass_node = False
+
+                        if pass_node:
+                            syn_cluster_list_sorted = sorted(syn_cluster_list, key=lambda x: int(x.rsplit('_', 1)[1]))
+                            syn_cluster_x = syn_cluster_list_sorted[0]
+                            node_x = self.pangenome_graph.graph.nodes[syn_cluster_x]
+
+                            for syn_cluster_y in syn_cluster_list_sorted[1:]:
+                                node_y = self.pangenome_graph.graph.nodes[syn_cluster_y]
+
+                                node_x['gene_calls'] |= node_y['gene_calls']
+                                node_x['synteny'] |= node_y['synteny']
+                                self.pangenome_graph.graph = nx.contracted_nodes(self.pangenome_graph.graph, syn_cluster_x, syn_cluster_y, self_loops=False, copy=False)
+                                self.pangenome_data_df.loc[self.pangenome_data_df['syn_cluster'] == syn_cluster_y, 'syn_cluster'] = syn_cluster_x
+
+                                for k, v in self.layers_data[syn_cluster_y].items():
+                                    self.layers_data[syn_cluster_x].setdefault(k, []).extend(v)
+
+                                del self.layers_data[syn_cluster_y]
+
+                                max_num_genomes = len(self.genome_names)
+                                cluster_num_genomes = len(self.pangenome_data_df.query('gene_cluster == @gene_cluster'))
+
+                                if len(node_x['gene_calls']) == max_num_genomes and node_x['type'] == 'rearrangement':
+                                    node_x['type'] = 'core'
+                                    self.pangenome_data_df.loc[self.pangenome_data_df['syn_cluster'] == syn_cluster_x, 'syn_cluster_type'] = 'core'
+                                    new_core_num += 1
+
+                                elif len(node_x['gene_calls']) == cluster_num_genomes and node_x['type'] == 'rearrangement':
+                                    node_x['type'] = 'accessory'
+                                    self.pangenome_data_df.loc[self.pangenome_data_df['syn_cluster'] == syn_cluster_x, 'syn_cluster_type'] = 'accessory'
+                                    new_accessory_num += 1
+
+        self.run.info_single("Successfully remerged nodes.")
+        self.run.info_single(f"{original_num_nodes - len(self.pangenome_graph.graph.nodes())} nodes were removed in the process.")
+        self.run.info_single(f"{new_core_num} nodes changed from type 'rearrangement' to 'core'.")
+        self.run.info_single(f"{new_accessory_num} nodes changed from type 'rearrangement' to 'accessory'.")
+
+        if not nx.is_directed_acyclic_graph(self.pangenome_graph.graph):
+            raise ConfigError("Cyclic graphs, are not implemented.")
+
+
+class FragmentedGeneAnnotator():
+    """Identifies fragmented genes (pseudogenes) across a pangenome.
+
+    In pangenomes, a gene that is intact in some genomes may be split into two or more
+    adjacent open reading frames in others -- typically due to a premature stop codon
+    introduced by a point mutation or transposon insertion. The MCL algorithm correctly
+    groups the fragments with the full-length gene into one gene cluster, but their
+    presence creates spurious singleton nodes in the pangenome graph.
+
+    This class detects such cases by looking for multiple genes from the same genome
+    within a single gene cluster that are adjacent on the same contig. It then compares
+    the lengths of these fragments against the full-length representative (the longest
+    gene in the cluster from a genome where the gene is not split) and annotates them
+    under a 'PSEUDO_GENES' function source in each relevant contigs database.
+
+    Labels assigned:
+        - `fragmented_gene`: the longest fragment in a genome, likely still functional
+          (only if it is >= min_full_length_ratio of the full-length representative)
+        - `gene_fragment`: shorter fragments, or all fragments if none meets the
+          length threshold
+    """
+
+    def __init__(self, args, run=run, progress=progress):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+
+        self.pan_db_path = A('pan_db')
+        self.genomes_storage_path = A('genomes_storage')
+        self.external_genomes_path = A('external_genomes')
+        self.min_full_length_ratio = A('min_full_length_ratio') or 0.50
+        self.max_combined_length_ratio = A('max_combined_length_ratio') or 1.20
+        self.skip_reporting = A('skip_reporting') or False
+        self.report_only = A('report_only') or False
+        self.find_stray_fragments = A('find_stray_fragments') or False
+        self.annotation_source = A('annotation_source')
+
+        if not self.pan_db_path:
+            raise ConfigError("You must provide a pan database path.")
+
+        if not self.genomes_storage_path:
+            raise ConfigError("You must provide a genomes storage path.")
+
+        if not self.external_genomes_path:
+            raise ConfigError("You must provide an external genomes file.")
+
+        utils.is_pan_db_and_genomes_storage_db_compatible(self.pan_db_path, self.genomes_storage_path)
+
+
+    def process(self):
+        """Main entry point for fragmented gene annotation."""
+
+        # we import here to avoid circular imports since genomedescriptions imports dbops
+        # which imports panops
+        import anvio.genomedescriptions as genomedescriptions
+        genome_desc_args = argparse.Namespace(external_genomes=self.external_genomes_path, internal_genomes=None,
+                                              skip_checking_genome_hashes=False, just_do_it=False, gene_caller=None,
+                                              list_hmm_sources=False, list_available_gene_names=False)
+        self.genome_descriptions = genomedescriptions.GenomeDescriptions(genome_desc_args, run=terminal.Run(verbose=False), progress=terminal.Progress(verbose=False))
+        self.genome_descriptions.load_genomes_descriptions(skip_functions=True, init=False)
+
+        # initialize pan superclass and gene clusters
+        pan_args = argparse.Namespace(pan_db=self.pan_db_path, genomes_storage=self.genomes_storage_path)
+        self.pan_super = dbops.PanSuperclass(pan_args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+        self.pan_super.init_gene_clusters()
+
+        # if the user wants gene cluster functions in the report, initialize them now
+        if self.annotation_source:
+            self.pan_super.init_gene_clusters_functions()
+
+            if self.annotation_source not in self.pan_super.gene_clusters_function_sources:
+                available_sources = ', '.join(sorted(self.pan_super.gene_clusters_function_sources)) if self.pan_super.gene_clusters_function_sources else 'None'
+                raise ConfigError(f"The annotation source '{self.annotation_source}' is not available in the genomes storage. "
+                                  f"Here are the sources that are available: {available_sources}.")
+
+        # initialize genomes storage for sequence access
+        self.genomes_storage = GenomeStorage(self.genomes_storage_path, run=terminal.Run(verbose=False), progress=terminal.Progress(verbose=False))
+
+        # load genes_in_contigs_dict for each genome so we know contig membership and positions
+        self.genes_in_contigs = {}
+        self.contig_gene_order = {}  # {genome_name: {contig: [gene_ids sorted by start]}}
+        for genome_name in self.genome_descriptions.genomes:
+            contigs_db_path = self.genome_descriptions.genomes[genome_name]['contigs_db_path']
+            contigs_db_args = argparse.Namespace(contigs_db=contigs_db_path)
+            contigs_super = dbops.ContigsSuperclass(contigs_db_args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+            self.genes_in_contigs[genome_name] = contigs_super.genes_in_contigs_dict
+
+            # pre-compute sorted gene order per contig for fast adjacency lookups
+            genes_by_contig = {}
+            for gene_id, gene_info in self.genes_in_contigs[genome_name].items():
+                contig = gene_info['contig']
+                if contig not in genes_by_contig:
+                    genes_by_contig[contig] = []
+                genes_by_contig[contig].append(gene_id)
+
+            for contig in genes_by_contig:
+                genes_by_contig[contig].sort(key=lambda g: self.genes_in_contigs[genome_name][g]['start'])
+
+            self.contig_gene_order[genome_name] = genes_by_contig
+
+        gene_clusters = self.pan_super.gene_clusters
+
+        # find fragmentation events across all gene clusters
+        self.run.warning(None, header="IDENTIFYING FRAGMENTED GENES", lc="green")
+        self.run.info_single("Please read the documentation of this program to familiarize yourelf with its "
+                             "assumptions and how to make sense of the results displayed below. You can find "
+                             "the documentation at https://anvio.org/m/anvi-annotate-fragmented-genes",
+                             level=0, mc='green')
+        self.run.info('Num genomes', len(self.genome_descriptions.genomes), nl_before=1)
+        self.run.info('Num gene clusters', len(gene_clusters))
+        self.run.info('Min full-length ratio', self.min_full_length_ratio)
+        self.run.info('Max combined length ratio', self.max_combined_length_ratio)
+        self.run.info('Search for stray fragments', self.find_stray_fragments)
+        self.run.info('Annotation source for report', self.annotation_source or 'None')
+        self.run.info('Report only', self.report_only)
+
+        # annotations_per_genome will be {genome_name: {entry_counter: {gene_callers_id, source, accession, function, e_value}}}
+        annotations_per_genome = {g: {} for g in self.genome_descriptions.genomes}
+        entry_counter_per_genome = {g: 0 for g in self.genome_descriptions.genomes}
+
+        # collect all fragmentation events via in-cluster adjacency
+        in_cluster_events = self.scan_in_cluster_fragmentation(gene_clusters)
+
+        # if requested, also look for stray out-of-frame fragments adjacent to truncated genes
+        stray_events = []
+        if self.find_stray_fragments:
+            # build a set of gene_callers_ids already flagged by the in-cluster scan so we
+            # don't double-annotate them
+            already_flagged = set()
+            for _, fragmentation_events, _, _, _ in in_cluster_events:
+                for genome_name, adjacent_group in fragmentation_events:
+                    for gene_id in adjacent_group:
+                        already_flagged.add((genome_name, gene_id))
+
+            stray_events = self.scan_stray_fragment_events(gene_clusters, already_flagged)
+
+        all_events = in_cluster_events + stray_events
+        stray_gene_cluster_ids = set(gc_id for gc_id, _, _, _, _ in stray_events)
+
+        total_fragmented_genes = 0
+        total_gene_fragments = 0
+        total_stray_fragmented_genes = 0
+        total_stray_gene_fragments = 0
+        gene_clusters_with_fragmentation = 0
+
+        # report and annotate
+        for gene_cluster_id, fragmentation_events, reference_length, reference_genome, reference_gene_id in all_events:
+            gene_clusters_with_fragmentation += 1
+
+            if not self.skip_reporting:
+                # get consensus function for this gene cluster if an annotation source was provided
+                gc_function = None
+                if self.annotation_source:
+                    _acc, _func = self.pan_super.get_gene_cluster_function_summary(gene_cluster_id, self.annotation_source)
+                    gc_function=(_acc.split('!!!')[0] if _acc else _acc, _func.split('!!!')[0] if _func else _func)
+
+                self.report_gene_cluster(gene_cluster_id, fragmentation_events, reference_length, reference_genome, reference_gene_id, gc_function=gc_function)
+
+            for genome_name, adjacent_group in fragmentation_events:
+                gene_lengths = []
+                for gene_callers_id in adjacent_group:
+                    gene_info = self.genes_in_contigs[genome_name][gene_callers_id]
+                    gene_length = gene_info['stop'] - gene_info['start']
+                    gene_lengths.append((gene_callers_id, gene_length))
+
+                gene_lengths.sort(key=lambda x: x[1], reverse=True)
+
+                longest_gene_id, longest_length = gene_lengths[0]
+                ratio = longest_length / reference_length
+
+                for gene_callers_id, gene_length in gene_lengths:
+                    frag_ratio = gene_length / reference_length
+
+                    is_stray = gene_cluster_id in stray_gene_cluster_ids
+
+                    if gene_callers_id == longest_gene_id and ratio >= self.min_full_length_ratio:
+                        label = 'fragmented_gene'
+                        function_text = (f"Putative fragmented gene ({ratio * 100:.1f}% of full-length), "
+                                         f"based on a homologous gene in {reference_genome} with gene caller id {reference_gene_id}")
+                        total_fragmented_genes += 1
+                        if is_stray:
+                            total_stray_fragmented_genes += 1
+                    else:
+                        label = 'gene_fragment'
+                        function_text = (f"Putative gene fragment ({frag_ratio * 100:.1f}% of full-length), "
+                                         f"based on a homologous gene in {reference_genome} with gene caller id {reference_gene_id}")
+                        total_gene_fragments += 1
+                        if is_stray:
+                            total_stray_gene_fragments += 1
+
+                    entry_id = entry_counter_per_genome[genome_name]
+                    annotations_per_genome[genome_name][entry_id] = {
+                        'gene_callers_id': gene_callers_id,
+                        'source': 'PSEUDO_GENES',
+                        'accession': label,
+                        'function': function_text,
+                        'e_value': 0,
+                    }
+                    entry_counter_per_genome[genome_name] += 1
+
+        num_non_singleton_gene_clusters = sum(1 for gc_id in gene_clusters if sum(1 for g in gene_clusters[gc_id] if gene_clusters[gc_id][g]) > 1)
+        pct_with_fragmentation = gene_clusters_with_fragmentation / num_non_singleton_gene_clusters * 100 if num_non_singleton_gene_clusters else 0
+
+        self.run.info('Non-singleton gene clusters', num_non_singleton_gene_clusters, nl_before=1)
+        self.run.info('Gene clusters with fragmentation', f"{gene_clusters_with_fragmentation} ({pct_with_fragmentation:.1f}% of non-singleton GCs)")
+        self.run.info('Total fragmented genes', total_fragmented_genes)
+        self.run.info('Total gene fragments', total_gene_fragments)
+
+        if self.find_stray_fragments:
+            self.run.info('Stray fragmented genes', total_stray_fragmented_genes, nl_before=1)
+            self.run.info('Stray gene fragments', total_stray_gene_fragments)
+
+        if self.report_only:
+            self.run.warning("The --report-only flag is set, so no annotations have been written to any contigs database.",
+                             header="REPORT ONLY MODE", lc="yellow")
+            return
+
+        # write annotations to each contigs-db
+        self.progress.new("Annotating contigs-dbs", progress_total_items=len(self.genome_descriptions.genomes))
+        genomes_annotated = 0
+        for genome_name in self.genome_descriptions.genomes:
+            contigs_db_path = self.genome_descriptions.genomes[genome_name]['contigs_db_path']
+            self.progress.update(f"Working on {genome_name} ...", increment=True)
+            functions_dict = annotations_per_genome[genome_name]
+
+            if not len(functions_dict):
+                continue
+
+            gene_functions_table = TableForGeneFunctions(contigs_db_path, terminal.Run(verbose=False), terminal.Progress(verbose=False))
+            gene_functions_table.create(functions_dict)
+
+            genomes_annotated += 1
+
+        self.progress.end()
+
+        self.run.info('Contigs databases annotated', genomes_annotated, nl_before=1)
+
+
+    def find_fragmentation_events(self, gene_cluster_id):
+        """For a given gene cluster, find groups of adjacent genes from the same genome on
+        the same contig that likely represent a fragmented gene.
+
+        Returns a list of (genome_name, [gene_callers_id, ...]) tuples, where each inner
+        list is a group of 2+ adjacent genes forming a fragmentation event.
+        """
+
+        gene_clusters = self.pan_super.gene_clusters
+        fragmentation_events = []
+
+        for genome_name in gene_clusters[gene_cluster_id]:
+            gene_ids = gene_clusters[gene_cluster_id][genome_name]
+
+            # only genomes with 2+ genes in this cluster can have fragmentation
+            if len(gene_ids) < 2:
+                continue
+
+            genes_in_contigs = self.genes_in_contigs[genome_name]
+
+            # group genes by contig
+            genes_by_contig = {}
+            for gene_id in gene_ids:
+                if gene_id not in genes_in_contigs:
+                    continue
+                contig = genes_in_contigs[gene_id]['contig']
+                if contig not in genes_by_contig:
+                    genes_by_contig[contig] = []
+                genes_by_contig[contig].append(gene_id)
+
+            for contig, contig_gene_ids in genes_by_contig.items():
+                if len(contig_gene_ids) < 2:
+                    continue
+
+                # use precomputed contig gene order for fast adjacency lookups
+                all_genes_on_contig = self.contig_gene_order[genome_name].get(contig, [])
+                gene_to_position = {g: i for i, g in enumerate(all_genes_on_contig)}
+
+                # find groups of genes that are adjacent (consecutive positions on the contig)
+                positions = [(gene_id, gene_to_position[gene_id]) for gene_id in contig_gene_ids]
+                positions.sort(key=lambda x: x[1])
+
+                # walk through and build groups of consecutive positions
+                current_group = [positions[0][0]]
+                for i in range(1, len(positions)):
+                    if positions[i][1] == positions[i - 1][1] + 1:
+                        current_group.append(positions[i][0])
+                    else:
+                        if len(current_group) >= 2:
+                            fragmentation_events.append((genome_name, current_group))
+                        current_group = [positions[i][0]]
+
+                if len(current_group) >= 2:
+                    fragmentation_events.append((genome_name, current_group))
+
+        return fragmentation_events
+
+
+    def get_full_length_reference(self, gene_cluster_id, fragmentation_events):
+        """Find the full-length representative for a gene cluster.
+
+        The reference is the longest gene from a genome where the gene cluster has exactly
+        one gene (i.e., an unfragmented genome). Returns (length, genome_name, gene_callers_id)
+        or (None, None, None) if no suitable reference exists.
+        """
+
+        gene_clusters = self.pan_super.gene_clusters
+
+        # collect genomes with fragmentation for this cluster
+        fragmented_genomes = set(genome_name for genome_name, _ in fragmentation_events)
+
+        best_length = 0
+        best_genome = None
+        best_gene_id = None
+
+        for genome_name in gene_clusters[gene_cluster_id]:
+            gene_ids = gene_clusters[gene_cluster_id][genome_name]
+
+            if len(gene_ids) != 1:
+                continue
+
+            if genome_name in fragmented_genomes:
+                continue
+
+            gene_id = gene_ids[0]
+            gene_info = self.genes_in_contigs[genome_name][gene_id]
+            gene_length = gene_info['stop'] - gene_info['start']
+
+            if gene_length > best_length:
+                best_length = gene_length
+                best_genome = genome_name
+                best_gene_id = gene_id
+
+        if best_length == 0:
+            return None, None, None
+
+        return best_length, best_genome, best_gene_id
+
+
+    def report_gene_cluster(self, gene_cluster_id, fragmentation_events, reference_length, reference_genome, reference_gene_id, gc_function=None):
+        """Print a terminal visualization for a gene cluster with fragmentation events.
+
+        Shows each genome's gene(s) as colored bars proportional to length, with fragment
+        positioning based on actual start/stop offsets within each genome.
+        """
+
+        # local import to avoid pulling ttycolors into every panops consumer
+        from anvio.ttycolors import color_text
+
+        gene_clusters = self.pan_super.gene_clusters
+        genes_in_contigs = self.genes_in_contigs
+
+        # collect all genomes and their genes for this cluster
+        fragmented_genomes = {}
+        for genome_name, adjacent_group in fragmentation_events:
+            if genome_name not in fragmented_genomes:
+                fragmented_genomes[genome_name] = []
+            fragmented_genomes[genome_name].append(adjacent_group)
+
+        # identify stray fragment genes that belong to a different gene cluster so
+        # the report can show them alongside the truncated gene they were paired with
+        stray_genes_info = {}
+        for genome_name, adjacent_group in fragmentation_events:
+            cluster_gene_ids = set(gene_clusters[gene_cluster_id].get(genome_name, []))
+            for g in adjacent_group:
+                if g not in cluster_gene_ids:
+                    home_cluster = self.pan_super.gene_callers_id_to_gene_cluster.get(genome_name, {}).get(g, '?')
+                    stray_genes_info[(genome_name, g)] = home_cluster
+
+        # determine the longest fragment per genome for labeling
+        longest_fragment_per_genome = {}
+        for genome_name, groups in fragmented_genomes.items():
+            for group in groups:
+                gene_lengths = [(g, genes_in_contigs[genome_name][g]['stop'] - genes_in_contigs[genome_name][g]['start']) for g in group]
+                gene_lengths.sort(key=lambda x: x[1], reverse=True)
+                longest_id = gene_lengths[0][0]
+                longest_length = gene_lengths[0][1]
+                ratio = longest_length / reference_length
+                longest_fragment_per_genome.setdefault(genome_name, set())
+                if ratio >= self.min_full_length_ratio:
+                    longest_fragment_per_genome[genome_name].add(longest_id)
+
+        # determine bar width (terminal characters for the reference gene)
+        bar_width = 80
+
+        # collect rows for display
+        rows = []
+
+        # determine column widths
+        max_genome_len = 0
+        max_gene_id_len = 0
+
+        for genome_name in gene_clusters[gene_cluster_id]:
+            gene_ids = gene_clusters[gene_cluster_id][genome_name]
+            if not gene_ids:
+                continue
+            if len(genome_name) > max_genome_len:
+                max_genome_len = len(genome_name)
+            for gene_id in gene_ids:
+                gene_id_str = str(gene_id)
+                if len(gene_id_str) > max_gene_id_len:
+                    max_gene_id_len = len(gene_id_str)
+
+        for (_, gene_id) in stray_genes_info:
+            if len(str(gene_id)) > max_gene_id_len:
+                max_gene_id_len = len(str(gene_id))
+
+        for genome_name in sorted(gene_clusters[gene_cluster_id].keys()):
+            gene_ids = gene_clusters[gene_cluster_id][genome_name]
+            if not gene_ids:
+                continue
+
+            is_fragmented_genome = genome_name in fragmented_genomes
+
+            if is_fragmented_genome:
+                # for fragmented genomes, get all gene positions relative to the group span
+                all_fragment_genes = set()
+                for group in fragmented_genomes[genome_name]:
+                    all_fragment_genes.update(group)
+
+                # include stray fragment neighbors (from other clusters) in the display
+                stray_in_genome = {g for (gn, g) in stray_genes_info if gn == genome_name}
+                genes_to_show = list(gene_ids) + sorted(stray_in_genome - set(gene_ids))
+
+                for gene_id in sorted(genes_to_show, key=lambda g: genes_in_contigs[genome_name][g]['start']):
+                    gene_info = genes_in_contigs[genome_name][gene_id]
+                    gene_length = gene_info['stop'] - gene_info['start']
+
+                    if gene_id in all_fragment_genes:
+                        # find the group this gene belongs to
+                        group_for_gene = None
+                        for group in fragmented_genomes[genome_name]:
+                            if gene_id in group:
+                                group_for_gene = group
+                                break
+
+                        # compute span of this fragment group
+                        group_starts = [genes_in_contigs[genome_name][g]['start'] for g in group_for_gene]
+                        group_stops = [genes_in_contigs[genome_name][g]['stop'] for g in group_for_gene]
+                        span_start = min(group_starts)
+                        span_length = max(group_stops) - span_start
+
+                        # position within the span, scaled to bar_width
+                        if span_length > 0:
+                            rel_start = (gene_info['start'] - span_start) / span_length
+                            rel_end = (gene_info['stop'] - span_start) / span_length
+                        else:
+                            rel_start = 0
+                            rel_end = 1
+
+                        # scale to reference length proportion
+                        span_ratio = span_length / reference_length if reference_length > 0 else 1
+                        scaled_bar_width = int(bar_width * min(span_ratio, 1.0))
+                        if scaled_bar_width < 1:
+                            scaled_bar_width = bar_width
+
+                        bar_start = int(rel_start * scaled_bar_width)
+                        bar_end = int(rel_end * scaled_bar_width)
+                        if bar_end == bar_start:
+                            bar_end = bar_start + 1
+
+                        bar = list('░' * scaled_bar_width + '░' * (bar_width - scaled_bar_width))
+                        for i in range(bar_start, min(bar_end, len(bar))):
+                            bar[i] = '█'
+
+                        bar_str = ''.join(bar)
+
+                        is_stray = (genome_name, gene_id) in stray_genes_info
+
+                        if gene_id == reference_gene_id and genome_name == reference_genome:
+                            color = 'green'
+                            label = 'reference'
+                        elif gene_id in longest_fragment_per_genome.get(genome_name, set()):
+                            color = 'blue'
+                            label = 'fragmented_gene'
+                        else:
+                            color = 'red'
+                            label = 'gene_fragment'
+
+                        if is_stray:
+                            label += f" (stray, from {stray_genes_info[(genome_name, gene_id)]})"
+
+                        length_pct = f"{gene_length / reference_length * 100:.1f}%"
+
+                        rows.append((genome_name, str(gene_id), color_text(bar_str, color), f"{gene_length:>6} nt  {length_pct:>6}  {label}"))
+                    else:
+                        # gene in this genome but not part of a fragment group
+                        gene_ratio = gene_length / reference_length if reference_length > 0 else 1
+                        filled = max(1, int(bar_width * min(gene_ratio, 1.0)))
+                        bar_str = '█' * filled + '░' * (bar_width - filled)
+
+                        rows.append((genome_name, str(gene_id), color_text(bar_str, 'gray'), f"{gene_length:>6} nt"))
+            else:
+                # non-fragmented genome
+                for gene_id in gene_ids:
+                    gene_info = genes_in_contigs[genome_name][gene_id]
+                    gene_length = gene_info['stop'] - gene_info['start']
+                    gene_ratio = gene_length / reference_length if reference_length > 0 else 1
+                    filled = max(1, int(bar_width * min(gene_ratio, 1.0)))
+                    bar_str = '█' * filled + '░' * (bar_width - filled)
+
+                    length_pct = f"{gene_length / reference_length * 100:.1f}%"
+
+                    if gene_id == reference_gene_id and genome_name == reference_genome:
+                        color = 'green'
+                        label = 'reference'
+                    else:
+                        color = 'gray'
+                        label = ''
+
+                    rows.append((genome_name, str(gene_id), color_text(bar_str, color), f"{gene_length:>6} nt  {length_pct:>6}  {label}"))
+
+        # compute the total content width from known column sizes
+        max_info_len = max(len(info) for _, _, _, info in rows) if rows else 0
+        content_width = 2 + max_genome_len + 2 + max_gene_id_len + 2 + bar_width + 2 + max_info_len
+
+        # print the report anvi'o way
+        run_width = self.run.width
+        self.run.width = content_width
+        header = f"{gene_cluster_id}"
+        self.run.warning(None, header=header)
+        self.run.width = run_width
+
+        if self.annotation_source:
+            if gc_function:
+                func_str = f"{self.annotation_source} Consensus: {gc_function[0]} | {gc_function[1]}"
+            else:
+                func_str = f"{self.annotation_source} Consensus: Unknown"
+            self.run.info_single(func_str, level=0, mc='red', nl_after=1, cut_after=None)
+
+        prev_genome = None
+        for genome_name, gene_id_str, bar_str, info in rows:
+            if prev_genome is not None and genome_name != prev_genome:
+                nl_before=1
+            else:
+                nl_before=0
+
+            prev_genome = genome_name
+            self.run.info_single(f"   {genome_name:<{max_genome_len}}  {gene_id_str:>{max_gene_id_len}}  {bar_str}  {info}",
+                                 cut_after=None, nl_before=nl_before, pretty_indentation=False, level=0)
+
+
+    def scan_in_cluster_fragmentation(self, gene_clusters):
+        """Scan all gene clusters for in-cluster fragmentation events.
+
+        This is the standard algorithm: for each gene cluster, look for genomes that
+        contribute 2+ adjacent genes on the same contig, which indicates a gene that has
+        been split by a premature stop codon.
+
+        Returns a list of tuples:
+            (gene_cluster_id, fragmentation_events, reference_length, reference_genome, reference_gene_id)
+        """
+
+        all_events = []
+
+        self.progress.new("Scanning gene clusters", progress_total_items=len(gene_clusters))
+        for gene_cluster_id in gene_clusters:
+            self.progress.update(f"Processing {gene_cluster_id} ...", increment=True)
+
+            fragmentation_events = self.find_fragmentation_events(gene_cluster_id)
+
+            if not fragmentation_events:
+                continue
+
+            reference_length, reference_genome, reference_gene_id = self.get_full_length_reference(gene_cluster_id, fragmentation_events)
+
+            if reference_length is None:
+                continue
+
+            # filter out groups whose combined gene length far exceeds the reference,
+            # which indicates tandem paralogs (gene duplications) rather than a gene
+            # split by a premature stop codon. in a true fragmentation event the
+            # fragments should sum to roughly the reference length, not 2x or more.
+            filtered_events = []
+            for genome_name, adjacent_group in fragmentation_events:
+                combined_length = sum(self.genes_in_contigs[genome_name][g]['stop'] - self.genes_in_contigs[genome_name][g]['start'] for g in adjacent_group)
+                if combined_length <= reference_length * self.max_combined_length_ratio:
+                    filtered_events.append((genome_name, adjacent_group))
+
+            if not filtered_events:
+                continue
+
+            all_events.append((gene_cluster_id, filtered_events, reference_length, reference_genome, reference_gene_id))
+
+        self.progress.end()
+
+        return all_events
+
+
+    def scan_stray_fragment_events(self, gene_clusters, already_flagged):
+        """Scan for out-of-frame gene fragments that ended up in different gene clusters.
+
+        When a premature stop codon splits a gene and the downstream fragment is in a
+        different reading frame, the fragment will not cluster with the original gene. Instead,
+        it appears as a short gene in a different gene cluster. This method detects such cases
+        by looking for genomes where a gene cluster contains a single gene that is significantly
+        shorter than the full-length reference, and then checking whether an adjacent gene on
+        the same contig (belonging to a different gene cluster) fills in the missing length.
+
+        Parameters
+        ----------
+        gene_clusters : dict
+            The gene_clusters dict from PanSuperclass.
+        already_flagged : set
+            Set of (genome_name, gene_callers_id) tuples already identified by the in-cluster
+            scan, to avoid double-annotation.
+
+        Returns a list of tuples with the same structure as scan_in_cluster_fragmentation.
+        """
+
+        stray_events = []
+
+        # reverse lookup: gene_callers_id -> gene_cluster_id per genome
+        gene_to_cluster = self.pan_super.gene_callers_id_to_gene_cluster
+
+        self.progress.new("Scanning for stray fragments", progress_total_items=len(gene_clusters))
+        for gene_cluster_id in gene_clusters:
+            self.progress.update(f"Processing {gene_cluster_id} ...", increment=True)
+
+            # first, determine the full-length reference for this cluster using genomes
+            # that contribute exactly one gene and are not fragmented
+            best_length = 0
+            best_genome = None
+            best_gene_id = None
+
+            for genome_name in gene_clusters[gene_cluster_id]:
+                gene_ids = gene_clusters[gene_cluster_id][genome_name]
+                if len(gene_ids) != 1:
+                    continue
+
+                gene_id = gene_ids[0]
+                if (genome_name, gene_id) in already_flagged:
+                    continue
+
+                gene_info = self.genes_in_contigs[genome_name][gene_id]
+                gene_length = gene_info['stop'] - gene_info['start']
+
+                if gene_length > best_length:
+                    best_length = gene_length
+                    best_genome = genome_name
+                    best_gene_id = gene_id
+
+            if best_length == 0:
+                continue
+
+            reference_length = best_length
+            reference_genome = best_genome
+            reference_gene_id = best_gene_id
+
+            fragmentation_events = []
+
+            for genome_name in gene_clusters[gene_cluster_id]:
+                gene_ids = gene_clusters[gene_cluster_id][genome_name]
+
+                # we are looking for genomes with a single, truncated gene in this cluster
+                if len(gene_ids) != 1:
+                    continue
+
+                gene_id = gene_ids[0]
+
+                if (genome_name, gene_id) in already_flagged:
+                    continue
+
+                gene_info = self.genes_in_contigs[genome_name][gene_id]
+                gene_length = gene_info['stop'] - gene_info['start']
+
+                # skip if this gene is already close to full length
+                if gene_length >= reference_length * self.min_full_length_ratio:
+                    continue
+
+                # check adjacent genes on the same contig
+                contig = gene_info['contig']
+                contig_genes = self.contig_gene_order[genome_name].get(contig, [])
+                if not contig_genes:
+                    continue
+
+                gene_position = {g: i for i, g in enumerate(contig_genes)}
+                if gene_id not in gene_position:
+                    continue
+
+                pos = gene_position[gene_id]
+
+                # look at immediate neighbors (upstream and downstream)
+                neighbor_ids = []
+                if pos > 0:
+                    neighbor_ids.append(contig_genes[pos - 1])
+                if pos < len(contig_genes) - 1:
+                    neighbor_ids.append(contig_genes[pos + 1])
+
+                for neighbor_id in neighbor_ids:
+                    if (genome_name, neighbor_id) in already_flagged:
+                        continue
+
+                    # the neighbor must be in a *different* gene cluster
+                    neighbor_cluster = gene_to_cluster.get(genome_name, {}).get(neighbor_id, None)
+                    if neighbor_cluster is None or neighbor_cluster == gene_cluster_id:
+                        continue
+
+                    # if the reference genome also has a gene in the neighbor's cluster, the
+                    # neighbor is a real independent gene, not a stray fragment (because, and
+                    # bear with me here, the genome with the intact full-length gene also has
+                    # separate gene in that family .. assumptions assumptions.. but this logic
+                    # really fixed the issue of over-identifying bona fide genes that are
+                    # distinct asfragments)
+                    if reference_genome in gene_clusters.get(neighbor_cluster, {}):
+                        continue
+
+                    neighbor_info = self.genes_in_contigs[genome_name][neighbor_id]
+                    neighbor_length = neighbor_info['stop'] - neighbor_info['start']
+
+                    # check if the combined span of the truncated gene and its neighbor
+                    # approximates the full-length reference (but does not far exceed it,
+                    # which would indicate paralogs rather than fragments)
+                    combined_length = gene_length + neighbor_length
+                    if combined_length >= reference_length * self.min_full_length_ratio and combined_length <= reference_length * self.max_combined_length_ratio:
+                        fragmentation_events.append((genome_name, [gene_id, neighbor_id]))
+                        # mark these so we don't flag them again from the neighbor's cluster
+                        already_flagged.add((genome_name, gene_id))
+                        already_flagged.add((genome_name, neighbor_id))
+                        break
+
+            if fragmentation_events:
+                stray_events.append((gene_cluster_id, fragmentation_events, reference_length, reference_genome, reference_gene_id))
+
+        self.progress.end()
+
+        return stray_events

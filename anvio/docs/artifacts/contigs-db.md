@@ -326,4 +326,3 @@ print(num_genomes)
 print(domains_included)
 >>> ['archaea', 'eukarya']
 ```
-

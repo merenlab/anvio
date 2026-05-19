@@ -1,9 +1,9 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """Clustering operations and helper functions"""
 
 import numpy as np
 import pandas as pd
+
+from itertools import combinations
 
 from sklearn import manifold
 from sklearn import preprocessing
@@ -22,9 +22,9 @@ with terminal.SuppressAllOutput():
     from ete3 import Tree
 
 
-distance_metrics = ['euclidean', 'cityblock', 'sqeuclidean', 'cosine', 'correlation', 'hamming',\
-                    'jaccard', 'chebyshev', 'canberra', 'braycurtis', 'yule', 'matching',\
-                    'dice', 'kulsinski', 'rogerstanimoto', 'russellrao', 'sokalmichener',\
+distance_metrics = ['euclidean', 'cityblock', 'sqeuclidean', 'cosine', 'correlation', 'hamming',
+                    'jaccard', 'chebyshev', 'canberra', 'braycurtis', 'yule', 'matching',
+                    'dice', 'kulsinski', 'rogerstanimoto', 'russellrao', 'sokalmichener',
                     'sokalsneath', 'minkowski']
 
 linkage_methods = ['single', 'complete', 'average', 'weighted', 'centroid', 'median', 'ward']
@@ -100,6 +100,23 @@ def get_newick_tree_data_for_dict(d, transpose=False, linkage=constants.linkage_
     newick = get_newick_from_matrix(vectors, distance, linkage, norm, id_to_sample_dict, transpose=transpose)
 
     return newick
+
+
+def get_newick(node, parent_dist, leaf_names, newick=''):
+    """
+    Modified from the solution at https://stackoverflow.com/questions/28222179/save-dendrogram-to-newick-format
+    """
+    if node.is_leaf():
+        return "%s:%.2f%s" % (leaf_names[node.id], parent_dist - node.dist, newick)
+    else:
+        if len(newick) > 0:
+            newick = "):%.2f%s" % (parent_dist - node.dist, newick)
+        else:
+            newick = ");"
+        newick = get_newick(node.get_left(), node.dist, leaf_names, newick=newick)
+        newick = get_newick(node.get_right(), node.dist, leaf_names, newick=",%s" % (newick))
+        newick = "(%s" % (newick)
+        return newick
 
 
 def get_vectors_for_vectors_with_missing_data(vectors):
@@ -312,26 +329,15 @@ def get_tree_object_in_newick(tree, id_to_sample_dict=None):
     return new_tree.write(format=2)
 
 
-def order_contigs_simple(config, distance=None, linkage=None, progress=progress, run=run, debug=False):
-    """An anvi'o clustering config comes in, a (clustering_id, newick) tuple goes out.
+def scale_and_combine_matrices(config, progress=progress, run=run, debug=False):
+    """Scale individual matrices and combine them into a single merged matrix.
 
-       By default the `linkage` and `distance` is set to the system defaults, constants.linkage_method_default
-       and constants.distance_metric_default. If the `config` has either of them defined, the system defaults
-       are overwritten with the preference in the config file. If the function gets `linkage` or `distance` as
-       parameter, they overwrite both system defaults and config preferences.
+       This function populates `config.combined_vectors` and `config.combined_id_to_sample`
+       so that the merged matrix can be used for clustering or exported independently.
     """
 
     if not config.matrices_dict[config.matrices[0]]['ratio']:
         config = set_null_ratios_for_matrices(config)
-
-    distance = distance if distance else (config.distance or constants.distance_metric_default)
-    linkage = linkage if linkage else (config.linkage or constants.linkage_method_default)
-    clustering_id = ':'.join([config.name, distance, linkage])
-
-    if len(config.master_rows) == 1:
-        # there is a single item to cluster. which means there is nothing to cluster really.
-        # return that single item in a newick format:
-        return (clustering_id, '(%s);' % config.master_rows[0])
 
     if debug or anvio.DEBUG:
         run.info_single('Peak at the first 5 items in the first 5 rows in matrices:', mc='green', nl_before=2)
@@ -362,6 +368,30 @@ def order_contigs_simple(config, distance=None, linkage=None, progress=progress,
         combined_scaled_vectors_for_row = [m['scaled_vectors'][m['sample_to_id'][row]] for m in list(config.matrices_dict.values())]
         config.combined_vectors.append(np.concatenate(combined_scaled_vectors_for_row))
 
+    progress.end()
+
+
+def order_contigs_simple(config, distance=None, linkage=None, progress=progress, run=run, debug=False):
+    """An anvi'o clustering config comes in, a (clustering_id, newick) tuple goes out.
+
+       By default the `linkage` and `distance` is set to the system defaults, constants.linkage_method_default
+       and constants.distance_metric_default. If the `config` has either of them defined, the system defaults
+       are overwritten with the preference in the config file. If the function gets `linkage` or `distance` as
+       parameter, they overwrite both system defaults and config preferences.
+    """
+
+    distance = distance if distance else (config.distance or constants.distance_metric_default)
+    linkage = linkage if linkage else (config.linkage or constants.linkage_method_default)
+    clustering_id = ':'.join([config.name, distance, linkage])
+
+    if len(config.master_rows) == 1:
+        # there is a single item to cluster. which means there is nothing to cluster really.
+        # return that single item in a newick format:
+        return (clustering_id, '(%s);' % config.master_rows[0])
+
+    scale_and_combine_matrices(config, progress=progress, run=run, debug=debug)
+
+    progress.new('Clustering')
     progress.update('Clustering ...')
 
     tree = get_clustering_as_tree(config.combined_vectors, linkage, distance, progress=progress)
@@ -453,3 +483,26 @@ def order_contigs_experimental(config, progress=progress, run=run, debug=False):
             open(config.output_file_path, 'w').write(newick + '\n')
 
         return newick
+
+
+def get_linkage_from_tree(tree, linkage, distance):
+    """Get a cluster linkage matrix from a tree.
+
+    See https://stackoverflow.com/a/31036521
+    """
+    leaf_labels = tree.get_leaf_labels()
+    label_index_dict = {label: index for index, label in enumerate(leaf_labels)}
+
+    distance_matrix = np.zeros(len(leaf_labels), len(leaf_labels))
+    for first_label, second_label in combinations(leaf_labels):
+        distance = tree.get_distance(first_label, second_label)
+        first_index = label_index_dict[first_label]
+        second_index = label_index_dict[second_label]
+        distance_matrix[first_index, second_index] = \
+            distance_matrix[second_index, first_index] = distance
+
+    # Condense the distance matrix for clustering.
+    distance_vector = scipy_distance.squareform(distance_matrix)
+    linkage_matrix = hierarchy.linkage(distance_vector, method=linkage, metric=distance)
+
+    return linkage_matrix

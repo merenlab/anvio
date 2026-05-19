@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """A program to generate genes databases all at once"""
 
 import os

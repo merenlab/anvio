@@ -1404,6 +1404,14 @@ Bins.prototype.ImportCollection = function(collection, threshold = 1000) {
         this.RebuildIntersections();
         this.UpdateBinsWindow();
         this.RedrawBins();
+
+        // fetch taxonomy for all imported bins if realtime estimation is enabled
+        if ($('#estimate_taxonomy').is(':checked')) {
+            for (const bin_id of Object.keys(this.selections)) {
+                var bin_name = $(`#bin_name_${bin_id}`).val();
+                this._fetchTaxonomyData(bin_id, bin_name);
+            }
+        }
     }
 
     this.keepHistory = true;

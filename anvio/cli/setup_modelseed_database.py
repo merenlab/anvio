@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 DESCRIPTION = """This program downloads and sets up the ModelSEED Biochemistry database."""
 
 import os
