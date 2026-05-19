@@ -105,6 +105,92 @@ function get_indel_sequence_cell_html(indel) {
 }
 
 
+function get_clip_sequence_cell_html(clip) {
+  var sequence = clip['sequence'] || '';
+
+  if (sequence.length === 0) {
+    return '<i style="color: #777;">empty (bases live in the partner alignment)</i>';
+  }
+
+  if (sequence.length <= indel_sequence_preview_length) {
+    return '<code style="white-space: normal; word-break: break-all; color: inherit;">' + escape_html(sequence) + '</code>';
+  }
+
+  // Reuse the indel sequence modal machinery — the data shape is similar.
+  var sequence_key = get_indel_sequence_key(clip);
+  var sequence_header = '>' + clip['type'] + '_' + clip['side'] + '_' + clip['state'] +
+                        '_pos_' + clip['pos'] + '_contig_pos_' + clip['pos_in_contig'] +
+                        '_length_' + clip['length'];
+  indel_sequences[sequence_key] = sequence_header + '\n' + sequence;
+
+  return '<a href="#" onclick="show_indel_sequence(\'' + sequence_key + '\'); return false;">' +
+         '<code style="white-space: normal; word-break: break-all; color: inherit;">' +
+         escape_html(sequence.substring(0, indel_sequence_preview_length)) + '[...]</code>' +
+         '</a>';
+}
+
+
+function get_clip_popover_html(clipsAtPos) {
+  // clipsAtPos is an array of clip row objects all sharing the same `pos`.
+  if (!clipsAtPos || clipsAtPos.length === 0) return '';
+
+  var first = clipsAtPos[0];
+  var totalCount = clipsAtPos.reduce(function(s, c) { return s + (c['count'] || 0); }, 0);
+  var coverage = first['coverage'];
+  var ratio = coverage > 0 ? Math.min(totalCount / coverage, 1) : 0;
+
+  // Breakdown by (side, type, state)
+  var bucket = {};
+  clipsAtPos.forEach(function(c) {
+    var key = c['side'] + ' / ' + c['type'] + ' / ' + c['state'];
+    bucket[key] = (bucket[key] || 0) + c['count'];
+  });
+
+  // Per-row table: side, type, state, len, count, partner, sequence
+  var rowsHtml = '';
+  clipsAtPos.forEach(function(c) {
+    var partner = (c['partner_contig'] && c['partner_contig'].length)
+                  ? (escape_html(c['partner_contig']) + ':' + c['partner_pos'] + ' (' + c['partner_strand'] + ')')
+                  : '<i style="color:#999;">none</i>';
+    rowsHtml += '<tr>' +
+                '<td>' + c['side'] + '</td>' +
+                '<td>' + c['type'] + '</td>' +
+                '<td>' + c['state'] + '</td>' +
+                '<td>' + c['length'] + '</td>' +
+                '<td>' + c['count'] + '</td>' +
+                '<td>' + partner + '</td>' +
+                '<td>' + get_clip_sequence_cell_html(c) + '</td>' +
+                '</tr>';
+  });
+
+  var breakdownHtml = '';
+  Object.keys(bucket).sort().forEach(function(k) {
+    breakdownHtml += '<tr><td>' + escape_html(k) + '</td><td>' + bucket[k] + '</td></tr>';
+  });
+
+  return '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span> \
+          <h3>Read-edge clipping</h3> \
+          <table class="table table-striped" style="width: 100%; text-align: left; font-size: 12px;"> \
+              <tr><td>Position in split</td><td>' + first['pos'] + '</td></tr> \
+              <tr><td>Position in contig</td><td>' + first['pos_in_contig'] + '</td></tr> \
+              <tr><td>Reference</td><td>' + escape_html(first['reference']) + '</td></tr> \
+              <tr><td>Coverage</td><td>' + coverage + '</td></tr> \
+              <tr><td>Total clipping count</td><td>' + totalCount + ' (' + (ratio * 100).toFixed(1) + '%)</td></tr> \
+              <tr><td>Corresponding gene call</td><td>' + ((first["corresponding_gene_call"] == -1) ? "No gene or in partial gene" : first["corresponding_gene_call"]) + '</td></tr> \
+          </table> \
+          <h3>Breakdown</h3> \
+          <table class="table table-striped" style="width: 100%; text-align: left; font-size: 12px;"> \
+              <tr><th>Side / Type / State</th><th>Count</th></tr> \
+              ' + breakdownHtml + ' \
+          </table> \
+          <h3>Events at this position</h3> \
+          <table class="table table-striped" style="width: 100%; text-align: left; font-size: 11px;"> \
+              <tr><th>Side</th><th>Type</th><th>State</th><th>Length</th><th>Count</th><th>Partner</th><th>Sequence</th></tr> \
+              ' + rowsHtml + ' \
+          </table>';
+}
+
+
 function get_indel_popover_html(indel) {
   var type = (indel['type'] == 'INS') ? 'Insertion' : 'Deletion';
 
@@ -2154,6 +2240,14 @@ function Chart(options){
                               .attr('class',this.name.toLowerCase())
                               .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
 
+    this.clipBarContainer = this.snv_svg.append("g")
+                              .attr('class',this.name.toLowerCase())
+                              .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
+
+    this.textContainerClippings = this.snv_svg.append("g")
+                              .attr('class',this.name.toLowerCase())
+                              .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
+
     this.sampleTextContainer = this.samples_svg.append("g")
                               .attr('class',this.name.toLowerCase())
                               .attr('id', this.name.toLowerCase())
@@ -2369,6 +2463,64 @@ function Chart(options){
                               });
     }
 
+    if(state['show_clips']) {
+      // Group clip rows by their position. Each group represents one breakpoint vantage
+      // that may contain multiple events (different sides, types, sequences, partners).
+      // The bar height is (sum of counts at this pos) / coverage, mirroring how indels
+      // are drawn at line 2306 below.
+      var clipsByPos = {};
+      d3.entries(this.clippings).forEach(function(obj) {
+        var p = obj.value['pos'];
+        if (!clipsByPos[p]) clipsByPos[p] = [];
+        clipsByPos[p].push(obj.value);
+      });
+
+      // Build the per-position aggregate that the bar uses.
+      var clipBarData = Object.keys(clipsByPos).map(function(p) {
+        var rows = clipsByPos[p];
+        var totalCount = rows.reduce(function(s, r) { return s + r['count']; }, 0);
+        var cov = rows[0]['coverage'];
+        return {
+          pos: +p,
+          totalCount: totalCount,
+          coverage: cov,
+          ratio: cov > 0 ? Math.min(totalCount / cov, 1) : 0,
+          rows: rows,
+        };
+      });
+
+      // Vertical bars at each position.
+      this.clipBarContainer.selectAll(".clip_bar_stem")
+                          .data(clipBarData)
+                          .enter()
+                          .append("line")
+                          .attr("class", "clip_bar_stem")
+                          .attr("x1", function (d) { return xS(0.5 + d.pos); })
+                          .attr("x2", function (d) { return xS(0.5 + d.pos); })
+                          .attr("y1", function (d) { return ySL_indel(0); })
+                          .attr("y2", function (d) { return ySL_indel(d.ratio); })
+                          .attr("stroke", "#e67e22")
+                          .attr("stroke-width", "1.5")
+                          .attr("stroke-opacity", "0.85")
+                          .attr("pointer-events", "none");
+
+      // Text markers (clickable) with popovers showing the per-row breakdown.
+      info("Drawing clip markers");
+      this.textContainerClippings.selectAll("text")
+                                .data(clipBarData)
+                                .enter()
+                                .append("text")
+                                .attr("class", "clippings_text")
+                                .attr("x", function (d) { return xS(0.5 + d.pos); })
+                                .attr("y", function (d) { return ySL_indel(0); })
+                                .attr("font-size", "14px")
+                                .attr("style", "cursor:pointer;")
+                                .attr("fill", "#d35400")
+                                .attr('data-content', function(d) { return get_clip_popover_html(d.rows); })
+                                .attr('data-toggle', 'popover')
+                                .text("|");
+    }
+
 
 
     this.xAxisTop = d3.svg.axis().scale(this.xScale).orient("top");
@@ -2389,7 +2541,7 @@ function Chart(options){
                    .attr("transform", "translate(-10,0)")
                    .call(this.yAxis);
 
-    if(state['show_snvs'] || state['show_indels']) {
+    if(state['show_snvs'] || state['show_indels'] || state['show_clips']) {
       this.lineContainer.append("g")
                      .attr("class", "y axis noselect")
                      .attr("transform", "translate(" + (this.width + 15) + ",0)")
@@ -2431,6 +2583,17 @@ Chart.prototype.showOnly = function(b){
     if(mk_font_size > 10) mk_font_size = 10;
     this.textContainer.selectAll(".SNV_text").data(d3.entries(this.competing_nucleotides)).attr("font-size", mk_font_size+"px");
     this.textContainerIndels.selectAll(".indels_text").data(d3.entries(this.indels)).attr("font-size", 2*mk_font_size+"px");
+
+    // Re-position clip bars + markers on zoom. They keyed by (pos, totalCount, coverage)
+    // in clipBarData; we just need to refresh x and y2 against the new xS / ySL_indel.
+    this.clipBarContainer.selectAll(".clip_bar_stem")
+                         .attr("x1", function (d) { return xS(0.5 + d.pos); })
+                         .attr("x2", function (d) { return xS(0.5 + d.pos); })
+                         .attr("y1", function (d) { return ySL_indel(0); })
+                         .attr("y2", function (d) { return ySL_indel(d.ratio); });
+    this.textContainerClippings.selectAll(".clippings_text")
+                               .attr("x", function (d) { return xS(0.5 + d.pos); })
+                               .attr("font-size", 2*mk_font_size+"px");
 
     this.chartContainer.select(".x.axis.top").call(this.xAxisTop);
 }
