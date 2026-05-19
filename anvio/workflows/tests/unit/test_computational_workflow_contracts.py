@@ -137,8 +137,10 @@ class ComputationalWorkflowContractTestCase(unittest.TestCase):
                 self.assertIn('"conda_env"', metagenomics_module)
                 self.assertIn(f"self.ensure_tool_in_path_or_conda('{tool}'", metagenomics_module)
 
-        self.assertIn('def conda_yaml(tool):', metagenomics_snakefile)
-        self.assertIn('def env_prefix(tool):', metagenomics_snakefile)
+        self.assertIn('def get_conda_yaml_path(workflow, tool):', read_text(WORKFLOWS_ROOT / '__init__.py'))
+        self.assertIn('def get_conda_env_prefix(workflow, tool):', read_text(WORKFLOWS_ROOT / '__init__.py'))
+        self.assertIn('w.get_conda_yaml_path(M,', metagenomics_snakefile)
+        self.assertIn('w.get_conda_env_prefix(M,', metagenomics_snakefile)
         self.assertIn('conda:', metagenomics_snakefile)
 
 

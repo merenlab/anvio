@@ -188,8 +188,8 @@ class BiologicalWorkflowContractTestCase(unittest.TestCase):
     def test_short_and_long_read_metagenomics_paths_remain_distinct(self):
         snakefile_text = read_text(WORKFLOWS['metagenomics']['snakefile'])
 
-        self.assertIn('SR_RS_RE = regex_from_ids(SR_READSETS)', snakefile_text)
-        self.assertIn('LR_RS_RE = regex_from_ids(LR_READSETS)', snakefile_text)
+        self.assertIn('SR_RS_RE = w.regex_from_ids(SR_READSETS)', snakefile_text)
+        self.assertIn('LR_RS_RE = w.regex_from_ids(LR_READSETS)', snakefile_text)
         self.assertRegex(snakefile_text, r'group\s*=\s*SR_GRP_RE')
         self.assertRegex(snakefile_text, r'group\s*=\s*LR_GRP_RE')
         self.assertIn('bowtie2', snakefile_text)

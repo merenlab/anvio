@@ -123,36 +123,12 @@ LR_ASSEMBLIES = [
 ]
 
 
-def regex_from_ids(ids):
-    # if the list is empty, make it never match to avoid accidental triggering
-    return (
-        r"(?:{})".format("|".join(re.escape(x) for x in ids))
-        if ids
-        else r"DO_NOT_MATCH"
-    )
-
-
 # will be used as contrained readset's wildcards for either bowtie or minimap2
-SR_RS_RE = regex_from_ids(SR_READSETS)
-LR_RS_RE = regex_from_ids(LR_READSETS)
+SR_RS_RE = w.regex_from_ids(SR_READSETS)
+LR_RS_RE = w.regex_from_ids(LR_READSETS)
 # same idea but for assemblies:
-SR_GRP_RE = regex_from_ids(SR_ASSEMBLIES)
-LR_GRP_RE = regex_from_ids(LR_ASSEMBLIES)
-
-
-# conda helper functions:
-def conda_yaml(tool):
-    """Return conda YAML path for a tool ('' if unset). Used in 'conda:' directive."""
-    p = M.get_param_value_from_config([tool, "conda_yaml"])
-    if not p:
-        return None
-    return os.path.abspath(os.path.expanduser(p))
-
-
-def env_prefix(tool):
-    """Return 'conda run -n <env>' prefix if 'conda_env' is set; else ''."""
-    name = M.get_param_value_from_config([tool, "conda_env"])
-    return f"conda run -n {name}" if name else ""
+SR_GRP_RE = w.regex_from_ids(SR_ASSEMBLIES)
+LR_GRP_RE = w.regex_from_ids(LR_ASSEMBLIES)
 
 
 ruleorder: import_percent_of_reads_mapped > import_krakenuniq_taxonomy
@@ -166,7 +142,7 @@ The final product of the workflow is an anvi'o merged profile directory
 for each group
 """
     input:
-        M.get_metagenomics_target_files(),
+        targets=M.get_metagenomics_target_files(),
 
 
 rule iu_gen_configs:
@@ -178,10 +154,10 @@ then copy/symlink to {QC_DIR}/{readset}.ini so suffixed SR readsets exist.
 
     # one-time rule -> no wildcard constraints
     input:
-        ancient(M.get_param_value_from_config(["samples_txt"])),
+        source=ancient(M.get_param_value_from_config(["samples_txt"])),
     output:
         # ONLY SR readsets (not LR)
-        expand(
+        files=expand(
             "{DIR}/{readset}.ini",
             DIR=dirs_dict["QC_DIR"],
             readset=M.get_sr_readset_ids(),
@@ -332,8 +308,8 @@ def uncompress_fastqs_if_needed(r1_list, r2_list, log):
         for r1, r2 in zip(r1_list, r2_list):
             r1_unzipped = r1.replace(".fastq.gz", "_temp.fastq")
             r2_unzipped = r2.replace(".fastq.gz", "_temp.fastq")
-            shell("gunzip < %s > %s 2>> %s" % (r1, r1_unzipped, log))
-            shell("gunzip < %s > %s 2>> %s" % (r2, r2_unzipped, log))
+            w.gunzip_file(r1, log, shell, output_path=r1_unzipped)
+            w.gunzip_file(r2, log, shell, output_path=r2_unzipped)
             out1.append(r1_unzipped)
             out2.append(r2_unzipped)
     else:
@@ -518,9 +494,11 @@ rule gen_report_for_mapping_to_references_for_removal:
 
 rule gen_qc_report:
     input:
-        expand(dirs_dict["QC_DIR"] + "/{readset}-STATS.txt", readset=SR_READSETS),
+        targets=expand(
+            dirs_dict["QC_DIR"] + "/{readset}-STATS.txt", readset=SR_READSETS
+        ),
     output:
-        dirs_dict["QC_DIR"] + "/qc-report.txt",
+        report=dirs_dict["QC_DIR"] + "/qc-report.txt",
     log:
         dirs_dict["LOGS_DIR"] + "/gen_qc_report.log",
     threads: M.T("gen_qc_report")
@@ -581,7 +559,7 @@ rule merge_fastas_for_co_assembly:
     input:
         unpack(lambda wildcards: M.get_sr_fastqs_for_group(wildcards.group)),
     output:
-        temp(dirs_dict["QC_DIR"] + "/{group}-merged.fa"),
+        fasta=temp(dirs_dict["QC_DIR"] + "/{group}-merged.fa"),
     log:
         dirs_dict["LOGS_DIR"] + "/{group}-merge_fastas_for_co_assembly.log",
     threads: M.T("merge_fastas_for_co_assembly")
@@ -647,9 +625,11 @@ rule gzip_fastqs:
     input:
         fastq=os.path.join(dirs_dict["QC_DIR"], "{readset}-QUALITY_PASSED_{R}.fastq"),
     output:
-        temp(gzip_fastq_output)
-        if M.remove_short_reads_based_on_references
-        else gzip_fastq_output,
+        target=(
+            temp(gzip_fastq_output)
+            if M.remove_short_reads_based_on_references
+            else gzip_fastq_output
+        ),
     log:
         dirs_dict["LOGS_DIR"] + "/{readset}-{R}-gzip.log",
     threads: M.T("gzip_fastqs")
@@ -691,12 +671,12 @@ if M.get_param_value_from_config(["flye", "run"]) and M.has_lr:
         wildcard_constraints:
             group=LR_GRP_RE,
         conda:
-            conda_yaml("flye")
+            w.get_conda_yaml_path(M, "flye")
         threads: M.T("flye")
         resources:
             nodes=M.T("flye"),
         params:
-            env_prefix=lambda wildcards: env_prefix("flye"),
+            env_prefix=lambda wildcards: w.get_conda_env_prefix(M, "flye"),
             meta=M.get_rule_param("flye", "--meta"),
             read_type=lambda wildcards: flye_read_type(),
             additional_params=M.get_param_value_from_config(
@@ -759,12 +739,12 @@ if M.get_param_value_from_config(["idba_ud", "run"]) and M.has_sr:
         wildcard_constraints:
             group=SR_GRP_RE,
         conda:
-            conda_yaml("idba_ud")
+            w.get_conda_yaml_path(M, "idba_ud")
         threads: M.T("idba_ud")
         resources:
             nodes=M.T("idba_ud"),
         params:
-            env_prefix=lambda wildcards: env_prefix("idba_ud"),
+            env_prefix=lambda wildcards: w.get_conda_env_prefix(M, "idba_ud"),
             temp_dir=temp(dirs_dict["FASTA_DIR"] + "/{group}_TEMP"),
             mink=M.get_rule_param("idba_ud", "--mink"),
             maxk=M.get_rule_param("idba_ud", "--maxk"),
@@ -858,12 +838,12 @@ if M.get_param_value_from_config(["metaspades", "run"]) and M.has_sr:
         wildcard_constraints:
             group=SR_GRP_RE,
         conda:
-            conda_yaml("metaspades")
+            w.get_conda_yaml_path(M, "metaspades")
         threads: M.T("metaspades")
         resources:
             nodes=M.T("metaspades"),
         params:
-            env_prefix=lambda wildcards: env_prefix("metaspades"),
+            env_prefix=lambda wildcards: w.get_conda_env_prefix(M, "metaspades"),
             temp_dir=dirs_dict["FASTA_DIR"] + "/{group}_TEMP",
             additional_params=M.get_param_value_from_config(
                 ["metaspades", "additional_params"]
@@ -923,12 +903,12 @@ if M.get_param_value_from_config(["megahit", "run"]) and M.has_sr:
         wildcard_constraints:
             group=SR_GRP_RE,
         conda:
-            conda_yaml("megahit")
+            w.get_conda_yaml_path(M, "megahit")
         threads: M.T("megahit")
         resources:
             nodes=M.T("megahit"),
         params:
-            env_prefix=lambda wildcards: env_prefix("megahit"),
+            env_prefix=lambda wildcards: w.get_conda_env_prefix(M, "megahit"),
             temp_dir=dirs_dict["FASTA_DIR"] + "/{group}_TEMP",
             # the minimum length for contigs (smaller contigs will be discarded)
             min_contig_len=M.get_rule_param("megahit", "--min-contig-len"),
@@ -1108,7 +1088,7 @@ rule dummy_rule_for_anvi_summarize:
     input:
         summary_done=os.path.join(dirs_dict["SUMMARY_DIR"], "{group}-summary.touch"),
     output:
-        directory(os.path.join(dirs_dict["SUMMARY_DIR"], "{group}-SUMMARY")),
+        summary=directory(os.path.join(dirs_dict["SUMMARY_DIR"], "{group}-SUMMARY")),
     log:
         dirs_dict["LOGS_DIR"] + "/{group}-dummy_rule_for_anvi_summarize.log",
     threads: 1
@@ -1117,7 +1097,7 @@ rule dummy_rule_for_anvi_summarize:
     params:
         summary_temp_dir=os.path.join(dirs_dict["SUMMARY_DIR"], "{group}-TEMP"),
     shell:
-        "mv {params.summary_temp_dir} {output} >> {log} 2>&1"
+        "mv {params.summary_temp_dir} {output.summary} >> {log} 2>&1"
 
 
 rule krakenuniq:
@@ -1158,9 +1138,9 @@ rule krakenuniq:
 rule krakenuniq_mpa_report:
     """configure input for import_percent_of_reads_mapped."""
     input:
-        os.path.join(dirs_dict["TAXONOMY_DIR"], "{readset}.krakenuniq"),
+        source=os.path.join(dirs_dict["TAXONOMY_DIR"], "{readset}.krakenuniq"),
     output:
-        os.path.join(dirs_dict["TAXONOMY_DIR"], "{readset}-krakenuniq.tsv"),
+        txt=os.path.join(dirs_dict["TAXONOMY_DIR"], "{readset}-krakenuniq.tsv"),
     log:
         dirs_dict["LOGS_DIR"] + "/{readset}-krakenuniq_mpa_report.log",
     threads: M.T("krakenuniq_mpa_report")
@@ -1212,7 +1192,7 @@ rule import_krakenuniq_taxonomy:
             )
         ),
     output:
-        touch(
+        done=touch(
             os.path.join(
                 dirs_dict["PROFILE_DIR"],
                 "{group}/{readset}/import_krakenuniq_taxonomy.done",
@@ -1239,7 +1219,7 @@ rule anvi_cluster_contigs:
         contigs=ancient(M.get_contigs_db_path()),
         profile=lambda wildcards: M.profile_databases[wildcards.group],
     output:
-        touch(
+        done=touch(
             os.path.join(
                 dirs_dict["MERGE_DIR"], "{group}" + "-" + "{driver}" + ".done"
             )
