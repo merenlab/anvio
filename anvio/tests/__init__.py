@@ -1,6 +1,7 @@
 known_tests = {'mini'                  : ['run_component_tests_for_minimal_metagenomics.sh'],
                'metagenomics-full'     : ['run_component_tests_for_metagenomics.sh'],
                'pangenomics'           : ['run_component_tests_for_pangenomics.sh'],
+               'pangenome-graphs'      : ['run_component_tests_for_pangenome_graphs.sh'],
                'interactive-interface' : ['run_component_tests_for_manual_interactive.sh'],
                'metabolism'            : ['run_component_tests_for_metabolism.sh'],
                'reaction-network'      : ['run_component_tests_for_reaction_network.sh'],

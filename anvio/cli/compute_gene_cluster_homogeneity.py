@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import sys
 from anvio.argparse import ArgumentParser
@@ -117,6 +116,7 @@ def run_program():
 
     if args.store_in_db:
         args.just_do_it = True
+        args.target_data_group = 'homogeneity'
         miscdata.TableForItemAdditionalData(args).add(d, ['functional_homogeneity_index', 'geometric_homogeneity_index', 'combined_homogeneity_index'])
 
     if args.output_file:

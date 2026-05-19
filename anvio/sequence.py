@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 
 """Classes for sequence properties and manipulations"""
 
@@ -211,7 +209,7 @@ class Kmerizer:
             if kmer_size > len(seq_string):
                 continue
 
-            hashed_kmer = sha1(seq_string[: kmer_size].encode('utf-8')).hexdigest()
+            hashed_kmer = sha1(seq_string[: kmer_size].encode('utf-8'), usedforsecurity=False).hexdigest()
             if hashed_kmer in kmer_dict:
                 kmer_dict[hashed_kmer][name] = seq_string
             else:
@@ -231,7 +229,7 @@ class Kmerizer:
                 if kmer_size > seq_length:
                     break
 
-                hashed_kmer = sha1(seq_string[: kmer_size].encode('utf-8')).hexdigest()
+                hashed_kmer = sha1(seq_string[: kmer_size].encode('utf-8'), usedforsecurity=False).hexdigest()
                 kmer_dict[kmer_size][hashed_kmer].append(target)
         return kmer_dict, targets
 
@@ -246,7 +244,7 @@ class Kmerizer:
             target = MappableAlignedTarget(seq_string)
             targets.append(target)
 
-            hashed_kmer = sha1(seq_string[: kmer_size].encode('utf-8')).hexdigest()
+            hashed_kmer = sha1(seq_string[: kmer_size].encode('utf-8'), usedforsecurity=False).hexdigest()
             kmer_dict[hashed_kmer][name] = target
         return kmer_dict, targets
 
@@ -279,7 +277,7 @@ class Kmerizer:
                 # Do not include input seqs as k-mers.
                 continue
 
-            hashed_kmer = sha1(seq[: kmer_size].encode('utf-8')).hexdigest()
+            hashed_kmer = sha1(seq[: kmer_size].encode('utf-8'), usedforsecurity=False).hexdigest()
             if hashed_kmer in kmer_dict:
                 kmer_dict[hashed_kmer].append((name, len(seq)))
             else:
@@ -392,13 +390,13 @@ def get_kmer_worker(name_seq_pair, kmer_size, include_full_length=True, as_array
     if as_array:
         for start_pos, stop_pos in zip(range(0, seq.size - kmer_size + 1),
                                        range(kmer_size, seq.size + 1)):
-            hashed_kmer = sha1(seq[start_pos: stop_pos].tobytes()).hexdigest()
+            hashed_kmer = sha1(seq[start_pos: stop_pos].tobytes(), usedforsecurity=False).hexdigest()
             hashed_kmers.append(hashed_kmer)
             prelim_kmer_items.append([hashed_kmer, name, [start_pos], seq.size])
     else:
         for start_pos, stop_pos in zip(range(0, len(seq) - kmer_size + 1),
                                        range(kmer_size, len(seq) + 1)):
-            hashed_kmer = sha1(seq[start_pos: stop_pos].encode('utf-8')).hexdigest()
+            hashed_kmer = sha1(seq[start_pos: stop_pos].encode('utf-8'), usedforsecurity=False).hexdigest()
             hashed_kmers.append(hashed_kmer)
             prelim_kmer_items.append([hashed_kmer, name, [start_pos], len(seq)])
 
@@ -532,7 +530,7 @@ class Dereplicator:
 
         kmer_dict, targets = Kmerizer(self.names, self.seq_strings).get_prefix_target_dict(kmer_size)
 
-        hashed_prefixes = [sha1(seq_string[: kmer_size].encode('utf-8')).hexdigest()
+        hashed_prefixes = [sha1(seq_string[: kmer_size].encode('utf-8'), usedforsecurity=False).hexdigest()
                            for seq_string in self.seq_strings]
 
         if self.extras:
@@ -1012,7 +1010,7 @@ def align_without_indels_worker(input_queue, output_queue, kmer_dict, seed_size,
             range(0, query_seq_array.size - seed_size + 1),
             range(seed_size, query_seq_array.size + 1)
         ):
-            seed_hash = sha1(query_seq_array[seed_query_start:  ].tobytes()).hexdigest()
+            seed_hash = sha1(query_seq_array[seed_query_start:  ].tobytes(), usedforsecurity=False).hexdigest()
 
             if seed_hash not in kmer_dict:
                 continue
@@ -1106,7 +1104,7 @@ def prefix_match_worker(query_seq, kmer_size, kmer_dict, max_matches_per_query=f
     matched_target_names : list
         List of target names with prefix subsequence match to query; max length equal to `int(max_matches_per_query)`
     """
-    query_hash = sha1(query_seq[: kmer_size].encode('utf-8')).hexdigest()
+    query_hash = sha1(query_seq[: kmer_size].encode('utf-8'), usedforsecurity=False).hexdigest()
 
     matched_target_names = []
     if query_hash not in kmer_dict:

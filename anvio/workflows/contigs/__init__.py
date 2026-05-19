@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """
     Classes to define and work with anvi'o contigs workflows.
 """
@@ -67,7 +65,7 @@ class ContigsDBWorkflow(WorkflowSuperClass):
 
         self.rule_acceptable_params_dict['anvi_run_scg_taxonomy'] = ['run', '--scgs-taxonomy-data-dir']
 
-        self.rule_acceptable_params_dict['anvi_run_trna_scan'] = ['run', '--trna-cutoff-score']
+        self.rule_acceptable_params_dict['anvi_run_trna_scan'] = ['run', '--trna-cutoff-score', '--trna-model']
 
         self.rule_acceptable_params_dict['anvi_run_hmms'] = ['run', '--installed-hmm-profile', '--hmm-profile-dir', '--also-scan-trnas', '--add-to-functions-table', '--just-do-it']
 
@@ -86,11 +84,11 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                     ['run', '--keep-ids', '--exclude-ids', '--min-len', '--max-len', "--prefix", "--simplify-names", "--seq-type"]
 
 
-        gen_contigs_params = ['--description', '--skip-gene-calling',\
-                              '--ignore-internal-stop-codons', '--skip-mindful-splitting',\
-                              '--contigs-fasta', '--project-name',\
-                              '--description', '--split-length', '--kmer-size',\
-                              '--skip-mindful-splitting', '--skip-gene-calling',\
+        gen_contigs_params = ['--description', '--skip-gene-calling',
+                              '--ignore-internal-stop-codons', '--skip-mindful-splitting',
+                              '--contigs-fasta', '--project-name',
+                              '--description', '--split-length', '--kmer-size',
+                              '--skip-mindful-splitting', '--skip-gene-calling',
                               '--ignore-internal-stop-codons', '--skip-predict-frame', '--prodigal-translation-table']
 
         self.rule_acceptable_params_dict['anvi_gen_contigs_database'] = gen_contigs_params
@@ -137,8 +135,8 @@ class ContigsDBWorkflow(WorkflowSuperClass):
         # sanity check for centrifuge db
         if run_taxonomy_with_centrifuge:
             if not self.get_param_value_from_config(["centrifuge", "db"]):
-                raise ConfigError("If you plan to run centrifuge, then you must "\
-                                  "provide a path for the centrifuge db in the "\
+                raise ConfigError("If you plan to run centrifuge, then you must "
+                                  "provide a path for the centrifuge db in the "
                                   "config file. See documentation for more details.")
 
         if run_taxonomy_with_centrifuge:
@@ -172,8 +170,8 @@ class ContigsDBWorkflow(WorkflowSuperClass):
 
         # import external functions if provided
         import_external_functions_flags = [os.path.join(self.dirs_dict["CONTIGS_DIR"],
-                                           group + "-steps", "external_functions_imported.done")\
-                                           for group in self.contigs_information \
+                                           group + "-steps", "external_functions_imported.done")
+                                           for group in self.contigs_information
                                            if self.contigs_information[group].get('gene_functional_annotation')]
         if import_external_functions_flags:
             optional_targets.extend(import_external_functions_flags)
@@ -308,11 +306,11 @@ class ContigsDBWorkflow(WorkflowSuperClass):
             raise ConfigError("Your fasta_txt file contains columns that are "
                               "not familiar to us. These are the only columns "
                               "that we accept: '%s'. These are the columns that "
-                              "we don't like in your file: '%s'." % (", ".join(w.get_fields_for_fasta_information()), \
+                              "we don't like in your file: '%s'." % (", ".join(w.get_fields_for_fasta_information()),
                                                                    ", ".join(bad_columns)))
 
         contigs_with_external_functions_and_no_external_gene_calls = \
-                [c for c in self.contigs_information \
+                [c for c in self.contigs_information
                     if self.contigs_information[c].get('gene_functional_annotation')
                     and not self.contigs_information[c].get('external_gene_calls')]
         if contigs_with_external_functions_and_no_external_gene_calls:

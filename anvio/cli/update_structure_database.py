@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import sys
 import argparse
@@ -57,17 +56,17 @@ def get_args():
     groupM.add_argument('--list-modeller-params', action='store_true', help='Since you are updating an existing DB, modeller params are set in '
                                                                             'place. You can have this program list them by providing this flag')
 
-    groupE.add_argument("--rerun-genes", action='store_true', help = \
+    groupE.add_argument("--rerun-genes", action='store_true', help =
                         """Supply if you would like to rerun structural modelling for your genes of
                         interest if they are already present in your DB""")
-    groupE.add_argument("--modeller-executable", type=str, help = \
+    groupE.add_argument("--modeller-executable", type=str, help =
                         """The MODELLER program to use. For example, `mod9.19`. Anvi'o will try and find
                         it if not provided.""")
 
     groupE.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     params = {
         'default': 25,
-        'help': anvio.K('write-buffer-size')['help'] + \
+        'help': anvio.K('write-buffer-size')['help'] +
                 ' If --num-threads is 1, this parameter is ignored because the DB is written to after each gene'
     }
     groupE.add_argument(*anvio.A('write-buffer-size'), **anvio.K('write-buffer-size', params))

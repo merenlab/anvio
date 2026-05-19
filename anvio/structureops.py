@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 
 """Classes to make sense of genes and variability within the context of protein structure"""
 
@@ -562,7 +560,7 @@ class StructureSuperclass(object):
         # Check for genes that do not appear in the contigs database
         bad_gene_caller_ids = [g for g in genes_of_interest if g not in genes_in_contigs_database]
         if bad_gene_caller_ids:
-            raise ConfigError(("This gene caller id you provided is" if len(bad_gene_caller_ids) == 1 else \
+            raise ConfigError(("This gene caller id you provided is" if len(bad_gene_caller_ids) == 1 else
                                "These gene caller ids you provided are") + " not known to this contigs database: {}.\
                                You have only 2 lives left. 2 more mistakes, and anvi'o will automatically uninstall \
                                itself. Yes, seriously :(".format(", ".join([str(x) for x in bad_gene_caller_ids])))
@@ -1174,14 +1172,14 @@ class DSSPClass(object):
         except Exception:
             raise ConfigError('Your executable of DSSP, `{}`, doesn\'t appear to be working. For information on how to test '
                               'that your version is working correctly, please visit '
-                              'http://merenlab.org/2016/06/18/installing-third-party-software/#dssp'\
+                              'http://merenlab.org/2016/06/18/installing-third-party-software/#dssp'
                                .format(self.executable))
 
         if not len(test_residue_annotation.keys()):
             raise ConfigError("Your executable of DSSP, `{}`, exists but didn't return any meaningful output. This "
                               "is a known issue with certain distributions of DSSP. For information on how to test "
                               "that your version is working correctly, please visit "
-                              "http://merenlab.org/2016/06/18/installing-third-party-software/#dssp"\
+                              "http://merenlab.org/2016/06/18/installing-third-party-software/#dssp"
                                .format(self.executable))
 
         try:
@@ -1652,7 +1650,7 @@ class PDBDatabase(object):
 
         self.run.warning("You want to --reset the database (size %s), which seems potentially rash. "
                          "Anvi'o is putting you in time out for 20 seconds before deleting. Press "
-                         "CTRL+C at any time during your time out to cancel the deletion." \
+                         "CTRL+C at any time during your time out to cancel the deletion."
                             % self.size_of_database())
         time.sleep(20)
         os.remove(self.db_path)
@@ -2043,5 +2041,3 @@ class ExternalStructuresFile(object):
 
         self.progress.end()
         return True
-
-

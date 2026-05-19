@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-# pylint: disable=line-too-long
 """To make sense of config files for mixed clustering"""
 
 import os
@@ -146,7 +144,7 @@ class ClusteringConfiguration:
 
         # make sure all matrices have identical rows:
         if len(set([list(m['id_to_sample'].values()).__str__() for m in list(self.matrices_dict.values())])) > 1:
-            master_rows, master_matrix = sorted([(len(self.matrices_dict[m]['id_to_sample']), list(self.matrices_dict[m]['id_to_sample'].values()), m)\
+            master_rows, master_matrix = sorted([(len(self.matrices_dict[m]['id_to_sample']), list(self.matrices_dict[m]['id_to_sample'].values()), m)
                                                             for m in self.matrices_dict])[0][1:]
             self.master = master_matrix
             self.master_rows = master_rows
@@ -312,7 +310,7 @@ class ClusteringConfiguration:
 
                 if not len(table_rows):
                     raise ConfigError("It seems the table '%s' in the database it was requested from is empty. This "
-                                       "is not good. Here is the section that is not working for you: '%s' :/" \
+                                       "is not good. Here is the section that is not working for you: '%s' :/"
                                                                 % (table, section))
 
                 tmp_file_path = filesnpaths.get_temp_file_path()
@@ -321,7 +319,13 @@ class ClusteringConfiguration:
                 if table_form == 'dataframe':
                     args = argparse.Namespace(pan_or_profile_db=database_path, table_name=table)
                     table = TableForItemAdditionalData(args)
-                    table_keys_list, table_data_dict = table.get()
+                    keys_by_group, data_by_group = table.get_all()
+                    table_data_dict = {}
+                    for group_data in data_by_group.values():
+                        for item_name, item_data in group_data.items():
+                            if item_name not in table_data_dict:
+                                table_data_dict[item_name] = {}
+                            table_data_dict[item_name].update(item_data)
                     store_dict_as_TAB_delimited_file(table_data_dict, tmp_file_path)
                 elif table_form == 'view':
                     store_dict_as_TAB_delimited_file(table_rows, tmp_file_path)
@@ -373,5 +377,3 @@ class ClusteringConfiguration:
                                'configuration only %d of %d matrices have ratio values defined. Either remove '
                                'all, or complete the remaining one%s.' % (with_ratio, len(sections),
                                                                           's' if (len(sections) - with_ratio) > 1 else ''))
-
-

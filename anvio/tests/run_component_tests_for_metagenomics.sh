@@ -550,6 +550,16 @@ anvi-experimental-organization $files/example_clustering_configuration.ini \
                                --linkage complete \
                                --no-progress
 
+INFO "Use anvi-experimental-organization to report a merged and scaled data matrix from a non-default configuration"
+anvi-experimental-organization $files/example_clustering_configuration.ini \
+                               -i $output_dir/SAMPLES-MERGED \
+                               -c $output_dir/CONTIGS.db \
+                               -p $output_dir/SAMPLES-MERGED/PROFILE.db \
+                               --dry-run \
+                               --export-merged-matrix $output_dir/experimental_clustering_data_matrix_output.txt \
+                               --no-progress
+SHOW_FILE $output_dir/experimental_clustering_data_matrix_output.txt
+
 INFO "Adding a 'DEFAULT' collection that describes all splits in an 'EVERYTHING' bin to the merged profile"
 anvi-script-add-default-collection -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                                    --no-progress
@@ -1061,28 +1071,27 @@ anvi-gen-genomes-storage -e $output_dir/external-genomes.txt -o $output_dir/TEST
 
 INFO "Running the pangenome analysis with default parameters"
 anvi-pan-genome -g $output_dir/TEST-GENOMES.db \
-                -o $output_dir/TEST/ \
                 -n TEST \
                 --use-ncbi-blast \
                 --description $output_dir/example_description.md \
                 --no-progress \
                 $thread_controller
-                
+
 INFO "Generating hmm-hits matrix"
-anvi-script-gen-hmm-hits-matrix-across-genomes -o $output_dir/TEST/GENOME_MATRIX.txt \
+anvi-script-gen-hmm-hits-matrix-across-genomes -o $output_dir/TEST-GENOME_MATRIX.txt \
                                                -e $output_dir/external-genomes.txt \
-                                               --hmm-source Bacteria_71 
+                                               --hmm-source Bacteria_71
 
 INFO "Testing anvi-analyze-synteny with default parameters using a pangenome for annotations"
 anvi-analyze-synteny -g $output_dir/TEST-GENOMES.db \
-                     -p $output_dir/TEST/TEST-PAN.db \
+                     -p $output_dir/TEST-PAN.db \
                      --ngram-window-range 2:3 \
                      -o $output_dir/synteny_output_no_unknowns.tsv \
                      --no-progress
 
 INFO "Testing anvi-analyze-synteny now including unannotated genes"
 anvi-analyze-synteny -g $output_dir/TEST-GENOMES.db \
-                     -p $output_dir/TEST/TEST-PAN.db \
+                     -p $output_dir/TEST-PAN.db \
                      --ngram-window-range 2:3 \
                      -o $output_dir/synteny_output_with_unknowns.tsv \
                      --analyze-unknown-functions \
@@ -1114,7 +1123,7 @@ anvi-interactive -p $output_dir/SAMPLES-MERGED/PROFILE.db \
                  --no-progress
 
 INFO "A dry run to fill in anvi'o dbs"
-curdir=`pwd`
+curdir=$(pwd)
 cd $output_dir
 anvi-display-pan --dry-run --no-progress
 cd $curdir

@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """A library to help anvi'o describe itself"""
 
 import os
@@ -404,7 +402,7 @@ class AnvioPrograms(AnvioAuthors):
         self.run.info_single("Of %d programs found, %d did not contain PROVIDES AND/OR REQUIRES "
                              "statements :/ This may be normal for some programs, but here is the "
                              "complete list of those that are missing __provides__ and __requires__ "
-                             "tags in their code in case you see something you can complete: '%s'." % \
+                             "tags in their code in case you see something you can complete: '%s'." %
                                         (len(self.program_names_and_paths),
                                          len(programs_without_provides_requires_info),
                                          ', '.join(programs_without_provides_requires_info)),
@@ -415,7 +413,7 @@ class AnvioPrograms(AnvioAuthors):
                              "help by adding usage information for programs by creating markdown "
                              "formatted files under the directory '%s'. Please see examples in anvi'o "
                              "codebase: https://github.com/merenlab/anvio/tree/master/anvio/docs. "
-                             "Here is a complete list of programs that are missing usage statements: %s " % \
+                             "Here is a complete list of programs that are missing usage statements: %s " %
                                         (len(self.program_names_and_paths),
                                          len(programs_without_provides_requires_info),
                                          anvio.DOCS_PATH,
@@ -714,7 +712,7 @@ class AnvioWorkflows:
         if len(workflows_without_descriptions):
             self.run.info_single("Of %d workflows found, %d did not contain any DESCRIPTION. If you would like to "
                                  "see examples and add new descriptions, please see the directory '%s'. Here is the "
-                                 "full list of workflows that are not yet explained: %s." \
+                                 "full list of workflows that are not yet explained: %s."
                                         % (len(ANVIO_WORKFLOWS),
                                            len(workflows_without_descriptions),
                                            anvio.DOCS_PATH,
@@ -794,7 +792,7 @@ class AnvioArtifacts:
         if len(artifacts_without_descriptions):
             self.run.info_single("Of %d artifacts found, %d did not contain any DESCRIPTION. If you would like to "
                                  "see examples and add new descriptions, please see the directory '%s'. Here is the "
-                                 "full list of artifacts that are not yet explained: %s." \
+                                 "full list of artifacts that are not yet explained: %s."
                                         % (len(ANVIO_ARTIFACTS),
                                            len(artifacts_without_descriptions),
                                            anvio.DOCS_PATH,
@@ -865,7 +863,7 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
             raise ConfigError("Some artifacts do not have matching images. If you just added a new artifact type, you "
                               "also need to add a corresponding PNG icon for the type under the directory '%s'. See "
                               "examples in that directory, and if they are not enough, get in touch with a developer. "
-                              "Regardless. These are the artifact types missing images: %s." \
+                              "Regardless. These are the artifact types missing images: %s."
                                                                 % (os.path.join(self.images_source_directory, 'icons'),
                                                                    ', '.join(missing_images_for_artifact_types)))
 

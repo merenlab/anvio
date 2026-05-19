@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """Classes and functions for handling, storing, and retrieving atomic data
    from contigs and splits. Also includes classes to deal with external
    contig data such as GenbankToAnvio."""
@@ -1004,4 +1002,3 @@ class GenbankToAnvio:
         return {'external_gene_calls': self.output_gene_calls_path,
                 'gene_functional_annotation': self.output_functions_path,
                 'path': self.output_fasta_path}
-

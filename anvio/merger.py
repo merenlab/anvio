@@ -1,10 +1,9 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """The library to merge multiple profiles.
 
 The default client of this library is under bin/anvi-merge"""
 
 
+import gc
 import os
 import argparse
 
@@ -114,7 +113,7 @@ class MultipleRuns:
                              "all of them were single, non-blank anvi'o profiles. Anvi'o removed %d of them, and will merge "
                              "only the remaining %d. At the end of this warning you will find a list of paths to those databases "
                              "anvi'o excluded from merging. If you are not happy with that, please carefully examine what went wrong. "
-                             "Here are all the paths for excluded databases: %s." \
+                             "Here are all the paths for excluded databases: %s."
                                             % (len(self.input_profile_db_paths), len(improper), len(proper), ', '.join(["'%s'" % p for p in improper])))
 
         # replace input profile database paths with proper paths:
@@ -125,7 +124,7 @@ class MultipleRuns:
         if data_group_names:
             self.run.warning("Anvi'o found %d data groups for taxonomy (%s), and will do its best to make sure they "
                              "get worked into the merged profile database. A moment of zero promises but crossed "
-                             "fingers (which is the best way to avoid most computational poopsies)." % \
+                             "fingers (which is the best way to avoid most computational poopsies)." %
                                                 (len(data_group_names), ', '.join(data_group_names)),
                               header="GOOD NEWS",
                               lc="green")
@@ -456,13 +455,13 @@ class MultipleRuns:
                              "(which becomes the center tree in all anvi'o displays). If you want a hierarchical "
                              "clustering to be done anyway, please see the flag `--enforce-hierarchical-clustering`. "
                              "But more importantly, please take a look at the anvi'o tutorial to make sure you know "
-                             "your better options to analyze large metagenomic datasets with anvi'o." \
+                             "your better options to analyze large metagenomic datasets with anvi'o."
                                                                 % pp(self.max_num_splits_for_hierarchical_clustering))
             self.skip_hierarchical_clustering = True
 
         if self.num_splits > self.max_num_splits_for_hierarchical_clustering and self.enforce_hierarchical_clustering:
             self.run.warning("Because you have used the flag `--enforce-hierarchical-clustering`, anvi'o will attempt "
-                             "to create a hierarchical clustering of your %s splits. It may take a bit of time..." \
+                             "to create a hierarchical clustering of your %s splits. It may take a bit of time..."
                                                                 % pp(self.num_splits))
 
         self.total_reads_mapped_per_sample = dict([(s, self.layer_additional_data_dict['default'][s]['total_reads_mapped']) for s in self.layer_additional_data_dict['default']])
@@ -557,19 +556,35 @@ class MultipleRuns:
     def populate_misc_data_tables(self):
         self.run.info_single("Additional data and layer orders...", nl_before=1, nl_after=1, mc="blue")
 
-        # initialize views.
-        args = argparse.Namespace(profile_db = self.merged_profile_db_path)
-        profile_db_super = dbops.ProfileSuperclass(args)
-        profile_db_super.load_views(omit_parent_column=True)
+        args = argparse.Namespace(profile_db=self.merged_profile_db_path)
 
-        # figure out layer orders dictionary
+        # get the view name → table name mapping (tiny dict, no data loaded yet)
+        profile_db = dbops.ProfileDatabase(self.merged_profile_db_path)
+        views_table = profile_db.db.get_table_as_dict(tables.views_table_name)
+        profile_db.disconnect()
+
+        # figure out layer orders dictionary by loading one view at a time, so we don't
+        # hold all view data in memory simultaneously. for large datasets with many splits
+        # and samples, loading all views at once can require 100+ GB of memory due to
+        # Python dict overhead.
         layer_orders_data_dict = {}
         failed_attempts = []
         self.progress.new('Working on layer orders')
+        profile_db = dbops.ProfileDatabase(self.merged_profile_db_path)
         for essential_field in self.essential_fields:
             self.progress.update('recovering order for "%s"' % (essential_field))
+
+            if essential_field not in views_table:
+                failed_attempts.append(essential_field)
+                continue
+
+            table_name = views_table[essential_field]['target_table']
+
+            # load this single view from the merged profile DB
+            view_data, _header = profile_db.db.get_view_data(table_name)
+
             try:
-                data_value = clustering.get_newick_tree_data_for_dict(profile_db_super.views[essential_field]['dict'],
+                data_value = clustering.get_newick_tree_data_for_dict(view_data,
                                                                       distance=self.distance,
                                                                       linkage=self.linkage,
                                                                       transpose=True)
@@ -577,6 +592,12 @@ class MultipleRuns:
                 layer_orders_data_dict[essential_field] = {'data_value': data_value, 'data_type': 'newick'}
             except:
                 failed_attempts.append(essential_field)
+
+            # free this view's data before loading the next one
+            del view_data
+            gc.collect()
+
+        profile_db.disconnect()
         self.progress.end()
 
         if not len(layer_orders_data_dict):
@@ -589,7 +610,7 @@ class MultipleRuns:
                              "available in the merged profile, clustering of some of the essential data "
                              "failed. It is likely not a very big deal, but you shall be the judge of it. "
                              "Anvi'o now proceeds to store layers order information for those view items "
-                             "the clustering in fact worked. Here is the list of stuff that failed: '%s'"\
+                             "the clustering in fact worked. Here is the list of stuff that failed: '%s'"
                               % (', '.join(failed_attempts)))
 
         # add the layer orders quietly
@@ -663,6 +684,6 @@ class MultipleRuns:
         self.run.info_single("Anvi'o hierarchical clustering of contigs...", nl_before=1, nl_after=1, mc="blue")
 
         if not self.skip_hierarchical_clustering:
-            dbops.do_hierarchical_clustering_of_items(self.merged_profile_db_path, self.clustering_configs, self.split_names, self.database_paths, \
-                                                      input_directory=self.output_directory, default_clustering_config=constants.merged_default, \
+            dbops.do_hierarchical_clustering_of_items(self.merged_profile_db_path, self.clustering_configs, self.split_names, self.database_paths,
+                                                      input_directory=self.output_directory, default_clustering_config=constants.merged_default,
                                                       distance=self.distance, linkage=self.linkage, run=self.run, progress=self.progress)

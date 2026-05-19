@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Get sequences for all HMM hits in a given bin.
 
    This program takes a profile database, a collection ID, and a bin name, and an

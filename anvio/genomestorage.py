@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """
     A module to dealing with genome storages.
 
@@ -174,8 +172,8 @@ class GenomeStorage(object):
                 raise ConfigError("%d of %d genome names you wanted to focus are missing from the genomes sotrage. "
                                 "Although this may not be a show-stopper, anvi'o likes to be explicit, so here we "
                                 "are. Not going anywhere until you fix this. For instance this is one of the missing "
-                                "genome names: '%s', and this is one random genome name from the database: '%s'" % \
-                                         (len(genome_names_to_focus_missing_from_db), len(self.genome_names_to_focus),\
+                                "genome names: '%s', and this is one random genome name from the database: '%s'" %
+                                         (len(genome_names_to_focus_missing_from_db), len(self.genome_names_to_focus),
                                          genome_names_to_focus_missing_from_db[0], ', '.join(self.genome_names_in_db)))
 
             self.genome_names = self.genome_names_to_focus

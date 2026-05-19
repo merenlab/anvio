@@ -17,6 +17,8 @@ The config file contains three types of information:
 2. **Rule specific parameters** which allow you to set the parameters on individual anvi'o programs that are run in the workflow.
 3. **Output directory names** which just tell anvi'o what to name all of the intermediate and final outputs (to help keep things organized).
 
+The `LOGS_DIR` entry controls the base workflow log name. Workflow logs are written under `00_LOGS`, within a subdirectory for the workflow or named run. During a workflow run, rule logs are organized under this directory by rule name, and a tab-delimited manifest named `<workflow-name>-workflow-manifest.tsv` is written there as well. For example, `LOGS_DIR` values such as `00_LOGS`, `00_LOGS_PHYLO`, `00_LOGS_FIVE_PAN`, or `00_LOGS-idba_ud` become directories such as `00_LOGS/phylogenomics`, `00_LOGS/phylogenomics`, `00_LOGS/pangenomics`, or `00_LOGS/idba_ud`.
+
 For example, the default config file for the [contigs workflow](../../workflows/contigs) has no rule specific parameters and looks like this:
 
     {
@@ -47,4 +49,3 @@ On the other hand, the default config file for the [contigs workflow](../../work
 Note that the empty string `""` here means that the default parameter for the program %(anvi-gen-contigs-database)s will be used.
 
 For more details on the anvi'o snakemake workflows, please refer to [this tutorial](https://merenlab.org/2018/07/09/anvio-snakemake-workflows/).
-

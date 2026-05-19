@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 
 from collections import Counter
 
@@ -34,7 +32,7 @@ class TaxonNamesTable(object):
         self.run = run
         self.progress = progress
 
- 
+
     def populate_taxon_names_table(self):
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
@@ -146,7 +144,7 @@ class TablesForGeneLevelTaxonomy(Table, TaxonNamesTable):
                                "with `anvi-get-dna-sequences-for-gene-calls` or `anvi-get-aa-sequences-for-gene-calls` programs "
                                "to get the data to annotate. For instance one of the gene caller ids you have in your "
                                "input data that does not appear in the database is this one: '%s'. Anvi'o hopes it makes "
-                               "sense to you, because it definitely does not make any sense to anvi'o :("\
+                               "sense to you, because it definitely does not make any sense to anvi'o :("
                                                         % (len(gene_caller_ids_missing_in_db), str(gene_caller_ids_missing_in_db.pop())))
 
         # check whether input matrix dict
@@ -156,7 +154,7 @@ class TablesForGeneLevelTaxonomy(Table, TaxonNamesTable):
             raise ConfigError("Anvi'o is trying to get ready to create tables for taxonomy, but there is something "
                                "wrong :( The taxonomy names dict (one of the required input dictionaries to the class "
                                "seems to be missing a one or more keys that are necessary to finish the job. Here is "
-                               "a list of missing keys: %s. The complete list of input keys should contain these: %s."\
+                               "a list of missing keys: %s. The complete list of input keys should contain these: %s."
                                         % (', '.join(missing_keys), ', '.join(t.taxon_names_table_structure[1:])))
 
         if not len(self.taxon_names_dict):
@@ -225,11 +223,6 @@ class TablesForGeneLevelTaxonomy(Table, TaxonNamesTable):
         # disconnect
         database.disconnect()
 
-        self.run.info('Splits taxonomy', 'Input data from "%s" annotated %d of %d splits (%.1f%%) with taxonomy.'\
+        self.run.info('Splits taxonomy', 'Input data from "%s" annotated %d of %d splits (%.1f%%) with taxonomy.'
                                             % (self.source, num_splits_with_taxonomy, num_splits_processed,
                                                num_splits_with_taxonomy * 100.0 / num_splits_processed))
-
-
-
-
-        

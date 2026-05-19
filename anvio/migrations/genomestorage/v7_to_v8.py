@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 """Migration script that detects and repairs bytes-string corruption in genomes
 storage databases that were converted from HDF5 to SQLite via the v4-to-v5

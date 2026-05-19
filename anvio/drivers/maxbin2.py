@@ -1,4 +1,3 @@
-# coding: utf-8
 """Interface to MaxBin2."""
 import os
 import glob

@@ -17,7 +17,7 @@ You can also use external %(hmm-source)ss! An easy way to get an anvi'o ready HM
 anvi-script-pfam-accessions-to-hmms-directory --pfam-accessions-list PF00016 -O RuBisCO_large_HMM
 {{ codestop }}
 
-Here is what the `hmm_list.txt` should look like with a combination of internal and external %(hmm-source)ss:  
+Here is what the `hmm_list.txt` should look like with a combination of internal and external %(hmm-source)ss:
 
 | name          | source            | path                       |
 |---------------|-------------------|----------------------------|

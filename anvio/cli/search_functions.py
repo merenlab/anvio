@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Searches contigs database for a given function"""
 
 import sys
@@ -127,7 +126,7 @@ class SearchResultReporter(object):
             for search_term in self.search_terms:
                 if item_name in self.matching_item_names_dict[search_term]:
                     results_dict[item_name][search_term + '_hits'] = search_term
-        
+
         if self.search_mode == 'external_genomes':
             header_list = ['key', 'item', 'genome'] + [s + '_hits' for s in self.search_terms]
         else:

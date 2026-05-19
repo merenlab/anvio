@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 """Migration script to convert _contigs view tables from split-keyed to contig-keyed.
 

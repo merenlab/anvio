@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Return counts of AAs in bins, contigs, or gene caller ids"""
 
 import sys

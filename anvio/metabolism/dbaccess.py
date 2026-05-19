@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Database access and data loading operations for KEGG metabolism estimation."""
 
 import pandas as pd

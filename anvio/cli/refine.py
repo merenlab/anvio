@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Further analyze one or more bins in a collection.
 
    This is especially useful when there are one or more highly contaminated

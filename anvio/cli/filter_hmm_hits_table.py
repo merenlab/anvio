@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 """
 This script removes the hmm_hits table and replaces it with a filtered version. Filtering of hmm_hits
@@ -9,7 +8,6 @@ is done using model and/or gene coverage
 import sys
 
 import anvio
-import anvio.data.hmm
 import anvio.terminal as terminal
 
 from anvio.tables.hmmhits import FilterHmmHitsTable

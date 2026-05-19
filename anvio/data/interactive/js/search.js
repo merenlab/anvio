@@ -214,8 +214,9 @@ function filterGeneClusters() {
 }
 
 function showSearchResult() {
-    var clear_link = '<button class="btn btn-sm btn-outline-danger mb-3 align-items-center justify-content-center" href="#" onclick="$(\'.search-results-display, #search-results-table-search-item, #search-results-table-search-name, #search-results-table-header\').html(\'\');">Clean Search Results</button>';
+    var clear_link = '<button class="btn btn-sm btn-outline-danger mb-3 align-items-center justify-content-center" href="#" onclick="$(\'.search-results-display, #search-results-table-search-item, #search-results-table-search-name, #search-results-table-header\').html(\'\'); $(\'#search-results-table\').hide();">Clean Search Results</button>';
     $("#search-results-table-header").html(clear_link);
+    $("#search-results-table").show();
     $("#search-results-table-search-name").html('Item Name');
     $("#search-results-table-search-item").html(search_column);
 

@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """Module to read and write serialized+compressed anvio objects"""
 
 import gzip

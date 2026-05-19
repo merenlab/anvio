@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 DESCRIPTION = """This program generates a metabolic reaction network in an anvi'o contigs or pan database"""
 
 import sys

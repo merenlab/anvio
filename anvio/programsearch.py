@@ -1,4 +1,3 @@
-# -*- coding: utf-8
 # A library to search anvi'o programs based on keywords or input/output files
 # see `anvi-help` for its default client
 
@@ -92,7 +91,7 @@ class ProgramSearch:
             self.headers_to_report = ['Program'] + self.report.split(',')
             for header in self.headers_to_report:
                 if header not in self.headers:
-                    raise ConfigError('%s isn\'t a valid option for --report. Here are your options (comma separate them): %s' \
+                    raise ConfigError('%s isn\'t a valid option for --report. Here are your options (comma separate them): %s'
                                            % (header, ', '.join(self.headers)))
         else:
             self.get_headers_to_report()
@@ -264,4 +263,3 @@ class ProgramSearch:
             row.loc[header] = formatted_info
 
         return row
-

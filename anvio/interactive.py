@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """The module that curates data for the interactive interface"""
 
 import os
@@ -35,7 +33,8 @@ from anvio.tables.collections import TablesForCollections
 from anvio.metabolism.estimate import KeggMetabolismEstimator
 from anvio.errors import ConfigError, RefineError, GenesDBError
 from anvio.clusteringconfuguration import ClusteringConfiguration
-from anvio.dbops import ProfileSuperclass, ContigsSuperclass, PanSuperclass, TablesForStates, ProfileDatabase
+
+from anvio.dbops import ProfileSuperclass, ContigsSuperclass, PanSuperclass, PanGraphSuperclass, TablesForStates, ProfileDatabase
 from anvio.tables.miscdata import TableForItemAdditionalData, TableForLayerAdditionalData
 from anvio.tables.miscdata import TableForLayerOrders, TableForAminoAcidAdditionalData
 
@@ -155,11 +154,14 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # get additional data for items and layers, and get layer orders data.
         try:
             a_db_is_found = (os.path.exists(self.pan_db_path) if self.pan_db_path else False) or (os.path.exists(self.profile_db_path) if self.profile_db_path else False)
-            self.items_additional_data_keys, self.items_additional_data_dict = TableForItemAdditionalData(self.args).get() if a_db_is_found else ([], {})
+            if a_db_is_found:
+                self.items_additional_data_keys, self.items_additional_data_dict, self.items_additional_data_groups = TableForItemAdditionalData(self.args).get_all_flattened()
+            else:
+                self.items_additional_data_keys, self.items_additional_data_dict, self.items_additional_data_groups = [], {}, {}
             self.layers_additional_data_keys, self.layers_additional_data_dict = TableForLayerAdditionalData(self.args).get_all() if a_db_is_found else ([], {})
             self.layers_order_data_dict = TableForLayerOrders(self.args).get() if a_db_is_found else {}
         except GenesDBError as e:
-            self.items_additional_data_keys, self.items_additional_data_dict = [], {}
+            self.items_additional_data_keys, self.items_additional_data_dict, self.items_additional_data_groups = [], {}, {}
             self.layers_additional_data_keys, self.layers_additional_data_dict = [], {}
             self.layers_order_data_dict = {}
 
@@ -534,8 +536,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         contig_name_to_splits_dict = utils.get_contig_name_to_splits_dict(self.contigs_db_path)
 
         # get a list of contig names based on their lengths
-        contig_names_sorted_by_length = [tpl[0] \
-                for tpl in sorted([(k, self.contigs_basic_info[k]['length']) \
+        contig_names_sorted_by_length = [tpl[0]
+                for tpl in sorted([(k, self.contigs_basic_info[k]['length'])
                 for k in self.contigs_basic_info], key = lambda x: x[1], reverse=True)]
 
         split_names = set(self.displayed_item_names_ordered)
@@ -761,8 +763,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             self.default_view = self.p_meta['default_view']
             self.views[self.default_view] = {'header': view_data_columns[1:],
                                              'dict': utils.get_TAB_delimited_file_as_dictionary(view_data_path)}
-            
-            # sanity check for items order stored in database, since we cannot check the consistency of items 
+
+            # sanity check for items order stored in database, since we cannot check the consistency of items
             # when we import items orders as the view data is not stored in the profile db
             if item_orders_in_db:
                 for item_order in item_orders_in_db:
@@ -950,7 +952,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # do a good old args switcheroo from the old hacker's guide to the galaxy, and prevent any
         # unexpected outcomes for young padawans.
         args_without_profile_db = copy.deepcopy(self.args); args_without_profile_db.profile_db = None
-        single_genome_codon_usage = codonusage.SingleGenomeCodonUsage(args_without_profile_db, run=terminal.Run(verbose=False))
+        single_genome_codon_usage = codonusage.SingleGenomeCodonUsage(args_without_profile_db, r=terminal.Run(verbose=False))
 
         ###################################################################
         # collecting some key data to build our interactive objects
@@ -1761,7 +1763,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                              "this step. Another way to do it is the good ol' way of ignoring these warnings as you usually "
                              "do. If you do the latter, you will probably be fine. But we wanted to keep you in the loop "
                              "just in case you are not fine and the code does not realize that yet. The sources for gene "
-                             "calls that will not be included in your gene view include these ones: '%s'." % \
+                             "calls that will not be included in your gene view include these ones: '%s'." %
                                     (len(gene_caller_ids_missing_in_gene_level_cov_stats_dict),
                                      ', '.join(gene_caller_sources_for_missing_gene_caller_ids_in_gene_level_cov_stats_dict)))
 
@@ -1921,7 +1923,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             raise ConfigError("There are some split names in your additional view data file ('%s') that are missing from "
                                "split names characterized in the database. There are in fact %d of them. For instance, "
                                "here is a random split name that is in your additional view data, yet not in the database: "
-                               "'%s'. This is not going to work for anvi'o :/" \
+                               "'%s'. This is not going to work for anvi'o :/"
                                     % (self.additional_view_path, len(splits_in_additional_view_but_not_in_tree), splits_in_additional_view_but_not_in_tree.pop()))
 
         if splits_in_tree_but_not_in_view_data:
@@ -1934,7 +1936,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         if splits_in_tree_but_not_in_database:
             raise ConfigError('Some split names found in your tree are missing from your database. Hard to '
-                               'know why is this the case, but here is a couple of them: %s'\
+                               'know why is this the case, but here is a couple of them: %s'
                                     % ', '.join(list(splits_in_tree_but_not_in_database)[0:5]))
 
         if self.additional_layers_path:
@@ -2056,14 +2058,25 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             # (2) then add length and GC content IF we have sequences available
             if self.splits_basic_info:
                 basic_info_headers = ['length', 'gc_content']
+                if '__parent__' in view_headers:
+                    basic_info_headers.append('__parent__')
+                    view_headers = [h for h in view_headers if h != '__parent__']
                 json_header.extend(basic_info_headers)
+                self.items_additional_data_groups['basic_info'] = list(basic_info_headers)
 
             # (3) then add the view!
             json_header.extend(view_headers)
 
+            # add view headers to the 'default' group so they get a checkbox in the interface
+            if view_headers:
+                if 'default' not in self.items_additional_data_groups:
+                    self.items_additional_data_groups['default'] = []
+                self.items_additional_data_groups['default'] = list(view_headers) + self.items_additional_data_groups['default']
+
             # (4) then add 'additional' headers as the outer ring:
             if self.items_additional_data_keys:
-                self.items_additional_data_keys = sorted(self.get_layer_names_with_at_least_one_hit_for_splits(self.items_additional_data_keys, self.items_additional_data_dict))
+                keys_with_hits = set(self.get_layer_names_with_at_least_one_hit_for_splits(self.items_additional_data_keys, self.items_additional_data_dict))
+                self.items_additional_data_keys = [k for k in self.items_additional_data_keys if k in keys_with_hits]
                 json_header.extend(self.items_additional_data_keys)
 
             # (5) finally add hmm search results
@@ -2085,7 +2098,9 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                 # let's sort these layers alphabetically
                 self.hmm_searches_header = sorted(self.hmm_searches_header)
 
-                json_header.extend([tpl[0] for tpl in self.hmm_searches_header])
+                hmm_layer_names = [tpl[0] for tpl in self.hmm_searches_header]
+                json_header.extend(hmm_layer_names)
+                self.items_additional_data_groups['HMM'] = hmm_layer_names
 
             # (6) add taxonomy, if exitsts:
             if len(self.splits_taxonomy_dict):
@@ -2100,14 +2115,18 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
                 # (2)
                 if self.splits_basic_info:
-                    json_entry.extend([self.splits_basic_info[split_name][header] for header in basic_info_headers])
+                    for header in basic_info_headers:
+                        if header == '__parent__':
+                            json_entry.append(view_dict[split_name].get('__parent__'))
+                        else:
+                            json_entry.append(self.splits_basic_info[split_name][header])
 
                 # (3) adding essential data for the view
                 json_entry.extend([view_dict[split_name][header] if header in view_dict[split_name] else 0 for header in view_headers])
 
                 # (4) adding additional layers
                 if self.items_additional_data_keys:
-                    json_entry.extend([self.items_additional_data_dict[split_name][header] if split_name in self.items_additional_data_dict else None for header in self.items_additional_data_keys])
+                    json_entry.extend([self.items_additional_data_dict.get(split_name, {}).get(header) for header in self.items_additional_data_keys])
 
                 # (5) adding hmm stuff
                 if self.hmm_searches_dict:
@@ -3277,6 +3296,31 @@ class MetabolismInteractive():
 
     def get_metabolism_data(self):
         return self.estimator.get_metabolism_data_for_visualization()
+
+
+class PangraphInteractive(PanGraphSuperclass):
+    def __init__(self, args, run=run, progress=progress):
+        self.mode = "pangraph"
+
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+        self.pan_graph_db_path = A('pan_graph_db')
+
+        if not self.pan_graph_db_path:
+            raise ConfigError("Unfortunately you can only use this program with a pangenome graph database.")
+
+        PanGraphSuperclass.__init__(self, self.args)
+
+        self.collections = ccollections.Collections()
+        self.collections.populate_collections_dict(self.pan_graph_db_path)
+
+        self.init_pangenome_graph()
+        self.init_synteny_gene_clusters()
+        self.init_synteny_gene_clusters_functions()
+        self.init_synteny_gene_clusters_functions_summary_dict()
 
 
 class ContigsInteractive():

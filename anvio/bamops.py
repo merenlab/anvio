@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 
 """Classes for anything BAM-related"""
 
@@ -979,16 +977,16 @@ class LinkMers:
         filesnpaths.is_output_file_writable(output_file_path)
 
         output_file = open(output_file_path, 'w')
-        output_file.write('\t'.join(['entry_id', 'sample_id', 'request_id', 'contig_name', 'pos_in_contig',\
-                                     'pos_in_read', 'base', 'read_unique_id', 'read_X', 'reverse',\
+        output_file.write('\t'.join(['entry_id', 'sample_id', 'request_id', 'contig_name', 'pos_in_contig',
+                                     'pos_in_read', 'base', 'read_unique_id', 'read_X', 'reverse',
                                      'sequence']) + '\n')
         entry_id = 0
         for contig_name, positions, data in self.linkmers.data:
             for d in data:
                 entry_id += 1
                 output_file.write('%.9d\t%s\t%.3d\t%s\t%d\t%d\t%s\t%s\t%s\t%s\t%s\n'
-                                % (entry_id, d.sample_id, d.request_id, d.contig_name,\
-                                   d.pos_in_contig, d.pos_in_read, d.base, d.read_unique_id,\
+                                % (entry_id, d.sample_id, d.request_id, d.contig_name,
+                                   d.pos_in_contig, d.pos_in_read, d.base, d.read_unique_id,
                                    d.read_X, d.reverse, d.sequence))
         output_file.close()
 
@@ -1801,7 +1799,7 @@ class CircularityPredictor:
                 continue
 
             # Check if this read is in an edge zone (for edge coherence calculation)
-            read_in_edge_zone = (read.reference_start < edge_zone_start or 
+            read_in_edge_zone = (read.reference_start < edge_zone_start or
                                 read.reference_start >= edge_zone_end)
 
             if read_in_edge_zone:
@@ -2299,5 +2297,3 @@ def _trim(cigartuples, cigar_consumption, query_sequence, reference_sequence, re
         reference_start += ref_positions_trimmed
 
     return cigartuples, query_sequence, reference_sequence, reference_start, reference_end
-
-
