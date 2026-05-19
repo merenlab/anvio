@@ -219,7 +219,7 @@ The default directory structure that will appear in the working directory includ
 06_MERGED
 ```
 
-The `00_LOGS` directory contains one subdirectory per workflow rule, such as `00_LOGS/anvi_profile/` or `00_LOGS/anvi_merge/`. Each rule-specific directory contains the log files for individual jobs. The workflow also writes `00_LOGS/metagenomics-workflow-manifest.tsv`, a tab-delimited file that records whether each job succeeded or failed and points to the relevant rule log.
+The `00_LOGS` directory contains a subdirectory for the workflow run, such as `00_LOGS/metagenomics` or `00_LOGS/idba_ud` if the config names the run through `LOGS_DIR`. Within that directory, logs are organized by workflow rule, such as `00_LOGS/metagenomics/anvi_profile/` or `00_LOGS/metagenomics/anvi_merge/`. Each rule-specific directory contains the log files for individual jobs. The workflow also writes `00_LOGS/metagenomics/metagenomics-workflow-manifest.tsv`, a tab-delimited file that records whether each job succeeded or failed and points to the relevant rule log.
 
 Don't like these names? You can specify the name of the folder by providing the following information in the config file:
 

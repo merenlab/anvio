@@ -7,6 +7,20 @@ import fcntl
 MANIFEST_HEADER = ['status', 'rule', 'group', 'read', 'log_path', 'snakemake_log_path']
 
 
+def get_workflow_logs_dir(logs_dir, workflow_name):
+    logs_parent_dir = os.path.dirname(logs_dir)
+    logs_dir_name = os.path.basename(logs_dir)
+
+    if logs_dir_name == '00_LOGS':
+        workflow_logs_dir_name = workflow_name
+    elif logs_dir_name.startswith('00_LOGS-') or logs_dir_name.startswith('00_LOGS_'):
+        workflow_logs_dir_name = logs_dir_name[len('00_LOGS') + 1:]
+    else:
+        workflow_logs_dir_name = workflow_name
+
+    return os.path.join(logs_parent_dir, '00_LOGS', workflow_logs_dir_name)
+
+
 def initialize_manifest(manifest_path):
     os.makedirs(os.path.dirname(manifest_path), exist_ok=True)
 

@@ -48,4 +48,4 @@ Note that barcodes and other sequence prefixes should already be trimmed from FA
 
 ## Logs
 
-Workflow logs will be under `00_LOGS` unless you renamed `LOGS_DIR` in your config. Logs are organized by rule name, so a sample-specific tRNA-seq run may write to a path such as `00_LOGS/anvi_trnaseq/ecoli_A1_noDM.log`. The workflow also writes `00_LOGS/trnaseq-workflow-manifest.tsv`, a tab-delimited file that records job status and points to the relevant rule log.
+Workflow logs will be under `00_LOGS/trnaseq` by default. Logs are organized by rule name, so a sample-specific tRNA-seq run may write to a path such as `00_LOGS/trnaseq/anvi_trnaseq/ecoli_A1_noDM.log`. The workflow also writes `00_LOGS/trnaseq/trnaseq-workflow-manifest.tsv`, a tab-delimited file that records job status and points to the relevant rule log.

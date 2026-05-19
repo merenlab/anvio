@@ -34,18 +34,18 @@ You can also use the `-A` flag at the end of the parameter list to change other 
 
 ### Logs and the workflow manifest
 
-Every workflow run writes rule logs under the workflow's `LOGS_DIR` output directory, which is `00_LOGS` unless you renamed it in the %(workflow-config)s. Logs are organized by rule name:
+Every workflow run writes rule logs under `00_LOGS`, within a subdirectory for the workflow or named run. Logs are then organized by rule name:
 
 {{ codestart }}
-00_LOGS/<rule-name>/<job-specific-name>.log
+00_LOGS/<workflow-or-run-name>/<rule-name>/<job-specific-name>.log
 {{ codestop }}
 
-For instance, a metagenomics profiling job may write to `00_LOGS/anvi_profile/G01-S01.log`, while an SRA download checksum job may write to `00_LOGS/check_md5sum/SRR5965623.log`.
+For instance, a metagenomics profiling job may write to `00_LOGS/metagenomics/anvi_profile/G01-S01.log`, while an SRA download checksum job may write to `00_LOGS/sra_download/check_md5sum/SRR5965623.log`.
 
-Each workflow run also creates a tab-delimited manifest in `LOGS_DIR`:
+Each workflow run also creates a tab-delimited manifest in the same workflow-specific log directory:
 
 {{ codestart }}
-00_LOGS/<workflow-name>-workflow-manifest.tsv
+00_LOGS/<workflow-or-run-name>/<workflow-name>-workflow-manifest.tsv
 {{ codestop }}
 
 This file lists the status of each Snakemake job, the rule name, the `group` and `read` wildcards when they exist, the rule log path, and the Snakemake log path when Snakemake reports one. If a workflow stops because a rule failed, this manifest is often the quickest way to find the relevant rule log.

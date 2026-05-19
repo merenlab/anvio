@@ -20,44 +20,44 @@ WORKFLOW_MANIFEST_CASES = [
      'status': 'succeeded',
      'rule': 'anvi_gen_contigs_database',
      'wildcards': {'group': 'G01'},
-     'log_path': '00_LOGS/anvi_gen_contigs_database/G01.log',
-     'expected_row': 'succeeded\tanvi_gen_contigs_database\tG01\t\t00_LOGS/anvi_gen_contigs_database/G01.log\t'},
+     'log_path': '00_LOGS/contigs/anvi_gen_contigs_database/G01.log',
+     'expected_row': 'succeeded\tanvi_gen_contigs_database\tG01\t\t00_LOGS/contigs/anvi_gen_contigs_database/G01.log\t'},
     {'workflow': 'metagenomics',
      'status': 'failed',
      'rule': 'bowtie',
      'wildcards': {'group': 'G01', 'readset': 'S01'},
-     'log_path': '00_LOGS/bowtie/G01-S01.log',
-     'expected_row': 'failed\tbowtie\tG01\tS01\t00_LOGS/bowtie/G01-S01.log\t'},
+     'log_path': '00_LOGS/metagenomics/bowtie/G01-S01.log',
+     'expected_row': 'failed\tbowtie\tG01\tS01\t00_LOGS/metagenomics/bowtie/G01-S01.log\t'},
     {'workflow': 'pangenomics',
      'status': 'succeeded',
      'rule': 'anvi_pan_genome',
      'wildcards': {},
-     'log_path': '00_LOGS/anvi_pan_genome/PROJECT.log',
-     'expected_row': 'succeeded\tanvi_pan_genome\t\t\t00_LOGS/anvi_pan_genome/PROJECT.log\t'},
+     'log_path': '00_LOGS/pangenomics/anvi_pan_genome/PROJECT.log',
+     'expected_row': 'succeeded\tanvi_pan_genome\t\t\t00_LOGS/pangenomics/anvi_pan_genome/PROJECT.log\t'},
     {'workflow': 'phylogenomics',
      'status': 'succeeded',
      'rule': 'iqtree',
      'wildcards': {},
-     'log_path': '00_LOGS/iqtree/PROJECT.log',
-     'expected_row': 'succeeded\tiqtree\t\t\t00_LOGS/iqtree/PROJECT.log\t'},
+     'log_path': '00_LOGS/phylogenomics/iqtree/PROJECT.log',
+     'expected_row': 'succeeded\tiqtree\t\t\t00_LOGS/phylogenomics/iqtree/PROJECT.log\t'},
     {'workflow': 'trnaseq',
      'status': 'succeeded',
      'rule': 'anvi_trnaseq',
      'wildcards': {'sample_name': 'S01'},
-     'log_path': '00_LOGS/anvi_trnaseq/S01.log',
-     'expected_row': 'succeeded\tanvi_trnaseq\t\t\t00_LOGS/anvi_trnaseq/S01.log\t'},
+     'log_path': '00_LOGS/trnaseq/anvi_trnaseq/S01.log',
+     'expected_row': 'succeeded\tanvi_trnaseq\t\t\t00_LOGS/trnaseq/anvi_trnaseq/S01.log\t'},
     {'workflow': 'ecophylo',
      'status': 'succeeded',
      'rule': 'combine_sequence_data',
      'wildcards': {'group': 'Ribosomal_S3'},
-     'log_path': '00_LOGS/combine_sequence_data/Ribosomal_S3.log',
-     'expected_row': 'succeeded\tcombine_sequence_data\tRibosomal_S3\t\t00_LOGS/combine_sequence_data/Ribosomal_S3.log\t'},
+     'log_path': '00_LOGS/ecophylo/combine_sequence_data/Ribosomal_S3.log',
+     'expected_row': 'succeeded\tcombine_sequence_data\tRibosomal_S3\t\t00_LOGS/ecophylo/combine_sequence_data/Ribosomal_S3.log\t'},
     {'workflow': 'sra_download',
      'status': 'failed',
      'rule': 'prefetch',
      'wildcards': {'accession': 'SRR000001'},
-     'log_path': '00_LOGS/prefetch/SRR000001.log',
-     'expected_row': 'failed\tprefetch\t\t\t00_LOGS/prefetch/SRR000001.log\t'},
+     'log_path': '00_LOGS/sra_download/prefetch/SRR000001.log',
+     'expected_row': 'failed\tprefetch\t\t\t00_LOGS/sra_download/prefetch/SRR000001.log\t'},
 ]
 
 
@@ -98,7 +98,7 @@ class WorkflowManifestTestCase(unittest.TestCase):
     def setUp(self):
         self.manifest = load_module_from_path('test_workflow_manifest', MANIFEST_PATH)
         self.temp_dir = tempfile.TemporaryDirectory()
-        self.manifest_path = os.path.join(self.temp_dir.name, 'metagenomics-workflow-manifest.tsv')
+        self.manifest_path = os.path.join(self.temp_dir.name, '00_LOGS', 'metagenomics', 'metagenomics-workflow-manifest.tsv')
 
 
     def tearDown(self):
@@ -112,14 +112,14 @@ class WorkflowManifestTestCase(unittest.TestCase):
                                           'anvi_profile',
                                           group='G01',
                                           read='S01',
-                                          log_path='00_LOGS/anvi_profile/G01-S01.log',
+                                          log_path='00_LOGS/metagenomics/anvi_profile/G01-S01.log',
                                           snakemake_log_path='.snakemake/log/2026-01-21T005403.112748.snakemake.log')
 
         with open(self.manifest_path) as manifest_file:
             rows = manifest_file.read().splitlines()
 
         self.assertEqual(rows[0], 'status\trule\tgroup\tread\tlog_path\tsnakemake_log_path')
-        self.assertEqual(rows[1], 'succeeded\tanvi_profile\tG01\tS01\t00_LOGS/anvi_profile/G01-S01.log\t.snakemake/log/2026-01-21T005403.112748.snakemake.log')
+        self.assertEqual(rows[1], 'succeeded\tanvi_profile\tG01\tS01\t00_LOGS/metagenomics/anvi_profile/G01-S01.log\t.snakemake/log/2026-01-21T005403.112748.snakemake.log')
 
 
     def test_update_snakemake_log_path_backfills_existing_rows(self):
@@ -129,7 +129,7 @@ class WorkflowManifestTestCase(unittest.TestCase):
                                           'bowtie',
                                           group='G01',
                                           read='S02',
-                                          log_path='00_LOGS/bowtie/G01-S02.log')
+                                          log_path='00_LOGS/metagenomics/bowtie/G01-S02.log')
 
         self.manifest.update_snakemake_log_path(self.manifest_path,
                                                 '.snakemake/log/2026-01-21T005403.112748.snakemake.log')
@@ -137,7 +137,18 @@ class WorkflowManifestTestCase(unittest.TestCase):
         with open(self.manifest_path) as manifest_file:
             rows = manifest_file.read().splitlines()
 
-        self.assertEqual(rows[1], 'failed\tbowtie\tG01\tS02\t00_LOGS/bowtie/G01-S02.log\t.snakemake/log/2026-01-21T005403.112748.snakemake.log')
+        self.assertEqual(rows[1], 'failed\tbowtie\tG01\tS02\t00_LOGS/metagenomics/bowtie/G01-S02.log\t.snakemake/log/2026-01-21T005403.112748.snakemake.log')
+
+
+    def test_workflow_logs_dir_keeps_all_workflow_logs_under_00_logs(self):
+        self.assertEqual(self.manifest.get_workflow_logs_dir('00_LOGS', 'phylogenomics'),
+                         os.path.join('00_LOGS', 'phylogenomics'))
+        self.assertEqual(self.manifest.get_workflow_logs_dir('00_LOGS_PHYLO', 'phylogenomics'),
+                         os.path.join('00_LOGS', 'PHYLO'))
+        self.assertEqual(self.manifest.get_workflow_logs_dir('00_LOGS-idba_ud', 'metagenomics'),
+                         os.path.join('00_LOGS', 'idba_ud'))
+        self.assertEqual(self.manifest.get_workflow_logs_dir('custom_logs', 'trnaseq'),
+                         os.path.join('00_LOGS', 'trnaseq'))
 
 
 class WorkflowManifestAllWorkflowsTestCase(unittest.TestCase):
@@ -153,7 +164,7 @@ class WorkflowManifestAllWorkflowsTestCase(unittest.TestCase):
     def test_manifest_file_can_be_initialized_for_each_runnable_workflow(self):
         for workflow_case in WORKFLOW_MANIFEST_CASES:
             workflow = workflow_case['workflow']
-            manifest_path = os.path.join(self.temp_dir.name, '00_LOGS', f'{workflow}-workflow-manifest.tsv')
+            manifest_path = os.path.join(self.temp_dir.name, '00_LOGS', workflow, f'{workflow}-workflow-manifest.tsv')
 
             with self.subTest(workflow=workflow):
                 self.manifest.initialize_manifest(manifest_path)
@@ -167,7 +178,7 @@ class WorkflowManifestAllWorkflowsTestCase(unittest.TestCase):
     def test_manifest_rows_can_be_written_for_each_runnable_workflow(self):
         for workflow_case in WORKFLOW_MANIFEST_CASES:
             workflow = workflow_case['workflow']
-            manifest_path = os.path.join(self.temp_dir.name, f'{workflow}-workflow-manifest.tsv')
+            manifest_path = os.path.join(self.temp_dir.name, '00_LOGS', workflow, f'{workflow}-workflow-manifest.tsv')
 
             with self.subTest(workflow=workflow):
                 self.manifest.initialize_manifest(manifest_path)
@@ -189,7 +200,7 @@ class SnakemakeLogHandlerTestCase(unittest.TestCase):
         self.manifest = load_module_from_path('test_workflow_manifest_for_handler', MANIFEST_PATH)
         self.log_handler = load_log_handler_module(self.manifest)
         self.temp_dir = tempfile.TemporaryDirectory()
-        self.manifest_path = os.path.join(self.temp_dir.name, 'metagenomics-workflow-manifest.tsv')
+        self.manifest_path = os.path.join(self.temp_dir.name, '00_LOGS', 'metagenomics', 'metagenomics-workflow-manifest.tsv')
         self.manifest.initialize_manifest(self.manifest_path)
 
         self.old_manifest_path = os.environ.get('ANVIO_WORKFLOW_MANIFEST_PATH')
@@ -210,14 +221,14 @@ class SnakemakeLogHandlerTestCase(unittest.TestCase):
                                       'jobid': 7,
                                       'name': 'anvi_profile',
                                       'wildcards': {'group': 'G01', 'readset': 'S01'},
-                                      'log': ['00_LOGS/anvi_profile/G01-S01.log']})
+                                      'log': ['00_LOGS/metagenomics/anvi_profile/G01-S01.log']})
         self.log_handler.log_handler({'level': 'job_finished',
                                       'jobid': 7})
 
         with open(self.manifest_path) as manifest_file:
             rows = manifest_file.read().splitlines()
 
-        self.assertEqual(rows[1], 'succeeded\tanvi_profile\tG01\tS01\t00_LOGS/anvi_profile/G01-S01.log\t')
+        self.assertEqual(rows[1], 'succeeded\tanvi_profile\tG01\tS01\t00_LOGS/metagenomics/anvi_profile/G01-S01.log\t')
 
 
     def test_handler_backfills_complete_snakemake_log_path(self):
@@ -225,7 +236,7 @@ class SnakemakeLogHandlerTestCase(unittest.TestCase):
                                       'jobid': 9,
                                       'name': 'anvi_merge',
                                       'wildcards': {'group': 'G01'},
-                                      'log': ['00_LOGS/anvi_merge/G01.log']})
+                                      'log': ['00_LOGS/metagenomics/anvi_merge/G01.log']})
         self.log_handler.log_handler({'level': 'job_error',
                                       'jobid': 9})
         self.log_handler.log_handler({'level': 'error',
@@ -234,13 +245,13 @@ class SnakemakeLogHandlerTestCase(unittest.TestCase):
         with open(self.manifest_path) as manifest_file:
             rows = manifest_file.read().splitlines()
 
-        self.assertEqual(rows[1], 'failed\tanvi_merge\tG01\t\t00_LOGS/anvi_merge/G01.log\t.snakemake/log/2026-01-21T005403.112748.snakemake.log')
+        self.assertEqual(rows[1], 'failed\tanvi_merge\tG01\t\t00_LOGS/metagenomics/anvi_merge/G01.log\t.snakemake/log/2026-01-21T005403.112748.snakemake.log')
 
 
     def test_handler_records_representative_jobs_for_each_runnable_workflow(self):
         for jobid, workflow_case in enumerate(WORKFLOW_MANIFEST_CASES, start=100):
             workflow = workflow_case['workflow']
-            manifest_path = os.path.join(self.temp_dir.name, f'{workflow}-workflow-manifest.tsv')
+            manifest_path = os.path.join(self.temp_dir.name, '00_LOGS', workflow, f'{workflow}-workflow-manifest.tsv')
 
             with self.subTest(workflow=workflow):
                 self.manifest.initialize_manifest(manifest_path)

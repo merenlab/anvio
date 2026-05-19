@@ -279,7 +279,7 @@ Simultaneously exploring complete and partial ORFs will increase the distributio
 Now that you have fine tuned the gene family input into the ecophylo workflow, it's time to decide what output best fits your science question at hand.
 
 {:.notice}
-It's common that not all genomes or metagenomes will have the gene family of interest either due to it not being detect by the input HMM or filtered out during the QC steps. Please check the `combine_sequence_data` logs for %(contigs-db)s that did not contain your gene family of interest: `00_LOGS/combine_sequence_data/contigDBs_with_no_hmm_hit_*.log`
+It's common that not all genomes or metagenomes will have the gene family of interest either due to it not being detect by the input HMM or filtered out during the QC steps. Please check the `combine_sequence_data` logs for %(contigs-db)s that did not contain your gene family of interest: `00_LOGS/ecophylo/combine_sequence_data/contigDBs_with_no_hmm_hit_*.log`
 
 ### Multiple sequence alignment step with MUSCLE
 

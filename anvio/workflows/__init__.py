@@ -127,6 +127,7 @@ class WorkflowSuperClass:
                               "flag." % (self.name))
 
         self.dirs_dict.update(self.config.get("output_dirs", ''))
+        self.dirs_dict["LOGS_DIR"] = self.get_workflow_logs_dir()
 
         # create log dir if it doesn't exist
         os.makedirs(self.dirs_dict["LOGS_DIR"], exist_ok=True)
@@ -144,6 +145,12 @@ class WorkflowSuperClass:
     def get_global_general_params(self):
         ''' Return a list of the general parameters that are always acceptable.'''
         return ['output_dirs', 'max_threads', 'config_version', 'workflow_name']
+
+
+    def get_workflow_logs_dir(self):
+        from anvio.workflows.scripts.manifest import get_workflow_logs_dir
+
+        return get_workflow_logs_dir(self.dirs_dict["LOGS_DIR"], self.config.get('workflow_name', self.name))
 
 
     def sanity_checks(self):

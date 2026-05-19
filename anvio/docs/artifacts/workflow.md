@@ -10,6 +10,6 @@ As of now, the available workflows include,
 * [EcoPhylo workflow](../../workflows/ecophylo)
 * [SRA-download workflow](../../workflows/sra-download)
 
-Each workflow writes logs into the directory named by `LOGS_DIR` in its %(workflow-config)s, which is usually `00_LOGS`. Rule logs are organized by rule name, as in `00_LOGS/anvi_profile/G01-S01.log` or `00_LOGS/check_md5sum/SRR5965623.log`.
+Each workflow writes logs into `00_LOGS`, with one subdirectory per workflow or named run. Rule logs are organized by rule name, as in `00_LOGS/metagenomics/anvi_profile/G01-S01.log` or `00_LOGS/sra_download/check_md5sum/SRR5965623.log`.
 
-Workflow runs also write a tab-delimited manifest named `<workflow-name>-workflow-manifest.tsv` in `LOGS_DIR`. The manifest reports each Snakemake job's status, rule name, `group` and `read` wildcards when available, the rule log path, and the Snakemake log path when Snakemake reports one.
+Workflow runs also write a tab-delimited manifest named `<workflow-name>-workflow-manifest.tsv` in the workflow-specific log directory, such as `00_LOGS/metagenomics/metagenomics-workflow-manifest.tsv`. The manifest reports each Snakemake job's status, rule name, `group` and `read` wildcards when available, the rule log path, and the Snakemake log path when Snakemake reports one.

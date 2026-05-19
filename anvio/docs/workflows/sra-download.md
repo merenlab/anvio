@@ -88,14 +88,14 @@ The `sra_download` workflow verifies that `prefetch` properly download all the `
 If the workflow successfully runs then everything checked out! You can find the checksum messages by doing this:
 
 {{ codestart }}
-$ grep "Checksums match" 00_LOGS/check_md5sum/*.log
-00_LOGS/check_md5sum/ERR6450080.log:Checksums match: a09e0eafd4c01f9685fb72efce447a2e
-00_LOGS/check_md5sum/ERR6450081.log:Checksums match: 5c56ba814f649e77dac2091f1956e7aa
-00_LOGS/check_md5sum/ERR770960.log:Checksums match: d1043d78938fb132f5d4b585f65ad8d7
-00_LOGS/check_md5sum/SRR5965623.log:Checksums match: 95b69957f6381047763fb50782959cd8
+$ grep "Checksums match" 00_LOGS/sra_download/check_md5sum/*.log
+00_LOGS/sra_download/check_md5sum/ERR6450080.log:Checksums match: a09e0eafd4c01f9685fb72efce447a2e
+00_LOGS/sra_download/check_md5sum/ERR6450081.log:Checksums match: 5c56ba814f649e77dac2091f1956e7aa
+00_LOGS/sra_download/check_md5sum/ERR770960.log:Checksums match: d1043d78938fb132f5d4b585f65ad8d7
+00_LOGS/sra_download/check_md5sum/SRR5965623.log:Checksums match: 95b69957f6381047763fb50782959cd8
 {{ codestop }}
 
-The workflow also writes `00_LOGS/sra_download-workflow-manifest.tsv`, which points to the rule log for each job and records whether it succeeded or failed.
+The workflow also writes `00_LOGS/sra_download/sra_download-workflow-manifest.tsv`, which points to the rule log for each job and records whether it succeeded or failed.
 
 If a SRA accession fails to download properly, the workflow will stop and show you an error like this:
 {{ codestart }}

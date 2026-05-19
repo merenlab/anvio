@@ -88,7 +88,7 @@ The intermediate files represent the main stages:
 2. `trimal` trims the multiple sequence alignment.
 3. `iqtree` infers the phylogenomic tree.
 
-Workflow logs are written under `00_LOGS` unless you rename `LOGS_DIR` in the config. Logs are organized by rule name, and the workflow also writes a tab-delimited manifest named `phylogenomics-workflow-manifest.tsv` that records whether each job succeeded or failed and points to the relevant rule log.
+Workflow logs are written under `00_LOGS/phylogenomics` by default. Logs are organized by rule name, and the workflow also writes a tab-delimited manifest named `00_LOGS/phylogenomics/phylogenomics-workflow-manifest.tsv` that records whether each job succeeded or failed and points to the relevant rule log.
 
 ## Notes
 
