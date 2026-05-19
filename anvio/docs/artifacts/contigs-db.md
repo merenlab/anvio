@@ -43,6 +43,18 @@ If you wish to run programs like %(anvi-cluster-contigs)s, %(anvi-estimate-metab
 
 Contigs databases, like %(profile-db)ss, are allowed have different variants, though the only currently implemented variant, the %(trnaseq-contigs-db)s, is for tRNA transcripts from tRNA-seq experiments. The default variant stored for "standard" contigs databases is `unknown`. Variants should indicate that substantially different information is stored in the database. For instance, open reading frames are applicable to protein-coding genes but not tRNA transcripts, so ORF data is not recorded for the `trnaseq` variant. The $(trnaseq-workflow)s generates %(trnaseq-contigs-db)ss using a very different approach to %(anvi-gen-contigs-database)s.
 
+## Sequence-features tables (v25+)
+
+Starting in contigs-database version 25, every contigs database carries five additive tables for arbitrary sequence features. These coexist with the legacy `genes_in_contigs` table — none of the existing gene-callers-id-dependent code paths is affected.
+
+- `contigs_sequence_features` — one row per feature segment. Columns include `feature_id` (16-character SHA-224 truncation, primary key), `contig`, `feature_type`, `source`, zero-based half-open `start` / `stop`, `direction` (`'f'` / `'r'` / NULL), partial-end flags, `feature_group_id` + `segment_order` for multi-segment features, the original-source `external_id` (typically `locus_tag` from GenBank), and an optional `gene_callers_id` reconciling back to `genes_in_contigs` for single-segment gene rows whose coordinates match a gene call exactly.
+- `feature_types` — a registry of `feature_type` values. Five rows are populated at database creation: `gene`, `mRNA`, `CDS`, `exon`, and `intron` (all builtin); `is_builtin` and `has_dedicated_table` flags discriminate user-introduced types and types that have their own dedicated table.
+- `feature_relationships` — parent / child links between features. The child side enumerates every segment of a multi-segment child; the parent side always references the canonical row (segment_order=0 row, or the single row of a single-segment parent). Relationships use one of two labels: `part_of` or `derives_from`.
+- `feature_qualifiers` — one row per `(feature_id, key, position)`, capturing the GenBank qualifiers of each feature. `position` preserves order when a qualifier appears multiple times on one feature (e.g. multiple `db_xref` entries).
+- `CDS_features` — CDS-specific columns (`codon_start`, `translation`, `transl_table`). For multi-segment CDSs the canonical row holds the actual values; every other segment row stores NULL.
+
+These tables are populated by %(anvi-import-genbank-features)s. They are also the substrate for any future programs that want to attach arbitrary feature annotations to a contigs database without disturbing the existing gene-callers-id-keyed code paths.
+
 ## For power users
 
 Since the anvi'o contigs database is a stand-alone SQLite database, it is accessible to users to perform very complex queries using SQL, or [Structured Query Language](https://en.wikipedia.org/wiki/SQL). You can do it either entering into SQLite command line environment from your terminal by typing,
