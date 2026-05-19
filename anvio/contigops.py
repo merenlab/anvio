@@ -477,7 +477,7 @@ class Auxiliary:
 
         if not self.skip_clip_profiling:
             clips = {}
-            get_clip_entry = lambda clip_type, side, seq, pos, length, partner_contig, partner_pos, partner_strand: OrderedDict([
+            get_clip_entry = lambda clip_type, side, state, seq, pos, length, partner_contig, partner_pos, partner_strand: OrderedDict([
                 ('split_name', self.split.name),
                 ('pos', pos),
                 ('pos_in_contig', pos + self.split.start),
@@ -491,6 +491,7 @@ class Auxiliary:
                 ('reference', self.split.sequence[pos]),
                 ('type', clip_type),
                 ('side', side),
+                ('state', state),
                 ('sequence', seq),
                 ('length', length),
                 ('count', 1),
@@ -504,22 +505,81 @@ class Auxiliary:
                 ('partner_strand', partner_strand),
             ])
 
-            # SA tag parser: returns (contig, pos_0based, strand) for the first sibling
-            # alignment listed in the read's SA tag, or ('', -1, '') if there is no SA tag
-            # or it cannot be parsed. The SA tag is a semicolon-delimited list of
-            # `rname,pos,strand,CIGAR,mapQ,NM` entries; SAM positions are 1-based so we
-            # subtract 1 to match anvi'o's 0-based convention.
-            def parse_sa_partner(sa_tag):
+            # SA tag parser: returns a list of dicts {contig, pos, strand, cigar} for all
+            # sibling alignments listed in the read's SA tag, or [] if no tag / unparseable.
+            # SAM stores positions 1-based; we convert to 0-based here.
+            def parse_sa_entries(sa_tag):
                 if not sa_tag:
-                    return ('', -1, '')
-                first = sa_tag.rstrip(';').split(';')[0]
-                fields = first.split(',')
-                if len(fields) < 3:
-                    return ('', -1, '')
-                try:
-                    return (fields[0], int(fields[1]) - 1, 'f' if fields[2] == '+' else 'r')
-                except (ValueError, IndexError):
-                    return ('', -1, '')
+                    return []
+                entries = []
+                for entry_str in sa_tag.rstrip(';').split(';'):
+                    if not entry_str:
+                        continue
+                    fields = entry_str.split(',')
+                    if len(fields) < 4:
+                        continue
+                    try:
+                        entries.append({
+                            'contig': fields[0],
+                            'pos': int(fields[1]) - 1,
+                            'strand': fields[2],
+                            'cigar': fields[3],
+                        })
+                    except (ValueError, IndexError):
+                        continue
+                return entries
+
+            # CIGAR string parser → (read offset of aligned region, aligned span in read coords)
+            # Aligned ops are M/I/=/X (consume read AND are part of the alignment). Leading
+            # H/S contribute to offset; trailing clips are ignored (they're at the end).
+            cigar_re = re.compile(r'(\d+)([MIDNSHP=X])')
+            def cigar_aligned_read_range_from_string(cigar_str):
+                offset = 0
+                span = 0
+                in_alignment = False
+                for m in cigar_re.finditer(cigar_str):
+                    length = int(m.group(1))
+                    op = m.group(2)
+                    if op in ('M', 'I', '=', 'X'):
+                        span += length
+                        in_alignment = True
+                    elif op in ('H', 'S') and not in_alignment:
+                        offset += length
+                return offset, span
+
+            # Same thing for cigartuples (numpy array of (op_int, length) rows).
+            # pysam op codes: 0=M, 1=I, 4=S, 5=H, 7==, 8=X (the read-consuming or hard).
+            def cigar_aligned_read_range_from_tuples(cigartuples):
+                offset = 0
+                span = 0
+                in_alignment = False
+                for op, length in cigartuples:
+                    if op in (0, 1, 7, 8):  # M, I, =, X
+                        span += length
+                        in_alignment = True
+                    elif op in (4, 5) and not in_alignment:  # S, H before alignment
+                        offset += length
+                return offset, span
+
+            # Total read length from cigartuples — sum of all ops that exist in the original
+            # read (M, I, S, H, =, X). Used to flip read coords when the strands differ.
+            def total_read_length_from_tuples(cigartuples):
+                total = 0
+                for op, length in cigartuples:
+                    if op in (0, 1, 4, 5, 7, 8):
+                        total += length
+                return total
+
+            # h_left for a cigartuples list: leading H length if first op is H, else 0.
+            def leading_hard_clip_length(cigartuples):
+                if len(cigartuples) and cigartuples[0][0] == 5:
+                    return int(cigartuples[0][1])
+                return 0
+
+            # Reverse-complement a string of nucleotides (case-preserving for ACGTN only).
+            rc_table = str.maketrans('ACGTNacgtn', 'TGCANtgcan')
+            def rc(s):
+                return s.translate(rc_table)[::-1]
 
         # make an array with as many rows as there are nucleotides in the split, and as many rows as
         # there are nucleotide types. Each nucleotide (A, C, T, G, N) gets its own row which is
@@ -586,72 +646,177 @@ class Auxiliary:
                             length=del_len,
                         )
 
-            if not self.skip_clip_profiling:
-                # Scan the read's cigartuples directly (NOT the vectorized form, which conflates
-                # soft clips with insertions). Only the first and last cigar ops can be clips.
-                # Left-trim by fetch_and_trim already strips clips falling outside the split, so any
-                # clips here are at breakpoints inside [split.start, split.end).
+            if not self.skip_clip_profiling and not read.is_secondary:
+                # Secondaries are alternate mappings (not split-alignment pieces) and their
+                # CIGAR clips don't represent real chimeric junctions, so we skip them.
+                # For every other record, scan cigartuples[0] and cigartuples[-1] for S (4)
+                # or H (5) ops. Use cigartuples directly (NOT the vectorized form, which
+                # conflates soft clips with insertions). Left-trim by fetch_and_trim already
+                # strips clips that fall outside the split.
                 cigartuples = read.cigartuples
 
-                # The partner is the same SA-tag-derived sibling alignment for both ends of this
-                # read. For multi-way chimeras (3+ alignments) SA carries multiple entries; we
-                # only keep the first. Two clips at the same (pos, side) with different partners
-                # become distinct rows because partner_* is in the hash key.
-                p_contig, p_pos, p_strand = parse_sa_partner(read.sa_tag)
+                # Build the read's full alignment map in the CURRENT record's read frame.
+                # The map is the union of read-coordinate intervals covered by own M region
+                # plus every SA-listed sibling's M region (with strand flipping when the
+                # sibling's strand differs from the current record's).
+                own_offset, own_span = cigar_aligned_read_range_from_tuples(cigartuples)
+                own_read_length = total_read_length_from_tuples(cigartuples)
+                own_strand_char = '-' if read.is_reverse else '+'
 
-                # left clip: first op, breakpoint at the first aligned base (read.reference_start)
+                sa_entries = parse_sa_entries(read.sa_tag)
+
+                coverage_intervals = [(own_offset, own_offset + own_span)]
+                for sa in sa_entries:
+                    sa_offset, sa_span = cigar_aligned_read_range_from_string(sa['cigar'])
+                    if sa['strand'] != own_strand_char:
+                        sa_start = own_read_length - (sa_offset + sa_span)
+                        sa_end = own_read_length - sa_offset
+                    else:
+                        sa_start = sa_offset
+                        sa_end = sa_offset + sa_span
+                    coverage_intervals.append((sa_start, sa_end))
+
+                # Sort & merge overlapping intervals so we can answer "is position p covered"
+                # in a quick linear scan (intervals are small, typically 2-3 elements).
+                coverage_intervals.sort()
+                merged_intervals = []
+                for s, e in coverage_intervals:
+                    if merged_intervals and s <= merged_intervals[-1][1]:
+                        merged_intervals[-1] = (merged_intervals[-1][0], max(merged_intervals[-1][1], e))
+                    else:
+                        merged_intervals.append((s, e))
+
+                def is_covered(p):
+                    for s, e in merged_intervals:
+                        if s <= p < e:
+                            return True
+                    return False
+
+                # Find the contiguous unmapped run that contains position p, expanding in
+                # the given direction. Caller must guarantee p is not covered.
+                def unmapped_run_around(p, direction):
+                    if direction == 'right':
+                        start = p
+                        end = own_read_length
+                        for s, _ in merged_intervals:
+                            if s > p:
+                                end = s
+                                break
+                        return (start, end)
+                    else:  # 'left'
+                        start = 0
+                        end = p + 1
+                        for _, e in merged_intervals:
+                            if e <= p + 1:
+                                start = max(start, e)
+                        return (start, end)
+
+                # partner_* fields: first SA entry (consistent with prior behavior; see the
+                # `state` column for the truer "is this junction unmapped?" question).
+                if sa_entries:
+                    p_contig = sa_entries[0]['contig']
+                    p_pos = sa_entries[0]['pos']
+                    p_strand = 'f' if sa_entries[0]['strand'] == '+' else 'r'
+                else:
+                    p_contig, p_pos, p_strand = '', -1, ''
+
+                own_h_left = leading_hard_clip_length(cigartuples)
+
+                # Extract the unmapped bases at read positions [u_start, u_end) in the
+                # current record's read frame. For SOFT clips the bases are in the current
+                # record's SEQ; for HARD clips they live in the primary record, which we
+                # fetch by query_name (small indexed lookup). Returns '' on any failure
+                # so the row still lands with the state set, just without sequence.
+                def extract_unmapped_bases(is_soft, u_start, u_end):
+                    if is_soft:
+                        seq_start = u_start - own_h_left
+                        seq_end = u_end - own_h_left
+                        if seq_start < 0 or seq_end > len(read.query_sequence):
+                            return ''
+                        return ''.join([chr(x) for x in read.query_sequence[seq_start:seq_end]])
+
+                    # HARD: bases are in the primary. The first SA entry of a supplementary
+                    # is the primary by SAM convention.
+                    if not sa_entries:
+                        return ''
+                    primary_sa = sa_entries[0]
+                    for prim in bam.fetch(primary_sa['contig'], primary_sa['pos'], primary_sa['pos'] + 1):
+                        if prim.query_name != read.query_name:
+                            continue
+                        if prim.is_supplementary or prim.is_secondary:
+                            continue
+                        if prim.query_sequence is None or prim.cigartuples is None:
+                            continue
+                        prim_strand_char = '-' if prim.is_reverse else '+'
+                        if prim_strand_char == own_strand_char:
+                            p_start_in_prim = u_start
+                            p_end_in_prim = u_end
+                        else:
+                            p_start_in_prim = own_read_length - u_end
+                            p_end_in_prim = own_read_length - u_start
+                        prim_h_left = int(prim.cigartuples[0][1]) if prim.cigartuples[0][0] == 5 else 0
+                        seq_start = p_start_in_prim - prim_h_left
+                        seq_end = p_end_in_prim - prim_h_left
+                        if seq_start < 0 or seq_end > len(prim.query_sequence):
+                            return ''
+                        bases = prim.query_sequence[seq_start:seq_end]
+                        if prim_strand_char != own_strand_char:
+                            bases = rc(bases)
+                        return bases
+                    return ''
+
+                # Left clip: first cigar op is S or H. Breakpoint at read.reference_start.
+                # Immediate outside (read coord) = own_offset - 1; if that's covered or off
+                # the read, the state is EXPLAINED.
                 left_op, left_len = cigartuples[0]
                 if left_op == 4 or left_op == 5:
+                    clip_type = 'SOFT' if left_op == 4 else 'HARD'
                     clip_pos = read.reference_start - self.split.start
-                    if left_op == 4:
-                        clip_type = 'SOFT'
-                        clip_seq = ''.join([chr(x) for x in read.query_sequence[:left_len]])
-                    else:
-                        clip_type = 'HARD'
+                    immediate_outside = own_offset - 1
+                    if immediate_outside < 0 or is_covered(immediate_outside):
+                        state = 'EXPLAINED'
                         clip_seq = ''
-                    clip_hash = hash((clip_pos, 'L', clip_type, clip_seq, left_len, p_contig, p_pos, p_strand))
+                    else:
+                        state = 'UNEXPLAINED'
+                        u_start, u_end = unmapped_run_around(immediate_outside, 'left')
+                        clip_seq = extract_unmapped_bases(left_op == 4, u_start, u_end)
 
+                    clip_hash = hash((clip_pos, 'L', clip_type, state, clip_seq, int(left_len), p_contig, p_pos, p_strand))
                     if clip_hash in clips:
                         clips[clip_hash]['count'] += 1
                     else:
                         clips[clip_hash] = get_clip_entry(
-                            clip_type=clip_type,
-                            side='L',
-                            seq=clip_seq,
-                            pos=clip_pos,
-                            length=left_len,
-                            partner_contig=p_contig,
-                            partner_pos=p_pos,
-                            partner_strand=p_strand,
+                            clip_type=clip_type, side='L', state=state, seq=clip_seq,
+                            pos=clip_pos, length=int(left_len),
+                            partner_contig=p_contig, partner_pos=p_pos, partner_strand=p_strand,
                         )
 
-                # right clip: last op, breakpoint at the last aligned base (reference_end - 1).
-                # Guard against the degenerate case of a single-op cigar (impossible for a clipped
-                # read, but cheap to be safe).
+                # Right clip: last cigar op is S or H. Breakpoint at reference_end - 1.
+                # Immediate outside (read coord) = own_offset + own_span; if covered or off
+                # the read, EXPLAINED. Guard against single-op CIGARs (impossible for a
+                # clipped record, but cheap to be safe).
                 if len(cigartuples) > 1:
                     right_op, right_len = cigartuples[-1]
                     if right_op == 4 or right_op == 5:
+                        clip_type = 'SOFT' if right_op == 4 else 'HARD'
                         clip_pos = (read.reference_end - 1) - self.split.start
-                        if right_op == 4:
-                            clip_type = 'SOFT'
-                            clip_seq = ''.join([chr(x) for x in read.query_sequence[-right_len:]])
-                        else:
-                            clip_type = 'HARD'
+                        immediate_outside = own_offset + own_span
+                        if immediate_outside >= own_read_length or is_covered(immediate_outside):
+                            state = 'EXPLAINED'
                             clip_seq = ''
-                        clip_hash = hash((clip_pos, 'R', clip_type, clip_seq, right_len, p_contig, p_pos, p_strand))
+                        else:
+                            state = 'UNEXPLAINED'
+                            u_start, u_end = unmapped_run_around(immediate_outside, 'right')
+                            clip_seq = extract_unmapped_bases(right_op == 4, u_start, u_end)
 
+                        clip_hash = hash((clip_pos, 'R', clip_type, state, clip_seq, int(right_len), p_contig, p_pos, p_strand))
                         if clip_hash in clips:
                             clips[clip_hash]['count'] += 1
                         else:
                             clips[clip_hash] = get_clip_entry(
-                                clip_type=clip_type,
-                                side='R',
-                                seq=clip_seq,
-                                pos=clip_pos,
-                                length=right_len,
-                                partner_contig=p_contig,
-                                partner_pos=p_pos,
-                                partner_strand=p_strand,
+                                clip_type=clip_type, side='R', state=state, seq=clip_seq,
+                                pos=clip_pos, length=int(right_len),
+                                partner_contig=p_contig, partner_pos=p_pos, partner_strand=p_strand,
                             )
 
             read_count += 1
