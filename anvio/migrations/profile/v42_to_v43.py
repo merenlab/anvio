@@ -27,8 +27,8 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 clippings_table_name      = 'clippings'
-clippings_table_structure = ['sample_id', 'split_name', 'pos', 'pos_in_contig', 'corresponding_gene_call', 'in_noncoding_gene_call', 'in_coding_gene_call', 'base_pos_in_codon', 'codon_order_in_gene', 'cov_outlier_in_split', 'cov_outlier_in_contig', 'reference', 'type', 'side', 'sequence', 'length', 'count', 'coverage', 'partner_contig', 'partner_pos', 'partner_strand']
-clippings_table_types     = ['text'     , 'text'      , 'integer', 'integer', 'integer', 'integer', 'integer', 'integer', 'integer', 'integer', 'integer', 'text', 'text', 'text', 'text', 'integer', 'integer', 'integer', 'text', 'integer', 'text']
+clippings_table_structure = ['sample_id', 'split_name', 'pos', 'pos_in_contig', 'corresponding_gene_call', 'in_noncoding_gene_call', 'in_coding_gene_call', 'base_pos_in_codon', 'codon_order_in_gene', 'cov_outlier_in_split', 'cov_outlier_in_contig', 'reference', 'type', 'side', 'state', 'sequence', 'length', 'count', 'coverage', 'partner_contig', 'partner_pos', 'partner_strand']
+clippings_table_types     = ['text'     , 'text'      , 'integer', 'integer', 'integer', 'integer', 'integer', 'integer', 'integer', 'integer', 'integer', 'text', 'text', 'text', 'text', 'text', 'integer', 'integer', 'integer', 'text', 'integer', 'text']
 
 
 def migrate(db_path):

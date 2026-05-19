@@ -216,15 +216,18 @@ indels_table_types                   = ['text'     , 'text'      , 'integer', 'i
 
 # `clippings` stores read-edge soft- and hard-clip events detected during BAM profiling.
 # Unlike INS/DEL, a clip happens at a single breakpoint (the read's first or last aligned
-# base), so `side` ('L' or 'R') is required to interpret `pos`. `type` is 'SOFT' or 'HARD';
-# for HARD clips `sequence` is empty because hard-clipped bases are not stored in the BAM.
-# The `partner_*` columns name the sibling alignment for the same read (from the SAM SA tag):
-# where the clipped tail continues. For HARD clips the partner is essentially always present
-# (a hard clip implies a split alignment); for SOFT clips it may be missing when the tail did
-# not align anywhere, in which case partner_contig='' and partner_pos=-1.
+# base), so `side` ('L' or 'R') is required to interpret `pos`. `type` is 'SOFT' or 'HARD'.
+# `state` is 'EXPLAINED' (the bases immediately outside the clip — in the read's 5'→3'
+# direction away from the M region — are aligned in some other record of the same read,
+# typically a supplementary listed in the SA tag) or 'UNEXPLAINED' (those bases are not
+# aligned anywhere). `sequence` carries the contiguous unmapped bases for UNEXPLAINED rows
+# and is empty for EXPLAINED rows. `length` is the original CIGAR clip length; for the
+# partial case len(sequence) ≤ length (the rest is covered by another alignment). The
+# `partner_*` columns name the first sibling alignment listed in the read's SA tag (where
+# the rest of the read goes); empty when the read has no SA tag.
 clippings_table_name                 = 'clippings'
-clippings_table_structure            = ['sample_id', 'split_name', 'pos'    , 'pos_in_contig', 'corresponding_gene_call', 'in_noncoding_gene_call', 'in_coding_gene_call' , 'base_pos_in_codon', 'codon_order_in_gene', 'cov_outlier_in_split', 'cov_outlier_in_contig', 'reference', 'type', 'side', 'sequence', 'length' , 'count'  , 'coverage', 'partner_contig', 'partner_pos', 'partner_strand']
-clippings_table_types                = ['text'     , 'text'      , 'integer', 'integer'      , 'integer'                , 'integer'               , 'integer'             , 'integer'          , 'integer'            , 'integer'             , 'integer'              , 'text'     , 'text', 'text', 'text'    , 'integer', 'integer', 'integer' , 'text'          , 'integer'    , 'text'          ]
+clippings_table_structure            = ['sample_id', 'split_name', 'pos'    , 'pos_in_contig', 'corresponding_gene_call', 'in_noncoding_gene_call', 'in_coding_gene_call' , 'base_pos_in_codon', 'codon_order_in_gene', 'cov_outlier_in_split', 'cov_outlier_in_contig', 'reference', 'type', 'side', 'state', 'sequence', 'length' , 'count'  , 'coverage', 'partner_contig', 'partner_pos', 'partner_strand']
+clippings_table_types                = ['text'     , 'text'      , 'integer', 'integer'      , 'integer'                , 'integer'               , 'integer'             , 'integer'          , 'integer'            , 'integer'             , 'integer'              , 'text'     , 'text', 'text', 'text' , 'text'    , 'integer', 'integer', 'integer' , 'text'          , 'integer'    , 'text'          ]
 
 views_table_name                     = 'views'
 views_table_structure                = ['view_id', 'target_table']
