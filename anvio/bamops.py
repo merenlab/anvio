@@ -417,6 +417,18 @@ class Read:
         # of the clippings table.
         self.sa_tag = read.get_tag('SA') if read.has_tag('SA') else None
 
+        # Read-level metadata the clip detector needs in addition to alignment data:
+        # - query_name: identifier used to look up the primary record when we need to
+        #   recover hard-clipped bases (which live only in the primary's SEQ).
+        # - is_reverse: this alignment's strand, for interpreting SA-tag read coordinates
+        #   relative to the current record's orientation.
+        # - is_supplementary / is_secondary: lets the detector skip records that shouldn't
+        #   contribute clip events (secondaries) and identify the primary among fetches.
+        self.query_name = read.query_name
+        self.is_reverse = read.is_reverse
+        self.is_supplementary = read.is_supplementary
+        self.is_secondary = read.is_secondary
+
         # See self.vectorize
         self.v = None
 
