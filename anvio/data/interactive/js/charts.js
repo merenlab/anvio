@@ -32,6 +32,8 @@ var variability;
 var maxVariability = 0;
 var maxCountOverCoverage = 0;
 var indels;
+var clippings;
+var maxClippingCountOverCoverage = 0;
 var geneParser;
 var contextSvg;
 var state;
@@ -47,6 +49,7 @@ var brush;
 var inspect_mode;
 var highlightBoxes;
 var indels_enabled;
+var clippings_enabled;
 var show_nucleotides = true;
 var maxNucleotidesInWindow = 300;
 var minNucleotidesInWindow = 30;
@@ -193,6 +196,7 @@ function loadAll() {
                 sequence = response.sequence;
                 variability = [];
                 indels = [];
+                clippings = [];
 
                 info("Building variability table");
                 for (var i=0; i<coverage.length; i++) {
@@ -225,6 +229,34 @@ function loadAll() {
                     if(maxCountOverCoverage >= 1) {
                       maxCountOverCoverage = 1;
                       i = indels.length;
+                      break;
+                    }
+                  }
+                }
+
+                clippings = response.clippings;
+
+                info("Building clippings table");
+                // The clip bar at a position represents (sum of counts at this pos) / coverage.
+                // Multiple clip rows can hit the same position (different sides / types /
+                // sequences / partners), so we sum them per-position before comparing to the
+                // global max — this matches what the renderer will draw.
+                for(var i=0; i<clippings.length; i++) {
+                  let perPos = {};
+                  let ckeys = Object.keys(clippings[i]);
+                  for(var j=0; j<ckeys.length; j++) {
+                    let entry = clippings[i][ckeys[j]];
+                    let pos = entry["pos"];
+                    if(!perPos[pos]) perPos[pos] = { count: 0, coverage: entry["coverage"] };
+                    perPos[pos].count += entry["count"];
+                  }
+                  for(let pos in perPos) {
+                    if(perPos[pos].coverage <= 0) continue;
+                    let ccVal = perPos[pos].count / perPos[pos].coverage;
+                    if(ccVal > maxClippingCountOverCoverage) maxClippingCountOverCoverage = ccVal;
+                    if(maxClippingCountOverCoverage >= 1) {
+                      maxClippingCountOverCoverage = 1;
+                      i = clippings.length;
                       break;
                     }
                   }
@@ -307,11 +339,18 @@ function loadAll() {
                 }
                 indels_enabled = maxCountOverCoverage != 0;
                 if(!indels_enabled || state['show_indels'] == null) state['show_indels'] = indels_enabled;
+                clippings_enabled = maxClippingCountOverCoverage != 0;
+                if(!clippings_enabled || state['show_clips'] == null) state['show_clips'] = clippings_enabled;
                 state['snv_scale_bottom'] = state['snv_scale_dir_up'] = state['snvs_enabled'] || indels_enabled;
                 if(state['fixed-y-scale'] == null) state['fixed-y-scale'] = false;
 
                 // adjust menu options
                 manageSNVsState(state, maxVariability);
+
+                // hide the clippings toggle when this split has no clip events to show
+                if (!clippings_enabled) {
+                    $('#clippings_picker').hide();
+                }
 
                 if (!indels_enabled && (!state['snvs_enabled'] || maxVariability == 0)) {
                     console.log("Hiding SNVs and indels due to the condition being met.");
@@ -368,12 +407,29 @@ function loadAll() {
                     $("div.indels-disabled").fadeIn(300);
                   }
                 }
+                if(clippings_enabled) {
+                  let numClips = 0;
+                  for(var i = 0; i < clippings.length; i++) {
+                    for(var key in clippings[i]) {
+                      if(clippings[i].hasOwnProperty(key)) numClips++;
+                    }
+                  }
+                  if(state['show_clips'] && numClips > 1000) {
+                    state['show_clips'] = false;
+                    $("div.clippings-disabled").append("WARNING: A total of " + numClips + " clip events were detected on this page and are not shown to optimize performance. Use the settings panel to show them.");
+                    $("div.clippings-disabled").fadeIn(300);
+                  }
+                }
                 if(state.hasOwnProperty('show_snvs')){
                   $('#toggle_snv_box').attr("checked", state['show_snvs']);
                 }
 
                 if(state.hasOwnProperty('show_indels')){
                   $('#toggle_indel_box').attr("checked", state['show_indels']);
+                }
+
+                if(state.hasOwnProperty('show_clips')){
+                  $('#toggle_clip_box').attr("checked", state['show_clips']);
                 }
 
                 if(state.hasOwnProperty('snv_scale_bottom')){
@@ -550,6 +606,17 @@ function loadAll() {
                           },
                       });
                   if($('div.indels-disabled').length > 0) $('div.indels-disabled').remove();
+                });
+                $('#toggle_clip_box').on('change', function() {
+                  waitingDialog.show('Drawing ...',
+                      {
+                          dialogSize: 'sm',
+                          onShow: function() {
+                              toggleClippings();
+                              waitingDialog.hide();
+                          },
+                      });
+                  if($('div.clippings-disabled').length > 0) $('div.clippings-disabled').remove();
                 });
                 $('#toggle_insertion_size_whiskers_box').on('change', function() {
                   waitingDialog.show('Drawing ...',
@@ -798,6 +865,12 @@ function toggleSNVs() {
 function toggleIndels() {
   console.log("Toggling indel markers (" + Math.round(Date.now()/1000) + ")");
   state['show_indels'] = !state['show_indels'];
+  createCharts(state);
+}
+
+function toggleClippings() {
+  console.log("Toggling clipping markers (" + Math.round(Date.now()/1000) + ")");
+  state['show_clips'] = !state['show_clips'];
   createCharts(state);
 }
 
@@ -1625,6 +1698,10 @@ function processState(state_name, state) {
       $('#toggle_indel_box').attr("checked", state['show_indels']);
     }
 
+    if(state.hasOwnProperty('show_clips')){
+      $('#toggle_clip_box').attr("checked", state['show_clips']);
+    }
+
     if(state.hasOwnProperty('snv_scale_bottom')){
       $("#snv_scale_box").attr("checked", state['snv_scale_bottom']);
     }
@@ -1783,6 +1860,7 @@ function createCharts(state){
                         variability_d: variability[layer_index][3],
                         competing_nucleotides: competing_nucleotides[layer_index],
                         indels: indels[layer_index],
+                        clippings: clippings[layer_index],
                         gc_content: gc_content_array,
                         'gc_content_window_size': gc_content_window_size,
                         'gc_content_step_size': gc_content_step_size,
@@ -1792,6 +1870,7 @@ function createCharts(state){
                         height: chartHeight,
                         maxVariability: maxVariability,
                         maxCountOverCoverage: maxCountOverCoverage,
+                        maxClippingCountOverCoverage: maxClippingCountOverCoverage,
                         svg: svg,
                         snv_svg: snvBoxesSvg,
                         samples_svg: samplesSvg,
@@ -1921,6 +2000,7 @@ function Chart(options){
     this.variability_d = options.variability_d;
     this.competing_nucleotides = options.competing_nucleotides;
     this.indels = options.indels;
+    this.clippings = options.clippings;
     this.gc_content = options.gc_content;
     this.gc_content_window_size = options.gc_content_window_size;
     this.gc_content_step_size = options.gc_content_step_size;
@@ -1929,6 +2009,7 @@ function Chart(options){
     this.height = options.height;
     this.maxVariability = options.maxVariability;
     this.maxCountOverCoverage = options.maxCountOverCoverage;
+    this.maxClippingCountOverCoverage = options.maxClippingCountOverCoverage;
     this.svg = options.svg;
     this.snv_svg = options.snv_svg;
     this.samples_svg = options.samples_svg;
