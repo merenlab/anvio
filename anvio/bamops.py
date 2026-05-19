@@ -383,6 +383,105 @@ class BAMFileObject(pysam.AlignmentFile):
         return require(has_MD)
 
 
+    def check_aligner_supports_clipping(self):
+        """Inspect the BAM's @PG records to determine whether the aligner that produced
+        this file would have emitted soft- or hard-clip CIGAR ops.
+
+        This is a defensive check for `anvi-profile`'s clip-profiling step: if the user
+        asked for clip profiling on a BAM whose aligner doesn't emit clips, the resulting
+        empty clippings table is misleading silence. By inspecting the @PG header here we
+        can catch that case and let the caller decide whether to skip with a warning.
+
+        Returns
+        =======
+        status, reason : (str, str)
+            status is one of:
+              - 'allows'    : a recognized aligner that emits clips by default
+              - 'disallows' : a recognized aligner that does NOT emit clips in this mode
+              - 'unknown'   : no recognized aligner in @PG (or no @PG records at all)
+            reason is a short human-readable explanation suitable for a run.warning.
+
+        Notes
+        =====
+        - We walk all @PG records and look for any known aligner. Post-processing tools
+          (`samtools sort/view`, etc.) also leave @PG entries; we ignore those.
+        - When multiple aligners are present (rare), an 'allows' verdict wins — assume the
+          user knows which @PG matters and that the clip-emitting tool was the final
+          step on the read path.
+        """
+        try:
+            pg_records = self.header.to_dict().get('PG', [])
+        except Exception:
+            return ('unknown', 'could not parse the BAM header @PG records')
+
+        if not pg_records:
+            return ('unknown', 'the BAM file has no @PG records, so anvi\'o cannot tell '
+                               'which aligner produced it')
+
+        detected = []
+        for pg in pg_records:
+            program = pg.get('PN', '').strip().lower()
+            cmdline = pg.get('CL', '').strip()
+            cmdline_lc = cmdline.lower()
+
+            # minimap2 — always emits clips by default. -Y just toggles supplementary
+            # alignments from H to S clips, never disables clipping.
+            if program == 'minimap2' or 'minimap2' in cmdline_lc.split() or cmdline_lc.startswith('minimap2 '):
+                detected.append(('minimap2', 'allows', 'minimap2 emits soft/hard clips by default'))
+                continue
+
+            # bwa — depends on the subcommand. bwa mem clips, bwa aln/samse/sampe don't.
+            if program == 'bwa' or program.startswith('bwa-') or cmdline_lc.startswith('bwa '):
+                if ' mem' in cmdline_lc or cmdline_lc.startswith('bwa mem '):
+                    detected.append(('bwa-mem', 'allows', 'bwa mem emits soft clips by default'))
+                elif ' aln' in cmdline_lc or ' samse' in cmdline_lc or ' sampe' in cmdline_lc:
+                    detected.append(('bwa-aln', 'disallows',
+                                     'bwa aln/samse/sampe perform end-to-end alignment and do not emit soft clips'))
+                else:
+                    detected.append(('bwa-other', 'unknown',
+                                     f'bwa subcommand could not be inferred from the @PG CL field'))
+                continue
+
+            # bowtie2 — end-to-end by default; --local enables soft clipping.
+            if program == 'bowtie2' or 'bowtie2' in cmdline_lc.split() or cmdline_lc.startswith('bowtie2 '):
+                if '--local' in cmdline_lc.split() or ' --local' in cmdline_lc:
+                    detected.append(('bowtie2-local', 'allows', 'bowtie2 --local emits soft clips'))
+                else:
+                    detected.append(('bowtie2-end-to-end', 'disallows',
+                                     'bowtie2 in default end-to-end mode does not emit soft clips '
+                                     '(only --local mode does)'))
+                continue
+
+            # bowtie (v1) — never soft-clips.
+            if program == 'bowtie' or cmdline_lc.startswith('bowtie '):
+                detected.append(('bowtie', 'disallows', 'bowtie (v1) does not emit soft clips'))
+                continue
+
+            # HISAT2 / STAR — clip-aware by default.
+            if program == 'hisat2' or 'hisat2' in cmdline_lc.split():
+                detected.append(('hisat2', 'allows', 'HISAT2 emits soft clips by default'))
+                continue
+            if program == 'star' or 'STAR' in cmdline:
+                detected.append(('star', 'allows', 'STAR emits soft clips by default'))
+                continue
+
+        if not detected:
+            return ('unknown', f'no recognized aligner among {len(pg_records)} @PG record(s) in the BAM '
+                               f'header; anvi\'o knows about minimap2, bwa, bowtie2, bowtie, HISAT2, STAR')
+
+        # If any recognized aligner allows clipping, the answer is 'allows'.
+        for name, status, reason in detected:
+            if status == 'allows':
+                return ('allows', f'{name}: {reason}')
+        # Otherwise, prefer 'disallows' over 'unknown' for the final verdict.
+        for name, status, reason in detected:
+            if status == 'disallows':
+                return ('disallows', f'{name}: {reason}')
+        # Fallback
+        name, status, reason = detected[0]
+        return ('unknown', f'{name}: {reason}')
+
+
 class Read:
     def __init__(self, read):
         """Class for manipulating reads
