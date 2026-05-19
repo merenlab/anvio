@@ -27,15 +27,15 @@ dirs_dict = M.dirs_dict
 rule trnaseq_workflow_target_rule:
     """The target rule for the workflow, automatically detected as such by snakemake, being the first rule."""
     input:
-        M.target_files,
+        targets=M.target_files,
 
 
 rule make_iu_input:
     """Create an Illumina-utils samples file for each sequence library."""
     input:
-        ancient(M.get_param_value_from_config(["samples_txt"])),
+        source=ancient(M.get_param_value_from_config(["samples_txt"])),
     output:
-        os.path.join(
+        target=os.path.join(
             os.path.join(dirs_dict["QC_DIR"], "{sample_name}"), "iu_samples_input.txt"
         ),
     log:
@@ -56,9 +56,9 @@ rule make_iu_input:
 rule iu_gen_configs:
     """Create an Illumina-utils config file from each Illumina-utils samples file representing each sequence library."""
     input:
-        rules.make_iu_input.output,
+        samples=rules.make_iu_input.output.target,
     output:
-        os.path.join(
+        target=os.path.join(
             os.path.join(dirs_dict["QC_DIR"], "{sample_name}"), "{sample_name}.ini"
         ),
     log:
@@ -82,13 +82,13 @@ rule iu_gen_configs:
 rule iu_merge_pairs:
     """Merge paired-end reads using Illumina-utils."""
     input:
-        ancient(
+        source=ancient(
             os.path.join(
                 os.path.join(dirs_dict["QC_DIR"], "{sample_name}"), "{sample_name}.ini"
             )
         ),
     output:
-        touch(
+        done=touch(
             os.path.join(
                 os.path.join(dirs_dict["QC_DIR"], "{sample_name}"), "MERGE.done"
             )
@@ -147,7 +147,7 @@ rule iu_merge_pairs:
 rule gen_qc_report:
     """Report all quality control statistics (run once)."""
     input:
-        expand(
+        targets=expand(
             os.path.join(
                 os.path.join(dirs_dict["QC_DIR"], "{sample_name}"), "MERGE.done"
             ),
@@ -191,18 +191,12 @@ rule gen_qc_report:
         )
 
 
-def gunzip_fasta(fasta, log):
-    fasta_gunzipped = os.path.splitext(fasta)[0]
-    shell("gunzip < %s > %s 2>> %s" % (fasta, fasta_gunzipped, log))
-    return fasta_gunzipped
-
-
 rule anvi_reformat_fasta:
     """Reformat the FASTA file with Anvi\'o-compliant deflines."""
     input:
-        M.get_input_for_anvi_reformat_fasta,
+        fasta=M.get_input_for_anvi_reformat_fasta,
     output:
-        touch(
+        done=touch(
             os.path.join(
                 os.path.join(dirs_dict["QC_DIR"], "{sample_name}"), "REFORMAT.done"
             )
@@ -229,7 +223,7 @@ rule anvi_reformat_fasta:
         if M.fasta_paths:
             # User provided FASTA rather than FASTQ inputs.
             if input[0].endswith(".gz"):
-                decompressed_fasta = gunzip_fasta(input[0], log[0])
+                decompressed_fasta = w.gunzip_file(input[0], log[0], shell)
             else:
                 decompressed_fasta = input[0]
         else:
@@ -238,7 +232,7 @@ rule anvi_reformat_fasta:
             compressed_fasta = decompressed_fasta + ".gz"
             if not os.path.exists(decompressed_fasta):
                 if os.path.exists(compressed_fasta):
-                    gunzip_fasta(compressed_fasta, log[0])
+                    w.gunzip_file(compressed_fasta, log[0], shell)
                 else:
                     raise ConfigError(
                         "The workflow config file suggests that `iu_merge_pairs` was run. "
@@ -266,21 +260,21 @@ rule anvi_reformat_fasta:
 
 rule all_reformatting_done:
     input:
-        expand(
+        targets=expand(
             os.path.join(
                 os.path.join(dirs_dict["QC_DIR"], "{sample_name}"), "REFORMAT.done"
             ),
             sample_name=M.sample_names,
         ),
     output:
-        touch(os.path.join(dirs_dict["QC_DIR"], "ALL_REFORMATTING.done")),
+        done=touch(os.path.join(dirs_dict["QC_DIR"], "ALL_REFORMATTING.done")),
 
 
 rule anvi_trnaseq:
     input:
-        M.get_input_for_anvi_trnaseq,
+        source=M.get_input_for_anvi_trnaseq,
     output:
-        touch(
+        done=touch(
             os.path.join(
                 os.path.join(dirs_dict["IDENT_DIR"], "{sample_name}"), "IDENT.done"
             )
@@ -327,7 +321,7 @@ rule anvi_trnaseq:
             compressed_fasta = decompressed_fasta + ".gz"
             if not os.path.exists(decompressed_fasta):
                 if os.path.exists(compressed_fasta):
-                    gunzip_fasta(compressed_fasta, log[0])
+                    w.gunzip_file(compressed_fasta, log[0], shell)
                 else:
                     raise ConfigError(
                         "The workflow config file suggests that `anvi_reformat_fasta` was run. "
@@ -339,7 +333,7 @@ rule anvi_trnaseq:
                     )
         else:
             if input[0].endswith(".gz"):
-                decompressed_fasta = gunzip_fasta(input[0], log[0])
+                decompressed_fasta = w.gunzip_file(input[0], log[0], shell)
             else:
                 decompressed_fasta = input[0]
         out_dir = os.path.join(dirs_dict["IDENT_DIR"], wildcards.sample_name)
@@ -357,14 +351,14 @@ rule anvi_trnaseq:
 
 rule anvi_merge_trnaseq:
     input:
-        expand(
+        targets=expand(
             os.path.join(
                 os.path.join(dirs_dict["IDENT_DIR"], "{sample_name}"), "IDENT.done"
             ),
             sample_name=M.sample_names,
         ),
     output:
-        touch(os.path.join(dirs_dict["CONVERT_DIR"], "CONVERT.done")),
+        done=touch(os.path.join(dirs_dict["CONVERT_DIR"], "CONVERT.done")),
     log:
         os.path.join(dirs_dict["LOGS_DIR"], "anvi_merge_trnaseq.log"),
     threads: M.T("anvi_merge_trnaseq")
@@ -410,9 +404,9 @@ rule anvi_merge_trnaseq:
 
 rule anvi_run_trna_taxonomy:
     input:
-        rules.anvi_merge_trnaseq.output,
+        done=rules.anvi_merge_trnaseq.output.done,
     output:
-        touch(os.path.join(dirs_dict["CONVERT_DIR"], "TAXONOMY.done")),
+        done=touch(os.path.join(dirs_dict["CONVERT_DIR"], "TAXONOMY.done")),
     log:
         os.path.join(dirs_dict["LOGS_DIR"], "anvi_run_trna_taxonomy.log"),
     threads: M.T("anvi_run_trna_taxonomy")
@@ -450,9 +444,9 @@ rule anvi_run_trna_taxonomy:
 
 rule anvi_tabulate_trnaseq:
     input:
-        rules.anvi_run_trna_taxonomy.output,
+        done=rules.anvi_run_trna_taxonomy.output.done,
     output:
-        touch(os.path.join(dirs_dict["CONVERT_DIR"], "TABULATE.done")),
+        done=touch(os.path.join(dirs_dict["CONVERT_DIR"], "TABULATE.done")),
     log:
         os.path.join(dirs_dict["LOGS_DIR"], "anvi_tabulate_trnaseq.log"),
     params:

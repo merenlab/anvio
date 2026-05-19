@@ -54,7 +54,7 @@ remove_tmp = M.get_param_value_from_config(["Remove_unzipped_SRA_files"])
 rule SRA_DOWNLOAD_WORKFLOW_target_rule:
     """The rule creates all target files for the Snakefile"""
     input:
-        M.target_files,
+        targets=M.target_files,
 
 
 rule prefetch:
@@ -185,7 +185,7 @@ Threads:
 - Number of threads specified in the M object
 """
     input:
-        ancient(rules.check_md5sum.output.md5sum_DONE),
+        done=ancient(rules.check_md5sum.output.md5sum_DONE),
     output:
         FASTERQDUMP_DONE=touch(
             os.path.join(dirs_dict["FASTAS"], "{accession}-fasterq-dump.done")
@@ -233,9 +233,9 @@ example:
 
 """
     input:
-        ancient(rules.fasterq_dump.output.FASTERQDUMP_DONE),
+        done=ancient(rules.fasterq_dump.output.FASTERQDUMP_DONE),
     output:
-        touch(os.path.join(dirs_dict["FASTAS"], "{accession}-pigz.done")),
+        done=touch(os.path.join(dirs_dict["FASTAS"], "{accession}-pigz.done")),
     log:
         os.path.join(dirs_dict["LOGS_DIR"], "{accession}_pigz.log"),
     threads: M.T("pigz")
@@ -262,12 +262,12 @@ Threads:
 - Number of threads specified in the M object
 """
     input:
-        expand(
+        targets=expand(
             os.path.join(dirs_dict["FASTAS"], "{accession}-pigz.done"),
             accession=M.accessions_list,
         ),
     output:
-        touch(os.path.join(dirs_dict["FASTAS"], "generate_samples_txt.done")),
+        done=touch(os.path.join(dirs_dict["FASTAS"], "generate_samples_txt.done")),
     log:
         os.path.join(dirs_dict["LOGS_DIR"], "generate_samples_txt.log"),
     params:

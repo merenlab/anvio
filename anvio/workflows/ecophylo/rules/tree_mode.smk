@@ -2,7 +2,7 @@
 rule make_anvio_state_file_tree:
     """Make a state file customized for EcoPhylo workflow interactive interface - TREE MODE"""
     input:
-        M.get_target_files_make_anvio_state_file(),
+        source=M.get_target_files_make_anvio_state_file(),
     output:
         state_file=os.path.join(
             dirs_dict["MISC_DATA"], "{group}", "{group}_TREE_state.json"
@@ -126,7 +126,9 @@ If samples.txt is NOT provided then we will make an Ad Hoc profileDB for the tre
         tree=rules.rename_tree_tips.output.tree,
         state=rules.make_anvio_state_file_tree.output.state_file,
     output:
-        touch(os.path.join(dirs_dict["TREES"], "{group}", "state_imported_tree.done")),
+        done=touch(
+            os.path.join(dirs_dict["TREES"], "{group}", "state_imported_tree.done")
+        ),
     log:
         os.path.join(dirs_dict["LOGS_DIR"], "anvi_import_state_{group}.log"),
     threads: M.T("anvi_import_state")

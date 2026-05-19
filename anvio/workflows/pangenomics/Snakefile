@@ -38,15 +38,15 @@ if not this_workflow_is_inherited_by_another:
 
 rule pangenomics_target_rule:
     input:
-        M.get_pangenomics_target_files(),
+        targets=M.get_pangenomics_target_files(),
 
 
 # run pangenome
 rule anvi_pan_genome:
     input:
-        dirs_dict["PAN_DIR"] + "/" + M.project_name + "-GENOMES.db",
+        pan_db=dirs_dict["PAN_DIR"] + "/" + M.project_name + "-GENOMES.db",
     output:
-        os.path.join(dirs_dict["PAN_DIR"], M.pan_project_name + "-PAN.db"),
+        pan_db=os.path.join(dirs_dict["PAN_DIR"], M.pan_project_name + "-PAN.db"),
     log:
         os.path.join(dirs_dict["LOGS_DIR"], M.project_name + "-anvi_pan_genome.log"),
     threads: M.T("anvi_pan_genome")
@@ -100,7 +100,7 @@ rule anvi_gen_genomes_storage:
     input:
         unpack(lambda wildcards: M.input_for_anvi_gen_genomes_storage),
     output:
-        dirs_dict["PAN_DIR"] + "/" + M.project_name + "-GENOMES.db",
+        pan_db=dirs_dict["PAN_DIR"] + "/" + M.project_name + "-GENOMES.db",
     log:
         os.path.join(
             dirs_dict["LOGS_DIR"], M.project_name + "-anvi_gen_genomes_storage.log"
@@ -140,7 +140,7 @@ rule anvi_get_sequences_for_gene_clusters:
         ),
         pan_db=M.pan_db_path,
     output:
-        os.path.join(dirs_dict["PHYLO_DIR"], M.project_name + "-GC-sequences.fa"),
+        fasta=os.path.join(dirs_dict["PHYLO_DIR"], M.project_name + "-GC-sequences.fa"),
     log:
         os.path.join(
             dirs_dict["LOGS_DIR"],

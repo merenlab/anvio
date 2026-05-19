@@ -4,7 +4,7 @@
 rule make_metagenomics_config_file:
     """Make a METAGENOMICS WORKFLOW config.json customized for ECOPHYLO_WORKFLOW - PROFILE MODE"""
     input:
-        rules.make_fasta_txt.output.fasta_txt,
+        done=rules.make_fasta_txt.output.fasta_txt,
     output:
         config=os.path.join(
             dirs_dict["HOME"], "METAGENOMICS_WORKFLOW", "metagenomics_config.json"
@@ -138,7 +138,7 @@ rule anvi_summarize:
     input:
         done=rules.add_default_collection.output.done,
     output:
-        touch(
+        done=touch(
             os.path.join(
                 dirs_dict["HOME"],
                 "METAGENOMICS_WORKFLOW",
@@ -174,7 +174,7 @@ rule anvi_summarize:
 rule make_anvio_state_file:
     """Make a state file customized for EcoPhylo workflow interactive interface"""
     input:
-        M.get_target_files_make_anvio_state_file(),
+        source=M.get_target_files_make_anvio_state_file(),
     output:
         state_file=os.path.join(
             dirs_dict["HOME"],
@@ -333,7 +333,7 @@ If samples.txt is NOT provided then we will make an Ad Hoc profileDB for the tre
         state=rules.make_anvio_state_file.output.state_file,
         done=rules.run_metagenomics_workflow.output.done,
     output:
-        touch(
+        done=touch(
             os.path.join(
                 dirs_dict["HOME"],
                 "METAGENOMICS_WORKFLOW",

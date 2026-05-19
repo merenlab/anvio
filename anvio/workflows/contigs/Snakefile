@@ -42,7 +42,7 @@ localrules:
 
 rule contigs_target_rule:
     input:
-        expand(
+        targets=expand(
             os.path.join(
                 dirs_dict["CONTIGS_DIR"],
                 "{group}-steps",
@@ -59,9 +59,9 @@ This allows workflows that inherit the contigs workflow to just track the output
 of this rule, instead of tracking the individual
 """
     input:
-        lambda wildcards: M.get_contigs_target_files(),
+        files=lambda wildcards: M.get_contigs_target_files(),
     output:
-        touch(
+        done=touch(
             os.path.join(
                 dirs_dict["CONTIGS_DIR"],
                 "{group}-steps",
@@ -162,7 +162,7 @@ rule reformat_external_gene_calls_table:
     input:
         unpack(M.get_input_for_reformat_external_gene_calls_table),
     output:
-        os.path.join(
+        target=os.path.join(
             dirs_dict["FASTA_DIR"], "{group}", "{group}-external-gene-calls.txt"
         ),
     log:
@@ -285,7 +285,7 @@ rule reformat_external_functions:
     input:
         unpack(M.get_input_for_reformat_external_functions),
     output:
-        os.path.join(
+        target=os.path.join(
             dirs_dict["FASTA_DIR"],
             "{group}",
             "{group}" + "-gene-functional-annotation.txt",
@@ -357,10 +357,10 @@ rule export_gene_calls_for_centrifuge:
 
     # marking the input as ancient in order to ignore timestamps.
     input:
-        ancient(M.get_contigs_db_path()),
+        contigs=ancient(M.get_contigs_db_path()),
     # output is temporary. No need to keep this file.
     output:
-        temp(dirs_dict["CONTIGS_DIR"] + "/{group}-gene-calls.fa"),
+        fasta=temp(dirs_dict["CONTIGS_DIR"] + "/{group}-gene-calls.fa"),
     log:
         dirs_dict["LOGS_DIR"] + "/{group}-export_gene_calls_for_centrifuge.log",
     threads: M.T("export_gene_calls_for_centrifuge")
@@ -373,7 +373,7 @@ rule export_gene_calls_for_centrifuge:
 rule centrifuge:
     """Run centrifuge on the exported gene calls of the contigs.db"""
     input:
-        rules.export_gene_calls_for_centrifuge.output,
+        fasta=rules.export_gene_calls_for_centrifuge.output.fasta,
     output:
         hits=dirs_dict["CONTIGS_DIR"] + "/{group}-centrifuge_hits.tsv",
         report=dirs_dict["CONTIGS_DIR"] + "/{group}-centrifuge_report.tsv",
@@ -404,7 +404,7 @@ rule anvi_import_taxonomy_for_genes:
     # for more information see:
     # http://snakemake.readthedocs.io/en/stable/snakefiles/rules.html#flag-files
     output:
-        touch(
+        done=touch(
             os.path.join(
                 dirs_dict["CONTIGS_DIR"],
                 "{group}-steps",
@@ -429,11 +429,11 @@ rule anvi_run_hmms:
 
     # marking the input as ancient in order to ignore timestamps.
     input:
-        ancient(M.get_contigs_db_path()),
+        contigs=ancient(M.get_contigs_db_path()),
     # using a snakemake flag file as an output since no file is generated
     # by the rule.
     output:
-        touch(
+        done=touch(
             os.path.join(
                 dirs_dict["CONTIGS_DIR"], "{group}-steps", "anvi_run_hmms.done"
             )
@@ -465,9 +465,9 @@ rule anvi_run_hmms:
 
 rule anvi_run_pfams:
     input:
-        ancient(M.get_contigs_db_path()),
+        contigs=ancient(M.get_contigs_db_path()),
     output:
-        touch(
+        done=touch(
             os.path.join(
                 dirs_dict["CONTIGS_DIR"], "{group}-steps", "anvi_run_pfams.done"
             )
@@ -485,9 +485,9 @@ rule anvi_run_pfams:
 
 rule anvi_run_kegg_kofams:
     input:
-        ancient(M.get_contigs_db_path()),
+        contigs=ancient(M.get_contigs_db_path()),
     output:
-        touch(
+        done=touch(
             os.path.join(
                 dirs_dict["CONTIGS_DIR"], "{group}-steps", "anvi_run_kegg_kofams.done"
             )
@@ -511,7 +511,7 @@ rule anvi_run_ncbi_cogs:
     input:
         contigs=ancient(M.get_contigs_db_path()),
     output:
-        touch(
+        done=touch(
             os.path.join(
                 dirs_dict["CONTIGS_DIR"], "{group}-steps", "anvi_run_ncbi_cogs.done"
             )
@@ -546,7 +546,7 @@ rule anvi_run_scg_taxonomy:
         ),
         contigs=ancient(M.get_contigs_db_path()),
     output:
-        touch(
+        done=touch(
             os.path.join(
                 dirs_dict["CONTIGS_DIR"], "{group}-steps", "anvi_run_scg_taxonomy.done"
             )
@@ -572,7 +572,7 @@ rule anvi_run_trna_scan:
     input:
         contigs=ancient(M.get_contigs_db_path()),
     output:
-        touch(
+        done=touch(
             os.path.join(
                 dirs_dict["CONTIGS_DIR"], "{group}-steps", "anvi_run_trna_scan.done"
             )
@@ -596,9 +596,9 @@ rule anvi_run_trna_scan:
 
 rule anvi_get_sequences_for_gene_calls:
     input:
-        ancient(M.get_contigs_db_path()),
+        contigs=ancient(M.get_contigs_db_path()),
     output:
-        temp(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs-aa-sequences.fa"),
+        fasta=temp(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs-aa-sequences.fa"),
     log:
         dirs_dict["LOGS_DIR"] + "/{group}-anvi_get_sequences_for_gene_calls.log",
     threads: M.T("anvi_get_sequences_for_gene_calls")
@@ -610,9 +610,9 @@ rule anvi_get_sequences_for_gene_calls:
 
 rule emapper:
     input:
-        rules.anvi_get_sequences_for_gene_calls.output,
+        fasta=rules.anvi_get_sequences_for_gene_calls.output.fasta,
     output:
-        dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.emapper.annotations",
+        target=dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.emapper.annotations",
     log:
         dirs_dict["LOGS_DIR"] + "/{group}-emapper.log",
     threads: M.T("emapper")
@@ -637,10 +637,10 @@ rule emapper:
 
 rule anvi_script_run_eggnog_mapper:
     input:
-        eggnog_output=rules.emapper.output,
+        eggnog_output=rules.emapper.output.target,
         contigs=dirs_dict["CONTIGS_DIR"] + "/{group}.db",
     output:
-        touch(
+        done=touch(
             os.path.join(
                 dirs_dict["CONTIGS_DIR"],
                 "{group}-steps",
@@ -681,7 +681,7 @@ rule gen_external_genome_file:
             dirs_dict["CONTIGS_DIR"] + "/{sample}.db", sample=M.group_names
         ),
     output:
-        M.external_genomes_file,
+        target=M.external_genomes_file,
     log:
         dirs_dict["LOGS_DIR"] + "" + "/gen_external_genome_file.log",
     threads: M.T("gen_external_genome_file")
