@@ -93,4 +93,3 @@ Workflow logs are written under `00_LOGS` unless you rename `LOGS_DIR` in the co
 ## Notes
 
 This workflow inherits the contigs workflow, so the same contigs database setup and log organization conventions apply. If you are building your phylogeny from anvi'o HMM hits, the `--return-best-hit` and `--concatenate-genes` settings are usually the important ones to review first.
-
