@@ -114,5 +114,13 @@ cp $output_dir/FRESH.db $output_dir/PROBE.db
 python $files/sequence_features/probe_read_accessors.py $output_dir/PROBE.db
 
 ####################################################################################################
+# Test 2.6: TablesForSequenceFeatures + db.transaction() write-side probe
+####################################################################################################
+INFO "Test 2.6: probing TablesForSequenceFeatures.populate_features and the transaction context manager"
+
+cp $output_dir/FRESH.db $output_dir/POPULATE.db
+python $files/sequence_features/probe_populate_features.py $output_dir/POPULATE.db
+
+####################################################################################################
 echo
-echo "Sequence-features component tests 1, 2 & 2.5 PASSED."
+echo "Sequence-features component tests 1, 2, 2.5 & 2.6 PASSED."

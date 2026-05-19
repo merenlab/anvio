@@ -9,6 +9,7 @@ import numpy
 import pandas as pd
 import sqlite3
 import warnings
+import contextlib
 
 import anvio
 import anvio.tables as tables
@@ -75,6 +76,12 @@ class DB:
         self.db_path = db_path
         self.read_only = read_only
         self.version = None
+
+        # when this flag is True, calls to self.commit() are no-ops so that all
+        # statements issued by helpers like _exec / _exec_many / insert_many can
+        # be bundled into one logical transaction by the transaction() context
+        # manager. See DB.transaction() for the public entry point.
+        self._in_transaction = False
 
         self.run = run
         self.progress = progress
@@ -440,9 +447,49 @@ class DB:
 
 
     def commit(self):
-        """Commit any pending transactions to the database."""
+        """Commit any pending transactions to the database.
+
+        While a `transaction()` context manager is active, this becomes a no-op so
+        that the bundle of statements issued under that block can be committed
+        atomically when the context exits (or rolled back on exception).
+        """
+
+        if self._in_transaction:
+            return
 
         self.execute_safely(self.conn.commit)
+
+
+    @contextlib.contextmanager
+    def transaction(self):
+        """Defer commits and roll back on exception until exit.
+
+        Existing helpers in this class (`_exec`, `_exec_many`, `insert_many`,
+        `set_version`, `set_meta_value`, etc.) call `self.commit()` after each
+        statement. While this context manager is active those internal commits
+        are suppressed, so a series of writes can be made atomic without changing
+        the call sites. On normal exit the context manager commits; on any
+        exception, it rolls back and re-raises.
+
+        Not re-entrant: nesting raises a ConfigError. SQLite itself does not
+        support nested transactions outside of named savepoints, and an
+        accidentally-nested transaction would silently swallow the inner
+        rollback boundary on the outer commit.
+        """
+
+        if self._in_transaction:
+            raise ConfigError("DB.transaction() is not re-entrant; you cannot open a transaction while another is already active.")
+
+        self._in_transaction = True
+        try:
+            yield self
+        except Exception:
+            self.execute_safely(self.conn.rollback)
+            raise
+        else:
+            self.execute_safely(self.conn.commit)
+        finally:
+            self._in_transaction = False
 
 
     def disconnect(self):
