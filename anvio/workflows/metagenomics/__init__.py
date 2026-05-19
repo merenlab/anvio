@@ -13,6 +13,7 @@ from anvio import utils as u
 from anvio.drivers import driver_modules
 from anvio.workflows import WorkflowSuperClass
 from anvio.workflows.contigs import ContigsDBWorkflow
+from anvio.workflows.read_recruitment import ReadRecruitmentModule
 from anvio.errors import ConfigError
 from anvio.artifacts.samples_txt import SamplesTxt
 
@@ -30,7 +31,7 @@ progress = terminal.Progress()
 
 min_contig_length_for_assembly = 1000
 
-class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
+class MetagenomicsWorkflow(ReadRecruitmentModule, ContigsDBWorkflow, WorkflowSuperClass):
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
         self.init_workflow_super_class(args, workflow_name='metagenomics')
 
@@ -50,15 +51,15 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         self.collections_txt = None
         self.collections = None
 
-        # initialize the base class
+        # initialize the base classes
         ContigsDBWorkflow.__init__(self)
+        ReadRecruitmentModule.__init__(self)
 
         self.rules.extend(['iu_gen_configs', 'iu_filter_quality_minoche', 'gen_qc_report', 'gzip_fastqs',
                      'merge_fastqs_for_co_assembly', 'megahit', 'merge_fastas_for_co_assembly',
-                     'bowtie_build', 'bowtie', 'samtools_view', 'anvi_init_bam', 'idba_ud',
-                     'anvi_profile', 'anvi_merge', 'import_percent_of_reads_mapped', 'anvi_cluster_contigs',
-                     'krakenuniq', 'krakenuniq_mpa_report', 'import_krakenuniq_taxonomy', 'metaspades',
-                     'flye', 'minimap2_index', 'minimap2',
+                     'idba_ud', 'metaspades', 'flye',
+                     'anvi_cluster_contigs',
+                     'krakenuniq', 'krakenuniq_mpa_report', 'import_krakenuniq_taxonomy',
                      'remove_short_reads_based_on_references', 'anvi_summarize', 'anvi_split'])
 
         self.general_params.extend(['samples_txt', "references_mode", "all_against_all",
@@ -100,23 +101,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                                    "--min-overlap", "--read-error", "--keep-haplotypes",
                                                    "--no-alt-contigs", "--scaffold", "--polish-target",
                                                    "additional_params", "threads"]
-        rule_acceptable_params_dict['bowtie'] = ["conda_yaml", "conda_env", "additional_params"]
-        rule_acceptable_params_dict['bowtie_build'] = ["additional_params"]
-        rule_acceptable_params_dict['minimap2_index'] = ["additional_params"]
-        rule_acceptable_params_dict['minimap2'] = ["preset","conda_yaml", "conda_env",  "additional_params", "threads"]
-        rule_acceptable_params_dict['samtools_view'] = ["additional_params"]
-        rule_acceptable_params_dict['anvi_profile'] = ["--overwrite-output-destinations", "--report-variability-full",
-                                                        "--skip-SNV-profiling", "--profile-SCVs", "--description",
-                                                        "--skip-hierarchical-clustering", "--distance", "--linkage", "--min-contig-length",
-                                                        "--min-mean-coverage", "--min-coverage-for-variability", "--cluster-contigs",
-                                                        "--contigs-of-interest", "--queue-size", "--write-buffer-size", "--write-buffer-size-per-thread",
-                                                        "--fetch-filter", "--min-percent-identity", "--max-contig-length"]
         rule_acceptable_params_dict['merge_fastas_for_co_assembly'] = []
         rule_acceptable_params_dict['merge_fastqs_for_co_assembly'] = []
-        rule_acceptable_params_dict['anvi_merge'] = ["--sample-name", "--description", "--skip-hierarchical-clustering",
-                                                     "--enforce-hierarchical-clustering", "--distance", "--linkage",
-                                                     "--overwrite-output-destinations"]
-        rule_acceptable_params_dict['import_percent_of_reads_mapped'] = ["run"]
         rule_acceptable_params_dict['krakenuniq'] = ["additional_params", "run", "--db", "--gzip-compressed"]
         rule_acceptable_params_dict['import_krakenuniq_taxonomy'] = ["--min-abundance"]
         rule_acceptable_params_dict['remove_short_reads_based_on_references'] = ["dont_remove_just_map",
@@ -133,9 +119,6 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         self.dirs_dict.update({"QC_DIR": "01_QC",
                                "FASTA_DIR": "02_FASTA",
                                "CONTIGS_DIR": "03_CONTIGS",
-                               "MAPPING_DIR": "04_MAPPING",
-                               "PROFILE_DIR": "05_ANVIO_PROFILE",
-                               "MERGE_DIR": "06_MERGED",
                                "TAXONOMY_DIR": "07_TAXONOMY",
                                "SUMMARY_DIR": "08_SUMMARY",
                                "SPLIT_PROFILES_DIR": "09_SPLIT_PROFILES"})
@@ -148,13 +131,6 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
                                     'flye': {"run": False, "threads": 7, "additional_params": "", "--meta": True, "--pacbio-hifi": True},
                                     'iu_filter_quality_minoche': {"run": True, "--ignore-deflines": True},
                                     "gzip_fastqs": {"run": True},
-                                    "bowtie": {"additional_params": "--no-unal", "threads": 3},
-                                    'minimap2_index': {"additional_params": ""},
-                                    'minimap2': {"threads": 3, "preset": "map-hifi", "additional_params": "--secondary-seq"},
-                                    "samtools_view": {"additional_params": "-F 4"},
-                                    "anvi_profile": {"threads": 3, "--overwrite-output-destinations": True},
-                                    "anvi_merge": {"--sample-name": "{group}", "--overwrite-output-destinations": True},
-                                    "import_percent_of_reads_mapped": {"run": True},
                                     "krakenuniq": {"threads": 3, "--gzip-compressed": True, "additional_params": ""},
                                     "remove_short_reads_based_on_references": {"delimiter-for-iu-remove-ids-from-fastq": " "},
                                     "anvi_cluster_contigs": {"--collection-name": "{driver}"}})
@@ -495,20 +471,6 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         self.assembly_types = assembly_types
 
 
-    def get_readset_ids(self):
-        return list(self.readset_ids)
-
-
-    def get_sr_readset_ids(self):
-        """IDs of readsets that are short-read (respecting read_type_suffix policy)."""
-        return [rs['id'] for rs in self.readsets if rs['type'] == 'SR']
-
-
-    def get_lr_readset_ids(self):
-        """IDs of readsets that are long-read (respecting read_type_suffix policy)."""
-        return [rs['id'] for rs in self.readsets if rs['type'] == 'LR']
-
-
     def init_kraken(self):
         '''Making sure the sample names and file paths the provided kraken.txt file are valid'''
         kraken_txt = self.get_param_value_from_config('kraken_txt')
@@ -655,14 +617,6 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         return sr, lr
 
 
-    # Map readset id -> readset dict for quick lookups
-    @property
-    def readsets_by_id(self):
-        if not hasattr(self, '_readsets_by_id'):
-            self._readsets_by_id = {rs['id']: rs for rs in self.readsets}
-        return self._readsets_by_id
-
-
     def get_assembly_ids(self):
         # In assembly mode: these are type-aware group IDs (e.g., G, G_SR, G_LR, S1_SR, ...)
         # In references mode: whatever self.group_names was set to by the existing logic.
@@ -740,6 +694,16 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
             "r1": list(rs['reads'].get('r1', [])),
             "r2": list(rs['reads'].get('r2', [])),
         }
+
+
+    def get_merge_optional_inputs(self):
+        run_percent = self.get_param_value_from_config(['import_percent_of_reads_mapped', 'run']) == True
+        d = {}
+        if run_percent:
+            d['percent_of_reads_mapped_imported_flag'] = ('layers-additional-data.txt', run_percent)
+        if self.run_krakenuniq:
+            d['kraken_flag'] = ('import_krakenuniq_taxonomy.done', self.run_krakenuniq)
+        return d
 
 
     def gen_report_with_references_for_removal_info(self, filtered_id_files, output_file_name):
