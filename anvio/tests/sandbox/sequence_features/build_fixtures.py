@@ -189,10 +189,176 @@ def build_unknown_type():
     _write_pair([rec], os.path.join(HERE, 'unknown_type.fa'), os.path.join(HERE, 'unknown_type.gb'))
 
 
+def build_eukaryotic_no_exon():
+    """Eukaryotic gene with mRNA(join) and CDS(join) — no literal exon features.
+    Used by test 12 (synthesis from mRNA produces N exons per mRNA segment, not per CDS)."""
+
+    seq = 'ACGT' * 1500   # 6000 bp
+
+    features = [
+        # forward-strand gene with 3-segment mRNA + 3-segment CDS, no literal exons
+        SeqFeature(SimpleLocation(99, 2500, strand=1), type='gene',
+                   qualifiers={'locus_tag': ['NOX_FWD_001'], 'gene': ['fwdNoExon']}),
+        SeqFeature(CompoundLocation([SimpleLocation(99, 500, strand=1), SimpleLocation(900, 1500, strand=1), SimpleLocation(2000, 2500, strand=1)]),
+                   type='mRNA',
+                   qualifiers={'locus_tag': ['NOX_FWD_001'], 'gene': ['fwdNoExon']}),
+        SeqFeature(CompoundLocation([SimpleLocation(150, 500, strand=1), SimpleLocation(900, 1500, strand=1), SimpleLocation(2000, 2400, strand=1)]),
+                   type='CDS',
+                   qualifiers={
+                       'locus_tag': ['NOX_FWD_001'], 'gene': ['fwdNoExon'],
+                       'codon_start': ['1'], 'transl_table': ['1'],
+                       'product': ['No-exon forward protein'],
+                       'translation': ['MFWDNOEX'],
+                   }),
+        # reverse-strand gene with 2-segment mRNA + 2-segment CDS, no literal exons
+        SeqFeature(SimpleLocation(2999, 4500, strand=-1), type='gene',
+                   qualifiers={'locus_tag': ['NOX_REV_002'], 'gene': ['revNoExon']}),
+        SeqFeature(CompoundLocation([SimpleLocation(3999, 4500, strand=-1), SimpleLocation(2999, 3500, strand=-1)]),
+                   type='mRNA',
+                   qualifiers={'locus_tag': ['NOX_REV_002'], 'gene': ['revNoExon']}),
+        SeqFeature(CompoundLocation([SimpleLocation(3999, 4400, strand=-1), SimpleLocation(3100, 3500, strand=-1)]),
+                   type='CDS',
+                   qualifiers={
+                       'locus_tag': ['NOX_REV_002'], 'gene': ['revNoExon'],
+                       'codon_start': ['1'], 'transl_table': ['1'],
+                       'product': ['No-exon reverse protein'],
+                       'translation': ['MREVNOEX'],
+                   }),
+    ]
+
+    rec = _record('eukno_c01', seq, 'Eukaryotic mRNA+CDS-only contig (no literal exons)', features)
+    _write_pair([rec], os.path.join(HERE, 'eukaryotic_no_exon.fa'), os.path.join(HERE, 'eukaryotic_no_exon.gb'))
+
+
+def build_eukaryotic_no_mrna():
+    """Eukaryotic-like gene with gene + multi-segment CDS only — no mRNA, no exon.
+    Used by test 13 (synthesis from CDS when mRNA absent: transcript uses gene coords,
+    exons come from CDS segments)."""
+
+    seq = 'ACGT' * 1000   # 4000 bp
+
+    features = [
+        SeqFeature(SimpleLocation(99, 2500, strand=1), type='gene',
+                   qualifiers={'locus_tag': ['NMR_001'], 'gene': ['noMRNA']}),
+        SeqFeature(CompoundLocation([SimpleLocation(200, 700, strand=1), SimpleLocation(1100, 1600, strand=1), SimpleLocation(2000, 2400, strand=1)]),
+                   type='CDS',
+                   qualifiers={
+                       'locus_tag': ['NMR_001'], 'gene': ['noMRNA'],
+                       'codon_start': ['1'], 'transl_table': ['1'],
+                       'product': ['No-mRNA protein'],
+                       'translation': ['MNOMRNA'],
+                   }),
+    ]
+    rec = _record('nomrna_c01', seq, 'Gene + multi-segment CDS only (no mRNA, no exon)', features)
+    _write_pair([rec], os.path.join(HERE, 'eukaryotic_no_mrna.fa'), os.path.join(HERE, 'eukaryotic_no_mrna.gb'))
+
+
+def build_pseudogene():
+    """Pseudogene-style annotation: gene + mRNA(join), no CDS. Used by test 14
+    (synthesis from mRNA when CDS absent)."""
+
+    seq = 'ACGT' * 1000   # 4000 bp
+
+    features = [
+        SeqFeature(SimpleLocation(99, 2500, strand=1), type='gene',
+                   qualifiers={'locus_tag': ['PSEUDO_001'], 'gene': ['pseudoGene'], 'pseudo': ['']}),
+        SeqFeature(CompoundLocation([SimpleLocation(99, 500, strand=1), SimpleLocation(900, 1500, strand=1), SimpleLocation(2000, 2500, strand=1)]),
+                   type='mRNA',
+                   qualifiers={'locus_tag': ['PSEUDO_001'], 'gene': ['pseudoGene'], 'pseudo': ['']}),
+    ]
+    rec = _record('pseudo_c01', seq, 'Pseudogene: gene + mRNA(join), no CDS', features)
+    _write_pair([rec], os.path.join(HERE, 'pseudogene.fa'), os.path.join(HERE, 'pseudogene.gb'))
+
+
+def build_ncrna_trna():
+    """Non-mRNA RNA annotations: one gene with an ncRNA child, one gene with a tRNA child.
+    Both RNA features are single-segment. Used by test 15 (verifies step 13 extension
+    links non-mRNA RNAs to gene parents AND synthesis produces transcripts with the
+    correct derivation labels)."""
+
+    seq = 'ACGT' * 500   # 2000 bp
+
+    features = [
+        # gene containing an ncRNA
+        SeqFeature(SimpleLocation(99, 400, strand=1), type='gene',
+                   qualifiers={'locus_tag': ['NC_001'], 'gene': ['someNcRNA']}),
+        SeqFeature(SimpleLocation(99, 400, strand=1), type='ncRNA',
+                   qualifiers={'locus_tag': ['NC_001'], 'gene': ['someNcRNA'],
+                               'ncRNA_class': ['lncRNA'], 'product': ['long non-coding RNA']}),
+        # gene containing a tRNA
+        SeqFeature(SimpleLocation(799, 900, strand=-1), type='gene',
+                   qualifiers={'locus_tag': ['TR_001'], 'gene': ['someTRNA']}),
+        SeqFeature(SimpleLocation(799, 900, strand=-1), type='tRNA',
+                   qualifiers={'locus_tag': ['TR_001'], 'gene': ['someTRNA'],
+                               'product': ['tRNA-Leu']}),
+    ]
+    rec = _record('ncrna_c01', seq, 'ncRNA + tRNA contig', features)
+    _write_pair([rec], os.path.join(HERE, 'ncrna_trna.fa'), os.path.join(HERE, 'ncrna_trna.gb'))
+
+
+def build_lone_gene():
+    """One linear contig with a single gene feature and no children. Used by test 16
+    (case 3 of synthesis — gene-only synthesizes one transcript + one exon, both
+    derivation='gene')."""
+
+    seq = 'ACGT' * 250   # 1000 bp
+
+    features = [
+        SeqFeature(SimpleLocation(199, 800, strand=1), type='gene',
+                   qualifiers={'locus_tag': ['LONE_001'], 'gene': ['loneGene']}),
+    ]
+    rec = _record('lone_c01', seq, 'Lone gene with no children', features)
+    _write_pair([rec], os.path.join(HERE, 'lone_gene.fa'), os.path.join(HERE, 'lone_gene.gb'))
+
+
+def build_multi_isoform():
+    """One gene with two mRNA isoforms sharing the first exon coordinate. The two mRNAs
+    carry distinct `locus_tag` values per NCBI convention so the 9-field hash keeps them
+    distinct. Used by test 18 (alternative splicing)."""
+
+    seq = 'ACGT' * 1500   # 6000 bp
+
+    features = [
+        # encompassing gene. We deliberately omit locus_tag on the gene so that the v25
+        # matching cascade falls through from locus_tag (mRNAs have distinct ones) to the
+        # shared `gene` qualifier — that's how the two mRNAs get linked to this gene.
+        SeqFeature(SimpleLocation(99, 5000, strand=1), type='gene',
+                   qualifiers={'gene': ['twoIsoformGene']}),
+        # isoform A: exons at [99, 500), [900, 1500), [2000, 2500)
+        SeqFeature(CompoundLocation([SimpleLocation(99, 500, strand=1), SimpleLocation(900, 1500, strand=1), SimpleLocation(2000, 2500, strand=1)]),
+                   type='mRNA',
+                   qualifiers={'locus_tag': ['ISO_A_001'], 'gene': ['twoIsoformGene'], 'note': ['isoform A']}),
+        SeqFeature(CompoundLocation([SimpleLocation(150, 500, strand=1), SimpleLocation(900, 1500, strand=1), SimpleLocation(2000, 2400, strand=1)]),
+                   type='CDS',
+                   qualifiers={'locus_tag': ['ISO_A_001'], 'gene': ['twoIsoformGene'],
+                               'codon_start': ['1'], 'transl_table': ['1'],
+                               'product': ['Isoform A protein'],
+                               'translation': ['MISOFORMA']}),
+        # isoform B: shares the first exon at [99, 500), then diverges to [3000, 3500), [4500, 5000)
+        SeqFeature(CompoundLocation([SimpleLocation(99, 500, strand=1), SimpleLocation(3000, 3500, strand=1), SimpleLocation(4500, 5000, strand=1)]),
+                   type='mRNA',
+                   qualifiers={'locus_tag': ['ISO_B_001'], 'gene': ['twoIsoformGene'], 'note': ['isoform B']}),
+        SeqFeature(CompoundLocation([SimpleLocation(150, 500, strand=1), SimpleLocation(3000, 3500, strand=1), SimpleLocation(4500, 4900, strand=1)]),
+                   type='CDS',
+                   qualifiers={'locus_tag': ['ISO_B_001'], 'gene': ['twoIsoformGene'],
+                               'codon_start': ['1'], 'transl_table': ['1'],
+                               'product': ['Isoform B protein'],
+                               'translation': ['MISOFORMB']}),
+    ]
+    rec = _record('iso_c01', seq, 'Multi-isoform gene with two mRNAs sharing an exon coordinate', features)
+    _write_pair([rec], os.path.join(HERE, 'multi_isoform.fa'), os.path.join(HERE, 'multi_isoform.gb'))
+
+
 if __name__ == '__main__':
     build_bacterial()
     build_eukaryotic()
     build_circular_origin_crossing()
     build_malformed_linear_origin()
     build_unknown_type()
+    build_eukaryotic_no_exon()
+    build_eukaryotic_no_mrna()
+    build_pseudogene()
+    build_ncrna_trna()
+    build_lone_gene()
+    build_multi_isoform()
     print("All fixtures rebuilt.")

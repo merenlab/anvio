@@ -185,6 +185,18 @@ class GenbankFeatureImporter:
                                             #                  'contig', 'feature_type', 'min_start', 'max_stop',
                                             #                  'locus_tag', 'gene_q'}
 
+        # step 13.5 synthesis side-tables. Populated by `_synthesize_pass2` and merged
+        # into `self.features` / `self.relationships` once the per-gene loop and the
+        # uniqueness check are done. Kept separate during synthesis so the duplicate
+        # check operates only on the synthesized set.
+        self.synthesized_features = []
+        self.synthesized_relationships = []
+        self.synth_counts = {
+            'transcripts_by_derivation': {},
+            'exons_by_derivation': {},
+            'genes_without_synthesized_transcript': 0,
+        }
+
         # summary counters
         self.counts = {
             'features_inserted': 0,
@@ -215,6 +227,8 @@ class GenbankFeatureImporter:
             self._parse_genbank_pass1()
             self.progress.update("Resolving relationships (pass 2)...")
             self._resolve_pass2()
+            self.progress.update("Synthesizing transcript and exon hierarchy (step 13.5)...")
+            self._synthesize_pass2()
             self.progress.update("Writing features to the database...")
             self._write()
         finally:
@@ -746,6 +760,394 @@ class GenbankFeatureImporter:
                 matched.append(pfid)
 
         return matched
+
+
+    # -----------------------------------------------------------------
+    # Pass 2 step 13.5: synthesis of transcript / exon hierarchy
+    # -----------------------------------------------------------------
+
+    def _synthesize_pass2(self):
+        """Synthesize `transcript` and `exon` rows per gene so the database exposes a
+        uniform gene → transcript → exon hierarchy regardless of how the source GenBank
+        file structured its annotations.
+
+        Runs once per gene canonical feature. The three cases (transcript-source children
+        present, only CDS children, no children) are dispatched by `_synthesize_for_gene`.
+        Synthesis writes into `self.synthesized_features` and `self.synthesized_relationships`
+        first; after a defensive uniqueness check (step 13.5e) the synthesized rows are
+        merged into the main lists for `populate_features` to consume in step 14.
+        """
+
+        # Index relationships by parent_feature_id so per-gene synthesis can find children
+        # in O(1) per lookup rather than scanning self.relationships for each gene.
+        children_by_parent = {}
+        for rel in self.relationships:
+            children_by_parent.setdefault(rel['parent_feature_id'], []).append(rel)
+
+        # fid → row lookup for the literal features. Used throughout synthesis for
+        # coordinate / direction / external_id reads.
+        features_by_fid = {row['feature_id']: row for row in self.features}
+
+        # Process each gene canonical feature. Insertion order in self.groups is
+        # deterministic (Python 3.7+ dict ordering) so synthesized rows are emitted in
+        # a stable order across runs of the same input file.
+        gene_canonical_fids = [fid for fid, info in self.groups.items() if info['feature_type'] == 'gene']
+        for gene_canonical_fid in gene_canonical_fids:
+            produced = self._synthesize_for_gene(gene_canonical_fid, children_by_parent, features_by_fid)
+            if not produced:
+                self.synth_counts['genes_without_synthesized_transcript'] += 1
+                gene_info = self.groups[gene_canonical_fid]
+                self.run.warning(f"Gene '{gene_canonical_fid}' on contig '{gene_info['contig']}' produced no synthesized "
+                                 f"transcript. Every gene should receive at least one — this almost certainly indicates "
+                                 f"an anvi'o bug; please report.")
+
+        # Step 13.5e: defensive uniqueness check on synthesized feature_ids. Synthesized
+        # rows are designed to hash uniquely by construction; this guard catches bugs
+        # and unexpected edge cases rather than relying on the underlying UNIQUE INDEX
+        # to surface a duplicate at insert time.
+        seen = set()
+        for row in self.synthesized_features:
+            if row['feature_id'] in seen:
+                self.progress.end()
+                raise ConfigError(f"Step 13.5e detected two synthesized features with the same feature_id "
+                                  f"'{row['feature_id']}'. Synthesized features are designed to hash uniquely "
+                                  f"by construction; encountering a collision indicates a bug in the synthesis "
+                                  f"layer or extremely pathological input. Refusing to silently merge.")
+            seen.add(row['feature_id'])
+
+        # Merge synthesized rows into the main lists. From here on populate_features
+        # treats them as ordinary feature / relationship rows tagged by `derivation`.
+        self.features.extend(self.synthesized_features)
+        self.relationships.extend(self.synthesized_relationships)
+
+
+    def _synthesize_for_gene(self, gene_canonical_fid, children_by_parent, features_by_fid):
+        """Synthesize transcript(s) and exon(s) for one gene canonical row.
+
+        Dispatches to one of three cases per step 13.5a:
+            1. Transcript-source literal children present → one transcript per source.
+            2. CDS literal children only → one transcript with the gene's coordinates.
+            3. No children at all → one transcript covering the gene.
+
+        Returns True if at least one transcript was synthesized (which should always
+        be the case; the explicit return lets the caller surface a warning if not).
+        """
+
+        # Collect this gene's canonical children, grouped by feature_type. The gene's
+        # canonical fid is always the parent_feature_id in feature_relationships even
+        # when the gene is multi-segment (canonical-parent convention).
+        canonical_children_by_type = self._gather_canonical_children(gene_canonical_fid, children_by_parent)
+
+        # Case 1: at least one transcript-source RNA among the gene's children.
+        # Order: by feature_type alphabetically, then by source min_start within type.
+        # This determinism keeps synthesized-row emission order stable across runs.
+        source_canonicals_in_order = []
+        for ftype in sorted(TRANSCRIPT_SOURCE_TYPES):
+            for fid in sorted(canonical_children_by_type.get(ftype, []),
+                              key=lambda c: self.groups[c]['min_start']):
+                source_canonicals_in_order.append(fid)
+
+        if source_canonicals_in_order:
+            for src_canonical in source_canonicals_in_order:
+                self._synthesize_case1(gene_canonical_fid, src_canonical, children_by_parent, features_by_fid)
+            return True
+
+        # Case 2: no transcript-source children, but CDS children present.
+        cds_canonicals = canonical_children_by_type.get('CDS', [])
+        if cds_canonicals:
+            # Tie-breaker for the unusual multi-CDS-group-under-one-gene case: pick the
+            # CDS group whose spanning extent has the smallest min_start.
+            best_cds = min(cds_canonicals, key=lambda c: self.groups[c]['min_start'])
+            self._synthesize_case2(gene_canonical_fid, best_cds, features_by_fid)
+            return True
+
+        # Case 3: lone gene — no transcript-source, no CDS children.
+        self._synthesize_case3(gene_canonical_fid, features_by_fid)
+        return True
+
+
+    def _gather_canonical_children(self, parent_canonical_fid, children_by_parent):
+        """Return `{feature_type: [canonical_fid, ...]}` for the children of `parent_canonical_fid`.
+
+        Multi-segment children appear once (by their canonical fid). Children whose
+        canonical fid is not registered in `self.feature_meta` are skipped (defensive
+        — shouldn't happen in practice since step 13 only adds rows for known features).
+        """
+
+        result = {}
+        seen_canonical = set()
+        for rel in children_by_parent.get(parent_canonical_fid, []):
+            child_fid = rel['child_feature_id']
+            meta = self.feature_meta.get(child_fid)
+            if not meta:
+                continue
+            child_canonical = meta['canonical_fid']
+            if child_canonical in seen_canonical:
+                continue
+            seen_canonical.add(child_canonical)
+            result.setdefault(meta['feature_type'], []).append(child_canonical)
+        return result
+
+
+    def _synthesize_case1(self, gene_canonical_fid, src_canonical_fid, children_by_parent, features_by_fid):
+        """Case 1 of step 13.5a: synthesize one transcript from a transcript-source literal."""
+
+        src_info = self.groups[src_canonical_fid]
+        src_canonical_row = features_by_fid[src_canonical_fid]
+        derivation = src_info['feature_type']
+        external_id = src_info['locus_tag']
+        contig = src_info['contig']
+        direction = src_canonical_row['direction']
+        src_segments = src_info['segments']
+
+        # Origin-crossing sources synthesize a multi-segment transcript with 1:1 segment
+        # correspondence. Non-origin-crossing sources synthesize a single-segment transcript
+        # spanning the whole source extent; the per-segment structure goes to exons in 13.5b(ii).
+        if self._is_origin_crossing_for_canonical(src_canonical_fid, features_by_fid):
+            transcript_coords = [(features_by_fid[s]['start'], features_by_fid[s]['stop']) for s in src_segments]
+        else:
+            transcript_coords = [(src_info['min_start'], src_info['max_stop'])]
+
+        # Inherit the source's 5' and 3' partial flags. The 5' flag lives on the canonical
+        # (segment_order=0) row; the 3' flag lives on the last segment in transcription order.
+        partial_5p = src_canonical_row['partial_fiveprime']
+        partial_3p = features_by_fid[src_segments[-1]]['partial_threeprime']
+
+        transcript_canonical_fid = self._add_transcript_rows(
+            gene_canonical_fid, contig, direction, transcript_coords,
+            external_id, derivation, src_canonical_fid, partial_5p, partial_3p,
+        )
+
+        # Step 13.5b(i): re-parent every literal child of the source to the synthesized
+        # transcript with `part_of`. The original relationship rows are not modified —
+        # both coexist.
+        for rel in children_by_parent.get(src_canonical_fid, []):
+            self.synthesized_relationships.append({
+                'child_feature_id':  rel['child_feature_id'],
+                'parent_feature_id': transcript_canonical_fid,
+                'relationship':      'part_of',
+            })
+
+        # Step 13.5b(ii): synthesize exons unless any literal exon is reachable from the
+        # synthesized transcript (which is equivalent to: any literal exon child of the source).
+        if not self._has_literal_exon_among_children(src_canonical_fid, children_by_parent):
+            for src_seg_fid in src_segments:
+                src_seg_row = features_by_fid[src_seg_fid]
+                self._add_exon_row(transcript_canonical_fid, contig, direction,
+                                   src_seg_row['start'], src_seg_row['stop'],
+                                   src_seg_row['external_id'], derivation, src_seg_fid)
+
+
+    def _synthesize_case2(self, gene_canonical_fid, cds_canonical_fid, features_by_fid):
+        """Case 2 of step 13.5a: synthesize ONE transcript from a CDS (gene has CDS children
+        but no transcript-source children). Coordinates are the GENE's, not the CDS's, since
+        gene coordinates capture the annotator's intent including UTRs (in eukaryotes).
+        """
+
+        gene_info = self.groups[gene_canonical_fid]
+        gene_canonical_row = features_by_fid[gene_canonical_fid]
+        cds_info = self.groups[cds_canonical_fid]
+        contig = gene_info['contig']
+        direction = gene_canonical_row['direction']
+        external_id = gene_canonical_row['external_id']
+
+        if self._is_origin_crossing_for_canonical(gene_canonical_fid, features_by_fid):
+            gene_segments = gene_info['segments']
+            transcript_coords = [(features_by_fid[s]['start'], features_by_fid[s]['stop']) for s in gene_segments]
+        else:
+            transcript_coords = [(gene_info['min_start'], gene_info['max_stop'])]
+
+        partial_5p = gene_canonical_row['partial_fiveprime']
+        partial_3p = features_by_fid[gene_info['segments'][-1]]['partial_threeprime']
+
+        transcript_canonical_fid = self._add_transcript_rows(
+            gene_canonical_fid, contig, direction, transcript_coords,
+            external_id, 'CDS', cds_canonical_fid, partial_5p, partial_3p,
+        )
+
+        # Step 13.5b(i) special case: the CDS is the *source* (not a child of one), so
+        # link every CDS segment to the synthesized transcript with `part_of`. This is
+        # in addition to the CDS's step-13 `derives_from gene` relationship.
+        for cds_seg_fid in cds_info['segments']:
+            self.synthesized_relationships.append({
+                'child_feature_id':  cds_seg_fid,
+                'parent_feature_id': transcript_canonical_fid,
+                'relationship':      'part_of',
+            })
+
+        # Step 13.5b(ii): one exon per CDS segment. UTRs absent — `derivation='CDS'` tells
+        # consumers these exons reflect only the coding portion.
+        for cds_seg_fid in cds_info['segments']:
+            cds_seg_row = features_by_fid[cds_seg_fid]
+            self._add_exon_row(transcript_canonical_fid, contig, direction,
+                               cds_seg_row['start'], cds_seg_row['stop'],
+                               cds_seg_row['external_id'], 'CDS', cds_seg_fid)
+
+
+    def _synthesize_case3(self, gene_canonical_fid, features_by_fid):
+        """Case 3 of step 13.5a: lone gene — no transcript-source, no CDS children.
+
+        Synthesize one transcript covering the gene and one exon per gene segment
+        (almost always one, since multi-segment genes are exceedingly rare).
+        """
+
+        gene_info = self.groups[gene_canonical_fid]
+        gene_canonical_row = features_by_fid[gene_canonical_fid]
+        contig = gene_info['contig']
+        direction = gene_canonical_row['direction']
+        external_id = gene_canonical_row['external_id']
+        gene_segments = gene_info['segments']
+
+        if self._is_origin_crossing_for_canonical(gene_canonical_fid, features_by_fid):
+            transcript_coords = [(features_by_fid[s]['start'], features_by_fid[s]['stop']) for s in gene_segments]
+        else:
+            transcript_coords = [(gene_info['min_start'], gene_info['max_stop'])]
+
+        partial_5p = gene_canonical_row['partial_fiveprime']
+        partial_3p = features_by_fid[gene_segments[-1]]['partial_threeprime']
+
+        transcript_canonical_fid = self._add_transcript_rows(
+            gene_canonical_fid, contig, direction, transcript_coords,
+            external_id, 'gene', gene_canonical_fid, partial_5p, partial_3p,
+        )
+
+        # Step 13.5b(ii): one exon per gene segment. For the typical single-segment gene
+        # this collapses to one exon spanning the whole gene.
+        for seg_fid in gene_segments:
+            seg_row = features_by_fid[seg_fid]
+            self._add_exon_row(transcript_canonical_fid, contig, direction,
+                               seg_row['start'], seg_row['stop'],
+                               seg_row['external_id'], 'gene', seg_fid)
+
+
+    def _add_transcript_rows(self, gene_canonical_fid, contig, direction, segment_coords,
+                             external_id, derivation, derived_from_canonical_fid,
+                             partial_5p, partial_3p):
+        """Append synthesized transcript rows and their `part_of gene` relationships.
+
+        `segment_coords` is a list of `(start, stop)` tuples in transcription order. A
+        single-element list produces a single-segment transcript (NULL `feature_group_id`
+        and `segment_order` per the v25 convention); a multi-element list produces a
+        multi-segment transcript sharing the canonical row's fid as `feature_group_id`.
+        Returns the canonical (segment_order=0) row's feature_id.
+        """
+
+        multi_segment = len(segment_coords) > 1
+        seg_fids = []
+        for start, stop in segment_coords:
+            fid = compute_feature_id(contig, 'transcript', self.source_name, start, stop, direction,
+                                     external_id=external_id, derivation=derivation,
+                                     derived_from_feature_id=derived_from_canonical_fid)
+            seg_fids.append(fid)
+        canonical_fid = seg_fids[0]
+        last_idx = len(segment_coords) - 1
+
+        for idx, (start, stop) in enumerate(segment_coords):
+            row = {
+                'feature_id':              seg_fids[idx],
+                'contig':                  contig,
+                'feature_type':            'transcript',
+                'source':                  self.source_name,
+                'start':                   start,
+                'stop':                    stop,
+                'direction':               direction,
+                'partial_fiveprime':       partial_5p if idx == 0        else 0,
+                'partial_threeprime':      partial_3p if idx == last_idx else 0,
+                'feature_group_id':        canonical_fid if multi_segment else None,
+                'segment_order':           idx if multi_segment else None,
+                'external_id':             external_id,
+                'gene_callers_id':         None,
+                'derivation':              derivation,
+                'derived_from_feature_id': derived_from_canonical_fid,
+            }
+            self.synthesized_features.append(row)
+            # Canonical-parent convention: every transcript segment becomes a child of the
+            # gene's canonical fid (not of the gene's segments).
+            self.synthesized_relationships.append({
+                'child_feature_id':  seg_fids[idx],
+                'parent_feature_id': gene_canonical_fid,
+                'relationship':      'part_of',
+            })
+
+        self.synth_counts['transcripts_by_derivation'][derivation] = \
+            self.synth_counts['transcripts_by_derivation'].get(derivation, 0) + 1
+
+        return canonical_fid
+
+
+    def _add_exon_row(self, transcript_canonical_fid, contig, direction,
+                      start, stop, external_id, derivation, derived_from_fid):
+        """Append one synthesized exon row, parented to the synthesized transcript.
+
+        Synthesized exons are always single-segment in `contigs_sequence_features`. A
+        multi-segment source produces multiple independent single-segment exon rows,
+        each pointing back to its source segment via `derived_from_feature_id`.
+        """
+
+        fid = compute_feature_id(contig, 'exon', self.source_name, start, stop, direction,
+                                 external_id=external_id, derivation=derivation,
+                                 derived_from_feature_id=derived_from_fid)
+        row = {
+            'feature_id':              fid,
+            'contig':                  contig,
+            'feature_type':            'exon',
+            'source':                  self.source_name,
+            'start':                   start,
+            'stop':                    stop,
+            'direction':               direction,
+            'partial_fiveprime':       0,
+            'partial_threeprime':      0,
+            'feature_group_id':        None,
+            'segment_order':           None,
+            'external_id':             external_id,
+            'gene_callers_id':         None,
+            'derivation':              derivation,
+            'derived_from_feature_id': derived_from_fid,
+        }
+        self.synthesized_features.append(row)
+        self.synthesized_relationships.append({
+            'child_feature_id':  fid,
+            'parent_feature_id': transcript_canonical_fid,
+            'relationship':      'part_of',
+        })
+        self.synth_counts['exons_by_derivation'][derivation] = \
+            self.synth_counts['exons_by_derivation'].get(derivation, 0) + 1
+
+
+    def _has_literal_exon_among_children(self, parent_canonical_fid, children_by_parent):
+        """Return True iff any literal `exon` feature is a child of `parent_canonical_fid`."""
+
+        for rel in children_by_parent.get(parent_canonical_fid, []):
+            meta = self.feature_meta.get(rel['child_feature_id'])
+            if meta and meta['feature_type'] == 'exon':
+                return True
+        return False
+
+
+    def _is_origin_crossing_for_canonical(self, canonical_fid, features_by_fid):
+        """Detect origin-crossing for an existing canonical group by inspecting segment coords.
+
+        Mirrors the predicate used by pass 1 (`_is_origin_crossing`) but operates on the
+        already-parsed `self.features` rows rather than Biopython part objects, so it can
+        be called during synthesis when only canonical fids are at hand.
+        """
+
+        info = self.groups[canonical_fid]
+        contig = info['contig']
+        if not self.contig_is_circular.get(contig, False):
+            return False
+        if len(info['segments']) < 2:
+            return False
+        contig_length = self.contig_lengths[contig]
+        starts_at_zero = False
+        ends_at_length = False
+        for seg_fid in info['segments']:
+            seg = features_by_fid[seg_fid]
+            if seg['start'] == 0:
+                starts_at_zero = True
+            if seg['stop'] == contig_length:
+                ends_at_length = True
+        return starts_at_zero and ends_at_length
 
 
     # -----------------------------------------------------------------
