@@ -4594,6 +4594,16 @@ class ProfileSuperclass(object):
         return d
 
 
+    def get_blank_clippings_dict(self):
+        """Returns an empty clippings dictionary to be filled elsewhere"""
+        d = {}
+
+        for sample_name in self.p_meta['samples']:
+            d[sample_name] = {'clippings': {}}
+
+        return d
+
+
     def get_variability_information_for_split(self, split_name, skip_outlier_SNVs=False, return_raw_results=False):
         if not split_name in self.split_names:
             raise ConfigError("get_variability_information_for_split: The split name '%s' does not seem to be "
@@ -4644,6 +4654,29 @@ class ProfileSuperclass(object):
 
         for i, e in enumerate(split_indels_information):
             d[e['sample_id']]['indels'][i] = e
+
+        self.progress.end()
+
+        return d
+
+
+    def get_clippings_information_for_split(self, split_name):
+        if not split_name in self.split_names:
+            raise ConfigError("get_clippings_information_for_split: The split name '%s' does not seem to be "
+                               "represented in this profile database. Are you sure you are looking for it "
+                               "in the right database?" % split_name)
+
+        self.progress.new('Recovering clippings information for split', discard_previous_if_exists=True)
+        self.progress.update('...')
+
+        profile_db = ProfileDatabase(self.profile_db_path)
+        split_clippings_information = list(profile_db.db.get_some_rows_from_table_as_dict(t.clippings_table_name, '''split_name = "%s"''' % split_name, error_if_no_data=False).values())
+        profile_db.disconnect()
+
+        d = self.get_blank_clippings_dict()
+
+        for i, e in enumerate(split_clippings_information):
+            d[e['sample_id']]['clippings'][i] = e
 
         self.progress.end()
 

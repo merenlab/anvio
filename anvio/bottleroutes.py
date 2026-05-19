@@ -536,6 +536,7 @@ class BottleApplication(Bottle):
                  'coverage': [],
                  'variability': [],
                  'indels': [],
+                 'clippings': [],
                  'competing_nucleotides': [],
                  'previous_contig_name': None,
                  'next_contig_name': None,
@@ -592,12 +593,16 @@ class BottleApplication(Bottle):
         ## get the indels information dict for split:
         split_indels_info_dict = self.interactive.get_indels_information_for_split(split_name)
 
+        ## get the clippings information dict for split:
+        split_clippings_info_dict = self.interactive.get_clippings_information_for_split(split_name)
+
         # building layer data
         for layer in layers:
             data['layers'].append(layer)
             data['competing_nucleotides'].append(split_variability_info_dict[layer]['competing_nucleotides'])
             data['variability'].append(split_variability_info_dict[layer]['variability'])
             data['indels'].append(split_indels_info_dict[layer]['indels'])
+            data['clippings'].append(split_clippings_info_dict[layer]['clippings'])
 
         levels_occupied = {1: []}
         gene_entries_in_split = self.interactive.split_name_to_genes_in_splits_entry_ids[split_name]
@@ -749,6 +754,7 @@ class BottleApplication(Bottle):
                  'coverage': [],
                  'variability': [],
                  'indels': [],
+                 'clippings': [],
                  'competing_nucleotides': [],
                  'previous_contig_name': None,
                  'next_contig_name': None,
@@ -830,6 +836,30 @@ class BottleApplication(Bottle):
                     indels_dict[indel_entry_id]['pos'] = indels_dict[indel_entry_id]['pos'] - focus_region_start
 
             data['indels'].append(indels_dict)
+
+        progress.end()
+
+        ## get the clippings information dict for split:
+        progress.new('Clippings')
+        progress.update('Collecting info for "%s"' % split_name)
+        split_clippings_info_dict = self.interactive.get_clippings_information_for_split(split_name)
+
+        for layer in layers:
+            progress.update('Formatting clippings data: "%s"' % layer)
+
+            clippings_dict_original = copy.deepcopy(split_clippings_info_dict[layer]['clippings'])
+            clippings_dict = {}
+            for clip_entry_id in clippings_dict_original:
+                pos = clippings_dict_original[clip_entry_id]['pos']
+                if pos < focus_region_start or pos > focus_region_end:
+                    continue
+                else:
+                    clippings_dict[clip_entry_id] = clippings_dict_original[clip_entry_id]
+                    clippings_dict[clip_entry_id]['pos'] = clippings_dict[clip_entry_id]['pos'] - focus_region_start
+
+            data['clippings'].append(clippings_dict)
+
+        progress.end()
 
         levels_occupied = {1: []}
         gene_entries_in_split = self.interactive.split_name_to_genes_in_splits_entry_ids[split_name]
