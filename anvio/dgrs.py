@@ -542,32 +542,65 @@ class DGR_Finder:
 
     def init_snv_table(self):
         """
-        Initialise the snv table but only the columns that we need.
+        Load the SNV table using chunked SQL reads to avoid a single large memory allocation.
+
+        The departure_from_reference filter is applied at the SQL level so only qualifying
+        rows are transferred from SQLite to Python.  Each chunk is immediately downcast to
+        compact dtypes (int32/int8/float32/category) before being appended, keeping peak
+        memory to O(one_chunk + accumulated_filtered_rows) rather than O(full_table).
 
         Returns
         =======
-        self.snv_panda : pandas df
-            Dataframe containing all of the snv information
-
+        self.snv_panda : pandas.DataFrame
+            Per-sample SNV records that pass the departure threshold, sorted by
+            split_name then pos_in_contig.
         """
-        # load SNV data
-        profile_db = dbops.ProfileDatabase(self.profile_db_path)
         columns_of_interest = [
             'sample_id', 'split_name', 'pos_in_contig', 'base_pos_in_codon',
             'departure_from_reference', 'reference'
         ] + nucleotides
-        self.snv_panda = profile_db.db.get_table_as_dataframe(
-            t.variable_nts_table_name,
-            columns_of_interest=columns_of_interest
-        ).sort_values(by=['split_name', 'pos_in_contig'])
-        self.snv_panda['contig_name'] = self.snv_panda['split_name'].str.split('_split_').str[0]
+
+        col_list = ', '.join(f'"{c}"' for c in columns_of_interest)
+        query = (f'SELECT {col_list} FROM "{t.variable_nts_table_name}" '
+                 f'WHERE departure_from_reference >= ? '
+                 f'ORDER BY split_name, pos_in_contig')
+
+        # 5 M rows per chunk: each raw chunk is ~400 MB; after downcasting ~120 MB.
+        CHUNK_SIZE = 5_000_000
+
+        profile_db = dbops.ProfileDatabase(self.profile_db_path)
+        self.run.info_single("Loading SNV table in chunks (this may take a few minutes for large datasets)...", nl_before=1)
+
+        chunks = []
+        for chunk in pd.read_sql_query(query, profile_db.db.conn,
+                                       params=(self.departure_from_reference_percentage,),
+                                       chunksize=CHUNK_SIZE):
+            # Derive contig_name while split_name is still a plain string column.
+            chunk['contig_name'] = chunk['split_name'].str.split('_split_').str[0]
+
+            # Downcast numerics to halve memory versus the default int64/float64.
+            chunk['pos_in_contig'] = chunk['pos_in_contig'].astype(np.int32)
+            chunk['base_pos_in_codon'] = chunk['base_pos_in_codon'].astype(np.int8)
+            chunk['departure_from_reference'] = chunk['departure_from_reference'].astype(np.float32)
+            for col in nucleotides:
+                chunk[col] = chunk[col].astype(np.int32)
+
+            # String columns as categories: one shared dictionary of unique values
+            # replaces per-row string objects (large saving for sample_id / split_name).
+            for col in ('sample_id', 'split_name', 'contig_name', 'reference'):
+                chunk[col] = chunk[col].astype('category')
+
+            chunks.append(chunk)
+
         profile_db.disconnect()
 
-        # filter on departure_from_reference only — keep all codon positions so
-        # analyze_snv_pattern() can assess 3rd codon position SNVs later.
-        # VR candidate detection (find_snv_clusters) applies the codon 1+2
-        # filter on the fly via a combined boolean mask.
-        self.snv_panda = self.snv_panda.query("departure_from_reference >= @self.departure_from_reference_percentage")
+        if not chunks:
+            self.snv_panda = pd.DataFrame(columns=columns_of_interest + ['contig_name'])
+        else:
+            # concat with ignore_index=True; ORDER BY in SQL ensures the result is
+            # sorted by split_name then pos_in_contig across chunks.
+            self.snv_panda = pd.concat(chunks, ignore_index=True)
+            del chunks
 
         if self.discovery_mode:
             self.run.info_single("Running discovery mode. Search for SNVs in all possible locations. You go Dora the explorer!")
