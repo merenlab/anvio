@@ -1,0 +1,134 @@
+LOCUS       bact_c01                2000 bp    DNA     linear   BCT 01-JAN-1980
+DEFINITION  Bacterial test contig 1.
+ACCESSION   bact_c01
+VERSION     bact_c01
+KEYWORDS    .
+SOURCE      .
+  ORGANISM  .
+            .
+FEATURES             Location/Qualifiers
+     gene            100..500
+                     /locus_tag="TST_001"
+                     /gene="testA"
+     CDS             100..500
+                     /locus_tag="TST_001"
+                     /gene="testA"
+                     /codon_start=1
+                     /transl_table=11
+                     /product="Test protein A"
+                     /protein_id="TST_PROT_A"
+                     /translation="MTESTPROTA"
+                     /db_xref="REF:first"
+                     /db_xref="REF:second"
+                     /note="this is a note with whitespace"
+     gene            complement(600..900)
+                     /locus_tag="TST_002"
+                     /gene="testB"
+     CDS             complement(600..900)
+                     /locus_tag="TST_002"
+                     /gene="testB"
+                     /codon_start=1
+                     /transl_table=11
+                     /product="Test protein B"
+                     /translation="MTESTPROTB"
+     gene            1200..1500
+                     /locus_tag="TST_003"
+                     /gene="testC"
+     CDS             1200..1500
+                     /locus_tag="TST_003"
+                     /gene="testC"
+                     /codon_start=1
+                     /transl_table=11
+                     /product="Test protein C"
+                     /translation="MTESTPROTC"
+ORIGIN
+        1 acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt
+       61 acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt
+      121 acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt
+      181 acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt
+      241 acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt
+      301 acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt
+      361 acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt
+      421 acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt
+      481 acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt
+      541 acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt
+      601 acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt
+      661 acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt
+      721 acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt
+      781 acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt
+      841 acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt
+      901 acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt
+      961 acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt
+     1021 acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt
+     1081 acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt
+     1141 acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt
+     1201 acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt
+     1261 acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt
+     1321 acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt
+     1381 acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt
+     1441 acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt
+     1501 acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt
+     1561 acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt
+     1621 acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt
+     1681 acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt
+     1741 acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt
+     1801 acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt
+     1861 acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt
+     1921 acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt acgtacgtac gtacgtacgt
+     1981 acgtacgtac gtacgtacgt
+//
+LOCUS       bact_c02                2000 bp    DNA     linear   BCT 01-JAN-1980
+DEFINITION  Bacterial test contig 2.
+ACCESSION   bact_c02
+VERSION     bact_c02
+KEYWORDS    .
+SOURCE      .
+  ORGANISM  .
+            .
+FEATURES             Location/Qualifiers
+     gene            100..700
+                     /locus_tag="TST_004"
+                     /gene="testD"
+     CDS             100..700
+                     /locus_tag="TST_004"
+                     /gene="testD"
+                     /codon_start=1
+                     /transl_table=11
+                     /product="Test protein D"
+                     /translation="MTESTPROTD"
+ORIGIN
+        1 tgcatgcatg catgcatgca tgcatgcatg catgcatgca tgcatgcatg catgcatgca
+       61 tgcatgcatg catgcatgca tgcatgcatg catgcatgca tgcatgcatg catgcatgca
+      121 tgcatgcatg catgcatgca tgcatgcatg catgcatgca tgcatgcatg catgcatgca
+      181 tgcatgcatg catgcatgca tgcatgcatg catgcatgca tgcatgcatg catgcatgca
+      241 tgcatgcatg catgcatgca tgcatgcatg catgcatgca tgcatgcatg catgcatgca
+      301 tgcatgcatg catgcatgca tgcatgcatg catgcatgca tgcatgcatg catgcatgca
+      361 tgcatgcatg catgcatgca tgcatgcatg catgcatgca tgcatgcatg catgcatgca
+      421 tgcatgcatg catgcatgca tgcatgcatg catgcatgca tgcatgcatg catgcatgca
+      481 tgcatgcatg catgcatgca tgcatgcatg catgcatgca tgcatgcatg catgcatgca
+      541 tgcatgcatg catgcatgca tgcatgcatg catgcatgca tgcatgcatg catgcatgca
+      601 tgcatgcatg catgcatgca tgcatgcatg catgcatgca tgcatgcatg catgcatgca
+      661 tgcatgcatg catgcatgca tgcatgcatg catgcatgca tgcatgcatg catgcatgca
+      721 tgcatgcatg catgcatgca tgcatgcatg catgcatgca tgcatgcatg catgcatgca
+      781 tgcatgcatg catgcatgca tgcatgcatg catgcatgca tgcatgcatg catgcatgca
+      841 tgcatgcatg catgcatgca tgcatgcatg catgcatgca tgcatgcatg catgcatgca
+      901 tgcatgcatg catgcatgca tgcatgcatg catgcatgca tgcatgcatg catgcatgca
+      961 tgcatgcatg catgcatgca tgcatgcatg catgcatgca tgcatgcatg catgcatgca
+     1021 tgcatgcatg catgcatgca tgcatgcatg catgcatgca tgcatgcatg catgcatgca
+     1081 tgcatgcatg catgcatgca tgcatgcatg catgcatgca tgcatgcatg catgcatgca
+     1141 tgcatgcatg catgcatgca tgcatgcatg catgcatgca tgcatgcatg catgcatgca
+     1201 tgcatgcatg catgcatgca tgcatgcatg catgcatgca tgcatgcatg catgcatgca
+     1261 tgcatgcatg catgcatgca tgcatgcatg catgcatgca tgcatgcatg catgcatgca
+     1321 tgcatgcatg catgcatgca tgcatgcatg catgcatgca tgcatgcatg catgcatgca
+     1381 tgcatgcatg catgcatgca tgcatgcatg catgcatgca tgcatgcatg catgcatgca
+     1441 tgcatgcatg catgcatgca tgcatgcatg catgcatgca tgcatgcatg catgcatgca
+     1501 tgcatgcatg catgcatgca tgcatgcatg catgcatgca tgcatgcatg catgcatgca
+     1561 tgcatgcatg catgcatgca tgcatgcatg catgcatgca tgcatgcatg catgcatgca
+     1621 tgcatgcatg catgcatgca tgcatgcatg catgcatgca tgcatgcatg catgcatgca
+     1681 tgcatgcatg catgcatgca tgcatgcatg catgcatgca tgcatgcatg catgcatgca
+     1741 tgcatgcatg catgcatgca tgcatgcatg catgcatgca tgcatgcatg catgcatgca
+     1801 tgcatgcatg catgcatgca tgcatgcatg catgcatgca tgcatgcatg catgcatgca
+     1861 tgcatgcatg catgcatgca tgcatgcatg catgcatgca tgcatgcatg catgcatgca
+     1921 tgcatgcatg catgcatgca tgcatgcatg catgcatgca tgcatgcatg catgcatgca
+     1981 tgcatgcatg catgcatgca
+//

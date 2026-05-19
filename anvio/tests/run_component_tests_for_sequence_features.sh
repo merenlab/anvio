@@ -122,5 +122,13 @@ cp $output_dir/FRESH.db $output_dir/POPULATE.db
 python $files/sequence_features/probe_populate_features.py $output_dir/POPULATE.db
 
 ####################################################################################################
+# Test 2.7: GenbankFeatureImporter parsing-correctness probe
+####################################################################################################
+INFO "Test 2.7: probing GenbankFeatureImporter (bacterial, eukaryotic multi-seg, origin-crossing, malformed-linear, unknown type)"
+
+mkdir -p $output_dir/importer_probe
+python $files/sequence_features/probe_importer.py $output_dir/importer_probe
+
+####################################################################################################
 echo
-echo "Sequence-features component tests 1, 2, 2.5 & 2.6 PASSED."
+echo "Sequence-features component tests 1, 2, 2.5, 2.6 & 2.7 PASSED."
