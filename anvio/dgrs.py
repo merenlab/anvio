@@ -126,6 +126,19 @@ def execute_blast(query_records, target_sequences, temp_dir, word_size, num_thre
     blast.makedb(dbtype='nucl')
     blast.blast(outputfmt='5', word_size=word_size)
 
+    # Remove intermediate files to prevent disk quota exhaustion when processing thousands
+    # of bins. The BLAST XML output is kept; everything else can be deleted immediately.
+    for path in (query_fasta_path, target_fasta_path):
+        try:
+            os.remove(path)
+        except OSError:
+            pass
+    for ext in ('.nhr', '.nin', '.nsq', '.nsi', '.nsd', '.not', '.ntf', '.nto', '.ndb', '.nos', '.njs'):
+        try:
+            os.remove(target_fasta_path + ext)
+        except OSError:
+            pass
+
     return blast_output_path
 
 
