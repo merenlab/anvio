@@ -1257,6 +1257,12 @@ D = {
              'action': 'store_true',
              'help': "List available HMM sources in the contigs database and quit."}
                 ),
+    'list-contig-classification-sources': (
+            ['-l', '--list-contig-classification-sources'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "List available contig classification sources in the contigs database and quit."}
+                ),
     'annotation-source': (
             ['--annotation-source'],
             {'metavar': 'FUNCTION_ANNOTATION_SOURCE',

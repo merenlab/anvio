@@ -18,6 +18,7 @@ __version__ = anvio.__version__
 
 run = terminal.Run()
 progress = terminal.Progress()
+P = terminal.pluralize
 
 
 VALID_CLASSES = {0, 1, 2, 3, 4, 5}
@@ -100,6 +101,79 @@ class TablesForContigClassification:
             class_counts = Counter(CLASS_NAMES[e[1]] for e in source_entries)
             self.run.info(f"Source '{source}'", f"{len(source_entries)} contigs: " +
                           ", ".join(f"{v} {k}" for k, v in sorted(class_counts.items())))
+
+
+    def list_sources(self):
+        database = db.DB(self.contigs_db_path, utils.get_required_version_for_db(self.contigs_db_path))
+        existing_sources_val = database.get_meta_value('contig_classification_sources',
+                                                        return_none_if_not_in_table=True)
+        database.disconnect()
+
+        existing_sources = sorted(existing_sources_val.split(',')) if existing_sources_val else []
+
+        if not existing_sources:
+            self.run.warning("There are no contig classification sources in this database.")
+            return
+
+        self.run.warning(None, header="CONTIG CLASSIFICATION SOURCES", lc='green')
+        for source in existing_sources:
+            self.run.info_single(source)
+
+
+    def delete(self, source=None, just_do_it=False):
+        """Delete contig classification entries from the contigs database.
+
+        Parameters
+        ==========
+        source : str, optional
+            The source to delete. If None, all classification data is deleted.
+        just_do_it : bool, False
+            Must be True to proceed. If False, a ConfigError is raised after
+            reporting what would be deleted.
+        """
+
+        database = db.DB(self.contigs_db_path, utils.get_required_version_for_db(self.contigs_db_path))
+
+        existing_sources_val = database.get_meta_value('contig_classification_sources',
+                                                        return_none_if_not_in_table=True)
+        existing_sources = set(existing_sources_val.split(',')) if existing_sources_val else set()
+
+        if not existing_sources:
+            database.disconnect()
+            self.run.warning("There is no contig classification data in this database. Nothing to delete.")
+            return
+
+        if source:
+            if source not in existing_sources:
+                database.disconnect()
+                raise ConfigError(f"The source '{source}' does not exist in this database. "
+                                  f"Available sources: {', '.join(sorted(existing_sources))}.")
+            sources_to_delete = {source}
+        else:
+            sources_to_delete = existing_sources
+
+        self.run.warning(None, header="SOURCES TO BE DELETED", lc='red')
+        for s in sorted(sources_to_delete):
+            self.run.info_single(s)
+
+        if not just_do_it:
+            database.disconnect()
+            raise ConfigError(f"If you are sure you want to delete the above "
+                              f"{P('source', len(sources_to_delete))}, re-run with --just-do-it.")
+
+        if source:
+            database._exec(f'DELETE FROM {t.contig_classification_table_name} WHERE source = ?', (source,))
+            remaining_sources = existing_sources - {source}
+            database.remove_meta_key_value_pair('contig_classification_sources')
+            database.set_meta_value('contig_classification_sources', ','.join(sorted(remaining_sources)))
+            self.run.info("Deleted classification data for source", source)
+        else:
+            database._exec(f'DELETE FROM {t.contig_classification_table_name}')
+            database.remove_meta_key_value_pair('contig_classification_sources')
+            database.set_meta_value('contig_classification_sources', '')
+            self.run.info("Deleted all contig classification data", f"({len(existing_sources)} source(s) removed)")
+
+        database.disconnect()
 
 
     def get(self, source=None):
