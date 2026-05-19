@@ -141,6 +141,32 @@ gene_level_inseq_stats_table_types     = [    'numeric'    ,     'text'   ,    '
 
 ####################################################################################################
 #
+#     TABLE DESCRIPTIONS FOR ARBITRARY SEQUENCE FEATURES IN THE CONTIGS DATABASE
+#
+####################################################################################################
+
+contigs_sequence_features_table_name      = 'contigs_sequence_features'
+contigs_sequence_features_table_structure = ['feature_id', 'contig', 'feature_type', 'source', 'start' , 'stop'  , 'direction', 'partial_fiveprime', 'partial_threeprime', 'feature_group_id', 'segment_order', 'external_id', 'gene_callers_id']
+contigs_sequence_features_table_types     = [   'text'   , 'text'  ,    'text'     , 'text'  ,'numeric','numeric',   'text'   ,      'numeric'    ,      'numeric'     ,      'text'      ,    'numeric'   ,    'text'   ,    'numeric'    ]
+
+feature_types_table_name      = 'feature_types'
+feature_types_table_structure = ['feature_type', 'is_builtin', 'has_dedicated_table', 'description']
+feature_types_table_types     = [    'text'    ,  'numeric' ,        'numeric'      ,    'text'   ]
+
+feature_relationships_table_name      = 'feature_relationships'
+feature_relationships_table_structure = ['child_feature_id', 'parent_feature_id', 'relationship']
+feature_relationships_table_types     = [      'text'      ,       'text'       ,     'text'    ]
+
+feature_qualifiers_table_name      = 'feature_qualifiers'
+feature_qualifiers_table_structure = ['feature_id', 'key' , 'value', 'position']
+feature_qualifiers_table_types     = [   'text'   , 'text', 'text' , 'numeric' ]
+
+CDS_features_table_name      = 'CDS_features'
+CDS_features_table_structure = ['feature_id', 'codon_start', 'translation', 'transl_table']
+CDS_features_table_types     = [   'text'   ,   'numeric'  ,    'text'    ,    'numeric'  ]
+
+####################################################################################################
+#
 #     ADDITIONAL TABLE DESCRIPTIONS FOR THE TRNASEQ VARIANT OF THE CONTIGS DATABASE
 #
 ####################################################################################################

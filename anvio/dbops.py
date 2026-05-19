@@ -55,6 +55,7 @@ from anvio.tables.miscdata import TableForLayerAdditionalData
 from anvio.tables.kmers import KMerTablesForContigsAndSplits
 from anvio.tables.genelevelcoverages import TableForGeneLevelCoverages
 from anvio.tables.contigsplitinfo import TableForContigsInfo, TableForSplitsInfo
+from anvio.tables.sequencefeatures import create_sequence_features_tables
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
@@ -4904,6 +4905,12 @@ class ContigsDatabase:
         if db_variant == 'trnaseq':
             self.db.create_table(t.trna_seed_feature_table_name, t.trna_seed_feature_table_structure, t.trna_seed_feature_table_types)
             self.db.create_table(t.trna_gene_hits_table_name, t.trna_gene_hits_table_structure, t.trna_gene_hits_table_types)
+
+        # additive in contigs-db v25: arbitrary sequence-features tables and
+        # the builtin feature_types registry. The same function is invoked by
+        # the v24_to_v25 migration script so fresh and migrated databases end
+        # up in the identical end state.
+        create_sequence_features_tables(self.db)
 
         return self.db
 
