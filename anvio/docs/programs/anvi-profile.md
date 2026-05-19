@@ -145,6 +145,21 @@ You should provide the sample name with the flag `-S` and can provide a descript
 
 You can characterize the codon frequencies of genes in your sample at the cost of some runtime. Despite time being money, codon frequency analysis can be helpful downstream. Simply add the tag `--profile-SCVs` and watch the magic happen.
 
+If your BAM files contain base modification tags (`MM`/`ML`), you can ask anvi'o to parse and store them by adding `--include-modifications`. This stores per-nucleotide modification calls in your %(single-profile-db)s for downstream analysis.
+
+### Extending to other BAM tags
+
+The `modifications` table is intentionally generic (`sample_id`, `split_name`, `pos`, `pos_in_contig`, `modification`, `probability`, `strand`, `base`) and can store any per-read, per-position signal as long as you map it into these fields. The current implementation parses `MM`/`ML` via `pysam`’s `read.modified_bases` in `Auxiliary.run_modifications`.
+
+To add support for another tag (e.g., RNA modification tags):
+
+1. Add tag extraction to `bamops.Read` if needed (similar to how `MM`/`ML` are accessed).
+2. Update `Auxiliary.run_modifications` in [anvio/contigops.py](anvio/contigops.py) to parse that tag and append rows into `split.modification_profiles` using the same layout used by the existing `MM`/`ML` parser.
+3. Keep `modification` as the tag-specific code (or a normalized code), and use `probability` when available (or `None` if not provided by the tag).
+4. The `modifications` table is written by `BAMProfiler.generate_modifications_table` in [anvio/profiler.py](anvio/profiler.py), so no schema changes are required if you follow the same row layout.
+
+This means new tag parsers can be added without changing the database schema, and the results will be stored alongside existing modification calls.
+
 {:.notice}
 If you have prior experience with `--profile-SCVs` being slow, you will be surprised how fast it is
 since v6.2

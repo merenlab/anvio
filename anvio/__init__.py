@@ -578,6 +578,13 @@ D = {
                      "having this information, you can skip storing this information by providing this flag. Note: If "
                      "--skip-SNV-profiling is provided, --skip-INDEL-profiling will automatically be enforced."}
                 ),
+    'include-modifications': (
+            ['--include-modifications'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "If you use this flag, anvi'o will parse base modification tags (MM/ML) from BAM files during profiling "
+                     "and store them in the profile database for downstream analysis."}
+                ),
     'return-AA-frequencies-instead': (
             ['--return-AA-frequencies-instead'],
             {'default': False,

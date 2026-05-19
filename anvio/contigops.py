@@ -160,10 +160,12 @@ class Split:
         self.auxiliary = None
         self.num_SNV_entries = 0
         self.num_INDEL_entries = 0
+        self.num_modification_entries = 0
         self.num_SCV_entries = {}
         self.SNV_profiles = {}
         self.SCV_profiles = {}
         self.INDEL_profiles = {}
+        self.modification_profiles = []
         self.per_position_info = {} # stores per nt info that is not coverage
 
 
@@ -181,7 +183,7 @@ class Split:
 class Auxiliary:
     def __init__(self, split, min_coverage_for_variability=10, report_variability_full=False,
                  profile_SCVs=False, skip_INDEL_profiling=False, skip_SNV_profiling=False,
-                 min_percent_identity=None, skip_edges=0):
+                 min_percent_identity=None, skip_edges=0, include_modifications=False):
 
         if anvio.DEBUG:
             self.run = terminal.Run()
@@ -195,6 +197,7 @@ class Auxiliary:
         self.skip_INDEL_profiling = skip_INDEL_profiling
         self.report_variability_full = report_variability_full
         self.skip_edges = skip_edges
+        self.include_modifications = include_modifications
 
         # used during array processing
         self.nt_to_array_index = {nt: i for i, nt in enumerate(constants.nucleotides)}
@@ -206,10 +209,97 @@ class Auxiliary:
 
 
     def process(self, bam):
-        self.run_SNVs_and_indels(bam)
+        if not self.skip_SNV_profiling:
+            self.run_SNVs_and_indels(bam)
+
+        if self.include_modifications:
+            self.run_modifications(bam)
 
         if self.profile_SCVs:
             self.run_SCVs(bam)
+
+
+    def run_modifications(self, bam):
+        """Parse base modifications from MM/ML tags and store them per split."""
+
+        self.split.modification_profiles = []
+
+        # Decide how we want to iterate through reads
+        if self.min_percent_identity:
+            read_iterator = bam.fetch_filter_and_trim
+            kwargs = {'percent_id_cutoff': self.min_percent_identity}
+        else:
+            read_iterator = bam.fetch_and_trim
+            kwargs = {}
+
+        read_count = 0
+        for read in read_iterator(self.split.parent, self.split.start, self.split.end, **kwargs):
+            if not read.modified_bases:
+                continue
+
+            query_pos_to_ref_pos = read.query_pos_to_ref_pos
+            if not query_pos_to_ref_pos:
+                continue
+
+            for mod_key, mod_entries in read.modified_bases.items():
+                try:
+                    base, strand, mod_code = mod_key
+                except ValueError:
+                    if len(mod_key) == 2:
+                        base, mod_code = mod_key
+                        strand = None
+                    else:
+                        base = mod_key[0]
+                        mod_code = mod_key[1] if len(mod_key) > 1 else mod_key
+                        strand = None
+
+                if isinstance(base, int):
+                    base = chr(base)
+                base = str(base).upper()
+
+                if strand is None:
+                    strand_symbol = '.'
+                elif strand in [0, '+', 'forward', False]:
+                    strand_symbol = '+'
+                elif strand in [1, '-', 'reverse', True]:
+                    strand_symbol = '-'
+                else:
+                    strand_symbol = str(strand)
+
+                for entry in mod_entries:
+                    if not isinstance(entry, (list, tuple)) or len(entry) < 1:
+                        continue
+                    query_pos = entry[0]
+                    probability = entry[1] if len(entry) > 1 else None
+
+                    if query_pos >= len(query_pos_to_ref_pos):
+                        continue
+
+                    ref_pos = query_pos_to_ref_pos[query_pos]
+                    if ref_pos is None:
+                        continue
+
+                    if ref_pos < self.split.start or ref_pos >= self.split.end:
+                        continue
+
+                    pos_in_split = ref_pos - self.split.start
+
+                    self.split.modification_profiles.append([
+                        self.split.name,
+                        pos_in_split,
+                        ref_pos,
+                        str(mod_code),
+                        probability,
+                        strand_symbol,
+                        base,
+                    ])
+
+            read_count += 1
+
+        self.split.num_modification_entries = len(self.split.modification_profiles)
+
+        if anvio.DEBUG:
+            self.run.info_single('Done modifications for %s (%d reads processed)' % (self.split.name, read_count), nl_before=0, nl_after=0)
 
 
     def run_SCVs(self, bam):

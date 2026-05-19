@@ -47,6 +47,7 @@ from anvio.tables.indels import TableForIndels
 from anvio.tables.miscdata import TableForLayerAdditionalData
 from anvio.tables.variability import TableForVariability
 from anvio.tables.codonfrequencies import TableForCodonFrequencies
+from anvio.tables.modifications import TableForModifications
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -965,6 +966,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.skip_SNV_profiling = A('skip_SNV_profiling')
         self.skip_INDEL_profiling = A('skip_INDEL_profiling')
         self.profile_SCVs = A('profile_SCVs')
+        self.include_modifications = A('include_modifications')
         self.min_percent_identity = A('min_percent_identity')
         self.fetch_filter = A('fetch_filter')
         self.gen_serialized_profile = A('gen_serialized_profile')
@@ -1250,6 +1252,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                        'SNVs_profiled': not self.skip_SNV_profiling,
                        'SCVs_profiled': self.profile_SCVs,
                        'INDELs_profiled': not self.skip_INDEL_profiling,
+                       'modifications_profiled': self.include_modifications,
                        'min_percent_identity': self.min_percent_identity or 0,
                        'fetch_filter': self.fetch_filter,
                        'min_coverage_for_variability': self.min_coverage_for_variability,
@@ -1277,6 +1280,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
 
         if not self.skip_INDEL_profiling:
             self.indels_table = TableForIndels(self.profile_db_path, progress=null_progress)
+
+        if self.include_modifications:
+            self.modifications_table = TableForModifications(self.profile_db_path, progress=null_progress)
 
 
 
@@ -1318,6 +1324,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
             self.run.info(' - How many edge nts ignore for SNV profiling?', self.skip_edges, mc='red')
         self.run.info('Profile single-codon variants (SCVs/+SAAVs)?', self.profile_SCVs)
         self.run.info('Profile insertion/deletions (INDELs)?', not self.skip_INDEL_profiling)
+        self.run.info('Profile nucleotide modifications from BAM?', self.include_modifications)
         self.run.info('Minimum coverage to calculate SNVs', self.min_coverage_for_variability)
         self.run.info('Report FULL variability data?', self.report_variability_full)
 
@@ -1436,6 +1443,21 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     self.indels_table.append([self.sample_id] + list(entry.values()))
 
         self.indels_table.store()
+
+
+    def generate_modifications_table(self):
+        if not self.include_modifications:
+            return
+
+        for contig in self.contigs:
+            for split in contig.splits:
+                if not split.modification_profiles:
+                    continue
+
+                for entry in split.modification_profiles:
+                    self.modifications_table.append([self.sample_id] + entry)
+
+        self.modifications_table.store()
 
 
     def store_split_coverages(self):
@@ -1662,6 +1684,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         ctx.report_variability_full = self.report_variability_full
         ctx.min_percent_identity = self.min_percent_identity
         ctx.skip_edges = self.skip_edges
+        ctx.include_modifications = self.include_modifications
 
         # Metadata
         ctx.a_meta = self.a_meta
@@ -1987,7 +2010,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         contig.analyze_coverage(bam_file, self.min_percent_identity)
         timer.make_checkpoint('Coverage done')
 
-        if not self.skip_SNV_profiling:
+        if (not self.skip_SNV_profiling) or self.include_modifications:
             for split in contig.splits:
                 split.auxiliary = contigops.Auxiliary(split,
                                                       profile_SCVs=self.profile_SCVs,
@@ -1996,21 +2019,23 @@ class BAMProfiler(dbops.ContigsSuperclass):
                                                       min_coverage_for_variability=self.min_coverage_for_variability,
                                                       report_variability_full=self.report_variability_full,
                                                       min_percent_identity=self.min_percent_identity,
-                                                      skip_edges=self.skip_edges)
+                                                      skip_edges=self.skip_edges,
+                                                      include_modifications=self.include_modifications)
 
                 split.auxiliary.process(bam_file)
 
-                if split.num_SNV_entries == 0:
-                    continue
+                if not self.skip_SNV_profiling:
+                    if split.num_SNV_entries == 0:
+                        continue
 
-                # Add these redundant data ad-hoc
-                split.SNV_profiles['split_name'] = [split.name] * split.num_SNV_entries
-                split.SNV_profiles['sample_id'] = [self.sample_id] * split.num_SNV_entries
-                split.SNV_profiles['pos_in_contig'] = split.SNV_profiles['pos'] + split.start
+                    # Add these redundant data ad-hoc
+                    split.SNV_profiles['split_name'] = [split.name] * split.num_SNV_entries
+                    split.SNV_profiles['sample_id'] = [self.sample_id] * split.num_SNV_entries
+                    split.SNV_profiles['pos_in_contig'] = split.SNV_profiles['pos'] + split.start
 
-                for gene_id in split.SCV_profiles:
-                    split.SCV_profiles[gene_id]['sample_id'] = [self.sample_id] * split.num_SCV_entries[gene_id]
-                    split.SCV_profiles[gene_id]['corresponding_gene_call'] = [gene_id] * split.num_SCV_entries[gene_id]
+                    for gene_id in split.SCV_profiles:
+                        split.SCV_profiles[gene_id]['sample_id'] = [self.sample_id] * split.num_SCV_entries[gene_id]
+                        split.SCV_profiles[gene_id]['corresponding_gene_call'] = [gene_id] * split.num_SCV_entries[gene_id]
 
             timer.make_checkpoint('Auxiliary analyzed')
 
@@ -2115,6 +2140,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
             self.layer_additional_data['num_INDELs_reported'] = self.indels_table.num_entries
             self.layer_additional_keys.append('num_INDELs_reported')
             self.run.info("Num INDELs reported", self.layer_additional_data['num_INDELs_reported'])
+
+        if self.include_modifications:
+            self.layer_additional_data['num_modifications_reported'] = self.modifications_table.num_entries
+            self.layer_additional_keys.append('num_modifications_reported')
+            self.run.info("Num modifications reported", self.layer_additional_data['num_modifications_reported'])
 
         if self.profile_SCVs:
             self.layer_additional_data['num_SCVs_reported'] = self.variable_codons_table.num_entries
@@ -2316,6 +2346,11 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 self.layer_additional_keys.append('num_INDELs_reported')
                 self.run.info("Num INDELs reported", self.layer_additional_data['num_INDELs_reported'])
 
+            if self.include_modifications:
+                self.layer_additional_data['num_modifications_reported'] = self.modifications_table.num_entries
+                self.layer_additional_keys.append('num_modifications_reported')
+                self.run.info("Num modifications reported", self.layer_additional_data['num_modifications_reported'])
+
             if self.profile_SCVs:
                 self.layer_additional_data['num_SCVs_reported'] = self.variable_codons_table.num_entries
                 self.layer_additional_keys.append('num_SCVs_reported')
@@ -2357,6 +2392,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.generate_variable_nts_table()
         self.generate_variable_codons_table()
         self.generate_indels_table()
+        self.generate_modifications_table()
         self.store_split_coverages()
 
         # Identify zero-coverage splits within covered contigs. These splits belong to
@@ -2479,8 +2515,8 @@ class WorkerContext:
         contig_name_to_genes, genes_in_contigs_dict, nt_positions_info,
         a_meta, sample_id, skip_SNV_profiling, skip_INDEL_profiling,
         profile_SCVs, min_coverage_for_variability, report_variability_full,
-        min_percent_identity, skip_edges, input_file_path, fetch_filter,
-        contig_names, contig_lengths
+        min_percent_identity, skip_edges, include_modifications, input_file_path,
+        fetch_filter, contig_names, contig_lengths
 
     If process_contig or its callees are modified to access new attributes,
     those must be added to _build_worker_context() as well.

@@ -402,6 +402,11 @@ class Read:
         self.reference_start = read.reference_start
         self.reference_end = read.reference_end
 
+        self.modifications_mm = read.get_tag('MM') if read.has_tag('MM') else None
+        self.modifications_ml = read.get_tag('ML') if read.has_tag('ML') else None
+        self.modified_bases = read.modified_bases
+        self.query_pos_to_ref_pos = read.get_reference_positions(full_length=True)
+
         if read.has_tag('MD'):
             self.reference_sequence = np.frombuffer(read.get_reference_sequence().upper().encode('ascii'), np.uint8)
         else:

@@ -3,6 +3,7 @@ known_tests = {'mini'                  : ['run_component_tests_for_minimal_metag
                'pangenomics'           : ['run_component_tests_for_pangenomics.sh'],
                'pangenome-graphs'      : ['run_component_tests_for_pangenome_graphs.sh'],
                'interactive-interface' : ['run_component_tests_for_manual_interactive.sh'],
+               'modifications'         : ['run_component_tests_for_modifications.sh'],
                'metabolism'            : ['run_component_tests_for_metabolism.sh'],
                'reaction-network'      : ['run_component_tests_for_reaction_network.sh'],
                'metabolic-exchanges'   : ['run_component_tests_for_metabolic_exchanges.sh'],

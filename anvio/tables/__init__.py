@@ -214,6 +214,10 @@ indels_table_name                    = 'indels'
 indels_table_structure               = ['sample_id', 'split_name', 'pos'    , 'pos_in_contig', 'corresponding_gene_call', 'in_noncoding_gene_call', 'in_coding_gene_call' , 'base_pos_in_codon', 'codon_order_in_gene', 'cov_outlier_in_split', 'cov_outlier_in_contig', 'reference', 'type', 'sequence', 'length' , 'count'  , 'coverage']
 indels_table_types                   = ['text'     , 'text'      , 'integer', 'integer'      , 'integer'                , 'integer'               , 'integer'             , 'integer'          , 'integer'            , 'integer'             , 'integer'              , 'text'     , 'text', 'text'    , 'integer', 'integer', 'integer']
 
+modifications_table_name             = 'modifications'
+modifications_table_structure        = ['sample_id', 'split_name', 'pos', 'pos_in_contig', 'modification', 'probability', 'strand', 'base']
+modifications_table_types            = ['text'     , 'text'      , 'integer', 'integer'     , 'text'        , 'numeric'    , 'text'  , 'text']
+
 views_table_name                     = 'views'
 views_table_structure                = ['view_id', 'target_table']
 views_table_types                    = [  'str'  ,      'str'    ]
@@ -453,6 +457,7 @@ table_requires_unique_entry_id = {'self': False,
                                   variable_codons_table_name: True,
                                   variable_nts_table_name: True,
                                   indels_table_name: True,
+                                  modifications_table_name: True,
                                   collections_bins_info_table_name: True,
                                   collections_contigs_table_name: True,
                                   collections_splits_table_name: True,
