@@ -10,7 +10,68 @@ Each feature's GenBank qualifiers land in `feature_qualifiers` (one row per `(fe
 
 Single-segment `gene` features are reconciled against the existing `genes_in_contigs` table by exact coordinate+direction match; on success, the matched `gene_callers_id` is stored on the row. Unmatched gene rows are imported with `gene_callers_id = NULL` and a warning. Multi-segment gene features are never reconciled.
 
-Parent relationships are resolved per contig using a three-rule precedence — `locus_tag` exact match → `gene` qualifier exact match → coordinate containment alone — and link `CDS → mRNA` or `CDS → gene` (`part_of` / `derives_from` respectively), `mRNA → gene`, `exon → mRNA`, and `intron → mRNA`. For multi-segment children every segment has its own row in `feature_relationships`, but the parent side always references the canonical row of the parent group.
+Parent relationships are resolved per contig using a three-rule precedence — `locus_tag` exact match → `gene` qualifier exact match → coordinate containment alone — and link `CDS → mRNA` or `CDS → gene` (`part_of` / `derives_from` respectively), every transcript-source RNA type (`mRNA`, `ncRNA`, `tRNA`, `rRNA`, `primary_transcript`, `precursor_RNA`, `misc_RNA`, `tmRNA`, `snRNA`, `snoRNA`, `scRNA`, `antisense_RNA`) `→ gene` with `part_of`, and `exon` / `intron` `→` any of those transcript-source types with `part_of`. For multi-segment children every segment has its own row in `feature_relationships`, but the parent side always references the canonical row of the parent group.
+
+## Synthesized `transcript` and `exon` hierarchy
+
+GenBank files are wildly inconsistent in how they represent transcript structure: bacterial files typically have only `gene` + `CDS`; eukaryotic NCBI RefSeq files have `gene` + `mRNA(join)` + `CDS(join)`, sometimes with explicit `exon` features; non-coding genes use `ncRNA`, `tRNA`, `rRNA`, or `precursor_RNA`; pseudogenes may have `gene` + `mRNA(join)` with no `CDS`. To make canonical "find all transcripts and their exons" queries possible without file-format-specific logic, this program synthesizes a uniform `gene → transcript → exon` hierarchy for every gene.
+
+Synthesized rows live alongside the literal rows. Two columns distinguish them:
+
+- `derivation` is NULL for literal features (those that appeared in the GenBank file). For synthesized features, it holds the literal source feature's type — e.g. `'mRNA'`, `'CDS'`, `'gene'`, `'ncRNA'`. The column answers both "is this synthesized?" (NULL vs. not) and "what was it synthesized from?".
+- `derived_from_feature_id` is NULL for literal features and references the source feature's canonical `feature_id` for synthesized rows.
+
+### Priority cascade
+
+For each gene, the synthesis layer determines transcripts using this cascade:
+
+1. **At least one transcript-source literal child** (any of `mRNA`, `ncRNA`, `tRNA`, `rRNA`, `primary_transcript`, `precursor_RNA`, `misc_RNA`, `tmRNA`, `snRNA`, `snoRNA`, `scRNA`, `antisense_RNA`, or the rare literal `transcript`): synthesize **one transcript per source child**. Multi-isoform genes get one synthesized transcript per isoform.
+2. **Only CDS children**: synthesize **one transcript** with the gene's coordinates (not the CDS's — gene coords capture annotated UTRs).
+3. **No children at all**: synthesize **one transcript** covering the gene.
+
+For each synthesized transcript, exons are populated:
+
+- If any literal `exon` features are reachable through the synthesized transcript (because they were children of the literal source mRNA), no exon synthesis happens — literal exons fulfill the canonical hierarchy.
+- Otherwise, synthesized exons follow the same cascade: **mRNA-derived** (one per mRNA segment) > **CDS-derived** (one per CDS segment) > **gene-derived** (one per gene segment, almost always one).
+
+So the overall priority is: **literal exons > mRNA-derived > CDS-derived > gene-derived**.
+
+### Querying the canonical hierarchy
+
+The synthesized rows make uniform queries work across bacterial, eukaryotic, and non-coding inputs:
+
+```sql
+-- Every gene's transcript count and exon count, regardless of input style
+SELECT g.feature_id            AS gene_id,
+       g.external_id           AS gene_locus_tag,
+       COUNT(DISTINCT t.feature_id) AS n_transcripts,
+       COUNT(DISTINCT e.feature_id) AS n_exons
+FROM contigs_sequence_features g
+LEFT JOIN feature_relationships rt ON rt.parent_feature_id = g.feature_id AND rt.relationship = 'part_of'
+LEFT JOIN contigs_sequence_features t ON t.feature_id = rt.child_feature_id AND t.feature_type = 'transcript' AND t.derivation IS NOT NULL
+LEFT JOIN feature_relationships re ON re.parent_feature_id = t.feature_id AND re.relationship = 'part_of'
+LEFT JOIN contigs_sequence_features e ON e.feature_id = re.child_feature_id AND e.feature_type = 'exon'
+WHERE g.feature_type = 'gene'
+GROUP BY g.feature_id;
+```
+
+Filter on `derivation` to switch between canonical synthesized rows and the literal source rows:
+
+- `WHERE feature_type = 'transcript' AND derivation IS NOT NULL` — only synthesized canonical transcripts.
+- `WHERE feature_type = 'transcript' AND derivation IS NULL` — only literal `transcript` features (rare).
+- `WHERE feature_type = 'exon' AND derivation IS NULL` — only literal exon features.
+- `WHERE feature_type = 'exon' AND derivation = 'mRNA'` — only synthesized exons derived from mRNAs.
+
+### Biological caveats
+
+- **Transcripts with `derivation = 'CDS'`** reflect the gene boundary, not the true transcript boundary. The UTRs are not annotated in the source CDS, so the synthesized transcript inherits the gene's `[start, stop)`. In bacteria gene and CDS coords are typically identical, so this is fine; in eukaryotic CDS-only annotations it means UTRs are unknown.
+- **Exons with `derivation = 'CDS'`** cover only the coding portion of the true exons. UTRs are absent. The `derivation` column tells consumers exactly this.
+- **Multi-isoform genes** produce per-isoform synthesized exon sets without deduplication. Two isoforms sharing an exon coordinate produce two distinct exon rows (different `derived_from_feature_id`, different `external_id`). For "unique exonic regions of gene X" the user must `SELECT DISTINCT start, stop, direction`; deduplication is not done at synthesis time because it would erase isoform identity.
+- **Mixed transcript types under one gene** (e.g. an `ncRNA` and a `CDS` under the same gene, as in some viral genomes): the synthesized transcript is derived from the `ncRNA`; the CDS is NOT linked to it because step 13 links CDSes to mRNAs/genes, not to ncRNAs. Walking "CDSes under synthesized transcripts" misses such CDSes — for comprehensive coverage walk via the literal `gene` row's children.
+
+### When synthesis cannot help
+
+Synthesis depends on step 13's relationship resolution to find a gene's children. If step 13 fails to link a CDS to its mRNA because the input GenBank file lacks consistent `locus_tag` qualifiers, the CDS will not be re-parented to the synthesized transcript and will remain only `derives_from` the gene. The program emits warnings during step 13 about unlinked CDSes; if you see them, examine the input file for malformed or inconsistent qualifiers.
 
 ## Example: importing features from a GenBank file
 
