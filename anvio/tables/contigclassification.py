@@ -54,6 +54,16 @@ class TablesForContigClassification:
         entries = [tuple(row[col] for col in t.contig_classification_table_structure)
                    for row in data_dict.values()]
 
+        pair_counts = Counter((e[0], e[2]) for e in entries)
+        duplicate_pairs = [pair for pair, count in pair_counts.items() if count > 1]
+        if duplicate_pairs:
+            example_contig, example_source = duplicate_pairs[0]
+            raise ConfigError(f"Your input contains duplicate (contig, source) entries. A given contig "
+                              f"should only appear once per source, but {len(duplicate_pairs)} "
+                              f"(contig, source) {P('pair', len(duplicate_pairs))} occur more than once. "
+                              f"For example, contig '{example_contig}' is classified more than once by "
+                              f"source '{example_source}'. Please de-duplicate your input before importing.")
+
         database = db.DB(self.contigs_db_path, utils.get_required_version_for_db(self.contigs_db_path))
 
         known_contigs = set(database.get_single_column_from_table(t.contigs_info_table_name, 'contig'))
