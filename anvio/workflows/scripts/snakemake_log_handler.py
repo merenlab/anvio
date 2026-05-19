@@ -3,7 +3,7 @@
 import os
 import re
 
-from anvio.workflows.manifest import append_manifest_row, update_snakemake_log_path
+from anvio.workflows.scripts.manifest import append_manifest_row, update_snakemake_log_path
 
 
 JOBS = {}

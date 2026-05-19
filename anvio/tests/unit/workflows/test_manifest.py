@@ -12,8 +12,8 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-MANIFEST_PATH = REPO_ROOT / 'workflows' / 'manifest.py'
-LOG_HANDLER_PATH = REPO_ROOT / 'workflows' / 'snakemake_log_handler.py'
+MANIFEST_PATH = REPO_ROOT / 'workflows' / 'scripts' / 'manifest.py'
+LOG_HANDLER_PATH = REPO_ROOT / 'workflows' / 'scripts' / 'snakemake_log_handler.py'
 
 WORKFLOW_MANIFEST_CASES = [
     {'workflow': 'contigs',
@@ -73,12 +73,16 @@ def load_log_handler_module(manifest_module):
     anvio_module = types.ModuleType('anvio')
     workflows_module = types.ModuleType('anvio.workflows')
 
+    scripts_module = types.ModuleType('anvio.workflows.scripts')
+
     old_modules = {name: sys.modules.get(name) for name in ('anvio',
                                                             'anvio.workflows',
-                                                            'anvio.workflows.manifest')}
+                                                            'anvio.workflows.scripts',
+                                                            'anvio.workflows.scripts.manifest')}
     sys.modules['anvio'] = anvio_module
     sys.modules['anvio.workflows'] = workflows_module
-    sys.modules['anvio.workflows.manifest'] = manifest_module
+    sys.modules['anvio.workflows.scripts'] = scripts_module
+    sys.modules['anvio.workflows.scripts.manifest'] = manifest_module
 
     try:
         return load_module_from_path('test_snakemake_log_handler', LOG_HANDLER_PATH)

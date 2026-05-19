@@ -274,7 +274,7 @@ class WorkflowSuperClass:
         original_manifest_env_var = os.environ.get('ANVIO_WORKFLOW_MANIFEST_PATH')
         workflow_name = getattr(self.args, 'workflow', self.name)
         if not self.list_dependencies:
-            from anvio.workflows.manifest import initialize_manifest
+            from anvio.workflows.scripts.manifest import initialize_manifest
 
             workflow_manifest_path = os.path.join(self.dirs_dict["LOGS_DIR"], f"{workflow_name}-workflow-manifest.tsv")
             initialize_manifest(workflow_manifest_path)
@@ -294,7 +294,7 @@ class WorkflowSuperClass:
 
         if workflow_manifest_path:
             sys.argv.extend(['--log-handler-script',
-                             os.path.join(get_path_to_workflows_dir(), 'snakemake_log_handler.py')])
+                             os.path.join(get_path_to_workflows_dir(), 'scripts', 'snakemake_log_handler.py')])
 
         # if any conda yaml is provided for a rule, then add '--use-conda' to the snakemake command:
         if any(isinstance(v, dict) and v.get('conda_yaml') for v in (self.config or {}).values()):
