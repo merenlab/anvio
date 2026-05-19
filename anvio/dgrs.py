@@ -1391,7 +1391,6 @@ class DGR_Finder:
         bin's pre-partitioned SNV records and contig sequences, so the worker never needs
         to access any database file.
         """
-        import pandas as pd
         import bisect
 
         while True:
@@ -1400,16 +1399,15 @@ class DGR_Finder:
             if item is None:
                 break
 
-            bin_name, bin_splits_list, bin_snv_records, bin_contig_sequences = item
+            bin_name, bin_splits_list, bin_snv_df, bin_contig_sequences = item
 
             try:
-                if not bin_snv_records:
+                if bin_snv_df is None or bin_snv_df.empty:
                     output_queue.put((bin_name, False, None, "No SNVs in bin"))
                     continue
 
-                # reconstruct per-bin DataFrame (already filtered by parent's init_snv_table)
-                snv_panda = pd.DataFrame.from_records(bin_snv_records)
-                del bin_snv_records
+                snv_panda = bin_snv_df
+                del bin_snv_df
 
                 split_names_unique = set(bin_splits_list)
                 sample_id_list = list(set(snv_panda.sample_id.unique()))
@@ -1690,28 +1688,16 @@ class DGR_Finder:
             # use 'spawn' context so child processes start with a clean address
             # space instead of inheriting the parent's memory via fork()
             ctx = multiprocessing.get_context('spawn')
-            input_queue = ctx.Queue()
+            # Bounded queue: blocks the main thread when full, so at most
+            # num_threads * 2 bins worth of data live in the queue at once.
+            input_queue = ctx.Queue(maxsize=self.num_threads * 2)
             output_queue = ctx.Queue()
 
-            # enqueue per-bin work items with all data workers need (zero DB access)
-            for bin_name, bin_splits_list in bin_splits_dict.items():
-                bin_splits_set = set(bin_splits_list)
-                bin_snv_frames = [snv_by_split[s] for s in bin_splits_set if s in snv_by_split]
-                bin_snv_records = pd.concat(bin_snv_frames).to_dict('records') if bin_snv_frames else []
-                bin_contigs_set = set(s.split('_split_')[0] for s in bin_splits_list)
-                bin_contig_seqs = {c: all_contig_sequences[c] for c in bin_contigs_set if c in all_contig_sequences}
-                input_queue.put((bin_name, bin_splits_list, bin_snv_records, bin_contig_seqs))
+            self.run.info('[TIMING] activity data prep', f"{_time.time() - _t_prep:.1f}s")
 
-            # add one sentinel per worker so they exit gracefully
-            for _ in range(self.num_threads):
-                input_queue.put(None)
-
-            # free intermediate data
-            del snv_by_split, all_contig_sequences
-
-            self.run.info('[TIMING] activity data prep + queue serialization', f"{_time.time() - _t_prep:.1f}s")
-
-            # start workers
+            # Start workers BEFORE filling the queue so they can drain it
+            # immediately. Without this, the entire 23k-bin queue is serialized
+            # into memory before any worker processes a single item.
             workers = []
             for i in range(self.num_threads):
                 worker = ctx.Process(
@@ -1719,6 +1705,27 @@ class DGR_Finder:
                     args=(input_queue, output_queue, config))
                 workers.append(worker)
                 worker.start()
+
+            # Fill the bounded queue (blocks when full, naturally throttling
+            # memory to ~num_threads * 2 bins in flight at any time).
+            for bin_name, bin_splits_list in bin_splits_dict.items():
+                bin_splits_set = set(bin_splits_list)
+                bin_snv_frames = [snv_by_split[s] for s in bin_splits_set if s in snv_by_split]
+                bin_snv_df = pd.concat(bin_snv_frames) if bin_snv_frames else None
+                if bin_snv_df is not None:
+                    for col in ('split_name', 'sample_id', 'contig_name', 'reference'):
+                        if col in bin_snv_df.columns and hasattr(bin_snv_df[col], 'cat'):
+                            bin_snv_df[col] = bin_snv_df[col].cat.remove_unused_categories()
+                bin_contigs_set = set(s.split('_split_')[0] for s in bin_splits_list)
+                bin_contig_seqs = {c: all_contig_sequences[c] for c in bin_contigs_set if c in all_contig_sequences}
+                input_queue.put((bin_name, bin_splits_list, bin_snv_df, bin_contig_seqs))
+
+            # add one sentinel per worker so they exit gracefully
+            for _ in range(self.num_threads):
+                input_queue.put(None)
+
+            # free intermediate data
+            del snv_by_split, all_contig_sequences
 
             # monitor progress
             try:
@@ -2949,7 +2956,6 @@ class DGR_Finder:
 
         if tr_rt_overlap_count > 0:
             self.run.info_single(f"Filtered out {tr_rt_overlap_count} hit(s) where the TR overlapped an RT gene.", nl_before=1)
-
 
     def filter_for_best_VR_TR(self):
         #NOTE: need to check this code to clean up and maybe put into one function to remove redundancy - Iva offered to help :)
