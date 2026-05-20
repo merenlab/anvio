@@ -4012,6 +4012,15 @@ class ProfileSuperclass(object):
         self.p_meta['samples'] = sorted([s.strip() for s in self.p_meta['samples'].split(',')])
         self.p_meta['num_samples'] = len(self.p_meta['samples'])
 
+        if 'modifications_profiled' not in self.p_meta:
+            self.p_meta['modifications_profiled'] = 0
+
+        if 'min_coverage_for_modifications' not in self.p_meta:
+            self.p_meta['min_coverage_for_modifications'] = 0
+
+        if 'modification_filters' not in self.p_meta:
+            self.p_meta['modification_filters'] = utils.serialize_modification_filters({}, default_threshold=0.0)
+
         if self.p_meta['blank'] and not self.p_meta['contigs_db_hash']:
             self.progress.end()
             raise ConfigError("ProfileSuperclass is upset, because it seems you are tyring to initialize a blank anvi'o profile "
@@ -4594,6 +4603,16 @@ class ProfileSuperclass(object):
         return d
 
 
+    def get_blank_modifications_dict(self):
+        """Returns an empty modifications dictionary to be filled elsewhere"""
+        d = {}
+
+        for sample_name in self.p_meta['samples']:
+            d[sample_name] = {'modifications': {}}
+
+        return d
+
+
     def get_variability_information_for_split(self, split_name, skip_outlier_SNVs=False, return_raw_results=False):
         if not split_name in self.split_names:
             raise ConfigError("get_variability_information_for_split: The split name '%s' does not seem to be "
@@ -4648,6 +4667,114 @@ class ProfileSuperclass(object):
         self.progress.end()
 
         return d
+
+
+    def get_modifications_information_for_split(self, split_name, min_coverage=None, return_raw_results=False):
+        if not split_name in self.split_names:
+            raise ConfigError("get_modifications_information_for_split: The split name '%s' does not seem to be "
+                               "represented in this profile database. Are you sure you are looking for it "
+                               "in the right database?" % split_name)
+
+        if not self.p_meta.get('modifications_profiled'):
+            return {'data': self.get_blank_modifications_dict(), 'types': []}
+
+        if not self.auxiliary_profile_data_available:
+            return {'data': self.get_blank_modifications_dict(), 'types': []}
+
+        if min_coverage is None:
+            min_coverage = self.p_meta.get('min_coverage_for_modifications', 0)
+
+        self.progress.new('Recovering modifications information for split', discard_previous_if_exists=True)
+        self.progress.update('...')
+
+        profile_db = ProfileDatabase(self.profile_db_path)
+        split_modifications_information = list(profile_db.db.get_some_rows_from_table_as_dict(t.modifications_table_name, '''split_name = "%s"''' % split_name, error_if_no_data=False).values())
+        profile_db.disconnect()
+
+        if return_raw_results:
+            return split_modifications_information
+
+        d = self.get_blank_modifications_dict()
+        modification_types = set([])
+
+        split_coverages = self.split_coverage_values.get(split_name)
+
+        for e in split_modifications_information:
+            sample_id = e['sample_id']
+            pos = e['pos']
+            mod_code = e['modification']
+            count = e.get('count')
+
+            if mod_code is None:
+                continue
+
+            mod_code = str(mod_code).lower()
+            modification_types.add(mod_code)
+
+            try:
+                count = int(count)
+            except Exception:
+                count = 0
+
+            if count <= 0:
+                continue
+
+            strand_symbol = e.get('strand', '.')
+
+            if pos not in d[sample_id]['modifications']:
+                d[sample_id]['modifications'][pos] = {
+                    'pos': pos,
+                    'pos_in_contig': e['pos_in_contig'],
+                    'coverage': None,
+                    'modification_counts': {},
+                    'modification_strand_counts': {},
+                    'modification_ratios': {},
+                    'modification_strand_ratios': {},
+                    'unmodified_ratio': None,
+                }
+
+            entry = d[sample_id]['modifications'][pos]
+
+            # Aggregate counts per modification and per strand independently.
+            entry['modification_counts'][mod_code] = entry['modification_counts'].get(mod_code, 0) + count
+
+            if mod_code not in entry['modification_strand_counts']:
+                entry['modification_strand_counts'][mod_code] = {}
+            strand_counts = entry['modification_strand_counts'][mod_code]
+            strand_counts[strand_symbol] = strand_counts.get(strand_symbol, 0) + count
+
+        for sample_id in d:
+            for pos in list(d[sample_id]['modifications'].keys()):
+                entry = d[sample_id]['modifications'][pos]
+
+                if not split_coverages or sample_id not in split_coverages:
+                    coverage = 0
+                else:
+                    coverage = int(split_coverages[sample_id][pos])
+
+                if coverage < min_coverage:
+                    d[sample_id]['modifications'].pop(pos, None)
+                    continue
+
+                entry['coverage'] = coverage
+
+                for mod_code in entry['modification_counts']:
+                    mod_count = entry['modification_counts'][mod_code]
+                    entry['modification_ratios'][mod_code] = (mod_count / coverage) if coverage else 0.0
+
+                    # strand ratios for this modification
+                    strand_counts = entry['modification_strand_counts'].get(mod_code, {})
+                    entry['modification_strand_ratios'][mod_code] = {s: (c / coverage) if coverage else 0.0 for s, c in strand_counts.items()}
+
+                total_mod_counts = sum(entry['modification_counts'][m] for m in entry['modification_counts'])
+                unmodified = coverage - total_mod_counts
+                if unmodified < 0:
+                    unmodified = 0
+                entry['unmodified_ratio'] = (unmodified / coverage) if coverage else 0.0
+
+        self.progress.end()
+
+        return {'data': d, 'types': sorted(list(modification_types))}
 
 
     def init_items_additional_data(self):
@@ -4896,9 +5023,9 @@ class ProfileDatabase:
         self.meta = dbi(self.db_path, expecting=self.db_type).get_self_table()
 
         for key in ['min_contig_length', 'SNVs_profiled', 'SCVs_profiled', 'INDELs_profiled', 'modifications_profiled',
-                    'merged', 'blank', 'items_ordered', 'report_variability_full', 'num_contigs',
-                    'min_coverage_for_variability', 'max_contig_length', 'num_splits',
-                    'total_length', 'skip_edges_for_variant_profiling']:
+                'merged', 'blank', 'items_ordered', 'report_variability_full', 'num_contigs',
+                'min_coverage_for_variability', 'min_coverage_for_modifications', 'max_contig_length', 'num_splits',
+                'total_length', 'skip_edges_for_variant_profiling']:
             try:
                 self.meta[key] = int(self.meta[key])
             except:

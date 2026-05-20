@@ -85,6 +85,9 @@ def get_args():
     groupK.add_argument(*anvio.A('skip-SNV-profiling'), **anvio.K('skip-SNV-profiling'))
     groupK.add_argument(*anvio.A('skip-INDEL-profiling'), **anvio.K('skip-INDEL-profiling'))
     groupK.add_argument(*anvio.A('include-modifications'), **anvio.K('include-modifications'))
+    groupK.add_argument(*anvio.A('modification-filter'), **anvio.K('modification-filter'))
+    groupK.add_argument(*anvio.A('modification-filter-default'), **anvio.K('modification-filter-default'))
+    groupK.add_argument(*anvio.A('min-coverage-for-modifications'), **anvio.K('min-coverage-for-modifications'))
     groupK.add_argument(*anvio.A('profile-SCVs'), **anvio.K('profile-SCVs'))
     groupK.add_argument(*anvio.A('skip-edges'), **anvio.K('skip-edges'))
 

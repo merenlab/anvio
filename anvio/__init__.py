@@ -585,6 +585,30 @@ D = {
              'help': "If you use this flag, anvi'o will parse base modification tags (MM/ML) from BAM files during profiling "
                      "and store them in the profile database for downstream analysis."}
                 ),
+    'modification-filter': (
+            ['--modification-filter'],
+            {'default': [],
+             'action': 'append',
+             'metavar': 'TYPE:THRESHOLD',
+             'help': "Set a minimum modification probability per modification type (e.g., 'A:0.9'). This parameter can be "
+                     "used multiple times to set thresholds for multiple modification types. Values must be between 0 and 1."}
+                ),
+    'modification-filter-default': (
+            ['--modification-filter-default'],
+            {'default': 0.95,
+             'type': float,
+             'metavar': 'THRESHOLD',
+             'help': "Default minimum modification probability to use for modification types not explicitly listed in "
+                     "--modification-filter entries. Must be between 0 and 1."}
+                ),
+    'min-coverage-for-modifications': (
+            ['--min-coverage-for-modifications'],
+            {'default': 10,
+             'type': int,
+             'metavar': 'INT',
+             'help': "Minimum per-position coverage required before calculating modification ratios for contigs during "
+                     "interactive display or export."}
+                ),
     'return-AA-frequencies-instead': (
             ['--return-AA-frequencies-instead'],
             {'default': False,

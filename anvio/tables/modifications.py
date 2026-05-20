@@ -42,7 +42,7 @@ class TableForModifications(Table):
 
     def get_num_entries(self):
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        num_entries = database.get_row_counts_from_table(t.modifications_table_name)
+        num_entries = database._exec('SELECT COALESCE(SUM("count"), 0) FROM %s' % t.modifications_table_name).fetchone()[0]
         database.disconnect()
 
         return num_entries
@@ -52,6 +52,7 @@ class TableForModifications(Table):
         """FIXME This needs documentation to explain difference between append and append_entry"""
 
         self.db_entries.append(entry)
+        self.num_entries += int(entry[-1])
 
         if len(self.db_entries) > self.max_num_entries_in_storage_buffer:
             # everytime we are here, the contenst of self.db_entries will be stored in the
@@ -70,7 +71,7 @@ class TableForModifications(Table):
         """
 
         self.db_entries.append(entry)
-        self.num_entries += 1
+        self.num_entries += int(entry[-1])
 
         if len(self.db_entries) >= self.max_num_entries_in_storage_buffer:
             # everytime we are here, the contenst of self.db_entries will be stored in the
@@ -83,10 +84,10 @@ class TableForModifications(Table):
             return
 
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?)''' % t.modifications_table_name, self.db_entries)
+        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?)''' % t.modifications_table_name, self.db_entries)
         database.disconnect()
 
         if anvio.DEBUG:
-            run.info_single("MODIFICATIONS: %d entries added to the modifications table." % len(self.db_entries), mc="green")
+            run.info_single("MODIFICATIONS: %d aggregated rows added to the modifications table." % len(self.db_entries), mc="green")
 
         self.db_entries = []

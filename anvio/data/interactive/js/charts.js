@@ -32,6 +32,9 @@ var variability;
 var maxVariability = 0;
 var maxCountOverCoverage = 0;
 var indels;
+var modifications;
+var modification_types;
+var modifications_enabled;
 var geneParser;
 var contextSvg;
 var state;
@@ -128,6 +131,9 @@ function loadAll() {
                 sequence = response.sequence;
                 variability = [];
                 indels = [];
+                modifications = [];
+                modification_types = response.modification_types || [];
+                modifications_enabled = response.modifications_enabled || false;
 
                 info("Building variability table");
                 for (var i=0; i<coverage.length; i++) {
@@ -150,6 +156,7 @@ function loadAll() {
 
                 competing_nucleotides = response.competing_nucleotides;
                 indels = response.indels;
+                modifications = response.modifications;
 
                 info("Building indels table");
                 for(var i=0; i<indels.length; i++) {
@@ -240,11 +247,15 @@ function loadAll() {
                 }
                 indels_enabled = maxCountOverCoverage != 0;
                 if(!indels_enabled || state['show_indels'] == null) state['show_indels'] = indels_enabled;
+                if(state['show_modifications'] == null) {
+                  state['show_modifications'] = modifications_enabled;
+                }
                 state['snv_scale_bottom'] = state['snv_scale_dir_up'] = state['snvs_enabled'] || indels_enabled;
                 if(state['fixed-y-scale'] == null) state['fixed-y-scale'] = false;
 
                 // adjust menu options
                 manageSNVsState(state, maxVariability);
+                manageModificationsState(state);
 
                 if (!indels_enabled && (!state['snvs_enabled'] || maxVariability == 0)) {
                     console.log("Hiding SNVs and indels due to the condition being met.");
@@ -307,6 +318,10 @@ function loadAll() {
 
                 if(state.hasOwnProperty('show_indels')){
                   $('#toggle_indel_box').attr("checked", state['show_indels']);
+                }
+
+                if(state.hasOwnProperty('show_modifications')){
+                  $('#toggle_modifications_box').attr("checked", state['show_modifications']);
                 }
 
                 if(state.hasOwnProperty('snv_scale_bottom')){
@@ -483,6 +498,16 @@ function loadAll() {
                       });
                   if($('div.indels-disabled').length > 0) $('div.indels-disabled').remove();
                 });
+                $('#toggle_modifications_box').on('change', function() {
+                  waitingDialog.show('Drawing ...',
+                      {
+                          dialogSize: 'sm',
+                          onShow: function() {
+                              toggleModifications();
+                              waitingDialog.hide();
+                          },
+                      });
+                });
                 $('#snv_scale_box').on('change', function() {
                   waitingDialog.show('Drawing ...',
                       {
@@ -548,6 +573,42 @@ function manageSNVsState(state, maxVariability) {
             $('#settings-section-info-SNV-warning').show();
         }
     }
+}
+
+function manageModificationsState(state) {
+    // Hide or show elements based on modifications state
+    if (!modifications_enabled || !modifications || modifications.length === 0) {
+        $('#modifications_picker').hide();
+        if (modifications_enabled && state['show_modifications']) {
+            $('#settings-section-info-modifications-warning').html("Note: modifications are not available for this split.");
+            $('#settings-section-info-modifications-warning').show();
+        }
+    } else {
+        // Check if any layer has modification data
+        var hasData = false;
+        for (var i = 0; i < modifications.length; i++) {
+            if (modifications[i] && Object.keys(modifications[i]).length > 0) {
+                hasData = true;
+                break;
+            }
+        }
+        
+        if (hasData) {
+            $('#modifications_picker').show();
+            $('#settings-section-info-modifications-warning').html("");
+            $('#settings-section-info-modifications-warning').hide();
+        } else {
+            $('#modifications_picker').hide();
+            $('#settings-section-info-modifications-warning').html("Note: no modification data available for this split.");
+            $('#settings-section-info-modifications-warning').show();
+        }
+    }
+}
+
+function toggleModifications() {
+    // Toggle modifications display on chart redraw
+    state['show_modifications'] = $('#toggle_modifications_box').is(':checked');
+    createCharts(state);
 }
 
 function drawHighlightBoxes() {
@@ -1694,6 +1755,8 @@ function createCharts(state){
                         variability_d: variability[layer_index][3],
                         competing_nucleotides: competing_nucleotides[layer_index],
                         indels: indels[layer_index],
+                        modifications: modifications[layer_index],
+                        modification_types: modification_types,
                         gc_content: gc_content_array,
                         'gc_content_window_size': gc_content_window_size,
                         'gc_content_step_size': gc_content_step_size,
@@ -1832,6 +1895,8 @@ function Chart(options){
     this.variability_d = options.variability_d;
     this.competing_nucleotides = options.competing_nucleotides;
     this.indels = options.indels;
+    this.modifications = options.modifications;
+    this.modification_types = options.modification_types;
     this.gc_content = options.gc_content;
     this.gc_content_window_size = options.gc_content_window_size;
     this.gc_content_step_size = options.gc_content_step_size;
@@ -1976,6 +2041,10 @@ function Chart(options){
     this.textContainerIndels = this.snv_svg.append("g")
                               .attr('class',this.name.toLowerCase())
                               .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
+
+    this.textContainerModifications = this.snv_svg.append("g")
+                                      .attr('class',this.name.toLowerCase())
+                                      .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
 
     this.sampleTextContainer = this.samples_svg.append("g")
                               .attr('class',this.name.toLowerCase())
@@ -2202,7 +2271,74 @@ function Chart(options){
                               });
     }
 
+    // Draw modifications
+    if(state['show_modifications'] && this.modifications && Object.keys(this.modifications).length > 0) {
+        info("Drawing modification markers");
+        
+        // Create a color scheme for modification types
+        var mod_colors = {};
+        var colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E2'];
+        if (this.modification_types) {
+            this.modification_types.forEach(function(mod_type, index) {
+                mod_colors[mod_type] = colors[index % colors.length];
+            });
+        }
+        
+        // Draw modification text markers
+        this.textContainerModifications.selectAll("text")
+                                      .data(d3.entries(this.modifications))
+                                      .enter()
+                                      .append("text")
+                                      .attr("class", "modifications_text")
+                                      .attr("x", function (d) { return xS(0.5+d.value['pos']); })
+                                      .attr("y", function (d) { return ySL_indel(-1); })
+                                      .attr("font-size", "12px")
+                                      .attr("style", "cursor:pointer;")
+                                      .attr("fill", '#FF6B6B')
+                                      .attr('data-toggle', 'popover')
+                                      .attr('data-content', function(d) {
+                                          var mod_data = d.value;
+                                          var content = '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span>';
+                                          content += '<h3>Base Modifications</h3>';
+                                          content += '<table class="table table-striped" style="width: 100%; text-align: center; font-size: 12px;">';
+                                          content += '<tr><td>Position in split</td><td>' + d.key + '</td></tr>';
+                                          content += '<tr><td>Coverage</td><td>' + (mod_data['coverage'] || 0) + '</td></tr>';
+                                          
+                                          if (mod_data['modification_ratios']) {
+                                              for (var mod_type in mod_data['modification_ratios']) {
+                                                  var ratio = mod_data['modification_ratios'][mod_type];
+                                                var count = mod_data['modification_counts'] ? (mod_data['modification_counts'][mod_type] || 0) : 0;
+                                                content += '<tr><td>Modification: ' + mod_type + '</td><td>' + (ratio * 100).toFixed(1) + '% (' + count + ')</td></tr>';
 
+                                                if (mod_data['modification_strand_counts'] && mod_data['modification_strand_counts'][mod_type]) {
+                                                  var strandCounts = mod_data['modification_strand_counts'][mod_type];
+                                                  var strandBits = [];
+                                                  Object.keys(strandCounts).forEach(function(strand) {
+                                                    strandBits.push(strand + ': ' + strandCounts[strand]);
+                                                  });
+                                                  if (strandBits.length > 0) {
+                                                    content += '<tr><td>Strands</td><td>' + strandBits.join(', ') + '</td></tr>';
+                                                  }
+                                                }
+                                              }
+                                          }
+                                          
+                                          if (mod_data['unmodified_ratio']) {
+                                              var total_mod_counts = 0;
+                                              if (mod_data['modification_counts']) {
+                                                Object.keys(mod_data['modification_counts']).forEach(function(mod_type) {
+                                                  total_mod_counts += mod_data['modification_counts'][mod_type];
+                                                });
+                                              }
+                                              var unmod_count = mod_data['coverage'] - total_mod_counts;
+                                              content += '<tr><td>Unmodified</td><td>' + (mod_data['unmodified_ratio'] * 100).toFixed(1) + '% (' + unmod_count + ')</td></tr>';
+                                          }
+                                          
+                                          content += '</table>';
+                                          return content;
+                                      })
+                                      .text('●');
+    }
 
     this.xAxisTop = d3.svg.axis().scale(this.xScale).orient("top");
 
@@ -2246,6 +2382,9 @@ Chart.prototype.showOnly = function(b){
     if(indels_enabled) this.lineContainer.select("[name=indel_1]").data([this.indel_coverage]).attr("d", this.line);
     this.textContainer.selectAll(".SNV_text").data(d3.entries(this.competing_nucleotides)).attr("x", function (d) { return xS(0.5+parseInt(d.key)); });
     this.textContainerIndels.selectAll(".indels_text").data(d3.entries(this.indels)).attr("x", function (d) { return xS(0.5+d.value['pos']); });
+    if(state['show_modifications'] && this.modifications) {
+        this.textContainerModifications.selectAll(".modifications_text").data(d3.entries(this.modifications)).attr("x", function (d) { return xS(0.5+d.key); });
+    }
 
     let numNucl = $('#brush_end').val()-$('#brush_start').val();
     let mk_font_size = 2000/numNucl;
@@ -2253,6 +2392,9 @@ Chart.prototype.showOnly = function(b){
     if(mk_font_size > 10) mk_font_size = 10;
     this.textContainer.selectAll(".SNV_text").data(d3.entries(this.competing_nucleotides)).attr("font-size", mk_font_size+"px");
     this.textContainerIndels.selectAll(".indels_text").data(d3.entries(this.indels)).attr("font-size", 2*mk_font_size+"px");
+    if(state['show_modifications'] && this.modifications) {
+        this.textContainerModifications.selectAll(".modifications_text").data(d3.entries(this.modifications)).attr("font-size", mk_font_size+"px");
+    }
 
     this.chartContainer.select(".x.axis.top").call(this.xAxisTop);
 }

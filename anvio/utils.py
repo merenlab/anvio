@@ -11,6 +11,7 @@ try:
     import os
     import sys
     import ssl
+    import json
     import yaml
     import gzip
     import time
@@ -2321,6 +2322,96 @@ def get_split_start_stops_without_gene_calls(contig_length, split_length):
         chunks.append(last_tuple)
 
     return chunks
+
+
+def parse_modification_filters(filters=None, default_threshold=0.0):
+    """Parse modification filters in the form 'X:0.5' into a normalized dict.
+
+    Parameters
+    ==========
+    filters : list or str, None
+        Filter strings. Each entry should be 'MOD:THRESHOLD'. Case-insensitive.
+    default_threshold : float, 0.0
+        Default threshold for modification types not listed.
+
+    Returns
+    =======
+    filters_dict : dict
+        Mapping of normalized modification codes to thresholds.
+    default_threshold : float
+        Parsed default threshold.
+    """
+
+    if default_threshold is None:
+        default_threshold = 0.0
+
+    try:
+        default_threshold = float(default_threshold)
+    except Exception:
+        raise ConfigError("Default modification filter threshold must be a number.")
+
+    if default_threshold < 0 or default_threshold > 1:
+        raise ConfigError("Default modification filter threshold must be between 0 and 1.")
+
+    if filters is None:
+        return {}, default_threshold
+
+    if isinstance(filters, str):
+        filters = [filters]
+
+    filters_dict = {}
+
+    for raw in filters:
+        if raw is None:
+            continue
+        raw = str(raw).strip()
+        if not raw:
+            continue
+
+        if ':' not in raw:
+            raise ConfigError("Modification filter '%s' should be formatted as 'TYPE:THRESHOLD' (e.g., 'a:0.9')." % raw)
+
+        mod_code, threshold = raw.split(':', 1)
+        mod_code = mod_code.strip()
+        if not mod_code:
+            raise ConfigError("Modification filter '%s' is missing a modification code." % raw)
+
+        try:
+            threshold = float(threshold)
+        except Exception:
+            raise ConfigError("Modification filter '%s' has a non-numeric threshold." % raw)
+
+        if threshold < 0 or threshold > 1:
+            raise ConfigError("Modification filter '%s' must have a threshold between 0 and 1." % raw)
+
+        filters_dict[mod_code.lower()] = threshold
+
+    return filters_dict, default_threshold
+
+
+def serialize_modification_filters(filters_dict, default_threshold=0.0):
+    payload = {'filters': filters_dict or {}, 'default': default_threshold}
+    return json.dumps(payload)
+
+
+def deserialize_modification_filters(payload, default_threshold=0.0):
+    if not payload:
+        return {}, default_threshold
+
+    if isinstance(payload, dict):
+        filters_dict = payload.get('filters', {})
+        default_threshold = payload.get('default', default_threshold)
+        return filters_dict, default_threshold
+
+    try:
+        data = json.loads(payload)
+    except Exception:
+        return {}, default_threshold
+
+    if not isinstance(data, dict):
+        return {}, default_threshold
+
+    return data.get('filters', {}), data.get('default', default_threshold)
 
 
 def get_default_gene_caller(contigs_db_path):

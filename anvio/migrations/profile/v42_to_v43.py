@@ -36,6 +36,43 @@ def migrate(db_path):
     if t.modifications_table_name not in existing_tables:
         progress.update("Creating modifications table")
         profile_db.create_table(t.modifications_table_name, t.modifications_table_structure, t.modifications_table_types)
+    else:
+        progress.update("Updating modifications table")
+        # If the existing table does not have the desired columns (count and strand),
+        # aggregate the old per-read rows into the new aggregated table.
+        columns = [row[1] for row in profile_db._exec('PRAGMA TABLE_INFO(%s)' % t.modifications_table_name)]
+        if 'count' not in columns or 'strand' not in columns:
+            progress.update("Aggregating existing modifications into new schema")
+            profile_db._exec('ALTER TABLE modifications RENAME TO modifications_old')
+            profile_db.create_table(t.modifications_table_name, t.modifications_table_structure, t.modifications_table_types)
+            # If old table had a strand column, preserve it; otherwise default to '.'
+            if 'strand' in columns:
+                profile_db._exec(
+                    'INSERT INTO modifications (sample_id, split_name, pos, pos_in_contig, modification, strand, count) '
+                    'SELECT sample_id, split_name, pos, pos_in_contig, lower(modification), strand, COUNT(*) '
+                    'FROM modifications_old GROUP BY sample_id, split_name, pos, pos_in_contig, lower(modification), strand')
+            else:
+                profile_db._exec(
+                    "INSERT INTO modifications (sample_id, split_name, pos, pos_in_contig, modification, strand, count) "
+                    "SELECT sample_id, split_name, pos, pos_in_contig, lower(modification), '.' as strand, COUNT(*) "
+                    "FROM modifications_old GROUP BY sample_id, split_name, pos, pos_in_contig, lower(modification)")
+            profile_db._exec('DROP TABLE modifications_old')
+
+    # Add new meta keys for modifications support with safe defaults
+    progress.update("Setting modifications metadata")
+    
+    # Check existing keys by querying the self table
+    existing_keys_rows = profile_db._exec("SELECT key FROM self WHERE key IN ('modifications_profiled', 'min_coverage_for_modifications', 'modification_filters')").fetchall()
+    existing_keys = set([row[0] for row in existing_keys_rows])
+    
+    if 'modifications_profiled' not in existing_keys:
+        profile_db.set_meta_value('modifications_profiled', 0)
+    
+    if 'min_coverage_for_modifications' not in existing_keys:
+        profile_db.set_meta_value('min_coverage_for_modifications', 0)
+    
+    if 'modification_filters' not in existing_keys:
+        profile_db.set_meta_value('modification_filters', '{"filters": {}, "default": 0.0}')
 
     progress.update("Updating version")
     profile_db._exec("DELETE FROM self WHERE key = 'version'")
@@ -53,5 +90,5 @@ if __name__ == '__main__':
     try:
         migrate(args.db_path)
     except ConfigError as e:
-        run.error(e)
+        run.warning(str(e))
         sys.exit(-1)

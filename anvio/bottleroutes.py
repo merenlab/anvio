@@ -536,6 +536,9 @@ class BottleApplication(Bottle):
                  'coverage': [],
                  'variability': [],
                  'indels': [],
+                 'modifications': [],
+                 'modification_types': [],
+                 'modifications_enabled': self.interactive.p_meta.get('modifications_profiled', 0),
                  'competing_nucleotides': [],
                  'previous_contig_name': None,
                  'next_contig_name': None,
@@ -592,12 +595,18 @@ class BottleApplication(Bottle):
         ## get the indels information dict for split:
         split_indels_info_dict = self.interactive.get_indels_information_for_split(split_name)
 
+        ## get the modifications information dict for split:
+        split_modifications_info_dict = self.interactive.get_modifications_information_for_split(split_name)
+
         # building layer data
         for layer in layers:
             data['layers'].append(layer)
             data['competing_nucleotides'].append(split_variability_info_dict[layer]['competing_nucleotides'])
             data['variability'].append(split_variability_info_dict[layer]['variability'])
             data['indels'].append(split_indels_info_dict[layer]['indels'])
+            data['modifications'].append(split_modifications_info_dict['data'][layer]['modifications'])
+
+        data['modification_types'] = split_modifications_info_dict['types']
 
         levels_occupied = {1: []}
         gene_entries_in_split = self.interactive.split_name_to_genes_in_splits_entry_ids[split_name]
@@ -749,6 +758,9 @@ class BottleApplication(Bottle):
                  'coverage': [],
                  'variability': [],
                  'indels': [],
+                 'modifications': [],
+                 'modification_types': [],
+                 'modifications_enabled': self.interactive.p_meta.get('modifications_profiled', 0),
                  'competing_nucleotides': [],
                  'previous_contig_name': None,
                  'next_contig_name': None,
@@ -816,8 +828,22 @@ class BottleApplication(Bottle):
         progress.update('Collecting info for "%s"' % split_name)
         split_indels_info_dict = self.interactive.get_indels_information_for_split(split_name)
 
+        ## get the modifications information dict for split:
+        split_modifications_info_dict = self.interactive.get_modifications_information_for_split(split_name)
+
         for layer in layers:
-            progress.update('Formatting indels data: "%s"' % layer)
+            modifications_dict_original = copy.deepcopy(split_modifications_info_dict['data'][layer]['modifications'])
+            modifications_dict = {}
+            for pos in modifications_dict_original:
+                if pos < focus_region_start or pos > focus_region_end:
+                    continue
+
+                entry = modifications_dict_original[pos]
+                entry['pos_in_split'] = pos
+                entry['pos'] = pos - focus_region_start
+                modifications_dict[entry['pos']] = entry
+
+            data['modifications'].append(modifications_dict)
 
             indels_dict_original = copy.deepcopy(split_indels_info_dict[layer]['indels'])
             indels_dict = {}
@@ -830,6 +856,8 @@ class BottleApplication(Bottle):
                     indels_dict[indel_entry_id]['pos'] = indels_dict[indel_entry_id]['pos'] - focus_region_start
 
             data['indels'].append(indels_dict)
+
+        data['modification_types'] = split_modifications_info_dict['types']
 
         levels_occupied = {1: []}
         gene_entries_in_split = self.interactive.split_name_to_genes_in_splits_entry_ids[split_name]

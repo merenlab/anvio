@@ -399,13 +399,35 @@ class Read:
         # attributes, all attributes of interest are redefined here
         self.cigartuples = np.array(read.cigartuples)
         self.query_sequence = np.frombuffer(read.query_sequence.encode('ascii'), np.uint8)
+        self.query_name = read.query_name
         self.reference_start = read.reference_start
         self.reference_end = read.reference_end
 
-        self.modifications_mm = read.get_tag('MM') if read.has_tag('MM') else None
-        self.modifications_ml = read.get_tag('ML') if read.has_tag('ML') else None
-        self.modified_bases = read.modified_bases
-        self.query_pos_to_ref_pos = read.get_reference_positions(full_length=True)
+        # Parse modification tags (MM/ML) and pysam's convenience attribute
+        # `modified_bases` can raise low-level parsing errors for malformed tags.
+        # Guard against that and mark such reads so downstream code can skip them.
+        try:
+            self.modifications_mm = read.get_tag('MM') if read.has_tag('MM') else None
+        except Exception:
+            self.modifications_mm = None
+
+        try:
+            self.modifications_ml = read.get_tag('ML') if read.has_tag('ML') else None
+        except Exception:
+            self.modifications_ml = None
+
+        try:
+            self.modified_bases = read.modified_bases
+            self._modification_parse_error = False
+        except Exception:
+            self.modified_bases = None
+            self._modification_parse_error = True
+
+        # Map query positions to reference positions (full-length includes soft-clips).
+        try:
+            self.query_pos_to_ref_pos = read.get_reference_positions(full_length=True)
+        except Exception:
+            self.query_pos_to_ref_pos = None
 
         if read.has_tag('MD'):
             self.reference_sequence = np.frombuffer(read.get_reference_sequence().upper().encode('ascii'), np.uint8)

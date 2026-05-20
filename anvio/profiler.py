@@ -957,6 +957,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.min_contig_length = A('min_contig_length') or 0
         self.max_contig_length = A('max_contig_length') or sys.maxsize
         self.min_coverage_for_variability = A('min_coverage_for_variability')
+        self.min_coverage_for_modifications = A('min_coverage_for_modifications')
         self.contigs_shall_be_clustered = A('cluster_contigs')
         self.skip_hierarchical_clustering = A('skip_hierarchical_clustering')
         self.sample_id = A('sample_name')
@@ -967,6 +968,10 @@ class BAMProfiler(dbops.ContigsSuperclass):
         self.skip_INDEL_profiling = A('skip_INDEL_profiling')
         self.profile_SCVs = A('profile_SCVs')
         self.include_modifications = A('include_modifications')
+        modification_filter_default = A('modification_filter_default')
+        if modification_filter_default is None:
+            modification_filter_default = 0.0
+        self.modification_filters, self.modification_filter_default = utils.parse_modification_filters(A('modification_filter'), modification_filter_default)
         self.min_percent_identity = A('min_percent_identity')
         self.fetch_filter = A('fetch_filter')
         self.gen_serialized_profile = A('gen_serialized_profile')
@@ -1253,6 +1258,9 @@ class BAMProfiler(dbops.ContigsSuperclass):
                        'SCVs_profiled': self.profile_SCVs,
                        'INDELs_profiled': not self.skip_INDEL_profiling,
                        'modifications_profiled': self.include_modifications,
+                       'min_coverage_for_modifications': self.min_coverage_for_modifications or 0,
+                       'modification_filters': utils.serialize_modification_filters(self.modification_filters,
+                                                                                     default_threshold=self.modification_filter_default),
                        'min_percent_identity': self.min_percent_identity or 0,
                        'fetch_filter': self.fetch_filter,
                        'min_coverage_for_variability': self.min_coverage_for_variability,
@@ -1449,13 +1457,45 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if not self.include_modifications:
             return
 
+        aggregated_modifications = OrderedDict()
+        min_coverage = self.min_coverage_for_modifications or 0
+
         for contig in self.contigs:
             for split in contig.splits:
                 if not split.modification_profiles:
                     continue
 
+                split_coverage = split.coverage.c if split.coverage is not None else None
+
                 for entry in split.modification_profiles:
-                    self.modifications_table.append([self.sample_id] + entry)
+                    # entry layout from contigops: [split_name, pos_in_split, pos_in_contig, mod_code, probability, strand_symbol, base]
+                    split_name = entry[0]
+                    pos_in_split = entry[1]
+                    pos_in_contig = entry[2]
+                    modification = str(entry[3]).lower()
+                    probability = entry[4] if len(entry) > 4 else None
+                    strand_symbol = entry[5] if len(entry) > 5 else '.'
+
+                    threshold = self.modification_filters.get(modification, self.modification_filter_default)
+                    probability = 1.0 if probability is None else float(probability)
+
+                    if probability < threshold:
+                        continue
+
+                    if split_coverage is not None:
+                        if pos_in_split < 0 or pos_in_split >= len(split_coverage):
+                            continue
+                        if int(split_coverage[pos_in_split]) < min_coverage:
+                            continue
+
+                    key = (split_name, pos_in_split, pos_in_contig, modification, strand_symbol)
+                    if key not in aggregated_modifications:
+                        aggregated_modifications[key] = [split_name, pos_in_split, pos_in_contig, modification, strand_symbol, 0]
+
+                    aggregated_modifications[key][5] += 1
+
+        for aggregated_entry in aggregated_modifications.values():
+            self.modifications_table.append([self.sample_id] + aggregated_entry)
 
         self.modifications_table.store()
 
