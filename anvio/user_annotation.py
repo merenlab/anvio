@@ -21,6 +21,7 @@ This module provides two classes:
 """
 
 import os
+import re
 import json
 import gzip
 import shutil
@@ -37,6 +38,7 @@ import anvio.filesnpaths as filesnpaths
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.drivers.diamond import Diamond
 from anvio.tables.genefunctions import TableForGeneFunctions
+from anvio import constants
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -55,10 +57,85 @@ MANIFEST_FILENAME = 'manifest.json'
 HMM_SUBDIR = 'hmm'
 DIAMOND_SUBDIR = 'diamond'
 
-# Source name suffixes appended to the user's database name in the gene_functions table.
-# These let users know immediately which search method produced a given annotation.
 HMM_SOURCE_SUFFIX = '_HMM'
 DIAMOND_SOURCE_SUFFIX = '_DIAMOND'
+
+# Inherit anvio standard evalue (matches anvio.K('min-e-value')['default'])
+DEFAULT_HMM_EVALUE = 1e-15
+DEFAULT_DIAMOND_EVALUE = 1e-15
+
+
+def _auto_normalize_id(raw_id):
+    """Auto-detect and normalize common protein database ID formats.
+
+    Handles:
+      - UniProt  sp|P12345|GENE_SPECIES  → gene name (e.g. RECA)
+      - UniProt  tr|A0A000|GENE_SPECIES  → gene name
+      - NCBI     ref|NP_123.1|           → NP_123  (strip version)
+      - NCBI     gb|AAA12.1|             → AAA12
+      - NCBI     WP_012345678.1          → WP_012345678
+      - Pfam     PF00001.23              → PF00001
+      - PDB      pdb|4HHB|A             → 4HHB_A
+      - lcl|id                           → id
+      - unknown pipe-delimited           → shortest informative field
+      - plain ids                        → as-is
+    """
+    if not raw_id or raw_id == '-':
+        return raw_id
+
+    if '|' in raw_id:
+        parts = raw_id.split('|')
+        prefix = parts[0].lower()
+
+        if prefix in ('sp', 'tr'):
+            # UniProt SwissProt / TrEMBL: extract gene name from GENE_SPECIES token
+            if len(parts) >= 3 and parts[2]:
+                gene_species = parts[2].strip()
+                return gene_species.split('_')[0] if '_' in gene_species else gene_species
+            return (parts[1] or raw_id).strip()
+
+        if prefix in ('ref', 'gb', 'emb', 'dbj', 'prf', 'pir', 'tpe', 'tpg', 'tpd'):
+            acc = (parts[1] if len(parts) > 1 else raw_id).strip()
+            # Strip numeric version suffix (e.g. NP_123456.1 → NP_123456)
+            return re.sub(r'\.\d+$', '', acc) if acc else raw_id
+
+        if prefix == 'pdb':
+            struct = (parts[1] or '').strip()
+            chain = (parts[2] if len(parts) > 2 else '').strip()
+            return f"{struct}_{chain}" if chain else struct or raw_id
+
+        if prefix == 'lcl':
+            return (parts[1] if len(parts) > 1 else raw_id).strip()
+
+        # Unknown pipe-delimited: take the first short alphanumeric-looking field
+        for p in parts:
+            p = p.strip()
+            if p and 2 <= len(p) <= 25 and re.match(r'^[A-Za-z0-9_.:-]+$', p):
+                return p
+        return parts[-1].strip() or raw_id
+
+    # Versioned NCBI-style accessions without pipes (WP_012345678.1, NP_123456.1)
+    if re.match(r'^[A-Z]{1,3}[_]?\d+\.\d+$', raw_id):
+        return re.sub(r'\.\d+$', '', raw_id)
+
+    # Pfam / TIGRFAM version suffixes  PF00001.23 → PF00001
+    if re.match(r'^(?:PF|TIGR)\d+\.\d+$', raw_id):
+        return raw_id.rsplit('.', 1)[0]
+
+    return raw_id
+
+
+def _normalize_hmm_acc(acc):
+    """Strip common version suffixes from HMM accession strings.
+
+    Pfam PF00001.23 → PF00001  |  TIGRFAM TIGR00001.1 → TIGR00001
+    Other formats returned unchanged.
+    """
+    if not acc:
+        return acc
+    if re.match(r'^(?:PF|TIGR)\d+\.\d+$', acc):
+        return acc.rsplit('.', 1)[0]
+    return acc
 
 
 class UserAnnotationDBSetup:
@@ -78,7 +155,7 @@ class UserAnnotationDBSetup:
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
 
         self.input_tsv = A('input_tsv')
-        self.output_dir = A('output_dir')
+        self.output_dir = A('output_dir') or constants.default_user_annotation_data_dir
         self.num_threads = A('num_threads') or 1
         self.reset = A('reset') or False
         self.list_databases_only = A('list') or False
@@ -88,17 +165,28 @@ class UserAnnotationDBSetup:
 
 
     def sanity_check(self):
-        if not self.output_dir:
-            raise ConfigError("You must provide an output directory with --output-dir.")
+        if (self.list_databases_only or self.remove_database is not None) and self.input_tsv:
+            flag = '--list' if self.list_databases_only else f'--remove {self.remove_database}'
+            raise ConfigError(f"'{flag}' is a standalone operation and cannot be combined with --input-tsv. "
+                              f"Use it on its own to inspect or modify an existing annotation directory "
+                              f"(see `anvi-setup-user-annotation-db --help`).")
 
-        # --list and --remove only need the output dir to exist with a manifest
-        if self.list_databases_only or self.remove_database:
+        if (self.list_databases_only or self.remove_database is not None) and self.reset:
+            flag = '--list' if self.list_databases_only else '--remove'
+            raise ConfigError(f"'{flag}' is a standalone operation and cannot be combined with --reset "
+                              f"(see `anvi-setup-user-annotation-db --help`).")
+
+        if self.list_databases_only or self.remove_database is not None:
             if not os.path.isdir(self.output_dir):
-                raise ConfigError(f"The directory '{self.output_dir}' does not exist.")
+                raise ConfigError(f"The directory '{self.output_dir}' does not exist. "
+                                  f"You need to run `anvi-setup-user-annotation-db --input-tsv <FILE>` "
+                                  f"first to prepare your annotation databases.")
             manifest_path = os.path.join(self.output_dir, MANIFEST_FILENAME)
             if not os.path.exists(manifest_path):
                 raise ConfigError(f"No manifest found in '{self.output_dir}'. "
-                                  f"Is this a directory created by `anvi-setup-user-annotation-db`?")
+                                  f"You need to run `anvi-setup-user-annotation-db --input-tsv <FILE>` "
+                                  f"first to prepare your annotation databases, or point --output-dir "
+                                  f"to an existing annotation directory.")
             return
 
         if not self.input_tsv:
@@ -124,8 +212,13 @@ class UserAnnotationDBSetup:
             added = entry.get('added_on', 'unknown')
 
             if db_type == 'HMM':
+                cutoff_groups = entry.get('cutoff_groups', {})
+                if len(cutoff_groups) > 1:
+                    cutoff_str = 'mixed (' + ', '.join(f"{k}: {len(v)} models" for k, v in cutoff_groups.items()) + ')'
+                else:
+                    cutoff_str = entry.get('noise_cutoff_terms', '?')
                 detail = (f"{entry.get('num_models', '?')} models | "
-                          f"cutoff: {entry.get('noise_cutoff_terms', '?')} | "
+                          f"cutoff: {cutoff_str} | "
                           f"source: {name}{HMM_SOURCE_SUFFIX}")
                 if entry.get('companion_diamond'):
                     detail += f" + {name}{DIAMOND_SOURCE_SUFFIX} (companion)"
@@ -201,47 +294,62 @@ class UserAnnotationDBSetup:
             with open(manifest_path) as f:
                 manifest = json.load(f)
 
+        failures = {}
+
         for name, info in entries.items():
             path = info['path']
             companion_fasta = info['companion_fasta']
 
             self.run.warning(None, header=f"SETTING UP: {name}", lc="green")
 
-            db_type = self.validate_and_detect_db_type(path)
-            self.run.info('Database name', name)
-            self.run.info('Source path', path)
-            self.run.info('Type', db_type)
+            try:
+                db_type = self.validate_and_detect_db_type(path)
+                self.run.info('Database name', name)
+                self.run.info('Source path', path)
+                self.run.info('Type', db_type)
 
-            if db_type == 'hmm':
-                entry = self.setup_hmm_source(name, path)
+                if db_type == 'hmm':
+                    entry = self.setup_hmm_source(name, path)
 
-                if companion_fasta:
-                    companion_type = self._sniff_file_type(companion_fasta)
-                    if companion_type != 'diamond':
-                        raise ConfigError(f"The companion FASTA provided for '{name}' does not look like "
-                                          f"a protein FASTA file (it starts with content expected from an "
-                                          f"HMM profile or has unrecognised format). The companion file "
-                                          f"must be a protein FASTA.")
-                    self.run.warning(None, header=f"SETTING UP COMPANION DIAMOND: {name}", lc="cyan")
-                    self.run.info('Companion FASTA', companion_fasta)
-                    companion_entry = self.setup_diamond_source(name, companion_fasta)
-                    entry['companion_diamond'] = companion_entry
-            else:
-                if companion_fasta:
-                    self.run.warning(f"A companion FASTA was provided for '{name}', but this entry is a "
-                                     f"FASTA/DIAMOND database (not an HMM profile). Companion FASTA is only "
-                                     f"used with HMM databases. The companion will be ignored.")
-                entry = self.setup_diamond_source(name, path)
+                    if companion_fasta:
+                        companion_type = self._sniff_file_type(companion_fasta)
+                        if companion_type != 'diamond':
+                            raise ConfigError(f"The companion FASTA provided for '{name}' does not look like "
+                                              f"a protein FASTA file (it starts with content expected from an "
+                                              f"HMM profile or has unrecognised format). The companion file "
+                                              f"must be a protein FASTA.")
+                        self.run.warning(None, header=f"SETTING UP COMPANION DIAMOND: {name}", lc="cyan")
+                        self.run.info('Companion FASTA', companion_fasta)
+                        companion_entry = self.setup_diamond_source(name, companion_fasta)
+                        entry['companion_diamond'] = companion_entry
+                else:
+                    if companion_fasta:
+                        self.run.warning(f"A companion FASTA was provided for '{name}', but this entry is a "
+                                         f"FASTA/DIAMOND database (not an HMM profile). Companion FASTA is only "
+                                         f"used with HMM databases. The companion will be ignored.")
+                    entry = self.setup_diamond_source(name, path)
 
-            manifest[name] = entry
+                manifest[name] = entry
 
-            # Write manifest after every successful entry so a failure mid-run does
-            # not orphan already-prepared databases without a registry entry.
-            with open(manifest_path, 'w') as f:
-                json.dump(manifest, f, indent=2)
+                # Write manifest after every successful entry so a failure mid-run does
+                # not orphan already-prepared databases without a registry entry.
+                with open(manifest_path, 'w') as f:
+                    json.dump(manifest, f, indent=2)
+
+            except (ConfigError, FilesNPathsError, Exception) as e:
+                failures[name] = str(e)
+                self.run.warning(f"Anvi'o could not set up '{name}' and will skip it. Error: {e}")
 
         self.run.info('Manifest written to', manifest_path)
-        self.run.info('Databases set up', f"{len(entries)} ({', '.join(entries.keys())})")
+        num_ok = len(entries) - len(failures)
+        self.run.info('Databases set up', f"{num_ok} ({', '.join(k for k in entries if k not in failures)})" if num_ok else "0")
+
+        if failures:
+            self.run.warning(
+                f"{len(failures)} database(s) failed and were skipped: "
+                f"{', '.join(failures.keys())}. The manifest only contains the databases that succeeded. "
+                f"Re-run setup for the failed databases after fixing the issues above."
+            )
 
 
     def parse_input_tsv(self):
@@ -307,14 +415,23 @@ class UserAnnotationDBSetup:
         return entries
 
 
-    def _sniff_file_type(self, file_path):
-        """Peek at the file content and return 'hmm', 'diamond', or None.
+    def _copy_hmm_inject_acc(self, src_path, dst_gz_path, models_no_acc):
+        """Copy HMM to dst_gz_path (gzipped), injecting 'ACC  {name}' after NAME for models lacking it."""
+        models_no_acc_set = set(models_no_acc)
+        opener_in = gzip.open if src_path.lower().endswith('.gz') else open
 
-        Parameters
-        ==========
-        file_path : str
-            Path to the file to inspect.
-        """
+        with opener_in(src_path, 'rt', encoding='utf-8', errors='replace') as f_in, \
+             gzip.open(dst_gz_path, 'wt', encoding='utf-8') as f_out:
+            for line in f_in:
+                f_out.write(line)
+                if line.startswith('NAME'):
+                    parts = line.split()
+                    if len(parts) >= 2 and parts[1] in models_no_acc_set:
+                        f_out.write(f"ACC  {parts[1]}\n")
+
+
+    def _sniff_file_type(self, file_path):
+        """Peek at the file content and return 'hmm', 'diamond', or None."""
         is_gzipped = file_path.lower().endswith('.gz')
         opener = gzip.open if is_gzipped else open
         with opener(file_path, 'rt', encoding='utf-8', errors='ignore') as f:
@@ -327,22 +444,7 @@ class UserAnnotationDBSetup:
 
 
     def validate_and_detect_db_type(self, file_path):
-        """Determine whether a file is an HMM profile or a FASTA file, and verify the content.
-
-        The function first guesses the type from the file extension. It then sniffs the
-        actual file content. If the two disagree, a ConfigError is raised so the user
-        gets a clear, actionable message instead of a cryptic downstream failure.
-
-        Parameters
-        ==========
-        file_path : str
-            Path to the database file.
-
-        Returns
-        =======
-        db_type : str
-            'hmm' or 'diamond'.
-        """
+        """Determine whether a file is an HMM profile or a FASTA file, and verify the content."""
         lower = file_path.lower()
         basename = os.path.basename(file_path)
 
@@ -355,7 +457,6 @@ class UserAnnotationDBSetup:
 
         content_type = self._sniff_file_type(file_path)
 
-        # If extension and content both agree (or content is ambiguous), all good
         if extension_type is not None and content_type is not None and extension_type != content_type:
             type_labels = {'hmm': 'an HMM profile (HMMER3 format)',
                            'diamond': 'a protein FASTA file'}
@@ -379,12 +480,8 @@ class UserAnnotationDBSetup:
     def parse_hmm_models(self, hmm_path):
         """Parse an HMMER3 profile file and return a list of per-model metadata dicts.
 
-        Each dict contains: name, acc, has_tc, has_ga, has_nc.
-
-        Parameters
-        ==========
-        hmm_path : str
-            Path to the HMM file (plain text or gzipped).
+        Each dict contains: name, acc, has_tc, has_ga, has_nc, cutoff_type.
+        cutoff_type is the best available cutoff annotation ('tc', 'ga', 'nc', or None).
         """
         models = []
         opener = gzip.open if hmm_path.lower().endswith('.gz') else open
@@ -418,6 +515,14 @@ class UserAnnotationDBSetup:
                             raise ConfigError(f"Found an HMM model without a NAME field near line {line_num} "
                                               f"in '{hmm_path}'. Every model in a valid HMMER3 profile must "
                                               f"have a NAME line.")
+                        if current['has_tc']:
+                            current['cutoff_type'] = 'tc'
+                        elif current['has_ga']:
+                            current['cutoff_type'] = 'ga'
+                        elif current['has_nc']:
+                            current['cutoff_type'] = 'nc'
+                        else:
+                            current['cutoff_type'] = None
                         models.append(current)
                         current = None
         except (OSError, EOFError) as e:
@@ -427,7 +532,6 @@ class UserAnnotationDBSetup:
             raise ConfigError(f"No HMMER3 models found in '{hmm_path}'. A valid HMMER3 profile starts "
                               f"with a 'HMMER3/f' header and contains at least one model terminated by '//'.")
 
-        # Duplicate model names would silently corrupt genes.txt (dict overwrite downstream).
         names_seen = set()
         duplicates = []
         for m in models:
@@ -446,16 +550,13 @@ class UserAnnotationDBSetup:
     def determine_noise_cutoff(self, models, db_name):
         """Select the best HMMER noise cutoff strategy for a set of models.
 
-        Priority: TC (trusted cutoffs) > GA (gathering thresholds) > NC (noise cutoffs) > -E 1e-5.
-        A cutoff type is only used when ALL models in the file carry that annotation, because
-        HMMER applies a single flag per search run.
+        Returns (cutoff_flag, cutoff_groups) where:
+          cutoff_flag   – single flag string when all models share a cutoff type, else None
+          cutoff_groups – dict mapping cutoff flag to list of model names
+                          (one key when uniform, multiple keys when mixed)
 
-        Parameters
-        ==========
-        models : list
-            Output of parse_hmm_models().
-        db_name : str
-            Database name (for messages only).
+        For mixed files, each model is assigned to the best available cutoff group
+        rather than falling back globally to the evalue threshold.
         """
         n = len(models)
         num_tc = sum(1 for m in models if m['has_tc'])
@@ -463,65 +564,76 @@ class UserAnnotationDBSetup:
         num_nc = sum(1 for m in models if m['has_nc'])
 
         if num_tc == n:
-            return '--cut_tc'
+            return '--cut_tc', {'--cut_tc': [m['name'] for m in models]}
         if num_ga == n:
-            return '--cut_ga'
+            return '--cut_ga', {'--cut_ga': [m['name'] for m in models]}
         if num_nc == n:
-            return '--cut_nc'
+            return '--cut_nc', {'--cut_nc': [m['name'] for m in models]}
 
-        partial = []
-        if num_tc:
-            partial.append(f"TC in {num_tc}/{n} models")
-        if num_ga:
-            partial.append(f"GA in {num_ga}/{n} models")
-        if num_nc:
-            partial.append(f"NC in {num_nc}/{n} models")
+        # Each model gets its best available cutoff (TC > GA > NC > evalue fallback)
+        fallback_flag = f'-E {DEFAULT_HMM_EVALUE}'
+        cutoff_groups = {}
+        for m in models:
+            if m['has_tc']:
+                key = '--cut_tc'
+            elif m['has_ga']:
+                key = '--cut_ga'
+            elif m['has_nc']:
+                key = '--cut_nc'
+            else:
+                key = fallback_flag
+            cutoff_groups.setdefault(key, []).append(m['name'])
 
-        if partial:
-            self.run.warning(f"Not all models in '{db_name}' share the same cutoff annotation type "
-                             f"({', '.join(partial)}). Because HMMER applies a single cutoff flag per "
-                             f"run, anvi'o will fall back to -E 1e-5. To use profile-specific cutoffs, "
-                             f"ensure every model in the file has the same annotation type (TC, GA, or NC). "
-                             f"You can also manually edit noise_cutoff_terms.txt inside the prepared HMM "
-                             f"source directory before running the annotation search.")
-        else:
-            self.run.warning(f"No TC, GA, or NC cutoff annotations found in any model of '{db_name}'. "
-                             f"Falling back to -E 1e-5, which may yield more false positives than "
-                             f"profile-specific cutoffs. Edit noise_cutoff_terms.txt in the prepared "
-                             f"directory to override this before running the annotation search.")
+        if len(cutoff_groups) == 1:
+            # All models share the same (possibly fallback) cutoff — not truly mixed
+            single_flag = list(cutoff_groups.keys())[0]
+            if single_flag == fallback_flag:
+                self.run.warning(
+                    f"No TC, GA, or NC cutoff annotations found in any model of '{db_name}'. "
+                    f"Using {fallback_flag} for all {n} model(s). To use profile-specific cutoffs, "
+                    f"add TC/GA/NC lines to your HMM profiles before running setup."
+                )
+            return single_flag, cutoff_groups
 
-        return '-E 1e-5'
+        # Genuinely mixed: multiple cutoff types across models
+        group_summary = ', '.join(f"{k}: {len(v)} model(s)" for k, v in cutoff_groups.items())
+        self.run.info_single(
+            f"Models in '{db_name}' have mixed cutoff types. Anvi'o will run each group separately "
+            f"at annotation time using the optimal cutoff for each: {group_summary}.",
+            cut_after=None
+        )
+
+        return None, cutoff_groups
 
 
     def setup_hmm_source(self, db_name, hmm_path):
-        """Create a standard anvi'o HMM source directory from a raw HMMER3 profile file.
-
-        Parameters
-        ==========
-        db_name : str
-            Name for this database (also becomes the directory name).
-        hmm_path : str
-            Absolute path to the input HMM file.
-
-        Returns
-        =======
-        entry : dict
-            Manifest entry for this database.
-        """
+        """Create a standard anvi'o HMM source directory from a raw HMMER3 profile file."""
         self.progress.new(f"Setting up HMM source '{db_name}'")
         self.progress.update("Parsing models...")
 
         models = self.parse_hmm_models(hmm_path)
-        noise_cutoff_terms = self.determine_noise_cutoff(models, db_name)
+        cutoff_flag, cutoff_groups = self.determine_noise_cutoff(models, db_name)
+
+        # noise_cutoff_terms.txt in the main dir uses the primary flag; for mixed
+        # files we write the fallback so the dir is still a valid HMM source.
+        primary_cutoff = cutoff_flag or f'-E {DEFAULT_HMM_EVALUE}'
 
         hmm_dir = os.path.join(self.output_dir, HMM_SUBDIR, db_name)
         filesnpaths.gen_output_directory(hmm_dir, run=self.run, delete_if_exists=True, dont_warn=True)
+
+        models_no_acc = [m['name'] for m in models if not m['acc']]
+        if models_no_acc:
+            self.run.warning(
+                f"{len(models_no_acc)} model(s) in '{db_name}' have no ACC line in the HMM profile: "
+                f"{', '.join(models_no_acc)}. Anvi'o will use the model name as the accession for these models."
+            )
 
         self.progress.update("Writing genes.txt...")
         with open(os.path.join(hmm_dir, 'genes.txt'), 'w') as f:
             f.write('gene\taccession\thmmsource\n')
             for m in models:
-                acc = m['acc'] if m['acc'] else ''
+                raw_acc = m['acc'] if m['acc'] else m['name']
+                acc = _normalize_hmm_acc(raw_acc)
                 f.write(f"{m['name']}\t{acc}\tuser-provided\n")
 
         self.progress.update("Writing metadata files...")
@@ -532,14 +644,16 @@ class UserAnnotationDBSetup:
             f.write('AA:GENE')
 
         with open(os.path.join(hmm_dir, 'noise_cutoff_terms.txt'), 'w') as f:
-            f.write(noise_cutoff_terms)
+            f.write(primary_cutoff)
 
         with open(os.path.join(hmm_dir, 'reference.txt'), 'w') as f:
             f.write(f"User-provided HMM database. Original file: {hmm_path}")
 
         self.progress.update("Copying and compressing HMM file...")
         hmm_gz_path = os.path.join(hmm_dir, 'genes.hmm.gz')
-        if hmm_path.lower().endswith('.gz'):
+        if models_no_acc:
+            self._copy_hmm_inject_acc(hmm_path, hmm_gz_path, models_no_acc)
+        elif hmm_path.lower().endswith('.gz'):
             shutil.copy2(hmm_path, hmm_gz_path)
         else:
             with open(hmm_path, 'rb') as f_in:
@@ -549,7 +663,10 @@ class UserAnnotationDBSetup:
         self.progress.end()
 
         self.run.info('HMM models found', len(models))
-        self.run.info('Noise cutoff strategy', noise_cutoff_terms)
+        if cutoff_flag:
+            self.run.info('Noise cutoff strategy', cutoff_flag)
+        else:
+            self.run.info('Noise cutoff strategy', f"mixed ({len(cutoff_groups)} groups — applied dynamically at run time)")
         self.run.info('HMM source directory', hmm_dir)
 
         return {
@@ -557,26 +674,43 @@ class UserAnnotationDBSetup:
             'source_path': hmm_path,
             'hmm_dir': hmm_dir,
             'num_models': len(models),
-            'noise_cutoff_terms': noise_cutoff_terms,
+            'noise_cutoff_terms': primary_cutoff,
+            'cutoff_groups': cutoff_groups,
             'added_on': str(datetime.date.today()),
         }
 
 
-    def setup_diamond_source(self, db_name, fasta_path):
-        """Build a DIAMOND database from a protein FASTA file.
+    def _build_sequence_id_mapping(self, fasta_path):
+        """Parse FASTA headers and return {sseqid: {'clean_id': ..., 'description': ...}}.
 
-        Parameters
-        ==========
-        db_name : str
-            Name for this database.
-        fasta_path : str
-            Absolute path to the input protein FASTA file.
-
-        Returns
-        =======
-        entry : dict
-            Manifest entry for this database.
+        sseqid    = FASTA header up to first space (what DIAMOND reports in column 2)
+        clean_id  = auto-normalized version of sseqid
+        description = rest of header after first space (human-readable protein name)
         """
+        mapping = {}
+        opener = gzip.open if fasta_path.lower().endswith(('.gz', '.gzip')) else open
+        try:
+            with opener(fasta_path, 'rt', encoding='utf-8', errors='replace') as f:
+                for line in f:
+                    if not line.startswith('>'):
+                        continue
+                    header = line[1:].strip()
+                    if ' ' in header:
+                        sseqid, description = header.split(' ', 1)
+                    else:
+                        sseqid, description = header, ''
+                    mapping[sseqid] = {
+                        'clean_id': _auto_normalize_id(sseqid),
+                        'description': description.strip(),
+                    }
+        except (OSError, EOFError) as e:
+            self.run.warning(f"Could not parse FASTA headers from '{fasta_path}' for ID normalization: {e}. "
+                             f"Raw sequence IDs will be used as accessions.")
+        return mapping
+
+
+    def setup_diamond_source(self, db_name, fasta_path):
+        """Build a DIAMOND database from a protein FASTA file."""
         utils.is_program_exists('diamond')
 
         diamond_dir = os.path.join(self.output_dir, DIAMOND_SUBDIR)
@@ -602,8 +736,22 @@ class UserAnnotationDBSetup:
         except Exception:
             pass
 
+        # Build and store ID-normalization mapping from FASTA headers
+        self.progress.new(f"Building ID mapping for '{db_name}'")
+        self.progress.update("Parsing FASTA headers...")
+        id_mapping = self._build_sequence_id_mapping(fasta_path)
+        self.progress.end()
+
+        mapping_path = os.path.join(diamond_dir, f'{db_name}_id_mapping.json')
+        with open(mapping_path, 'w') as f:
+            json.dump(id_mapping, f)
+
+        normalized_ids = sum(1 for v in id_mapping.values() if v['clean_id'] != v.get('raw_id', v['clean_id']))
+        has_descriptions = sum(1 for v in id_mapping.values() if v['description'])
+
         self.run.info('DIAMOND database', dmnd_path)
         self.run.info('Sequences in source FASTA', num_seqs or 'unknown')
+        self.run.info('IDs with descriptions', f"{has_descriptions}/{len(id_mapping)}")
 
         return {
             'type': 'diamond',
@@ -611,6 +759,7 @@ class UserAnnotationDBSetup:
             'dmnd_path': dmnd_path,
             'dmnd_base': dmnd_base,
             'num_sequences': num_seqs,
+            'id_mapping_path': mapping_path,
             'added_on': str(datetime.date.today()),
         }
 
@@ -649,13 +798,16 @@ class UserAnnotationRunner:
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
 
         self.contigs_db_path = A('contigs_db')
-        self.annotation_db_dir = A('annotation_db_dir')
+        self.annotation_db_dir = A('annotation_db_dir') or constants.default_user_annotation_data_dir
         self.database = A('database')
         self.num_threads = A('num_threads') or 1
         self.just_do_it = A('just_do_it') or False
+        self.force_overwrite = A('force_overwrite') or False
         self.hmmer_program = A('hmmer_program') or 'hmmscan'
-        self.evalue = A('evalue')
+        self.evalue = A('evalue') if A('evalue') is not None else DEFAULT_DIAMOND_EVALUE
         self.min_pident = A('min_pident')
+        self.qcov = A('qcov')
+        self.max_hsps = A('max_hsps')
         self.diamond_sensitivity = A('diamond_sensitivity')
 
         self.sanity_check()
@@ -724,13 +876,240 @@ class UserAnnotationRunner:
                                   f"`anvi-setup-user-annotation-db`?")
 
 
+    def _handle_existing_source(self, source_name):
+        """Check whether source_name already exists in gene_functions.
+
+        Returns True if the caller should proceed (source absent, or force_overwrite dropped it).
+        Returns False if the caller should skip (source exists and force_overwrite not set).
+        """
+        contigs_database = db.DB(self.contigs_db_path, utils.get_required_version_for_db(self.contigs_db_path))
+        existing_raw = contigs_database.get_meta_value('gene_function_sources', return_none_if_not_in_table=True)
+        existing = set(existing_raw.split(',') if existing_raw else [])
+
+        if source_name not in existing:
+            contigs_database.disconnect()
+            return True
+
+        if self.force_overwrite:
+            self.run.warning(
+                f"Source '{source_name}' already in the gene_functions table. "
+                f"Dropping and re-annotating (--force-overwrite was passed)."
+            )
+            gf_table = TableForGeneFunctions(self.contigs_db_path,
+                                              run=terminal.Run(verbose=False),
+                                              progress=terminal.Progress(verbose=False))
+            gf_table.drop_functions(contigs_database, sources_to_drop=[source_name])
+            contigs_database.disconnect()
+            return True
+
+        self.run.warning(
+            f"Source '{source_name}' is already in the gene_functions table. Skipping. "
+            f"Pass --force-overwrite to drop the existing annotation and re-annotate."
+        )
+        contigs_database.disconnect()
+        return False
+
+
+    def _extract_models_from_hmm(self, hmm_gz_path, model_names):
+        """Extract a subset of models from a gzipped HMM file into a temp plain HMM file.
+
+        Returns the path to the temporary (plain, uncompressed) HMM file.
+        Caller is responsible for deleting it.
+        """
+        model_names_set = set(model_names)
+        temp_dir = filesnpaths.get_temp_directory_path()
+        temp_hmm_path = os.path.join(temp_dir, 'extracted.hmm')
+
+        opener = gzip.open if hmm_gz_path.lower().endswith('.gz') else open
+
+        with opener(hmm_gz_path, 'rt', encoding='utf-8', errors='replace') as f_in, \
+             open(temp_hmm_path, 'w') as f_out:
+            in_model = False
+            keep = False
+            current_lines = []
+
+            for line in f_in:
+                if line.startswith('HMMER3/'):
+                    in_model = True
+                    keep = False
+                    current_lines = [line]
+                elif in_model:
+                    current_lines.append(line)
+                    if line.startswith('NAME') and len(line.split()) >= 2:
+                        keep = line.split()[1] in model_names_set
+                    elif line.strip() == '//':
+                        if keep:
+                            f_out.writelines(current_lines)
+                        in_model = False
+                        keep = False
+                        current_lines = []
+
+        return temp_hmm_path
+
+
+    def _run_hmm_annotation_single_cutoff(self, internal_source_name, hmm_dir):
+        """Run HMM annotation for a database with a single uniform cutoff."""
+        from anvio.tables.hmmhits import TablesForHMMHits
+
+        sources = utils.get_HMM_sources_dictionary([hmm_dir])
+        original_key = list(sources.keys())[0]
+        sources[internal_source_name] = sources.pop(original_key)
+
+        search_tables = TablesForHMMHits(self.contigs_db_path,
+                                         num_threads_to_use=self.num_threads,
+                                         run=self.run,
+                                         progress=self.progress,
+                                         just_do_it=True,
+                                         hmm_program_to_use=self.hmmer_program,
+                                         add_to_functions_table=True)
+        search_tables.populate_search_tables(sources)
+
+
+    def _run_hmm_annotation_mixed_cutoffs(self, db_name, entry, cutoff_groups, internal_source_name):
+        """Run HMM annotation for a database with mixed cutoff types.
+
+        Each cutoff group is searched separately with its optimal cutoff flag,
+        then all results are merged under internal_source_name in the database.
+        """
+        from anvio.tables.hmmhits import TablesForHMMHits
+
+        hmm_dir = entry['hmm_dir']
+        hmm_gz_path = os.path.join(hmm_dir, 'genes.hmm.gz')
+
+        # Read genes.txt once for filtering
+        genes_txt_path = os.path.join(hmm_dir, 'genes.txt')
+        genes_by_name = {}
+        with open(genes_txt_path) as f:
+            next(f)  # skip header
+            for line in f:
+                parts = line.rstrip('\n').split('\t')
+                if parts:
+                    genes_by_name[parts[0]] = line
+
+        tmp_source_names = []
+        temp_dirs = []
+
+        try:
+            for i, (cutoff_flag, model_names) in enumerate(cutoff_groups.items()):
+                tmp_source = f'uatmp{i}x{db_name[:8]}'.replace('-', '').replace('.', '')[:20]
+                # Ensure PROPER: starts with letter, only alnum+underscore
+                if not tmp_source[0].isalpha():
+                    tmp_source = 'ua' + tmp_source
+                tmp_source_names.append(tmp_source)
+
+                self.run.info(f"Running cutoff group '{cutoff_flag}'",
+                              f"{len(model_names)} model(s)")
+
+                # Extract models for this group
+                extracted_hmm = self._extract_models_from_hmm(hmm_gz_path, model_names)
+
+                # Create temp HMM source dir named tmp_source (basename = source key)
+                temp_parent = filesnpaths.get_temp_directory_path()
+                temp_dirs.append(temp_parent)
+                tmp_source_dir = os.path.join(temp_parent, tmp_source)
+                os.makedirs(tmp_source_dir)
+
+                # Write genes.txt filtered to this group's models
+                model_names_set = set(model_names)
+                with open(os.path.join(tmp_source_dir, 'genes.txt'), 'w') as f:
+                    f.write('gene\taccession\thmmsource\n')
+                    for gname, gline in genes_by_name.items():
+                        if gname in model_names_set:
+                            f.write(gline)
+
+                # Copy static metadata files
+                for fname in ['kind.txt', 'target.txt', 'reference.txt']:
+                    shutil.copy2(os.path.join(hmm_dir, fname), os.path.join(tmp_source_dir, fname))
+
+                # Write group-specific noise_cutoff_terms.txt
+                with open(os.path.join(tmp_source_dir, 'noise_cutoff_terms.txt'), 'w') as f:
+                    f.write(cutoff_flag)
+
+                # Compress extracted HMM into the source dir
+                with open(extracted_hmm, 'rb') as f_in:
+                    with gzip.open(os.path.join(tmp_source_dir, 'genes.hmm.gz'), 'wb') as f_out:
+                        shutil.copyfileobj(f_in, f_out)
+                os.remove(extracted_hmm)
+
+                sources = utils.get_HMM_sources_dictionary([tmp_source_dir])
+
+                search_tables = TablesForHMMHits(self.contigs_db_path,
+                                                 num_threads_to_use=self.num_threads,
+                                                 run=self.run,
+                                                 progress=self.progress,
+                                                 just_do_it=True,
+                                                 hmm_program_to_use=self.hmmer_program,
+                                                 add_to_functions_table=True)
+                search_tables.populate_search_tables(sources)
+
+            # Merge all tmp source names into internal_source_name
+            contigs_database = db.DB(self.contigs_db_path, utils.get_required_version_for_db(self.contigs_db_path))
+            placeholders = ','.join('?' * len(tmp_source_names))
+
+            contigs_database._exec(
+                f"UPDATE {t.gene_function_calls_table_name} SET source = ? WHERE source IN ({placeholders})",
+                [internal_source_name] + tmp_source_names
+            )
+            contigs_database._exec(
+                f"UPDATE {t.hmm_hits_table_name} SET source = ? WHERE source IN ({placeholders})",
+                [internal_source_name] + tmp_source_names
+            )
+
+            # Merge hmm_hits_info rows: collect unique genes, delete tmp rows, insert one merged row
+            cursor = contigs_database._exec(
+                f"SELECT DISTINCT gene_name FROM {t.hmm_hits_table_name} WHERE source = ?",
+                [internal_source_name]
+            )
+            all_gene_names = [row[0] for row in cursor.fetchall()]
+
+            cursor2 = contigs_database._exec(
+                f"SELECT ref, search_type, domain FROM {t.hmm_hits_info_table_name} WHERE source IN ({placeholders})",
+                tmp_source_names
+            )
+            info_rows = cursor2.fetchall()
+
+            contigs_database._exec(
+                f"DELETE FROM {t.hmm_hits_info_table_name} WHERE source IN ({placeholders})",
+                tmp_source_names
+            )
+
+            existing_info = contigs_database._exec(
+                f"SELECT source FROM {t.hmm_hits_info_table_name} WHERE source = ?",
+                [internal_source_name]
+            ).fetchone()
+
+            if not existing_info and info_rows:
+                ref = info_rows[0][0]
+                search_type = info_rows[0][1]
+                domain = info_rows[0][2]
+                genes_str = ','.join(sorted(set(all_gene_names)))
+                contigs_database._exec(
+                    f"INSERT INTO {t.hmm_hits_info_table_name} VALUES (?,?,?,?,?)",
+                    [internal_source_name, ref, search_type, domain, genes_str]
+                )
+
+            # Update gene_function_sources meta value
+            existing_raw = contigs_database.get_meta_value('gene_function_sources', return_none_if_not_in_table=True)
+            existing_set = set(existing_raw.split(',') if existing_raw else [])
+            existing_set -= set(tmp_source_names)
+            existing_set.add(internal_source_name)
+            contigs_database.remove_meta_key_value_pair('gene_function_sources')
+            contigs_database.set_meta_value('gene_function_sources', ','.join(existing_set))
+
+            contigs_database.disconnect()
+
+        finally:
+            for tmp_dir in temp_dirs:
+                shutil.rmtree(tmp_dir, ignore_errors=True)
+
+
     def run_hmm_annotation(self, db_name, entry):
         """Search an HMM source and store hits in the gene_functions table.
 
-        Results are written with source name '{db_name}_HMM' so users can
-        identify this as an HMM-derived annotation. The HMM model name (NAME field)
-        becomes the 'function', the model accession (ACC field) becomes 'accession',
-        and the full-sequence E-value is stored in 'e_value'.
+        Results are written with source name '{db_name}_HMM'. If the source already
+        exists, it is dropped and replaced (same behavior as other anvio annotation programs).
+        For databases with mixed cutoff types, each group is searched separately with its
+        optimal cutoff flag and results are merged under the final source name.
 
         Parameters
         ==========
@@ -739,56 +1118,56 @@ class UserAnnotationRunner:
         entry : dict
             Manifest entry for this database.
         """
-        from anvio.tables.hmmhits import TablesForHMMHits
-
         hmm_dir = entry['hmm_dir']
+        cutoff_groups = entry.get('cutoff_groups', {})
+        internal_source_name = f'{db_name}{HMM_SOURCE_SUFFIX}'
 
         if not os.path.isdir(hmm_dir):
             raise ConfigError(f"The HMM source directory for '{db_name}' no longer exists at '{hmm_dir}'. "
                               f"Please run `anvi-setup-user-annotation-db` again.")
 
-        sources = utils.get_HMM_sources_dictionary([hmm_dir])
+        if not self._handle_existing_source(internal_source_name):
+            return
 
-        # Rename the source key to carry the _HMM suffix. This suffix will appear
-        # in the gene_functions table as the annotation source, letting users distinguish
-        # HMM hits from DIAMOND hits at a glance.
-        internal_source_name = f'{db_name}{HMM_SOURCE_SUFFIX}'
-        sources[internal_source_name] = sources.pop(db_name)
+        if len(cutoff_groups) > 1:
+            self._run_hmm_annotation_mixed_cutoffs(db_name, entry, cutoff_groups, internal_source_name)
+        else:
+            self._run_hmm_annotation_single_cutoff(internal_source_name, hmm_dir)
 
-        # `TablesForHMMHits.check_sources` with `add_to_functions_table=True` always
-        # raises a ConfigError when the source already exists — even with `--just-do-it`.
-        # We handle that case ourselves here so reruns behave consistently with DIAMOND.
-        if self.just_do_it:
-            contigs_database = db.DB(self.contigs_db_path, utils.get_required_version_for_db(self.contigs_db_path))
-            existing_sources_raw = contigs_database.get_meta_value('gene_function_sources', return_none_if_not_in_table=True)
-            existing_sources = set(existing_sources_raw.split(',') if existing_sources_raw else [])
-            if internal_source_name in existing_sources:
-                self.run.warning(f"Source '{internal_source_name}' already exists in the gene_functions table. "
-                                 f"Removing it first because --just-do-it was passed.")
-                gene_function_calls_table = TableForGeneFunctions(self.contigs_db_path,
-                                                                   run=terminal.Run(verbose=False),
-                                                                   progress=terminal.Progress(verbose=False))
-                gene_function_calls_table.drop_functions(contigs_database, sources_to_drop=[internal_source_name])
-            contigs_database.disconnect()
+        contigs_database = db.DB(self.contigs_db_path, utils.get_required_version_for_db(self.contigs_db_path))
 
-        search_tables = TablesForHMMHits(self.contigs_db_path,
-                                         num_threads_to_use=self.num_threads,
-                                         run=self.run,
-                                         progress=self.progress,
-                                         just_do_it=self.just_do_it,
-                                         hmm_program_to_use=self.hmmer_program,
-                                         add_to_functions_table=True)
-        search_tables.populate_search_tables(sources)
+        # Collect models with missing accession BEFORE prefixing function field
+        cursor = contigs_database._exec(
+            f"SELECT DISTINCT function FROM {t.gene_function_calls_table_name} "
+            f"WHERE source = ? AND accession = '-'",
+            [internal_source_name]
+        )
+        missing_acc_models = [row[0] for row in cursor.fetchall()]
+        if missing_acc_models:
+            self.run.warning(
+                f"{len(missing_acc_models)} model(s) reported no accession ('-') from HMMER for source "
+                f"'{internal_source_name}': {', '.join(missing_acc_models)}. "
+                f"Anvi'o will use the model name as the accession for these hits."
+            )
 
         # Prefix the function field with '[HMM] ' so the search method is immediately
         # visible in any tabular export alongside the source name suffix.
-        contigs_database = db.DB(self.contigs_db_path, utils.get_required_version_for_db(self.contigs_db_path))
         contigs_database._exec(
             f"UPDATE {t.gene_function_calls_table_name} "
             f"SET function = '[HMM] ' || function "
-            f"WHERE source = ?",
+            f"WHERE source = ? AND function NOT LIKE '[HMM] %'",
             [internal_source_name]
         )
+
+        # Fix any remaining '-' accessions: use model name (= SUBSTR strips '[HMM] ' prefix, 7 chars)
+        if missing_acc_models:
+            contigs_database._exec(
+                f"UPDATE {t.gene_function_calls_table_name} "
+                f"SET accession = SUBSTR(function, 7) "
+                f"WHERE source = ? AND accession = '-'",
+                [internal_source_name]
+            )
+
         contigs_database.disconnect()
 
         self.run.info('Results stored in', f"gene_functions table (source: '{internal_source_name}')")
@@ -803,9 +1182,8 @@ class UserAnnotationRunner:
     def run_diamond_annotation(self, db_name, entry):
         """Search a DIAMOND database and store best hits in the gene_functions table.
 
-        Results are written with source name '{db_name}_DIAMOND'. The function field
-        carries an enriched string: '{target_id} [pident: {pct}%, aln_len: {len} aa,
-        bitscore: {score}]'. The accession field carries the target sequence ID.
+        Results are written with source name '{db_name}_DIAMOND'. If the source already
+        exists, TableForGeneFunctions.create() will warn and replace it automatically.
 
         Parameters
         ==========
@@ -816,6 +1194,10 @@ class UserAnnotationRunner:
         """
         dmnd_path = entry.get('dmnd_path', '')
         dmnd_base = entry.get('dmnd_base', dmnd_path.removesuffix('.dmnd'))
+
+        source_name = f'{db_name}{DIAMOND_SOURCE_SUFFIX}'
+        if not self._handle_existing_source(source_name):
+            return
 
         if not os.path.exists(dmnd_path):
             raise ConfigError(f"The DIAMOND database for '{db_name}' no longer exists at '{dmnd_path}'. "
@@ -856,13 +1238,20 @@ class UserAnnotationRunner:
             diamond_log_path = os.path.join(logs_dir, f'{db_name}_diamond_blastp.log')
             diamond.run.log_file_path = diamond_log_path
 
-            diamond.evalue = self.evalue if self.evalue is not None else 1e-15
+            diamond.evalue = self.evalue
 
             if self.min_pident is not None:
                 diamond.min_pct_id = self.min_pident
 
+            extra_params = []
             if self.diamond_sensitivity:
-                diamond.additional_params_for_blastp = f'--{self.diamond_sensitivity}'
+                extra_params.append(f'--{self.diamond_sensitivity}')
+            if self.qcov is not None:
+                extra_params.append(f'--query-cover {self.qcov}')
+            if self.max_hsps is not None:
+                extra_params.append(f'--max-hsps {self.max_hsps}')
+            if extra_params:
+                diamond.additional_params_for_blastp = ' '.join(extra_params)
 
             diamond.blastp()
 
@@ -870,7 +1259,14 @@ class UserAnnotationRunner:
                 raise ConfigError(f"DIAMOND blastp produced no output for '{db_name}'. "
                                   f"Check the log file at '{diamond_log_path}' for details.")
 
-            functions_dict = self.parse_diamond_tabular_output(tabular_output_path, db_name)
+            # Load ID-normalization mapping if available
+            id_mapping = {}
+            mapping_path = entry.get('id_mapping_path')
+            if mapping_path and os.path.exists(mapping_path):
+                with open(mapping_path) as f:
+                    id_mapping = json.load(f)
+
+            functions_dict = self.parse_diamond_tabular_output(tabular_output_path, db_name, id_mapping)
 
             if not functions_dict:
                 self.run.warning(f"No DIAMOND hits found for '{db_name}'. The gene_functions table will "
@@ -890,29 +1286,22 @@ class UserAnnotationRunner:
             shutil.rmtree(temp_dir, ignore_errors=True)
 
 
-    def parse_diamond_tabular_output(self, tabular_output_path, db_name):
+    def parse_diamond_tabular_output(self, tabular_output_path, db_name, id_mapping=None):
         """Parse DIAMOND blastp outfmt 6 output and return a gene_functions dict.
 
-        The function field packs all search statistics so no information is lost
-        even though the gene_functions schema has a fixed number of columns:
-          function = "{target_id} [pident: {pct:.1f}%, aln_len: {length} aa, bitscore: {bitscore:.1f}]"
+        Uses id_mapping (built at setup time from FASTA headers) to:
+          - normalize the accession (clean_id from auto-detected format)
+          - populate the function field with the protein description from the FASTA header
 
-        Only the best hit per query (lowest e-value) is kept, which matches the
-        diamond blastp --max-target-seqs 1 setting used during the search.
+        Schema stored per hit:
+          accession = auto-normalized ID  (e.g. gene name, stripped accession)
+          function  = '[DMND] <description or clean_id> [pident: X%, aln_len: Y aa, bitscore: Z]'
 
-        Parameters
-        ==========
-        tabular_output_path : str
-            Path to the diamond blastp tabular output (-outfmt 6).
-        db_name : str
-            User-defined database name.
-
-        Returns
-        =======
-        functions_dict : dict
-            Dict of {entry_id: {gene_callers_id, source, accession, function, e_value}}.
+        Only the best hit per query (lowest e-value) is kept.
         """
         source_name = f'{db_name}{DIAMOND_SOURCE_SUFFIX}'
+        if id_mapping is None:
+            id_mapping = {}
 
         # outfmt 6 columns: qseqid sseqid pident length mismatch gapopen
         #                   qstart qend sstart send evalue bitscore
@@ -931,9 +1320,8 @@ class UserAnnotationRunner:
                 evalue   = float(fields[10])
                 bitscore = float(fields[11])
 
-                if qseqid in best_hits:
-                    if evalue > best_hits[qseqid]['evalue']:
-                        continue
+                if qseqid in best_hits and evalue >= best_hits[qseqid]['evalue']:
+                    continue
 
                 best_hits[qseqid] = {
                     'sseqid':   sseqid,
@@ -958,10 +1346,12 @@ class UserAnnotationRunner:
             evalue   = hit['evalue']
             bitscore = hit['bitscore']
 
-            # The '[DMND] ' prefix mirrors the '[HMM] ' prefix added to HMM hits,
-            # so any tabular export of the function field makes the search method
-            # immediately visible without having to inspect the source column.
-            function_str = (f"[DMND] {sseqid} "
+            meta = id_mapping.get(sseqid, {})
+            clean_id    = meta.get('clean_id', _auto_normalize_id(sseqid))
+            description = meta.get('description', '')
+
+            label = description if description else clean_id
+            function_str = (f"[DMND] {label} "
                             f"[pident: {pident:.1f}%, "
                             f"aln_len: {aln_len} aa, "
                             f"bitscore: {bitscore:.1f}]")
@@ -969,7 +1359,7 @@ class UserAnnotationRunner:
             functions_dict[entry_id] = {
                 'gene_callers_id': gene_callers_id,
                 'source':          source_name,
-                'accession':       sseqid,
+                'accession':       clean_id,
                 'function':        function_str,
                 'e_value':         evalue,
             }

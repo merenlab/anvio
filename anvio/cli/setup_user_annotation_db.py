@@ -7,6 +7,7 @@ import anvio
 from anvio.user_annotation import UserAnnotationDBSetup
 from anvio.errors import ConfigError, FilesNPathsError
 from anvio.terminal import time_program
+from anvio import constants
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -49,24 +50,32 @@ def get_args():
                              ".fas, .fna) are both accepted. Lines starting with '#' are treated as comments.")
 
     groupB = parser.add_argument_group("OUTPUT", "Where to store the prepared databases.")
-    groupB.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required': True}))
+    groupB.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {
+        'required': False,
+        'default': constants.default_user_annotation_data_dir,
+        'help': f"Directory where prepared databases will be stored. "
+                f"Default: %(default)s"
+    }))
 
     groupC = parser.add_argument_group("OPTIONS")
     groupC.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     groupC.add_argument(*anvio.A('reset'), **anvio.K('reset',
                         {'help': "Remove the existing output directory and start fresh. Use with caution: "
-                                 "all previously prepared databases in the directory will be lost."}))
+                                 "all previously prepared databases in the directory will be lost. "
+                                 "Cannot be combined with --list or --remove."}))
 
     groupD = parser.add_argument_group("MANIFEST MANAGEMENT",
                                        "Inspect or modify the manifest of an existing annotation directory "
-                                       "without re-running the full setup. These flags are mutually exclusive "
-                                       "with --input-tsv.")
+                                       "without re-running the full setup. Use these flags STANDALONE — "
+                                       "they cannot be combined with --input-tsv or --reset.")
     groupD.add_argument('--list', default=False, action='store_true',
-                        help="List all databases currently registered in the annotation directory and exit.")
+                        help="List all databases currently registered in the annotation directory and exit. "
+                             "Standalone flag: do not combine with --input-tsv or --reset.")
     groupD.add_argument('--remove', default=None, metavar='NAME',
                         help="Remove a database from the manifest and delete its prepared files. "
                              "Pass the database name as it appears in the manifest. "
-                             "The other databases in the directory are not affected.")
+                             "The other databases in the directory are not affected. "
+                             "Standalone flag: do not combine with --input-tsv or --reset.")
 
     return parser.get_args(parser)
 
