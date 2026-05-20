@@ -295,10 +295,17 @@ class UserAnnotationDBSetup:
                 manifest = json.load(f)
 
         failures = {}
+        skipped = []
 
         for name, info in entries.items():
             path = info['path']
             companion_fasta = info['companion_fasta']
+
+            if name in manifest:
+                self.run.warning(f"'{name}' is already in the manifest — skipping. "
+                                 f"Use `--remove {name}` first if you want to replace it.")
+                skipped.append(name)
+                continue
 
             self.run.warning(None, header=f"SETTING UP: {name}", lc="green")
 
@@ -341,8 +348,12 @@ class UserAnnotationDBSetup:
                 self.run.warning(f"Anvi'o could not set up '{name}' and will skip it. Error: {e}")
 
         self.run.info('Manifest written to', manifest_path)
-        num_ok = len(entries) - len(failures)
-        self.run.info('Databases set up', f"{num_ok} ({', '.join(k for k in entries if k not in failures)})" if num_ok else "0")
+        num_ok = len(entries) - len(failures) - len(skipped)
+        newly_set_up = [k for k in entries if k not in failures and k not in skipped]
+        self.run.info('Databases set up', f"{num_ok} ({', '.join(newly_set_up)})" if num_ok else "0")
+
+        if skipped:
+            self.run.info('Already in manifest (skipped)', ', '.join(skipped))
 
         if failures:
             self.run.warning(
