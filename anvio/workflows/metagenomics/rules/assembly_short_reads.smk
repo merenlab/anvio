@@ -109,36 +109,17 @@ if M.get_param_value_from_config(["idba_ud", "run"]) and M.has_sr:
             no_coverage=M.get_rule_param("idba_ud", "--no_coverage"),
             no_correct=M.get_rule_param("idba_ud", "--no_correct"),
             pre_correction=M.get_rule_param("idba_ud", "--pre_correction"),
-        run:
-            cmd = (
-                "{params.env_prefix} idba_ud -o {params.temp_dir} --read {input.fasta} --num_threads {threads} "
-                + "{params.mink} {params.maxk} {params.step} {params.inner_mink} "
-                + "{params.inner_step} {params.prefix} {params.min_count} "
-                + "{params.min_support} {params.seed_kmer} {params.min_contig} "
-                + "{params.similar} {params.max_mismatch} {params.min_pairs} "
-                + "{params.no_bubble} {params.no_local} {params.no_coverage} "
-                + "{params.no_correct} {params.pre_correction} >> {log} 2>&1"
-            )
-            shell("echo Running the following command: >> {log} 2>&1")
-            shell("echo %s >> {log} 2>&1" % cmd)
-            shell(cmd)
-            if M.use_scaffold_from_idba_ud:
-                # we will use scaffolds for the rest of the analysis, but still keep the raw contigs output in case the user will want it later on.
-                use = "scaffold.fa"
-                keep = "contig.fa"
-            else:
-                # we will use contigs and keep the raw scaffolds output
-                use = "contig.fa"
-                keep = "scaffold.fa"
-            shell("mv %s %s" % (os.path.join(params.temp_dir, use), output.contigs))
-            shell(
-                "mv %s %s"
-                % (
-                    os.path.join(params.temp_dir, keep),
-                    output.raw_contigs_or_scaffold,
-                )
-            )
-            shell("rm -rf {params.temp_dir}")
+            use="scaffold.fa" if M.use_scaffold_from_idba_ud else "contig.fa",
+            keep="contig.fa" if M.use_scaffold_from_idba_ud else "scaffold.fa",
+        shell:
+            """
+            echo Running the following command: >> {log} 2>&1
+            echo {params.env_prefix} idba_ud -o {params.temp_dir} --read {input.fasta} --num_threads {threads} {params.mink} {params.maxk} {params.step} {params.inner_mink} {params.inner_step} {params.prefix} {params.min_count} {params.min_support} {params.seed_kmer} {params.min_contig} {params.similar} {params.max_mismatch} {params.min_pairs} {params.no_bubble} {params.no_local} {params.no_coverage} {params.no_correct} {params.pre_correction} >> {log} 2>&1
+            {params.env_prefix} idba_ud -o {params.temp_dir} --read {input.fasta} --num_threads {threads} {params.mink} {params.maxk} {params.step} {params.inner_mink} {params.inner_step} {params.prefix} {params.min_count} {params.min_support} {params.seed_kmer} {params.min_contig} {params.similar} {params.max_mismatch} {params.min_pairs} {params.no_bubble} {params.no_local} {params.no_coverage} {params.no_correct} {params.pre_correction} >> {log} 2>&1
+            mv {params.temp_dir}/{params.use} {output.contigs}
+            mv {params.temp_dir}/{params.keep} {output.raw_contigs_or_scaffold}
+            rm -rf {params.temp_dir}
+            """
 
 
 if M.get_param_value_from_config(["metaspades", "run"]) and M.has_sr:
@@ -193,31 +174,19 @@ if M.get_param_value_from_config(["metaspades", "run"]) and M.has_sr:
             additional_params=M.get_param_value_from_config(
                 ["metaspades", "additional_params"]
             ),
-        run:
-            cmd = (
-                "{params.env_prefix} metaspades.py -1 {input.r1} -2 {input.r2} "
-                + "-t {threads} "
-                + "{params.additional_params} "
-                + "-o {params.temp_dir} >> {log} 2>&1"
-            )
-            shell(cmd)
-            if M.use_scaffold_from_metaspades:
-                # we will use scaffolds for the rest of the analysis, but still keep the raw contigs output in case the user will want it later on.
-                use = "scaffolds.fasta"
-                keep = "contigs.fasta"
-            else:
-                # we will use contigs and keep the raw scaffolds output
-                use = "contigs.fasta"
-                keep = "scaffolds.fasta"
-            shell("mv %s %s" % (os.path.join(params.temp_dir, use), output.contigs))
-            shell(
-                "mv %s %s"
-                % (
-                    os.path.join(params.temp_dir, keep),
-                    output.raw_contigs_or_scaffold,
-                )
-            )
-            shell("rm -rf {params.temp_dir}")
+            use="scaffolds.fasta" if M.use_scaffold_from_metaspades else "contigs.fasta",
+            keep=(
+                "contigs.fasta"
+                if M.use_scaffold_from_metaspades
+                else "scaffolds.fasta"
+            ),
+        shell:
+            """
+            {params.env_prefix} metaspades.py -1 {input.r1} -2 {input.r2} -t {threads} {params.additional_params} -o {params.temp_dir} >> {log} 2>&1
+            mv {params.temp_dir}/{params.use} {output.contigs}
+            mv {params.temp_dir}/{params.keep} {output.raw_contigs_or_scaffold}
+            rm -rf {params.temp_dir}
+            """
 
 
 if M.get_param_value_from_config(["megahit", "run"]) and M.has_sr:
@@ -280,24 +249,11 @@ if M.get_param_value_from_config(["megahit", "run"]) and M.has_sr:
             tmp_dir=M.get_rule_param("megahit", "--tmp-dir"),
             _continue=M.get_rule_param("megahit", "--continue"),
             verbose=M.get_rule_param("megahit", "--verbose"),
-        run:
-            r1 = ",".join(input.r1)
-            r2 = ",".join(input.r2)
-            cmd = (
-                "{params.env_prefix} megahit -1 %s -2 %s " % (r1, r2)
-                + "-o {params.temp_dir} "
-                + "-t {threads} "
-                + "{params.min_contig_len} {params.min_count} {params.k_min} "
-                + "{params.k_max} {params.k_step} {params.k_list} {params.no_mercy} "
-                + "{params.no_bubble} {params.merge_level} {params.prune_level} "
-                + "{params.prune_depth} {params.low_local_ratio} {params.max_tip_len} "
-                + "{params.no_local} {params.kmin_1pass} {params.presets} {params.memory} "
-                + "{params.mem_flag} {params.use_gpu} {params.gpu_mem} {params.keep_tmp_files} "
-                + "{params.tmp_dir} {params._continue} {params.verbose} >> {log} 2>&1"
-            )
-            print("Running: %s" % cmd)
-            shell(cmd)
-            shell(
-                "mv {params.temp_dir}/final.contigs.fa {output.contigs} >> {log} 2>&1"
-            )
-            shell("rm -rf {params.temp_dir}")
+            r1=lambda wildcards, input: ",".join(input.r1),
+            r2=lambda wildcards, input: ",".join(input.r2),
+        shell:
+            """
+            {params.env_prefix} megahit -1 {params.r1} -2 {params.r2} -o {params.temp_dir} -t {threads} {params.min_contig_len} {params.min_count} {params.k_min} {params.k_max} {params.k_step} {params.k_list} {params.no_mercy} {params.no_bubble} {params.merge_level} {params.prune_level} {params.prune_depth} {params.low_local_ratio} {params.max_tip_len} {params.no_local} {params.kmin_1pass} {params.presets} {params.memory} {params.mem_flag} {params.use_gpu} {params.gpu_mem} {params.keep_tmp_files} {params.tmp_dir} {params._continue} {params.verbose} >> {log} 2>&1
+            mv {params.temp_dir}/final.contigs.fa {output.contigs} >> {log} 2>&1
+            rm -rf {params.temp_dir}
+            """

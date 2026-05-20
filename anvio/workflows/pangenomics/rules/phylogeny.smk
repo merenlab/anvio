@@ -110,21 +110,12 @@ rule import_phylogenetic_tree_to_pangenome:
         just_do_it=M.get_rule_param(
             "import_phylogenetic_tree_to_pangenome", "--just-do-it"
         ),
-    run:
-        shell(
-            'echo -e "item_name\tdata_type\tdata_value" > {output.layers_orders_file}'
-        )
-        shell(
-            'echo -e "{params.tree_name}\tnewick\t`cat {input.newick}`" >> {output.layers_orders_file}'
-        )
-        # first create a layers-orders file
-        cmd = (
-            "anvi-import-misc-data -p {input.pan_db} "
-            "-t layer_orders "
-            "{params.just_do_it} "
-            "{output.layers_orders_file} >> {log} 2>&1"
-        )
-        shell(cmd)
+    shell:
+        """
+        echo -e "item_name\tdata_type\tdata_value" > {output.layers_orders_file}
+        echo -e "{params.tree_name}\tnewick\t`cat {input.newick}`" >> {output.layers_orders_file}
+        anvi-import-misc-data -p {input.pan_db} -t layer_orders {params.just_do_it} {output.layers_orders_file} >> {log} 2>&1
+        """
 
 
 rule anvi_compute_genome_similarity:

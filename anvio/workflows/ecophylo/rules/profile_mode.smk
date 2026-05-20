@@ -127,10 +127,8 @@ rule add_default_collection:
             "{group}",
             "PROFILE.db",
         ),
-    run:
-        shell(
-            "anvi-script-add-default-collection -c {params.contigsDB} -p {params.profileDB}"
-        )
+    shell:
+        "anvi-script-add-default-collection -c {params.contigsDB} -p {params.profileDB}"
 
 
 rule anvi_summarize:
@@ -165,10 +163,8 @@ rule anvi_summarize:
         output_dir=os.path.join(
             dirs_dict["HOME"], "METAGENOMICS_WORKFLOW", "07_SUMMARY", "{group}"
         ),
-    run:
-        shell(
-            "anvi-summarize -c {params.contigsDB} -p {params.profileDB} -o {params.output_dir} -C DEFAULT --init-gene-coverages --just-do-it >> {log} 2>&1"
-        )
+    shell:
+        "anvi-summarize -c {params.contigsDB} -p {params.profileDB} -o {params.output_dir} -C DEFAULT --init-gene-coverages --just-do-it >> {log} 2>&1"
 
 
 rule make_anvio_state_file:

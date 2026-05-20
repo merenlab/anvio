@@ -17,11 +17,11 @@ rule subset_DNA_reps_with_QCd_AA_reps_for_mapping:
     threads: M.T("subset_DNA_reps_with_QCd_AA_reps_for_mapping")
     params:
         fasta=rules.combine_sequence_data.output.NT_all,
-    run:
-        shell("grep '>' {input.reps} | sed 's/>//g' > {output.headers}")
-        shell(
-            "anvi-script-reformat-fasta {params.fasta} -I {output.headers} -o {output.NT_for_mapping} >> {log} 2>&1"
-        )
+    shell:
+        """
+        grep '>' {input.reps} | sed 's/>//g' > {output.headers}
+        anvi-script-reformat-fasta {params.fasta} -I {output.headers} -o {output.NT_for_mapping} >> {log} 2>&1
+        """
 
 
 rule subset_external_gene_calls_file_all:

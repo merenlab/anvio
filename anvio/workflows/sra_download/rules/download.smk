@@ -182,8 +182,8 @@ example:
     threads: M.T("pigz")
     params:
         READS=os.path.join(dirs_dict["FASTAS"], "{accession}*.fastq"),
-    run:
-        shell("pigz --processes {threads} --verbose {params.READS} >> {log} 2>&1")
+    shell:
+        "pigz --processes {threads} --verbose {params.READS} >> {log} 2>&1"
 
 
 rule generate_samples_txt:
