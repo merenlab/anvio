@@ -4,14 +4,14 @@ The %(contigs-fasta)s and %(external-gene-calls)s can be given to %(anvi-gen-con
 
 ### Features processed by default
 
-Unlike previous versions that only focused on `CDS` features, this script now processes `CDS`, `tRNA`, and `rRNA` features by default. 
+By default, %(anvi-script-process-genbank)s will `CDS`, `tRNA`, and `rRNA` features by default.
 
 - `CDS` features are mapped to the anvi'o `CODING` gene call type.
 - `tRNA` and `rRNA` features are mapped to the `NONCODING` gene call type.
 
 ### Handling problematic features
 
-Genomic data often contains features that anvi'o may find difficult to process using standard workflows (for example, gene calls with internal stop codons or frameshifts). This script identifies such features and handles them gracefully by reclassifying them as `NONCODING`:
+Genomic data often contains features that anvi'o may find difficult to process using standard workflows, such as gene calls with internal stop codons or frameshifts. This script identifies such features and handles them gracefully by reclassifying them as `NONCODING`:
 
 1. **Pseudogenes**: Any `CDS` explicitly marked as a `/pseudogene` or having `/pseudo` in its GenBank qualifiers will be reclassified as `NONCODING`.
 2. **Internal Stops and Frameshifts**: Any `CDS` with notes indicating internal stops or frameshifts (based on common NCBI PGAP terms) will also be reclassified as `NONCODING`.
