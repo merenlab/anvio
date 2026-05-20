@@ -675,7 +675,13 @@ class GeneClusterFunctionalConsensus:
     def _build_propagated_table(
         self, consensus_df: pd.DataFrame, merged: pd.DataFrame
     ) -> pd.DataFrame:
-        """Build annotation propagation table for PURE and HIGH_CONSENSUS clusters."""
+        """Build propagated annotations table for PURE and HIGH_CONSENSUS clusters.
+
+        Only genes that were unannotated for a given source are included.
+        The output has the same structure as the original annotation table
+        (gene_callers_id, source, accession, function, e_value, plus genome_name
+        for multi-genome data) so it can be used directly alongside raw annotations.
+        """
         rows = []
 
         propagate_clusters = consensus_df[
@@ -702,24 +708,19 @@ class GeneClusterFunctionalConsensus:
             )
 
             for gene_row in cluster_genes.itertuples(index=False, name=None):
+                if gene_row in annotated_keys:
+                    continue
                 gene_dict = dict(zip(self.gene_key_cols, gene_row))
-                is_propagated = gene_row not in annotated_keys
-
-                out = {
+                rows.append({
                     **gene_dict,
-                    'cluster_id': cluster_id,
                     'source': source,
                     'accession': rec['dominant_accession'],
                     'function': rec['dominant_function'],
-                    'is_propagated': is_propagated,
-                }
-                rows.append(out)
+                    'e_value': None,
+                })
 
-        return pd.DataFrame(rows) if rows else pd.DataFrame(
-            columns=self.gene_key_cols + [
-                'cluster_id', 'source', 'accession', 'function', 'is_propagated'
-            ]
-        )
+        out_cols = self.gene_key_cols + ['source', 'accession', 'function', 'e_value']
+        return pd.DataFrame(rows, columns=out_cols) if rows else pd.DataFrame(columns=out_cols)
 
     # ------------------------------------------------------------------
     # Main entry point
@@ -802,9 +803,7 @@ class GeneClusterFunctionalConsensus:
             self.progress.end()
         else:
             propagated_df = pd.DataFrame(
-                columns=self.gene_key_cols + [
-                    'cluster_id', 'source', 'accession', 'function', 'is_propagated'
-                ]
+                columns=self.gene_key_cols + ['source', 'accession', 'function', 'e_value']
             )
 
         # ---- Summary ---------------------------------------------------
@@ -818,7 +817,7 @@ class GeneClusterFunctionalConsensus:
                 self.run.info_single(f"  {label}: {n:,}")
 
             if self.propagate:
-                n_prop = int(propagated_df['is_propagated'].sum()) if not propagated_df.empty else 0
+                n_prop = len(propagated_df)
                 self.run.info('Propagated annotations', f"{n_prop:,} genes received a propagated annotation")
 
         return consensus_df, propagated_df
