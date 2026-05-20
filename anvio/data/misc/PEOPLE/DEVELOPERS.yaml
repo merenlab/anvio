@@ -674,3 +674,18 @@
       inst: DTU Bioengineering
       inst_link: https://cemist.dtu.dk/
       current: true
+
+- github: btrouche
+  name: Blandine Trouche
+  avatar: btrouche.png
+  email: blandine.trouche@orange.fr
+  git_records:
+    - blandine.trouche@orange.fr
+  linkedin: blandine-trouche-0921b166
+  orcid: 0000-0003-4307-4782
+  bio: "Microbial ecologist studying the biogeography and adaptation of microbial life to the greatest ocean depths"
+  affiliations:
+    - title: Post-doctoral scientist
+      inst: University of Southern Denmark
+      inst_link: https://www.sdu.dk/en/forskning/hadal
+      current: true
