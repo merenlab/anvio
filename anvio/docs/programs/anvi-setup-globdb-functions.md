@@ -33,7 +33,7 @@ anvi-setup-globdb-functions
 ### What happens during setup
 
 1. The GlobAA data package (that is maintained by GlobDB folk, including Daan Speth et al) is downloaded and extracted.
-2. Every gene family YAML file is validated for required fields (`gene_family`, `description`, `version`, and `cutoffs` including `lasr`, `selfmax`, `selfmin`, and `matrix`).
+2. Every gene family `info.yaml` file is validated for required fields (`gene_family`, `description`, `version`, and `cutoffs` including `lasr`, `selfmax`, `selfmin`, and `matrix`). Where present, `synteny.yaml` files are also validated.
 3. All per-family FASTA files are concatenated into a single `GlobAA.faa` (with GAA identifiers prepended to sequence headers).
-4. All per-family YAML files are merged into a single `GlobAA.yaml`.
+4. All per-family `info.yaml` files are merged into a single `GlobAA-gene-family-data.yaml`. All per-family `synteny.yaml` files (where present) are merged into a single `GlobAA-synteny-data.yaml`.
 5. A DIAMOND search database is built from `GlobAA.faa`.
