@@ -313,3 +313,22 @@
     - title: PhD Student
       inst: Hawaiʻi Institute of Marine Biology, University of Hawaiʻi at Mānoa
       inst_link: https://www.himb.hawaii.edu/
+
+- github: elxerone
+  name: Eeva Eronen-Rasimus
+  email: eeva.eronen@gmail.com
+  git_records:
+    - eeva.eronen@gmail.com
+  orcid: 0000-0002-1749-0793
+  linkedin: https://www.linkedin.com/in/eeva-eronen-rasimus-4a920313b/
+  avatar: bio_eeva.jpg
+  bio: "Microbial ecologist interested in how bacteria survive in ice, their coupling with sea-ice algae and ultimately, their contribution to carbon cycling in the oceans and the consequences of diminishing sea ice for bacteria mediated processes."
+  affiliations:
+    - title: Senior Research Scientist
+      inst: Finnish Environment Institute
+      inst_link: https://www.syke.fi/en
+      current: true
+    - title: Associate professor in Microbial Ecology
+      inst: Department of Microbiology, University of Helsinki
+      inst_link: https://www.helsinki.fi/en/faculty-agriculture-and-forestry/research/disciplines/microbiology
+      current: true
