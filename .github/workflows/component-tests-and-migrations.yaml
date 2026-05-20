@@ -19,6 +19,12 @@ jobs:
             miniconda-version: "py310_26.1.1-1"
           - python-version: "3.11"
             miniconda-version: "py311_26.1.1-1"
+          - python-version: "3.12"
+            miniconda-version: "py312_26.1.1-1"
+          - python-version: "3.13"
+            miniconda-version: "py313_26.1.1-1"
+          - python-version: "3.14"
+            miniconda-version: "py314_26.1.1-1"
       fail-fast: false
 
     steps:

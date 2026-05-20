@@ -766,4 +766,4 @@ These may change over time:
 - `networkx==3.1` — graph operations (reaction networks, programs network)
 - `ete3` — phylogenetic tree handling
 
-Requires Python `>=3.10, <3.12`, enforced in `pyproject.toml`.
+Requires Python `>=3.10, <3.15`, enforced in `pyproject.toml`.
