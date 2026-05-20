@@ -15,6 +15,17 @@ from pathlib import Path
 WORKFLOWS_ROOT = Path(__file__).resolve().parents[2]
 
 
+METAGENOMICS_RULE_FILES = [
+    WORKFLOWS_ROOT / 'metagenomics' / 'rules' / 'qc.smk',
+    WORKFLOWS_ROOT / 'metagenomics' / 'rules' / 'read_filtering.smk',
+    WORKFLOWS_ROOT / 'metagenomics' / 'rules' / 'assembly_short_reads.smk',
+    WORKFLOWS_ROOT / 'metagenomics' / 'rules' / 'assembly_long_reads.smk',
+    WORKFLOWS_ROOT / 'metagenomics' / 'rules' / 'profile_postprocessing.smk',
+    WORKFLOWS_ROOT / 'metagenomics' / 'rules' / 'taxonomy.smk',
+    WORKFLOWS_ROOT / 'metagenomics' / 'rules' / 'binning.smk',
+]
+
+
 WORKFLOWS = {
     'contigs': {
         'module': WORKFLOWS_ROOT / 'contigs' / '__init__.py',
@@ -35,9 +46,8 @@ WORKFLOWS = {
     'metagenomics': {
         'module': WORKFLOWS_ROOT / 'metagenomics' / '__init__.py',
         'snakefile': WORKFLOWS_ROOT / 'metagenomics' / 'Snakefile',
-        'extra_snakefiles': [
-            WORKFLOWS_ROOT / 'read_recruitment' / 'rules' / 'main.smk',
-        ],
+        'extra_snakefiles': METAGENOMICS_RULE_FILES
+        + [WORKFLOWS_ROOT / 'read_recruitment' / 'rules' / 'main.smk'],
         'rules': {
             'iu_filter_quality_minoche',
             'megahit',
@@ -191,12 +201,14 @@ class BiologicalWorkflowContractTestCase(unittest.TestCase):
     def test_short_and_long_read_metagenomics_paths_remain_distinct(self):
         snakefile_text = read_text(WORKFLOWS['metagenomics']['snakefile'])
         read_recruitment_text = read_text(WORKFLOWS_ROOT / 'read_recruitment' / 'rules' / 'main.smk')
-        combined_text = snakefile_text + read_recruitment_text
+        combined_text = snakefile_text + read_recruitment_text + ''.join(
+            read_text(path) for path in METAGENOMICS_RULE_FILES
+        )
 
         self.assertIn('SR_RS_RE = w.regex_from_ids(SR_READSETS)', snakefile_text)
         self.assertIn('LR_RS_RE = w.regex_from_ids(LR_READSETS)', snakefile_text)
-        self.assertRegex(snakefile_text, r'group\s*=\s*SR_GRP_RE')
-        self.assertRegex(snakefile_text, r'group\s*=\s*LR_GRP_RE')
+        self.assertRegex(combined_text, r'group\s*=\s*SR_GRP_RE')
+        self.assertRegex(combined_text, r'group\s*=\s*LR_GRP_RE')
         self.assertIn('bowtie2', combined_text)
         self.assertIn('minimap2', combined_text)
 

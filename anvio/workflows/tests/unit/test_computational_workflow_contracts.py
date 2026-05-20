@@ -13,12 +13,23 @@ from pathlib import Path
 
 WORKFLOWS_ROOT = Path(__file__).resolve().parents[2]
 
+METAGENOMICS_RULE_FILES = [
+    WORKFLOWS_ROOT / 'metagenomics' / 'rules' / 'qc.smk',
+    WORKFLOWS_ROOT / 'metagenomics' / 'rules' / 'read_filtering.smk',
+    WORKFLOWS_ROOT / 'metagenomics' / 'rules' / 'assembly_short_reads.smk',
+    WORKFLOWS_ROOT / 'metagenomics' / 'rules' / 'assembly_long_reads.smk',
+    WORKFLOWS_ROOT / 'metagenomics' / 'rules' / 'profile_postprocessing.smk',
+    WORKFLOWS_ROOT / 'metagenomics' / 'rules' / 'taxonomy.smk',
+    WORKFLOWS_ROOT / 'metagenomics' / 'rules' / 'binning.smk',
+]
+
 SNAKEMAKE_FILES = [
     WORKFLOWS_ROOT / 'contigs' / 'Snakefile',
     WORKFLOWS_ROOT / 'ecophylo' / 'Snakefile',
     WORKFLOWS_ROOT / 'ecophylo' / 'rules' / 'profile_mode.smk',
     WORKFLOWS_ROOT / 'ecophylo' / 'rules' / 'tree_mode.smk',
     WORKFLOWS_ROOT / 'metagenomics' / 'Snakefile',
+    *METAGENOMICS_RULE_FILES,
     WORKFLOWS_ROOT / 'pangenomics' / 'Snakefile',
     WORKFLOWS_ROOT / 'phylogenomics' / 'Snakefile',
     WORKFLOWS_ROOT / 'read_recruitment' / 'rules' / 'main.smk',
@@ -131,7 +142,11 @@ class ComputationalWorkflowContractTestCase(unittest.TestCase):
         metagenomics_module = read_text(WORKFLOWS_ROOT / 'metagenomics' / '__init__.py')
         metagenomics_snakefile = read_text(WORKFLOWS_ROOT / 'metagenomics' / 'Snakefile')
         read_recruitment_rules = read_text(WORKFLOWS_ROOT / 'read_recruitment' / 'rules' / 'main.smk')
-        combined_rules = metagenomics_snakefile + read_recruitment_rules
+        combined_rules = (
+            metagenomics_snakefile
+            + read_recruitment_rules
+            + ''.join(read_text(path) for path in METAGENOMICS_RULE_FILES)
+        )
 
         for tool in ['flye', 'minimap2', 'bowtie', 'megahit', 'metaspades', 'idba_ud']:
             with self.subTest(tool=tool):
