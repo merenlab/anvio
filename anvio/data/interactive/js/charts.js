@@ -120,9 +120,10 @@ function open_partner_inspect(contig_name, pos_in_contig) {
        return;
      }
      var split_name = payload['split_name'];
-     // Open the partner split in a new tab. Use the same charts.html URL pattern
-     // anvi-inspect uses internally; ?partner_pos=<n> is informational for now
-     // (later we could auto-open the popover at that position).
+     // Open the partner split in a new tab. The ?partner_pos=<n> query param
+     // is read by createCharts on the destination page, which auto-opens the
+     // clip popover at that split-relative position once the chart finishes
+     // rendering.
      var url = 'charts.html?id=' + encodeURIComponent(split_name) +
                '&show_snvs=true&partner_pos=' + encodeURIComponent(payload['pos_in_split']);
      window.open(url, '_blank');
@@ -2152,6 +2153,24 @@ function createCharts(state){
     }
 
     drawArrows(0, charts[0].xScale.domain()[1], $('#gene_color_order').val(), gene_offset_y, Object.keys(state['highlight-genes']));
+
+    // If we arrived here via a partner-clip click in another tab's inspect view,
+    // the URL carries ?partner_pos=<split-relative position>. Find the clip
+    // hitbox at that position and trigger its Bootstrap popover. drawArrows
+    // just initialized .popover() on every [data-toggle="popover"] element
+    // above, so by this point the hitbox is a fully-wired popover anchor.
+    // Multiple layers may have clips at the same position (one per sample) —
+    // we show only the first to avoid stacked popovers.
+    var partnerPos = getParameterByName('partner_pos');
+    if (partnerPos !== null && partnerPos !== '') {
+        var targetPos = parseInt(partnerPos, 10);
+        if (!isNaN(targetPos)) {
+            var hits = d3.selectAll('.clip_bar_hitbox').filter(function(d) { return d && d.pos === targetPos; });
+            if (!hits.empty()) {
+                $(hits.node()).popover('show');
+            }
+        }
+    }
 }
 
 
