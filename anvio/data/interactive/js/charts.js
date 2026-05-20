@@ -105,6 +105,35 @@ function get_indel_sequence_cell_html(indel) {
 }
 
 
+// Resolve a partner (contig, pos) to its enclosing split via the backend's
+// /data/split_for_position endpoint and open the partner's inspect page in a new
+// tab. Called from the clip popover's partner cell. Falls back gracefully when
+// the resolution fails (e.g., partner contig not in this profile).
+function open_partner_inspect(contig_name, pos_in_contig) {
+  $.get('/data/split_for_position/' + encodeURIComponent(contig_name) + '/' + encodeURIComponent(pos_in_contig))
+   .done(function(data) {
+     var payload;
+     try { payload = (typeof data === 'string') ? JSON.parse(data) : data; }
+     catch (e) { alert('Could not parse split lookup response for ' + contig_name + ':' + pos_in_contig); return; }
+     if (payload['error']) {
+       alert(payload['error']);
+       return;
+     }
+     var split_name = payload['split_name'];
+     // Open the partner split in a new tab. Use the same charts.html URL pattern
+     // anvi-inspect uses internally; ?partner_pos=<n> is informational for now
+     // (later we could auto-open the popover at that position).
+     var url = 'charts.html?id=' + encodeURIComponent(split_name) +
+               '&show_snvs=true&partner_pos=' + encodeURIComponent(payload['pos_in_split']);
+     window.open(url, '_blank');
+   })
+   .fail(function() {
+     alert('Could not reach the split lookup endpoint for ' + contig_name + ':' + pos_in_contig);
+   });
+  return false;
+}
+
+
 function get_clip_sequence_cell_html(clip) {
   var sequence = clip['sequence'] || '';
 
@@ -146,15 +175,33 @@ function get_clip_popover_html(clipsAtPos) {
     bucket[key] = (bucket[key] || 0) + c['count'];
   });
 
-  // Per-row table: side, type, state, len, count, partner, sequence
+  // Per-row table: side, type, state, len, count, partner, sequence. Rows are
+  // tinted by state for quick visual scanning:
+  //   JUNCTION          → light green (the read continues cleanly into a partner)
+  //   JUNCTION_WITH_GAP → light yellow (partner exists, but with unmapped gap bases)
+  //   UNMAPPED          → light red   (no partner; bases don't map anywhere)
+  var STATE_BG = {
+    'JUNCTION':          '#e8f5e9',
+    'JUNCTION_WITH_GAP': '#fff8e1',
+    'UNMAPPED':          '#ffebee',
+  };
   var rowsHtml = '';
   clipsAtPos.forEach(function(c) {
     // partner shows the partner-contig coordinate ADJACENT to the junction (the partner
-    // edge meeting our clip) — not the partner alignment's leftmost-position.
-    var partner = (c['partner_contig'] && c['partner_contig'].length)
-                  ? (escape_html(c['partner_contig']) + ':' + c['partner_junction_pos'] + ' (' + c['partner_strand'] + ')')
-                  : '<i style="color:#999;">none</i>';
-    rowsHtml += '<tr>' +
+    // edge meeting our clip) — not the partner alignment's leftmost-position. Clicking
+    // resolves the partner contig+pos to a split and opens that split's inspect page in
+    // a new tab.
+    var partner;
+    if (c['partner_contig'] && c['partner_contig'].length) {
+      var partner_label = escape_html(c['partner_contig']) + ':' + c['partner_junction_pos'] + ' (' + c['partner_strand'] + ')';
+      partner = '<a href="#" title="Open the partner split in a new tab" ' +
+                'onclick="return open_partner_inspect(\'' + c['partner_contig'].replace(/'/g, "\\'") + '\', ' +
+                c['partner_junction_pos'] + ');">' + partner_label + '</a>';
+    } else {
+      partner = '<i style="color:#999;">none</i>';
+    }
+    var row_bg = STATE_BG[c['state']] || '';
+    rowsHtml += '<tr style="background-color:' + row_bg + ';">' +
                 '<td>' + c['side'] + '</td>' +
                 '<td>' + c['type'] + '</td>' +
                 '<td>' + c['state'] + '</td>' +
@@ -172,7 +219,7 @@ function get_clip_popover_html(clipsAtPos) {
 
   return '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span> \
           <h3>Read-edge clipping</h3> \
-          <table class="table table-striped" style="width: 100%; text-align: left; font-size: 12px;"> \
+          <table class="table table-striped clip-popover-table" style="width: 100%; text-align: left; font-size: 12px;"> \
               <tr><td>Position in split</td><td>' + first['pos'] + '</td></tr> \
               <tr><td>Position in contig</td><td>' + first['pos_in_contig'] + '</td></tr> \
               <tr><td>Reference</td><td>' + escape_html(first['reference']) + '</td></tr> \
@@ -181,15 +228,44 @@ function get_clip_popover_html(clipsAtPos) {
               <tr><td>Corresponding gene call</td><td>' + ((first["corresponding_gene_call"] == -1) ? "No gene or in partial gene" : first["corresponding_gene_call"]) + '</td></tr> \
           </table> \
           <h3>Breakdown</h3> \
-          <table class="table table-striped" style="width: 100%; text-align: left; font-size: 12px;"> \
+          <table class="table table-striped clip-popover-table" style="width: 100%; text-align: left; font-size: 12px;"> \
               <tr><th>Side / Type / State</th><th>Count</th></tr> \
               ' + breakdownHtml + ' \
           </table> \
-          <h3>Events at this position</h3> \
-          <table class="table table-striped" style="width: 100%; text-align: left; font-size: 11px;"> \
-              <tr><th>Side</th><th>Type</th><th>State</th><th>Length</th><th>Count</th><th>Partner</th><th>Sequence</th></tr> \
-              ' + rowsHtml + ' \
-          </table>';
+          <style> \
+              .clip-popover-table td, .clip-popover-table th { vertical-align: middle !important; } \
+              details.clip_details > summary { \
+                  cursor: pointer; \
+                  padding: 6px 10px; \
+                  background: #f5f5f5; \
+                  border: 1px solid #ccc; \
+                  border-radius: 4px; \
+                  font-weight: bold; \
+                  list-style: none; \
+                  user-select: none; \
+                  display: flex; \
+                  align-items: center; \
+                  line-height: 1.2; \
+              } \
+              details.clip_details > summary::-webkit-details-marker { display: none; } \
+              details.clip_details > summary::marker { display: none; } \
+              details.clip_details > summary:hover { background: #e8e8e8; } \
+              details.clip_details > summary::before { \
+                  content: "\\25B6"; \
+                  display: inline-block; \
+                  margin-right: 8px; \
+                  transition: transform 0.15s ease; \
+                  flex-shrink: 0; \
+              } \
+              details.clip_details[open] > summary::before { transform: rotate(90deg); } \
+          </style> \
+          <details class="clip_details" style="margin-top: 6px;"> \
+              <summary>Click to show / hide ' + clipsAtPos.length + ' event' + (clipsAtPos.length === 1 ? '' : 's') + ' at this position</summary> \
+              <table class="table clip-popover-table" style="width: 100%; text-align: left; font-size: 11px; margin-top: 4px;"> \
+                  <tr style="background-color: #eee;"><th>Side</th><th>Type</th><th>State</th><th>Length</th><th>Count</th><th>Partner</th><th>Sequence</th></tr> \
+                  ' + rowsHtml + ' \
+              </table> \
+          </details>';
 }
 
 
@@ -2473,22 +2549,33 @@ function Chart(options){
         clipsByPos[p].push(obj.value);
       });
 
-      // Build the per-position aggregate that the bar uses.
+      // Build the per-position aggregate that the bar uses. Also compute the
+      // dominant state per position so the glyph above the bar conveys it at a
+      // glance — priority UNMAPPED > JUNCTION_WITH_GAP > JUNCTION (most
+      // actionable signal first).
+      var STATE_GLYPHS = { 'UNMAPPED': 'U', 'JUNCTION_WITH_GAP': 'G', 'JUNCTION': 'J' };
+      var STATE_PRIORITY = { 'UNMAPPED': 3, 'JUNCTION_WITH_GAP': 2, 'JUNCTION': 1 };
       var clipBarData = Object.keys(clipsByPos).map(function(p) {
         var rows = clipsByPos[p];
         var totalCount = rows.reduce(function(s, r) { return s + r['count']; }, 0);
         var cov = rows[0]['coverage'];
+        var dominantState = rows.reduce(function(acc, r) {
+          return (STATE_PRIORITY[r['state']] || 0) > (STATE_PRIORITY[acc] || 0) ? r['state'] : acc;
+        }, 'JUNCTION');
         return {
           pos: +p,
           totalCount: totalCount,
           coverage: cov,
           ratio: cov > 0 ? Math.min(totalCount / cov, 1) : 0,
+          state: dominantState,
+          glyph: STATE_GLYPHS[dominantState] || 'C',
           rows: rows,
         };
       });
 
-      // Visible bar at each position (decorative). pointer-events disabled so clicks
-      // pass through to the hitbox <rect> below.
+      // Visible bar at each position (decorative). 1px stroke matches indels'
+      // insertion_size_whisker_stem for visual consistency; pointer-events
+      // disabled so clicks pass through to the hitbox <rect> below.
       info("Drawing clip markers");
       this.clipBarContainer.selectAll(".clip_bar_stem")
                           .data(clipBarData)
@@ -2500,10 +2587,26 @@ function Chart(options){
                           .attr("y1", function (d) { return ySL_indel(0); })
                           .attr("y2", function (d) { return ySL_indel(d.ratio); })
                           .attr("stroke", "#e67e22")
-                          .attr("stroke-width", "4")
+                          .attr("stroke-width", "1")
                           .attr("stroke-opacity", "0.85")
-                          .attr("stroke-linecap", "round")
                           .attr("pointer-events", "none");
+
+      // Letter glyph at the BASE of each bar, matching the indel '+'/'-'/'x'
+      // convention (placed at ySL_indel(0), font-size 14px, scaled by zoom in
+      // showOnly). The letter reflects the per-position dominant state
+      // (J / G / U for JUNCTION / JUNCTION_WITH_GAP / UNMAPPED).
+      this.clipBarContainer.selectAll(".clip_glyph")
+                          .data(clipBarData)
+                          .enter()
+                          .append("text")
+                          .attr("class", "clip_glyph")
+                          .attr("x", function (d) { return xS(0.5 + d.pos); })
+                          .attr("y", function (d) { return ySL_indel(0); })
+                          .attr("text-anchor", "middle")
+                          .attr("font-size", "14px")
+                          .attr("fill", "#d35400")
+                          .attr("pointer-events", "none")
+                          .text(function (d) { return d.glyph; });
 
       // Invisible <rect> hitbox over each bar. Wider than the visible bar (12 px) so
       // the click target is comfortable regardless of bar height; a few px taller than
@@ -2604,6 +2707,10 @@ Chart.prototype.showOnly = function(b){
                          .attr("x", function (d) { return xS(0.5 + d.pos) - 6; })
                          .attr("y", function (d) { return Math.min(ySL_indel(0), ySL_indel(d.ratio)) - 4; })
                          .attr("height", function (d) { return Math.abs(ySL_indel(0) - ySL_indel(d.ratio)) + 8; });
+    this.clipBarContainer.selectAll(".clip_glyph")
+                         .attr("x", function (d) { return xS(0.5 + d.pos); })
+                         .attr("y", function (d) { return ySL_indel(0); })
+                         .attr("font-size", 2*mk_font_size+"px");
 
     this.chartContainer.select(".x.axis.top").call(this.xAxisTop);
 }

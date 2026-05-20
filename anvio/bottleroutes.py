@@ -161,6 +161,7 @@ class BottleApplication(Bottle):
         self.route('/store_description',                                          callback=self.store_description, method='POST')
         self.route('/upload_project',                                             callback=self.upload_project, method='POST')
         self.route('/data/contig/<split_name>',                                   callback=self.get_sequence_for_split)
+        self.route('/data/split_for_position/<contig_name>/<pos>',                callback=self.get_split_for_position)
         self.route('/summarize/<collection_name>',                                callback=self.gen_summary, method='POST')
         self.route('/summary/<collection_name>/:filename#.*#',                    callback=self.send_summary_static)
         self.route('/data/gene/<gene_callers_id>',                                callback=self.get_sequence_for_gene_call)
@@ -1078,6 +1079,30 @@ class BottleApplication(Bottle):
             return json.dumps({'error': "Something went wrong when I tried to access that split sequence: '%s' :/" % e})
 
         return json.dumps({'sequence': sequence, 'header': header})
+
+
+    def get_split_for_position(self, contig_name, pos):
+        """Resolve a (contig, contig-relative position) pair to the split that contains it.
+
+        Used by the inspect-page clip popover so a user can click a partner_* field and
+        jump to the partner contig's inspect view at the right split.
+
+        Returns JSON {'split_name': <name>, 'pos_in_split': <int>} on success, or
+        {'error': <message>} on failure (contig unknown, pos out of bounds, etc).
+        """
+        try:
+            pos_int = int(pos)
+        except (TypeError, ValueError):
+            return json.dumps({'error': f"Position must be an integer; got '{pos}'."})
+
+        # splits_basic_info: {split_name: {'parent': contig, 'start': int, 'end': int, ...}}
+        for split_name, info in self.interactive.splits_basic_info.items():
+            if info['parent'] != contig_name:
+                continue
+            if info['start'] <= pos_int < info['end']:
+                return json.dumps({'split_name': split_name, 'pos_in_split': pos_int - info['start']})
+
+        return json.dumps({'error': f"No split found on contig '{contig_name}' containing position {pos_int}."})
 
 
     def gen_summary(self, collection_name):
