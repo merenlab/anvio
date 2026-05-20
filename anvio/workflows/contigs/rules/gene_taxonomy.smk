@@ -8,7 +8,10 @@ rule export_gene_calls_for_centrifuge:
     output:
         fasta=temp(dirs_dict["CONTIGS_DIR"] + "/{group}-gene-calls.fa"),
     log:
-        dirs_dict["LOGS_DIR"] + "/{group}-export_gene_calls_for_centrifuge.log",
+        rule_log(
+            "export_gene_calls_for_centrifuge",
+            "{group}-export_gene_calls_for_centrifuge",
+        ),
     threads: M.T("export_gene_calls_for_centrifuge")
     resources:
         nodes=M.T("export_gene_calls_for_centrifuge"),
@@ -24,7 +27,7 @@ rule centrifuge:
         hits=dirs_dict["CONTIGS_DIR"] + "/{group}-centrifuge_hits.tsv",
         report=dirs_dict["CONTIGS_DIR"] + "/{group}-centrifuge_report.tsv",
     log:
-        dirs_dict["LOGS_DIR"] + "/{group}-centrifuge.log",
+        rule_log("centrifuge", "{group}-centrifuge"),
     threads: M.T("centrifuge")
     resources:
         nodes=M.T("centrifuge"),
@@ -58,7 +61,9 @@ rule anvi_import_taxonomy_for_genes:
             )
         ),
     log:
-        dirs_dict["LOGS_DIR"] + "/{group}-anvi_import_taxonomy_for_genes.log",
+        rule_log(
+            "anvi_import_taxonomy_for_genes", "{group}-anvi_import_taxonomy_for_genes"
+        ),
     threads: M.T("anvi_import_taxonomy_for_genes")
     resources:
         nodes=M.T("anvi_import_taxonomy_for_genes"),
@@ -85,7 +90,7 @@ rule anvi_run_hmms:
             )
         ),
     log:
-        dirs_dict["LOGS_DIR"] + "/{group}-anvi_run_hmms.log",
+        rule_log("anvi_run_hmms", "{group}-anvi_run_hmms"),
     threads: M.T("anvi_run_hmms")
     resources:
         nodes=M.T("anvi_run_hmms"),
@@ -120,7 +125,7 @@ rule anvi_run_pfams:
             )
         ),
     log:
-        os.path.join(dirs_dict["LOGS_DIR"], "{group}-anvi_run_pfams.log"),
+        rule_log("anvi_run_pfams", "{group}-anvi_run_pfams"),
     threads: M.T("anvi_run_pfams")
     resources:
         nodes=M.T("anvi_run_pfams"),
@@ -141,7 +146,7 @@ rule anvi_run_kegg_kofams:
             )
         ),
     log:
-        os.path.join(dirs_dict["LOGS_DIR"], "{group}-anvi_run_kegg_kofams.log"),
+        rule_log("anvi_run_kegg_kofams", "{group}-anvi_run_kegg_kofams"),
     threads: M.T("anvi_run_kegg_kofams")
     resources:
         nodes=M.T("anvi_run_kegg_kofams"),
@@ -166,7 +171,7 @@ rule anvi_run_ncbi_cogs:
             )
         ),
     log:
-        dirs_dict["LOGS_DIR"] + "/{group}-anvi_run_ncbi_cogs.log",
+        rule_log("anvi_run_ncbi_cogs", "{group}-anvi_run_ncbi_cogs"),
     threads: M.T("anvi_run_ncbi_cogs")
     resources:
         nodes=M.T("anvi_run_ncbi_cogs"),
@@ -202,7 +207,7 @@ rule anvi_run_scg_taxonomy:
             )
         ),
     log:
-        dirs_dict["LOGS_DIR"] + "/{group}-anvi_run_scg_taxonomy.log",
+        rule_log("anvi_run_scg_taxonomy", "{group}-anvi_run_scg_taxonomy"),
     threads: M.T("anvi_run_scg_taxonomy")
     resources:
         nodes=M.T("anvi_run_scg_taxonomy"),
@@ -229,7 +234,7 @@ rule anvi_run_trna_scan:
             )
         ),
     log:
-        dirs_dict["LOGS_DIR"] + "/{group}-anvi_run_trna_scan.log",
+        rule_log("anvi_run_trna_scan", "{group}-anvi_run_trna_scan"),
     threads: M.T("anvi_run_trna_scan")
     resources:
         nodes=M.T("anvi_run_trna_scan"),
@@ -252,7 +257,10 @@ rule anvi_get_sequences_for_gene_calls:
     output:
         fasta=temp(dirs_dict["CONTIGS_DIR"] + "/{group}-contigs-aa-sequences.fa"),
     log:
-        dirs_dict["LOGS_DIR"] + "/{group}-anvi_get_sequences_for_gene_calls.log",
+        rule_log(
+            "anvi_get_sequences_for_gene_calls",
+            "{group}-anvi_get_sequences_for_gene_calls",
+        ),
     threads: M.T("anvi_get_sequences_for_gene_calls")
     resources:
         nodes=M.T("anvi_get_sequences_for_gene_calls"),
@@ -267,7 +275,7 @@ rule emapper:
     output:
         target=dirs_dict["CONTIGS_DIR"] + "/{group}-contigs.emapper.annotations",
     log:
-        dirs_dict["LOGS_DIR"] + "/{group}-emapper.log",
+        rule_log("emapper", "{group}-emapper"),
     threads: M.T("emapper")
     resources:
         nodes=M.T("emapper"),
@@ -302,7 +310,9 @@ rule anvi_script_run_eggnog_mapper:
             )
         ),
     log:
-        dirs_dict["LOGS_DIR"] + "/{group}-anvi_script_run_eggnog_mapper.log",
+        rule_log(
+            "anvi_script_run_eggnog_mapper", "{group}-anvi_script_run_eggnog_mapper"
+        ),
     threads: M.T("anvi_script_run_eggnog_mapper")
     resources:
         nodes=M.T("anvi_script_run_eggnog_mapper"),

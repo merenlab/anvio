@@ -27,7 +27,7 @@ NOTES:
             )
         ),
     log:
-        os.path.join(dirs_dict["LOGS_DIR"], "{accession}_prefetch.log"),
+        rule_log("prefetch", "{accession}_prefetch"),
     threads: M.T("prefetch")
     params:
         SRA_OUTPUT_DIR=os.path.join(dirs_dict["SRA_prefetch"]),
@@ -66,7 +66,7 @@ rule check_md5sum:
             )
         ),
     log:
-        os.path.join(dirs_dict["LOGS_DIR"], "{accession}_check_md5sum.log"),
+        rule_log("check_md5sum", "{accession}_check_md5sum"),
     threads: M.T("check_md5sum")
     params:
         md5sum=os.path.join(
@@ -133,7 +133,7 @@ Threads:
         ),
         FASTERQDUMP_TEMP=temp(directory("FASTERQDUMP_TEMP/{accession}")),
     log:
-        os.path.join(dirs_dict["LOGS_DIR"], "{accession}_fasterq_dump.log"),
+        rule_log("fasterq_dump", "{accession}_fasterq_dump"),
     threads: M.T("fasterq_dump")
     params:
         SRA_INPUT_DIR=os.path.join(dirs_dict["SRA_prefetch"], "{accession}"),
@@ -178,7 +178,7 @@ example:
     output:
         done=touch(os.path.join(dirs_dict["FASTAS"], "{accession}-pigz.done")),
     log:
-        os.path.join(dirs_dict["LOGS_DIR"], "{accession}_pigz.log"),
+        rule_log("pigz", "{accession}_pigz"),
     threads: M.T("pigz")
     params:
         READS=os.path.join(dirs_dict["FASTAS"], "{accession}*.fastq"),
@@ -210,7 +210,7 @@ Threads:
     output:
         done=touch(os.path.join(dirs_dict["FASTAS"], "generate_samples_txt.done")),
     log:
-        os.path.join(dirs_dict["LOGS_DIR"], "generate_samples_txt.log"),
+        rule_log("generate_samples_txt", "generate_samples_txt"),
     params:
         ACCESSION=M.accessions_list,
         OUTPUT_DIR=dirs_dict["FASTAS"],

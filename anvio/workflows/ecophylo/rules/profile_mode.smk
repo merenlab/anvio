@@ -10,7 +10,7 @@ rule make_metagenomics_config_file:
             dirs_dict["HOME"], "METAGENOMICS_WORKFLOW", "metagenomics_config.json"
         ),
     log:
-        os.path.join(dirs_dict["LOGS_DIR"], "make_metagenomics_config_file.log"),
+        rule_log("make_metagenomics_config_file", "make_metagenomics_config_file"),
     threads: M.T("make_metagenomics_config_file")
     run:
         shell(
@@ -112,7 +112,7 @@ rule add_default_collection:
             )
         ),
     log:
-        os.path.join(dirs_dict["LOGS_DIR"], "add_default_collection_{group}.log"),
+        rule_log("add_default_collection", "add_default_collection_{group}"),
     threads: M.T("add_default_collection")
     params:
         contigsDB=ancient(
@@ -145,7 +145,7 @@ rule anvi_summarize:
             )
         ),
     log:
-        os.path.join(dirs_dict["LOGS_DIR"], "anvi_summarize_{group}.log"),
+        rule_log("anvi_summarize", "anvi_summarize_{group}"),
     threads: M.T("anvi_summarize")
     params:
         contigsDB=ancient(
@@ -178,7 +178,7 @@ rule make_anvio_state_file:
             "{group}_ECOPHYLO_WORKFLOW_state.json",
         ),
     log:
-        os.path.join(dirs_dict["LOGS_DIR"], "make_anvio_state_file_{group}.log"),
+        rule_log("make_anvio_state_file", "make_anvio_state_file_{group}"),
     threads: M.T("make_anvio_state_file")
     params:
         tax_data_final=os.path.join(
@@ -337,7 +337,7 @@ If samples.txt is NOT provided then we will make an Ad Hoc profileDB for the tre
             )
         ),
     log:
-        os.path.join(dirs_dict["LOGS_DIR"], "anvi_import_state_{group}.log"),
+        rule_log("anvi_import_everything_metagenome", "anvi_import_state_{group}"),
     threads: M.T("anvi_import_state")
     params:
         tax_data_final=rules.anvi_estimate_scg_taxonomy.params.tax_data_final,

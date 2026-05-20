@@ -9,9 +9,7 @@ rule anvi_reformat_fasta:
             )
         ),
     log:
-        os.path.join(
-            os.path.join(dirs_dict["LOGS_DIR"], "{sample_name}"), "reformat_fasta.log"
-        ),
+        rule_log("anvi_reformat_fasta", "reformat_fasta"),
     params:
         simplify_names=M.get_rule_param("anvi_reformat_fasta", "--simplify-names"),
     run:
@@ -89,9 +87,7 @@ rule anvi_trnaseq:
             )
         ),
     log:
-        os.path.join(
-            os.path.join(dirs_dict["LOGS_DIR"], "{sample_name}"), "anvi_trnaseq.log"
-        ),
+        rule_log("anvi_trnaseq", "anvi_trnaseq"),
     threads: M.T("anvi_trnaseq")
     params:
         overwrite_output_destinations=M.get_rule_param(

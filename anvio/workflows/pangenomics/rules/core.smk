@@ -6,7 +6,7 @@ rule anvi_pan_genome:
     output:
         pan_db=os.path.join(dirs_dict["PAN_DIR"], M.pan_project_name + "-PAN.db"),
     log:
-        os.path.join(dirs_dict["LOGS_DIR"], M.project_name + "-anvi_pan_genome.log"),
+        rule_log("anvi_pan_genome", M.project_name + "-anvi_pan_genome.log"),
     threads: M.T("anvi_pan_genome")
     resources:
         nodes=M.T("anvi_pan_genome"),
@@ -61,8 +61,9 @@ rule anvi_gen_genomes_storage:
     output:
         pan_db=dirs_dict["PAN_DIR"] + "/" + M.project_name + "-GENOMES.db",
     log:
-        os.path.join(
-            dirs_dict["LOGS_DIR"], M.project_name + "-anvi_gen_genomes_storage.log"
+        rule_log(
+            "anvi_gen_genomes_storage",
+            M.project_name + "-anvi_gen_genomes_storage.log",
         ),
     threads: M.T("anvi_gen_genomes_storage")
     resources:

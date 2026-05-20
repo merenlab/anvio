@@ -8,7 +8,7 @@ rule make_anvio_state_file_tree:
             dirs_dict["MISC_DATA"], "{group}", "{group}_TREE_state.json"
         ),
     log:
-        os.path.join(dirs_dict["LOGS_DIR"], "make_anvio_state_file_{group}.log"),
+        rule_log("make_anvio_state_file_tree", "make_anvio_state_file_{group}"),
     threads: M.T("make_anvio_state_file")
     params:
         tax_data_final=os.path.join(
@@ -130,7 +130,7 @@ If samples.txt is NOT provided then we will make an Ad Hoc profileDB for the tre
             os.path.join(dirs_dict["TREES"], "{group}", "state_imported_tree.done")
         ),
     log:
-        os.path.join(dirs_dict["LOGS_DIR"], "anvi_import_state_{group}.log"),
+        rule_log("anvi_import_everything_tree", "anvi_import_state_{group}"),
     threads: M.T("anvi_import_state")
     params:
         misc_data=rules.make_misc_data.output.misc_data_final,

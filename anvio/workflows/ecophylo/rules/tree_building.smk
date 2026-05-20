@@ -8,7 +8,7 @@ if M.run_iqtree == True:
             tree=os.path.join(dirs_dict["TREES"], "{group}", "{group}.iqtree"),
             done=touch(os.path.join(dirs_dict["TREES"], "{group}", "{group}-tree.done")),
         log:
-            os.path.join(dirs_dict["LOGS_DIR"], "iqtree_{group}.log"),
+            rule_log("iqtree", "iqtree_{group}"),
         threads: M.T("iqtree")
         params:
             outfile=os.path.join(dirs_dict["TREES"], "{group}"),
@@ -31,7 +31,7 @@ elif M.run_fasttree == True:
             tree=os.path.join(dirs_dict["TREES"], "{group}", "{group}.nwk"),
             done=touch(os.path.join(dirs_dict["TREES"], "{group}", "{group}-tree.done")),
         log:
-            os.path.join(dirs_dict["LOGS_DIR"], "fasttree_{group}.log"),
+            rule_log("fasttree", "fasttree_{group}"),
         threads: M.T("fasttree")
         params:
             additional_params=M.get_param_value_from_config(
@@ -52,7 +52,7 @@ rule rename_tree_tips:
         fasta=os.path.join(dirs_dict["TREES"], "{group}", "{group}_renamed.faa"),
         fasta_all=os.path.join(dirs_dict["TREES"], "{group}", "{group}_renamed_all.faa"),
     log:
-        os.path.join(dirs_dict["LOGS_DIR"], "rename_tree_tips_{group}.log"),
+        rule_log("rename_tree_tips", "rename_tree_tips_{group}"),
     threads: M.T("rename_tree_tips")
     params:
         fasttree=os.path.join(dirs_dict["TREES"], "{group}", "{group}.nwk"),

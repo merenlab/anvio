@@ -58,9 +58,9 @@ rule anvi_run_hmms_hmmsearch:
             "hmm_hits.txt",
         ),
     log:
-        os.path.join(
-            dirs_dict["LOGS_DIR"],
-            "anvi_run_hmms_hmmsearch-{sample_name}-{hmm_source}.log",
+        rule_log(
+            "anvi_run_hmms_hmmsearch",
+            "anvi_run_hmms_hmmsearch-{sample_name}-{hmm_source}",
         ),
     threads: get_hmm_threads
     params:
@@ -183,9 +183,9 @@ rule filter_hmm_hits_by_model_coverage:
             "hmm_hits_filtered.txt",
         ),
     log:
-        os.path.join(
-            dirs_dict["LOGS_DIR"],
-            "filter_hmm_hits_by_model_coverage-{sample_name}-{hmm_source}.log",
+        rule_log(
+            "filter_hmm_hits_by_model_coverage",
+            "filter_hmm_hits_by_model_coverage-{sample_name}-{hmm_source}",
         ),
     threads: M.T("filter_hmm_hits_by_model_coverage")
     params:
@@ -263,9 +263,9 @@ names with reformated names.
             "{sample_name}-{hmm_name}-processed.done",
         ),
     log:
-        os.path.join(
-            dirs_dict["LOGS_DIR"],
-            "process_hmm_hits-{sample_name}-{hmm_source}-{hmm_name}.log",
+        rule_log(
+            "process_hmm_hits",
+            "process_hmm_hits-{sample_name}-{hmm_source}-{hmm_name}",
         ),
     threads: M.T("process_hmm_hits")
     params:

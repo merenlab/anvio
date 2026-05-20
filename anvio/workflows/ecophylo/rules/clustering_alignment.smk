@@ -21,7 +21,7 @@ rule cluster_X_percent_sim_mmseqs:
             )
         ),
     log:
-        os.path.join(dirs_dict["LOGS_DIR"], "cluster_X_mmseqs_{group}.log"),
+        rule_log("cluster_X_percent_sim_mmseqs", "cluster_X_mmseqs_{group}"),
     threads: M.T("cluster_X_percent_sim_mmseqs")
     params:
         output_prefix=os.path.join(
@@ -96,9 +96,9 @@ This will help identify clustering thresholds for OTU like analyses.
             "{group}-{clustering_threshold}-mmseqs_NR_cluster.tsv",
         ),
     log:
-        os.path.join(
-            dirs_dict["LOGS_DIR"],
-            "cluster_X_mmseqs_{group}_{clustering_threshold}.log",
+        rule_log(
+            "cluster_X_percent_sim_mmseqs_OTUs",
+            "cluster_X_mmseqs_{group}_{clustering_threshold}",
         ),
     threads: M.T("cluster_X_percent_sim_mmseqs")
     params:
@@ -146,7 +146,7 @@ if M.cluster_representative_method == "cluster_rep_with_coverages":
                 "{sample_name}-gene-coverages.txt",
             ),
         log:
-            os.path.join(dirs_dict["LOGS_DIR"], "anvi_profile_blitz-{sample_name}.log"),
+            rule_log("anvi_profile_blitz", "anvi_profile_blitz-{sample_name}"),
         threads: M.T("anvi_profile_blitz")
         run:
             contigs_db = os.path.join(
@@ -205,8 +205,9 @@ if M.cluster_representative_method == "cluster_rep_with_coverages":
                 "{group}-coverage_cluster.tsv",
             ),
         log:
-            os.path.join(
-                dirs_dict["LOGS_DIR"], "pick_cluster_rep_with_coverage-{group}.log"
+            rule_log(
+                "pick_cluster_rep_with_coverage",
+                "pick_cluster_rep_with_coverage-{group}",
             ),
         run:
             # Bind anvi-profile-blitz data with cluster rep data and group_by cluster rep then find the cluster member with the highest coverage to pick new rep
@@ -293,8 +294,9 @@ if M.cluster_representative_method == "cluster_rep_with_coverages":
                 "{group}-AA_subset.fa",
             ),
         log:
-            os.path.join(
-                dirs_dict["LOGS_DIR"], "subset_AA_seqs_with_coverage_reps_{group}.log"
+            rule_log(
+                "subset_AA_seqs_with_coverage_reps",
+                "subset_AA_seqs_with_coverage_reps_{group}",
             ),
         threads: M.T("subset_AA_seqs_with_coverage_reps")
         run:
@@ -316,8 +318,9 @@ if M.cluster_representative_method == "mmseqs":
                 "{group}-AA_subset.fa",
             ),
         log:
-            os.path.join(
-                dirs_dict["LOGS_DIR"], "subset_AA_seqs_with_mmseqs_reps_{group}.log"
+            rule_log(
+                "subset_AA_seqs_with_mmseqs_reps",
+                "subset_AA_seqs_with_mmseqs_reps_{group}",
             ),
         threads: M.T("subset_AA_seqs_with_mmseqs_reps")
         params:
@@ -341,7 +344,7 @@ rule align_sequences:
     output:
         fasta=os.path.join(dirs_dict["MSA"], "{group}", "{group}-aligned.fa"),
     log:
-        os.path.join(dirs_dict["LOGS_DIR"], "align_sequences_{group}.log"),
+        rule_log("align_sequences", "align_sequences_{group}"),
     threads: M.T("align_sequences")
     params:
         additional_params=M.get_param_value_from_config(
@@ -360,7 +363,7 @@ rule trim_alignment:
     output:
         fasta=os.path.join(dirs_dict["MSA"], "{group}", "{group}_aligned_trimmed.fa"),
     log:
-        os.path.join(dirs_dict["LOGS_DIR"], "trim_alignment_{group}.log"),
+        rule_log("trim_alignment", "trim_alignment_{group}"),
     threads: M.T("trim_alignment")
     params:
         gt=M.get_param_value_from_config(["trim_alignment", "-gt"]),
@@ -383,8 +386,9 @@ rule remove_sequences_with_X_percent_gaps:
             dirs_dict["MSA"], "{group}", "{group}_aligned_trimmed_filtered.fa"
         ),
     log:
-        os.path.join(
-            dirs_dict["LOGS_DIR"], "remove_sequences_with_X_percent_gaps_{group}.log"
+        rule_log(
+            "remove_sequences_with_X_percent_gaps",
+            "remove_sequences_with_X_percent_gaps_{group}",
         ),
     threads: M.T("remove_sequences_with_X_percent_gaps")
     params:
@@ -418,7 +422,7 @@ rule count_num_sequences_filtered:
             dirs_dict["RIBOSOMAL_PROTEIN_MSA_STATS"], "{group}", "{group}_stats.tsv"
         ),
     log:
-        os.path.join(dirs_dict["LOGS_DIR"], "count_num_sequences_filtered_{group}.log"),
+        rule_log("count_num_sequences_filtered", "count_num_sequences_filtered_{group}"),
     threads: M.T("count_num_sequences_filtered")
     params:
         combined_seq=rules.combine_sequence_data.output.NT_all,

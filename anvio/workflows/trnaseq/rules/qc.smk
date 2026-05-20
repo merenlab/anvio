@@ -7,9 +7,7 @@ rule make_iu_input:
             os.path.join(dirs_dict["QC_DIR"], "{sample_name}"), "iu_samples_input.txt"
         ),
     log:
-        os.path.join(
-            os.path.join(dirs_dict["LOGS_DIR"], "{sample_name}"), "make_iu_input.log"
-        ),
+        rule_log("make_iu_input", "make_iu_input"),
     run:
         library_num = M.sample_names.index(wildcards.sample_name)
         r1_path = M.r1_paths[library_num]
@@ -30,9 +28,7 @@ rule iu_gen_configs:
             os.path.join(dirs_dict["QC_DIR"], "{sample_name}"), "{sample_name}.ini"
         ),
     log:
-        os.path.join(
-            os.path.join(dirs_dict["LOGS_DIR"], "{sample_name}"), "iu_gen_configs.log"
-        ),
+        rule_log("iu_gen_configs", "iu_gen_configs"),
     run:
         out_dir = os.path.join(dirs_dict["QC_DIR"], wildcards.sample_name)
         library_num = M.sample_names.index(wildcards.sample_name)
@@ -62,9 +58,7 @@ rule iu_merge_pairs:
             )
         ),
     log:
-        os.path.join(
-            os.path.join(dirs_dict["LOGS_DIR"], "{sample_name}"), "iu_merge_pairs.log"
-        ),
+        rule_log("iu_merge_pairs", "iu_merge_pairs"),
     threads: M.T("iu_merge_pairs")
     params:
         marker_gene_stringent=M.get_rule_param(
@@ -124,7 +118,7 @@ rule gen_qc_report:
     output:
         report=os.path.join(dirs_dict["QC_DIR"], "qc_report.txt"),  # optional target file that triggers Illumina-utils QC steps
     log:
-        os.path.join(dirs_dict["LOGS_DIR"], "gen_qc_report.log"),
+        rule_log("gen_qc_report", "gen_qc_report"),
     run:
         report_dict = {}
         headers = []

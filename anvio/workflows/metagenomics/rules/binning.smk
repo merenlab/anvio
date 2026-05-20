@@ -10,7 +10,7 @@ rule anvi_cluster_contigs:
             )
         ),
     log:
-        os.path.join(dirs_dict["LOGS_DIR"], "{group}-{driver}-anvi_cluster_contigs.log"),
+        rule_log("anvi_cluster_contigs", "{group}-{driver}-anvi_cluster_contigs"),
     threads: M.T("anvi_cluster_contigs")
     resources:
         nodes=M.T("anvi_cluster_contigs"),

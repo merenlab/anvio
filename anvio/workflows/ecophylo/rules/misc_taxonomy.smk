@@ -113,7 +113,7 @@ rule make_misc_data:
             dirs_dict["MISC_DATA"], "{group}", "{group}_misc.tsv"
         ),
     log:
-        os.path.join(dirs_dict["LOGS_DIR"], "add_contigs_db_type_{group}.log"),
+        rule_log("make_misc_data", "add_contigs_db_type_{group}"),
     threads: M.T("add_misc_data_to_taxonomy")
     params:
         mmseqs_cluster_rep_index=os.path.join(
@@ -163,7 +163,7 @@ rule anvi_run_scg_taxonomy:
             )
         ),
     log:
-        os.path.join(dirs_dict["LOGS_DIR"], "anvi_run_scg_taxonomy-{sample_name}.log"),
+        rule_log("anvi_run_scg_taxonomy", "anvi_run_scg_taxonomy-{sample_name}"),
     threads: M.T("anvi_run_scg_taxonomy")
     params:
         scg_taxonomy_version=M.get_param_value_from_config(
@@ -202,7 +202,7 @@ rule anvi_estimate_scg_taxonomy:
             )
         ),
     log:
-        os.path.join(dirs_dict["LOGS_DIR"], "anvi_scg_taxonomy_{group}.log"),
+        rule_log("anvi_estimate_scg_taxonomy", "anvi_scg_taxonomy_{group}"),
     threads: M.T("anvi_estimate_scg_taxonomy")
     params:
         reformat_file=rules.combine_sequence_data.output.reformat_report_all,

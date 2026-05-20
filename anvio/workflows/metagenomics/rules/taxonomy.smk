@@ -6,7 +6,7 @@ rule krakenuniq:
         raw=os.path.join(dirs_dict["TAXONOMY_DIR"], "{readset}.krakenuniq"),
         tsv=os.path.join(dirs_dict["TAXONOMY_DIR"], "{readset}-krakenuniq-report.tsv"),
     log:
-        dirs_dict["LOGS_DIR"] + "/{readset}-krakenuniq.log",
+        rule_log("krakenuniq", "{readset}-krakenuniq"),
     wildcard_constraints:
         readset=SR_RS_RE,
     threads: M.T("krakenuniq")
@@ -41,7 +41,7 @@ rule krakenuniq_mpa_report:
     output:
         txt=os.path.join(dirs_dict["TAXONOMY_DIR"], "{readset}-krakenuniq.tsv"),
     log:
-        dirs_dict["LOGS_DIR"] + "/{readset}-krakenuniq_mpa_report.log",
+        rule_log("krakenuniq_mpa_report", "{readset}-krakenuniq_mpa_report"),
     threads: M.T("krakenuniq_mpa_report")
     resources:
         nodes=M.T("krakenuniq_mpa_report"),
@@ -100,7 +100,10 @@ rule import_krakenuniq_taxonomy:
             )
         ),
     log:
-        dirs_dict["LOGS_DIR"] + "/{group}-{readset}-import_krakenuniq_taxonomy.log",
+        rule_log(
+            "import_krakenuniq_taxonomy",
+            "{group}-{readset}-import_krakenuniq_taxonomy",
+        ),
     threads: M.T("import_krakenuniq_taxonomy")
     resources:
         nodes=M.T("import_krakenuniq_taxonomy"),

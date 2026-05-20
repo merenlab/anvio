@@ -8,8 +8,8 @@ rule anvi_get_sequences_for_gene_clusters:
     output:
         fasta=os.path.join(dirs_dict["PHYLO_DIR"], M.project_name + "-GC-sequences.fa"),
     log:
-        os.path.join(
-            dirs_dict["LOGS_DIR"],
+        rule_log(
+            "anvi_get_sequences_for_gene_clusters",
             M.project_name + "-anvi_get_sequences_for_gene_clusters.log",
         ),
     threads: M.T("anvi_get_sequences_for_gene_clusters")
@@ -100,8 +100,8 @@ rule import_phylogenetic_tree_to_pangenome:
         ),
         phylogeny_imported=touch(M.get_phylogeny_imported_flag()),
     log:
-        os.path.join(
-            M.dirs_dict["LOGS_DIR"],
+        rule_log(
+            "import_phylogenetic_tree_to_pangenome",
             M.pan_project_name + "-import_phylogenetic_tree_to_pangenome.log",
         ),
     threads: M.T("import_phylogenetic_tree_to_pangenome")
@@ -128,8 +128,8 @@ rule anvi_compute_genome_similarity:
         anvi_compute_genome_similarity_flag=touch(M.anvi_compute_genome_similarity_flag),
         output_dir=directory(M.anvi_compute_genome_similarity_output_dir),
     log:
-        os.path.join(
-            M.dirs_dict["LOGS_DIR"],
+        rule_log(
+            "anvi_compute_genome_similarity",
             M.pan_project_name + "-anvi_compute_genome_similarity.log",
         ),
     threads: M.T("anvi_compute_genome_similarity")

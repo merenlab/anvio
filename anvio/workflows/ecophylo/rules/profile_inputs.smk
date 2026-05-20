@@ -10,9 +10,9 @@ rule subset_DNA_reps_with_QCd_AA_reps_for_mapping:
         ),
         headers=os.path.join(dirs_dict["MSA"], "{group}", "{group}_headers.tmp"),
     log:
-        os.path.join(
-            dirs_dict["LOGS_DIR"],
-            "subset_DNA_reps_with_QCd_AA_reps_for_mapping_{group}.log",
+        rule_log(
+            "subset_DNA_reps_with_QCd_AA_reps_for_mapping",
+            "subset_DNA_reps_with_QCd_AA_reps_for_mapping_{group}",
         ),
     threads: M.T("subset_DNA_reps_with_QCd_AA_reps_for_mapping")
     params:
@@ -38,8 +38,9 @@ there are NO repeating gene-callers-id values.
             "{group}-external_gene_calls_subset.tsv",
         ),
     log:
-        os.path.join(
-            dirs_dict["LOGS_DIR"], "subset_external_gene_calls_file_all_{group}.log"
+        rule_log(
+            "subset_external_gene_calls_file_all",
+            "subset_external_gene_calls_file_all_{group}",
         ),
     threads: M.T("subset_external_gene_calls_file_all")
     params:
@@ -55,7 +56,7 @@ rule make_fasta_txt:
     output:
         fasta_txt=os.path.join(dirs_dict["HOME"], "METAGENOMICS_WORKFLOW", "fasta.txt"),
     log:
-        os.path.join(dirs_dict["LOGS_DIR"], "make_fasta_txt.log"),
+        rule_log("make_fasta_txt", "make_fasta_txt"),
     threads: M.T("make_fasta_txt")
     run:
         with open(output.fasta_txt, "a") as fasta_txt:

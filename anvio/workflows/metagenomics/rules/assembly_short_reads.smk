@@ -5,7 +5,7 @@ rule merge_fastas_for_co_assembly:
     output:
         fasta=temp(dirs_dict["QC_DIR"] + "/{group}-merged.fa"),
     log:
-        dirs_dict["LOGS_DIR"] + "/{group}-merge_fastas_for_co_assembly.log",
+        rule_log("merge_fastas_for_co_assembly", "{group}-merge_fastas_for_co_assembly"),
     threads: M.T("merge_fastas_for_co_assembly")
     resources:
         nodes=M.T("merge_fastas_for_co_assembly"),
@@ -43,7 +43,7 @@ rule merge_fastqs_for_co_assembly:
         r1=temp(os.path.join(dirs_dict["QC_DIR"], "{group}-merged_R1.fastq")),
         r2=temp(os.path.join(dirs_dict["QC_DIR"], "{group}-merged_R2.fastq")),
     log:
-        dirs_dict["LOGS_DIR"] + "/{group}-merge_fastqs_for_co_assembly.log",
+        rule_log("merge_fastqs_for_co_assembly", "{group}-merge_fastqs_for_co_assembly"),
     threads: M.T("merge_fastqs_for_co_assembly")
     resources:
         nodes=M.T("merge_fastqs_for_co_assembly"),
@@ -82,7 +82,7 @@ if M.get_param_value_from_config(["idba_ud", "run"]) and M.has_sr:
                 else os.path.join(dirs_dict["FASTA_DIR"], "{group}", "scaffolds.fa")
             ),
         log:
-            dirs_dict["LOGS_DIR"] + "/{group}-idba_ud.log",
+            rule_log("idba_ud", "{group}-idba_ud"),
         wildcard_constraints:
             group=SR_GRP_RE,
         conda:
@@ -164,7 +164,7 @@ if M.get_param_value_from_config(["metaspades", "run"]) and M.has_sr:
                 else os.path.join(dirs_dict["FASTA_DIR"], "{group}", "scaffolds.fasta")
             ),
         log:
-            dirs_dict["LOGS_DIR"] + "/{group}-metaspades.log",
+            rule_log("metaspades", "{group}-metaspades"),
         wildcard_constraints:
             group=SR_GRP_RE,
         conda:
@@ -217,7 +217,7 @@ if M.get_param_value_from_config(["megahit", "run"]) and M.has_sr:
         output:
             contigs=temp(dirs_dict["FASTA_DIR"] + "/{group}/final.contigs.fa"),
         log:
-            dirs_dict["LOGS_DIR"] + "/{group}-megahit.log",
+            rule_log("megahit", "{group}-megahit"),
         wildcard_constraints:
             group=SR_GRP_RE,
         conda:

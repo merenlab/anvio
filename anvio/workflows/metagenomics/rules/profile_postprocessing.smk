@@ -11,7 +11,7 @@ rule anvi_import_collection:
             os.path.join(dirs_dict["MERGE_DIR"], "{group}", "collection-import.done")
         ),
     log:
-        dirs_dict["LOGS_DIR"] + "/{group}-anvi_import_collection.log",
+        rule_log("anvi_import_collection", "{group}-anvi_import_collection"),
     threads: 1
     resources:
         nodes=1,
@@ -44,7 +44,9 @@ rule anvi_import_default_collection:
             )
         ),
     log:
-        dirs_dict["LOGS_DIR"] + "/{group}-anvi_import_default_collection.log",
+        rule_log(
+            "anvi_import_default_collection", "{group}-anvi_import_default_collection"
+        ),
     threads: 1
     resources:
         nodes=1,
@@ -69,7 +71,7 @@ rule anvi_summarize:
             touch(os.path.join(dirs_dict["SUMMARY_DIR"], "{group}-summary.touch"))
         ),
     log:
-        os.path.join(dirs_dict["LOGS_DIR"], "{group}-anvi_summarize.log"),
+        rule_log("anvi_summarize", "{group}-anvi_summarize"),
     threads: M.T("anvi_summarize")
     resources:
         nodes=M.T("anvi_summarize"),
@@ -104,7 +106,7 @@ rule anvi_split:
             os.path.join(dirs_dict["SPLIT_PROFILES_DIR"], "{group}-split.done")
         ),
     log:
-        os.path.join(dirs_dict["LOGS_DIR"], "{group}-anvi_split.log"),
+        rule_log("anvi_split", "{group}-anvi_split"),
     threads: M.T("anvi_split")
     resources:
         nodes=M.T("anvi_split"),
@@ -132,7 +134,9 @@ rule dummy_rule_for_anvi_summarize:
     output:
         summary=directory(os.path.join(dirs_dict["SUMMARY_DIR"], "{group}-SUMMARY")),
     log:
-        dirs_dict["LOGS_DIR"] + "/{group}-dummy_rule_for_anvi_summarize.log",
+        rule_log(
+            "dummy_rule_for_anvi_summarize", "{group}-dummy_rule_for_anvi_summarize"
+        ),
     threads: 1
     resources:
         nodes=1,

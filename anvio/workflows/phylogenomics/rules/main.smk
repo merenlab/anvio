@@ -5,8 +5,8 @@ rule anvi_get_sequences_for_hmm_hits:
     output:
         fasta=os.path.join(dirs_dict["PHYLO_DIR"], M.project_name + "-proteins.fa"),
     log:
-        os.path.join(
-            dirs_dict["LOGS_DIR"],
+        rule_log(
+            "anvi_get_sequences_for_hmm_hits",
             M.project_name + "_anvi_get_sequences_for_hmm_hits.log",
         ),
     threads: M.T("anvi_get_sequences_for_hmm_hits")
@@ -61,7 +61,7 @@ rule trimal:
             dirs_dict["PHYLO_DIR"], M.project_name + "-proteins_GAPS_REMOVED.fa"
         ),
     log:
-        os.path.join(dirs_dict["LOGS_DIR"], M.project_name + "_trimal.log"),
+        rule_log("trimal", M.project_name + "_trimal.log"),
     threads: M.T("trimal")
     resources:
         nodes=M.T("trimal"),
@@ -89,7 +89,7 @@ rule iqtree:
             M.project_name + "-proteins_GAPS_REMOVED.fa" + ".contree",
         ),
     log:
-        os.path.join(dirs_dict["LOGS_DIR"], M.project_name + "_iqtree.log"),
+        rule_log("iqtree", M.project_name + "_iqtree.log"),
     threads: M.T("iqtree")
     resources:
         nodes=M.T("iqtree"),

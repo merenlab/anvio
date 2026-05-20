@@ -57,7 +57,7 @@ rule bowtie_build:
         idx=[BT2_PREFIX + f".{i}.{BT2_EXT}" for i in (1, 2, 3, 4)]
         + [BT2_PREFIX + f".rev.1.{BT2_EXT}", BT2_PREFIX + f".rev.2.{BT2_EXT}"],
     log:
-        dirs_dict["LOGS_DIR"] + "/{group}-bowtie_build.log",
+        rule_log("bowtie_build", "{group}-bowtie_build"),
     wildcard_constraints:
         readset=SR_RS_RE,
     conda:
@@ -86,7 +86,7 @@ rule minimap2_index:
     output:
         idx=M.dirs_dict["MAPPING_DIR"] + "/{group}/{group}.mmi",
     log:
-        dirs_dict["LOGS_DIR"] + "/{group}-minimap2_index.log",
+        rule_log("minimap2_index", "{group}-minimap2_index"),
     wildcard_constraints:
         readset=LR_RS_RE,
     conda:
@@ -123,7 +123,7 @@ rule bowtie:
     output:
         sam=temp(dirs_dict["MAPPING_DIR"] + "/{group}/{readset}.sam"),
     log:
-        dirs_dict["LOGS_DIR"] + "/{group}-{readset}-bowtie.log",
+        rule_log("bowtie", "{group}-{readset}-bowtie"),
     wildcard_constraints:
         readset=SR_RS_RE,
     conda:
@@ -155,7 +155,7 @@ rule minimap2:
     output:
         sam=temp(M.dirs_dict["MAPPING_DIR"] + "/{group}/{readset}.sam"),
     log:
-        dirs_dict["LOGS_DIR"] + "/{group}-{readset}-minimap2.log",
+        rule_log("minimap2", "{group}-{readset}-minimap2"),
     wildcard_constraints:
         readset=LR_RS_RE,
     conda:
@@ -185,7 +185,7 @@ rule samtools_view:
     output:
         bam=temp(dirs_dict["MAPPING_DIR"] + "/{group}/{readset}-RAW.bam"),
     log:
-        dirs_dict["LOGS_DIR"] + "/{group}-{readset}-samtools_view.log",
+        rule_log("samtools_view", "{group}-{readset}-samtools_view"),
     threads: M.T("samtools_view")
     resources:
         nodes=M.T("samtools_view"),
@@ -205,7 +205,7 @@ rule anvi_init_bam:
         bam=dirs_dict["MAPPING_DIR"] + "/{group}/{readset}.bam",
         bai=dirs_dict["MAPPING_DIR"] + "/{group}/{readset}.bam.bai",
     log:
-        dirs_dict["LOGS_DIR"] + "/{group}-{readset}-anvi_init_bam.log",
+        rule_log("anvi_init_bam", "{group}-{readset}-anvi_init_bam"),
     threads: M.T("anvi_init_bam")
     resources:
         nodes=M.T("anvi_init_bam"),
@@ -237,7 +237,7 @@ rule anvi_profile:
         AUXILIARY_DATA=dirs_dict["PROFILE_DIR"] + "/{group}/{readset}/AUXILIARY-DATA.db",
         runlog=dirs_dict["PROFILE_DIR"] + "/{group}/{readset}/RUNLOG.txt",
     log:
-        dirs_dict["LOGS_DIR"] + "/{group}-{readset}-anvi_profile.log",
+        rule_log("anvi_profile", "{group}-{readset}-anvi_profile"),
     threads: M.T("anvi_profile")
     resources:
         nodes=M.T("anvi_profile"),
@@ -379,8 +379,9 @@ rule gen_readme_file_for_unmerged_groups:
     output:
         readme=os.path.join(M.dirs_dict["MERGE_DIR"], "{group}", "README.txt"),
     log:
-        os.path.join(
-            dirs_dict["LOGS_DIR"], "{group}-gen_readme_file_for_unmerged_groups.log"
+        rule_log(
+            "gen_readme_file_for_unmerged_groups",
+            "{group}-gen_readme_file_for_unmerged_groups",
         ),
     threads: M.T("gen_readme_file_for_unmerged_groups")
     resources:
@@ -404,7 +405,7 @@ rule anvi_merge:
         AUXILIARY_DATA=dirs_dict["MERGE_DIR"] + "/{group}/AUXILIARY-DATA.db",
         runlog=dirs_dict["MERGE_DIR"] + "/{group}/RUNLOG.txt",
     log:
-        dirs_dict["LOGS_DIR"] + "/{group}-anvi_merge.log",
+        rule_log("anvi_merge", "{group}-anvi_merge"),
     threads: M.T("anvi_merge")
     resources:
         nodes=M.T("anvi_merge"),
@@ -483,7 +484,7 @@ rule count_reads_in_fastq:
     output:
         txt=dirs_dict["QC_DIR"] + "/{readset}-total_num_reads.txt",
     log:
-        dirs_dict["LOGS_DIR"] + "/{readset}-count_reads_in_fastq.log",
+        rule_log("count_reads_in_fastq", "{readset}-count_reads_in_fastq"),
     threads: 1
     resources:
         nodes=1,
@@ -523,7 +524,10 @@ rule import_percent_of_reads_mapped:
         layers_txt=dirs_dict["PROFILE_DIR"]
         + "/{group}/{readset}/layers-additional-data.txt",
     log:
-        dirs_dict["LOGS_DIR"] + "/{group}-{readset}-import_percent_of_reads_mapped.log",
+        rule_log(
+            "import_percent_of_reads_mapped",
+            "{group}-{readset}-import_percent_of_reads_mapped",
+        ),
     threads: 1
     resources:
         nodes=1,

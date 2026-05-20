@@ -28,7 +28,7 @@ if M.get_param_value_from_config(["flye", "run"]) and M.has_lr:
         output:
             raw_fasta=M.dirs_dict["FASTA_DIR"] + "/{group}/final.contigs.fa",
         log:
-            M.dirs_dict["LOGS_DIR"] + "/{group}-flye.log",
+            rule_log("flye", "{group}-flye"),
         wildcard_constraints:
             group=LR_GRP_RE,
         conda:

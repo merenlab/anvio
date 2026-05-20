@@ -10,7 +10,7 @@ rule anvi_merge_trnaseq:
     output:
         done=touch(os.path.join(dirs_dict["CONVERT_DIR"], "CONVERT.done")),
     log:
-        os.path.join(dirs_dict["LOGS_DIR"], "anvi_merge_trnaseq.log"),
+        rule_log("anvi_merge_trnaseq", "anvi_merge_trnaseq"),
     threads: M.T("anvi_merge_trnaseq")
     params:
         trnaseq_dbs=expand(
@@ -59,7 +59,7 @@ rule anvi_run_trna_taxonomy:
     output:
         done=touch(os.path.join(dirs_dict["CONVERT_DIR"], "TAXONOMY.done")),
     log:
-        os.path.join(dirs_dict["LOGS_DIR"], "anvi_run_trna_taxonomy.log"),
+        rule_log("anvi_run_trna_taxonomy", "anvi_run_trna_taxonomy"),
     threads: M.T("anvi_run_trna_taxonomy")
     params:
         contigs_db=os.path.join(
@@ -100,7 +100,7 @@ rule anvi_tabulate_trnaseq:
     output:
         done=touch(os.path.join(dirs_dict["CONVERT_DIR"], "TABULATE.done")),
     log:
-        os.path.join(dirs_dict["LOGS_DIR"], "anvi_tabulate_trnaseq.log"),
+        rule_log("anvi_tabulate_trnaseq", "anvi_tabulate_trnaseq"),
     params:
         contigs_db=os.path.join(
             os.path.join(

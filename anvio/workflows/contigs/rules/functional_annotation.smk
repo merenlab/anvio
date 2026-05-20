@@ -9,7 +9,7 @@ rule reformat_external_functions:
             "{group}" + "-gene-functional-annotation.txt",
         ),
     log:
-        os.path.join(dirs_dict["LOGS_DIR"], "{group}-reformat_external_functions.log"),
+        rule_log("reformat_external_functions", "{group}-reformat_external_functions"),
     threads: M.T("reformat_external_functions")
     resources:
         nodes=M.T("reformat_external_functions"),
@@ -63,7 +63,7 @@ rule import_external_functions:
             )
         ),
     log:
-        os.path.join(dirs_dict["LOGS_DIR"], "{group}-import_external_functions.log"),
+        rule_log("import_external_functions", "{group}-import_external_functions"),
     threads: M.T("import_external_functions")
     resources:
         nodes=M.T("import_external_functions"),

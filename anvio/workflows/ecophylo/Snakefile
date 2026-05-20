@@ -32,6 +32,14 @@ M.init()
 dirs_dict = M.dirs_dict
 
 
+def rule_log(rule_name, log_file_name="log"):
+    """Return a canonical workflow log path under 00_LOGS/<rule_name>/."""
+    if not log_file_name.endswith(".log"):
+        log_file_name = f"{log_file_name}.log"
+
+    return os.path.join(dirs_dict["LOGS_DIR"], rule_name, log_file_name)
+
+
 rule ECOPHYLO_WORKFLOW_target_rule:
     """The rule creates all target files for the Snakefile"""
     input:

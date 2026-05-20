@@ -16,7 +16,7 @@ then copy/symlink to {QC_DIR}/{readset}.ini so suffixed SR readsets exist.
             readset=M.get_sr_readset_ids(),
         ),
     log:
-        dirs_dict["LOGS_DIR"] + "/iu_gen_configs.log",
+        rule_log("iu_gen_configs", "iu_gen_configs"),
     threads: M.T("iu_gen_configs")
     resources:
         nodes=M.T("iu_gen_configs"),
@@ -84,7 +84,7 @@ rule iu_filter_quality_minoche:
         ),
         stats=dirs_dict["QC_DIR"] + "/{readset}-STATS.txt",
     log:
-        dirs_dict["LOGS_DIR"] + "/{readset}-iu_filter_quality_minoche.log",
+        rule_log("iu_filter_quality_minoche", "{readset}-iu_filter_quality_minoche"),
     wildcard_constraints:
         readset=SR_RS_RE,
     threads: M.T("iu_filter_quality_minoche")
@@ -138,7 +138,7 @@ rule gen_qc_report:
     output:
         report=dirs_dict["QC_DIR"] + "/qc-report.txt",
     log:
-        dirs_dict["LOGS_DIR"] + "/gen_qc_report.log",
+        rule_log("gen_qc_report", "gen_qc_report"),
     threads: M.T("gen_qc_report")
     resources:
         nodes=M.T("gen_qc_report"),
@@ -209,7 +209,7 @@ rule gzip_fastqs:
             else gzip_fastq_output
         ),
     log:
-        dirs_dict["LOGS_DIR"] + "/{readset}-{R}-gzip.log",
+        rule_log("gzip_fastqs", "{readset}-{R}-gzip"),
     threads: M.T("gzip_fastqs")
     resources:
         nodes=M.T("gzip_fastqs"),

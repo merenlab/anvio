@@ -15,7 +15,7 @@ of this rule, instead of tracking the individual
             )
         ),
     log:
-        dirs_dict["LOGS_DIR"] + "/{group}-annotate_contigs_database.log",
+        rule_log("annotate_contigs_database", "{group}-annotate_contigs_database"),
 
 
 rule anvi_script_reformat_fasta_prefix_only:
@@ -52,7 +52,10 @@ the output of anvi_script_reformat_fasta_prefix_only and the headers would be co
         ),
         report=dirs_dict["FASTA_DIR"] + "/{group}/{group}-reformat-report.txt",
     log:
-        dirs_dict["LOGS_DIR"] + "/{group}-anvi_script_reformat_fasta_prefix_only.log",
+        rule_log(
+            "anvi_script_reformat_fasta_prefix_only",
+            "{group}-anvi_script_reformat_fasta_prefix_only",
+        ),
     threads: M.T("anvi_script_reformat_fasta")
     resources:
         nodes=M.T("anvi_script_reformat_fasta"),
@@ -87,7 +90,7 @@ See docummentation for anvi_script_reformat_fasta_prefix_only
             os.path.join(dirs_dict["FASTA_DIR"], "{group}", "{group}-contigs.fa")
         ),
     log:
-        dirs_dict["LOGS_DIR"] + "/{group}-anvi_script_reformat_fasta.log",
+        rule_log("anvi_script_reformat_fasta", "{group}-anvi_script_reformat_fasta"),
     threads: M.T("anvi_script_reformat_fasta")
     resources:
         nodes=M.T("anvi_script_reformat_fasta"),
@@ -113,8 +116,9 @@ rule reformat_external_gene_calls_table:
             dirs_dict["FASTA_DIR"], "{group}", "{group}-external-gene-calls.txt"
         ),
     log:
-        os.path.join(
-            dirs_dict["LOGS_DIR"], "{group}-reformat_external_gene_calls_table.log"
+        rule_log(
+            "reformat_external_gene_calls_table",
+            "{group}-reformat_external_gene_calls_table",
         ),
     threads: M.T("reformat_external_gene_calls_table")
     resources:
@@ -184,7 +188,7 @@ rule anvi_gen_contigs_database:
         db=os.path.join(dirs_dict["CONTIGS_DIR"], "{group}.db"),
     # Setting the version to the same as that of the contigs__version in anvi'o
     log:
-        dirs_dict["LOGS_DIR"] + "/{group}-anvi_gen_contigs_database.log",
+        rule_log("anvi_gen_contigs_database", "{group}-anvi_gen_contigs_database"),
     threads: M.T("anvi_gen_contigs_database")
     resources:
         nodes=M.T("anvi_gen_contigs_database"),

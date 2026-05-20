@@ -15,7 +15,7 @@ rule gen_external_genome_file:
     output:
         target=M.external_genomes_file,
     log:
-        dirs_dict["LOGS_DIR"] + "" + "/gen_external_genome_file.log",
+        rule_log("gen_external_genome_file", "gen_external_genome_file"),
     threads: M.T("gen_external_genome_file")
     resources:
         nodes=M.T("gen_external_genome_file"),

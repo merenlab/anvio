@@ -38,7 +38,7 @@ cat all neccessary files:
             )
         ),
     log:
-        os.path.join(dirs_dict["LOGS_DIR"], "combine_sequence_data_{group}.log"),
+        rule_log("combine_sequence_data", "combine_sequence_data_{group}"),
     threads: M.T("combine_sequence_data")
     run:
         # this code checks for existing hits per hmm per sample.

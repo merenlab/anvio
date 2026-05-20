@@ -97,9 +97,9 @@ rule remove_short_reads_based_on_references:
             else temp(os.path.join(dirs_dict["QC_DIR"], "{readset}-mock-output4"))
         ),
     log:
-        os.path.join(
-            dirs_dict["LOGS_DIR"],
-            "{readset}-remove_short_reads_based_on_references.log",
+        rule_log(
+            "remove_short_reads_based_on_references",
+            "{readset}-remove_short_reads_based_on_references",
         ),
     threads: M.T("remove_short_reads_based_on_references")
     resources:
@@ -208,9 +208,9 @@ rule gen_report_for_mapping_to_references_for_removal:
     output:
         report_file=os.path.join(dirs_dict["QC_DIR"], "short-read-removal-report.txt"),
     log:
-        os.path.join(
-            dirs_dict["LOGS_DIR"],
-            "gen_report_for_mapping_to_references_for_removal.log",
+        rule_log(
+            "gen_report_for_mapping_to_references_for_removal",
+            "gen_report_for_mapping_to_references_for_removal",
         ),
     threads: 1
     resources:
