@@ -13,29 +13,11 @@ from pathlib import Path
 
 WORKFLOWS_ROOT = Path(__file__).resolve().parents[2]
 
-METAGENOMICS_RULE_FILES = [
-    WORKFLOWS_ROOT / 'metagenomics' / 'rules' / 'qc.smk',
-    WORKFLOWS_ROOT / 'metagenomics' / 'rules' / 'read_filtering.smk',
-    WORKFLOWS_ROOT / 'metagenomics' / 'rules' / 'assembly_short_reads.smk',
-    WORKFLOWS_ROOT / 'metagenomics' / 'rules' / 'assembly_long_reads.smk',
-    WORKFLOWS_ROOT / 'metagenomics' / 'rules' / 'profile_postprocessing.smk',
-    WORKFLOWS_ROOT / 'metagenomics' / 'rules' / 'taxonomy.smk',
-    WORKFLOWS_ROOT / 'metagenomics' / 'rules' / 'binning.smk',
-]
+METAGENOMICS_RULE_FILES = sorted((WORKFLOWS_ROOT / 'metagenomics' / 'rules').glob('*.smk'))
 
-SNAKEMAKE_FILES = [
-    WORKFLOWS_ROOT / 'contigs' / 'Snakefile',
-    WORKFLOWS_ROOT / 'ecophylo' / 'Snakefile',
-    WORKFLOWS_ROOT / 'ecophylo' / 'rules' / 'profile_mode.smk',
-    WORKFLOWS_ROOT / 'ecophylo' / 'rules' / 'tree_mode.smk',
-    WORKFLOWS_ROOT / 'metagenomics' / 'Snakefile',
-    *METAGENOMICS_RULE_FILES,
-    WORKFLOWS_ROOT / 'pangenomics' / 'Snakefile',
-    WORKFLOWS_ROOT / 'phylogenomics' / 'Snakefile',
-    WORKFLOWS_ROOT / 'read_recruitment' / 'rules' / 'main.smk',
-    WORKFLOWS_ROOT / 'sra_download' / 'Snakefile',
-    WORKFLOWS_ROOT / 'trnaseq' / 'Snakefile',
-]
+SNAKEMAKE_FILES = sorted(WORKFLOWS_ROOT.glob('*/Snakefile')) + sorted(
+    WORKFLOWS_ROOT.glob('*/rules/*.smk')
+)
 
 WORKFLOW_MODULES = [
     WORKFLOWS_ROOT / 'contigs' / '__init__.py',

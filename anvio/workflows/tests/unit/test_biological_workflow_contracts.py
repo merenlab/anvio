@@ -15,15 +15,7 @@ from pathlib import Path
 WORKFLOWS_ROOT = Path(__file__).resolve().parents[2]
 
 
-METAGENOMICS_RULE_FILES = [
-    WORKFLOWS_ROOT / 'metagenomics' / 'rules' / 'qc.smk',
-    WORKFLOWS_ROOT / 'metagenomics' / 'rules' / 'read_filtering.smk',
-    WORKFLOWS_ROOT / 'metagenomics' / 'rules' / 'assembly_short_reads.smk',
-    WORKFLOWS_ROOT / 'metagenomics' / 'rules' / 'assembly_long_reads.smk',
-    WORKFLOWS_ROOT / 'metagenomics' / 'rules' / 'profile_postprocessing.smk',
-    WORKFLOWS_ROOT / 'metagenomics' / 'rules' / 'taxonomy.smk',
-    WORKFLOWS_ROOT / 'metagenomics' / 'rules' / 'binning.smk',
-]
+METAGENOMICS_RULE_FILES = sorted((WORKFLOWS_ROOT / 'metagenomics' / 'rules').glob('*.smk'))
 
 
 WORKFLOWS = {
@@ -46,8 +38,7 @@ WORKFLOWS = {
     'metagenomics': {
         'module': WORKFLOWS_ROOT / 'metagenomics' / '__init__.py',
         'snakefile': WORKFLOWS_ROOT / 'metagenomics' / 'Snakefile',
-        'extra_snakefiles': METAGENOMICS_RULE_FILES
-        + [WORKFLOWS_ROOT / 'read_recruitment' / 'rules' / 'main.smk'],
+        'extra_snakefiles': [WORKFLOWS_ROOT / 'read_recruitment' / 'rules' / 'main.smk'],
         'rules': {
             'iu_filter_quality_minoche',
             'megahit',
@@ -135,10 +126,6 @@ WORKFLOWS = {
     'ecophylo': {
         'module': WORKFLOWS_ROOT / 'ecophylo' / '__init__.py',
         'snakefile': WORKFLOWS_ROOT / 'ecophylo' / 'Snakefile',
-        'extra_snakefiles': [
-            WORKFLOWS_ROOT / 'ecophylo' / 'rules' / 'profile_mode.smk',
-            WORKFLOWS_ROOT / 'ecophylo' / 'rules' / 'tree_mode.smk',
-        ],
         'rules': {
             'anvi_run_hmms_hmmsearch',
             'filter_hmm_hits_by_model_coverage',
@@ -175,14 +162,20 @@ def snakefile_rule_names(paths):
     return rule_names
 
 
+def workflow_snakefiles(contract):
+    paths = [contract['snakefile']]
+    rules_dir = contract['snakefile'].parent / 'rules'
+    if rules_dir.exists():
+        paths.extend(sorted(rules_dir.glob('*.smk')))
+    paths.extend(contract.get('extra_snakefiles', []))
+    return paths
+
+
 class BiologicalWorkflowContractTestCase(unittest.TestCase):
     def test_each_workflow_keeps_domain_defining_rules(self):
         for workflow_name, contract in WORKFLOWS.items():
             with self.subTest(workflow=workflow_name):
-                paths = [contract['snakefile']]
-                paths.extend(contract.get('extra_snakefiles', []))
-
-                rule_names = snakefile_rule_names(paths)
+                rule_names = snakefile_rule_names(workflow_snakefiles(contract))
                 self.assertTrue(contract['rules'].issubset(rule_names),
                                 f"{workflow_name} is missing expected biological rules: "
                                 f"{sorted(contract['rules'] - rule_names)}")
