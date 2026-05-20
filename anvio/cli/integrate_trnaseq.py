@@ -1,15 +1,13 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Integrate tRNA-seq with (meta)genomic data, relating tRNA-seq seeds to tRNA genes"""
 
-import sys
 
 import anvio
 import anvio.terminal as terminal
 import anvio.genomictrnaseq as genomictrnaseq
 
 from anvio.argparse import ArgumentParser
-from anvio.errors import ConfigError, FilesNPathsError
+from anvio.errors import ConfigError
 
 
 __author__ = "Developers of anvi'o (see AUTHORS.txt)"

@@ -715,7 +715,38 @@ class COGsSetup:
         return essential_files
 
 
+    def is_database_exists(self):
+        """Returns True if the COG setup for the current version looks complete."""
+        if not os.path.exists(self.COG_data_dir):
+            return False
+
+        if not os.path.exists(self.COG_data_dir_version):
+            return False
+
+        if open(self.COG_data_dir_version).read().strip() != COG_DATA_VERSION:
+            return False
+
+        essential_file_names = [v['formatted_file_name'] for v in self.files.values()
+                                 if v['type'] == 'essential']
+        essential_file_names.append('MISSING_COG_IDs.cPickle')
+        for file_name in essential_file_names:
+            if not os.path.exists(os.path.join(self.COG_data_dir, file_name)):
+                return False
+
+        diamond_db_path = os.path.join(self.COG_data_dir, 'DB_DIAMOND')
+        blast_db_path = os.path.join(self.COG_data_dir, 'DB_BLAST')
+        if not os.path.exists(diamond_db_path) and not os.path.exists(blast_db_path):
+            return False
+
+        return True
+
+
     def create(self):
+        if not self.reset and self.is_database_exists():
+            raise ConfigError(f"The COG data for version '{self.COG_version}' is already set up in "
+                              f"'{self.COG_data_dir}'. Use the `--reset` flag if you want to download "
+                              f"and rebuild everything from scratch.")
+
         if not os.path.exists(self.COG_data_dir):
             try:
                 os.makedirs(self.COG_data_dir)

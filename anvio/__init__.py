@@ -196,7 +196,7 @@ D = {
             ['-p', '--pan-or-profile-db'],
             {'metavar': "PAN_OR_PROFILE_DB",
              'required': True,
-             'help': "Anvi'o pan or profile database (and even genes database in appropriate contexts)."}
+             'help': "An anvi'o pan-db or profile-db (and even genes-db or pan-graph-db in appropriate contexts)."}
                 ),
     'genomes-storage': (
             ['-g', '--genomes-storage'],
@@ -225,6 +225,14 @@ D = {
             {'metavar': "GENOME_NAMES",
              'required': False,
              'help': "Genome names to 'focus'. You can use this parameter to limit the genomes included in your analysis. "
+                     "You can provide these names as a comma-separated list of names, or you can put them in a file, "
+                     "where you have a single genome name in each line, and provide the file path."}
+                ),
+    'genomes-reverse': (
+            ['-R', '--genome-reverse'],
+            {'metavar': "GENOME_NAMES",
+             'required': False,
+             'help': "Genome names to 'reverse'. You can use this parameter to choose the genomes whose synteny you want to reverse. "
                      "You can provide these names as a comma-separated list of names, or you can put them in a file, "
                      "where you have a single genome name in each line, and provide the file path."}
                 ),
@@ -1467,7 +1475,7 @@ D = {
              'metavar': 'INTEGER',
              'help': "This filter will remove gene clusters from your report. If you say '--max-num-genes-from-each-genome 1', "
                      "every gene cluster that has more than one gene from any genome that contributes to it will be removed "
-                     "from your analysis. This could be useful to remove gene clusters with paralogs from your report for "
+                     "from your analysis. This could be useful to remove gene clusters with multi-copy genes from your report for "
                      "appropriate phylogenomic analyses. For instance, using '--max-num-genes-from-each-genome 1' and "
                      "'min-num-genomes-gene-cluster-occurs X' where X is the total number of your genomes, would give you the "
                      "single-copy gene clusters in your pan genome."}
@@ -2237,6 +2245,25 @@ D = {
             {'metavar': 'DIR_PATH',
              'type': str,
              'help': "Directory path for output files"}
+                ),
+    'pan-graph-yaml': (
+            ['--pan-graph-yaml'],
+            {'metavar': 'YAML',
+             'type': str,
+             'help': "A yaml file containing raw gene cluster order for testing the anvi'o pan graph."}
+                ),
+    'pan-graph-db': (
+            ['-p', '--pan-graph-db'],
+            {'metavar': "PAN_GRAPH_DB",
+             'required': True,
+             'help': "Anvi'o pangenome graph database."}
+                ),
+    'graph-nodes': (
+            ['--graph-nodes'],
+            {'metavar': "NODE_1,NODE_2",
+             'required': True,
+             'help': "Nodes in an anvi'o pangenome graph database..",
+             'type': str}
                 ),
     'output-file': (
             ['-o', '--output-file'],
@@ -4160,6 +4187,7 @@ def K(param_id, params_dict={}):
  __profile__version__,
  __genes__version__,
  __pan__version__,
+ __pangraph__version__,
  __auxiliary_data_version__,
  __structure__version__,
  __genomes_storage_version__ ,
@@ -4174,6 +4202,7 @@ def get_version_tuples():
             ("Genes DB version", __genes__version__),
             ("Auxiliary data storage version", __auxiliary_data_version__),
             ("Pan DB version", __pan__version__),
+            ("Pangraph DB version", __pangraph__version__),
             ("Genome data storage version", __genomes_storage_version__),
             ("Structure DB version", __structure__version__),
             ("KEGG Modules DB version", __kegg_modules_version__),
@@ -4188,6 +4217,7 @@ def print_version():
     run.info("Profile database", __profile__version__)
     run.info("Contigs database", __contigs__version__)
     run.info("Pan database", __pan__version__)
+    run.info("Pangraph database", __pangraph__version__)
     run.info("Genome data storage", __genomes_storage_version__)
     run.info("Structure database", __structure__version__)
     run.info("Metabolic modules database", __kegg_modules_version__)

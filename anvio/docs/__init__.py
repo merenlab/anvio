@@ -140,6 +140,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "pan-graph-db": {
+        "name": "PAN GRAPH",
+        "type": "DB",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "contigs-db": {
         "name": "CONTIGS",
         "type": "DB",
@@ -814,6 +820,24 @@ ANVIO_ARTIFACTS ={
     },
     "summary": {
         "name": "STATIC SUMMARY",
+        "type": "SUMMARY",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "pan-summary": {
+        "name": "PAN SUMMARY",
+        "type": "SUMMARY",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "pan-graph-summary": {
+        "name": "PAN GRAPH SUMMARY",
+        "type": "SUMMARY",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "profile-summary": {
+        "name": "PROFILE SUMMARY",
         "type": "SUMMARY",
         "provided_by_anvio": True,
         "provided_by_user": False

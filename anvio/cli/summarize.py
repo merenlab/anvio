@@ -17,14 +17,10 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
-__requires__ = ['profile-db', 'contigs-db', 'collection', 'pan-db', 'genomes-storage-db',]
-__provides__ = ['summary']
-__description__ = ("Summarizer for anvi'o pan or profile db's. Essentially, this program takes a collection id along with either "
-                   "a profile database and a contigs database or a pan database and a genomes storage and generates a static HTML "
-                   "output for what is described in a given collection. The output directory will contain almost everything any "
-                   "downstream analysis may need, and can be displayed using a browser without the need for an anvi'o installation. "
-                   "For this reason alone, reporting summary outputs as supplementary data with publications is a great idea for "
-                   "transparency and reproducibility")
+__requires__ = ['profile-db', 'contigs-db', 'collection', 'pan-db', 'pan-graph-db', 'genomes-storage-db',]
+__provides__ = ['pan-summary', 'pan-graph-summary', 'profile-summary']
+__description__ = ("Summarizer for anvi'o pan, pan-graph, or profile databases. Depending on the input, the program produces a "
+                   "output directory that contaisn flat files for rigorous downstream analyses by humans 🧠 or LLMs 🤖.")
 __resources__ = [("anvi-summarize in the metagenomic workflow tutorial", "http://merenlab.org/2016/06/22/anvio-tutorial-v2/#anvi-summarize"), ("anvi-summarize in the pangenomic workflow tutorial", "http://merenlab.org/2016/11/08/pangenomics-v2/#summarizing-an-anvio-pan-genome")]
 
 
@@ -57,6 +53,9 @@ def run_program():
     if db_type == 'pan':
         args.pan_db = args.pan_or_profile_db
         summary = summarizer.PanSummarizer(args)
+    elif db_type == 'pan-graph':
+        args.pan_graph_db = args.pan_or_profile_db
+        summary = summarizer.PanGraphSummarizer(args)
     elif db_type == 'profile':
         args.profile_db = args.pan_or_profile_db
         profile_db = dbops.ProfileDatabase(args.profile_db)
@@ -74,7 +73,7 @@ def run_program():
 
         summary = summarizer.ProfileSummarizer(args)
     else:
-        raise ConfigError("Well. '%s' is neither an anvi'o pan database, nor an anvi'o profile database. There is nothing this "
+        raise ConfigError("Well. '%s' is not an anvi'o pan, pan-graph, or profile database. There is nothing this "
                            "program can't do for you if you feed it with the right stuff. Just sayin'" % args.pan_or_profile_db)
 
     summary.process()

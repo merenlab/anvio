@@ -26,7 +26,7 @@ def main():
     run = terminal.Run()
 
     try:
-        utils.is_pan_or_profile_db(args.pan_or_profile_db, genes_db_is_also_accepted=True)
+        utils.is_pan_or_profile_db(args.pan_or_profile_db, genes_db_is_also_accepted=True, pan_graph_db_is_also_accepted=True)
         filesnpaths.is_file_json_formatted(args.state)
         utils.is_this_name_OK_for_database('--name parameter', args.name)
 
