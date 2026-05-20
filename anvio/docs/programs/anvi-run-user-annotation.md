@@ -57,10 +57,34 @@ discards hits below the given percentage but does not affect whether qcov appear
 
 ## HMM cutoff groups
 
-When an HMM database contains models with mixed cutoff annotations (some have TC, others have GA
-or none) the program automatically splits the search into cutoff-homogeneous groups. Each group
-is searched with its optimal flag (`--cut_tc`, `--cut_ga`, `--cut_nc`, or `-E {evalue}`), then
-all hits are merged under the single `{name}_HMM` source. This is transparent to the user.
+Per-model cutoff annotations (TC, GA, NC) embedded in HMM profiles are used **automatically** —
+no flag is required. Each model is assigned to the best available cutoff group (TC > GA > NC >
+evalue fallback `-E 1e-15`). When all models share the same type, a single search is run. When
+types are mixed, the program splits models into homogeneous groups, runs each with its optimal
+flag, then merges all hits under the single `{name}_HMM` source. This is fully transparent.
+
+## HMM options
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--cut-tc` | none | Path to a TSV file for per-model custom trusted cutoff values (see below). |
+| `--hmmer-program` | `hmmscan` | HMMER program to use (`hmmscan` or `hmmsearch`). |
+
+### Custom trusted cutoffs (`--cut-tc`)
+
+Override TC values for specific models without touching the rest of the database. The TSV has
+two or three columns: `model_name`, `seq_tc`, and optionally `dom_tc` (defaults to `seq_tc`):
+
+```
+# optional header / comments ignored
+ModelA	25.0	25.0
+ModelB	30.0
+```
+
+Models listed here have their TC values injected into the extracted HMM file and are searched
+with `--cut_tc`. All other models in the same database continue using their embedded cutoffs or
+the evalue fallback. Models named in the file but not found in any loaded database are silently
+ignored, so one TSV can be reused across runs even when only a subset of databases is annotated.
 
 ## Basic usage
 

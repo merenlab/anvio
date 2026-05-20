@@ -150,6 +150,22 @@ anvi-setup-user-annotation-db --input-tsv my_databases.tsv \
                                --num-threads 8
 {{ codestop }}
 
+## Adding databases to an existing directory
+
+If the output directory already has a `manifest.json`, running setup again with a new `--input-tsv`
+only processes entries whose names are **not yet in the manifest**. Already-registered databases
+are skipped with a warning:
+
+```
+WARNING
+'MyHMMs' is already in the manifest — skipping.
+Use `--remove MyHMMs` first if you want to replace it.
+```
+
+The summary at the end reports how many databases were newly set up, how many were skipped, and
+how many failed, so the outcome is always explicit. Use `--reset` to wipe the directory and
+rebuild everything from scratch.
+
 ## Managing the manifest
 
 Once an annotation directory exists you can inspect and modify it without re-running setup.
