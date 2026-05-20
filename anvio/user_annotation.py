@@ -820,6 +820,7 @@ class UserAnnotationRunner:
         self.qcov = A('qcov')
         self.max_hsps = A('max_hsps')
         self.diamond_sensitivity = A('diamond_sensitivity')
+        self.custom_tc_map = self._parse_custom_tc_tsv(A('cut_tc')) if A('cut_tc') else {}
 
         self.sanity_check()
 
@@ -921,13 +922,76 @@ class UserAnnotationRunner:
         return False
 
 
-    def _extract_models_from_hmm(self, hmm_gz_path, model_names):
+    def _parse_custom_tc_tsv(self, path):
+        """Parse a two- or three-column TSV into {model_name: (seq_tc, dom_tc)}.
+
+        Columns: model_name, seq_tc, [dom_tc]. dom_tc defaults to seq_tc when omitted.
+        Lines starting with '#' and blank lines are ignored.
+        """
+        result = {}
+        if not os.path.isfile(path):
+            raise FilesNPathsError(f"Custom TC file not found: '{path}'")
+
+        with open(path) as f:
+            for lineno, line in enumerate(f, 1):
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                parts = line.split('\t')
+                if len(parts) < 2:
+                    raise ConfigError(f"Custom TC file line {lineno} has fewer than 2 columns: '{line}'")
+                name = parts[0].strip()
+                try:
+                    seq_tc = float(parts[1])
+                    dom_tc = float(parts[2]) if len(parts) >= 3 else seq_tc
+                except ValueError:
+                    raise ConfigError(f"Custom TC file line {lineno}: TC values must be numbers, got '{parts[1:3]}'")
+                result[name] = (seq_tc, dom_tc)
+
+        self.run.info(f"Custom TC overrides loaded", f"{len(result)} model(s) from '{path}'")
+        return result
+
+
+    def _apply_custom_tc_to_groups(self, cutoff_groups):
+        """Rewrite cutoff_groups to move custom-TC models into a dedicated group.
+
+        Returns (custom_tc_models, new_cutoff_groups) where:
+          custom_tc_models  – {model_name: (seq_tc, dom_tc)} for models found in this DB
+          new_cutoff_groups – rebuilt cutoff_groups with a '--cut_tc_custom' key for overrides
+        """
+        all_models = {name for names in cutoff_groups.values() for name in names}
+        custom_tc_models = {m: v for m, v in self.custom_tc_map.items() if m in all_models}
+
+        if not custom_tc_models:
+            return {}, cutoff_groups
+
+        custom_set = set(custom_tc_models)
+        new_groups = {}
+        for flag, names in cutoff_groups.items():
+            remaining = [n for n in names if n not in custom_set]
+            if remaining:
+                new_groups[flag] = remaining
+        new_groups['--cut_tc_custom'] = list(custom_tc_models)
+
+        overridden = ', '.join(sorted(custom_tc_models))
+        self.run.info_single(
+            f"Custom TC overrides applied to {len(custom_tc_models)} model(s): {overridden}.",
+            cut_after=None
+        )
+        return custom_tc_models, new_groups
+
+
+    def _extract_models_from_hmm(self, hmm_gz_path, model_names, tc_overrides=None):
         """Extract a subset of models from a gzipped HMM file into a temp plain HMM file.
+
+        tc_overrides: optional {model_name: (seq_tc, dom_tc)} — injects or replaces TC lines
+        for specified models so they carry the custom values when searched with --cut_tc.
 
         Returns the path to the temporary (plain, uncompressed) HMM file.
         Caller is responsible for deleting it.
         """
         model_names_set = set(model_names)
+        tc_overrides = tc_overrides or {}
         temp_dir = filesnpaths.get_temp_directory_path()
         temp_hmm_path = os.path.join(temp_dir, 'extracted.hmm')
 
@@ -937,23 +1001,44 @@ class UserAnnotationRunner:
              open(temp_hmm_path, 'w') as f_out:
             in_model = False
             keep = False
+            current_name = None
             current_lines = []
+            saw_tc = False
 
             for line in f_in:
                 if line.startswith('HMMER3/'):
                     in_model = True
                     keep = False
+                    current_name = None
                     current_lines = [line]
+                    saw_tc = False
                 elif in_model:
-                    current_lines.append(line)
                     if line.startswith('NAME') and len(line.split()) >= 2:
-                        keep = line.split()[1] in model_names_set
+                        current_name = line.split()[1]
+                        keep = current_name in model_names_set
+                        current_lines.append(line)
+                    elif line.startswith('TC ') or line.startswith('TC\t'):
+                        saw_tc = True
+                        if current_name in tc_overrides:
+                            seq_tc, dom_tc = tc_overrides[current_name]
+                            current_lines.append(f'TC    {seq_tc:.2f}  {dom_tc:.2f};\n')
+                        else:
+                            current_lines.append(line)
                     elif line.strip() == '//':
+                        if keep and current_name in tc_overrides and not saw_tc:
+                            # Model had no TC line — inject one before the terminator
+                            seq_tc, dom_tc = tc_overrides[current_name]
+                            current_lines.append(f'TC    {seq_tc:.2f}  {dom_tc:.2f};\n')
+                        current_lines.append(line)
                         if keep:
                             f_out.writelines(current_lines)
                         in_model = False
                         keep = False
+                        current_name = None
                         current_lines = []
+                        saw_tc = False
+                    else:
+                        current_lines.append(line)
 
         return temp_hmm_path
 
@@ -976,12 +1061,14 @@ class UserAnnotationRunner:
         search_tables.populate_search_tables(sources)
 
 
-    def _run_hmm_annotation_mixed_cutoffs(self, db_name, entry, cutoff_groups, internal_source_name):
-        """Run HMM annotation for a database with mixed cutoff types.
+    def _run_hmm_annotation_mixed_cutoffs(self, db_name, entry, cutoff_groups, internal_source_name, custom_tc_models=None):
+        """Run HMM annotation for a database with mixed cutoff types (or custom TC overrides).
 
         Each cutoff group is searched separately with its optimal cutoff flag,
         then all results are merged under internal_source_name in the database.
+        Groups keyed '--cut_tc_custom' use injected TC values and are searched with --cut_tc.
         """
+        custom_tc_models = custom_tc_models or {}
         from anvio.tables.hmmhits import TablesForHMMHits
 
         hmm_dir = entry['hmm_dir']
@@ -1008,11 +1095,14 @@ class UserAnnotationRunner:
                     tmp_source = 'ua' + tmp_source
                 tmp_source_names.append(tmp_source)
 
-                self.run.info(f"Running cutoff group '{cutoff_flag}'",
+                is_custom_tc = cutoff_flag == '--cut_tc_custom'
+                display_flag = '--cut_tc (custom values injected)' if is_custom_tc else cutoff_flag
+                self.run.info(f"Running cutoff group '{display_flag}'",
                               f"{len(model_names)} model(s)")
 
-                # Extract models for this group
-                extracted_hmm = self._extract_models_from_hmm(hmm_gz_path, model_names)
+                # Extract models; inject custom TC values when this is a custom-TC group
+                tc_overrides_for_group = custom_tc_models if is_custom_tc else None
+                extracted_hmm = self._extract_models_from_hmm(hmm_gz_path, model_names, tc_overrides=tc_overrides_for_group)
 
                 # Create temp HMM source dir named tmp_source (basename = source key)
                 temp_parent = filesnpaths.get_temp_directory_path()
@@ -1032,9 +1122,10 @@ class UserAnnotationRunner:
                 for fname in ['kind.txt', 'target.txt', 'reference.txt']:
                     shutil.copy2(os.path.join(hmm_dir, fname), os.path.join(tmp_source_dir, fname))
 
-                # Write group-specific noise_cutoff_terms.txt
+                # Custom-TC group runs with --cut_tc (TC values are now baked into the extracted HMM)
+                noise_cutoff_for_file = '--cut_tc' if is_custom_tc else cutoff_flag
                 with open(os.path.join(tmp_source_dir, 'noise_cutoff_terms.txt'), 'w') as f:
-                    f.write(cutoff_flag)
+                    f.write(noise_cutoff_for_file)
 
                 # Compress extracted HMM into the source dir
                 with open(extracted_hmm, 'rb') as f_in:
@@ -1140,8 +1231,12 @@ class UserAnnotationRunner:
         if not self._handle_existing_source(internal_source_name):
             return
 
-        if len(cutoff_groups) > 1:
-            self._run_hmm_annotation_mixed_cutoffs(db_name, entry, cutoff_groups, internal_source_name)
+        custom_tc_models = {}
+        if self.custom_tc_map:
+            custom_tc_models, cutoff_groups = self._apply_custom_tc_to_groups(cutoff_groups)
+
+        if len(cutoff_groups) > 1 or custom_tc_models:
+            self._run_hmm_annotation_mixed_cutoffs(db_name, entry, cutoff_groups, internal_source_name, custom_tc_models)
         else:
             self._run_hmm_annotation_single_cutoff(internal_source_name, hmm_dir)
 

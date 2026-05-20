@@ -63,6 +63,15 @@ def get_args():
     groupC.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     groupC.add_argument(*anvio.A('hmmer-program'), **anvio.K('hmmer-program'))
 
+    groupChmm = parser.add_argument_group("HMM OPTIONS", "Applies only to HMM-based databases.")
+    groupChmm.add_argument('--cut-tc', default=None, metavar='FILE',
+                           help="Path to a tab-delimited file with per-model custom trusted cutoff (TC) values. "
+                                "Columns: model_name, seq_tc, [dom_tc] (domain score defaults to seq_tc if omitted). "
+                                "Models listed here override their embedded TC (or fallback evalue) with the "
+                                "provided values and are searched with --cut_tc. All other models continue to use "
+                                "their embedded TC/GA/NC annotations or the evalue fallback. Models not found in "
+                                "any loaded database are silently ignored.")
+
     groupD = parser.add_argument_group("DIAMOND OPTIONS", "Applies only to DIAMOND-based databases.")
     groupD.add_argument('--evalue', default=anvio.K('min-e-value')['default'], type=float, metavar='FLOAT',
                         help="E-value cutoff for DIAMOND blastp searches. "
