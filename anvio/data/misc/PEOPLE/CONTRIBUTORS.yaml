@@ -59,16 +59,17 @@
 - github: ChiaraVanni
   name: Chiara Vanni
   avatar: bio-chiara.jpg
-  email: cvanni@mpi-bremen.de
+  email: cvanni@marum.de
   git_records:
-    - cvanni@mpi-bremen.de
+    - cvanni@marum.de
   orcid: 0000-0002-1124-1147
-  web: https://scholar.google.com/citations?user=0-KzK6MAAAAJ&hl=en
-  twitter: ChiaraVanni5
+  web: https://dark.metagenomics.eu
+  linkedin: in/chiara-vanni-40209a139
+  bio: "Bioinformatician interested in making sense of the functional unknowns in meta(genomes). Recently experimenting with ancient metagenomics."
   affiliations:
-    - title: Graduate Student
-      inst: Max Planck Institute for Marine Microbiology
-      inst_link: https://mpi-bremen.de
+    - title: PostDoc
+      inst: MARUM, Center for Marine Environmental Sciences, University of Bremen
+      inst_link: https://www.marum.de/en/Dr.-chiara-vanni.html
       current: true
 
 - github: karkman
