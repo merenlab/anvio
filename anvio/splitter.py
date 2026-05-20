@@ -947,9 +947,9 @@ class ContigsOnlySplitter:
 
 
     def process(self):
-        self.sanity_check()
-
         filesnpaths.gen_output_directory(self.output_directory)
+
+        self.sanity_check()
 
         self.run.warning(None, header="ANVI'O CONTIG-ONLY SPLIT MODE", lc='green')
         self.run.info('Contigs database', self.contigs_db_path)

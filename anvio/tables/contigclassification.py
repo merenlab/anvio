@@ -204,13 +204,12 @@ class TablesForContigClassification:
 
         if source:
             rows = database.get_table_as_dict(t.contig_classification_table_name,
-                                               where_clause=f'source = "{source}"')
+                                               where_clause=f'source = "{source}"',
+                                               row_num_as_key=True)
         else:
-            rows = database.get_table_as_dict(t.contig_classification_table_name)
+            rows = database.get_table_as_dict(t.contig_classification_table_name,
+                                               row_num_as_key=True)
 
         database.disconnect()
 
-        for key, subdict in rows.items():
-            subdict["contig"] = key
-
-        return list(rows.values() ) if rows else []
+        return list(rows.values()) if rows else []
