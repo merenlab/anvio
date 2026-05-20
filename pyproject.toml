@@ -50,7 +50,7 @@ requires-python = ">=3.10, <3.15"
 dynamic = ["version"]
 
 dependencies = [
-    "numpy==1.24.1",
+    "numpy==2.1.0",
     "scipy",
     "bottle",
     "pysam",
