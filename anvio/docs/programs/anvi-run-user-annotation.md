@@ -100,10 +100,25 @@ Both must pass for a hit to be reported. When you supply a single value (e.g. `[
 ModelA	25.0	22.5
 ```
 
-Models listed here have their TC values injected into the extracted HMM file and are searched
-with `--cut_tc`. All other models in the same database continue using their embedded cutoffs or
-the evalue fallback. Models named in the file but not found in any loaded database are silently
-ignored, so one TSV can be reused across runs even when only a subset of databases is annotated.
+Models listed here have their TC values injected into the HMM header section of the extracted
+model file (before the `HMM` keyword, where HMMER3 requires them) and are searched with
+`--cut_tc`. All other models in the same database continue using their embedded cutoffs or the
+evalue fallback.
+
+**Finding exact model names** — model names in the `--cut-tc` file must match the `NAME` field
+in the HMM profiles exactly (case-sensitive). If a name does not match, a warning lists the
+unmatched entries. To inspect the exact names in your HMM file:
+
+```bash
+grep "^NAME" your_file.hmm
+```
+
+Or look at the `genes.txt` file inside the HMM source directory created by
+`anvi-setup-user-annotation-db` — the first column is the exact model name used throughout.
+
+Models named in the file but not found in any loaded database trigger a warning and are
+otherwise ignored, so one file can be reused across runs even when only a subset of databases
+is annotated.
 
 ## Basic usage
 
