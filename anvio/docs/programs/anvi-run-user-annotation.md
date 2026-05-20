@@ -18,31 +18,57 @@ The annotation source name always encodes the search method used:
 When an HMM database was set up with a companion FASTA, both `{name}_HMM` and `{name}_DIAMOND`
 are populated in a single run.
 
-### What is stored in gene_functions for HMM sources
+## Re-annotation behaviour
+
+By default the program **skips** any database whose annotation source already exists in the
+contigs database and prints a warning. The remaining databases in the same run are still
+processed normally.
+
+To drop an existing annotation and re-annotate, pass `--force-overwrite`. Each database is
+evaluated independently, so you can safely run a mix of new and already-annotated databases
+without the flag — only the ones that need overwriting require it.
+
+## What is stored in gene_functions
+
+### HMM sources
 
 | Column | Content |
 |--------|---------|
 | `source` | `{db_name}_HMM` |
-| `accession` | HMM model accession (ACC field), or `"-"` if the model has none |
-| `function` | `[HMM] {model_name}` — model NAME field with method tag |
+| `accession` | HMM model accession (ACC field, version-stripped); model name used when ACC is absent |
+| `function` | `[HMM] {model_name}` — model NAME field prefixed with method tag |
 | `e_value` | Full-sequence E-value from HMMER |
 
-### What is stored in gene_functions for DIAMOND sources
+### DIAMOND sources
 
 | Column | Content |
 |--------|---------|
 | `source` | `{db_name}_DIAMOND` |
-| `accession` | Target sequence ID (best blastp hit) |
-| `function` | `[DMND] {target_id} [pident: {pct:.1f}%, aln_len: {len} aa, bitscore: {score:.1f}]` |
+| `accession` | Auto-normalized ID (gene name, accession without version suffix, etc.) |
+| `function` | `[DMND] {description} [pident: {pct:.1f}%, aln_len: {len} aa, bitscore: {score:.1f}]` |
 | `e_value` | BLASTP E-value |
 
-The `[HMM]` and `[DMND]` method tags in the `function` field make the search method immediately
-visible in any tabular export. The enriched DIAMOND `function` string encodes percent identity,
-alignment length, and bit score so no search statistics are discarded by the fixed table schema.
+The `description` in the DIAMOND `function` field is taken from the FASTA header line built at
+setup time (everything after the first space). If no description was present in the header the
+normalized ID is used instead. The `[HMM]` / `[DMND]` method tags make the search method
+immediately visible in any tabular export.
+
+## HMM cutoff groups
+
+When an HMM database contains models with mixed cutoff annotations (some have TC, others have GA
+or none) the program automatically splits the search into cutoff-homogeneous groups. Each group
+is searched with its optimal flag (`--cut_tc`, `--cut_ga`, `--cut_nc`, or `-E {evalue}`), then
+all hits are merged under the single `{name}_HMM` source. This is transparent to the user.
 
 ## Basic usage
 
-Run all databases in the annotation directory:
+Run all databases in the default annotation directory:
+
+{{ codestart }}
+anvi-run-user-annotation --contigs-db CONTIGS.db
+{{ codestop }}
+
+Run all databases from a specific directory:
 
 {{ codestart }}
 anvi-run-user-annotation --contigs-db CONTIGS.db \
@@ -53,7 +79,6 @@ Run only selected databases (comma-separated):
 
 {{ codestart }}
 anvi-run-user-annotation --contigs-db CONTIGS.db \
-                          --annotation-db-dir /path/to/annotation_dbs \
                           --database MyHMMs,MyProteins
 {{ codestop }}
 
@@ -61,55 +86,37 @@ Use multiple threads and a custom HMMER program:
 
 {{ codestart }}
 anvi-run-user-annotation --contigs-db CONTIGS.db \
-                          --annotation-db-dir /path/to/annotation_dbs \
                           --num-threads 8 \
                           --hmmer-program hmmsearch
 {{ codestop }}
 
-Override the DIAMOND e-value cutoff and require at least 50 % identity:
+Drop existing annotations and re-annotate:
 
 {{ codestart }}
 anvi-run-user-annotation --contigs-db CONTIGS.db \
-                          --annotation-db-dir /path/to/annotation_dbs \
-                          --evalue 1e-10 \
-                          --min-pident 50
-{{ codestop }}
-
-Run DIAMOND in ultra-sensitive mode:
-
-{{ codestart }}
-anvi-run-user-annotation --contigs-db CONTIGS.db \
-                          --annotation-db-dir /path/to/annotation_dbs \
-                          --diamond-sensitivity ultra-sensitive
-{{ codestop }}
-
-Re-run and overwrite existing annotations from a previous run:
-
-{{ codestart }}
-anvi-run-user-annotation --contigs-db CONTIGS.db \
-                          --annotation-db-dir /path/to/annotation_dbs \
-                          --just-do-it
+                          --force-overwrite
 {{ codestop }}
 
 ## DIAMOND options
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--evalue` | `1e-15` | E-value cutoff for blastp. Increase to find more hits, decrease to tighten. |
-| `--min-pident` | none | Minimum percent identity (0–100). Hits below this threshold are discarded before being stored. |
-| `--diamond-sensitivity` | DIAMOND default | Sensitivity mode: `fast`, `mid-sensitive`, `sensitive`, `very-sensitive`, `ultra-sensitive`. Higher sensitivity finds more distant homologues at the cost of runtime. |
+| `--evalue` | `1e-15` (anvio standard) | E-value cutoff for blastp. |
+| `--min-pident` | none | Minimum percent identity (0–100). Hits below this threshold are discarded. |
+| `--qcov` | none | Minimum query coverage (0–100 %). Hits where the aligned region covers less than this fraction of the query sequence are discarded. |
+| `--max-hsps` | DIAMOND default | Maximum number of HSPs per target per query. |
+| `--diamond-sensitivity` | DIAMOND default | Sensitivity mode: `fast`, `mid-sensitive`, `sensitive`, `very-sensitive`, `ultra-sensitive`. |
+
+All DIAMOND flags are independent and can be combined freely. For HMM-based databases the
+threshold is fixed at setup time from the profile annotations and cannot be changed here.
 
 ## Checking what databases are available
 
-Use %(anvi-setup-user-annotation-db)s to list or manage the manifest:
-
 {{ codestart }}
-anvi-setup-user-annotation-db --output-dir /path/to/annotation_dbs --list
+anvi-setup-user-annotation-db --list
 {{ codestop }}
 
 ## Searching for results afterwards
-
-Once annotation is complete, use standard anvi'o functions to explore results:
 
 {{ codestart }}
 anvi-search-functions --contigs-db CONTIGS.db --search "MyHMMs_HMM"
@@ -121,12 +128,10 @@ anvi-export-functions --contigs-db CONTIGS.db --annotation-sources MyHMMs_HMM,My
 
 ## Notes
 
-* The `--annotation-db-dir` must point to the directory created by
-  %(anvi-setup-user-annotation-db)s. Moving files inside that directory after setup will cause
-  failures.
-* For HMM-based databases the noise cutoff terms are fixed at setup time (TC, GA, NC, or -E 1e-5).
-  The `--evalue`, `--min-pident`, and `--diamond-sensitivity` flags apply only to DIAMOND searches.
+* `--annotation-db-dir` defaults to the anvio standard user-annotation data directory. Use
+  `--output-dir` / `--annotation-db-dir` consistently between setup and run if you use a custom
+  path.
+* Moving or renaming files inside the annotation directory after setup will cause failures because
+  the manifest stores absolute paths.
+* DIAMOND blastp logs are written to `<annotation-db-dir>/logs/` for post-run inspection.
 * DIAMOND searches use `--max-target-seqs 1` to keep only the single best hit per gene.
-* DIAMOND blastp logs are written to `<annotation-db-dir>/logs/` and persist after the run so
-  you can inspect them if a search fails or produces unexpected results.
-* Use `--just-do-it` to overwrite existing annotations from a previous run of the same databases.
