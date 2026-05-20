@@ -72,14 +72,20 @@ flag, then merges all hits under the single `{name}_HMM` source. This is fully t
 
 ### Custom trusted cutoffs (`--cut-tc`)
 
-Override TC values for specific models without touching the rest of the database. The TSV has
-two or three columns: `model_name`, `seq_tc`, and optionally `dom_tc` (defaults to `seq_tc`):
+Override TC values for specific models without touching the rest of the database. Two file formats are accepted and can be mixed within the same file:
 
 ```
-# optional header / comments ignored
+# tab-delimited: name <TAB> seq_tc [<TAB> dom_tc]
 ModelA	25.0	25.0
 ModelB	30.0
+
+# colon format: name: seq_tc   (useful for model names with brackets)
+[FeFe]: 15.9
+[NiFe]: 34.5
+[Fe]:   54.4
 ```
+
+`dom_tc` defaults to `seq_tc` when omitted.
 
 Models listed here have their TC values injected into the extracted HMM file and are searched
 with `--cut_tc`. All other models in the same database continue using their embedded cutoffs or

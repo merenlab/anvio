@@ -923,10 +923,13 @@ class UserAnnotationRunner:
 
 
     def _parse_custom_tc_tsv(self, path):
-        """Parse a two- or three-column TSV into {model_name: (seq_tc, dom_tc)}.
+        """Parse a custom TC file into {model_name: (seq_tc, dom_tc)}.
 
-        Columns: model_name, seq_tc, [dom_tc]. dom_tc defaults to seq_tc when omitted.
-        Lines starting with '#' and blank lines are ignored.
+        Two formats accepted (auto-detected per line):
+          Tab-delimited : model_name<TAB>seq_tc[<TAB>dom_tc]
+          Colon format  : model_name: seq_tc[ dom_tc]   (e.g. "[FeFe]: 15.9")
+
+        dom_tc defaults to seq_tc when omitted. Lines starting with '#' and blank lines ignored.
         """
         result = {}
         if not os.path.isfile(path):
@@ -937,15 +940,29 @@ class UserAnnotationRunner:
                 line = line.strip()
                 if not line or line.startswith('#'):
                     continue
-                parts = line.split('\t')
-                if len(parts) < 2:
-                    raise ConfigError(f"Custom TC file line {lineno} has fewer than 2 columns: '{line}'")
-                name = parts[0].strip()
+
+                # Detect delimiter: prefer tab, fall back to last colon in line
+                if '\t' in line:
+                    parts = line.split('\t')
+                    name = parts[0].strip()
+                    values = [p.strip() for p in parts[1:] if p.strip()]
+                else:
+                    # Colon format: split on the LAST colon so model names like "[FeFe]" are preserved
+                    colon_pos = line.rfind(':')
+                    if colon_pos == -1:
+                        raise ConfigError(
+                            f"Custom TC file line {lineno}: cannot find delimiter (tab or colon): '{line}'"
+                        )
+                    name = line[:colon_pos].strip()
+                    values = line[colon_pos + 1:].strip().split()
+
+                if not values:
+                    raise ConfigError(f"Custom TC file line {lineno}: no TC value found: '{line}'")
                 try:
-                    seq_tc = float(parts[1])
-                    dom_tc = float(parts[2]) if len(parts) >= 3 else seq_tc
+                    seq_tc = float(values[0])
+                    dom_tc = float(values[1]) if len(values) >= 2 else seq_tc
                 except ValueError:
-                    raise ConfigError(f"Custom TC file line {lineno}: TC values must be numbers, got '{parts[1:3]}'")
+                    raise ConfigError(f"Custom TC file line {lineno}: TC values must be numbers, got '{values[:2]}'")
                 result[name] = (seq_tc, dom_tc)
 
         self.run.info(f"Custom TC overrides loaded", f"{len(result)} model(s) from '{path}'")

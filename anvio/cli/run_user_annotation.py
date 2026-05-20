@@ -65,12 +65,14 @@ def get_args():
 
     groupChmm = parser.add_argument_group("HMM OPTIONS", "Applies only to HMM-based databases.")
     groupChmm.add_argument('--cut-tc', default=None, metavar='FILE',
-                           help="Path to a tab-delimited file with per-model custom trusted cutoff (TC) values. "
-                                "Columns: model_name, seq_tc, [dom_tc] (domain score defaults to seq_tc if omitted). "
-                                "Models listed here override their embedded TC (or fallback evalue) with the "
-                                "provided values and are searched with --cut_tc. All other models continue to use "
-                                "their embedded TC/GA/NC annotations or the evalue fallback. Models not found in "
-                                "any loaded database are silently ignored.")
+                           help="Path to a file with per-model custom trusted cutoff (TC) values. "
+                                "Two formats accepted: tab-delimited (model_name<TAB>seq_tc[<TAB>dom_tc]) or "
+                                "colon format (model_name: seq_tc), e.g. '[FeFe]: 15.9'. "
+                                "Domain score (dom_tc) defaults to seq_tc when omitted. "
+                                "Models listed here override their embedded TC (or fallback evalue) and are "
+                                "searched with --cut_tc. All other models continue to use their embedded "
+                                "TC/GA/NC annotations or the evalue fallback. Models not found in any loaded "
+                                "database are silently ignored.")
 
     groupD = parser.add_argument_group("DIAMOND OPTIONS", "Applies only to DIAMOND-based databases.")
     groupD.add_argument('--evalue', default=anvio.K('min-e-value')['default'], type=float, metavar='FLOAT',
