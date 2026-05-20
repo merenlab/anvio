@@ -35,6 +35,9 @@ WORKFLOWS = {
     'metagenomics': {
         'module': WORKFLOWS_ROOT / 'metagenomics' / '__init__.py',
         'snakefile': WORKFLOWS_ROOT / 'metagenomics' / 'Snakefile',
+        'extra_snakefiles': [
+            WORKFLOWS_ROOT / 'read_recruitment' / 'rules' / 'main.smk',
+        ],
         'rules': {
             'iu_filter_quality_minoche',
             'megahit',
@@ -187,13 +190,15 @@ class BiologicalWorkflowContractTestCase(unittest.TestCase):
 
     def test_short_and_long_read_metagenomics_paths_remain_distinct(self):
         snakefile_text = read_text(WORKFLOWS['metagenomics']['snakefile'])
+        read_recruitment_text = read_text(WORKFLOWS_ROOT / 'read_recruitment' / 'rules' / 'main.smk')
+        combined_text = snakefile_text + read_recruitment_text
 
         self.assertIn('SR_RS_RE = w.regex_from_ids(SR_READSETS)', snakefile_text)
         self.assertIn('LR_RS_RE = w.regex_from_ids(LR_READSETS)', snakefile_text)
         self.assertRegex(snakefile_text, r'group\s*=\s*SR_GRP_RE')
         self.assertRegex(snakefile_text, r'group\s*=\s*LR_GRP_RE')
-        self.assertIn('bowtie2', snakefile_text)
-        self.assertIn('minimap2', snakefile_text)
+        self.assertIn('bowtie2', combined_text)
+        self.assertIn('minimap2', combined_text)
 
 
     def test_ecophylo_preserves_profile_and_tree_modes(self):
