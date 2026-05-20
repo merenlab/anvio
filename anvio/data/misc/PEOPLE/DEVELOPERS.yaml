@@ -530,6 +530,23 @@
       inst_link: http://www.ucdavis.edu/
       current: true
 
+- github: Kekananen
+  name: Kathryn Kananen
+  web: https://bradleylab.science/author/kathryn-kananen/
+  email: kekananen@gmail.com
+  git_records:
+    - kekananen@gmail.com
+    - Kekananen@gmail.com
+  avatar: KatKananen.jpg
+  linkedin: kathryn-kananen-85352b109
+  orcid: 0000-0001-6080-0323
+  bio: "Bioinformatician and computational biologist interested in population genetics, automation, and genomic architecture exploration"
+  affiliations:
+    - title: Bioinformatician and Computational Biologist
+      inst: Department of Microbiology - The Ohio State University
+      inst_link: https://microbiology.osu.edu/
+      current: true
+
 - github: ge0rges
   name: Georges Kanaan
   twitter: scientificgio
@@ -538,7 +555,6 @@
   email: georges@gkanaan.com
   git_records:
     - georges@gkanaan.com
-    - Kekananen@gmail.com
   linkedin: ge0rges
   orcid: 0000-0002-5721-1138
   bio: "Oceanographer & Astrobiologist in training. Computer scientist. Studying sea-ice bacteria."
@@ -673,4 +689,50 @@
     - title: Senior Researcher
       inst: DTU Bioengineering
       inst_link: https://cemist.dtu.dk/
+      current: true
+      
+- github: bastien-camillo
+  name: Bastien CAMILLO
+  avatar: bcamillo-anvio.png
+  email: pro.bastien.camillo@gmail.com
+  git_records:
+    - pro.bastien.camillo@gmail.com
+  linkedin: bastien-camillo
+  orcid: 0009-0006-3481-432X
+  bio: "PhD Student in Multi-Species Comparative Genomics on Diatoms, also interested in Exobiology & Synthetic Biology"
+  affiliations:
+    - title: PhD Student
+      inst: IBENS
+      inst_link: https://www.ibens.bio.ens.psl.eu/
+
+- github: iwilkie
+  name: Isa Wilkie
+  avatar: isa_wilkie.png
+  email: isa.wilkie@googlemail.com
+  git_records:
+    - isa.wilkie@googlemail.com
+  linkedin: isabella-wilkie-337a62162
+  orcid: 0000-0003-1072-8081
+  bio: "Marine microbiologist specialising in bioinformatic analysis of microbial populations, with experience developing pipelines for metagenomics, structural annotation, and population-level variation."
+  affiliations:
+    - title: Postdoctoral Scientist
+      inst: Max-Planck-Institute for Marine Microbiology
+      inst_link: https://www.mpi-bremen.de/
+      current: true
+
+- github: l-gallucci
+  name: Luigi Gallucci
+  twitter: luigallucci
+  web: https://l-gallucci.github.io/
+  avatar: lgallucci.jpeg
+  email: luigigallucci8@gmail.com
+  git_records:
+    - 100836528+l-gallucci@users.noreply.github.com
+  linkedin: luigi-gallucci-scientificprofile
+  orcid: 0009-0004-0892-6796
+  bio: "Microbial ecologist exploring deep-sea environments to study microbial evolution and the dispersion patterns connecting hydrothermal vents with the open ocean."
+  affiliations:
+    - title: PhD student
+      inst: Max Planck Institute for Marine Microbiology
+      inst_link: https://www.mpi-bremen.de/
       current: true
