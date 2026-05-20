@@ -81,6 +81,7 @@ function Bins(prefix, container) {
 
     this.manualBinNamesBackup = null;
     this.taxonomyLabelingEnabled = false;
+    this.selectContigsRatherThanSplits = false;
 
     this.keepHistory = false;
     this.allowRedraw = true;
@@ -508,6 +509,36 @@ Bins.prototype.GetBinColor = function(bin_id) {
     return colorElement ? colorElement.getAttribute('color') : null;
 };
 
+Bins.prototype.SetSelectContigsRatherThanSplits = function(enabled) {
+    this.selectContigsRatherThanSplits = Boolean(enabled);
+};
+
+Bins.prototype._getContigNameFromLabel = function(label) {
+    const splitIndex = label.indexOf('_split_');
+    return splitIndex === -1 ? label : label.substring(0, splitIndex);
+};
+
+Bins.prototype._expandNodeForContigSelection = function(node) {
+    if (!this.selectContigsRatherThanSplits || !node || !node.IsLeaf || !node.IsLeaf()) {
+        return [node];
+    }
+
+    if (typeof drawer === 'undefined' || !drawer || !drawer.tree || !Array.isArray(drawer.tree.leaves)) {
+        return [node];
+    }
+
+    const contigName = this._getContigNameFromLabel(node.label);
+    const expandedNodes = [];
+
+    for (const leaf of drawer.tree.leaves) {
+        if (this._getContigNameFromLabel(leaf.label) === contigName) {
+            expandedNodes.push(leaf);
+        }
+    }
+
+    return expandedNodes.length ? expandedNodes : [node];
+};
+
 // ============================================================================
 // Node Operations
 // ============================================================================
@@ -532,12 +563,21 @@ Bins.prototype.AppendNode = function(targets, bin_id) {
     }
 
     // Process each target
+    const processedNodes = new Set();
+
     for (const target of targets) {
         if (target.collapsed) continue;
 
         for (const node of target.IterateChildren()) {
-            this._removeNodeFromOtherBins(node, bin_id, bins_to_update, transaction);
-            this._addNodeToBin(node, bin_id, bin_color, bins_to_update, transaction);
+            const nodesToProcess = this._expandNodeForContigSelection(node);
+
+            for (const expandedNode of nodesToProcess) {
+                if (processedNodes.has(expandedNode)) continue;
+                processedNodes.add(expandedNode);
+
+                this._removeNodeFromOtherBins(expandedNode, bin_id, bins_to_update, transaction);
+                this._addNodeToBin(expandedNode, bin_id, bin_color, bins_to_update, transaction);
+            }
         }
     }
 
@@ -618,12 +658,21 @@ Bins.prototype.RemoveNode = function(targets, bin_id) {
     }
 
     // Process each target
+    const processedNodes = new Set();
+
     for (const target of targets) {
         if (target.collapsed) continue;
 
         for (const node of target.IterateChildren()) {
-            this._removeNodeFromAllBins(node, bins_to_update, transaction);
-            node.ResetColor();
+            const nodesToProcess = this._expandNodeForContigSelection(node);
+
+            for (const expandedNode of nodesToProcess) {
+                if (processedNodes.has(expandedNode)) continue;
+                processedNodes.add(expandedNode);
+
+                this._removeNodeFromAllBins(expandedNode, bins_to_update, transaction);
+                expandedNode.ResetColor();
+            }
         }
     }
 
