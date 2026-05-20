@@ -690,6 +690,20 @@
       inst: DTU Bioengineering
       inst_link: https://cemist.dtu.dk/
       current: true
+      
+- github: bastien-camillo
+  name: Bastien CAMILLO
+  avatar: bcamillo-anvio.png
+  email: pro.bastien.camillo@gmail.com
+  git_records:
+    - pro.bastien.camillo@gmail.com
+  linkedin: bastien-camillo
+  orcid: 0009-0006-3481-432X
+  bio: "PhD Student in Multi-Species Comparative Genomics on Diatoms, also interested in Exobiology & Synthetic Biology"
+  affiliations:
+    - title: PhD Student
+      inst: IBENS
+      inst_link: https://www.ibens.bio.ens.psl.eu/
 
 - github: iwilkie
   name: Isa Wilkie
