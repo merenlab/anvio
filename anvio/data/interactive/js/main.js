@@ -364,6 +364,7 @@ function initData() {
             drawInlineScaleBar();
 
             bins = new Bins(response.bin_prefix, document.getElementById('tbody_bins'));
+            bins.SetSelectContigsRatherThanSplits($('#select_contigs_rather_than_splits').is(':checked'));
 
             // redoing intiial bin causes some weird behaviors
             bins.keepHistory = false;
@@ -2073,6 +2074,7 @@ function serializeSettings(use_layer_names) {
     state['autorotate-bin-labels'] = $('#autorotate_bin_labels').is(':checked');
     state['estimate-taxonomy'] = $('#estimate_taxonomy').is(':checked');
     state['use-taxonomy-bin-labels'] = $('#use_taxonomy_bin_labels').is(':checked');
+    state['select-contigs-rather-than-splits'] = $('#select_contigs_rather_than_splits').is(':checked');
     state['taxonomy-label-level'] = $('input[name="taxonomy_label_level"]:checked').val();
     state['bin-labels-angle'] = $('#bin_labels_angle').val();
     state['background-opacity'] = $('#background_opacity').val();
@@ -3480,6 +3482,10 @@ function processState(state_name, state) {
         toggleTaxonomyLabeling();
     }
 
+    if (state.hasOwnProperty('select-contigs-rather-than-splits')) {
+        $('#select_contigs_rather_than_splits').prop('checked', state['select-contigs-rather-than-splits']).trigger('change');
+    }
+
     if (state.hasOwnProperty('show-grid-for-bins')) {
         $('#show_grid_for_bins').prop('checked', state['show-grid-for-bins']).trigger('change');
     }
@@ -4055,6 +4061,11 @@ function toggleTaxonomyLabeling() {
 function onTaxonomyLabelLevelChange() {
     if (!bins) return;
     bins.ApplyTaxonomyLabels();
+}
+
+function toggleSelectContigsRatherThanSplits() {
+    if (!bins) return;
+    bins.SetSelectContigsRatherThanSplits($('#select_contigs_rather_than_splits').is(':checked'));
 }
 
 function ShadowBoxSelection(type) {
