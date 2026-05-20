@@ -72,18 +72,28 @@ flag, then merges all hits under the single `{name}_HMM` source. This is fully t
 
 ### Custom trusted cutoffs (`--cut-tc`)
 
-Override TC values for specific models without touching the rest of the database. Two file formats are accepted and can be mixed within the same file:
+Override TC values for specific models without touching the rest of the database. An optional
+first column can restrict the override to a named database, preventing accidental application
+to models with the same name in other databases. All formats can be mixed in one file:
 
 ```
-# tab-delimited: name <TAB> seq_tc [<TAB> dom_tc]
-ModelA	25.0	25.0
-ModelB	30.0
+# global (no db column) — applies to any database that has a model with this name
+[FeFe]  15.9
+ModelA  25.0  22.5
 
-# colon format: name: seq_tc   (useful for model names with brackets)
-[FeFe]: 15.9
-[NiFe]: 34.5
-[Fe]:   54.4
+# db-specific — applies only to the named database
+HydDB   [NiFe]      34.5
+HydDB   [Fe]        54.4  54.4
+
+# colon format with or without db column
+[Other]: 10.0
+HydDB   [FeFe]: 15.9
 ```
+
+*(Replace spaces above with actual tabs when preparing the file.)*
+
+Detection logic: if the second column parses as a number the first column is the model name
+(no db); if the second column is not a number the first column is the database name.
 
 **seq_tc vs dom_tc** — HMMER3 `--cut_tc` applies two per-model thresholds:
 

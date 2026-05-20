@@ -923,11 +923,17 @@ class UserAnnotationRunner:
 
 
     def _parse_custom_tc_tsv(self, path):
-        """Parse a custom TC file into {model_name: (seq_tc, dom_tc)}.
+        """Parse a custom TC file into {db_or_None: {model_name: (seq_tc, dom_tc)}}.
 
-        Two formats accepted (auto-detected per line):
-          Tab-delimited : model_name<TAB>seq_tc[<TAB>dom_tc]
-          Colon format  : model_name: seq_tc[ dom_tc]   (e.g. "[FeFe]: 15.9")
+        Optional first column is a database name (must not be parseable as a number).
+        Entries with a db name apply only to that database; entries without apply to all.
+
+        Formats accepted per line (auto-detected):
+          model<TAB>seq_tc[<TAB>dom_tc]             — no db restriction
+          db<TAB>model<TAB>seq_tc[<TAB>dom_tc]      — db-specific (tab-delimited)
+          db<TAB>model: seq_tc[ dom_tc]              — db-specific with colon model expr
+          model: seq_tc[ dom_tc]                     — no db restriction, colon format
+          e.g. "[FeFe]: 15.9"  or  "HydDB\t[FeFe]: 15.9"
 
         dom_tc defaults to seq_tc when omitted. Lines starting with '#' and blank lines ignored.
         """
@@ -935,57 +941,101 @@ class UserAnnotationRunner:
         if not os.path.isfile(path):
             raise FilesNPathsError(f"Custom TC file not found: '{path}'")
 
+        total = 0
         with open(path) as f:
             for lineno, line in enumerate(f, 1):
                 line = line.strip()
                 if not line or line.startswith('#'):
                     continue
 
-                # Detect delimiter: prefer tab, fall back to last colon in line
+                db_name = None
+
                 if '\t' in line:
                     parts = line.split('\t')
-                    name = parts[0].strip()
-                    values = [p.strip() for p in parts[1:] if p.strip()]
+                    # Detect db column by checking col[1]: if it parses as float → no db col
+                    # (model<TAB>seq_tc). If col[1] is not a float → first col is a db name
+                    # (db<TAB>model<TAB>seq_tc  or  db<TAB>model: seq_tc).
+                    has_db_col = False
+                    if len(parts) >= 2:
+                        try:
+                            float(parts[1])
+                        except ValueError:
+                            has_db_col = True
+
+                    if has_db_col:
+                        db_name = parts[0].strip()
+                        rest = '\t'.join(parts[1:])
+                    else:
+                        rest = line
+
+                    # Parse rest as tab-delimited or colon model expression
+                    if '\t' in rest:
+                        rest_parts = rest.split('\t')
+                        name = rest_parts[0].strip()
+                        values = [p.strip() for p in rest_parts[1:] if p.strip()]
+                    else:
+                        # rest may be "model: seq_tc" colon format
+                        colon_pos = rest.rfind(':')
+                        if colon_pos != -1:
+                            name = rest[:colon_pos].strip()
+                            values = rest[colon_pos + 1:].strip().split()
+                        else:
+                            name = rest.strip()
+                            values = []
                 else:
-                    # Colon format: split on the LAST colon so model names like "[FeFe]" are preserved
+                    # Pure colon format, no tab
                     colon_pos = line.rfind(':')
                     if colon_pos == -1:
-                        raise ConfigError(
-                            f"Custom TC file line {lineno}: cannot find delimiter (tab or colon): '{line}'"
-                        )
+                        continue  # unrecognised line — skip silently
                     name = line[:colon_pos].strip()
                     values = line[colon_pos + 1:].strip().split()
 
                 if not values:
-                    raise ConfigError(f"Custom TC file line {lineno}: no TC value found: '{line}'")
+                    continue  # no numeric value — skip (e.g. header text lines)
                 try:
                     seq_tc = float(values[0])
                     dom_tc = float(values[1]) if len(values) >= 2 else seq_tc
                 except ValueError:
-                    raise ConfigError(f"Custom TC file line {lineno}: TC values must be numbers, got '{values[:2]}'")
-                result[name] = (seq_tc, dom_tc)
+                    continue  # non-numeric value — skip
 
-        self.run.info(f"Custom TC overrides loaded", f"{len(result)} model(s) from '{path}'")
+                result.setdefault(db_name, {})[name] = (seq_tc, dom_tc)
+                total += 1
+
+        global_n = sum(len(v) for k, v in result.items() if k is None)
+        db_n = total - global_n
+        self.run.info(
+            f"Custom TC overrides loaded",
+            f"{total} model(s) from '{path}' "
+            f"({global_n} global, {db_n} db-specific)"
+        )
         return result
 
 
-    def _apply_custom_tc_to_groups(self, cutoff_groups):
+    def _apply_custom_tc_to_groups(self, db_name, cutoff_groups):
         """Rewrite cutoff_groups to move custom-TC models into a dedicated group.
+
+        db_name is the user-defined database name (used to look up db-specific entries).
+        DB-specific entries take precedence over global (no-db) entries for the same model.
 
         Returns (custom_tc_models, new_cutoff_groups) where:
           custom_tc_models  – {model_name: (seq_tc, dom_tc)} for models found in this DB
           new_cutoff_groups – rebuilt cutoff_groups with a '--cut_tc_custom' key for overrides
         """
-        all_models = {name for names in cutoff_groups.values() for name in names}
-        custom_tc_models = {m: v for m, v in self.custom_tc_map.items() if m in all_models}
+        # Merge: global entries first, then db-specific entries override
+        relevant = {}
+        relevant.update(self.custom_tc_map.get(None, {}))
+        relevant.update(self.custom_tc_map.get(db_name, {}))
 
-        # Warn about entries in --cut-tc file that don't match any model in this database
-        unmatched = sorted(set(self.custom_tc_map) - set(custom_tc_models))
+        all_models = {name for names in cutoff_groups.values() for name in names}
+        custom_tc_models = {m: v for m, v in relevant.items() if m in all_models}
+
+        # Warn about entries intended for this db that don't match any model
+        unmatched = sorted(set(relevant) - set(custom_tc_models))
         if unmatched:
             self.run.warning(
-                f"{len(unmatched)} name(s) from your --cut-tc file were not found in this database "
-                f"and will be ignored: {', '.join(unmatched)}. "
-                f"Use `grep '^NAME' your_file.hmm` or inspect the genes.txt in the HMM source "
+                f"{len(unmatched)} name(s) from your --cut-tc file were not found among the models "
+                f"of '{db_name}' and will be ignored: {', '.join(unmatched)}. "
+                f"Use `grep '^NAME' your_file.hmm` or inspect genes.txt in the HMM source "
                 f"directory to find the exact model names."
             )
 
@@ -1002,7 +1052,7 @@ class UserAnnotationRunner:
 
         overridden = ', '.join(sorted(custom_tc_models))
         self.run.info_single(
-            f"Custom TC overrides applied to {len(custom_tc_models)} model(s): {overridden}.",
+            f"Custom TC overrides applied to {len(custom_tc_models)} model(s) in '{db_name}': {overridden}.",
             cut_after=None
         )
         return custom_tc_models, new_groups
@@ -1264,7 +1314,7 @@ class UserAnnotationRunner:
 
         custom_tc_models = {}
         if self.custom_tc_map:
-            custom_tc_models, cutoff_groups = self._apply_custom_tc_to_groups(cutoff_groups)
+            custom_tc_models, cutoff_groups = self._apply_custom_tc_to_groups(db_name, cutoff_groups)
 
         if len(cutoff_groups) > 1 or custom_tc_models:
             self._run_hmm_annotation_mixed_cutoffs(db_name, entry, cutoff_groups, internal_source_name, custom_tc_models)
