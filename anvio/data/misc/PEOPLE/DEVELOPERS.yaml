@@ -690,7 +690,6 @@
       inst: DTU Bioengineering
       inst_link: https://cemist.dtu.dk/
       current: true
-<<<<<<< contributor_btrouche
 
 - github: btrouche
   name: Blandine Trouche
@@ -705,8 +704,7 @@
     - title: Post-doctoral scientist
       inst: University of Southern Denmark
       inst_link: https://www.sdu.dk/en/forskning/hadal
-=======
-      
+
 - github: bastien-camillo
   name: Bastien CAMILLO
   avatar: bcamillo-anvio.png
@@ -751,5 +749,4 @@
     - title: PhD student
       inst: Max Planck Institute for Marine Microbiology
       inst_link: https://www.mpi-bremen.de/
->>>>>>> master
       current: true
