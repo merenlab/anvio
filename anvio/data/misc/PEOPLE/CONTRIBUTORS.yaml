@@ -115,19 +115,17 @@
 
 - github: dspeth
   name: Daan R. Speth
-  avatar: bio-daan.jpg
-  twitter: daanspeth
-  email: dspeth@mpi-bremen.de
+  avatar: daan_speth.jpg
+  email: daan.speth@univie.ac.at
   git_records:
-    - dspeth@mpi-bremen.de
     - daanspeth@gmail.com
-  web: https://www.micro-explorer.net
+  web: https://dome.univie.ac.at/speth
   orcid: 0000-0002-2361-5935
   bio: "Microbiologist and bioinformatician interested in understanding the metabolic and phylogenetic diversity of microorganisms through genomics and wet lab analyses"
   affiliations:
-    - title: Post-Doctoral Scientist
-      inst: Max Planck Institute for Marine Microbiology
-      inst_link: https://mpi-bremen.de
+    - title: Senior Scientist
+      inst: University of Vienna
+      inst_link: https://cemess.univie.ac.at/
       current: true
 
 - github: simroux
@@ -229,22 +227,6 @@
       inst: Infectious Diseases Institute - The Ohio State University
       inst_link: https://idi.osu.edu/
 
-- github: Kekananen
-  name: Kathryn Kananen
-  web: https://bradleylab.science/author/kathryn-kananen/
-  email: kekananen@gmail.com
-  git_records:
-    - kekananen@gmail.com
-  avatar: KatKananen.jpg
-  linkedin: kathryn-kananen-85352b109
-  orcid: 0000-0001-6080-0323
-  bio: "Bioinformatician and computational biologist interested in population genetics, automation, and genomic architecture exploration"
-  affiliations:
-    - title: Bioinformatician and Computational Biologist
-      inst: Department of Microbiology - The Ohio State University
-      inst_link: https://microbiology.osu.edu/
-      current: true
-
 - github: treitlis
   name: Sebastian Cristian Treitli
   email: sebastian.treitli@gmail.com
@@ -313,3 +295,83 @@
     - title: PhD Student
       inst: Hawaiʻi Institute of Marine Biology, University of Hawaiʻi at Mānoa
       inst_link: https://www.himb.hawaii.edu/
+
+<<<<<<< master
+- github: elxerone
+  name: Eeva Eronen-Rasimus
+  email: eeva.eronen@gmail.com
+  git_records:
+    - eeva.eronen@gmail.com
+  orcid: 0000-0002-1749-0793
+  linkedin: https://www.linkedin.com/in/eeva-eronen-rasimus-4a920313b/
+  avatar: bio_eeva.jpg
+  bio: "Microbial ecologist interested in how bacteria survive in ice, their coupling with sea-ice algae and ultimately, their contribution to carbon cycling in the oceans and the consequences of diminishing sea ice for bacteria mediated processes."
+  affiliations:
+    - title: Senior Research Scientist
+      inst: Finnish Environment Institute
+      inst_link: https://www.syke.fi/en
+      current: true
+    - title: Associate professor in Microbial Ecology
+      inst: Department of Microbiology, University of Helsinki
+      inst_link: https://www.helsinki.fi/en/faculty-agriculture-and-forestry/research/disciplines/microbiology
+      current: true
+=======
+- github: igorspp
+  name: Igor S. Pessi
+  email: igor.pessi@gmail.com
+  web: http://igorpessi.com
+  git_records:
+    - igor.pessi@gmail.com
+  bluesky: @igorspp.bsky.social
+  avatar: igorspp.jpg
+  bio: "Microbiologist specialized in the study of polar microbial communities, with a focus on the use of molecular ecology methods such as metagenomics and metatranscriptomics."
+  affiliations:
+    - title: Researcher
+      inst: Finnish Environment Institute
+      inst_link: http://environment.fi
+      current: true
+    - title: Visiting Researcher
+      inst: University of Helsinki
+      inst_link: http://helsinki.fi
+    
+- github: AviHuene
+  name: Avril Hoyningen-Huene
+  avatar: avrilhoyningen.jpg
+  email: avril.hoyningen@hifmb.de
+  git_records:
+    - avril.hoyningen@hifmb.de
+  orcid: 0000-0002-1928-3560
+  linkedin: avril-von-hoyningen-huene
+  bio: "I am a microbial ecologist delving into the dynamics of phytoplankton functional changes in response to saesonal environmental changes."
+  affiliations:
+    - title: Post-doctoral Scientist
+      inst: Helmholtz Institute for Functional Marine Biodiversity
+      inst_link: https://hifmb.de
+      current: true
+    - title: Post-doctoral Scientist
+      inst: Institute for General Microbiology, Kiel University (CAU)
+      inst_link: https://www.mikrobio.uni-kiel.de/de
+      current: false
+    - title: Graduate Student
+      inst: General and Applied Microbiology, University of Göttingen
+      inst_link: http://appmibio.uni-goettingen.de/
+      current: false
+
+- github: u-xixi
+  name: Xi Chen (Xixi)
+  avatar: bio-xixi.jpg
+  email: xi.chen@hifmb.de
+  git_records:
+    - chenxi1251@gmail.com
+  orcid: 0009-0007-7692-9771
+  bio: "I am a bioinformatician and microbial ecologist. I enjoy tailoring computational methods to explore the diversity and dynamics of microbes. My current focus is on those that live in the ocean."
+  affiliations:
+    - title: Post-doctoral Scientist
+      inst: Helmholtz Institute for Functional Marine Biodiversity
+      inst_link: https://hifmb.de/
+      current: true
+    - title: PhD student
+      inst: University of Tübingen
+      inst_link: https://uni-tuebingen.de/
+      current: false
+>>>>>>> master
