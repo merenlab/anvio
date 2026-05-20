@@ -690,6 +690,36 @@
       inst: DTU Bioengineering
       inst_link: https://cemist.dtu.dk/
       current: true
+<<<<<<< contributor_btrouche
+
+- github: btrouche
+  name: Blandine Trouche
+  avatar: btrouche.png
+  email: blandine.trouche@orange.fr
+  git_records:
+    - blandine.trouche@orange.fr
+  linkedin: blandine-trouche-0921b166
+  orcid: 0000-0003-4307-4782
+  bio: "Microbial ecologist studying the biogeography and adaptation of microbial life to the greatest ocean depths"
+  affiliations:
+    - title: Post-doctoral scientist
+      inst: University of Southern Denmark
+      inst_link: https://www.sdu.dk/en/forskning/hadal
+=======
+      
+- github: bastien-camillo
+  name: Bastien CAMILLO
+  avatar: bcamillo-anvio.png
+  email: pro.bastien.camillo@gmail.com
+  git_records:
+    - pro.bastien.camillo@gmail.com
+  linkedin: bastien-camillo
+  orcid: 0009-0006-3481-432X
+  bio: "PhD Student in Multi-Species Comparative Genomics on Diatoms, also interested in Exobiology & Synthetic Biology"
+  affiliations:
+    - title: PhD Student
+      inst: IBENS
+      inst_link: https://www.ibens.bio.ens.psl.eu/
 
 - github: iwilkie
   name: Isa Wilkie
@@ -721,4 +751,5 @@
     - title: PhD student
       inst: Max Planck Institute for Marine Microbiology
       inst_link: https://www.mpi-bremen.de/
+>>>>>>> master
       current: true
