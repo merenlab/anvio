@@ -52,7 +52,7 @@ def run_program(args):
                                                                indexing_field=-1)
         offset = len(combined_data)
         for k, v in file_data.items():
-            combined_data[k + offset] = v
+            combined_data[k + str(offset)] = v
 
     invalid_classes = set(row['class'] for row in combined_data.values()) - VALID_CLASSES
     if invalid_classes:
