@@ -312,6 +312,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": False,
         "provided_by_user":True
     },
+    "user-annotation-sources-txt": {
+        "name": "USER ANNOTATION SOURCES TXT",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
     "raw-bam-file": {
         "name": "RAW BAM FILE",
         "type": "BAM",
