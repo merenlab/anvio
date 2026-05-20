@@ -449,6 +449,71 @@ anvi-merge $PREFILTER_DIR/SAMPLE-*-MT/PROFILE.db \
            -c $PREFILTER_DIR/CONTIGS.db \
            --no-progress
 
+# Exercise the read-edge clip profiling end-to-end. anvi'o's standard test BAMs
+# (SAMPLE-01/02/03) were produced by an aligner that doesn't emit CIGAR clips,
+# so the @PG defensive check on those would auto-skip clip profiling. Here we
+# build a tiny clip-emitting BAM ourselves (chimeric HiFi reads + an unmapped
+# tail) so we can verify the detector populates the clippings table with both
+# JUNCTION and UNMAPPED events. A standalone, more exhaustive test suite lives
+# at run_component_tests_for_clippings.sh.
+INFO "Testing read-edge clip profiling (synthetic clip-emitting BAM)"
+CLIPPING_DIR=$output_dir/CLIPPING-TEST
+mkdir -p $CLIPPING_DIR
+python - "$CLIPPING_DIR" << 'CLIP_SETUP'
+import random, sys
+random.seed(42)
+def rand_seq(n):
+    return ''.join(random.choices('ACGT', k=n))
+out = sys.argv[1]
+contig_x = rand_seq(20000)
+contig_y = rand_seq(20000)
+tail     = rand_seq(2000)
+with open(f'{out}/ref.fa', 'w') as f:
+    f.write(f'>contig_X\n{contig_x}\n>contig_Y\n{contig_y}\n')
+chimera_tail = contig_x[5000:15000] + contig_y[5000:15000] + tail
+with open(f'{out}/source.fa', 'w') as f:
+    f.write(f'>chimera_tail\n{chimera_tail}\n')
+CLIP_SETUP
+anvi-script-gen-reads -f $CLIPPING_DIR/source.fa --preset pacbio-hifi --coverage 50 --seed 53 -o $CLIPPING_DIR/reads --no-progress
+minimap2 -ax map-hifi --MD $CLIPPING_DIR/ref.fa $CLIPPING_DIR/reads.fastq 2>/dev/null \
+    | samtools sort -o $CLIPPING_DIR/sample.bam -
+samtools index $CLIPPING_DIR/sample.bam
+anvi-gen-contigs-database -f $CLIPPING_DIR/ref.fa -o $CLIPPING_DIR/CONTIGS.db -L -1 --skip-gene-calling --no-progress
+anvi-profile -i $CLIPPING_DIR/sample.bam -c $CLIPPING_DIR/CONTIGS.db -o $CLIPPING_DIR/PROFILE -M 0 \
+             --skip-hierarchical-clustering --sample-name clipping_test --no-progress
+python - "$CLIPPING_DIR" << 'CLIP_ASSERT'
+import sys
+import anvio.tables as t
+from anvio.dbinfo import ProfileDBInfo
+db = ProfileDBInfo(f'{sys.argv[1]}/PROFILE/PROFILE.db').load_db()
+rows = list(db.get_table_as_dict(t.clippings_table_name).values())
+db.disconnect()
+states = {r['state'] for r in rows}
+junction = [r for r in rows if r['state'] == 'JUNCTION']
+unmapped = [r for r in rows if r['state'] == 'UNMAPPED']
+print(f'  total clip events: {len(rows)}')
+print(f'  states present:    {sorted(states)}')
+print(f'  JUNCTION rows:     {len(junction)} (partner_contig populated: {sum(1 for r in junction if r["partner_contig"])})')
+print(f'  UNMAPPED rows:     {len(unmapped)} (partner_contig empty: {sum(1 for r in unmapped if r["partner_contig"] == "")})')
+fail = []
+if len(rows) == 0:
+    fail.append('clippings table is empty; expected JUNCTION and UNMAPPED rows from chimeric HiFi reads')
+if not junction:
+    fail.append('no JUNCTION rows; expected partner-linked junctions from the chimera split alignments')
+if not unmapped:
+    fail.append('no UNMAPPED rows; expected unmapped tail bases as UNMAPPED clip events')
+if junction and not all(r['partner_contig'] for r in junction):
+    fail.append('some JUNCTION rows have empty partner_contig')
+if unmapped and any(r['partner_contig'] for r in unmapped):
+    fail.append('some UNMAPPED rows have a partner_contig set; expected empty for UNMAPPED')
+if fail:
+    print('FAILED:')
+    for m in fail:
+        print(f'  - {m}')
+    sys.exit(1)
+print('Clip profiling assertions passed')
+CLIP_ASSERT
+
 INFO "Merging profiles"
 anvi-merge $output_dir/*/PROFILE.db -o $output_dir/SAMPLES-MERGED \
                                     -c $output_dir/CONTIGS.db \
