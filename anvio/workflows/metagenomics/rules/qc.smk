@@ -130,6 +130,7 @@ rule iu_filter_quality_minoche:
 
 
 rule gen_qc_report:
+    """Aggregate quality-control statistics across readsets or samples."""
     input:
         targets=expand(
             dirs_dict["QC_DIR"] + "/{readset}-STATS.txt", readset=SR_READSETS

@@ -1,4 +1,5 @@
 rule krakenuniq:
+    """Classify reads taxonomically with KrakenUniq."""
     input:
         unpack(lambda wildcards: M.get_fastq(wildcards.readset)),
     output:
@@ -57,6 +58,7 @@ rule krakenuniq_mpa_report:
 
 
 def input_for_import_krakenuniq_taxonomy(wildcards):
+    """Select KrakenUniq annotations and optional mapping statistics for taxonomy import."""
     D = {}
     if M.kraken_annotation_dict:
         # if the user supplied a file with kraken annotations then use it
@@ -82,6 +84,7 @@ def input_for_import_krakenuniq_taxonomy(wildcards):
 
 
 rule import_krakenuniq_taxonomy:
+    """Import KrakenUniq taxonomy assignments into anvi-o profile layers."""
     input:
         unpack(input_for_import_krakenuniq_taxonomy),
         profile=ancient(

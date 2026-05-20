@@ -1,4 +1,5 @@
 rule anvi_get_sequences_for_gene_clusters:
+    """Export gene-cluster sequences for phylogenetic analysis."""
     input:
         genomes_storage=os.path.join(
             dirs_dict["PAN_DIR"], M.project_name + "-GENOMES.db"
@@ -86,6 +87,7 @@ rule anvi_get_sequences_for_gene_clusters:
 
 
 rule import_phylogenetic_tree_to_pangenome:
+    """Import a computed phylogenetic tree into the pangenome database."""
     input:
         pan_db=M.pan_db_path,
         newick=os.path.join(
@@ -119,6 +121,7 @@ rule import_phylogenetic_tree_to_pangenome:
 
 
 rule anvi_compute_genome_similarity:
+    """Compute genome similarity metrics for the pangenome inputs."""
     input:
         unpack(lambda wildcards: M.input_for_anvi_compute_genome_similarity),
     output:

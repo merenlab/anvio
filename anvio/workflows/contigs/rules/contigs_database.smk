@@ -105,6 +105,7 @@ See docummentation for anvi_script_reformat_fasta_prefix_only
 
 
 rule reformat_external_gene_calls_table:
+    """Normalize external gene-call tables before contigs database creation."""
     input:
         unpack(M.get_input_for_reformat_external_gene_calls_table),
     output:

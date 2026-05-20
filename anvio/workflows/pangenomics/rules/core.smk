@@ -1,5 +1,6 @@
 # run pangenome
 rule anvi_pan_genome:
+    """Compute a pangenome from the genomes storage database."""
     input:
         pan_db=dirs_dict["PAN_DIR"] + "/" + M.project_name + "-GENOMES.db",
     output:
@@ -54,6 +55,7 @@ rule anvi_pan_genome:
 
 # generate anvi'o genomes storage
 rule anvi_gen_genomes_storage:
+    """Build the genomes storage database from internal and external genome tables."""
     input:
         unpack(lambda wildcards: M.input_for_anvi_gen_genomes_storage),
     output:

@@ -1,4 +1,5 @@
 rule gen_external_genome_file:
+    """Write the external-genomes table from generated contigs databases."""
     input:
         annotation_done=expand(
             os.path.join(

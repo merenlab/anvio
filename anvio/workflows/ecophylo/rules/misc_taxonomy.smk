@@ -95,6 +95,7 @@ def extract_misc_data(mmseqs_cluster_rep_index, final_sequences_headers, output)
 
 
 def count_cluster_size(group):
+    """Count the number of sequences represented by each cluster."""
     c = group["cluster_members"].count()
     group["cluster_size"] = c
 

@@ -51,6 +51,7 @@ rule reformat_external_functions:
 
 
 rule import_external_functions:
+    """Import externally supplied functional annotations into the contigs database."""
     input:
         unpack(M.get_input_for_import_external_functions),
     output:

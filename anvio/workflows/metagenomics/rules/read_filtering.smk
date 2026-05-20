@@ -23,6 +23,7 @@ def need_to_uncompress_fastqs(r1_list, r2_list):
 
 
 def uncompress_fastqs_if_needed(r1_list, r2_list, log):
+    """Return uncompressed FASTQ paths when compressed inputs need temporary expansion."""
     did_unzip = False
     out1, out2 = [], []
     if need_to_uncompress_fastqs(r1_list, r2_list):
@@ -40,6 +41,7 @@ def uncompress_fastqs_if_needed(r1_list, r2_list, log):
 
 
 def concatenate_fastqs(inputs, dest, log):
+    """Concatenate multiple FASTQ files when co-assembly needs one input stream."""
     if len(inputs) == 1:
         return inputs[0]  # nothing to do
     shell("cat {files} > {dest} 2>> {log}".format(files=" ".join(inputs), dest=dest))
@@ -47,6 +49,7 @@ def concatenate_fastqs(inputs, dest, log):
 
 
 def input_for_remove_short_reads_based_on_references(wildcards):
+    """Build inputs for removing reads recruited to configured reference contigs."""
     d = {}
     d["bam"] = expand(
         os.path.join(dirs_dict["MAPPING_DIR"], "{group}", "{readset}.bam"),
@@ -61,6 +64,7 @@ gzip_suffix = ".gz" if run_gzip_fastqs else ""
 
 
 rule remove_short_reads_based_on_references:
+    """Remove or report short reads that map to configured reference contigs."""
     input:
         unpack(input_for_remove_short_reads_based_on_references),
     output:
@@ -195,6 +199,7 @@ rule remove_short_reads_based_on_references:
 
 
 rule gen_report_for_mapping_to_references_for_removal:
+    """Summarize read removal caused by reference mapping."""
     input:
         ids_to_remove=expand(
             os.path.join(dirs_dict["QC_DIR"], "{readset}-ids-to-remove.txt"),

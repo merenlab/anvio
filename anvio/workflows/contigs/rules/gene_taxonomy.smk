@@ -110,6 +110,7 @@ rule anvi_run_hmms:
 
 
 rule anvi_run_pfams:
+    """Annotate contigs with Pfam protein family hits."""
     input:
         contigs=ancient(M.get_contigs_db_path()),
     output:
@@ -130,6 +131,7 @@ rule anvi_run_pfams:
 
 
 rule anvi_run_kegg_kofams:
+    """Annotate contigs with KEGG KOfam functional hits."""
     input:
         contigs=ancient(M.get_contigs_db_path()),
     output:
@@ -154,6 +156,7 @@ rule anvi_run_kegg_kofams:
 
 
 rule anvi_run_ncbi_cogs:
+    """Annotate contigs with NCBI COG functional hits."""
     input:
         contigs=ancient(M.get_contigs_db_path()),
     output:
@@ -183,6 +186,7 @@ rule anvi_run_ncbi_cogs:
 
 
 rule anvi_run_scg_taxonomy:
+    """Estimate taxonomy from single-copy core genes in the contigs database."""
     input:
         # make sure HMMs were done before running this rule
         hmms_done=ancient(
@@ -215,6 +219,7 @@ rule anvi_run_scg_taxonomy:
 
 
 rule anvi_run_trna_scan:
+    """Scan contigs for tRNA genes."""
     input:
         contigs=ancient(M.get_contigs_db_path()),
     output:
@@ -241,6 +246,7 @@ rule anvi_run_trna_scan:
 
 
 rule anvi_get_sequences_for_gene_calls:
+    """Export amino acid sequences for gene calls before external annotation."""
     input:
         contigs=ancient(M.get_contigs_db_path()),
     output:
@@ -255,6 +261,7 @@ rule anvi_get_sequences_for_gene_calls:
 
 
 rule emapper:
+    """Run eggNOG-mapper on exported gene-call amino acid sequences."""
     input:
         fasta=rules.anvi_get_sequences_for_gene_calls.output.fasta,
     output:
@@ -282,6 +289,7 @@ rule emapper:
 
 
 rule anvi_script_run_eggnog_mapper:
+    """Import eggNOG-mapper annotations into the contigs database."""
     input:
         eggnog_output=rules.emapper.output.target,
         contigs=dirs_dict["CONTIGS_DIR"] + "/{group}.db",

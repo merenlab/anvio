@@ -1,4 +1,5 @@
 rule anvi_cluster_contigs:
+    """Cluster contigs into bins with the configured anvi-cluster-contigs driver."""
     input:
         contigs=ancient(M.get_contigs_db_path()),
         profile=lambda wildcards: M.profile_databases[wildcards.group],

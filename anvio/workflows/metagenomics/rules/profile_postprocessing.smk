@@ -1,4 +1,5 @@
 rule anvi_import_collection:
+    """Import a user-provided collection into a merged metagenomic profile."""
     input:
         profile=lambda wildcards: M.profile_databases[wildcards.group],
         contigs=ancient(M.get_contigs_db_path()),
@@ -32,6 +33,7 @@ rule anvi_import_collection:
 
 
 rule anvi_import_default_collection:
+    """Create and import a default collection for a merged metagenomic profile."""
     input:
         profile=lambda wildcards: M.profile_databases[wildcards.group],
         contigs=ancient(M.get_contigs_db_path()),
@@ -55,6 +57,7 @@ rule anvi_import_default_collection:
 
 
 rule anvi_summarize:
+    """Summarize a merged profile and contigs database for downstream inspection."""
     input:
         profile=lambda wildcards: M.profile_databases[wildcards.group],
         contigs=ancient(M.get_contigs_db_path()),
@@ -89,6 +92,7 @@ rule anvi_summarize:
 
 
 rule anvi_split:
+    """Split a merged profile by collection bins."""
     input:
         profile=lambda wildcards: M.profile_databases[wildcards.group],
         contigs=ancient(M.get_contigs_db_path()),
@@ -122,6 +126,7 @@ rule anvi_split:
 
 
 rule dummy_rule_for_anvi_summarize:
+    """Promote the temporary summary directory to the final summary output path."""
     input:
         summary_done=os.path.join(dirs_dict["SUMMARY_DIR"], "{group}-summary.touch"),
     output:

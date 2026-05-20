@@ -37,6 +37,7 @@ if not this_workflow_is_inherited_by_another:
 
 
 rule pangenomics_target_rule:
+    """Collect the expected pangenomics workflow outputs."""
     input:
         targets=M.get_pangenomics_target_files(),
 

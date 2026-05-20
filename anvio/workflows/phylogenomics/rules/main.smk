@@ -1,4 +1,5 @@
 rule anvi_get_sequences_for_hmm_hits:
+    """Export HMM-hit sequences for phylogenomic tree building."""
     input:
         unpack(lambda wildcards: M.input_for_anvi_get_sequences_for_hmm_hits),  # The lambda function here is just a trick. from some reason without it, snakemake can't unpack the dict
     output:
@@ -52,6 +53,7 @@ rule anvi_get_sequences_for_hmm_hits:
 
 
 rule trimal:
+    """Trim poorly aligned columns from the phylogenomic alignment."""
     input:
         source=M.phylogenomics_sequence_file,
     output:
@@ -76,6 +78,7 @@ rule trimal:
 
 
 rule iqtree:
+    """Infer a phylogenomic tree with IQ-TREE."""
     input:
         source=os.path.join(
             dirs_dict["PHYLO_DIR"], M.project_name + "-proteins_GAPS_REMOVED.fa"

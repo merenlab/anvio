@@ -1,6 +1,7 @@
 if M.get_param_value_from_config(["flye", "run"]) and M.has_lr:
 
     def flye_read_type():
+        """Choose the single enabled Flye long-read input mode from the config."""
         flags = [
             "--pacbio-raw",
             "--pacbio-corr",
@@ -21,6 +22,7 @@ if M.get_param_value_from_config(["flye", "run"]) and M.has_lr:
         return enabled[0]
 
     rule flye:
+        """Assemble long-read metagenomes with metaFlye/Flye."""
         input:
             reads=lambda wildcards: M.get_lr_files_for_group(wildcards.group),
         output:

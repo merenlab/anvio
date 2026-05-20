@@ -1,4 +1,5 @@
 rule anvi_merge_trnaseq:
+    """Merge per-sample tRNA-seq databases into a project database."""
     input:
         targets=expand(
             os.path.join(
@@ -52,6 +53,7 @@ rule anvi_merge_trnaseq:
 
 
 rule anvi_run_trna_taxonomy:
+    """Assign taxonomy to tRNA sequences in the merged tRNA-seq project."""
     input:
         done=rules.anvi_merge_trnaseq.output.done,
     output:
@@ -92,6 +94,7 @@ rule anvi_run_trna_taxonomy:
 
 
 rule anvi_tabulate_trnaseq:
+    """Export tabular tRNA-seq results from the merged project databases."""
     input:
         done=rules.anvi_run_trna_taxonomy.output.done,
     output:

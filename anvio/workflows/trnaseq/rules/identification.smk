@@ -66,6 +66,7 @@ rule anvi_reformat_fasta:
 
 
 rule all_reformatting_done:
+    """Mark completion of FASTA reformatting for all tRNA-seq samples."""
     input:
         targets=expand(
             os.path.join(
@@ -78,6 +79,7 @@ rule all_reformatting_done:
 
 
 rule anvi_trnaseq:
+    """Run anvi-trnaseq identification for each tRNA-seq sample."""
     input:
         source=M.get_input_for_anvi_trnaseq,
     output:

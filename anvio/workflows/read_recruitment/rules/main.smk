@@ -40,6 +40,7 @@ BT2_PREFIX = os.path.join(dirs_dict["MAPPING_DIR"], "{group}", "{group}-contigs"
 
 
 def use_post_ref_filter(wildcards):
+    """Report whether a readset should use reads after reference filtering."""
     return M.remove_short_reads_based_on_references and (
         wildcards.group in M.references_for_removal
     )
@@ -49,6 +50,7 @@ def use_post_ref_filter(wildcards):
 
 
 rule bowtie_build:
+    """Build a Bowtie2 index for short-read recruitment."""
     input:
         contigs=M.get_fasta,
     output:
@@ -78,6 +80,7 @@ rule bowtie_build:
 
 
 rule minimap2_index:
+    """Build a minimap2 index for long-read recruitment."""
     input:
         contigs=lambda wildcards: M.get_fasta(wildcards),
     output:
@@ -108,6 +111,7 @@ rule minimap2_index:
 
 
 rule bowtie:
+    """Map short reads to contigs with Bowtie2."""
     input:
         idx=rules.bowtie_build.output.idx,
         r1=lambda wildcards: M.get_fastq(
@@ -144,6 +148,7 @@ rule bowtie:
 
 
 rule minimap2:
+    """Map long reads to contigs with minimap2."""
     input:
         idx=M.dirs_dict["MAPPING_DIR"] + "/{group}/{group}.mmi",
         reads=lambda wildcards: M.get_fastq(wildcards.readset)["lr"],
@@ -174,6 +179,7 @@ rule minimap2:
 
 
 rule samtools_view:
+    """Convert mapped SAM output into raw BAM format."""
     input:
         sam=M.dirs_dict["MAPPING_DIR"] + "/{group}/{readset}.sam",
     output:
@@ -192,6 +198,7 @@ rule samtools_view:
 
 
 rule anvi_init_bam:
+    """Initialize and index BAM files for anvi-o profiling."""
     input:
         bam=M.dirs_dict["MAPPING_DIR"] + "/{group}/{readset}-RAW.bam",
     output:
@@ -210,6 +217,7 @@ rule anvi_init_bam:
 
 
 def get_cluster_contigs_param(wildcards):
+    """Choose the anvi-profile clustering flag based on group size and config."""
     if M.get_param_value_from_config(["anvi_profile", "--cluster-contigs"]) != "":
         cluster_contigs = M.get_rule_param("anvi_profile", "--cluster-contigs")
     else:
@@ -220,6 +228,7 @@ def get_cluster_contigs_param(wildcards):
 
 
 rule anvi_profile:
+    """Profile read recruitment against a contigs database."""
     input:
         bam=dirs_dict["MAPPING_DIR"] + "/{group}/{readset}.bam",
         contigs=ancient(M.get_contigs_db_path()),
@@ -282,6 +291,7 @@ rule anvi_profile:
 
 
 def input_for_anvi_merge(wildcards):
+    """Collect profile databases that should be merged for a group."""
     if M.get_param_value_from_config(["all_against_all"]):
         member_readsets = M.get_readset_ids()
     else:
@@ -296,6 +306,7 @@ def input_for_anvi_merge(wildcards):
 def configure_flag_files_for_anvi_merge_optional_inputs(
     wildcards, flag_file_name, run_flag
 ):
+    """Return optional merge dependency flags or a harmless ancient contigs database."""
     if M.get_param_value_from_config(["all_against_all"]):
         member_readsets = M.get_readset_ids()
     else:
@@ -317,6 +328,7 @@ def configure_flag_files_for_anvi_merge_optional_inputs(
 
 
 def get_merge_optional_inputs(wildcards):
+    """Build optional inputs that must complete before profile merging."""
     d = {}
     for input_name, (flag_fn, run_flag) in M.get_merge_optional_inputs().items():
         d[input_name] = configure_flag_files_for_anvi_merge_optional_inputs(
@@ -326,12 +338,14 @@ def get_merge_optional_inputs(wildcards):
 
 
 def create_fake_output_files(_message, output):
+    """Create placeholder outputs when mergeable profile data are absent."""
     for o in output:
         with open(o, "w") as f:
             f.write(_message + "\n")
 
 
 def remove_empty_profile_databases(profiles, group):
+    """Filter profile databases with no mapped reads before merging."""
     empty_profiles = []
     progress.new("Checking for empty profile databases")
     for p in profiles:
@@ -357,6 +371,7 @@ def remove_empty_profile_databases(profiles, group):
 
 
 rule gen_readme_file_for_unmerged_groups:
+    """Write a README when a group has only one profile and cannot be merged."""
     input:
         unpack(get_merge_optional_inputs),
         contigs=ancient(M.get_contigs_db_path()),
@@ -379,6 +394,7 @@ rule gen_readme_file_for_unmerged_groups:
 
 
 rule anvi_merge:
+    """Merge multiple anvi-o profile databases for a group."""
     input:
         unpack(get_merge_optional_inputs),
         contigs=ancient(M.get_contigs_db_path()),
@@ -461,6 +477,7 @@ rule anvi_merge:
 
 
 rule count_reads_in_fastq:
+    """Count total reads across FASTQ inputs for a readset."""
     input:
         unpack(lambda wildcards: M.get_fastq(wildcards.readset)),
     output:
@@ -498,6 +515,7 @@ run_import_percent_of_reads_mapped = (
 
 
 rule import_percent_of_reads_mapped:
+    """Calculate and import read-mapping percentages into profile layers."""
     input:
         total_reads=dirs_dict["QC_DIR"] + "/{readset}-total_num_reads.txt",
         profiledb=dirs_dict["PROFILE_DIR"] + "/{group}/{readset}/PROFILE.db",

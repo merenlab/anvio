@@ -1,4 +1,5 @@
 rule merge_fastas_for_co_assembly:
+    """Merge paired short reads into FASTA input for IDBA-UD co-assembly."""
     input:
         unpack(lambda wildcards: M.get_sr_fastqs_for_group(wildcards.group)),
     output:
@@ -35,6 +36,7 @@ rule merge_fastas_for_co_assembly:
 
 
 rule merge_fastqs_for_co_assembly:
+    """Concatenate short-read FASTQs for co-assembly with assemblers that accept FASTQ."""
     input:
         unpack(lambda wildcards: M.get_sr_fastqs_for_group(wildcards.group)),
     output:
@@ -125,6 +127,7 @@ if M.get_param_value_from_config(["idba_ud", "run"]) and M.has_sr:
 if M.get_param_value_from_config(["metaspades", "run"]) and M.has_sr:
 
     def input_for_metaspades(wildcards):
+        """Return either merged or per-readset FASTQ inputs for metaSPAdes."""
         input_file_dict = {}
         d = M.get_sr_fastqs_for_group(wildcards.group)
         if len(d["r1"]) > 1:
@@ -145,6 +148,7 @@ if M.get_param_value_from_config(["metaspades", "run"]) and M.has_sr:
         return input_file_dict
 
     rule metaspades:
+        """Assemble short-read metagenomes with metaSPAdes."""
         input:
             unpack(input_for_metaspades),
         output:
