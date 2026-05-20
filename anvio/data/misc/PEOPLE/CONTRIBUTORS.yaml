@@ -115,19 +115,17 @@
 
 - github: dspeth
   name: Daan R. Speth
-  avatar: bio-daan.jpg
-  twitter: daanspeth
-  email: dspeth@mpi-bremen.de
+  avatar: daan_speth.jpg
+  email: daan.speth@univie.ac.at
   git_records:
-    - dspeth@mpi-bremen.de
     - daanspeth@gmail.com
-  web: https://www.micro-explorer.net
+  web: https://dome.univie.ac.at/speth
   orcid: 0000-0002-2361-5935
   bio: "Microbiologist and bioinformatician interested in understanding the metabolic and phylogenetic diversity of microorganisms through genomics and wet lab analyses"
   affiliations:
-    - title: Post-Doctoral Scientist
-      inst: Max Planck Institute for Marine Microbiology
-      inst_link: https://mpi-bremen.de
+    - title: Senior Scientist
+      inst: University of Vienna
+      inst_link: https://cemess.univie.ac.at/
       current: true
 
 - github: simroux
