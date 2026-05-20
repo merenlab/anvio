@@ -240,10 +240,10 @@ def get_args():
     thr.add_argument(
         '--min-coverage',
         type=float,
-        default=0.5,
+        default=0.3,
         metavar='FLOAT',
         help="Minimum fraction of genes in a cluster that must be annotated "
-             "for a source to be evaluated.  Default: 0.5",
+             "for a source to be evaluated.  Default: 0.3",
     )
     thr.add_argument(
         '--min-jacc-sc',
@@ -256,10 +256,10 @@ def get_args():
     thr.add_argument(
         '--min-cross-source-coherence',
         type=float,
-        default=0.5,
+        default=0.3,
         metavar='FLOAT',
         help="Minimum cross-source keyword similarity before a PURE or "
-             "HIGH_CONSENSUS cluster is downgraded to MIXED.  Default: 0.5",
+             "HIGH_CONSENSUS cluster is downgraded to MIXED.  Default: 0.3",
     )
 
     # ---- Output --------------------------------------------------------

@@ -74,13 +74,13 @@ class GeneClusterFunctionalConsensus:
         annotation data.
     min_coverage : float
         Minimum fraction of annotated genes to trust a cluster for a given
-        source.  Default 0.5.
+        source.  Default 0.3.
     min_jacc_sc : float
         Minimum coverage-scaled Jaccard score to classify a cluster as
         HIGH_CONSENSUS.  Default 0.6.
     min_cross_source_coherence : float
         Minimum cross-source keyword-Jaccard score before a PURE/HIGH_CONSENSUS
-        cluster is downgraded to MIXED.  Default 0.5.
+        cluster is downgraded to MIXED.  Default 0.3.
     propagate : bool
         If True, emit a propagated-annotations table for PURE and
         HIGH_CONSENSUS clusters.  Default True.
@@ -121,9 +121,9 @@ class GeneClusterFunctionalConsensus:
         gene_clusters,
         annotations,
         annotation_sources=None,
-        min_coverage=0.5,
+        min_coverage=0.3,
         min_jacc_sc=0.6,
-        min_cross_source_coherence=0.5,
+        min_cross_source_coherence=0.3,
         propagate=True,
         pfam_data_dir=None,
         cogs_data_dir=None,
@@ -532,7 +532,6 @@ class GeneClusterFunctionalConsensus:
             'is_multi_domain': False,
             'architecturally_consistent': False,
             'functionally_coherent': False,
-            'terminal_normalised': False,
             'n_sources_evaluated': None,
             'cross_source_coherence': None,
             'cross_source_method': None,
@@ -559,9 +558,14 @@ class GeneClusterFunctionalConsensus:
         if coverage < self.min_coverage:
             return base
 
-        # Build annotation sets (accession-based, unordered)
-        annotation_sets = self._build_annotation_sets(src_rows)
-        sets_list = list(annotation_sets.values())
+        # Raw accession sets — used only for multi-domain and dominant-accession logic
+        raw_annotation_sets = self._build_annotation_sets(src_rows, normalize_terminals=False)
+        raw_sets_list = list(raw_annotation_sets.values())
+
+        # Terminal-normalized sets — used for Jaccard and architectural consistency
+        # (N/C-terminal Pfam split variants are unified before comparison)
+        norm_annotation_sets = self._build_annotation_sets(src_rows, normalize_terminals=True)
+        sets_list = list(norm_annotation_sets.values())
 
         # Dominant accession (most frequent individual accession)
         acc_counter: Counter = Counter()
@@ -577,24 +581,18 @@ class GeneClusterFunctionalConsensus:
         dominant_accession = acc_counter.most_common(1)[0][0] if acc_counter else None
         dominant_function = func_map.get(dominant_accession) if dominant_accession else None
 
-        # Pairwise Jaccard
+        # Pairwise Jaccard (on normalized sets)
         jacc_raw = self._median_pairwise_jaccard(sets_list)
         jacc_sc = round(jacc_raw * coverage, 4)
         jacc_raw = round(jacc_raw, 4)
 
         # Sub-flags
-        is_multi_domain = any(len(s) > 1 for s in sets_list)
+        is_multi_domain = any(len(s) > 1 for s in raw_sets_list)
         architecturally_consistent = len(set(sets_list)) == 1
 
-        # Terminal normalisation check (Pfam only)
-        terminal_normalised = False
-        if not architecturally_consistent:
-            norm_sets = self._build_annotation_sets(src_rows, normalize_terminals=True)
-            terminal_normalised = bool(norm_sets) and len(set(norm_sets.values())) == 1
-
-        # Functional coherence via clan / category hierarchy
+        # Functional coherence via clan / category hierarchy (raw accessions)
         all_accessions: set = set()
-        for s in sets_list:
+        for s in raw_sets_list:
             all_accessions.update(s)
         functionally_coherent = self._check_functional_coherence(all_accessions, source)
 
@@ -614,7 +612,6 @@ class GeneClusterFunctionalConsensus:
             'is_multi_domain': is_multi_domain,
             'architecturally_consistent': architecturally_consistent,
             'functionally_coherent': functionally_coherent,
-            'terminal_normalised': terminal_normalised,
             'classification': classification,
         })
         return base
