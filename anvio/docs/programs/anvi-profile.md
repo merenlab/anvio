@@ -6,6 +6,7 @@ In short, this program runs various analyses on the contigs in your %(contigs-db
 * coverage per nucleotide position (if you're unsure what coverage refers to, check out [this page](http://merenlab.org/vocabulary/#coverage))
 * single-nucleotide, single-codon, and single-amino acid variants (You can find all of those terms on the vocab page linked above, as well as a more detailed explaination [here](http://merenlab.org/2015/07/20/analyzing-variability/#an-intro-to-single-nucleotidecodonamino-acid-variation))
 * structural variants such as insertions or deletions
+* read-edge clipping events from soft and hard CIGAR clips (useful for spotting structural-variant breakpoints, mobile-element insertion sites, and strain junctions in metagenomes)
 
 ## Basic Usage
 
@@ -139,6 +140,54 @@ anvi-profile -c Ross_sea_contigs.db  \
             --report-variability-full
 {{ codestop }}
 
+### Read-edge clipping profiling
+
+In addition to SNVs and indels, %(anvi-profile)s tracks read-edge clipping events. A clip is what a read aligner emits when it cannot align some bases at the start or end of a read against the reference, regardless of whether the underlying data is short reads (Illumina, etc.) or long reads (PacBio HiFi, ONT, etc.). These bases stay in the BAM (as a soft clip, CIGAR `S`) or are noted by length only (as a hard clip, CIGAR `H`, common on supplementary alignments of split-aligned reads). Per-position pile-ups of clips are an important signal: they mark structural-variant breakpoints, mobile-element insertion sites, junctions between divergent strains in a metagenome, and contig boundary artifacts.
+
+Anvi'o stores each clip event in the `clippings` table of the resulting %(single-profile-db)s. Each row carries the breakpoint position, side (`L` or `R`), type (`SOFT` or `HARD`), and one of three `state` values:
+
+* `JUNCTION` — the read continues into a sibling alignment (a supplementary alignment listed in the SAM `SA` tag) right at the clip boundary. The partner alignment is recorded in the `partner_*` columns.
+* `JUNCTION_WITH_GAP` — there is a sibling alignment in the outside direction, but with some unmapped bases between us and it. The partner is recorded and the gap bases are stored in `sequence`.
+* `UNMAPPED` — there is no sibling alignment in the outside direction at all; the clip's outside bases simply don't map anywhere in the reference. `sequence` carries the contiguous unmapped tail bases.
+
+This three-state model means a non-empty `sequence` always points at *novel* nucleotide content — bases that do not appear in the contigs database — making the column directly useful for exploring microdiversity at junctions.
+
+#### Skipping clip profiling
+
+If you do not need this information, you can disable it:
+
+{{ codestart }}
+anvi-profile -c %(contigs-db)s \
+             -i %(bam-file)s \
+             --skip-clip-profiling
+{{ codestop }}
+
+Clip profiling rides on the same read iteration as SNV/indel profiling, so passing `--skip-SNV-profiling` automatically forces `--skip-clip-profiling` as well.
+
+#### Tuning the minimum clip length
+
+By default, anvi'o reports clip events of 5 nucleotides or more. Very short clips (1–4 bp) are usually quality-trim residue or aligner edge noise rather than real breakpoint signal. You can change this threshold (use `0` to record every clip regardless of length):
+
+{{ codestart }}
+anvi-profile -c %(contigs-db)s \
+             -i %(bam-file)s \
+             --min-clip-length 10
+{{ codestop }}
+
+#### Defensive check on the BAM aligner
+
+A silently empty clippings table can mean either "this region has no clip events" or "this aligner cannot emit clip events." These are very different findings, so before profiling clips, anvi'o inspects the `@PG` records in the BAM header to confirm the aligner is one known to emit soft/hard CIGAR clips. If the aligner is recognized as non-clip-emitting (for example, `bowtie2` in default end-to-end mode, or `bwa aln`/`samse`/`sampe`), anvi'o emits a `CLIP PROFILING AUTO-SKIPPED` warning and skips clip profiling for that BAM. The same auto-skip fires when no aligner can be identified from the header at all.
+
+If you know your BAM does contain clipping information — for example, because you used an unrecognized aligner or used clip-aware options explicitly — you can force clip profiling with:
+
+{{ codestart }}
+anvi-profile -c %(contigs-db)s \
+             -i %(bam-file)s \
+             --force-clip-profiling
+{{ codestop }}
+
+If the BAM actually contains no clip CIGAR operations, the `clippings` table will simply be empty.
+
 ## Other Parameters
 
 You should provide the sample name with the flag `-S` and can provide a description of your project using the `--description` tag followed by a text file. These will help anvi'o name output files and will show up in the anvi'o interfaces down the line.
@@ -149,7 +198,7 @@ You can characterize the codon frequencies of genes in your sample at the cost o
 If you have prior experience with `--profile-SCVs` being slow, you will be surprised how fast it is
 since v6.2
 
-Alternatively, you can choose not to store insertion and deletion data or single nucleotide variant data.
+Alternatively, you can choose not to store insertion and deletion data, single nucleotide variant data, or read-edge clipping data (see the dedicated "Read-edge clipping profiling" section above).
 
 If you know the limits of your system, you can also multithread this program. See the program help menu for more information.
 
