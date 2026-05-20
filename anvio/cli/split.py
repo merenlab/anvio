@@ -64,6 +64,18 @@ def get_args():
                         help="A comma-separated list of class names (e.g., 'virus,plasmid') or class integers (e.g., '2,3') "
                              "to include in the output. Only relevant with --split-by-contig-classification. If not provided, "
                              "all classes present in the table will be split into separate databases.")
+    groupF.add_argument('--only-use-classification-source', default=None, metavar='SOURCE',
+                        help="Only use classifications from this source when splitting. This avoids conflicts between "
+                             "different classification sources. You have to use a source name that exists in the "
+                             "contig classification table.")
+    groupF.add_argument('--allow-multiple-classifications', default=False, action='store_true',
+                        help="If contigs have multiple classifications across sources, allow them to appear in all output "
+                             "splits they were assigned to. Another way to handle conflicts between different "
+                             "classification sources.")
+    groupF.add_argument('--mark-conflicting-contigs-as-ambiguous', default=False, action='store_true',
+                        help="When contigs have conflicting classifications across sources, redirect them into a split "
+                             "called 'ambiguous' instead of raising an error. A report file for the redirected contigs "
+                             "and their original classifications will also be written.")
     groupF.add_argument('--collection-txt', default=None, metavar='FILE',
                         help="A two-column, TAB-delimited file with no header associating each contig name (column 1) with "
                              "a bin name (column 2). Each bin becomes a separate output contigs database.")

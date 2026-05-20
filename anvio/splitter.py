@@ -771,6 +771,9 @@ class ContigsOnlySplitter:
         self.output_directory = A('output_dir')
         self.split_by_contig_classification = A('split_by_contig_classification')
         self.classes_to_keep = A('classes_to_keep')
+        self.only_use_classification_source = A('only_use_classification_source')
+        self.allow_multiple_classifications = A('allow_multiple_classifications')
+        self.mark_conflicting_contigs_as_ambiguous = A('mark_conflicting_contigs_as_ambiguous')
         self.collection_txt = A('collection_txt')
 
         self.bins_to_contigs = {}
@@ -786,6 +789,16 @@ class ContigsOnlySplitter:
         if self.classes_to_keep and not self.split_by_contig_classification:
             raise ConfigError("The --classes-to-keep argument is only relevant when --split-by-contig-classification is used.")
 
+        conflict_flags = [self.only_use_classification_source, self.allow_multiple_classifications, self.mark_conflicting_contigs_as_ambiguous]
+        if sum(bool(f) for f in conflict_flags) > 1:
+            raise ConfigError("The flags --only-use-classification-source, --allow-multiple-classifications, and "
+                              "--mark-conflicting-contigs-as-ambiguous are mutually exclusive. Please use only one.")
+
+        if any(conflict_flags) and not self.split_by_contig_classification:
+            raise ConfigError("The conflict resolution flags (--only-use-classification-source, "
+                              "--allow-multiple-classifications, --mark-conflicting-contigs-as-ambiguous) are only "
+                              "relevant when --split-by-contig-classification is used.")
+
         if self.split_by_contig_classification:
             self._init_bins_from_classification()
         else:
@@ -798,6 +811,14 @@ class ContigsOnlySplitter:
         if not entries:
             raise ConfigError("The --split-by-contig-classification flag was used, but the contig classification "
                               "table in your contigs database is empty. Have you run anvi-import-contig-classification?")
+
+        # if a specific source is requested, validate and filter to it
+        if self.only_use_classification_source:
+            available_sources = sorted(set(e['source'] for e in entries))
+            if self.only_use_classification_source not in available_sources:
+                raise ConfigError(f"The source '{self.only_use_classification_source}' does not exist in the contig "
+                                  f"classification table. Available sources are: {', '.join(available_sources)}.")
+            entries = [e for e in entries if e['source'] == self.only_use_classification_source]
 
         sources = sorted(set(e['source'] for e in entries))
 
@@ -813,44 +834,56 @@ class ContigsOnlySplitter:
                                for contig, source_class_map in contig_to_source_class.items()
                                if len(set(source_class_map.values())) > 1}
 
-        if conflicting_contigs:
+        if conflicting_contigs and not self.allow_multiple_classifications and not self.mark_conflicting_contigs_as_ambiguous:
             example_contig = next(iter(conflicting_contigs))
             example_conflict = ', '.join(f"{src}={CLASS_NAMES[cls]}"
                                          for src, cls in conflicting_contigs[example_contig].items())
+            raise ConfigError(f"{len(conflicting_contigs)} contig(s) have conflicting classifications across sources. "
+                              f"Example: '{example_contig}' is classified as {example_conflict}. "
+                              f"To resolve this you can: (1) use --only-use-classification-source to pick a single "
+                              f"source, (2) use --allow-multiple-classifications to let conflicting contigs appear in "
+                              f"all output splits they were assigned to, or (3) use "
+                              f"--mark-conflicting-contigs-as-ambiguous to redirect them into a separate 'ambiguous' "
+                              f"split with a report file.")
 
-            if anvio.DEBUG:
-                conflict_file_path = os.path.join(self.output_directory, 'CONTIG_CLASSIFICATION_CONFLICTS.txt')
-                with open(conflict_file_path, 'w') as f:
-                    f.write('\t'.join(['contig'] + sources) + '\n')
-                    for contig in sorted(conflicting_contigs):
-                        row = [contig] + [CLASS_NAMES.get(conflicting_contigs[contig].get(src), 'N/A') for src in sources]
-                        f.write('\t'.join(row) + '\n')
-                raise ConfigError(f"{len(conflicting_contigs)} contig(s) have conflicting classifications across "
-                                  f"sources. Example: '{example_contig}' is classified as {example_conflict}. "
-                                  f"The full conflict matrix has been written to '{conflict_file_path}'. "
-                                  f"Please resolve conflicts manually and re-import with anvi-import-contig-classification.")
-            else:
-                raise ConfigError(f"{len(conflicting_contigs)} contig(s) have conflicting classifications across "
-                                  f"sources. Example: '{example_contig}' is classified as {example_conflict}. "
-                                  f"Re-run with --debug to export the full conflict table to a file.")
-
-        if len(sources) > 1:
+        if len(sources) > 1 and not conflicting_contigs:
             self.run.warning(f"The classification table contains data from {len(sources)} sources "
                              f"({', '.join(sources)}), but all contigs agree on their class across sources. "
                              f"Proceeding by merging all sources.")
 
-        contig_to_class = {contig: next(iter(source_class_map.values()))
-                           for contig, source_class_map in contig_to_source_class.items()}
+        # HANDLE --allow-multiple-classifications: each contig goes into every class it was assigned to
+        if self.allow_multiple_classifications:
+            for contig, source_class_map in contig_to_source_class.items():
+                for cls in set(source_class_map.values()):
+                    class_name = CLASS_NAMES[cls]
+                    if class_name not in self.bins_to_contigs:
+                        self.bins_to_contigs[class_name] = set()
+                    self.bins_to_contigs[class_name].add(contig)
 
+        else:
+            # HANDLE --mark-conflicting-contigs-as-ambiguous: write report, redirect conflicts to 'ambiguous'
+            if self.mark_conflicting_contigs_as_ambiguous and conflicting_contigs:
+                report_path = os.path.join(self.output_directory, 'AMBIGUOUS_CONTIGS_REPORT.txt')
+                with open(report_path, 'w') as f:
+                    f.write('\t'.join(['contig'] + sources) + '\n')
+                    for contig in sorted(conflicting_contigs):
+                        row = [contig] + [CLASS_NAMES.get(conflicting_contigs[contig].get(src), 'N/A') for src in sources]
+                        f.write('\t'.join(row) + '\n')
+                self.run.warning(f"{len(conflicting_contigs)} contig(s) with conflicting classifications have been "
+                                 f"redirected to the 'ambiguous' split. A report has been written to '{report_path}'.")
+
+            for contig, source_class_map in contig_to_source_class.items():
+                class_name = 'ambiguous' if contig in conflicting_contigs else CLASS_NAMES[next(iter(source_class_map.values()))]
+                if class_name not in self.bins_to_contigs:
+                    self.bins_to_contigs[class_name] = set()
+                self.bins_to_contigs[class_name].add(contig)
+
+        # apply --classes-to-keep filter (never filters out 'ambiguous' since it is not a CLASS_NAMES entry)
         if self.classes_to_keep:
-            valid_class_ids = self._parse_classes_to_keep(set(contig_to_class.values()))
-            contig_to_class = {c: cls for c, cls in contig_to_class.items() if cls in valid_class_ids}
-
-        for contig, cls in contig_to_class.items():
-            class_name = CLASS_NAMES[cls]
-            if class_name not in self.bins_to_contigs:
-                self.bins_to_contigs[class_name] = set()
-            self.bins_to_contigs[class_name].add(contig)
+            non_ambiguous_classes = set(e['class'] for e in entries if e['contig'] not in conflicting_contigs)
+            valid_class_ids = self._parse_classes_to_keep(non_ambiguous_classes)
+            valid_class_names = set(CLASS_NAMES[c] for c in valid_class_ids)
+            self.bins_to_contigs = {k: v for k, v in self.bins_to_contigs.items() if k in valid_class_names or k == 'ambiguous'}
 
 
     def _parse_classes_to_keep(self, available_class_ids):
