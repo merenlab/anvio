@@ -150,6 +150,55 @@ def classify_globaa_hit(max_score, hit_score, lasr_cutoff, selfmin, selfmax):
     return 'too_long' if hit_score >= halfway_line_value else 'below_cutoff'
 
 
+def validate_synteny_yaml_entry(gaa_id, entry):
+    """Validate a single GlobAA gene family synteny YAML entry.
+
+    Parameters
+    ==========
+    gaa_id : str
+        The GAA identifier (e.g., 'GAA00000001').
+    entry : dict
+        The parsed YAML content for this gene family's synteny (the value under the gaa_id key).
+
+    Raises
+    ======
+    ConfigError
+        If the structure is invalid, position keys are not non-zero integers, or probabilities
+        are not floats strictly between 0 and 1.
+    """
+
+    if not isinstance(entry, dict):
+        raise ConfigError(f"The synteny YAML entry for '{gaa_id}' must be a dict at the top level.")
+
+    for position, neighbors in entry.items():
+        if not isinstance(position, int) or position == 0:
+            raise ConfigError(f"The synteny YAML entry for '{gaa_id}' has an invalid position key "
+                              f"'{position}'. Position keys must be non-zero integers (negative = "
+                              f"upstream, positive = downstream).")
+
+        if not isinstance(neighbors, list) or not neighbors:
+            raise ConfigError(f"The synteny YAML entry for '{gaa_id}' at position '{position}' "
+                              f"must be a non-empty list of gene family probability entries.")
+
+        for item in neighbors:
+            if not isinstance(item, dict) or len(item) != 1:
+                raise ConfigError(f"The synteny YAML entry for '{gaa_id}' at position '{position}' "
+                                  f"contains an invalid entry. Each entry must be a single-key dict "
+                                  f"mapping a GAA identifier to a probability float.")
+
+            neighbor_id, probability = next(iter(item.items()))
+
+            if not isinstance(neighbor_id, str) or not neighbor_id.startswith('GAA'):
+                raise ConfigError(f"The synteny YAML entry for '{gaa_id}' at position '{position}' "
+                                  f"contains an invalid neighbor identifier '{neighbor_id}'. "
+                                  f"Identifiers must be strings starting with 'GAA'.")
+
+            if not isinstance(probability, (int, float)) or not (0 < probability <= 1):
+                raise ConfigError(f"The synteny YAML entry for '{gaa_id}' at position '{position}' "
+                                  f"has an invalid probability '{probability}' for '{neighbor_id}'. "
+                                  f"Probabilities must be floats strictly greater than 0 and at most 1.")
+
+
 def validate_yaml_entry(gaa_id, entry):
     """Validate a single GlobAA gene family YAML entry for required fields and sane values.
 
@@ -315,8 +364,13 @@ class GlobAASetup:
 
 
     def get_yaml_path(self):
-        """Return the path to the master YAML file."""
-        return os.path.join(self.globdb_base_dir, 'GlobAA.yaml')
+        """Return the path to the master gene-family data YAML file."""
+        return os.path.join(self.globdb_base_dir, 'GlobAA-gene-family-data.yaml')
+
+
+    def get_synteny_yaml_path(self):
+        """Return the path to the master synteny data YAML file."""
+        return os.path.join(self.globdb_base_dir, 'GlobAA-synteny-data.yaml')
 
 
     def is_database_exists(self):
@@ -332,6 +386,9 @@ class GlobAASetup:
             return False
 
         if not os.path.exists(self.get_yaml_path()):
+            return False
+
+        if not os.path.exists(self.get_synteny_yaml_path()):
             return False
 
         if not os.path.exists(self.get_db_path() + '.dmnd'):
@@ -379,12 +436,19 @@ class GlobAASetup:
         fasta_path = os.path.join(self.globdb_base_dir, 'GlobAA.faa')
         self.concatenate_fastas(raw_data_dir, fasta_path)
 
-        # merge all per-family YAMLs into a single master YAML
+        # merge all per-family info.yaml files into a single master gene-family data YAML
         yaml_path = self.get_yaml_path()
         self.concatenate_yamls(raw_data_dir, yaml_path)
 
-        # validate the master YAML we just wrote (sanity check on our own output)
+        # validate the master gene-family data YAML we just wrote
         self.validate_master_yaml(yaml_path)
+
+        # merge all per-family synteny.yaml files (where present) into a master synteny YAML
+        synteny_yaml_path = self.get_synteny_yaml_path()
+        self.concatenate_synteny_yamls(raw_data_dir, synteny_yaml_path)
+
+        # validate the master synteny YAML we just wrote
+        self.validate_master_synteny_yaml(synteny_yaml_path)
 
         # build the DIAMOND search database
         self.build_diamond_db(fasta_path)
@@ -459,7 +523,8 @@ class GlobAASetup:
 
 
     def validate_all_yamls(self, data_dir):
-        """Validate every per-family info.yaml in the extracted data package."""
+        """Validate every per-family info.yaml and optional synteny.yaml in the data package."""
+
         gaa_dirs = sorted([d for d in glob.glob(os.path.join(data_dir, 'GAA*')) if os.path.isdir(d)])
 
         if not gaa_dirs:
@@ -469,35 +534,37 @@ class GlobAASetup:
         self.progress.new('Validating GlobAA YAML files', progress_total_items=len(gaa_dirs))
 
         seen_ids = set()
+        num_with_synteny = 0
 
         for gaa_dir in gaa_dirs:
             gaa_id = os.path.basename(gaa_dir)
-            yaml_path = os.path.join(gaa_dir, 'info.yaml')
+            info_yaml_path = os.path.join(gaa_dir, 'info.yaml')
+            synteny_yaml_path = os.path.join(gaa_dir, 'synteny.yaml')
 
             self.progress.increment()
             self.progress.update(f"Validating {gaa_id} ...")
 
-            if not os.path.exists(yaml_path):
+            if not os.path.exists(info_yaml_path):
                 self.progress.end()
                 raise ConfigError(f"No 'info.yaml' file was found in '{gaa_dir}'. The data package "
                                   f"appears to be missing metadata for gene family '{gaa_id}'.")
 
             try:
-                with open(yaml_path) as f:
+                with open(info_yaml_path) as f:
                     entry = yaml.safe_load(f)
             except yaml.YAMLError as e:
                 self.progress.end()
-                raise ConfigError(f"The YAML file for gene family '{gaa_id}' could not be parsed. "
+                raise ConfigError(f"The info YAML file for gene family '{gaa_id}' could not be parsed. "
                                   f"Here is what Python said: {e}.")
 
             if not isinstance(entry, dict):
                 self.progress.end()
-                raise ConfigError(f"The YAML file in '{gaa_dir}' does not contain a dict at the "
+                raise ConfigError(f"The info YAML file in '{gaa_dir}' does not contain a dict at the "
                                   f"top level. Something is off with its structure.")
 
             if gaa_id not in entry:
                 self.progress.end()
-                raise ConfigError(f"The YAML file in '{gaa_dir}' does not contain the expected "
+                raise ConfigError(f"The info YAML file in '{gaa_dir}' does not contain the expected "
                                   f"top-level key '{gaa_id}'. Found: {', '.join(entry.keys())}.")
 
             if gaa_id in seen_ids:
@@ -508,8 +575,32 @@ class GlobAASetup:
             seen_ids.add(gaa_id)
             validate_yaml_entry(gaa_id, entry[gaa_id])
 
+            if os.path.exists(synteny_yaml_path):
+                try:
+                    with open(synteny_yaml_path) as f:
+                        synteny_entry = yaml.safe_load(f)
+                except yaml.YAMLError as e:
+                    self.progress.end()
+                    raise ConfigError(f"The synteny YAML file for gene family '{gaa_id}' could not be "
+                                      f"parsed. Here is what Python said: {e}.")
+
+                if not isinstance(synteny_entry, dict):
+                    self.progress.end()
+                    raise ConfigError(f"The synteny YAML file in '{gaa_dir}' does not contain a dict "
+                                      f"at the top level. Something is off with its structure.")
+
+                if gaa_id not in synteny_entry:
+                    self.progress.end()
+                    raise ConfigError(f"The synteny YAML file in '{gaa_dir}' does not contain the "
+                                      f"expected top-level key '{gaa_id}'. Found: "
+                                      f"{', '.join(str(k) for k in synteny_entry.keys())}.")
+
+                validate_synteny_yaml_entry(gaa_id, synteny_entry[gaa_id])
+                num_with_synteny += 1
+
         self.progress.end()
-        self.run.info('Gene families with valid YAML files', len(gaa_dirs), mc='green')
+        self.run.info('Gene families with valid info YAML files', len(gaa_dirs), mc='green')
+        self.run.info('Gene families with synteny data', num_with_synteny, mc='green')
 
 
     def validate_master_yaml(self, yaml_path):
@@ -535,6 +626,71 @@ class GlobAASetup:
 
         self.progress.end()
         self.run.info('Gene families in master YAML', len(master))
+
+
+    def concatenate_synteny_yamls(self, data_dir, output_path):
+        """Merge all per-family synteny.yaml files into a single master synteny YAML dict.
+
+        Gene families without a synteny.yaml are silently skipped.
+        """
+
+        gaa_dirs = sorted([d for d in glob.glob(os.path.join(data_dir, 'GAA*'))
+                           if os.path.isdir(d)])
+
+        self.progress.new('Merging synteny YAML files')
+        self.progress.update('...')
+
+        master = {}
+        for gaa_dir in gaa_dirs:
+            gaa_id = os.path.basename(gaa_dir)
+            synteny_path = os.path.join(gaa_dir, 'synteny.yaml')
+
+            if not os.path.exists(synteny_path):
+                continue
+
+            with open(synteny_path) as f:
+                entry = yaml.safe_load(f)
+
+            master[gaa_id] = entry[gaa_id]
+
+        with open(output_path, 'w') as f:
+            yaml.dump(master, f, default_flow_style=False, allow_unicode=True)
+
+        self.progress.end()
+        self.run.info('Master synteny YAML written to', output_path)
+        self.run.info('Gene families with synteny data in master YAML', len(master))
+
+
+    def validate_master_synteny_yaml(self, yaml_path):
+        """Validate the merged master synteny YAML file produced during setup."""
+
+        self.progress.new('Validating master synteny YAML')
+        self.progress.update('...')
+
+        try:
+            with open(yaml_path) as f:
+                master = yaml.safe_load(f)
+        except yaml.YAMLError as e:
+            self.progress.end()
+            raise ConfigError(f"The master GlobAA synteny YAML at '{yaml_path}' could not be parsed. "
+                              f"This is unexpected and may indicate a bug. Here is the error: {e}.")
+
+        if master is None:
+            # an empty synteny file is valid — no gene family had synteny data
+            self.progress.end()
+            self.run.info('Gene families in master synteny YAML', 0)
+            return
+
+        if not isinstance(master, dict):
+            self.progress.end()
+            raise ConfigError(f"The master GlobAA synteny YAML at '{yaml_path}' is malformed — "
+                              f"expected a dict at the top level.")
+
+        for gaa_id, entry in master.items():
+            validate_synteny_yaml_entry(gaa_id, entry)
+
+        self.progress.end()
+        self.run.info('Gene families in master synteny YAML', len(master))
 
 
     def concatenate_fastas(self, data_dir, output_path):
@@ -628,6 +784,7 @@ class GlobAAData:
         self.setup = GlobAASetup(args, globdb_data_dir=globdb_data_dir, run=self.run, progress=self.progress)
 
         self.gene_families = None
+        self.synteny = None
         self.initialized = False
 
         if not self.setup.is_database_exists():
@@ -642,10 +799,10 @@ class GlobAAData:
 
 
     def init(self):
-        """Load the master YAML file and validate all entries."""
+        """Load the master gene-family and synteny YAML files and validate all entries."""
 
         self.progress.new('Initializing GlobAA data')
-        self.progress.update('Reading master YAML file ...')
+        self.progress.update('Reading master gene-family data YAML file ...')
 
         yaml_path = self.setup.get_yaml_path()
 
@@ -654,18 +811,40 @@ class GlobAAData:
                 self.gene_families = yaml.safe_load(f)
         except yaml.YAMLError as e:
             self.progress.end()
-            raise ConfigError(f"The GlobAA master YAML at '{yaml_path}' could not be parsed. "
-                              f"You may need to re-run `anvi-setup-globdb-functions --reset`. "
+            raise ConfigError(f"The GlobAA master gene-family data YAML at '{yaml_path}' could not "
+                              f"be parsed. You may need to re-run `anvi-setup-globdb-functions --reset`. "
                               f"Here is what Python said: {e}.")
 
         if not isinstance(self.gene_families, dict) or not self.gene_families:
             self.progress.end()
-            raise ConfigError(f"The GlobAA master YAML at '{yaml_path}' is empty or malformed. "
-                              f"Please re-run `anvi-setup-globdb-functions --reset`.")
+            raise ConfigError(f"The GlobAA master gene-family data YAML at '{yaml_path}' is empty or "
+                              f"malformed. Please re-run `anvi-setup-globdb-functions --reset`.")
 
-        self.progress.update('Validating entries ...')
+        self.progress.update('Validating gene-family entries ...')
         for gaa_id, entry in self.gene_families.items():
             validate_yaml_entry(gaa_id, entry)
+
+        self.progress.update('Reading master synteny data YAML file ...')
+
+        synteny_yaml_path = self.setup.get_synteny_yaml_path()
+
+        try:
+            with open(synteny_yaml_path) as f:
+                self.synteny = yaml.safe_load(f) or {}
+        except yaml.YAMLError as e:
+            self.progress.end()
+            raise ConfigError(f"The GlobAA master synteny data YAML at '{synteny_yaml_path}' could not "
+                              f"be parsed. You may need to re-run `anvi-setup-globdb-functions --reset`. "
+                              f"Here is what Python said: {e}.")
+
+        if not isinstance(self.synteny, dict):
+            self.progress.end()
+            raise ConfigError(f"The GlobAA master synteny data YAML at '{synteny_yaml_path}' is "
+                              f"malformed. Please re-run `anvi-setup-globdb-functions --reset`.")
+
+        self.progress.update('Validating synteny entries ...')
+        for gaa_id, entry in self.synteny.items():
+            validate_synteny_yaml_entry(gaa_id, entry)
 
         self.progress.end()
         self.initialized = True
