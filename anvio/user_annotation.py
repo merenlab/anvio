@@ -1356,6 +1356,21 @@ class UserAnnotationRunner:
                 [internal_source_name]
             )
 
+        # Normalize accessions: strip .hmm/.hmm.gz file extensions that may have come
+        # through from the HMM model's ACC field via HMMER tblout output.
+        cursor = contigs_database._exec(
+            f"SELECT DISTINCT accession FROM {t.gene_function_calls_table_name} WHERE source = ?",
+            [internal_source_name]
+        )
+        for (raw_acc,) in cursor.fetchall():
+            normalized = _normalize_hmm_acc(raw_acc)
+            if normalized != raw_acc:
+                contigs_database._exec(
+                    f"UPDATE {t.gene_function_calls_table_name} "
+                    f"SET accession = ? WHERE source = ? AND accession = ?",
+                    [normalized, internal_source_name, raw_acc]
+                )
+
         contigs_database.disconnect()
 
         self.run.info('Results stored in', f"gene_functions table (source: '{internal_source_name}')")
