@@ -2166,7 +2166,7 @@ function Chart(options){
     this.maxGCContent = gc_min_max['Min'];
     this.minGCContent = gc_min_max['Max'];
 
-    let yScaleMax = state['fixed-y-scale'] ? 1 : Math.max(this.maxVariability, this.maxCountOverCoverage);
+    let yScaleMax = state['fixed-y-scale'] ? 1 : Math.max(this.maxVariability, this.maxCountOverCoverage, this.maxClippingCountOverCoverage || 0);
 
     this.yScale = d3.scale.linear()
                             .range([this.height,0])
@@ -2241,10 +2241,6 @@ function Chart(options){
                               .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
 
     this.clipBarContainer = this.snv_svg.append("g")
-                              .attr('class',this.name.toLowerCase())
-                              .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
-
-    this.textContainerClippings = this.snv_svg.append("g")
                               .attr('class',this.name.toLowerCase())
                               .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
 
@@ -2489,7 +2485,9 @@ function Chart(options){
         };
       });
 
-      // Vertical bars at each position.
+      // Visible bar at each position (decorative). pointer-events disabled so clicks
+      // pass through to the hitbox <rect> below.
+      info("Drawing clip markers");
       this.clipBarContainer.selectAll(".clip_bar_stem")
                           .data(clipBarData)
                           .enter()
@@ -2500,25 +2498,33 @@ function Chart(options){
                           .attr("y1", function (d) { return ySL_indel(0); })
                           .attr("y2", function (d) { return ySL_indel(d.ratio); })
                           .attr("stroke", "#e67e22")
-                          .attr("stroke-width", "1.5")
+                          .attr("stroke-width", "4")
                           .attr("stroke-opacity", "0.85")
+                          .attr("stroke-linecap", "round")
                           .attr("pointer-events", "none");
 
-      // Text markers (clickable) with popovers showing the per-row breakdown.
-      info("Drawing clip markers");
-      this.textContainerClippings.selectAll("text")
-                                .data(clipBarData)
-                                .enter()
-                                .append("text")
-                                .attr("class", "clippings_text")
-                                .attr("x", function (d) { return xS(0.5 + d.pos); })
-                                .attr("y", function (d) { return ySL_indel(0); })
-                                .attr("font-size", "14px")
-                                .attr("style", "cursor:pointer;")
-                                .attr("fill", "#d35400")
-                                .attr('data-content', function(d) { return get_clip_popover_html(d.rows); })
-                                .attr('data-toggle', 'popover')
-                                .text("|");
+      // Invisible <rect> hitbox over each bar. Wider than the visible bar (12 px) so
+      // the click target is comfortable regardless of bar height; a few px taller than
+      // the bar on each side so very short bars are still hittable. The rect uses
+      // pointer-events="all" as an inline attribute (in addition to the CSS allow-list
+      // at charts.css line 74) — both are needed because the #SNV-boxes container has
+      // pointer-events: none and SVG element CSS class matching can be inconsistent.
+      // Math.min / Math.abs handle either orientation of the indel y-scale (the scale
+      // flips when snv_scale_bottom is true; SVG <rect> rejects negative height).
+      this.clipBarContainer.selectAll(".clip_bar_hitbox")
+                          .data(clipBarData)
+                          .enter()
+                          .append("rect")
+                          .attr("class", "clip_bar_hitbox")
+                          .attr("x", function (d) { return xS(0.5 + d.pos) - 6; })
+                          .attr("y", function (d) { return Math.min(ySL_indel(0), ySL_indel(d.ratio)) - 4; })
+                          .attr("width", 12)
+                          .attr("height", function (d) { return Math.abs(ySL_indel(0) - ySL_indel(d.ratio)) + 8; })
+                          .attr("fill", "transparent")
+                          .attr("pointer-events", "all")
+                          .attr("style", "cursor:pointer;")
+                          .attr('data-content', function(d) { return get_clip_popover_html(d.rows); })
+                          .attr('data-toggle', 'popover');
     }
 
 
@@ -2584,16 +2590,18 @@ Chart.prototype.showOnly = function(b){
     this.textContainer.selectAll(".SNV_text").data(d3.entries(this.competing_nucleotides)).attr("font-size", mk_font_size+"px");
     this.textContainerIndels.selectAll(".indels_text").data(d3.entries(this.indels)).attr("font-size", 2*mk_font_size+"px");
 
-    // Re-position clip bars + markers on zoom. They keyed by (pos, totalCount, coverage)
-    // in clipBarData; we just need to refresh x and y2 against the new xS / ySL_indel.
+    // Re-position clip bars + hitboxes on zoom. They're keyed by (pos, totalCount,
+    // coverage) in clipBarData; we just need to refresh x and y against the new xS /
+    // ySL_indel.
     this.clipBarContainer.selectAll(".clip_bar_stem")
                          .attr("x1", function (d) { return xS(0.5 + d.pos); })
                          .attr("x2", function (d) { return xS(0.5 + d.pos); })
                          .attr("y1", function (d) { return ySL_indel(0); })
                          .attr("y2", function (d) { return ySL_indel(d.ratio); });
-    this.textContainerClippings.selectAll(".clippings_text")
-                               .attr("x", function (d) { return xS(0.5 + d.pos); })
-                               .attr("font-size", 2*mk_font_size+"px");
+    this.clipBarContainer.selectAll(".clip_bar_hitbox")
+                         .attr("x", function (d) { return xS(0.5 + d.pos) - 6; })
+                         .attr("y", function (d) { return Math.min(ySL_indel(0), ySL_indel(d.ratio)) - 4; })
+                         .attr("height", function (d) { return Math.abs(ySL_indel(0) - ySL_indel(d.ratio)) + 8; });
 
     this.chartContainer.select(".x.axis.top").call(this.xAxisTop);
 }
