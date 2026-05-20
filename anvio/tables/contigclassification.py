@@ -210,4 +210,7 @@ class TablesForContigClassification:
 
         database.disconnect()
 
-        return list(rows.values()) if rows else []
+        for key, subdict in rows.items():
+            subdict["contig"] = key
+
+        return list(rows.values() ) if rows else []
