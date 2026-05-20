@@ -23,7 +23,7 @@ def main():
         ProgramSearch(args).process()
     except ConfigError as e:
         print(e)
-        sys.exit()
+        sys.exit(1)
 
 
 def get_args():

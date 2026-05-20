@@ -87,7 +87,7 @@ if '--tmp-dir' in sys.argv:
         os.environ['TMPDIR'] = TMP_DIR
     except Exception as e:
         print("OSError: ", e)
-        sys.exit()
+        sys.exit(1)
 
 def P(d, dont_exit=False):
     """Poor man's debug output printer during debugging."""

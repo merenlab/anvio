@@ -181,7 +181,7 @@ class VariabilityFilter:
             header = "Filtering failed. Here is the log:"
             self.report_filter_info_log(header)
             print(e)
-            sys.exit()
+            sys.exit(1)
 
         else:
             if verbose:
