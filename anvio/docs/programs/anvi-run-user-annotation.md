@@ -45,7 +45,7 @@ without the flag — only the ones that need overwriting require it.
 |--------|---------|
 | `source` | `{db_name}_DIAMOND` |
 | `accession` | Auto-normalized ID (gene name, accession without version suffix, etc.) |
-| `function` | `[DMND] {description} [pident: {pct:.1f}%, aln_len: {len} aa, bitscore: {score:.1f}, qcov: {qcov:.1f}%]` |
+| `function` | `[DMND] {description} [pident: {pct:.1f}%%, aln_len: {len} aa, bitscore: {score:.1f}, qcov: {qcov:.1f}%%]` |
 | `e_value` | BLASTP E-value |
 
 The `description` in the DIAMOND `function` field is taken from the FASTA header line built at
@@ -173,7 +173,7 @@ anvi-run-user-annotation --contigs-db CONTIGS.db \
 |------|---------|-------------|
 | `--evalue` | `1e-15` (anvio standard) | E-value cutoff for blastp. |
 | `--min-pident` | none | Minimum percent identity (0–100). Hits below this threshold are discarded. |
-| `--qcov` | none | Minimum query coverage (0–100 %). Hits where the aligned region covers less than this fraction of the query sequence are discarded. |
+| `--qcov` | none | Minimum query coverage (0–100%%). Hits where the aligned region covers less than this fraction of the query sequence are discarded. |
 | `--max-hsps` | DIAMOND default | Maximum number of HSPs per target per query. |
 | `--diamond-sensitivity` | DIAMOND default | Sensitivity mode: `fast`, `mid-sensitive`, `sensitive`, `very-sensitive`, `ultra-sensitive`. |
 

@@ -13,7 +13,7 @@ from anvio import constants
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__authors__ = ['lgallucc']
+__authors__ = ['l-gallucci', 'iwilkie']
 __provides__ = ['user-annotation-db']
 __description__ = ("Set up user-provided HMM profiles or protein FASTA files as custom functional "
                    "annotation databases for use with `anvi-run-user-annotation`")

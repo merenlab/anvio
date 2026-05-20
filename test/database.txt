@@ -1,3 +1,0 @@
-HydDB	/Users/lgallucc/Desktop/LocalBioinf/github/HydDB_all_MM2022.hmm
-HydDBDMND	/Users/lgallucc/Desktop/LocalBioinf/github/HydDB_all_hydrogenases.faa
-HydDBTEST	/Users/lgallucc/Desktop/LocalBioinf/github/HydDB_all_MM2022.fasta
