@@ -1,6 +1,10 @@
 # system / OS-specific helper files
 .DS_Store
 
+# IDE and editor files
+.idea/
+.vscode/
+
 # Python artifacts and compiled files
 *.pyc
 *.so
