@@ -146,11 +146,11 @@ In addition to SNVs and indels, %(anvi-profile)s tracks read-edge clipping event
 
 Anvi'o stores each clip event in the `clippings` table of the resulting %(single-profile-db)s. Each row carries the breakpoint position, side (`L` or `R`), type (`SOFT` or `HARD`), and one of three `state` values:
 
-* `JUNCTION` — the read continues into a sibling alignment (a supplementary alignment listed in the SAM `SA` tag) right at the clip boundary. The partner alignment is recorded in the `partner_*` columns.
+* `JUNCTION` — the read continues immediately into a sibling alignment (a supplementary alignment listed in the SAM `SA` tag), with no unmapped bases between this clip and the sibling. The partner alignment is recorded in the `partner_*` columns and `sequence` is empty (the bases live in the partner alignment, already in the contigs database).
 * `JUNCTION_WITH_GAP` — there is a sibling alignment in the outside direction, but with some unmapped bases between us and it. The partner is recorded and the gap bases are stored in `sequence`.
-* `UNMAPPED` — there is no sibling alignment in the outside direction at all; the clip's outside bases simply don't map anywhere in the reference. `sequence` carries the contiguous unmapped tail bases.
+* `UNMAPPED` — there is no sibling alignment in the outside direction at all; the clip's outside bases simply don't map anywhere in the reference. `sequence` carries the contiguous unmapped tail bases and `partner_*` is empty.
 
-This three-state model means a non-empty `sequence` always points at *novel* nucleotide content — bases that do not appear in the contigs database — making the column directly useful for exploring microdiversity at junctions.
+This three-state model means a non-empty `sequence` always carries bases the aligner did not place against the reference — making the column a direct entry point for exploring microdiversity at junctions.
 
 #### Skipping clip profiling
 
