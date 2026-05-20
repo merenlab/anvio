@@ -149,8 +149,10 @@ function get_clip_popover_html(clipsAtPos) {
   // Per-row table: side, type, state, len, count, partner, sequence
   var rowsHtml = '';
   clipsAtPos.forEach(function(c) {
+    // partner shows the partner-contig coordinate ADJACENT to the junction (the partner
+    // edge meeting our clip) — not the partner alignment's leftmost-position.
     var partner = (c['partner_contig'] && c['partner_contig'].length)
-                  ? (escape_html(c['partner_contig']) + ':' + c['partner_pos'] + ' (' + c['partner_strand'] + ')')
+                  ? (escape_html(c['partner_contig']) + ':' + c['partner_junction_pos'] + ' (' + c['partner_strand'] + ')')
                   : '<i style="color:#999;">none</i>';
     rowsHtml += '<tr>' +
                 '<td>' + c['side'] + '</td>' +
