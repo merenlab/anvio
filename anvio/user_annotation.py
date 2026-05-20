@@ -1229,7 +1229,8 @@ class UserAnnotationRunner:
             diamond = Diamond(query_fasta=aa_sequences_path,
                               run=self.run,
                               progress=self.progress,
-                              num_threads=self.num_threads)
+                              num_threads=self.num_threads,
+                              outfmt='6 qseqid sseqid pident length mismatch gapopen qstart qend sstart send evalue bitscore qlen')
             diamond.target_fasta = dmnd_base
             diamond.tabular_output_path = tabular_output_path
             diamond.max_target_seqs = 1
@@ -1319,6 +1320,7 @@ class UserAnnotationRunner:
                 aln_len  = int(fields[3])
                 evalue   = float(fields[10])
                 bitscore = float(fields[11])
+                qlen     = int(fields[12]) if len(fields) > 12 and fields[12] else None
 
                 if qseqid in best_hits and evalue >= best_hits[qseqid]['evalue']:
                     continue
@@ -1329,6 +1331,7 @@ class UserAnnotationRunner:
                     'aln_len':  aln_len,
                     'evalue':   evalue,
                     'bitscore': bitscore,
+                    'qlen':     qlen,
                 }
 
         functions_dict = {}
@@ -1351,10 +1354,13 @@ class UserAnnotationRunner:
             description = meta.get('description', '')
 
             label = description if description else clean_id
+            qlen = hit.get('qlen')
+            qcov_str = f", qcov: {aln_len / qlen * 100:.1f}%" if qlen else ""
             function_str = (f"[DMND] {label} "
                             f"[pident: {pident:.1f}%, "
                             f"aln_len: {aln_len} aa, "
-                            f"bitscore: {bitscore:.1f}]")
+                            f"bitscore: {bitscore:.1f}"
+                            f"{qcov_str}]")
 
             functions_dict[entry_id] = {
                 'gene_callers_id': gene_callers_id,

@@ -45,13 +45,15 @@ without the flag — only the ones that need overwriting require it.
 |--------|---------|
 | `source` | `{db_name}_DIAMOND` |
 | `accession` | Auto-normalized ID (gene name, accession without version suffix, etc.) |
-| `function` | `[DMND] {description} [pident: {pct:.1f}%, aln_len: {len} aa, bitscore: {score:.1f}]` |
+| `function` | `[DMND] {description} [pident: {pct:.1f}%, aln_len: {len} aa, bitscore: {score:.1f}, qcov: {qcov:.1f}%]` |
 | `e_value` | BLASTP E-value |
 
 The `description` in the DIAMOND `function` field is taken from the FASTA header line built at
 setup time (everything after the first space). If no description was present in the header the
 normalized ID is used instead. The `[HMM]` / `[DMND]` method tags make the search method
-immediately visible in any tabular export.
+immediately visible in any tabular export. Query coverage (`qcov`) is always computed and shown
+in the brackets when DIAMOND reports query length; `--qcov` is a **filter** threshold that
+discards hits below the given percentage but does not affect whether qcov appears in the output.
 
 ## HMM cutoff groups
 
