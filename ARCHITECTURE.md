@@ -800,7 +800,7 @@ Stale docs that no longer match the code are actively harmful because they are w
 These may change over time:
 
 - `numpy==1.24.1` — pinned; many array operations throughout
-- `pandas==1.4.4` — pinned; used for tabular data
+- `pandas==1.5.2` — pinned; used for tabular data
 - `scikit-learn==1.2.2` — pinned; clustering, ordination
 - `matplotlib==3.5.1` — pinned; static figure generation
 - `bottle` — lightweight web framework for the interactive interface
