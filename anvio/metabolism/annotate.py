@@ -90,6 +90,7 @@ class AnnotationWorker(multiprocessing.Process):
         self.ko_to_module_names = bundle['ko_to_module_names']
         self.ko_to_module_classes = bundle['ko_to_module_classes']
         self.ko_to_brite = bundle['ko_to_brite']
+        self.total_seqs = bundle['total_seqs']
 
 
     def _get_kofam_annotation(self, knum):
@@ -431,8 +432,10 @@ class AnnotationWorker(multiprocessing.Process):
             target_files_dict = {'AA:GENE': self.partition_fasta}
 
             worker_run.log(f"Worker {self.partition_index}: running KOfam HMMs")
+            z_param = {'AA:GENE': self.total_seqs}
             hmmer = HMMer(target_files_dict, num_threads_to_use=1, program_to_use=self.hmm_program,
-                          run=silent_run, progress=silent_progress)
+                          run=silent_run, progress=silent_progress,
+                          total_number_of_sequences_per_target=z_param)
             hmm_hits_file = hmmer.run_hmmer('KOfam', 'AA', 'GENE', None, None,
                                             len(self.ko_dict), self.kofam_hmm_path, None, noise_cutoff_terms)
             worker_run.log(f"Worker {self.partition_index}: KOfam HMM search complete")
@@ -441,7 +444,8 @@ class AnnotationWorker(multiprocessing.Process):
             if self.include_stray_kos and self.stray_ko_hmm_path and self.stray_ko_dict:
                 worker_run.log(f"Worker {self.partition_index}: running nt-KO HMMs")
                 ohmmer = HMMer(target_files_dict, num_threads_to_use=1, program_to_use=self.hmm_program,
-                               run=silent_run, progress=silent_progress)
+                               run=silent_run, progress=silent_progress,
+                               total_number_of_sequences_per_target=z_param)
                 stray_hits_file = ohmmer.run_hmmer('Stray KOs', 'AA', 'GENE', None, None,
                                                    len(self.stray_ko_dict), self.stray_ko_hmm_path, None, noise_cutoff_terms)
                 worker_run.log(f"Worker {self.partition_index}: nt-KO HMM search complete")
@@ -769,6 +773,7 @@ class RunKOfams(KeggContext):
             'ko_to_module_names': ko_to_module_names,
             'ko_to_module_classes': ko_to_module_classes,
             'ko_to_brite': ko_to_brite,
+            'total_seqs': total_seqs,
         }
         bundle_bytes = pickle.dumps(shared_bundle)
         shared_data_shm = SharedMemory(create=True, size=max(len(bundle_bytes), 1))
