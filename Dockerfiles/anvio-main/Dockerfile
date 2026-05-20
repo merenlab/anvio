@@ -21,7 +21,7 @@ RUN conda config --env --add channels conda-forge
 
 # Create a conda environment for anvi'o, activate it, and make sure it will
 # always be activated
-RUN conda create -n anvioenv python=3.10
+RUN conda create -n anvioenv python=3.11
 RUN conda init bash
 RUN conda activate anvioenv
 RUN echo "conda activate anvioenv" >> ~/.bashrc
