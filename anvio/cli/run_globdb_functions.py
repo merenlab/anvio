@@ -4,7 +4,7 @@ import sys
 
 import anvio
 
-from anvio.globaa import GlobAA
+from anvio.globdb import GlobDBFunctions
 from anvio.terminal import time_program
 from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
@@ -16,9 +16,9 @@ __version__ = anvio.__version__
 __authors__ = ['meren', 'dspeth']
 __requires__ = ['globdb-data', 'contigs-db']
 __provides__ = ['functions']
-__description__ = ("Run GlobAA to annotate genes with gene family functions derived from "
-                   "GlobDB with gene family-level cutoffs determined by empirical Local "
-                   "Alignment Score Ratio (LASR) thresholds.")
+__description__ = ("Annotate genes with gene family functions derived from GlobDB with "
+                   "gene family-level cutoffs determined by empirical Local Alignment "
+                   "Score Ratio (LASR) thresholds.")
 
 
 @time_program
@@ -26,9 +26,9 @@ def main():
     args = get_args()
 
     try:
-        globaa = GlobAA(args)
+        globdb = GlobDBFunctions(args)
         aa_file = args.fasta_file or None
-        globaa.process(aa_sequences_file_path=aa_file)
+        globdb.process(aa_sequences_file_path=aa_file)
     except ConfigError as e:
         print(e)
         sys.exit(-1)

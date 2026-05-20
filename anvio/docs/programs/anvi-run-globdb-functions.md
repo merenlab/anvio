@@ -1,6 +1,6 @@
-This program **annotates genes with functions from the GlobAA gene family database**. It requires a %(globdb-data)s artifact produced by %(anvi-setup-globdb-functions)s.
+This program **annotates genes with functions from the GlobDB gene family database**. It requires a %(globdb-data)s artifact produced by %(anvi-setup-globdb-functions)s.
 
-GlobAA is a curated database of microbial gene families, each accompanied by gene-family-level Local Alignment Score Ratio (LASR) cutoffs. After searching your sequences against the database with DIAMOND, anvi'o uses these cutoffs to decide whether each hit is a genuine annotation or noise. Hits that pass the threshold are stored as `GlobAA` annotations in your contigs database.
+GlobDB is a curated database of microbial genomes, and offers a set of gene families, also curated and accompanied by gene-family-level Local Alignment Score Ratio (LASR) cutoffs. %(anvi-run-globdb-functions)s uses these cutoffs to decide whether each hit is a genuine annotation or noise. Hits that pass the threshold are stored in your contigs database under the function annotation source `GlobDB`.
 
 ### Annotate a contigs database
 
@@ -24,10 +24,10 @@ If your %(globdb-data)s lives in a non-default location, point anvi'o to it:
 
 {{ codestart }}
 anvi-run-globdb-functions -c %(contigs-db)s \
-                          --globdb-data-dir /path/to/globaa/data
+                          --globdb-data-dir /path/to/globdb/data
 {{ codestop }}
 
-Or set the environment variable `ANVIO_GLOBAA_DATA_DIR` once and omit the flag.
+Or set the environment variable `ANVIO_GLOBDB_DATA_DIR` once and omit the flag.
 
 ### How the cutoffs work
 

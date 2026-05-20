@@ -1,4 +1,4 @@
-This program **downloads and sets up a local copy of the GlobAA gene family database** for use in functional annotation with %(anvi-run-globdb-functions)s. It produces a %(globdb-data)s artifact.
+This program **downloads and sets up a local copy of the GlobDB gene family database** for use in functional annotation with %(anvi-run-globdb-functions)s. It produces a %(globdb-data)s artifact.
 
 ### Basic usage
 
@@ -17,23 +17,23 @@ anvi-setup-globdb-functions --reset
 
 ### Custom data directory
 
-By default, anvi'o stores the GlobAA data in a location inside the anvi'o package directory. If you do not have write access to that location, or if you want to keep the data elsewhere, use:
+By default, anvi'o stores the GlobDB data in a location inside the anvi'o package directory. If you do not have write access to that location, or if you want to keep the data elsewhere, use:
 
 {{ codestart }}
 anvi-setup-globdb-functions --globdb-data-dir /path/to/your/directory
 {{ codestop }}
 
-You can also set the environment variable `ANVIO_GLOBAA_DATA_DIR` to your preferred path so anvi'o will use it automatically without requiring the `--globdb-data-dir` flag each time:
+You can also set the environment variable `ANVIO_GLOBDB_DATA_DIR` to your preferred path so anvi'o will use it automatically without requiring the `--globdb-data-dir` flag each time:
 
 {{ codestart }}
-export ANVIO_GLOBAA_DATA_DIR=/path/to/your/directory
+export ANVIO_GLOBDB_DATA_DIR=/path/to/your/directory
 anvi-setup-globdb-functions
 {{ codestop }}
 
 ### What happens during setup
 
-1. The GlobAA data package (that is maintained by GlobDB folk, including Daan Speth et al) is downloaded and extracted.
+1. The GlobDB data package (that is maintained by GlobDB folk, including Daan Speth et al) is downloaded and extracted.
 2. Every gene family `info.yaml` file is validated for required fields (`gene_family`, `description`, `version`, and `cutoffs` including `lasr`, `selfmax`, `selfmin`, and `matrix`). Where present, `synteny.yaml` files are also validated.
-3. All per-family FASTA files are concatenated into a single `GlobAA.faa` (with GAA identifiers prepended to sequence headers).
-4. All per-family `info.yaml` files are merged into a single `GlobAA-gene-family-data.yaml`. All per-family `synteny.yaml` files (where present) are merged into a single `GlobAA-synteny-data.yaml`.
-5. A DIAMOND search database is built from `GlobAA.faa`.
+3. All per-family FASTA files are concatenated into a single `GlobDB.faa` (with GAA identifiers prepended to sequence headers).
+4. All per-family `info.yaml` files are merged into a single `GlobDB-gene-family-data.yaml`. All per-family `synteny.yaml` files (where present) are merged into a single `GlobDB-synteny-data.yaml`.
+5. A DIAMOND search database is built from `GlobDB.faa`.

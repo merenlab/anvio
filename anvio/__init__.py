@@ -1024,9 +1024,9 @@ D = {
             ['--globdb-data-dir'],
             {'default': None,
              'type': str,
-             'help': "The directory path for your GlobAA database setup. Anvi'o will try to use the "
+             'help': "The directory path for your GlobDB database setup. Anvi'o will try to use the "
                      "default path if you do not specify anything. Alternatively you can set the "
-                     "environment variable ANVIO_GLOBAA_DATA_DIR to point to a custom location."}
+                     "environment variable ANVIO_GLOBDB_DATA_DIR to point to a custom location."}
                 ),
     'pfam-data-dir': (
             ['--pfam-data-dir'],

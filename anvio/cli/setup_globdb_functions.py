@@ -4,7 +4,7 @@ import sys
 
 import anvio
 
-from anvio.globaa import GlobAASetup
+from anvio.globdb import GlobDBFunctionsSetup
 from anvio.errors import ConfigError, FilesNPathsError
 
 
@@ -13,14 +13,14 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren', 'dspeth']
 __provides__ = ['globdb-data']
-__description__ = "Download and set up the GlobAA gene family database for functional annotation"
+__description__ = "Download and set up the GlobDB gene family database for functional annotation"
 
 
 def main():
     args = get_args()
 
     try:
-        setup = GlobAASetup(args)
+        setup = GlobDBFunctionsSetup(args)
         setup.create()
     except ConfigError as e:
         print(e)

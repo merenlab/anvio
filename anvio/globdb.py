@@ -34,17 +34,17 @@ pp = terminal.pretty_print
 P = terminal.pluralize
 
 # internal version to detect incompatible setups
-GLOBAA_DATA_VERSION = '1'
+GLOBDB_DATA_VERSION = '1'
 
 # the location of the database
-GLOBAA_DOWNLOAD_URL = 'https://fileshare.lisc.univie.ac.at/e01a9b4189ff4767-1779787805/GlobAA.tar.gz'
+GLOBDB_DOWNLOAD_URL = 'https://fileshare.lisc.univie.ac.at/e01a9b4189ff4767-1779787805/GlobAA.tar.gz'
 
-# DIAMOND output format used for GlobAA searches. The 'score' column (raw alignment
+# DIAMOND output format used for GlobDB searches. The 'score' column (raw alignment
 # score, not bitscore) is essential for LASR calculation and must remain the last field.
-GLOBAA_DIAMOND_OUTFMT = '6 qseqid sseqid pident qlen slen length mismatch gapopen qstart qend sstart send evalue bitscore score'
+GLOBDB_DIAMOND_OUTFMT = '6 qseqid sseqid pident qlen slen length mismatch gapopen qstart qend sstart send evalue bitscore score'
 
 # BLOSUM matrix diagonal values used to compute theoretical self-alignment scores.
-# Taken from the GlobAA database developer tools (parser.py).
+# Taken from the GlobDB database developer tools (parser.py).
 BLOSUM_DIAGONALS = {
     'BLOSUM45': {
         'A': 5, 'R': 7, 'N': 6, 'D': 7, 'C': 12, 'Q': 6, 'E': 6, 'G': 7,
@@ -91,8 +91,8 @@ def calculate_max_score(sequence, matrix='BLOSUM45'):
     return sum(diag.get(aa, 0) for aa in sequence.upper())
 
 
-def classify_globaa_hit(max_score, hit_score, lasr_cutoff, selfmin, selfmax):
-    """Classify a GlobAA DIAMOND hit using gene-family-level cutoffs.
+def classify_globdb_hit(max_score, hit_score, lasr_cutoff, selfmin, selfmax):
+    """Classify a GlobDB DIAMOND hit using gene-family-level cutoffs.
 
     A hit is classified based on whether the query sequence's theoretical
     self-alignment score (max_score) falls within the expected size range
@@ -129,7 +129,7 @@ def classify_globaa_hit(max_score, hit_score, lasr_cutoff, selfmin, selfmax):
     - The halfway point between selfmin and selfmax acts as a pivot: hits for sequences
       longer than halfway are held to the LASR threshold computed at halfway rather than
       at max_score, preventing very long sequences from being unfairly penalized.
-    - This algorithm is based on a draft implementation from the GlobAA database
+    - This algorithm is based on a draft implementation from the GlobDB database
       developers and may be revised as the database matures.
     """
 
@@ -151,7 +151,7 @@ def classify_globaa_hit(max_score, hit_score, lasr_cutoff, selfmin, selfmax):
 
 
 def validate_synteny_yaml_entry(gaa_id, entry):
-    """Validate a single GlobAA gene family synteny YAML entry.
+    """Validate a single GlobDB gene family synteny YAML entry.
 
     Parameters
     ==========
@@ -199,8 +199,8 @@ def validate_synteny_yaml_entry(gaa_id, entry):
                                   f"Probabilities must be floats strictly greater than 0 and at most 1.")
 
 
-def validate_yaml_entry(gaa_id, entry):
-    """Validate a single GlobAA gene family YAML entry for required fields and sane values.
+def validate_gene_family_yaml_entry(gaa_id, entry):
+    """Validate a single GlobDB gene family YAML entry for required fields and sane values.
 
     Used both during database setup (anvi-setup-globdb-functions) and at the start
     of annotation runs (anvi-run-globdb-functions) to catch corrupted or hand-edited
@@ -272,13 +272,13 @@ def validate_yaml_entry(gaa_id, entry):
                           f"'{matrix}'. Known matrices are: {', '.join(BLOSUM_DIAGONALS.keys())}.")
 
 
-def parse_globaa_diamond_output(tabular_path):
-    """Parse GlobAA DIAMOND output and return the best hit per query sequence.
+def parse_globdb_diamond_output(tabular_path):
+    """Parse GlobDB DIAMOND output and return the best hit per query sequence.
 
     Parameters
     ==========
     tabular_path : str
-        Path to the DIAMOND tabular output file produced using GLOBAA_DIAMOND_OUTFMT.
+        Path to the DIAMOND tabular output file produced using GLOBDB_DIAMOND_OUTFMT.
 
     Returns
     =======
@@ -326,8 +326,8 @@ def parse_globaa_diamond_output(tabular_path):
     return results
 
 
-class GlobAASetup:
-    """Download, validate, and set up the GlobAA functional annotation database like a boss."""
+class GlobDBFunctionsSetup:
+    """Download, validate, and set up the GlobDB functional annotation database like a boss."""
 
     def __init__(self, args=Args(), globdb_data_dir=None, run=run, progress=progress):
         self.run = run
@@ -344,37 +344,37 @@ class GlobAASetup:
         elif A('globdb_data_dir'):
             self.globdb_base_dir = A('globdb_data_dir')
             self.data_source = 'The command line parameter.'
-        elif 'ANVIO_GLOBAA_DATA_DIR' in os.environ:
-            self.globdb_base_dir = os.environ['ANVIO_GLOBAA_DATA_DIR']
+        elif 'ANVIO_GLOBDB_DATA_DIR' in os.environ:
+            self.globdb_base_dir = os.environ['ANVIO_GLOBDB_DATA_DIR']
             self.data_source = 'The environmental variable.'
         else:
-            self.globdb_base_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/GlobAA')
+            self.globdb_base_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/GlobDB')
             self.data_source = "The anvi'o default."
 
         self.globdb_base_dir = os.path.abspath(os.path.expanduser(self.globdb_base_dir))
         self.globdb_data_dir_version = os.path.join(self.globdb_base_dir, '.VERSION')
 
-        self.run.info('GlobAA data source', self.data_source)
-        self.run.info('GlobAA data directory', self.globdb_base_dir)
+        self.run.info('GlobDB data source', self.data_source)
+        self.run.info('GlobDB data directory', self.globdb_base_dir)
 
 
     def get_db_path(self):
         """Return the DIAMOND database path (without the .dmnd extension)."""
-        return os.path.join(self.globdb_base_dir, 'DB_DIAMOND', 'GlobAA')
+        return os.path.join(self.globdb_base_dir, 'DB_DIAMOND', 'GlobDB')
 
 
     def get_yaml_path(self):
         """Return the path to the master gene-family data YAML file."""
-        return os.path.join(self.globdb_base_dir, 'GlobAA-gene-family-data.yaml')
+        return os.path.join(self.globdb_base_dir, 'GlobDB-gene-family-data.yaml')
 
 
     def get_synteny_yaml_path(self):
         """Return the path to the master synteny data YAML file."""
-        return os.path.join(self.globdb_base_dir, 'GlobAA-synteny-data.yaml')
+        return os.path.join(self.globdb_base_dir, 'GlobDB-synteny-data.yaml')
 
 
     def is_database_exists(self):
-        """Return True if the GlobAA data directory looks complete and up to date."""
+        """Return True if the GlobDB data directory looks complete and up to date."""
 
         if not os.path.exists(self.globdb_base_dir):
             return False
@@ -382,7 +382,7 @@ class GlobAASetup:
         if not os.path.exists(self.globdb_data_dir_version):
             return False
 
-        if open(self.globdb_data_dir_version).read().strip() != GLOBAA_DATA_VERSION:
+        if open(self.globdb_data_dir_version).read().strip() != GLOBDB_DATA_VERSION:
             return False
 
         if not os.path.exists(self.get_yaml_path()):
@@ -398,10 +398,10 @@ class GlobAASetup:
 
 
     def create(self):
-        """Download, validate, and set up the GlobAA database."""
+        """Download, validate, and set up the GlobDB database."""
 
         if not self.reset and self.is_database_exists():
-            raise ConfigError(f"The GlobAA data is already set up in '{self.globdb_base_dir}'. "
+            raise ConfigError(f"The GlobDB data is already set up in '{self.globdb_base_dir}'. "
                               f"If you want to re-download and rebuild everything from scratch, "
                               f"use the `--reset` flag.")
 
@@ -411,7 +411,7 @@ class GlobAASetup:
             try:
                 os.makedirs(self.globdb_base_dir)
             except Exception as e:
-                raise ConfigError(f"Anvi'o could not create the GlobAA data directory at "
+                raise ConfigError(f"Anvi'o could not create the GlobDB data directory at "
                                   f"'{self.globdb_base_dir}' :/ This is unexpected (since "
                                   f"anvi'o already checked if it could be generated and there "
                                   f"was nothing concerning), but here is what went wrong: {e}.")
@@ -419,12 +419,12 @@ class GlobAASetup:
             filesnpaths.is_output_dir_writable(self.globdb_base_dir)
 
         if self.reset:
-            self.run.warning("The `--reset` flag is set. Anvi'o will wipe the GlobAA data directory "
+            self.run.warning("The `--reset` flag is set. Anvi'o will wipe the GlobDB data directory "
                              "and re-download everything from scratch.")
             shutil.rmtree(self.globdb_base_dir)
             os.makedirs(self.globdb_base_dir)
 
-        open(self.globdb_data_dir_version, 'w').write(GLOBAA_DATA_VERSION)
+        open(self.globdb_data_dir_version, 'w').write(GLOBDB_DATA_VERSION)
 
         # download and extract the data package
         raw_data_dir = self.download_and_extract()
@@ -433,7 +433,7 @@ class GlobAASetup:
         self.validate_all_yamls(raw_data_dir)
 
         # concatenate all FASTA files with GAA-ID-prefixed headers
-        fasta_path = os.path.join(self.globdb_base_dir, 'GlobAA.faa')
+        fasta_path = os.path.join(self.globdb_base_dir, 'GlobDB.faa')
         self.concatenate_fastas(raw_data_dir, fasta_path)
 
         # merge all per-family info.yaml files into a single master gene-family data YAML
@@ -456,12 +456,12 @@ class GlobAASetup:
         # clean up the raw extracted data to save space
         shutil.rmtree(os.path.join(self.globdb_base_dir, 'RAW_DATA'))
 
-        self.run.info_single("GlobAA database setup is complete! You can now use `anvi-run-globdb-functions` "
+        self.run.info_single("GlobDB database setup is complete! You can now use `anvi-run-globdb-functions` "
                              "to annotate your contigs databases 🎉", mc='green', nl_after=1, nl_before=1)
 
 
     def download_and_extract(self):
-        """Download the GlobAA data tarball and extract it.
+        """Download the GlobDB data tarball and extract it.
 
         Returns
         =======
@@ -469,12 +469,12 @@ class GlobAASetup:
             Path to the directory that directly contains the GAA* subdirectories.
         """
 
-        tarball_path = os.path.join(self.globdb_base_dir, 'GlobAA_download.tar.gz')
+        tarball_path = os.path.join(self.globdb_base_dir, 'GlobDB_download.tar.gz')
 
-        self.run.warning(None, header="DOWNLOADING GLOBAA DATA", lc='cyan')
-        utils.download_file(GLOBAA_DOWNLOAD_URL, tarball_path, progress=self.progress, run=self.run)
+        self.run.warning(None, header="DOWNLOADING GLOBDB DATA", lc='cyan')
+        utils.download_file(GLOBDB_DOWNLOAD_URL, tarball_path, progress=self.progress, run=self.run)
 
-        self.progress.new('Extracting GlobAA data package')
+        self.progress.new('Extracting GlobDB data package')
         self.progress.update('...')
 
         extract_dir = os.path.join(self.globdb_base_dir, 'RAW_DATA')
@@ -531,7 +531,7 @@ class GlobAASetup:
             raise ConfigError(f"No GAA* gene family directories were found in '{data_dir}'. "
                               f"The downloaded data package appears to be empty or incorrectly structured.")
 
-        self.progress.new('Validating GlobAA YAML files', progress_total_items=len(gaa_dirs))
+        self.progress.new('Validating GlobDB YAML files', progress_total_items=len(gaa_dirs))
 
         seen_ids = set()
         num_with_synteny = 0
@@ -573,7 +573,7 @@ class GlobAASetup:
                                   f"in the data package. All identifiers must be unique.")
 
             seen_ids.add(gaa_id)
-            validate_yaml_entry(gaa_id, entry[gaa_id])
+            validate_gene_family_yaml_entry(gaa_id, entry[gaa_id])
 
             if os.path.exists(synteny_yaml_path):
                 try:
@@ -614,15 +614,15 @@ class GlobAASetup:
                 master = yaml.safe_load(f)
         except yaml.YAMLError as e:
             self.progress.end()
-            raise ConfigError(f"The master GlobAA YAML at '{yaml_path}' could not be parsed. "
+            raise ConfigError(f"The master GlobDB YAML at '{yaml_path}' could not be parsed. "
                               f"This is unexpected and may indicate a bug. Here is the error: {e}.")
 
         if not isinstance(master, dict) or not master:
             self.progress.end()
-            raise ConfigError(f"The master GlobAA YAML at '{yaml_path}' is empty or malformed.")
+            raise ConfigError(f"The master GlobDB YAML at '{yaml_path}' is empty or malformed.")
 
         for gaa_id, entry in master.items():
-            validate_yaml_entry(gaa_id, entry)
+            validate_gene_family_yaml_entry(gaa_id, entry)
 
         self.progress.end()
         self.run.info('Gene families in master YAML', len(master))
@@ -672,7 +672,7 @@ class GlobAASetup:
                 master = yaml.safe_load(f)
         except yaml.YAMLError as e:
             self.progress.end()
-            raise ConfigError(f"The master GlobAA synteny YAML at '{yaml_path}' could not be parsed. "
+            raise ConfigError(f"The master GlobDB synteny YAML at '{yaml_path}' could not be parsed. "
                               f"This is unexpected and may indicate a bug. Here is the error: {e}.")
 
         if master is None:
@@ -683,7 +683,7 @@ class GlobAASetup:
 
         if not isinstance(master, dict):
             self.progress.end()
-            raise ConfigError(f"The master GlobAA synteny YAML at '{yaml_path}' is malformed — "
+            raise ConfigError(f"The master GlobDB synteny YAML at '{yaml_path}' is malformed — "
                               f"expected a dict at the top level.")
 
         for gaa_id, entry in master.items():
@@ -726,7 +726,7 @@ class GlobAASetup:
                 fasta.close()
 
         self.progress.end()
-        self.run.info('Total sequences in concatenated GlobAA FASTA', pp(total_seqs), mc='green')
+        self.run.info('Total sequences in concatenated GlobDB FASTA', pp(total_seqs), mc='green')
 
 
     def concatenate_yamls(self, data_dir, output_path):
@@ -753,10 +753,10 @@ class GlobAASetup:
 
 
     def build_diamond_db(self, fasta_path):
-        """Build the DIAMOND search database from the concatenated GlobAA FASTA."""
+        """Build the DIAMOND search database from the concatenated GlobDB FASTA."""
         if not utils.is_program_exists('diamond', dont_raise=True):
             raise ConfigError("DIAMOND does not appear to be installed on this system. Anvi'o needs "
-                              "DIAMOND to build and search the GlobAA database. Please install "
+                              "DIAMOND to build and search the GlobDB database. Please install "
                               "DIAMOND and try again.")
 
         output_dir = os.path.join(self.globdb_base_dir, 'DB_DIAMOND')
@@ -774,14 +774,14 @@ class GlobAASetup:
         diamond.makedb(db_path)
 
 
-class GlobAAData:
-    """Load and provide access to GlobAA gene family metadata."""
+class GlobDBFunctionsData:
+    """Load and provide access to GlobDB gene family metadata."""
 
     def __init__(self, args=Args(), globdb_data_dir=None, run=run, progress=progress, panic_on_failure_to_init=False):
         self.run = run
         self.progress = progress
 
-        self.setup = GlobAASetup(args, globdb_data_dir=globdb_data_dir, run=self.run, progress=self.progress)
+        self.setup = GlobDBFunctionsSetup(args, globdb_data_dir=globdb_data_dir, run=self.run, progress=self.progress)
 
         self.gene_families = None
         self.synteny = None
@@ -789,7 +789,7 @@ class GlobAAData:
 
         if not self.setup.is_database_exists():
             if panic_on_failure_to_init:
-                raise ConfigError("It seems the GlobAA database has not been set up on this system yet. "
+                raise ConfigError("It seems the GlobDB database has not been set up on this system yet. "
                                   "You can fix this by running `anvi-setup-globdb-functions`. If you "
                                   "already ran it but used a custom data directory, make sure to pass "
                                   "that same path here via `--globdb-data-dir`.")
@@ -801,7 +801,7 @@ class GlobAAData:
     def init(self):
         """Load the master gene-family and synteny YAML files and validate all entries."""
 
-        self.progress.new('Initializing GlobAA data')
+        self.progress.new('Initializing GlobDB data')
         self.progress.update('Reading master gene-family data YAML file ...')
 
         yaml_path = self.setup.get_yaml_path()
@@ -811,18 +811,18 @@ class GlobAAData:
                 self.gene_families = yaml.safe_load(f)
         except yaml.YAMLError as e:
             self.progress.end()
-            raise ConfigError(f"The GlobAA master gene-family data YAML at '{yaml_path}' could not "
+            raise ConfigError(f"The GlobDB master gene-family data YAML at '{yaml_path}' could not "
                               f"be parsed. You may need to re-run `anvi-setup-globdb-functions --reset`. "
                               f"Here is what Python said: {e}.")
 
         if not isinstance(self.gene_families, dict) or not self.gene_families:
             self.progress.end()
-            raise ConfigError(f"The GlobAA master gene-family data YAML at '{yaml_path}' is empty or "
+            raise ConfigError(f"The GlobDB master gene-family data YAML at '{yaml_path}' is empty or "
                               f"malformed. Please re-run `anvi-setup-globdb-functions --reset`.")
 
         self.progress.update('Validating gene-family entries ...')
         for gaa_id, entry in self.gene_families.items():
-            validate_yaml_entry(gaa_id, entry)
+            validate_gene_family_yaml_entry(gaa_id, entry)
 
         self.progress.update('Reading master synteny data YAML file ...')
 
@@ -833,13 +833,13 @@ class GlobAAData:
                 self.synteny = yaml.safe_load(f) or {}
         except yaml.YAMLError as e:
             self.progress.end()
-            raise ConfigError(f"The GlobAA master synteny data YAML at '{synteny_yaml_path}' could not "
+            raise ConfigError(f"The GlobDB master synteny data YAML at '{synteny_yaml_path}' could not "
                               f"be parsed. You may need to re-run `anvi-setup-globdb-functions --reset`. "
                               f"Here is what Python said: {e}.")
 
         if not isinstance(self.synteny, dict):
             self.progress.end()
-            raise ConfigError(f"The GlobAA master synteny data YAML at '{synteny_yaml_path}' is "
+            raise ConfigError(f"The GlobDB master synteny data YAML at '{synteny_yaml_path}' is "
                               f"malformed. Please re-run `anvi-setup-globdb-functions --reset`.")
 
         self.progress.update('Validating synteny entries ...')
@@ -865,10 +865,10 @@ class GlobAAData:
         """
 
         if not self.initialized:
-            raise ConfigError("GlobAAData.get_cutoffs :: called before data was initialized.")
+            raise ConfigError("GlobDBFunctionsData.get_cutoffs :: called before data was initialized.")
 
         if gaa_id not in self.gene_families:
-            raise ConfigError(f"GlobAAData.get_cutoffs :: '{gaa_id}' not found in the master YAML. "
+            raise ConfigError(f"GlobDBFunctionsData.get_cutoffs :: '{gaa_id}' not found in the master YAML. "
                               f"Anvi'o is confused and sorry.")
 
         return self.gene_families[gaa_id]['cutoffs']
@@ -889,10 +889,10 @@ class GlobAAData:
         """
 
         if not self.initialized:
-            raise ConfigError("GlobAAData.get_annotation_text :: called before data was initialized.")
+            raise ConfigError("GlobDBFunctionsData.get_annotation_text :: called before data was initialized.")
 
         if gaa_id not in self.gene_families:
-            raise ConfigError(f"GlobAAData.get_annotation_text :: '{gaa_id}' not found in master YAML.")
+            raise ConfigError(f"GlobDBFunctionsData.get_annotation_text :: '{gaa_id}' not found in master YAML.")
 
         family = self.gene_families[gaa_id]
         gene_family = family.get('gene_family', 'unknown')
@@ -901,8 +901,8 @@ class GlobAAData:
         return f"{gene_family}: {description}"
 
 
-class GlobAA:
-    """A class to run GlobAA functional annotation against a contigs database or FASTA file."""
+class GlobDBFunctions:
+    """A class to run GlobDB functional annotation against a contigs database or FASTA file."""
 
     def __init__(self, args=Args(), run=run, progress=progress):
         self.args = args
@@ -920,7 +920,7 @@ class GlobAA:
 
         if not utils.is_program_exists('diamond', dont_raise=True):
             raise ConfigError("DIAMOND does not appear to be installed on this system (wtf). Anvi'o needs "
-                              "DIAMOND to search the GlobAA database, and it is a part of the standard "
+                              "DIAMOND to search the GlobDB database, and it is a part of the standard "
                               "installation procedures. If you did something funny, please install DIAMOND "
                               "or consider reinstalling your anvi'o environment and try again.")
 
@@ -929,20 +929,20 @@ class GlobAA:
 
 
     def initialize(self):
-        """Set up GlobAASetup and GlobAAData from args."""
+        """Set up GlobDBFunctionsSetup and GlobDBFunctionsData from args."""
 
         self.hits = None
 
-        self.globaa_setup = GlobAASetup(self.args, run=self.run, progress=self.progress)
-        self.globaa_data = GlobAAData(self.args, run=self.run, progress=self.progress, panic_on_failure_to_init=True)
+        self.globdb_setup = GlobDBFunctionsSetup(self.args, run=self.run, progress=self.progress)
+        self.globdb_data = GlobDBFunctionsData(self.args, run=self.run, progress=self.progress, panic_on_failure_to_init=True)
 
-        if not self.globaa_setup.is_database_exists():
-            raise ConfigError("The GlobAA database does not seem to be fully set up on this system. "
+        if not self.globdb_setup.is_database_exists():
+            raise ConfigError("The GlobDB database does not seem to be fully set up on this system. "
                               "But you can fix it by simply running `anvi-setup-globdb-functions`.")
 
 
     def process(self, aa_sequences_file_path=None):
-        """Annotate genes using GlobAA.
+        """Annotate genes using GlobDB.
 
         Parameters
         ==========
@@ -986,7 +986,7 @@ class GlobAA:
                              "remove its contents when done. Please clean up those files later.")
             self.remove_temp_dir_path = False
 
-        self.run.info('GlobAA data directory', self.globaa_setup.globdb_base_dir)
+        self.run.info('GlobDB data directory', self.globdb_setup.globdb_base_dir)
         self.run.info('Temporary files directory', self.temp_dir_path)
         self.run.info('Number of threads', self.num_threads)
 
@@ -1000,13 +1000,13 @@ class GlobAA:
         # compute theoretical self-alignment scores for all query sequences
         max_scores = self.calculate_max_scores(aa_sequences_file_path)
 
-        # search against the GlobAA DIAMOND database
+        # search against the GlobDB DIAMOND database
         search_results_tabular = self.search_with_diamond(aa_sequences_file_path)
 
         # parse the DIAMOND output (best hit per query)
-        self.hits = parse_globaa_diamond_output(search_results_tabular)
+        self.hits = parse_globdb_diamond_output(search_results_tabular)
 
-        # apply GlobAA cutoffs and store annotations
+        # apply GlobDB cutoffs and store annotations
         self.store_hits(max_scores)
 
         if self.remove_temp_dir_path:
@@ -1043,7 +1043,7 @@ class GlobAA:
 
 
     def search_with_diamond(self, aa_sequences_file_path):
-        """Run DIAMOND blastp with the GlobAA-specific parameters.
+        """Run DIAMOND blastp with the GlobDB-specific parameters.
 
         Parameters
         ==========
@@ -1059,13 +1059,13 @@ class GlobAA:
         diamond = Diamond(aa_sequences_file_path, run=self.run, progress=self.progress,
                           num_threads=self.num_threads)
 
-        diamond.target_fasta = self.globaa_setup.get_db_path()
-        diamond.outfmt = GLOBAA_DIAMOND_OUTFMT
+        diamond.target_fasta = self.globdb_setup.get_db_path()
+        diamond.outfmt = GLOBDB_DIAMOND_OUTFMT
         diamond.max_target_seqs = 1
         diamond.evalue = None   # replaced by --min-score in additional_params
         diamond.additional_params_for_blastp = '--matrix blosum45 --masking 0 --comp-based-stats 0 --min-score 50'
 
-        diamond.tabular_output_path = os.path.join(self.temp_dir_path, 'globaa-search-results.txt')
+        diamond.tabular_output_path = os.path.join(self.temp_dir_path, 'globdb-search-results.txt')
 
         self.run.log_file_path = self.log_file_path or os.path.join(self.temp_dir_path, 'log.txt')
 
@@ -1075,7 +1075,7 @@ class GlobAA:
 
 
     def store_hits(self, max_scores):
-        """Apply GlobAA cutoffs to DIAMOND hits and store passing annotations.
+        """Apply GlobDB cutoffs to DIAMOND hits and store passing annotations.
 
         Parameters
         ==========
@@ -1084,11 +1084,11 @@ class GlobAA:
         """
 
         if not self.hits:
-            self.run.warning("GlobAA found no hits for any of your genes. Returning empty-handed, "
-                             "but still registering GlobAA as a functional annotation source.")
+            self.run.warning("GlobDB found no hits for any of your genes. Returning empty-handed, "
+                             "but still registering GlobDB as a functional annotation source.")
             if self.contigs_db_path:
                 gene_function_calls_table = TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
-                gene_function_calls_table.add_empty_sources_to_functional_sources({'GlobAA'})
+                gene_function_calls_table.add_empty_sources_to_functional_sources({'GlobDB'})
             return
 
         functions_dict = {}
@@ -1098,7 +1098,7 @@ class GlobAA:
             gene_caller_id = int(gene_callers_id) if self.contigs_db_path else str(gene_callers_id)
             functions_dict[self.__entry_id] = {
                 'gene_callers_id': gene_caller_id,
-                'source': 'GlobAA',
+                'source': 'GlobDB',
                 'accession': accession,
                 'function': function,
                 'e_value': float(e_value),
@@ -1119,7 +1119,7 @@ class GlobAA:
             # sanity check at some place else
             gaa_id = target_id.split('___')[0]
 
-            if gaa_id not in self.globaa_data.gene_families:
+            if gaa_id not in self.globdb_data.gene_families:
                 missing_families.add(gaa_id)
                 continue
 
@@ -1128,9 +1128,9 @@ class GlobAA:
                 hits_missing_max_score += 1
                 continue
 
-            cutoffs = self.globaa_data.get_cutoffs(gaa_id)
+            cutoffs = self.globdb_data.get_cutoffs(gaa_id)
 
-            classification = classify_globaa_hit(max_score=query_max_score,
+            classification = classify_globdb_hit(max_score=query_max_score,
                                                  hit_score=hit['score'],
                                                  lasr_cutoff=cutoffs['lasr'],
                                                  selfmin=cutoffs['selfmin'],
@@ -1140,14 +1140,14 @@ class GlobAA:
                 hits_below_cutoff += 1
                 continue
 
-            annotation_text = self.globaa_data.get_annotation_text(gaa_id)
+            annotation_text = self.globdb_data.get_annotation_text(gaa_id)
             if classification in ('too_short', 'too_long'):
                 annotation_text = f"{annotation_text} ({classification})"
 
             add_entry(gene_callers_id, gaa_id, annotation_text, hit['evalue'])
             hits_kept += 1
 
-        self.run.info('Hits that passed GlobAA cutoffs', pp(hits_kept), mc='green')
+        self.run.info('Hits that passed GlobDB cutoffs', pp(hits_kept), mc='green')
         self.run.info('Hits discarded (below cutoff)', pp(hits_below_cutoff))
 
         if hits_missing_max_score:
@@ -1160,14 +1160,14 @@ class GlobAA:
             self.run.warning(f"Anvi'o encountered {len(missing_families)} GAA "
                              f"{P('identifier', len(missing_families))} in the DIAMOND output that "
                              f"were not present in the master YAML. This is unexpected and likely "
-                             f"means the GlobAA database is corrupted. The affected "
+                             f"means the GlobDB database is corrupted. The affected "
                              f"{P('identifier', len(missing_families))}: "
                              f"{', '.join(sorted(missing_families))}. Consider re-running "
                              f"`anvi-setup-globdb-functions --reset`.")
 
         if not functions_dict and self.contigs_db_path:
             gene_function_calls_table = TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
-            gene_function_calls_table.add_empty_sources_to_functional_sources({'GlobAA'})
+            gene_function_calls_table.add_empty_sources_to_functional_sources({'GlobDB'})
             return
 
         if self.contigs_db_path:
