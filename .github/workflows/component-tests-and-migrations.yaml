@@ -8,16 +8,17 @@ on:
 permissions:
   contents: read
 
-env:
-  MINICONDA_VERSION: "py310_26.1.1-1"
-
 jobs:
   build:
     name: Component Tests (Python ${{ matrix.python-version }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.10", "3.11"]
+        include:
+          - python-version: "3.10"
+            miniconda-version: "py310_26.1.1-1"
+          - python-version: "3.11"
+            miniconda-version: "py311_26.1.1-1"
       fail-fast: false
 
     steps:
@@ -26,14 +27,14 @@ jobs:
       with:
         persist-credentials: false
 
-    - name: "Set up Miniconda (${{ env.MINICONDA_VERSION }}) and Anvi'o environment"
+    - name: "Set up Miniconda (${{ matrix.miniconda-version }}) and Anvi'o environment"
       uses: conda-incubator/setup-miniconda@8ee1f361103df19b6f8c8655fd3967a8ecb162d5 # v4.0.1
       with:
         # FIXME:
         #   The next version (26.3.2-2) causes https://github.com/merenlab/anvio/issues/2590
         #   Release notes: https://www.anaconda.com/docs/getting-started/miniconda/release-notes
         #   Available versions: https://repo.continuum.io/miniconda/
-        miniconda-version: ${{ env.MINICONDA_VERSION }}
+        miniconda-version: ${{ matrix.miniconda-version }}
         auto-update-conda: true
         activate-environment: anvio_env
         environment-file: .conda/environment.yaml
