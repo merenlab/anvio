@@ -1051,11 +1051,15 @@ class UserAnnotationRunner:
                             current_lines.append(f'TC    {seq_tc:.2f}  {dom_tc:.2f};\n')
                         else:
                             current_lines.append(line)
-                    elif line.strip() == '//':
+                    elif line.rstrip() == 'HMM' or line.startswith('HMM '):
+                        # HMM keyword marks the start of model parameters — header ends here.
+                        # Inject TC now if not yet seen (must be in header, not after parameters).
                         if keep and current_name in tc_overrides and not saw_tc:
-                            # Model had no TC line — inject one before the terminator
                             seq_tc, dom_tc = tc_overrides[current_name]
                             current_lines.append(f'TC    {seq_tc:.2f}  {dom_tc:.2f};\n')
+                            saw_tc = True
+                        current_lines.append(line)
+                    elif line.strip() == '//':
                         current_lines.append(line)
                         if keep:
                             f_out.writelines(current_lines)
