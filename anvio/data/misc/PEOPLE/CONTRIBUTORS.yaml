@@ -77,11 +77,12 @@
   git_records:
     - antti.karkman@helsinki.fi
   avatar: bio-antti.png
-  twitter: AnttiKarkman
+  bluesky: @anttikarkman.bsky.social
+  web: https://www.microbiology.fi
   orcid: 0000-0003-0983-3319
   bio: "Computational microbiologist interested in antibiotic resistance in the environment"
   affiliations:
-    - title: Postdoctoral researcher
+    - title: University lecturer
       inst: University of Helsinki
       inst_link: https://www.helsinki.fi/en
       current: true
