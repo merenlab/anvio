@@ -115,10 +115,12 @@ raw database identifiers.
 
 ## HMM accession normalization
 
-Version suffixes are stripped from HMM accessions automatically:
+Version suffixes and file extensions are stripped from HMM accessions automatically:
 
 * `PF00001.23` → `PF00001`
 * `TIGR00001.1` → `TIGR00001`
+* `GT5.hmm` → `GT5`
+* `GT5.hmm.gz` → `GT5`
 
 ## Basic usage
 

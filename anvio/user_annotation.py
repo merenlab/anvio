@@ -126,15 +126,21 @@ def _auto_normalize_id(raw_id):
 
 
 def _normalize_hmm_acc(acc):
-    """Strip common version suffixes from HMM accession strings.
+    """Strip common version suffixes and file extensions from HMM accession strings.
 
-    Pfam PF00001.23 → PF00001  |  TIGRFAM TIGR00001.1 → TIGR00001
+    Pfam  PF00001.23   → PF00001
+    TIGR  TIGR00001.1  → TIGR00001
+    File  GT5.hmm      → GT5
+          GT5.hmm.gz   → GT5
     Other formats returned unchanged.
     """
     if not acc:
         return acc
+    # Strip HMM file extensions (case-insensitive)
+    acc = re.sub(r'\.hmm(?:\.gz)?$', '', acc, flags=re.IGNORECASE)
+    # Strip Pfam/TIGR numeric version suffixes
     if re.match(r'^(?:PF|TIGR)\d+\.\d+$', acc):
-        return acc.rsplit('.', 1)[0]
+        acc = acc.rsplit('.', 1)[0]
     return acc
 
 
