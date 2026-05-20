@@ -51,6 +51,14 @@ dirs_dict = M.dirs_dict
 remove_tmp = M.get_param_value_from_config(['Remove_unzipped_SRA_files'])
 
 
+def rule_log(rule_name, log_file_name='log'):
+    """Return a log path under 00_LOGS/<rule_name>/."""
+    if not log_file_name.endswith('.log'):
+        log_file_name = f"{log_file_name}.log"
+
+    return os.path.join(dirs_dict['LOGS_DIR'], rule_name, log_file_name)
+
+
 rule SRA_DOWNLOAD_WORKFLOW_target_rule:
     """The rule creates all target files for the Snakefile"""
     input: M.target_files
@@ -80,7 +88,7 @@ rule prefetch:
     """
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "{accession}_prefetch.log")
+    log: rule_log("prefetch", "{accession}")
     input:
     output:
         prefetch_DONE = touch(os.path.join(dirs_dict['SRA_prefetch'], "{accession}", "{accession}.prefetch.done"))
@@ -101,7 +109,7 @@ rule check_md5sum:
     """Curl the md5sum file from the SRA FTP site"""
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "{accession}_check_md5sum.log")
+    log: rule_log("check_md5sum", "{accession}")
     input:
         prefetch_DONE = os.path.join(dirs_dict['SRA_prefetch'], "{accession}", "{accession}.prefetch.done")
     params:
@@ -158,7 +166,7 @@ rule fasterq_dump:
     """
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "{accession}_fasterq_dump.log")
+    log: rule_log("fasterq_dump", "{accession}")
     input:
         ancient(rules.check_md5sum.output.md5sum_DONE)
     output:
@@ -197,11 +205,11 @@ rule pigz:
     - Number of threads specified in the M object
 
     example:
-        pigz --processes 8 --verbose 02_FASTA/ERR6450080*.fastq >> 00_LOGS/ERR6450080_pigz.log 2>&1
+        pigz --processes 8 --verbose 02_FASTA/ERR6450080*.fastq >> 00_LOGS/pigz/ERR6450080.log 2>&1
     """
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "{accession}_pigz.log")
+    log: rule_log("pigz", "{accession}")
     input: ancient(rules.fasterq_dump.output.FASTERQDUMP_DONE)
     output: touch(os.path.join(dirs_dict['FASTAS'], "{accession}-pigz.done"))
     params:
@@ -229,7 +237,7 @@ rule generate_samples_txt:
     """
 
     version:1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "generate_samples_txt.log")
+    log: rule_log("generate_samples_txt")
     input: expand(os.path.join(dirs_dict['FASTAS'], "{accession}-pigz.done"), accession=M.accessions_list)
     output: touch(os.path.join(dirs_dict['FASTAS'], "generate_samples_txt.done"))
     params:

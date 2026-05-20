@@ -1974,20 +1974,6 @@ def get_time_to_date(local_time, fmt='%Y-%m-%d %H:%M:%S'):
     return time.strftime(fmt, time.localtime(local_time))
 
 
-def parse_epoch_time(epoch_time):
-    """Convert the epoch time (returned by `time.time()`) into pretty strings."""
-    try:
-        epoch_time = float(epoch_time)
-    except ValueError:
-        raise ConfigError("utils::parse_epoch_time was called with a bad epoch_time.")
-
-    ti = time.gmtime(epoch_time)
-    hour_min_sec = f'{"%02d" % ti.tm_hour}:{"%02d" % ti.tm_min}:{"%02d" % ti.tm_sec}'
-    month_day_year = f'{calendar.month_name[ti.tm_mon]} {ti.tm_mday}, {ti.tm_year}'
-
-    return hour_min_sec, month_day_year
-
-
 def compare_times(calls, as_matrix=False, iterations_per_call=1):
     """Compare times between function calls
 
