@@ -115,12 +115,13 @@ raw database identifiers.
 
 ## HMM accession normalization
 
-Version suffixes and file extensions are stripped from HMM accessions automatically:
+HMM file extensions are stripped from accessions automatically. Pfam and TIGRFAM version
+suffixes are preserved because they carry version information:
 
-* `PF00001.23` → `PF00001`
-* `TIGR00001.1` → `TIGR00001`
 * `GT5.hmm` → `GT5`
 * `GT5.hmm.gz` → `GT5`
+* `PF00001.23` → `PF00001.23` (unchanged)
+* `TIGR00001.1` → `TIGR00001.1` (unchanged)
 
 ## Basic usage
 

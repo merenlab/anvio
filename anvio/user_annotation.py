@@ -126,22 +126,17 @@ def _auto_normalize_id(raw_id):
 
 
 def _normalize_hmm_acc(acc):
-    """Strip common version suffixes and file extensions from HMM accession strings.
+    """Strip HMM file extensions from accession strings.
 
-    Pfam  PF00001.23   → PF00001
-    TIGR  TIGR00001.1  → TIGR00001
     File  GT5.hmm      → GT5
           GT5.hmm.gz   → GT5
+    PF/TIGR version suffixes (PF00001.23, TIGR00001.1) are intentionally
+    preserved — they carry version information that may matter for lookups.
     Other formats returned unchanged.
     """
     if not acc:
         return acc
-    # Strip HMM file extensions (case-insensitive)
-    acc = re.sub(r'\.hmm(?:\.gz)?$', '', acc, flags=re.IGNORECASE)
-    # Strip Pfam/TIGR numeric version suffixes
-    if re.match(r'^(?:PF|TIGR)\d+\.\d+$', acc):
-        acc = acc.rsplit('.', 1)[0]
-    return acc
+    return re.sub(r'\.hmm(?:\.gz)?$', '', acc, flags=re.IGNORECASE)
 
 
 class UserAnnotationDBSetup:
