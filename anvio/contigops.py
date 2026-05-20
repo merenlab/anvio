@@ -3,7 +3,6 @@
    contig data such as GenbankToAnvio."""
 
 import os
-import re
 import io
 import gzip
 import numpy as np
@@ -799,7 +798,7 @@ class GenbankToAnvio:
 
                 num_genes_found += 1
                 location = str(gene.location)
-                
+
                 # Exclude genes spanning multiple contigs
                 if 'join' in location:
                     num_genes_excluded += 1
