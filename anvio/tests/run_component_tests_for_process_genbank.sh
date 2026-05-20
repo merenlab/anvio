@@ -67,5 +67,3 @@ anvi-gen-contigs-database -f MOCK-contigs.fa \
                           --project-name "Test for process-genbank" \
                           --no-progress \
                           $thread_controller
-
-INFO "SUCCESS: anvi-script-process-genbank test passed"
