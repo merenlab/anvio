@@ -38,8 +38,9 @@ def main():
 def get_args():
     parser = ArgumentParser(description=__description__)
 
-    groupA = parser.add_argument_group('DATABASES', "You will either provide a PROFILE/CONTIGS or a PAN/GENOMES STORAGE pair here.")
-    groupA.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db'))
+    groupA = parser.add_argument_group('DATABASES', "You will either provide a PROFILE/CONTIGS or a PAN/GENOMES STORAGE pair here. "
+                                                    "Alternatively, provide only a contigs database to use contig-only split mode.")
+    groupA.add_argument(*anvio.A('pan-or-profile-db'), **anvio.K('pan-or-profile-db', {'required': False}))
     groupA.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db', {'required': False}))
     groupA.add_argument(*anvio.A('genomes-storage'), **anvio.K('genomes-storage', {'required': False}))
 
@@ -53,6 +54,19 @@ def get_args():
                                                       collection separately.')
     groupC.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name'))
     groupC.add_argument(*anvio.A('bin-id'), **anvio.K('bin-id'))
+
+    groupF = parser.add_argument_group('CONTIG-ONLY MODE', "Arguments for splitting a contigs database without a profile database. "
+                                                           "Provide --contigs-db without --pan-or-profile-db to activate this mode.")
+    groupF.add_argument('--split-by-contig-classification', default=False, action='store_true',
+                        help="Split the contigs database using classification data stored in its contig classification table "
+                             "(populated by anvi-import-contig-classification). Each class becomes a separate output database.")
+    groupF.add_argument('--classes-to-keep', default=None, metavar='CLASS_NAMES',
+                        help="A comma-separated list of class names (e.g., 'virus,plasmid') or class integers (e.g., '2,3') "
+                             "to include in the output. Only relevant with --split-by-contig-classification. If not provided, "
+                             "all classes present in the table will be split into separate databases.")
+    groupF.add_argument('--collection-txt', default=None, metavar='FILE',
+                        help="A two-column, TAB-delimited file with no header associating each contig name (column 1) with "
+                             "a bin name (column 2). Each bin becomes a separate output contigs database.")
 
     groupD = parser.add_argument_group('OUTPUT', 'Where do we want the resulting split profiles to be stored.')
     groupD.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir'))

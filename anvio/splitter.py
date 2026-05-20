@@ -27,6 +27,7 @@ import anvio.auxiliarydataops as auxiliarydataops
 
 from anvio.errors import ConfigError
 from anvio.tables.views import TablesForViews
+from anvio.tables.contigclassification import TablesForContigClassification, CLASS_NAMES
 from anvio.tables.kmers import KMerTablesForContigsAndSplits
 from anvio.tables.collections import TablesForCollections
 from anvio.tables.genefunctions import TableForGeneFunctions
@@ -309,6 +310,92 @@ class XSplitter(object):
         self.is_dbs_identical(source_db_path, target_db_path)
 
 
+    def do_contigs_db(self):
+        self.progress.new('Splitting "%s"' % self.bin_id)
+        self.progress.update('Subsetting the contigs database')
+
+        bin_contigs_db = dbops.ContigsDatabase(self.bin_contigs_db_path)
+        bin_contigs_db.touch()
+
+        # copy-paste tables that will largely stay the same from the parent
+        bin_contigs_db.db.copy_paste(table_name='self', source_db_path=self.contigs_db_path)
+        bin_contigs_db.db.copy_paste(table_name='hmm_hits_info', source_db_path=self.contigs_db_path)
+        bin_contigs_db.db.copy_paste(table_name='taxon_names', source_db_path=self.contigs_db_path)
+
+        # update some variables in the self table:
+        self.contigs_db_hash = bin_contigs_db.get_hash()
+        bin_contigs_db.db.update_meta_value('num_contigs', self.num_contigs)
+        bin_contigs_db.db.update_meta_value('num_splits', self.num_splits)
+        bin_contigs_db.db.update_meta_value('total_length', self.total_length)
+        bin_contigs_db.db.update_meta_value('creation_date', bin_contigs_db.get_date())
+        bin_contigs_db.db.update_meta_value('contigs_db_hash', self.contigs_db_hash)
+        bin_contigs_db.db.update_meta_value('project_name', self.bin_id)
+        # reaction network tables are not populated after splitting, so we clear the corresponding self values
+        bin_contigs_db.db.update_meta_value('reaction_network_ko_annotations_hash', None)
+        bin_contigs_db.db.update_meta_value('reaction_network_kegg_database_release', None)
+        bin_contigs_db.db.update_meta_value('reaction_network_modelseed_database_sha', None)
+
+        # the empty contigs db is ready
+        bin_contigs_db.disconnect()
+
+        # touch does not create the k-mers tables, so the resulting contigs db is missing them. we
+        # will add them to the db here.
+        bin_contigs_db = dbops.ContigsDatabase(self.bin_contigs_db_path)
+        k = KMerTablesForContigsAndSplits(None, k=bin_contigs_db.meta['kmer_size'])
+        for table_name in ['kmer_contigs', 'kmer_splits']:
+            bin_contigs_db.db.create_table(table_name, k.kmers_table_structure, k.kmers_table_types)
+        bin_contigs_db.disconnect()
+
+        # setup the filtering rules for migrating data:
+        tables = {
+                    t.contig_sequences_table_name: ('contig', self.contig_names),
+                    t.contigs_info_table_name: ('contig', self.contig_names),
+                    t.gene_function_calls_table_name: ('gene_callers_id', self.gene_caller_ids),
+                    t.gene_amino_acid_sequences_table_name: ('gene_callers_id', self.gene_caller_ids),
+                    t.genes_in_contigs_table_name: ('gene_callers_id', self.gene_caller_ids),
+                    t.genes_in_splits_table_name: ('gene_callers_id', self.gene_caller_ids),
+                    t.genes_taxonomy_table_name: ('gene_callers_id', self.gene_caller_ids),
+                    t.hmm_hits_table_name: ('gene_callers_id', self.gene_caller_ids),
+                    t.hmm_hits_splits_table_name: ('split', self.split_names),
+                    t.splits_info_table_name: ('split', self.split_names),
+                    t.splits_taxonomy_table_name: ('split', self.split_names),
+                    t.nt_position_info_table_name: ('contig_name', self.contig_names),
+                    t.scg_taxonomy_table_name: ('gene_callers_id', self.gene_caller_ids),
+                    t.contig_classification_table_name: ('contig', self.contig_names),
+                    'kmer_contigs': ('contig', self.split_names),
+                    'kmer_splits': ('contig', self.split_names),
+                }
+
+        self.migrate_data(tables, self.contigs_db_path, self.bin_contigs_db_path)
+
+        # We're done here in theroy, but there is one more thing to do due to reasons partially explained in
+        # issue https://github.com/merenlab/anvio/issues/1593 and PR https://github.com/merenlab/anvio/pull/1595.
+        # The solution presented in the PR does not apply to split projects. so here we will calculate
+        # what percentage of HMM hits are in splits described in this bin, and remove those that are less
+        # than 100%.
+        bin_contigs_db = dbops.ContigsDatabase(self.bin_contigs_db_path)
+        hmm_hits_in_splits_dict = bin_contigs_db.db.get_table_as_dict(t.hmm_hits_splits_table_name)
+
+        # the purpose of the folloing dict is to keep track of what total percentage of a given HMM hit is
+        # described by all contig splits involved in this bin
+        hmm_hits_id_percentage_described_dict = Counter({})
+        for entry in hmm_hits_in_splits_dict.values():
+            hmm_hits_id_percentage_described_dict[entry['hmm_hit_entry_id']] += entry['percentage_in_split']
+
+        # now the `hmm_hits_id_percentage_described_dict` looks like this:
+        #
+        #   {2: 100, 3: 100.0, 5: 90.86727989487517, 6: 99.99999999999999, 4: 63.99858956276446}
+        #
+        # HMM hit ids that need to be cleared out from th `hmm_hits_in_splits` table is clear: 5 and 4, in this
+        # example. But the problem is, due floating point logistics, in some cases things are not quite 100%,
+        # although in reality they are, hence the need for `round`ing the percentages below.
+        hmm_hit_ids_to_delete = [hit_id for hit_id in hmm_hits_id_percentage_described_dict if round(hmm_hits_id_percentage_described_dict[hit_id]) < 100]
+        where_clause = f"hmm_hit_entry_id IN ({','.join([str(i) for i in hmm_hit_ids_to_delete])})"
+        bin_contigs_db.db.remove_some_rows_from_table(t.hmm_hits_splits_table_name, where_clause=where_clause)
+        bin_contigs_db.disconnect()
+
+        self.progress.end()
+
 
 class PanBinSplitter(summarizer.PanBin, XSplitter):
     def __init__(self, bin_name, summary_object, args, run=run, progress=progress):
@@ -421,11 +508,17 @@ class DBSplitter:
 
     def __init__(self, args, run=run, progress=progress):
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
-        if not A('pan_or_profile_db'):
-            raise ConfigError("No pan/profile database no cookie.")
 
         self.mode = None
-        if A('contigs_db'):
+
+        if not A('pan_or_profile_db'):
+            if A('contigs_db') and (A('split_by_contig_classification') or A('collection_txt')):
+                self.mode = 'contig_only'
+            else:
+                raise ConfigError("You must provide a pan or profile database, OR use contig-only mode by "
+                                  "providing --contigs-db together with either --split-by-contig-classification "
+                                  "or --collection-txt.")
+        elif A('contigs_db'):
             self.mode = 'profile'
         elif A('genomes_storage'):
             self.mode = 'pan'
@@ -441,6 +534,8 @@ class DBSplitter:
             return PanSplitter
         elif self.mode == 'profile':
             return ProfileSplitter
+        elif self.mode == 'contig_only':
+            return ContigsOnlySplitter
         else:
             return None
 
@@ -488,92 +583,6 @@ class BinSplitter(summarizer.Bin, XSplitter):
         # set your own db paths
         self.bin_contigs_db_path = os.path.join(self.bin_output_directory, 'CONTIGS.db')
         self.bin_profile_db_path = os.path.join(self.bin_output_directory, 'PROFILE.db')
-
-
-    def do_contigs_db(self):
-        self.progress.new('Splitting "%s"' % self.bin_id)
-        self.progress.update('Subsetting the contigs database')
-
-        bin_contigs_db = dbops.ContigsDatabase(self.bin_contigs_db_path)
-        bin_contigs_db.touch()
-
-        # copy-paste tables that will largely stay the same from the parent
-        bin_contigs_db.db.copy_paste(table_name='self', source_db_path=self.contigs_db_path)
-        bin_contigs_db.db.copy_paste(table_name='hmm_hits_info', source_db_path=self.contigs_db_path)
-        bin_contigs_db.db.copy_paste(table_name='taxon_names', source_db_path=self.contigs_db_path)
-
-        # update some variables in the self table:
-        self.contigs_db_hash = bin_contigs_db.get_hash()
-        bin_contigs_db.db.update_meta_value('num_contigs', self.num_contigs)
-        bin_contigs_db.db.update_meta_value('num_splits', self.num_splits)
-        bin_contigs_db.db.update_meta_value('total_length', self.total_length)
-        bin_contigs_db.db.update_meta_value('creation_date', bin_contigs_db.get_date())
-        bin_contigs_db.db.update_meta_value('contigs_db_hash', self.contigs_db_hash)
-        bin_contigs_db.db.update_meta_value('project_name', self.bin_id)
-        # reaction network tables are not populated after splitting, so we clear the corresponding self values
-        bin_contigs_db.db.update_meta_value('reaction_network_ko_annotations_hash', None)
-        bin_contigs_db.db.update_meta_value('reaction_network_kegg_database_release', None)
-        bin_contigs_db.db.update_meta_value('reaction_network_modelseed_database_sha', None)
-
-        # the empty contigs db is ready
-        bin_contigs_db.disconnect()
-
-        # touch does not create the k-mers tables, so the resulting contigs db is missing them. we
-        # will add them to the db here.
-        bin_contigs_db = dbops.ContigsDatabase(self.bin_contigs_db_path)
-        k = KMerTablesForContigsAndSplits(None, k=bin_contigs_db.meta['kmer_size'])
-        for table_name in ['kmer_contigs', 'kmer_splits']:
-            bin_contigs_db.db.create_table(table_name, k.kmers_table_structure, k.kmers_table_types)
-        bin_contigs_db.disconnect()
-
-        # setup the filtering rules for migrating data:
-        tables = {
-                    t.contig_sequences_table_name: ('contig', self.contig_names),
-                    t.contigs_info_table_name: ('contig', self.contig_names),
-                    t.gene_function_calls_table_name: ('gene_callers_id', self.gene_caller_ids),
-                    t.gene_amino_acid_sequences_table_name: ('gene_callers_id', self.gene_caller_ids),
-                    t.genes_in_contigs_table_name: ('gene_callers_id', self.gene_caller_ids),
-                    t.genes_in_splits_table_name: ('gene_callers_id', self.gene_caller_ids),
-                    t.genes_taxonomy_table_name: ('gene_callers_id', self.gene_caller_ids),
-                    t.hmm_hits_table_name: ('gene_callers_id', self.gene_caller_ids),
-                    t.hmm_hits_splits_table_name: ('split', self.split_names),
-                    t.splits_info_table_name: ('split', self.split_names),
-                    t.splits_taxonomy_table_name: ('split', self.split_names),
-                    t.nt_position_info_table_name: ('contig_name', self.contig_names),
-                    t.scg_taxonomy_table_name: ('gene_callers_id', self.gene_caller_ids),
-                    'kmer_contigs': ('contig', self.split_names),
-                    'kmer_splits': ('contig', self.split_names),
-                }
-
-        self.migrate_data(tables, self.contigs_db_path, self.bin_contigs_db_path)
-
-        # We're done here in theroy, but there is one more thing to do due to reasons partially explained in
-        # issue https://github.com/merenlab/anvio/issues/1593 and PR https://github.com/merenlab/anvio/pull/1595.
-        # The solution presented in the PR does not apply to split projects. so here we will calculate
-        # what percentage of HMM hits are in splits described in this bin, and remove those that are less
-        # than 100%.
-        bin_contigs_db = dbops.ContigsDatabase(self.bin_contigs_db_path)
-        hmm_hits_in_splits_dict = bin_contigs_db.db.get_table_as_dict(t.hmm_hits_splits_table_name)
-
-        # the purpose of the folloing dict is to keep track of what total percentage of a given HMM hit is
-        # described by all contig splits involved in this bin
-        hmm_hits_id_percentage_described_dict = Counter({})
-        for entry in hmm_hits_in_splits_dict.values():
-            hmm_hits_id_percentage_described_dict[entry['hmm_hit_entry_id']] += entry['percentage_in_split']
-
-        # now the `hmm_hits_id_percentage_described_dict` looks like this:
-        #
-        #   {2: 100, 3: 100.0, 5: 90.86727989487517, 6: 99.99999999999999, 4: 63.99858956276446}
-        #
-        # HMM hit ids that need to be cleared out from th `hmm_hits_in_splits` table is clear: 5 and 4, in this
-        # example. But the problem is, due floating point logistics, in some cases things are not quite 100%,
-        # although in reality they are, hence the need for `round`ing the percentages below.
-        hmm_hit_ids_to_delete = [hit_id for hit_id in hmm_hits_id_percentage_described_dict if round(hmm_hits_id_percentage_described_dict[hit_id]) < 100]
-        where_clause = f"hmm_hit_entry_id IN ({','.join([str(i) for i in hmm_hit_ids_to_delete])})"
-        bin_contigs_db.db.remove_some_rows_from_table(t.hmm_hits_splits_table_name, where_clause=where_clause)
-        bin_contigs_db.disconnect()
-
-        self.progress.end()
 
 
     def do_auxiliary_profile_data(self):
@@ -722,6 +731,212 @@ class BinSplitter(summarizer.Bin, XSplitter):
                                             linkage=linkage,
                                             make_default=config_name == constants.merged_default,
                                             run=self.run)
+
+
+class ContigsOnlyBinSplitter(XSplitter):
+    def __init__(self, bin_name, contig_names, contigs_super, contigs_db_path, output_directory, run=run, progress=progress):
+        XSplitter.__init__(self)
+
+        self.run = run
+        self.progress = progress
+        self.bin_id = bin_name
+        self.contig_names = contig_names
+        self.contigs_db_path = contigs_db_path
+
+        self.bin_output_directory = os.path.join(output_directory, bin_name)
+        filesnpaths.gen_output_directory(self.bin_output_directory)
+        self.bin_contigs_db_path = os.path.join(self.bin_output_directory, 'CONTIGS.db')
+
+        self.split_names = set(split for split, info in contigs_super.splits_basic_info.items()
+                               if info['parent'] in self.contig_names)
+
+        self.gene_caller_ids = set(gcid for gcid, info in contigs_super.genes_in_contigs_dict.items()
+                                   if info['contig'] in self.contig_names)
+
+        self.num_contigs = len(self.contig_names)
+        self.num_splits = len(self.split_names)
+        self.total_length = sum(contigs_super.contigs_basic_info[c]['length']
+                                for c in self.contig_names
+                                if c in contigs_super.contigs_basic_info)
+
+
+class ContigsOnlySplitter:
+    def __init__(self, args, run=run, progress=progress):
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.contigs_db_path = A('contigs_db')
+        self.output_directory = A('output_dir')
+        self.split_by_contig_classification = A('split_by_contig_classification')
+        self.classes_to_keep = A('classes_to_keep')
+        self.collection_txt = A('collection_txt')
+
+        self.bins_to_contigs = {}
+
+
+    def sanity_check(self):
+        if not self.contigs_db_path:
+            raise ConfigError("A contigs database is required for contig-only split mode.")
+
+        utils.is_contigs_db(self.contigs_db_path)
+        self.output_directory = filesnpaths.check_output_directory(self.output_directory, ok_if_exists=True)
+
+        if self.classes_to_keep and not self.split_by_contig_classification:
+            raise ConfigError("The --classes-to-keep argument is only relevant when --split-by-contig-classification is used.")
+
+        if self.split_by_contig_classification:
+            self._init_bins_from_classification()
+        else:
+            self._init_bins_from_collection_txt()
+
+
+    def _init_bins_from_classification(self):
+        entries = TablesForContigClassification(self.contigs_db_path, run=self.run, progress=self.progress).get()
+
+        if not entries:
+            raise ConfigError("The --split-by-contig-classification flag was used, but the contig classification "
+                              "table in your contigs database is empty. Have you run anvi-import-contig-classification?")
+
+        sources = sorted(set(e['source'] for e in entries))
+
+        # group entries by contig, tracking which class each source assigned
+        contig_to_source_class = {}
+        for e in entries:
+            contig = e['contig']
+            if contig not in contig_to_source_class:
+                contig_to_source_class[contig] = {}
+            contig_to_source_class[contig][e['source']] = e['class']
+
+        conflicting_contigs = {contig: source_class_map
+                               for contig, source_class_map in contig_to_source_class.items()
+                               if len(set(source_class_map.values())) > 1}
+
+        if conflicting_contigs:
+            example_contig = next(iter(conflicting_contigs))
+            example_conflict = ', '.join(f"{src}={CLASS_NAMES[cls]}"
+                                         for src, cls in conflicting_contigs[example_contig].items())
+
+            if anvio.DEBUG:
+                conflict_file_path = os.path.join(self.output_directory, 'CONTIG_CLASSIFICATION_CONFLICTS.txt')
+                with open(conflict_file_path, 'w') as f:
+                    f.write('\t'.join(['contig'] + sources) + '\n')
+                    for contig in sorted(conflicting_contigs):
+                        row = [contig] + [CLASS_NAMES.get(conflicting_contigs[contig].get(src), 'N/A') for src in sources]
+                        f.write('\t'.join(row) + '\n')
+                raise ConfigError(f"{len(conflicting_contigs)} contig(s) have conflicting classifications across "
+                                  f"sources. Example: '{example_contig}' is classified as {example_conflict}. "
+                                  f"The full conflict matrix has been written to '{conflict_file_path}'. "
+                                  f"Please resolve conflicts manually and re-import with anvi-import-contig-classification.")
+            else:
+                raise ConfigError(f"{len(conflicting_contigs)} contig(s) have conflicting classifications across "
+                                  f"sources. Example: '{example_contig}' is classified as {example_conflict}. "
+                                  f"Re-run with --debug to export the full conflict table to a file.")
+
+        if len(sources) > 1:
+            self.run.warning(f"The classification table contains data from {len(sources)} sources "
+                             f"({', '.join(sources)}), but all contigs agree on their class across sources. "
+                             f"Proceeding by merging all sources.")
+
+        contig_to_class = {contig: next(iter(source_class_map.values()))
+                           for contig, source_class_map in contig_to_source_class.items()}
+
+        if self.classes_to_keep:
+            valid_class_ids = self._parse_classes_to_keep(set(contig_to_class.values()))
+            contig_to_class = {c: cls for c, cls in contig_to_class.items() if cls in valid_class_ids}
+
+        for contig, cls in contig_to_class.items():
+            class_name = CLASS_NAMES[cls]
+            if class_name not in self.bins_to_contigs:
+                self.bins_to_contigs[class_name] = set()
+            self.bins_to_contigs[class_name].add(contig)
+
+
+    def _parse_classes_to_keep(self, available_class_ids):
+        """Parse --classes-to-keep (comma-separated names or integers) into a set of integer class ids."""
+
+        requested = set()
+        for token in self.classes_to_keep.split(','):
+            token = token.strip()
+            if token.isdigit():
+                class_id = int(token)
+                if class_id not in CLASS_NAMES:
+                    raise ConfigError(f"'{token}' is not a valid class id. Valid ids are: "
+                                      f"{', '.join(str(k) for k in sorted(CLASS_NAMES))}.")
+                requested.add(class_id)
+            else:
+                match = [k for k, v in CLASS_NAMES.items() if v == token]
+                if not match:
+                    raise ConfigError(f"'{token}' is not a valid class name. Valid names are: "
+                                      f"{', '.join(CLASS_NAMES.values())}.")
+                requested.add(match[0])
+
+        missing = requested - available_class_ids
+        if missing:
+            missing_names = ', '.join(CLASS_NAMES[c] for c in sorted(missing))
+            raise ConfigError(f"The following classes requested via --classes-to-keep are not present in "
+                              f"the classification table: {missing_names}.")
+
+        return requested
+
+
+    def _init_bins_from_collection_txt(self):
+        filesnpaths.is_file_plain_text(self.collection_txt)
+
+        collection_entries = utils.get_TAB_delimited_file_as_dictionary(self.collection_txt,
+                                                                         no_header=True,
+                                                                         column_names=['contig', 'bin'])
+
+        database = db.DB(self.contigs_db_path, utils.get_required_version_for_db(self.contigs_db_path))
+        known_contigs = set(database.get_single_column_from_table(t.contigs_info_table_name, 'contig'))
+        database.disconnect()
+
+        contig_to_bin = {}
+        for contig_name, entry in collection_entries.items():
+            bin_name = entry['bin']
+            if contig_name in contig_to_bin:
+                raise ConfigError(f"The contig '{contig_name}' appears more than once in your collection-txt. "
+                                  f"Each contig can only belong to a single bin.")
+            contig_to_bin[contig_name] = bin_name
+
+        unknown_contigs = sorted(set(contig_to_bin.keys()) - known_contigs)
+        if unknown_contigs:
+            examples = "', '".join(unknown_contigs[:5])
+            suffix = f" (and {len(unknown_contigs) - 5} more)" if len(unknown_contigs) > 5 else ""
+            raise ConfigError(f"Some contig names in your collection-txt do not appear in the contigs database: "
+                              f"'{examples}'{suffix}. Please make sure you are using the correct contigs database.")
+
+        for contig_name, bin_name in contig_to_bin.items():
+            if bin_name not in self.bins_to_contigs:
+                self.bins_to_contigs[bin_name] = set()
+            self.bins_to_contigs[bin_name].add(contig_name)
+
+
+    def process(self):
+        self.sanity_check()
+
+        filesnpaths.gen_output_directory(self.output_directory)
+
+        self.run.warning(None, header="ANVI'O CONTIG-ONLY SPLIT MODE", lc='green')
+        self.run.info('Contigs database', self.contigs_db_path)
+        self.run.info('Output directory', self.output_directory)
+        self.run.info('Number of bins to split', len(self.bins_to_contigs))
+
+        contigs_super = dbops.ContigsSuperclass(self.args, r=terminal.Run(verbose=False), p=terminal.Progress(verbose=False))
+
+        for bin_name in sorted(self.bins_to_contigs.keys()):
+            b = ContigsOnlyBinSplitter(bin_name,
+                                       self.bins_to_contigs[bin_name],
+                                       contigs_super,
+                                       self.contigs_db_path,
+                                       self.output_directory,
+                                       run=self.run,
+                                       progress=self.progress)
+            b.do_contigs_db()
+
+        self.run.info('Num bins processed', len(self.bins_to_contigs))
+        self.run.info('Output directory', self.output_directory)
 
 
 class LocusSplitter:
