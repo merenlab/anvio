@@ -979,6 +979,16 @@ class UserAnnotationRunner:
         all_models = {name for names in cutoff_groups.values() for name in names}
         custom_tc_models = {m: v for m, v in self.custom_tc_map.items() if m in all_models}
 
+        # Warn about entries in --cut-tc file that don't match any model in this database
+        unmatched = sorted(set(self.custom_tc_map) - set(custom_tc_models))
+        if unmatched:
+            self.run.warning(
+                f"{len(unmatched)} name(s) from your --cut-tc file were not found in this database "
+                f"and will be ignored: {', '.join(unmatched)}. "
+                f"Use `grep '^NAME' your_file.hmm` or inspect the genes.txt in the HMM source "
+                f"directory to find the exact model names."
+            )
+
         if not custom_tc_models:
             return {}, cutoff_groups
 
