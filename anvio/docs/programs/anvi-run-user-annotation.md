@@ -85,7 +85,20 @@ ModelB	30.0
 [Fe]:   54.4
 ```
 
-`dom_tc` defaults to `seq_tc` when omitted.
+**seq_tc vs dom_tc** — HMMER3 `--cut_tc` applies two per-model thresholds:
+
+| Threshold | Filters | Meaning |
+|-----------|---------|---------|
+| `seq_tc` | whole protein | full-sequence score must reach this value |
+| `dom_tc` | individual domain | at least one domain hit within that protein must reach this value |
+
+Both must pass for a hit to be reported. When you supply a single value (e.g. `[FeFe]: 15.9`),
+`dom_tc` inherits the same value. Supply two values when your reference lists them separately:
+
+```
+[FeFe]: 15.9 15.9
+ModelA	25.0	22.5
+```
 
 Models listed here have their TC values injected into the extracted HMM file and are searched
 with `--cut_tc`. All other models in the same database continue using their embedded cutoffs or
