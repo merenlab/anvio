@@ -430,10 +430,13 @@ class BAMFileObject(pysam.AlignmentFile):
                 detected.append(('minimap2', 'allows', 'minimap2 emits soft/hard clips by default'))
                 continue
 
-            # bwa — depends on the subcommand. bwa mem clips, bwa aln/samse/sampe don't.
+            # bwa — depends on the subcommand. bwa mem and bwa bwasw both do local
+            # alignment with soft clipping; bwa aln/samse/sampe are end-to-end.
             if program == 'bwa' or program.startswith('bwa-') or cmdline_lc.startswith('bwa '):
                 if ' mem' in cmdline_lc or cmdline_lc.startswith('bwa mem '):
                     detected.append(('bwa-mem', 'allows', 'bwa mem emits soft clips by default'))
+                elif ' bwasw' in cmdline_lc or cmdline_lc.startswith('bwa bwasw '):
+                    detected.append(('bwa-bwasw', 'allows', 'bwa bwasw (BWA-SW) performs local alignment and emits soft clips'))
                 elif ' aln' in cmdline_lc or ' samse' in cmdline_lc or ' sampe' in cmdline_lc:
                     detected.append(('bwa-aln', 'disallows',
                                      'bwa aln/samse/sampe perform end-to-end alignment and do not emit soft clips'))
