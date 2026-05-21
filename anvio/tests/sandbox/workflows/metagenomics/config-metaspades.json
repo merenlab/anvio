@@ -292,7 +292,7 @@
         "--r2-prefix": "",
         "threads": ""
     },
-    "gen_qc_report": {
+    "metagenomics_gen_qc_report": {
         "threads": ""
     },
     "merge_fastqs_for_co_assembly": {

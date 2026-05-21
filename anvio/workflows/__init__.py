@@ -32,6 +32,19 @@ r = errors.remove_spaces
 
 workflow_config_version = versions_for_db_types['config']
 
+# Maps the lr_technology column value (from samples.txt) to tool-specific presets.
+# Keys are the valid values accepted in the lr_technology column.
+LR_TECHNOLOGY_MAP = {
+    'ont':          {'longqc': 'ont-ligation', 'minimap2': 'map-ont',  'flye': '--nano-raw'},
+    'ont-ligation': {'longqc': 'ont-ligation', 'minimap2': 'map-ont',  'flye': '--nano-raw'},
+    'ont-rapid':    {'longqc': 'ont-rapid',    'minimap2': 'map-ont',  'flye': '--nano-raw'},
+    'ont-1dsq':     {'longqc': 'ont-1dsq',     'minimap2': 'map-ont',  'flye': '--nano-raw'},
+    'pb-rs2':       {'longqc': 'pb-rs2',       'minimap2': 'map-pb',   'flye': '--pacbio-raw'},
+    'pb-sequel':    {'longqc': 'pb-sequel',    'minimap2': 'map-pb',   'flye': '--pacbio-raw'},
+    'pb-hifi':      {'longqc': 'pb-hifi',      'minimap2': 'map-hifi', 'flye': '--pacbio-hifi'},
+}
+
+
 class WorkflowSuperClass:
     def __init__(self):
         if 'args' not in self.__dict__:
