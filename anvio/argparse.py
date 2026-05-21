@@ -82,9 +82,12 @@ class ArgumentParser(argparse.ArgumentParser):
 
         requires_and_provides_statements = []
 
+        def _get_values_for(statement):
+            return [v.id for v in program.meta_info[statement]['value']]
+
         program = Program(self.prog)
-        requires = [v.id for v in program.meta_info['requires']['value']]
-        provides = [v.id for v in program.meta_info['provides']['value']]
+        requires = _get_values_for('requires')
+        provides = _get_values_for('provides')
 
         def get_block(statement, header):
             blocks = []
