@@ -283,7 +283,17 @@ class UserAnnotationDBSetup:
             return
 
         entries = self.parse_input_tsv()
+        manifest, manifest_path = self._load_manifest()
+        failures, skipped = {}, []
 
+        for name, info in entries.items():
+            self._process_entry(name, info, manifest, manifest_path, failures, skipped)
+
+        self._report_results(entries, failures, skipped, manifest_path)
+
+
+    def _load_manifest(self):
+        """Prepare output directory and load existing manifest. Returns (manifest dict, manifest path)."""
         if self.reset:
             filesnpaths.gen_output_directory(self.output_dir, run=self.run, delete_if_exists=True, dont_warn=True)
         else:
@@ -295,59 +305,68 @@ class UserAnnotationDBSetup:
             with open(manifest_path) as f:
                 manifest = json.load(f)
 
-        failures = {}
-        skipped = []
+        return manifest, manifest_path
 
-        for name, info in entries.items():
-            path = info['path']
-            companion_fasta = info['companion_fasta']
 
-            if name in manifest:
-                self.run.warning(f"'{name}' is already in the manifest — skipping. "
-                                 f"Use `--remove {name}` first if you want to replace it.")
-                skipped.append(name)
-                continue
+    def _process_entry(self, name, info, manifest, manifest_path, failures, skipped):
+        """Attempt setup for one TSV entry. Appends to failures or skipped on error/skip."""
+        path = info['path']
+        companion_fasta = info['companion_fasta']
 
-            self.run.warning(None, header=f"SETTING UP: {name}", lc="green")
+        if name in manifest:
+            self.run.warning(f"'{name}' is already in the manifest — skipping. "
+                             f"Use `--remove {name}` first if you want to replace it.")
+            skipped.append(name)
+            return
 
-            try:
-                db_type = self.validate_and_detect_db_type(path)
-                self.run.info('Database name', name)
-                self.run.info('Source path', path)
-                self.run.info('Type', db_type)
+        self.run.warning(None, header=f"SETTING UP: {name}", lc="green")
 
-                if db_type == 'hmm':
-                    entry = self.setup_hmm_source(name, path)
+        try:
+            db_type = self.validate_and_detect_db_type(path)
+            self.run.info('Database name', name)
+            self.run.info('Source path', path)
+            self.run.info('Type', db_type)
 
-                    if companion_fasta:
-                        companion_type = self._sniff_file_type(companion_fasta)
-                        if companion_type != 'diamond':
-                            raise ConfigError(f"The companion FASTA provided for '{name}' does not look like "
-                                              f"a protein FASTA file (it starts with content expected from an "
-                                              f"HMM profile or has unrecognised format). The companion file "
-                                              f"must be a protein FASTA.")
-                        self.run.warning(None, header=f"SETTING UP COMPANION DIAMOND: {name}", lc="cyan")
-                        self.run.info('Companion FASTA', companion_fasta)
-                        companion_entry = self.setup_diamond_source(name, companion_fasta)
-                        entry['companion_diamond'] = companion_entry
-                else:
-                    if companion_fasta:
-                        self.run.warning(f"A companion FASTA was provided for '{name}', but this entry is a "
-                                         f"FASTA/DIAMOND database (not an HMM profile). Companion FASTA is only "
-                                         f"used with HMM databases. The companion will be ignored.")
-                    entry = self.setup_diamond_source(name, path)
+            entry = self._setup_entry(name, path, db_type, companion_fasta)
+            manifest[name] = entry
 
-                manifest[name] = entry
+            # Write manifest after every successful entry so a failure mid-run does
+            # not orphan already-prepared databases without a registry entry.
+            with open(manifest_path, 'w') as f:
+                json.dump(manifest, f, indent=2)
 
-                # Write manifest after every successful entry so a failure mid-run does
-                # not orphan already-prepared databases without a registry entry.
-                with open(manifest_path, 'w') as f:
-                    json.dump(manifest, f, indent=2)
+        except (ConfigError, FilesNPathsError, Exception) as e:
+            failures[name] = str(e)
+            self.run.warning(f"Anvi'o could not set up '{name}' and will skip it. Error: {e}")
 
-            except (ConfigError, FilesNPathsError, Exception) as e:
-                failures[name] = str(e)
-                self.run.warning(f"Anvi'o could not set up '{name}' and will skip it. Error: {e}")
 
+    def _setup_entry(self, name, path, db_type, companion_fasta):
+        """Build and return manifest entry dict for one database (HMM or DIAMOND)."""
+        if db_type == 'hmm':
+            entry = self.setup_hmm_source(name, path)
+            if companion_fasta:
+                companion_type = self._sniff_file_type(companion_fasta)
+                if companion_type != 'diamond':
+                    raise ConfigError(f"The companion FASTA provided for '{name}' does not look like "
+                                      f"a protein FASTA file (it starts with content expected from an "
+                                      f"HMM profile or has unrecognised format). The companion file "
+                                      f"must be a protein FASTA.")
+                self.run.warning(None, header=f"SETTING UP COMPANION DIAMOND: {name}", lc="cyan")
+                self.run.info('Companion FASTA', companion_fasta)
+                entry['companion_diamond'] = self.setup_diamond_source(name, companion_fasta)
+        else:
+            if companion_fasta:
+                raise ConfigError(f"A companion FASTA was provided for '{name}', but this entry is a "
+                                  f"FASTA/DIAMOND database (not an HMM profile). The companion FASTA "
+                                  f"column is only meaningful for HMM databases. Please remove the "
+                                  f"companion FASTA path from the TSV row for '{name}' and try again.")
+            entry = self.setup_diamond_source(name, path)
+
+        return entry
+
+
+    def _report_results(self, entries, failures, skipped, manifest_path):
+        """Log summary of setup results."""
         self.run.info('Manifest written to', manifest_path)
         num_ok = len(entries) - len(failures) - len(skipped)
         newly_set_up = [k for k in entries if k not in failures and k not in skipped]
@@ -523,19 +542,7 @@ class UserAnnotationDBSetup:
                     elif line.startswith('NC'):
                         current['has_nc'] = True
                     elif line == '//':
-                        if current['name'] is None:
-                            raise ConfigError(f"Found an HMM model without a NAME field near line {line_num} "
-                                              f"in '{hmm_path}'. Every model in a valid HMMER3 profile must "
-                                              f"have a NAME line.")
-                        if current['has_tc']:
-                            current['cutoff_type'] = 'tc'
-                        elif current['has_ga']:
-                            current['cutoff_type'] = 'ga'
-                        elif current['has_nc']:
-                            current['cutoff_type'] = 'nc'
-                        else:
-                            current['cutoff_type'] = None
-                        models.append(current)
+                        models.append(self._finalize_hmm_model(current, line_num, hmm_path))
                         current = None
         except (OSError, EOFError) as e:
             raise ConfigError(f"Could not read '{hmm_path}': {e}. Is this a valid HMMER3 profile file?")
@@ -544,6 +551,29 @@ class UserAnnotationDBSetup:
             raise ConfigError(f"No HMMER3 models found in '{hmm_path}'. A valid HMMER3 profile starts "
                               f"with a 'HMMER3/f' header and contains at least one model terminated by '//'.")
 
+        self._check_duplicate_model_names(models, hmm_path)
+        return models
+
+
+    def _finalize_hmm_model(self, current, line_num, hmm_path):
+        """Validate a completed HMM model record and assign its cutoff_type. Returns the model dict."""
+        if current['name'] is None:
+            raise ConfigError(f"Found an HMM model without a NAME field near line {line_num} "
+                              f"in '{hmm_path}'. Every model in a valid HMMER3 profile must "
+                              f"have a NAME line.")
+        if current['has_tc']:
+            current['cutoff_type'] = 'tc'
+        elif current['has_ga']:
+            current['cutoff_type'] = 'ga'
+        elif current['has_nc']:
+            current['cutoff_type'] = 'nc'
+        else:
+            current['cutoff_type'] = None
+        return current
+
+
+    def _check_duplicate_model_names(self, models, hmm_path):
+        """Raise ConfigError if any model NAME appears more than once in the parsed model list."""
         names_seen = set()
         duplicates = []
         for m in models:
@@ -555,8 +585,6 @@ class UserAnnotationDBSetup:
                               f"duplicate NAME fields: {', '.join(sorted(set(duplicates)))}. Every model in "
                               f"an HMM profile must have a unique NAME. Please deduplicate your profiles "
                               f"before running setup.")
-
-        return models
 
 
     def determine_noise_cutoff(self, models, db_name):
@@ -739,26 +767,18 @@ class UserAnnotationDBSetup:
             raise ConfigError(f"DIAMOND makedb completed but '{dmnd_path}' was not created. "
                               f"Check the log at '{diamond.run.log_file_path}' for details.")
 
-        num_seqs = 0
-        try:
-            with open(fasta_path) as f:
-                for line in f:
-                    if line.startswith('>'):
-                        num_seqs += 1
-        except Exception:
-            pass
-
         # Build and store ID-normalization mapping from FASTA headers
         self.progress.new(f"Building ID mapping for '{db_name}'")
         self.progress.update("Parsing FASTA headers...")
         id_mapping = self._build_sequence_id_mapping(fasta_path)
         self.progress.end()
 
+        num_seqs = len(id_mapping)
+
         mapping_path = os.path.join(diamond_dir, f'{db_name}_id_mapping.json')
         with open(mapping_path, 'w') as f:
             json.dump(id_mapping, f)
 
-        normalized_ids = sum(1 for v in id_mapping.values() if v['clean_id'] != v.get('raw_id', v['clean_id']))
         has_descriptions = sum(1 for v in id_mapping.values() if v['description'])
 
         self.run.info('DIAMOND database', dmnd_path)
@@ -944,61 +964,14 @@ class UserAnnotationRunner:
 
         total = 0
         with open(path) as f:
-            for lineno, line in enumerate(f, 1):
+            for line in f:
                 line = line.strip()
                 if not line or line.startswith('#'):
                     continue
-
-                db_name = None
-
-                if '\t' in line:
-                    parts = line.split('\t')
-                    # Detect db column by checking col[1]: if it parses as float → no db col
-                    # (model<TAB>seq_tc). If col[1] is not a float → first col is a db name
-                    # (db<TAB>model<TAB>seq_tc  or  db<TAB>model: seq_tc).
-                    has_db_col = False
-                    if len(parts) >= 2:
-                        try:
-                            float(parts[1])
-                        except ValueError:
-                            has_db_col = True
-
-                    if has_db_col:
-                        db_name = parts[0].strip()
-                        rest = '\t'.join(parts[1:])
-                    else:
-                        rest = line
-
-                    # Parse rest as tab-delimited or colon model expression
-                    if '\t' in rest:
-                        rest_parts = rest.split('\t')
-                        name = rest_parts[0].strip()
-                        values = [p.strip() for p in rest_parts[1:] if p.strip()]
-                    else:
-                        # rest may be "model: seq_tc" colon format
-                        colon_pos = rest.rfind(':')
-                        if colon_pos != -1:
-                            name = rest[:colon_pos].strip()
-                            values = rest[colon_pos + 1:].strip().split()
-                        else:
-                            name = rest.strip()
-                            values = []
-                else:
-                    # Pure colon format, no tab
-                    colon_pos = line.rfind(':')
-                    if colon_pos == -1:
-                        continue  # unrecognised line — skip silently
-                    name = line[:colon_pos].strip()
-                    values = line[colon_pos + 1:].strip().split()
-
-                if not values:
-                    continue  # no numeric value — skip (e.g. header text lines)
-                try:
-                    seq_tc = float(values[0])
-                    dom_tc = float(values[1]) if len(values) >= 2 else seq_tc
-                except ValueError:
-                    continue  # non-numeric value — skip
-
+                parsed = self._parse_tc_line(line)
+                if parsed is None:
+                    continue
+                db_name, name, seq_tc, dom_tc = parsed
                 result.setdefault(db_name, {})[name] = (seq_tc, dom_tc)
                 total += 1
 
@@ -1010,6 +983,56 @@ class UserAnnotationRunner:
             f"({global_n} global, {db_n} db-specific)"
         )
         return result
+
+
+    def _parse_tc_line(self, line):
+        """Parse one line from a custom TC file. Returns (db_name, model_name, seq_tc, dom_tc) or None to skip."""
+        db_name = None
+
+        if '\t' in line:
+            parts = line.split('\t')
+            # Detect db column: col[1] not parseable as float → first col is a db name.
+            has_db_col = False
+            if len(parts) >= 2:
+                try:
+                    float(parts[1])
+                except ValueError:
+                    has_db_col = True
+
+            if has_db_col:
+                db_name = parts[0].strip()
+                rest = '\t'.join(parts[1:])
+            else:
+                rest = line
+
+            if '\t' in rest:
+                rest_parts = rest.split('\t')
+                name = rest_parts[0].strip()
+                values = [p.strip() for p in rest_parts[1:] if p.strip()]
+            else:
+                colon_pos = rest.rfind(':')
+                if colon_pos != -1:
+                    name = rest[:colon_pos].strip()
+                    values = rest[colon_pos + 1:].strip().split()
+                else:
+                    name = rest.strip()
+                    values = []
+        else:
+            colon_pos = line.rfind(':')
+            if colon_pos == -1:
+                return None
+            name = line[:colon_pos].strip()
+            values = line[colon_pos + 1:].strip().split()
+
+        if not values:
+            return None
+        try:
+            seq_tc = float(values[0])
+            dom_tc = float(values[1]) if len(values) >= 2 else seq_tc
+        except ValueError:
+            return None
+
+        return db_name, name, seq_tc, dom_tc
 
 
     def _apply_custom_tc_to_groups(self, db_name, cutoff_groups):
@@ -1097,18 +1120,9 @@ class UserAnnotationRunner:
                         current_lines.append(line)
                     elif line.startswith('TC ') or line.startswith('TC\t'):
                         saw_tc = True
-                        if current_name in tc_overrides:
-                            seq_tc, dom_tc = tc_overrides[current_name]
-                            current_lines.append(f'TC    {seq_tc:.2f}  {dom_tc:.2f};\n')
-                        else:
-                            current_lines.append(line)
+                        current_lines.append(self._get_tc_line(current_name, tc_overrides, line))
                     elif line.rstrip() == 'HMM' or line.startswith('HMM '):
-                        # HMM keyword marks the start of model parameters — header ends here.
-                        # Inject TC now if not yet seen (must be in header, not after parameters).
-                        if keep and current_name in tc_overrides and not saw_tc:
-                            seq_tc, dom_tc = tc_overrides[current_name]
-                            current_lines.append(f'TC    {seq_tc:.2f}  {dom_tc:.2f};\n')
-                            saw_tc = True
+                        saw_tc = self._inject_missing_tc(keep, current_name, tc_overrides, saw_tc, current_lines)
                         current_lines.append(line)
                     elif line.strip() == '//':
                         current_lines.append(line)
@@ -1123,6 +1137,23 @@ class UserAnnotationRunner:
                         current_lines.append(line)
 
         return temp_hmm_path
+
+
+    def _get_tc_line(self, current_name, tc_overrides, original_line):
+        """Return TC line to write: formatted override if present, else the original line."""
+        if current_name in tc_overrides:
+            seq_tc, dom_tc = tc_overrides[current_name]
+            return f'TC    {seq_tc:.2f}  {dom_tc:.2f};\n'
+        return original_line
+
+
+    def _inject_missing_tc(self, keep, current_name, tc_overrides, saw_tc, current_lines):
+        """Inject TC line before HMM parameters if an override exists and TC was not yet written. Returns updated saw_tc."""
+        if keep and current_name in tc_overrides and not saw_tc:
+            seq_tc, dom_tc = tc_overrides[current_name]
+            current_lines.append(f'TC    {seq_tc:.2f}  {dom_tc:.2f};\n')
+            return True
+        return saw_tc
 
 
     def _run_hmm_annotation_single_cutoff(self, internal_source_name, hmm_dir):
@@ -1313,6 +1344,10 @@ class UserAnnotationRunner:
         if not self._handle_existing_source(internal_source_name):
             return
 
+        self.run.warning("Anvi'o will use 'HMMER' by Eddy (doi:10.1371/journal.pcbi.1002195) to search your "
+                         "contigs database against the HMM profiles in this database. When you publish your "
+                         "findings, please do not forget to properly credit their work.", lc='green', header="CITATION")
+
         custom_tc_models = {}
         if self.custom_tc_map:
             custom_tc_models, cutoff_groups = self._apply_custom_tc_to_groups(db_name, cutoff_groups)
@@ -1338,29 +1373,21 @@ class UserAnnotationRunner:
                 f"Anvi'o will use the model name as the accession for these hits."
             )
 
-        # Fix any remaining '-' accessions: use model name (= SUBSTR strips '[HMM] ' prefix, 7 chars)
-        #if missing_acc_models:
-        #    contigs_database._exec(
-        #        f"UPDATE {t.gene_function_calls_table_name} "
-        #        f"SET accession = SUBSTR(function, 7) "
-        #        f"WHERE source = ? AND accession = '-'",
-        #        [internal_source_name]
-        #    )
-
-        # Normalize accessions: strip .hmm/.hmm.gz file extensions that may have come
-        # through from the HMM model's ACC field via HMMER tblout output.
-        cursor = contigs_database._exec(
-            f"SELECT DISTINCT accession FROM {t.gene_function_calls_table_name} WHERE source = ?",
-            [internal_source_name]
-        )
-        for (raw_acc,) in cursor.fetchall():
-            normalized = _normalize_hmm_acc(raw_acc)
-            if normalized != raw_acc:
-                contigs_database._exec(
-                    f"UPDATE {t.gene_function_calls_table_name} "
-                    f"SET accession = ? WHERE source = ? AND accession = ?",
-                    [normalized, internal_source_name, raw_acc]
-                )
+        # Normalize accessions and function names: strip .hmm/.hmm.gz file extensions that
+        # may have come through from the HMM model's ACC or NAME field via HMMER tblout output.
+        for col in ('accession', 'function'):
+            cursor = contigs_database._exec(
+                f"SELECT DISTINCT {col} FROM {t.gene_function_calls_table_name} WHERE source = ?",
+                [internal_source_name]
+            )
+            for (raw_val,) in cursor.fetchall():
+                normalized = _normalize_hmm_acc(raw_val)
+                if normalized != raw_val:
+                    contigs_database._exec(
+                        f"UPDATE {t.gene_function_calls_table_name} "
+                        f"SET {col} = ? WHERE source = ? AND {col} = ?",
+                        [normalized, internal_source_name, raw_val]
+                    )
 
         contigs_database.disconnect()
 
@@ -1392,6 +1419,10 @@ class UserAnnotationRunner:
         source_name = f'{db_name}{DIAMOND_SOURCE_SUFFIX}'
         if not self._handle_existing_source(source_name):
             return
+
+        self.run.warning("Anvi'o will use 'DIAMOND' by Buchfink et al. (doi:10.1038/nmeth.3176) to search your "
+                         "contigs database against this protein database. When you publish your findings, "
+                         "please do not forget to properly credit their work.", lc='green', header="CITATION")
 
         if not os.path.exists(dmnd_path):
             raise ConfigError(f"The DIAMOND database for '{db_name}' no longer exists at '{dmnd_path}'. "
@@ -1508,24 +1539,24 @@ class UserAnnotationRunner:
                 if len(fields) < 12:
                     continue
 
-                qseqid   = fields[0]
-                sseqid   = fields[1]
-                pident   = float(fields[2])
-                aln_len  = int(fields[3])
-                evalue   = float(fields[10])
+                qseqid = fields[0]
+                sseqid = fields[1]
+                pident = float(fields[2])
+                aln_len = int(fields[3])
+                evalue = float(fields[10])
                 bitscore = float(fields[11])
-                qlen     = int(fields[12]) if len(fields) > 12 and fields[12] else None
+                qlen = int(fields[12]) if len(fields) > 12 and fields[12] else None
 
                 if qseqid in best_hits and evalue >= best_hits[qseqid]['evalue']:
                     continue
 
                 best_hits[qseqid] = {
-                    'sseqid':   sseqid,
-                    'pident':   pident,
-                    'aln_len':  aln_len,
-                    'evalue':   evalue,
+                    'sseqid': sseqid,
+                    'pident': pident,
+                    'aln_len': aln_len,
+                    'evalue': evalue,
                     'bitscore': bitscore,
-                    'qlen':     qlen,
+                    'qlen': qlen,
                 }
 
         functions_dict = {}
@@ -1537,10 +1568,10 @@ class UserAnnotationRunner:
             except ValueError:
                 continue
 
-            sseqid   = hit['sseqid']
-            pident   = hit['pident']
-            aln_len  = hit['aln_len']
-            evalue   = hit['evalue']
+            sseqid = hit['sseqid']
+            pident = hit['pident']
+            aln_len = hit['aln_len']
+            evalue = hit['evalue']
             bitscore = hit['bitscore']
 
             meta = id_mapping.get(sseqid, {})
@@ -1550,8 +1581,8 @@ class UserAnnotationRunner:
             label = description if description else clean_id
             qlen = hit.get('qlen')
             qcov_str = f", qcov: {aln_len / qlen * 100:.1f}%" if qlen else ""
-            function_str = (f"{label} "
-                            #f"[pident: {pident:.1f}%, "
+            function_str = (f"{label}"
+                            #f" [pident: {pident:.1f}%, "
                             #f"aln_len: {aln_len} aa, "
                             #f"bitscore: {bitscore:.1f}"
                             #f"{qcov_str}]"
@@ -1559,10 +1590,10 @@ class UserAnnotationRunner:
 
             functions_dict[entry_id] = {
                 'gene_callers_id': gene_callers_id,
-                'source':          source_name,
-                'accession':       clean_id,
-                'function':        function_str,
-                'e_value':         evalue,
+                'source': source_name,
+                'accession': clean_id,
+                'function': function_str,
+                'e_value': evalue,
             }
             entry_id += 1
 
