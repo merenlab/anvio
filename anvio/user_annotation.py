@@ -1005,7 +1005,7 @@ class UserAnnotationRunner:
         global_n = sum(len(v) for k, v in result.items() if k is None)
         db_n = total - global_n
         self.run.info(
-            f"Custom TC overrides loaded",
+            "Custom TC overrides loaded",
             f"{total} model(s) from '{path}' "
             f"({global_n} global, {db_n} db-specific)"
         )
@@ -1402,7 +1402,7 @@ class UserAnnotationRunner:
         try:
             aa_sequences_path = os.path.join(temp_dir, 'aa_sequences.faa')
 
-            self.progress.new(f"Exporting AA sequences from contigs DB")
+            self.progress.new("Exporting AA sequences from contigs DB")
             self.progress.update("...")
 
             contig_sc = dbops.ContigsSuperclass(self.args,

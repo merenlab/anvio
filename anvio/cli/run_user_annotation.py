@@ -48,7 +48,7 @@ def get_args():
                         default=constants.default_user_annotation_data_dir,
                         help="Path to the directory created by `anvi-setup-user-annotation-db`. "
                              "It must contain a manifest.json file that lists the prepared databases. "
-                             f"Default: %(default)s")
+                             "Default: %(default)s")
 
     groupB = parser.add_argument_group("DATABASE SELECTION",
                                        "By default all databases in the annotation directory are used. "

@@ -54,8 +54,8 @@ def get_args():
     groupB.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {
         'required': False,
         'default': constants.default_user_annotation_data_dir,
-        'help': f"Directory where prepared databases will be stored. "
-                f"Default: %(default)s"
+        'help': "Directory where prepared databases will be stored. "
+                "Default: %(default)s"
     }))
 
     groupC = parser.add_argument_group("OPTIONS")

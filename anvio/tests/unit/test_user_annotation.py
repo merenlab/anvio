@@ -31,7 +31,6 @@ from anvio.errors import ConfigError
 from anvio.user_annotation import (
     UserAnnotationDBSetup,
     UserAnnotationRunner,
-    HMM_SOURCE_SUFFIX,
     DIAMOND_SOURCE_SUFFIX,
     MANIFEST_FILENAME,
 )
@@ -194,7 +193,7 @@ class TestParseInputTSV(unittest.TestCase):
     def test_nonexistent_path_raises(self):
         tsv = os.path.join(self.tmp, 't.tsv')
         with open(tsv, 'w') as f:
-            f.write(f'MyHMM\t/does/not/exist.hmm\n')
+            f.write('MyHMM\t/does/not/exist.hmm\n')
         s = self._setup(tsv)
         with self.assertRaises(Exception):
             s.parse_input_tsv()
