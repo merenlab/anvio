@@ -5,6 +5,7 @@
 import os
 import glob
 import shutil
+import argparse
 
 import anvio
 import anvio.dbops as dbops
@@ -17,20 +18,15 @@ from anvio.drivers.hmmer import HMMer
 from anvio.parsers import parser_modules
 from anvio.tables.genefunctions import TableForGeneFunctions
 
-
-__copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
+__copyright__ = "Copyleft 2015-2026, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__maintainer__ = "The Anvi'o Project"
-__email__ = "info@anvio.org"
-
-
-run = terminal.Run()
-progress = terminal.Progress()
+__maintainer__ = "Georges Kanaan"
+__email__ = "georges@gkanaan.com"
 
 
 class PHROGsSetup(object):
-    def __init__(self, args, run=run, progress=progress):
+    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
         self.args = args
         self.run = run
         self.progress = progress
@@ -38,6 +34,7 @@ class PHROGsSetup(object):
         self.phrogs_version = args.phrogs_version or 'v4'
 
         filesnpaths.is_program_exists('hmmpress')
+        filesnpaths.is_program_exists('hmmbuild')
 
         if self.phrogs_data_dir and args.reset:
             raise ConfigError("You are attempting to run PHROGs setup on a non-default data directory (%s) using the --reset flag. "
@@ -53,9 +50,10 @@ class PHROGsSetup(object):
         filesnpaths.is_output_dir_writable(os.path.dirname(os.path.abspath(self.phrogs_data_dir)))
 
         self.db_url = "https://phrogs.lmge.uca.fr/downloads_from_website"
-        self.hmm_archive_name = "HMM_phrog.tar.gz"
+        self.msa_archive_name = "MSA_phrogs.tar.gz"
         self.annotation_file_name = f"phrog_annot_{self.phrogs_version}.tsv"
-        self.local_hmm_archive_path = os.path.join(self.phrogs_data_dir, self.hmm_archive_name)
+
+        self.local_msa_archive_path = os.path.join(self.phrogs_data_dir, self.msa_archive_name)
         self.local_annotation_path = os.path.join(self.phrogs_data_dir, "phrog_annot.tsv")
         self.local_hmm_file = os.path.join(self.phrogs_data_dir, "PHROGs.hmm")
 
@@ -67,36 +65,50 @@ class PHROGsSetup(object):
         else:
             filesnpaths.gen_output_directory(self.phrogs_data_dir)
 
-
     def is_database_exists(self):
         if os.path.exists(self.local_hmm_file) and os.path.exists(self.local_annotation_path):
             raise ConfigError("It seems you already have PHROGs database installed in '%s', please use --reset flag if you want to re-download it." % self.phrogs_data_dir)
 
-
     def download(self):
-        hmm_download_url = f"{self.db_url}/{self.hmm_archive_name}"
+        msa_download_url = f"{self.db_url}/{self.msa_archive_name}"
         annotation_download_url = f"{self.db_url}/{self.annotation_file_name}"
-        self.run.info("PHROGs HMM archive URL", hmm_download_url)
+
+        self.run.info("PHROGs MSA archive URL", msa_download_url)
         self.run.info("PHROGs annotation URL", annotation_download_url)
         self.run.info("PHROGs data directory", self.phrogs_data_dir)
 
         try:
-            utils.download_file(hmm_download_url, self.local_hmm_archive_path, progress=self.progress, run=self.run)
-            utils.download_file(annotation_download_url, self.local_annotation_path, progress=self.progress, run=self.run)
+            utils.download_file(
+                msa_download_url,
+                self.local_msa_archive_path,
+                check_certificate=False,
+                progress=self.progress,
+                run=self.run,
+            )
+            utils.download_file(
+                annotation_download_url,
+                self.local_annotation_path,
+                check_certificate=False,
+                progress=self.progress,
+                run=self.run,
+            )
         except Exception as e:
             raise ConfigError("Anvi'o failed to download PHROGs files. If your internet connection is healthy, this may indicate the "
                               "database URLs have changed. Please report this issue to the anvi'o developers. Original error: '%s'." % e)
 
-        extracted_hmms_dir = os.path.join(self.phrogs_data_dir, "HMM_phrog")
-        if os.path.exists(extracted_hmms_dir):
-            shutil.rmtree(extracted_hmms_dir)
+        extracted_fma_dir = os.path.join(self.phrogs_data_dir, "MSA_Phrogs_M50_FMA")
+        if os.path.exists(extracted_fma_dir):
+            shutil.rmtree(extracted_fma_dir)
 
-        utils.tar_extract_file(self.local_hmm_archive_path, output_file_path=self.phrogs_data_dir, keep_original=True)
+        utils.tar_extract_file(self.local_msa_archive_path, output_file_path=self.phrogs_data_dir, keep_original=True)
 
-        hmm_files = sorted(glob.glob(os.path.join(extracted_hmms_dir, "*.hmm")))
-        if not hmm_files:
-            raise ConfigError("Anvi'o expected to find .hmm files under '%s' after extracting the PHROGs archive, but found none. "
-                              "The archive format may have changed." % extracted_hmms_dir)
+        fma_files = sorted(glob.glob(os.path.join(extracted_fma_dir, "*.fma")))
+
+        if not fma_files:
+            raise ConfigError("Anvi'o expected to find FMA files under '%s' after extracting the PHROGs archive, but found none. "
+                              "The archive format may have changed." % extracted_fma_dir)
+
+        hmm_files = self.build_hmms_from_fmas(fma_files)
 
         utils.concatenate_files(self.local_hmm_file, hmm_files, remove_concatenated_files=False)
         self.hmmpress_profiles()
@@ -111,6 +123,34 @@ class PHROGsSetup(object):
                              "`anvi-run-phrogs` on contigs databases to annotate genes with PHROGs functions.",
                              nl_before=1, nl_after=1, mc='green')
 
+    def build_hmms_from_fmas(self, fma_files):
+        log_file_path = os.path.join(self.phrogs_data_dir, '00_hmmbuild_log.txt')
+        fma_file = ""
+        hmm_file = ""
+        hmm_files = []
+
+        try:
+            self.progress.new("Building PHROGs .hmm files from FMA families", progress_total_items=len(fma_files))
+
+            for fma_file in fma_files:
+                hmm_file = os.path.splitext(fma_file)[0] + '.hmm'
+                utils.run_command_and_get_output(
+                    ['hmmbuild', hmm_file, fma_file],
+                    log_file_path=log_file_path
+                )
+                hmm_files.append(hmm_file)
+                self.progress.increment()
+
+            self.progress.end()
+
+        except Exception:
+            if os.path.exists(hmm_file):
+                os.remove(hmm_file)
+            self.progress.end()
+            raise ConfigError("Anvi'o expected to be able to build PHROGs .hmm files from FMA families using `hmmbuild`, "
+                              "but something went wrong. Please check the log file ('%s') to see what happened." % log_file_path)
+
+        return hmm_files
 
     def hmmpress_profiles(self):
         cmd_line = ['hmmpress', self.local_hmm_file]
@@ -125,17 +165,19 @@ class PHROGsSetup(object):
 
 
 class PHROGs(object):
-    def __init__(self, args, run=run, progress=progress):
+    def __init__(self, args, run=terminal.Run(), progress=terminal.Progress()):
+        self.args = args
         self.run = run
         self.progress = progress
 
         A = lambda x, t: t(args.__dict__[x]) if x in args.__dict__ else None
         null = lambda x: x
+
         self.contigs_db_path = A('contigs_db', null)
-        self.num_threads = A('num_threads', null)
+        self.num_threads = A('num_threads', null) or 1
         self.hmm_program = A('hmmer_program', null) or 'hmmsearch'
-        self.noise_cutoff_terms = A('noise_cutoff_terms', null) or '--cut_ga'
         self.phrogs_data_dir = A('phrogs_data_dir', null)
+        self.noise_cutoff_terms = A('noise_cutoff_terms', null) or '--cut_ga'
         self.just_do_it = A('just_do_it', null)
 
         filesnpaths.is_program_exists(self.hmm_program)
@@ -144,96 +186,43 @@ class PHROGs(object):
         if not self.phrogs_data_dir:
             self.phrogs_data_dir = os.path.join(os.path.dirname(anvio.__file__), 'data/misc/PHROGs')
 
-        self.hmm_file = os.path.join(self.phrogs_data_dir, "PHROGs.hmm")
-        self.annotation_file = os.path.join(self.phrogs_data_dir, "phrog_annot.tsv")
-        self.version_file = os.path.join(self.phrogs_data_dir, "version.txt")
-        self.db_url_file = os.path.join(self.phrogs_data_dir, "db_url.txt")
-        self.function_catalog = {}
+        self.local_hmm_file = os.path.join(self.phrogs_data_dir, 'PHROGs.hmm')
+        self.local_annotation_path = os.path.join(self.phrogs_data_dir, 'phrog_annot.tsv')
 
         self.is_database_exists()
         self.load_catalog()
 
-
     def is_database_exists(self):
-        expected_files = [self.hmm_file, self.annotation_file]
-        for file_path in expected_files:
-            if not os.path.exists(file_path):
-                raise ConfigError("It seems the PHROGs database is not setup on this system :/ Please run the program "
-                                  "`anvi-setup-phrogs` to set it up. If you set up PHROGs at a location that is different "
-                                  "than the default location using the `--phrogs-data-dir` flag before, please provide "
-                                  "the same path to `anvi-run-phrogs`.")
+        if not os.path.exists(self.local_hmm_file):
+            raise ConfigError("It seems you do not have PHROGs HMM profiles installed in '%s'. Please run 'anvi-setup-phrogs' first." %
+                              self.phrogs_data_dir)
 
-
-    def canonicalize_phrog_id(self, raw_id):
-        if raw_id is None:
-            return None
-
-        phrog_id = str(raw_id).strip()
-        if not phrog_id:
-            return None
-
-        if phrog_id.lower().startswith('phrog_'):
-            phrog_suffix = phrog_id.split('_', maxsplit=1)[1]
-        elif phrog_id.lower().startswith('phrog'):
-            phrog_suffix = phrog_id[5:]
-        else:
-            phrog_suffix = phrog_id
-
-        phrog_suffix = phrog_suffix.strip()
-        if phrog_suffix.isdigit():
-            return f"phrog_{int(phrog_suffix):04d}"
-        else:
-            return f"phrog_{phrog_suffix.lower()}"
-
+        if not os.path.exists(self.local_annotation_path):
+            raise ConfigError("It seems you do not have PHROGs annotations installed in '%s'. Please run 'anvi-setup-phrogs' first." %
+                              self.phrogs_data_dir)
 
     def load_catalog(self):
-        rows_dict = utils.get_TAB_delimited_file_as_dictionary(self.annotation_file)
+        self.function_catalog = utils.get_TAB_delimited_file_as_dictionary(
+            self.local_annotation_path,
+            column_names=['phrog', 'color', 'annot', 'category'],
+        )
 
-        for row in rows_dict.values():
-            phrog_id = row.get('#phrog') or row.get('phrog') or row.get('PHROG') or row.get('phrog_id')
-            annotation = row.get('Annotation') or row.get('annotation') or row.get('function') or row.get('description')
-            category = row.get('Category') or row.get('category')
+    def get_function_from_catalog(self, accession, ok_if_missing_from_catalog=False):
+        accession = str(accession)
 
-            canonical_phrog_id = self.canonicalize_phrog_id(phrog_id)
-            if not canonical_phrog_id:
-                continue
+        if accession not in self.function_catalog:
+            if ok_if_missing_from_catalog:
+                return "Unknown function with PHROGs accession %s" % accession
+            raise ConfigError("It seems hmmscan/hmmsearch found an accession id that does not exist in the PHROGs catalog: %s" % accession)
 
-            if annotation and category:
-                function = f"{annotation} [{category}]"
-            elif annotation:
-                function = annotation
-            elif category:
-                function = f"PHROG function category: {category}"
-            else:
-                function = f"Unannotated PHROG {canonical_phrog_id}"
-
-            self.function_catalog[canonical_phrog_id] = function
-
-        if not self.function_catalog:
-            raise ConfigError("The PHROGs annotation file '%s' could not be parsed into a usable catalog. "
-                              "Please make sure this file is a valid PHROGs annotation table." % self.annotation_file)
-
-        self.run.info("PHROGs annotation entries loaded", len(self.function_catalog))
-        if os.path.exists(self.version_file):
-            self.run.info("PHROGs version", open(self.version_file).readline().strip())
-
+        return self.function_catalog[accession]['annot']
 
     def process(self):
-        if not self.just_do_it:
-            self.run.warning("Anvi'o will annotate genes in your contigs-db with PHROGs. If your contigs-db already "
-                             "contains PHROGs hits and you intend to overwrite them, rerun this command with --just-do-it.",
-                             header="Heads up", lc='green')
-
-        class Args:
-            pass
-
-        args = Args()
-        args.contigs_db = self.contigs_db_path
-        run_quiet = terminal.Run(verbose=False)
-
-        contigs_db = dbops.ContigsSuperclass(args, r=run_quiet)
+        args = argparse.Namespace(contigs_db=self.contigs_db_path)
+        contigs_db = dbops.ContigsSuperclass(args)
         tmp_directory_path = filesnpaths.get_temp_directory_path()
-        gene_function_calls_table = TableForGeneFunctions(self.contigs_db_path)
+
+        gene_function_calls_table = TableForGeneFunctions(self.contigs_db_path, self.run, self.progress)
 
         target_files_dict = {'AA:GENE': os.path.join(tmp_directory_path, 'AA_gene_sequences.fa')}
         contigs_db.get_sequences_for_gene_callers_ids(output_file_path=target_files_dict['AA:GENE'],
@@ -241,11 +230,13 @@ class PHROGs(object):
                                                       report_aa_sequences=True)
 
         hmmer = HMMer(target_files_dict, num_threads_to_use=self.num_threads, program_to_use=self.hmm_program)
-        hmm_hits_file = hmmer.run_hmmer('PHROGs', 'AA', 'GENE', None, None, len(self.function_catalog), self.hmm_file, None, self.noise_cutoff_terms)
+        hmm_hits_file = hmmer.run_hmmer('PHROGs', 'AA', 'GENE', None, None, len(self.function_catalog), self.local_hmm_file,
+                                        None, self.noise_cutoff_terms)
 
         if not hmm_hits_file:
-            self.run.info_single("The HMM search returned no hits. Anvi'o will add PHROGs as a functional source with no hits "
-                                 "and exit gracefully.", nl_before=1, nl_after=1)
+            self.run.info_single("The HMM search returned no hits :/ So there is nothing to add to the contigs database. But "
+                                 "now anvi'o will add PHROGs as a functional source with no hits, clean the temporary directories "
+                                 "and gracefully quit.", nl_before=1, nl_after=1)
             shutil.rmtree(tmp_directory_path)
             hmmer.clean_tmp_dirs()
             gene_function_calls_table.add_empty_sources_to_functional_sources({'PHROGs'})
@@ -257,27 +248,28 @@ class PHROGs(object):
         functions_dict = {}
         counter = 0
         for hmm_hit in search_results_dict.values():
-            canonical_id = self.canonicalize_phrog_id(hmm_hit.get('gene_hmm_id') or hmm_hit.get('gene_name'))
             functions_dict[counter] = {
                 'gene_callers_id': hmm_hit['gene_callers_id'],
                 'source': 'PHROGs',
-                'accession': canonical_id,
-                'function': self.function_catalog.get(canonical_id, f"Unknown PHROG hit ({canonical_id})"),
-                'e_value': hmm_hit['e_value']
+                'accession': hmm_hit['gene_hmm_id'],
+                'function': self.get_function_from_catalog(hmm_hit['gene_hmm_id'], ok_if_missing_from_catalog=True),
+                'e_value': hmm_hit['e_value'],
             }
             counter += 1
 
         if functions_dict:
-            gene_function_calls_table.create(functions_dict)
+            gene_function_calls_table.create(functions_dict, drop_previous_annotations_first=bool(self.just_do_it))
         else:
-            self.run.warning("PHROGs has no hits to process. Returning empty handed, but still adding PHROGs as a functional source.")
+            self.run.warning("PHROGs class has no hits to process. Returning empty handed, but still adding PHROGs as a functional source.")
             gene_function_calls_table.add_empty_sources_to_functional_sources({'PHROGs'})
 
         if anvio.DEBUG:
-            self.run.warning("The temp directories, '%s' and '%s' are kept. Please don't forget to clean those up "
-                             "later" % (tmp_directory_path, ', '.join(hmmer.tmp_dirs)), header="Debug")
+            self.run.warning("The temp directories, '%s' and '%s' are kept. Please don't forget to clean those up later" %
+                             (tmp_directory_path, ', '.join(hmmer.tmp_dirs)), header="Debug")
         else:
-            self.run.info_single('Cleaning up the temp directory (you can use `--debug` if you would '
-                                 'like to keep it for testing purposes)', nl_before=1, nl_after=1)
+            self.run.info_single('Cleaning up the temp directory (you can use `--debug` if you would like to keep it for testing purposes)',
+                                 nl_before=1, nl_after=1)
             shutil.rmtree(tmp_directory_path)
             hmmer.clean_tmp_dirs()
+
+      
