@@ -11,7 +11,7 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio import utils as u
 from anvio.drivers import driver_modules
-from anvio.workflows import WorkflowSuperClass
+from anvio.workflows import WorkflowSuperClass, LR_TECHNOLOGY_MAP
 from anvio.workflows.contigs import ContigsDBWorkflow
 from anvio.workflows.qc import QCModule
 from anvio.workflows.read_recruitment import ReadRecruitmentModule
@@ -90,9 +90,11 @@ class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, W
                                                   "--similar", "--max_mismatch", "--min_pairs",
                                                   "--no_bubble", "--no_local", "--no_coverage",
                                                   "--no_correct", "--pre_correction", "use_scaffolds"]
-        rule_acceptable_params_dict['flye'] = ["run", "conda_yaml", "conda_env", "--meta", "--pacbio-raw", "--pacbio-corr",
-                                                   "--pacbio-hifi", "--nano-raw", "--nano-corr",
-                                                   "--nano-hq", "--genome-size", "--iterations",
+        # Read-type flags (--pacbio-raw, --nano-raw, etc.) are intentionally omitted:
+        # they are derived from lr_technology in samples.txt via get_flye_flag_for_group(),
+        # not set in the config, so exposing them would be misleading.
+        rule_acceptable_params_dict['flye'] = ["run", "conda_yaml", "conda_env", "--meta",
+                                                   "--genome-size", "--iterations",
                                                    "--min-overlap", "--read-error", "--keep-haplotypes",
                                                    "--no-alt-contigs", "--scaffold", "--polish-target",
                                                    "additional_params", "threads"]
@@ -123,7 +125,7 @@ class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, W
                                     'metaspades': {"additional_params": "--only-assembler", "threads": 7},
                                     'megahit': {"--min-contig-len": min_contig_length_for_assembly, "--memory": 0.4, "threads": 7},
                                     'idba_ud': {"--min_contig": min_contig_length_for_assembly, "threads": 7},
-                                    'flye': {"run": False, "threads": 7, "additional_params": "", "--meta": True, "--pacbio-hifi": True},
+                                    'flye': {"run": False, "threads": 7, "additional_params": "", "--meta": True},
                                     "krakenuniq": {"threads": 3, "--gzip-compressed": True, "additional_params": ""},
                                     "remove_short_reads_based_on_references": {"delimiter-for-iu-remove-ids-from-fastq": " "},
                                     "anvi_cluster_contigs": {"--collection-name": "{driver}"}})
@@ -640,6 +642,46 @@ class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, W
         for rs_id in member_readsets:
             files.extend(self.get_lr_files_for_readset(rs_id))
         return files
+
+
+    def get_flye_flag_for_group(self, group_id):
+        """Return the single flye read-type flag (e.g. '--nano-raw') for a group's LR reads.
+
+        Raises ConfigError if the group's samples have incompatible technologies that
+        map to different flye flags — those must be separated into different groups.
+        """
+        member_readsets = self.assembly_members.get(group_id, [])
+        flags = set()
+        techs = set()
+        for rs_id in member_readsets:
+            rs = self.readsets_by_id.get(rs_id)
+            tech = rs.get('lr_technology') if rs else None
+            if not tech:
+                raise ConfigError(
+                    f"Anvi'o needs to know the sequencing technology for readset '{rs_id}' "
+                    f"to run Flye, but no 'lr_technology' was found. Please set it in your "
+                    f"samples.txt. Valid values: {', '.join(sorted(LR_TECHNOLOGY_MAP.keys()))}."
+                )
+            if tech not in LR_TECHNOLOGY_MAP or 'flye' not in LR_TECHNOLOGY_MAP[tech]:
+                raise ConfigError(
+                    f"Anvi'o cannot determine the Flye read-type flag for lr_technology "
+                    f"'{tech}' (readset '{rs_id}'). Valid values: "
+                    f"{', '.join(sorted(LR_TECHNOLOGY_MAP.keys()))}."
+                )
+            flags.add(LR_TECHNOLOGY_MAP[tech]['flye'])
+            techs.add(tech)
+
+        if len(flags) > 1:
+            raise ConfigError(
+                f"Anvi'o is trying to assemble group '{group_id}' with Flye, but its "
+                f"samples use incompatible sequencing technologies: {', '.join(sorted(techs))}. "
+                f"Flye requires a single read type per assembly run. Please split these "
+                f"samples into separate groups in your samples.txt."
+            )
+        if not flags:
+            raise ConfigError(f"Group '{group_id}' has no LR readsets with a detectable flye flag.")
+
+        return flags.pop()
 
 
     def get_sr_fastqs_for_group(self, group_id: str, use_filtered: bool = False, zipped: bool | None = None):
