@@ -280,7 +280,7 @@ class PanRepresenter:
         """Exports the functions table as a tab delimited file"""
 
         functions = pd.DataFrame(self.functions).T
-        utils.store_dataframe_as_TAB_delimited_file(functions, "functions.tsv")
+        utils.store_dataframe_as_TAB_delimited_file(functions, f"{self.tmpdir}/functions.tsv")
 
     def export_fasta(self):
         """Writes the DNA sequnces to a fasta file `output_file_path`
