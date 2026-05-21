@@ -27,7 +27,6 @@ LR_READSETS = M.get_lr_readset_ids()
 
 SR_RS_RE = w.regex_from_ids(SR_READSETS)
 LR_RS_RE = w.regex_from_ids(LR_READSETS)
-ALL_RS_RE = w.regex_from_ids(SR_READSETS + LR_READSETS)
 
 
 # bowtie2 index prefix
@@ -166,7 +165,7 @@ rule minimap2:
         nodes=M.T("minimap2"),
     params:
         env_prefix=lambda wildcards: w.get_conda_env_prefix(M, "minimap2"),
-        preset=lambda wildcards: M.get_minimap2_preset(wildcards.readset),
+        preset=M.get_param_value_from_config(["minimap2", "preset"]),
         additional_params=M.get_param_value_from_config(
             ["minimap2", "additional_params"]
         ),
@@ -181,8 +180,6 @@ rule minimap2:
 
 rule samtools_view:
     """Convert mapped SAM output into raw BAM format."""
-    wildcard_constraints:
-        readset=ALL_RS_RE,
     input:
         sam=M.dirs_dict["MAPPING_DIR"] + "/{group}/{readset}.sam",
     output:
@@ -202,8 +199,6 @@ rule samtools_view:
 
 rule anvi_init_bam:
     """Initialize and index BAM files for anvi-o profiling."""
-    wildcard_constraints:
-        readset=ALL_RS_RE,
     input:
         bam=M.dirs_dict["MAPPING_DIR"] + "/{group}/{readset}-RAW.bam",
     output:
@@ -451,7 +446,7 @@ rule anvi_merge:
                 "that this is our fault. sincerely, Meren Lab" % wildcards.group
             )
             create_fake_output_files(_message, output)
-            with open(str(log), 'a') as _log: _log.write(_message + '\n')
+            shell("echo %s >> {log}" % _message)
         elif M.group_sizes[wildcards.group] == 1:
             _message = (
                 "Only one file was profiled with %s so there \
@@ -461,14 +456,14 @@ rule anvi_merge:
                 % (wildcards.group, input.profiles[0])
             )
             create_fake_output_files(_message, output)
-            with open(str(log), 'a') as _log: _log.write(_message + '\n')
+            shell("echo %s >> {log}" % _message)
         elif len(input.profiles) == 1:
             _message = (
                 "Only one sample had reads recruited to %s "
                 "and hence merging could not occur." % wildcards.group
             )
             create_fake_output_files(_message, output)
-            with open(str(log), 'a') as _log: _log.write(_message + '\n')
+            shell("echo %s >> {log}" % _message)
         else:
             shell(
                 "anvi-merge {input.profiles} -o {params.output_dir} -c {input.contigs} \

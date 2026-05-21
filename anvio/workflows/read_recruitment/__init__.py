@@ -6,7 +6,7 @@
 
 import os
 import anvio
-import anvio.terminal as terminal  # noqa: F401
+import anvio.terminal as terminal
 from anvio.workflows import WorkflowSuperClass
 
 
@@ -73,14 +73,6 @@ class ReadRecruitmentModule(WorkflowSuperClass):
             "anvi_merge": {"--sample-name": "{group}", "--overwrite-output-destinations": True},
             "import_percent_of_reads_mapped": {"run": True},
         })
-
-    def get_minimap2_preset(self, readset_id):
-        """Return the minimap2 preset for this readset.
-
-        Uses lr_technology if available, otherwise falls back to the config value.
-        Subclasses (e.g. QCModule) override this to use LR_TECHNOLOGY_MAP.
-        """
-        return self.get_param_value_from_config(['minimap2', 'preset'])
 
     def get_sr_readset_ids(self):
         return [rs['id'] for rs in self.readsets if rs['type'] == 'SR']
