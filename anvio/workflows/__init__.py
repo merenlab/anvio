@@ -147,6 +147,30 @@ class WorkflowSuperClass:
         return ['output_dirs', 'max_threads', 'config_version', 'workflow_name']
 
 
+    def load_params_schema(self):
+        """Load the params.json schema for this workflow.
+
+        Returns
+        =======
+        dict
+            Schema with 'general_params' and 'rules' keys, or an empty dict if no
+            params.json exists for this workflow yet.
+        """
+        schema_path = os.path.join(get_path_to_workflows_dir(), self.name, 'params.json')
+
+        if not os.path.exists(schema_path):
+            return {}
+
+        try:
+            with open(schema_path) as f:
+                schema = json.load(f)
+        except json.JSONDecodeError as e:
+            raise ConfigError(f"The params.json file for the '{self.name}' workflow at '{schema_path}' "
+                              f"is not valid JSON. Here is the error: {e}")
+
+        return schema
+
+
     def get_workflow_logs_dir(self):
         from anvio.workflows.scripts.manifest import get_workflow_logs_dir
 
