@@ -16,6 +16,7 @@ import anvio.filesnpaths as filesnpaths
 from anvio.drivers import driver_modules
 from anvio.ttycolors import color_text as c
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.argparse import ArgumentParser
 from anvio.tables.collections import TablesForCollections
 
 
@@ -135,7 +136,7 @@ def main():
 
 
 def get_args():
-    parent_parser = argparse.ArgumentParser(description=__description__)
+    parent_parser = ArgumentParser(description=__description__)
     parent_parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
     parent_parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parent_parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'required': True}))

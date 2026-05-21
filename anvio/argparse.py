@@ -29,6 +29,8 @@ P = terminal.pluralize
 
 
 class ArgumentParser(argparse.ArgumentParser):
+    num_threads_not_provided = object()
+
     def __init__(self, description="No description :/", epilog=None):
         super().__init__()
 
@@ -39,6 +41,55 @@ class ArgumentParser(argparse.ArgumentParser):
                                            '--quiet', '--no-progress', '--as-markdown', '--display-db-calls',
                                            '--force-use-my-tree', '--force-overwrite', '--tmp-dir',
                                            '--I-know-this-is-not-a-good-idea', '--include-stray-KOs']
+
+
+    def get_num_threads_action(self):
+        for action in self._actions:
+            if action.dest == 'num_threads':
+                return action
+
+        return None
+
+
+    def get_num_threads_from_environment(self):
+        try:
+            num_threads = int(os.environ['ANVIO_THREADS'])
+        except ValueError:
+            raise ConfigError("The environmental variable `ANVIO_THREADS` must be a positive integer. "
+                              f"But anvi'o found `{os.environ['ANVIO_THREADS']}` there :/")
+
+        if num_threads <= 0:
+            raise ConfigError(f"The environmental variable `ANVIO_THREADS` must be a positive integer. "
+                              f"`{num_threads}` is not it :/")
+
+        return num_threads
+
+
+    def parse_known_args(self, args=None, namespace=None):
+        num_threads_action = self.get_num_threads_action()
+
+        if not num_threads_action:
+            return super().parse_known_args(args, namespace)
+
+        args_to_parse = sys.argv[1:] if args is None else args
+        if '-h' in args_to_parse or '--help' in args_to_parse:
+            return super().parse_known_args(args, namespace)
+
+        default_num_threads = num_threads_action.default
+        num_threads_action.default = self.num_threads_not_provided
+
+        try:
+            args, unknown = super().parse_known_args(args, namespace)
+        finally:
+            num_threads_action.default = default_num_threads
+
+        if args.num_threads is self.num_threads_not_provided:
+            if 'ANVIO_THREADS' in os.environ:
+                args.num_threads = self.get_num_threads_from_environment()
+            else:
+                args.num_threads = default_num_threads
+
+        return args, unknown
 
 
     def get_anvio_epilogue(self):
