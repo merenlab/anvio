@@ -2,6 +2,7 @@
 
 
 def get_workflow_module_dict():
+    """Return the mapping of workflow names to workflow classes."""
     from anvio.workflows.contigs import ContigsDBWorkflow
     from anvio.workflows.metagenomics import MetagenomicsWorkflow
     from anvio.workflows.pangenomics import PangenomicsWorkflow

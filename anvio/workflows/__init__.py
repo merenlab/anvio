@@ -37,6 +37,7 @@ workflow_config_version = versions_for_db_types['config']
 
 class WorkflowSuperClass:
     def __init__(self):
+        """Initialize shared workflow state from command-line or Snakefile args."""
         if 'args' not in self.__dict__:
             raise ConfigError("You need to initialize `WorkflowSuperClass` from within a class that "
                               "has a member `self.args`.")
@@ -102,6 +103,7 @@ class WorkflowSuperClass:
 
 
     def init(self):
+        """Finalize workflow defaults, output directories, and config validation."""
         run.warning('We are initiating parameters for the %s workflow' % self.name)
 
         for rule in self.rules:
@@ -143,6 +145,7 @@ class WorkflowSuperClass:
 
 
     def get_params_that_all_rules_accept(self):
+        """Return parameters that every workflow rule accepts."""
         return ['threads']
 
 
@@ -152,6 +155,7 @@ class WorkflowSuperClass:
 
 
     def get_workflow_logs_dir(self):
+        """Return the workflow-specific logs directory."""
         from anvio.workflows.scripts.manifest import get_workflow_logs_dir
 
         return get_workflow_logs_dir(self.dirs_dict["LOGS_DIR"], self.config.get('workflow_name', self.name))
@@ -164,6 +168,7 @@ class WorkflowSuperClass:
 
 
     def warn_user_regarding_param_with_wildcard_default_value(self, rule_name, param, wildcard_name):
+        """Warn users when changing wildcard-backed defaults could affect repeated jobs."""
         try:
             default_value = self.default_config[rule_name][param]
         except KeyError:
@@ -438,6 +443,7 @@ class WorkflowSuperClass:
                                   "missing :(")
 
     def check_config(self):
+        """Validate top-level config keys, output directories, and global values."""
         if not self.config.get('config_version'):
             raise ConfigError("Config files must include a config_version. If this is news to you, and/or you don't know what "
                               "version your config should be, please run in your terminal the command `anvi-migrate %s` to "
@@ -471,6 +477,7 @@ class WorkflowSuperClass:
 
 
     def get_default_config(self):
+        """Return a complete default config dictionary for this workflow."""
         c = self.fill_empty_config_params(self.default_config)
         c["output_dirs"] = self.dirs_dict
         c["config_version"] = workflow_config_version
@@ -495,6 +502,7 @@ class WorkflowSuperClass:
 
 
     def check_rule_params(self):
+        """Validate rule-specific config keys against each rule's accepted parameters."""
         for rule in self.rules:
             if rule in self.config:
                 wrong_params = [p for p in self.config[rule] if p not in self.rule_acceptable_params_dict[rule]]
@@ -507,16 +515,19 @@ class WorkflowSuperClass:
 
 
     def save_empty_config_in_json_format(self, file_path='empty_config.json'):
+        """Write an empty workflow config template to a JSON file."""
         self.save_config_in_json_format(file_path, self.get_empty_config())
         self.run.info("Empty config file", "Stored for workflow '%s' as '%s'." % (self.name, file_path))
 
 
     def save_default_config_in_json_format(self, file_path='default_config.json'):
+        """Write this workflow's default config to a JSON file."""
         self.save_config_in_json_format(file_path, self.default_config)
         self.run.info("Default config file", "Stored for workflow '%s' as '%s'." % (self.name, file_path))
 
 
     def save_config_in_json_format(self, file_path, config):
+        """Write a workflow config dictionary to a JSON file."""
         filesnpaths.is_output_file_writable(file_path)
         open(file_path, 'w').write(json.dumps(config, indent=4))
 
@@ -544,6 +555,7 @@ class WorkflowSuperClass:
 
 
     def set_config_param(self, _list, value):
+        """Set a nested config value, creating intermediate dictionaries as needed."""
         d = self.config
         if type(_list) is not list:
             # converting to list for the cases of only one item
@@ -605,6 +617,7 @@ class WorkflowSuperClass:
 
 
     def T(self, rule_name):
+        """Return the thread count for a rule, capped by global max_threads."""
         max_threads = self.get_param_value_from_config("max_threads")
         if not max_threads:
             max_threads = float("Inf")
@@ -652,6 +665,7 @@ class WorkflowSuperClass:
 
 
     def get_internal_and_external_genomes_files(self):
+            """Validate and return configured internal and external genomes file paths."""
             internal_genomes_file = self.get_param_value_from_config('internal_genomes')
             external_genomes_file = self.get_param_value_from_config('external_genomes')
 

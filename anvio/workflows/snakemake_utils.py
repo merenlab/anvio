@@ -7,6 +7,7 @@ import anvio.terminal as terminal
 
 
 def D(debug_message, debug_log_file_path=".SNAKEMAKEDEBUG"):
+    """Append a timestamped debug message to a Snakemake debug log."""
     with open(debug_log_file_path, 'a') as output:
             output.write(terminal.get_date() + '\n')
             output.write(str(debug_message) + '\n\n')

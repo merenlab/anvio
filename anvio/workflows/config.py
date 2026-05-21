@@ -48,7 +48,7 @@ def A(_list, d, default_value=""):
 
 
 def B(config, _rule, _param, default=''):
-    # helper function for params
+    """Return a formatted CLI argument for a rule parameter from a config dictionary."""
     val = A([_rule, _param], config, default)
     if val:
         if isinstance(val, bool):
@@ -59,11 +59,13 @@ def B(config, _rule, _param, default=''):
         return ''
 
 
-# a helper function to get the user defined number of threads for a rule
-def T(config, rule_name, N=1): return A([rule_name,'threads'], config, default_value=N)
+def T(config, rule_name, N=1):
+    """Return the configured thread count for a rule from a config dictionary."""
+    return A([rule_name,'threads'], config, default_value=N)
 
 
 def get_workflow_name_and_version_from_config(config_file, dont_raise=False):
+    """Return the workflow name and config version from a workflow config file."""
     filesnpaths.is_file_json_formatted(config_file)
     config = json.load(open(config_file))
     workflow_name = config.get('workflow_name')
@@ -78,6 +80,7 @@ def get_workflow_name_and_version_from_config(config_file, dont_raise=False):
 
 
 def get_dir_names(config, dont_raise=False):
+    """Return workflow output directory names after applying config overrides."""
     ########################################
     # Reading some definitions from config files (also some sanity checks)
     ########################################
@@ -95,6 +98,7 @@ def get_dir_names(config, dont_raise=False):
 
 
 def check_for_risky_param_change(config, rule, param, wildcard, our_default=None):
+    """Warn when a wildcard-sensitive rule parameter differs from the default."""
     value = A([rule, param], config)
     if value != our_default:
         warning_message = 'You chose to define %s for the rule %s in the config file as %s.\

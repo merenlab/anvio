@@ -12,6 +12,7 @@ def get_path_to_workflows_dir():
 
 
 def get_workflow_snake_file_path(workflow):
+    """Return the Snakefile path for a named workflow."""
     workflow_dir = os.path.join(get_path_to_workflows_dir(), workflow)
 
     if not os.path.isdir(workflow_dir):
@@ -26,6 +27,7 @@ def get_workflow_snake_file_path(workflow):
 
 
 def get_workflow_rule_file_path(workflow, filename='main.smk'):
+    """Return the path to a workflow rule module under its rules directory."""
     workflow_dir = os.path.join(get_path_to_workflows_dir(), workflow)
 
     if not os.path.isdir(workflow_dir):
