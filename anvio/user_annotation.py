@@ -1338,23 +1338,14 @@ class UserAnnotationRunner:
                 f"Anvi'o will use the model name as the accession for these hits."
             )
 
-        # Prefix the function field with '[HMM] ' so the search method is immediately
-        # visible in any tabular export alongside the source name suffix.
-        contigs_database._exec(
-            f"UPDATE {t.gene_function_calls_table_name} "
-            f"SET function = '[HMM] ' || function "
-            f"WHERE source = ? AND function NOT LIKE '[HMM] %'",
-            [internal_source_name]
-        )
-
         # Fix any remaining '-' accessions: use model name (= SUBSTR strips '[HMM] ' prefix, 7 chars)
-        if missing_acc_models:
-            contigs_database._exec(
-                f"UPDATE {t.gene_function_calls_table_name} "
-                f"SET accession = SUBSTR(function, 7) "
-                f"WHERE source = ? AND accession = '-'",
-                [internal_source_name]
-            )
+        #if missing_acc_models:
+        #    contigs_database._exec(
+        #        f"UPDATE {t.gene_function_calls_table_name} "
+        #        f"SET accession = SUBSTR(function, 7) "
+        #        f"WHERE source = ? AND accession = '-'",
+        #        [internal_source_name]
+        #    )
 
         # Normalize accessions: strip .hmm/.hmm.gz file extensions that may have come
         # through from the HMM model's ACC field via HMMER tblout output.
