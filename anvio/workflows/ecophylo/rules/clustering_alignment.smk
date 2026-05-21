@@ -103,6 +103,9 @@ This will help identify clustering thresholds for OTU like analyses.
     threads: M.T("cluster_X_percent_sim_mmseqs")
     params:
         NT_all=rules.combine_sequence_data.output.NT_all,
+        min_seq_id=lambda wildcards: M.clustering_threshold_dict[
+            wildcards.clustering_threshold
+        ],
         output_prefix=os.path.join(
             dirs_dict["RIBOSOMAL_PROTEIN_FASTAS"],
             "{group}",
@@ -121,17 +124,14 @@ This will help identify clustering thresholds for OTU like analyses.
         additional_params=M.get_param_value_from_config(
             ["cluster_X_percent_sim_mmseqs", "additional_params"]
         ),
-    run:
-        min_seq_id = M.clustering_threshold_dict[wildcards.clustering_threshold]
-        shell(
-            "mmseqs easy-cluster {params.NT_all} \
-                                   {params.output_prefix} \
-                                   {params.mmseqs_tmp} \
-                                   --threads {threads} \
-                                   --min-seq-id {min_seq_id} \
-                                   --cov-mode {params.cov_mode} \
-                                   {params.additional_params} >> {log} 2>&1"
-        )
+    shell:
+        "mmseqs easy-cluster {params.NT_all} \
+                               {params.output_prefix} \
+                               {params.mmseqs_tmp} \
+                               --threads {threads} \
+                               --min-seq-id {params.min_seq_id} \
+                               --cov-mode {params.cov_mode} \
+                               {params.additional_params} >> {log} 2>&1"
 
 
 if M.cluster_representative_method == "cluster_rep_with_coverages":
@@ -148,15 +148,15 @@ if M.cluster_representative_method == "cluster_rep_with_coverages":
         log:
             rule_log("anvi_profile_blitz", "anvi_profile_blitz-{sample_name}"),
         threads: M.T("anvi_profile_blitz")
-        run:
-            contigs_db = os.path.join(
+        params:
+            contigs_db=lambda wildcards: os.path.join(
                 M.contigs_db_name_path_dict[wildcards.sample_name]
-            )
-            bam = os.path.join(M.contigs_db_name_bam_dict[wildcards.sample_name])
-            # Run different hmm search depending on whether a hmm is internal or external because anvio
-            shell(
-                "anvi-profile-blitz {bam} -c {contigs_db} --gene-mode --report-minimal -o {output} >> {log} 2>&1"
-            )
+            ),
+            bam=lambda wildcards: os.path.join(
+                M.contigs_db_name_bam_dict[wildcards.sample_name]
+            ),
+        shell:
+            "anvi-profile-blitz {params.bam} -c {params.contigs_db} --gene-mode --report-minimal -o {output} >> {log} 2>&1"
 
     rule cat_anvi_profile_blitz:
         """Cat gene coverages from anvi-profile-blitz"""
@@ -175,11 +175,11 @@ if M.cluster_representative_method == "cluster_rep_with_coverages":
                 dirs_dict["EXTRACTED_RIBO_PROTEINS_DIR"], "gene-coverages.txt"
             ),
         threads: M.T("anvi_profile_blitz")
-        run:
-            shell(
-                "echo -e 'gene_callers_id\tcontig\tsample\tlength\tdetection\tmean_cov' > {output}"
-            )
-            shell("awk 'FNR>1' {input} >> {output}")
+        shell:
+            """
+            echo -e 'gene_callers_id\tcontig\tsample\tlength\tdetection\tmean_cov' > {output}
+            awk 'FNR>1' {input} >> {output}
+            """
 
     rule pick_cluster_rep_with_coverage:
         """Pick a cluster rep with coverage values."""
@@ -299,10 +299,8 @@ if M.cluster_representative_method == "cluster_rep_with_coverages":
                 "subset_AA_seqs_with_coverage_reps_{group}",
             ),
         threads: M.T("subset_AA_seqs_with_coverage_reps")
-        run:
-            shell(
-                "anvi-script-reformat-fasta {input.fa} -I {input.coverage_reps} -o {output.fasta} >> {log} 2>&1"
-            )
+        shell:
+            "anvi-script-reformat-fasta {input.fa} -I {input.coverage_reps} -o {output.fasta} >> {log} 2>&1"
 
 
 if M.cluster_representative_method == "mmseqs":
@@ -328,11 +326,11 @@ if M.cluster_representative_method == "mmseqs":
             headers=os.path.join(
                 dirs_dict["RIBOSOMAL_PROTEIN_FASTAS"], "{group}", "{group}-headers.tmp"
             ),
-        run:
-            shell("grep '>' {input.mmseqs_reps} | sed 's/>//g' > {params.headers}")
-            shell(
-                "anvi-script-reformat-fasta {params.fa} -I {params.headers} -o {output.fasta} >> {log} 2>&1"
-            )
+        shell:
+            """
+            grep '>' {input.mmseqs_reps} | sed 's/>//g' > {params.headers}
+            anvi-script-reformat-fasta {params.fa} -I {params.headers} -o {output.fasta} >> {log} 2>&1
+            """
 
 
 rule align_sequences:
@@ -350,10 +348,8 @@ rule align_sequences:
         additional_params=M.get_param_value_from_config(
             ["align_sequences", "additional_params"]
         ),
-    run:
-        shell(
-            "muscle -in {input} -out {output} {params.additional_params} -verbose 2> {log}"
-        )
+    shell:
+        "muscle -in {input} -out {output} {params.additional_params} -verbose 2> {log}"
 
 
 rule trim_alignment:
@@ -371,10 +367,8 @@ rule trim_alignment:
         additional_params=M.get_param_value_from_config(
             ["trim_alignment", "additional_params"]
         ),
-    run:
-        shell(
-            "trimal -in {input} -out {output} {params.gappyout} {params.additional_params} 2> {log}"
-        )
+    shell:
+        "trimal -in {input} -out {output} {params.gappyout} {params.additional_params} 2> {log}"
 
 
 rule remove_sequences_with_X_percent_gaps:
@@ -396,12 +390,10 @@ rule remove_sequences_with_X_percent_gaps:
         max_percentage_gaps=M.get_param_value_from_config(
             ["remove_sequences_with_X_percent_gaps", "--max-percentage-gaps"]
         ),
-    run:
-        shell(
-            "anvi-script-reformat-fasta {input} -o {output.fasta} \
-                                                  --max-percentage-gaps {params.max_percentage_gaps} \
-                                                  --export-gap-counts-table {params.seq_counts_tsv} >> {log} 2>&1"
-        )
+    shell:
+        "anvi-script-reformat-fasta {input} -o {output.fasta} \
+                                      --max-percentage-gaps {params.max_percentage_gaps} \
+                                      --export-gap-counts-table {params.seq_counts_tsv} >> {log} 2>&1"
 
 
 rule count_num_sequences_filtered:
@@ -431,14 +423,14 @@ rule count_num_sequences_filtered:
         def count_num_sequences(fasta):
             """This function counts the number of sequences in a fasta file
 
-    Parameters
-    ==========
-    fasta: fasta
+            Parameters
+            ==========
+            fasta: fasta
 
-    Returns
-    =======
-    num_seqs : int
-    """
+            Returns
+            =======
+            num_seqs : int
+            """
 
             num_seqs = 0
 

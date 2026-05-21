@@ -16,10 +16,8 @@ if M.run_iqtree == True:
             additional_params=M.get_param_value_from_config(
                 ["iqtree", "additional_params"]
             ),
-        run:
-            shell(
-                "iqtree -s {input} -nt AUTO -m {params.model} -pre {params.outfile}  -T AUTO {params.additional_params} >> {log} 2>&1"
-            )
+        shell:
+            "iqtree -s {input} -nt AUTO -m {params.model} -pre {params.outfile}  -T AUTO {params.additional_params} >> {log} 2>&1"
 
 elif M.run_fasttree == True:
 
@@ -38,8 +36,8 @@ elif M.run_fasttree == True:
                 ["fasttree", "additional_params"]
             ),
             tree=os.path.join(dirs_dict["TREES"], "{group}", "{group}.nwk"),
-        run:
-            shell("FastTree -fastest {input} 2> {log} 1> {params.tree}")
+        shell:
+            "FastTree -fastest {input} 2> {log} 1> {params.tree}"
 
 
 rule rename_tree_tips:
@@ -70,13 +68,13 @@ rule rename_tree_tips:
         def add_split_name_to_tree_tips(tree, outfile):
             """This function adds a string to the end of tree tip names in a newick file
 
-    Parameters
-    ==========
-    tree: newick file
+            Parameters
+            ==========
+            tree: newick file
 
-    outfile: str
-        path to returned newick tree
-    """
+            outfile: str
+                path to returned newick tree
+            """
 
             t = Tree(tree)
 
@@ -92,14 +90,14 @@ rule rename_tree_tips:
         def add_split_name_to_fasta_headers(fasta, outfile):
             """This function adds a string "_split_00001\n" to the end of fasta file headers
 
-    Parameters
-    ==========
-    fasta: str
-        path to fasta file
+            Parameters
+            ==========
+            fasta: str
+                path to fasta file
 
-    outfile: str
-        path returned fasta
-    """
+            outfile: str
+                path returned fasta
+            """
 
             fasta = open(str(fasta))
 

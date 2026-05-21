@@ -288,12 +288,8 @@ rule emapper:
         database=M.get_rule_param("emapper", "--database"),
         usemem=M.get_rule_param("emapper", "--usemem"),
         override=M.get_rule_param("emapper", "--override"),
-    run:
-        # running emapper
-        shell(
-            "python {params.path_to_emapper_dir}/emapper.py -i {input} --output {params.contigs_path_without_extension} "
-            + "--cpu {threads} {params.database} {params.usemem} {params.override} >> {log} 2>&1"
-        )
+    shell:
+        "python {params.path_to_emapper_dir}/emapper.py -i {input} --output {params.contigs_path_without_extension} --cpu {threads} {params.database} {params.usemem} {params.override} >> {log} 2>&1"
 
 
 rule anvi_script_run_eggnog_mapper:
@@ -318,15 +314,12 @@ rule anvi_script_run_eggnog_mapper:
         nodes=M.T("anvi_script_run_eggnog_mapper"),
     params:
         use_version=M.get_rule_param("anvi_script_run_eggnog_mapper", "--use-version"),
-    run:
-        # Adding a 'g' prefix before every gene id (the anvi'o emapper driver requires this)
-        shell(
-            "sed 's/^[0-9]/g&/' {input.eggnog_output} > {input.eggnog_output}.temp 2>{log}"
-        )
-        shell(
-            "anvi-script-run-eggnog-mapper -c {input.contigs} --annotation {input.eggnog_output}.temp {params.use_version}  >> {log} 2>&1"
-        )
-        shell("rm {input.eggnog_output}.temp 2>{log}")
+    shell:
+        """
+        sed 's/^[0-9]/g&/' {input.eggnog_output} > {input.eggnog_output}.temp 2>{log}
+        anvi-script-run-eggnog-mapper -c {input.contigs} --annotation {input.eggnog_output}.temp {params.use_version}  >> {log} 2>&1
+        rm {input.eggnog_output}.temp 2>{log}
+        """
 
 
 # generate external genomes storage using `project_description` as name for contigs.
