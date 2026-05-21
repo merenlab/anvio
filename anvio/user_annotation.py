@@ -1559,11 +1559,12 @@ class UserAnnotationRunner:
             label = description if description else clean_id
             qlen = hit.get('qlen')
             qcov_str = f", qcov: {aln_len / qlen * 100:.1f}%" if qlen else ""
-            function_str = (f"[DMND] {label} "
-                            f"[pident: {pident:.1f}%, "
-                            f"aln_len: {aln_len} aa, "
-                            f"bitscore: {bitscore:.1f}"
-                            f"{qcov_str}]")
+            function_str = (f"{label} "
+                            #f"[pident: {pident:.1f}%, "
+                            #f"aln_len: {aln_len} aa, "
+                            #f"bitscore: {bitscore:.1f}"
+                            #f"{qcov_str}]"
+            )
 
             functions_dict[entry_id] = {
                 'gene_callers_id': gene_callers_id,
