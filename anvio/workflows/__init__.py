@@ -145,6 +145,7 @@ class WorkflowSuperClass:
         if not self.this_workflow_is_inherited_by_another:
             self.check_config()
             self.check_rule_params()
+            self.check_config_types()
 
 
     def get_params_that_all_rules_accept(self):
@@ -543,6 +544,58 @@ class WorkflowSuperClass:
                                "parameters for this rule are %s." % (rule, wrong_params, self.rule_acceptable_params_dict[rule]))
 
                 self.check_additional_params(rule)
+
+
+    def check_config_types(self):
+        """Validate user config values against types declared in params.json.
+
+        Only runs when a params.json schema exists for this workflow. Skips
+        null/empty values since those mean 'not set'. Raises ConfigError on
+        any type mismatch so the problem surfaces at config load time rather
+        than deep inside a shell command.
+        """
+        schema = self.load_params_schema()
+        if not schema:
+            return
+
+        def _validate(value, expected_type, param, location):
+            if value is None or value == '':
+                return
+            if expected_type == 'bool':
+                if not isinstance(value, bool):
+                    raise ConfigError(f"The parameter '{param}' in '{location}' must be true or false, "
+                                      f"but you provided: '{value}'.")
+            elif expected_type == 'int':
+                if isinstance(value, bool):
+                    raise ConfigError(f"The parameter '{param}' in '{location}' must be an integer, "
+                                      f"but you provided a boolean: '{value}'.")
+                try:
+                    int(value)
+                except (ValueError, TypeError):
+                    raise ConfigError(f"The parameter '{param}' in '{location}' must be an integer, "
+                                      f"but you provided: '{value}'.")
+            elif expected_type == 'float':
+                if isinstance(value, bool):
+                    raise ConfigError(f"The parameter '{param}' in '{location}' must be a number, "
+                                      f"but you provided a boolean: '{value}'.")
+                try:
+                    float(value)
+                except (ValueError, TypeError):
+                    raise ConfigError(f"The parameter '{param}' in '{location}' must be a number, "
+                                      f"but you provided: '{value}'.")
+
+        for param, meta in schema.get('general_params', {}).items():
+            value = self.config.get(param)
+            if value is not None:
+                _validate(value, meta['type'], param, 'general params')
+
+        for rule, rule_schema in schema.get('rules', {}).items():
+            if rule not in self.config:
+                continue
+            for param, meta in rule_schema.items():
+                value = self.config[rule].get(param)
+                if value is not None:
+                    _validate(value, meta['type'], param, f"rule '{rule}'")
 
 
     def save_empty_config_in_json_format(self, file_path='empty_config.json'):
