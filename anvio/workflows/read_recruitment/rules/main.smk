@@ -23,10 +23,12 @@ progress = terminal.Progress()
 # convenience sets:
 SR_READSETS = M.get_sr_readset_ids()
 LR_READSETS = M.get_lr_readset_ids()
+READSETS = M.get_readset_ids()
 
 
 SR_RS_RE = w.regex_from_ids(SR_READSETS)
 LR_RS_RE = w.regex_from_ids(LR_READSETS)
+READSETS_RE = w.regex_from_ids(READSETS)
 
 
 # bowtie2 index prefix
@@ -186,6 +188,8 @@ rule samtools_view:
         bam=temp(dirs_dict["MAPPING_DIR"] + "/{group}/{readset}-RAW.bam"),
     log:
         rule_log("samtools_view", "{group}-{readset}-samtools_view"),
+    wildcard_constraints:
+        readset=READSETS_RE,
     threads: M.T("samtools_view")
     resources:
         nodes=M.T("samtools_view"),
@@ -206,6 +210,8 @@ rule anvi_init_bam:
         bai=dirs_dict["MAPPING_DIR"] + "/{group}/{readset}.bam.bai",
     log:
         rule_log("anvi_init_bam", "{group}-{readset}-anvi_init_bam"),
+    wildcard_constraints:
+        readset=READSETS_RE,
     threads: M.T("anvi_init_bam")
     resources:
         nodes=M.T("anvi_init_bam"),
@@ -238,6 +244,8 @@ rule anvi_profile:
         runlog=dirs_dict["PROFILE_DIR"] + "/{group}/{readset}/RUNLOG.txt",
     log:
         rule_log("anvi_profile", "{group}-{readset}-anvi_profile"),
+    wildcard_constraints:
+        readset=READSETS_RE,
     threads: M.T("anvi_profile")
     resources:
         nodes=M.T("anvi_profile"),
@@ -485,6 +493,8 @@ rule count_reads_in_fastq:
         txt=dirs_dict["QC_DIR"] + "/{readset}-total_num_reads.txt",
     log:
         rule_log("count_reads_in_fastq", "{readset}-count_reads_in_fastq"),
+    wildcard_constraints:
+        readset=READSETS_RE,
     threads: 1
     resources:
         nodes=1,
@@ -528,6 +538,8 @@ rule import_percent_of_reads_mapped:
             "import_percent_of_reads_mapped",
             "{group}-{readset}-import_percent_of_reads_mapped",
         ),
+    wildcard_constraints:
+        readset=READSETS_RE,
     threads: 1
     resources:
         nodes=1,

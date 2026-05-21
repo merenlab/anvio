@@ -210,6 +210,8 @@ rule gzip_fastqs:
         ),
     log:
         rule_log("gzip_fastqs", "{readset}-{R}-gzip"),
+    wildcard_constraints:
+        readset=SR_RS_RE,
     threads: M.T("gzip_fastqs")
     resources:
         nodes=M.T("gzip_fastqs"),
