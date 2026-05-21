@@ -548,8 +548,7 @@
       current: true
 
 - github: ge0rges
-  name: Georges Kanaan
-  twitter: scientificgio
+  name: Georges Kanaan (Gio)
   web: https://gkanaan.com
   avatar: ge0rges.jpg
   email: georges@gkanaan.com
@@ -557,13 +556,13 @@
     - georges@gkanaan.com
   linkedin: ge0rges
   orcid: 0000-0002-5721-1138
-  bio: "Oceanographer & Astrobiologist in training. Computer scientist. Studying sea-ice bacteria."
+  bio: "Oceanographer & Astrobiologist. Computer scientist. Studying sea-ice bacteria."
   intellectual-contributions:
     - contribution: "Resolved a <a href=https://github.com/merenlab/anvio/issues/1738>long-standing dilemma</a> with the program anvi-setup-ncbi-cogs."
   affiliations:
-    - title: Graduate Student
-      inst: University of Washington
-      inst_link: https://ocean.washington.edu
+    - title: Researcher (Post-doc)
+      inst: University of Tromsø
+      inst_link: https://en.uit.no/enhet/forsiden?p_dimension_id=88165
       current: true
 
 - github: telatin
@@ -706,7 +705,7 @@
       inst_link: https://www.sdu.dk/en/forskning/hadal
 
 - github: bastien-camillo
-  name: Bastien CAMILLO
+  name: Bastien Camillo
   avatar: bcamillo-anvio.png
   email: pro.bastien.camillo@gmail.com
   git_records:

@@ -1299,7 +1299,7 @@ def get_table_with_codon_tree_labels(args, df, multiple_sources=False):
                 # (<function_accession>)", unless no function accession is available (e.g., for
                 # BRITE categories), in which case labels end in empty parentheses.
                 if accession == '':
-                    label_suffix = f" ()"
+                    label_suffix = " ()"
                 else:
                     label_suffix = f" ({accession})"
                 labels.append(name + label_suffix)
@@ -2430,7 +2430,7 @@ def load_sample_linkage_from_newick(args, subset_affinities_dict):
     """Load a Newick-formatted tree of tRNA-seq samples as a cluster linkage. The x-axis dendrogram
     in the plot derives from the linkage object."""
     sample_tree = Tree(args.plot_sample_tree_file)
-    run.info(f"Loaded tree of tRNA-seq samples", args.plot_sample_tree_file)
+    run.info("Loaded tree of tRNA-seq samples", args.plot_sample_tree_file)
 
     leaves = sample_tree.iter_leaves()
     leaf_labels = decode_newick_labels(sample_tree.get_leaf_names())
