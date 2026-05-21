@@ -106,6 +106,15 @@ class WorkflowSuperClass:
         """Finalize workflow defaults, output directories, and config validation."""
         run.warning('We are initiating parameters for the %s workflow' % self.name)
 
+        # populate rule_acceptable_params_dict and general_params from params.json schema if available
+        schema = self.load_params_schema()
+        if schema:
+            for rule, params in schema.get('rules', {}).items():
+                self.rule_acceptable_params_dict[rule] = list(params.keys())
+            for param in schema.get('general_params', {}).keys():
+                if param not in self.general_params:
+                    self.general_params.append(param)
+
         for rule in self.rules:
             if rule not in self.rule_acceptable_params_dict:
                 self.rule_acceptable_params_dict[rule] = []
@@ -142,6 +151,7 @@ class WorkflowSuperClass:
         if not self.this_workflow_is_inherited_by_another:
             self.check_config()
             self.check_rule_params()
+            self.check_config_types()
 
 
     def get_params_that_all_rules_accept(self):
@@ -152,6 +162,55 @@ class WorkflowSuperClass:
     def get_global_general_params(self):
         ''' Return a list of the general parameters that are always acceptable.'''
         return ['output_dirs', 'max_threads', 'config_version', 'workflow_name']
+
+
+    def load_params_schema(self):
+        """Load and merge params.json schemas for this workflow and any parent workflows.
+
+        Walks the MRO in base-first order so child entries override parent entries on
+        conflict. Returns an empty dict if no params.json is found for any class in the
+        hierarchy (preserving backward compatibility for workflows not yet migrated).
+
+        Returns
+        =======
+        dict
+            Merged schema with 'general_params' and 'rules' keys.
+        """
+        # maps workflow class names to their workflow directory names
+        workflow_class_name_map = {
+            'ContigsDBWorkflow':      'contigs',
+            'PhylogenomicsWorkflow':  'phylogenomics',
+            'PangenomicsWorkflow':    'pangenomics',
+            'MetagenomicsWorkflow':   'metagenomics',
+            'TRNASeqWorkflow':        'trnaseq',
+            'EcoPhyloWorkflow':       'ecophylo',
+            'SRADownloadWorkflow':    'sra_download',
+        }
+
+        merged = {'general_params': {}, 'rules': {}}
+        found_any = False
+
+        for cls in reversed(type(self).__mro__):
+            workflow_name = workflow_class_name_map.get(cls.__name__)
+            if not workflow_name:
+                continue
+
+            schema_path = os.path.join(get_path_to_workflows_dir(), workflow_name, 'params.json')
+            if not os.path.exists(schema_path):
+                continue
+
+            try:
+                with open(schema_path) as f:
+                    schema = json.load(f)
+            except json.JSONDecodeError as e:
+                raise ConfigError(f"The params.json file for the '{workflow_name}' workflow at '{schema_path}' "
+                                  f"is not valid JSON. Here is the error: {e}")
+
+            merged['general_params'].update(schema.get('general_params', {}))
+            merged['rules'].update(schema.get('rules', {}))
+            found_any = True
+
+        return merged if found_any else {}
 
 
     def get_workflow_logs_dir(self):
@@ -478,7 +537,17 @@ class WorkflowSuperClass:
 
     def get_default_config(self):
         """Return a complete default config dictionary for this workflow."""
-        c = self.fill_empty_config_params(self.default_config)
+        schema = self.load_params_schema()
+
+        if schema:
+            c = {}
+            for rule, params in schema.get('rules', {}).items():
+                c[rule] = {p: meta['default'] for p, meta in params.items()}
+            for param, meta in schema.get('general_params', {}).items():
+                c[param] = meta['default']
+        else:
+            c = self.fill_empty_config_params(self.default_config)
+
         c["output_dirs"] = self.dirs_dict
         c["config_version"] = workflow_config_version
         c["workflow_name"] = self.name
@@ -520,6 +589,56 @@ class WorkflowSuperClass:
         self.run.info("Empty config file", "Stored for workflow '%s' as '%s'." % (self.name, file_path))
 
 
+    def check_config_types(self):
+        """Validate user config values against types declared in params.json for this workflow."""
+        schema = self.load_params_schema()
+        if not schema:
+            return
+
+        def _validate(value, expected_type, param, location):
+            if value is None or value == '':
+                return
+            if expected_type == 'bool':
+                if not isinstance(value, bool):
+                    raise ConfigError(f"The parameter '{param}' in '{location}' must be true or false, "
+                                      f"but you provided: '{value}'.")
+            elif expected_type == 'int':
+                if isinstance(value, bool):
+                    raise ConfigError(f"The parameter '{param}' in '{location}' must be an integer, "
+                                      f"but you provided a boolean: '{value}'.")
+                try:
+                    int(value)
+                except (ValueError, TypeError):
+                    raise ConfigError(f"The parameter '{param}' in '{location}' must be an integer, "
+                                      f"but you provided: '{value}'.")
+            elif expected_type == 'float':
+                if isinstance(value, bool):
+                    raise ConfigError(f"The parameter '{param}' in '{location}' must be a number, "
+                                      f"but you provided a boolean: '{value}'.")
+                try:
+                    float(value)
+                except (ValueError, TypeError):
+                    raise ConfigError(f"The parameter '{param}' in '{location}' must be a number, "
+                                      f"but you provided: '{value}'.")
+            elif expected_type == 'list':
+                if not isinstance(value, list):
+                    raise ConfigError(f"The parameter '{param}' in '{location}' must be a list, "
+                                      f"but you provided: '{value}'.")
+
+        for param, meta in schema.get('general_params', {}).items():
+            value = self.config.get(param)
+            if value is not None:
+                _validate(value, meta['type'], param, 'general params')
+
+        for rule, rule_schema in schema.get('rules', {}).items():
+            if rule not in self.config:
+                continue
+            for param, meta in rule_schema.items():
+                value = self.config[rule].get(param)
+                if value is not None:
+                    _validate(value, meta['type'], param, f"rule '{rule}'")
+
+
     def save_default_config_in_json_format(self, file_path='default_config.json'):
         """Write this workflow's default config to a JSON file."""
         self.save_config_in_json_format(file_path, self.default_config)
@@ -533,12 +652,12 @@ class WorkflowSuperClass:
 
 
     def get_empty_config(self):
-        ''' This returns a dictionary with all the possible configurables for a workflow'''
+        """Return a config dictionary with every accepted parameter set to an empty value."""
         return self.fill_empty_config_params(config={})
 
 
     def fill_empty_config_params(self, config={}):
-        ''' Takes a config dictionary and assigns an empty string to any parameter that wasnt defined in the config'''
+        """Fill missing workflow config parameters with empty strings."""
         new_config = config.copy()
 
         for rule in self.rules:
