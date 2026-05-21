@@ -333,3 +333,17 @@
       inst: Helmholtz Institute for Functional Marine Biodiversity
       inst_link: https://hifmb.de
       current: true
+
+- github: Med1Bel
+  name: Ahmed Belfaqih
+  avatar: medbel.jpg
+  email: mr.medbel@gmail.com
+  git_records:
+    - mr.medbel@gmail.com
+  linkedin: www.linkedin.com/in/med1bel
+  bio: "Microbiology master's student with a growing focus on bioinformatics"
+  affiliations:
+    - title: Master's Student
+      inst: Institute for Chemistry and Biology of the Marine Environment, University of Oldenburg
+      inst_link: https://uol.de/icbm
+      current: true
