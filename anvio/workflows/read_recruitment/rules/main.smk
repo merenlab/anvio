@@ -166,7 +166,7 @@ rule minimap2:
         nodes=M.T("minimap2"),
     params:
         env_prefix=lambda wildcards: w.get_conda_env_prefix(M, "minimap2"),
-        preset=M.get_param_value_from_config(["minimap2", "preset"]),
+        preset=lambda wildcards: M.get_minimap2_preset(wildcards.readset),
         additional_params=M.get_param_value_from_config(
             ["minimap2", "additional_params"]
         ),
