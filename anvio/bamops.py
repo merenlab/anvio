@@ -403,18 +403,9 @@ class Read:
         self.reference_start = read.reference_start
         self.reference_end = read.reference_end
 
-        # Parse modification tags (MM/ML) and pysam's convenience attribute
-        # `modified_bases` can raise low-level parsing errors for malformed tags.
+        # Get pysam's convenience attribute `modified_bases`
+        # It can raise low-level parsing errors for malformed tags.
         # Guard against that and mark such reads so downstream code can skip them.
-        try:
-            self.modifications_mm = read.get_tag('MM') if read.has_tag('MM') else None
-        except Exception:
-            self.modifications_mm = None
-
-        try:
-            self.modifications_ml = read.get_tag('ML') if read.has_tag('ML') else None
-        except Exception:
-            self.modifications_ml = None
 
         try:
             self.modified_bases = read.modified_bases

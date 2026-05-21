@@ -1472,14 +1472,13 @@ class BAMProfiler(dbops.ContigsSuperclass):
                     split_name = entry[0]
                     pos_in_split = entry[1]
                     pos_in_contig = entry[2]
-                    modification = str(entry[3]).lower()
-                    probability = entry[4] if len(entry) > 4 else None
-                    strand_symbol = entry[5] if len(entry) > 5 else '.'
+                    modification = entry[3]
+                    probability = entry[4]
+                    strand_symbol = entry[5]
 
                     threshold = self.modification_filters.get(modification, self.modification_filter_default)
-                    probability = 1.0 if probability is None else float(probability)
 
-                    if probability < threshold:
+                    if probability < threshold:  # We are below the filter threshold, skip
                         continue
 
                     if split_coverage is not None:

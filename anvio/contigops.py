@@ -242,46 +242,26 @@ class Auxiliary:
                 continue
 
             for mod_key, mod_entries in read.modified_bases.items():
-                try:
-                    base, strand, mod_code = mod_key
-                except ValueError:
-                    if len(mod_key) == 2:
-                        base, mod_code = mod_key
-                        strand = None
-                    else:
-                        base = mod_key[0]
-                        mod_code = mod_key[1] if len(mod_key) > 1 else mod_key
-                        strand = None
+                
+                base, strand, mod_code = mod_key
 
-                if isinstance(base, int):
-                    base = chr(base)
                 base = str(base).upper()
 
-                if strand is None:
-                    strand_symbol = '.'
-                elif strand in [0, '+', 'forward', False]:
+                if strand == "+":
                     strand_symbol = '+'
-                elif strand in [1, '-', 'reverse', True]:
+                elif strand == "-":
                     strand_symbol = '-'
                 else:
-                    strand_symbol = str(strand)
+                    raise ConfigError("Unexpected strand information in MM tag: %s. This should never happen." % strand)
 
                 for entry in mod_entries:
-                    if not isinstance(entry, (list, tuple)) or len(entry) < 1:
-                        continue
                     query_pos = entry[0]
-                    probability = entry[1] if len(entry) > 1 else None
-
-                    if query_pos >= len(query_pos_to_ref_pos):
+                    probability = entry[1]/256
+                    
+                    if probability < 0:  # entry[1] for qual was -1 meaning unknown
                         continue
 
                     ref_pos = query_pos_to_ref_pos[query_pos]
-                    if ref_pos is None:
-                        continue
-
-                    if ref_pos < self.split.start or ref_pos >= self.split.end:
-                        continue
-
                     pos_in_split = ref_pos - self.split.start
 
                     self.split.modification_profiles.append([
