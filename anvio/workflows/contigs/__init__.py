@@ -44,22 +44,8 @@ class ContigsDBWorkflow(WorkflowSuperClass):
                            'anvi_script_run_eggnog_mapper', 'reformat_external_gene_calls_table',
                            'reformat_external_functions', 'import_external_functions', 'anvi_run_pfams', 'anvi_run_kegg_kofams'])
 
-        self.general_params.extend(["fasta_txt"])
-
         self.dirs_dict.update({"FASTA_DIR": "01_FASTA",
                                "CONTIGS_DIR": "02_CONTIGS"})
-
-        self.default_config.update({"fasta_txt": "fasta.txt",
-                                    "anvi_gen_contigs_database": {"--project-name": "{group}"},
-                                    "centrifuge": {"threads": 2},
-                                    "anvi_run_hmms": {"run": True, "threads": 5, "--also-scan-trnas": True},
-                                    "anvi_run_kegg_kofams": {"run": True, "threads": 4},
-                                    "anvi_run_ncbi_cogs": {"run": True, "threads": 5},
-                                    "anvi_run_scg_taxonomy": {"run": True, "threads": 6},
-                                    "anvi_run_trna_scan": {"run": False, "threads": 6},
-                                    "anvi_script_reformat_fasta": {"run": True, "--prefix": "{group}", "--simplify-names": True},
-                                    "emapper": {"--database": "bact", "--usemem": True, "--override": True},
-                                    "anvi_script_run_eggnog_mapper": {"--use-version": "0.12.6"}})
 
 
 

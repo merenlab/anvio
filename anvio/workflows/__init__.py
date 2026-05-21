@@ -100,6 +100,15 @@ class WorkflowSuperClass:
     def init(self):
         run.warning('We are initiating parameters for the %s workflow' % self.name)
 
+        # populate rule_acceptable_params_dict and general_params from params.json schema if available
+        schema = self.load_params_schema()
+        if schema:
+            for rule, params in schema.get('rules', {}).items():
+                self.rule_acceptable_params_dict[rule] = list(params.keys())
+            for param in schema.get('general_params', {}).keys():
+                if param not in self.general_params:
+                    self.general_params.append(param)
+
         for rule in self.rules:
             if rule not in self.rule_acceptable_params_dict:
                 self.rule_acceptable_params_dict[rule] = []
@@ -491,7 +500,17 @@ class WorkflowSuperClass:
 
 
     def get_default_config(self):
-        c = self.fill_empty_config_params(self.default_config)
+        schema = self.load_params_schema()
+
+        if schema:
+            c = {}
+            for rule, params in schema.get('rules', {}).items():
+                c[rule] = {p: meta['default'] for p, meta in params.items()}
+            for param, meta in schema.get('general_params', {}).items():
+                c[param] = meta['default']
+        else:
+            c = self.fill_empty_config_params(self.default_config)
+
         c["output_dirs"] = self.dirs_dict
         c["config_version"] = workflow_config_version
         c["workflow_name"] = self.name
