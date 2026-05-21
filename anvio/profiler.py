@@ -1460,7 +1460,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
         aggregated_modifications = OrderedDict()
         min_coverage = self.min_coverage_for_modifications or 0
 
-        for contig in self.contigs:
+        for contig in self.contigs:  # We want to just store total number of modifications (for each type) per position, aggregation below
             for split in contig.splits:
                 if not split.modification_profiles:
                     continue
@@ -1486,7 +1486,7 @@ class BAMProfiler(dbops.ContigsSuperclass):
                             continue
                         if int(split_coverage[pos_in_split]) < min_coverage:
                             continue
-
+                    
                     key = (split_name, pos_in_split, pos_in_contig, modification, strand_symbol)
                     if key not in aggregated_modifications:
                         aggregated_modifications[key] = [split_name, pos_in_split, pos_in_contig, modification, strand_symbol, 0]

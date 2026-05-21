@@ -247,9 +247,9 @@ class Auxiliary:
 
                 base = str(base).upper()
 
-                if strand == "+":
+                if strand == 0:
                     strand_symbol = '+'
-                elif strand == "-":
+                elif strand == 1:
                     strand_symbol = '-'
                 else:
                     raise ConfigError("Unexpected strand information in MM tag: %s. This should never happen." % strand)
@@ -262,6 +262,9 @@ class Auxiliary:
                         continue
 
                     ref_pos = query_pos_to_ref_pos[query_pos]
+                    if ref_pos is None:  # Gio doesn't understand why this happens but he's assuming it's fine
+                        continue
+                        
                     pos_in_split = ref_pos - self.split.start
 
                     self.split.modification_profiles.append([
