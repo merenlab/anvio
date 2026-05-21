@@ -528,14 +528,11 @@ class WorkflowSuperClass:
     def get_default_config(self):
         schema = self.load_params_schema()
 
-        if schema:
-            c = {}
-            for rule, params in schema.get('rules', {}).items():
-                c[rule] = {p: meta['default'] for p, meta in params.items()}
-            for param, meta in schema.get('general_params', {}).items():
-                c[param] = meta['default']
-        else:
-            c = self.fill_empty_config_params(self.default_config)
+        c = {}
+        for rule, params in schema.get('rules', {}).items():
+            c[rule] = {p: meta['default'] for p, meta in params.items()}
+        for param, meta in schema.get('general_params', {}).items():
+            c[param] = meta['default']
 
         c["output_dirs"] = self.dirs_dict
         c["config_version"] = workflow_config_version
@@ -627,11 +624,6 @@ class WorkflowSuperClass:
                     _validate(value, meta['type'], param, f"rule '{rule}'")
 
 
-    def save_empty_config_in_json_format(self, file_path='empty_config.json'):
-        self.save_config_in_json_format(file_path, self.get_empty_config())
-        self.run.info("Empty config file", "Stored for workflow '%s' as '%s'." % (self.name, file_path))
-
-
     def save_default_config_in_json_format(self, file_path='default_config.json'):
         self.save_config_in_json_format(file_path, self.default_config)
         self.run.info("Default config file", "Stored for workflow '%s' as '%s'." % (self.name, file_path))
@@ -640,28 +632,6 @@ class WorkflowSuperClass:
     def save_config_in_json_format(self, file_path, config):
         filesnpaths.is_output_file_writable(file_path)
         open(file_path, 'w').write(json.dumps(config, indent=4))
-
-
-    def get_empty_config(self):
-        ''' This returns a dictionary with all the possible configurables for a workflow'''
-        return self.fill_empty_config_params(config={})
-
-
-    def fill_empty_config_params(self, config={}):
-        ''' Takes a config dictionary and assigns an empty string to any parameter that wasnt defined in the config'''
-        new_config = config.copy()
-
-        for rule in self.rules:
-            if rule not in config:
-                new_config[rule] = {}
-            for param in self.rule_acceptable_params_dict[rule]:
-                new_config[rule][param] = new_config[rule].get(param, '')
-
-        for param in self.general_params:
-            if param not in config:
-                new_config[param] = ''
-
-        return new_config
 
 
     def set_config_param(self, _list, value):
