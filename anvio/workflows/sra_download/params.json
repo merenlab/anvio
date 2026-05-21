@@ -1,0 +1,21 @@
+{
+    "general_params": {
+        "SRA_accession_list":        {"type": "str",  "default": "SRA_accession_list.txt"},
+        "Remove_unzipped_SRA_files": {"type": "bool", "default": true}
+    },
+    "rules": {
+        "prefetch": {
+            "threads":    {"type": "int", "default": 2},
+            "--max-size": {"type": "str", "default": "40g"}
+        },
+        "fasterq_dump": {
+            "threads":      {"type": "int",  "default": 6},
+            "--split-files":{"type": "bool", "default": null},
+            "--verbose":    {"type": "bool", "default": null},
+            "--progress":   {"type": "bool", "default": null}
+        },
+        "pigz": {
+            "threads": {"type": "int", "default": 8}
+        }
+    }
+}

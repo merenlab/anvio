@@ -1,0 +1,73 @@
+{
+    "general_params": {
+        "samples_txt": {"type": "str", "default": "samples.txt"}
+    },
+    "rules": {
+        "iu_merge_pairs": {
+            "threads":                    {"type": "int",  "default": 1},
+            "run":                        {"type": "bool", "default": true},
+            "--gzip-output":              {"type": "bool", "default": false},
+            "--marker-gene-stringent":    {"type": "bool", "default": true},
+            "--max-num-mismatches":       {"type": "int",  "default": 0},
+            "--report-r1-prefix":         {"type": "bool", "default": false},
+            "--report-r2-prefix":         {"type": "bool", "default": false}
+        },
+        "anvi_reformat_fasta": {
+            "threads":         {"type": "int",  "default": 1},
+            "run":             {"type": "bool", "default": true},
+            "--gzip-output":   {"type": "bool", "default": false},
+            "--simplify-names":{"type": "bool", "default": true}
+        },
+        "anvi_trnaseq": {
+            "threads":                          {"type": "int",   "default": 1},
+            "run":                              {"type": "bool",  "default": true},
+            "--treatment":                      {"type": "str",   "default": null},
+            "--overwrite-output-destinations":  {"type": "bool",  "default": false},
+            "--description":                    {"type": "str",   "default": null},
+            "--write-checkpoints":              {"type": "bool",  "default": false},
+            "--load-checkpoint":                {"type": "str",   "default": null},
+            "--feature-param-file":             {"type": "str",   "default": null},
+            "--threeprime-termini":             {"type": "str",   "default": "CCA,CC,C,CCAN,CCANN"},
+            "--min-length-long-fiveprime":      {"type": "int",   "default": 4},
+            "--min-trna-fragment-size":         {"type": "int",   "default": 25},
+            "--agglomeration-max-mismatch-freq":{"type": "float", "default": 0.03},
+            "--skip-INDEL-profiling":           {"type": "bool",  "default": false},
+            "--max-indel-freq":                 {"type": "float", "default": 0.05},
+            "--left-indel-buffer":              {"type": "int",   "default": 3},
+            "--right-indel-buffer":             {"type": "int",   "default": 3},
+            "--skip-fasta-check":               {"type": "bool",  "default": true},
+            "--alignment-target-chunk-size":    {"type": "int",   "default": 25000},
+            "--profiling-chunk-size":           {"type": "int",   "default": 100000}
+        },
+        "anvi_merge_trnaseq": {
+            "threads":                         {"type": "int",   "default": 1},
+            "run":                             {"type": "bool",  "default": true},
+            "--project-name":                  {"type": "str",   "default": null},
+            "--max-reported-trna-seeds":       {"type": "int",   "default": 10000},
+            "--overwrite-output-destinations": {"type": "bool",  "default": false},
+            "--description":                   {"type": "str",   "default": null},
+            "--feature-threshold":             {"type": "str",   "default": "anticodon_loop"},
+            "--preferred-treatment":           {"type": "str",   "default": null},
+            "--nonspecific-output":            {"type": "str",   "default": "nonspecific_db,combined_db"},
+            "--min-variation":                 {"type": "float", "default": 0.01},
+            "--min-third-fourth-nt":           {"type": "float", "default": 0.002},
+            "--min-indel-fraction":            {"type": "float", "default": 0.001},
+            "--distance":                      {"type": "str",   "default": "euclidean"},
+            "--linkage":                       {"type": "str",   "default": "ward"}
+        },
+        "anvi_run_trna_taxonomy": {
+            "threads":                    {"type": "int",   "default": 1},
+            "run":                        {"type": "bool",  "default": true},
+            "--trna-taxonomy-data-dir":   {"type": "str",   "default": null},
+            "--min-percent-identity":     {"type": "int",   "default": 90},
+            "--max-num-target-sequences": {"type": "int",   "default": 100},
+            "--num-parallel-processes":   {"type": "int",   "default": 1},
+            "--write-buffer-size":        {"type": "int",   "default": 5000}
+        },
+        "anvi_tabulate_trnaseq": {
+            "threads":                         {"type": "int",  "default": 1},
+            "run":                             {"type": "bool", "default": true},
+            "--overwrite-output-destinations": {"type": "bool", "default": false}
+        }
+    }
+}

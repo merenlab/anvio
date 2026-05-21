@@ -158,27 +158,52 @@ class WorkflowSuperClass:
 
 
     def load_params_schema(self):
-        """Load the params.json schema for this workflow.
+        """Load and merge params.json schemas for this workflow and any parent workflows.
+
+        Walks the MRO in base-first order so child entries override parent entries on
+        conflict. Returns an empty dict if no params.json is found for any class in the
+        hierarchy (preserving backward compatibility for workflows not yet migrated).
 
         Returns
         =======
         dict
-            Schema with 'general_params' and 'rules' keys, or an empty dict if no
-            params.json exists for this workflow yet.
+            Merged schema with 'general_params' and 'rules' keys.
         """
-        schema_path = os.path.join(get_path_to_workflows_dir(), self.name, 'params.json')
+        # maps workflow class names to their workflow directory names
+        workflow_class_name_map = {
+            'ContigsDBWorkflow':      'contigs',
+            'PhylogenomicsWorkflow':  'phylogenomics',
+            'PangenomicsWorkflow':    'pangenomics',
+            'MetagenomicsWorkflow':   'metagenomics',
+            'TRNASeqWorkflow':        'trnaseq',
+            'EcoPhyloWorkflow':       'ecophylo',
+            'SRADownloadWorkflow':    'sra_download',
+        }
 
-        if not os.path.exists(schema_path):
-            return {}
+        merged = {'general_params': {}, 'rules': {}}
+        found_any = False
 
-        try:
-            with open(schema_path) as f:
-                schema = json.load(f)
-        except json.JSONDecodeError as e:
-            raise ConfigError(f"The params.json file for the '{self.name}' workflow at '{schema_path}' "
-                              f"is not valid JSON. Here is the error: {e}")
+        for cls in reversed(type(self).__mro__):
+            workflow_name = workflow_class_name_map.get(cls.__name__)
+            if not workflow_name:
+                continue
 
-        return schema
+            schema_path = os.path.join(get_path_to_workflows_dir(), workflow_name, 'params.json')
+            if not os.path.exists(schema_path):
+                continue
+
+            try:
+                with open(schema_path) as f:
+                    schema = json.load(f)
+            except json.JSONDecodeError as e:
+                raise ConfigError(f"The params.json file for the '{workflow_name}' workflow at '{schema_path}' "
+                                  f"is not valid JSON. Here is the error: {e}")
+
+            merged['general_params'].update(schema.get('general_params', {}))
+            merged['rules'].update(schema.get('rules', {}))
+            found_any = True
+
+        return merged if found_any else {}
 
 
     def get_workflow_logs_dir(self):
@@ -582,6 +607,10 @@ class WorkflowSuperClass:
                     float(value)
                 except (ValueError, TypeError):
                     raise ConfigError(f"The parameter '{param}' in '{location}' must be a number, "
+                                      f"but you provided: '{value}'.")
+            elif expected_type == 'list':
+                if not isinstance(value, list):
+                    raise ConfigError(f"The parameter '{param}' in '{location}' must be a list, "
                                       f"but you provided: '{value}'.")
 
         for param, meta in schema.get('general_params', {}).items():
