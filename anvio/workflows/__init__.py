@@ -569,13 +569,7 @@ class WorkflowSuperClass:
 
 
     def check_config_types(self):
-        """Validate user config values against types declared in params.json.
-
-        Only runs when a params.json schema exists for this workflow. Skips
-        null/empty values since those mean 'not set'. Raises ConfigError on
-        any type mismatch so the problem surfaces at config load time rather
-        than deep inside a shell command.
-        """
+        """Validate user config values against types declared in params.json for this workflow."""
         schema = self.load_params_schema()
         if not schema:
             return
