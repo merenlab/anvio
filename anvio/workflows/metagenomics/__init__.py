@@ -660,7 +660,7 @@ class MetagenomicsWorkflow(ReadRecruitmentModule, ContigsDBWorkflow, WorkflowSup
         if wildcards.group in self.references_for_removal:
             # if it's a reference for removal then we just want to use the
             # raw fasta file, and there is no need to reformat or assemble
-            contigs = self.get_input_fasta_path(wildcards)
+            contigs = self.get_input_fasta_path(wildcards, remove_gz_suffix=False)
         elif self.get_param_value_from_config(['anvi_script_reformat_fasta','run']):
             contigs = self.dirs_dict["FASTA_DIR"] + "/{group}/{group}-contigs.fa".format(group=wildcards.group)
         else:
@@ -675,7 +675,7 @@ class MetagenomicsWorkflow(ReadRecruitmentModule, ContigsDBWorkflow, WorkflowSup
         # References-mode / reference-removal path (uses fasta_information)
         if self.references_mode or wildcards.group in self.references_for_removal:
             return super(MetagenomicsWorkflow, self).get_input_fasta_path(
-                wildcards, remove_gz_suffix=remove_gz_suffix)
+                wildcards, remove_gz_suffix=False)
 
         # Assembly-mode : assembler's canonical output location
         return os.path.join(self.dirs_dict["FASTA_DIR"], wildcards.group, "final.contigs.fa")
