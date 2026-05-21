@@ -590,7 +590,7 @@ D = {
             {'default': [],
              'action': 'append',
              'metavar': 'TYPE:THRESHOLD',
-             'help': "Set a minimum modification probability per modification type (e.g., 'A:0.9'). This parameter can be "
+             'help': "Set a minimum modification probability per modification type (e.g., 'm:0.9'). This parameter can be "
                      "used multiple times to set thresholds for multiple modification types. Values must be between 0 and 1."}
                 ),
     'modification-filter-default': (
