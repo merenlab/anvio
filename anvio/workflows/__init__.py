@@ -4,7 +4,6 @@ import os
 import sys
 import json
 import copy
-import re
 import snakemake
 
 import anvio
@@ -15,6 +14,10 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 from anvio.version import versions_for_db_types
+from anvio.workflows.config import A, B, T, dirs_dict, get_dir_names, check_for_risky_param_change, get_fields_for_fasta_information, get_workflow_name_and_version_from_config
+from anvio.workflows.paths import get_path_to_workflows_dir, get_workflow_snake_file_path, get_workflow_rule_file_path
+from anvio.workflows.registry import get_workflow_module_dict
+from anvio.workflows.snakemake_utils import D, regex_from_ids, get_conda_yaml_path, get_conda_env_prefix, gunzip_file
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -685,198 +688,3 @@ class WorkflowSuperClass:
                 d['external_genomes_file'] = external_genomes_file
 
             return d
-
-
-# The config file contains many essential configurations for the workflow
-# Setting the names of all directories
-dirs_dict = {"LOGS_DIR"     : "00_LOGS"         ,
-             "QC_DIR"       : "01_QC"           ,
-             "FASTA_DIR"    : "02_FASTA"     ,
-             "CONTIGS_DIR"  : "03_CONTIGS"      ,
-             "MAPPING_DIR"  : "04_MAPPING"      ,
-             "PROFILE_DIR"  : "05_ANVIO_PROFILE",
-             "MERGE_DIR"    : "06_MERGED"       ,
-             "PAN_DIR"      : "07_PAN"          ,
-             "LOCI_DIR"     : "04_LOCI_FASTAS"
-}
-
-
-########################################
-# Helper functions
-########################################
-
-def A(_list, d, default_value = ""):
-    '''
-        A helper function to make sense of config details.
-        string_list is a list of strings (or a single string)
-        d is a dictionary
-
-        this function checks if the strings in x are nested values in y.
-        For example if x = ['a','b','c'] then this function checkes if the
-        value y['a']['b']['c'] exists, if it does then it is returned
-    '''
-    if type(_list) is not list:
-        # converting to list for the cases of only one item
-        _list = [_list]
-    while _list:
-        a = _list.pop(0)
-        try:
-            d = d[a]
-        except:
-            return default_value
-    return d
-
-
-def B(config, _rule, _param, default=''):
-    # helper function for params
-    val = A([_rule, _param], config, default)
-    if val:
-        if isinstance(val, bool):
-            # the param is a flag so no need for a value
-            val = ''
-        return _param + ' ' + str(val)
-    else:
-        return ''
-
-
-def D(debug_message, debug_log_file_path=".SNAKEMAKEDEBUG"):
-    with open(debug_log_file_path, 'a') as output:
-            output.write(terminal.get_date() + '\n')
-            output.write(str(debug_message) + '\n\n')
-
-
-# a helper function to get the user defined number of threads for a rule
-def T(config, rule_name, N=1): return A([rule_name,'threads'], config, default_value=N)
-
-
-def regex_from_ids(ids):
-    """Return a wildcard constraint regex from a list of IDs."""
-    return r"(?:{})".format("|".join(re.escape(str(i)) for i in ids)) if ids else r"DO_NOT_MATCH"
-
-
-def get_conda_yaml_path(workflow, tool):
-    """Return the absolute conda YAML path configured for a workflow tool."""
-    path = workflow.get_param_value_from_config([tool, 'conda_yaml'])
-    if not path:
-        return None
-
-    return os.path.abspath(os.path.expanduser(path))
-
-
-def get_conda_env_prefix(workflow, tool):
-    """Return the command prefix for a configured existing conda environment."""
-    name = workflow.get_param_value_from_config([tool, 'conda_env'])
-    return f"conda run -n {name}" if name else ""
-
-
-def gunzip_file(file_path, log, shell, output_path=None):
-    """Uncompress a gzipped file and return the uncompressed path."""
-    uncompressed_file_path = output_path or os.path.splitext(file_path)[0]
-    shell("gunzip < %s > %s 2>> %s" % (file_path, uncompressed_file_path, log))
-    return uncompressed_file_path
-
-
-def get_dir_names(config, dont_raise=False):
-    ########################################
-    # Reading some definitions from config files (also some sanity checks)
-    ########################################
-    DICT = dirs_dict
-    for d in A("output_dirs", config):
-        # renaming folders according to the config file, if the user specified.
-        if d not in DICT and not dont_raise:
-            # making sure the user is asking to rename an existing folder.
-            raise ConfigError("You define a name for the directory '%s' in your "
-                              "config file, but the only available folders are: "
-                              "%s" % (d, DICT))
-
-        DICT[d] = A(d,config["output_dirs"])
-    return DICT
-
-
-def get_path_to_workflows_dir():
-    # this returns a path
-    base_path = os.path.dirname(__file__)
-    return base_path
-
-
-def get_workflow_snake_file_path(workflow):
-    workflow_dir = os.path.join(get_path_to_workflows_dir(), workflow)
-
-    if not os.path.isdir(workflow_dir):
-        raise ConfigError("Anvi'o does not know about the workflow '%s' :/" % workflow)
-
-    snakefile_path = os.path.join(workflow_dir, 'Snakefile')
-
-    if not os.path.exists(snakefile_path):
-        raise ConfigError("The snakefile path for the workflow '%s' seems to be missing :/" % workflow)
-
-    return snakefile_path
-
-
-def get_workflow_rule_file_path(workflow, filename='main.smk'):
-    workflow_dir = os.path.join(get_path_to_workflows_dir(), workflow)
-
-    if not os.path.isdir(workflow_dir):
-        raise ConfigError("Anvi'o does not know about the workflow '%s' :/" % workflow)
-
-    rule_file_path = os.path.join(workflow_dir, 'rules', filename)
-
-    if not os.path.exists(rule_file_path):
-        raise ConfigError("The rules file '%s' for the workflow '%s' seems to be missing :/" % (filename, workflow))
-
-    return rule_file_path
-
-
-def check_for_risky_param_change(config, rule, param, wildcard, our_default=None):
-    value = A([rule, param], config)
-    if value != our_default:
-        warning_message = 'You chose to define %s for the rule %s in the config file as %s.\
-                           while this is allowed, know that you are doing so at your own risk.\
-                           The reason this is risky is because this rule uses a wildcard/wildcards\
-                           and hence is probably running more than once, and this might cause a problem.\
-                           In case you wanted to know, these are the wildcards used by this rule: %s' % (param, rule, value, wildcard)
-        if our_default:
-            warning_message = warning_message + ' Just so you are aware, if you dont provide a value\
-                                                 in the config file, the default value is %s' % wildcard
-        run.warning(warning_message)
-
-
-def get_fields_for_fasta_information():
-    """ Return a list of legitimate column names for fasta.txt files"""
-    # Notice we don't include the name of the first column because
-    # utils.get_TAB_delimited_file_as_dictionary doesn't really care about it.
-    return ["path", "external_gene_calls", "gene_functional_annotation"]
-
-
-def get_workflow_module_dict():
-    from anvio.workflows.contigs import ContigsDBWorkflow
-    from anvio.workflows.metagenomics import MetagenomicsWorkflow
-    from anvio.workflows.pangenomics import PangenomicsWorkflow
-    from anvio.workflows.phylogenomics import PhylogenomicsWorkflow
-    from anvio.workflows.trnaseq import TRNASeqWorkflow
-    from anvio.workflows.ecophylo import EcoPhyloWorkflow
-    from anvio.workflows.sra_download import SRADownloadWorkflow
-
-    workflows_dict = {'contigs': ContigsDBWorkflow,
-                      'metagenomics': MetagenomicsWorkflow,
-                      'pangenomics': PangenomicsWorkflow,
-                      'phylogenomics': PhylogenomicsWorkflow,
-                      'trnaseq': TRNASeqWorkflow,
-                      'ecophylo': EcoPhyloWorkflow,
-                      'sra_download': SRADownloadWorkflow}
-
-    return workflows_dict
-
-
-def get_workflow_name_and_version_from_config(config_file, dont_raise=False):
-    filesnpaths.is_file_json_formatted(config_file)
-    config = json.load(open(config_file))
-    workflow_name = config.get('workflow_name')
-    # Notice that if there is no config_version then we return "0".
-    # This is in order to accomodate early config files that had no such parameter.
-    version = config.get('config_version', "0")
-
-    if (not dont_raise) and (not workflow_name):
-        raise ConfigError('Config files must contain a workflow_name.')
-
-    return (workflow_name, version)
