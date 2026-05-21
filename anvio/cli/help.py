@@ -31,12 +31,14 @@ def get_args():
     parser.add_argument('search-term', help='Find programs associated with this search term (optional)', nargs='?', default='ALL')
     parser.add_argument('--requires', '-r', action='store_true', help='Restrict to programs that require this search term')
     parser.add_argument('--provides', '-p', action='store_true', help='Restrict to programs that provide this search term')
+    parser.add_argument('--can-use', action='store_true', help='Restrict to programs that can optionally use this search term')
+    parser.add_argument('--can-provide', action='store_true', help='Restrict to programs that can optionally provide this search term')
     parser.add_argument('--name', '-n', action='store_true', help='Restrict to programs that contain this search term in their name')
     parser.add_argument('--report', '-R', help='Which information would you like to be in the report? Mess with this if you \
                                                 are disappointed with the default. Possibles are Description, Tags, Requires, \
-                                                Provides, Status, and Resources. Add multiple of them with commas (no whitespace). \
-                                                For example, if you wanted Description and Resources, you would put \
-                                                here Description,Resources')
+                                                Provides, Can Use, Can Provide, Status, and Resources. Add multiple of them \
+                                                with commas (no whitespace). For example, if you wanted Description and \
+                                                Resources, you would put here Description,Resources')
 
     return parser.get_args(parser)
 

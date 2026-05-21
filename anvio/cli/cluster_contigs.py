@@ -26,7 +26,8 @@ __version__ = anvio.__version__
 __authors__ = ['ozcan', 'meren']
 __resources__ = []
 __tags__ = ["profile_db", "clustering", "collections"]
-__requires__ = ['profile-db', 'contigs-db', 'collection']
+__requires__ = ['profile-db', 'contigs-db']
+__can_use__ = ['collection']
 __provides__ = ['collection', 'bin']
 __description__ = "A program to cluster items in a merged anvi'o profile using automatic binning algorithms"
 

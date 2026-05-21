@@ -19,7 +19,8 @@ __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren', 'ekiefl']
-__requires__ = ["pan-db", "profile-db", "contigs-db", "genomes-storage-db", "structure-db", "genes-db"]
+__requires__ = ['contigs-db']
+__can_use__ = ['pan-db', 'profile-db', 'genomes-storage-db', 'structure-db', 'genes-db']
 __description__ = "Access self tables, display values, or set new ones totally on your own risk"
 
 
