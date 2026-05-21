@@ -110,9 +110,9 @@ class PHROGsSetup(object):
 
         hmm_files = self.build_hmms_from_fmas(fma_files)
 
-        utils.concatenate_files(self.local_hmm_file, hmm_files, remove_concatenated_files=False)
+        utils.concatenate_files(self.local_hmm_file, hmm_files, remove_concatenated_files=True)
         self.hmmpress_profiles()
-
+        
         with open(os.path.join(self.phrogs_data_dir, "version.txt"), 'w') as f:
             f.write(f"{self.phrogs_version}\n")
 
@@ -150,6 +150,10 @@ class PHROGsSetup(object):
             raise ConfigError("Anvi'o expected to be able to build PHROGs .hmm files from FMA families using `hmmbuild`, "
                               "but something went wrong. Please check the log file ('%s') to see what happened." % log_file_path)
 
+        # Delete FMAs
+        for fma_file in fma_files:
+            os.remove(fma_file)
+        
         return hmm_files
 
     def hmmpress_profiles(self):
