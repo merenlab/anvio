@@ -1985,7 +1985,7 @@ D = {
              'type': int,
              'help': "Maximum number of threads to use for multithreading whenever possible. Very conservatively, the default "
                      "is 1. It is a good idea to not exceed the number of CPUs / cores on your system. Plus, please "
-                     "be careful with this option if you are running your commands on a SGE --if you are clusterizing your runs, "
+                     "be careful with this option if you are running your commands on a SGE -- if you are clusterizing your runs, "
                      "and asking for multiple threads to use, you may deplete your resources very fast."}
                 ),
     'num-parallel-processes': (
