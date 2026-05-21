@@ -394,20 +394,3 @@ class PanRepresenter:
 
         gene_function_calls_table = TableForGeneFunctions(self.args.output_file)
         gene_function_calls_table.create(self.functions, drop_previous_annotations_first=False)
-
-
-
-
-
-# Work in Progress
-    def filter_clusters(self, min_members):
-        if self.args.min_contributers:
-            p_path = self.pan.pan_db_path
-            p_version = self.pan.p_meta.get('version')
-            my_pan = db.DB(p_path, p_version)
-            counts = my_pan.get_table_as_dict('gene_cluster_presence_absence')
-
-            presense = pd.DataFrame(counts).T
-            print(presense2['item'].value_counts())
-            presense2 = presense[presense['value'] == 1]
-            # utils.store_dataframe_as_TAB_delimited_file(presense, "presense2.tsv")
