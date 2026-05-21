@@ -1575,7 +1575,7 @@ class UserAnnotationRunner:
             bitscore = hit['bitscore']
 
             meta = id_mapping.get(sseqid, {})
-            clean_id    = meta.get('clean_id', _auto_normalize_id(sseqid))
+            clean_id = meta.get('clean_id', _auto_normalize_id(sseqid))
             description = meta.get('description', '')
 
             label = description if description else clean_id
