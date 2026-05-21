@@ -24,7 +24,7 @@ try:
     import webbrowser
     import subprocess
     import tracemalloc
-    import urllib.request, urllib.error, urllib.parse
+    import urllib.request
 
     import numpy as np
     import pandas as pd
