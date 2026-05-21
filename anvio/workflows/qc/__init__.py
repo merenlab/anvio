@@ -28,6 +28,7 @@ class QCModule(WorkflowSuperClass):
       - Optional FastQC on SR reads
       - Optional LongQC quality assessment on LR reads
       - Optional Filtlong filtering of LR reads
+      - Optional MultiQC aggregation of all QC outputs
 
     Subclasses must set before any QC methods are called:
       - self.readsets: list[dict] from SamplesTxt.iter_readsets()
@@ -35,6 +36,7 @@ class QCModule(WorkflowSuperClass):
       - self.run_qc: bool (SR QC enabled)
       - self.run_lr_qc: bool (LongQC enabled)
       - self.run_filtlong: bool
+      - self.run_multiqc: bool
     """
 
     def __init__(self):
@@ -46,6 +48,7 @@ class QCModule(WorkflowSuperClass):
             'fastqc_sr',
             'longqc',
             'filtlong',
+            'multiqc',
         ])
 
         rule_acceptable_params_dict = {}
@@ -64,6 +67,7 @@ class QCModule(WorkflowSuperClass):
             "run", "conda_yaml", "conda_env",
             "--min-length", "--max-length", "--target-bases", "additional_params",
         ]
+        rule_acceptable_params_dict['multiqc'] = ["run", "additional_params"]
 
         self.rule_acceptable_params_dict.update(rule_acceptable_params_dict)
 
@@ -77,6 +81,7 @@ class QCModule(WorkflowSuperClass):
                 "--min-length": "", "--max-length": "", "--target-bases": "",
                 "additional_params": "",
             },
+            'multiqc': {"run": False, "additional_params": ""},
         })
 
     def get_longqc_platform(self, readset_id):
@@ -206,6 +211,10 @@ class QCModule(WorkflowSuperClass):
                     f"is set to {longqc_threads}. Please set it to 4 or higher in your config."
                 )
 
+        if self.get_param_value_from_config(['multiqc', 'run']) == True:
+            if not u.is_program_exists('multiqc', dont_raise=True):
+                missing.append(('multiqc', 'multiqc'))
+
         if missing:
             details = '\n  '.join(f"{prog}  (required by: {rule})" for prog, rule in missing)
             raise ConfigError(
@@ -271,5 +280,15 @@ class QCModule(WorkflowSuperClass):
             self.check_lr_readsets_no_duplicate_names()
             for rs_id in self.get_lr_readset_ids():
                 targets.append(os.path.join(self.dirs_dict["QC_DIR"], f"{rs_id}-FILTERED_LR.fastq.gz"))
+
+        if getattr(self, 'run_multiqc', False):
+            has_multiqc_inputs = run_fastqc_sr or getattr(self, 'run_lr_qc', False)
+            if has_multiqc_inputs:
+                targets.append(os.path.join(self.dirs_dict["QC_DIR"], "multiqc", "multiqc_report.html"))
+            else:
+                self.run.warning(
+                    "MultiQC is enabled but neither 'fastqc_sr' nor 'longqc' is enabled — "
+                    "MultiQC has no compatible inputs to aggregate and will be skipped."
+                )
 
         return targets
