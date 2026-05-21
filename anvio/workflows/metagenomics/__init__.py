@@ -179,7 +179,7 @@ class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, W
                 raise ConfigError("Multiple long-read assemblers are enabled; please enable Flye")
 
         # sanity check for conda env: use either conda_yaml or conda_env, not both
-        for tool in ['flye','minimap2','bowtie','megahit','metaspades','idba_ud']:
+        for tool in ['flye','minimap2','bowtie','megahit','metaspades','idba_ud','longqc','filtlong']:
             y = self.get_param_value_from_config([tool, 'conda_yaml'])
             n = self.get_param_value_from_config([tool, 'conda_env'])
             if (y and y.strip()) and (n and n.strip()):
@@ -193,10 +193,15 @@ class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, W
         self.ensure_tool_in_path_or_conda('flye', 'flye')
         self.ensure_tool_in_path_or_conda('bowtie', 'bowtie2')
         self.ensure_tool_in_path_or_conda('minimap2', 'minimap2')
+        self.ensure_tool_in_path_or_conda('longqc', 'LongQC.py')
+        self.ensure_tool_in_path_or_conda('filtlong', 'filtlong')
 
         self.use_scaffold_from_metaspades = self.get_param_value_from_config(['metaspades', 'use_scaffolds'])
         self.use_scaffold_from_idba_ud = self.get_param_value_from_config(['idba_ud', 'use_scaffolds'])
         self.run_qc = self.get_param_value_from_config(['iu_filter_quality_minoche', 'run']) == True
+        self.run_lr_qc = self.get_param_value_from_config(['longqc', 'run']) == True
+        self.run_filtlong = self.get_param_value_from_config(['filtlong', 'run']) == True
+        self.run_multiqc = self.get_param_value_from_config(['multiqc', 'run']) == True
         self.run_summary = self.get_param_value_from_config(['anvi_summarize', 'run']) == True
         self.run_split = self.get_param_value_from_config(['anvi_split', 'run']) == True
         self.references_mode = self.get_param_value_from_config('references_mode')
