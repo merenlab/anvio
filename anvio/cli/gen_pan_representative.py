@@ -48,6 +48,7 @@ def run_program():
         raise ConfigError(f"--max-num-contigs requires a positive integer, but '{args.max_num_contigs}' "
                           f"does not look like one. Please try again with a whole number.")
 
+
     try:
         args.gap_size = int(args.gap_size)
         if args.gap_size <= 0:
@@ -88,7 +89,9 @@ def run_program():
 
     if anvio.DEBUG:
         run.warning(f"The temp directory, {temp_dir}, is kept. Please don't forget to clean it up later", header="Debug")
+        run.warning(f"The temp directory, {temp_dir}, is kept. Please don't forget to clean it up later", header="Debug")
     else:
+        run.info_single("Cleaning up the temp directory (you can use `--debug` if you would like to keep it for testing purposes)", nl_before=1, nl_after=1)
         run.info_single("Cleaning up the temp directory (you can use `--debug` if you would like to keep it for testing purposes)", nl_before=1, nl_after=1)
         shutil.rmtree(temp_dir)
 
