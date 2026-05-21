@@ -1091,12 +1091,6 @@ def split_fasta(input_file_path, parts=1, file_name_prefix=None, shuffle=False, 
     # check input
     filesnpaths.is_file_fasta_formatted(input_file_path)
 
-    if parts == 1:
-        if return_number_of_sequences:
-            length = sum(1 for line in open(input_file_path) if line.startswith('>'))
-            return [input_file_path], length
-        return [input_file_path]
-
     # check output
     if not output_dir:
         output_dir = filesnpaths.get_temp_directory_path()
