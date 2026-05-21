@@ -7,7 +7,6 @@ SETUP_WITH_OUTPUT_DIR $1 $2 $3
 
 INFO "Setting up the pan analysis directory"
 mkdir $output_dir/workflow_test
-cp $files/mock_data_for_pangenomics/*.fa $output_dir/workflow_test/
 cp $files/mock_data_for_pangenomics/default-state.json        $output_dir/workflow_test/
 cp $files/workflows/pangenomics/fasta.txt $output_dir/workflow_test/
 cp $files/workflows/pangenomics/*.json $output_dir/workflow_test/
