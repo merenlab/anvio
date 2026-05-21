@@ -866,6 +866,10 @@
                                         <input type="checkbox" id="estimate_taxonomy" value="value" onclick="this.onchange();" onchange="toggleTaxonomyEstimation();">
                                         <span class="ml-1" for="estimate_taxonomy">Realtime taxonomy estimation for bins (whenever possible).</span>
                                     </div>
+                                    <div class="d-flex mt-2">
+                                        <input type="checkbox" id="select_contigs_rather_than_splits" onclick="this.onchange();" onchange="toggleSelectContigsRatherThanSplits();">
+                                        <span class="ml-1" for="select_contigs_rather_than_splits">Select contigs rather than splits</span>
+                                    </div>
                                     <div class="mt-2" id="taxonomy-labeling-container" style="display: none;">
                                         <p class="d-flex mb-1">
                                             <input type="checkbox" id="use_taxonomy_bin_labels" onclick="toggleTaxonomyLabeling();">
