@@ -88,10 +88,12 @@ class ArgumentParser(argparse.ArgumentParser):
         program = Program(self.prog)
         requires = _get_values_for('requires')
         provides = _get_values_for('provides')
+        can_use = _get_values_for('can_use')
+        can_provide = _get_values_for('can_provide')
 
-        def get_block(statement, header):
+        def get_block(statement, header=None, extra_items=None, extra_verb=''):
             blocks = []
-            if len(requires):
+            if len(statement):
                 split = []
                 for item in statement:
                     addition = [item, " / "] if statement[-1] != item else [item]
@@ -104,6 +106,9 @@ class ArgumentParser(argparse.ArgumentParser):
                 blocks.append(split)
                 blocks.append([''])
 
+            # index of the last content block (before the trailing empty one)
+            suffix_block_idx = len(blocks) - 2 if extra_items and len(blocks) >= 2 else None
+
             for i in range(0, len(blocks)):
                 block = blocks[i]
                 if atty:
@@ -114,12 +119,21 @@ class ArgumentParser(argparse.ArgumentParser):
                 if len(block) > 1:
                     block.insert(0, '   ')
 
+                # build suffix with artifact names colored, surrounding text plain
+                if i == suffix_block_idx:
+                    if atty:
+                        colored = [fg('red') + item + attr('reset') for item in extra_items]
+                    else:
+                        colored = extra_items
+                    block.append(f' (can also {extra_verb} {" / ".join(colored)})')
+
                 blocks[i] = block
 
-            if atty:
-                blocks.insert(0, attr('bold') + header + attr('reset'))
-            else:
-                blocks.insert(0, header)
+            if header:
+                if atty:
+                    blocks.insert(0, attr('bold') + header + attr('reset'))
+                else:
+                    blocks.insert(0, header)
 
             blocks.insert(1, "")
 
@@ -128,8 +142,8 @@ class ArgumentParser(argparse.ArgumentParser):
             return '\n'.join(blocks)
 
 
-        requires_and_provides_statements.append(get_block(requires, """🧀 Can consume:"""))
-        requires_and_provides_statements.append(get_block(provides, """🍕 Can provide:"""))
+        requires_and_provides_statements.append(get_block(requires, """🧀 Requires:""", extra_items=can_use, extra_verb='use'))
+        requires_and_provides_statements.append(get_block(provides, """🍕 Provides:""", extra_items=can_provide, extra_verb='generate'))
 
         return '\n' + '\n'.join(requires_and_provides_statements)
 
