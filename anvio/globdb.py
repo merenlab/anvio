@@ -199,6 +199,46 @@ def validate_synteny_yaml_entry(gaa_id, entry):
                                   f"Probabilities must be floats strictly greater than 0 and at most 1.")
 
 
+def _validate_version_block(gaa_id, version):
+    for field in ['globdb', 'gene_family']:
+        if field not in version:
+            raise ConfigError(f"The YAML entry for '{gaa_id}' is missing 'version.{field}'.")
+        if not isinstance(version[field], (int, float)) or version[field] <= 0:
+            raise ConfigError(f"The YAML entry for '{gaa_id}' has an invalid 'version.{field}' "
+                              f"value: {version[field]}. It must be a positive number.")
+
+
+def _validate_cutoffs_block(gaa_id, cutoffs):
+    for field in ['lasr', 'selfmax', 'selfmin', 'matrix']:
+        if field not in cutoffs:
+            raise ConfigError(f"The YAML entry for '{gaa_id}' is missing 'cutoffs.{field}'.")
+
+    lasr = cutoffs['lasr']
+    selfmax = cutoffs['selfmax']
+    selfmin = cutoffs['selfmin']
+    matrix = cutoffs['matrix']
+
+    if not isinstance(lasr, (int, float)) or not (0 < lasr <= 1):
+        raise ConfigError(f"The YAML entry for '{gaa_id}' has an invalid 'cutoffs.lasr' value: {lasr}. "
+                          f"It must be a number strictly between 0 and 1.")
+
+    if not isinstance(selfmax, (int, float)) or selfmax <= 0:
+        raise ConfigError(f"The YAML entry for '{gaa_id}' has an invalid 'cutoffs.selfmax' value: {selfmax}. "
+                          f"It must be a positive number.")
+
+    if not isinstance(selfmin, (int, float)) or selfmin <= 0:
+        raise ConfigError(f"The YAML entry for '{gaa_id}' has an invalid 'cutoffs.selfmin' value: {selfmin}. "
+                          f"It must be a positive number.")
+
+    if selfmax <= selfmin:
+        raise ConfigError(f"The YAML entry for '{gaa_id}' has 'cutoffs.selfmax' ({selfmax}) <= "
+                          f"'cutoffs.selfmin' ({selfmin}). selfmax must be strictly greater than selfmin.")
+
+    if not isinstance(matrix, str) or matrix.strip() not in BLOSUM_DIAGONALS:
+        raise ConfigError(f"The YAML entry for '{gaa_id}' has an unknown 'cutoffs.matrix' value: "
+                          f"'{matrix}'. Known matrices are: {', '.join(BLOSUM_DIAGONALS.keys())}.")
+
+
 def validate_gene_family_yaml_entry(gaa_id, entry):
     """Validate a single GlobDB gene family YAML entry for required fields and sane values.
 
@@ -230,46 +270,12 @@ def validate_gene_family_yaml_entry(gaa_id, entry):
     version = entry['version']
     if not isinstance(version, dict):
         raise ConfigError(f"The YAML entry for '{gaa_id}' has an invalid 'version' field — expected a dict.")
-
-    for field in ['globdb', 'gene_family']:
-        if field not in version:
-            raise ConfigError(f"The YAML entry for '{gaa_id}' is missing 'version.{field}'.")
-        if not isinstance(version[field], (int, float)) or version[field] <= 0:
-            raise ConfigError(f"The YAML entry for '{gaa_id}' has an invalid 'version.{field}' "
-                              f"value: {version[field]}. It must be a positive number.")
+    _validate_version_block(gaa_id, version)
 
     cutoffs = entry['cutoffs']
     if not isinstance(cutoffs, dict):
         raise ConfigError(f"The YAML entry for '{gaa_id}' has an invalid 'cutoffs' field — expected a dict.")
-
-    for field in ['lasr', 'selfmax', 'selfmin', 'matrix']:
-        if field not in cutoffs:
-            raise ConfigError(f"The YAML entry for '{gaa_id}' is missing 'cutoffs.{field}'.")
-
-    lasr = cutoffs['lasr']
-    selfmax = cutoffs['selfmax']
-    selfmin = cutoffs['selfmin']
-    matrix = cutoffs['matrix']
-
-    if not isinstance(lasr, (int, float)) or not (0 < lasr <= 1):
-        raise ConfigError(f"The YAML entry for '{gaa_id}' has an invalid 'cutoffs.lasr' value: {lasr}. "
-                          f"It must be a number strictly between 0 and 1.")
-
-    if not isinstance(selfmax, (int, float)) or selfmax <= 0:
-        raise ConfigError(f"The YAML entry for '{gaa_id}' has an invalid 'cutoffs.selfmax' value: {selfmax}. "
-                          f"It must be a positive number.")
-
-    if not isinstance(selfmin, (int, float)) or selfmin <= 0:
-        raise ConfigError(f"The YAML entry for '{gaa_id}' has an invalid 'cutoffs.selfmin' value: {selfmin}. "
-                          f"It must be a positive number.")
-
-    if selfmax <= selfmin:
-        raise ConfigError(f"The YAML entry for '{gaa_id}' has 'cutoffs.selfmax' ({selfmax}) <= "
-                          f"'cutoffs.selfmin' ({selfmin}). selfmax must be strictly greater than selfmin.")
-
-    if not isinstance(matrix, str) or matrix.strip() not in BLOSUM_DIAGONALS:
-        raise ConfigError(f"The YAML entry for '{gaa_id}' has an unknown 'cutoffs.matrix' value: "
-                          f"'{matrix}'. Known matrices are: {', '.join(BLOSUM_DIAGONALS.keys())}.")
+    _validate_cutoffs_block(gaa_id, cutoffs)
 
 
 def parse_globdb_diamond_output(tabular_path):
