@@ -43,7 +43,9 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                            'anvi_get_external_gene_calls_file',
                            'cat_external_gene_calls_file',
                            'cluster_X_percent_sim_mmseqs',
+                           'anvi_profile_blitz',
                            'subset_AA_seqs_with_mmseqs_reps',
+                           'subset_AA_seqs_with_coverage_reps',
                            'align_sequences',
                            'trim_alignment',
                            'remove_sequences_with_X_percent_gaps',
@@ -59,8 +61,10 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
                            'anvi_summarize',
                            'rename_tree_tips',
                            'make_misc_data',
+                           'add_misc_data_to_taxonomy',
                            'anvi_estimate_scg_taxonomy',
                            'make_anvio_state_file',
+                           'anvi_import_state',
                            'anvi_import_everything'
                            ])
 

@@ -4,7 +4,7 @@
         "external_genomes":             {"type": "str",  "default": "external-genomes.txt"},
         "hmm_list":                     {"type": "str",  "default": "hmm_list.txt"},
         "samples_txt":                  {"type": "str",  "default": "samples.txt"},
-        "cluster_representative_method":{"type": "str",  "default": null},
+        "cluster_representative_method":{"type": "dict", "default": {"method": "mmseqs"}},
         "gene_caller_to_use":           {"type": "str",  "default": null},
         "run_genomes_sanity_check":      {"type": "bool", "default": true},
         "scg_taxonomy_database_version":{"type": "str",  "default": "GTDB: v214.1; Anvi'o: v1"}
@@ -47,8 +47,14 @@
             "AA_mode":                      {"type": "bool",  "default": false},
             "additional_params":            {"type": "str",   "default": null}
         },
+        "anvi_profile_blitz": {
+            "threads": {"type": "int", "default": 1}
+        },
         "subset_AA_seqs_with_mmseqs_reps": {
             "threads": {"type": "int", "default": 2}
+        },
+        "subset_AA_seqs_with_coverage_reps": {
+            "threads": {"type": "int", "default": 1}
         },
         "align_sequences": {
             "threads":           {"type": "int", "default": 5},
@@ -110,11 +116,17 @@
         "make_misc_data": {
             "threads": {"type": "int", "default": 2}
         },
+        "add_misc_data_to_taxonomy": {
+            "threads": {"type": "int", "default": 1}
+        },
         "anvi_estimate_scg_taxonomy": {
             "threads": {"type": "int", "default": 5}
         },
         "make_anvio_state_file": {
             "threads": {"type": "int", "default": 2}
+        },
+        "anvi_import_state": {
+            "threads": {"type": "int", "default": 1}
         },
         "anvi_import_everything": {
             "threads": {"type": "int", "default": 2}

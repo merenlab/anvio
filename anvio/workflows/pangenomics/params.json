@@ -46,7 +46,7 @@
             "--max-functional-homogeneity-index":         {"type": "float", "default": null},
             "--min-geometric-homogeneity-index":          {"type": "float", "default": null},
             "--max-geometric-homogeneity-index":          {"type": "float", "default": null},
-            "--add-into-items-additional-data-table":     {"type": "bool",  "default": null},
+            "--add-into-items-additional-data-table":     {"type": "str",   "default": null},
             "--concatenate-gene-clusters":                {"type": "bool",  "default": null},
             "--separator":                                {"type": "str",   "default": null},
             "--align-with":                               {"type": "str",   "default": null}

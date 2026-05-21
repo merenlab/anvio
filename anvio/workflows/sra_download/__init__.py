@@ -45,6 +45,7 @@ class SRADownloadWorkflow(WorkflowSuperClass):
         # Snakemake rules
         self.rules.extend(['prefetch',
                            'fasterq_dump',
+                           'check_md5sum',
                            'pigz'])
 
 

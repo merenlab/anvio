@@ -486,7 +486,35 @@ class WorkflowSuperClass:
         if self.this_workflow_is_inherited_by_another:
             return
 
-        shell_programs_needed = [r.shellcmd.strip().split()[0] for r in snakemake_workflow_object.rules if r.shellcmd]
+        def get_shell_program(shellcmd):
+            """Return the first concrete command token from a Snakemake shell command."""
+            shell_keywords = {"if", "then", "else", "elif", "fi", "for", "while", "do", "done", "case", "esac"}
+
+            for line in shellcmd.splitlines():
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+
+                tokens = line.split()
+                while tokens and (tokens[0].startswith("{") or "=" in tokens[0]):
+                    tokens.pop(0)
+
+                if tokens and tokens[0] in shell_keywords:
+                    continue
+
+                if tokens:
+                    return tokens[0]
+
+            return None
+
+        shell_programs_needed = []
+        for rule in snakemake_workflow_object.rules:
+            if not rule.shellcmd:
+                continue
+
+            shell_program = get_shell_program(rule.shellcmd)
+            if shell_program:
+                shell_programs_needed.append(shell_program)
 
         shell_programs_missing = [s for s in shell_programs_needed if not u.is_program_exists(s, dont_raise=dont_raise)]
 
@@ -623,6 +651,10 @@ class WorkflowSuperClass:
             elif expected_type == 'list':
                 if not isinstance(value, list):
                     raise ConfigError(f"The parameter '{param}' in '{location}' must be a list, "
+                                      f"but you provided: '{value}'.")
+            elif expected_type == 'dict':
+                if not isinstance(value, dict):
+                    raise ConfigError(f"The parameter '{param}' in '{location}' must be a dictionary, "
                                       f"but you provided: '{value}'.")
 
         for param, meta in schema.get('general_params', {}).items():
