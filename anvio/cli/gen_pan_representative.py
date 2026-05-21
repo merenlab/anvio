@@ -1,20 +1,10 @@
-#!/usr/bin/env python
-# -*- coding: utf-8
-
-import sys
 import shutil
 
-from anvio.argparse import ArgumentParser
 import anvio
-import anvio.dbops as dbops
-import anvio.utils as utils
 import anvio.terminal as terminal
-import anvio.summarizer as summarizer
 import anvio.filesnpaths as filesnpaths
-
-
-from anvio.errors import ConfigError, FilesNPathsError
-
+from anvio.argparse import ArgumentParser
+from anvio.errors import ConfigError
 from anvio.panrep import PanRepresenter
 
 
@@ -22,16 +12,16 @@ __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
-__authors__ = ["mahmoudyousef98"]
-__requires__ = ["pan-db", "genomes-storage-db"]
-__provides__ = []
+__authors__ = ["Med1Bel", "Sarahi L. Garcia"]
+__requires__ = ["pan-db", "genomes-storage-db", "external-genomes"]
+__provides__ = ["contigs-db"]
 __resources__ = [
     (
-        "The role of gene cluster homogeneity described in the Anvi'o pangenomics tutorial",
-        "http://merenlab.org/2016/11/08/pangenomics-v2/#inferring-the-homogeneity-of-gene-clusters",
+        "The role of gene cluster homogeneity described in the Anvi'o pangenome representative tutorial",
+        "add a link here",
     )
 ]
-__description__ = "Compute homogeneity for gene clusters"
+__description__ = "Gets a representative from a pangenome"
 
 
 @terminal.time_program
@@ -42,7 +32,7 @@ def main():
 def run_program():
     args = get_args()
     run = terminal.Run()
-    progress = terminal.Progress()
+
     project_name = args.project_name
     temp_dir = filesnpaths.get_temp_directory_path()
     args.contigs_fasta = f"{temp_dir}/{project_name}.fasta"
@@ -50,65 +40,50 @@ def run_program():
     args.db_variant = "pan-genome"
 
     if args.keep_promoter:
-        args.keep_senteny = True
-        run.info_single( "Since you chose to keep the promoter region that means you also keep the  senteny by definition")
+        args.keep_synteny = True
+        run.info_single( "Since you chose to keep the promoter region that means you also keep the synteny by definition")
 
 
     try:
-        int(args.max_num_contigs)
-    except ValueError as e:
+        max_num_contigs = int(args.max_num_contigs)
+        if max_num_contigs <= 0:
+            raise ConfigError("max-num-contigs should be a strictly positive integer")
+    except ValueError:
         raise ConfigError("max-num-contigs should be a strictly positive integer")
 
+
     try:
-        int(args.gap_size)
-    except ValueError as e:
+        gap_size = int(args.gap_size)
+        if gap_size <= 0:
+            raise ConfigError("gap-size should be a strictly positive integer")
+    except ValueError:
         raise ConfigError("gap-size should be a strictly positive integer")
 
-    try:
-        float(args.gap_size)
-    except ValueError as e:
-        raise ConfigError("alpha should be between 0 and 1 inclusive")
 
     try:
-        float(args.gap_size)
-    except ValueError as e:
+        alpha = float(args.alpha)
+        if alpha < 0 or alpha > 1:
+            raise ConfigError("alpha should be between 0 and 1 inclusive")
+    except ValueError:
         raise ConfigError("alpha should be between 0 and 1 inclusive")
 
-#FilesNPathsError
+    pan_representative = PanRepresenter(args, temp_dir)
 
-    myPanRep = PanRepresenter(args, temp_dir)
-    # print(f" This is it {myPanRep.external_genomes.__dict__.keys()}")
-    # print(f" This is contigs_dbs_found {myPanRep.external_genomes.contigs_dbs_found}")
-    # print(f" This is External_genome_names {myPanRep.external_genomes}")
-    while myPanRep.all_clusters:
-        if myPanRep.first_iteration:
-            myPanRep.process_best_genome()
+    while pan_representative.all_clusters:
+        if pan_representative.first_iteration:
+            pan_representative.process_representative_genome()
 
-        myPanRep.process_additional_genomes()
-        myPanRep.all_clusters -= myPanRep.seen_clusters
-    # end while
+        pan_representative.process_additional_genomes()
 
-    myPanRep.assemble_sumplementary_contig()
-    myPanRep.write_outputs()
-    myPanRep.build_contigs_db()
+    pan_representative.assemble_sumplementary_contig()
+    pan_representative.write_outputs()
+    pan_representative.build_contigs_db()
 
     if anvio.DEBUG:
-        run.warning(
-            "The temp directory, %s, is kept. Please don't forget to clean it up "
-            "later" % temp_dir,
-            header="Debug",
-        )
+        run.warning(f"The temp directory, {temp_dir}, is kept. Please don't forget to clean it up later", header="Debug")
     else:
-        run.info_single(
-            "Cleaning up the temp directory (you can use `--debug` if you would "
-            "like to keep it for testing purposes)",
-            nl_before=1,
-            nl_after=1,
-        )
+        run.info_single("Cleaning up the temp directory (you can use `--debug` if you would like to keep it for testing purposes)", nl_before=1, nl_after=1)
         shutil.rmtree(temp_dir)
-
-
-
 
 
 def get_args():
@@ -127,16 +102,8 @@ def get_args():
     groupB.add_argument("--keep-synteny", action="store_true")
     groupB.add_argument("--keep-promoter", action="store_true")
 
-    groupB.add_argument(
-        "--test-flag",
-        metavar="FILE_PATH",
-        help="The Help text goes HERE",
-    )
 
-    groupC = parser.add_argument_group(
-        "OUTPUT-STUFF",
-        "All these option are related the contigs_db that will be outputed.",
-    )
+    groupC = parser.add_argument_group("OUTPUT-STUFF", "All these option are related the contigs_db that will be outputed.")
     groupC.add_argument(*anvio.A("output-file"), required=True, **anvio.K("output-file"))
     groupC.add_argument(*anvio.A("project-name"), **anvio.K("project-name"))
     groupC.add_argument(*anvio.A("description"), **anvio.K("description"))
