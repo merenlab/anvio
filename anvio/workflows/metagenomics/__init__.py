@@ -29,7 +29,6 @@ __email__ = "alon.shaiber@gmail.com"
 run = terminal.Run()
 progress = terminal.Progress()
 
-min_contig_length_for_assembly = 1000
 
 class MetagenomicsWorkflow(ReadRecruitmentModule, ContigsDBWorkflow, WorkflowSuperClass):
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
@@ -62,55 +61,6 @@ class MetagenomicsWorkflow(ReadRecruitmentModule, ContigsDBWorkflow, WorkflowSup
                      'krakenuniq', 'krakenuniq_mpa_report', 'import_krakenuniq_taxonomy',
                      'remove_short_reads_based_on_references', 'anvi_summarize', 'anvi_split'])
 
-        self.general_params.extend(['samples_txt', "references_mode", "all_against_all",
-                                    "kraken_txt", "collections_txt", "read_type_suffix"])
-
-        rule_acceptable_params_dict = {}
-
-        # defining the accesible params per rule. NOTE --threads is a parameter for every rule
-        # and is not explicitly provided in what follows
-        rule_acceptable_params_dict['iu_gen_configs'] = ["--r1-prefix", "--r2-prefix"]
-        rule_acceptable_params_dict['iu_filter_quality_minoche'] = ['run', '--visualize-quality-curves', '--ignore-deflines', '--limit-num-pairs', '--print-qual-scores', '--store-read-fate']
-        rule_acceptable_params_dict['gzip_fastqs'] = ["run"]
-
-        # add parameters for modifying binning algorithms
-        additional_params_for_anvi_cluster_contigs = [self.get_param_name_for_binning_driver(d) for d in driver_modules['binning'].keys()]
-        rule_acceptable_params_dict['anvi_cluster_contigs'] = ["run", "--collection-name", "--driver", "--just-do-it"]
-        rule_acceptable_params_dict['anvi_cluster_contigs'].extend(additional_params_for_anvi_cluster_contigs)
-
-        rule_acceptable_params_dict['anvi_summarize'] = ["additional_params", "run"]
-        rule_acceptable_params_dict['anvi_split'] = ["additional_params", "run"]
-        rule_acceptable_params_dict['metaspades'] = ["run", "conda_yaml", "conda_env", "additional_params", "use_scaffolds"]
-        rule_acceptable_params_dict['megahit'] = ["run", "conda_yaml", "conda_env", "--min-contig-len", "--min-count", "--k-min",
-                                                  "--k-max", "--k-step", "--k-list",
-                                                  "--no-mercy", "--no-bubble", "--merge-level",
-                                                  "--prune-level", "--prune-depth", "--low-local-ratio",
-                                                  "--max-tip-len", "--no-local", "--kmin-1pass",
-                                                  "--presets", "--memory", "--mem-flag",
-                                                  "--use-gpu", "--gpu-mem", "--keep-tmp-files",
-                                                  "--tmp-dir", "--continue", "--verbose"]
-        rule_acceptable_params_dict['idba_ud'] = ["run", "conda_yaml", "conda_env", "--mink", "--maxk", "--step", "--inner_mink",
-                                                  "--inner_step", "--prefix", "--min_count",
-                                                  "--min_support", "--seed_kmer", "--min_contig",
-                                                  "--similar", "--max_mismatch", "--min_pairs",
-                                                  "--no_bubble", "--no_local", "--no_coverage",
-                                                  "--no_correct", "--pre_correction", "use_scaffolds"]
-        rule_acceptable_params_dict['flye'] = ["run", "conda_yaml", "conda_env", "--meta", "--pacbio-raw", "--pacbio-corr",
-                                                   "--pacbio-hifi", "--nano-raw", "--nano-corr",
-                                                   "--nano-hq", "--genome-size", "--iterations",
-                                                   "--min-overlap", "--read-error", "--keep-haplotypes",
-                                                   "--no-alt-contigs", "--scaffold", "--polish-target",
-                                                   "additional_params", "threads"]
-        rule_acceptable_params_dict['merge_fastas_for_co_assembly'] = []
-        rule_acceptable_params_dict['merge_fastqs_for_co_assembly'] = []
-        rule_acceptable_params_dict['krakenuniq'] = ["additional_params", "run", "--db", "--gzip-compressed"]
-        rule_acceptable_params_dict['import_krakenuniq_taxonomy'] = ["--min-abundance"]
-        rule_acceptable_params_dict['remove_short_reads_based_on_references'] = ["dont_remove_just_map",
-                                                                                 "references_for_removal_txt",
-                                                                                 "delimiter-for-iu-remove-ids-from-fastq"]
-
-        self.rule_acceptable_params_dict.update(rule_acceptable_params_dict)
-
         forbidden_params = {}
         forbidden_params['krakenuniq'] = ['--fastq-input', '--paired', '--output']
 
@@ -123,17 +73,6 @@ class MetagenomicsWorkflow(ReadRecruitmentModule, ContigsDBWorkflow, WorkflowSup
                                "SUMMARY_DIR": "08_SUMMARY",
                                "SPLIT_PROFILES_DIR": "09_SPLIT_PROFILES"})
 
-        self.default_config.update({'samples_txt': "samples.txt",
-                                    'read_type_suffix': 'auto',
-                                    'metaspades': {"additional_params": "--only-assembler", "threads": 7},
-                                    'megahit': {"--min-contig-len": min_contig_length_for_assembly, "--memory": 0.4, "threads": 7},
-                                    'idba_ud': {"--min_contig": min_contig_length_for_assembly, "threads": 7},
-                                    'flye': {"run": False, "threads": 7, "additional_params": "", "--meta": True, "--pacbio-hifi": True},
-                                    'iu_filter_quality_minoche': {"run": True, "--ignore-deflines": True},
-                                    "gzip_fastqs": {"run": True},
-                                    "krakenuniq": {"threads": 3, "--gzip-compressed": True, "additional_params": ""},
-                                    "remove_short_reads_based_on_references": {"delimiter-for-iu-remove-ids-from-fastq": " "},
-                                    "anvi_cluster_contigs": {"--collection-name": "{driver}"}})
 
 
     def init(self):
