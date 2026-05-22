@@ -1,26 +1,5 @@
 if M.get_param_value_from_config(["flye", "run"]) and M.has_lr:
 
-    def flye_read_type():
-        """Choose the single enabled Flye long-read input mode from the config."""
-        flags = [
-            "--pacbio-raw",
-            "--pacbio-corr",
-            "--pacbio-hifi",
-            "--nano-raw",
-            "--nano-corr",
-            "--nano-hq",
-        ]
-        enabled = [f for f in flags if M.get_param_value_from_config(["flye", f])]
-        if len(enabled) == 0:
-            raise WorkflowError(
-                "flye: enable exactly one of --pacbio-raw|--pacbio-corr|--pacbio-hifi|--nano-raw|--nano-corr|--nano-hq."
-            )
-        if len(enabled) > 1:
-            raise WorkflowError(
-                f"flye: mutually exclusive flags enabled: {enabled}. Enable exactly one."
-            )
-        return enabled[0]
-
     rule flye:
         """Assemble long-read metagenomes with metaFlye/Flye."""
         input:
@@ -39,7 +18,8 @@ if M.get_param_value_from_config(["flye", "run"]) and M.has_lr:
         params:
             env_prefix=lambda wildcards: w.get_conda_env_prefix(M, "flye"),
             meta=M.get_rule_param("flye", "--meta"),
-            read_type=lambda wildcards: flye_read_type(),
+            # Derived from lr_technology in samples.txt — not a config flag.
+            read_type=lambda wildcards: M.get_flye_flag_for_group(wildcards.group),
             additional_params=M.get_param_value_from_config(
                 ["flye", "additional_params"]
             ),

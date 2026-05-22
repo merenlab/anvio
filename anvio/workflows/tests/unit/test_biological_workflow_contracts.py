@@ -38,7 +38,12 @@ WORKFLOWS = {
     'metagenomics': {
         'module': WORKFLOWS_ROOT / 'metagenomics' / '__init__.py',
         'snakefile': WORKFLOWS_ROOT / 'metagenomics' / 'Snakefile',
-        'extra_snakefiles': [WORKFLOWS_ROOT / 'read_recruitment' / 'rules' / 'main.smk'],
+        'extra_snakefiles': [
+            WORKFLOWS_ROOT / 'read_recruitment' / 'rules' / 'main.smk',
+            WORKFLOWS_ROOT / 'qc' / 'rules' / 'sr_filter.smk',
+            WORKFLOWS_ROOT / 'qc' / 'rules' / 'lr.smk',
+            WORKFLOWS_ROOT / 'qc' / 'rules' / 'multiqc.smk',
+        ],
         'rules': {
             'iu_filter_quality_minoche',
             'megahit',
