@@ -59,6 +59,82 @@ var curr_height;
 var show_cags_in_split = true;
 var thresh_count_gene_colors = 1;
 var order_gene_colors_by_count = true;
+var default_modification_colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E2'];
+
+
+function getModificationColorKey(modificationType) {
+  return String(modificationType).toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+}
+
+
+function getDefaultModificationColor(index) {
+  return default_modification_colors[index % default_modification_colors.length];
+}
+
+
+function ensureModificationColorsState() {
+  if (!state) {
+    return;
+  }
+
+  if (!state['modification_colors']) {
+    state['modification_colors'] = {};
+  }
+
+  if (!modification_types || !modification_types.length) {
+    return;
+  }
+
+  modification_types.forEach(function(modificationType, index) {
+    if (!state['modification_colors'].hasOwnProperty(modificationType)) {
+      state['modification_colors'][modificationType] = getDefaultModificationColor(index);
+    }
+  });
+}
+
+
+function renderModificationColorControls() {
+  var rowsContainer = $('#modifications_color_rows');
+  if (!rowsContainer.length) {
+    return;
+  }
+
+  rowsContainer.empty();
+
+  if (!modification_types || !modification_types.length) {
+    $('#modifications_color_section').hide();
+    return;
+  }
+
+  $('#modifications_color_section').show();
+  modification_types.forEach(function(modificationType, index) {
+    var colorValue = state['modification_colors'][modificationType] || getDefaultModificationColor(index);
+    var pickerId = 'modification_color_' + getModificationColorKey(modificationType);
+
+    rowsContainer.append(
+      '<tr>' +
+        '<td style="white-space: nowrap; padding-right: 8px;">' + modificationType + '</td>' +
+        '<td><div class="colorpicker modification-colorpicker" id="' + pickerId + '" color="' + colorValue + '" style="background-color: ' + colorValue + '; width: 28px; height: 18px; border: 1px solid #999; cursor: pointer;"></div></td>' +
+      '</tr>'
+    );
+
+    $('#' + pickerId).colpick({
+      layout: 'hex',
+      submit: 0,
+      colorScheme: 'light',
+      onChange: function(hsb, hex, rgb, el, bySetColor) {
+        var color = '#' + hex;
+        $(el).css('background-color', color);
+        $(el).attr('color', color);
+        state['modification_colors'][modificationType] = color;
+        localStorage.state = JSON.stringify(state);
+        createCharts(state);
+      }
+    }).keyup(function() {
+      $(this).colpickSetColor(this.value);
+    });
+  });
+}
 
 function loadAll() {
     info("Initiated");
@@ -157,6 +233,7 @@ function loadAll() {
                 competing_nucleotides = response.competing_nucleotides;
                 indels = response.indels;
                 modifications = response.modifications;
+                ensureModificationColorsState();
 
                 info("Building indels table");
                 for(var i=0; i<indels.length; i++) {
@@ -256,6 +333,7 @@ function loadAll() {
                 // adjust menu options
                 manageSNVsState(state, maxVariability);
                 manageModificationsState(state);
+                renderModificationColorControls();
 
                 if (!indels_enabled && (!state['snvs_enabled'] || maxVariability == 0)) {
                     console.log("Hiding SNVs and indels due to the condition being met.");
@@ -1757,6 +1835,7 @@ function createCharts(state){
                         indels: indels[layer_index],
                         modifications: modifications[layer_index],
                         modification_types: modification_types,
+                        modification_colors: state['modification_colors'] || {},
                         gc_content: gc_content_array,
                         'gc_content_window_size': gc_content_window_size,
                         'gc_content_step_size': gc_content_step_size,
@@ -1913,6 +1992,7 @@ function Chart(options){
     this.margin = options.margin;
     this.showBottomAxis = options.showBottomAxis;
     this.color = options.color;
+    this.modification_colors = options.modification_colors || {};
 
     var localName = this.name;
     var num_data_points = this.variability_a.length;
@@ -2271,74 +2351,9 @@ function Chart(options){
                               });
     }
 
-    // Draw modifications
-    if(state['show_modifications'] && this.modifications && Object.keys(this.modifications).length > 0) {
-        info("Drawing modification markers");
-        
-        // Create a color scheme for modification types
-        var mod_colors = {};
-        var colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E2'];
-        if (this.modification_types) {
-            this.modification_types.forEach(function(mod_type, index) {
-                mod_colors[mod_type] = colors[index % colors.length];
-            });
-        }
-        
-        // Draw modification text markers
-        this.textContainerModifications.selectAll("text")
-                                      .data(d3.entries(this.modifications))
-                                      .enter()
-                                      .append("text")
-                                      .attr("class", "modifications_text")
-                                      .attr("x", function (d) { return xS(0.5+d.value['pos']); })
-                                      .attr("y", function (d) { return ySL_indel(-1); })
-                                      .attr("font-size", "12px")
-                                      .attr("style", "cursor:pointer;")
-                                      .attr("fill", '#FF6B6B')
-                                      .attr('data-toggle', 'popover')
-                                      .attr('data-content', function(d) {
-                                          var mod_data = d.value;
-                                          var content = '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span>';
-                                          content += '<h3>Base Modifications</h3>';
-                                          content += '<table class="table table-striped" style="width: 100%; text-align: center; font-size: 12px;">';
-                                          content += '<tr><td>Position in split</td><td>' + d.key + '</td></tr>';
-                                          content += '<tr><td>Coverage</td><td>' + (mod_data['coverage'] || 0) + '</td></tr>';
-                                          
-                                          if (mod_data['modification_ratios']) {
-                                              for (var mod_type in mod_data['modification_ratios']) {
-                                                  var ratio = mod_data['modification_ratios'][mod_type];
-                                                var count = mod_data['modification_counts'] ? (mod_data['modification_counts'][mod_type] || 0) : 0;
-                                                content += '<tr><td>Modification: ' + mod_type + '</td><td>' + (ratio * 100).toFixed(1) + '% (' + count + ')</td></tr>';
-
-                                                if (mod_data['modification_strand_counts'] && mod_data['modification_strand_counts'][mod_type]) {
-                                                  var strandCounts = mod_data['modification_strand_counts'][mod_type];
-                                                  var strandBits = [];
-                                                  Object.keys(strandCounts).forEach(function(strand) {
-                                                    strandBits.push(strand + ': ' + strandCounts[strand]);
-                                                  });
-                                                  if (strandBits.length > 0) {
-                                                    content += '<tr><td>Strands</td><td>' + strandBits.join(', ') + '</td></tr>';
-                                                  }
-                                                }
-                                              }
-                                          }
-                                          
-                                          if (mod_data['unmodified_ratio']) {
-                                              var total_mod_counts = 0;
-                                              if (mod_data['modification_counts']) {
-                                                Object.keys(mod_data['modification_counts']).forEach(function(mod_type) {
-                                                  total_mod_counts += mod_data['modification_counts'][mod_type];
-                                                });
-                                              }
-                                              var unmod_count = mod_data['coverage'] - total_mod_counts;
-                                              content += '<tr><td>Unmodified</td><td>' + (mod_data['unmodified_ratio'] * 100).toFixed(1) + '% (' + unmod_count + ')</td></tr>';
-                                          }
-                                          
-                                          content += '</table>';
-                                          return content;
-                                      })
-                                      .text('●');
-    }
+    this.modification_bar_y = 4;
+    this.modification_bar_height = 8;
+    this.drawModifications();
 
     this.xAxisTop = d3.svg.axis().scale(this.xScale).orient("top");
 
@@ -2382,9 +2397,6 @@ Chart.prototype.showOnly = function(b){
     if(indels_enabled) this.lineContainer.select("[name=indel_1]").data([this.indel_coverage]).attr("d", this.line);
     this.textContainer.selectAll(".SNV_text").data(d3.entries(this.competing_nucleotides)).attr("x", function (d) { return xS(0.5+parseInt(d.key)); });
     this.textContainerIndels.selectAll(".indels_text").data(d3.entries(this.indels)).attr("x", function (d) { return xS(0.5+d.value['pos']); });
-    if(state['show_modifications'] && this.modifications) {
-        this.textContainerModifications.selectAll(".modifications_text").data(d3.entries(this.modifications)).attr("x", function (d) { return xS(0.5+d.key); });
-    }
 
     let numNucl = $('#brush_end').val()-$('#brush_start').val();
     let mk_font_size = 2000/numNucl;
@@ -2392,9 +2404,159 @@ Chart.prototype.showOnly = function(b){
     if(mk_font_size > 10) mk_font_size = 10;
     this.textContainer.selectAll(".SNV_text").data(d3.entries(this.competing_nucleotides)).attr("font-size", mk_font_size+"px");
     this.textContainerIndels.selectAll(".indels_text").data(d3.entries(this.indels)).attr("font-size", 2*mk_font_size+"px");
-    if(state['show_modifications'] && this.modifications) {
-        this.textContainerModifications.selectAll(".modifications_text").data(d3.entries(this.modifications)).attr("font-size", mk_font_size+"px");
-    }
+  this.drawModifications();
 
     this.chartContainer.select(".x.axis.top").call(this.xAxisTop);
 }
+
+
+Chart.prototype.getModificationBarWidth = function() {
+  var brushStart = parseInt($('#brush_start').val() || 0);
+  var brushEnd = parseInt($('#brush_end').val() || this.coverage.length);
+  var visibleNucleotides = brushEnd - brushStart;
+
+  if (!visibleNucleotides || visibleNucleotides <= 0) {
+    visibleNucleotides = this.coverage.length || 1;
+  }
+
+  var barWidth = 2000 / visibleNucleotides;
+  if (barWidth < 4) {
+    barWidth = 4;
+  }
+  if (barWidth > 16) {
+    barWidth = 16;
+  }
+
+  return barWidth;
+};
+
+
+Chart.prototype.buildModificationPopoverContent = function(position, modData) {
+  var content = '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span>';
+  content += '<h3>Base Modifications</h3>';
+  content += '<table class="table table-striped" style="width: 100%; text-align: center; font-size: 12px;">';
+  content += '<tr><td>Position in split</td><td>' + position + '</td></tr>';
+  content += '<tr><td>Coverage</td><td>' + (modData['coverage'] || 0) + '</td></tr>';
+
+  var modificationTypes = this.modification_types && this.modification_types.length ? this.modification_types : Object.keys(modData['modification_counts'] || {});
+  var totalModCounts = 0;
+  modificationTypes.forEach(function(modificationType) {
+    var count = modData['modification_counts'] ? (modData['modification_counts'][modificationType] || 0) : 0;
+    var ratio = modData['modification_ratios'] ? (modData['modification_ratios'][modificationType] || 0) : 0;
+    totalModCounts += count;
+    if (count > 0 || ratio > 0) {
+      content += '<tr><td>' + modificationType + '</td><td>' + count + ' (' + (ratio * 100).toFixed(1) + '%)</td></tr>';
+    }
+
+    if (modData['modification_strand_counts'] && modData['modification_strand_counts'][modificationType]) {
+      var strandCounts = modData['modification_strand_counts'][modificationType];
+      var strandBits = [];
+      Object.keys(strandCounts).forEach(function(strand) {
+        strandBits.push(strand + ': ' + strandCounts[strand]);
+      });
+      if (strandBits.length > 0) {
+        content += '<tr><td>Strands</td><td>' + strandBits.join(', ') + '</td></tr>';
+      }
+    }
+  });
+
+  if (modData['unmodified_ratio'] != null) {
+    var unmodCount = (modData['coverage'] || 0) - totalModCounts;
+    if (unmodCount < 0) {
+      unmodCount = 0;
+    }
+    content += '<tr><td>Unmodified</td><td>' + (modData['unmodified_ratio'] * 100).toFixed(1) + '% (' + unmodCount + ')</td></tr>';
+  }
+
+  content += '</table>';
+  return content;
+};
+
+
+Chart.prototype.drawModifications = function() {
+  this.textContainerModifications.selectAll('*').remove();
+
+  if (!state['show_modifications'] || !this.modifications || Object.keys(this.modifications).length === 0) {
+    return;
+  }
+
+  info("Drawing modification bars");
+
+  var xS = this.xScale;
+  var barWidth = this.getModificationBarWidth();
+  var barHeight = this.modification_bar_height;
+  var barY = this.modification_bar_y;
+  var defaultColors = default_modification_colors;
+  var entries = d3.entries(this.modifications).sort(function(a, b) { return parseInt(a.key) - parseInt(b.key); });
+  var self = this;
+
+    entries.forEach(function(entry) {
+        var group = self.textContainerModifications.append('g')
+            .attr('class', 'modification_bar')
+            .attr('transform', 'translate(' + xS(0.5 + parseInt(entry.key)) + ',' + barY + ')');
+
+        var modData = entry.value;
+        var modificationTypes = self.modification_types && self.modification_types.length ? self.modification_types : Object.keys(modData['modification_ratios'] || {});
+        var xOffset = 0;
+
+        modificationTypes.forEach(function(modificationType, typeIndex) {
+            var ratio = modData['modification_ratios'] ? modData['modification_ratios'][modificationType] : null;
+            if (ratio == null || ratio <= 0) {
+                return;
+            }
+
+            var segmentWidth = Math.max(1, barWidth * ratio);
+            if (typeIndex === modificationTypes.length - 1) {
+                segmentWidth = Math.max(0, barWidth - xOffset);
+            }
+            if (segmentWidth <= 0) {
+                return;
+            }
+
+            group.append('rect')
+                .attr('class', 'modification_ratio_segment')
+                .attr('x', xOffset)
+                .attr('y', 0)
+                .attr('width', segmentWidth)
+                .attr('height', barHeight)
+                .attr('fill', self.modification_colors[modificationType] || defaultColors[typeIndex % defaultColors.length]);
+
+            xOffset += segmentWidth;
+        });
+
+    if (modData['unmodified_ratio'] != null) {
+      var unmodifiedWidth = Math.max(0, barWidth - xOffset);
+      if (unmodifiedWidth > 0) {
+        group.append('rect')
+          .attr('class', 'modification_ratio_segment modification_ratio_unmodified')
+          .attr('x', xOffset)
+          .attr('y', 0)
+          .attr('width', unmodifiedWidth)
+          .attr('height', barHeight)
+          .attr('fill', '#d9d9d9');
+      }
+    }
+
+        group.append('rect')
+            .attr('class', 'modification_ratio_hitbox')
+            .attr('x', 0)
+            .attr('y', 0)
+            .attr('width', barWidth)
+            .attr('height', barHeight)
+            .attr('fill', 'transparent')
+            .attr('stroke', 'transparent')
+            .attr('data-toggle', 'popover')
+            .attr('data-content', self.buildModificationPopoverContent(entry.key, modData));
+    });
+
+  this.textContainerModifications.selectAll('.modification_ratio_hitbox')
+    .each(function() {
+      $(this).popover({html: true, sanitize: false, trigger: 'manual', container: 'body', viewport: 'body', placement: 'top'});
+    })
+    .on('mouseenter', function() {
+      $(this).popover('show');
+    })
+    .on('mouseleave', function() {
+      $(this).popover('hide');
+    });
+};

@@ -75,6 +75,14 @@
   pointer-events: all;
 }
 
+.modification_ratio_segment {
+    pointer-events: none;
+}
+
+.modification_ratio_hitbox {
+    pointer-events: all;
+}
+
 #display-container h2 {
     color: #444;
     margin: 0 0 10px;
