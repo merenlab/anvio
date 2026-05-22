@@ -181,7 +181,14 @@ class PHROGs(object):
         self.num_threads = A('num_threads', null) or 1
         self.hmm_program = A('hmmer_program', null) or 'hmmsearch'
         self.phrogs_data_dir = A('phrogs_data_dir', null)
-        self.noise_cutoff_terms = A('noise_cutoff_terms', null) or '-E 1e-5'
+        self.noise_cutoff_terms = A('noise_cutoff_terms', null) or '-E 1e-10'
+
+        # Inform the user when we fall back to the default noise cutoff
+        if self.noise_cutoff_terms == "-E 1e-10":
+            self.run.info_single(
+                f"No `--noise-cutoff-terms` was provided; using default '{self.noise_cutoff_terms}'. "
+                "You may wish to choose a different cutoff.",
+                nl_before=1, nl_after=1, mc='yellow')
         self.just_do_it = A('just_do_it', null)
 
         filesnpaths.is_program_exists(self.hmm_program)
