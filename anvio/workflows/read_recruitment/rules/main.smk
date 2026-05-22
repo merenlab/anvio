@@ -23,9 +23,6 @@ progress = terminal.Progress()
 # convenience sets:
 SR_READSETS = M.get_sr_readset_ids()
 LR_READSETS = M.get_lr_readset_ids()
-READSETS = M.get_readset_ids()
-
-
 SR_RS_RE = w.regex_from_ids(SR_READSETS)
 LR_RS_RE = w.regex_from_ids(LR_READSETS)
 ALL_RS_RE = w.regex_from_ids(SR_READSETS + LR_READSETS)
@@ -182,8 +179,6 @@ rule minimap2:
 
 rule samtools_view:
     """Convert mapped SAM output into raw BAM format."""
-    wildcard_constraints:
-        readset=ALL_RS_RE,
     input:
         sam=M.dirs_dict["MAPPING_DIR"] + "/{group}/{readset}.sam",
     output:
@@ -191,7 +186,7 @@ rule samtools_view:
     log:
         rule_log("samtools_view", "{group}-{readset}-samtools_view"),
     wildcard_constraints:
-        readset=READSETS_RE,
+        readset=ALL_RS_RE,
     threads: M.T("samtools_view")
     resources:
         nodes=M.T("samtools_view"),
@@ -205,8 +200,6 @@ rule samtools_view:
 
 rule anvi_init_bam:
     """Initialize and index BAM files for anvi-o profiling."""
-    wildcard_constraints:
-        readset=ALL_RS_RE,
     input:
         bam=M.dirs_dict["MAPPING_DIR"] + "/{group}/{readset}-RAW.bam",
     output:
@@ -215,7 +208,7 @@ rule anvi_init_bam:
     log:
         rule_log("anvi_init_bam", "{group}-{readset}-anvi_init_bam"),
     wildcard_constraints:
-        readset=READSETS_RE,
+        readset=ALL_RS_RE,
     threads: M.T("anvi_init_bam")
     resources:
         nodes=M.T("anvi_init_bam"),
@@ -249,7 +242,7 @@ rule anvi_profile:
     log:
         rule_log("anvi_profile", "{group}-{readset}-anvi_profile"),
     wildcard_constraints:
-        readset=READSETS_RE,
+        readset=ALL_RS_RE,
     threads: M.T("anvi_profile")
     resources:
         nodes=M.T("anvi_profile"),
@@ -458,7 +451,8 @@ rule anvi_merge:
                 "that this is our fault. sincerely, Meren Lab" % wildcards.group
             )
             create_fake_output_files(_message, output)
-            with open(str(log), 'a') as _log: _log.write(_message + '\n')
+            with open(str(log), "a") as _log:
+                _log.write(_message + "\n")
         elif M.group_sizes[wildcards.group] == 1:
             _message = (
                 "Only one file was profiled with %s so there \
@@ -468,14 +462,16 @@ rule anvi_merge:
                 % (wildcards.group, input.profiles[0])
             )
             create_fake_output_files(_message, output)
-            with open(str(log), 'a') as _log: _log.write(_message + '\n')
+            with open(str(log), "a") as _log:
+                _log.write(_message + "\n")
         elif len(input.profiles) == 1:
             _message = (
                 "Only one sample had reads recruited to %s "
                 "and hence merging could not occur." % wildcards.group
             )
             create_fake_output_files(_message, output)
-            with open(str(log), 'a') as _log: _log.write(_message + '\n')
+            with open(str(log), "a") as _log:
+                _log.write(_message + "\n")
         else:
             shell(
                 "anvi-merge {input.profiles} -o {params.output_dir} -c {input.contigs} \
@@ -498,7 +494,7 @@ rule count_reads_in_fastq:
     log:
         rule_log("count_reads_in_fastq", "{readset}-count_reads_in_fastq"),
     wildcard_constraints:
-        readset=READSETS_RE,
+        readset=ALL_RS_RE,
     threads: 1
     resources:
         nodes=1,
@@ -543,7 +539,7 @@ rule import_percent_of_reads_mapped:
             "{group}-{readset}-import_percent_of_reads_mapped",
         ),
     wildcard_constraints:
-        readset=READSETS_RE,
+        readset=ALL_RS_RE,
     threads: 1
     resources:
         nodes=1,
