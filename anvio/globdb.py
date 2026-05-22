@@ -37,7 +37,7 @@ P = terminal.pluralize
 GLOBDB_DATA_VERSION = '1'
 
 # the location of the database
-GLOBDB_DOWNLOAD_URL = 'https://fileshare.lisc.univie.ac.at/e01a9b4189ff4767-1779787805/GlobAA.tar.gz'
+GLOBDB_DOWNLOAD_URL = 'https://fileshare.lisc.univie.ac.at/e01a9b4189ff4767-1779787805/GlobDBFunctions.tar.gz'
 
 # DIAMOND output format used for GlobDB searches. The 'score' column (raw alignment
 # score, not bitscore) is essential for LASR calculation and must remain the last field.
@@ -148,6 +148,57 @@ def classify_globdb_hit(max_score, hit_score, lasr_cutoff, selfmin, selfmax):
 
     # max_score > selfmax
     return 'too_long' if hit_score >= halfway_line_value else 'below_cutoff'
+
+
+def validate_validation_yaml_entry(gaa_id, entry):
+    """Validate a single GlobDB gene family validation YAML entry.
+
+    Parameters
+    ==========
+    gaa_id : str
+        The GAA identifier (e.g., 'GAA00000001').
+    entry : dict
+        The parsed YAML content for this gene family's validation data (the value under the gaa_id key).
+
+    Raises
+    ======
+    ConfigError
+        If the structure is invalid, publication keys are not non-empty strings, required fields
+        are missing, or sequences is not a non-empty list of strings.
+    """
+
+    if not isinstance(entry, dict) or not entry:
+        raise ConfigError(f"The validation YAML entry for '{gaa_id}' must be a non-empty dict at the top level.")
+
+    for pub_key, pub_data in entry.items():
+        if not isinstance(pub_key, str) or not pub_key.strip():
+            raise ConfigError(f"The validation YAML entry for '{gaa_id}' has an invalid publication key "
+                              f"'{pub_key}'. Publication keys must be non-empty strings.")
+
+        if not isinstance(pub_data, dict):
+            raise ConfigError(f"The validation YAML entry for '{gaa_id}' under publication '{pub_key}' "
+                              f"must be a dict.")
+
+        for field in ['title', 'url', 'doi', 'sequences']:
+            if field not in pub_data:
+                raise ConfigError(f"The validation YAML entry for '{gaa_id}' under publication '{pub_key}' "
+                                  f"is missing the required field '{field}'.")
+
+        for field in ['title', 'url', 'doi']:
+            val = pub_data[field]
+            if not isinstance(val, str) or not val.strip():
+                raise ConfigError(f"The validation YAML entry for '{gaa_id}' under publication '{pub_key}' "
+                                  f"has an empty or invalid '{field}' value.")
+
+        sequences = pub_data['sequences']
+        if not isinstance(sequences, list) or not sequences:
+            raise ConfigError(f"The validation YAML entry for '{gaa_id}' under publication '{pub_key}' "
+                              f"must have a non-empty list of sequences.")
+
+        for seq_id in sequences:
+            if not isinstance(seq_id, str) or not seq_id.strip():
+                raise ConfigError(f"The validation YAML entry for '{gaa_id}' under publication '{pub_key}' "
+                                  f"contains an invalid sequence ID '{seq_id}'. Sequence IDs must be non-empty strings.")
 
 
 def validate_synteny_yaml_entry(gaa_id, entry):
@@ -379,6 +430,11 @@ class GlobDBFunctionsSetup:
         return os.path.join(self.globdb_base_dir, 'GlobDB-synteny-data.yaml')
 
 
+    def get_validation_yaml_path(self):
+        """Return the path to the master validation data YAML file."""
+        return os.path.join(self.globdb_base_dir, 'GlobDB-validation-data.yaml')
+
+
     def is_database_exists(self):
         """Return True if the GlobDB data directory looks complete and up to date."""
 
@@ -395,6 +451,9 @@ class GlobDBFunctionsSetup:
             return False
 
         if not os.path.exists(self.get_synteny_yaml_path()):
+            return False
+
+        if not os.path.exists(self.get_validation_yaml_path()):
             return False
 
         if not os.path.exists(self.get_db_path() + '.dmnd'):
@@ -455,6 +514,13 @@ class GlobDBFunctionsSetup:
 
         # validate the master synteny YAML we just wrote
         self.validate_master_synteny_yaml(synteny_yaml_path)
+
+        # merge all per-family validation.yaml files (where present) into a master validation YAML
+        validation_yaml_path = self.get_validation_yaml_path()
+        self.concatenate_validation_yamls(raw_data_dir, validation_yaml_path)
+
+        # validate the master validation YAML we just wrote
+        self.validate_master_validation_yaml(validation_yaml_path)
 
         # build the DIAMOND search database
         self.build_diamond_db(fasta_path)
@@ -541,11 +607,13 @@ class GlobDBFunctionsSetup:
 
         seen_ids = set()
         num_with_synteny = 0
+        num_with_validation = 0
 
         for gaa_dir in gaa_dirs:
             gaa_id = os.path.basename(gaa_dir)
             info_yaml_path = os.path.join(gaa_dir, 'info.yaml')
             synteny_yaml_path = os.path.join(gaa_dir, 'synteny.yaml')
+            validation_yaml_path = os.path.join(gaa_dir, 'validation.yaml')
 
             self.progress.increment()
             self.progress.update(f"Validating {gaa_id} ...")
@@ -604,9 +672,33 @@ class GlobDBFunctionsSetup:
                 validate_synteny_yaml_entry(gaa_id, synteny_entry[gaa_id])
                 num_with_synteny += 1
 
+            if os.path.exists(validation_yaml_path):
+                try:
+                    with open(validation_yaml_path) as f:
+                        validation_entry = yaml.safe_load(f)
+                except yaml.YAMLError as e:
+                    self.progress.end()
+                    raise ConfigError(f"The validation YAML file for gene family '{gaa_id}' could not be "
+                                      f"parsed. Here is what Python said: {e}.")
+
+                if not isinstance(validation_entry, dict):
+                    self.progress.end()
+                    raise ConfigError(f"The validation YAML file in '{gaa_dir}' does not contain a dict "
+                                      f"at the top level. Something is off with its structure.")
+
+                if gaa_id not in validation_entry:
+                    self.progress.end()
+                    raise ConfigError(f"The validation YAML file in '{gaa_dir}' does not contain the "
+                                      f"expected top-level key '{gaa_id}'. Found: "
+                                      f"{', '.join(str(k) for k in validation_entry.keys())}.")
+
+                validate_validation_yaml_entry(gaa_id, validation_entry[gaa_id])
+                num_with_validation += 1
+
         self.progress.end()
         self.run.info('Gene families with valid info YAML files', len(gaa_dirs), mc='green')
         self.run.info('Gene families with synteny data', num_with_synteny, mc='green')
+        self.run.info('Gene families with validation data', num_with_validation, mc='green')
 
 
     def validate_master_yaml(self, yaml_path):
@@ -667,6 +759,39 @@ class GlobDBFunctionsSetup:
         self.run.info('Gene families with synteny data in master YAML', len(master))
 
 
+    def concatenate_validation_yamls(self, data_dir, output_path):
+        """Merge all per-family validation.yaml files into a single master validation YAML dict.
+
+        Gene families without a validation.yaml are silently skipped.
+        """
+
+        gaa_dirs = sorted([d for d in glob.glob(os.path.join(data_dir, 'GAA*'))
+                           if os.path.isdir(d)])
+
+        self.progress.new('Merging validation YAML files')
+        self.progress.update('...')
+
+        master = {}
+        for gaa_dir in gaa_dirs:
+            gaa_id = os.path.basename(gaa_dir)
+            validation_path = os.path.join(gaa_dir, 'validation.yaml')
+
+            if not os.path.exists(validation_path):
+                continue
+
+            with open(validation_path) as f:
+                entry = yaml.safe_load(f)
+
+            master[gaa_id] = entry[gaa_id]
+
+        with open(output_path, 'w') as f:
+            yaml.dump(master, f, default_flow_style=False, allow_unicode=True)
+
+        self.progress.end()
+        self.run.info('Master validation YAML written to', output_path)
+        self.run.info('Gene families with validation data in master YAML', len(master))
+
+
     def validate_master_synteny_yaml(self, yaml_path):
         """Validate the merged master synteny YAML file produced during setup."""
 
@@ -697,6 +822,38 @@ class GlobDBFunctionsSetup:
 
         self.progress.end()
         self.run.info('Gene families in master synteny YAML', len(master))
+
+
+    def validate_master_validation_yaml(self, yaml_path):
+        """Validate the merged master validation YAML file produced during setup."""
+
+        self.progress.new('Validating master validation YAML')
+        self.progress.update('...')
+
+        try:
+            with open(yaml_path) as f:
+                master = yaml.safe_load(f)
+        except yaml.YAMLError as e:
+            self.progress.end()
+            raise ConfigError(f"The master GlobDB validation YAML at '{yaml_path}' could not be parsed. "
+                              f"This is unexpected and may indicate a bug. Here is the error: {e}.")
+
+        if master is None:
+            # an empty validation file is valid — no gene family had validation data
+            self.progress.end()
+            self.run.info('Gene families in master validation YAML', 0)
+            return
+
+        if not isinstance(master, dict):
+            self.progress.end()
+            raise ConfigError(f"The master GlobDB validation YAML at '{yaml_path}' is malformed — "
+                              f"expected a dict at the top level.")
+
+        for gaa_id, entry in master.items():
+            validate_validation_yaml_entry(gaa_id, entry)
+
+        self.progress.end()
+        self.run.info('Gene families in master validation YAML', len(master))
 
 
     def concatenate_fastas(self, data_dir, output_path):
@@ -791,6 +948,7 @@ class GlobDBFunctionsData:
 
         self.gene_families = None
         self.synteny = None
+        self.validation = None
         self.initialized = False
 
         if not self.setup.is_database_exists():
@@ -851,6 +1009,28 @@ class GlobDBFunctionsData:
         self.progress.update('Validating synteny entries ...')
         for gaa_id, entry in self.synteny.items():
             validate_synteny_yaml_entry(gaa_id, entry)
+
+        self.progress.update('Reading master validation data YAML file ...')
+
+        validation_yaml_path = self.setup.get_validation_yaml_path()
+
+        try:
+            with open(validation_yaml_path) as f:
+                self.validation = yaml.safe_load(f) or {}
+        except yaml.YAMLError as e:
+            self.progress.end()
+            raise ConfigError(f"The GlobDB master validation data YAML at '{validation_yaml_path}' could not "
+                              f"be parsed. You may need to re-run `anvi-setup-globdb-functions --reset`. "
+                              f"Here is what Python said: {e}.")
+
+        if not isinstance(self.validation, dict):
+            self.progress.end()
+            raise ConfigError(f"The GlobDB master validation data YAML at '{validation_yaml_path}' is "
+                              f"malformed. Please re-run `anvi-setup-globdb-functions --reset`.")
+
+        self.progress.update('Validating validation entries ...')
+        for gaa_id, entry in self.validation.items():
+            validate_validation_yaml_entry(gaa_id, entry)
 
         self.progress.end()
         self.initialized = True
