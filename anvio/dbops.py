@@ -4697,7 +4697,13 @@ class ProfileSuperclass(object):
         d = self.get_blank_modifications_dict()
         modification_types = set([])
 
-        split_coverages = self.split_coverage_values.get(split_name)
+        split_coverages = None
+        auxiliary_coverages_db = None
+        if self.auxiliary_data_path:
+            auxiliary_coverages_db = auxiliarydataops.AuxiliaryDataForSplitCoverages(self.auxiliary_data_path,
+                                                                                    self.p_meta['contigs_db_hash'],
+                                                                                    db_variant=self.p_meta['db_variant'])
+            split_coverages = auxiliary_coverages_db.get(split_name)
 
         for e in split_modifications_information:
             sample_id = e['sample_id']
@@ -4774,6 +4780,9 @@ class ProfileSuperclass(object):
                 if unmodified < 0:
                     unmodified = 0
                 entry['unmodified_ratio'] = (unmodified / coverage) if coverage else 0.0
+
+        if auxiliary_coverages_db is not None:
+            auxiliary_coverages_db.close()
 
         self.progress.end()
 
