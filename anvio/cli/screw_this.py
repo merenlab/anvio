@@ -16,7 +16,7 @@ __version__ = anvio.__version__
 __authors__ = ['sarilog']
 __requires__ = []
 __provides__ = []
-__description__ = "A safe space to express your feelings about whatever just went wrong"
+__description__ = "A safe space to vent when something just went wrong"
 
 
 run = terminal.Run()
@@ -72,7 +72,7 @@ MESSAGES_HARD = [
      "it. ALL OF IT. And yet here you are, still trying. That's not stubbornness. That's science."),
 
     ("WE KNOW. WE KNOW.",
-     "The developers of anvi'o have also typed 'screw you' at their terminals. Multiple times. "
+     "The developers of anvi'o have also typed 'screw this' at their terminals. Multiple times. "
      "Today, probably. You are in excellent company and your anger is completely proportionate "
      "to the situation."),
 
@@ -126,8 +126,29 @@ def run_program():
 
 def get_args():
     from anvio.argparse import ArgumentParser
+    from colored import fg, attr
 
-    parser = ArgumentParser(description=__description__)
+    atty = sys.stdout.isatty()
+    version = anvio.anvio_version_for_help_docs
+    general_help = f"https://anvio.org/help/{version}"
+    program_help = f"{general_help}/programs/anvi-screw-this"
+
+    consume = "your anger and frustration"
+    provide = "sometimes comfort, sometimes a laugh, but it at least helps you vent"
+
+    if atty:
+        epilog  = f"\n🧀 {attr('bold')}Can consume:{attr('reset')}\n\n   {fg('red')}{consume}{attr('reset')}\n\n"
+        epilog += f"🍕 {attr('bold')}Can provide:{attr('reset')}\n\n   {fg('red')}{provide}{attr('reset')}\n\n"
+        epilog += f"🍺 {attr('bold')}More on `anvi-screw-this`:{attr('reset')}\n\n   {fg('cyan')}{program_help}{attr('reset')}"
+        epilog += f"\n\n🍻 {attr('bold')}All anvi'o programs and artifacts:{attr('reset')}\n\n   {fg('cyan')}{general_help}{attr('reset')}"
+        epilog += attr('reset')
+    else:
+        epilog  = f"\n🧀 Can consume:\n\n   {consume}\n\n"
+        epilog += f"🍕 Can provide:\n\n   {provide}\n\n"
+        epilog += f"🍺 More on `anvi-screw-this`:\n\n   {program_help}"
+        epilog += f"\n\n🍻 All anvi'o programs and artifacts:\n\n   {general_help}"
+
+    parser = ArgumentParser(description=__description__, epilog=epilog)
     parser.add_argument('--hard', default=False, action='store_true',
                         help="Escalate accordingly.")
 
