@@ -32,30 +32,57 @@ def migrate(db_path):
     profile_db = profile_db_info.load_db()
 
     existing_tables = profile_db.get_table_names()
+    desired_columns = t.modifications_table_structure
 
     if t.modifications_table_name not in existing_tables:
         progress.update("Creating modifications table")
         profile_db.create_table(t.modifications_table_name, t.modifications_table_structure, t.modifications_table_types)
     else:
         progress.update("Updating modifications table")
-        # If the existing table does not have the desired columns (count and strand),
-        # aggregate the old per-read rows into the new aggregated table.
         columns = [row[1] for row in profile_db._exec('PRAGMA TABLE_INFO(%s)' % t.modifications_table_name)]
-        if 'count' not in columns or 'strand' not in columns:
-            progress.update("Aggregating existing modifications into new schema")
+        if columns != desired_columns:
+            progress.update("Rebuilding modifications table for the new schema")
             profile_db._exec('ALTER TABLE modifications RENAME TO modifications_old')
             profile_db.create_table(t.modifications_table_name, t.modifications_table_structure, t.modifications_table_types)
-            # If old table had a strand column, preserve it; otherwise default to '.'
-            if 'strand' in columns:
-                profile_db._exec(
-                    'INSERT INTO modifications (sample_id, split_name, pos, pos_in_contig, modification, strand, count) '
-                    'SELECT sample_id, split_name, pos, pos_in_contig, lower(modification), strand, COUNT(*) '
-                    'FROM modifications_old GROUP BY sample_id, split_name, pos, pos_in_contig, lower(modification), strand')
+
+            source_columns = set(columns)
+            select_columns = ['sample_id', 'split_name', 'pos', 'pos_in_contig']
+            group_by_columns = ['sample_id', 'split_name', 'pos', 'pos_in_contig']
+
+            for column_name in ['corresponding_gene_call', 'in_noncoding_gene_call', 'in_coding_gene_call',
+                                'base_pos_in_codon', 'codon_order_in_gene']:
+                if column_name in source_columns:
+                    select_columns.append(column_name)
+                    group_by_columns.append(column_name)
+                else:
+                    select_columns.append(f'NULL AS {column_name}')
+
+            select_columns.append('lower(modification) AS modification')
+            group_by_columns.append('lower(modification)')
+
+            if 'strand' in source_columns:
+                select_columns.append('strand')
+                group_by_columns.append('strand')
             else:
-                profile_db._exec(
-                    "INSERT INTO modifications (sample_id, split_name, pos, pos_in_contig, modification, strand, count) "
-                    "SELECT sample_id, split_name, pos, pos_in_contig, lower(modification), '.' as strand, COUNT(*) "
-                    "FROM modifications_old GROUP BY sample_id, split_name, pos, pos_in_contig, lower(modification)")
+                select_columns.append("'.' AS strand")
+
+            if 'coverage' in source_columns:
+                select_columns.append('coverage')
+                group_by_columns.append('coverage')
+            else:
+                select_columns.append('NULL AS coverage')
+
+            select_columns.append('COUNT(*) AS count')
+
+            profile_db._exec(
+                'INSERT INTO modifications (%s) '
+                'SELECT %s FROM modifications_old '
+                'GROUP BY %s' % (
+                    ', '.join(desired_columns),
+                    ', '.join(select_columns),
+                    ', '.join(group_by_columns),
+                )
+            )
             profile_db._exec('DROP TABLE modifications_old')
 
     # Add new meta keys for modifications support with safe defaults
