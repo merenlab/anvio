@@ -10427,7 +10427,11 @@ class FormulaMatcher:
         """
         self.network = network
 
-    def match_metabolites(self, formula: str) -> List[ModelSEEDCompound]:
+    def match_metabolites(
+        self,
+        formula: str,
+        charge: int = None
+    ) -> List[ModelSEEDCompound]:
         """
         Match a formula written the standard way to metabolites in the network, returning a list of
         metabolites.
@@ -10437,21 +10441,26 @@ class FormulaMatcher:
         formula : str
             Chemical formula written the standard way.
 
+        charge : int, None
+            If provided, also require metabolites to have this exact charge. If left as None
+            (default), charge is not used as a filter.
+
         Returns
         =======
         List[ModelSEEDCompound]
-            Metabolites with the same formula.
+            Metabolites matching the formula (and, if requested, the charge).
         """
         metabolites: List[ModelSEEDCompound] = []
         for metabolite in self.network.metabolites.values():
-            if formula == metabolite.formula:
+            if formula == metabolite.formula and (charge is None or charge == metabolite.charge):
                 metabolites.append(metabolite)
 
         return metabolites
 
     def match_metabolites_network(
         self,
-        formula: str
+        formula: str,
+        charge: int = None
     ) -> Tuple[List[ModelSEEDCompound], ReactionNetwork]:
         """
         Match a formula written the standard way to metabolites in the network, returning a list of
@@ -10462,13 +10471,17 @@ class FormulaMatcher:
         formula : str
             Chemical formula written the standard way.
 
+        charge : int, None
+            If provided, also require metabolites to have this exact charge. If left as None
+            (default), charge is not used as a filter.
+
         Returns
         =======
         Tuple[List[ModelSEEDCompound], ReactionNetwork]
-            Metabolites with the same formula and the subsetted network containing those
-            metabolites.
+            Metabolites matching the formula (and, if requested, the charge), along with the
+            subsetted network containing those metabolites.
         """
-        metabolites = self.match_metabolites(formula)
+        metabolites = self.match_metabolites(formula, charge=charge)
         if not metabolites:
             return metabolites, None
 

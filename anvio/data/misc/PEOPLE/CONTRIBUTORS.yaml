@@ -59,16 +59,17 @@
 - github: ChiaraVanni
   name: Chiara Vanni
   avatar: bio-chiara.jpg
-  email: cvanni@mpi-bremen.de
+  email: cvanni@marum.de
   git_records:
-    - cvanni@mpi-bremen.de
+    - cvanni@marum.de
   orcid: 0000-0002-1124-1147
-  web: https://scholar.google.com/citations?user=0-KzK6MAAAAJ&hl=en
-  twitter: ChiaraVanni5
+  web: https://dark.metagenomics.eu
+  linkedin: in/chiara-vanni-40209a139
+  bio: "Bioinformatician interested in making sense of the functional unknowns in meta(genomes). Recently experimenting with ancient metagenomics."
   affiliations:
-    - title: Graduate Student
-      inst: Max Planck Institute for Marine Microbiology
-      inst_link: https://mpi-bremen.de
+    - title: PostDoc
+      inst: MARUM, Center for Marine Environmental Sciences, University of Bremen
+      inst_link: https://www.marum.de/en/Dr.-chiara-vanni.html
       current: true
 
 - github: karkman
@@ -115,19 +116,17 @@
 
 - github: dspeth
   name: Daan R. Speth
-  avatar: bio-daan.jpg
-  twitter: daanspeth
-  email: dspeth@mpi-bremen.de
+  avatar: daan_speth.jpg
+  email: daan.speth@univie.ac.at
   git_records:
-    - dspeth@mpi-bremen.de
     - daanspeth@gmail.com
-  web: https://www.micro-explorer.net
+  web: https://dome.univie.ac.at/speth
   orcid: 0000-0002-2361-5935
   bio: "Microbiologist and bioinformatician interested in understanding the metabolic and phylogenetic diversity of microorganisms through genomics and wet lab analyses"
   affiliations:
-    - title: Post-Doctoral Scientist
-      inst: Max Planck Institute for Marine Microbiology
-      inst_link: https://mpi-bremen.de
+    - title: Senior Scientist
+      inst: University of Vienna
+      inst_link: https://cemess.univie.ac.at/
       current: true
 
 - github: simroux
@@ -229,22 +228,6 @@
       inst: Infectious Diseases Institute - The Ohio State University
       inst_link: https://idi.osu.edu/
 
-- github: Kekananen
-  name: Kathryn Kananen
-  web: https://bradleylab.science/author/kathryn-kananen/
-  email: kekananen@gmail.com
-  git_records:
-    - kekananen@gmail.com
-  avatar: KatKananen.jpg
-  linkedin: kathryn-kananen-85352b109
-  orcid: 0000-0001-6080-0323
-  bio: "Bioinformatician and computational biologist interested in population genetics, automation, and genomic architecture exploration"
-  affiliations:
-    - title: Bioinformatician and Computational Biologist
-      inst: Department of Microbiology - The Ohio State University
-      inst_link: https://microbiology.osu.edu/
-      current: true
-
 - github: treitlis
   name: Sebastian Cristian Treitli
   email: sebastian.treitli@gmail.com
@@ -260,8 +243,8 @@
       current: true
 
 - github: MariaAVC
-  name: María Alejandra Valdez Cabrera 
-  web: https://mariaavc.github.io/ 
+  name: María Alejandra Valdez Cabrera
+  web: https://mariaavc.github.io/
   email: mariavc@uw.edu
   git_records:
     - mariavc@uw.edu
@@ -279,7 +262,7 @@
   git_records:
     - teichs@uw.edu
   avatar: svteichman.png
-  bio: "Biostatistician interested in differential abundance methodology and statistical education" 
+  bio: "Biostatistician interested in differential abundance methodology and statistical education"
   affiliations:
     - title: Research Scientist
       inst: Department of Biostatistics, University of Washington
