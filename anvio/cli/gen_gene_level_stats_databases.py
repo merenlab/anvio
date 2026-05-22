@@ -112,7 +112,8 @@ def main():
                                               r=terminal.Run(verbose=False))
 
             profile.init_gene_level_coverage_stats_dicts(outliers_threshold=args.outliers_threshold,
-                                                         zeros_are_outliers=args.zeros_are_outliers)
+                                                         zeros_are_outliers=args.zeros_are_outliers,
+                                                         compute_gene_level_normalized_coverages=args.compute_gene_level_normalized_coverages)
 
             run.info('Genes database for %s' % bin_name, genes_db_path)
     except ConfigError as e:
@@ -147,6 +148,7 @@ def get_args():
 
     groupD = parser.add_argument_group('PARAMETERS OF CONVENIENCE', "They say they save lives.")
     groupD.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
+    groupD.add_argument(*anvio.A('compute-gene-level-normalized-coverages'), **anvio.K('compute-gene-level-normalized-coverages'))
 
     groupE = parser.add_argument_group('INSEQ DATA', "When analyzing INSeq/Tn-Seq data")
     groupE.add_argument(*anvio.A('inseq-stats'), **anvio.K('inseq-stats'))

@@ -56,6 +56,7 @@ from anvio.tables.miscdata import TableForLayerAdditionalData
 from anvio.tables.miscdata import TableForLayerOrders
 from anvio.tables.kmers import KMerTablesForContigsAndSplits
 from anvio.tables.genelevelcoverages import TableForGeneLevelCoverages
+from anvio.tables.genelevelcoverages import TableForGeneLevelNormalizedCoverages
 from anvio.tables.contigsplitinfo import TableForContigsInfo, TableForSplitsInfo
 
 from anvio.pangenomegraphmaster import PangenomeGraphManager
@@ -3862,6 +3863,7 @@ class ProfileSuperclass(object):
         # these are initialized by the member function `init_gene_level_coverage_stats_dicts`. but you knew
         # that already because you are a smart ass.
         self.gene_level_coverage_stats_dict = {}
+        self.gene_level_normalized_coverage_stats_dict = {}
         self.split_coverage_values_per_nt_dict = {}
 
         # this one becomes the object that gives access to the auxiliary data ops for split coverages
@@ -4158,7 +4160,129 @@ class ProfileSuperclass(object):
         self.gene_level_coverage_stats_dict = table_for_gene_level_coverages.read()
 
 
-    def init_gene_level_coverage_stats_dicts(self, min_cov_for_detection=0, outliers_threshold=1.5, zeros_are_outliers=False, callback=None, callback_interval=100, init_split_coverage_values_per_nt=False, gene_caller_ids_of_interest=set([])):
+    def init_gene_level_normalized_coverage_stats_dicts(self):
+        """Populate `self.gene_level_normalized_coverage_stats_dict`.
+
+        If the genes database already has normalized coverage stats stored, reads them from
+        there. Otherwise computes all five normalizations from `non_outlier_mean_coverage`
+        values in `self.gene_level_coverage_stats_dict` and stores them in the genes database.
+        """
+
+        if not self.genes_db_path:
+            raise ConfigError("Normalized gene-level coverage stats can only be computed when a genes "
+                              "database is available, but anvi'o could not find one for this run :/")
+
+        if not len(self.gene_level_coverage_stats_dict):
+            raise ConfigError("Normalized gene-level coverage stats cannot be computed because the raw "
+                              "gene-level coverage stats dictionary is empty. Please make sure "
+                              "`init_gene_level_coverage_stats_dicts` ran successfully before calling "
+                              "this function.")
+
+        genes_db_obj = db.DB(self.genes_db_path, None, ignore_version=True)
+        normalized_coverages_stored = genes_db_obj.get_meta_value('gene_level_normalized_coverages_stored')
+        genes_db_obj.disconnect()
+
+        if normalized_coverages_stored:
+            table = TableForGeneLevelNormalizedCoverages(self.genes_db_path, run=self.run, progress=self.progress)
+            self.gene_level_normalized_coverage_stats_dict = table.read()
+        else:
+            self.compute_and_store_gene_level_normalized_coverage_stats()
+
+
+    def compute_and_store_gene_level_normalized_coverage_stats(self):
+        """Compute all five normalizations of `non_outlier_mean_coverage` and store them.
+
+        Normalizations computed
+        =======================
+        log1p        : log(non_outlier_mean_coverage + 1), reduces dynamic range
+        rpm          : non_outlier_mean_coverage / mapped_reads_in_sample * 1e6, accounts for
+                       differences in sequencing depth across samples
+        zscore_raw   : per-gene z-score of raw non_outlier_mean_coverage across samples;
+                       captures how many standard deviations a gene's coverage in a given
+                       sample deviates from that gene's mean coverage across all samples
+        zscore_log1p : same as zscore_raw but applied to log1p-transformed values
+        zscore_rpm   : same as zscore_raw but applied to rpm-normalized values
+
+        For any gene where the standard deviation across samples is 0 (including genes with
+        0 coverage in all samples), z-scores are set to 0.0. If only one sample is present,
+        all z-scores will be 0.0 and a warning is emitted.
+
+        Notes
+        =====
+        - rpm and zscore_rpm require `self.num_mapped_reads_per_sample` to be set. A
+          ConfigError is raised if it is None (blank profile or very old database).
+        """
+
+        if not self.num_mapped_reads_per_sample:
+            raise ConfigError("Anvi'o needs the number of reads mapped per sample to compute RPM-based "
+                              "normalizations, but this information is not available for your profile "
+                              "database. This can happen with blank profile databases or very old anvi'o "
+                              "databases that pre-date storage of this value.")
+
+        sample_names = self.p_meta['samples']
+        gene_callers_ids = sorted(self.gene_level_coverage_stats_dict.keys())
+
+        if len(sample_names) == 1:
+            self.run.warning(f"You asked for gene-level normalized coverage stats but your profile database "
+                             f"only has one sample ('{sample_names[0]}'). Z-scores are computed per gene "
+                             f"across samples, so with a single sample every z-score value will be 0.0, "
+                             f"which is not informative. Anvi'o will store them anyway.")
+
+        self.progress.new("Computing gene-level normalized coverage stats")
+        self.progress.update("Building coverage matrix from non_outlier_mean_coverage values...")
+
+        # build genes x samples matrix of non_outlier_mean_coverage values
+        raw_matrix = numpy.zeros((len(gene_callers_ids), len(sample_names)), dtype=float)
+        for i, gene_callers_id in enumerate(gene_callers_ids):
+            for j, sample_name in enumerate(sample_names):
+                entry = self.gene_level_coverage_stats_dict[gene_callers_id].get(sample_name)
+                raw_matrix[i, j] = entry['non_outlier_mean_coverage'] if entry else 0.0
+
+        self.progress.update("Computing log1p...")
+        log1p_matrix = numpy.log1p(raw_matrix)
+
+        self.progress.update("Computing RPM...")
+        mapped_reads = numpy.array([self.num_mapped_reads_per_sample[s] for s in sample_names], dtype=float)
+        rpm_matrix = raw_matrix / mapped_reads * 1e6
+
+        self.progress.update("Computing z-scores...")
+
+        def zscore_matrix(matrix):
+            """Per-gene z-score across samples. Genes with std=0 get z-score of 0.0."""
+            means = matrix.mean(axis=1, keepdims=True)
+            stds = matrix.std(axis=1, keepdims=True)
+            with numpy.errstate(invalid='ignore'):
+                return numpy.where(stds == 0, 0.0, (matrix - means) / stds)
+
+        zscore_raw_matrix = zscore_matrix(raw_matrix)
+        zscore_log1p_matrix = zscore_matrix(log1p_matrix)
+        zscore_rpm_matrix = zscore_matrix(rpm_matrix)
+
+        self.progress.update("Assembling result dict...")
+        data = {}
+        for i, gene_callers_id in enumerate(gene_callers_ids):
+            data[gene_callers_id] = {}
+            for j, sample_name in enumerate(sample_names):
+                data[gene_callers_id][sample_name] = {'log1p': float(log1p_matrix[i, j]),
+                                                      'rpm': float(rpm_matrix[i, j]),
+                                                      'zscore_raw': float(zscore_raw_matrix[i, j]),
+                                                      'zscore_log1p': float(zscore_log1p_matrix[i, j]),
+                                                      'zscore_rpm': float(zscore_rpm_matrix[i, j])}
+
+        self.progress.end()
+
+        self.gene_level_normalized_coverage_stats_dict = data
+
+        table = TableForGeneLevelNormalizedCoverages(self.genes_db_path, run=self.run, progress=self.progress)
+        table.store(data)
+
+        self.run.warning(None, header="GENE LEVEL NORMALIZED COVERAGE STATS COMPUTED", lc="green")
+        self.run.info("Num genes", len(data))
+        self.run.info("Num samples", len(sample_names))
+        self.run.info("Normalizations", "log1p, rpm, zscore_raw, zscore_log1p, zscore_rpm")
+
+
+    def init_gene_level_coverage_stats_dicts(self, min_cov_for_detection=0, outliers_threshold=1.5, zeros_are_outliers=False, callback=None, callback_interval=100, init_split_coverage_values_per_nt=False, gene_caller_ids_of_interest=set([]), compute_gene_level_normalized_coverages=False):
         """This function will populate both `self.split_coverage_values_per_nt_dict` and
            `self.gene_level_coverage_stats_dict`.
 
@@ -4254,6 +4378,9 @@ class ProfileSuperclass(object):
             if init_split_coverage_values_per_nt:
                 self.init_split_coverage_values_per_nt_dict(split_names)
 
+            if compute_gene_level_normalized_coverages:
+                self.init_gene_level_normalized_coverage_stats_dicts()
+
             # we have nothing to do here anymore. and can return.
             return
 
@@ -4303,6 +4430,9 @@ class ProfileSuperclass(object):
             if self.genes_db_path:
                 # we computed all the stuff, and we can as well store them into the genes db.
                 self.store_gene_level_coverage_stats_into_genes_db(parameters, gene_caller_ids_to_exclude=failed_gene_caller_ids_set)
+
+        if compute_gene_level_normalized_coverages:
+            self.init_gene_level_normalized_coverage_stats_dicts()
 
 
     def init_split_coverage_values_per_nt_dict(self, split_names=None):
@@ -5028,6 +5158,7 @@ class GenesDatabase:
         self.db.create_table(t.layer_orders_table_name, t.layer_orders_table_structure, t.layer_orders_table_types)
         self.db.create_table(t.gene_level_coverage_stats_table_name, t.gene_level_coverage_stats_table_structure, t.gene_level_coverage_stats_table_types)
         self.db.create_table(t.gene_level_inseq_stats_table_name, t.gene_level_inseq_stats_table_structure, t.gene_level_inseq_stats_table_types)
+        self.db.create_table(t.gene_level_normalized_coverages_table_name, t.gene_level_normalized_coverages_table_structure, t.gene_level_normalized_coverages_table_types)
         self.db.create_table(t.collections_info_table_name, t.collections_info_table_structure, t.collections_info_table_types)
         self.db.create_table(t.collections_bins_info_table_name, t.collections_bins_info_table_structure, t.collections_bins_info_table_types)
         self.db.create_table(t.collections_splits_table_name, t.collections_splits_table_structure, t.collections_splits_table_types)
@@ -5047,6 +5178,7 @@ class GenesDatabase:
 
         self.db.set_meta_value('creation_date', time.time())
         self.db.set_meta_value('gene_level_coverages_stored', False)
+        self.db.set_meta_value('gene_level_normalized_coverages_stored', False)
         self.db.set_meta_value('items_ordered', False)
 
         self.disconnect()

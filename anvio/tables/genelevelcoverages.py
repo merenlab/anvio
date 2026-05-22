@@ -222,3 +222,93 @@ class TableForGeneLevelCoverages(Table):
         self.run.info("Genes database", self.db_path)
         self.run.info("Collection name", self.collection_name, mc="green")
         self.run.info("Bin name", self.bin_name, mc="green")
+
+
+class TableForGeneLevelNormalizedCoverages(Table):
+    def __init__(self, db_path, run=run, progress=progress):
+        self.run = run
+        self.progress = progress
+        self.db_path = db_path
+
+        Table.__init__(self, self.db_path, utils.get_required_version_for_db(db_path), run=self.run, progress=self.progress)
+
+
+    def store(self, data):
+        """Store normalized coverage values.
+
+        Parameters
+        ==========
+        data : dict
+            Nested dict of the form {gene_callers_id: {sample_name: {'log1p': float,
+            'rpm': float, 'zscore_raw': float, 'zscore_log1p': float, 'zscore_rpm': float}}}
+        """
+        self.progress.new("Database bleep bloop")
+        self.progress.update("Adding normalized coverage stats into the genes database...")
+
+        db_entries = []
+        for gene_callers_id in data:
+            for sample_name in data[gene_callers_id]:
+                e = data[gene_callers_id][sample_name]
+                db_entries.append((gene_callers_id,
+                                   sample_name,
+                                   e['log1p'],
+                                   e['rpm'],
+                                   e['zscore_raw'],
+                                   e['zscore_log1p'],
+                                   e['zscore_rpm']))
+
+        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+        database._exec_many(f'''INSERT INTO {t.gene_level_normalized_coverages_table_name} VALUES (?,?,?,?,?,?,?)''', db_entries)
+        database.update_meta_value('gene_level_normalized_coverages_stored', True)
+        database.disconnect()
+
+        self.progress.end()
+
+        self.run.warning(None, header="GENE LEVEL NORMALIZED COVERAGE STATS STORED", lc="green")
+        self.run.info("Num genes", len(data))
+        self.run.info("Num entries", len(db_entries))
+        self.run.info("Genes database", self.db_path)
+
+
+    def read(self):
+        """Read normalized coverage values from the genes database.
+
+        Returns
+        =======
+        dict
+            Nested dict of the form {gene_callers_id: {sample_name: {'log1p': float,
+            'rpm': float, 'zscore_raw': float, 'zscore_log1p': float, 'zscore_rpm': float}}}
+        """
+        database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
+
+        if not database.get_meta_value('gene_level_normalized_coverages_stored'):
+            database.disconnect()
+            return {}
+
+        self.progress.new("Database bleep bloop")
+        self.progress.update("Recovering normalized coverage stats from the genes database...")
+
+        raw_data = database.get_table_as_dict(t.gene_level_normalized_coverages_table_name)
+        database.disconnect()
+
+        data = {}
+        for entry in raw_data.values():
+            gene_callers_id = entry['gene_callers_id']
+            sample_name = entry['sample_name']
+
+            if gene_callers_id not in data:
+                data[gene_callers_id] = {}
+
+            data[gene_callers_id][sample_name] = {'log1p': entry['log1p'],
+                                                  'rpm': entry['rpm'],
+                                                  'zscore_raw': entry['zscore_raw'],
+                                                  'zscore_log1p': entry['zscore_log1p'],
+                                                  'zscore_rpm': entry['zscore_rpm']}
+
+        self.progress.end()
+
+        self.run.warning(None, header="GENE LEVEL NORMALIZED COVERAGE STATS RECOVERED", lc="green")
+        self.run.info("Num genes", len(data))
+        self.run.info("Genes database", self.db_path)
+
+        return data
