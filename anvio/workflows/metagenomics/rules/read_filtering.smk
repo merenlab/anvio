@@ -101,6 +101,8 @@ rule remove_short_reads_based_on_references:
             "remove_short_reads_based_on_references",
             "{readset}-remove_short_reads_based_on_references",
         ),
+    wildcard_constraints:
+        readset=SR_RS_RE,
     threads: M.T("remove_short_reads_based_on_references")
     resources:
         nodes=M.T("remove_short_reads_based_on_references"),

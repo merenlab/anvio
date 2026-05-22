@@ -1,0 +1,115 @@
+{
+    "general_params": {
+        "fasta_txt": {"type": "str", "default": "fasta.txt"}
+    },
+    "rules": {
+        "gen_external_genome_file": {
+            "threads": {"type": "int", "default": 1}
+        },
+        "anvi_script_reformat_fasta": {
+            "threads":          {"type": "int",  "default": 1},
+            "run":              {"type": "bool", "default": true},
+            "--keep-ids":       {"type": "str",  "default": null},
+            "--exclude-ids":    {"type": "str",  "default": null},
+            "--min-len":        {"type": "int",  "default": null},
+            "--max-len":        {"type": "int",  "default": null},
+            "--prefix":         {"type": "str",  "default": "{group}"},
+            "--simplify-names": {"type": "bool", "default": true},
+            "--seq-type":       {"type": "str",  "default": null}
+        },
+        "anvi_gen_contigs_database": {
+            "threads":                        {"type": "int",  "default": 1},
+            "--project-name":                 {"type": "str",  "default": "{group}"},
+            "--description":                  {"type": "str",  "default": null},
+            "--skip-gene-calling":            {"type": "bool", "default": null},
+            "--ignore-internal-stop-codons":  {"type": "bool", "default": null},
+            "--skip-mindful-splitting":       {"type": "bool", "default": null},
+            "--contigs-fasta":                {"type": "str",  "default": null},
+            "--split-length":                 {"type": "int",  "default": null},
+            "--kmer-size":                    {"type": "int",  "default": null},
+            "--skip-predict-frame":           {"type": "bool", "default": null},
+            "--prodigal-translation-table":   {"type": "int",  "default": null}
+        },
+        "export_gene_calls_for_centrifuge": {
+            "threads": {"type": "int", "default": 1}
+        },
+        "centrifuge": {
+            "threads": {"type": "int",  "default": 2},
+            "run":     {"type": "bool", "default": false},
+            "db":      {"type": "str",  "default": null}
+        },
+        "anvi_import_taxonomy_for_genes": {
+            "threads": {"type": "int", "default": 1}
+        },
+        "anvi_run_scg_taxonomy": {
+            "threads":                  {"type": "int",  "default": 6},
+            "run":                      {"type": "bool", "default": true},
+            "--scgs-taxonomy-data-dir": {"type": "str",  "default": null}
+        },
+        "anvi_run_trna_scan": {
+            "threads":             {"type": "int",   "default": 6},
+            "run":                 {"type": "bool",  "default": false},
+            "--trna-cutoff-score": {"type": "float", "default": null},
+            "--trna-model":        {"type": "str",   "default": null}
+        },
+        "anvi_run_hmms": {
+            "threads":                  {"type": "int",  "default": 5},
+            "run":                      {"type": "bool", "default": true},
+            "--installed-hmm-profile":  {"type": "str",  "default": null},
+            "--hmm-profile-dir":        {"type": "str",  "default": null},
+            "--also-scan-trnas":        {"type": "bool", "default": true},
+            "--add-to-functions-table": {"type": "bool", "default": null},
+            "--just-do-it":             {"type": "bool", "default": null}
+        },
+        "anvi_run_ncbi_cogs": {
+            "threads":              {"type": "int",  "default": 5},
+            "run":                  {"type": "bool", "default": true},
+            "--cog-data-dir":       {"type": "str",  "default": null},
+            "--temporary-dir-path": {"type": "str",  "default": null},
+            "--search-with":        {"type": "str",  "default": null}
+        },
+        "annotate_contigs_database": {
+            "threads": {"type": "int", "default": 1}
+        },
+        "anvi_get_sequences_for_gene_calls": {
+            "threads": {"type": "int", "default": 1}
+        },
+        "emapper": {
+            "threads":            {"type": "int",  "default": 1},
+            "--database":         {"type": "str",  "default": "bact"},
+            "--usemem":           {"type": "bool", "default": true},
+            "--override":         {"type": "bool", "default": true},
+            "path_to_emapper_dir":{"type": "str",  "default": null}
+        },
+        "anvi_script_run_eggnog_mapper": {
+            "threads":                     {"type": "int",  "default": 1},
+            "run":                         {"type": "bool", "default": false},
+            "--cog-data-dir":              {"type": "str",  "default": null},
+            "--drop-previous-annotations": {"type": "bool", "default": null},
+            "--use-version":               {"type": "str",  "default": "0.12.6"}
+        },
+        "reformat_external_gene_calls_table": {
+            "threads": {"type": "int", "default": 1}
+        },
+        "reformat_external_functions": {
+            "threads": {"type": "int", "default": 1}
+        },
+        "import_external_functions": {
+            "threads": {"type": "int", "default": 1}
+        },
+        "anvi_run_pfams": {
+            "threads":        {"type": "int",  "default": 1},
+            "run":            {"type": "bool", "default": false},
+            "--pfam-data-dir":{"type": "str",  "default": null}
+        },
+        "anvi_run_kegg_kofams": {
+            "threads":        {"type": "int",  "default": 4},
+            "run":            {"type": "bool", "default": true},
+            "--kegg-data-dir":{"type": "str",  "default": null},
+            "--hmmer-program":{"type": "str",  "default": null},
+            "--keep-all-hits":{"type": "bool", "default": null},
+            "--log-bitscores": {"type": "bool", "default": null},
+            "--just-do-it":   {"type": "bool", "default": null}
+        }
+    }
+}

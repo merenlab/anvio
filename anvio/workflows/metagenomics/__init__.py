@@ -30,7 +30,6 @@ __email__ = "alon.shaiber@gmail.com"
 run = terminal.Run()
 progress = terminal.Progress()
 
-min_contig_length_for_assembly = 1000
 
 class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, WorkflowSuperClass):
     def __init__(self, args=None, run=terminal.Run(), progress=terminal.Progress()):
@@ -63,51 +62,6 @@ class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, W
                      'krakenuniq', 'krakenuniq_mpa_report', 'import_krakenuniq_taxonomy',
                      'remove_short_reads_based_on_references', 'anvi_summarize', 'anvi_split'])
 
-        self.general_params.extend(['samples_txt', "references_mode", "all_against_all",
-                                    "kraken_txt", "collections_txt", "read_type_suffix"])
-
-        rule_acceptable_params_dict = {}
-
-        # add parameters for modifying binning algorithms
-        additional_params_for_anvi_cluster_contigs = [self.get_param_name_for_binning_driver(d) for d in driver_modules['binning'].keys()]
-        rule_acceptable_params_dict['anvi_cluster_contigs'] = ["run", "--collection-name", "--driver", "--just-do-it"]
-        rule_acceptable_params_dict['anvi_cluster_contigs'].extend(additional_params_for_anvi_cluster_contigs)
-
-        rule_acceptable_params_dict['anvi_summarize'] = ["additional_params", "run"]
-        rule_acceptable_params_dict['anvi_split'] = ["additional_params", "run"]
-        rule_acceptable_params_dict['metaspades'] = ["run", "conda_yaml", "conda_env", "additional_params", "use_scaffolds"]
-        rule_acceptable_params_dict['megahit'] = ["run", "conda_yaml", "conda_env", "--min-contig-len", "--min-count", "--k-min",
-                                                  "--k-max", "--k-step", "--k-list",
-                                                  "--no-mercy", "--no-bubble", "--merge-level",
-                                                  "--prune-level", "--prune-depth", "--low-local-ratio",
-                                                  "--max-tip-len", "--no-local", "--kmin-1pass",
-                                                  "--presets", "--memory", "--mem-flag",
-                                                  "--use-gpu", "--gpu-mem", "--keep-tmp-files",
-                                                  "--tmp-dir", "--continue", "--verbose"]
-        rule_acceptable_params_dict['idba_ud'] = ["run", "conda_yaml", "conda_env", "--mink", "--maxk", "--step", "--inner_mink",
-                                                  "--inner_step", "--prefix", "--min_count",
-                                                  "--min_support", "--seed_kmer", "--min_contig",
-                                                  "--similar", "--max_mismatch", "--min_pairs",
-                                                  "--no_bubble", "--no_local", "--no_coverage",
-                                                  "--no_correct", "--pre_correction", "use_scaffolds"]
-        # Read-type flags (--pacbio-raw, --nano-raw, etc.) are intentionally omitted:
-        # they are derived from lr_technology in samples.txt via get_flye_flag_for_group(),
-        # not set in the config, so exposing them would be misleading.
-        rule_acceptable_params_dict['flye'] = ["run", "conda_yaml", "conda_env", "--meta",
-                                                   "--genome-size", "--iterations",
-                                                   "--min-overlap", "--read-error", "--keep-haplotypes",
-                                                   "--no-alt-contigs", "--scaffold", "--polish-target",
-                                                   "additional_params", "threads"]
-        rule_acceptable_params_dict['merge_fastas_for_co_assembly'] = []
-        rule_acceptable_params_dict['merge_fastqs_for_co_assembly'] = []
-        rule_acceptable_params_dict['krakenuniq'] = ["additional_params", "run", "--db", "--gzip-compressed"]
-        rule_acceptable_params_dict['import_krakenuniq_taxonomy'] = ["--min-abundance"]
-        rule_acceptable_params_dict['remove_short_reads_based_on_references'] = ["dont_remove_just_map",
-                                                                                 "references_for_removal_txt",
-                                                                                 "delimiter-for-iu-remove-ids-from-fastq"]
-
-        self.rule_acceptable_params_dict.update(rule_acceptable_params_dict)
-
         forbidden_params = {}
         forbidden_params['krakenuniq'] = ['--fastq-input', '--paired', '--output']
 
@@ -120,15 +74,6 @@ class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, W
                                "SUMMARY_DIR": "08_SUMMARY",
                                "SPLIT_PROFILES_DIR": "09_SPLIT_PROFILES"})
 
-        self.default_config.update({'samples_txt': "samples.txt",
-                                    'read_type_suffix': 'auto',
-                                    'metaspades': {"additional_params": "--only-assembler", "threads": 7},
-                                    'megahit': {"--min-contig-len": min_contig_length_for_assembly, "--memory": 0.4, "threads": 7},
-                                    'idba_ud': {"--min_contig": min_contig_length_for_assembly, "threads": 7},
-                                    'flye': {"run": False, "threads": 7, "additional_params": "", "--meta": True},
-                                    "krakenuniq": {"threads": 3, "--gzip-compressed": True, "additional_params": ""},
-                                    "remove_short_reads_based_on_references": {"delimiter-for-iu-remove-ids-from-fastq": " "},
-                                    "anvi_cluster_contigs": {"--collection-name": "{driver}"}})
 
 
     def init(self):
@@ -759,7 +704,7 @@ class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, W
         if wildcards.group in self.references_for_removal:
             # if it's a reference for removal then we just want to use the
             # raw fasta file, and there is no need to reformat or assemble
-            contigs = self.get_input_fasta_path(wildcards)
+            contigs = self.get_input_fasta_path(wildcards, remove_gz_suffix=False)
         elif self.get_param_value_from_config(['anvi_script_reformat_fasta','run']):
             contigs = self.dirs_dict["FASTA_DIR"] + "/{group}/{group}-contigs.fa".format(group=wildcards.group)
         else:
@@ -774,7 +719,7 @@ class MetagenomicsWorkflow(QCModule, ReadRecruitmentModule, ContigsDBWorkflow, W
         # References-mode / reference-removal path (uses fasta_information)
         if self.references_mode or wildcards.group in self.references_for_removal:
             return super(MetagenomicsWorkflow, self).get_input_fasta_path(
-                wildcards, remove_gz_suffix=remove_gz_suffix)
+                wildcards, remove_gz_suffix=False)
 
         # Assembly-mode : assembler's canonical output location
         return os.path.join(self.dirs_dict["FASTA_DIR"], wildcards.group, "final.contigs.fa")

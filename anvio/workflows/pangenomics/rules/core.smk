@@ -43,7 +43,7 @@ rule anvi_pan_genome:
         ),
     shell:
         """
-            anvi-pan-genome -g {input} --num-threads {threads} -o {params.output_dir} --project-name {params.project_name} {params.genome_names}\
+            anvi-pan-genome -g {input} --num-threads {threads} -o {output} --project-name {params.project_name} {params.genome_names}\
             {params.skip_alignments} {params.align_with} {params.exclude_partial_gene_calls}\
             {params.use_ncbi_blast} {params.minbit} {params.mcl_inflation}\
             {params.min_occurrence} {params.min_percent_identity} \
