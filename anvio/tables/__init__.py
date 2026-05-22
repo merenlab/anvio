@@ -162,7 +162,7 @@ gene_level_inseq_stats_table_structure = ['gene_callers_id', 'sample_name', 'mea
 gene_level_inseq_stats_table_types     = [    'numeric'    ,     'text'   ,    'numeric'   ,  'numeric'  ,        'numeric'       ,      'numeric'   ,      'numeric'    ,              'blob'          ]
 
 gene_level_normalized_coverages_table_name      = 'gene_level_normalized_coverages'
-gene_level_normalized_coverages_table_structure = ['gene_callers_id', 'sample_name', 'log1p', 'rpm', 'zscore_raw', 'zscore_log1p', 'zscore_rpm']
+gene_level_normalized_coverages_table_structure = ['gene_callers_id', 'sample_name', 'log1p', 'cpm', 'zscore_raw', 'zscore_log1p', 'zscore_cpm']
 gene_level_normalized_coverages_table_types     = [    'numeric'    ,    'text'    , 'numeric', 'numeric', 'numeric',   'numeric'  ,  'numeric' ]
 
 ####################################################################################################

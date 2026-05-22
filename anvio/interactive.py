@@ -1800,7 +1800,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         # if normalized coverage stats are available, add them as additional views and orderings
         if len(self.gene_level_normalized_coverage_stats_dict):
-            normalized_views = ['log1p', 'rpm', 'zscore_raw', 'zscore_log1p', 'zscore_rpm']
+            normalized_views = ['log1p', 'cpm', 'zscore_raw', 'zscore_log1p', 'zscore_cpm']
 
             for norm_view in normalized_views:
                 self.views[norm_view] = {'table_name': 'genes', 'header': self.p_meta['samples'], 'dict': {}}
