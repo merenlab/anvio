@@ -293,6 +293,9 @@ Drawer.prototype.normalize_values = function() {
     // we will need this when calculating bar sizes
     this.param_max = {};
 
+    // maps layer.index to max absolute deviation from center, for diverging layers
+    this.param_max_deviation = {};
+
     for (var id in this.layerdata_dict)
     {
         this.iterate_layers(function(layer) {
@@ -330,6 +333,14 @@ Drawer.prototype.normalize_values = function() {
                     if (!this.param_max.hasOwnProperty(layer.index)|| parseFloat(this.layerdata_dict[id][layer.index]) > parseFloat(this.param_max[layer.index]))
                     {
                         this.param_max[layer.index] = parseFloat(this.layerdata_dict[id][layer.index]);
+                    }
+
+                    var center = layer.get_visual_attribute('center');
+                    if (center !== '' && center !== undefined) {
+                        var deviation = Math.abs(parseFloat(this.layerdata_dict[id][layer.index]) - parseFloat(center));
+                        if (!this.param_max_deviation.hasOwnProperty(layer.index) || deviation > this.param_max_deviation[layer.index]) {
+                            this.param_max_deviation[layer.index] = deviation;
+                        }
                     }
                 }
             }
@@ -375,8 +386,19 @@ Drawer.prototype.calculate_bar_sizes = function() {
                 else // numerical data
                 {
                     var bar_size = isNumber(this.layerdata_dict[id][layer.index]) ? parseFloat(this.layerdata_dict[id][layer.index]) : 0;
+                    var center = layer.get_visual_attribute('center');
+                    var is_diverging = (center !== '' && center !== undefined);
 
-                    if (!min_max_disabled)
+                    if (is_diverging)
+                    {
+                        // signed pixel size: positive = above center, negative = below center
+                        // each half maps to height/2 using the max deviation as scale
+                        var center_val = parseFloat(center);
+                        var half_height = parseFloat(layer.get_visual_attribute('height')) / 2;
+                        var max_dev = this.param_max_deviation[layer.index] || 1;
+                        this.layerdata_dict[id][layer.index] = (bar_size - center_val) / max_dev * half_height;
+                    }
+                    else if (!min_max_disabled)
                     {
                         if (bar_size > max) {
                             bar_size = max - min;
@@ -1453,24 +1475,68 @@ Drawer.prototype.draw_numerical_layers = function() {
 
         var previous_non_zero_order = 0;
 
+        var center = layer.get_visual_attribute('center');
+        var is_diverging = (center !== '' && center !== undefined && !isNaN(parseFloat(center)));
+        var half_height = parseFloat(layer.get_visual_attribute('height')) / 2;
+
         for (var i=0; i < this.tree.leaves.length; i++) {
             q = this.tree.leaves[i];
 
             if (this.settings['tree-type'] == 'phylogram') {
                 if (layer.get_visual_attribute('type') == 'intensity') {
-                     drawPhylogramRectangle('layer_' + layer.order,
-                        q.id,
-                        this.layer_boundaries[layer.order][0] ,
-                        q.xy['y'],
-                        q.size,
-                        this.layer_boundaries[layer.order][1] - this.layer_boundaries[layer.order][0],
-                        getGradientColor(
+                    var intensity_color;
+                    if (is_diverging) {
+                        var signed_px = this.layerdata_dict[q.label][layer.index];
+                        var pct = (signed_px + half_height) / layer.get_visual_attribute('height');
+                        intensity_color = getDivergingGradientColor(
+                            layer.get_visual_attribute('color-start'),
+                            '#FFFFFF',
+                            layer.get_visual_attribute('color'),
+                            Math.min(Math.max(pct, 0), 1)
+                        );
+                    } else {
+                        intensity_color = getGradientColor(
                             layer.get_visual_attribute('color-start'),
                             layer.get_visual_attribute('color'),
                             this.layerdata_dict[q.label][layer.index] / layer.get_visual_attribute('height')
-                        ),
+                        );
+                    }
+                    drawPhylogramRectangle('layer_' + layer.order,
+                        q.id,
+                        this.layer_boundaries[layer.order][0],
+                        q.xy['y'],
+                        q.size,
+                        this.layer_boundaries[layer.order][1] - this.layer_boundaries[layer.order][0],
+                        intensity_color,
                         1,
                         false);
+                }
+                else if (is_diverging && layer.get_visual_attribute('type') == 'line')
+                {
+                    // diverging line: continuous path, all points drawn relative to center anchor
+                    var center_x = this.layer_boundaries[layer.order][1] - half_height;
+                    var signed_px = this.layerdata_dict[q.label][layer.index];
+
+                    if (i == 0) {
+                        numeric_cache.push("M", center_x, q.xy['y'] - q.size / 2);
+                    }
+                    numeric_cache.push("L", center_x - signed_px, q.xy['y']);
+                    if (i == this.tree.leaves.length - 1) {
+                        numeric_cache.push("L", center_x, q.xy['y'] + q.size / 2, "Z");
+                    }
+                }
+                else if (is_diverging)
+                {
+                    // diverging bar: draw from center anchor in both directions
+                    var center_x = this.layer_boundaries[layer.order][1] - half_height;
+                    var signed_px = this.layerdata_dict[q.label][layer.index];
+                    var abs_px = Math.abs(signed_px);
+
+                    if (abs_px > 0) {
+                        var rect_x = (signed_px >= 0) ? center_x - abs_px : center_x;
+                        var rect_color = (signed_px >= 0) ? layer.get_visual_attribute('color') : layer.get_visual_attribute('color-start');
+                        drawPhylogramRectangle('layer_' + layer.order, q.id, rect_x, q.xy['y'], q.size, abs_px, rect_color, 1, false);
+                    }
                 }
                 else
                 {
@@ -1534,6 +1600,23 @@ Drawer.prototype.draw_numerical_layers = function() {
             else
             {
                 if (layer.get_visual_attribute('type') == 'intensity') {
+                    var intensity_color;
+                    if (is_diverging) {
+                        var signed_px = this.layerdata_dict[q.label][layer.index];
+                        var pct = (signed_px + half_height) / layer.get_visual_attribute('height');
+                        intensity_color = getDivergingGradientColor(
+                            layer.get_visual_attribute('color-start'),
+                            '#FFFFFF',
+                            layer.get_visual_attribute('color'),
+                            Math.min(Math.max(pct, 0), 1)
+                        );
+                    } else {
+                        intensity_color = getGradientColor(
+                            layer.get_visual_attribute('color-start'),
+                            layer.get_visual_attribute('color'),
+                            this.layerdata_dict[q.label][layer.index] / layer.get_visual_attribute('height')
+                        );
+                    }
                     drawPie('layer_' + layer.order,
                         q.id,
                         q.angle - q.size / 2,
@@ -1541,13 +1624,52 @@ Drawer.prototype.draw_numerical_layers = function() {
                         this.layer_boundaries[layer.order][0],
                         this.layer_boundaries[layer.order][1],
                         (Math.abs(q.size) > Math.PI) ? 1 : 0,
-                        getGradientColor(
-                            layer.get_visual_attribute('color-start'),
-                            layer.get_visual_attribute('color'),
-                            this.layerdata_dict[q.label][layer.index] / layer.get_visual_attribute('height')
-                        ),
+                        intensity_color,
                         1,
                         false);
+                }
+                else if (is_diverging && layer.get_visual_attribute('type') == 'line')
+                {
+                    // diverging line circular: continuous arc through center radius
+                    var center_radius = this.layer_boundaries[layer.order][0] + half_height;
+                    var signed_px = this.layerdata_dict[q.label][layer.index];
+                    var point_radius = center_radius + signed_px;
+                    var start_angle = q.angle - q.size / 2;
+                    var end_angle = q.angle + q.size / 2;
+
+                    if (i == 0) {
+                        numeric_cache.push("M", Math.cos(start_angle) * center_radius, Math.sin(start_angle) * center_radius);
+                        previous_non_zero_order = q.order;
+                    }
+                    numeric_cache.push("L", Math.cos(q.angle) * point_radius, Math.sin(q.angle) * point_radius);
+                    if (i == this.tree.leaves.length - 1) {
+                        var first_node = this.tree.leaves[0];
+                        var first_start = first_node.angle - first_node.size / 2;
+                        numeric_cache.push("L", Math.cos(end_angle) * center_radius, Math.sin(end_angle) * center_radius,
+                            "A", center_radius, center_radius, 1, is_large_angle(end_angle, first_start), 0,
+                            Math.cos(first_start) * center_radius, Math.sin(first_start) * center_radius, "Z");
+                    }
+                }
+                else if (is_diverging)
+                {
+                    // diverging bar circular: draw from center radius in both directions
+                    var center_radius = this.layer_boundaries[layer.order][0] + half_height;
+                    var signed_px = this.layerdata_dict[q.label][layer.index];
+                    var abs_px = Math.abs(signed_px);
+
+                    if (abs_px > 0) {
+                        var inner_r, outer_r, pie_color;
+                        if (signed_px >= 0) {
+                            inner_r = center_radius;
+                            outer_r = center_radius + abs_px;
+                            pie_color = layer.get_visual_attribute('color');
+                        } else {
+                            inner_r = center_radius - abs_px;
+                            outer_r = center_radius;
+                            pie_color = layer.get_visual_attribute('color-start');
+                        }
+                        drawPie('layer_' + layer.order, q.id, q.angle - q.size / 2, q.angle + q.size / 2, inner_r, outer_r, 0, pie_color, 1, false);
+                    }
                 }
                 else
                 {

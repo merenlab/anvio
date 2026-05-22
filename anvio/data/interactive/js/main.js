@@ -1562,6 +1562,7 @@ function syncViews() {
             layers[layer_id]["type"] = $(layer).find('.type').val();
             layers[layer_id]["color-start"] = $(layer).find('.colorpicker:first').attr('color');
             layers[layer_id]["visible"] = $(layer).find('.layer-visibility').hasClass('bi-eye');
+            layers[layer_id]["center"] = $(layer).find('.input-center').val();
 
             if (layers[layer_id]["type"] === 'text')
                 layers[layer_id]["height"] = '0';
@@ -1904,6 +1905,7 @@ function buildLayersTable(order, settings)
                     var color_start = layer_settings['color-start'];
                     var type = layer_settings['type'];
                     var visible = (layer_settings['visible'] !== undefined) ? layer_settings['visible'] : true;
+                    var center = (layer_settings['center'] !== undefined) ? layer_settings['center'] : '';
                 }
                 else
                 {
@@ -1911,6 +1913,7 @@ function buildLayersTable(order, settings)
                     var color  = getNamedLayerDefaults(layer_name, 'color', '#000000');
                     var margin = getGroupLeadingMargin(layer_name, getNamedLayerDefaults(layer_name, 'margin', '15'));
                     var visible = true;
+                    var center = '';
                     if (mode == 'collection') {
                         var type = getNamedLayerDefaults(layer_name, 'type', 'intensity');
                         var color_start = "#EEEEEE";
@@ -1943,6 +1946,7 @@ function buildLayersTable(order, settings)
                     '<td class="column-margin"><input class="form-control form-control-sm input-margin " type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
                     '<td><input class="form-control form-control-sm input-min" type="text" size="4" id="min{id}" value="{min}"{min-disabled}></input></td>' +
                     '<td><input class="form-control form-control-sm input-max" type="text" size="4" id="max{id}" value="{max}"{min-disabled}></input></td>' +
+                    '<td><input class="form-control form-control-sm input-center" type="text" size="4" id="center{id}" placeholder="none" value="{center}"></input></td>' +
                     '<td><input type="checkbox" class="layer_selectors"></input></td>' +
                     '</tr>';
 
@@ -1959,6 +1963,7 @@ function buildLayersTable(order, settings)
                                    .replace(new RegExp('{height}', 'g'), height)
                                    .replace(new RegExp('{min}', 'g'), min)
                                    .replace(new RegExp('{max}', 'g'), max)
+                                   .replace(new RegExp('{center}', 'g'), center)
                                    .replace(new RegExp('{min-disabled}', 'g'), (min_disabled) ? ' disabled': '')
                                    .replace(new RegExp('{max-disabled}', 'g'), (max_disabled) ? ' disabled': '')
                                    .replace(new RegExp('{margin}', 'g'), margin)
