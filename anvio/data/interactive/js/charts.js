@@ -578,7 +578,7 @@ function manageSNVsState(state, maxVariability) {
 function manageModificationsState(state) {
     // Hide or show elements based on modifications state
     if (!modifications_enabled || !modifications || modifications.length === 0) {
-        $('#modifications_picker').hide();
+    $('#modifications_section').hide();
         if (modifications_enabled && state['show_modifications']) {
             $('#settings-section-info-modifications-warning').html("Note: modifications are not available for this split.");
             $('#settings-section-info-modifications-warning').show();
@@ -594,11 +594,11 @@ function manageModificationsState(state) {
         }
         
         if (hasData) {
-            $('#modifications_picker').show();
+            $('#modifications_section').show();
             $('#settings-section-info-modifications-warning').html("");
             $('#settings-section-info-modifications-warning').hide();
         } else {
-            $('#modifications_picker').hide();
+            $('#modifications_section').hide();
             $('#settings-section-info-modifications-warning').html("Note: no modification data available for this split.");
             $('#settings-section-info-modifications-warning').show();
         }
