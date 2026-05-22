@@ -92,7 +92,6 @@ class PanRepresenter:
             }
             for name, data in genomes_dict.items()
             if data.get("num_contigs") < self.args.max_num_contigs
-            if data.get("num_contigs") < self.args.max_num_contigs
         ]
         if not genomes:
             raise ConfigError(f"I'm sorry to tell you, but no genome has less than {self.args.max_num_contigs} contigs, maybe try to increase the limit")
@@ -185,8 +184,6 @@ class PanRepresenter:
 
     def set_gene_calls(self, gene_calls_data):
         raw_df = pd.DataFrame(gene_calls_data).T
-    def set_gene_calls(self, gene_calls_data):
-        raw_df = pd.DataFrame(gene_calls_data).T
         raw_df = raw_df.drop(columns=["length", "rev_compd", "sequence", "header"])
         raw_df["gene_callers_id"] = raw_df.index
         raw_df = raw_df[[raw_df.columns[-1]] + list(raw_df.columns[:-1])]
@@ -199,10 +196,8 @@ class PanRepresenter:
             gene_ids_of_interest = []
             for gene_ids in target.values():
                 gene_ids_of_interest.extend(gene_ids)
-                gene_ids_of_interest.extend(gene_ids)
 
         return contigs.get_sequences_for_gene_callers_ids(
-            gene_ids_of_interest, report_aa_sequences=True, include_aa_sequences=True
             gene_ids_of_interest, report_aa_sequences=True, include_aa_sequences=True
         )[1]
 
@@ -243,7 +238,6 @@ class PanRepresenter:
         gene_info = {
             "gene_callers_id": self.current_id,
             "contig": self.supplement_contig_name,
-            "contig": self.supplement_contig_name,
             "start": start if start is not None else self.current_pos,
             "stop": stop if stop is not None else self.current_pos + source["length"],
             "direction": source["direction"],
@@ -273,8 +267,6 @@ class PanRepresenter:
         for contig, gene_ids in source.items():
             stretches[contig] = utils.get_stretches_for_numbers_list(gene_ids, discard_singletons=False)
         return stretches
-            stretches[contig] = utils.get_stretches_for_numbers_list(gene_ids, discard_singletons=False)
-        return stretches
 
     def generate_accession(self, sequence, size):
         """Generate a hash from an aa-sequence
@@ -299,7 +291,6 @@ class PanRepresenter:
         """Exports the gene calls table as a tab delimited file"""
 
         gene_calls = pd.DataFrame(self.gene_calls).T
-        utils.store_dataframe_as_TAB_delimited_file(gene_calls, self.args.external_gene_calls)
         utils.store_dataframe_as_TAB_delimited_file(gene_calls, self.args.external_gene_calls)
 
     def export_functions(self):
@@ -338,18 +329,12 @@ class PanRepresenter:
         contig_name_to_genes = self.build_contig_to_genes_dict(most_common_genome, contigs)
         filtered_funcs       = self.build_functions_lookup(contigs_db)
         filtered_genes       = self.get_filtered_genes(most_common_genome, contig_name_to_genes)
-        most_common_genome   = self.get_most_common_genome()
-        contigs, contigs_db  = self.get_contigs_db(most_common_genome)
-        contig_name_to_genes = self.build_contig_to_genes_dict(most_common_genome, contigs)
-        filtered_funcs       = self.build_functions_lookup(contigs_db)
-        filtered_genes       = self.get_filtered_genes(most_common_genome, contig_name_to_genes)
 
         if self.keep_promoter:
             gene_calls_data = self.get_gene_calls_data(contigs)
-            gene_calls_data = self.get_gene_calls_data(contigs)
         else:
             gene_calls_data = self.get_gene_calls_data(contigs, filtered_genes)
-            gene_calls_data = self.get_gene_calls_data(contigs, filtered_genes)
+
 
         stretches = self.get_stretches(filtered_genes)
         contig_to_seq = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name, string_the_key=True)
@@ -363,7 +348,6 @@ class PanRepresenter:
                 self.current_pos += gene_data["length"] + self.args.gap_size
 
         else:
-            for contig, limits in stretches.items():
             for contig, limits in stretches.items():
                 if not limits:
                     continue
@@ -385,7 +369,6 @@ class PanRepresenter:
                         stop = (max(last_gene_call["stop"], next_gene_id["start"]) if next_gene_id else len(contig_seq))
 
                     extracted = contig_seq[start:stop]
-                    extracted = contig_seq[start:stop]
                     self.supplementary_contig.append(extracted)
 
                     for i in range(first_id, last_id + 1):
@@ -394,7 +377,6 @@ class PanRepresenter:
                         new_stop = current["stop"] - start + self.current_pos
 
                         self.add_gene_call(current, new_start, new_stop)
-                        self.add_function(most_common_genome, filtered_funcs, current, i, contig)
                         self.add_function(most_common_genome, filtered_funcs, current, i, contig)
                         self.current_id += 1
 

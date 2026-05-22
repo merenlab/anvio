@@ -22,7 +22,6 @@ __provides__ = ["contigs-db"]
 __description__ = "Generates a pangenome-supplemented representative genome from a pangenome"
 
 
-@terminal.time_program
 def main():
     run_program()
 
@@ -89,9 +88,7 @@ def run_program():
 
     if anvio.DEBUG:
         run.warning(f"The temp directory, {temp_dir}, is kept. Please don't forget to clean it up later", header="Debug")
-        run.warning(f"The temp directory, {temp_dir}, is kept. Please don't forget to clean it up later", header="Debug")
     else:
-        run.info_single("Cleaning up the temp directory (you can use `--debug` if you would like to keep it for testing purposes)", nl_before=1, nl_after=1)
         run.info_single("Cleaning up the temp directory (you can use `--debug` if you would like to keep it for testing purposes)", nl_before=1, nl_after=1)
         shutil.rmtree(temp_dir)
 
