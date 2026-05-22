@@ -18,6 +18,7 @@ The pipeline:
 """
 
 import os
+import bisect
 import statistics
 import numpy as np
 from collections import Counter, defaultdict
@@ -285,7 +286,58 @@ class Indels:
         except ConfigError:
             # functional annotations may not be present; that's OK.
             pass
+        self._build_gene_position_index()
         self.progress.end()
+
+
+    def _build_gene_position_index(self):
+        """Build a per-contig sorted gene index so we can answer 'which gene overlaps position P
+        on contig C?' in O(log N) instead of O(total_genes_in_db).
+
+        ContigsSuperclass.nt_position_to_gene_caller_id() walks the entire genes_in_contigs_dict
+        on every call, which is fine for a handful of lookups but blows up on a metagenome with
+        hundreds of thousands of gene calls × thousands of indel loci (=> hundreds of millions of
+        comparisons). This index turns each lookup into a binary search over the genes on a
+        single contig, then a tiny walk over any (rare) overlapping genes.
+        """
+        self._gene_index = None
+        if not self.contigs_super.a_meta.get('genes_are_called', False):
+            return
+
+        genes_by_contig = defaultdict(list)
+        for gene_id, gene_call in self.contigs_super.genes_in_contigs_dict.items():
+            genes_by_contig[gene_call['contig']].append((gene_call['start'], gene_call['stop'], gene_id))
+
+        # Per-contig: sort by start and pre-extract the starts array for bisect lookups.
+        self._gene_index = {}
+        for contig, genes in genes_by_contig.items():
+            genes.sort()
+            self._gene_index[contig] = {
+                'starts': [g[0] for g in genes],
+                'genes': genes,
+            }
+
+
+    def _gene_caller_id_at(self, contig_name, position_in_contig):
+        """Return the gene_caller_id of the gene overlapping `position_in_contig` on `contig_name`,
+        or -1 if none. Uses the pre-built index from `_build_gene_position_index`."""
+        if self._gene_index is None:
+            return -1
+        entry = self._gene_index.get(contig_name)
+        if not entry:
+            return -1
+        # rightmost gene-start that is <= position
+        idx = bisect.bisect_right(entry['starts'], position_in_contig) - 1
+        # walk back over any (rare) overlapping genes whose start <= position. Stop as soon
+        # as a gene starts after `position` or we've left the array.
+        while idx >= 0:
+            start, stop, gene_id = entry['genes'][idx]
+            if start > position_in_contig:
+                break
+            if position_in_contig < stop:
+                return gene_id
+            idx -= 1
+        return -1
 
 
     def collect_indels(self):
@@ -604,7 +656,17 @@ class Indels:
         """Return the fraction of positions in [pos_start, pos_start+length) on `contig`
         that have ≥1x coverage in `sample`, looked up via the auxiliary-data db.
 
-        Returns None if the lookup can't be performed (no aux data, unknown sample, etc.)."""
+        Returns None if the lookup can't be performed (no aux data, unknown sample, etc.).
+
+        Uses two caches populated lazily on first call (allocated in build_matrix):
+        - `self._aux_split_lookup`: contig + position → (split_name, split_start). Replaces an
+          O(N_splits) linear scan over splits_basic_info on every call. The lookup itself is
+          one-per-locus on most genomes, so we cache by (contig, pos_start) to handle the rare
+          case where loci share a position.
+        - `self._aux_split_cache`: (profile_path, split_name) → sample-coverage dict. The
+          underlying aux.get() decompresses a gzipped blob; reusing across many DEL loci
+          on the same split avoids that.
+        """
 
         profile_path = self.sample_to_profile_path.get(sample)
         if not profile_path:
@@ -613,21 +675,34 @@ class Indels:
         if aux is None:
             return None
 
-        # Find the split containing pos_start
-        split_name = None
-        split_start = None
-        for sn, sinfo in self.contigs_super.splits_basic_info.items():
-            if sinfo['parent'] == contig and sinfo['start'] <= pos_start < sinfo['end']:
-                split_name = sn
-                split_start = sinfo['start']
-                break
+        # Lookup (or compute & cache) the split containing pos_start
+        split_cache_key = (contig, pos_start)
+        cached = self._aux_split_lookup.get(split_cache_key)
+        if cached is None:
+            split_name = None
+            split_start = None
+            for sn, sinfo in self.contigs_super.splits_basic_info.items():
+                if sinfo['parent'] == contig and sinfo['start'] <= pos_start < sinfo['end']:
+                    split_name = sn
+                    split_start = sinfo['start']
+                    break
+            self._aux_split_lookup[split_cache_key] = (split_name, split_start)
+        else:
+            split_name, split_start = cached
+
         if split_name is None:
             return None
 
-        try:
-            split_cov = aux.get(split_name)
-        except Exception:
-            return None
+        # Lookup (or fetch & cache) the per-sample coverage arrays for this split
+        cov_cache_key = (profile_path, split_name)
+        split_cov = self._aux_split_cache.get(cov_cache_key)
+        if split_cov is None:
+            try:
+                split_cov = aux.get(split_name)
+            except Exception:
+                split_cov = {}
+            self._aux_split_cache[cov_cache_key] = split_cov
+
         if not split_cov or sample not in split_cov:
             return None
 
@@ -676,8 +751,19 @@ class Indels:
         any_del_locus = any(t == 'DEL' for t in self.locus_event_types.values())
         if any_del_locus:
             self._open_aux_data_caches()
+            self._aux_split_cache = {}  # (profile_path, split_name) -> {sample: ndarray}
+            self._aux_split_lookup = {}  # contig -> (split_name, split_start) — cached split lookups
 
-        for locus_id, info in self.loci.items():
+        n_loci = len(self.loci)
+        self.progress.new('Building presence matrix', progress_total_items=n_loci)
+        self.progress.update('...')
+        update_every = max(1, n_loci // 200)
+
+        for i, (locus_id, info) in enumerate(self.loci.items()):
+            if i % update_every == 0:
+                self.progress.increment(increment_to=i)
+                self.progress.update(f"locus {pp(i)} of {pp(n_loci)} ...")
+
             locus_type = self.locus_event_types[locus_id]
 
             # sample -> position -> [supporting_reads_total, coverage_at_position]
@@ -726,8 +812,12 @@ class Indels:
 
             self.matrix[locus_id] = row
 
+        self.progress.end()
+
         if any_del_locus:
             self._close_aux_data_caches()
+            self._aux_split_cache = {}
+            self._aux_split_lookup = {}
 
 
     def _apply_min_samples_filter(self):
@@ -784,19 +874,23 @@ class Indels:
 
         has_genes_called = self.contigs_super.a_meta.get('genes_are_called', False)
 
-        for locus_id, info in self.loci.items():
-            members = [self.indels[i] for i in info['members']]
+        n_loci = len(self.loci)
+        self.progress.new('Building per-locus decoration data', progress_total_items=n_loci)
+        self.progress.update('...')
+
+        update_every = max(1, n_loci // 200)
+        for i, (locus_id, info) in enumerate(self.loci.items()):
+            if i % update_every == 0:
+                self.progress.increment(increment_to=i)
+                self.progress.update(f"locus {pp(i)} of {pp(n_loci)} ...")
+
+            members = [self.indels[idx] for idx in info['members']]
             sample_counts = Counter(m['sample_id'] for m in members)
             lengths = [m['length'] for m in members]
             n_supporting_reads = sum(m['count'] for m in members)
 
             mean_pos = info['mean_pos']
-            gene_caller_id = -1
-            if has_genes_called:
-                try:
-                    gene_caller_id = self.contigs_super.nt_position_to_gene_caller_id(info['contig_name'], mean_pos)
-                except ConfigError:
-                    gene_caller_id = -1
+            gene_caller_id = self._gene_caller_id_at(info['contig_name'], mean_pos) if has_genes_called else -1
 
             source, accession, function = self._gene_function_for(gene_caller_id)
 
@@ -818,14 +912,19 @@ class Indels:
                 'representative_id': self.cluster_representatives.get(info['cluster_id'], ''),
             }
 
+        self.progress.end()
+
 
     def build_items_tree(self):
         """Hierarchical clustering of the matrix → Newick string."""
         if len(self.matrix) < 3:
             self.items_tree_newick = None
             return
+        self.progress.new('Computing items-order tree')
+        self.progress.update(f"hierarchical clustering of {pp(len(self.matrix))} loci × {pp(len(self.samples))} samples ...")
         self.items_tree_newick = clustering.get_newick_tree_data_for_dict(
             self.matrix, distance='euclidean', linkage='ward', zero_fill_missing=True)
+        self.progress.end()
 
 
     def build_long_format(self):
@@ -836,7 +935,15 @@ class Indels:
             for idx in info['members']:
                 idx_to_locus[idx] = locus_id
 
+        n_events = len(self.indels)
+        self.progress.new('Building per-event audit trail', progress_total_items=n_events)
+        self.progress.update('...')
+        update_every = max(1, n_events // 200)
+
         for idx, e in enumerate(self.indels):
+            if idx % update_every == 0:
+                self.progress.increment(increment_to=idx)
+                self.progress.update(f"event {pp(idx)} of {pp(n_events)} ...")
             row = dict(e)
             row.pop('sequence', None)  # sequence is too big for the audit file
             row['indel_index'] = idx
@@ -844,6 +951,8 @@ class Indels:
             row['locus_id'] = idx_to_locus.get(idx, '')
             row['allele_frequency'] = (e['count'] / e['coverage']) if e['coverage'] > 0 else 0.0
             self.long_format_rows.append(row)
+
+        self.progress.end()
 
 
     def _cluster_id_for_indel(self, idx):
@@ -865,7 +974,10 @@ class Indels:
         long_path = os.path.join(self.output_dir, 'INDELS-LOCI-LONG.txt')
         clusters_fa_path = os.path.join(self.output_dir, 'INDELS-CLUSTERS.fa')
 
+        self.progress.new('Writing outputs')
+
         # view-data matrix: rows=loci, columns=samples
+        self.progress.update('view-data matrix ...')
         with open(view_path, 'w') as f:
             f.write('item\t' + '\t'.join(self.samples) + '\n')
             for locus_id in sorted(self.matrix.keys()):
@@ -880,10 +992,12 @@ class Indels:
             'gene_function_source', 'gene_function_accession', 'gene_function',
             'representative_id',
         ]
+        self.progress.update('items-additional data ...')
         utils.store_dict_as_TAB_delimited_file(self.items_additional, items_add_path,
                                                headers=['item'] + decoration_cols)
 
         # items-order newick
+        self.progress.update('items-order tree ...')
         if self.items_tree_newick:
             with open(tree_path, 'w') as f:
                 f.write(self.items_tree_newick)
@@ -891,6 +1005,7 @@ class Indels:
             tree_path = None
 
         # long-format audit
+        self.progress.update('long-format audit ...')
         long_cols = ['indel_index', 'cluster_id', 'locus_id', 'sample_id', 'profile_db',
                      'contig_name', 'split_name', 'pos_in_contig', 'type', 'length',
                      'count', 'coverage', 'allele_frequency',
@@ -904,7 +1019,12 @@ class Indels:
         # least one locus surviving every filter). Header carries metadata for downstream BLAST /
         # HMM lookups; sequence is the mmseqs2 (or exact-match) cluster representative's actual
         # indel sequence, pulled from self.indels via the leading idx encoded in the rep id.
+        self.progress.update('cluster-representative FASTA ...')
         final_cluster_ids = sorted({info['cluster_id'] for info in self.loci.values()})
+
+        # one-pass count of loci per cluster so we don't do O(N_loci × N_clusters) scans below
+        loci_per_cluster = Counter(info['cluster_id'] for info in self.loci.values())
+
         cluster_meta = {}
         for cid in final_cluster_ids:
             member_idxs = self.clusters_to_members.get(cid, [])
@@ -920,7 +1040,7 @@ class Indels:
             else:
                 cluster_type = 'DEL'
             samples = {self.indels[i]['sample_id'] for i in member_idxs}
-            n_loci = sum(1 for info in self.loci.values() if info['cluster_id'] == cid)
+            n_loci = loci_per_cluster.get(cid, 0)
             n_supporting_reads = sum(self.indels[i]['count'] for i in member_idxs)
             rep_id = self.cluster_representatives.get(cid, '')
             rep_seq = ''
@@ -955,6 +1075,8 @@ class Indels:
                 seq = m['sequence']
                 for i in range(0, len(seq), 70):
                     f.write(seq[i:i + 70] + "\n")
+
+        self.progress.end()
 
         self.run.warning(None, header="OUTPUT", lc="green")
         self.run.info('View data (matrix)', view_path, mc='green')
