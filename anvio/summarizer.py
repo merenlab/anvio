@@ -1239,7 +1239,7 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         self.summary['meta']['percent_profile_nts_described_by_collection'] = '%.2f' % (self.summary['meta']['total_nts_in_collection'] * 100.0 / int(self.p_meta['total_length']))
         self.summary['meta']['bins'] = self.get_bins_ordered_by_completeness_and_size()
 
-        if not self.quick and not self.light_summary:
+        if not self.quick:
             self.report_misc_data_files(target_table='layers')
             self.report_misc_data_files(target_table='items')
 

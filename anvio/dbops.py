@@ -4796,6 +4796,7 @@ class ProfileSuperclass(object):
         if self.p_meta['blank'] or getattr(self, 'quick', False):
             pass
         else:
+            coverage_table_data, _ = profile_db.db.get_view_data('mean_coverage_splits')
             for sample in self.p_meta['samples']:
                 percents = {}
                 all_coverages_in_sample = sum([d[sample] for d in list(coverage_table_data.values())])
