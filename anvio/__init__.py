@@ -1020,6 +1020,14 @@ D = {
                      "computer, and you can run multiple of them on a single contigs-db file. Cool and confusing. "
                      "The anvi'o way."}
                 ),
+    'globdb-data-dir': (
+            ['--globdb-data-dir'],
+            {'default': None,
+             'type': str,
+             'help': "The directory path for your GlobDB database setup. Anvi'o will try to use the "
+                     "default path if you do not specify anything. Alternatively you can set the "
+                     "environment variable ANVIO_GLOBDB_DATA_DIR to point to a custom location."}
+                ),
     'pfam-data-dir': (
             ['--pfam-data-dir'],
             {'default': None,

@@ -421,6 +421,13 @@ def get_num_lines_in_file(file_path):
 
 
 def check_output_directory(output_directory, ok_if_exists=False):
+    """Validates and returns the absolute path for an output directory.
+
+    The function checks permissions and so on, and ensures that the output
+    directory can be created. But no directories are created here.
+    The actual creation is done by `gen_output_directory`.
+    """
+
     if not output_directory:
         raise FilesNPathsError("Sorry. You must declare an output directory path.")
 
