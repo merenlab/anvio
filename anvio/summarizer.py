@@ -1056,7 +1056,9 @@ class ProfileSummarizer(DatabasesMetaclass, SummarizerSuperClass):
         self.summary = {}
         self.summary_type = 'profile'
         self.debug = False
-        self.quick = False
+        A_local = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+        self.quick = A_local('quick_summary') or False
+        self.light_summary = A_local('light_summary') or False
         self.profile_db_path = None
         self.contigs_db_path = None
         self.output_directory = None
@@ -1672,7 +1674,7 @@ class Bin:
         # in collections stored in the contigs database, split_names that are not in the
         # oritinal contigs used to generate contigs database *may* end up in the
         # collections table. we gotta make sure we deal with them properly:
-        missing_ids = [split_id for split_id in self.split_names if split_id not in self.summary.split_sequences]
+        missing_ids = [split_id for split_id in self.split_names if split_id not in self.summary.splits_basic_info]
         if len(missing_ids):
             for missing_id in missing_ids:
                 self.split_names.remove(missing_id)
