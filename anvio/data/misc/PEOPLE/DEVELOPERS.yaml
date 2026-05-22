@@ -704,6 +704,21 @@
       inst: University of Southern Denmark
       inst_link: https://www.sdu.dk/en/forskning/hadal
 
+- github: dspeth
+  name: Daan R. Speth
+  avatar: daan_speth.jpg
+  email: daan.speth@univie.ac.at
+  git_records:
+    - daanspeth@gmail.com
+  web: https://dome.univie.ac.at/speth
+  orcid: 0000-0002-2361-5935
+  bio: "Microbiologist and bioinformatician interested in understanding the metabolic and phylogenetic diversity of microorganisms through genomics and wet lab analyses"
+  affiliations:
+    - title: Senior Scientist
+      inst: University of Vienna
+      inst_link: https://cemess.univie.ac.at/
+      current: true
+
 - github: bastien-camillo
   name: Bastien Camillo
   avatar: bcamillo-anvio.png
