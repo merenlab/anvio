@@ -6,7 +6,6 @@
 
 import os
 import anvio
-import anvio.terminal as terminal  # noqa: F401
 from anvio.workflows import WorkflowSuperClass
 
 

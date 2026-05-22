@@ -14,10 +14,29 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 from anvio.version import versions_for_db_types
-from anvio.workflows.config import A, B, T, dirs_dict, get_dir_names, check_for_risky_param_change, get_fields_for_fasta_information, get_workflow_name_and_version_from_config
-from anvio.workflows.paths import get_path_to_workflows_dir, get_workflow_snake_file_path, get_workflow_rule_file_path
-from anvio.workflows.registry import get_workflow_module_dict
-from anvio.workflows.snakemake_utils import D, regex_from_ids, get_conda_yaml_path, get_conda_env_prefix, gunzip_file
+from anvio.workflows.config import (
+    A as A,
+    B as B,
+    T as T,
+    dirs_dict as dirs_dict,
+    get_dir_names as get_dir_names,
+    check_for_risky_param_change as check_for_risky_param_change,
+    get_fields_for_fasta_information as get_fields_for_fasta_information,
+    get_workflow_name_and_version_from_config as get_workflow_name_and_version_from_config,
+)
+from anvio.workflows.paths import (
+    get_path_to_workflows_dir as get_path_to_workflows_dir,
+    get_workflow_snake_file_path as get_workflow_snake_file_path,
+    get_workflow_rule_file_path as get_workflow_rule_file_path,
+)
+from anvio.workflows.registry import get_workflow_module_dict as get_workflow_module_dict
+from anvio.workflows.snakemake_utils import (
+    D as D,
+    regex_from_ids as regex_from_ids,
+    get_conda_yaml_path as get_conda_yaml_path,
+    get_conda_env_prefix as get_conda_env_prefix,
+    gunzip_file as gunzip_file,
+)
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
