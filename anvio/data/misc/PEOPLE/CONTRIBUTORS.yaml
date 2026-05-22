@@ -59,16 +59,17 @@
 - github: ChiaraVanni
   name: Chiara Vanni
   avatar: bio-chiara.jpg
-  email: cvanni@mpi-bremen.de
+  email: cvanni@marum.de
   git_records:
-    - cvanni@mpi-bremen.de
+    - cvanni@marum.de
   orcid: 0000-0002-1124-1147
-  web: https://scholar.google.com/citations?user=0-KzK6MAAAAJ&hl=en
-  twitter: ChiaraVanni5
+  web: https://dark.metagenomics.eu
+  linkedin: in/chiara-vanni-40209a139
+  bio: "Bioinformatician interested in making sense of the functional unknowns in meta(genomes). Recently experimenting with ancient metagenomics."
   affiliations:
-    - title: Graduate Student
-      inst: Max Planck Institute for Marine Microbiology
-      inst_link: https://mpi-bremen.de
+    - title: PostDoc
+      inst: MARUM, Center for Marine Environmental Sciences, University of Bremen
+      inst_link: https://www.marum.de/en/Dr.-chiara-vanni.html
       current: true
 
 - github: karkman
@@ -111,21 +112,6 @@
     - title: Post-doctoral Scientist
       inst: Smithsonian Tropical Research Institute
       inst_link: https://stri.si.edu/
-      current: true
-
-- github: dspeth
-  name: Daan R. Speth
-  avatar: daan_speth.jpg
-  email: daan.speth@univie.ac.at
-  git_records:
-    - daanspeth@gmail.com
-  web: https://dome.univie.ac.at/speth
-  orcid: 0000-0002-2361-5935
-  bio: "Microbiologist and bioinformatician interested in understanding the metabolic and phylogenetic diversity of microorganisms through genomics and wet lab analyses"
-  affiliations:
-    - title: Senior Scientist
-      inst: University of Vienna
-      inst_link: https://cemess.univie.ac.at/
       current: true
 
 - github: simroux
@@ -296,6 +282,52 @@
       inst: Hawaiʻi Institute of Marine Biology, University of Hawaiʻi at Mānoa
       inst_link: https://www.himb.hawaii.edu/
 
+- github: guille0387
+  name: Guillermo Rangel-Pineros
+  avatar: guillermo_rangel.jpg
+  email: guillermo.pineros@sund.ku.dk
+  git_records:
+    - guillermo.pineros@sund.ku.dk
+  linkedin: guillermorangelp
+  orcid: 0000-0003-3848-4330
+  bio: "I am a microbiologist and bioinformatician interested in the development of computational workflows for the analysis of ancient microbial DNA"
+  affiliations:
+    - title: Staff Bioinformatician
+      inst: Centre for Ancient Environmental Genomics CAEG, University of Copenhagen
+      inst_link: https://globe.ku.dk/research/caeg/
+      current: true
+
+- github: mateumenendez
+  name: Mateu Menendez-Serra
+  email: mateu.menendez@gmail.com
+  git_records:
+    - mateu.menendez@sund.ku.dk
+  linkedin: mateumenendez
+  orcid: 0000-0003-0680-5304
+  twitter: menendezserra
+  avatar: bio_mateu.jpg
+  bio: "Computational ecologist integrating ancient environmental genomics, microbial ecology, and statistical modeling to reconstruct past ecosystems and study long-term ecosystem dynamics."
+  affiliations:
+    - title: Post-doctoral Researcher
+      inst: Centre for Ancient Environmental Genomics, The GLOBE Institute, University of Copenhagen
+      inst_link: https://globe.ku.dk/research/caeg/
+      current: true
+
+- github: yunso-bio
+  name: Yunjeong So
+  email: yunjeong.k.so@gmail.com
+  git_records:
+    - yunjeong.k.so@gmail.com
+  linkedin: linkedin.com/in/yunjeong-so
+  orcid: https://orcid.org/0000-0002-4310-012X
+  twitter: yunjeong_k_so
+  avatar: anvio-yunjeong.png
+  bio: "Microbiome researcher specialising in the functional analysis of modern and ancient microbial communities, using computational approaches to study microbial functions relevant to human health and the environment"
+  affiliations:
+    - title: Postdoctoral researcher
+      inst: GLOBE Institute, University of Copenhagen
+      current: true
+      
 - github: elxerone
   name: Eeva Eronen-Rasimus
   email: eeva.eronen@gmail.com
@@ -313,7 +345,7 @@
     - title: Associate professor in Microbial Ecology
       inst: Department of Microbiology, University of Helsinki
       inst_link: https://www.helsinki.fi/en/faculty-agriculture-and-forestry/research/disciplines/microbiology
-      current: true
+      current: true    
 
 - github: igorspp
   name: Igor S. Pessi

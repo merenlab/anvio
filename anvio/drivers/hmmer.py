@@ -36,12 +36,27 @@ P = terminal.pluralize
 
 
 class HMMer:
-    def __init__(self, target_files_dict, num_threads_to_use=1, program_to_use='hmmscan', progress=progress, run=run):
+    def __init__(self, target_files_dict, num_threads_to_use=1, program_to_use='hmmscan', progress=progress, run=run, total_number_of_sequences_per_target = {}):
         """A class to streamline HMM runs.
 
         Notes
         =====
         - HMMer user guide: http://eddylab.org/software/hmmer/Userguide.pdf
+
+        Parameters
+        ==========
+        target_files_dict : dict
+            A dictionary of source : file path pairs
+        num_threads_to_use : int
+            The target file(s) will be divided into this many parts and each part will be processed by a different
+            multiprocess.Process object
+        program_to_use : str
+            Either 'hmmscan' or 'hmmsearch'.
+        total_number_of_sequences_per_target : dict
+            An optional dictionary indicating the total number of sequences associated with a given target set (using
+            the same keys as target_files_dict). If provided, will be used to set --Z and --domZ. Important for proper
+            e-value calculation when input files represent a subset of all sequences (ie, when multithreading calls to
+            HMMer outside of this class).
         """
 
         self.num_threads_to_use = num_threads_to_use
@@ -63,13 +78,17 @@ class HMMer:
             self.tmp_dirs.append(tmp_dir)
 
             # create splitted fasta files inside tmp directory
+            # if num_threads is 1, this function will return the original file
             split_fastas, number_of_sequences = utils.split_fasta(target_files_dict[source],
                                                                parts=self.num_threads_to_use,
                                                                output_dir=tmp_dir,
                                                                return_number_of_sequences=True)
 
             self.target_files_dict[source] = split_fastas
-            self.number_of_sequences[source] = number_of_sequences
+            if source in total_number_of_sequences_per_target and total_number_of_sequences_per_target[source]:
+                self.number_of_sequences[source] = total_number_of_sequences_per_target[source]
+            else:
+                self.number_of_sequences[source] = number_of_sequences
 
     def verify_hmmpress_output(self, hmm_path):
         """This function verifies that the HMM profiles located at hmm_path have been successfully hmmpressed.
