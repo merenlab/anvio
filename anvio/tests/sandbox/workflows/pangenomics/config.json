@@ -1,5 +1,5 @@
 {
-    "fasta_txt": "fasta.txt",
+    "fasta_txt": "five-genomes-fasta.txt",
     "internal_genomes": "",
     "external_genomes": "external-genomes.txt",
     "anvi_gen_genomes_storage": {
