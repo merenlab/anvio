@@ -4,7 +4,6 @@ import argparse
 
 import pandas as pd
 
-import anvio
 import anvio.tables as t
 import anvio.fastalib as fastalib
 import anvio.dbops as dbops
@@ -307,10 +306,10 @@ class PanRepresenter:
 
     def process_representative_genome(self):
         representative_genome = self.get_representative()
-        contigs, contigs_db   = self.get_contigs_db(representative_genome)
-        contig_sequences      = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name, string_the_key=True)
-        filtered_funcs        = self.build_functions_lookup(contigs_db)
-        gene_calls_data       = self.get_gene_calls_data(contigs)
+        contigs, contigs_db = self.get_contigs_db(representative_genome)
+        contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name, string_the_key=True)
+        filtered_funcs = self.build_functions_lookup(contigs_db)
+        gene_calls_data = self.get_gene_calls_data(contigs)
 
         for gene_id, gene_data in gene_calls_data.items():
             self.add_function(representative_genome, filtered_funcs, gene_data, gene_id)
@@ -324,11 +323,11 @@ class PanRepresenter:
         self.supplement_contig_name = f"{representative_genome}_pangenome_supplement"
 
     def process_additional_genomes(self):
-        most_common_genome   = self.get_most_common_genome()
-        contigs, contigs_db  = self.get_contigs_db(most_common_genome)
+        most_common_genome = self.get_most_common_genome()
+        contigs, contigs_db = self.get_contigs_db(most_common_genome)
         contig_name_to_genes = self.build_contig_to_genes_dict(most_common_genome, contigs)
-        filtered_funcs       = self.build_functions_lookup(contigs_db)
-        filtered_genes       = self.get_filtered_genes(most_common_genome, contig_name_to_genes)
+        filtered_funcs = self.build_functions_lookup(contigs_db)
+        filtered_genes = self.get_filtered_genes(most_common_genome, contig_name_to_genes)
 
         if self.keep_promoter:
             gene_calls_data = self.get_gene_calls_data(contigs)
