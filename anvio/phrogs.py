@@ -96,7 +96,7 @@ class PHROGsSetup(object):
             raise ConfigError("Anvi'o failed to download PHROGs files. If your internet connection is healthy, this may indicate the "
                               "database URLs have changed. Please report this issue to the anvi'o developers. Original error: '%s'." % e)
 
-        extracted_fma_dir = os.path.join(self.phrogs_data_dir, "MSA_Phrogs_M50_FMA")
+        extracted_fma_dir = os.path.join(self.phrogs_data_dir, "MSA_Phrogs_M50_FASTA")
         if os.path.exists(extracted_fma_dir):
             shutil.rmtree(extracted_fma_dir)
 
@@ -181,7 +181,7 @@ class PHROGs(object):
         self.num_threads = A('num_threads', null) or 1
         self.hmm_program = A('hmmer_program', null) or 'hmmsearch'
         self.phrogs_data_dir = A('phrogs_data_dir', null)
-        self.noise_cutoff_terms = A('noise_cutoff_terms', null) or '--cut_ga'
+        self.noise_cutoff_terms = A('noise_cutoff_terms', null) or '-E 1e-5'
         self.just_do_it = A('just_do_it', null)
 
         filesnpaths.is_program_exists(self.hmm_program)

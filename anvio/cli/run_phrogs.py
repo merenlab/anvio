@@ -41,7 +41,7 @@ def get_args():
     parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parser.add_argument('--phrogs-data-dir', default=None, type=str, help="The directory path for your downloaded PHROGs database. "
                         "If omitted, anvi'o tries the default location.")
-    parser.add_argument('--noise-cutoff-terms', default='--cut_ga', help="Filtering options for HMMER. By default, `--cut_ga` is used.")
+    parser.add_argument('--noise-cutoff-terms', default='-E 1e-5', help="Filtering options for HMMER. By default, `-E 1e-5` is used.")
     parser.add_argument(*anvio.A('num-threads'), **anvio.K('num-threads'))
     parser.add_argument(*anvio.A('hmmer-program'), **anvio.K('hmmer-program'))
     parser.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
