@@ -1289,6 +1289,12 @@ class BAMProfiler(dbops.ContigsSuperclass):
                        'INDELs_profiled': not self.skip_INDEL_profiling,
                        'clips_profiled': not self.skip_clip_profiling,
                        'min_clip_length': self.min_clip_length,
+                       # Sentinel: fresh profile-dbs profiled with the fix get this key set
+                       # to True; pre-fix and migrated dbs lack it. Read at indels access
+                       # time (see ProfileSuperclass._maybe_warn_about_indel_clip_conflation
+                       # in dbops.py) to surface a warning about phantom INS rows from
+                       # soft clips that older anvi-profile runs may have recorded.
+                       'indels_table_clean_of_clip_conflation': True,
                        'min_percent_identity': self.min_percent_identity or 0,
                        'fetch_filter': self.fetch_filter,
                        'min_coverage_for_variability': self.min_coverage_for_variability,

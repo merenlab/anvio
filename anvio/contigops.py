@@ -3,6 +3,7 @@
    contig data such as GenbankToAnvio."""
 
 import os
+import re
 import io
 import gzip
 import numpy as np
@@ -659,9 +660,10 @@ class Auxiliary:
                 # Secondaries are alternate mappings (not split-alignment pieces) and their
                 # CIGAR clips don't represent real chimeric junctions, so we skip them.
                 # For every other record, scan cigartuples[0] and cigartuples[-1] for S (4)
-                # or H (5) ops. Use cigartuples directly (NOT the vectorized form, which
-                # conflates soft clips with insertions). Left-trim by fetch_and_trim already
-                # strips clips that fall outside the split.
+                # or H (5) ops. We use cigartuples directly because we only care about the
+                # first and last CIGAR ops; the vectorized form would require finding the
+                # right segments by mapping type. Left-trim by fetch_and_trim already strips
+                # clips that fall outside the split.
                 cigartuples = read.cigartuples
 
                 # Compute per-SA read-coordinate intervals AND keep them addressable

@@ -540,7 +540,13 @@ class Read:
 
         0th column = reference position
         1st column = query sequence
-        2nd column = mapping type (0=mapped, 1=read insertion, or 2=read deletion)
+        2nd column = mapping type:
+                     0 = mapped (CIGAR M / = / X)
+                     1 = read insertion (CIGAR I)
+                     2 = read deletion (CIGAR D)
+                     3 = reference skip (CIGAR N)
+                     4 = soft clip (CIGAR S)
+                     -1 = gap in read and reference (e.g. pad / hard clip)
         3rd column = reference sequence
         """
 
@@ -559,8 +565,9 @@ class Read:
         Parameters
         ==========
         mapping_type : int
-            Any of 0, 1, 2, or -1. 0 = mapping segment, 1 = read insertion segment, 2 = read
-            deletion segment, -1 = gap in read and reference
+            Any of 0, 1, 2, 3, 4, or -1. 0 = mapped, 1 = read insertion (CIGAR I), 2 = read
+            deletion (CIGAR D), 3 = reference skip (CIGAR N), 4 = soft clip (CIGAR S),
+            -1 = gap in read and reference
 
         array : numpy array, None
             If None, self.v will be used
@@ -2280,19 +2287,29 @@ def _vectorize_read(cigartuples, query_sequence, reference_sequence, reference_s
         elif consumes_read:
             v[count:(count + length), 0] = ref_pos + reference_start - 1
             v[count:(count + length), 1] = query_sequence[read_consumed:(read_consumed + length)]
-            v[count:(count + length), 2] = 1
+            # CIGAR op 1 (I, insertion) and op 4 (S, soft clip) both consume the read but not
+            # the reference; without this discriminator they would both end up as
+            # mapping_type=1 and downstream consumers (e.g. run_SNVs_and_indels) would record
+            # soft clips as if they were insertions in the indels table.
+            if operation == 1:
+                v[count:(count + length), 2] = 1
+            else:  # operation == 4 (soft clip)
+                v[count:(count + length), 2] = 4
 
             read_consumed += length
 
         elif consumes_ref:
             v[count:(count + length), 0] = np.arange(ref_pos + reference_start, ref_pos + reference_start + length)
-            v[count:(count + length), 2] = 2
-
-            # Only fetch reference bases for deletions (op=2), not skips (op=3)
-            if operation == 2:  # Deletion
+            # CIGAR op 2 (D, deletion) and op 3 (N, reference skip) both consume the
+            # reference but not the read; tag them distinctly so downstream consumers don't
+            # conflate reference skips with deletions.
+            if operation == 2:
+                v[count:(count + length), 2] = 2
                 v[count:(count + length), 3] = reference_sequence[ref_seq_idx:(ref_seq_idx + length)]
                 ref_seq_idx += length
-            # For N (op=3), leave column 3 as -1 (already initialized)
+            else:  # operation == 3 (ref skip)
+                v[count:(count + length), 2] = 3
+                # leave column 3 as -1 (already initialized) — no reference bases stored
 
             ref_pos += length
 

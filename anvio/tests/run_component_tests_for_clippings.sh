@@ -221,6 +221,19 @@ if soft_X_right and {r['partner_contig'] for r in soft_X_right} != {'contig_Y'}:
 if hard_Y_left and {r['partner_contig'] for r in hard_Y_left} != {'contig_X'}:
     fail.append(f"A: HARD left partners not all 'contig_X': {set(r['partner_contig'] for r in hard_Y_left)}")
 
+# Regression guard for the soft-clip-as-insertion conflation fix in bamops.
+# The chimera reads have only split-alignment soft clips and no real insertions
+# -- before the fix, those soft clips were recorded as INS rows in the indels
+# table. After the fix, the indels table must have zero INS rows for this BAM.
+db = ProfileDBInfo('profile_A/PROFILE.db').load_db()
+ins_rows = list(db.get_some_rows_from_table_as_dict(
+    t.indels_table_name, "type = 'INS'", error_if_no_data=False).values())
+db.disconnect()
+print(f"  phantom INS rows in indels table: {len(ins_rows)}")
+if len(ins_rows) > 0:
+    fail.append(f"A: indels table has {len(ins_rows)} phantom INS rows; expected 0 "
+                f"(soft clips should no longer be recorded as insertions)")
+
 # ---------------- Scenario C: --skip-clip-profiling → empty table ----------------
 print("\n[Scenario C] --skip-clip-profiling → empty table")
 clips_C = load_clips('profile_C/PROFILE.db')

@@ -4637,11 +4637,43 @@ class ProfileSuperclass(object):
 
         return d
 
+    def _maybe_warn_about_indel_clip_conflation(self):
+        """Warn once per instance when reading indels from a profile-db that may
+        contain soft-clip-derived phantom insertions.
+
+        Fresh profile-dbs profiled with the fix set the sentinel meta key
+        ``indels_table_clean_of_clip_conflation = True``. Pre-fix dbs (including
+        v42 dbs migrated to v43 by the additive migration) lack the key.
+        """
+        if getattr(self, '_warned_about_indel_clip_conflation', False):
+            return
+        self._warned_about_indel_clip_conflation = True
+
+        if self.p_meta.get('indels_table_clean_of_clip_conflation'):
+            return
+
+        self.run.warning(
+            "Older versions of `anvi-profile` recorded soft-clipped read regions as if "
+            "they were insertions in the profile-db indels table. That behavior has "
+            "since been fixed, but the profile-db at "
+            f"'{self.profile_db_path}' was generated before the fix (or migrated from "
+            "an older version), so its indels table may still carry those soft-clip "
+            "artifacts -- typically INS rows whose `length` does not correspond to any "
+            "real insertion event in your data. Your profile-db is otherwise fine to "
+            "use, but for the cleanest indels data consider re-profiling your BAM "
+            "files with the current `anvi-profile`.",
+            header="HEADS UP: SOFT-CLIP ARTIFACTS IN OLDER PROFILE-DB",
+            lc="yellow",
+        )
+
+
     def get_indels_information_for_split(self, split_name):
         if not split_name in self.split_names:
             raise ConfigError("get_indels_information_for_split: The split name '%s' does not seem to be "
                                "represented in this profile database. Are you sure you are looking for it "
                                "in the right database?" % split_name)
+
+        self._maybe_warn_about_indel_clip_conflation()
 
         self.progress.new('Recovering indels information for split', discard_previous_if_exists=True)
         self.progress.update('...')
