@@ -223,6 +223,28 @@ class Auxiliary:
         """Parse base modifications from MM/ML tags and store them per split."""
 
         self.split.modification_profiles = []
+        # split.per_position_info may be missing when SNV profiling was skipped but
+        # other analyses (e.g. modifications) are requested. Provide a safe fallback
+        # with sentinel/default arrays so downstream code does not KeyError.
+        additional_per_position_data = getattr(self.split, 'per_position_info', {})
+        # Prefer the actual sequence length if available (more reliable), else fall back
+        # to the split.length attribute or coordinate difference
+        if getattr(self.split, 'sequence', None) is not None:
+            split_len = len(self.split.sequence)
+        else:
+            split_len = getattr(self.split, 'length', None) or (self.split.end - self.split.start)
+
+        if 'corresponding_gene_call' not in additional_per_position_data:
+            additional_per_position_data['corresponding_gene_call'] = np.full(split_len, -1, dtype=int)
+        if 'in_noncoding_gene_call' not in additional_per_position_data:
+            additional_per_position_data['in_noncoding_gene_call'] = np.zeros(split_len, dtype=int)
+        if 'in_coding_gene_call' not in additional_per_position_data:
+            additional_per_position_data['in_coding_gene_call'] = np.zeros(split_len, dtype=int)
+        if 'base_pos_in_codon' not in additional_per_position_data:
+            additional_per_position_data['base_pos_in_codon'] = np.zeros(split_len, dtype=int)
+        if 'codon_order_in_gene' not in additional_per_position_data:
+            additional_per_position_data['codon_order_in_gene'] = np.full(split_len, -1, dtype=int)
+        split_coverage = self.split.coverage.c if self.split.coverage is not None else None
 
         # Decide how we want to iterate through reads
         if self.min_percent_identity:
@@ -252,13 +274,13 @@ class Auxiliary:
                 elif strand == 1:
                     strand_symbol = '-'
                 else:
-                    raise ConfigError("Unexpected strand information in MM tag: %s. This should never happen." % strand)
+                    raise ConfigError("Unexpected strand information in MM tag: %s. This shouldn't happen." % strand)
 
                 for entry in mod_entries:
                     query_pos = entry[0]
                     probability = entry[1]/256
                     
-                    if probability < 0:  # entry[1] for qual was -1 meaning unknown
+                    if entry[1] == -1:  # Qual was -1 meaning unknown
                         continue
 
                     ref_pos = query_pos_to_ref_pos[query_pos]
@@ -267,14 +289,33 @@ class Auxiliary:
                         
                     pos_in_split = ref_pos - self.split.start
 
+                    # Occasionally the read->ref mapping yields positions outside the split
+                    # (e.g. due to trimming). Skip those safely to avoid IndexError.
+                    if pos_in_split < 0 or pos_in_split >= split_len:
+                        if anvio.DEBUG:
+                            self.run.warning('run_modifications :: skipping out-of-range pos_in_split %d (split_len=%d) for %s' % (pos_in_split, split_len, self.split.name))
+                        continue
+
+                    corresponding_gene_call = additional_per_position_data['corresponding_gene_call'][pos_in_split]
+                    in_noncoding_gene_call = additional_per_position_data['in_noncoding_gene_call'][pos_in_split]
+                    in_coding_gene_call = additional_per_position_data['in_coding_gene_call'][pos_in_split]
+                    base_pos_in_codon = additional_per_position_data['base_pos_in_codon'][pos_in_split]
+                    codon_order_in_gene = additional_per_position_data['codon_order_in_gene'][pos_in_split]
+                    coverage = int(split_coverage[pos_in_split]) if split_coverage is not None else 0
+
                     self.split.modification_profiles.append([
                         self.split.name,
                         pos_in_split,
                         ref_pos,
+                        corresponding_gene_call,
+                        in_noncoding_gene_call,
+                        in_coding_gene_call,
+                        base_pos_in_codon,
+                        codon_order_in_gene,
                         str(mod_code),
                         probability,
                         strand_symbol,
-                        base,
+                        coverage,
                     ])
 
             read_count += 1

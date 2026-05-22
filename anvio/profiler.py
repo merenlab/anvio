@@ -1424,6 +1424,12 @@ class BAMProfiler(dbops.ContigsSuperclass):
         if self.skip_SNV_profiling:
             return
 
+        # Ensure the table object exists (lazy init). In some code paths the attribute
+        # may not have been created during `init_dirs_and_dbs` (e.g., if flags changed),
+        # so create it here if missing.
+        if not hasattr(self, 'variable_nts_table'):
+            self.variable_nts_table = TableForVariability(self.profile_db_path, progress=null_progress)
+
         for contig in self.contigs:
             for split in contig.splits:
                 if split.num_SNV_entries == 0:
@@ -1468,30 +1474,38 @@ class BAMProfiler(dbops.ContigsSuperclass):
                 split_coverage = split.coverage.c if split.coverage is not None else None
 
                 for entry in split.modification_profiles:
-                    # entry layout from contigops: [split_name, pos_in_split, pos_in_contig, mod_code, probability, strand_symbol, base]
+                    # entry layout from contigops:
+                    # [split_name, pos_in_split, pos_in_contig, corresponding_gene_call, in_noncoding_gene_call,
+                    #  in_coding_gene_call, base_pos_in_codon, codon_order_in_gene, mod_code, probability, strand_symbol, coverage]
                     split_name = entry[0]
                     pos_in_split = entry[1]
                     pos_in_contig = entry[2]
-                    modification = entry[3]
-                    probability = entry[4]
-                    strand_symbol = entry[5]
+                    corresponding_gene_call = entry[3]
+                    in_noncoding_gene_call = entry[4]
+                    in_coding_gene_call = entry[5]
+                    base_pos_in_codon = entry[6]
+                    codon_order_in_gene = entry[7]
+                    modification = entry[8]
+                    probability = entry[9]
+                    strand_symbol = entry[10]
+                    coverage = entry[11]
 
                     threshold = self.modification_filters.get(modification, self.modification_filter_default)
 
                     if probability < threshold:  # We are below the filter threshold, skip
                         continue
 
-                    if split_coverage is not None:
-                        if pos_in_split < 0 or pos_in_split >= len(split_coverage):
-                            continue
-                        if int(split_coverage[pos_in_split]) < min_coverage:
-                            continue
+                    if coverage < min_coverage:  # We are below the coverage threshold, skip
+                        continue
                     
-                    key = (split_name, pos_in_split, pos_in_contig, modification, strand_symbol)
+                    key = (split_name, pos_in_split, pos_in_contig, corresponding_gene_call, in_noncoding_gene_call,
+                           in_coding_gene_call, base_pos_in_codon, codon_order_in_gene, modification, strand_symbol)
                     if key not in aggregated_modifications:
-                        aggregated_modifications[key] = [split_name, pos_in_split, pos_in_contig, modification, strand_symbol, 0]
+                        aggregated_modifications[key] = [split_name, pos_in_split, pos_in_contig, corresponding_gene_call,
+                                                         in_noncoding_gene_call, in_coding_gene_call, base_pos_in_codon,
+                                                         codon_order_in_gene, modification, strand_symbol, coverage, 0]
 
-                    aggregated_modifications[key][5] += 1
+                    aggregated_modifications[key][11] += 1
 
         for aggregated_entry in aggregated_modifications.values():
             self.modifications_table.append([self.sample_id] + aggregated_entry)

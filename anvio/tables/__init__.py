@@ -215,8 +215,8 @@ indels_table_structure               = ['sample_id', 'split_name', 'pos'    , 'p
 indels_table_types                   = ['text'     , 'text'      , 'integer', 'integer'      , 'integer'                , 'integer'               , 'integer'             , 'integer'          , 'integer'            , 'integer'             , 'integer'              , 'text'     , 'text', 'text'    , 'integer', 'integer', 'integer']
 
 modifications_table_name             = 'modifications'
-modifications_table_structure        = ['sample_id', 'split_name', 'pos', 'pos_in_contig', 'modification', 'strand', 'count']
-modifications_table_types           = ['text', 'text', 'integer', 'integer', 'text', 'text', 'integer']
+modifications_table_structure        = ['sample_id', 'split_name', 'pos', 'pos_in_contig', 'corresponding_gene_call', 'in_noncoding_gene_call', 'in_coding_gene_call', 'base_pos_in_codon', 'codon_order_in_gene', 'modification', 'strand', 'coverage', 'count']
+modifications_table_types           = ['text', 'text', 'numeric', 'numeric', 'numeric', 'numeric', 'numeric', 'numeric', 'numeric', 'text', 'text', 'numeric', 'numeric']
 
 views_table_name                     = 'views'
 views_table_structure                = ['view_id', 'target_table']

@@ -4725,7 +4725,7 @@ class ProfileSuperclass(object):
                 d[sample_id]['modifications'][pos] = {
                     'pos': pos,
                     'pos_in_contig': e['pos_in_contig'],
-                    'coverage': None,
+                    'coverage': e.get('coverage'),
                     'modification_counts': {},
                     'modification_strand_counts': {},
                     'modification_ratios': {},
@@ -4747,10 +4747,13 @@ class ProfileSuperclass(object):
             for pos in list(d[sample_id]['modifications'].keys()):
                 entry = d[sample_id]['modifications'][pos]
 
-                if not split_coverages or sample_id not in split_coverages:
-                    coverage = 0
+                if entry['coverage'] is None:
+                    if not split_coverages or sample_id not in split_coverages:
+                        coverage = 0
+                    else:
+                        coverage = int(split_coverages[sample_id][pos])
                 else:
-                    coverage = int(split_coverages[sample_id][pos])
+                    coverage = int(entry['coverage'])
 
                 if coverage < min_coverage:
                     d[sample_id]['modifications'].pop(pos, None)

@@ -84,7 +84,7 @@ class TableForModifications(Table):
             return
 
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
-        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?)''' % t.modifications_table_name, self.db_entries)
+        database._exec_many('''INSERT INTO %s VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)''' % t.modifications_table_name, self.db_entries)
         database.disconnect()
 
         if anvio.DEBUG:
