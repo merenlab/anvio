@@ -1,5 +1,7 @@
 %(anvi-gen-pan-representative)s generates a **pangenome-supplemented representative genome** as a %(contigs-db)s. The output keeps all contigs from a single representative genome and appends a supplementary contig containing one representative gene for every gene cluster in the pangenome that the representative genome is missing. The result is a single %(contigs-db)s that captures the full gene repertoire of the pangenome.
 
+![](../../images/anvi-gen-pan-representative.png)
+
 #### Prerequisites
 
 Before running this program you will need:
