@@ -450,6 +450,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "globdb-data": {
+        "name": "GLOBDB DATA",
+        "type": "DATA",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "pfams-data": {
         "name": "PFAMs DATA",
         "type": "DATA",
