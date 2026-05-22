@@ -137,13 +137,13 @@ def get_args():
     provide = "sometimes comfort, sometimes a laugh, but it at least helps you vent"
 
     if atty:
-        epilog  = f"\n🧀 {attr('bold')}Can consume:{attr('reset')}\n\n   {fg('red')}{consume}{attr('reset')}\n\n"
+        epilog = f"\n🧀 {attr('bold')}Can consume:{attr('reset')}\n\n   {fg('red')}{consume}{attr('reset')}\n\n"
         epilog += f"🍕 {attr('bold')}Can provide:{attr('reset')}\n\n   {fg('red')}{provide}{attr('reset')}\n\n"
         epilog += f"🍺 {attr('bold')}More on `anvi-screw-this`:{attr('reset')}\n\n   {fg('cyan')}{program_help}{attr('reset')}"
         epilog += f"\n\n🍻 {attr('bold')}All anvi'o programs and artifacts:{attr('reset')}\n\n   {fg('cyan')}{general_help}{attr('reset')}"
         epilog += attr('reset')
     else:
-        epilog  = f"\n🧀 Can consume:\n\n   {consume}\n\n"
+        epilog = f"\n🧀 Can consume:\n\n   {consume}\n\n"
         epilog += f"🍕 Can provide:\n\n   {provide}\n\n"
         epilog += f"🍺 More on `anvi-screw-this`:\n\n   {program_help}"
         epilog += f"\n\n🍻 All anvi'o programs and artifacts:\n\n   {general_help}"
