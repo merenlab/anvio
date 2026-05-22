@@ -67,7 +67,7 @@ class TablesForTransferRNAs:
         possible_genes = []
         for acdn, decoded_aa_types in constants.anticodon_to_decoded_AA_types.items():
             for decoded_aa_type in decoded_aa_types:
-                possible_genes.append(f'{acdn}_{decoded_aa_type}')
+                possible_genes.append(f'{decoded_aa_type}_{acdn}')
         self.amino_acids = set([aa for aa in constants.AA_to_codons.keys() if aa != 'STP'])
         self.anticodons = set([acdn for acdn in constants.anticodon_to_AA.keys() if constants.anticodon_to_AA[acdn] in self.amino_acids])
 
@@ -221,6 +221,14 @@ class TablesForTransferRNAs:
         search_results_dict = tables_for_hmm_hits.add_new_gene_calls_to_contigs_db_and_update_search_results_dict(self.kind_of_search,
                                                                                                                   search_results_dict,
                                                                                                                   skip_amino_acid_sequences=True)
+
+        missing_gene_names = sorted(set([e['gene_name'] for e in search_results_dict.values()]) - set(self.all_genes_searched_against))
+        if len(missing_gene_names):
+            raise ConfigError(f"TablesForTransferRNAs.populate_search_tables speaking: anvi'o found one or more tRNA "
+                              f"gene names that are not among the expected Transfer_RNAs gene names: "
+                              f"{', '.join(missing_gene_names)}. This is likely a mismatch between the tRNA hit naming "
+                              f"convention and the metadata that will be stored in the HMM hits info table.")
+
         tables_for_hmm_hits.append_to_hmm_hits_table(self.source_name, self.reference, self.kind_of_search, self.domain, self.all_genes_searched_against, search_results_dict)
 
 
