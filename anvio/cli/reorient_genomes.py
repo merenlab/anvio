@@ -40,7 +40,7 @@ def get_args():
     parser = ArgumentParser(description=__description__)
 
     groupA = parser.add_argument_group('INPUT FILES')
-    groupA.add_argument('--fasta-txt', required=True,
+    groupA.add_argument('-f', '--fasta-txt', required=True,
                         help="Two-column TAB-delimited file with genome name and FASTA file path.")
     groupA.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'required': True}))
 
