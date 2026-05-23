@@ -3638,9 +3638,9 @@ class PanGraphSuperclass(PanSuperclass):
 
         state_dict = json.loads(self.states[state]['content'])
 
-        gene_cluster_grouping_threshold = state_dict['condtr']
-        max_edge_length_filter = state_dict['maxlength']
-        groupcompress = state_dict['groupcompress']
+        gene_cluster_grouping_threshold = state_dict['graph_layout']['grouping_threshold']
+        max_edge_length_filter = state_dict['graph_layout']['max_edge_length']
+        groupcompress = state_dict['graph_layout']['group_compression']
 
         node_positions, edge_positions, node_groups = TopologicalLayout().run_synteny_layout_algorithm(
             F=self.pangenome_graph.graph,
