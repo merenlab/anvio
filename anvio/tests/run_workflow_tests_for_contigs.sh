@@ -43,4 +43,5 @@ INFO "Running contigs workflow"
 anvi-run-workflow -w contigs -c default-config.json
 
 INFO "Examine contigs databases with anvi-display-contigs-stats"
-anvi-display-contigs-stats 02_CONTIGS/*db
+anvi-display-contigs-stats 02_CONTIGS/*db \
+                           $dry_run_controller
