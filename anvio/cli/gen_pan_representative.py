@@ -7,9 +7,10 @@ import shutil
 import anvio
 import anvio.terminal as terminal
 import anvio.filesnpaths as filesnpaths
+
+from anvio.panrep import PanRepresenter
 from anvio.argparse import ArgumentParser
 from anvio.errors import ConfigError, FilesNPathsError
-from anvio.panrep import PanRepresenter
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"

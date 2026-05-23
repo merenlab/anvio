@@ -1,17 +1,18 @@
-from collections import defaultdict
 import hashlib
 import argparse
-
 import pandas as pd
 
+from collections import defaultdict
+
 import anvio.tables as t
-import anvio.fastalib as fastalib
 import anvio.dbops as dbops
 import anvio.utils as utils
+import anvio.fastalib as fastalib
+
+from anvio.errors import ConfigError
 from anvio.genomestorage import GenomeStorage
 from anvio.genomedescriptions import GenomeDescriptions
 from anvio.tables.genefunctions import TableForGeneFunctions
-from anvio.errors import ConfigError
 
 
 class PanRepresenter:
