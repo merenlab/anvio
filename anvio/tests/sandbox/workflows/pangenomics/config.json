@@ -15,6 +15,7 @@
         "threads": 5
     },
     "workflow_name": "pangenomics",
+    "max_threads": 1,
     "anvi_compute_genome_similarity": {
         "run": true
     },
