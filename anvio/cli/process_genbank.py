@@ -18,7 +18,9 @@ __requires__ = ["genbank-file"]
 __description__ = ("This script takes a GenBank file, and outputs a FASTA file, as well as two "
                    "additional TAB-delimited output files for external gene calls and gene "
                    "functions that can be used with the programs `anvi-gen-contigs-database` "
-                   "and `anvi-import-functions`")
+                   "and `anvi-import-functions`. It processes CDS, tRNA, and rRNA features "
+                   "by default, and reclassifies pseudogenes or CDS with internal stops as "
+                   "non-coding to ensure compatibility with anvi'o.")
 
 
 def main():
