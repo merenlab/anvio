@@ -3601,8 +3601,8 @@ class PanGraphSuperclass(PanSuperclass):
 
     def save_state(self, state_dict, state_name):
         last_modified = datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S")
-        TablesForStates(self.pan_graph_db_path).store_state(state_name, json.dumps(state_dict), last_modified)
-        self.states[state_name] = {'content': json.dumps(state_dict), 'last_modified': last_modified}
+        TablesForStates(self.pan_graph_db_path).store_state(state_name, json.dumps(state_dict, indent=4), last_modified)
+        self.states[state_name] = {'content': json.dumps(state_dict, indent=4), 'last_modified': last_modified}
 
 
     def get_states(self):
@@ -3633,11 +3633,14 @@ class PanGraphSuperclass(PanSuperclass):
                               "means to contiue :( Someone needs to re-generate the pan-graph-db file and NOT delete the "
                               "default state this time :/")
 
+        if state not in self.states:
+            raise ConfigError(f"State '{state}' was not found in this pan-graph-db. Available states: {', '.join(self.states.keys())}.")
+
         state_dict = json.loads(self.states[state]['content'])
 
-        gene_cluster_grouping_threshold = state_dict['condtr']
-        max_edge_length_filter = state_dict['maxlength']
-        groupcompress = state_dict['groupcompress']
+        gene_cluster_grouping_threshold = state_dict['graph_layout']['grouping_threshold']
+        max_edge_length_filter = state_dict['graph_layout']['max_edge_length']
+        groupcompress = state_dict['graph_layout']['group_compression']
 
         node_positions, edge_positions, node_groups = TopologicalLayout().run_synteny_layout_algorithm(
             F=self.pangenome_graph.graph,
