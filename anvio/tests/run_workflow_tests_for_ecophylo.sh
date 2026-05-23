@@ -22,6 +22,16 @@ anvi-migrate *db --migrate-quickly
 
 INFO "Creating a default config for ecophylo workflow"
 anvi-run-workflow -w ecophylo --get-default-config default-config.json
+python - <<'PY'
+import json
+from pathlib import Path
+
+config_path = Path("default-config.json")
+config = json.loads(config_path.read_text())
+config["max_threads"] = 1
+config["cluster_X_percent_sim_mmseqs"]["additional_params"] = "-k 13"
+config_path.write_text(json.dumps(config, indent=4) + "\n")
+PY
 sed 's|external-genomes.txt||' default-config.json > only-metagenomes-txt-config.json
 sed 's|metagenomes.txt||' default-config.json > only-external-genomes-txt-config.json
 sed 's|samples\.txt||' default-config.json > no-samples-txt-config.json
