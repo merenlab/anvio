@@ -176,7 +176,7 @@ Once everything finishes running (on our cluster it only takes 6 minutes as thes
 
 ```
 anvi-interactive -p 06_MERGED/G02/PROFILE.db \
-                 -c 03_CONTIGS/G02-contigs.db
+                 -c 03_CONTIGS/G02.db
 ```
 
 And it should look like this:
@@ -198,7 +198,7 @@ Which means, while you can use the program %(anvi-interactive)s to interactively
 
 ```bash
 anvi-interactive -p 05_ANVIO_PROFILE/G01/sample_01/PROFILE.db \
-                 -c 03_CONTIGS/G01-contigs.db
+                 -c 03_CONTIGS/G01.db
 ```
 
 [![single_profile_idba_ud](../../images/workflows/metagenomics/single_profile_idba_ud.png)]( ../../images/workflows/metagenomics/single_profile_idba_ud.png){:.center-img .width-50}
@@ -218,6 +218,8 @@ The default directory structure that will appear in the working directory includ
 05_ANVIO_PROFILE
 06_MERGED
 ```
+
+The `00_LOGS` directory contains a subdirectory for the workflow run, such as `00_LOGS/metagenomics` or `00_LOGS/idba_ud` if the config names the run through `LOGS_DIR`. Within that directory, logs are organized by workflow rule, such as `00_LOGS/metagenomics/anvi_profile/` or `00_LOGS/metagenomics/anvi_merge/`. Each rule-specific directory contains the log files for individual jobs. The workflow also writes `00_LOGS/metagenomics/metagenomics-workflow-manifest.tsv`, a tab-delimited file that records whether each job succeeded or failed and points to the relevant rule log.
 
 Don't like these names? You can specify the name of the folder by providing the following information in the config file:
 
@@ -590,7 +592,7 @@ This is done through 'references mode', but as you see in the relevant section, 
 │   ├── anvi_run_ncbi_cogs-EXAMPLE.done
 │   ├── anvi_run_scg_taxonomy-EXAMPLE.done
 │   ├── EXAMPLE-annotate_contigs_database.done
-│   └── EXAMPLE-contigs.db
+│   └── EXAMPLE.db
 ├── config.json
 ├── contigs.fa
 ├── fasta.txt
@@ -799,5 +801,3 @@ As of anvi'o `v5.3` [metaSPAdes](http://cab.spbu.ru/software/spades/) has been a
 `additional_params` works in the same way as is explained [above for samtools](#can-i-change-the-parameters-of-samtools-view), and allows you to specify anything that metaSPAdes accepts. By default it is set to `--only-assembler`, since QC is done using `iu-filter-quality-minoche`, and we see no reason to have metaSPAdes do another step of QC. If you want to specify more parameters then you probably want it to still include `--only-assembler`.
 
 metaSPAdes has two outputs, `contigs.fasta`, and `scaffolds.fasta`. By default anvi'o will use `contigs.fasta` for the rest of the workflow, but if you want to use `scaffolds.fasta`, then set `use_scaffolds: true` in your config file. In any case, anvi'o will save the one you don't use as well (i.e. by default you will find in your `02_FASTA` directory the `scaffold.fasta` file, and if you choose to use the scaffolds, then you will still find `contigs.fasta`).
-
-

@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """Overloading Python argparse for anvi'o purposes"""
 
 import os
@@ -17,7 +15,6 @@ import anvio.terminal as terminal
 from anvio.programs import Program
 from anvio.errors import ConfigError
 from anvio.dbinfo import FindAnvioDBs
-from anvio.utils import is_program_exists as get_program_path
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -32,6 +29,8 @@ P = terminal.pluralize
 
 
 class ArgumentParser(argparse.ArgumentParser):
+    num_threads_not_provided = object()
+
     def __init__(self, description="No description :/", epilog=None):
         super().__init__()
 
@@ -42,6 +41,55 @@ class ArgumentParser(argparse.ArgumentParser):
                                            '--quiet', '--no-progress', '--as-markdown', '--display-db-calls',
                                            '--force-use-my-tree', '--force-overwrite', '--tmp-dir',
                                            '--I-know-this-is-not-a-good-idea', '--include-stray-KOs']
+
+
+    def get_num_threads_action(self):
+        for action in self._actions:
+            if action.dest == 'num_threads':
+                return action
+
+        return None
+
+
+    def get_num_threads_from_environment(self):
+        try:
+            num_threads = int(os.environ['ANVIO_THREADS'])
+        except ValueError:
+            raise ConfigError("The environmental variable `ANVIO_THREADS` must be a positive integer. "
+                              f"But anvi'o found `{os.environ['ANVIO_THREADS']}` there :/")
+
+        if num_threads <= 0:
+            raise ConfigError(f"The environmental variable `ANVIO_THREADS` must be a positive integer. "
+                              f"`{num_threads}` is not it :/")
+
+        return num_threads
+
+
+    def parse_known_args(self, args=None, namespace=None):
+        num_threads_action = self.get_num_threads_action()
+
+        if not num_threads_action:
+            return super().parse_known_args(args, namespace)
+
+        args_to_parse = sys.argv[1:] if args is None else args
+        if '-h' in args_to_parse or '--help' in args_to_parse:
+            return super().parse_known_args(args, namespace)
+
+        default_num_threads = num_threads_action.default
+        num_threads_action.default = self.num_threads_not_provided
+
+        try:
+            args, unknown = super().parse_known_args(args, namespace)
+        finally:
+            num_threads_action.default = default_num_threads
+
+        if args.num_threads is self.num_threads_not_provided:
+            if 'ANVIO_THREADS' in os.environ:
+                args.num_threads = self.get_num_threads_from_environment()
+            else:
+                args.num_threads = default_num_threads
+
+        return args, unknown
 
 
     def get_anvio_epilogue(self):
@@ -85,7 +133,7 @@ class ArgumentParser(argparse.ArgumentParser):
 
         requires_and_provides_statements = []
 
-        program = Program(get_program_path(self.prog))
+        program = Program(self.prog)
         requires = [v.id for v in program.meta_info['requires']['value']]
         provides = [v.id for v in program.meta_info['provides']['value']]
 
@@ -421,5 +469,3 @@ class PopulateAnvioDBArgs(FindAnvioDBs):
                 self.run.info(variable, reason, nl_after= (1 if (variable, reason) == self.__args_failed[-1] else 0), lc="yellow")
 
         return self.args
-
-

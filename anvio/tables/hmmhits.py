@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 
 import os
 import sys
@@ -215,7 +213,7 @@ class TablesForHMMHits(Table):
 
         # now we know our sequences
         self.run.info('Target sequences determined',
-                      '; '.join([f"{pp(utils.get_num_sequences_in_fasta(file_path))} sequences for {target}" \
+                      '; '.join([f"{pp(utils.get_num_sequences_in_fasta(file_path))} sequences for {target}"
                                     for target, file_path in target_files_dict.items()]))
 
         if have_hmm_sources_with_non_RNA_contig_context:
@@ -307,7 +305,7 @@ class TablesForHMMHits(Table):
                 if num_hits_before != num_hits_after:
                     self.run.info('Pruned', '%d out of %d hits were removed due to redundancy' % (num_hits_before - num_hits_after, num_hits_before))
 
-                search_results_dict = self.add_new_gene_calls_to_contigs_db_and_update_serach_results_dict(kind_of_search,
+                search_results_dict = self.add_new_gene_calls_to_contigs_db_and_update_search_results_dict(kind_of_search,
                                                                                                            search_results_dict,
                                                                                                            skip_amino_acid_sequences=True)
 
@@ -329,7 +327,7 @@ class TablesForHMMHits(Table):
             shutil.rmtree(tmp_directory_path)
 
 
-    def add_new_gene_calls_to_contigs_db_and_update_serach_results_dict(self, source, search_results_dict, skip_amino_acid_sequences=False):
+    def add_new_gene_calls_to_contigs_db_and_update_search_results_dict(self, source, search_results_dict, skip_amino_acid_sequences=False):
         """Add new gene calls to the contigs database and update the HMM `search_results_dict`.
 
            When we are looking for HMM hits in the context of CONTIGS, our hits do not
@@ -427,7 +425,7 @@ class TablesForHMMHits(Table):
 
             database.disconnect()
 
-            run.warning("%d gene caller ids that were added via the HMM source have been removed from \"%s\"" \
+            run.warning("%d gene caller ids that were added via the HMM source have been removed from \"%s\""
                         % (len(gene_caller_ids_to_remove), ', '.join(tables_with_gene_callers_id)))
 
 
@@ -444,6 +442,15 @@ class TablesForHMMHits(Table):
                 hit['source'] = source
                 hit['accession'] = hit['gene_hmm_id']
                 hit['function'] = hit['gene_name']
+
+                if hit['accession'] == "-":
+                    run.warning(f"Heads up. While processing a hit to the HMM with the function '{hit['function']}', "
+                                f"we noticed that the accession value for this hit in the HMMER output table was blank "
+                                f"('-'). This usually happens because the model is missing an `ACC` line. We are sorry "
+                                f"that things got all the way to this point before we realized something was wrong. We "
+                                f"will add the hit to the gene functions table regardless, but just keep in mind that "
+                                f"some downstream programs that rely on accession numbers will not be able to work with "
+                                f"these annotations as-is (unless you redo them with proper accession-labeling in the HMM files).")
 
             gene_function_calls_table.create(search_results_dict)
         else:
@@ -479,7 +486,7 @@ class TablesForHMMHits(Table):
 
         database = db.DB(self.db_path, utils.get_required_version_for_db(self.db_path))
 
-        # push information about this search result into serach_info table.
+        # push information about this search result into search_info table.
         db_entries = [source, reference, kind_of_search, domain, ', '.join(all_genes)]
         database._exec('''INSERT INTO %s VALUES (?,?,?,?,?)''' % t.hmm_hits_info_table_name, db_entries)
 
@@ -488,7 +495,7 @@ class TablesForHMMHits(Table):
             database.disconnect()
             return
 
-        # then populate serach_data table for each contig.
+        # then populate search_data table for each contig.
         db_entries = []
         for hit in list(search_results_dict.values()):
             entry_id = self.next_id(t.hmm_hits_table_name)
@@ -567,6 +574,10 @@ class FilterHmmHitsTable(object):
         if self.list_hmm_sources:
             ContigsDatabase(self.contigs_db_path).list_available_hmm_sources()
             sys.exit()
+
+        # import default HMM sources quietly
+        with terminal.SuppressAllOutput():
+            import anvio.data.hmm
 
         if self.hmm_source not in anvio.data.hmm.sources and not self.hmm_profile_dir:
             raise ConfigError("Hold up, if you are using a external HMM source, you need to provide the path to the HMM directory "
@@ -829,7 +840,7 @@ class FilterHmmHitsTable(object):
         Filter the hmm_hits table based on HMM model coverage, gene coverage, or open reading frame completeness.
 
         Returns:
-            CSV: Filtered domtblout file from hmmsearch. 
+            CSV: Filtered domtblout file from hmmsearch.
             str: The file path of the temporary file where the filtered DataFrame is saved.
         """
 

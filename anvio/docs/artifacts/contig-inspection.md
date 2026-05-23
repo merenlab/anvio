@@ -1,1 +1,1 @@
-This page describes general properties of the interactive inspect page. 
+This page describes general properties of the interactive inspect page.

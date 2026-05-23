@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """A script to run automatic binning algorithms on a merged anvi'o profile"""
 import os
 import sys
@@ -17,6 +16,7 @@ import anvio.filesnpaths as filesnpaths
 from anvio.drivers import driver_modules
 from anvio.ttycolors import color_text as c
 from anvio.errors import ConfigError, FilesNPathsError
+from anvio.argparse import ArgumentParser
 from anvio.tables.collections import TablesForCollections
 
 
@@ -94,20 +94,13 @@ def prepare_input_files(temp_path, profile_db, contigs_db):
 
     splits_basic_info = contigs_db.db.get_table_as_dict(t.splits_info_table_name)
 
-    split_coverages, _ = profile_db.db.get_view_data('mean_coverage_contigs', splits_basic_info=splits_basic_info)
-    split_coverages_log_norm, _ = profile_db.db.get_view_data('mean_coverage_contigs', splits_basic_info=splits_basic_info, log_norm_numeric_values=True)
+    # get contig-level coverages directly from _contigs tables
+    contig_coverages, _ = profile_db.db.get_view_data('mean_coverage_contigs', expand_to_splits=False)
+    contig_coverages_log_norm, _ = profile_db.db.get_view_data('mean_coverage_contigs', expand_to_splits=False, log_norm_numeric_values=True)
 
-    contig_coverages = {}
-    contig_coverages_log_norm = {}
-    contig_names = set([x['__parent__'] for x in split_coverages.values()])
-
-    for split_name in split_coverages:
-        entry = split_coverages[split_name]
-        entry_log_norm = split_coverages_log_norm[split_name]
-        c = entry['__parent__']
-        if c in contig_names and c not in contig_coverages:
-            contig_coverages[c] = entry
-            contig_coverages_log_norm[c] = entry_log_norm
+    # get split-level views (expanded from _contigs tables so splits carry their parent contig's value)
+    split_coverages, _ = profile_db.db.get_view_data('mean_coverage_contigs', splits_basic_info=splits_basic_info, expand_to_splits=True)
+    split_coverages_log_norm, _ = profile_db.db.get_view_data('mean_coverage_contigs', splits_basic_info=splits_basic_info, expand_to_splits=True, log_norm_numeric_values=True)
 
     # Write output files
     utils.store_dict_as_TAB_delimited_file(split_coverages, input_files.split_coverages, ['contig', *sample_names])
@@ -142,7 +135,7 @@ def main():
 
 
 def get_args():
-    parent_parser = argparse.ArgumentParser(description=__description__)
+    parent_parser = ArgumentParser(description=__description__)
     parent_parser.add_argument(*anvio.A('profile-db'), **anvio.K('profile-db'))
     parent_parser.add_argument(*anvio.A('contigs-db'), **anvio.K('contigs-db'))
     parent_parser.add_argument(*anvio.A('collection-name'), **anvio.K('collection-name', {'required': True}))
@@ -288,7 +281,7 @@ def cluster_contigs(args, unknown, subparsers, modules):
 
     store_clusters_in_db(args.contigs_db, args.profile_db, clusters, collection_name, driver, cluster_type)
 
-    run.info_single("%s formed %d clusters, which are being added to the database as a collection named %s." % \
+    run.info_single("%s formed %d clusters, which are being added to the database as a collection named %s." %
                             (driver, len(clusters), collection_name), nl_before=1, nl_after=1, mc="green")
 
 

@@ -47,7 +47,11 @@ var categorical_data_colors = {};
 var categorical_stats = {};
 var stack_bar_colors = {};
 var stack_bar_stats = {};
+
 var legends = [];
+const MAX_LEGEND_ITEMS = 30; // if a legend has more than this many items,
+                             // there is no need to create individual color control
+                             // elements. thats what this is for.
 
 var layerdata_title = {};
 var empty_tooltip = "";
@@ -75,7 +79,9 @@ var samples_tree_hover = false;
 var inspection_available = false;
 var sequences_available = false;
 var load_full_state = false;
+var items_additional_data_groups = {};
 var bbox;
+var functions_available = false;
 
 var a_display_is_drawn = false;
 var max_branch_support_value_seen = null;
@@ -250,6 +256,8 @@ function initData() {
                 toastr.info("No sequence data is available. Some menu items will be disabled.");
             }
 
+            functions_available = (response.functions_sources ?? []).length > 0;
+
             if (response.read_only)
             {
                 toastr.info("It seems that this is a read-only instance, therefore the database-writing \
@@ -294,6 +302,19 @@ function initData() {
             samples_order_dict = response.layers_order;
             samples_information_dict = merged['dict'];
             let samples_information_default_layer_order = merged['default_order'];
+            items_additional_data_groups = response.items_additional_data_groups || {};
+
+            let item_groups = Object.keys(items_additional_data_groups).sort();
+            if (item_groups.length > 1) {
+                $('#item_groups_header').show();
+                item_groups.forEach(function (group_name) {
+                    $('#item_groups_container').append(`
+                        <div class="mr-5 col-5">
+                            <input type="checkbox" onclick="toggleItemGroups();" id="item_group_${group_name}" value="${group_name}" checked="checked">
+                            <label onclick="toggleItemGroups();" for="item_group_${group_name}">${group_name}</label>
+                        </div>`);
+                });
+            }
 
             let samples_groups = Object.keys(samples_information_dict).sort();
 
@@ -343,6 +364,7 @@ function initData() {
             drawInlineScaleBar();
 
             bins = new Bins(response.bin_prefix, document.getElementById('tbody_bins'));
+            bins.SetSelectContigsRatherThanSplits($('#select_contigs_rather_than_splits').is(':checked'));
 
             // redoing intiial bin causes some weird behaviors
             bins.keepHistory = false;
@@ -434,7 +456,7 @@ function switchUserInterfaceMode(project, title) {
     if (mode == 'pan') {
         $('#completion_title').attr('title', 'Gene Clusters').html('Gene Clusters');
         $('#redundancy_title').attr('title', 'Gene Calls').html('Gene Calls');
-        $('#splits_title').hide();
+        $('#items_title').hide();
         $('#len_title').hide();
         $('.gene-filters-not-available-message').hide();
         $('.pan-filters button,input:checkbox').removeAttr('disabled')
@@ -468,10 +490,21 @@ function switchUserInterfaceMode(project, title) {
         })
     }
 
+    if (mode == 'full') {
+        $('#items_title').html('Contigs');
+    }
+
     if (mode == 'codon-frequencies') {
         $('#completion_title').attr('title', 'Genes Selected').html('Genes Selected');
         $('#redundancy_title').hide();
-        $('#splits_title').hide();
+        $('#items_title').hide();
+        $('#len_title').hide();
+    }
+
+    if (mode == 'gene') {
+        $('#completion_title').attr('title', 'Genes Selected').html('Genes Selected');
+        $('#redundancy_title').hide();
+        $('#items_title').hide();
         $('#len_title').hide();
     }
 
@@ -773,9 +806,10 @@ function buildLegendTables() {
         }
 
         let names;
-        if (Object.keys(categorical_stats[pindex]).length > 20) {
+        const catCount = Object.keys(categorical_stats[pindex]).length;
+        if (catCount > MAX_LEGEND_ITEMS) {
             toastr_warn_flag = true;
-            names = false;
+            names = null;  // collapsed mode
         } else {
             names = Object.keys(categorical_stats[pindex]).sort(function(a,b) {
                 return categorical_stats[pindex][b] - categorical_stats[pindex][a];
@@ -791,7 +825,8 @@ function buildLegendTables() {
             'key': pindex,
             'item_names': names,
             'item_keys': names,
-            'stats': categorical_stats[pindex]
+            'stats': categorical_stats[pindex],
+            'total_items': catCount
         });
     }
 
@@ -803,6 +838,11 @@ function buildLegendTables() {
 
         let layer_name = getLayerName(pindex);
         let names = (layer_name.indexOf('!') > -1) ? layer_name.split('!')[1].split(';') : layer_name.split(';');
+        const sbCount = names.length;
+        if (sbCount > MAX_LEGEND_ITEMS) {
+            toastr_warn_flag = true;
+            names = null;  // collapsed mode
+        }
         let pretty_name = getLayerName(pindex);
         pretty_name = (pretty_name.indexOf('!') > -1) ? pretty_name.split('!')[0] : pretty_name;
 
@@ -812,7 +852,8 @@ function buildLegendTables() {
             'key': pindex,
             'item_names': names,
             'item_keys': names,
-            'stats': stack_bar_stats[pindex]
+            'stats': stack_bar_stats[pindex],
+            'total_items': sbCount
         });
     }
 
@@ -828,6 +869,11 @@ function buildLegendTables() {
             }
 
             let names = Object.keys(samples_categorical_colors[group][sample]);
+            const sampCatCount = names.length;
+            if (sampCatCount > MAX_LEGEND_ITEMS) {
+                toastr_warn_flag = true;
+                names = null;
+            }
 
             legends.push({
                 'name': group + ' :: ' + getPrettyName(sample),
@@ -836,7 +882,8 @@ function buildLegendTables() {
                 'key': sample,
                 'item_names': names,
                 'item_keys': names,
-                'stats': samples_categorical_stats[group][sample]
+                'stats': samples_categorical_stats[group][sample],
+                'total_items': sampCatCount
             });
         }
     }
@@ -853,6 +900,11 @@ function buildLegendTables() {
             }
 
             let names = (sample.indexOf('!') > -1) ? sample.split('!')[1].split(';') : sample.split(';');
+            const sampSbCount = names.length;
+            if (sampSbCount > MAX_LEGEND_ITEMS) {
+                toastr_warn_flag = true;
+                names = null;
+            }
             let pretty_name = (sample.indexOf('!') > -1) ? sample.split('!')[0] : sample;
 
             legends.push({
@@ -862,7 +914,8 @@ function buildLegendTables() {
                 'key': sample,
                 'item_names': names,
                 'item_keys': names,
-                'stats': samples_stack_bar_stats[group][sample]
+                'stats': samples_stack_bar_stats[group][sample],
+                'total_items': sampSbCount
             });
         }
     }
@@ -894,10 +947,12 @@ function buildLegendTables() {
         if (!legends[i]['item_names']){
             const currentColors = categorical_data_colors[legend['key']] || {};
             const defaultColor = Object.values(currentColors)[0] || '#FFFFFF';
+            const total = legend.total_items || 0;
 
             template += `
                 <p style="background: #f3f3f3; border-radius: 3px; padding: 10px; font-style: italic;">
-                Use the table below to set colors for your categories in the layer <b>${legend['name']}</b>. Here you can (1) use the input box below to type in the name of a category
+                <b>Heads up:</b> <b>${legend['name']}</b> has <b>${total}</b> categories, so we didn’t render them all.
+                Use the tools below to set colors efficiently. You can (1) use the input box to type a category name
                 and choose a color from the color picker to set a single color, (2) use the color picker in the second row to set each category to the same color, or (3) use the
                 button in the third row to randomly assign colors to each category.</p>
                 <div>
@@ -972,7 +1027,10 @@ function buildLegendTables() {
         template = template + '<div style="clear: both; display:block;"></div>';
         $('#legend_settings').append(template + '</div></div>');
 
-        createLegendColorPanel(i); // this fills legend_content_X
+        // consider MAX_LEGEND_ITEMS, and only render per-item rows when under the cap
+        if (legends[i]['item_names'] && legends[i]['item_names'].length <= MAX_LEGEND_ITEMS) {
+            createLegendColorPanel(i);
+        }
     }
 
     // Initialize colorpickers
@@ -1084,58 +1142,105 @@ function batchColor(legend_id) {
     createLegendColorPanel(legend_id);
 }
 
+
 function createLegendColorPanel(legend_id) {
-    var legend = legends[legend_id];
-    var template = '';
+    const legend = legends[legend_id];
+    const container = document.getElementById('legend_content_' + legend_id);
+    if (!container) return;
 
-    for (var j = 0; j < legend['item_names'].length; j++) {
-
-        var _name = legend['item_names'][j];
-
-        if (legend.hasOwnProperty('group')) {
-            var _color = window[legend['source']][legend['group']][legend['key']][legend['item_keys'][j]];
-        } else {
-            var _color = window[legend['source']][legend['key']][legend['item_keys'][j]];
-        }
-
-        if (legend.hasOwnProperty('stats') && legend['stats'][_name] == 0) {
-            continue;
-        }
-
-        if (legend['source'].indexOf('stack') > -1) {
-            _name = _name.replace('Unknown_t_', '').replace('_', ' ') + ' <span title="' + legend['stats'][_name] + '">(Total: ' + readableNumber(legend['stats'][_name]) + ')</span>';
-        } else {
-            _name = _name + ' (' + legend['stats'][_name] + ')';
-        }
-
-        template = template + '<div style="float: left; width: 50%; display: inline-block; padding: 3px 5px;">' +
-                                '<div class="colorpicker-base legendcolorpicker" color="' + _color + '"' +
-                                'style="margin-right: 5px; background-color: ' + _color + '"' +
-                                'callback_source="' + legend['source'] + '"' +
-                                'callback_group="' + ((typeof legend['group'] !== 'undefined') ? legend['group'] : '') + '"' +
-                                'callback_pindex="' + legend['key'] + '"' +
-                                'callback_name="' + legend['item_keys'][j] + '"' +
-                               '></div>' + _name + '</div>';
+    // Also skip if this legend is collapsed or oversized
+    if (!legend.item_names || legend.item_names.length > MAX_LEGEND_ITEMS) {
+        container.replaceChildren(); // ensure empty
+        return;
     }
 
-    $('#legend_content_' + legend_id).empty();
-    $('#legend_content_' + legend_id).html(template);
+    // For those that remain, build DOM nodes (we used to generate a giant HTML string,
+    // and we later replaced that with this approach after Jarrod Scott (@jarrodscott)
+    // reported this: https://github.com/merenlab/anvio/issues/2493)
+    const frag = document.createDocumentFragment();
 
-    $('.legendcolorpicker').colpick({
+    for (let j = 0; j < legend.item_names.length; j++) {
+        const originalName = legend.item_names[j];
+        const itemKey = legend.item_keys[j];
+
+        // Get color safely
+        let color;
+        try {
+            color = legend.hasOwnProperty('group')
+                ? window[legend.source][legend.group][legend.key][itemKey]
+                : window[legend.source][legend.key][itemKey];
+        } catch (e) {
+            color = '#999'; // fallback to avoid undefined causing visual issues
+        }
+
+        const count = legend.stats ? legend.stats[originalName] : undefined;
+
+        if (legend.hasOwnProperty('stats') && count === 0) continue;
+
+        // Outer wrapper
+        const outer = document.createElement('div');
+        outer.style.cssText = 'float:left;width:50%;display:inline-block;padding:3px 5px;';
+
+        // Color swatch
+        const swatch = document.createElement('div');
+        swatch.className = 'colorpicker-base legendcolorpicker';
+        swatch.setAttribute('color', color);
+        swatch.style.marginRight = '5px';
+        swatch.style.backgroundColor = color;
+        swatch.setAttribute('callback_source', legend.source);
+        swatch.setAttribute('callback_group', legend.group ?? '');
+        swatch.setAttribute('callback_pindex', legend.key);
+        swatch.setAttribute('callback_name', itemKey);
+
+        // Label text (as nodes, not HTML)
+        const labelSpan = document.createElement('span');
+        if (legend.source.indexOf('stack') > -1) {
+            const cleaned =
+                String(originalName).replace('Unknown_t_', '').replace('_', ' ');
+            labelSpan.appendChild(document.createTextNode(cleaned + ' '));
+            const total = document.createElement('span');
+            total.title = String(count);
+            total.appendChild(
+                document.createTextNode('(Total: ' + readableNumber(count) + ')')
+            );
+            labelSpan.appendChild(total);
+        } else {
+            labelSpan.appendChild(
+                document.createTextNode(String(originalName) + ' (' + count + ')')
+            );
+        }
+
+        // Assemble
+        outer.appendChild(swatch);
+        outer.appendChild(labelSpan);
+        frag.appendChild(outer);
+    }
+
+    // Replace content in one go (no innerHTML strings)
+    container.replaceChildren(frag);
+
+    // Initialize color pickers on just this container for efficiency
+    $(container).find('.legendcolorpicker').colpick({
         layout: 'hex',
         submit: 0,
         colorScheme: 'light',
-        onChange: function(hsb, hex, rgb, el, bySetColor) {
-            $(el).css('background-color', '#' + hex);
-            $(el).attr('color', '#' + hex);
+        onChange: function (hsb, hex, rgb, el) {
+            const hexColor = '#' + hex;
+            $(el).css('background-color', hexColor).attr('color', hexColor);
             if (el.getAttribute('callback_group') !== '') {
-                window[el.getAttribute('callback_source')][el.getAttribute('callback_group')][el.getAttribute('callback_pindex')][el.getAttribute('callback_name')] = '#' + hex;
+                window[el.getAttribute('callback_source')]
+                    [el.getAttribute('callback_group')]
+                    [el.getAttribute('callback_pindex')]
+                    [el.getAttribute('callback_name')] = hexColor;
             } else {
-                window[el.getAttribute('callback_source')][el.getAttribute('callback_pindex')][el.getAttribute('callback_name')] = '#' + hex;
+                window[el.getAttribute('callback_source')]
+                    [el.getAttribute('callback_pindex')]
+                    [el.getAttribute('callback_name')] = hexColor;
             }
         }
     });
 }
+
 
 function orderLegend(legend_id, type) {
     if (type == 'alphabetical') {
@@ -1151,20 +1256,252 @@ function orderLegend(legend_id, type) {
     createLegendColorPanel(legend_id);
 }
 
+function isCollapsedLabelTaken(label, skipIndex) {
+    if (!label) {
+        return false;
+    }
+
+    if (drawer && drawer.tree && drawer.tree.label_to_leaves && drawer.tree.label_to_leaves.hasOwnProperty(label)) {
+        return true;
+    }
+
+    for (let i = 0; i < collapsedNodes.length; i++) {
+        if (i === skipIndex) {
+            continue;
+        }
+
+        if (collapsedNodes[i]['label'] === label) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function markCollapsedNodesChanged(redraw=false) {
+    $('#tree_modified_warning').show();
+    $('#btn_draw_tree').addClass('glowingbutton');
+    $('#draw-btn').addClass('glowingbutton');
+
+    if (redraw) {
+        drawTree();
+    }
+}
+
+function sanitizeCollapsedNodes() {
+    for (let i = 0; i < collapsedNodes.length; i++) {
+        let node = collapsedNodes[i];
+        node.size = (typeof node.size !== 'undefined' && node.size !== null && node.size !== '') ? node.size : 0.25;
+
+        let fs = parseFloat(node.font_size);
+        node.font_size = (isNaN(fs) || fs <= 0) ? 100 : fs;
+
+        node.color = node.color || '#888888';
+    }
+}
+
+function buildTreeForCollapsedCount() {
+    if (typeof Tree === 'undefined' || !clusteringData) {
+        return null;
+    }
+
+    try {
+        let t = new Tree();
+        t.Parse(String(clusteringData).trim(), drawer && drawer.settings ? drawer.settings['edge-normalization'] : false);
+        if (t.error != 0) {
+            return null;
+        }
+        return t;
+    } catch (e) {
+        console.warn('Failed to build tree for collapsed-node counting', e);
+        return '?';
+    }
+}
+
+function getCollapsedNodeItemCount(collapse_attributes, tree_for_counting) {
+    const tree = tree_for_counting || (drawer && drawer.tree);
+
+    if (!tree) {
+        return '?';
+    }
+
+    const left_most = tree.label_to_leaves[collapse_attributes['left_most']];
+    const right_most = tree.label_to_leaves[collapse_attributes['right_most']];
+
+    if (!left_most || !right_most) {
+        return '?';
+    }
+
+    const cnode = tree.FindLowestCommonAncestor(left_most, right_most);
+    if (!cnode) {
+        return '?';
+    }
+
+    let count = 0;
+    const iterator = new PreorderIterator(cnode);
+    let q = iterator.Begin();
+    while (q) {
+        if (q.IsLeaf()) {
+            count++;
+        }
+        q = iterator.Next();
+    }
+
+    return count;
+}
+
+function refreshCollapsedNodesTable() {
+    const container = document.getElementById('collapsed_nodes_panel');
+    const wrapper = document.getElementById('collapsed_nodes_wrapper');
+
+    if (!container || !wrapper) {
+        return;
+    }
+
+    sanitizeCollapsedNodes();
+
+    container.innerHTML = '';
+
+    if (!collapsedNodes.length) {
+        wrapper.style.display = 'none';
+        return;
+    }
+
+    wrapper.style.display = 'block';
+
+    const table = document.createElement('table');
+    table.setAttribute('class', 'table table-sm table-striped mb-1');
+
+    const thead = document.createElement('thead');
+    thead.innerHTML = '<tr><th></th><th></th><th>Label</th><th>Font</th><th>Size</th><th>Num Items</th></tr>';
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+
+    const tree_for_counting = buildTreeForCollapsedCount();
+
+    collapsedNodes.forEach((node, idx) => {
+        const row = document.createElement('tr');
+
+        const actionCell = document.createElement('td');
+        const removeBtn = document.createElement('button');
+        removeBtn.setAttribute('class', 'btn btn-link p-0 m-0');
+        removeBtn.setAttribute('aria-label', 'Remove collapsed node');
+        removeBtn.innerHTML = '<i class="bi bi-trash-fill"></i>';
+        removeBtn.addEventListener('click', () => {
+            collapsedNodes.splice(idx, 1);
+            refreshCollapsedNodesTable();
+            markCollapsedNodesChanged();
+        });
+        actionCell.appendChild(removeBtn);
+        row.appendChild(actionCell);
+
+        const colorCell = document.createElement('td');
+        const colorDiv = document.createElement('div');
+        const colorValue = node.color || '#888888';
+        colorDiv.setAttribute('class', 'colorpicker colorpicker-base collapsed-colorpicker');
+        colorDiv.setAttribute('data-index', idx);
+        colorDiv.setAttribute('color', colorValue);
+        colorDiv.style.backgroundColor = colorValue;
+        colorDiv.style.cursor = 'pointer';
+        colorCell.appendChild(colorDiv);
+        row.appendChild(colorCell);
+
+        const labelCell = document.createElement('td');
+        labelCell.style.width = '267px';
+        const labelInput = document.createElement('input');
+        labelInput.type = 'text';
+        labelInput.value = node.label || `Collapsed Node ${idx + 1}`;
+        labelInput.className = 'form-control form-control-sm';
+        labelInput.addEventListener('change', () => {
+            if (isCollapsedLabelTaken(labelInput.value, idx)) {
+                toastr.warning('This label already exists in the tree.', 'Collapsed nodes');
+                labelInput.value = node.label;
+                return;
+            }
+            node.label = labelInput.value;
+            markCollapsedNodesChanged();
+        });
+        labelCell.appendChild(labelInput);
+        row.appendChild(labelCell);
+
+        const fontCell = document.createElement('td');
+        const fontInput = document.createElement('input');
+        fontInput.type = 'text';
+        fontInput.value = node.font_size || 0;
+        fontInput.className = 'form-control form-control-sm';
+        fontInput.style.width = '40px';
+        fontInput.addEventListener('change', () => {
+            const value = fontInput.value === '' ? 0 : fontInput.value;
+            node.font_size = value;
+            markCollapsedNodesChanged();
+        });
+        fontCell.appendChild(fontInput);
+        row.appendChild(fontCell);
+
+        const sizeCell = document.createElement('td');
+        const sizeInput = document.createElement('input');
+        sizeInput.type = 'text';
+        sizeInput.value = node.size || 0.25;
+        sizeInput.className = 'form-control form-control-sm';
+        sizeInput.style.width = '40px';
+        sizeInput.addEventListener('change', () => {
+            node.size = sizeInput.value;
+            markCollapsedNodesChanged();
+        });
+        sizeCell.appendChild(sizeInput);
+        row.appendChild(sizeCell);
+
+        const countCell = document.createElement('td');
+        countCell.textContent = getCollapsedNodeItemCount(node, tree_for_counting);
+        countCell.style.textAlign = 'center';
+        row.appendChild(countCell);
+
+        tbody.appendChild(row);
+    });
+
+    table.appendChild(tbody);
+    container.appendChild(table);
+
+    $(container).find('.collapsed-colorpicker').colpick({
+        layout: 'hex',
+        submit: 0,
+        colorScheme: 'light',
+        onChange: function(hsb, hex, rgb, el, bySetColor) {
+            const color = '#' + hex;
+            const index = parseInt(el.getAttribute('data-index'));
+            collapsedNodes[index].color = color;
+            $(el).css('background-color', color).attr('color', color);
+            if (!bySetColor) {
+                markCollapsedNodesChanged();
+            }
+        }
+    });
+}
+
 function loadOrderingAdditionalData(order) {
     collapsedNodes = [];
 
     if (order.hasOwnProperty('additional')) {
         let orders_additional = order['additional'];
 
-        if (typeof orders_additional === 'string') {
-            orders_additional = JSON.parse(orders_additional);
+        try {
+            // Additional data may arrive as JSON, a JSON-encoded string, or double-encoded
+            while (typeof orders_additional === 'string') {
+                orders_additional = JSON.parse(orders_additional);
+            }
+        } catch (error) {
+            console.warn('Failed to parse additional order data', error, orders_additional);
+            orders_additional = {};
         }
 
-        if (orders_additional.hasOwnProperty('collapsedNodes')) {
+        if (orders_additional && orders_additional.hasOwnProperty('collapsedNodes')) {
             collapsedNodes = orders_additional['collapsedNodes'];
         }
     }
+
+    sanitizeCollapsedNodes();
+    refreshCollapsedNodesTable();
 }
 
 function onTreeClusteringChange() {
@@ -1205,6 +1542,12 @@ function syncViews() {
     $('#tbody_layers tr').each(
         function(index, layer) {
             var layer_id = $(layer).find('.input-height')[0].id.replace('height', '');
+
+            var item_group = $(layer).attr('items-group-name');
+            if (item_group && !is_item_group_visible(item_group)) {
+                return;
+            }
+
             layers[layer_id] = {};
             layer_order.push(layer_id);
 
@@ -1218,6 +1561,7 @@ function syncViews() {
             layers[layer_id]["margin"] = $(layer).find('.input-margin').val();
             layers[layer_id]["type"] = $(layer).find('.type').val();
             layers[layer_id]["color-start"] = $(layer).find('.colorpicker:first').attr('color');
+            layers[layer_id]["visible"] = $(layer).find('.layer-visibility').hasClass('bi-eye');
 
             if (layers[layer_id]["type"] === 'text')
                 layers[layer_id]["height"] = '0';
@@ -1258,6 +1602,47 @@ function getComboBoxContent(default_item, available_items){
     return combo;
 }
 
+function getGroupLeadingMargin(layer_name, default_margin) {
+    // groups that should not get an automatic leading margin
+    var no_margin_groups = {'default': true, 'basic_info': true};
+    for (var gname in items_additional_data_groups) {
+        if (gname in no_margin_groups) continue;
+        var gkeys = items_additional_data_groups[gname];
+        if (gkeys.length > 0 && gkeys[0] === layer_name) {
+            return '45';
+        }
+    }
+    return default_margin;
+}
+
+function getItemGroupName(layer_name) {
+    for (var gname in items_additional_data_groups) {
+        if (items_additional_data_groups[gname].indexOf(layer_name) > -1) {
+            return gname;
+        }
+    }
+    return null;
+}
+
+function toggleItemGroups() {
+    $('#tbody_layers tr').each(function() {
+        var group = $(this).attr('items-group-name');
+        if (!group) return;
+
+        if (is_item_group_visible(group)) {
+            $(this).show();
+        } else {
+            $(this).hide();
+            $(this).find('.layer_selectors').prop('checked', false);
+        }
+    });
+}
+
+function is_item_group_visible(group_name) {
+    var checkbox = $('input:checkbox#item_group_' + group_name);
+    return checkbox.length === 0 || checkbox.is(':checked');
+}
+
 function buildLayersTable(order, settings)
 {
     for (var i = 0; i < order.length; i++)
@@ -1265,9 +1650,10 @@ function buildLayersTable(order, settings)
         // common layer variables
         var layer_id = order[i];
         var layer_name = layerdata[0][layer_id];
+        var item_group = getItemGroupName(layer_name);
+        var item_group_attr = item_group ? ' items-group-name="' + item_group + '"' : '';
 
         var short_name = (layer_name.indexOf('!') > -1) ? layer_name.split('!')[0] : layer_name;
-        short_name = (short_name.length > 10) ? short_name.slice(0,10) + "..." : short_name;
 
         var hasViewSettings = false;
         if (typeof settings !== 'undefined' && typeof settings[layer_id] !== 'undefined') {
@@ -1293,15 +1679,18 @@ function buildLayersTable(order, settings)
             {
                 var height = layer_settings['height'];
                 var margin = layer_settings['margin'];
+                var visible = (layer_settings['visible'] !== undefined) ? layer_settings['visible'] : true;
             }
             else
             {
                 var height = '50';
                 var margin = '15';
+                var visible = true;
             }
 
-            var template = '<tr>' +
+            var template = '<tr' + item_group_attr + ' class="{hidden-class}">' +
                 '<td><img src="images/drag.gif" /></td>' +
+                '<td><i class="bi {eye-class} layer-visibility" title="Toggle visibility"></i></td>' +
                 '<td>Parent</td>' +
                 '<td>n/a</td>' +
                 '<td>n/a</td>' +
@@ -1315,7 +1704,9 @@ function buildLayersTable(order, settings)
 
             template = template.replace(new RegExp('{id}', 'g'), layer_id)
                                .replace(new RegExp('{height}', 'g'), height)
-                               .replace(new RegExp('{margin}', 'g'), margin);
+                               .replace(new RegExp('{margin}', 'g'), margin)
+                               .replace(new RegExp('{eye-class}', 'g'), visible ? 'bi-eye' : 'bi-eye-slash')
+                               .replace(new RegExp('{hidden-class}', 'g'), visible ? '' : 'layer-hidden');
 
             $('#tbody_layers').prepend(template);
         }
@@ -1330,11 +1721,13 @@ function buildLayersTable(order, settings)
             {
                 var height = layer_settings['height'];
                 var margin = layer_settings['margin'];
+                var visible = (layer_settings['visible'] !== undefined) ? layer_settings['visible'] : true;
             }
             else
             {
                 var height = '300';
-                var margin = '15';
+                var margin = getGroupLeadingMargin(layer_name, '15');
+                var visible = true;
             }
 
             if (hasViewSettings)
@@ -1346,13 +1739,14 @@ function buildLayersTable(order, settings)
                 var norm = (mode == 'full') ? 'log' : 'none';
             }
 
-            var template = '<tr class="sortable">' +
+            var template = '<tr' + item_group_attr + ' class="{hidden-class}">' +
                 '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
+                '<td><i class="bi {eye-class} layer-visibility" title="Toggle visibility"></i></td>' +
                 '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
-                '<td>n/a</td>' +
-                '<td>n/a</td>' +
+                '<td></td>' +
+                '<td style="width: 50px;">n/a</td>' +
                 '<td>' +
-                '    <select id="normalization{id}" onChange="clearMinMax(this);" class="normalization">' +
+                '    <select id="normalization{id}" onChange="clearMinMax(this);" class="form-control form-control-sm col-12 select-sm normalization">' +
                 '        <option value="none"{option-none}>none</option>' +
                 '        <option value="sqrt"{option-sqrt}>sqrt</option>' +
                 '        <option value="log"{option-log}>log</option>' +
@@ -1360,8 +1754,8 @@ function buildLayersTable(order, settings)
                 '</td>' +
                 '<td><input class="form-control form-control-sm input-height" type="text" size="3" id="height{id}" value="{height}"></input></td>' +
                 '<td class="column-margin"><input class="form-control form-control-sm input-margin" type="text" size="3" id="margin{id}" value="{margin}"></input></td>' +
-                '<td>n/a</td>' +
-                '<td>n/a</td>' +
+                '<td style="width:55px;">n/a</td>' +
+                '<td style="width:55px;">n/a</td>' +
                 '<td><input type="checkbox" class="layer_selectors"></input></td>' +
                 '</tr>';
 
@@ -1371,7 +1765,9 @@ function buildLayersTable(order, settings)
                                .replace(new RegExp('{option-' + norm + '}', 'g'), ' selected')
                                .replace(new RegExp('{option-([a-z]*)}', 'g'), '')
                                .replace(new RegExp('{height}', 'g'), height)
-                               .replace(new RegExp('{margin}', 'g'), margin);
+                               .replace(new RegExp('{margin}', 'g'), margin)
+                               .replace(new RegExp('{eye-class}', 'g'), visible ? 'bi-eye' : 'bi-eye-slash')
+                               .replace(new RegExp('{hidden-class}', 'g'), visible ? '' : 'layer-hidden');
 
             $('#tbody_layers').append(template);
         }
@@ -1403,11 +1799,13 @@ function buildLayersTable(order, settings)
                     var type = layer_settings['type'];
                     var color = layer_settings['color'];
                     var color_start = layer_settings['color-start'];
+                    var visible = (layer_settings['visible'] !== undefined) ? layer_settings['visible'] : true;
                 }
                 else
                 {
+                    var visible = true;
                     var height = getNamedLayerDefaults(layer_name, 'height', '90');
-                    var margin = getNamedLayerDefaults(layer_name, 'margin', '15');
+                    var margin = getGroupLeadingMargin(layer_name, getNamedLayerDefaults(layer_name, 'margin', '15'));
                     var color = "#000000";
                     var color_start = "#DDDDDD";
 
@@ -1438,8 +1836,9 @@ function buildLayersTable(order, settings)
                     }
                 }
 
-                var template = '<tr>' +
+                var template = '<tr' + item_group_attr + ' class="{hidden-class}">' +
                     '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
+                    '<td><i class="bi {eye-class} layer-visibility" title="Toggle visibility"></i></td>' +
                     '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
                     '<td><div id="picker_start{id}" class="colorpicker picker_start" color="{color-start}" style="background-color: {color-start}; {color-start-hide}"></div><div id="picker{id}" class="colorpicker picker_end" color="{color}" style="background-color: {color}; {color-hide}"></div></td>' +
                     '<td style="width: 50px;">' +
@@ -1467,7 +1866,9 @@ function buildLayersTable(order, settings)
                                    .replace(new RegExp('{color-start-hide}', 'g'), (type!='text') ? '; visibility: hidden;' : '')
                                    .replace(new RegExp('{height-hide}', 'g'), (type=='text') ? '; visibility: hidden;' : '')
                                    .replace(new RegExp('{height}', 'g'), height)
-                                   .replace(new RegExp('{margin}', 'g'), margin);
+                                   .replace(new RegExp('{margin}', 'g'), margin)
+                                   .replace(new RegExp('{eye-class}', 'g'), visible ? 'bi-eye' : 'bi-eye-slash')
+                                   .replace(new RegExp('{hidden-class}', 'g'), visible ? '' : 'layer-hidden');
 
                 $('#tbody_layers').append(template);
             }
@@ -1502,12 +1903,14 @@ function buildLayersTable(order, settings)
                     var margin = layer_settings['margin'];
                     var color_start = layer_settings['color-start'];
                     var type = layer_settings['type'];
+                    var visible = (layer_settings['visible'] !== undefined) ? layer_settings['visible'] : true;
                 }
                 else
                 {
                     var height = getNamedLayerDefaults(layer_name, 'height', '180');
                     var color  = getNamedLayerDefaults(layer_name, 'color', '#000000');
-                    var margin = getNamedLayerDefaults(layer_name, 'margin', '15');
+                    var margin = getGroupLeadingMargin(layer_name, getNamedLayerDefaults(layer_name, 'margin', '15'));
+                    var visible = true;
                     if (mode == 'collection') {
                         var type = getNamedLayerDefaults(layer_name, 'type', 'intensity');
                         var color_start = "#EEEEEE";
@@ -1517,8 +1920,9 @@ function buildLayersTable(order, settings)
                     }
                 }
 
-                var template = '<tr>' +
+                var template = '<tr' + item_group_attr + ' class="{hidden-class}">' +
                     '<td><img class="drag-icon" src="images/drag.gif" /></td>' +
+                    '<td><i class="bi {eye-class} layer-visibility" title="Toggle visibility"></i></td>' +
                     '<td title="{name}" class="titles" id="title{id}">{short-name}</td>' +
                     '<td><div id="picker_start{id}" class="colorpicker picker_start" color="{color-start}" style="background-color: {color-start}; {color-start-hide}"></div><div id="picker{id}" class="colorpicker" color="{color}" style="background-color: {color}"></div></td>' +
                     '<td style="width: 50px;">' +
@@ -1557,7 +1961,9 @@ function buildLayersTable(order, settings)
                                    .replace(new RegExp('{max}', 'g'), max)
                                    .replace(new RegExp('{min-disabled}', 'g'), (min_disabled) ? ' disabled': '')
                                    .replace(new RegExp('{max-disabled}', 'g'), (max_disabled) ? ' disabled': '')
-                                   .replace(new RegExp('{margin}', 'g'), margin);
+                                   .replace(new RegExp('{margin}', 'g'), margin)
+                                   .replace(new RegExp('{eye-class}', 'g'), visible ? 'bi-eye' : 'bi-eye-slash')
+                                   .replace(new RegExp('{hidden-class}', 'g'), visible ? '' : 'layer-hidden');
 
 
                 $('#tbody_layers').append(template);
@@ -1667,6 +2073,9 @@ function serializeSettings(use_layer_names) {
     state['bin-labels-font-size'] = $('#bin_labels_font_size').val();
     state['autorotate-bin-labels'] = $('#autorotate_bin_labels').is(':checked');
     state['estimate-taxonomy'] = $('#estimate_taxonomy').is(':checked');
+    state['use-taxonomy-bin-labels'] = $('#use_taxonomy_bin_labels').is(':checked');
+    state['select-contigs-rather-than-splits'] = $('#select_contigs_rather_than_splits').is(':checked');
+    state['taxonomy-label-level'] = $('input[name="taxonomy_label_level"]:checked').val();
     state['bin-labels-angle'] = $('#bin_labels_angle').val();
     state['background-opacity'] = $('#background_opacity').val();
     state['max-font-size-label'] = $('#max_font_size_label').val();
@@ -1782,6 +2191,7 @@ function serializeSettings(use_layer_names) {
                 'max'           : {'value': parseFloat($(tr).find('.input-max').val()), 'disabled': $(tr).find('.input-max').is(':disabled') },
                 'type'          : $(tr).find('.type').val(),
                 'color-start'   : $(tr).find('.colorpicker:first').attr('color'),
+                'visible'       : $(tr).find('.layer-visibility').hasClass('bi-eye'),
             };
         }
     );
@@ -1789,6 +2199,11 @@ function serializeSettings(use_layer_names) {
     state['samples-groups'] = {};
     $('#sample_groups_container input:checkbox').each((index, checkbox) => {
         state['samples-groups'][$(checkbox).val()] = $(checkbox).is(':checked');
+    });
+
+    state['item-groups'] = {};
+    $('#item_groups_container input:checkbox').each((index, checkbox) => {
+        state['item-groups'][$(checkbox).val()] = $(checkbox).is(':checked');
     });
 
     return state;
@@ -1799,7 +2214,8 @@ function drawTree() {
     var settings = serializeSettings();
     tree_type = settings['tree-type'];
 
-    $('#btn_draw_tree').removeClass('glowing-button');
+    $('#btn_draw_tree').removeClass('glowingbutton');
+    $('#draw-btn').removeClass('glowingbutton');
     $('#draw_delta_time').html('');
     $('#btn_draw_tree').prop('disabled', true);
     $('#bin_settings_tab').removeClass("disabled"); // enable bins tab
@@ -1824,8 +2240,14 @@ function drawTree() {
             },
             onShow: function() {
                 try {
+                    if (layer_order.length === 0) {
+                        waitingDialog.hide();
+                        toastr.warning("No layers to draw. Please check at least one item data group.");
+                        return;
+                    }
                     drawer = new Drawer(settings);
                     drawer.draw();
+                    refreshCollapsedNodesTable();
                 }
                 catch (error) {
                     let issue_title = encodeURIComponent("Interactive interface, " + error);
@@ -1851,6 +2273,16 @@ function drawTree() {
                 {
                     $('#tree-radius-container').show();
                     $('#tree-radius').val(Math.max(VIEWER_HEIGHT, VIEWER_WIDTH));
+                }
+
+                if (settings['tree-height'] == 0)
+                {
+                    $('#tree_height').val(VIEWER_HEIGHT);
+                }
+
+                if (settings['tree-width'] == 0)
+                {
+                    $('#tree_width').val(VIEWER_WIDTH);
                 }
 
                 a_display_is_drawn = true;
@@ -2009,6 +2441,7 @@ const FUNCTION_CONFIGS = {
         dataKey: 'gene_caller_ids',
         itemLabel: 'genes',
         itemIdLabel: 'Gene call',
+        loadingMessage: 'Fetching gene functions...',
         metabolismDescription: 'Gene metabolic module involvement. A table that shows which metabolic modules the genes in particular bin are involved. The completion scores show that for each metabolic module, what percentage of the module is represented by the genes in the bin. A single gene may be involved in multiple metabolic modules since that how metabolism rolls.',
         functionsDescription: 'Gene functions. The table below shows the functional annotation of each gene by each function annotation source available in the contigs-db.',
         dialogFunction: 'showGeneFunctionsSummaryTableDialog',
@@ -2020,6 +2453,7 @@ const FUNCTION_CONFIGS = {
         dataKey: 'gene_clusters',
         itemLabel: 'gene clusters',
         itemIdLabel: 'Gene cluster',
+        loadingMessage: 'Fetching gene cluster functions...',
         metabolismDescription: 'Gene cluster metabolic module involvement. The table below shows which metabolic modules the gene clusters in this bin are involved in. The completion scores show that for each metabolic module, what percentage of the module is represented by the gene clusters in the bin. A single gene cluster may be involved in multiple metabolic modules since that how metabolism rolls.',
         functionsDescription: 'Gene cluster functions. The table below shows the functional annotation of each gene cluster by each function annotation source available in the contigs-db.',
         dialogFunction: 'showGeneClusterFunctionsSummaryTableDialog',
@@ -2031,8 +2465,56 @@ const FUNCTION_CONFIGS = {
             const result = getPrettyFunctionsString(d[function_source]?.function);
             return (Array.isArray(result) && result.length === 1 && result[0] === '-') ? 'N/A' : (result || 'N/A');
         }
+    },
+    genes_in_splits: {
+        url: '/data/get_functions_for_genes_in_splits',
+        dataKey: 'split_names',
+        itemLabel: 'splits',
+        itemIdLabel: 'Split',
+        loadingMessage: 'Fetching functions for genes in splits...',
+        metabolismDescription: 'Metabolic module involvement of genes encoded in splits. The table below shows which metabolic modules the genes in this bin are involved in. The completion scores show that for each metabolic module, what percentage of the module is represented by the genes encoded by splits in the bin. A single gene may be involved in multiple metabolic modules since that how metabolism rolls.',
+        functionsDescription: 'Gene functions. The table below shows the functional annotation of each gene by each function annotation source available in the contigs-db.',
+        dialogFunction: 'showGeneFunctionsInSplitsSummaryTableDialog',
+        getAccessionString: (d, function_source) => {
+            const result = getPrettyFunctionsString(d[function_source]?.accession, function_source);
+            return (Array.isArray(result) && result.length === 1 && result[0] === '-') ? 'N/A' : (result || 'N/A');
+        },
+        getFunctionString: (d, function_source) => {
+            const result = getPrettyFunctionsString(d[function_source]?.function);
+            return (Array.isArray(result) && result.length === 1 && result[0] === '-') ? 'N/A' : (result || 'N/A');
+        }
     }
+
 };
+
+// CSS hooks for the waiting dialog so we can clean it up robustly
+const WAITING_DIALOG_CLASS = 'anvio-waiting-dialog';
+const WAITING_BACKDROP_CLASS = 'anvio-waiting-backdrop';
+
+// Ensure the waiting dialog and its backdrop disappear even if Bootstrap gets confused.
+function hideWaitingDialogSafely() {
+    try {
+        waitingDialog.hide();
+    } catch (err) {
+        console.error('Failed to hide waiting dialog', err);
+    }
+
+    try {
+        $(`.${WAITING_DIALOG_CLASS}`).modal('hide');
+        $(`.${WAITING_DIALOG_CLASS}`).remove();
+        $(`.${WAITING_BACKDROP_CLASS}`).remove();
+        if ($('.modal.show').length === 0) {
+            // No modal is visible, so we can safely clear any stray backdrops/body class.
+            $('.modal-backdrop').remove();
+            $('body').removeClass('modal-open');
+        }
+    } catch (err) {
+        console.error('Failed to clean waiting dialog remnants', err);
+    }
+}
+
+// Track ongoing function lookups to prevent duplicate requests and show progress.
+const ITEM_FUNCTION_REQUESTS_IN_FLIGHT = new Set();
 
 // Shared function that handles both genes and gene clusters
 function showItemFunctions(bin_id, config, updateOnly = false) {
@@ -2042,7 +2524,67 @@ function showItemFunctions(bin_id, config, updateOnly = false) {
     if (updateOnly && !checkObjectExists('#modal' + title.hashCode()))
         return;
 
-    let bin_info = bins.ExportBin(bin_id);
+    const requestKey = `${config.dialogFunction}:${bin_id}`;
+    if (ITEM_FUNCTION_REQUESTS_IN_FLIGHT.has(requestKey)) {
+        return;
+    }
+
+    const bin_info = bins.ExportBin(bin_id);
+
+    if (!bin_info) {
+        return;
+    }
+
+    if (!bin_info.items || bin_info.items.length === 0) {
+        toastr.warning('There are no items in this bin yet, so there is nothing to show.', "The anvi'o headquarters has a note");
+        return;
+    }
+
+    if (!functions_available) {
+        toastr.warning('No functions, so anvi\'o will show you item names instead.', "Trivial anvi'o headquarters memo");
+
+        let fallbackTitle;
+
+        if (mode == "manual"){
+            fallbackTitle = `Items in "${bin_info['bin_name']}".`;
+        } else {
+            fallbackTitle = `Item names for ${bin_info['items'].length} ${config.itemLabel} in "${bin_info['bin_name']}".`;
+        }
+
+        const fallbackContent = buildItemNamesContent(bin_info['items'], config);
+
+        _createModalDialog({
+            title: fallbackTitle,
+            content: fallbackContent,
+            modalClass: 'itemNamesDialog',
+            dialogClass: 'item-names-modal-dialog'
+        });
+        return;
+    }
+
+    let requestFinished = false;
+    const finishRequest = () => {
+        if (requestFinished) {
+            return;
+        }
+
+        requestFinished = true;
+        ITEM_FUNCTION_REQUESTS_IN_FLIGHT.delete(requestKey);
+        hideWaitingDialogSafely();
+    };
+
+    ITEM_FUNCTION_REQUESTS_IN_FLIGHT.add(requestKey);
+    waitingDialog.show(config.loadingMessage || 'Fetching functions...', {
+        dialogSize: 'sm',
+        onShow: function() {
+            const $waiting = $('.modal').filter(function() {
+                return $(this).find('.progress.progress-striped.active').length > 0;
+            }).last();
+
+            $waiting.addClass(WAITING_DIALOG_CLASS);
+            $('.modal-backdrop').last().addClass(WAITING_BACKDROP_CLASS);
+        }
+    });
 
     // Prepare AJAX data based on config
     let ajaxData = {};
@@ -2053,398 +2595,82 @@ function showItemFunctions(bin_id, config, updateOnly = false) {
         url: config.url,
         data: ajaxData,
         success: (response) => {
-            if (response.hasOwnProperty('status') && response.status != 0) {
+            const hasErrorStatus = response && typeof response === 'object' &&
+                                   response.hasOwnProperty('status') && response.status != 0;
+
+            if (hasErrorStatus) {
+                finishRequest();
                 toastr.error('"' + response.message + '", the server said.', "The anvi'o headquarters is upset");
                 return;
             }
 
-            const content = buildFunctionsContent(response, config);
-            const dialogTitle = `A summary of functions for ${bin_info['items'].length} ${config.itemLabel} in "${bin_info['bin_name']}".`;
+            try {
+                const content = buildFunctionsContent(response, config);
 
-            // Call the appropriate dialog function
-            if (config.dialogFunction === 'showGeneFunctionsSummaryTableDialog') {
-                showGeneFunctionsSummaryTableDialog(dialogTitle, content);
-            } else {
-                showGeneClusterFunctionsSummaryTableDialog(dialogTitle, content);
+                finishRequest();
+
+                // Call the appropriate dialog function
+                if (config.dialogFunction === 'showGeneFunctionsSummaryTableDialog') {
+                    const dialogTitle = `A summary of functions for ${bin_info['items'].length} ${config.itemLabel} in "${bin_info['bin_name']}".`;
+                    showGeneFunctionsSummaryTableDialog(dialogTitle, content);
+                } else if (config.dialogFunction === 'showGeneFunctionsInSplitsSummaryTableDialog') {
+                    const dialogTitle = `Some useful data for ${bin_info['items'].length} ${config.itemLabel} in "${bin_info['bin_name']}".`;
+                    showGeneFunctionsInSplitsSummaryTableDialog(dialogTitle, content);
+                } else if (config.dialogFunction === 'showGeneClusterFunctionsSummaryTableDialog') {
+                    const dialogTitle = `A summary of functions for ${bin_info['items'].length} ${config.itemLabel} in "${bin_info['bin_name']}".`;
+                    showGeneClusterFunctionsSummaryTableDialog(dialogTitle, content);
+                } else {
+                    toastr.error('Unknown dialog function specified.', "The anvi'o headquarters is confused");
+                    return;
+                }
+
+                // Setup filtering after dialog is shown
+                setTimeout(() => setupItemTableFiltering(), 100);
+            } catch (err) {
+                finishRequest();
+                console.error('Error preparing functions dialog', err);
+                toastr.error('Something went wrong while preparing the functions table.', "The anvi'o headquarters is upset");
             }
+        },
+        error: () => {
+            finishRequest();
+            toastr.error('Failed to fetch functions for this bin. Please try again.', "The anvi'o headquarters is upset");
+        },
+        complete: finishRequest
+    });
+}
 
-            // Setup filtering after dialog is shown
-            setTimeout(() => setupItemTableFiltering(), 100);
+// copyTextWithFeedback, buildCopyButton, buildCopyableNamesSection,
+// buildFunctionsContent, buildContigAndSplitNamesTable, buildMetabolismTable,
+// buildFilterControls, buildFunctionsTable, and setupItemTableFiltering
+// live in utils.js (shared with anvi-display-pan-graph).
+
+// Fallback content when functions are unavailable (or when we are in manual mode).
+// Kept here (not in utils.js) because it references the pangenomics-only `mode` variable.
+function buildItemNamesContent(items, config) {
+    const safeItems = Array.isArray(items) ? items : [];
+    const itemLabelTitle = config.itemLabel.charAt(0).toUpperCase() + config.itemLabel.slice(1);
+
+    return buildCopyableNamesSection(itemLabelTitle, safeItems, {
+        background: '#ffe4c478',
+        contentRenderer: (names) => {
+            const listItems = names.length
+                ? names.map((name) => `<li style="word-break: break-word;">${name}</li>`).join('')
+                : '<li>No items found.</li>';
+
+            const note = (mode !== "manual")
+                ? `<p style="margin: 10px 0 20px 0;">
+                      Functions are not initialized for this project, but here are the item names
+                      in this bin so you have something to look at :)
+                   </p>`
+                : ``;
+
+            return `
+                ${note}
+                <ul style="max-height: 60vh; overflow-y: auto; padding-left: 25px; margin-bottom: 0;">${listItems}</ul>
+            `;
         }
     });
-}
-
-// Shared function to build the content HTML
-function buildFunctionsContent(response, config) {
-    const fmtPct = (v) => (typeof v === 'number' && !isNaN(v)) ? (v * 100).toFixed(1) + '%' : 'NA';
-    let content = '';
-
-    // Build metabolism summary table if present
-    content += buildMetabolismTable(response, config, fmtPct);
-
-    content += '<hr style="margin: 30px !important;">';
-
-    content += `
-        <p style="font-size: large; border-bottom: 1px solid black; background: #ffe4c478;">Functions per ${config.itemLabel}</p>
-
-        <p>${config.functionsDescription}</p>`;
-
-    // Build filter controls
-    content += buildFilterControls(response['sources'], response['functions'], config);
-
-    // Build functions table
-    content += buildFunctionsTable(response, config);
-
-    return content;
-}
-
-// Shared function to build metabolism table
-function buildMetabolismTable(response, config, fmtPct) {
-    const metabolism = response && response.metabolism;
-
-    let metabolismContent = `
-        <p style="font-size: large; border-bottom: 1px solid black; background: #f5f5dc9c;">Metabolic module involvement</p>
-    `;
-
-    if (!metabolism || typeof metabolism !== 'object' || !Object.keys(metabolism).length) {
-        metabolismContent += '<p style="margin-bottom: 35px;">There are no metabolic insights to show here :/</p>';
-        return metabolismContent
-    }
-
-    metabolismContent += `
-        <p style="margin-bottom: 35px;">${config.metabolismDescription}</p>
-        <table class="table table-sm table-striped" style="width: 95%; margin-left: 10px;">
-            <thead class="thead-light">
-                <tr>
-                    <th>Metabolic module</th>
-                    <th style="text-align: center;">Contribution to pathway completeness</th>
-                    <th style="text-align: center;">Contribution to Stepwise completeness</th>
-                    <th style="text-align: center;">${config.itemLabel === 'genes' ? 'Gene calls' : 'Gene clusters'} involved</th>
-                </tr>
-            </thead>
-            <tbody>`;
-
-    // Sort and process metabolism modules
-    Object.keys(metabolism)
-        .sort((a, b) => {
-            const pa = metabolism[a]?.pathwise_percent_complete ?? 0;
-            const pb = metabolism[b]?.pathwise_percent_complete ?? 0;
-
-            if (pb !== pa) return pb - pa;
-
-            const ga = Array.isArray(metabolism[a]?.gene_caller_ids) ? metabolism[a].gene_caller_ids.length : 0;
-            const gb = Array.isArray(metabolism[b]?.gene_caller_ids) ? metabolism[b].gene_caller_ids.length : 0;
-
-            return gb - ga;
-        })
-        .forEach((moduleId) => {
-            const m = metabolism[moduleId] || {};
-            const genes = Array.isArray(m.gene_caller_ids) ? m.gene_caller_ids.join(', ') : 'NA';
-            const pathwayPct = fmtPct(m.pathwise_percent_complete);
-            const stepwisePct = fmtPct(m.stepwise_completeness);
-            const moduleName = m.NAME ?? 'NA';
-            const moduleClass = (typeof m.CLASS === 'string' ? m.CLASS : 'NA');
-            const complete = (m.pathwise_is_complete === true) || (m.stepwise_is_complete === true);
-            const badge = complete ? ` <span class="badge badge-success">complete</span>` : '';
-
-            metabolismContent += `
-                <tr>
-                    <td style="padding-left: 20px;">
-                       <b>${moduleId}</b>${badge}<br />
-                       - Module function: ${moduleName}<br />
-                       - Module class: ${moduleClass.split(";").map((p,i,a)=> i===a.length-1 ? `<b>${p.trim()}</b>` : p).join("; ")}
-                    </td>
-                    <td style="text-align: center; vertical-align: middle;">${pathwayPct}</td>
-                    <td style="text-align: center; vertical-align: middle;">${stepwisePct}</td>
-                    <td style="text-align: center; vertical-align: middle; max-width: 420px; word-break: break-word;">${genes}</td>
-                </tr>`;
-        });
-
-    metabolismContent += `</tbody></table>`;
-
-    return metabolismContent;
-}
-
-// Shared function to build filter controls
-function buildFilterControls(sources, functions, config) {
-    // Calculate total number of items (genes/clusters)
-    const totalItems = Object.keys(functions).length;
-
-    // Calculate annotation counts for each source
-    const sourceCounts = {};
-    Object.keys(sources).forEach(function(index) {
-        let source = sources[index];
-        sourceCounts[source] = 0;
-
-        // Count how many items have annotations for this source
-        Object.keys(functions).forEach(function(item_id) {
-            let d = functions[item_id] || {};
-
-            if (d[source]) {
-                // Use the config functions for consistency
-                const accession_string = config.getAccessionString(d, source);
-                const function_string = config.getFunctionString(d, source);
-
-                // Count as annotated if either accession or function is not N/A
-                if (accession_string !== 'N/A' || function_string !== 'N/A') {
-                    sourceCounts[source]++;
-                }
-            }
-        });
-    });
-
-    let filterControls = `
-        <div style="background-color: #f8f9fa; padding: 15px; margin: 20px 10px; border-radius: 5px;">
-            <div style="margin-bottom: 10px;">
-                <label>
-                    <input type="checkbox" id="hideNA"> Hide entries with no annotation to simplify the display
-                </label>
-            </div>
-            <hr>
-            <div>
-                <p>Annotation sources to display for a total of ${totalItems} ${config.itemLabel}:</p>
-                <div style="margin-top: 5px; display: flex; flex-wrap: wrap; gap: 15px;">`;
-                    Object.keys(sources).forEach(function(index) {
-                        let source = sources[index];
-                        let count = sourceCounts[source];
-                        filterControls += `
-                            <label style="margin-right: 15px;">
-                                <input type="checkbox" class="source-filter" data-source="${source}" checked>
-                                ${source} <span style="color: #666; font-size: 0.9em;">(${count})</span>
-                            </label>`;
-                    });
-
-    filterControls += `
-                </div>
-                <div style="margin-top: 10px;">
-                    <button type="button" class="btn btn-sm btn-outline-secondary" id="selectAllSources">Select All</button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" id="deselectAllSources">Deselect All</button>
-                </div>
-            </div>
-        </div>`;
-
-    return filterControls;
-}
-
-// Shared function to build functions table
-function buildFunctionsTable(response, config) {
-    let content = `
-        <table class="table" id="itemFunctionsTable" style="width: 95%; margin-left: 10px; table-layout: fixed;">
-           <thead class="thead-light">
-           <tr>
-             <th style="width: 10%;">${config.itemIdLabel}</th>
-             <th style="width: 10%;">Source</th>
-             <th style="width: 10%;">Accession</th>
-             <th style="width: 70%;">Function</th>
-           </tr>
-           </thead>
-           <tbody>`;
-
-    Object.keys(response['functions']).forEach(function(item_id) {
-        let d = response['functions'][item_id] || {};
-
-        Object.keys(response['sources']).forEach(function(index) {
-            let function_source = response['sources'][index];
-            let accession_string, function_string;
-            let hasAnnotation = false;
-
-            // Use config-specific logic for data extraction
-            if (d[function_source]) {
-                accession_string = config.getAccessionString(d, function_source);
-                function_string = config.getFunctionString(d, function_source);
-                hasAnnotation = (accession_string !== 'N/A' && function_string !== 'N/A');
-            } else {
-                accession_string = 'N/A';
-                function_string = 'N/A';
-            }
-
-            const dataAttrs = `data-source="${function_source}" data-has-annotation="${hasAnnotation}" data-item="${item_id}"`;
-
-            if (index == 0) {
-                content += `<tr style="border-top: 3px solid #d0d0d0;" ${dataAttrs}>
-                            <td rowspan="${Object.keys(response['sources']).length}" style="vertical-align: middle; word-wrap: break-word;"><b>${item_id}</b></td>
-                            <td style="word-wrap: break-word;">${function_source}</td>
-                            <td style="word-wrap: break-word;">${accession_string}</td>
-                            <td style="word-wrap: break-word;">${function_string}</td>
-                            </tr>`;
-            } else {
-                content += `<tr ${dataAttrs}>
-                            <td style="word-wrap: break-word;">${function_source}</td>
-                            <td style="word-wrap: break-word;">${accession_string}</td>
-                            <td style="word-wrap: break-word;">${function_string}</td>
-                            </tr>`;
-            }
-        });
-    });
-
-    content += `</tbody></table>`;
-    return content;
-}
-
-// Shared filtering functionality
-function setupItemTableFiltering() {
-    const table = document.getElementById('itemFunctionsTable');
-    if (!table) return;
-
-    const hideNACheckbox = document.getElementById('hideNA');
-    const sourceCheckboxes = document.querySelectorAll('.source-filter');
-    const selectAllBtn = document.getElementById('selectAllSources');
-    const deselectAllBtn = document.getElementById('deselectAllSources');
-
-    function applyFilters() {
-        const hideNA = hideNACheckbox.checked;
-        const activeSources = Array.from(sourceCheckboxes)
-            .filter(cb => cb.checked)
-            .map(cb => cb.dataset.source);
-
-        const rows = table.querySelectorAll('tbody tr');
-
-        rows.forEach(row => {
-            const hasAnnotation = row.dataset.hasAnnotation === 'true';
-            const source = row.dataset.source;
-
-            let shouldShow = true;
-
-            if (hideNA && !hasAnnotation) {
-                shouldShow = false;
-            }
-
-            if (!activeSources.includes(source)) {
-                shouldShow = false;
-            }
-
-            row.style.display = shouldShow ? '' : 'none';
-        });
-
-        updateItemRowspans();
-        updateTableStripes();
-    }
-
-    function updateTableStripes() {
-        // Get all visible rows grouped by gene
-        const visibleRows = Array.from(table.querySelectorAll('tbody tr')).filter(row =>
-            row.style.display !== 'none'
-        );
-
-        // Group visible rows by gene to handle borders
-        const geneGroups = {};
-        visibleRows.forEach(row => {
-            const gene = row.dataset.item;
-            if (!geneGroups[gene]) {
-                geneGroups[gene] = [];
-            }
-            geneGroups[gene].push(row);
-        });
-
-        visibleRows.forEach((row, index) => {
-            // Remove any existing stripe background and borders from all cells
-            const cells = row.querySelectorAll('td');
-            cells.forEach(cell => {
-                cell.style.backgroundColor = '';
-                cell.classList.remove('table-striped-manual');
-            });
-
-            // Remove any existing thick borders
-            row.style.borderTop = '';
-
-            // Apply stripe to odd rows (0-indexed, so even indices get the stripe)
-            if (index % 2 === 1) {
-                cells.forEach((cell, cellIndex) => {
-                    // Skip the first cell if it's a gene caller ID cell (has rowspan or is dynamic)
-                    if (cellIndex === 0 &&
-                        (cell.getAttribute('rowspan') || cell.classList.contains('dynamic-gene-cell'))) {
-                        return; // Don't stripe the gene caller ID cell
-                    }
-                    cell.style.backgroundColor = 'rgba(0,0,0,.05)';
-                    cell.classList.add('table-striped-manual');
-                });
-            }
-        });
-
-        // Add thick borders to separate gene groups
-        Object.keys(geneGroups).forEach(gene => {
-            const rows = geneGroups[gene];
-            if (rows.length > 0) {
-                // Add thick border to the first visible row of each gene group
-                rows[0].style.borderTop = '3px solid #d0d0d0';
-            }
-        });
-    }
-
-    function updateItemRowspans() {
-        // Get all rows and group them by item (gene/cluster), maintaining document order
-        const allRows = Array.from(table.querySelectorAll('tbody tr'));
-        const itemGroups = {};
-
-        // Group all rows by item, preserving original order
-        allRows.forEach(row => {
-            const item = row.dataset.item;
-            if (!itemGroups[item]) {
-                itemGroups[item] = [];
-            }
-            itemGroups[item].push(row);
-        });
-
-        // Process each item group
-        Object.keys(itemGroups).forEach(item => {
-            const allRowsForItem = itemGroups[item];
-            const visibleRowsForItem = allRowsForItem.filter(row => row.style.display !== 'none');
-
-            // First, clean up any existing gene cells and remove any previously added ones
-            allRowsForItem.forEach(row => {
-                const existingCells = row.querySelectorAll('td');
-                if (existingCells.length > 3) { // More than 3 cells means we have a gene cell
-                    const geneCell = existingCells[0];
-                    geneCell.style.display = 'none';
-                    geneCell.removeAttribute('rowspan');
-                }
-                // Remove any dynamically added gene cells
-                const dynamicGeneCell = row.querySelector('td.dynamic-gene-cell');
-                if (dynamicGeneCell) {
-                    dynamicGeneCell.remove();
-                }
-            });
-
-            // If there are visible rows, ensure the first one has a visible gene cell
-            if (visibleRowsForItem.length > 0) {
-                const firstVisibleRow = visibleRowsForItem[0];
-                let geneCell = firstVisibleRow.querySelector('td:first-child');
-
-                if (geneCell && firstVisibleRow.querySelectorAll('td').length > 3) {
-                    // This row originally had a gene cell, just show it
-                    geneCell.style.display = '';
-                    geneCell.style.verticalAlign = 'middle';
-                    geneCell.style.wordWrap = 'break-word';
-                    geneCell.setAttribute('rowspan', visibleRowsForItem.length);
-                } else {
-                    // This row doesn't have a gene cell, create one
-                    const newGeneCell = document.createElement('td');
-                    newGeneCell.innerHTML = `<b>${item}</b>`;
-                    newGeneCell.setAttribute('rowspan', visibleRowsForItem.length);
-                    newGeneCell.className = 'dynamic-gene-cell';
-                    newGeneCell.style.borderTop = '3px solid #d0d0d0';
-                    newGeneCell.style.verticalAlign = 'middle';
-                    newGeneCell.style.wordWrap = 'break-word';
-                    firstVisibleRow.insertBefore(newGeneCell, firstVisibleRow.firstChild);
-                }
-            }
-        });
-    }
-
-    hideNACheckbox.addEventListener('change', applyFilters);
-    sourceCheckboxes.forEach(cb => cb.addEventListener('change', applyFilters));
-
-    selectAllBtn.addEventListener('click', () => {
-        sourceCheckboxes.forEach(cb => cb.checked = true);
-        applyFilters();
-    });
-
-    deselectAllBtn.addEventListener('click', () => {
-        sourceCheckboxes.forEach(cb => cb.checked = false);
-        applyFilters();
-    });
-
-    applyFilters();
 }
 
 // Updated main functions - now much simpler!
@@ -2456,6 +2682,9 @@ function showGeneClusterDetails(bin_id, updateOnly) {
     showItemFunctions(bin_id, FUNCTION_CONFIGS.gene_clusters, updateOnly);
 }
 
+function showGeneFunctionsInSplits(bin_id, updateOnly) {
+    showItemFunctions(bin_id, FUNCTION_CONFIGS.genes_in_splits, updateOnly);
+}
 
 function showRedundants(bin_id, updateOnly) {
     if (typeof updateOnly === 'undefined')
@@ -3244,6 +3473,19 @@ function processState(state_name, state) {
         $('#estimate_taxonomy').prop('checked', state['estimate-taxonomy']).trigger('change');
     }
 
+    if (state.hasOwnProperty('taxonomy-label-level')) {
+        $(`input[name="taxonomy_label_level"][value="${state['taxonomy-label-level']}"]`).prop('checked', true);
+    }
+
+    if (state.hasOwnProperty('use-taxonomy-bin-labels')) {
+        $('#use_taxonomy_bin_labels').prop('checked', state['use-taxonomy-bin-labels']);
+        toggleTaxonomyLabeling();
+    }
+
+    if (state.hasOwnProperty('select-contigs-rather-than-splits')) {
+        $('#select_contigs_rather_than_splits').prop('checked', state['select-contigs-rather-than-splits']).trigger('change');
+    }
+
     if (state.hasOwnProperty('show-grid-for-bins')) {
         $('#show_grid_for_bins').prop('checked', state['show-grid-for-bins']).trigger('change');
     }
@@ -3288,7 +3530,7 @@ function processState(state_name, state) {
     }
 
     // bootstrap values
-    if (!(state.hasOwnProperty('show-support-values'))){
+    if (state.hasOwnProperty('show-support-values')){
         $('#support_value_checkbox').prop('checked', state['show-support-values'])
         if ($('#support_value_checkbox').is(':checked')){
             $('#support_value_params').show()
@@ -3410,6 +3652,17 @@ function processState(state_name, state) {
         }
     }
 
+    if (state.hasOwnProperty('item-groups')) {
+        for (let group_name in state['item-groups']) {
+            let checkbox = document.getElementById('item_group_' + group_name);
+
+            if (checkbox) {
+                checkbox.checked = state['item-groups'][group_name];
+            }
+        }
+    }
+
+    toggleItemGroups();
     toggleSampleGroups();
 
     if (state.hasOwnProperty('samples-order') && $(`#samples_order option[value='${state['samples-order']}']`).length > 0) {
@@ -3480,6 +3733,7 @@ function restoreOriginalTree(type) {
      .then(
         function() {
             collapsedNodes = [];
+            refreshCollapsedNodesTable();
             $('#tree_modified_warning').hide();
             drawTree();
         }
@@ -3751,6 +4005,16 @@ function toggleTaxonomyEstimation() {
         });
     }
 
+    if (!is_checked) {
+        $('#use_taxonomy_bin_labels').prop('checked', false);
+        $('#taxonomy-label-levels').hide();
+        if (bins) {
+            bins.DisableTaxonomyLabeling();
+        }
+    }
+
+    updateTaxonomyLabelingVisibility();
+
     /*
         loadState/processState triggers onchange event of inputs
         which causes problem when state is loaded before bins initialized
@@ -3759,6 +4023,49 @@ function toggleTaxonomyEstimation() {
     if (bins) {
         bins.UpdateBinsWindow();
     }
+}
+
+function updateTaxonomyLabelingVisibility() {
+    const estimationChecked = $('#estimate_taxonomy').is(':checked');
+    const hasTaxonomyData = (bins && typeof bins.HasTaxonomyData === 'function') ? bins.HasTaxonomyData() : false;
+
+    if (estimationChecked && hasTaxonomyData) {
+        $('#taxonomy-labeling-container').show();
+    } else {
+        if ($('#use_taxonomy_bin_labels').is(':checked') && bins) {
+            bins.DisableTaxonomyLabeling();
+        }
+        $('#use_taxonomy_bin_labels').prop('checked', false);
+        $('#taxonomy-label-levels').hide();
+        $('#taxonomy-labeling-container').hide();
+    }
+}
+
+function toggleTaxonomyLabeling() {
+    const shouldAssignLabels = $('#use_taxonomy_bin_labels').is(':checked');
+
+    if (shouldAssignLabels) {
+        $('#taxonomy-label-levels').show();
+        if (bins) {
+            bins.EnableTaxonomyLabeling();
+            bins.ApplyTaxonomyLabels();
+        }
+    } else {
+        $('#taxonomy-label-levels').hide();
+        if (bins) {
+            bins.DisableTaxonomyLabeling();
+        }
+    }
+}
+
+function onTaxonomyLabelLevelChange() {
+    if (!bins) return;
+    bins.ApplyTaxonomyLabels();
+}
+
+function toggleSelectContigsRatherThanSplits() {
+    if (!bins) return;
+    bins.SetSelectContigsRatherThanSplits($('#select_contigs_rather_than_splits').is(':checked'));
 }
 
 function ShadowBoxSelection(type) {

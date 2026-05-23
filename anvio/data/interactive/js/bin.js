@@ -26,7 +26,7 @@ const MAX_HISTORY_SIZE = 50;
 const BIN_DEFAULTS = {
     PREFIX: 'Bin_',
     DEFAULT_VALUES: {
-        contig_count: 0,
+        item_count: 0,
         contig_length: 'N/A',
         num_gene_clusters: '---',
         num_gene_calls: '---',
@@ -47,6 +47,8 @@ const BIN_DEFAULTS = {
         }
     }
 };
+
+const TAXONOMY_LEVEL_ORDER = ["t_species", "t_genus", "t_family", "t_order", "t_class", "t_phylum", "t_domain"];
 
 const TRANSACTION_TYPES = {
     APPEND_NODE: 'AppendNode',
@@ -77,6 +79,10 @@ function Bins(prefix, container) {
         'taxonomy': {}
     };
 
+    this.manualBinNamesBackup = null;
+    this.taxonomyLabelingEnabled = false;
+    this.selectContigsRatherThanSplits = false;
+
     this.keepHistory = false;
     this.allowRedraw = true;
 
@@ -104,8 +110,17 @@ Bins.prototype.NewBin = function(id, binState) {
     this.container.insertAdjacentHTML('beforeend', template);
     this.SelectLastRadio();
 
+    if (this.taxonomyLabelingEnabled) {
+        this.manualBinNamesBackup = this.manualBinNamesBackup || {};
+        this.manualBinNamesBackup[binData.id] = binData.name;
+    }
+
     this._initializeColorPicker(binData.id);
     this._recordBinCreation(binData);
+
+    if (this.taxonomyLabelingEnabled) {
+        this.ApplyTaxonomyLabels();
+    }
 };
 
 /**
@@ -162,6 +177,8 @@ Bins.prototype._generateBinTemplate = function(binData) {
         template += this._getPanModeColumns(id, binData);
     } else if (mode === 'codon-frequencies') {
         template += this._getCodonFrequencyColumns(id, binData);
+    } else if (mode === 'gene') {
+        template += this._getGeneModeColumns(id, binData);
     } else {
         template += this._getDefaultModeColumns(id, binData);
     }
@@ -201,13 +218,26 @@ Bins.prototype._getPanModeColumns = function(id, binData) {
 };
 
 /**
+ * Get gene mode columns
+ * @private
+ */
+Bins.prototype._getGeneModeColumns = function(id, binData) {
+    return `
+        <td data-value="${binData.item_count}" class="num-items">
+            <input type="button" value="${binData.item_count}"
+                   title="Click for contig names"
+                   onclick="showGeneFunctions(${id});">
+        </td>`;
+};
+
+/**
  * Get codon frequency mode columns
  * @private
  */
 Bins.prototype._getCodonFrequencyColumns = function(id, binData) {
     return `
-        <td data-value="${binData.contig_count}" class="num-items">
-            <input type="button" value="${binData.contig_count}"
+        <td data-value="${binData.item_count}" class="num-items">
+            <input type="button" value="${binData.item_count}"
                    title="Click for contig names"
                    onclick="showGeneFunctions(${id});">
         </td>`;
@@ -219,10 +249,10 @@ Bins.prototype._getCodonFrequencyColumns = function(id, binData) {
  */
 Bins.prototype._getDefaultModeColumns = function(id, binData) {
     return `
-        <td data-value="${binData.contig_count}" class="num-items">
-            <input type="button" value="${binData.contig_count}"
+        <td data-value="${binData.item_count}" class="num-items">
+            <input type="button" value="${binData.item_count}"
                    title="Click for contig names"
-                   onclick="showContigNames(${id});">
+                   onclick="showGeneFunctionsInSplits(${id});">
         </td>
         <td data-value="${binData.contig_length}" class="length-sum">
             <span>${binData.contig_length}</span>
@@ -328,8 +358,16 @@ Bins.prototype.DeleteBin = function(bin_id, show_confirm = true) {
     this._clearBinSelections(bin_id);
     this.PushHistory(transaction);
     this._removeBinFromDOM(bin_id);
+    delete this.cache['taxonomy'][bin_id];
+    delete this.cache['completeness'][bin_id];
+
+    if (this.manualBinNamesBackup && this.manualBinNamesBackup.hasOwnProperty(bin_id)) {
+        delete this.manualBinNamesBackup[bin_id];
+    }
+
     this._ensureAtLeastOneBin();
     this.RedrawBins();
+    updateTaxonomyLabelingVisibility();
 };
 
 /**
@@ -471,6 +509,36 @@ Bins.prototype.GetBinColor = function(bin_id) {
     return colorElement ? colorElement.getAttribute('color') : null;
 };
 
+Bins.prototype.SetSelectContigsRatherThanSplits = function(enabled) {
+    this.selectContigsRatherThanSplits = Boolean(enabled);
+};
+
+Bins.prototype._getContigNameFromLabel = function(label) {
+    const splitIndex = label.indexOf('_split_');
+    return splitIndex === -1 ? label : label.substring(0, splitIndex);
+};
+
+Bins.prototype._expandNodeForContigSelection = function(node) {
+    if (!this.selectContigsRatherThanSplits || !node || !node.IsLeaf || !node.IsLeaf()) {
+        return [node];
+    }
+
+    if (typeof drawer === 'undefined' || !drawer || !drawer.tree || !Array.isArray(drawer.tree.leaves)) {
+        return [node];
+    }
+
+    const contigName = this._getContigNameFromLabel(node.label);
+    const expandedNodes = [];
+
+    for (const leaf of drawer.tree.leaves) {
+        if (this._getContigNameFromLabel(leaf.label) === contigName) {
+            expandedNodes.push(leaf);
+        }
+    }
+
+    return expandedNodes.length ? expandedNodes : [node];
+};
+
 // ============================================================================
 // Node Operations
 // ============================================================================
@@ -495,12 +563,21 @@ Bins.prototype.AppendNode = function(targets, bin_id) {
     }
 
     // Process each target
+    const processedNodes = new Set();
+
     for (const target of targets) {
         if (target.collapsed) continue;
 
         for (const node of target.IterateChildren()) {
-            this._removeNodeFromOtherBins(node, bin_id, bins_to_update, transaction);
-            this._addNodeToBin(node, bin_id, bin_color, bins_to_update, transaction);
+            const nodesToProcess = this._expandNodeForContigSelection(node);
+
+            for (const expandedNode of nodesToProcess) {
+                if (processedNodes.has(expandedNode)) continue;
+                processedNodes.add(expandedNode);
+
+                this._removeNodeFromOtherBins(expandedNode, bin_id, bins_to_update, transaction);
+                this._addNodeToBin(expandedNode, bin_id, bin_color, bins_to_update, transaction);
+            }
         }
     }
 
@@ -581,12 +658,21 @@ Bins.prototype.RemoveNode = function(targets, bin_id) {
     }
 
     // Process each target
+    const processedNodes = new Set();
+
     for (const target of targets) {
         if (target.collapsed) continue;
 
         for (const node of target.IterateChildren()) {
-            this._removeNodeFromAllBins(node, bins_to_update, transaction);
-            node.ResetColor();
+            const nodesToProcess = this._expandNodeForContigSelection(node);
+
+            for (const expandedNode of nodesToProcess) {
+                if (processedNodes.has(expandedNode)) continue;
+                processedNodes.add(expandedNode);
+
+                this._removeNodeFromAllBins(expandedNode, bins_to_update, transaction);
+                expandedNode.ResetColor();
+            }
         }
     }
 
@@ -868,12 +954,29 @@ Bins.prototype._updateDefaultModeStatistics = function(bin_id) {
     let num_items = 0;
     let length_sum = 0;
 
+    // Track unique un-split labels
+    const uniqueBaseName = new Set();
+    let hasSplits = false;
+
     for (const node of this.selections[bin_id].values()) {
         if (node.IsLeaf()) {
-            num_items++;
-            length_sum += parseInt(item_lengths[node.label]) || 0;
+            let label = node.label;
+            let baseName = label;
+
+            // Detect "_split_" and extract base label
+            const splitIndex = label.indexOf("_split_");
+            if (splitIndex !== -1) {
+                hasSplits = true;
+                baseName = label.substring(0, splitIndex);
+            }
+
+            uniqueBaseName.add(baseName);
+            length_sum += parseInt(item_lengths[baseName] || item_lengths[label]) || 0;
         }
     }
+
+    // If split labels exist, count unique bases; otherwise count leaves normally
+    num_items = hasSplits ? uniqueBaseName.size : uniqueBaseName.size;
 
     const bin_row = this.container.querySelector(`tr[bin-id="${bin_id}"]`);
 
@@ -1078,23 +1181,207 @@ Bins.prototype._processTaxonomyData = function(bin_id, bin_name, data) {
 
     if (!data.hasOwnProperty(bin_name)) return;
 
-    const taxonomyLevels = ["t_domain", "t_phylum", "t_class", "t_order", "t_family", "t_genus", "t_species"];
+    this.cache['taxonomy'][bin_id] = data[bin_name];
+
     const taxonomyLabel = this.container.querySelector(`span.taxonomy-name-label[bin-id="${bin_id}"]`);
 
-    if (!taxonomyLabel) return;
+    if (!taxonomyLabel) {
+        updateTaxonomyLabelingVisibility();
+        return;
+    }
 
-    // Default to unknown
-    taxonomyLabel.innerHTML = " (?) Unknown";
+    const consensus = data[bin_name]['consensus_taxonomy'] || {};
+    taxonomyLabel.innerHTML = this._getTaxonomyDisplayLabel(consensus);
 
-    // Find the most specific taxonomy level
-    for (let i = taxonomyLevels.length - 1; i >= 0; i--) {
-        const level = taxonomyLevels[i];
-        const taxonomyValue = data[bin_name]['consensus_taxonomy'][level];
+    if (this.taxonomyLabelingEnabled) {
+        this.ApplyTaxonomyLabels();
+    }
 
-        if (taxonomyValue !== null) {
+    updateTaxonomyLabelingVisibility();
+};
+
+/**
+ * Build taxonomy label text for UI
+ * @private
+ */
+Bins.prototype._getTaxonomyDisplayLabel = function(consensus) {
+    let label = " (?) Unknown";
+
+    for (const level of TAXONOMY_LEVEL_ORDER) {
+        const taxonomyValue = consensus[level];
+
+        if (taxonomyValue !== null && typeof taxonomyValue !== 'undefined') {
             const levelLabel = level.split('_')[1][0];
-            taxonomyLabel.innerHTML = ` (${levelLabel}) ${taxonomyValue.replace('_', ' ')}`;
+            label = ` (${levelLabel}) ${taxonomyValue.replace('_', ' ')}`;
             break;
+        }
+    }
+
+    return label;
+};
+
+// ============================================================================
+// Taxonomy-driven labels
+// ============================================================================
+
+/**
+ * Check whether any taxonomy data is available
+ * @returns {boolean}
+ */
+Bins.prototype.HasTaxonomyData = function() {
+    return Object.keys(this.cache['taxonomy']).length > 0;
+};
+
+/**
+ * Enable taxonomy-driven labeling and snapshot current names
+ */
+Bins.prototype.EnableTaxonomyLabeling = function() {
+    this.taxonomyLabelingEnabled = true;
+    this.manualBinNamesBackup = this._captureManualBinNames();
+};
+
+/**
+ * Disable taxonomy-driven labeling and restore original names
+ */
+Bins.prototype.DisableTaxonomyLabeling = function() {
+    this.taxonomyLabelingEnabled = false;
+    if (this.manualBinNamesBackup) {
+        this._restoreManualBinNames();
+    }
+    this.manualBinNamesBackup = null;
+};
+
+/**
+ * Apply taxonomy-based labels according to the selected level
+ * @param {string} selectedLevel - taxonomy level (best, phylum, ..., species)
+ */
+Bins.prototype.ApplyTaxonomyLabels = function(selectedLevel) {
+    if (!this.taxonomyLabelingEnabled) return;
+
+    const level = selectedLevel || $('input[name="taxonomy_label_level"]:checked').val() || 'best';
+    const binRows = Array.from(this.container.querySelectorAll('tr.bin-row')).sort(
+        (a, b) => parseInt(a.getAttribute('bin-id')) - parseInt(b.getAttribute('bin-id'))
+    );
+
+    const labelCounts = {};
+
+    binRows.forEach((row) => {
+        const bin_id = parseInt(row.getAttribute('bin-id'));
+        this._ensureManualNameBackupForBin(bin_id);
+
+        const baseLabel = this._getTaxonomyBaseLabel(bin_id, level);
+        labelCounts[baseLabel] = (labelCounts[baseLabel] || 0) + 1;
+        const suffix = String(labelCounts[baseLabel]).padStart(3, '0');
+        this._setBinName(bin_id, `${baseLabel}_${suffix}`);
+    });
+
+    emit('bin-settings-changed');
+};
+
+/**
+ * Capture current bin names for restoration
+ * @private
+ */
+Bins.prototype._captureManualBinNames = function() {
+    const names = {};
+    const binRows = this.container.querySelectorAll('tr.bin-row');
+
+    binRows.forEach((row) => {
+        const bin_id = row.getAttribute('bin-id');
+        const input = row.querySelector('.bin-name');
+        names[bin_id] = input ? input.value : `${this.prefix}${parseInt(bin_id) + 1}`;
+    });
+
+    return names;
+};
+
+/**
+ * Restore bin names from snapshot or fall back to defaults
+ * @private
+ */
+Bins.prototype._restoreManualBinNames = function() {
+    const binRows = this.container.querySelectorAll('tr.bin-row');
+
+    binRows.forEach((row) => {
+        const bin_id = row.getAttribute('bin-id');
+        const fallback = `${this.prefix}${parseInt(bin_id) + 1}`;
+        const targetName = (this.manualBinNamesBackup && this.manualBinNamesBackup.hasOwnProperty(bin_id))
+            ? this.manualBinNamesBackup[bin_id]
+            : fallback;
+        this._setBinName(bin_id, targetName);
+    });
+
+    emit('bin-settings-changed');
+};
+
+/**
+ * Ensure manual name snapshot exists for a bin
+ * @private
+ */
+Bins.prototype._ensureManualNameBackupForBin = function(bin_id) {
+    if (!this.manualBinNamesBackup) {
+        this.manualBinNamesBackup = {};
+    }
+
+    if (!this.manualBinNamesBackup.hasOwnProperty(bin_id)) {
+        const currentName = $(`#bin_name_${bin_id}`).val();
+        this.manualBinNamesBackup[bin_id] = currentName || `${this.prefix}${parseInt(bin_id) + 1}`;
+    }
+};
+
+/**
+ * Compute base taxonomy label for a bin with fallbacks
+ * @private
+ */
+Bins.prototype._getTaxonomyBaseLabel = function(bin_id, selectedLevel) {
+    const taxonomyData = this.cache['taxonomy'][bin_id];
+    if (!taxonomyData || !taxonomyData.consensus_taxonomy) {
+        return 'Unknown';
+    }
+
+    const consensus = taxonomyData.consensus_taxonomy;
+    const levelKey = selectedLevel === 'best' ? null : `t_${selectedLevel}`;
+    const startIndex = levelKey ? Math.max(TAXONOMY_LEVEL_ORDER.indexOf(levelKey), 0) : 0;
+
+    for (let i = startIndex; i < TAXONOMY_LEVEL_ORDER.length; i++) {
+        const level = TAXONOMY_LEVEL_ORDER[i];
+        const value = consensus[level];
+
+        if (value !== null && typeof value !== 'undefined') {
+            const needsUnknownPrefix = (selectedLevel !== 'best') && (level !== levelKey);
+            const baseLabel = needsUnknownPrefix ? `Unknown_${value}` : value;
+            const sanitizedLabel = this._sanitizeTaxonomyLabel(baseLabel);
+
+            if (sanitizedLabel) {
+                return sanitizedLabel;
+            }
+        }
+    }
+
+    return 'Unknown';
+};
+
+/**
+ * Clean taxonomy strings for bin labels
+ * @private
+ */
+Bins.prototype._sanitizeTaxonomyLabel = function(label) {
+    if (!label) return null;
+    const cleaned = label.replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+    return cleaned || null;
+};
+
+/**
+ * Update bin name field and its data attributes
+ * @private
+ */
+Bins.prototype._setBinName = function(bin_id, name) {
+    const input = document.getElementById(`bin_name_${bin_id}`);
+
+    if (input) {
+        input.value = name;
+        if (input.parentNode) {
+            input.parentNode.setAttribute('data-value', name);
         }
     }
 };
@@ -1166,6 +1453,14 @@ Bins.prototype.ImportCollection = function(collection, threshold = 1000) {
         this.RebuildIntersections();
         this.UpdateBinsWindow();
         this.RedrawBins();
+
+        // fetch taxonomy for all imported bins if realtime estimation is enabled
+        if ($('#estimate_taxonomy').is(':checked')) {
+            for (const bin_id of Object.keys(this.selections)) {
+                var bin_name = $(`#bin_name_${bin_id}`).val();
+                this._fetchTaxonomyData(bin_id, bin_name);
+            }
+        }
     }
 
     this.keepHistory = true;
@@ -1202,6 +1497,9 @@ Bins.prototype._clearAllBins = function() {
     this.selections = {};
     this.container.innerHTML = '';
     this.history = [];
+    this.cache = { 'completeness': {}, 'taxonomy': {} };
+    this.manualBinNamesBackup = this.taxonomyLabelingEnabled ? {} : null;
+    updateTaxonomyLabelingVisibility();
 };
 
 /**

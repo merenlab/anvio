@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """
     Common functions and classes for SCG/TRNA taxonomy.
 """
@@ -270,9 +268,9 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
 
         if self.metagenome_mode or anvio.DEBUG:
             self.run.info_single(f"A total of %s {self._SOURCE_DATA}s with taxonomic affiliations were successfully initialized "
-                                 f"from the contigs database 🎉 Following shows the frequency of these {self._ITEMS}: %s." % \
+                                 f"from the contigs database 🎉 Following shows the frequency of these {self._ITEMS}: %s." %
                                             (pp(len(self.gene_callers_id_to_item_taxonomy_dict)),
-                                             ', '.join(["%s (%d)" % (g, self.frequency_of_items_with_taxonomy[g]) \
+                                             ', '.join(["%s (%d)" % (g, self.frequency_of_items_with_taxonomy[g])
                                                                 for g in self.frequency_of_items_with_taxonomy])), nl_before=1)
 
 
@@ -1168,6 +1166,30 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
             self.tables_for_taxonomy = None
             database_version = None
 
+        # first check if the required HMM source exists in the contigs database
+        # (i.e., whether anvi-run-hmms was run with the default HMM profiles)
+        if self.scgs_focus:
+            required_hmm_sources = self.ctx.hmm_source_for_scg_taxonomy
+        elif self.trna_focus:
+            required_hmm_sources = self.ctx.hmm_source_for_trna_genes
+        else:
+            required_hmm_sources = set()
+
+        contigs_db = ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
+        available_hmm_sources = set(contigs_db.db.get_table_as_dict(t.hmm_hits_info_table_name).keys())
+        contigs_db.disconnect()
+
+        missing_hmm_sources = required_hmm_sources - available_hmm_sources
+        if missing_hmm_sources:
+            if self.scgs_focus:
+                fix_suggestion = "Please run `anvi-run-hmms` first and then try again."
+            else:
+                fix_suggestion = ("Please run `anvi-run-hmms --also-scan-trnas` or `anvi-scan-trnas` "
+                                  "first and then try again.")
+
+            raise ConfigError(f"This contigs database does not have the required HMM source(s) for {self._ITEM} taxonomy: "
+                              f"'{', '.join(missing_hmm_sources)}'. {fix_suggestion}")
+
         # get the dictionary that shows all hits for each self._ITEM of interest
         self.progress.new('Contigs bleep bloop')
         self.progress.update(f'Recovering the {self._ITEMS} dictionary')
@@ -1175,10 +1197,8 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
         self.progress.end()
 
         if not item_sequences_dict:
-            raise ConfigError(f"This contigs database contains no {self._SOURCE_DATA} sequences that are used by the "
-                              f"anvi'o taxonomy headquarters in Lausanne. As a result, anvi'o cannot populate any "
-                              f"taxonomy information in this case :/ You could fix that by running the anvi'o program "
-                              f"`anvi-run-hmms` on this database first.")
+            self.run.warning(f"This contigs database contains no {self._SOURCE_DATA} sequences that are used by the "
+                             f"anvi'o taxonomy headquarters in Lausanne. Somewhat disappointing but totally OK.")
 
             # even if there are no SCGs to use for taxonomy later, we did attempt ot populate the
             # contigs database, so we shall note that in the self table to make sure the error from
@@ -1286,7 +1306,7 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
                 num_finished_processes += 1
 
                 self.progress.increment(increment_to=num_finished_processes)
-                self.progress.update(f"%s of %s {self._ITEMS} are finished in %s processes with %s threads." \
+                self.progress.update(f"%s of %s {self._ITEMS} are finished in %s processes with %s threads."
                                         % (num_finished_processes, total_num_processes, int(self.num_parallel_processes), self.num_threads))
 
             except KeyboardInterrupt:

@@ -4,7 +4,7 @@ rule make_metagenomics_config_file:
     """Make a METAGENOMICS WORKFLOW config.json customized for ECOPHYLO_WORKFLOW - PROFILE MODE"""
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "make_metagenomics_config_file.log")
+    log: rule_log("make_metagenomics_config_file")
     input:
         rules.make_fasta_txt.output.fasta_txt
     output:
@@ -54,7 +54,7 @@ rule run_metagenomics_workflow:
     """Run metagenomics workflow to profile hmm_hits"""
 
     version: 1.0
-    log: "00_LOGS/run_metagenomics_workflow.log"
+    log: rule_log("run_metagenomics_workflow")
     input:
         config = rules.make_metagenomics_config_file.output.config,
     output:
@@ -69,9 +69,9 @@ rule run_metagenomics_workflow:
         M.samples_txt.write_tsv(samples_txt_new_path, absolute_paths = True)
 
         log_path = os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "00_LOGS")
-        log_file = os.path.join(log_path, "run_metagenomics_workflow.log")
-        log = os.path.join("00_LOGS", "run_metagenomics_workflow.log")
-        shell(f"mkdir -p {log_path} && touch {log_file}")
+        log_file = os.path.join(log_path, "run_metagenomics_workflow", "log.log")
+        log = os.path.join("00_LOGS", "run_metagenomics_workflow", "log.log")
+        shell(f"mkdir -p {os.path.dirname(log_file)} && touch {log_file}")
 
         if M.clusterize_metagenomics_workflow == True:
             # If we are using slurm and clusterize: https://github.com/ekiefl/clusterize
@@ -88,7 +88,7 @@ rule add_default_collection:
     """Make default collection for profile-db that contains all splits"""
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "add_default_collection_{group}.log")
+    log: rule_log("add_default_collection", "{group}")
     input: metagenomics_workflow_done = rules.run_metagenomics_workflow.output.done
     params:
         contigsDB = ancient(os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "03_CONTIGS", "{group}.db")),
@@ -103,11 +103,11 @@ rule anvi_summarize:
     """Get coverage values for hmm_hits"""
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_summarize_{group}.log")
+    log: rule_log("anvi_summarize", "{group}")
     input:
         done = rules.add_default_collection.output.done
     params:
-        contigsDB = ancient(os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "03_CONTIGS", "{group}-contigs.db")),
+        contigsDB = ancient(os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "03_CONTIGS", "{group}.db")),
         profileDB = os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "06_MERGED", "{group}", "PROFILE.db"),
         output_dir = os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "07_SUMMARY", "{group}")
     output: touch(os.path.join(dirs_dict['HOME'], "METAGENOMICS_WORKFLOW", "07_SUMMARY", "{group}_summarize.done"))
@@ -120,7 +120,7 @@ rule make_anvio_state_file:
     """Make a state file customized for EcoPhylo workflow interactive interface"""
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "make_anvio_state_file_{group}.log")
+    log: rule_log("make_anvio_state_file", "{group}")
     input:
         M.get_target_files_make_anvio_state_file()
     params:
@@ -304,7 +304,7 @@ rule anvi_import_everything_metagenome:
     """
 
     version: 1.0
-    log: os.path.join(dirs_dict['LOGS_DIR'], "anvi_import_state_{group}.log")
+    log: rule_log("anvi_import_everything_metagenome", "{group}")
     input:
         tree = rules.rename_tree_tips.output.tree,
         state = rules.make_anvio_state_file.output.state_file,

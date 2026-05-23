@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Core estimation algorithms for the metabolism module. NO BD ACCESS FROM HERE."""
 
 import re
@@ -899,7 +898,7 @@ class KeggEstimationAlgorithms:
     def add_module_coverage(self, mod, meta_dict_for_bin, profile_db=None, enzymes_of_interest_df=None):
         """This function updates the metabolism dictionary with coverage values for the given module.
 
-        For profile DB input, this function must be called after dbaccess.init_gene_coverage() so that the 
+        For profile DB input, this function must be called after dbaccess.init_gene_coverage() so that the
         relevant gene coverage values are initialized.
 
         NEW KEYS ADDED TO METABOLISM COMPLETENESS DICT
@@ -929,7 +928,7 @@ class KeggEstimationAlgorithms:
             if profile_db:
                 self.coverage_sample_list = profile_db.p_meta['samples']
             elif enzymes_of_interest_df:
-                self.coverage_sample_list = [self.contigs_db_project_name] 
+                self.coverage_sample_list = [self.contigs_db_project_name]
 
         for s in self.coverage_sample_list:
             meta_dict_for_bin[mod]["genes_to_coverage"][s] = {}
@@ -1012,7 +1011,7 @@ class KeggEstimationAlgorithms:
                 stepwise_complete_mods.add(mod)
 
             if add_coverage:
-                self.add_module_coverage(mod, metabolism_dict_for_list_of_splits, profile_db=self.profile_db, 
+                self.add_module_coverage(mod, metabolism_dict_for_list_of_splits, profile_db=self.profile_db,
                                         enzymes_of_interest_df=self.enzymes_of_interest_df)
 
         # go back and adjust completeness/copy number of modules that are defined by other modules

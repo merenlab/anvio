@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import sys
 import numpy as numpy
@@ -75,7 +74,7 @@ def run_program():
                     "average detection is %.2f across all metagenomes, %.2f being the maximum. Well, you can take a look at the "
                     "anvi-summarize output if you would like to learn more. The bottom line is this: the metagenomes you have in this "
                     "project are not the best ones to investigate the occurrence of the genes in this genome in the environment. So. "
-                    "This program will give you quite useless output files, but anvi'o hopes that you will enjoy them anyway :(" %\
+                    "This program will give you quite useless output files, but anvi'o hopes that you will enjoy them anyway :(" %
                             (num_metagenomes, min_detection, average_detection_of_genome, max_detection_of_genome))
     else:
         not_enough_detection = False

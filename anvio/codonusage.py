@@ -1,8 +1,6 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """Module for codon usage analyses at the levels of genes, groups of genes, and genomes"""
 
-
+import os
 import copy
 import inspect
 import argparse
@@ -13,13 +11,14 @@ from functools import partial
 from collections import Counter
 
 import anvio
+from anvio import filesnpaths
 import anvio.utils as utils
 import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.ccollections as ccollections
 
-from anvio.errors import ConfigError
 from anvio.dbops import ContigsSuperclass
+from anvio.errors import ConfigError, FilesNPathsError
 from anvio.genomedescriptions import GenomeDescriptions
 
 
@@ -68,7 +67,7 @@ class SingleGenomeCodonUsage(object):
     Manipulate the raw data using the methods, `get_frequencies` and `get_codon_usage_bias`.
     """
 
-    def __init__(self, args, run=run, progress=progress):
+    def __init__(self, args, r=run, rq=run_quiet, p=progress):
         self.args = args
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
 
@@ -78,10 +77,20 @@ class SingleGenomeCodonUsage(object):
         self.collection_name = A('collection_name')
         self.bin_id = A('bin_id')
 
-        self.function_sources = A('function_sources')
+        self.gene_caller_ids_of_interest = A('gene_caller_ids')
+        if self.gene_caller_ids_of_interest is None:
+            self.gene_caller_ids_of_interest = set()
 
-        self.run = run
-        self.progress = progress
+        self.function_sources = A('function_sources')
+        self.all_brite_categories = A('all_brite_categories')
+
+        self.ignore_start_codons = A('ignore_start_codons')
+        if self.ignore_start_codons is None:
+            self.ignore_start_codons = False
+
+        self.run = r
+        self.run_quiet = rq
+        self.progress = p
 
         self._set_genetic_code()
         self._load_contigs_db_data()
@@ -89,12 +98,14 @@ class SingleGenomeCodonUsage(object):
 
 
     def _set_genetic_code(self):
-        """Record decoding properties of the genome as object attributes.
+        """
+        Store decoding properties of the genome as object attributes.
 
         The dict, `args.codon_to_amino_acid`, should have keys that are codons and values that are
         three-letter amino acid codes ("STP" for stop codons). If `args.codon_to_amino_acid` is None, the
-        standard genetic code is used."""
-        if self.args.codon_to_amino_acid is None:
+        standard genetic code is used.
+        """
+        if 'codon_to_amino_acid' not in self.args or self.args.codon_to_amino_acid is None:
             self.codon_amino_acid_dict = default_codon_amino_acid_dict
         else:
             check_genetic_code(self.args.codon_to_amino_acid)
@@ -128,15 +139,25 @@ class SingleGenomeCodonUsage(object):
         utils.is_contigs_db(self.contigs_db_path)
 
         if self.profile_db_path or self.collection_name or self.bin_id:
-            # Initialize the contigs superclass from the splits of the internal genome bin.
+            # Initialize the contigs superclass from the splits of the internal genome bin. An
+            # exception will be raised if all three args are not provided or valid.
             self.args.split_names_of_interest = \
                 ccollections.GetSplitNamesInBins(self.args).get_split_names_only()
-        contigs_super = ContigsSuperclass(self.args, r=run_quiet)
-        contigs_super.init_contig_sequences()
+        contigs_super = ContigsSuperclass(self.args, r=self.run_quiet)
+        contigs_super.init_contig_sequences(
+            gene_caller_ids_of_interest=self.gene_caller_ids_of_interest)
         self.contig_sequences_dict = contigs_super.contig_sequences
 
-        self.genes_in_contigs_dict = contigs_super.genes_in_contigs_dict
-        self.gene_caller_ids = list(set(self.genes_in_contigs_dict))
+        if self.gene_caller_ids_of_interest:
+            self.gene_caller_ids = list(set(self.gene_caller_ids_of_interest).intersection(
+                contigs_super.gene_caller_ids_included_in_contig_sequences_initialized))
+            self.genes_in_contigs_dict = {
+                gene_caller_id: contigs_super.genes_in_contigs_dict[gene_caller_id]
+                for gene_caller_id in self.gene_caller_ids}
+        else:
+            self.gene_caller_ids = \
+                contigs_super.gene_caller_ids_included_in_contig_sequences_initialized
+            self.genes_in_contigs_dict = contigs_super.genes_in_contigs_dict
 
         # Organize functional annotations into a table.
         contigs_super.init_functions(requested_sources=self.function_sources)
@@ -147,6 +168,12 @@ class SingleGenomeCodonUsage(object):
                     "The value of `args.function_sources` is an empty list, indicating that all "
                     "function sources in the genome should by loaded. However, the contigs "
                     "database has not been annotated by any sources :/")
+
+        if self.all_brite_categories and 'KEGG_BRITE' not in self.function_sources:
+            raise ConfigError(
+                "`all_brite_categories` can only be used with 'KEGG_BRITE' as as a function "
+                "annotation source.")
+
         gene_function_rows = []
         for gene_caller_id, annotation_dict in contigs_super.gene_function_calls_dict.items():
             for annotation_source, annotation in annotation_dict.items():
@@ -162,15 +189,22 @@ class SingleGenomeCodonUsage(object):
                     # separators.
                     for accession, name in zip(accessions, names):
                         if annotation_source == 'KEGG_BRITE':
-                            # Include every possible depth of categorization.
                             hierarchy_accession = accession
                             categorization = name
-                            split_categories = categorization.split('>>>')
-                            for depth in range(1, len(split_categories) + 1):
+                            if self.all_brite_categories:
+                                # Include every possible depth of categorization.
+                                split_categories = categorization.split('>>>')
+                                for depth in range(1, len(split_categories) + 1):
+                                    gene_function_rows.append(
+                                        [annotation_source,
+                                        hierarchy_accession,
+                                        '>>>'.join(split_categories[: depth]),
+                                        gene_caller_id])
+                            else:
                                 gene_function_rows.append(
                                     [annotation_source,
                                      hierarchy_accession,
-                                     '>>>'.join(split_categories[: depth]),
+                                     categorization,
                                      gene_caller_id])
                         else:
                             gene_function_rows.append(
@@ -180,26 +214,33 @@ class SingleGenomeCodonUsage(object):
                     # '!!!' separators. In COG20_PATHWAY, there can be multiple accessions
                     # corresponding to the same function name.
                     if annotation_source == 'KEGG_BRITE':
-                        # Include every possible depth of categorization.
                         hierarchy_accession = accession
                         categorization = name
-                        split_categories = categorization.split('>>>')
-                        for depth in range(1, len(split_categories) + 1):
+                        if self.all_brite_categories:
+                            # Include every possible depth of categorization.
+                            split_categories = categorization.split('>>>')
+                            for depth in range(1, len(split_categories) + 1):
+                                gene_function_rows.append(
+                                    [annotation_source,
+                                    hierarchy_accession,
+                                    '>>>'.join(split_categories[: depth]),
+                                    gene_caller_id])
+                        else:
                             gene_function_rows.append(
                                 [annotation_source,
                                  hierarchy_accession,
-                                 '>>>'.join(split_categories[: depth]),
+                                 categorization,
                                  gene_caller_id])
                     else:
                         gene_function_rows.append(
                             [annotation_source, accession, name, gene_caller_id])
         self.gene_function_df = pd.DataFrame(
-            gene_function_rows, columns=['source', 'accession', 'name', 'gene_caller_id'])
+            gene_function_rows,
+            columns=['function_source', 'function_accession', 'function_name', 'gene_caller_id'])
 
 
     def _make_gene_codon_frequency_table(self):
         """Generate the per-gene codon frequency DataFrame as `self.gene_codon_frequency_df`."""
-
         self.progress.new("Fetching codon frequency data")
         self.progress.update("...")
 
@@ -216,8 +257,11 @@ class SingleGenomeCodonUsage(object):
 
             coding_gene_caller_ids.append(gene_caller_id)
 
-            gene_codon_frequencies.append(Counter(utils.get_list_of_codons_for_gene_call(
-                gene_call, self.contig_sequences_dict)))
+            gene_codons = utils.get_list_of_codons_for_gene_call(
+                gene_call, self.contig_sequences_dict)
+            if self.ignore_start_codons:
+                gene_codons = gene_codons[1: ]
+            gene_codon_frequencies.append(Counter(gene_codons))
 
         gene_codon_frequency_df = pd.DataFrame.from_records(gene_codon_frequencies)
 
@@ -270,7 +314,7 @@ class SingleGenomeCodonUsage(object):
         Relative codon frequencies can be normalized per-amino acid to all synonymous codons.
 
         Parameters
-        ----------
+        ==========
         from_function_sources : bool, str, or iterable of str, optional
             Select genes with functional annotations. With this argument, the first four columns of
             the returned table contain, respectively, function annotation sources, function
@@ -280,10 +324,7 @@ class SingleGenomeCodonUsage(object):
             the SingleGenomeCodonUsage object. When this argument is a string, select the source
             given by the string, e.g., 'KOfam', 'COG20_FUNCTION', 'Pfam'. When this argument is an
             iterable, select a subset of sources given by its strings, e.g., ['KOfam',
-            'COG20_FUNCTION']. When 'KEGG_BRITE' is in the argument, in the absence of
-            `function_names` narrowing the scope of the inquiry, all possible depths of each BRITE
-            hierarchy in the data are returned, e.g., 'Ribosome>>>Ribosomal proteins' and the more
-            general 'Ribosome' would each have rows in the output table. By default None.
+            'COG20_FUNCTION']. By default None.
         return_functions : bool, optional
             If True (default False), output frequency tables contain function rather than gene
             results in each row. Returning per-gene results when also considering functions by using
@@ -308,8 +349,9 @@ class SingleGenomeCodonUsage(object):
             'Pfam') and with values being lists of function names. Unlike `function_accessions`,
             'KEGG_BRITE' may be used as a source, with names (categorizations) given to an arbitrary
             level of the hierarchy, such as ['Ribosome>>>Ribosomal proteins', 'Transcription
-            machinery>>>Prokaryotic type>>>Bacterial type>>>RNA polymerase']. This parameter can be
-            used alongside `gene_caller_ids` and `function_accessions`. By default None.
+            machinery>>>Prokaryotic type>>>Bacterial type>>>RNA polymerase']. All BRITE
+            categorizations falling under the given level are selected. This parameter can be used
+            alongside `gene_caller_ids` and `function_accessions`. By default None.
         expect_functions : bool, optional
             If True (default False), an error will be raised if any given `function_accessions` or
             `function_names` are not annotated in the input genome.
@@ -330,7 +372,7 @@ class SingleGenomeCodonUsage(object):
             calculation of relative/synonymous frequencies.
 
         Additional Parameters
-        ---------------------
+        =====================
         These parameters filter genes and codons. Here is the order of all possible filters:
         gene codon frequency table ->
             drop genes on codon length ->
@@ -359,7 +401,7 @@ class SingleGenomeCodonUsage(object):
             filters to ensure that total codon frequencies in the output always meet the minimum
             codon threshold. 'both' is needed as an option in addition to 'remaining' so dynamic
             codon filtering by `--exclude-amino-acid-count/fraction` operates on genes that passed
-            the first length filter.
+            the first length filter. By default "both".
         drop_amino_acids : iterable, optional
             Remove codons that decode the given amino acids (use three-letter codes, e.g., Ala, and
             STP for stop codons). If `synonymous` is True, the `drop_amino_acids` default rather
@@ -388,19 +430,21 @@ class SingleGenomeCodonUsage(object):
             usage bias.
 
         Returns
-        -------
+        =======
         pandas.core.frame.DataFrame
             Frequency table of gene x codon or amino acid. If functions are not considered, then the
-            Index of the returned DataFrame contains gene caller IDs. If functions are considered,
-            then each row represents a gene/function pair, and the same gene frequencies can be
-            found in multiple rows with different function pairs; there are additional MultiIndex
-            columns for source, accession, and name of function. If frequencies are summed or
-            averaged and functions are not considered, the returned single-row DataFrame has an
-            Index with one entry, 'all'. If frequencies are summed or averaged and functions are
-            considered, the returned DataFrame has a row for each function annotation source.
+            Index of the returned DataFrame contains gene caller IDs. If functions are considered
+            and `return_functions` is False, then each row represents a gene/function pair, and the
+            same gene frequencies can be found in multiple rows with different function pairs; there
+            are additional MultiIndex columns for source, accession, and name of function. If
+            functions are considered and `return_functions` is True, then each row represents a
+            function rather than gene/function pair. If frequencies are summed or averaged and
+            functions are not considered, the returned single-row DataFrame has an Index with one
+            entry, 'all'. If frequencies are summed or averaged and functions are considered, the
+            returned DataFrame has a row for each function annotation source.
 
         Examples
-        --------
+        ========
         Return the amino acid frequencies of each gene annotated by KEGG KOfams.
         >>> self.get_frequencies(from_function_sources='KOfam', return_amino_acids=True)
 
@@ -444,14 +488,14 @@ class SingleGenomeCodonUsage(object):
             gene_function_df = self.gene_function_df
         elif function_sources:
             # Subset the gene function table to the requested sources.
-            gene_function_df = \
-                self.gene_function_df.set_index('source').loc[function_sources].reset_index()
+            gene_function_df = self.gene_function_df.set_index(
+                'function_source').loc[function_sources].reset_index()
 
         # Check compatability of `return_amino_acids` with other arguments.
         if return_amino_acids and synonymous:
-            raise ConfigError("The argument `synonymous` should only be True when "
-                              "`return_amino_acids` is also True, as `synonymous` returns "
-                              "synonymous codon relative frequencies.")
+            raise ConfigError(
+                "The argument `synonymous` should only be True when `return_amino_acids` is also "
+                "True, as `synonymous` returns synonymous codon relative frequencies.")
         if return_amino_acids and label_amino_acids:
             # Don't bother raising an exception.
             label_amino_acids = False
@@ -480,7 +524,7 @@ class SingleGenomeCodonUsage(object):
 
         if min_codon_filter not in ['length', 'remaining', 'both']:
             raise ConfigError("`min_codon_filter` must be one of 'length', 'remaining', or 'both'.")
-        # Set `filter_gene_length` `filter_function_length`, and `filter_remaining`.
+        # Set `filter_gene_length`, `filter_function_length`, and `filter_remaining`.
         if min_codon_filter == 'length':
             filter_gene_length = bool(gene_min_codons)
             filter_function_length = bool(function_min_codons)
@@ -541,10 +585,10 @@ class SingleGenomeCodonUsage(object):
             gene_function_codon_frequency_df = gene_function_df.merge(
                 gene_codon_frequency_df, how='inner', on='gene_caller_id')
             gene_function_codon_frequency_df = gene_function_codon_frequency_df.set_index(
-                ['source', 'accession', 'name', 'gene_caller_id'])
+                ['function_source', 'function_accession', 'function_name', 'gene_caller_id'])
             if filter_function_length:
                 gene_function_codon_frequency_df = gene_function_codon_frequency_df.groupby(
-                    ['source', 'accession', 'name']).filter(
+                    ['function_source', 'function_accession', 'function_name']).filter(
                         lambda function_df: function_df.sum(axis=1).sum() >= function_min_codons)
 
         # Drop certain codon columns from the gene codon frequency table. Filter genes by total
@@ -565,10 +609,10 @@ class SingleGenomeCodonUsage(object):
                 gene_function_codon_frequency_df = gene_function_df.merge(
                     gene_codon_frequency_df, how='inner', on='gene_caller_id')
                 gene_function_codon_frequency_df = gene_function_codon_frequency_df.set_index(
-                    ['source', 'accession', 'name', 'gene_caller_id'])
+                    ['function_source', 'function_accession', 'function_name', 'gene_caller_id'])
                 if filter_function_remaining_codons:
                     gene_function_codon_frequency_df = gene_function_codon_frequency_df.groupby(
-                        ['source', 'accession', 'name']).filter(
+                        ['function_source', 'function_accession', 'function_name']).filter(
                             lambda function_df:
                                 function_df.sum(axis=1).sum() >= function_min_codons)
                 need_to_filter_codons_in_gene_function_codon_frequency_table = False
@@ -719,9 +763,11 @@ class SingleGenomeCodonUsage(object):
         # GET OUTPUTS WITH CONSIDERATION OF FUNCTIONS
         #############################################
         get_table = lambda method: method(
-            (gene_function_codon_frequency_df.groupby(['source', 'accession', 'name']).sum()
+            (gene_function_codon_frequency_df.groupby(
+                ['function_source', 'function_accession', 'function_name']).sum()
              if return_functions else
-             gene_function_codon_frequency_df.sort_values(['source', 'accession', 'name'])),
+             gene_function_codon_frequency_df.sort_values(
+                 ['function_source', 'function_accession', 'function_name'])),
             sequence_min_amino_acids=sequence_min_amino_acids,
             label_amino_acids=label_amino_acids,
             replace_na=infinity_to_zero,
@@ -752,17 +798,20 @@ class SingleGenomeCodonUsage(object):
         # in the function source. A gene can have different annotations, e.g., different KOfam
         # assignments. In KEGG BRITE, a gene can be in nested categories and different hierarchies.
         gene_function_codon_frequency_df = \
-            gene_function_codon_frequency_df.reset_index().groupby('source').apply(
+            gene_function_codon_frequency_df.reset_index().groupby('function_source').apply(
                 lambda source_df: source_df.drop_duplicates(
                     subset='gene_caller_id', ignore_index=True)).set_index(
-                        ['source', 'accession', 'name', 'gene_caller_id'])
+                        ['function_source',
+                         'function_accession',
+                         'function_name',
+                         'gene_caller_id'])
 
         # Summed codon/amino acid results across each function source:
         # If amino acid rather than codon columns are returned, then gene amino acid frequencies are
         # first calculated from the sum of codon frequencies.
         ### Absolute frequencies
         get_table = lambda method: self._get_frequency_table(
-            gene_function_codon_frequency_df.groupby('source').apply(method).droplevel(1),
+            gene_function_codon_frequency_df.groupby('function_source').apply(method).droplevel(1),
             sequence_min_amino_acids=sequence_min_amino_acids,
             output_amino_acids=return_amino_acids,
             label_amino_acids=label_amino_acids)
@@ -772,7 +821,7 @@ class SingleGenomeCodonUsage(object):
             return get_table(self._get_summed_frequency_table)
         ### Relative frequencies
         get_table = lambda method: self._get_frequency_table(
-            gene_function_codon_frequency_df.groupby('source').apply(
+            gene_function_codon_frequency_df.groupby('function_source').apply(
                 partial(method, sequence_min_amino_acids=sequence_min_amino_acids)).droplevel(1),
             output_amino_acids=return_amino_acids,
             label_amino_acids=label_amino_acids)
@@ -783,7 +832,7 @@ class SingleGenomeCodonUsage(object):
             return get_table(self._get_summed_rel_frequency_table)
         ### Synonymous relative frequencies
         get_table = lambda method: self._get_frequency_table(
-            gene_function_codon_frequency_df.groupby('source').apply(
+            gene_function_codon_frequency_df.groupby('function_source').apply(
                 partial(method, sequence_min_amino_acids=sequence_min_amino_acids)).droplevel(1),
             label_amino_acids=label_amino_acids,
             replace_na=infinity_to_zero)
@@ -797,7 +846,7 @@ class SingleGenomeCodonUsage(object):
         # Codon results averaged across genes annotated by a function source:
         ### Absolute frequencies
         get_table = lambda method: self._get_frequency_table(
-            gene_function_codon_frequency_df.groupby('source').apply(method).droplevel(1),
+            gene_function_codon_frequency_df.groupby('function_source').apply(method).droplevel(1),
             sequence_min_amino_acids=sequence_min_amino_acids,
             label_amino_acids=label_amino_acids)
         if (not return_amino_acids and
@@ -807,7 +856,7 @@ class SingleGenomeCodonUsage(object):
             return get_table(self._get_average_frequency_table)
         ### Relative frequencies
         get_table = lambda method: self._get_frequency_table(
-            gene_function_codon_frequency_df.groupby('source').apply(
+            gene_function_codon_frequency_df.groupby('function_source').apply(
                 partial(method, sequence_min_amino_acids=sequence_min_amino_acids)).droplevel(1),
             label_amino_acids=label_amino_acids)
         if (not return_amino_acids and
@@ -818,7 +867,7 @@ class SingleGenomeCodonUsage(object):
             return get_table(self._get_average_rel_frequency_table)
         ### Synonymous relative frequencies
         get_table = lambda method: self._get_frequency_table(
-            gene_function_codon_frequency_df.groupby('source').apply(
+            gene_function_codon_frequency_df.groupby('function_source').apply(
                 partial(method, sequence_min_amino_acids=sequence_min_amino_acids)).droplevel(1),
             label_amino_acids=label_amino_acids,
             replace_na=infinity_to_zero)
@@ -832,7 +881,7 @@ class SingleGenomeCodonUsage(object):
         # Amino acid results averaged across genes annotated by a function source:
         ### Absolute frequencies
         get_table = lambda method: self._get_frequency_table(
-            gene_function_codon_frequency_df.groupby('source').apply(method).droplevel(1),
+            gene_function_codon_frequency_df.groupby('function_source').apply(method).droplevel(1),
             sequence_min_amino_acids=sequence_min_amino_acids,
             output_amino_acids=return_amino_acids)
         if (return_amino_acids and
@@ -842,7 +891,7 @@ class SingleGenomeCodonUsage(object):
             return get_table(self._get_average_frequency_table)
         ### Relative frequencies
         get_table = lambda method: self._get_frequency_table(
-            gene_function_codon_frequency_df.groupby('source').apply(
+            gene_function_codon_frequency_df.groupby('function_source').apply(
                 partial(method, sequence_min_amino_acids=sequence_min_amino_acids)).droplevel(1),
             output_amino_acids=return_amino_acids)
         if (return_amino_acids and
@@ -864,8 +913,8 @@ class SingleGenomeCodonUsage(object):
                           "https://www.youtube.com/watch?v=Q21clW0s0B8&ab_channel=PeriodicVideos")
 
 
+    ##################################################
     # `self.get_frequencies` SETUP HELPER METHODS
-    #############################################
     def _establish_function_sources(self, from_function_sources):
         """Gets `function_sources` for methods that take the argument, `from_function_sources`."""
         if from_function_sources == True:
@@ -896,9 +945,10 @@ class SingleGenomeCodonUsage(object):
                       function_accession_dict,
                       function_name_dict,
                       expect_functions):
-        """Select genes in the gene frequency table given a list of IDs and/or functions
-        of interest."""
+        """Select genes in the gene frequency table given a list of IDs and/or functions of
+        interest."""
         if not gene_caller_ids and not function_accession_dict and not function_name_dict:
+            # Nothing of interest was given.
             return self.gene_codon_frequency_df
 
         select_gene_caller_ids = []
@@ -910,31 +960,41 @@ class SingleGenomeCodonUsage(object):
                 continue
             select_gene_caller_ids.append(gene_caller_id)
         if unrecognized_gene_caller_ids:
-            raise ConfigError("The following gene caller IDs were not found in the genome: "
-                              f"{unrecognized_gene_caller_ids}")
+            raise ConfigError(
+                "The following gene caller IDs were not found in the genome: "
+                f"{unrecognized_gene_caller_ids}")
 
-        index_keys = []
+        ##################################################
+        # Select by function accession.
+        requested_keys = []
         unrecognized_sources = []
         for function_source, function_accessions in function_accession_dict.items():
             if function_source == 'KEGG_BRITE':
-                self.run.warning("Nota bene: KEGG BRITE accessions stored in anvi'o are for "
-                                 "hierarchies as a whole, not categories of the hierarchy. Most "
-                                 "hierarchies do not have category accessions. So all genes in the "
-                                 "selected hierarchies are being analyzed.")
+                self.run.warning(
+                    "Nota bene: KEGG BRITE accessions stored in anvi'o are for hierarchies as a "
+                    "whole, not categories of the hierarchy. Most hierarchies do not have category "
+                    "accessions. So all genes in hierarchies with the given accessions are "
+                    "selected.")
             if function_source not in self.function_sources:
                 unrecognized_sources.append(function_source)
             for function_accession in function_accessions:
-                index_keys.append((function_source, function_accession))
+                requested_keys.append((function_source, function_accession))
         if unrecognized_sources:
-            raise ConfigError("The following annotation sources in `function_accessions` were not "
-                              f"found as having annotated the genome: {unrecognized_sources}")
-        gene_function_df = self.gene_function_df.set_index(['source', 'accession'])
+            raise ConfigError(
+                "The following annotation sources in `function_accessions` were not found to have "
+                f"annotated any genes in the genome: {', '.join(unrecognized_sources)}")
+        requested_keys = set(requested_keys)
+
+        gene_function_df = self.gene_function_df.set_index(
+            ['function_source', 'function_accession'])
         if expect_functions:
-            index_keys = set(index_keys)
-            all_keys = set(gene_function_df.index)
-            missing_keys = index_keys.difference(all_keys)
+            # All requested accessions must be found.
+            available_keys = set(gene_function_df.index)
+            missing_keys = requested_keys.difference(available_keys)
+            select_keys = requested_keys
 
             if missing_keys:
+                # Prepare and throw an error message.
                 missing_key_dict = {}
                 for missing_key in missing_keys:
                     try:
@@ -946,51 +1006,132 @@ class SingleGenomeCodonUsage(object):
                     missing_key_message += source + ': ' + ', '.join(missing_accessions) + '; '
                 missing_key_message = missing_key_message[: -2]
                 if missing_keys:
-                    raise ConfigError("The following requested function accessions are missing "
-                                      f"from the genome: {missing_key_message}")
+                    raise ConfigError(
+                        "The following requested function accessions are missing from the genome: "
+                        f"{missing_key_message}")
         else:
-            index_keys = gene_function_df.index.intersection(index_keys)
-        select_gene_caller_ids += gene_function_df.loc[index_keys]['gene_caller_id'].tolist()
+            # Not all requested accessions need be found.
+            select_keys = gene_function_df.index.intersection(requested_keys)
+        select_gene_caller_ids += gene_function_df.loc[select_keys]['gene_caller_id'].tolist()
+        ##################################################
 
-        index_keys = []
+        ##################################################
+        # Select by function name.
+        requested_keys = []
         unrecognized_sources = []
         for function_source, function_names in function_name_dict.items():
             if function_source not in self.function_sources:
                 unrecognized_sources.append(function_source)
             for function_name in function_names:
-                index_keys.append((function_source, function_name))
+                requested_keys.append((function_source, function_name))
         if unrecognized_sources:
-            raise ConfigError("The following annotation sources in `function_names` were not "
-                              f"found as having annotated the genome: {unrecognized_sources}")
-        gene_function_df = gene_function_df.reset_index().set_index(['source', 'name'])
-        if expect_functions:
-            index_keys = set(index_keys)
-            all_keys = set(gene_function_df.index)
-            missing_keys = index_keys.difference(all_keys)
+            raise ConfigError(
+                "The following annotation sources in `function_names` were not found to have "
+                f"annotated any genes in the genome: {', '.join(unrecognized_sources)}")
+        requested_keys = set(requested_keys)
 
-            if missing_keys:
-                missing_key_dict = {}
-                for missing_key in missing_keys:
+        gene_function_df = gene_function_df.reset_index()
+
+        def select_keys(gene_function_df, requested_keys):
+            gene_function_df = gene_function_df.set_index(['function_source', 'function_name'])
+            if expect_functions:
+                available_keys = set(gene_function_df.index)
+                missing_keys = requested_keys.difference(available_keys)
+                select_keys = requested_keys
+            else:
+                select_keys = gene_function_df.index.intersection(requested_keys)
+                missing_keys = None
+
+            return select_keys, missing_keys
+
+        def select_keys_given_higher_brite_categories(gene_function_df, requested_keys):
+            # If `self.all_brite_categories` is False, then `gene_function_df` only contains rows
+            # for the most specific KEGG BRITE categories. For example, a gene can be annotated with
+            # "KEGG Orthology (KO)>>>09100 Metabolism>>>09101 Carbohydrate metabolism>>>00010
+            # Glycolysis / Gluconeogenesis [PATH:ko00010]", but not categories representing higher
+            # levels of the hierarchy: "KEGG Orthology (KO)>>>09100 Metabolism>>>09101 Carbohydrate
+            # metabolism", "KEGG Orthology (KO)>>>09100 Metabolism", or "KEGG Orthology (KO)".
+            # However, `function_name_dict` can be used to select genes by higher categories. "KEGG
+            # Orthology (KO)>>>09100 Metabolism", for instance, encompasses "00010 Glycolysis /
+            # Gluconeogenesis [PATH:ko00010]". BRITE functions in the table are parsed to determine
+            # if they are encompassed by the requested function names.
+            gene_brite_df = gene_function_df[gene_function_df['function_source'] == 'KEGG_BRITE']
+            gene_nonbrite_df = gene_function_df.drop(gene_brite_df.index)
+            brite_requested_keys = []
+            nonbrite_requested_keys = []
+            for requested_key in requested_keys:
+                if requested_key[0] == 'KEGG_BRITE':
+                    brite_requested_keys.append(requested_key[1])
+                else:
+                    nonbrite_requested_keys.append(requested_key)
+
+            gene_brite_df = gene_brite_df.set_index('function_name')
+            brite_select_keys = []
+            brite_found_keys = []
+            for available_key in gene_brite_df.index:
+                for requested_key in brite_requested_keys:
                     try:
-                        missing_key_dict[missing_key[0]].append(missing_key[1])
-                    except KeyError:
-                        missing_key_dict[missing_key[0]] = [missing_key[1]]
-                missing_key_message = ''
-                for source, missing_names in missing_key_dict.items():
-                    missing_key_message += source + ': ' + ', '.join(missing_names) + '; '
-                missing_key_message = missing_key_message[: -2]
-                if missing_keys:
-                    raise ConfigError("The following requested function names are missing from the "
-                                      f"genome: {missing_key_message}")
+                        position = available_key.index(requested_key)
+                    except ValueError:
+                        continue
+                    if position == 0 and available_key[
+                        len(requested_key): len(requested_key) + 3] == '>>>':
+                        brite_select_keys.append(available_key)
+                        brite_found_keys.append(requested_key)
+            brite_select_keys = set(
+                [('KEGG_BRITE', function_name) for function_name in set(brite_select_keys)])
+            brite_found_keys = set(brite_found_keys)
+            brite_missing_keys = brite_found_keys.difference(brite_select_keys)
+            brite_missing_keys = set(
+                [('KEGG_BRITE', function_name) for function_name in set(brite_missing_keys)])
+
+
+            raise
+            # FIXME: The select_keys issue below
+            if len(gene_nonbrite_df) > 0:
+                nonbrite_select_keys, nonbrite_missing_keys = select_keys(
+                    gene_nonbrite_df, nonbrite_requested_keys)
+
+                select_keys = brite_select_keys.union(nonbrite_select_keys)
+                missing_keys = brite_missing_keys.union(nonbrite_missing_keys)
+            else:
+                select_keys = brite_select_keys
+                missing_keys = brite_missing_keys
+
+            return select_keys, missing_keys
+
+        if self.all_brite_categories:
+            select_keys, missing_keys = select_keys_given_higher_brite_categories(
+                gene_function_df, requested_keys)
         else:
-            index_keys = gene_function_df.index.intersection(index_keys)
-        select_gene_caller_ids += gene_function_df.loc[index_keys]['gene_caller_id'].tolist()
+            select_keys, missing_keys = select_keys(gene_function_df, requested_keys)
+
+        if expect_functions and missing_keys:
+            # Prepare and throw an error message.
+            missing_key_dict = {}
+            for missing_key in missing_keys:
+                try:
+                    missing_key_dict[missing_key[0]].append(missing_key[1])
+                except KeyError:
+                    missing_key_dict[missing_key[0]] = [missing_key[1]]
+            missing_key_message = ''
+            for source, missing_names in missing_key_dict.items():
+                missing_key_message += source + ': ' + ', '.join(missing_names) + '; '
+            missing_key_message = missing_key_message[: -2]
+            if missing_keys:
+                raise ConfigError(
+                    "The following requested function names are missing from the genome: "
+                    f"{missing_key_message}")
+
+        gene_function_df = gene_function_df.set_index(['function_source', 'function_name'])
+        select_gene_caller_ids += gene_function_df.loc[select_keys]['gene_caller_id'].tolist()
+        ##################################################
 
         return self.gene_codon_frequency_df.loc[set(select_gene_caller_ids)]
 
 
+    ##################################################
     # `self.get_frequencies` OUTPUT HELPER METHODS
-    ##############################################
     def _filter_input_codon_count_decorator(method):
         """Decorator to discard rows in the input frequency table with fewer than the minimum number
         of codons/amino acids."""
@@ -1172,6 +1313,7 @@ class SingleGenomeCodonUsage(object):
                 frequency_df = frequency_df[frequency_df.sum(axis=1) >= min_codons]
             return frequency_df
         return wrapper
+    ##################################################
 
 
     # The order of decorators should not be changed (only @_output_amino_acids_decorator and
@@ -1356,7 +1498,7 @@ class SingleGenomeCodonUsage(object):
         Get codon usage bias (CUB) of genes or functions.
 
         Parameters
-        ----------
+        ==========
         metrics : {'cai', 'delta'}, optional
             CUB metric, with valid choices being 'cai' (Codon Adaptation Index of Sharp and Li,
             1987) and 'delta' (Ran and Higgs, 2012, Eq. 6). The default of None calculates all
@@ -1371,10 +1513,7 @@ class SingleGenomeCodonUsage(object):
             sources in the SingleGenomeCodonUsage object. When this argument is a string, select the
             source given by the string, e.g., 'KOfam', 'COG20_FUNCTION', 'Pfam'. When this argument
             is an iterable, select a subset of sources given by its strings, e.g., ['KOfam',
-            'COG20_FUNCTION']. When 'KEGG_BRITE' is in the argument, in the absence of
-            `function_names` narrowing the scope of the inquiry, all possible depths of each BRITE
-            hierarchy in the data are returned, e.g., 'Ribosome>>>Ribosomal proteins' and the more
-            general 'Ribosome' would each have rows in the output table. By default None.
+            'COG20_FUNCTION']. By default None.
         gene_caller_ids : iterable, optional
             Genes with the given IDs are selected for calculation of CUB. This parameter can be
             used alongside `function_accessions` and `function_names`. By default None.
@@ -1392,8 +1531,9 @@ class SingleGenomeCodonUsage(object):
             `function_accessions`, 'KEGG_BRITE' may be used as a source, with names
             (categorizations) given to an arbitrary level of the hierarchy, such as
             ['Ribosome>>>Ribosomal proteins', 'Transcription machinery>>>Prokaryotic
-            type>>>Bacterial type>>>RNA polymerase']. This parameter can be used alongside
-            `gene_caller_ids` and `function_accessions`. By default None.
+            type>>>Bacterial type>>>RNA polymerase']. All BRITE categorizations falling under the
+            given level are selected. This parameter can be used alongside `gene_caller_ids` and
+            `function_accessions`. By default None.
         expect_functions : bool, optional
             If True (default False), an error will be raised if any given `function_accessions` or
             `function_names` are not annotated in the input genome.
@@ -1406,9 +1546,10 @@ class SingleGenomeCodonUsage(object):
             Genes annotated with the given function accessions are selected for the reference set.
             The argument must be a dict keyed by function annotation source (e.g., 'KOfam',
             'COG20_FUNCTION', 'Pfam') and with values being lists of function accessions. This
-            parameter can be used alongside `function_names`. Note that 'KEGG_BRITE' does not use
-            individual function accessions but overarching hierarchy accessions that include
-            multiple functions. By default None.
+            parameter can be used alongside `reference_gene_caller_ids` and
+            `reference_function_names`. Note that 'KEGG_BRITE' does not use individual function
+            accessions but overarching hierarchy accessions that include multiple functions. By
+            default None.
         reference_function_names : dict, optional
             Genes annotated with the given function names are selected for the reference set. The
             argument must be a dict keyed by function annotation source (e.g., 'KOfam',
@@ -1416,9 +1557,10 @@ class SingleGenomeCodonUsage(object):
             `function_accessions`, 'KEGG_BRITE' may be used as a source, with names
             (categorizations) given to an arbitrary level of the hierarchy, such as
             ['Ribosome>>>Ribosomal proteins', 'Transcription machinery>>>Prokaryotic
-            type>>>Bacterial type>>>RNA polymerase']. This parameter can be used alongside
-            `gene_caller_ids` and `function_accessions`. By default, if using reference-dependent
-            metrics without omnibias mode, this argument becomes {'KEGG_BRITE':
+            type>>>Bacterial type>>>RNA polymerase']. All BRITE categorizations falling under the
+            given level are selected. This parameter can be used alongside
+            `reference_gene_caller_ids` and `reference_function_accessions`. By default, if using
+            reference-dependent metrics without omnibias mode, this argument becomes {'KEGG_BRITE':
             ['Ribosome>>>Ribosomal proteins']}.
         expect_reference_functions : bool, optional
             If True (default False), an error will be raised if any given
@@ -1429,7 +1571,7 @@ class SingleGenomeCodonUsage(object):
             the contigs database.
 
         Additional Parameters
-        ---------------------
+        =====================
         These parameters filter genes and codons in CUB calculations.
 
         The gene codon frequency table is the input to the CUB calculation. Here is the order of
@@ -1468,7 +1610,7 @@ class SingleGenomeCodonUsage(object):
             filters to ensure that total codon frequencies always meet the minimum codon threshold.
             'both' is needed as an option in addition to 'remaining' so dynamic codon filtering by
             `--exclude-amino-acid-count/fraction` operates on genes that passed the first length
-            filter.
+            filter. By default "both".
         drop_amino_acids : iterable, optional
             Remove codons that decode the given amino acids (use three-letter codes, e.g., Ala).
             Met and Trp are encoded by single codons, which perforce are excluded from CUB
@@ -1503,7 +1645,7 @@ class SingleGenomeCodonUsage(object):
             amino acids using `reference_exclude_amino_acid_count`. By default 100.
 
         Returns
-        -------
+        =======
         dict of pandas.core.frame.DataFrame objects
             Each dict key is the name of a CUB metric (from `metrics`), and each value is a
             corresponding table of CUB data.
@@ -1657,7 +1799,7 @@ class SingleGenomeCodonUsage(object):
                 if codons[0] not in reference_codon_frequency_df.columns:
                     amino_acids_dropped_from_reference.append(amino_acid)
             default_run = self.run
-            self.run = run_quiet
+            self.run = self.run_quiet
             nonreference_codon_frequency_df = self.get_frequencies(
                 sum_genes=True, drop_amino_acids=amino_acids_dropped_from_reference)
             self.run = default_run
@@ -1779,16 +1921,17 @@ class SingleGenomeCodonUsage(object):
         Get a codon frequency table from a set of reference genes or functions in the genome.
 
         Parameters
-        ----------
+        ==========
         reference_metrics : iterable
             CUB metrics requiring a reference codon composition.
         reference_function_accessions : dict, optional
             Genes annotated with the given function accessions are selected for the reference set.
             The argument must be a dict keyed by function annotation source (e.g., 'KOfam',
             'COG20_FUNCTION', 'Pfam') and with values being lists of function accessions. This
-            parameter can be used alongside `function_names`. Note that 'KEGG_BRITE' does not use
-            individual function accessions but overarching hierarchy accessions that include
-            multiple functions. By default None.
+            parameter can be used alongside `reference_gene_caller_ids` and
+            `reference_function_names`. Note that 'KEGG_BRITE' does not use individual function
+            accessions but overarching hierarchy accessions that include multiple functions. By
+            default None.
         reference_function_names : dict, optional
             Genes annotated with the given function names are selected for the reference set. The
             argument must be a dict keyed by function annotation source (e.g., 'KOfam',
@@ -1796,9 +1939,10 @@ class SingleGenomeCodonUsage(object):
             `function_accessions`, 'KEGG_BRITE' may be used as a source, with names
             (categorizations) given to an arbitrary level of the hierarchy, such as
             ['Ribosome>>>Ribosomal proteins', 'Transcription machinery>>>Prokaryotic
-            type>>>Bacterial type>>>RNA polymerase']. This parameter can be used alongside
-            `gene_caller_ids` and `function_accessions`. By default, {'KEGG_BRITE':
-            ['Ribosome>>>Ribosomal proteins']}.
+            type>>>Bacterial type>>>RNA polymerase']. All BRITE categorizations falling under the
+            given level are selected. This parameter can be used alongside
+            `reference_gene_caller_ids` and `reference_function_accessions`. By default,
+            {'KEGG_BRITE': ['Ribosome>>>Ribosomal proteins']}.
         expect_reference_functions : bool, optional
             If True (default False), an error will be raised if any given
             `reference_function_accessions` or `reference_function_names` are not annotated in the
@@ -1815,7 +1959,7 @@ class SingleGenomeCodonUsage(object):
             amino acids using `reference_exclude_amino_acid_count`. By default 100.
 
         Returns
-        -------
+        =======
         pandas.core.frame.DataFrame
             This frequency table has a single row for the reference composition and a column per
             codon.
@@ -1826,11 +1970,11 @@ class SingleGenomeCodonUsage(object):
         if reference_function_names is None:
             if 'KEGG_BRITE' not in self.function_sources:
                 raise ConfigError(
-                    f"Reference-dependent metrics ({', '.join(reference_metrics)}) were "
-                    "requested without defined reference genes. By default, reference genes "
-                    "are KEGG KOfams classified as ribosomal proteins in BRITE. However, "
-                    "'KEGG_BRITE' is not among the function annotation sources run on the "
-                    "genome. This can be rectified by rerunning `anvi-run-kegg-kofams`.")
+                    f"Reference-dependent metrics ({', '.join(reference_metrics)}) were requested "
+                    "without defined reference genes. By default, reference genes are KEGG KOfams "
+                    "classified as ribosomal proteins in BRITE. However, 'KEGG_BRITE' is not among "
+                    "the function annotation sources run on the genome. This can be rectified by "
+                    "rerunning `anvi-run-kegg-kofams`.")
             reference_function_names = {'KEGG_BRITE': ['Ribosome>>>Ribosomal proteins']}
 
         reference_codon_frequency_df = self.get_frequencies(
@@ -1927,7 +2071,7 @@ class SingleGenomeCodonUsage(object):
         abundant synonymous codons in the reference.
 
         Parameters
-        ----------
+        ==========
         query_codon_frequency_df : pandas.core.frame.DataFrame
             This frequency table has a row per item (gene/function) to be compared to each reference
             codon composition and a column per codon.
@@ -1941,7 +2085,7 @@ class SingleGenomeCodonUsage(object):
             queries for it to be used in calculating CUB. By default 0.
 
         Returns
-        -------
+        =======
         pandas.core.frame.DataFrame
             This CUB table has the same row index as the input query table and a column per input
             reference. With a single reference codon composition, this table has a single column.
@@ -2042,7 +2186,7 @@ class SingleGenomeCodonUsage(object):
         of the set from the genome as a whole.
 
         Parameters
-        ----------
+        ==========
         query_codon_frequency_df : pandas.core.frame.DataFrame
             This frequency table has a row per item (gene/function) to be compared to each reference
             codon composition and a column per codon.
@@ -2059,7 +2203,7 @@ class SingleGenomeCodonUsage(object):
             queries for it to be used in calculating CUB. By default 0.
 
         Returns
-        -------
+        =======
         pandas.core.frame.DataFrame
             This CUB table has the same row index as the input query table and a column per input
             reference. With a single reference codon composition, this table has a single column of
@@ -2150,67 +2294,137 @@ class SingleGenomeCodonUsage(object):
 class MultiGenomeCodonUsage(object):
     """This object processes codon usage data from multiple internal and/or external genomes."""
 
-    def __init__(self, args, run=run, progress=progress):
+    def __init__(self, args, r=run, rq=run_quiet, p=progress):
         self.args = args
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+
+        self.contigs_db = A('contigs_db')
+        self.profile_db = A('profile_db')
+        self.collection_name = A('collection_name')
+        self.bin_ids_path = A('bin_ids_file')
 
         self.internal_genomes_path = A('internal_genomes')
         self.external_genomes_path = A('external_genomes')
 
         self.function_sources = A('function_sources')
+        self.all_brite_categories = A('all_brite_categories')
         self.use_shared_function_sources = A('shared_function_sources')
+        if self.use_shared_function_sources is None:
+            self.use_shared_function_sources = False
 
-        self.preload_genomes = A('preload-genomes') or False
+        self.preload_genomes = A('preload_genomes')
+        if self.preload_genomes is None:
+            self.preload_genomes = False
 
-        self.run = run
-        self.progress = progress
+        self.run = r
+        self.run_quiet = rq
+        self.progress = p
 
-        descriptions = GenomeDescriptions(args, run=run_quiet, progress=self.progress)
-        descriptions.load_genomes_descriptions(init=False)
+        if self.contigs_db and (self.internal_genomes_path or self.external_genomes_path):
+            raise ConfigError(
+                "Internal and external genomes files cannot be provided alongside bins in a "
+                "collection from a profile database. `internal_genomes` and `external_genomes` can "
+                "be used by themselves or together, and `contigs_db`, `profile_db`, "
+                "`collection_name`, and `bin_ids_file` can be used in various combinations.")
 
-        if self.function_sources is None:
-            pass
-        elif (self.function_sources == [] and
-            self.use_shared_function_sources and
-            descriptions.function_annotation_sources_some_genomes_miss):
-            # All function sources are requested (in `anvi-get-codon-usage` this corresponds to
-            # `--function-sources` used as a flag), but some sources are not common to all genomes
-            # and only common sources are allowed (`use_shared_function_sources`). Report sources in
-            # common that will be analyzed and those not in common that will be ignored.
-            self.function_sources = list(descriptions.function_annotation_sources)
-            self.run.info("Function sources shared across genomes: ",
-                          ', '.join(self.function_sources))
-            self.run.info("Function sources missing in one or more genomes: ",
-                          ', '.join(descriptions.function_annotation_sources_some_genomes_miss))
-        elif (len(self.function_sources) and
-              self.use_shared_function_sources and
-              descriptions.function_annotation_sources_some_genomes_miss):
-            # A list of function sources is requested, but some are not common to all genomes and
-            # only common sources are allowed (`use_shared_function_sources`). This causes an error.
-            unshared_function_sources = []
-            for source in self.function_sources:
-                if source not in descriptions.function_annotation_sources_some_genomes_miss:
-                    unshared_function_sources.append(source)
-            if unshared_function_sources:
-                raise ConfigError(
-                    "Of the requested function annotation sources, the following were not run on "
-                    f"every genome: {', '.join(unshared_function_sources)}.")
+        if self.collection_name:
+            self.bin_ids = []
+            collections = ccollections.Collections()
+            collections.populate_collections_dict(self.profile_db)
+            if self.bin_ids_path:
+                filesnpaths.is_file_plain_text(self.bin_ids_path)
+                for line in open(self.bin_ids_path):
+                    bin_id = line.rstrip()
+                    self.bin_ids.append(bin_id)
+                self.bin_ids = list(set(self.bin_ids))
+                self.bin_ids.remove('')
+            else:
+                self.bin_ids = list(collections.get_bins_info_dict(self.collection_name))
+        else:
+            self.bin_ids = None
+            collections = None
 
-        # Store information on the genomes.
+        # Store genome information in the following dictionary.
         self.genome_info_dict = {}
-        for genome_name, genome_dict in descriptions.internal_genomes_dict.items():
-            self.genome_info_dict[genome_name] = genome_info = {}
-            genome_info['contigs_db'] = genome_dict['contigs_db_path']
-            genome_info['profile_db'] = genome_dict['profile_db_path']
-            genome_info['collection_name'] = genome_dict['collection_id']
-            genome_info['bin_id'] = genome_dict['bin_id']
+        if self.internal_genomes_path or self.external_genomes_path:
+            # Store genome information starting with internal and external genome files.
+            descriptions = GenomeDescriptions(args, run=self.run_quiet, progress=self.progress)
+            descriptions.load_genomes_descriptions(init=False)
+
+            if self.function_sources is None:
+                pass
+            elif (self.function_sources == [] and
+                  self.use_shared_function_sources and
+                  descriptions.function_annotation_sources_some_genomes_miss):
+                # All function sources are requested (in `anvi-get-codon-usage` this corresponds to
+                # `--function-sources` used as a flag), but some sources are not common to all
+                # genomes and only common sources are allowed (`use_shared_function_sources`).
+                # Report sources in common that will be analyzed and those not in common that will
+                # be ignored.
+                self.function_sources = list(descriptions.function_annotation_sources)
+                self.run.info("Function sources shared across genomes: ",
+                            ', '.join(self.function_sources))
+                self.run.info("Function sources missing in one or more genomes: ",
+                            ', '.join(descriptions.function_annotation_sources_some_genomes_miss))
+            elif (len(self.function_sources) and
+                  self.use_shared_function_sources and
+                  descriptions.function_annotation_sources_some_genomes_miss):
+                # A list of function sources is requested, but some are not common to all genomes
+                # and only common sources are allowed (`use_shared_function_sources`). This causes
+                # an error.
+                unshared_function_sources = []
+                for source in self.function_sources:
+                    if source not in descriptions.function_annotation_sources_some_genomes_miss:
+                        unshared_function_sources.append(source)
+                if unshared_function_sources:
+                    raise ConfigError(
+                        "Of the requested function annotation sources, the following were not run "
+                        f"on every genome: {', '.join(unshared_function_sources)}.")
+
+            # Store information on the genomes.
+            for genome_name, genome_dict in descriptions.internal_genomes_dict.items():
+                self.genome_info_dict[genome_name] = genome_info = {}
+                genome_info['contigs_db'] = genome_dict['contigs_db_path']
+                genome_info['profile_db'] = genome_dict['profile_db_path']
+                genome_info['collection_name'] = genome_dict['collection_id']
+                genome_info['bin_id'] = genome_dict['bin_id']
+            for genome_name, genome_dict in descriptions.external_genomes_dict.items():
+                self.genome_info_dict[genome_name] = genome_info = {}
+                genome_info['contigs_db'] = genome_dict['contigs_db_path']
+        else:
+            # Store genome information from bins in a collection for a single contigs database.
+            if self.collection_name not in collections.collections_dict:
+                raise ConfigError(f"The collection, '{self.collection_name}', was not found in the "
+                                  f"profile database, '{self.profile_db}'.")
+
+            missing_bin_ids = []
+            for bin_id in self.bin_ids:
+                try:
+                    collections.is_bin_in_collection(self.collection_name, bin_id)
+                except ConfigError:
+                    missing_bin_ids.append(bin_id)
+            if missing_bin_ids:
+                raise ConfigError(
+                    "The following bin IDs were not found in the collection, "
+                    f"'{self.collection_name}', in the profile database, '{self.profile_db}': "
+                    f"{', '.join(missing_bin_ids)}")
+
+            for bin_id in self.bin_ids:
+                self.genome_info_dict[bin_id] = genome_info = {}
+                genome_info['contigs_db'] = self.contigs_db
+                genome_info['profile_db'] = self.profile_db
+                genome_info['collection_name'] = self.collection_name
+                genome_info['bin_id'] = bin_id
+
+        # The following information is common to all genomes regardless of input source.
+        for genome_info in self.genome_info_dict.values():
             genome_info['function_sources'] = self.function_sources
-            genome_info['codon_to_amino_acid'] = self.args.codon_to_amino_acid
-        for genome_name, genome_dict in descriptions.external_genomes_dict.items():
-            self.genome_info_dict[genome_name] = genome_info = {}
-            genome_info['contigs_db'] = genome_dict['contigs_db_path']
-            genome_info['function_sources'] = self.function_sources
-            genome_info['codon_to_amino_acid'] = self.args.codon_to_amino_acid
+            genome_info['all_brite_categories'] = self.all_brite_categories
+            if 'codon_to_amino_acid' in self.args:
+                genome_info['codon_to_amino_acid'] = self.args.codon_to_amino_acid
+            else:
+                genome_info['codon_to_amino_acid'] = default_codon_amino_acid_dict
+            genome_info['ignore_start_codons'] = self.args.ignore_start_codons
 
         # There are memory- and CPU-efficient ways of setting up the object. `preload_genomes` loads
         # all of the SingleGenomeCodonUsage objects into memory, allowing methods to save time by
@@ -2248,8 +2462,26 @@ class MultiGenomeCodonUsage(object):
         Get absolute (default) or relative codon or amino acid frequencies from genes or functions
         in one or more genomes.
 
+        Parameters
+        ==========
         See the `SingleGenomeCodonUsage.get_frequencies` docstring for descriptions of each
         parameter.
+
+        Returns
+        =======
+        pandas.core.frame.DataFrame
+            Frequency table of gene x codon or amino acid. The first column of the MultiIndex of the
+            returned DataFrame is the genome name, with blocks of results for each genome being in
+            the input order of internal then external genomes. If functions are not considered, then
+            the other column of the MultiIndex contains gene caller IDs. If functions are considered
+            and `return_functions` is False, then each row represents a gene/function pair, and the
+            same gene frequencies can be found in multiple rows with different function pairs; there
+            are additional MultiIndex columns for source, accession, and name of function. If
+            functions are considered and `return_functions` is True, then each row represents a
+            function rather than gene/function pair. If frequencies are summed or averaged and
+            functions are not considered, the returned single-row DataFrame has an Index with one
+            entry, 'all'. If frequencies are summed or averaged and functions are considered, the
+            returned DataFrame has a row for each function annotation source.
         """
         kwargs = {}
         arg_info = inspect.getargvalues(inspect.currentframe())
@@ -2263,8 +2495,8 @@ class MultiGenomeCodonUsage(object):
             self.run.info("Genome", genome_name)
             frequency_df = next(frequency_table_generator)
 
-            frequency_df.insert(0, 'genome', genome_name)
-            new_index_columns = ['genome'] + frequency_df.index.names
+            frequency_df.insert(0, 'genome_name', genome_name)
+            new_index_columns = ['genome_name'] + frequency_df.index.names
             frequency_df = frequency_df.reset_index().set_index(new_index_columns)
 
             frequency_dfs.append(frequency_df)
@@ -2296,7 +2528,6 @@ class MultiGenomeCodonUsage(object):
         reference_function_accessions=None,
         reference_function_names=None,
         expect_reference_functions=False,
-        reference_gene_caller_ids=None,
         gene_min_codons=0,
         function_min_codons=0,
         min_codon_filter='both',
@@ -2339,6 +2570,7 @@ def get_custom_encodings(encodings_txt):
     if not encodings_txt:
         return codon_amino_acid_dict
 
+    filesnpaths.is_file_tab_delimited(encodings_txt)
     encodings_df = pd.read_csv(encodings_txt, sep='\t', header=None)
     codon_amino_acid_dict.update(dict(zip(encodings_df.iloc[:, 0], encodings_df.iloc[:, 1])))
 
@@ -2375,3 +2607,135 @@ def check_genetic_code(codon_amino_acid_dict):
 
     if unrecognized_codon_message or unrecognized_amino_acid_message:
         raise ConfigError(f"{unrecognized_codon_message}{unrecognized_amino_acid_message}")
+
+
+def write_split_codon_output(codon_frequency_df,
+                             output_path,
+                             separate_genomes=False,
+                             separate_function_sources=False,
+                             output_root=None):
+    """
+    Store tables of codon frequency data.
+
+    Parameters
+    ----------
+    codon_frequency_df : pandas.core.frame.DataFrame
+        A table of codon frequencies of the format produced by
+        `SingleGenomeCodonUsage.get_frequencies` or `MultiGenomeCodonUsage.get_frequencies`.
+    output_path : str
+        This filepath serves as a template for the paths of other files that may be generated.
+        Indeed, if the arguments, `separate_genomes` and/or `separate_function_sources` are used,
+        nothing is written to this path. Given the template, <root><extension>, substrings can be
+        inserted in the derived filepaths, with the most elaborate such filepath being
+        <root>-<genome_name>-<function_source>-<normalization_method><extension>.
+    separate_genomes : bool, optional
+        If True (default False), split output tables by genome. In the output paths, underscores
+        replace spaces in the genome names.
+    separate_function_sources : bool, optional
+        If True (default False), split output tables by function source.
+    output_root : str, optional
+        If given (default None), then rather than splitting the output path by the extension, the
+        output filepath template consists of <output_root><post_output_root>, with <genome_name>
+        and <function_source> inserted between the two.
+    """
+    if separate_genomes:
+        if 'genome' not in codon_frequency_df.index.names:
+            raise ConfigError(
+                "To split output by genome, as requested by `separate_genomes`, the table of "
+                "codon frequencies must contain the expected index column, \"genome\".")
+
+    if separate_function_sources:
+        if 'function_source' not in codon_frequency_df.index.names:
+            raise ConfigError(
+                "To split output by function source, as requested by `separate_function_sources`, "
+                "the table of codon frequencies must contain the expected index column, "
+                "\"function_source\".")
+
+    if output_root is not None:
+        try:
+            output_root_index = output_path.index(output_root)
+        except ValueError:
+            output_root_index = -1
+        if output_root_index != 0:
+            raise ConfigError(
+                "The value provided for `output_root`, '{output_root}', does not but must occur at "
+                "the start of `output_path`, '{output_path}'.")
+
+    if output_root:
+        output_ext = output_path[len(output_root): ]
+    else:
+        output_root, output_ext = os.path.splitext(output_path)
+    valid_derived_output_paths = []
+    invalid_derived_output_paths = []
+    is_given_output_path_valid = True
+    if separate_genomes and separate_function_sources:
+        # Split the data by both genome and function source.
+        for genome_name, genome_df in codon_frequency_df.groupby('genome_name'):
+            for source, source_df in genome_df.groupby('function_source'):
+                # Write a table of codon frequencies for the genome/source.
+                derived_output_path = (
+                    output_root + "-" +
+                    genome_name.replace(" ", "_") + "-" + source +
+                    output_ext)
+                try:
+                    filesnpaths.is_output_file_writable(derived_output_path)
+                    valid_derived_output_paths.append(derived_output_path)
+                except FilesNPathsError:
+                    invalid_derived_output_paths.append(derived_output_path)
+                    continue
+                source_df.to_csv(derived_output_path, sep='\t')
+    elif separate_genomes:
+        # Split the data by genome.
+        for genome_name, genome_df in codon_frequency_df.groupby('genome_name'):
+            derived_output_path = output_root + "-" + genome_name.replace(" ", "_") + output_ext
+            try:
+                filesnpaths.is_output_file_writable(derived_output_path)
+                valid_derived_output_paths.append(derived_output_path)
+            except FilesNPathsError:
+                invalid_derived_output_paths.append(derived_output_path)
+                continue
+            genome_df.to_csv(derived_output_path, sep='\t')
+    elif separate_function_sources:
+        # Split the data by function source.
+        for source, source_df in codon_frequency_df.groupby('function_source'):
+            derived_output_path = output_root + "-" + source + output_ext
+            try:
+                filesnpaths.is_output_file_writable(derived_output_path)
+            except FilesNPathsError:
+                invalid_derived_output_paths.append(derived_output_path)
+                continue
+            valid_derived_output_paths.append(derived_output_path)
+            source_df.to_csv(derived_output_path, sep='\t')
+    else:
+        try:
+            filesnpaths.is_output_file_writable(output_path)
+            codon_frequency_df.to_csv(output_path, sep='\t')
+            is_given_output_path_valid = 1
+        except FilesNPathsError:
+            is_given_output_path_valid = False
+
+    # Report invalid output paths and, if some paths were invalid, also remove files written to
+    # valid paths.
+    if is_given_output_path_valid:
+        template_output_path_message = ""
+    else:
+        template_output_path_message = ("The table of codon frequencies could not be written to "
+                                        f"`output_path`, '{output_path}'.")
+    if invalid_derived_output_paths:
+        paths_string = ', '.join(['\'' + path + '\'' for path in invalid_derived_output_paths])
+        derived_output_paths_message = (
+            "Tables of codon frequencies could not be written to the following derived target "
+            f"paths: {paths_string}.")
+    else:
+        derived_output_paths_message = ""
+    if invalid_derived_output_paths or not is_given_output_path_valid:
+        if is_given_output_path_valid == 1:
+            # Derived output paths were invalid, and raw affinities were written to the input
+            # output file.
+            os.remove(output_path)
+        for derived_output_path in valid_derived_output_paths:
+            os.remove(derived_output_path)
+        raise ConfigError(
+            f"{template_output_path_message}"
+            f"{' ' if invalid_derived_output_paths and not is_given_output_path_valid else ''}"
+            f"{derived_output_paths_message}")

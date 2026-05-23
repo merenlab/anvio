@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Main KEGG metabolism estimator classes."""
 
 import os
@@ -164,7 +163,7 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
             utils.is_profile_db_and_contigs_db_compatible(self.profile_db_path, self.contigs_db_path)
         if self.pan_db_path:
             utils.is_pan_db_and_genomes_storage_db_compatible(self.pan_db_path, self.genomes_storage_path)
-        
+
         # OUTPUT OPTIONS SANITY CHECKS
         if anvio.DEBUG:
             self.run.info("Output Modes", ", ".join(self.output_modes))
@@ -310,11 +309,12 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
 
         # LOAD KEGG DATA
         if not self.only_user_modules:
-            # citation output for KEGG data
-            if not self.quiet:
-                self.run.warning("Anvi'o will reconstruct metabolism for modules in the KEGG MODULE database, as described in "
-                                 "Kanehisa and Goto et al (doi:10.1093/nar/gkr988). When you publish your findings, "
-                                 "please do not forget to properly credit this work.", lc='green', header="CITATION")
+            # check for kegg modules db
+            if not os.path.exists(self.kegg_modules_db_path):
+                raise ConfigError(f"It appears that a KEGG modules database ({self.kegg_modules_db_path}) does not exist in the provided data directory. "
+                                  f"Perhaps you need to specify a different data directory using --kegg-data-dir. Or perhaps you didn't run "
+                                  f"`anvi-setup-kegg-data`, though we are not sure how you got to this point in that case."
+                                  f"But fine. Hopefully you now know what you need to do to make this message go away.")
 
             # init the enzyme accession to function definition dictionary
             # (henceforth referred to as the KO dict, even though it doesn't only contain KOs for user data)
@@ -323,12 +323,11 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                 self.setup_stray_ko_dict(add_entries_to_regular_ko_dict=False)
             annotation_source_set = set(['KOfam'])
 
-            # check for kegg modules db
-            if not os.path.exists(self.kegg_modules_db_path):
-                raise ConfigError(f"It appears that a KEGG modules database ({self.kegg_modules_db_path}) does not exist in the provided data directory. "
-                                  f"Perhaps you need to specify a different data directory using --kegg-data-dir. Or perhaps you didn't run "
-                                  f"`anvi-setup-kegg-data`, though we are not sure how you got to this point in that case."
-                                  f"But fine. Hopefully you now know what you need to do to make this message go away.")
+            # citation output for KEGG data
+            if not self.quiet:
+                self.run.warning("Anvi'o will reconstruct metabolism for modules in the KEGG MODULE database, as described in "
+                                 "Kanehisa and Goto et al (doi:10.1093/nar/gkr988). When you publish your findings, "
+                                 "please do not forget to properly credit this work.", lc='green', header="CITATION")
 
             if self.contigs_db_path:
                 # sanity check that contigs db was annotated with same version of MODULES.db that will be used for metabolism estimation
@@ -1047,7 +1046,7 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                                     f"metabolic modules (that we know about). These enzymes will be ignored for the purposes of estimating module "
                                     f"completeness, but should still appear in enzyme-related outputs (if those were requested). In case you are "
                                     f"curious, here is one example: {example}")
-                
+
                 kegg_metabolism_superdict, kofam_hits_superdict = self.estimate_metabolism_for_enzymes_of_interest()
             elif self.pan_db_path:
                 gene_cluster_collections = ccollections.Collections()
@@ -1648,8 +1647,8 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                                   "for the %s output mode. Something is terribly wrong, and it is probably a developer's fault. :("
                                   % (mode))
             if self.available_modes[mode]["data_dict"] == 'modules':
-                output_dict = self.generate_output_dict_for_modules(module_superdict_for_list_of_splits, headers_to_include=header_list, \
-                                                                    only_complete_modules=self.only_complete, \
+                output_dict = self.generate_output_dict_for_modules(module_superdict_for_list_of_splits, headers_to_include=header_list,
+                                                                    only_complete_modules=self.only_complete,
                                                                     exclude_zero_completeness=self.exclude_zero_modules)
             elif self.available_modes[mode]["data_dict"] == 'kofams':
                 output_dict = self.generate_output_dict_for_kofams(ko_superdict_for_list_of_splits, headers_to_include=header_list)
@@ -1684,8 +1683,8 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                                   "for the %s output mode. Something is terribly wrong, and it is probably a developer's fault. :("
                                   % (mode))
             if self.available_modes[mode]["data_dict"] == 'modules':
-                output_dict = self.generate_output_dict_for_modules(module_superdict, headers_to_include=header_list, \
-                                                                    only_complete_modules=self.only_complete, \
+                output_dict = self.generate_output_dict_for_modules(module_superdict, headers_to_include=header_list,
+                                                                    only_complete_modules=self.only_complete,
                                                                     exclude_zero_completeness=self.exclude_zero_modules)
             elif self.available_modes[mode]["data_dict"] == 'kofams':
                 output_dict = self.generate_output_dict_for_kofams(ko_superdict, headers_to_include=header_list)
@@ -2106,12 +2105,12 @@ class KeggMetabolismEstimatorMulti(KeggEstimatorArgs, KeggDataLoader):
             if not self.matrix_format:
                 KeggMetabolismEstimator(args, progress=progress_quiet, run=run_quiet).estimate_metabolism(output_files_dictionary=files_dict)
             else:
-                metabolism_super_dict[metagenome_name], ko_hits_super_dict[metagenome_name], module_steps_super_dict[metagenome_name] = KeggMetabolismEstimator(args, \
-                                                                                                    progress=progress_quiet, \
-                                                                                                    run=run_quiet).estimate_metabolism(skip_storing_data=True, \
-                                                                                                    return_subset_for_matrix_format=True, \
-                                                                                                    all_modules_in_db=self.all_modules_in_db, \
-                                                                                                    all_kos_in_db=self.all_kos_in_db, \
+                metabolism_super_dict[metagenome_name], ko_hits_super_dict[metagenome_name], module_steps_super_dict[metagenome_name] = KeggMetabolismEstimator(args,
+                                                                                                    progress=progress_quiet,
+                                                                                                    run=run_quiet).estimate_metabolism(skip_storing_data=True,
+                                                                                                    return_subset_for_matrix_format=True,
+                                                                                                    all_modules_in_db=self.all_modules_in_db,
+                                                                                                    all_kos_in_db=self.all_kos_in_db,
                                                                                                     module_paths_dict=self.module_paths_dict)
 
             self.progress.increment()
@@ -2317,22 +2316,22 @@ class KeggMetabolismEstimatorMulti(KeggEstimatorArgs, KeggDataLoader):
         module_list.sort()
 
         for stat, key in module_matrix_stats.items():
-            self.write_stat_to_matrix(stat_name=stat, stat_header='module', stat_key=key, stat_dict=module_superdict_multi, \
-                                      item_list=module_list, stat_metadata_headers=MODULE_METADATA_HEADERS, \
+            self.write_stat_to_matrix(stat_name=stat, stat_header='module', stat_key=key, stat_dict=module_superdict_multi,
+                                      item_list=module_list, stat_metadata_headers=MODULE_METADATA_HEADERS,
                                       write_rows_with_all_zeros=include_zeros)
 
         module_step_list = list(steps_superdict_multi[first_sample][first_bin].keys())
         module_step_list.sort()
         for stat, key in module_step_matrix_stats.items():
-            self.write_stat_to_matrix(stat_name=stat, stat_header='module_step', stat_key=key, stat_dict=steps_superdict_multi, \
-                                      item_list=module_step_list, stat_metadata_headers=STEP_METADATA_HEADERS, \
+            self.write_stat_to_matrix(stat_name=stat, stat_header='module_step', stat_key=key, stat_dict=steps_superdict_multi,
+                                      item_list=module_step_list, stat_metadata_headers=STEP_METADATA_HEADERS,
                                       write_rows_with_all_zeros=include_zeros)
 
         # now we make a KO hit count matrix
         ko_list = list(self.ko_dict.keys())
         ko_list.sort()
-        self.write_stat_to_matrix(stat_name='enzyme_hits', stat_header='enzyme', stat_key='num_hits', stat_dict=ko_superdict_multi, \
-                                  item_list=ko_list, stat_metadata_headers=KO_METADATA_HEADERS, \
+        self.write_stat_to_matrix(stat_name='enzyme_hits', stat_header='enzyme', stat_key='num_hits', stat_dict=ko_superdict_multi,
+                                  item_list=ko_list, stat_metadata_headers=KO_METADATA_HEADERS,
                                   write_rows_with_all_zeros=include_zeros)
 
         # if necessary, make module specific KO matrices
@@ -2386,8 +2385,8 @@ class KeggMetabolismEstimatorMulti(KeggEstimatorArgs, KeggDataLoader):
                     step_comments = None
 
                 stat = f"{mod}_enzyme_hits"
-                self.write_stat_to_matrix(stat_name=stat, stat_header="enzyme", stat_key='num_hits', stat_dict=ko_superdict_multi, \
-                                          item_list=kos_in_mod, stat_metadata_headers=KO_METADATA_HEADERS, \
+                self.write_stat_to_matrix(stat_name=stat, stat_header="enzyme", stat_key='num_hits', stat_dict=ko_superdict_multi,
+                                          item_list=kos_in_mod, stat_metadata_headers=KO_METADATA_HEADERS,
                                           write_rows_with_all_zeros=True, comment_dictionary=step_comments)
 
             if skipped_mods:

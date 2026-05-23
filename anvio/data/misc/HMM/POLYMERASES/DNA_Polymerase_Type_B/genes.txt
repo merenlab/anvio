@@ -1,0 +1,2 @@
+gene	accession	hmmsource
+DNApolB	DNApolB_10.1073	https://doi.org/10.1073/pnas.1912006116

@@ -30,6 +30,15 @@ if not this_workflow_is_inherited_by_another:
     include: w.get_workflow_snake_file_path('contigs')
     include: w.get_workflow_snake_file_path('phylogenomics')
 
+
+def rule_log(rule_name, log_file_name='log'):
+    """Return a log path under 00_LOGS/<rule_name>/."""
+    if not log_file_name.endswith('.log'):
+        log_file_name = f"{log_file_name}.log"
+
+    return os.path.join(dirs_dict["LOGS_DIR"], rule_name, log_file_name)
+
+
 rule pangenomics_target_rule:
     input: M.get_pangenomics_target_files()
 
@@ -37,7 +46,7 @@ rule pangenomics_target_rule:
 # run pangenome
 rule anvi_pan_genome:
     version: anvio.__pan__version__
-    log: os.path.join(dirs_dict["LOGS_DIR"], M.project_name + "-anvi_pan_genome.log")
+    log: rule_log("anvi_pan_genome", M.project_name)
     threads: M.T("anvi_pan_genome")
     resources: nodes = M.T("anvi_pan_genome")
     input: dirs_dict["PAN_DIR"] + "/" + M.project_name + "-GENOMES.db"
@@ -58,23 +67,24 @@ rule anvi_pan_genome:
         skip_hierarchical_clustering = M.get_rule_param("anvi_pan_genome", "--skip-hierarchical-clustering"),
         enforce_hierarchical_clustering = M.get_rule_param("anvi_pan_genome", "--enforce-hierarchical-clustering"),
         distance = M.get_rule_param("anvi_pan_genome", "--distance"),
-        linkage = M.get_rule_param("anvi_pan_genome", "--linkage")
+        linkage = M.get_rule_param("anvi_pan_genome", "--linkage"),
+        i_know_this_is_not_a_good_idea = M.get_rule_param("anvi_pan_genome", "--I-know-this-is-not-a-good-idea")
     output: os.path.join(dirs_dict["PAN_DIR"], M.pan_project_name + "-PAN.db")
     shell:
         """
-            anvi-pan-genome -g {input} --num-threads {threads} -o {params.output_dir} --project-name {params.project_name} {params.genome_names}\
+            anvi-pan-genome -g {input} --num-threads {threads} -o {output} --project-name {params.project_name} {params.genome_names}\
             {params.skip_alignments} {params.align_with} {params.exclude_partial_gene_calls}\
             {params.use_ncbi_blast} {params.minbit} {params.mcl_inflation}\
             {params.min_occurrence} {params.min_percent_identity} \
             {params.description} {params.overwrite_output_destinations}\
             {params.skip_hierarchical_clustering} {params.enforce_hierarchical_clustering}\
-            {params.distance} {params.linkage} >> {log} 2>&1
+            {params.distance} {params.linkage} {params.i_know_this_is_not_a_good_idea} >> {log} 2>&1
         """
 
 
 # generate anvi'o genomes storage
 rule anvi_gen_genomes_storage:
-    log: os.path.join(dirs_dict["LOGS_DIR"], M.project_name + "-anvi_gen_genomes_storage.log")
+    log: rule_log("anvi_gen_genomes_storage", M.project_name)
     threads: M.T("anvi_gen_genomes_storage")
     resources: nodes = M.T("anvi_gen_genomes_storage")
     input: unpack(lambda wildcards: M.input_for_anvi_gen_genomes_storage)
@@ -97,7 +107,7 @@ if 'anvio/workflows/pangenomics' in str(workflow.included[0].abspath()):
 
 rule anvi_get_sequences_for_gene_clusters:
     version: 1.0
-    log: os.path.join(dirs_dict["LOGS_DIR"], M.project_name + "-anvi_get_sequences_for_gene_clusters.log")
+    log: rule_log("anvi_get_sequences_for_gene_clusters", M.project_name)
     input:
         genomes_storage = os.path.join(dirs_dict["PAN_DIR"], M.project_name + "-GENOMES.db"),
         pan_db = M.pan_db_path
@@ -140,7 +150,7 @@ rule anvi_get_sequences_for_gene_clusters:
 
 rule import_phylogenetic_tree_to_pangenome:
     version: 1.0
-    log: os.path.join(M.dirs_dict["LOGS_DIR"], M.pan_project_name + "-import_phylogenetic_tree_to_pangenome.log")
+    log: rule_log("import_phylogenetic_tree_to_pangenome", M.pan_project_name)
     input:
         pan_db = M.pan_db_path,
         newick = os.path.join(M.dirs_dict["PHYLO_DIR"], M.project_name + "-proteins_GAPS_REMOVED.fa" + ".contree")
@@ -166,7 +176,7 @@ rule import_phylogenetic_tree_to_pangenome:
 
 rule anvi_compute_genome_similarity:
     version: 1.0
-    log: os.path.join(M.dirs_dict["LOGS_DIR"], M.pan_project_name + "-anvi_compute_genome_similarity.log")
+    log: rule_log("anvi_compute_genome_similarity", M.pan_project_name)
     input: unpack(lambda wildcards: M.input_for_anvi_compute_genome_similarity)
     output:
         anvi_compute_genome_similarity_flag = touch(M.anvi_compute_genome_similarity_flag),
@@ -183,4 +193,3 @@ rule anvi_compute_genome_similarity:
                                             -o {output.output_dir} \
                                             -p {input.pan_db} \
                                             {params.additional_params} >> {log} 2>&1"
-

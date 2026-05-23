@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import os
 import sys
@@ -180,7 +179,7 @@ def print_for_internal_or_external_genomes(args):
             else:
                 raise ConfigError("%d of %d of your genomes in the external genomes file are missing HMMs for single-copy core "
                                   "genes. To see the full list, run the same command with `--debug` flag. If you want avni'o "
-                                  "to simply ignore the ones that do not have HMMs, run the same command wiht `--just-do-it` flag." \
+                                  "to simply ignore the ones that do not have HMMs, run the same command wiht `--just-do-it` flag."
                                                     % (len(missing_hmms), len(genomes)))
 
     A = lambda x: args.__dict__[x] if x in args.__dict__ else None
@@ -283,6 +282,7 @@ def get_args():
     groupD.add_argument(*anvio.A('just-do-it'), **anvio.K('just-do-it'))
     groupD.add_argument(*anvio.A('concise'), **anvio.K('concise'))
     groupD.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+    groupD.add_argument(*anvio.A('skip-checking-genome-hashes'), **anvio.K('skip-checking-genome-hashes'))
 
     return parser.get_args(parser)
 

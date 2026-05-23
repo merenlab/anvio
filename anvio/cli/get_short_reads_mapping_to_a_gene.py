@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 """Return short reads from BAM files mapping to gene."""
 
@@ -23,7 +22,7 @@ __version__ = anvio.__version__
 __authors__ = ['meren']
 __requires__ = ['contigs-db', 'bam-file',]
 __provides__ = ['short-reads-fasta',]
-__tags__ = ["metagenomics", "profile_db", "contigs_db", "bam", "variability", "clustering"]
+__tags__ = ["metagenomics", "profile_db", "contigs_db", "bam", "variability", "clustering", "genes-of-interest-txt"]
 __description__ = ("Recover short reads from BAM files that were mapped to genes you are "
                    "interested in. It is possible to work with a single gene call, or a "
                    "bunch of them. Similarly, you can get short reads from a single "
@@ -75,7 +74,7 @@ def run_program():
                from the contigs database you are using. " % (len(missing_gene_caller_ids), len(genes_of_interest))
 
         if anvio.DEBUG:
-            raise ConfigError(msg + "Here are the list of gene caller IDs that's making anvi'o upset: %s" % \
+            raise ConfigError(msg + "Here are the list of gene caller IDs that's making anvi'o upset: %s" %
                                     (", ".join([str(g) for g in missing_gene_caller_ids])))
         else:
             error_msg = msg + "Since this can be a long list in some cases, anvi'o will not show you what\

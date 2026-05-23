@@ -1,15 +1,11 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """Sets up an anvi'o tRNA-seq snakemake workflow."""
 
 import os
-import pandas as pd
 
 from snakemake.io import ancient
 
 import anvio
 import anvio.utils as u
-import anvio.workflows as w
 import anvio.terminal as terminal
 import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths

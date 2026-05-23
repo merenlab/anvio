@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 """Split an anvi'o profile into smaller pieces."""
 
 import sys

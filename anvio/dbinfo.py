@@ -1,5 +1,4 @@
 #! /usr/bin/env python
-# -*- coding: utf-8
 """A module of classes to keep track of anvi'o databases
 
 The module includes to major classes: DBInfo, and FindAnvioDBs.
@@ -284,7 +283,7 @@ class DBInfo(ABC):
         """
         with DB(self.path, None, ignore_version=True) as database:
             return dict(database.get_table_as_list_of_tuples('self'))
-    
+
     def get_functional_annotation_sources(self):
         """Get the functional annotation sources of the database
 
@@ -296,7 +295,8 @@ class DBInfo(ABC):
         """
         if self.functional_annotation_sources_name:
             with self.load_db() as database:
-                return database.get_meta_value(self.functional_annotation_sources_name, return_none_if_not_in_table=True).split(',')
+                functional_annotation_sources_raw_text = database.get_meta_value(self.functional_annotation_sources_name, return_none_if_not_in_table=True)
+                return functional_annotation_sources_raw_text.split(',') if len(functional_annotation_sources_raw_text) else None
         else:
             return None
 
@@ -368,6 +368,14 @@ class GenomeStorageDBInfo(DBInfo):
 class PanDBInfo(DBInfo):
     """A class to keep track of pan databases"""
     db_type = 'pan'
+    hash_name = 'genomes_storage_hash'
+    def __init__(self, path, *args, **kwargs):
+        DBInfo.__init__(self, path)
+
+
+class PanGraphDBInfo(DBInfo):
+    """A class to keep track of pan graph databases"""
+    db_type = 'pan-graph'
     hash_name = 'genomes_storage_hash'
     def __init__(self, path, *args, **kwargs):
         DBInfo.__init__(self, path)
@@ -516,6 +524,7 @@ dbinfo_classes = {
     'structure': StructureDBInfo,
     'genomestorage': GenomeStorageDBInfo,
     'pan': PanDBInfo,
+    'pan-graph': PanGraphDBInfo,
     'trnaseq': TRNADBInfo,
     'modules': ModulesDBInfo,
 }

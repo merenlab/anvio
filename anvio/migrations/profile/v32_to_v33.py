@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8
 
 import sys
 import argparse
@@ -57,7 +56,7 @@ def migrate(db_path):
                         "`in_complete_gene_call` has become `in_complete_gene_call`" % next_version, nl_after=1, nl_before=1, mc='green')
     else:
         run.info_single("Your profile db is now version %s. But essentially nothing really happened to your "
-                        "database since it was a blank profile (which is OK, move along)." \
+                        "database since it was a blank profile (which is OK, move along)."
                                                             % next_version, nl_after=1, nl_before=1, mc='green')
 
 if __name__ == '__main__':

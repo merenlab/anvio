@@ -1,5 +1,3 @@
-# -*- coding: utf-8
-# pylint: disable=line-too-long
 """
     Classes to define and work with anvi'o pangenomics workflows.
 """
@@ -60,12 +58,12 @@ class PangenomicsWorkflow(PhylogenomicsWorkflow, ContigsDBWorkflow, WorkflowSupe
                                     "import_phylogenetic_tree_to_pangenome": {'tree_name': 'phylogeny'},
                                     "anvi_compute_genome_similarity": {"run": False}})
 
-        pan_params = ["--project-name", "--genome-names", "--skip-alignments",\
-                     "--align-with", "--exclude-partial-gene-calls", "--use-ncbi-blast",\
-                     "--minbit", "--mcl-inflation", "--min-occurrence",\
-                     "--min-percent-identity", "--description",\
-                     "--overwrite-output-destinations", "--skip-hierarchical-clustering",\
-                     "--enforce-hierarchical-clustering", "--distance", "--linkage"]
+        pan_params = ["--project-name", "--genome-names", "--skip-alignments",
+                     "--align-with", "--exclude-partial-gene-calls", "--use-ncbi-blast",
+                     "--minbit", "--mcl-inflation", "--min-occurrence",
+                     "--min-percent-identity", "--description",
+                     "--overwrite-output-destinations", "--skip-hierarchical-clustering",
+                     "--enforce-hierarchical-clustering", "--distance", "--linkage", "--I-know-this-is-not-a-good-idea"]
         self.rule_acceptable_params_dict['anvi_pan_genome'] = pan_params
 
         storage_params = ["--gene-caller"]
@@ -140,7 +138,7 @@ class PangenomicsWorkflow(PhylogenomicsWorkflow, ContigsDBWorkflow, WorkflowSupe
         if self.sequence_source_for_phylogeny:
             if self.sequence_source_for_phylogeny not in self.valid_sequence_sources_for_phylogeny:
                 raise ConfigError('%s is not a valid sequence_source_for_phylogeny. '
-                                  'We only know: %s' % (self.sequence_source_for_phylogeny,\
+                                  'We only know: %s' % (self.sequence_source_for_phylogeny,
                                    ', '.join(self.valid_sequence_sources_for_phylogeny)))
 
 
