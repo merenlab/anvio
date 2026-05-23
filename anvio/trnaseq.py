@@ -179,6 +179,12 @@ ANTICODONS = list(ANTICODON_AA_DICT)
 AA_ANTICODON_DICT = constants.AA_to_anticodons
 TRNA_FEATURE_NAMES = constants.TRNA_FEATURE_NAMES
 
+
+def get_amino_acid_for_anticodon(anticodon_string):
+    if not isinstance(anticodon_string, str):
+        return 'NA'
+    return ANTICODON_AA_DICT.get(anticodon_string, 'NA')
+
 # The user can specify in `anvi-trnaseq` what defines a long (biological vs. non-templated) 5'
 # extension. The variable is set by `TRNASeqDataset.__init__`.
 MIN_LENGTH_LONG_5PRIME_EXTENSION = 4
@@ -5570,7 +5576,7 @@ class DatabaseMerger(object):
             summary_N.spec_covs = np.fromiter(map(int, info_N.specific_coverages.split(',')[: -1]), int)
             summary_N.nonspec_covs = np.fromiter(map(int, info_N.nonspecific_coverages.split(',')[: -1]), int)
             summary_N.string = info_N.sequence
-            summary_N.anticodon_string = info_N.anticodon_sequence if info_N.anticodon_sequence else ''
+            summary_N.anticodon_string = info_N.anticodon_sequence if pd.notnull(info_N.anticodon_sequence) else ''
             length_N = len(summary_N.string)
             summary_N.spec_nt_covs_dict = spec_nt_covs_dict = {nt: np.zeros(length_N, dtype=int) for nt in UNAMBIG_NTS}
             summary_N.nonspec_nt_covs_dict = nonspec_nt_covs_dict = {nt: np.zeros(length_N, dtype=int) for nt in UNAMBIG_NTS}
@@ -6571,7 +6577,7 @@ class DatabaseMerger(object):
                  'Transfer_RNAs', # Source, à la tRNA gene prediction via tRNAScan-SE
                  sha1(seed.string.encode('utf-8'), usedforsecurity=False).hexdigest(), # "Gene unique identifier"
                  seed_num, # "Gene callers ID"
-                 ANTICODON_AA_DICT[seed.anticodon_string] + '_' + seed.anticodon_string, # "Gene name", à la tRNA gene prediction via tRNAScan-SE
+                 get_amino_acid_for_anticodon(seed.anticodon_string) + '_' + seed.anticodon_string, # "Gene name", à la tRNA gene prediction via tRNAScan-SE
                  '-', # "Gene HMM ID"
                  0.0) # "HMM E-value"
             )
@@ -6626,7 +6632,7 @@ class DatabaseMerger(object):
             entries.append(
                 (seed_num,
                  'Transfer_RNAs',
-                 '%s_%s_%d' % (ANTICODON_AA_DICT[seed.anticodon_string], seed.anticodon_string, seed_num),
+                 '%s_%s_%d' % (get_amino_acid_for_anticodon(seed.anticodon_string), seed.anticodon_string, seed_num),
                  'tRNA transcript',
                  0.0)
             )
@@ -7187,7 +7193,7 @@ class DatabaseMerger(object):
         data_dict = {}
         for seed in self.seeds:
             data_dict[seed.name + '_split_00001'] = {'anticodon': seed.anticodon_string,
-                                                     'amino_acid': ANTICODON_AA_DICT[seed.anticodon_string]}
+                                                     'amino_acid': get_amino_acid_for_anticodon(seed.anticodon_string)}
         items_additional_data_table.add(data_dict, ['anticodon', 'amino_acid'])
 
         # Cluster tRNA seeds to form the central dendrogram in anvi-interactive.
