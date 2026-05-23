@@ -241,7 +241,7 @@ rule reformat_external_functions:
                       "anvi-script-reformat-fasta. And hence, there is probably no reason for concern.\n"
             shell("echo -e '%s' > %s" % (warning, log))
 
-        new_gene_functional_annotation = gene_functional_annotation.loc[genes_in_both,]
+        new_gene_functional_annotation = gene_functional_annotation.loc[genes_in_both]
         new_gene_functional_annotation.to_csv(output[0], sep='\t')
 
 
