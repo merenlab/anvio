@@ -6,7 +6,7 @@ import pandas as pd
 # Import tables
 #--------------
 external_gene_calls_all = pd.read_csv(snakemake.params.external_gene_calls_all,
-                                      delim_whitespace=True,
+                                      sep=r'\s+',
                                       index_col=False)
 
 headers = pd.read_csv(snakemake.input.headers,
