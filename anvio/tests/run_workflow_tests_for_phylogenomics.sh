@@ -27,4 +27,5 @@ INFO "Running phylogenomics workflow"
 anvi-run-workflow -w phylogenomics -c config.json
 
 INFO "Display phylogenomic tree"
-anvi-interactive -t 01_PHYLOGENOMICS/TEST-proteins_GAPS_REMOVED.fa.contree -p manual.db --manual
+anvi-interactive -t 01_PHYLOGENOMICS/TEST-proteins_GAPS_REMOVED.fa.contree -p manual.db --manual \
+                 $dry_run_controller
