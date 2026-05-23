@@ -271,7 +271,7 @@ class SingleGenomeCodonUsage(object):
                 gene_codon_frequency_df[codon] = 0
 
         # Drop any column named NaN for unknown codons.
-        gene_codon_frequency_df = gene_codon_frequency_df[constants.codon_to_AA]
+        gene_codon_frequency_df = gene_codon_frequency_df[list(constants.codon_to_AA)]
 
         gene_codon_frequency_df = gene_codon_frequency_df.fillna(0)
         gene_codon_frequency_df = gene_codon_frequency_df[sorted(gene_codon_frequency_df.columns)]
