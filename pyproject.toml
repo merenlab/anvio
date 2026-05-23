@@ -65,7 +65,6 @@ dependencies = [
     "rich-argparse",
     "numba",
     "paste",
-    "pyani",
     "psutil",
     "pandas>=2.2.3",
     "snakemake",
