@@ -2192,7 +2192,7 @@ class PangenomeGraph():
         self.import_values = import_values_found
 
         number_gene_calls = {}
-        for genome, genome_group in self.pangenome_data_df.groupby(["genome"]):
+        for genome, genome_group in self.pangenome_data_df.groupby("genome"):
             extra_connections = []
 
             for contig, group in genome_group.groupby(["contig"]):
