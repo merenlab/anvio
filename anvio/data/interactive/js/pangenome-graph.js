@@ -126,7 +126,6 @@ class PangenomeGraphUserInterface {
         var node_size = parseFloat($('#size')[0].value);
         var node_thickness = parseFloat($('#circ')[0].value);
         var edge_thickness = parseFloat($('#edge')[0].value);
-        var line_thickness = parseFloat($('#line')[0].value);
         var track_line_width = parseFloat($('#track_line_width')[0].value);
         var node_distance_x = parseFloat($('#distx')[0].value);
         var node_distance_y = parseFloat($('#disty')[0].value);
@@ -437,9 +436,7 @@ class PangenomeGraphUserInterface {
                     var dir_set = Object.values(edge['directions'])
     
                     if (dir_set.includes('L') && dir_set.includes('R')) {
-                        var stroke = ' stroke-dasharray="' + line_thickness * 4 + ' ' + line_thickness + '" '
                     } else if (dir_set.includes('L')) {
-                        var stroke = ' stroke-dasharray="' + line_thickness + '" '
                     } else {
                         var stroke = ''
                     }
