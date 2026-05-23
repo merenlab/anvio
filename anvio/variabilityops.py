@@ -1412,6 +1412,8 @@ class VariabilitySuper(VariabilityFilter, object):
         # index entries with and without non-zero coverage (introduced by --quince-mode)
         coverage_zero = self.data.index.isin(entry_ids) & (self.data["coverage"] == 0)
         coverage_nonzero = self.data.index.isin(entry_ids) & (self.data["coverage"] > 0)
+        coverage_zero_entry_ids = self.data.index[coverage_zero]
+        coverage_nonzero_entry_ids = self.data.index[coverage_nonzero]
 
         # rank the items of each entry from 1 - 21 (for --engine AA) based on item coverage.
         # method="first" ensures alphabetic ordering in the case of ties. Convert the rank DataFrame
@@ -1422,7 +1424,8 @@ class VariabilitySuper(VariabilityFilter, object):
 
         # the first and second most common items, according to the 2nd convention in the docstring,
         # are now defined for each entry in two pandas Series.
-        items_first_and_second = self.data.loc[entry_ids, self.items].columns[item_index_order[:,:2]]
+        item_labels = ranks.columns.to_numpy()
+        items_first_and_second = item_labels[item_index_order[:,:2]]
 
         # we also calculate the coverage values for the first and second most common items
         sorted_coverage = np.sort(self.data.loc[entry_ids, self.items].values, axis=1)
@@ -1433,13 +1436,15 @@ class VariabilitySuper(VariabilityFilter, object):
         self.data.loc[entry_ids, "consensus"] = items_first_and_second[:,0]
 
         # if the coverage is zero, departure_from_consensus = 0
-        self.data.loc[coverage_zero, "departure_from_consensus"] = 0
-        self.data.loc[coverage_nonzero, "departure_from_consensus"] = \
-                    (self.data.loc[coverage_nonzero, "coverage"] - coverages_first) / self.data.loc[coverage_nonzero, "coverage"]
+        self.data.loc[coverage_zero_entry_ids, "departure_from_consensus"] = 0.0
+        coverages = self.data.loc[coverage_nonzero_entry_ids, "coverage"].to_numpy(dtype=float)
+        coverages_first_nonzero = coverages_first.loc[coverage_nonzero_entry_ids].to_numpy(dtype=float)
+        self.data.loc[coverage_nonzero_entry_ids, "departure_from_consensus"] = (coverages - coverages_first_nonzero) / coverages
 
         # if the coverage is zero, n2n1ratio = 0
-        self.data.loc[coverage_zero, "n2n1ratio"] = 0
-        self.data.loc[coverage_nonzero, "n2n1ratio"] = coverages_second[coverage_nonzero] / coverages_first[coverage_nonzero]
+        self.data.loc[coverage_zero_entry_ids, "n2n1ratio"] = 0.0
+        coverages_second_nonzero = coverages_second.loc[coverage_nonzero_entry_ids].to_numpy(dtype=float)
+        self.data.loc[coverage_nonzero_entry_ids, "n2n1ratio"] = coverages_second_nonzero / coverages_first_nonzero
 
         # we name the competing_items column differently depending on the engine used
         if self.engine == 'NT':
