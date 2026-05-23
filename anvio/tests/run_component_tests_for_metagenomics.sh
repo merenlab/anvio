@@ -1038,11 +1038,13 @@ cp $files/example_description.md $output_dir/
 INFO "Migrating mock external genome data"
 anvi-migrate --migrate-safely $output_dir/*.db
 
-INFO "Dereplicating genomes using pyANI"
+INFO "Dereplicating genomes using fastANI"
 anvi-dereplicate-genomes -o $output_dir/DEREPLICATION_FROM_SCRATCH \
                          -e $output_dir/external-genomes.txt \
                          --similarity 0.99 \
-                         --program pyANI \
+                         --program fastANI \
+                         --fragment-length 250 \
+                         --min-fraction 0 \
                          --no-progress \
                          $thread_controller
 SHOW_FILE $output_dir/DEREPLICATION_FROM_SCRATCH/CLUSTER_REPORT.txt
@@ -1052,16 +1054,16 @@ anvi-compute-genome-similarity -e $output_dir/external-genomes.txt \
                                -o $output_dir/GENOME_SIMILARITY_OUTPUT \
                                --fragment-length 250 \
                                --min-num-fragments 1 \
-                               --program pyANI \
+                               --program fastANI \
                                --no-progress \
                                $thread_controller
-SHOW_FILE $output_dir/GENOME_SIMILARITY_OUTPUT/ANIb_percentage_identity.txt
+SHOW_FILE $output_dir/GENOME_SIMILARITY_OUTPUT/fastANI_ani.txt
 
 INFO "Dereplicating genomes using an existing genome similarity analysis directory"
 anvi-dereplicate-genomes --ani-dir $output_dir/GENOME_SIMILARITY_OUTPUT \
                          -o $output_dir/DEREPLICATION_FROM_PREVIOUS_RESULTS \
                          --similarity 0.99 \
-                         --program pyANI \
+                         --program fastANI \
                          --no-progress \
                          $thread_controller
 SHOW_FILE $output_dir/DEREPLICATION_FROM_PREVIOUS_RESULTS/CLUSTER_REPORT.txt

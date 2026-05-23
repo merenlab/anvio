@@ -35,7 +35,9 @@ anvi-pan-genome -g TEST-GENOMES.db \
 
 INFO "Running ANI on genomes and storing results in the PAN database"
 anvi-compute-genome-similarity -e external-genomes.txt \
-                               --program pyANI \
+                               --program fastANI \
+                               --fragment-length 250 \
+                               --min-num-fragments 1 \
                                -o ANI_TEST \
                                --log-file ANI_LOG.txt \
                                -p TEST-PAN.db \
