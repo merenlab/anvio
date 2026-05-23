@@ -1843,65 +1843,103 @@ class PangenomeGraph():
 
         label = int(arrow * 0.25)
 
-        state = {'rearranged_color': '#8FF0A4',
-                 'accessory_color': '#DC8ADD',
-                 'paralog_color': '#FFA348',
-                 'singleton_color': '#99C1F1',
-                 'core_color': '#BCBCBC',
-                 'trna_color': '#F66151',
-                 'layer_color': '#F5F5F5',
-                 'non_back_color': '#F8E45C',
-                 'back_color': '#3D70A0',
-                 'flexsaturation': True,
-                 'arrow': arrow,
-                 'flexarrow': True,
-                 'globalbackbone': backbone,
-                 'flexglobalbackbone': True,
-                 **{'flex' + layer: False for layer in self.import_values},
-                 **{layer: 0 for layer in self.import_values},
-                 **{'flex' + genome + 'layer': True for genome in self.genome_names},
-                 **{genome + 'layer': tracks_layer for genome in self.genome_names},
-                 'flextree': True,
-                 'tree_length': tracks_layer,
-                 'tree_offset': int(inner_margin / 2),
-                 'tree_thickness': 10,
-                 'distx': distx,
-                 'disty': 120,
-                 'size': 15,
-                 'circ': 5,
-                 'edge': 5,
-                 'flexlinear': False,
-                 'line': 5,
-                 'label': label,
-                 'label_offset': int(inner_margin / 2),
-                 'search_hit': search,
-                 'inner_margin': inner_margin,
-                 'outer_margin': 0,
-                 'inner': inner,
-                 'start_angle': 0,
-                 'end_angle': 270,
-                 'num_position': 20,
-                 'flexcondtr': True if self.gene_cluster_grouping_threshold != -1 else False,
-                 'condtr': self.gene_cluster_grouping_threshold,
-                 'flexmaxlength': True,
-                 'maxlength': self.max_edge_length_filter if self.max_edge_length_filter != -1 else 1000,
-                 'flexgroupcompress': True if self.groupcompress != 1.0 else False,
-                 'groupcompress': self.groupcompress,
-                 'track_line_width': 5,
-                 'region_label_size': 13,
-                 'region_label_min_width': 80,
-                 'region_label_distance': 2,
-                 'flexbinlabels': True,
-                 'bin_label_orientation': 'natural',
-                 'bin_label_size': 19.5,
-                 'bin_ring_height': 4,
-                 'bin_ring_opacity': 0.8,
-                 'flexbinedges': True,
-                 'bin_edge_thickness': 4,
-                 'bin_edge_color': '#FFFFFF',
-                 'bin_edge_opacity': 1,
-                 **{'flex' + genome: True for genome in self.genome_names},
-                 **{genome: '#000000' for genome in self.genome_names}
+        state = {
+            'drawing': {
+                'type': 'circular',
+                'inner_radius': inner,
+                'start_angle': 0,
+                'end_angle': 270,
+                'node_x_spacing': distx,
+                'node_y_spacing': 120
+            },
+            'nodes': {
+                'radius': 15,
+                'outline_width': 5,
+                'fade_by_prevalence': True,
+                'type_colors': {
+                    'core': '#BCBCBC',
+                    'rearrangement': '#8FF0A4',
+                    'accessory': '#DC8ADD',
+                    'multi_copy': '#FFA348',
+                    'singleton': '#99C1F1',
+                    'trna': '#F66151'
+                }
+            },
+            'edges': {
+                'width': 5
+            },
+            'graph_layout': {
+                'grouping_enabled': self.gene_cluster_grouping_threshold != -1,
+                'grouping_threshold': self.gene_cluster_grouping_threshold,
+                'max_edge_length_enabled': True,
+                'max_edge_length': self.max_edge_length_filter if self.max_edge_length_filter != -1 else 1000,
+                'group_compression_enabled': self.groupcompress != 1.0,
+                'group_compression': self.groupcompress
+            },
+            'layers': {
+                'backbone': {
+                    'visible': True,
+                    'height': backbone,
+                    'backbone_color': '#3D70A0',
+                    'variable_region_color': '#F8E45C'
+                },
+                'orientation_arrow': {
+                    'visible': True,
+                    'height': arrow
+                },
+                'search': {
+                    'hit_height': search
+                }
+            },
+            'layers_tree': {
+                'visible': True,
+                'height': tracks_layer,
+                'offset': int(inner_margin / 2),
+                'line_width': 10
+            },
+            'genome_tracks': {
+                'line_width': 5,
+                'background_color': '#F5F5F5',
+                'genomes': {
+                    genome: {
+                        'color': '#000000',
+                        'show': True,
+                        'track_height': tracks_layer,
+                        'show_track': True
+                    } for genome in self.genome_names
+                }
+            },
+            'imported_layers': {
+                layer: {
+                    'visible': False,
+                    'height': 0
+                } for layer in self.import_values
+            },
+            'labels': {
+                'font_size': label,
+                'offset': int(inner_margin / 2),
+                'position_tick_count': 20
+            },
+            'margins': {
+                'inner': inner_margin,
+                'outer': 0
+            },
+            'region_labels': {
+                'font_size': 13,
+                'min_width_px': 80,
+                'distance': 2
+            },
+            'bins': {
+                'show_labels': True,
+                'label_orientation': 'natural',
+                'label_font_size': 19.5,
+                'ring_height': 4,
+                'ring_opacity': 0.8,
+                'show_edges': True,
+                'edge_thickness': 4,
+                'edge_color': '#FFFFFF',
+                'edge_opacity': 1.0
+            }
         }
 
         return state
