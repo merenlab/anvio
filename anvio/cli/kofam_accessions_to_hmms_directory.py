@@ -91,13 +91,13 @@ def run_program():
 
     # determine output directory
     kofam_accession_ids = sorted([e.strip() for e in set(kofam_accession_ids)])
-    if not A('output_directory'):
+    if not A('output_dir'):
         if len(kofam_accession_ids) == 1:
             output_directory_path = os.path.abspath(kofam_accession_ids[0])
         else:
             output_directory_path = os.path.abspath(f"{kofam_accession_ids[0]}_and_{len(kofam_accession_ids) - 1}_others")
     else:
-        output_directory_path = os.path.abspath(A('output_directory'))
+        output_directory_path = os.path.abspath(A('output_dir'))
 
     failed_accession_ids = set([])
 
@@ -242,14 +242,12 @@ def get_args():
     parser.add_argument('--kofam-accessions-file', help="A single column text file where each column "
                 "is a single KOfam accession ID (such as K00001). You may have as many accession "
                 "ids as you like in this file.", metavar='FILE')
-    parser.add_argument('--kegg-data-dir', metavar='PATH', help="Path to the KEGG data directory "
-                "set up by `anvi-setup-kegg-data`. If not provided, the default location will be used.")
-    parser.add_argument('--include-nt-KOs', action='store_true', default=False, help="By default this "
-                "program will skip KOfams that do not have a bitscore threshold defined by KEGG. "
-                "But you can include them using this flag.")
-    parser.add_argument('-O', '--output-directory', metavar='PATH', help="Output directory for the "
+    parser.add_argument(*anvio.A('kegg-data-dir'), **anvio.K('kegg-data-dir'))
+    parser.add_argument(*anvio.A('include-nt-KOs'), **anvio.K('include-nt-KOs'))
+    parser.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'help': "Output directory for the "
                 "anvi'o-formatted HMMs. Choose the name wisely as this will be the name that will "
-                "appear in the contigs database after you provide it with `-H` flag to `anvi-run-hmms`.")
+                "appear in the contigs database after you provide it with the `-H` flag to `anvi-run-hmms`."}))
+
 
     return parser.get_args(parser)
 
