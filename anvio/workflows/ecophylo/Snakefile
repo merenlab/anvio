@@ -330,7 +330,7 @@ rule process_hmm_hits:
 
 
             # Import tables
-            external_gene_calls = pd.read_csv(external_gene_calls, delim_whitespace=True, index_col=False)
+            external_gene_calls = pd.read_csv(external_gene_calls, sep=r'\s+', index_col=False)
 
             reformat_file = os.path.join(fasta_output_dir, f"{wildcards.sample_name}-{wildcards.hmm_name}-reformat_report_AA.txt")
             reformat_report = pd.read_csv(reformat_file, sep="\t", index_col=False, names=["new_header", "header"])
