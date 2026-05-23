@@ -244,7 +244,7 @@ class KeggModuleEnrichment(KeggContext):
             if len(samples_with_mod_list) == 0:
                 continue
 
-            mod_name = samples_with_mod_df['module_name'][0]
+            mod_name = samples_with_mod_df['module_name'].iloc[0]
             output_dict[mod_name] = {}
             output_dict[mod_name]['MODULE'] = mod_name
             output_dict[mod_name]['accession'] = mod_num
