@@ -244,7 +244,12 @@ class SyntenyGeneCluster():
 
                 joined_contigs_df = caller_id_cluster_df.merge(genes_in_contigs_df, on="gene_caller_id", how="left").merge(gene_function_calls_df, on="gene_caller_id", how="left").merge(additional_info_df, on="gene_cluster", how="left")
 
-                joined_contigs_df.fillna("None", inplace=True)
+                columns_for_none_sentinel = [
+                    column for column in joined_contigs_df.columns
+                    if joined_contigs_df[column].dtype == object or column in self.functional_annotation_sources_available
+                ]
+                for column in columns_for_none_sentinel:
+                    joined_contigs_df[column] = joined_contigs_df[column].where(pd.notnull(joined_contigs_df[column]), "None")
                 joined_contigs_df['genome'] = genome
                 joined_contigs_df.set_index(["genome", "gene_caller_id"], inplace=True)
 
