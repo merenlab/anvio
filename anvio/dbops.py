@@ -3633,6 +3633,9 @@ class PanGraphSuperclass(PanSuperclass):
                               "means to contiue :( Someone needs to re-generate the pan-graph-db file and NOT delete the "
                               "default state this time :/")
 
+        if state not in self.states:
+            raise ConfigError(f"State '{state}' was not found in this pan-graph-db. Available states: {', '.join(self.states.keys())}.")
+
         state_dict = json.loads(self.states[state]['content'])
 
         gene_cluster_grouping_threshold = state_dict['condtr']
