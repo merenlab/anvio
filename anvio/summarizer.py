@@ -148,7 +148,9 @@ class SummarizerSuperClass(object):
         if not self.lazy_init:
             self.sanity_check()
 
-        if self.output_directory:
+        if self.lazy_init:
+            self.output_directory = self.output_directory or "SUMMARY"
+        elif self.output_directory:
             self.output_directory = filesnpaths.check_output_directory(self.output_directory, ok_if_exists=self.delete_output_directory_if_exists or self.just_do_it)
             filesnpaths.gen_output_directory(self.output_directory, delete_if_exists=self.delete_output_directory_if_exists or self.just_do_it)
         else:
@@ -249,7 +251,7 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
         if not self.genomes_storage_is_available:
             raise ConfigError("No genomes storage no summary. Yes. Very simple stuff.")
 
-        if not args.__dict__.get('output_dir'):
+        if not self.lazy_init and not args.__dict__.get('output_dir'):
             project_name = self.p_meta.get('project_name') or 'PROJECT'
             args.output_dir = f'{project_name}-PAN-SUMMARY'
 
