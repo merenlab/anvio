@@ -23,6 +23,7 @@ __email__ = "samuelmiller10@gmail.com"
 M = TRNASeqWorkflow(argparse.Namespace(config=config))
 M.init()
 dirs_dict = M.dirs_dict
+entry_snakefile_path = w.get_entry_snakefile_path(workflow)
 
 
 def rule_log(rule_name, log_file_name='log'):
@@ -40,7 +41,6 @@ rule trnaseq_workflow_target_rule:
 
 rule make_iu_input:
     """Create an Illumina-utils samples file for each sequence library."""
-    version: 1.0
     log: rule_log("make_iu_input", "{sample_name}")
     input: ancient(M.get_param_value_from_config(['samples_txt']))
     output: os.path.join(os.path.join(dirs_dict['QC_DIR'], "{sample_name}"), "iu_samples_input.txt")
@@ -54,7 +54,6 @@ rule make_iu_input:
 
 rule iu_gen_configs:
     """Create an Illumina-utils config file from each Illumina-utils samples file representing each sequence library."""
-    version: 1.0
     log: rule_log("iu_gen_configs", "{sample_name}")
     input: rules.make_iu_input.output
     output: os.path.join(os.path.join(dirs_dict['QC_DIR'], "{sample_name}"), "{sample_name}.ini")
@@ -68,7 +67,6 @@ rule iu_gen_configs:
 
 rule iu_merge_pairs:
     """Merge paired-end reads using Illumina-utils."""
-    version: 1.0
     log: rule_log("iu_merge_pairs", "{sample_name}")
     input: ancient(os.path.join(os.path.join(dirs_dict['QC_DIR'], "{sample_name}"), "{sample_name}.ini"))
     output: touch(os.path.join(os.path.join(dirs_dict['QC_DIR'], "{sample_name}"), "MERGE.done"))
@@ -97,7 +95,6 @@ rule iu_merge_pairs:
 
 rule gen_qc_report:
     """Report all quality control statistics (run once)."""
-    version: 1.0
     log: rule_log("gen_qc_report")
     input: expand(os.path.join(os.path.join(dirs_dict['QC_DIR'], "{sample_name}"), "MERGE.done"), sample_name=M.sample_names)
     output: report = os.path.join(dirs_dict['QC_DIR'], "qc_report.txt") # optional target file that triggers Illumina-utils QC steps
@@ -139,7 +136,6 @@ def gunzip_fasta(fasta, log):
 
 rule anvi_reformat_fasta:
     """Reformat the FASTA file with Anvi\'o-compliant deflines."""
-    version: 1.0
     log: rule_log("anvi_reformat_fasta", "{sample_name}")
     input: M.get_input_for_anvi_reformat_fasta
     output: touch(os.path.join(os.path.join(dirs_dict['QC_DIR'], "{sample_name}"), "REFORMAT.done"))
@@ -181,13 +177,11 @@ rule anvi_reformat_fasta:
 
 
 rule all_reformatting_done:
-    version: 1.0
     input: expand(os.path.join(os.path.join(dirs_dict['QC_DIR'], "{sample_name}"), "REFORMAT.done"), sample_name=M.sample_names)
     output: touch(os.path.join(dirs_dict['QC_DIR'], "ALL_REFORMATTING.done"))
 
 
 rule anvi_trnaseq:
-    version: 1.0
     log: rule_log("anvi_trnaseq", "{sample_name}")
     input: M.get_input_for_anvi_trnaseq
     output: touch(os.path.join(os.path.join(dirs_dict['IDENT_DIR'], "{sample_name}"), "IDENT.done"))
@@ -237,7 +231,6 @@ rule anvi_trnaseq:
 
 
 rule anvi_merge_trnaseq:
-    version: 1.0
     log: rule_log("anvi_merge_trnaseq")
     input: expand(os.path.join(os.path.join(dirs_dict['IDENT_DIR'], "{sample_name}"), "IDENT.done"), sample_name=M.sample_names)
     output: touch(os.path.join(dirs_dict['CONVERT_DIR'], "CONVERT.done"))
@@ -261,7 +254,6 @@ rule anvi_merge_trnaseq:
 
 
 rule anvi_run_trna_taxonomy:
-    version: 1.0
     log: rule_log("anvi_run_trna_taxonomy")
     input: rules.anvi_merge_trnaseq.output
     output: touch(os.path.join(dirs_dict['CONVERT_DIR'], "TAXONOMY.done"))
@@ -276,7 +268,6 @@ rule anvi_run_trna_taxonomy:
 
 
 rule anvi_tabulate_trnaseq:
-    version: 1.0
     log: rule_log("anvi_tabulate_trnaseq")
     input: rules.anvi_run_trna_taxonomy.output
     output: touch(os.path.join(dirs_dict['CONVERT_DIR'], "TABULATE.done"))
@@ -289,7 +280,7 @@ rule anvi_tabulate_trnaseq:
     shell: "anvi-tabulate-trnaseq -c {params.contigs_db} -s {params.specific_profile_db} -n {params.nonspecific_profile_db} --output-dir {params.output_dir} {params.overwrite_output_destinations} >> {log} 2>&1"
 
 
-if 'anvio/workflows/trnaseq' in str(workflow.included[0].abspath()):
+if 'anvio/workflows/trnaseq' in entry_snakefile_path:
     # Check if all program dependencies are met.
     # For this line to be effective, there should be an initial dry run step --
     # which is the default behavior of `WorkflowSuperClass`, so you are most likely covered.

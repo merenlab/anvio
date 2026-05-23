@@ -85,8 +85,6 @@ def get_hmm_threads(wildcards):
 
 rule anvi_run_hmms_hmmsearch:
     """Run hmmsearch with input hmms to get domtblout"""
-
-    version: 1.0
     log: rule_log("anvi_run_hmms_hmmsearch", "{sample_name}-{hmm_source}")
     input:
     output:
@@ -171,8 +169,6 @@ def get_hmm_hits_txt(contigs_db, out_file):
 
 rule filter_hmm_hits_by_model_coverage:
     """Remove weak hmm hits using model alignment coverage filter"""
-
-    version: 1.0
     log: rule_log("filter_hmm_hits_by_model_coverage", "{sample_name}-{hmm_source}")
     input:
         #done = ancient(rules.anvi_run_hmms_hmmsearch.output.done),
@@ -235,8 +231,6 @@ rule process_hmm_hits:
     """Extract AA/NT fastas and external-gene-calls from contigs-db then rename external-gene-calls
     names with reformated names.
     """
-
-    version: 1.0
     log: rule_log("process_hmm_hits", "{sample_name}-{hmm_source}-{hmm_name}")
     input:
         done = ancient(rules.filter_hmm_hits_by_model_coverage.output.done),
@@ -377,8 +371,6 @@ rule combine_sequence_data:
         - header reformat files
         - external-gene-calls sequences and reformat_files from seperate metagenomes, genomes, SAGs, or MAGs into one fasta
     """
-
-    version: 1.0
     log: rule_log("combine_sequence_data", "{group}")
     input:
         lambda wildcards: M.get_input_files_combine_sequence_data(wildcards.group)
@@ -460,8 +452,6 @@ rule combine_sequence_data:
 
 rule cluster_X_percent_sim_mmseqs:
     """Cluster NT or AA fasta file with user defined percent identity"""
-
-    version: 1.0
     log: rule_log("cluster_X_percent_sim_mmseqs", "{group}")
     input:
         done = rules.combine_sequence_data.output.done
@@ -503,8 +493,6 @@ rule cluster_X_percent_sim_mmseqs_OTUs:
     """Cluster extracted proteins within percent identity parameter space provided by user.
     This will help identify clustering thresholds for OTU like analyses.
     """
-
-    version: 1.0
     log: rule_log("cluster_X_percent_sim_mmseqs_OTUs", "{group}-{clustering_threshold}")
     input:
         done = os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{group}", "{group}-mmseqs_NR_cluster.done")
@@ -534,8 +522,6 @@ if M.cluster_representative_method == "cluster_rep_with_coverages":
         """Choose a NT cluster rep based on read recruitment!
         The sequence with the most read recruitment from the input profiled assembly will be chosen as the cluster representative.
         """
-
-        version: 1.0
         log: rule_log("anvi_profile_blitz", "{sample_name}")
         input:
         output:
@@ -552,8 +538,6 @@ if M.cluster_representative_method == "cluster_rep_with_coverages":
 
     rule cat_anvi_profile_blitz:
         """Cat gene coverages from anvi-profile-blitz"""
-
-        version: 1.0
         # log: rule_log("anvi_profile_blitz", "{sample_name}")
         input:
             expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{sample_name}-gene-coverages.txt"), sample_name = M.names_list),
@@ -568,8 +552,6 @@ if M.cluster_representative_method == "cluster_rep_with_coverages":
 
     rule pick_cluster_rep_with_coverage:
         """Pick a cluster rep with coverage values."""
-
-        version: 1.0
         log: rule_log("pick_cluster_rep_with_coverage", "{group}")
         input:
             mmseqs_cluster_rep_index = rules.cluster_X_percent_sim_mmseqs.output.mmseqs_cluster_rep_index,
@@ -631,8 +613,6 @@ if M.cluster_representative_method == "cluster_rep_with_coverages":
 
     rule subset_AA_seqs_with_coverage_reps:
         """Subset AA sequences for the mmseqs cluster representatives"""
-
-        version: 1.0
         log: rule_log("subset_AA_seqs_with_coverage_reps", "{group}")
         input:
             fa = rules.combine_sequence_data.output.AA_all,
@@ -647,8 +627,6 @@ if M.cluster_representative_method == "cluster_rep_with_coverages":
 if M.cluster_representative_method == "mmseqs":
     rule subset_AA_seqs_with_mmseqs_reps:
         """Subset AA sequences for the mmseqs cluster representatives"""
-
-        version: 1.0
         log: rule_log("subset_AA_seqs_with_mmseqs_reps", "{group}")
         input:
             mmseqs_reps = rules.cluster_X_percent_sim_mmseqs.output.fasta
@@ -665,8 +643,6 @@ if M.cluster_representative_method == "mmseqs":
 
 rule align_sequences:
     """MSA of AA sequences subset."""
-
-    version: 1.0
     log: rule_log("align_sequences", "{group}")
     input: os.path.join(dirs_dict['RIBOSOMAL_PROTEIN_FASTAS'], "{group}", "{group}-AA_subset.fa"),
     output: os.path.join(dirs_dict['MSA'], "{group}", "{group}-aligned.fa"),
@@ -677,8 +653,6 @@ rule align_sequences:
 
 rule trim_alignment:
     """Trim MSA alignment"""
-
-    version: 1.0
     log: rule_log("trim_alignment", "{group}")
     input: rules.align_sequences.output
     output: os.path.join(dirs_dict['MSA'], "{group}", "{group}_aligned_trimmed.fa")
@@ -693,8 +667,6 @@ rule trim_alignment:
 
 rule remove_sequences_with_X_percent_gaps:
     """Remove sequences that have X% gaps"""
-
-    version: 1.0
     log: rule_log("remove_sequences_with_X_percent_gaps", "{group}")
     input: rules.trim_alignment.output
     output:
@@ -711,8 +683,6 @@ rule remove_sequences_with_X_percent_gaps:
 
 rule count_num_sequences_filtered:
     """Record the number of sequences filtered at each step of the workflow"""
-
-    version: 1.0
     log: rule_log("count_num_sequences_filtered", "{group}")
     input:
         remove_seq_with_gaps = rules.remove_sequences_with_X_percent_gaps.output.fasta,
@@ -765,8 +735,6 @@ rule count_num_sequences_filtered:
 
 rule subset_DNA_reps_with_QCd_AA_reps_for_mapping:
     """Extract NT sequences based on final list of AA sequences for read recruitment"""
-
-    version: 1.0
     log: rule_log("subset_DNA_reps_with_QCd_AA_reps_for_mapping", "{group}")
     input:
         reps = rules.remove_sequences_with_X_percent_gaps.output
@@ -787,8 +755,6 @@ rule subset_external_gene_calls_file_all:
     ALSO, once all external-gene-calls are concatenated, gene-callers-ids will be re-indexed so that
     there are NO repeating gene-callers-id values.
     """
-
-    version: 1.0
     log: rule_log("subset_external_gene_calls_file_all", "{group}")
     input:
         headers = os.path.join(dirs_dict['MSA'], "{group}", "{group}_headers.tmp")
@@ -803,8 +769,6 @@ rule subset_external_gene_calls_file_all:
 
 rule make_fasta_txt:
     """Format a fasta.txt with the filtered NT sequences for profiling in metagenomics workflow"""
-
-    version: 1.0
     log: rule_log("make_fasta_txt")
     input:
         M.get_input_files_fasta_txt()
@@ -832,8 +796,6 @@ rule make_fasta_txt:
 if M.run_iqtree == True:
   rule iqtree:
       """Calculate a phylogenetic tree using iqtree"""
-
-      version: 1.0
       log: rule_log("iqtree", "{group}")
       input: rules.remove_sequences_with_X_percent_gaps.output
       output:
@@ -850,8 +812,6 @@ if M.run_iqtree == True:
 elif M.run_fasttree == True:
   rule fasttree:
       """Want to go faster?? Then Fasttree"""
-
-      version: 1.0
       log: rule_log("fasttree", "{group}")
       input: rules.remove_sequences_with_X_percent_gaps.output
       output:
@@ -867,8 +827,6 @@ elif M.run_fasttree == True:
 
 rule rename_tree_tips:
     """Add "_split_00001" suffix to tree tips names to bind with profileDB"""
-
-    version: 1.0
     log: rule_log("rename_tree_tips", "{group}")
     input:
         tree = os.path.join(dirs_dict['TREES'], "{group}", "{group}-tree.done"),
@@ -1020,8 +978,6 @@ def count_cluster_size(group):
 
 rule make_misc_data:
     """Make misc data file for clustered sequences"""
-
-    version: 1.0
     log: rule_log("make_misc_data", "{group}")
     input:
         final_list_of_sequences_for_mapping_headers = os.path.join(dirs_dict['MSA'], "{group}", "{group}_headers.tmp")
@@ -1045,8 +1001,6 @@ rule make_misc_data:
 
 rule anvi_run_scg_taxonomy:
     """Run anvi-run-scg-taxonomy"""
-
-    version: 1.0
     log: rule_log("anvi_run_scg_taxonomy", "{sample_name}")
     input: expand(os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], "{{sample_name}}", "{hmm_source}-dom-hmmsearch", "contigs-hmmsearch.done"), hmm_source = M.unique_hmm_source.keys())
     params:
@@ -1067,8 +1021,6 @@ rule anvi_run_scg_taxonomy:
 
 rule anvi_estimate_scg_taxonomy:
     """Run anvi-estimate-SCG-taxonomy and import the resulting taxonomy misc data to profileDB for internal hmms only"""
-
-    version: 1.0
     log: rule_log("anvi_estimate_scg_taxonomy", "{group}")
     input:
         final_list_of_sequences_for_mapping_headers = os.path.join(dirs_dict['MSA'], "{group}", "{group}_headers.tmp"),

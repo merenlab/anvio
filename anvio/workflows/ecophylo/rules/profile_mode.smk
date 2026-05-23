@@ -2,8 +2,6 @@
 
 rule make_metagenomics_config_file:
     """Make a METAGENOMICS WORKFLOW config.json customized for ECOPHYLO_WORKFLOW - PROFILE MODE"""
-
-    version: 1.0
     log: rule_log("make_metagenomics_config_file")
     input:
         rules.make_fasta_txt.output.fasta_txt
@@ -52,8 +50,6 @@ rule make_metagenomics_config_file:
 
 rule run_metagenomics_workflow:
     """Run metagenomics workflow to profile hmm_hits"""
-
-    version: 1.0
     log: rule_log("run_metagenomics_workflow")
     input:
         config = rules.make_metagenomics_config_file.output.config,
@@ -86,8 +82,6 @@ rule run_metagenomics_workflow:
 
 rule add_default_collection:
     """Make default collection for profile-db that contains all splits"""
-
-    version: 1.0
     log: rule_log("add_default_collection", "{group}")
     input: metagenomics_workflow_done = rules.run_metagenomics_workflow.output.done
     params:
@@ -101,8 +95,6 @@ rule add_default_collection:
 
 rule anvi_summarize:
     """Get coverage values for hmm_hits"""
-
-    version: 1.0
     log: rule_log("anvi_summarize", "{group}")
     input:
         done = rules.add_default_collection.output.done
@@ -118,8 +110,6 @@ rule anvi_summarize:
 
 rule make_anvio_state_file:
     """Make a state file customized for EcoPhylo workflow interactive interface"""
-
-    version: 1.0
     log: rule_log("make_anvio_state_file", "{group}")
     input:
         M.get_target_files_make_anvio_state_file()
@@ -302,8 +292,6 @@ rule anvi_import_everything_metagenome:
     """Import state file, phylogenetic tree, AND misc data to interactive interface
     If samples.txt is NOT provided then we will make an Ad Hoc profileDB for the tree to import misc data
     """
-
-    version: 1.0
     log: rule_log("anvi_import_everything_metagenome", "{group}")
     input:
         tree = rules.rename_tree_tips.output.tree,

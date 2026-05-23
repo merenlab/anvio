@@ -86,8 +86,6 @@ rule prefetch:
     NOTES:
     - This is the first rule of the workflow
     """
-
-    version: 1.0
     log: rule_log("prefetch", "{accession}")
     input:
     output:
@@ -107,8 +105,6 @@ rule prefetch:
 
 rule check_md5sum:
     """Curl the md5sum file from the SRA FTP site"""
-
-    version: 1.0
     log: rule_log("check_md5sum", "{accession}")
     input:
         prefetch_DONE = os.path.join(dirs_dict['SRA_prefetch'], "{accession}", "{accession}.prefetch.done")
@@ -164,8 +160,6 @@ rule fasterq_dump:
     Threads:
     - Number of threads specified in the M object
     """
-
-    version: 1.0
     log: rule_log("fasterq_dump", "{accession}")
     input:
         ancient(rules.check_md5sum.output.md5sum_DONE)
@@ -207,8 +201,6 @@ rule pigz:
     example:
         pigz --processes 8 --verbose 02_FASTA/ERR6450080*.fastq >> 00_LOGS/pigz/ERR6450080.log 2>&1
     """
-
-    version: 1.0
     log: rule_log("pigz", "{accession}")
     input: ancient(rules.fasterq_dump.output.FASTERQDUMP_DONE)
     output: touch(os.path.join(dirs_dict['FASTAS'], "{accession}-pigz.done"))
@@ -235,8 +227,6 @@ rule generate_samples_txt:
     Threads:
     - Number of threads specified in the M object
     """
-
-    version:1.0
     log: rule_log("generate_samples_txt")
     input: expand(os.path.join(dirs_dict['FASTAS'], "{accession}-pigz.done"), accession=M.accessions_list)
     output: touch(os.path.join(dirs_dict['FASTAS'], "generate_samples_txt.done"))

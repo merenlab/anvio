@@ -30,7 +30,8 @@ __email__ = "alon.shaiber@gmail.com"
 run = terminal.Run()
 progress = terminal.Progress()
 
-this_workflow_is_inherited_by_another = False if 'anvio/workflows/metagenomics' in str(workflow.included[0].abspath()) else True
+entry_snakefile_path = w.get_entry_snakefile_path(workflow)
+this_workflow_is_inherited_by_another = False if 'anvio/workflows/metagenomics' in entry_snakefile_path else True
 
 if not this_workflow_is_inherited_by_another:
     # it is important that this comes before the include statement since
@@ -146,7 +147,6 @@ rule iu_gen_configs:
     We run iu-gen-configs once (it writes {QC_DIR}/{base_sample}.ini),
     then copy/symlink to {QC_DIR}/{readset}.ini so suffixed SR readsets exist.
     """
-    version: 1.0
     log: rule_log("iu_gen_configs")
     # one-time rule -> no wildcard constraints
     input:
@@ -198,7 +198,6 @@ qc_output_r2 = os.path.join(dirs_dict["QC_DIR"], "{readset}-QUALITY_PASSED_R2.fa
 
 rule iu_filter_quality_minoche:
     """ Run QC using iu-filter-quality-minoche """
-    version: 1.0
     log: rule_log("iu_filter_quality_minoche", "{readset}")
     wildcard_constraints:
         readset = SR_RS_RE
@@ -294,7 +293,6 @@ def input_for_remove_short_reads_based_on_references(wildcards):
 
 gzip_suffix = '.gz' if run_gzip_fastqs else ''
 rule remove_short_reads_based_on_references:
-    version: 1.0
     log: rule_log("remove_short_reads_based_on_references", "{readset}")
     input: unpack(input_for_remove_short_reads_based_on_references)
     output:
@@ -365,7 +363,6 @@ rule remove_short_reads_based_on_references:
 
 
 rule gen_report_for_mapping_to_references_for_removal:
-    version: 1.0
     log: rule_log("gen_report_for_mapping_to_references_for_removal")
     input:
         ids_to_remove = expand(os.path.join(dirs_dict["QC_DIR"], '{readset}-ids-to-remove.txt'), readset=SR_READSETS),
@@ -379,7 +376,6 @@ rule gen_report_for_mapping_to_references_for_removal:
 
 
 rule gen_qc_report:
-    version: 1.0
     log: rule_log("gen_qc_report")
     input: expand(dirs_dict["QC_DIR"] + "/{readset}-STATS.txt", readset=SR_READSETS)
     output: dirs_dict["QC_DIR"] + "/qc-report.txt"
@@ -431,7 +427,6 @@ rule gen_qc_report:
 
 
 rule merge_fastas_for_co_assembly:
-    version: 1.0
     log: rule_log("merge_fastas_for_co_assembly", "{group}")
     input: unpack(lambda wildcards: M.get_sr_fastqs_for_group(wildcards.group))
     output: temp(dirs_dict["QC_DIR"] + "/{group}-merged.fa")
@@ -465,7 +460,6 @@ rule merge_fastas_for_co_assembly:
 
 
 rule merge_fastqs_for_co_assembly:
-    version: 1.0
     log: rule_log("merge_fastqs_for_co_assembly", "{group}")
     input: unpack(lambda wildcards: M.get_sr_fastqs_for_group(wildcards.group))
     output:
@@ -488,7 +482,6 @@ gzip_fastq_output = os.path.join(dirs_dict["QC_DIR"],\
                                  "{readset}-QUALITY_PASSED_{R}.fastq.gz")
 rule gzip_fastqs:
     ''' Compressing the quality controlled fastq files'''
-    version: 1.0
     log: rule_log("gzip_fastqs", "{readset}-{R}")
     input:
         fastq = os.path.join(dirs_dict["QC_DIR"], "{readset}-QUALITY_PASSED_{R}.fastq")
@@ -513,7 +506,6 @@ if M.get_param_value_from_config(['flye', 'run']) and M.has_lr:
     rule flye:
         wildcard_constraints:
             group = LR_GRP_RE
-        version: 1.0
         conda: conda_yaml('flye')
         log:
             rule_log("flye", "{group}")
@@ -565,7 +557,6 @@ if M.get_param_value_from_config(['idba_ud', 'run']) and M.has_sr:
     rule idba_ud:
         wildcard_constraints:
             group = SR_GRP_RE
-        version: 1.0
         conda: conda_yaml('idba_ud')
         log: rule_log("idba_ud", "{group}")
         input:
@@ -645,7 +636,6 @@ if M.get_param_value_from_config(['metaspades','run']) and M.has_sr:
     rule metaspades:
         wildcard_constraints:
             group = SR_GRP_RE
-        version: 1.0
         conda: conda_yaml('metaspades')
         log: rule_log("metaspades", "{group}")
         input: unpack(input_for_metaspades)
@@ -692,7 +682,6 @@ if M.get_param_value_from_config(['megahit','run']) and M.has_sr:
             All files created by megahit are stored in a temporary folder,
             and only the fasta file is kept for later analysis.
         '''
-        version: 1.0
         wildcard_constraints:
             group = SR_GRP_RE
         conda: conda_yaml('megahit')
@@ -772,7 +761,6 @@ def use_post_ref_filter(wildcards):
 
 rule bowtie_build:
     """Build bowtie2 index for contigs fasta."""
-    version: 1.0
     wildcard_constraints:
         readset = SR_RS_RE
     conda: conda_yaml('bowtie')
@@ -797,7 +785,6 @@ rule bowtie_build:
 
 rule bowtie:
     """Map SR readsets with bowtie2 (extension handled via get_fastq)."""
-    version: 1.0
     log: rule_log("bowtie", "{group}-{readset}")
     wildcard_constraints:
         readset = SR_RS_RE
@@ -828,7 +815,6 @@ rule bowtie:
 
 
 rule minimap2_index:
-    version: 1.0
     log:
         rule_log("minimap2_index", "{group}")
     wildcard_constraints:
@@ -852,7 +838,6 @@ rule minimap2_index:
 
 
 rule minimap2:
-    version: 1.0
     log: rule_log("minimap2", "{group}-{readset}")
     wildcard_constraints:
         readset = LR_RS_RE
@@ -876,7 +861,6 @@ rule minimap2:
 
 rule samtools_view:
     """ sort sam file with samtools and create a RAW.bam file"""
-    version: 1.0
     log: rule_log("samtools_view", "{group}-{readset}")
     input:  M.dirs_dict["MAPPING_DIR"] + "/{group}/{readset}.sam"
     params: additional_params = M.get_param_value_from_config(["samtools_view", "additional_params"])
@@ -884,12 +868,11 @@ rule samtools_view:
     output: temp(dirs_dict["MAPPING_DIR"] + "/{group}/{readset}-RAW.bam")
     threads: M.T('samtools_view')
     resources: nodes = M.T('samtools_view'),
-    shell: "samtools view -bS {input} -o {output} {params.additional_params} >> {log} 2>&1"
+    shell: "samtools view -bS {input} -o {output} {params.additional_params} >> {log} 2>&1 && touch {output}"
 
 
 rule anvi_init_bam:
     """ run anvi-init-bam on RAW bam file to create a bam file ready for anvi-profile"""
-    version: 1.0 # later we can decide if we want the version to use the version of anvi'o
     log: rule_log("anvi_init_bam", "{group}-{readset}")
     input:  M.dirs_dict["MAPPING_DIR"] + "/{group}/{readset}-RAW.bam"
     output:
@@ -919,7 +902,6 @@ def get_cluster_contigs_param(wildcards):
 rule anvi_profile:
     """ run anvi-profile on the bam file"""
     # setting the rule version to be as the version of the profile database of anvi'o
-    version: anvio.__profile__version__
     log: rule_log("anvi_profile", "{group}-{readset}")
     input:
         bam = dirs_dict["MAPPING_DIR"] + "/{group}/{readset}.bam",
@@ -1044,7 +1026,6 @@ def remove_empty_profile_databases(profiles, group):
 
 
 rule gen_readme_file_for_unmerged_groups:
-    version: 1.0
     log: rule_log("gen_readme_file_for_unmerged_groups", "{group}")
     input:
         contigs = ancient(M.get_contigs_db_path()),
@@ -1074,7 +1055,6 @@ rule anvi_merge:
         a symlink to a profile database) that could be used together for
         anvi-interactive.
     '''
-    version: anvio.__profile__version__
     log: rule_log("anvi_merge", "{group}")
     # The input are all profile databases that belong to the same group
     input:
@@ -1164,7 +1144,6 @@ rule anvi_merge:
 
 
 rule anvi_import_collection:
-    version: 1.0
     log: rule_log("anvi_import_collection", "{group}")
     input:
         profile = lambda wildcards: M.profile_databases[wildcards.group],
@@ -1192,7 +1171,6 @@ rule anvi_import_collection:
 
 
 rule anvi_import_default_collection:
-    version: 1.0
     log: rule_log("anvi_import_default_collection", "{group}")
     input:
         profile = lambda wildcards: M.profile_databases[wildcards.group],
@@ -1212,7 +1190,6 @@ rule anvi_import_default_collection:
 
 
 rule anvi_summarize:
-    version: 1.0
     log: rule_log("anvi_summarize", "{group}")
     input:
         profile = lambda wildcards: M.profile_databases[wildcards.group],
@@ -1237,7 +1214,6 @@ rule anvi_summarize:
 
 
 rule anvi_split:
-    version: 1.0
     log: rule_log("anvi_split", "{group}")
     input:
         profile = lambda wildcards: M.profile_databases[wildcards.group],
@@ -1263,7 +1239,6 @@ rule anvi_split:
 
 
 rule dummy_rule_for_anvi_summarize:
-    version: 1.0
     log: rule_log("dummy_rule_for_anvi_summarize", "{group}")
     input:
         summary_done = os.path.join(dirs_dict["SUMMARY_DIR"], "{group}-summary.touch")
@@ -1277,7 +1252,6 @@ rule dummy_rule_for_anvi_summarize:
 
 
 rule krakenuniq:
-    version: 1.0
     log: rule_log("krakenuniq", "{readset}")
     wildcard_constraints:
         readset = SR_RS_RE
@@ -1307,7 +1281,6 @@ rule krakenuniq:
         """
 
 rule krakenuniq_mpa_report:
-    version: 1.0
     log: rule_log("krakenuniq_mpa_report", "{readset}")
     input: os.path.join(dirs_dict["TAXONOMY_DIR"], "{readset}.krakenuniq"),
     output: os.path.join(dirs_dict["TAXONOMY_DIR"], "{readset}-krakenuniq.tsv")
@@ -1342,7 +1315,6 @@ def input_for_import_krakenuniq_taxonomy(wildcards):
 
 
 rule import_krakenuniq_taxonomy:
-    version: 1.0
     log: rule_log("import_krakenuniq_taxonomy", "{group}-{readset}")
     input:
         unpack(input_for_import_krakenuniq_taxonomy),
@@ -1362,7 +1334,6 @@ rule import_krakenuniq_taxonomy:
 rule count_reads_in_fastq:
     """Count the reads in fastq(s) per readset. Used later for computing
     the percent of reads mapping"""
-    version: 1.0
     log:
         rule_log("count_reads_in_fastq", "{readset}")
     input:
@@ -1398,7 +1369,6 @@ rule count_reads_in_fastq:
 
 rule import_percent_of_reads_mapped:
     """Mapper-agnostic import of mapping stats into layers."""
-    version: 1.0
     log:
         rule_log("import_percent_of_reads_mapped", "{group}-{readset}")
     input:
@@ -1446,7 +1416,6 @@ rule import_percent_of_reads_mapped:
 
 
 rule anvi_cluster_contigs:
-    version: 1.0
     log: rule_log("anvi_cluster_contigs", "{group}-{driver}")
     threads: M.T("anvi_cluster_contigs")
     resources: nodes = M.T("anvi_cluster_contigs")
@@ -1467,7 +1436,7 @@ rule anvi_cluster_contigs:
                                        {params.additional_params} >> {log} 2>&1""")
 
 
-if 'anvio/workflows/metagenomics' in str(workflow.included[0].abspath()):
+if 'anvio/workflows/metagenomics' in entry_snakefile_path:
     # check if all program dependencies are met. for this line to be effective,
     # there should be an initial dry run step (which is the default behavior of
     # the `WorkflowSuperClass`, so you are most likely covered).
