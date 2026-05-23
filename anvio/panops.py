@@ -1952,7 +1952,7 @@ class PangenomeGraph():
         dbops.PanGraphDatabase(self.pan_graph_db_path, run=self.run, progress=self.progress, quiet=False).create(meta_values)
 
         # add a default state
-        TablesForStates(self.pan_graph_db_path).store_state('default', json.dumps(self.get_default_state()))
+        TablesForStates(self.pan_graph_db_path).store_state('default', json.dumps(self.get_default_state(), indent=4))
 
         # populate nodes in pan-graph-db
         self.store_nodes_in_pan_graph_db()

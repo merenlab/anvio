@@ -3601,8 +3601,8 @@ class PanGraphSuperclass(PanSuperclass):
 
     def save_state(self, state_dict, state_name):
         last_modified = datetime.datetime.now().strftime("%d.%m.%Y %H:%M:%S")
-        TablesForStates(self.pan_graph_db_path).store_state(state_name, json.dumps(state_dict), last_modified)
-        self.states[state_name] = {'content': json.dumps(state_dict), 'last_modified': last_modified}
+        TablesForStates(self.pan_graph_db_path).store_state(state_name, json.dumps(state_dict, indent=4), last_modified)
+        self.states[state_name] = {'content': json.dumps(state_dict, indent=4), 'last_modified': last_modified}
 
 
     def get_states(self):
