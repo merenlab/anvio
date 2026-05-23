@@ -527,7 +527,7 @@ CalledProcessError in file /Users/mschechter/github/anvio/anvio/workflows/ecophy
 
 Command 'set -euo pipefail;  cd ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW && anvi-run-workflow -w metagenomics -c metagenomics_config.json --additional-params  --rerun-incomplete --latency-wait 100 --keep-going &> 00_LOGS/run_metagenomics_workflow/log.log && cd -' returned non-zero exit status 1.
   File "/Users/mschechter/github/anvio/anvio/workflows/ecophylo/rules/profile_mode.smk", line 87, in __rule_run_metagenomics_workflow
-  File "/Users/mschechter/miniconda3/envs/anvio-dev/lib/python3.10/concurrent/futures/thread.py", line 58, in run
+  File "/Users/mschechter/miniconda3/envs/anvio-dev/lib/python3.13/concurrent/futures/thread.py", line 58, in run
 Shutting down, this might take some time.
 Exiting because a job execution failed. Look above for error message
 ```
