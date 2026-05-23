@@ -64,7 +64,6 @@ dependencies = [
     "tabulate",
     "rich-argparse",
     "paste",
-    "pyani",
     "psutil",
     "pandas>=2.2.3",
     "snakemake",
