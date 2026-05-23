@@ -177,7 +177,7 @@ class MetagenomeCentricGeneClassifier:
                                "And here are the samples you requested, and that are not there: %s" % (samples, samples_to_include_that_are_not_there))
             samples = self.samples_to_include
 
-        self.samples = samples
+        self.samples = sorted(samples)
 
 
     def init_gene_level_coverage_stats_dict_of_dataframes(self):
