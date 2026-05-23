@@ -1124,10 +1124,10 @@ class SingleGenomeCodonUsage(object):
                     f"{missing_key_message}")
 
         gene_function_df = gene_function_df.set_index(['function_source', 'function_name'])
-        select_gene_caller_ids += gene_function_df.loc[select_keys]['gene_caller_id'].tolist()
+        select_gene_caller_ids += gene_function_df.loc[sorted(select_keys)]['gene_caller_id'].tolist()
         ##################################################
 
-        return self.gene_codon_frequency_df.loc[set(select_gene_caller_ids)]
+        return self.gene_codon_frequency_df.loc[list(dict.fromkeys(select_gene_caller_ids))]
 
 
     ##################################################

@@ -6517,7 +6517,7 @@ class Constructor:
         # Make objects representing genes with KO annotations in the stored reaction network. Make
         # objects representing the KOs, initially only assigning their ID attribute.
         gene_ko_hits_table: pd.DataFrame = gene_ko_hits_table.set_index('accession').loc[
-            reaction_network_ko_ids.intersection(contigs_db_ko_ids)
+            sorted(reaction_network_ko_ids.intersection(contigs_db_ko_ids))
         ]
         gene_ko_hits_table = gene_ko_hits_table.reset_index().set_index('gene_callers_id')
         for row in gene_ko_hits_table.itertuples():
@@ -7207,7 +7207,7 @@ class Constructor:
         # that the KOs no longer are consensus annotations of gene clusters from the pan database.)
         reaction_network_ko_ids: Set[str] = set(kos_table['kegg_id'])
         kos_table: pd.DataFrame = kos_table.set_index('kegg_id').loc[
-            set(network.kos).intersection(reaction_network_ko_ids)
+            sorted(set(network.kos).intersection(reaction_network_ko_ids))
         ]
 
         # Fill out KEGG classification attributes of KO objects in the loaded network.
