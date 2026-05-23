@@ -70,6 +70,8 @@ class PangenomeGraphUserInterface {
         this.flextree_change = this.flextree_change.bind(this);
         this.save_bin = this.save_bin.bind(this);
         this.load_bin = this.load_bin.bind(this);
+        this.show_save_state_modal = this.show_save_state_modal.bind(this);
+        this.show_load_state_modal = this.show_load_state_modal.bind(this);
         this.save_state = this.save_state.bind(this);
         this.load_state = this.load_state.bind(this);
         this.set_UI_settings = this.set_UI_settings.bind(this);
@@ -3162,8 +3164,8 @@ class PangenomeGraphUserInterface {
         $('#AlignmentDownload').on("click", this.alignment_download);
         $('#InfoDownload').on("click", this.info_download);
 
-        $('#stateload').on("click", () => this.state_modal('load'));
-        $('#statesave').on("click", () => this.state_modal('save'));
+        $('#stateload').on("click", this.show_load_state_modal);
+        $('#statesave').on("click", this.show_save_state_modal);
         $('#binload').on("click", this.load_bin);
         $('#binsave').on("click", this.save_bin);
 
@@ -4070,39 +4072,87 @@ class PangenomeGraphUserInterface {
         new LoadCollectionDialog(importFn).Show();
     }
 
-    load_state () {
-        if ($('#loadstatename')[0].value != "") {
-            this.state = $('#loadstatename')[0].value
-
-            var state = {}
-            state['state_name'] = this.state
-    
-            $.ajax({
-                url: "/pangraph/load_pangraph_state",
-                type: "POST",
-                cache: false,
-                contentType: "application/json",
-                dataType: "json",
-                data: JSON.stringify(state),
-                success: (data) => {
-                    this.data = data['data'];
-                    this.initialize_variables();
-                    this.set_UI_settings();
-                    this.main_draw();
-                    toastr.success(`State "${this.state}" has been loaded.`, 'State loaded');
-                },
-                error: (err) => {
-                    toastr.error('Failed to load state.', 'Error');
+    show_save_state_modal () {
+        $.ajax({
+            type: 'GET',
+            cache: false,
+            url: '/pangraph/get_pangraph_states',
+            success: (state_list) => {
+                $('#savestatelist').empty();
+                for (let state_name in state_list) {
+                    const selected = (state_name === this.state) ? ' selected="selected"' : '';
+                    $('#savestatelist').append(`<option${selected}>${state_name}</option>`);
                 }
-            })
-            
-            $('#loadstatemodal').modal('hide');
-        }
+                if ($('#savestatelist').val() === null) {
+                    $('#savestatename').val('default');
+                } else {
+                    $('#savestatelist').trigger('change');
+                }
+                $('#savestatemodal').modal('show');
+            }
+        });
     }
-    
+
+    show_load_state_modal () {
+        $.ajax({
+            type: 'GET',
+            cache: false,
+            url: '/pangraph/get_pangraph_states',
+            success: (state_list) => {
+                $('#loadstatename').empty();
+                for (let state_name in state_list) {
+                    $('#loadstatename').append(`<option lastmodified="${state_list[state_name]['last_modified']}">${state_name}</option>`);
+                }
+                $('#loadstate_lastmodified').html('Last modified: n/a');
+                $('#loadstatemodal').modal('show');
+            }
+        });
+    }
+
+    load_state () {
+        const state_name = $('#loadstatename').val();
+        if (!state_name) return;
+
+        $('#loadstatemodal').modal('hide');
+
+        $.ajax({
+            url: "/pangraph/load_pangraph_state",
+            type: "POST",
+            cache: false,
+            contentType: "application/json",
+            dataType: "json",
+            data: JSON.stringify({state_name: state_name}),
+            success: (response) => {
+                if (response['status'] != 0) {
+                    toastr.error('Failed to load state: ' + (response['message'] || 'unknown error'), 'Error');
+                    return;
+                }
+                this.state = state_name;
+                this.data = response['data'];
+                this.initialize_variables();
+                this.set_UI_settings();
+                this.main_draw();
+                toastr.success(`State "${this.state}" has been loaded.`, 'State loaded');
+            },
+            error: () => {
+                toastr.error('Failed to load state.', 'Error');
+            }
+        });
+    }
+
     save_state () {
-        var new_state = {}
-        
+        const name = $('#savestatename').val();
+        if (!name || name.length === 0) {
+            $('#savestatename').focus();
+            return;
+        }
+
+        const state_exists = Array.from($('#savestatelist option')).some(o => o.value === name);
+        if (state_exists && !confirm(`"${name}" already exists, do you want to overwrite it?`)) {
+            return;
+        }
+
+        var new_state = {};
         for (var [setting, value] of Object.entries(this.data['states'])) {
             const el = $('#' + setting);
             if (el.hasClass('pangraph-colorpicker')) {
@@ -4122,59 +4172,29 @@ class PangenomeGraphUserInterface {
 
         genome_order.forEach(key => {
             if (key in new_state) {
-              const value = new_state[key];
-              delete new_state[key];
-              new_state[key] = value;
+                const value = new_state[key];
+                delete new_state[key];
+                new_state[key] = value;
             }
         });
-         
-        var result = {}
-        result['state_name'] = $('#savestatename')[0].value
-        result['state_values'] = new_state
 
         $.ajax({
             url: "/pangraph/save_pangraph_state",
             type: "POST",
-            data: JSON.stringify(result),
+            data: JSON.stringify({state_name: name, state_values: new_state}),
             contentType: "application/json",
             dataType: "json",
-            error: function(){
-                toastr.error('Failed to save state.', 'Error');
-            },
-            success: function(){
-                toastr.success(`State "${result['state_name']}" has been saved.`, 'State saved');
-            }
-        })
-        
-        $('#savestatemodal').modal('hide');
-    }
-    
-    state_modal (save_load) {
-
-        $.ajax({
-            type: 'GET',
-            cache: false,
-            url: '/pangraph/get_pangraph_states',
-            success: function(data) {
-
-                $('#' + save_load + 'statelisttab').empty()
-                $('#' + save_load + 'statename')[0].value = ""
-                
-                for (var state_name of data['data']) {
-                    $('#' + save_load + 'statelisttab').append(
-                        $('<a class="list-group-item list-group-item-action" id="list-profile-list" data-toggle="list" href="#list-profile" role="tab" aria-controls="profile">').append(
-                            state_name
-                        )
-                    )
+            success: (response) => {
+                if (response['status_code'] == '1') {
+                    this.state = name;
+                    toastr.success(`State "${name}" has been saved.`, 'State saved');
+                    $('#savestatemodal').modal('hide');
+                } else {
+                    toastr.error('Failed to save state: ' + (response['error'] || 'server is in read-only mode'), 'Error');
                 }
-    
-                $('#' + save_load + 'statelisttab a').on('click', function (e) {
-                    e.preventDefault()
-                    $(this).tab('show')
-                    $('#' + save_load + 'statename')[0].value = $(this)[0].innerText
-                })
-    
-                $('#' + save_load + 'statemodal').modal('show');
+            },
+            error: () => {
+                toastr.error('Failed to save state.', 'Error');
             }
         });
     }
