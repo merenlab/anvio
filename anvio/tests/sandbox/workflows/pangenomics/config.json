@@ -17,7 +17,7 @@
     "workflow_name": "pangenomics",
     "max_threads": 1,
     "anvi_compute_genome_similarity": {
-        "run": true
+        "run": false
     },
     "project_name": "TEST",
     "output_dirs": {
