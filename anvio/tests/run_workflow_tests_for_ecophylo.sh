@@ -44,12 +44,36 @@ awk '{
 
 INFO "Generating r1 and r2 short reads for samples"
 mkdir -p output
-samples="sampleB_thetaiotamicron_Ribosomal_L16 sample_IGD_SUBSET_Ribosomal_L16 sample_P_marinus_Ribosomal_L16"
 
-for sample in $samples
-do
-    ~/github/reads-for-assembly/gen-paired-end-reads samples/$sample.ini
-done
+anvi-script-gen-reads -f contigs/sampleB_thetaiotamicron_Ribosomal_L16.fasta \
+                      -o output/SAMPLE-01 \
+                      --read-type paired-end \
+                      --read-length 100 \
+                      --insert-size 50 \
+                      --insert-size-std 5 \
+                      --coverage 95 \
+                      --error-rate 0 \
+                      --seed 1
+
+anvi-script-gen-reads -f contigs/sample_IGD_SUBSET_Ribosomal_L16.fasta \
+                      -o output/sample_IGD_SUBSET_Ribosomal_L16 \
+                      --read-type paired-end \
+                      --read-length 100 \
+                      --insert-size 50 \
+                      --insert-size-std 5 \
+                      --coverage 50 \
+                      --error-rate 0 \
+                      --seed 1
+
+anvi-script-gen-reads -f contigs/sample_P_marinus_Ribosomal_L16.fasta \
+                      -o output/sample_P_marinus_Ribosomal_L16 \
+                      --read-type paired-end \
+                      --read-length 100 \
+                      --insert-size 50 \
+                      --insert-size-std 5 \
+                      --coverage 75 \
+                      --error-rate 0 \
+                      --seed 1
 
 echo -e "sample\tr1\tr2" > samples.txt
 for reads in $(ls output/*-R1.fastq);
@@ -134,4 +158,3 @@ GROUP=$(awk 'NR==2{print $4}' hmm_list_group.txt)
 anvi-interactive -c ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/03_CONTIGS/${GROUP}.db \
                  -p ECOPHYLO_WORKFLOW/METAGENOMICS_WORKFLOW/06_MERGED/${GROUP}/PROFILE.db \
                  $dry_run_controller
-
