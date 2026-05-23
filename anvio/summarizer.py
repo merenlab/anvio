@@ -320,9 +320,9 @@ class PanSummarizer(PanSuperclass, SummarizerSuperClass):
             v = None
             for gene_cluster_id in occurrence_of_functions_in_pangenome_dict[gene_cluster_function]['gene_clusters_ids']:
                 if v is None:
-                    v = gene_cluster_frequencies_dataframe.loc[gene_cluster_id, ].astype(int)
+                    v = gene_cluster_frequencies_dataframe.loc[gene_cluster_id].astype(int)
                 else:
-                    v = v.add(gene_cluster_frequencies_dataframe.loc[gene_cluster_id, ])
+                    v = v.add(gene_cluster_frequencies_dataframe.loc[gene_cluster_id])
             D[gene_cluster_function] = {}
             for genome in v.index:
                 D[gene_cluster_function][genome] = v[genome]
