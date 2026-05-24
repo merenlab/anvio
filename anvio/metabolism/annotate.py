@@ -77,10 +77,8 @@ class AnnotationWorker(multiprocessing.Process):
         Workers close (but do not unlink) the segment — only the main process unlinks.
         """
         from multiprocessing.shared_memory import SharedMemory
-        from multiprocessing import resource_tracker
 
-        shm = SharedMemory(name=self.shared_data_shm_name, create=False)
-        resource_tracker.unregister('/' + shm.name, 'shared_memory')
+        shm = SharedMemory(name=self.shared_data_shm_name, create=False, track=False)
         bundle = pickle.loads(bytes(shm.buf[:self.shared_data_size]))
         shm.close()
 
