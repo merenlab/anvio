@@ -52,8 +52,7 @@ INFO "Generating a pangenome graph from a pan-db"
 anvi-pan-genome-graph -p TEST-PAN.db \
                       -g TEST-GENOMES.db \
                       --project-name TEST \
-                      -e external-genomes.txt \
-                      $thread_controller
+                      -e external-genomes.txt
 
 INFO "Generating a summary output for the pangenome graph"
 anvi-summarize -p TEST-PAN-GRAPH.db \
