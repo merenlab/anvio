@@ -356,7 +356,6 @@ class PanRepresenter:
     def process_representative_genome(self):
         representative_genome = self.get_representative()
         contigs, contigs_db = self.get_contigs_db(representative_genome)
-        contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name, string_the_key=True)
         filtered_funcs = self.build_functions_lookup(contigs_db)
         gene_calls_data = self.get_gene_calls_data(contigs)
 
@@ -364,7 +363,7 @@ class PanRepresenter:
             self.add_function(representative_genome, filtered_funcs, gene_data, gene_id)
 
         self.set_gene_calls(gene_calls_data)
-        self.representative_contigs = {contig_name: contig_data["sequence"] for contig_name, contig_data in contig_sequences.items()}
+        self.representative_contigs = {contig_name: data["sequence"] for contig_name, data in contigs.contig_sequences.items()}
         self.seen_clusters.update(self.genome_to_clusters[representative_genome])
         self.current_id = max(contigs.genes_in_contigs_dict) + 1
         self.all_clusters -= self.seen_clusters
@@ -385,7 +384,6 @@ class PanRepresenter:
 
 
         stretches = self.get_stretches(filtered_genes)
-        contig_to_seq = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name, string_the_key=True)
 
         if not self.keep_synteny:
             for gene_id, gene_data in gene_calls_data.items():
@@ -400,7 +398,7 @@ class PanRepresenter:
                 if not limits:
                     continue
 
-                contig_seq = contig_to_seq[contig]["sequence"]
+                contig_seq = contigs.contig_sequences[contig]["sequence"]
                 valid_ids = contig_name_to_genes.get(contig)
                 min_valid_id, max_valid_id = min(valid_ids), max(valid_ids)
                 for first_id, last_id in limits:
