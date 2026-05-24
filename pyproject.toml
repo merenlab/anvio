@@ -47,6 +47,7 @@ dynamic = ["version"]
 
 dependencies = [
     "numpy>=2.1",
+    "numba",
     "scipy",
     "bottle",
     "pysam",
@@ -56,8 +57,10 @@ dependencies = [
     "django",
     "requests",
     "mistune",
+    "PyYAML",
     "six",
     "matplotlib>=3.9",
+    "seaborn",
     "statsmodels",
     "colored",
     "illumina-utils",
