@@ -67,4 +67,5 @@ anvi-display-pan-graph -p TEST-PAN-GRAPH.db \
                        $dry_run_controller
 
 INFO "Displaying pangenome graph from a YAML file"
-anvi-display-pan-graph -p FROM-YAML-PAN-GRAPH.db
+anvi-display-pan-graph -p FROM-YAML-PAN-GRAPH.db \
+                       $dry_run_controller
