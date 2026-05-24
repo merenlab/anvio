@@ -1178,8 +1178,29 @@ anvi-refine -p $output_dir/SAMPLES-MERGED/PROFILE.db \
 
 
 INFO "Importing items and layers additional data into the genes database for CONCOCT::Bin_1"
+python - <<PY
+import sqlite3
+from pathlib import Path
+
+genes_db_path = Path("$output_dir/SAMPLES-MERGED/GENES/CONCOCT-Bin_1.db")
+output_path = Path("$output_dir/items_addtl_data_gene_mode.txt")
+
+with sqlite3.connect(genes_db_path) as db:
+    gene_callers_ids = [
+        str(row[0])
+        for row in db.execute("SELECT DISTINCT gene_callers_id FROM gene_level_coverage_stats ORDER BY gene_callers_id LIMIT 5")
+    ]
+
+if len(gene_callers_ids) < 5:
+    raise SystemExit(f"Expected at least 5 genes in {genes_db_path}, found {len(gene_callers_ids)}.")
+
+with open(output_path, "w") as output:
+    output.write("gene_caller_ids\tNUMERICAL_LAYER\tCATEGORICAL_LAYER\n")
+    for index, gene_callers_id in enumerate(gene_callers_ids, 1):
+        output.write(f"{gene_callers_id}\t{index}\t{chr(96 + index)}\n")
+PY
 anvi-import-misc-data -p $output_dir/SAMPLES-MERGED/GENES/CONCOCT-Bin_1.db \
-                     $files/items_addtl_data_gene_mode.txt \
+                     $output_dir/items_addtl_data_gene_mode.txt \
                      -t items \
                      --no-progress
 anvi-import-misc-data -p $output_dir/SAMPLES-MERGED/GENES/CONCOCT-Bin_1.db \
