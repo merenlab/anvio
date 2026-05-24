@@ -156,7 +156,7 @@ class KOfamDownload(KeggSetup):
 
         hmm_list = [k for k in glob.glob(os.path.join(self.kegg_data_dir, 'profiles/*.hmm'))]
         for hmm_file in hmm_list:
-            ko = re.search('profiles/(K\d{5})\.hmm', hmm_file).group(1)
+            ko = re.search(r'profiles/(K\d{5})\.hmm', hmm_file).group(1)
             if ko not in self.ko_dict.keys():
                 if ko in self.ko_no_threshold_list:
                     no_threshold_file_list.append(hmm_file)
@@ -871,11 +871,11 @@ class ModulesDownload(KeggSetup):
                     current_category = fields[1]
                 # Sub-category
                 elif first_char == "C":
-                    fields = re.split('\s{2,}', line) # don't want to split the subcategory name, so we have to split at least 2 spaces
+                    fields = re.split(r'\s{2,}', line) # don't want to split the subcategory name, so we have to split at least 2 spaces
                     current_subcategory = fields[1]
                 # module
                 elif first_char == "D":
-                    fields = re.split('\s{2,}', line)
+                    fields = re.split(r'\s{2,}', line)
                     mnum = fields[1]
                     self.module_dict[mnum] = {"name" : fields[2], "type" : current_module_type, "category" : current_category, "subcategory" : current_subcategory}
                 # unknown code
