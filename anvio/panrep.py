@@ -1,9 +1,11 @@
+import shutil
 import hashlib
 import argparse
 from collections import defaultdict
 
 import pandas as pd
 
+import anvio
 import anvio.tables as t
 import anvio.dbops as dbops
 import anvio.utils as utils
@@ -17,8 +19,10 @@ from anvio.tables.genefunctions import TableForGeneFunctions
 
 
 class PanRepresenter:
-    def __init__(self, args):
+    def __init__(self, args, r, p):
         self.args = args
+        self.run = r
+        self.progress = p
         self.pan = dbops.PanSuperclass(args)
         self.pan.init_gene_clusters()
         self.storage = GenomeStorage(args.genomes_storage)
@@ -394,12 +398,6 @@ class PanRepresenter:
         gap = "N" * self.gap_size
         self.representative_contigs[self.supplement_contig_name] = gap.join(self.supplementary_contig)
 
-    def write_outputs(self):
-        tmp_dir = filesnpaths.get_temp_directory_path()
-        self.export_gene_calls(tmp_dir)
-        self.export_functions(tmp_dir)
-        self.export_fasta(tmp_dir)
-
     def build_contigs_db(self):
         self.args.db_variant = "pan-genome"
         panrep_db = dbops.ContigsDatabase(self.output_file, quiet=False, skip_init=True)
@@ -407,3 +405,24 @@ class PanRepresenter:
 
         gene_function_calls_table = TableForGeneFunctions(self.output_file)
         gene_function_calls_table.create(self.functions, drop_previous_annotations_first=False)
+
+    def cleanup(self, tmp_dir):
+        if anvio.DEBUG:
+            self.run.warning(f"The temp directory, {tmp_dir}, is kept. Please don't forget to clean it up later", header="Debug")
+        else:
+            self.run.info_single("Cleaning up the temp directory (you can use `--debug` if you would like to keep it for testing purposes)", nl_before=1, nl_after=1)
+            shutil.rmtree(tmp_dir)
+
+    def process(self):
+        tmp_dir = filesnpaths.get_temp_directory_path()
+        while self.all_clusters:
+            if self.first_iteration:
+                self.process_representative_genome()
+
+            self.process_additional_genomes()
+        self.assemble_supplementary_contig()
+        self.export_gene_calls(tmp_dir)
+        self.export_functions(tmp_dir)
+        self.export_fasta(tmp_dir)
+        self.build_contigs_db()
+        self.cleanup(tmp_dir)

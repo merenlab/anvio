@@ -2,11 +2,9 @@
 """Generates a pangenome-supplemented representative genome from a pangenome analysis"""
 
 import sys
-import shutil
 
 import anvio
 import anvio.terminal as terminal
-import anvio.filesnpaths as filesnpaths
 
 from anvio.panrep import PanRepresenter
 from anvio.argparse import ArgumentParser
@@ -23,15 +21,14 @@ __provides__ = ["contigs-db"]
 __description__ = "Generates a pangenome-supplemented representative genome from a pangenome"
 
 
+run = terminal.Run()
+progress = terminal.Progress()
+
 def main():
     run_program()
 
-
 def run_program():
     args = get_args()
-    run = terminal.Run()
-
-    temp_dir = filesnpaths.get_temp_directory_path()
 
     if args.keep_promoter:
         run.warning("Since you chose to keep the promoter region that means you also keep the synteny by definition")
@@ -67,16 +64,8 @@ def run_program():
                           f"does not look like one.")
 
     try:
-        pan_representative = PanRepresenter(args)
-
-        while pan_representative.all_clusters:
-            if pan_representative.first_iteration:
-                pan_representative.process_representative_genome()
-
-            pan_representative.process_additional_genomes()
-        pan_representative.assemble_supplementary_contig()
-        pan_representative.write_outputs()
-        pan_representative.build_contigs_db()
+        pan_representative = PanRepresenter(args, run, progress)
+        pan_representative.process()
     except ConfigError as e:
         print(e)
         sys.exit(-1)
@@ -84,11 +73,6 @@ def run_program():
         print(e)
         sys.exit(-2)
 
-    if anvio.DEBUG:
-        run.warning(f"The temp directory, {temp_dir}, is kept. Please don't forget to clean it up later", header="Debug")
-    else:
-        run.info_single("Cleaning up the temp directory (you can use `--debug` if you would like to keep it for testing purposes)", nl_before=1, nl_after=1)
-        shutil.rmtree(temp_dir)
 
 
 def get_args():
