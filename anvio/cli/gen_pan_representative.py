@@ -33,8 +33,6 @@ def run_program():
 
     temp_dir = filesnpaths.get_temp_directory_path()
 
-    args.db_variant = "pan-genome"
-
     if args.keep_promoter:
         run.warning("Since you chose to keep the promoter region that means you also keep the synteny by definition")
 
@@ -69,14 +67,13 @@ def run_program():
                           f"does not look like one.")
 
     try:
-        pan_representative = PanRepresenter(args, temp_dir)
+        pan_representative = PanRepresenter(args)
 
         while pan_representative.all_clusters:
             if pan_representative.first_iteration:
                 pan_representative.process_representative_genome()
 
             pan_representative.process_additional_genomes()
-
         pan_representative.assemble_supplementary_contig()
         pan_representative.write_outputs()
         pan_representative.build_contigs_db()

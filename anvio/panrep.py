@@ -1,13 +1,14 @@
 import hashlib
 import argparse
-import pandas as pd
-
 from collections import defaultdict
+
+import pandas as pd
 
 import anvio.tables as t
 import anvio.dbops as dbops
 import anvio.utils as utils
 import anvio.fastalib as fastalib
+import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 from anvio.genomestorage import GenomeStorage
@@ -16,7 +17,7 @@ from anvio.tables.genefunctions import TableForGeneFunctions
 
 
 class PanRepresenter:
-    def __init__(self, args, tmpdir):
+    def __init__(self, args):
         self.args = args
         self.pan = dbops.PanSuperclass(args)
         self.pan.init_gene_clusters()
@@ -24,6 +25,15 @@ class PanRepresenter:
         self.external_genomes = GenomeDescriptions(self.args)
         self.external_genomes.load_genomes_descriptions()
         self.genome_to_clusters = self.pan.get_gene_clusters_in_genomes_dict(self.pan.gene_clusters)
+        A = lambda x: args.__dict__[x] if x in args.__dict__ else None
+        self.output_file = A('output_file')
+        self.keep_promoter = A('keep_promoter')
+        self.keep_synteny = A('keep_synteny') or A('keep_promoter')
+        self.project_name = A('project_name') or self.pan.p_meta.get('project_name')
+        self.gap_size = A('gap_size')
+        self.alpha = A('alpha')
+        self.max_num_contigs = A('max_num_contigs')
+        self.representative = A('representative')
         self.first_iteration = True
         self.current_id = 0
         self.current_pos = 0
@@ -33,13 +43,7 @@ class PanRepresenter:
         self.gene_calls = {}
         self.representative_contigs = {}
         self.supplementary_contig = []
-        self.tmpdir = tmpdir
         self.supplement_contig_name = ""
-        self.keep_promoter = args.keep_promoter
-        self.keep_synteny = args.keep_synteny or args.keep_promoter
-        self.args.project_name = args.project_name or self.pan.p_meta.get('project_name')
-        self.args.contigs_fasta = f"{tmpdir}/{self.args.project_name}.fasta"
-        self.args.external_gene_calls = f"{tmpdir}/{self.args.project_name}_gene_calls.txt"
         self.flat_lookup = {}
         for genome, cluster_subset in self.genome_to_clusters.items():
             for cluster in cluster_subset:
@@ -78,8 +82,8 @@ class PanRepresenter:
             The name of the representative genome.
         """
 
-        if self.args.representative:
-            return self.args.representative
+        if self.representative:
+            return self.representative
 
         genomes_dict = self.storage.get_genomes_dict()
         genomes = [
@@ -91,10 +95,10 @@ class PanRepresenter:
                 "num_genes": data.get("num_genes"),
             }
             for name, data in genomes_dict.items()
-            if data.get("num_contigs") < self.args.max_num_contigs
+            if data.get("num_contigs") < self.max_num_contigs
         ]
         if not genomes:
-            raise ConfigError(f"I'm sorry to tell you, but no genome has less than {self.args.max_num_contigs} contigs, maybe try to increase the limit")
+            raise ConfigError(f"I'm sorry to tell you, but no genome has less than {self.max_num_contigs} contigs, maybe try to increase the limit")
 
         comp_values = [
             g["percent_completion"] - g["percent_redundancy"] for g in genomes
@@ -117,7 +121,7 @@ class PanRepresenter:
                 comp_max,
             )
             contig_norm = normalize(g["num_contigs"], contig_min, contig_max, maximize=False)
-            g["score"] = self.args.alpha * comp_norm + (1 - self.args.alpha) * contig_norm
+            g["score"] = self.alpha * comp_norm + (1 - self.alpha) * contig_norm
 
         return max(genomes, key=lambda g: (g["score"], g["num_genes"]))["name"]
 
@@ -287,19 +291,21 @@ class PanRepresenter:
             return ""
         return hashlib.sha256(sequence.encode()).hexdigest()[:size].upper()
 
-    def export_gene_calls(self):
+    def export_gene_calls(self, tmp_dir):
         """Exports the gene calls table as a tab delimited file"""
 
+        external_gene_calls = f"{tmp_dir}/{self.project_name}_gene_calls.txt"
         gene_calls = pd.DataFrame(self.gene_calls).T
-        utils.store_dataframe_as_TAB_delimited_file(gene_calls, self.args.external_gene_calls)
+        utils.store_dataframe_as_TAB_delimited_file(gene_calls, external_gene_calls)
 
-    def export_functions(self):
+    def export_functions(self, tmp_dir):
         """Exports the functions table as a tab delimited file"""
 
         functions = pd.DataFrame(self.functions).T
-        utils.store_dataframe_as_TAB_delimited_file(functions, f"{self.tmpdir}/{self.args.project_name}_functions.tsv")
+        utils.store_dataframe_as_TAB_delimited_file(functions, f"{tmp_dir}/{self.project_name}_functions.tsv")
 
-    def export_fasta(self):
+    def export_fasta(self, tmp_dir):
+        self.args.contigs_fasta = f"{tmp_dir}/{self.project_name}.fasta"
         output_fasta = fastalib.FastaOutput(self.args.contigs_fasta)
         for name, seq in self.representative_contigs.items():
             output_fasta.write_id(name)
@@ -345,7 +351,7 @@ class PanRepresenter:
                 self.add_gene_call(gene_data)
                 self.add_function(most_common_genome, filtered_funcs, gene_data, gene_id)
                 self.current_id += 1
-                self.current_pos += gene_data["length"] + self.args.gap_size
+                self.current_pos += gene_data["length"] + self.gap_size
 
         else:
             for contig, limits in stretches.items():
@@ -380,22 +386,24 @@ class PanRepresenter:
                         self.add_function(most_common_genome, filtered_funcs, current, i, contig)
                         self.current_id += 1
 
-                    self.current_pos += stop - start + self.args.gap_size
+                    self.current_pos += stop - start + self.gap_size
 
         self.all_clusters -= self.seen_clusters
 
     def assemble_supplementary_contig(self):
-        gap = "N" * self.args.gap_size
+        gap = "N" * self.gap_size
         self.representative_contigs[self.supplement_contig_name] = gap.join(self.supplementary_contig)
 
     def write_outputs(self):
-        self.export_gene_calls()
-        self.export_functions()
-        self.export_fasta()
+        tmp_dir = filesnpaths.get_temp_directory_path()
+        self.export_gene_calls(tmp_dir)
+        self.export_functions(tmp_dir)
+        self.export_fasta(tmp_dir)
 
     def build_contigs_db(self):
-        panrep_db = dbops.ContigsDatabase(self.args.output_file, quiet=False, skip_init=True)
+        self.args.db_variant = "pan-genome"
+        panrep_db = dbops.ContigsDatabase(self.output_file, quiet=False, skip_init=True)
         panrep_db.create(self.args)
 
-        gene_function_calls_table = TableForGeneFunctions(self.args.output_file)
+        gene_function_calls_table = TableForGeneFunctions(self.output_file)
         gene_function_calls_table.create(self.functions, drop_previous_annotations_first=False)
