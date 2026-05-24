@@ -1,6 +1,7 @@
 # -*- coding: utf-8
 
 import os
+import time
 import argparse
 
 import anvio
@@ -36,6 +37,13 @@ def rule_log(rule_name, log_file_name='log'):
         log_file_name = f"{log_file_name}.log"
 
     return os.path.join(dirs_dict["LOGS_DIR"], rule_name, log_file_name)
+
+
+def wait_until_inputs_are_not_in_the_future(input_paths):
+    newest_input_mtime = max(os.path.getmtime(str(input_path)) for input_path in input_paths)
+    wait_time = newest_input_mtime - time.time()
+    if wait_time > 0:
+        time.sleep(wait_time + 0.01)
 
 
 localrules: annotate_contigs_database
@@ -120,11 +128,13 @@ rule anvi_script_reformat_fasta:
         seq_type = M.get_rule_param("anvi_script_reformat_fasta", "--seq-type"),
     threads: M.T('anvi_script_reformat_fasta')
     resources: nodes = M.T('anvi_script_reformat_fasta'),
-    shell: w.r("""anvi-script-reformat-fasta {input} \
-                                             -o {output.contigs} \
-                                             {params.seq_type} \
-                                             {params.min_len} \
-                                             {params.max_len} >> {log} 2>&1""")
+    run:
+        shell(w.r("""anvi-script-reformat-fasta {input} \
+                                               -o {output.contigs} \
+                                               {params.seq_type} \
+                                               {params.min_len} \
+                                               {params.max_len} >> {log} 2>&1"""))
+        wait_until_inputs_are_not_in_the_future([input.contigs])
 
 
 rule reformat_external_gene_calls_table:

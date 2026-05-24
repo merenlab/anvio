@@ -7,6 +7,7 @@ how to use it.
 '''
 
 import os
+import time
 import anvio
 import argparse
 import pandas as pd
@@ -127,6 +128,13 @@ def rule_log(rule_name, log_file_name='log'):
         log_file_name = f"{log_file_name}.log"
 
     return os.path.join(dirs_dict["LOGS_DIR"], rule_name, log_file_name)
+
+
+def wait_until_inputs_are_not_in_the_future(input_paths):
+    newest_input_mtime = max(os.path.getmtime(str(input_path)) for input_path in input_paths)
+    wait_time = newest_input_mtime - time.time()
+    if wait_time > 0:
+        time.sleep(wait_time + 0.01)
 
 
 ruleorder: import_percent_of_reads_mapped > import_krakenuniq_taxonomy
@@ -1323,13 +1331,14 @@ rule import_krakenuniq_taxonomy:
     params: min_abundance = M.get_rule_param('import_krakenuniq_taxonomy', '--min-abundance')
     threads: M.T('import_krakenuniq_taxonomy')
     resources: nodes = M.T('import_krakenuniq_taxonomy')
-    shell:
-        """
+    run:
+        shell("""
             anvi-import-taxonomy-for-layers -p {input.profile} \
                                             -i {input.tsv} \
                                             --parser krakenuniq \
                                             {params.min_abundance} >> {log} 2>&1
-        """
+        """)
+        wait_until_inputs_are_not_in_the_future(input)
 
 rule count_reads_in_fastq:
     """Count the reads in fastq(s) per readset. Used later for computing
