@@ -26,4 +26,5 @@ INFO "Running anvi-display-functions with groups"
 anvi-display-functions -e external-genomes.txt \
                        --groups groups.txt \
                        --annotation-source COG20_FUNCTION \
-                       -p COG20_FUNCTION_W_GROUPS.db
+                       -p COG20_FUNCTION_W_GROUPS.db \
+                       $dry_run_controller
