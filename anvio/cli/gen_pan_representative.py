@@ -25,43 +25,7 @@ run = terminal.Run()
 progress = terminal.Progress()
 
 def main():
-    run_program()
-
-def run_program():
     args = get_args()
-
-    if args.keep_promoter:
-        run.warning("Since you chose to keep the promoter region that means you also keep the synteny by definition")
-
-    try:
-        args.max_num_contigs = int(args.max_num_contigs)
-        if args.max_num_contigs <= 0:
-            raise ConfigError(f"--max-num-contigs must be a positive integer, but you provided {args.max_num_contigs}. "
-                              f"Please try again with a value greater than 0.")
-
-    except ValueError:
-        raise ConfigError(f"--max-num-contigs requires a positive integer, but '{args.max_num_contigs}' "
-                          f"does not look like one. Please try again with a whole number.")
-
-
-    try:
-        args.gap_size = int(args.gap_size)
-        if args.gap_size <= 0:
-            raise ConfigError(f"--gap-size must be a positive integer, but you provided {args.gap_size}. "
-                              f"Please try again with a value greater than 0.")
-
-    except ValueError:
-        raise ConfigError(f"--gap-size requires a positive integer, but '{args.gap_size}' "
-                          f"does not look like one. Please try again with a whole number.")
-
-    try:
-        args.alpha = float(args.alpha)
-        if args.alpha < 0 or args.alpha > 1:
-            raise ConfigError(f"--alpha must be a value between 0.0 and 1.0 inclusive, but you provided {args.alpha}.")
-
-    except ValueError:
-        raise ConfigError(f"--alpha requires a number between 0.0 and 1.0, but '{args.alpha}' "
-                          f"does not look like one.")
 
     try:
         pan_representative = PanRepresenter(args, run, progress)
@@ -72,8 +36,6 @@ def run_program():
     except FilesNPathsError as e:
         print(e)
         sys.exit(-2)
-
-
 
 def get_args():
     parser = ArgumentParser(description=__description__)

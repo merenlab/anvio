@@ -23,12 +23,10 @@ class PanRepresenter:
         self.args = args
         self.run = r
         self.progress = p
+
         self.pan = dbops.PanSuperclass(args)
         self.pan.init_gene_clusters()
-        self.storage = GenomeStorage(args.genomes_storage)
-        self.external_genomes = GenomeDescriptions(self.args)
-        self.external_genomes.load_genomes_descriptions()
-        self.genome_to_clusters = self.pan.get_gene_clusters_in_genomes_dict(self.pan.gene_clusters)
+
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.output_file = A('output_file')
         self.keep_promoter = A('keep_promoter')
@@ -38,6 +36,12 @@ class PanRepresenter:
         self.alpha = A('alpha')
         self.max_num_contigs = A('max_num_contigs')
         self.representative = A('representative')
+        self.sanity_check()
+
+        self.storage = GenomeStorage(args.genomes_storage)
+        self.external_genomes = GenomeDescriptions(self.args)
+        self.external_genomes.load_genomes_descriptions()
+        self.genome_to_clusters = self.pan.get_gene_clusters_in_genomes_dict(self.pan.gene_clusters)
         self.first_iteration = True
         self.current_id = 0
         self.current_pos = 0
@@ -53,6 +57,40 @@ class PanRepresenter:
             for cluster in cluster_subset:
                 for gene_id in self.pan.gene_clusters[cluster][genome]:
                     self.flat_lookup[(genome, gene_id)] = cluster
+
+    def sanity_check(self):
+        if self.keep_promoter:
+            self.run.warning("Since you chose to keep the promoter region that means you also keep the synteny by definition")
+
+        try:
+            self.max_num_contigs = int(self.max_num_contigs)
+            if self.max_num_contigs <= 0:
+                raise ConfigError(f"--max-num-contigs must be a positive integer, but you provided {self.max_num_contigs}. "
+                                f"Please try again with a value greater than 0.")
+
+        except ValueError:
+            raise ConfigError(f"--max-num-contigs requires a positive integer, but '{self.max_num_contigs}' "
+                            f"does not look like one. Please try again with a whole number.")
+
+
+        try:
+            self.gap_size = int(self.gap_size)
+            if self.gap_size <= 0:
+                raise ConfigError(f"--gap-size must be a positive integer, but you provided {self.gap_size}. "
+                                f"Please try again with a value greater than 0.")
+
+        except ValueError:
+            raise ConfigError(f"--gap-size requires a positive integer, but '{self.gap_size}' "
+                            f"does not look like one. Please try again with a whole number.")
+
+        try:
+            self.alpha = float(self.alpha)
+            if self.alpha < 0 or self.alpha > 1:
+                raise ConfigError(f"--alpha must be a value between 0.0 and 1.0 inclusive, but you provided {self.alpha}.")
+
+        except ValueError:
+            raise ConfigError(f"--alpha requires a number between 0.0 and 1.0, but '{self.alpha}' "
+                            f"does not look like one.")
 
     def get_most_common_genome(self):
         """Calculates the number of gene_clusters each genome is missing and returns the name of the genome missing the least.
