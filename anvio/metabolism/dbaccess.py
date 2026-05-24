@@ -391,7 +391,7 @@ class KeggEstimatorArgs():
             self.run.warning("You requested coverage/detection values to be added to the output files, but your "
                              "input file does not seem to contain either a 'coverage' column or a 'detection' column, or both. "
                              "Since we don't have this data, --add-coverage will not work, so we are turning this "
-                             "flag off. Sorry ¯\_(ツ)_/¯")
+                             "flag off. Sorry ¯\\_(ツ)_/¯")
             self.add_coverage = False
             # remove coverage headers from the list so we don't try to access them later
             kofam_hits_coverage_headers = [self.contigs_db_project_name + "_coverage", self.contigs_db_project_name + "_detection"]

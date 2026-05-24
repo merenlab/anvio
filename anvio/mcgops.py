@@ -112,7 +112,7 @@ class MCGPlots:
                 plt.plot(self.x, np.apply_along_axis(f(fit_slope - 2*fit_slope_std),0,self.x),'g')
 
             # adding the text to the plot
-            text_for_fit = u'$R^2 = %.2f$\n $slope = %.2f$\n $slope\ precision = %.2f$' % (fit_R_squered, fit_slope, fit_slope_precision)
+            text_for_fit = '$R^2 = %.2f$\n $slope = %.2f$\n $slope\\ precision = %.2f$' % (fit_R_squered, fit_slope, fit_slope_precision)
             axes.text(0.2, 0.9, text_for_fit, ha='center', va='center', transform=axes.transAxes)
 
         if self.plot_gene_nuc_coverage:

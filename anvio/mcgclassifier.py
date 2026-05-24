@@ -312,7 +312,7 @@ class MetagenomeCentricGeneClassifier:
             ax.hist(v[self.non_outlier_indices[sample]], number_of_hist_bins,hist_range, rasterized=True)
             fig.suptitle("%s - histogram of non-outliers" % sample)
             # adding the mean and std of the non-outliers as text to the plot
-            text_for_hist = u'$\mu = %d$\n $\sigma = %d$' %\
+            text_for_hist = '$\\mu = %d$\n $\\sigma = %d$' %\
                                 (self.samples_coverage_stats_dicts['non_outlier_mean_coverage'][sample],
                                  self.samples_coverage_stats_dicts['non_outlier_coverage_std'][sample])
             ax.text(0.8, 0.9, text_for_hist, ha='center', va='center', transform=ax.transAxes)

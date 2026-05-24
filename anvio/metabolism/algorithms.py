@@ -85,7 +85,7 @@ class KeggEstimationAlgorithms:
         for a in acc_list:
             if a in all_modules_in_db:
                 mods_to_remove.add(a)
-            if re.match('[^a-zA-Z0-9_\.]', a):
+            if re.match(r'[^a-zA-Z0-9_\.]', a):
                 raise ConfigError(f"The get_enzymes_from_module_definition_in_order() function found an enzyme accession that looks a bit funny. "
                                   f"Possibly this is a failure of our parsing strategy, or maybe the enzyme accession just has unexpected characters "
                                   f"in it. We don't know what module it is, but the weird enzyme is {a}. If you think that accession looks perfectly "
@@ -639,7 +639,7 @@ class KeggEstimationAlgorithms:
                     # 3) protein complexes, ie Kxxxxx+Kyyyyy-Kzzzzz (2 types of complex components - essential and nonessential)
                     else:
                         # split on '+' or '-'
-                        pattern = re.compile('\+|\-')
+                        pattern = re.compile(r'\+|\-')
                         match_idxs = []
                         for match in re.finditer(pattern, atomic_step):
                             match_idxs.append(match.start())
@@ -1583,7 +1583,7 @@ def module_definition_to_enzyme_accessions(mod_definition):
     """Parses a module definition string into a list of enzyme accessions."""
 
     # anything that is not (),-+ should be converted to spaces, then we can split on the spaces to get the accessions
-    mod_definition = re.sub('[\(\)\+\-,]', ' ', mod_definition).strip()
+    mod_definition = re.sub(r'[\(\)\+\-,]', ' ', mod_definition).strip()
     acc_list = re.split(r'\s+', mod_definition)
 
     return acc_list

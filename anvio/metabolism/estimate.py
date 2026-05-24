@@ -2358,7 +2358,7 @@ class KeggMetabolismEstimatorMulti(KeggEstimatorArgs, KeggDataLoader):
                     step_comments = {}
                     lines_with_comment = []
                     for s in mod_big_steps:
-                        split_s = re.sub("[\(\)\+\-,]", " ", s).strip()
+                        split_s = re.sub(r"[\(\)\+\-,]", " ", s).strip()
                         split_s = split_s.split(" ")
 
                         # we skip making comments on steps without KOs like '--'
@@ -2408,7 +2408,7 @@ def module_definition_to_enzyme_accessions(mod_definition):
     """Parses a module definition string into a list of enzyme accessions."""
 
     # anything that is not (),-+ should be converted to spaces, then we can split on the spaces to get the accessions
-    mod_definition = re.sub('[\(\)\+\-,]', ' ', mod_definition).strip()
+    mod_definition = re.sub(r'[\(\)\+\-,]', ' ', mod_definition).strip()
     acc_list = re.split(r'\s+', mod_definition)
 
     return acc_list
