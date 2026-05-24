@@ -147,7 +147,7 @@ anvi-run-hmms -c $output_dir/CONTIGS.db \
 
 INFO "Generating an ad hoc HMM source from two PFAM accessions (A STEP THAT REQUIRES INTERNET CONNECTION AND RESPONSE FROM XFAM.ORG)"
 anvi-script-pfam-accessions-to-hmms-directory --pfam-accessions-list PF00705 PF00706 \
-                                              -O $output_dir/ADHOC_HMMs \
+                                              -o $output_dir/ADHOC_HMMs \
                                               --no-progress
 
 INFO "Running the HMMs in the ad hoc user directory"
