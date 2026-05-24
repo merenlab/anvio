@@ -1,0 +1,71 @@
+# Reference databases used by anvi'o
+#
+# provider values:
+#   third-party  — data maintained and distributed by an external group
+#   anvio        — data curated and distributed by the anvi'o project itself
+#
+# The 'description' field is one sentence for use in documentation and
+# automated methods-section generation.
+
+kegg-data:
+  authors: Kanehisa et al.
+  provider: third-party
+  description: Kyoto Encyclopedia of Genes and Genomes (KEGG)
+  citation: doi:10.1093/nar/gkw1092
+  url: https://www.genome.jp/kegg/
+
+cog-data:
+  authors: Galperin et al.
+  provider: third-party
+  description: NCBI Clusters of Orthologous Groups (COGs)
+  citation: doi:10.1093/nar/gkaa1018
+  url: https://www.ncbi.nlm.nih.gov/COG/
+
+gtdb:
+  authors: Parks et al.
+  provider: third-party
+  description: Genome Taxonomy Database (GTDB)
+  citation: doi:10.1093/nar/gkab776
+  url: https://gtdb.ecogenomic.org
+
+pfam:
+  authors: Mistry et al.
+  provider: third-party
+  description: Pfam database of protein domain families and functional annotations
+  citation: doi:10.1093/nar/gkab1113
+  url: https://pfam.xfam.org
+
+kofam-data:
+  authors: Aramaki et al.
+  provider: third-party
+  description: KEGG Orthology HMM profiles
+  citation: doi:10.1093/bioinformatics/btz859
+  url: https://www.genome.jp/tools/kofamkoala/
+
+cazyme-data:
+  authors: Drula et al.
+  provider: third-party
+  description: Carbohydrate-Active Enzyme database — families of enzymes that degrade, modify, or create glycosidic bonds
+  citation: doi:10.1093/nar/gkab1045
+  url: http://www.cazy.org
+
+globdb:
+  authors: Speth et al.
+  provider: third-party
+  description: GlobDB, dereplicated set of species representative microbial genomes
+  citation: doi:10.1093/bioadv/vbaf280
+  url: https://globdb.org/
+
+ncbi-taxonomy:
+  authors: NCBI
+  provider: third-party
+  description: NCBI organismal taxonomy tree
+  citation: PLACEHOLDER
+  url: https://www.ncbi.nlm.nih.gov/taxonomy
+
+interproscan-data:
+  authors: Blum et al.
+  provider: third-party
+  description: InterPro, integrated protein signature database
+  citation: doi:10.1093/nar/gkab994
+  url: https://www.ebi.ac.uk/interpro/

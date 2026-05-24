@@ -1,0 +1,37 @@
+# Anvi'o program registry
+#
+# The special 'anvi-*' entry provides wildcard defaults that are merged into
+# every specific program entry at registry load time. Fields in a specific
+# entry override the wildcard.
+#
+# Fields
+# ------
+# authors    : last name(s) of primary contributors — use GitHub handles where
+#              the contributor is an anvi'o developer (see DEVELOPERS.yaml)
+# citation   : DOI of the paper that should be cited when using this program
+# uses       : list of database registry keys this program relies on
+# example_text : optional free-text template for a methods-section sentence;
+#                {self} expands to the program name, {self.citation} to its DOI,
+#                and {<db>.citation} to a referenced database's DOI
+
+anvi-*:
+  authors: Anvi'o Authors
+  citation: doi:10.1038/s41564-020-00834-3
+
+anvi-estimate-metabolism:
+  authors: Veseli et al.
+  citation: doi:10.1038/s41564-023-01439-2
+  uses:
+    - kegg-data
+  example_text: >-
+    Metabolic pathway completeness was estimated using {self}
+    ({self.citation}) against the {kegg-data.description} ({kegg-data.citation}).
+
+anvi-script-compute-bayesian-pan-core:
+  authors: Buck et al.
+  citation: doi:10.1101/2021.06.25.449606
+  example_text: >-
+    We used mOTUlizer through the anvi'o program {self}
+    to identify core and accessory gene clusters in the pangenome
+    through a Bayesian calculation that took into consideration genome
+    completion estimates ({self.citation}).

@@ -1,0 +1,392 @@
+# Third-party programs used by anvi'o
+#
+# Each entry key is the registry name used when constructing an AnvioExecutor
+# (e.g., AnvioExecutor('diamond', ...)). For tool suites, the entry covers all
+# binaries in that suite (e.g., 'blast' covers blastp, blastn, makeblastdb).
+#
+# Runner strings may contain {version}, which is resolved at registry load time.
+# Fill in HASH_PLACEHOLDERs below with the actual biocontainers build hash so
+# that docker/singularity runners are usable out of the box.
+#
+# Conda runner format:  channel::package={version}
+# Docker runner format: registry/image:{version}--HASH
+# Singularity format:   https://depot.galaxyproject.org/singularity/image:{version}--HASH
+
+# -----------------------------------------------------------------------
+# Core tools — present in the standard anvi'o conda environment
+# -----------------------------------------------------------------------
+
+blast:
+  authors: Camacho et al.
+  citation: doi:10.1186/1471-2105-10-421
+  url: https://blast.ncbi.nlm.nih.gov/Blast.cgi
+  version: 2.16.0
+  runners:
+    conda: bioconda::blast={version}
+    docker: quay.io/biocontainers/blast:{version}--HASH_PLACEHOLDER
+    singularity: https://depot.galaxyproject.org/singularity/blast:{version}--HASH_PLACEHOLDER
+
+bowtie2:
+  authors: Langmead and Salzberg
+  citation: doi:10.1038/nmeth.1923
+  url: https://bowtie-bio.sourceforge.net/bowtie2/index.shtml
+  version: 2.5.4
+  runners:
+    conda: bioconda::bowtie2={version}
+    docker: quay.io/biocontainers/bowtie2:{version}--HASH_PLACEHOLDER
+    singularity: https://depot.galaxyproject.org/singularity/bowtie2:{version}--HASH_PLACEHOLDER
+
+bwa:
+  authors: Li and Durbin
+  citation: doi:10.1093/bioinformatics/btp324
+  url: https://github.com/lh3/bwa
+  version: 0.7.18
+  runners:
+    conda: bioconda::bwa={version}
+    docker: quay.io/biocontainers/bwa:{version}--HASH_PLACEHOLDER
+    singularity: https://depot.galaxyproject.org/singularity/bwa:{version}--HASH_PLACEHOLDER
+
+diamond:
+  authors: Buchfink et al.
+  citation: doi:10.1038/s41592-021-01101-x
+  url: https://github.com/bbuchfink/diamond
+  version: 2.1.9
+  runners:
+    conda: bioconda::diamond={version}
+    docker: buchfink/diamond:v{version}
+    singularity: https://depot.galaxyproject.org/singularity/diamond:{version}--HASH_PLACEHOLDER
+
+famsa:
+  authors: Deorowicz et al.
+  citation: doi:10.1371/journal.pcbi.1005003
+  url: https://github.com/refresh-bio/FAMSA
+  version: 2.2.2
+  runners:
+    conda: bioconda::famsa={version}
+    docker: quay.io/biocontainers/famsa:{version}--HASH_PLACEHOLDER
+    singularity: https://depot.galaxyproject.org/singularity/famsa:{version}--HASH_PLACEHOLDER
+
+fasttree:
+  authors: Price et al.
+  citation: doi:10.1371/journal.pone.0009490
+  url: http://www.microbesonline.org/fasttree/
+  version: 2.1.11
+  runners:
+    conda: bioconda::fasttree={version}
+    docker: quay.io/biocontainers/fasttree:{version}--HASH_PLACEHOLDER
+    singularity: https://depot.galaxyproject.org/singularity/fasttree:{version}--HASH_PLACEHOLDER
+
+graphviz:
+  authors: Gansner and North
+  citation: PLACEHOLDER
+  url: https://graphviz.org
+  version: 12.2.0
+  runners:
+    conda: conda-forge::graphviz={version}
+    docker: quay.io/biocontainers/graphviz:{version}--HASH_PLACEHOLDER
+    singularity: https://depot.galaxyproject.org/singularity/graphviz:{version}--HASH_PLACEHOLDER
+
+hmmer:
+  authors: Eddy
+  citation: doi:10.1371/journal.pcbi.1002195
+  url: http://hmmer.org
+  version: 3.4
+  runners:
+    conda: bioconda::hmmer={version}
+    docker: quay.io/biocontainers/hmmer:{version}--HASH_PLACEHOLDER
+    singularity: https://depot.galaxyproject.org/singularity/hmmer:{version}--HASH_PLACEHOLDER
+
+idba:
+  authors: Peng et al.
+  citation: doi:10.1093/bioinformatics/bts174
+  url: https://github.com/loneknightpy/idba
+  version: 1.1.3
+  runners:
+    conda: bioconda::idba={version}
+    docker: quay.io/biocontainers/idba:{version}--HASH_PLACEHOLDER
+    singularity: https://depot.galaxyproject.org/singularity/idba:{version}--HASH_PLACEHOLDER
+
+iqtree:
+  authors: Minh et al.
+  citation: doi:10.1093/molbev/msaa015
+  url: http://www.iqtree.org
+  version: 2.3.6
+  runners:
+    conda: bioconda::iqtree={version}
+    docker: quay.io/biocontainers/iqtree:{version}--HASH_PLACEHOLDER
+    singularity: https://depot.galaxyproject.org/singularity/iqtree:{version}--HASH_PLACEHOLDER
+
+mcl:
+  authors: van Dongen
+  citation: PLACEHOLDER
+  url: https://micans.org/mcl/
+  version: 22.282
+  runners:
+    conda: bioconda::mcl={version}
+    docker: quay.io/biocontainers/mcl:{version}--HASH_PLACEHOLDER
+    singularity: https://depot.galaxyproject.org/singularity/mcl:{version}--HASH_PLACEHOLDER
+
+megahit:
+  authors: Li et al.
+  citation: doi:10.1093/bioinformatics/btv033
+  url: https://github.com/voutcn/megahit
+  version: 1.2.9
+  runners:
+    conda: bioconda::megahit={version}
+    docker: quay.io/biocontainers/megahit:{version}--HASH_PLACEHOLDER
+    singularity: https://depot.galaxyproject.org/singularity/megahit:{version}--HASH_PLACEHOLDER
+
+meme:
+  authors: Bailey et al.
+  citation: doi:10.1093/nar/gkaa476
+  url: https://meme-suite.org
+  version: 5.5.5
+  runners:
+    conda: bioconda::meme={version}
+    docker: quay.io/biocontainers/meme:{version}--HASH_PLACEHOLDER
+    singularity: https://depot.galaxyproject.org/singularity/meme:{version}--HASH_PLACEHOLDER
+
+muscle:
+  authors: Edgar
+  citation: doi:10.1093/nar/gkh340
+  url: https://www.drive5.com/muscle/
+  version: 3.8.1551
+  runners:
+    conda: bioconda::muscle={version}
+    docker: quay.io/biocontainers/muscle:{version}--HASH_PLACEHOLDER
+    singularity: https://depot.galaxyproject.org/singularity/muscle:{version}--HASH_PLACEHOLDER
+
+prodigal:
+  authors: Hyatt et al.
+  citation: doi:10.1186/1471-2105-11-119
+  url: https://github.com/hyattpd/Prodigal
+  version: 2.6.3
+  runners:
+    conda: bioconda::prodigal={version}
+    docker: quay.io/biocontainers/prodigal:{version}--HASH_PLACEHOLDER
+    singularity: https://depot.galaxyproject.org/singularity/prodigal:{version}--HASH_PLACEHOLDER
+
+r-base:
+  authors: R Core Team
+  citation: PLACEHOLDER
+  url: https://www.r-project.org
+  version: 4.3.3
+  runners:
+    conda: conda-forge::r-base={version}
+    docker: rocker/r-ver:{version}
+    singularity: https://depot.galaxyproject.org/singularity/r-base:{version}--HASH_PLACEHOLDER
+
+samtools:
+  authors: Danecek et al.
+  citation: doi:10.1093/gigascience/giab008
+  url: https://www.htslib.org
+  version: 1.21
+  runners:
+    conda: bioconda::samtools={version}
+    docker: quay.io/biocontainers/samtools:{version}--HASH_PLACEHOLDER
+    singularity: https://depot.galaxyproject.org/singularity/samtools:{version}--HASH_PLACEHOLDER
+
+spades:
+  authors: Bankevich et al.
+  citation: doi:10.1089/cmb.2012.0021
+  url: https://github.com/ablab/spades
+  version: 4.0.0
+  runners:
+    conda: bioconda::spades={version}
+    docker: quay.io/biocontainers/spades:{version}--HASH_PLACEHOLDER
+    singularity: https://depot.galaxyproject.org/singularity/spades:{version}--HASH_PLACEHOLDER
+
+trimal:
+  authors: Capella-Gutierrez et al.
+  citation: doi:10.1093/bioinformatics/btp348
+  url: http://trimal.cgenomics.org
+  version: 1.4.1
+  runners:
+    conda: bioconda::trimal={version}
+    docker: quay.io/biocontainers/trimal:{version}--HASH_PLACEHOLDER
+    singularity: https://depot.galaxyproject.org/singularity/trimal:{version}--HASH_PLACEHOLDER
+
+trnascan-se:
+  authors: Chan et al.
+  citation: doi:10.1093/nar/gkab688
+  url: http://lowelab.ucsc.edu/tRNAscan-SE/
+  version: 2.0.12
+  runners:
+    conda: bioconda::trnascan-se={version}
+    docker: quay.io/biocontainers/trnascan-se:{version}--HASH_PLACEHOLDER
+    singularity: https://depot.galaxyproject.org/singularity/trnascan-se:{version}--HASH_PLACEHOLDER
+
+vmatch:
+  authors: Kurtz et al.
+  citation: PLACEHOLDER
+  url: http://www.vmatch.de
+  version: 2.3.0
+  runners:
+    conda: bioconda::vmatch={version}
+    docker: quay.io/biocontainers/vmatch:{version}--HASH_PLACEHOLDER
+    singularity: https://depot.galaxyproject.org/singularity/vmatch:{version}--HASH_PLACEHOLDER
+
+# -----------------------------------------------------------------------
+# Optional tools — not in the standard conda environment but referenced
+# by specific anvi'o modules (binning, taxonomy, genome similarity, etc.)
+# -----------------------------------------------------------------------
+
+binsanity:
+  authors: Graham et al.
+  citation: doi:10.7717/peerj.3035
+  url: https://github.com/edgraham/BinSanity
+  version: 0.5.3
+  runners:
+    conda: bioconda::binsanity={version}
+    docker: quay.io/biocontainers/binsanity:{version}--HASH_PLACEHOLDER
+    singularity: https://depot.galaxyproject.org/singularity/binsanity:{version}--HASH_PLACEHOLDER
+
+centrifuge:
+  authors: Kim et al.
+  citation: doi:10.1101/gr.210641.116
+  url: https://ccb.jhu.edu/software/centrifuge/
+  version: 1.0.4
+  runners:
+    conda: bioconda::centrifuge={version}
+    docker: quay.io/biocontainers/centrifuge:{version}--HASH_PLACEHOLDER
+    singularity: https://depot.galaxyproject.org/singularity/centrifuge:{version}--HASH_PLACEHOLDER
+
+concoct:
+  authors: Alneberg et al.
+  citation: doi:10.1038/nmeth.3103
+  url: https://github.com/BinPro/CONCOCT
+  version: 1.1.0
+  runners:
+    conda: bioconda::concoct={version}
+    docker: quay.io/biocontainers/concoct:{version}--HASH_PLACEHOLDER
+    singularity: https://depot.galaxyproject.org/singularity/concoct:{version}--HASH_PLACEHOLDER
+
+das-tool:
+  authors: Sieber et al.
+  citation: doi:10.1038/s41564-018-0171-1
+  url: https://github.com/cmks/DAS_Tool
+  version: 1.1.7
+  runners:
+    conda: bioconda::das_tool={version}
+    docker: quay.io/biocontainers/das_tool:{version}--HASH_PLACEHOLDER
+    singularity: https://depot.galaxyproject.org/singularity/das_tool:{version}--HASH_PLACEHOLDER
+
+dssp:
+  authors: Kabsch and Sander
+  citation: PLACEHOLDER
+  url: https://github.com/PDB-REDO/dssp
+  version: 4.4.0
+  runners:
+    conda: bioconda::dssp={version}
+    docker: quay.io/biocontainers/dssp:{version}--HASH_PLACEHOLDER
+    singularity: https://depot.galaxyproject.org/singularity/dssp:{version}--HASH_PLACEHOLDER
+
+eggnog-mapper:
+  authors: Cantalapiedra et al.
+  citation: doi:10.1093/molbev/msab293
+  url: https://github.com/eggnogdb/eggnog-mapper
+  version: 2.1.12
+  runners:
+    conda: bioconda::eggnog-mapper={version}
+    docker: quay.io/biocontainers/eggnog-mapper:{version}--HASH_PLACEHOLDER
+    singularity: https://depot.galaxyproject.org/singularity/eggnog-mapper:{version}--HASH_PLACEHOLDER
+
+fastani:
+  authors: Jain et al.
+  citation: doi:10.1038/s41467-018-07641-9
+  url: https://github.com/ParBLiSS/FastANI
+  version: 1.34
+  runners:
+    conda: bioconda::fastani={version}
+    docker: quay.io/biocontainers/fastani:{version}--HASH_PLACEHOLDER
+    singularity: https://depot.galaxyproject.org/singularity/fastani:{version}--HASH_PLACEHOLDER
+
+krakenuniq:
+  authors: Breitwieser et al.
+  citation: doi:10.1186/s13059-018-1568-0
+  url: https://github.com/fbreitwieser/krakenuniq
+  version: 1.0.4
+  runners:
+    conda: bioconda::krakenuniq={version}
+    docker: quay.io/biocontainers/krakenuniq:{version}--HASH_PLACEHOLDER
+    singularity: https://depot.galaxyproject.org/singularity/krakenuniq:{version}--HASH_PLACEHOLDER
+
+maxbin2:
+  authors: Wu et al.
+  citation: doi:10.1093/bioinformatics/btv638
+  url: https://sourceforge.net/projects/maxbin2/
+  version: 2.2.7
+  runners:
+    conda: bioconda::maxbin2={version}
+    docker: quay.io/biocontainers/maxbin2:{version}--HASH_PLACEHOLDER
+    singularity: https://depot.galaxyproject.org/singularity/maxbin2:{version}--HASH_PLACEHOLDER
+
+metabat2:
+  authors: Kang et al.
+  citation: doi:10.7717/peerj.7359
+  url: https://bitbucket.org/berkeleylab/metabat
+  version: 2.17
+  runners:
+    conda: bioconda::metabat2={version}
+    docker: quay.io/biocontainers/metabat2:{version}--HASH_PLACEHOLDER
+    singularity: https://depot.galaxyproject.org/singularity/metabat2:{version}--HASH_PLACEHOLDER
+
+minimap2:
+  authors: Li
+  citation: doi:10.1093/bioinformatics/bty191
+  url: https://github.com/lh3/minimap2
+  version: 2.28
+  runners:
+    conda: bioconda::minimap2={version}
+    docker: quay.io/biocontainers/minimap2:{version}--HASH_PLACEHOLDER
+    singularity: https://depot.galaxyproject.org/singularity/minimap2:{version}--HASH_PLACEHOLDER
+
+modeller:
+  authors: Sali and Blundell
+  citation: doi:10.1006/jmbi.1993.1626
+  url: https://salilab.org/modeller/
+  version: 10.5
+  runners:
+    conda: bioconda::modeller={version}
+    docker: quay.io/biocontainers/modeller:{version}--HASH_PLACEHOLDER
+    singularity: https://depot.galaxyproject.org/singularity/modeller:{version}--HASH_PLACEHOLDER
+
+mummer:
+  authors: Marcais et al.
+  citation: PLACEHOLDER
+  url: https://github.com/mummer4/mummer
+  version: 4.0.0
+  runners:
+    conda: bioconda::mummer4={version}
+    docker: quay.io/biocontainers/mummer4:{version}--HASH_PLACEHOLDER
+    singularity: https://depot.galaxyproject.org/singularity/mummer4:{version}--HASH_PLACEHOLDER
+
+seqkit:
+  authors: Shen et al.
+  citation: doi:10.1371/journal.pone.0163962
+  url: https://bioinf.shenwei.me/seqkit/
+  version: 2.8.2
+  runners:
+    conda: bioconda::seqkit={version}
+    docker: quay.io/biocontainers/seqkit:{version}--HASH_PLACEHOLDER
+    singularity: https://depot.galaxyproject.org/singularity/seqkit:{version}--HASH_PLACEHOLDER
+
+sourmash:
+  authors: Brown et al.
+  citation: doi:10.21105/joss.00027
+  url: https://sourmash.readthedocs.io
+  version: 4.8.11
+  runners:
+    conda: bioconda::sourmash={version}
+    docker: quay.io/biocontainers/sourmash:{version}--HASH_PLACEHOLDER
+    singularity: https://depot.galaxyproject.org/singularity/sourmash:{version}--HASH_PLACEHOLDER
+
+sra-tools:
+  authors: NCBI
+  citation: PLACEHOLDER
+  url: https://github.com/ncbi/sra-tools
+  version: 3.1.1
+  runners:
+    conda: bioconda::sra-tools={version}
+    docker: quay.io/biocontainers/sra-tools:{version}--HASH_PLACEHOLDER
+    singularity: https://depot.galaxyproject.org/singularity/sra-tools:{version}--HASH_PLACEHOLDER
