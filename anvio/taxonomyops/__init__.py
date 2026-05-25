@@ -50,13 +50,27 @@ run_quiet = terminal.Run(log_file_path=None, verbose=False)
 progress_quiet = terminal.Progress(verbose=False)
 pp = terminal.pretty_print
 
-HASH = lambda d: str(hashlib.sha224(''.join([str(d[level]) for level in constants.levels_of_taxonomy]).encode('utf-8')).hexdigest()[0:8])
+def taxonomy_value_or_none(value):
+    if pd.isna(value):
+        return None
+
+    return value
+
+
+def taxonomy_value_to_text(value):
+    value = taxonomy_value_or_none(value)
+
+    return str(value) if value is not None else ''
+
+
+def HASH(d):
+    return str(hashlib.sha224(''.join([str(taxonomy_value_or_none(d[level])) for level in constants.levels_of_taxonomy]).encode('utf-8')).hexdigest()[0:8])
 
 
 def normalize_missing_taxonomy_values(taxonomy_dict, taxonomy_levels):
     for level in taxonomy_levels:
-        if level in taxonomy_dict and pd.isna(taxonomy_dict[level]):
-            taxonomy_dict[level] = None
+        if level in taxonomy_dict:
+            taxonomy_dict[level] = taxonomy_value_or_none(taxonomy_dict[level])
 
     return taxonomy_dict
 
@@ -242,6 +256,9 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
                 entry_ids_to_remove = [entry for entry in anvio_taxonomy_table if anvio_taxonomy_table[entry]['gene_callers_id'] not in final_set_of_gene_caller_ids]
                 [anvio_taxonomy_table.pop(e) for e in entry_ids_to_remove]
 
+        for key in anvio_taxonomy_table:
+            anvio_taxonomy_table[key] = normalize_missing_taxonomy_values(anvio_taxonomy_table[key], self.ctx.levels_of_taxonomy)
+
         # NOTE: This will modify the taxonomy strings read from the contigs database. see the
         # function header for `trim_taxonomy_dict_entry` for more information.
         if self.simplify_taxonomy_information:
@@ -375,7 +392,7 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
 
         pd.set_option('mode.chained_assignment', None)
 
-        item_hits = list([v for v in items_taxonomy_dict.values() if v['t_domain']])
+        item_hits = list([normalize_missing_taxonomy_values(v, self.ctx.levels_of_taxonomy) for v in items_taxonomy_dict.values() if taxonomy_value_to_text(v['t_domain'])])
 
         if not len(item_hits):
             return self.get_blank_hit_template_dict()
@@ -429,7 +446,7 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
             table = []
 
             for hit in hits:
-                taxon_text = ' / '.join([hit[l] if hit[l] else '' for l in self.ctx.levels_of_taxonomy])
+                taxon_text = ' / '.join([taxonomy_value_to_text(hit[l]) for l in self.ctx.levels_of_taxonomy])
 
                 # if the hit we are working on sent here as 'consensus', we will color it up a bit so it shows up
                 # more clearly in the debug output.
@@ -510,8 +527,8 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
         total_items = len(items_taxonomy_dict)
         supporting_items = 0
 
-        consensus_taxonomy_levels_occupied = [level for level in self.ctx.levels_of_taxonomy if consensus_taxonomy[level]]
-        consensus_taxonomy_str = ' / '.join([consensus_taxonomy[level] for level in consensus_taxonomy_levels_occupied])
+        consensus_taxonomy_levels_occupied = [level for level in self.ctx.levels_of_taxonomy if taxonomy_value_to_text(consensus_taxonomy[level])]
+        consensus_taxonomy_str = ' / '.join([taxonomy_value_to_text(consensus_taxonomy[level]) for level in consensus_taxonomy_levels_occupied])
 
         for item_taxonomy_hit in items_taxonomy_dict.values():
             item_taxonomy_hit_str = ' / '.join([str(item_taxonomy_hit[level]) for level in consensus_taxonomy_levels_occupied])
@@ -722,10 +739,10 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
             # set the taxonomy text depending on how much room we have. if there are sample coverages, keep it simple,
             # otherwise show the entire taxonomy text.
             if self.compute_item_coverages:
-                taxon_text_l = ['(%s) %s' % (l.split('_')[1][0], bin_data[l]) for l in self.ctx.levels_of_taxonomy[::-1] if bin_data[l]]
+                taxon_text_l = ['(%s) %s' % (l.split('_')[1][0], taxonomy_value_to_text(bin_data[l])) for l in self.ctx.levels_of_taxonomy[::-1] if taxonomy_value_to_text(bin_data[l])]
                 taxon_text = taxon_text_l[0] if taxon_text_l else '(NA) NA'
             else:
-                taxon_text = ' / '.join([bin_data[l] if bin_data[l] else '' for l in self.ctx.levels_of_taxonomy])
+                taxon_text = ' / '.join([taxonomy_value_to_text(bin_data[l]) for l in self.ctx.levels_of_taxonomy])
 
             # setting up the table columns here.
             if self.metagenome_mode:
@@ -925,7 +942,7 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
                     # particular item taxonomy
                     i = 0
                     for i in range(self.ctx.levels_of_taxonomy.index(level), 0, -1):
-                        if items_dict[gene_callers_id][self.ctx.levels_of_taxonomy[i]]:
+                        if taxonomy_value_to_text(items_dict[gene_callers_id][self.ctx.levels_of_taxonomy[i]]):
                             break
 
                     # just some abbreviations
@@ -1394,10 +1411,10 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
             for hit in hits:
                 if hit['accession'] == 'CONSENSUS':
                     accession = terminal.c(hit['accession'], color='red')
-                    taxon_text = terminal.c(' / '.join([hit[l] if hit[l] else '' for l in self.ctx.levels_of_taxonomy]), color='red')
+                    taxon_text = terminal.c(' / '.join([taxonomy_value_to_text(hit[l]) for l in self.ctx.levels_of_taxonomy]), color='red')
                     table.append([str(hit['percent_identity']), str(hit['bitscore']), accession, taxon_text])
                 else:
-                    table.append([str(hit['percent_identity']), str(hit['bitscore']), hit['accession'], ' / '.join([hit[l] if hit[l] else '' for l in self.ctx.levels_of_taxonomy])])
+                    table.append([str(hit['percent_identity']), str(hit['bitscore']), hit['accession'], ' / '.join([taxonomy_value_to_text(hit[l]) for l in self.ctx.levels_of_taxonomy])])
 
             anvio.TABULATE(table, header)
         else:
@@ -1471,7 +1488,7 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
 
                 hit = dict(zip(['accession', 'percent_identity', 'bitscore'], [fields[1], float(fields[2]), float(fields[11])]))
 
-                hit = self.update_dict_with_taxonomy(hit)
+                hit = normalize_missing_taxonomy_values(self.update_dict_with_taxonomy(hit), self.ctx.levels_of_taxonomy)
 
                 if gene_callers_id not in hits_per_gene:
                     hits_per_gene[gene_callers_id] = {}
