@@ -106,7 +106,7 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
         if self.enzymes_of_interest_df is not None:
             enzyme_accessions = self.enzymes_of_interest_df["enzyme_accession"].to_list()
 
-            if self.enzymes_of_interest_df["enzyme_accession"].isna().any():
+            if self.enzymes_of_interest_df["enzyme_accession"].isna().any() or any([str(enzyme_accession).strip() == '' for enzyme_accession in enzyme_accessions]):
                 if self.enzymes_txt:
                     raise ConfigError("It appears that your enzymes-txt file contains one or more lines with no enzyme accession. "
                                       "Please fix this and try again.")
