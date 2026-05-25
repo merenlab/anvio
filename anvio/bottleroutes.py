@@ -1641,34 +1641,32 @@ class BottleApplication(Bottle):
 
 
     def save_pangraph_state(self):
+        if self.read_only:
+            return json.dumps({'status_code': '0'})
+
         try:
             payload = request.json
             state_name = payload['state_name']
             state_dict = payload['state_values']
             self.interactive.save_state(state_dict, state_name)
-            return(json.dumps({'status': 0}))
-        except:
-            return(json.dumps({'status': 1}))
+            return json.dumps({'status_code': '1'})
+        except Exception as e:
+            return json.dumps({'status_code': '0', 'error': str(e)})
 
     def load_pangraph_state(self):
-
         try:
             payload = request.json
             state_name = payload['state_name']
             self.interactive.load_state(state=state_name, order='default')
-
             data = self.interactive.get_json()
-            return(json.dumps({'status': 0, 'data': data}))
-        except:
-            return(json.dumps({'status': 1, 'data': ''}))
-
+            return json.dumps({'status': 0, 'data': data})
+        except Exception as e:
+            return json.dumps({'status': 1, 'message': str(e)})
 
     def get_pangraph_states(self):
-        try:
-            data = self.interactive.get_states()
-            return(json.dumps({'status': 0, 'data': data}))
-        except:
-            return(json.dumps({'status': 1, 'data': ''}))
+        states_info = {name: {'last_modified': info['last_modified']}
+                       for name, info in self.interactive.states.items()}
+        return json.dumps(states_info)
 
 
     def get_pangraph_json_data(self):
