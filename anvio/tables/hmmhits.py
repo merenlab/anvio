@@ -824,6 +824,7 @@ class FilterHmmHitsTable(object):
                             names=colnames_coltypes_list[0],
                             dtype=colnames_coltypes_dict,
                             header=None,
+                            keep_default_na=False,
                             index_col=False)
         except Exception as e:
             print(e)
