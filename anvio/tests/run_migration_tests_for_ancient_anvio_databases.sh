@@ -10,7 +10,6 @@ python -m pip install h5py
 SETUP_WITH_OUTPUT_DIR $1 $2 $3
 #####################################
 
-
 #########################################################################################
 # POUCHITIS DATA FROM 2015
 #########################################################################################
@@ -66,4 +65,31 @@ INFO "[$TEST] Running SCG taxonomy"
 anvi-run-scg-taxonomy -c CONTIGS.db $thread_controller
 INFO "[$TEST] Estimating SCG taxonomy"
 anvi-estimate-scg-taxonomy -c CONTIGS.db
+INFO "[$TEST] Done!"
+
+#########################################################################################
+# PROCHLOROCOCCUS METAPANGENOME FROM 2018
+#########################################################################################
+
+cd $output_dir
+TEST="PHROCLOROCOCCUS_METAPANGENOME_FROM_2018"
+mkdir $TEST && cd $TEST
+INFO "[$TEST] Downloading the data pack"
+curl -L https://ndownloader.figshare.com/files/9416623 -o ANVIO-METAPANGENOME-FOR-PROCHLOROCOCCUS-ISOLATES.tar.gz
+INFO "[$TEST] Unpacking"
+tar -zxvf ANVIO-METAPANGENOME-FOR-PROCHLOROCOCCUS-ISOLATES.tar.gz && cd ANVIO-METAPANGENOME-FOR-PROCHLOROCOCCUS-ISOLATES
+INFO "[$TEST] Migrating the pan-db"
+ANVIO_SAMPLES_DB=Prochlorococcus-METAPAN-SAMPLES.db anvi-migrate Prochlorococcus-PAN-PAN.db --migrate-quickly
+INFO "[$TEST] Migrating the genomes-storage-db"
+anvi-migrate Prochlorococcus-GENOMES.h5 --migrate-quickly
+INFO "[$TEST] Importing additional data layers into the pan-db"
+# Converting additional data layers to the new format -- this will
+# only be necessary for this particular project
+echo -e "pc_name\tDetection#EDG\tDetection#ECG\tDetection#NA" | sed 's/#/!/g' > ENVIRONMENTAL-CORE-FIXED.txt
+grep -v 'pc_name' ENVIRONMENTAL-CORE.txt | awk 'BEGIN{FS=";"}{print $1 "\t" $2 "\t" $3}' >> ENVIRONMENTAL-CORE-FIXED.txt
+anvi-import-misc-data -t items ENVIRONMENTAL-CORE-FIXED.txt -p Prochlorococcus-PAN-PAN.db
+# let's remove unnecessary files while we're at it
+rm -rf *SAMPLES* ENVIRONMENTAL-CORE.txt 00_run.sh ENVIRONMENTAL-CORE-GENES.txt
+INFO "[$TEST] Running anvi-db-info on the pan-db"
+anvi-db-info -p Prochlorococcus-PAN-PAN.db
 INFO "[$TEST] Done!"
