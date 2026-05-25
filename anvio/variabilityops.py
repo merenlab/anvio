@@ -3165,7 +3165,7 @@ class VariabilityData(NucleotidesEngine, CodonsEngine, AminoAcidsEngine):
                     raise ConfigError(f"Hmmm. The column '{col}' isn't in your variability table..."
                                       f"Here are the columns that do exist: {cols}")
 
-        self.data = pd.read_csv(self.variability_table_path, sep="\t", usecols=self.columns_to_load)
+        self.data = pd.read_csv(self.variability_table_path, sep="\t", usecols=self.columns_to_load, converters={'sample_id': str})
 
 
     def get_columns(self):
