@@ -52,6 +52,15 @@ pp = terminal.pretty_print
 
 HASH = lambda d: str(hashlib.sha224(''.join([str(d[level]) for level in constants.levels_of_taxonomy]).encode('utf-8')).hexdigest()[0:8])
 
+
+def normalize_missing_taxonomy_values(taxonomy_dict, taxonomy_levels):
+    for level in taxonomy_levels:
+        if level in taxonomy_dict and pd.isna(taxonomy_dict[level]):
+            taxonomy_dict[level] = None
+
+    return taxonomy_dict
+
+
 class TerminologyHelper(object):
     def __init__(self):
         proper_foci = ['trnas', 'scgs']
@@ -388,14 +397,15 @@ class TaxonomyEstimatorSingle(TerminologyHelper):
             consensus_hit = df[df.tax_hash == winner_tax_hash].head(1)
 
             # turn it into a Python dict before returning
-            return consensus_hit.to_dict('records')[0]
+            return normalize_missing_taxonomy_values(consensus_hit.to_dict('records')[0], self.ctx.levels_of_taxonomy)
         else:
             # if there are competing hashes, we need to be more careful to decide
             # which taxonomic level should we use to cut things off.
             consensus_hit = self.get_blank_hit_template_dict()
             for level in self.ctx.levels_of_taxonomy[::-1]:
-                if len(df[level].unique()) == 1:
-                    consensus_hit[level] = df[level].unique()[0]
+                unique_values = df[level].unique()
+                if len(unique_values) == 1:
+                    consensus_hit[level] = None if pd.isna(unique_values[0]) else unique_values[0]
 
             return consensus_hit
 
@@ -1565,4 +1575,4 @@ class PopulateContigsDatabaseWithTaxonomy(TerminologyHelper):
         # turn it into a Python dict before returning
         final_hit_dict = final_hit.to_dict('records')[0]
 
-        return final_hit_dict
+        return normalize_missing_taxonomy_values(final_hit_dict, self.ctx.levels_of_taxonomy)
