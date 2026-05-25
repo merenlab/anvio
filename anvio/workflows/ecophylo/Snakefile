@@ -333,7 +333,7 @@ rule process_hmm_hits:
             external_gene_calls = pd.read_csv(external_gene_calls, sep=r'\s+', index_col=False)
 
             reformat_file = os.path.join(fasta_output_dir, f"{wildcards.sample_name}-{wildcards.hmm_name}-reformat_report_AA.txt")
-            reformat_report = pd.read_csv(reformat_file, sep="\t", index_col=False, names=["new_header", "header"])
+            reformat_report = pd.read_csv(reformat_file, sep="\t", index_col=False, names=["new_header", "header"], keep_default_na=False, dtype=str)
 
             # Parse input files
             #-----------------
@@ -568,12 +568,16 @@ if M.cluster_representative_method == "cluster_rep_with_coverages":
             cluster_rep_index = pd.read_csv(input.mmseqs_cluster_rep_index, \
                                     sep="\t", \
                                     index_col=False, \
-                                    names=["representative", "cluster_members"])
+                                    names=["representative", "cluster_members"], \
+                                    keep_default_na=False, \
+                                    dtype=str)
 
             reformat_report = pd.read_csv(input.reformat_report, \
                                             sep="\t", \
                                             index_col=False, \
-                                            names=["new_header", "header"])
+                                            names=["new_header", "header"], \
+                                            keep_default_na=False, \
+                                            dtype=str)
 
             bam = pd.read_csv(input.coverages, sep="\t", index_col=False)
 
@@ -1064,12 +1068,16 @@ rule anvi_estimate_scg_taxonomy:
         reformat_report = pd.read_csv(params.reformat_file, \
                                       sep="\t", \
                                       index_col=False, \
-                                      names=["new_header", "header"])
+                                      names=["new_header", "header"], \
+                                      keep_default_na=False, \
+                                      dtype=str)
 
         final_sequences_headers = pd.read_csv(input.final_list_of_sequences_for_mapping_headers, \
                                             sep="\t", \
                                             index_col=False, \
-                                            names=["identifier"])
+                                            names=["identifier"], \
+                                            keep_default_na=False, \
+                                            dtype=str)
 
         # Clean Data
         #-----------

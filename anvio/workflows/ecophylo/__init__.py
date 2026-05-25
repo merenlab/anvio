@@ -457,7 +457,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         filesnpaths.is_file_tab_delimited(self.hmm_list_path)
 
         try:
-            hmm_df = pd.read_csv(self.hmm_list_path, sep='\t', index_col=False)
+            hmm_df = pd.read_csv(self.hmm_list_path, sep='\t', index_col=False, keep_default_na=False)
         except AttributeError as e:
             raise ConfigError(f"The hmm_list.txt file, {self.hmm_list_path}, does not appear to be properly formatted. "
                               f"This is the error from trying to load it: {self.hmm_list_path}")
@@ -484,6 +484,8 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         # This "group" will be the main hmm wildcards, similarly to the metagenomics workflow
         if 'group' not in hmm_df:
             hmm_df['group'] = hmm_df['id']
+        else:
+            hmm_df['group'] = hmm_df['group'].where(hmm_df['group'].astype(str).str.strip() != '', hmm_df['id'])
 
         # to dict
         self.hmm_dict = hmm_df.set_index('id').to_dict('index')
