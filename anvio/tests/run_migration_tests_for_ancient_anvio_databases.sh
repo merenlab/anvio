@@ -4,13 +4,7 @@ set -e
 
 # this is necessary for any system that will run these tests
 # due to some historical crap:
-if python -c "import h5py" >/dev/null 2>&1
-then
-    :
-else
-    INFO "Skipping ancient HDF5 migration tests because h5py is not installed"
-    exit 0
-fi
+python -m pip install h5py
 
 # Setup #############################
 SETUP_WITH_OUTPUT_DIR $1 $2 $3
