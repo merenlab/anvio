@@ -699,7 +699,67 @@
   linkedin: www.linkedin.com/in/med1bel
   bio: "Microbiology master's student with a growing focus on bioinformatics"
   affiliations:
-    - title: Master's Student
-      inst: Institute for Chemistry and Biology of the Marine Environment, University of Oldenburg
-      inst_link: https://uol.de/icbm
+    - title: Post-doctoral scientist
+      inst: University of Southern Denmark
+      inst_link: https://www.sdu.dk/en/forskning/hadal
+
+- github: dspeth
+  name: Daan R. Speth
+  avatar: daan_speth.jpg
+  email: daan.speth@univie.ac.at
+  git_records:
+    - daanspeth@gmail.com
+  web: https://dome.univie.ac.at/speth
+  orcid: 0000-0002-2361-5935
+  bio: "Microbiologist and bioinformatician interested in understanding the metabolic and phylogenetic diversity of microorganisms through genomics and wet lab analyses"
+  affiliations:
+    - title: Senior Scientist
+      inst: University of Vienna
+      inst_link: https://cemess.univie.ac.at/
+      current: true
+
+- github: bastien-camillo
+  name: Bastien Camillo
+  avatar: bcamillo-anvio.png
+  email: pro.bastien.camillo@gmail.com
+  git_records:
+    - pro.bastien.camillo@gmail.com
+  linkedin: bastien-camillo
+  orcid: 0009-0006-3481-432X
+  bio: "PhD Student in Multi-Species Comparative Genomics on Diatoms, also interested in Exobiology & Synthetic Biology"
+  affiliations:
+    - title: PhD Student
+      inst: IBENS
+      inst_link: https://www.ibens.bio.ens.psl.eu/
+
+- github: iwilkie
+  name: Isa Wilkie
+  avatar: isa_wilkie.png
+  email: isa.wilkie@googlemail.com
+  git_records:
+    - isa.wilkie@googlemail.com
+  linkedin: isabella-wilkie-337a62162
+  orcid: 0000-0003-1072-8081
+  bio: "Marine microbiologist specialising in bioinformatic analysis of microbial populations, with experience developing pipelines for metagenomics, structural annotation, and population-level variation."
+  affiliations:
+    - title: Postdoctoral Scientist
+      inst: Max-Planck-Institute for Marine Microbiology
+      inst_link: https://www.mpi-bremen.de/
+      current: true
+
+- github: l-gallucci
+  name: Luigi Gallucci
+  twitter: luigallucci
+  web: https://l-gallucci.github.io/
+  avatar: lgallucci.jpeg
+  email: luigigallucci8@gmail.com
+  git_records:
+    - 100836528+l-gallucci@users.noreply.github.com
+  linkedin: luigi-gallucci-scientificprofile
+  orcid: 0009-0004-0892-6796
+  bio: "Microbial ecologist exploring deep-sea environments to study microbial evolution and the dispersion patterns connecting hydrothermal vents with the open ocean."
+  affiliations:
+    - title: PhD student
+      inst: Max Planck Institute for Marine Microbiology
+      inst_link: https://www.mpi-bremen.de/
       current: true
