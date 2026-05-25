@@ -68,7 +68,7 @@ anvi-estimate-scg-taxonomy -c CONTIGS.db
 INFO "[$TEST] Done!"
 
 #########################################################################################
-# PHROCLOROCOCCUS METAPANGENOME FROM 2018
+# PROCHLOROCOCCUS METAPANGENOME FROM 2018
 #########################################################################################
 
 cd $output_dir
