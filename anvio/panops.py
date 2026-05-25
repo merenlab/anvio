@@ -1525,7 +1525,7 @@ class PangenomeGraph():
                 self.genome_names = [g.strip() for g in A('genome_names').split(',')]
         elif self.external_genomes_txt:
             filesnpaths.is_file_tab_delimited(self.external_genomes_txt, expected_number_of_fields=2)
-            self.genome_names = pd.read_csv(self.external_genomes_txt, header=0, sep="\t")['name'].to_list()
+            self.genome_names = pd.read_csv(self.external_genomes_txt, header=0, sep="\t", keep_default_na=False, dtype={"name": str})['name'].to_list()
         elif self.pan_graph_yaml:
             self.genome_names = list(self.yaml_file.keys())
         else:

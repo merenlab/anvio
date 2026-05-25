@@ -1938,7 +1938,7 @@ class ExternalStructuresFile(object):
         utils.is_contigs_db(self.contigs_db_path)
         filesnpaths.is_file_tab_delimited(self.path)
 
-        self.content = pd.read_csv(self.path, sep='\t')
+        self.content = pd.read_csv(self.path, sep='\t', keep_default_na=False, dtype={'path': str})
 
         self.is_header_ok()
         self.is_duplicates()

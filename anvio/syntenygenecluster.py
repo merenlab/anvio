@@ -85,7 +85,7 @@ class SyntenyGeneCluster():
             else:
                 self.genome_names = [g.strip() for g in A('genome_names').split(',')]
         elif self.external_genomes:
-            self.genome_names = pd.read_csv(self.external_genomes, header=0, sep="\t")['name'].to_list()
+            self.genome_names = pd.read_csv(self.external_genomes, header=0, sep="\t", keep_default_na=False, dtype={"name": str})['name'].to_list()
         elif self.pan_graph_yaml:
             self.genome_names = list(self.yaml_file.keys())
         else:
@@ -215,7 +215,7 @@ class SyntenyGeneCluster():
         gene_cluster_dict = pan_db.gene_callers_id_to_gene_cluster
         additional_info_cluster = pan_db.items_additional_data_dict
 
-        external_genomes = pd.read_csv(self.external_genomes, header=0, sep="\t", names=["name","contigs_db_path"])
+        external_genomes = pd.read_csv(self.external_genomes, header=0, sep="\t", names=["name","contigs_db_path"], keep_default_na=False, dtype={"name": str, "contigs_db_path": str})
         external_genomes.set_index("name", inplace=True)
 
         # TODO trna and rrna gene cluster update also include more types and split trna and rrna in individual sets. Instead of GC_00000000 add the two at the end.
