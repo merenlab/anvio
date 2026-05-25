@@ -189,7 +189,7 @@ rule filter_hmm_hits_by_model_coverage:
 
         # import hmm_hits to find out how many hmm_hits we got from the hmm model
         # if we don't have any then we can skippp all dis
-        df = pd.read_csv(input.hmm_hits, sep='\t')
+        df = pd.read_csv(input.hmm_hits, sep='\t', converters={'source': str, 'gene_name': str})
         df = df[df.source == hmm_source]
         gene_name_list = df['gene_name'].tolist()
 
@@ -262,7 +262,7 @@ rule process_hmm_hits:
         external_gene_calls_renamed = os.path.join(fasta_output_dir, f"{wildcards.sample_name}-{wildcards.hmm_name}-external_gene_calls_renamed.tsv")
 
         # import hmm_hits to find out how many hmm_hits we got from the hmm model
-        df = pd.read_csv(params.hmm_hits, sep='\t')
+        df = pd.read_csv(params.hmm_hits, sep='\t', converters={'source': str, 'gene_name': str})
         df = df[df.source == hmm_source]
         gene_name_list = df['gene_name'].tolist()
 
@@ -330,7 +330,7 @@ rule process_hmm_hits:
 
 
             # Import tables
-            external_gene_calls = pd.read_csv(external_gene_calls, sep=r'\s+', index_col=False)
+            external_gene_calls = pd.read_csv(external_gene_calls, sep=r'\s+', index_col=False, converters={'contig': str, 'source': str, 'version': str})
 
             reformat_file = os.path.join(fasta_output_dir, f"{wildcards.sample_name}-{wildcards.hmm_name}-reformat_report_AA.txt")
             reformat_report = pd.read_csv(reformat_file, sep="\t", index_col=False, names=["new_header", "header"], keep_default_na=False, dtype=str)
@@ -407,7 +407,7 @@ rule combine_sequence_data:
             contigs_db_with_hmm_NO_hits = []
             for sample_name in M.names_list:
                 hmm_hit = os.path.join(dirs_dict['EXTRACTED_RIBO_PROTEINS_DIR'], sample_name, f"{hmm_source}-dom-hmmsearch", "hmm_hits_filtered.txt")
-                df = pd.read_csv(hmm_hit, sep='\t')
+                df = pd.read_csv(hmm_hit, sep='\t', converters={'source': str, 'gene_name': str})
                 df = df[df.source == hmm_source]
                 gene_name_list = df['gene_name'].tolist()
                 if hmm_name in gene_name_list:
@@ -579,7 +579,7 @@ if M.cluster_representative_method == "cluster_rep_with_coverages":
                                             keep_default_na=False, \
                                             dtype=str)
 
-            bam = pd.read_csv(input.coverages, sep="\t", index_col=False)
+            bam = pd.read_csv(input.coverages, sep="\t", index_col=False, converters={'contig': str, 'gene_callers_id': str})
 
             bam['primary_key'] = bam['contig'] + "_" + bam['gene_callers_id'].astype(str)
             reformat_report["gene_callers_id"] = reformat_report['header'].str.split("gene_callers_id:|\|start:", expand=True)[1].astype(str)
@@ -925,9 +925,9 @@ def extract_misc_data(mmseqs_cluster_rep_index, final_sequences_headers, output)
 
     # Import data
     #------------
-    cluster_rep_index = pd.read_csv(mmseqs_cluster_rep_index, sep="\t", index_col=False, names=["representative", "cluster_members"])
+    cluster_rep_index = pd.read_csv(mmseqs_cluster_rep_index, sep="\t", index_col=False, names=["representative", "cluster_members"], keep_default_na=False, dtype=str)
 
-    final_sequences_headers = pd.read_csv(final_sequences_headers, sep="\t", index_col=False, names=["identifier"])
+    final_sequences_headers = pd.read_csv(final_sequences_headers, sep="\t", index_col=False, names=["identifier"], keep_default_na=False, dtype=str)
 
     # Clean data
     #------------
@@ -1063,7 +1063,8 @@ rule anvi_estimate_scg_taxonomy:
         #------------
         scg_taxonomy = pd.read_csv(params.taxonomy_long, \
                                    sep="\t", \
-                                   index_col=False)
+                                   index_col=False, \
+                                   converters={'metagenome_name': str, 'gene_name': str, 'gene_callers_id': str})
 
         reformat_report = pd.read_csv(params.reformat_file, \
                                       sep="\t", \

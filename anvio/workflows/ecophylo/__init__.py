@@ -191,7 +191,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
         if self.metagenomes:
             filesnpaths.is_file_exists(self.metagenomes)
-            self.metagenomes_df = pd.read_csv(self.metagenomes, sep='\t', index_col=False)
+            self.metagenomes_df = pd.read_csv(self.metagenomes, sep='\t', index_col=False, keep_default_na=False, dtype=str)
 
             if self.run_genomes_sanity_check:
                 if not os.path.exists(sanity_checked_metagenomes_file):
@@ -226,7 +226,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
         if self.external_genomes:
             filesnpaths.is_file_exists(self.external_genomes)
-            self.external_genomes_df = pd.read_csv(self.external_genomes, sep='\t', index_col=False)
+            self.external_genomes_df = pd.read_csv(self.external_genomes, sep='\t', index_col=False, keep_default_na=False, dtype=str)
 
             if self.run_genomes_sanity_check:
                 if not os.path.exists(sanity_checked_genomes_file):
