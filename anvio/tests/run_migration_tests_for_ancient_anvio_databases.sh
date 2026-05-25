@@ -10,10 +10,12 @@ pip install h5py==3.9.0
 SETUP_WITH_OUTPUT_DIR $1 $2 $3
 #####################################
 
-cd $output_dir
 
 #########################################################################################
+# POUCHITIS DATA FROM 2015
+#########################################################################################
 
+cd $output_dir
 TEST="POUCHITIS_METAGENOMES_FROM_2015"
 mkdir $TEST && cd $TEST
 INFO "[$TEST] Downloading the data pack"
@@ -37,10 +39,12 @@ anvi-run-scg-taxonomy -c CONTIGS.db $thread_controller
 INFO "[$TEST] Estimating SCG taxonomy"
 anvi-estimate-scg-taxonomy -p PROFILE.db -c CONTIGS.db -C FINAL
 INFO "[$TEST] Done!"
-cd ..
 
 #########################################################################################
+# TARA GENOMES POUCHITIS DATA FROM 2027
+#########################################################################################
 
+cd $output_dir
 TEST="A_TARA_MAG_FROM_2017"
 mkdir $TEST && cd $TEST
 INFO "[$TEST] Downloading the data pack"
@@ -63,6 +67,3 @@ anvi-run-scg-taxonomy -c CONTIGS.db $thread_controller
 INFO "[$TEST] Estimating SCG taxonomy"
 anvi-estimate-scg-taxonomy -c CONTIGS.db
 INFO "[$TEST] Done!"
-cd ..
-
-#########################################################################################

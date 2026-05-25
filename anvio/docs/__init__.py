@@ -420,6 +420,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": False,
         "provided_by_user": True
     },
+    "kofam-accession": {
+        "name": "KOFAM ACCESSION",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
     "hmm-file": {
         "name": "HMM MODEL FILE",
         "type": "TXT",
