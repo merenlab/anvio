@@ -104,7 +104,9 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                              "of the following: a contigs database, an enzymes-txt file, or a pangenome database.")
 
         if self.enzymes_of_interest_df is not None:
-            if None in self.enzymes_of_interest_df["enzyme_accession"].to_list():
+            enzyme_accessions = self.enzymes_of_interest_df["enzyme_accession"].to_list()
+
+            if self.enzymes_of_interest_df["enzyme_accession"].isna().any():
                 if self.enzymes_txt:
                     raise ConfigError("It appears that your enzymes-txt file contains one or more lines with no enzyme accession. "
                                       "Please fix this and try again.")
@@ -112,7 +114,7 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
                     raise ConfigError("Dear programmer, the enzymes dataframe you have sent here includes enzymes with no "
                                       "accession IDs. This is no bueno.")
 
-            if not self.user_input_dir and any([not enzyme_accession.startswith('K') for enzyme_accession in self.enzymes_of_interest_df["enzyme_accession"].to_list()]):
+            if not self.user_input_dir and any([not str(enzyme_accession).startswith('K') for enzyme_accession in enzyme_accessions]):
                 raise ConfigError("It appears that the list of enzymes this function received includes those that do not look like "
                                   "the kind of enzyme accession IDs anvi'o is used to working with (i.e. K00001, K12345, etc). "
                                   "Please check your input. If you are trying to work with user-defined modules containing non-KEGG "
@@ -211,7 +213,7 @@ class KeggMetabolismEstimator(KeggEstimatorArgs, KeggDataLoader, KeggEstimationA
         if self.enzymes_txt:
             self.run.info("Enzymes txt file", self.enzymes_txt, quiet=self.quiet)
         elif self.enzymes_of_interest_df is not None:
-            self.run.info("Enzymes of interest", f"{', '.join(self.enzymes_of_interest_df['enzyme_accession'].tolist())}", quiet=self.quiet)
+            self.run.info("Enzymes of interest", f"{', '.join([str(enzyme_accession) for enzyme_accession in enzyme_accessions])}", quiet=self.quiet)
 
         estimation_mode = "Genome (or metagenome assembly)"
         if self.profile_db_path and self.collection_name:
