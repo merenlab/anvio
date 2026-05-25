@@ -70,6 +70,14 @@ scg_raw_hits = [{'percent_identity': 100.0, 't_domain': 'A', 't_phylum': 'B', 't
 
 assert cT('t_species') == 'G x'
 
+#########################################
+
+scg_raw_hits = [{'percent_identity': 100.0, 't_domain': 'A', 't_phylum': 'B', 't_class': 'C', 't_order': 'D', 't_family': 'E', 't_genus': None, 't_species': None},
+                {'percent_identity': 99.0, 't_domain': 'A', 't_phylum': 'B', 't_class': 'C', 't_order': 'D', 't_family': 'E', 't_genus': 'F', 't_species': 'G x'}]
+
+assert cT('t_genus') == None
+assert cT('t_species') == None
+
 
 #########################################
 
@@ -100,3 +108,13 @@ assert pT('t_species') == None
 assert pT('t_genus') == None
 assert pT('t_family') == None
 assert pT('t_order') == 'D'
+
+#########################################
+
+scg_dict = {1: {'t_domain': 'A', 't_phylum': 'B', 't_class': 'C', 't_order': 'D', 't_family': 'E', 't_genus': None, 't_species': None},
+            2: {'t_domain': 'A', 't_phylum': 'B', 't_class': 'C', 't_order': 'D', 't_family': 'E', 't_genus': None, 't_species': None},
+            3: {'t_domain': 'A', 't_phylum': 'B', 't_class': 'C', 't_order': 'D', 't_family': 'E', 't_genus': 'F', 't_species': 'G x'}}
+
+assert pT('t_family') == 'E'
+assert pT('t_genus') == None
+assert pT('t_species') == None
