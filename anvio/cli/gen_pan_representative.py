@@ -45,19 +45,19 @@ def get_args():
     groupA.add_argument(*anvio.A("pan-db"), **anvio.K("pan-db"))
 
     groupB = parser.add_argument_group("SUPPLEMENTARY-CONTIG-OPTIONS", "All these options are related to the supplementary contig that will be added to the representative genome.")
-    groupB.add_argument("--gap-size", metavar='INT', default=20,
+    groupB.add_argument("--gap-size", metavar='INT', default=20, type=int,
                         help="Number of N nucleotides to insert between sequences in the supplementary "
                              "contig. Default is %(default)s.")
-    groupB.add_argument("--alpha", metavar='FLOAT', default=0.8,
+    groupB.add_argument("--alpha", metavar='FLOAT', default=0.8, type=float,
                         help="Weight for scoring candidate representative genomes. Controls the balance "
                              "between completion/redundancy (alpha) and number of contigs (1 - alpha). "
                              "A value of 1.0 selects purely on completion/redundancy; 0.0 selects purely "
                              "on the fewest contigs. Default is %(default)s.")
-    groupB.add_argument("--representative", metavar='GENOME-NAME',
+    groupB.add_argument("--representative", metavar='GENOME-NAME', type=str,
                         help="Name of the genome to use as the representative. If not provided, anvi'o "
                              "will select one automatically based on completion, redundancy, and number "
                              "of contigs.")
-    groupB.add_argument("--max-num-contigs", metavar='INT', default=99999,
+    groupB.add_argument("--max-num-contigs", metavar='INT', default=99999, type=int,
                         help="Maximum number of contigs a genome may have to be considered as a "
                              "representative candidate. Genomes exceeding this threshold are excluded "
                              "from selection. Default is %(default)s.")

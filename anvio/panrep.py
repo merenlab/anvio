@@ -9,6 +9,7 @@ import anvio
 import anvio.tables as t
 import anvio.dbops as dbops
 import anvio.utils as utils
+import anvio.terminal as terminal
 import anvio.fastalib as fastalib
 import anvio.filesnpaths as filesnpaths
 
@@ -24,7 +25,10 @@ class PanRepresenter:
         self.run = r
         self.progress = p
 
-        self.pan = dbops.PanSuperclass(args)
+        self.rq = terminal.Run(verbose=False)
+        self.pq = terminal.Progress(verbose=False)
+
+        self.pan = dbops.PanSuperclass(args, r=self.rq, p=self.pq)
         self.pan.init_gene_clusters()
 
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
@@ -36,9 +40,9 @@ class PanRepresenter:
         self.alpha = A('alpha')
         self.max_num_contigs = A('max_num_contigs')
         self.representative = A('representative')
-        self.sanity_check()
 
-        self.storage = GenomeStorage(args.genomes_storage)
+        self.storage = GenomeStorage(args.genomes_storage, run=self.rq, progress=self.pq)
+        self.sanity_check()
         self.external_genomes = GenomeDescriptions(self.args)
         self.external_genomes.load_genomes_descriptions()
         self.genome_to_clusters = self.pan.get_gene_clusters_in_genomes_dict(self.pan.gene_clusters)
@@ -59,38 +63,23 @@ class PanRepresenter:
                     self.flat_lookup[(genome, gene_id)] = cluster
 
     def sanity_check(self):
+        if self.representative and self.representative not in self.storage.genome_names:
+            raise ConfigError(f"The genome '{self.representative}' was provided as the representative "
+                            f"but does not exist in the genomes storage.")
+
         if self.keep_promoter:
             self.run.warning("Since you chose to keep the promoter region that means you also keep the synteny by definition")
 
-        try:
-            self.max_num_contigs = int(self.max_num_contigs)
-            if self.max_num_contigs <= 0:
-                raise ConfigError(f"--max-num-contigs must be a positive integer, but you provided {self.max_num_contigs}. "
-                                f"Please try again with a value greater than 0.")
+        if self.max_num_contigs <= 0:
+            raise ConfigError(f"--max-num-contigs must be a positive integer, but you provided {self.max_num_contigs}. "
+                            f"Please try again with a value greater than 0.")
 
-        except ValueError:
-            raise ConfigError(f"--max-num-contigs requires a positive integer, but '{self.max_num_contigs}' "
-                            f"does not look like one. Please try again with a whole number.")
+        if self.gap_size <= 0:
+            raise ConfigError(f"--gap-size must be a positive integer, but you provided {self.gap_size}. "
+                            f"Please try again with a value greater than 0.")
+        if self.alpha < 0 or self.alpha > 1:
+            raise ConfigError(f"--alpha must be a value between 0.0 and 1.0 inclusive, but you provided {self.alpha}.")
 
-
-        try:
-            self.gap_size = int(self.gap_size)
-            if self.gap_size <= 0:
-                raise ConfigError(f"--gap-size must be a positive integer, but you provided {self.gap_size}. "
-                                f"Please try again with a value greater than 0.")
-
-        except ValueError:
-            raise ConfigError(f"--gap-size requires a positive integer, but '{self.gap_size}' "
-                            f"does not look like one. Please try again with a whole number.")
-
-        try:
-            self.alpha = float(self.alpha)
-            if self.alpha < 0 or self.alpha > 1:
-                raise ConfigError(f"--alpha must be a value between 0.0 and 1.0 inclusive, but you provided {self.alpha}.")
-
-        except ValueError:
-            raise ConfigError(f"--alpha requires a number between 0.0 and 1.0, but '{self.alpha}' "
-                            f"does not look like one.")
 
     def get_most_common_genome(self):
         """Calculates the number of gene_clusters each genome is missing and returns the name of the genome missing the least.
@@ -112,6 +101,7 @@ class PanRepresenter:
             key=lambda x: x[1],
         )
         return sorted_genomes[0][0]
+
 
     def get_representative(self):
         """Returns the name of the representative genome based on completeness, redundancy, and number of contigs.
@@ -167,6 +157,7 @@ class PanRepresenter:
 
         return max(genomes, key=lambda g: (g["score"], g["num_genes"]))["name"]
 
+
     def get_contigs_db(self, genome):
         """Create ContigsSuperclass and ContigsDatabase instances
 
@@ -183,12 +174,12 @@ class PanRepresenter:
             An instance of the ContigsDatabase class
         """
         genome_db_path = self.external_genomes.genomes.get(genome).get("contigs_db_path")
-
         args = argparse.Namespace(**vars(self.args), contigs_db=genome_db_path)
-        contigs = dbops.ContigsSuperclass(args)
+        contigs = dbops.ContigsSuperclass(args, r=self.rq, p=self.pq)
         contigs.init_contig_sequences()
-        contigs_db = dbops.ContigsDatabase(genome_db_path, quiet=True)
+        contigs_db = dbops.ContigsDatabase(genome_db_path, run=self.rq, progress=self.pq, quiet=True)
         return contigs, contigs_db
+
 
     def build_contig_to_genes_dict(self, genome, contigs):
         """Maps the contigs of the genome to genes
@@ -218,6 +209,7 @@ class PanRepresenter:
             )
         return dict(contig_to_genes)
 
+
     def build_functions_lookup(self, contigs_db):
         functions_dict = contigs_db.db.get_table_as_dict(
             t.gene_function_calls_table_name, string_the_key=True
@@ -228,12 +220,14 @@ class PanRepresenter:
                 filtered_funcs[gene_id].append(fun)
         return filtered_funcs
 
+
     def set_gene_calls(self, gene_calls_data):
         raw_df = pd.DataFrame(gene_calls_data).T
         raw_df = raw_df.drop(columns=["length", "rev_compd", "sequence", "header"])
         raw_df["gene_callers_id"] = raw_df.index
         raw_df = raw_df[[raw_df.columns[-1]] + list(raw_df.columns[:-1])]
         self.gene_calls = raw_df.T.to_dict()
+
 
     def get_gene_calls_data(self, contigs, target=None):
         if target is None:
@@ -247,6 +241,7 @@ class PanRepresenter:
             gene_ids_of_interest, report_aa_sequences=True, include_aa_sequences=True
         )[1]
 
+
     def get_filtered_genes(self, genome, contig_name_to_genes):
         result = {}
         for contig, gene_ids in contig_name_to_genes.items():
@@ -258,6 +253,7 @@ class PanRepresenter:
                     self.seen_clusters.add(cluster)
             result[contig] = kept_genes
         return result
+
 
     def add_function(self, genome, filtered_funcs, source, gene_id, contig=None):
         if self.first_iteration:
@@ -280,6 +276,7 @@ class PanRepresenter:
                 "e_value": 0,
             }
 
+
     def add_gene_call(self, source, start=None, stop=None):
         gene_info = {
             "gene_callers_id": self.current_id,
@@ -294,6 +291,7 @@ class PanRepresenter:
             "aa_sequence": source.get("aa_sequence"),
         }
         self.gene_calls[self.current_id] = gene_info
+
 
     def get_stretches(self, source):
         """For each contig, returns the consecutive stretches of gene IDs.
@@ -314,6 +312,7 @@ class PanRepresenter:
             stretches[contig] = utils.get_stretches_for_numbers_list(gene_ids, discard_singletons=False)
         return stretches
 
+
     def generate_accession(self, sequence, size):
         """Generate a hash from an aa-sequence
 
@@ -333,18 +332,22 @@ class PanRepresenter:
             return ""
         return hashlib.sha256(sequence.encode()).hexdigest()[:size].upper()
 
+
     def export_gene_calls(self, tmp_dir):
         """Exports the gene calls table as a tab delimited file"""
 
         external_gene_calls = f"{tmp_dir}/{self.project_name}_gene_calls.txt"
         gene_calls = pd.DataFrame(self.gene_calls).T
         utils.store_dataframe_as_TAB_delimited_file(gene_calls, external_gene_calls)
+        self.args.external_gene_calls = external_gene_calls
+
 
     def export_functions(self, tmp_dir):
         """Exports the functions table as a tab delimited file"""
 
         functions = pd.DataFrame(self.functions).T
         utils.store_dataframe_as_TAB_delimited_file(functions, f"{tmp_dir}/{self.project_name}_functions.tsv")
+
 
     def export_fasta(self, tmp_dir):
         self.args.contigs_fasta = f"{tmp_dir}/{self.project_name}.fasta"
@@ -353,25 +356,31 @@ class PanRepresenter:
             output_fasta.write_id(name)
             output_fasta.write_seq(seq)
 
+
     def process_representative_genome(self):
-        representative_genome = self.get_representative()
-        contigs, contigs_db = self.get_contigs_db(representative_genome)
+        self.representative = self.get_representative()
+        self.run.info('Representative genome', self.representative, nl_before=1, mc='green')
+        contigs, contigs_db = self.get_contigs_db(self.representative)
         filtered_funcs = self.build_functions_lookup(contigs_db)
         gene_calls_data = self.get_gene_calls_data(contigs)
 
         for gene_id, gene_data in gene_calls_data.items():
-            self.add_function(representative_genome, filtered_funcs, gene_data, gene_id)
+            self.add_function(self.representative, filtered_funcs, gene_data, gene_id)
 
         self.set_gene_calls(gene_calls_data)
         self.representative_contigs = {contig_name: data["sequence"] for contig_name, data in contigs.contig_sequences.items()}
-        self.seen_clusters.update(self.genome_to_clusters[representative_genome])
+        self.seen_clusters.update(self.genome_to_clusters[self.representative])
         self.current_id = max(contigs.genes_in_contigs_dict) + 1
         self.all_clusters -= self.seen_clusters
         self.first_iteration = False
-        self.supplement_contig_name = f"{representative_genome}_pangenome_supplement"
+        self.supplement_contig_name = f"{self.representative}_pangenome_supplement"
+        self.run.info('Gene clusters covered', len(self.seen_clusters))
+
 
     def process_additional_genomes(self):
         most_common_genome = self.get_most_common_genome()
+        clusters_before = len(self.seen_clusters)
+        self.run.info('Supplementing from', most_common_genome, nl_before=1)
         contigs, contigs_db = self.get_contigs_db(most_common_genome)
         contig_name_to_genes = self.build_contig_to_genes_dict(most_common_genome, contigs)
         filtered_funcs = self.build_functions_lookup(contigs_db)
@@ -381,7 +390,6 @@ class PanRepresenter:
             gene_calls_data = self.get_gene_calls_data(contigs)
         else:
             gene_calls_data = self.get_gene_calls_data(contigs, filtered_genes)
-
 
         stretches = self.get_stretches(filtered_genes)
 
@@ -427,20 +435,26 @@ class PanRepresenter:
                         self.current_id += 1
 
                     self.current_pos += stop - start + self.gap_size
-
         self.all_clusters -= self.seen_clusters
+        self.run.info('New clusters added', len(self.seen_clusters) - clusters_before)
+        self.run.info('Clusters still missing', len(self.all_clusters))
+
 
     def assemble_supplementary_contig(self):
         gap = "N" * self.gap_size
         self.representative_contigs[self.supplement_contig_name] = gap.join(self.supplementary_contig)
 
+
     def build_contigs_db(self):
         self.args.db_variant = "pan-genome"
-        panrep_db = dbops.ContigsDatabase(self.output_file, quiet=False, skip_init=True)
+
+        panrep_db = dbops.ContigsDatabase(self.output_file, quiet=True, skip_init=True)
         panrep_db.create(self.args)
 
         gene_function_calls_table = TableForGeneFunctions(self.output_file)
         gene_function_calls_table.create(self.functions, drop_previous_annotations_first=False)
+        self.run.info('Pan-representative contigs DB', self.output_file, mc='green',nl_before=1, nl_after=1)
+
 
     def cleanup(self, tmp_dir):
         if anvio.DEBUG:
@@ -449,13 +463,16 @@ class PanRepresenter:
             self.run.info_single("Cleaning up the temp directory (you can use `--debug` if you would like to keep it for testing purposes)", nl_before=1, nl_after=1)
             shutil.rmtree(tmp_dir)
 
+
     def process(self):
         tmp_dir = filesnpaths.get_temp_directory_path()
+
         while self.all_clusters:
             if self.first_iteration:
                 self.process_representative_genome()
 
             self.process_additional_genomes()
+
         self.assemble_supplementary_contig()
         self.export_gene_calls(tmp_dir)
         self.export_functions(tmp_dir)
