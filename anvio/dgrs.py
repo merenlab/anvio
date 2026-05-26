@@ -4883,9 +4883,12 @@ class DGR_Finder:
                     snv_positions = set(sample_snvs['pos_in_contig'].tolist())
 
                     # apply SNV-based masking
+                    # For frame=-1 the primer list is in minus-strand orientation: position i
+                    # corresponds to genomic coordinate vr_end-1-i, so SNV genomic positions
+                    # must be mapped accordingly before they are used as list indices.
                     sample_primer_list = list(base_vr_masked_primer)
                     for pos in snv_positions:
-                        idx = pos - vr_start  # position relative to VR start
+                        idx = (vr_end - 1 - pos) if VR_frame == -1 else (pos - vr_start)
                         if 0 <= idx < len(sample_primer_list):
                             sample_primer_list[idx] = '.'
 
