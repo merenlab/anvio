@@ -519,8 +519,8 @@ class BAMProfilerQuick:
             if (self.window_length and self.window_length <= 0) or (self.window_length_as_percentage and self.window_length_as_percentage <= 0):
                 raise ConfigError("A positive window length (or percentage) is required for computing distribution of coverage (DisCov).")
             if self.window_length_as_percentage and self.window_length_as_percentage > 100:
-                raise ConfigError(f"We cannot work with windows that are longer than 100% of a given sequence. Please change your "
-                                  f"--window-length-as-percentage value.")
+                raise ConfigError("We cannot work with windows that are longer than 100% of a given sequence. Please change your "
+                                  "--window-length-as-percentage value.")
             if self.window_length and self.min_window_length:
                 raise ConfigError("The --min-window-length is only relevant when using the --window-length-as-percentage option.")
             if self.min_window_length and self.min_window_length < 0:

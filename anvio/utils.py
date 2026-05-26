@@ -614,7 +614,7 @@ class CoverageStats:
         if window_length > len(coverage): # if the input is smaller than the window size, make it one window
             window_length = len(coverage)
         elif window_length == 0:
-            raise ConfigError(f"The get_window_regions() function was requested to make zero-length windows. Impossible!")
+            raise ConfigError("The get_window_regions() function was requested to make zero-length windows. Impossible!")
 
         windows = []
         current_start = 0
