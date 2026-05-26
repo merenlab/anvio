@@ -282,6 +282,12 @@ class PanRepresenter:
 
                 self.functions[len(self.functions) + 1] = func
 
+            cluster = self.flat_lookup.get((genome, gene_id))
+            cluster_part = ""
+            if cluster:
+                num_genes_in_cluster = sum(len(genes) for genes in self.pan.gene_clusters[cluster].values())
+                cluster_part = f"; Source gene cluster in pangenome: {cluster}; Num genes in source cluster: {num_genes_in_cluster}"
+
             self.functions[len(self.functions) + 1] = {
                 "gene_callers_id": gene_id if self.first_iteration else self.current_id,
                 "source": "PanRepresentative",
