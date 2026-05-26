@@ -79,3 +79,27 @@ By default, each gene is extracted individually from its start codon to its stop
 * `--gap-size INT` controls the number of `N` characters inserted between sequences in the supplementary contig. Default is `20`.
 
 Please see the program help menu to see the most up-to-date parameters and output options.
+
+## Gene provenance annotations
+
+Every gene in the output %(contigs-db)s receives a functional annotation under the source name **`PanRepresentative`**. These annotations serve as a permanent record of each gene's origin, so the database remains interpretable long after it has been separated from the pangenome it was built from. The annotation text follows a labeled, semicolon-delimited format:
+
+```
+Source genome: GENOME_NAME; Source contig: CONTIG_NAME; Gene id in source genome: GENE_ID; Source gene cluster in pangenome: GC_XXXXX; Num genes in source cluster: N
+```
+
+A real example looks like this:
+
+```
+Source genome: TDR89; Source contig: TDR89_00000000412; Gene id in source genome: 3581; Source gene cluster in pangenome: GC_00003665; Num genes in source cluster: 22
+```
+
+The fields are:
+
+* **Source genome** — the name of the genome from which this gene sequence was taken.
+* **Source contig** — the contig in that genome where the gene resides.
+* **Gene id in source genome** — the gene caller ID assigned to this gene in its original %(contigs-db)s.
+* **Source gene cluster in pangenome** — the gene cluster in the pangenome this gene represents (absent for genes in the representative genome that did not belong to any gene cluster).
+* **Genes in cluster** — the total number of genes across all genomes that belong to that gene cluster, giving a sense of how conserved or rare the cluster is.
+
+These annotations are visible in the anvi'o interactive interface and are accessible via %(anvi-export-functions)s using `--annotation-sources PanRepresentative`.
