@@ -270,7 +270,7 @@ class PanRepresenter:
 
 
     def add_function(self, genome, filtered_funcs, source, gene_id, contig=None):
-        if self.first_iteration:
+        if contig is None:
             contig = source.get("contig")
 
         if source["version"] != "unknown":
