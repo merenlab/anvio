@@ -54,6 +54,7 @@ class ExchangePredictorArgs():
         self.report_compounds_with_no_prediction = A('report_compounds_with_no_prediction')
         self.no_pathway_walk = A('no_pathway_walk')
         self.pathway_walk_only = A('pathway_walk_only')
+        self.max_reactions_for_pathway_map_walk = A('max_reactions_for_pathway_map_walk')
 
         # this class can either receive the in/exclude_pathway_maps attributes as a string (from the client program)
         # or as a set (when initializing it directly in Python, as is done in the MultiPredictor class)
@@ -292,6 +293,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
             # Hence, we strictly control the number of threads in use by having two functions for doing essentially the same thing.
             # (BONUS: the single-threaded version has more precise terminal output since it knows exactly what is currently being processed)
             self.run.warning("", header="PATHWAY MAP WALK OUTPUT", lc='cyan')
+            self.run.info("Max number of reactions in any given walk", self.max_reactions_for_pathway_map_walk)
             if self.num_threads == 1:
                 failed_maps = self.walk_all_pathway_maps_singlethread()
             else:
@@ -478,6 +480,7 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
         walker_args.kegg_pathway_number = pathway_map
         walker_args.compound_fate = fate
         walker_args.max_gaps = gaps
+        walker_args.max_reactions = self.max_reactions_for_pathway_map_walk
         walker_args.keep_intermediate_chains = True
         walker_args.verbose = False
         return walker_args
