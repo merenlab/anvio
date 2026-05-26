@@ -3538,8 +3538,9 @@ D = {
                      "for all pathway maps, so it may be a good idea to first identify problematic maps using the "
                      "`--debug` flag, run the program once while excluding those problematic maps with `--exclude-pathway-maps`, "
                      "and THEN run the program again using this flag to bound the pathway map walk only for those maps "
-                     "with `--include-pathway-maps`. Or you can just pick an arbitrarily high number you are comfortable "
-                     "with and be on your way. Up to you."}
+                     "with `--include-pathway-maps`. It's likely that if you need this flag, something is wrong (like an infinite "
+                     "cycle in the walk), so check the Pathway Map walk evidence carefully to make sure results are biologically "
+                     "meaningful."}
                 ),
     'add-reactions-to-output': (
             ['--add-reactions-to-output'],
