@@ -521,6 +521,9 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
             self.progress.update(f"{processed_count} / {num_pms_to_process} Pathway Maps (current Map: {pm})")
             try:
                 for g in self.genomes_to_compare:
+                    if anvio.DEBUG:
+                        self.progress.reset()
+                        self.run.info_single(f"Started walking over map {pm} for genome {g}")
                     wargs = self.get_args_for_pathway_walker(self.genomes_to_compare[g]['network'], pm, fate='produce', gaps=self.maximum_gaps)
                     walker = nw.KGMLNetworkWalker(wargs)
                     production_chains = walker.get_chains()
@@ -549,6 +552,9 @@ class ExchangePredictorSingle(ExchangePredictorArgs):
                         else:
                             self.compound_to_pathway_walk_chains[modelseed_id][pm][g] = {'produce': production_chains[compound] if compound in production_chains else None,
                                                                                 'consume': consumption_chains[compound] if compound in consumption_chains else None}
+                    if anvio.DEBUG:
+                        self.progress.reset()
+                        self.run.info_single(f"Successfully finished map {pm} for genome {g}")
             except ConfigError as e:
                 self.progress.reset()
                 self.run.warning(f"Just FYI, attempting to do a pathway walk for Pathway Map {pm} resulted in an "
