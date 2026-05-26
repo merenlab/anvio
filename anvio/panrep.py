@@ -284,9 +284,9 @@ class PanRepresenter:
 
             self.functions[len(self.functions) + 1] = {
                 "gene_callers_id": gene_id if self.first_iteration else self.current_id,
-                "source": "panrep",
+                "source": "PanRepresentative",
                 "accession": self.generate_accession(source.get("aa_sequence"), 7),
-                "function": f"{genome}__{contig}__{gene_id}",
+                "function": f"Source genome: {genome}; Source contig: {contig}; Gene id in source genome: {gene_id}{cluster_part}",
                 "e_value": 0,
             }
 
