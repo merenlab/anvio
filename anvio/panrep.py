@@ -27,14 +27,10 @@ class PanRepresenter:
         self.rq = terminal.Run(verbose=False)
         self.pq = terminal.Progress(verbose=False)
 
-        self.pan = dbops.PanSuperclass(args, r=self.rq, p=self.pq)
-        self.pan.init_gene_clusters()
-
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.output_file = A('output_file')
         self.keep_promoter = A('keep_promoter')
         self.keep_synteny = A('keep_synteny') or A('keep_promoter')
-        self.project_name = A('project_name') or self.pan.p_meta.get('project_name')
         self.gap_size = A('gap_size')
         self.alpha = A('alpha')
         self.max_num_contigs = A('max_num_contigs')
@@ -45,6 +41,15 @@ class PanRepresenter:
         # a long time and we don't want the user to wait for that before learning their
         # output path is bad or output file already exists.
         filesnpaths.is_output_file_writable(self.output_file, ok_if_exists=False)
+
+        # initialize stuff!
+        self.progress.new("Bleep bloop")
+        self.progress.update('Initializing the pangenome, genome descriptions, and gene clusters ..')
+        self.pan = dbops.PanSuperclass(args, r=self.rq, p=self.pq)
+        self.pan.init_gene_clusters()
+        self.project_name = A('project_name') or self.pan.p_meta.get('project_name')
+
+        self.progress.end()
         self.sanity_check()
         self.external_genomes = GenomeDescriptions(self.args)
         self.external_genomes.load_genomes_descriptions()
