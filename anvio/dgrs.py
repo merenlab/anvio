@@ -400,8 +400,8 @@ class DGR_Finder:
 
         if self.metagenome_mode and self.collections_mode:
             raise ConfigError("You can't use --metagenome-mode and --collections-mode at the same time. "
-                              f"Collections mode already restricts the BLAST search to per-bin contigs, "
-                              f"so metagenome mode would be redundant. Please use one or the other.")
+                              "Collections mode already restricts the BLAST search to per-bin contigs, "
+                              "so metagenome mode would be redundant. Please use one or the other.")
 
         # ========== HMM VALIDATION ==========
         # HMM is required for all detection modes (for RT location in activity mode post-hoc,
@@ -492,7 +492,6 @@ class DGR_Finder:
         =======
         ConfigError
             If no SNV windows are found that meet the filtering criteria.
-
         """
 
         # initialise the SNV table
@@ -523,6 +522,7 @@ class DGR_Finder:
         contig_sequences : dict
             Dictionary mapping contig names to their sequences.
         """
+
         # load contig sequences (only bin-specific contigs in collections mode)
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
         if bin_splits_list:
@@ -555,6 +555,7 @@ class DGR_Finder:
             Per-sample SNV records that pass the departure threshold, sorted by
             split_name then pos_in_contig.
         """
+
         columns_of_interest = [
             'sample_id', 'split_name', 'pos_in_contig', 'base_pos_in_codon',
             'departure_from_reference', 'reference'
@@ -562,8 +563,8 @@ class DGR_Finder:
 
         col_list = ', '.join(f'"{c}"' for c in columns_of_interest)
         query = (f'SELECT {col_list} FROM "{t.variable_nts_table_name}" '
-                 f'WHERE departure_from_reference >= ? '
-                 f'ORDER BY split_name, pos_in_contig')
+                f'WHERE departure_from_reference >= ? '
+                f'ORDER BY split_name, pos_in_contig')
 
         # 5 M rows per chunk: each raw chunk is ~400 MB; after downcasting ~120 MB.
         CHUNK_SIZE = 5_000_000
@@ -573,8 +574,8 @@ class DGR_Finder:
 
         chunks = []
         for chunk in pd.read_sql_query(query, profile_db.db.conn,
-                                       params=(self.departure_from_reference_percentage,),
-                                       chunksize=CHUNK_SIZE):
+                                        params=(self.departure_from_reference_percentage,),
+                                        chunksize=CHUNK_SIZE):
             # Derive contig_name while split_name is still a plain string column.
             chunk['contig_name'] = chunk['split_name'].str.split('_split_').str[0]
 
@@ -613,7 +614,7 @@ class DGR_Finder:
         Creates two data structures:
         - self.genes_in_contigs: dict keyed by gene_callers_id for direct lookups
         - self.gene_positions: dict of sorted lists per contig for efficient overlap queries
-                               {contig_name: [(start, stop, direction, gene_id), ...]}
+                                {contig_name: [(start, stop, direction, gene_id), ...]}
 
         Also validates that the requested gene caller source exists in the database.
 
@@ -622,6 +623,7 @@ class DGR_Finder:
         ConfigError
             If the requested gene caller source is not found in the database.
         """
+
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
         all_genes = contigs_db.db.get_table_as_dict(t.genes_in_contigs_table_name)
         contigs_db.disconnect()
@@ -657,7 +659,8 @@ class DGR_Finder:
 
 
     def load_rt_gene_regions(self):
-        """Pre-load genomic coordinates of all genes with RT HMM hits.
+        """
+        Pre-load genomic coordinates of all genes with RT HMM hits.
 
         Queries the hmm_hits table for entries whose source matches self.hmm,
         then cross-references with self.genes_in_contigs to get contig/start/stop.
@@ -707,7 +710,8 @@ class DGR_Finder:
 
 
     def tr_overlaps_rt_gene(self, contig, tr_start, tr_end):
-        """Check whether a TR interval overlaps any RT gene on the given contig.
+        """
+        Check whether a TR interval overlaps any RT gene on the given contig.
 
         Uses binary search on the sorted rt_gene_regions list for O(log n) lookup.
 
@@ -779,6 +783,7 @@ class DGR_Finder:
                 'A', 'C', 'G', 'T': np.array of nucleotide coverage counts
             Returns None if no SNVs found.
         """
+
         # filter self.snv_panda in memory instead of querying the profile DB
         # (self.snv_panda already has all codon positions and departure_from_reference
         # filtered — see init_snv_table)
@@ -822,6 +827,7 @@ class DGR_Finder:
         int
             1, 2, or 3 indicating codon position, or 0 if position is not in gene
         """
+
         if contig_pos < gene_start or contig_pos >= gene_stop:
             return 0
 
@@ -850,6 +856,7 @@ class DGR_Finder:
         tuple or None
             (gene_start, gene_stop, direction, gene_id) if found, None otherwise
         """
+
         if contig not in self.gene_positions:
             return None
 
@@ -898,6 +905,7 @@ class DGR_Finder:
             'pct_mismatch_codon_3': percentage at 3rd position (of those in genes)
             'vr_gene_id': overlapping gene if found
         """
+
         counts = {'codon_1': 0, 'codon_2': 0, 'codon_3': 0, 'codon_unknown': 0}
         gene_id = None
 
@@ -958,6 +966,7 @@ class DGR_Finder:
             - 'snv_supporting_sample': str or None (sample that passed thresholds)
             - 'sample_passed': bool (True if a sample met all thresholds)
         """
+
         # Fetch full SNV data for this region (including 3rd codon position)
         snv_data = self.get_snvs_for_region(query_contig, query_start, query_end)
 
@@ -990,8 +999,8 @@ class DGR_Finder:
         # Sort samples by SNV count (descending) for early exit optimization
         # Samples with more SNVs are checked first; we stop as soon as one passes
         samples_sorted = sorted(sample_indices.keys(),
-                               key=lambda s: len(sample_indices[s]),
-                               reverse=True)
+                                key=lambda s: len(sample_indices[s]),
+                                reverse=True)
 
         best_result = None
         best_sample_snv_count = 0
@@ -1115,6 +1124,7 @@ class DGR_Finder:
             confidence is 'high', 'medium', or 'low'
             reasons is a list of strings explaining any downgrade
         """
+
         confidence = 'high'
         reasons = []
 
@@ -1150,7 +1160,7 @@ class DGR_Finder:
 
             # Excellent: very few SNVs at codon 3 AND almost all SNVs explained
             is_excellent = (pct_codon_3 <= self.high_conf_max_pct_snv_codon_3 and
-                           pct_explained >= self.high_conf_min_pct_snvs_explained)
+                            pct_explained >= self.high_conf_min_pct_snvs_explained)
 
             if is_excellent:
                 # Excellent SNV metrics - this strongly supports DGR activity
@@ -1334,6 +1344,7 @@ class DGR_Finder:
         ConfigError
             If no query or target sequences are provided.
         """
+
         if not query_records:
             raise ConfigError("No query sequences provided for BLAST search.")
 
@@ -1391,6 +1402,7 @@ class DGR_Finder:
         bin's pre-partitioned SNV records and contig sequences, so the worker never needs
         to access any database file.
         """
+
         import bisect
 
         while True:
@@ -1639,14 +1651,14 @@ class DGR_Finder:
         num_bins_skipped = len(bin_splits_dict) - len(bins_with_data)
         if num_bins_skipped:
             self.run.info_single(f"Pre-filtered {num_bins_skipped} of {num_bins} bins with no SNVs. "
-                                 f"Processing {len(bins_with_data)} bins with SNV data.", nl_before=1)
+                                f"Processing {len(bins_with_data)} bins with SNV data.", nl_before=1)
 
         bin_splits_dict = bins_with_data
         num_bins = len(bin_splits_dict)
 
         if num_bins == 0:
             raise ConfigError(f"None of the {len(skipped_bins)} bins in collection '{self.collections_given}' "
-                              f"have any SNVs. There is nothing to do for activity-based detection.")
+                            f"have any SNVs. There is nothing to do for activity-based detection.")
 
         # === DECIDE: PARALLEL vs SEQUENTIAL ===
         use_parallel = num_bins > self.num_threads and self.num_threads > 1
@@ -1743,7 +1755,7 @@ class DGR_Finder:
                             if not any(w.is_alive() for w in workers):
                                 self.progress.end()
                                 raise ConfigError(f"All worker processes died unexpectedly after processing "
-                                                  f"{bins_processed}/{num_bins} bins.")
+                                                f"{bins_processed}/{num_bins} bins.")
                             continue
 
                         bins_processed += 1
@@ -1789,7 +1801,7 @@ class DGR_Finder:
 
                     contig_records = self.find_snv_clusters(sample_id_list, bin_contig_sequences)
                     blast_output_path = self.run_blast(contig_records, bin_contig_sequences,
-                                                       mode='activity', bin_name=bin_name)
+                                                        mode='activity', bin_name=bin_name)
                     self.blast_output = blast_output_path
 
                     successful_bins.append(bin_name)
@@ -1847,6 +1859,7 @@ class DGR_Finder:
         blast_outputs : dict
             Dictionary mapping bin_name to blast_output_path for successful bins.
         """
+
         self.run.info_single("Running homology-based detection in collections mode...", nl_before=1)
 
         # Get collections data
@@ -2293,7 +2306,7 @@ class DGR_Finder:
             if frac_masked > self.repeat_threshold:
                 if anvio.DEBUG and self.verbose:
                     self.run.warning(f"Removing the candidate DGR with its VR on this contig: {qseq} and TR on this contig: {hseq}. "
-                                     f"This is because of repeats found in the sequence by pytantan ({frac_masked:.1%} masked).")
+                                    f"This is because of repeats found in the sequence by pytantan ({frac_masked:.1%} masked).")
                 return True
 
         return False
@@ -2329,6 +2342,7 @@ class DGR_Finder:
         tuple or None
             (trim_start, trim_end, dominant_base) if valid window found, None otherwise.
         """
+
         # Collect all mismatch positions and their TR base
         mismatch_positions = []
         for idx in range(len(vr_seq)):
@@ -2421,7 +2435,7 @@ class DGR_Finder:
 
 
     def parse_and_process_blast_results(self, xml_file_path, bin_name, max_percent_identity,
-                                         vr_in_query=True, apply_snv_filters=True):
+                                        vr_in_query=True, apply_snv_filters=True):
         """
         Parse and process BLAST XML results for a single bin or dataset.
 
@@ -2607,7 +2621,7 @@ class DGR_Finder:
 
                         # Stage 4: Repeat check on trimmed sequences only
                         if self.has_repeat(trimmed_qseq, trimmed_qseq, trimmed_hseq) or \
-                           self.has_repeat(trimmed_hseq, trimmed_qseq, trimmed_hseq):
+                            self.has_repeat(trimmed_hseq, trimmed_qseq, trimmed_hseq):
                             elem.clear()
                             continue
 
@@ -3586,6 +3600,7 @@ class DGR_Finder:
                 ...
             }
         """
+
         self.run.info_single("Finding RT HMM hits and creating search windows for homology-based detection...", nl_before=1)
 
         # Open contigs database and get required tables
@@ -3621,10 +3636,10 @@ class DGR_Finder:
 
         if not rt_hits:
             self.run.warning("No RT HMM hits were found in the contigs database. Homology-based detection "
-                           "cannot proceed without RT genes. This could mean that `anvi-run-hmms -I "
-                           "Reverse_Transcriptase` has not been run on your contigs database, or that it was "
-                           "run but simply returned no hits. SAD :(",
-                           header="NO RT HMM HITS FOUND")
+                            "cannot proceed without RT genes. This could mean that `anvi-run-hmms -I "
+                            "Reverse_Transcriptase` has not been run on your contigs database, or that it was "
+                            "run but simply returned no hits. SAD :(",
+                            header="NO RT HMM HITS FOUND")
             self.rt_windows = {}
             return {}
 
@@ -3693,6 +3708,7 @@ class DGR_Finder:
         dict
             Query records as {section_id: sequence} for BLAST input.
         """
+
         # Get RT windows if not already computed
         if not hasattr(self, 'rt_windows') or not self.rt_windows:
             self.get_rt_windows()
@@ -3757,6 +3773,7 @@ class DGR_Finder:
         ConfigError
             If no RT windows are found or no contig sequences are available.
         """
+
         self.run.info_single("Running BLAST for homology-based DGR detection...", nl_before=1)
 
         # Load contig sequences if not provided
@@ -3784,20 +3801,20 @@ class DGR_Finder:
                 return None
             else:
                 raise ConfigError("No RT windows were found. Homology-based detection requires RT HMM hits "
-                                f"in the contigs database. This could mean that `anvi-run-hmms -I "
-                                f"Reverse_Transcriptase` has not been run, or that it was run but returned "
-                                f"no hits. SAD :(")
+                                "in the contigs database. This could mean that `anvi-run-hmms -I "
+                                "Reverse_Transcriptase` has not been run, or that it was run but returned "
+                                "no hits. SAD :(")
 
         # In metagenome mode, restrict BLAST target to only contigs with RT windows
         if self.metagenome_mode:
             query_contigs = set(sid.split('_section', 1)[0] for sid in query_records.keys())
             contig_sequences = {name: seq for name, seq in contig_sequences.items() if name in query_contigs}
             self.run.info_single(f"Metagenome mode: reduced BLAST target to {len(contig_sequences):,} contigs "
-                                 f"(only contigs containing RT windows).", nl_before=1)
+                                f"(only contigs containing RT windows).", nl_before=1)
 
         # Use unified run_blast function
         blast_output_path = self.run_blast(query_records, contig_sequences,
-                                           mode='homology', bin_name=bin_name)
+                                            mode='homology', bin_name=bin_name)
 
         # Store for later use
         self.homology_blast_output = blast_output_path
@@ -3821,6 +3838,7 @@ class DGR_Finder:
             The mismatch_hits dictionary containing homology-based DGR candidates.
             Each hit has detection_method='homology' and confidence='homology-based'.
         """
+
         self.run.info_single("Starting homology-based DGR detection pipeline...", nl_before=1, nl_after=1)
 
         # Step 1: Run BLAST with RT windows as queries
@@ -3829,8 +3847,8 @@ class DGR_Finder:
         # Check if BLAST was run and produced output
         if blast_output is None or os.stat(blast_output).st_size == 0:
             self.run.warning("No BLAST hits were found in homology mode. This could mean there are no "
-                           "TR/VR pairs near the RT genes, or the RT windows don't contain template regions.",
-                           header="NO HOMOLOGY-MODE HITS")
+                            "TR/VR pairs near the RT genes, or the RT windows don't contain template regions.",
+                            header="NO HOMOLOGY-MODE HITS")
             self.mismatch_hits = defaultdict(lambda: defaultdict(dict))
             return self.mismatch_hits
 
@@ -3876,6 +3894,7 @@ class DGR_Finder:
             Merged mismatch_hits dictionary with detection_method indicating
             'activity', 'homology', or 'both' for each hit.
         """
+
         self.run.info_single("Merging results from activity and homology detection modes...", nl_before=1)
 
         merged_hits = defaultdict(lambda: defaultdict(dict))
@@ -3916,9 +3935,9 @@ class DGR_Finder:
 
                         # Check if VR and TR coordinates overlap significantly
                         vr_overlap = (h_vr_contig == a_vr_contig and
-                                     self.range_overlapping(h_vr_start, h_vr_end, a_vr_start, a_vr_end))
+                                    self.range_overlapping(h_vr_start, h_vr_end, a_vr_start, a_vr_end))
                         tr_overlap = (h_tr_contig == a_tr_contig and
-                                     self.range_overlapping(h_tr_start, h_tr_end, a_tr_start, a_tr_end))
+                                    self.range_overlapping(h_tr_start, h_tr_end, a_tr_start, a_tr_end))
 
                         if vr_overlap and tr_overlap:
                             # Found a match - update detection_method to 'both'
@@ -3970,6 +3989,7 @@ class DGR_Finder:
         : tsv
             A tsv tabular file containing the template and variable regions
         """
+
         dgrs_dict = self.DGRs_found_dict
 
         if len(dgrs_dict) == 0:
@@ -4098,6 +4118,7 @@ class DGR_Finder:
             A tsv tabular file containing the template and variable regions
 
         """
+
         output_directory_path = self.output_directory
         output_prefix = os.path.basename(self.output_directory)
 
@@ -4615,7 +4636,7 @@ class DGR_Finder:
 
         # summary of genomic context reporting
         self.run.info_single(f"Genomic context reports generated for {PL('TR', num_tr_reports)} and {PL('VR', num_vr_reports)} "
-                             f"in '{self.output_directory}/PER_DGR/'", nl_before=1)
+                            f"in '{self.output_directory}/PER_DGR/'", nl_before=1)
         if vrs_without_genes:
             self.run.warning(f"{PL('VR', len(vrs_without_genes))} had no surrounding genes: {', '.join(sorted(vrs_without_genes))}",
                             header="VRs WITHOUT SURROUNDING GENES")
@@ -4659,8 +4680,8 @@ class DGR_Finder:
 
         Returns
         =======
-
         """
+
         while True:
             sample_name = input_queue.get(True)
             if sample_name is None:
@@ -4694,7 +4715,24 @@ class DGR_Finder:
 
     def init_vr_contigs(self):
         """
+        Initialises and stores contig sequences for all variable regions (VRs) found across DGRs.
+
+        Iterates over all DGRs in `self.DGRs_found_dict` to collect the contig name associated with each VR,
+        then queries the contigs database to retrieve the corresponding nucleotide sequences. Results are
+        stored in `self.vr_contig_sequences` as a dictionary keyed by contig name.
+
+        Parameters
+        ==========
+        None
+            Operates on instance attributes directly.
+
+        Returns
+        =======
+        None
+            Results are stored in `self.vr_contig_sequences`. Returns early after
+            disconnecting from the contigs database.
         """
+
         vr_contigs = ()
         for dgr_id, dgr_data in self.DGRs_found_dict.items():
             for vr_id, vr_data in dgr_data['VRs'].items():
@@ -5006,7 +5044,6 @@ class DGR_Finder:
 
         Returns
         =======
-
         """
 
         if self.skip_compute_DGR_variability_profiling:
@@ -5120,9 +5157,9 @@ class DGR_Finder:
                 sample_artifact = SamplesTxt.from_dict(samples_dict_for_sample)
 
                 args = argparse.Namespace(samples_artifact=sample_artifact,
-                                         primers_dict=primers_for_sample,
-                                         output_dir=primer_folder,
-                                         only_report_primer_matches=True)
+                                        primers_dict=primers_for_sample,
+                                        output_dir=primer_folder,
+                                        only_report_primer_matches=True)
 
                 s = PrimerSearch(args, run=run_quiet, progress=self.progress)
                 s.process(return_dicts=True)
@@ -5175,7 +5212,7 @@ class DGR_Finder:
                             if not any(w.is_alive() for w in workers):
                                 self.progress.end()
                                 raise ConfigError(f"All worker processes died unexpectedly after processing "
-                                                  f"{num_samples_processed}/{num_samples} samples.")
+                                                f"{num_samples_processed}/{num_samples} samples.")
                             continue
 
                         if anvio.DEBUG:
@@ -5265,8 +5302,8 @@ class DGR_Finder:
         None
             Generates a directory (`summary_html_output`) containing
             the HTML summary and supporting files.
-
         """
+
         if not len(self.DGRs_found_dict):
             self.run.warning("No DGRs were found so no HTML file will be written :(", header="No HTML OUTPUT")
             return
@@ -5515,8 +5552,8 @@ class DGR_Finder:
         =======
         : tsv
             A tsv tabular file containing the template and variable regions
-
         """
+
         output_path_parameters = os.path.join(self.output_directory, "Parameters_used_in_DGRs_found.tsv")
         with open(output_path_parameters, 'w', newline='') as csvfile:
             csv_writer = csv.writer(csvfile, delimiter='\t')
@@ -5580,6 +5617,7 @@ class DGR_Finder:
         args : argparse.Namespace
             Command-line arguments controlling optional outputs.
         """
+
         self.sanity_check()
 
         # do we have a previously computed list of dgrs to focus for dgr activity calculations?
@@ -5642,7 +5680,7 @@ class DGR_Finder:
                     homology_hits = copy.deepcopy(self.merged_mismatch_hits)
                 else:
                     self.run.warning("No bins had successful homology-based BLAST runs.",
-                                   header="NO HOMOLOGY RESULTS")
+                                    header="NO HOMOLOGY RESULTS")
                     homology_hits = defaultdict(lambda: defaultdict(dict))
             else:
                 # Standard (non-collections) homology mode
@@ -5671,7 +5709,7 @@ class DGR_Finder:
             else:
                 # No hits from either mode
                 self.run.warning("No DGR candidates were found by either activity or homology detection modes.",
-                               header="NO DGRs FOUND")
+                                header="NO DGRs FOUND")
                 if self.collections_mode:
                     self.merged_mismatch_hits = defaultdict(lambda: defaultdict(dict))
                 else:
