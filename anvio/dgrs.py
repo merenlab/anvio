@@ -4876,6 +4876,24 @@ class DGR_Finder:
                 # track if we warned about missing initial primer (warn only once)
                 warned_about_initial_primer = False
 
+                # metadata that is constant across samples for this VR — stored in every
+                # per-sample entry so downstream oligotyping plots can reconstruct which
+                # portion of the VR each read set covers and group L/R primers per VR.
+                vr_group = f"{dgr_id}_{vr_id}"
+                primer_side = 'R' if initial_primer_right else 'L'
+
+                # how many VR bases fit in the primer after reserving space for the flank
+                vr_portion_length = min(
+                    self.whole_primer_length - (0 if skip_initial_primer else self.initial_primer_length),
+                    len(VR_sequence)
+                )
+                if initial_primer_right:
+                    vr_coverage_start = len(VR_sequence) - vr_portion_length
+                    vr_coverage_end   = len(VR_sequence) - 1
+                else:
+                    vr_coverage_start = 0
+                    vr_coverage_end   = vr_portion_length - 1
+
                 # now create sample-specific primers if we have SNV info
                 for sample_name in sample_names:
                     if anvio.DEBUG:
@@ -4932,10 +4950,14 @@ class DGR_Finder:
 
                     # store sample-specific primer data
                     primers_dict[dgr_vr_key][sample_name] = {
-                        'used_original_primer': used_original_primer,
+                        'primer_side':             primer_side,
+                        'vr_group':                vr_group,
+                        'vr_coverage_start':       vr_coverage_start,
+                        'vr_coverage_end':         vr_coverage_end,
+                        'used_original_primer':    used_original_primer,
                         'initial_primer_sequence': vr_initial_primer_region if not skip_initial_primer else 'N/A',
-                        'vr_masked_primer': vr_masked_primer,
-                        'primer_sequence': primer_sequence
+                        'vr_masked_primer':        vr_masked_primer,
+                        'primer_sequence':         primer_sequence
                     }
 
         return primers_dict
@@ -5294,28 +5316,29 @@ class DGR_Finder:
         output_path= os.path.join(output_directory_path, "DGR_Primers_used_for_VR_diversity.tsv")
 
         # define the header for the TSV file
-        csv_header = ['Primer_ID', 'Sample_ID', 'No_SNV_Primer', 'Initial_Primer', 'Masked_Primer', 'Whole_Primer']
+        csv_header = [
+            'Primer_ID', 'VR_Group', 'Primer_Side', 'VR_Coverage_Start', 'VR_Coverage_End',
+            'Sample_ID', 'No_SNV_Primer', 'Initial_Primer', 'Masked_Primer', 'Whole_Primer'
+        ]
 
         # Open the TSV file in write mode
         with open(output_path, mode='w', newline='') as file:
             writer = csv.writer(file, delimiter='\t')
-            writer.writerow(csv_header)  # Write the header row
+            writer.writerow(csv_header)
 
-            # iterate through the dictionary and write each primer's information to the TSV file
             for primer_name, samples in primers_dict.items():
                 for sample_id, primer_info in samples.items():
-                    used_original_primer = primer_info['used_original_primer']
-                    initial_primer = primer_info['initial_primer_sequence']
-                    masked_primer = primer_info['vr_masked_primer']
-                    whole_primer = primer_info['primer_sequence']
-
                     writer.writerow([
-                    primer_name,
-                    sample_id,
-                    used_original_primer,
-                    initial_primer,
-                    masked_primer,
-                    whole_primer
+                        primer_name,
+                        primer_info['vr_group'],
+                        primer_info['primer_side'],
+                        primer_info['vr_coverage_start'],
+                        primer_info['vr_coverage_end'],
+                        sample_id,
+                        primer_info['used_original_primer'],
+                        primer_info['initial_primer_sequence'],
+                        primer_info['vr_masked_primer'],
+                        primer_info['primer_sequence']
                     ])
         return
 
