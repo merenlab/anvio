@@ -14,7 +14,6 @@ import anvio.fastalib as fastalib
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
-from anvio.genomestorage import GenomeStorage
 from anvio.genomedescriptions import GenomeDescriptions
 from anvio.tables.genefunctions import TableForGeneFunctions
 
@@ -41,7 +40,6 @@ class PanRepresenter:
         self.max_num_contigs = A('max_num_contigs')
         self.representative = A('representative')
 
-        self.storage = GenomeStorage(args.genomes_storage, run=self.rq, progress=self.pq)
         self.sanity_check()
         self.external_genomes = GenomeDescriptions(self.args)
         self.external_genomes.load_genomes_descriptions()
@@ -63,7 +61,7 @@ class PanRepresenter:
                     self.flat_lookup[(genome, gene_id)] = cluster
 
     def sanity_check(self):
-        if self.representative and self.representative not in self.storage.genome_names:
+        if self.representative and self.representative not in self.pan.genomes_storage.genome_names:
             raise ConfigError(f"The genome '{self.representative}' was provided as the representative "
                             f"but does not exist in the genomes storage.")
 
@@ -90,9 +88,9 @@ class PanRepresenter:
             The name of the most common genome.
         """
 
-        num_gene_clusters_missing_per_genome = {genome_name: 0 for genome_name in self.storage.genome_names}
+        num_gene_clusters_missing_per_genome = {genome_name: 0 for genome_name in self.pan.genomes_storage.genome_names}
 
-        for genome_name in self.storage.genome_names:
+        for genome_name in self.pan.genomes_storage.genome_names:
             for gene_cluster_name in self.all_clusters:
                 if gene_cluster_name not in self.genome_to_clusters[genome_name]:
                     num_gene_clusters_missing_per_genome[genome_name] += 1
@@ -117,7 +115,7 @@ class PanRepresenter:
         if self.representative:
             return self.representative
 
-        genomes_dict = self.storage.get_genomes_dict()
+        genomes_dict = self.pan.genomes_storage.get_genomes_dict()
         genomes = [
             {
                 "name": name,
@@ -197,7 +195,7 @@ class PanRepresenter:
             A dictionary where keys are contig names and values are lists of gene_ids sorted by genomic order.
         """
         contig_to_genes = defaultdict(list)
-        valid_gene_ids = set(self.storage.get_gene_caller_ids(genome))
+        valid_gene_ids = set(self.pan.genomes_storage.get_gene_caller_ids(genome))
         for gene_id, gene_info in contigs.genes_in_contigs_dict.items():
             if gene_id in valid_gene_ids:
                 contig_name = gene_info["contig"]
