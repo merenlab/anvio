@@ -44,39 +44,41 @@ def get_args():
     groupA.add_argument(*anvio.A("genomes-storage"), **anvio.K("genomes-storage", {'required': True}))
     groupA.add_argument(*anvio.A("pan-db"), **anvio.K("pan-db"))
 
-    groupB = parser.add_argument_group("SUPPLEMENTARY-CONTIG-OPTIONS", "All these options are related to the supplementary contig that will be added to the representative genome.")
-    groupB.add_argument("--gap-size", metavar='INT', default=20, type=int,
+    groupB = parser.add_argument_group("OUTPUT FILE", "Where do you want your newly generated contigs-db to go and "
+                                       "what do you want to call it?")
+    groupB.add_argument(*anvio.A("output-file"), required=True, **anvio.K("output-file"))
+
+    groupC = parser.add_argument_group("OPTIPONS FOR THE SUPPLEMENTARY CONTIG", "Options related to the supplementary contig "
+                                       "that will be added to the representative genome.")
+    groupC.add_argument("--gap-size", metavar='INT', default=100, type=int,
                         help="Number of N nucleotides to insert between sequences in the supplementary "
                              "contig. Default is %(default)s.")
-    groupB.add_argument("--alpha", metavar='FLOAT', default=0.8, type=float,
+    groupC.add_argument("--alpha", metavar='FLOAT', default=0.8, type=float,
                         help="Weight for scoring candidate representative genomes. Controls the balance "
                              "between completion/redundancy (alpha) and number of contigs (1 - alpha). "
                              "A value of 1.0 selects purely on completion/redundancy; 0.0 selects purely "
                              "on the fewest contigs. Default is %(default)s.")
-    groupB.add_argument("--representative", metavar='GENOME-NAME', type=str,
+    groupC.add_argument("--representative", metavar='GENOME-NAME', type=str,
                         help="Name of the genome to use as the representative. If not provided, anvi'o "
                              "will select one automatically based on completion, redundancy, and number "
                              "of contigs.")
-    groupB.add_argument("--max-num-contigs", metavar='INT', default=99999, type=int,
+    groupC.add_argument("--max-num-contigs", metavar='INT', default=99999, type=int,
                         help="Maximum number of contigs a genome may have to be considered as a "
                              "representative candidate. Genomes exceeding this threshold are excluded "
                              "from selection. Default is %(default)s.")
-    groupB.add_argument("--keep-synteny", action="store_true",
+    groupC.add_argument("--keep-synteny", action="store_true",
                         help="Preserve the original genomic order of genes when building the supplementary "
                              "contig. Consecutive gene stretches from donor genomes are extracted as "
                              "contiguous segments rather than concatenated individually.")
-    groupB.add_argument("--keep-promoter", action="store_true",
+    groupC.add_argument("--keep-promoter", action="store_true",
                         help="Include the intergenic region flanking each gene stretch in the supplementary "
                              "contig (from the previous gene stop to the next gene start). Implies "
                              "--keep-synteny.")
 
-    groupC = parser.add_argument_group("OUTPUT", "All these options are related to the contigs_db that will be generated.")
-    groupC.add_argument(*anvio.A("output-file"), required=True, **anvio.K("output-file"))
-    groupC.add_argument(*anvio.A("project-name"), **anvio.K("project-name"))
-    groupC.add_argument(*anvio.A("description"), **anvio.K("description"))
-    groupC.add_argument(*anvio.A("kmer-size"), **anvio.K("kmer-size"))
-    groupC.add_argument(*anvio.A("split-length"), **anvio.K("split-length"))
-    groupC.add_argument(*anvio.A("skip-mindful-splitting"), **anvio.K("skip-mindful-splitting"))
+    groupD = parser.add_argument_group("PARAMETERS OF CONVENIENCE", "You wouldn't have lost anyting if you had skipped ALLA these.")
+    groupD.add_argument(*anvio.A("project-name"), **anvio.K("project-name"))
+    groupD.add_argument(*anvio.A("description"), **anvio.K("description"))
+    groupD.add_argument(*anvio.A("skip-mindful-splitting"), **anvio.K("skip-mindful-splitting"))
 
     return parser.get_args(parser)
 
