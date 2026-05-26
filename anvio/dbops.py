@@ -5466,8 +5466,8 @@ class ContigsDatabase:
         db_variant = A('db_variant') or 'unknown'
         project_name = A('project_name')
         description_file_path = A('description')
-        split_length = A('split_length')
-        kmer_size = A('kmer_size')
+        split_length = A('split_length') or 20000
+        kmer_size = A('kmer_size') or 4
         skip_gene_calling = A('skip_gene_calling')
         external_gene_calls_file_path = A('external_gene_calls')
         skip_mindful_splitting = A('skip_mindful_splitting')
