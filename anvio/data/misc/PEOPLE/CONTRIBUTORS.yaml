@@ -281,3 +281,109 @@
     - title: PhD Student
       inst: Hawaiʻi Institute of Marine Biology, University of Hawaiʻi at Mānoa
       inst_link: https://www.himb.hawaii.edu/
+
+- github: guille0387
+  name: Guillermo Rangel-Pineros
+  avatar: guillermo_rangel.jpg
+  email: guillermo.pineros@sund.ku.dk
+  git_records:
+    - guillermo.pineros@sund.ku.dk
+  linkedin: guillermorangelp
+  orcid: 0000-0003-3848-4330
+  bio: "I am a microbiologist and bioinformatician interested in the development of computational workflows for the analysis of ancient microbial DNA"
+  affiliations:
+    - title: Staff Bioinformatician
+      inst: Centre for Ancient Environmental Genomics CAEG, University of Copenhagen
+      inst_link: https://globe.ku.dk/research/caeg/
+      current: true
+
+- github: mateumenendez
+  name: Mateu Menendez-Serra
+  email: mateu.menendez@gmail.com
+  git_records:
+    - mateu.menendez@sund.ku.dk
+  linkedin: mateumenendez
+  orcid: 0000-0003-0680-5304
+  twitter: menendezserra
+  avatar: bio_mateu.jpg
+  bio: "Computational ecologist integrating ancient environmental genomics, microbial ecology, and statistical modeling to reconstruct past ecosystems and study long-term ecosystem dynamics."
+  affiliations:
+    - title: Post-doctoral Researcher
+      inst: Centre for Ancient Environmental Genomics, The GLOBE Institute, University of Copenhagen
+      inst_link: https://globe.ku.dk/research/caeg/
+      current: true
+
+- github: yunso-bio
+  name: Yunjeong So
+  email: yunjeong.k.so@gmail.com
+  git_records:
+    - yunjeong.k.so@gmail.com
+  linkedin: linkedin.com/in/yunjeong-so
+  orcid: https://orcid.org/0000-0002-4310-012X
+  twitter: yunjeong_k_so
+  avatar: anvio-yunjeong.png
+  bio: "Microbiome researcher specialising in the functional analysis of modern and ancient microbial communities, using computational approaches to study microbial functions relevant to human health and the environment"
+  affiliations:
+    - title: Postdoctoral researcher
+      inst: GLOBE Institute, University of Copenhagen
+      current: true
+
+- github: elxerone
+  name: Eeva Eronen-Rasimus
+  email: eeva.eronen@gmail.com
+  git_records:
+    - eeva.eronen@gmail.com
+  orcid: 0000-0002-1749-0793
+  linkedin: https://www.linkedin.com/in/eeva-eronen-rasimus-4a920313b/
+  avatar: bio_eeva.jpg
+  bio: "Microbial ecologist interested in how bacteria survive in ice, their coupling with sea-ice algae and ultimately, their contribution to carbon cycling in the oceans and the consequences of diminishing sea ice for bacteria mediated processes."
+  affiliations:
+    - title: Senior Research Scientist
+      inst: Finnish Environment Institute
+      inst_link: https://www.syke.fi/en
+      current: true
+    - title: Associate professor in Microbial Ecology
+      inst: Department of Microbiology, University of Helsinki
+      inst_link: https://www.helsinki.fi/en/faculty-agriculture-and-forestry/research/disciplines/microbiology
+      current: true
+
+- github: AviHuene
+  name: Avril Hoyningen-Huene
+  avatar: avrilhoyningen.jpg
+  email: avril.hoyningen@hifmb.de
+  git_records:
+    - avril.hoyningen@hifmb.de
+  orcid: 0000-0002-1928-3560
+  linkedin: avril-von-hoyningen-huene
+  bio: "I am a microbial ecologist delving into the dynamics of phytoplankton functional changes in response to saesonal environmental changes."
+  affiliations:
+    - title: Post-doctoral Scientist
+      inst: Helmholtz Institute for Functional Marine Biodiversity
+      inst_link: https://hifmb.de
+      current: true
+    - title: Post-doctoral Scientist
+      inst: Institute for General Microbiology, Kiel University (CAU)
+      inst_link: https://www.mikrobio.uni-kiel.de/de
+      current: false
+    - title: Graduate Student
+      inst: General and Applied Microbiology, University of Göttingen
+      inst_link: http://appmibio.uni-goettingen.de/
+      current: false
+
+- github: u-xixi
+  name: Xi Chen (Xixi)
+  avatar: bio-xixi.jpg
+  email: xi.chen@hifmb.de
+  git_records:
+    - chenxi1251@gmail.com
+  orcid: 0009-0007-7692-9771
+  bio: "I am a bioinformatician and microbial ecologist. I enjoy tailoring computational methods to explore the diversity and dynamics of microbes. My current focus is on those that live in the ocean."
+  affiliations:
+    - title: Post-doctoral Scientist
+      inst: Helmholtz Institute for Functional Marine Biodiversity
+      inst_link: https://hifmb.de/
+      current: true
+    - title: PhD student
+      inst: University of Tübingen
+      inst_link: https://uni-tuebingen.de/
+      current: false
