@@ -40,6 +40,11 @@ class PanRepresenter:
         self.max_num_contigs = A('max_num_contigs')
         self.representative = A('representative')
 
+        # Check if output file is writeable .. we do it here rather than in sanity_check
+        # because we have to initialize the PanSuperclass before sanity check, which takes
+        # a long time and we don't want the user to wait for that before learning their
+        # output path is bad or output file already exists.
+        filesnpaths.is_output_file_writable(self.output_file, ok_if_exists=False)
         self.sanity_check()
         self.external_genomes = GenomeDescriptions(self.args)
         self.external_genomes.load_genomes_descriptions()
