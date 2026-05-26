@@ -1820,8 +1820,8 @@ class DGR_Finder:
         # report skipped bins if any
         if skipped_bins:
             self.run.warning(f"{PL('bin', len(skipped_bins))} skipped during BLAST: {', '.join(skipped_bins.keys())}. "
-                           "Use '--debug' to see detailed error messages.",
-                           header="BINS SKIPPED")
+                            "Use '--debug' to see detailed error messages.",
+                            header="BINS SKIPPED")
             if anvio.DEBUG:
                 for bin_name, error_msg in skipped_bins.items():
                     self.run.info_single(f"  {bin_name}: {error_msg}")
@@ -1878,7 +1878,7 @@ class DGR_Finder:
 
         if not self.rt_windows:
             self.run.warning("No RT windows found. Homology-based detection cannot proceed in collections mode.",
-                           header="NO RT WINDOWS")
+                            header="NO RT WINDOWS")
             return {}
 
         # Initialize results tracking
@@ -1898,14 +1898,14 @@ class DGR_Finder:
         num_bins_skipped = len(bin_contigs_dict) - len(bins_with_rt)
         if num_bins_skipped:
             self.run.info_single(f"Pre-filtered {num_bins_skipped} of {num_bins} bins with no RT windows. "
-                                 f"Processing {len(bins_with_rt)} bins.", nl_before=1)
+                                f"Processing {len(bins_with_rt)} bins.", nl_before=1)
 
         bin_contigs_dict = bins_with_rt
         num_bins = len(bin_contigs_dict)
 
         if num_bins == 0:
             self.run.warning("No bins contain contigs with RT windows. Homology-based detection found nothing.",
-                           header="NO BINS WITH RT WINDOWS")
+                            header="NO BINS WITH RT WINDOWS")
             return {}
 
         # === DECIDE: PARALLEL vs SEQUENTIAL ===
@@ -2040,7 +2040,7 @@ class DGR_Finder:
                 try:
                     # Filter contig sequences to this bin
                     bin_contig_sequences = {contig: contig_sequences[contig]
-                                           for contig in bin_contigs_list if contig in contig_sequences}
+                                            for contig in bin_contigs_list if contig in contig_sequences}
 
                     # Run homology mode BLAST for this bin
                     blast_output_path = self.run_blast_homology_mode(
@@ -2071,8 +2071,8 @@ class DGR_Finder:
         # Report skipped bins if any
         if skipped_bins:
             self.run.warning(f"{PL('bin', len(skipped_bins))} skipped during homology BLAST: {', '.join(skipped_bins.keys())}. "
-                           "Use '--debug' to see detailed error messages.",
-                           header="BINS SKIPPED (HOMOLOGY)")
+                            "Use '--debug' to see detailed error messages.",
+                            header="BINS SKIPPED (HOMOLOGY)")
             if anvio.DEBUG:
                 for bin_name, error_msg in skipped_bins.items():
                     self.run.info_single(f"  {bin_name}: {error_msg}")
@@ -2107,7 +2107,7 @@ class DGR_Finder:
             query_contigs = set(sid.split('_section', 1)[0] for sid in contig_records.keys())
             target_sequences = {name: seq for name, seq in contig_sequences.items() if name in query_contigs}
             self.run.info_single(f"Metagenome mode: reduced BLAST target from {len(contig_sequences):,} to {len(target_sequences):,} contigs "
-                                 f"(only contigs containing SNV clusters).", nl_before=1)
+                                f"(only contigs containing SNV clusters).", nl_before=1)
 
         self.blast_output = self.run_blast(contig_records, target_sequences, mode='activity')
 
