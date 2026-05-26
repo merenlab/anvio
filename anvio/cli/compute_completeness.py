@@ -46,9 +46,9 @@ def compute_completeness(args):
         if len(splits_of_interest) != len(splits_in_users_list):
             if not len(splits_of_interest):
                 run.warning('None of the split names you provided in %s matched split names in the database...' % args.splits_of_interest)
-                sys.exit()
+                sys.exit(1)
             else:
-                run.warning('Only %d of %d split names you listed in "%s" matched split names in the database...'\
+                run.warning('Only %d of %d split names you listed in "%s" matched split names in the database...'
                                                 % (len(splits_of_interest), len(splits_in_users_list), args.splits_of_interest))
     else:
         splits_of_interest = splits_in_db

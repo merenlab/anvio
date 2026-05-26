@@ -105,11 +105,11 @@ class ProcessAlleleCounts:
                                    has %d positions, but sequence has %d." % (key, len(self.d[key]), len(sequence)))
 
         if len(sequence) != allele_counts.shape[1]:
-            raise ConfigError("ProcessAlleleCounts :: allele_counts has %d positions, but sequence has %d." \
+            raise ConfigError("ProcessAlleleCounts :: allele_counts has %d positions, but sequence has %d."
                               % (len(sequence), allele_counts.shape[1]))
 
         if len(allele_to_array_index) != allele_counts.shape[0]:
-            raise ConfigError("ProcessAlleleCounts :: allele_counts has %d rows, but the allele_to_array_index dictionary has %d." \
+            raise ConfigError("ProcessAlleleCounts :: allele_counts has %d rows, but the allele_to_array_index dictionary has %d."
                               % (allele_counts.shape[0], len(allele_to_array_index)))
 
         self.min_coverage_for_variability = min_coverage_for_variability

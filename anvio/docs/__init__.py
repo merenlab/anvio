@@ -69,6 +69,22 @@ ANVIO_WORKFLOWS = {
             "using a user-defined [HMM](https://anvio.org/vocabulary/#hidden-markov-models-hmms), and offers an integrated access "
             "to the phylogenetics of matching genes, and their distribution across environments.")
     },
+    "phylogenomics": {
+        "authors": ['Kekananen'],
+        "artifacts_produced": ['phylogeny'],
+        "artifacts_accepted": ['internal-genomes', 'external-genomes'],
+        "anvio_workflows_inherited": ['contigs'],
+        "third_party_programs_used": [
+            ('Trim multiple sequence alignment', ['trimal']),
+            ('Calculate phylogenetic tree', ['IQ-TREE']),
+            ],
+        "one_sentence_summary": "Infer a phylogeny from homologous protein sequences",
+        "one_paragraph_summary": ("This workflow is for users who want to infer a phylogeny from homologous protein "
+            "sequences extracted from anvi'o genome inputs. It uses the contigs workflow to prepare the underlying "
+            "contigs databases, retrieves single-copy core genes or other HMM hits from those genomes, aligns the "
+            "sequences, trims the alignment, and generates a phylogenetic tree that can be used downstream as a "
+            "phylogeny artifact.")
+    },
     "trnaseq": {
         "authors": ['semiller10'],
         "artifacts_accepted": ['samples-txt'],
@@ -136,6 +152,12 @@ THIRD_PARTY_PROGRAMS = {
 ANVIO_ARTIFACTS ={
     "pan-db": {
         "name": "PAN",
+        "type": "DB",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "pan-graph-db": {
+        "name": "PAN GRAPH",
         "type": "DB",
         "provided_by_anvio": True,
         "provided_by_user": False
@@ -398,6 +420,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": False,
         "provided_by_user": True
     },
+    "kofam-accession": {
+        "name": "KOFAM ACCESSION",
+        "type": "TXT",
+        "provided_by_anvio": False,
+        "provided_by_user": True
+    },
     "hmm-file": {
         "name": "HMM MODEL FILE",
         "type": "TXT",
@@ -424,6 +452,12 @@ ANVIO_ARTIFACTS ={
     },
     "cogs-data": {
         "name": "COGs DATA",
+        "type": "DATA",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "globdb-data": {
+        "name": "GLOBDB DATA",
         "type": "DATA",
         "provided_by_anvio": True,
         "provided_by_user": False
@@ -800,6 +834,12 @@ ANVIO_ARTIFACTS ={
         "provided_by_anvio": True,
         "provided_by_user": False
     },
+    "trna-gene-hits": {
+        "name": "TRNA GENE HITS",
+        "type": "CONCEPT",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
     "trnaseq-plot": {
         "name": "TRNASEQ PLOT",
         "type": "DISPLAY",
@@ -808,6 +848,24 @@ ANVIO_ARTIFACTS ={
     },
     "summary": {
         "name": "STATIC SUMMARY",
+        "type": "SUMMARY",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "pan-summary": {
+        "name": "PAN SUMMARY",
+        "type": "SUMMARY",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "pan-graph-summary": {
+        "name": "PAN GRAPH SUMMARY",
+        "type": "SUMMARY",
+        "provided_by_anvio": True,
+        "provided_by_user": False
+    },
+    "profile-summary": {
+        "name": "PROFILE SUMMARY",
         "type": "SUMMARY",
         "provided_by_anvio": True,
         "provided_by_user": False

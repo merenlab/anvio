@@ -56,6 +56,71 @@ var curr_height;
 var show_cags_in_split = true;
 var thresh_count_gene_colors = 1;
 var order_gene_colors_by_count = true;
+var indel_sequences = {};
+var indel_sequence_counter = 0;
+var indel_sequence_preview_length = 60;
+
+
+function escape_html(value) {
+  return String(value).replace(/[&<>"']/g, function(character) {
+    return {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    }[character];
+  });
+}
+
+
+function get_indel_sequence_key(indel) {
+  indel_sequence_counter += 1;
+  return 'indel_sequence_' + indel_sequence_counter;
+}
+
+
+function show_indel_sequence(sequence_key) {
+  show_sequence_modal('INDEL Sequence', indel_sequences[sequence_key]);
+}
+
+
+function get_indel_sequence_cell_html(indel) {
+  var sequence = indel['sequence'] || '';
+
+  if(sequence.length <= indel_sequence_preview_length) {
+    return '<code style="white-space: normal; word-break: break-all; color: inherit;">' + escape_html(sequence) + '</code>';
+  }
+
+  var sequence_key = get_indel_sequence_key(indel);
+  var sequence_header = '>' + indel['type'] + '_pos_' + indel['pos'] + '_contig_pos_' + indel['pos_in_contig'] + '_length_' + indel['length'];
+  indel_sequences[sequence_key] = sequence_header + '\n' + sequence;
+
+  return '<a href="#" onclick="show_indel_sequence(\'' + sequence_key + '\'); return false;">' +
+         '<code style="white-space: normal; word-break: break-all; color: inherit;">' + escape_html(sequence.substring(0, indel_sequence_preview_length)) + '[...]</code>' +
+         '</a>';
+}
+
+
+function get_indel_popover_html(indel) {
+  var type = (indel['type'] == 'INS') ? 'Insertion' : 'Deletion';
+
+  return '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span> \
+          <h3>' + type + '</h3> \
+          <table class="table table-striped" style="width: 100%; text-align: left; font-size: 12px;"> \
+              <tr><td>Position in split</td><td>' + indel['pos'] +'</td></tr> \
+              <tr><td>Position in contig</td><td>' + indel['pos_in_contig'] +'</td></tr> \
+              <tr><td>Reference</td><td>' + escape_html(indel['reference']) +'</td></tr> \
+              <tr><td>Sequence</td><td>' + get_indel_sequence_cell_html(indel) +'</td></tr> \
+              <tr><td>Type</td><td>' + type +'</td></tr> \
+              <tr><td>Length</td><td>' + indel['length'] +'</td></tr> \
+              <tr><td>Count</td><td>' + indel['count'] +'</td></tr> \
+              <tr><td>Corresponding gene call</td><td>' + ((indel['corresponding_gene_call'] == -1) ? 'No gene or in partial gene': indel['corresponding_gene_call']) +'</td></tr> \
+              <tr><td>Codon order in gene</td><td>' + ((indel['codon_order_in_gene'] == -1) ? 'No gene or in noncoding gene': indel['codon_order_in_gene']) +'</td></tr> \
+              <tr><td>Base position in codon</td><td>' + ((indel['base_pos_in_codon'] == 0) ? 'No gene or in noncoding gene': indel['base_pos_in_codon']) +'</td></tr> \
+              <tr><td>Coverage</td><td>' + indel['coverage'] +'</td></tr> \
+          </table>';
+}
 
 function loadAll() {
     info("Initiated");
@@ -230,8 +295,10 @@ function loadAll() {
                 geneParser = new GeneParser(genes);
 
                 if(!state['highlight-genes']) state['highlight-genes'] = {};
-                state['large-indel'] = 10;
-                $("#largeIndelInput").val(state['large-indel']);
+                if(state['show_insertion_size_whiskers'] == null) state['show_insertion_size_whiskers'] = true;
+                if(state['min-insertion-length-whisker'] == null) state['min-insertion-length-whisker'] = 50;
+                $("#toggle_insertion_size_whiskers_box").attr("checked", state['show_insertion_size_whiskers']);
+                $("#minInsertionLengthWhiskerInput").val(state['min-insertion-length-whisker']);
                 state['min-indel-coverage'] = 0;
                 //$("#minIndelInput").val(state['min-indel-coverage']);
 
@@ -439,12 +506,13 @@ function loadAll() {
                   }
                 });
 
-                $('#largeIndelInput').on('keydown', function(e) {
+                $('#minInsertionLengthWhiskerInput').on('keydown', function(e) {
                   if(e.keyCode == 13) { // 13 = enter key
-                    if($(this).val() < 1 || $(this).val() > 9999) {
-                      alert("Invalid value, value needs to be in range 1-9999");
+                    if($(this).val() < 0 || $(this).val() > 999999) {
+                      alert("Invalid value, value needs to be in range 0-999999");
                     } else {
-                      state['large-indel'] = $(this).val();
+                      state['min-insertion-length-whisker'] = $(this).val();
+                      createCharts(state);
                       $(this).blur();
                     }
                   }
@@ -482,6 +550,16 @@ function loadAll() {
                           },
                       });
                   if($('div.indels-disabled').length > 0) $('div.indels-disabled').remove();
+                });
+                $('#toggle_insertion_size_whiskers_box').on('change', function() {
+                  waitingDialog.show('Drawing ...',
+                      {
+                          dialogSize: 'sm',
+                          onShow: function() {
+                              toggleInsertionSizeWhiskers();
+                              waitingDialog.hide();
+                          },
+                      });
                 });
                 $('#snv_scale_box').on('change', function() {
                   waitingDialog.show('Drawing ...',
@@ -720,6 +798,12 @@ function toggleSNVs() {
 function toggleIndels() {
   console.log("Toggling indel markers (" + Math.round(Date.now()/1000) + ")");
   state['show_indels'] = !state['show_indels'];
+  createCharts(state);
+}
+
+function toggleInsertionSizeWhiskers() {
+  console.log("Toggling insertion size whiskers (" + Math.round(Date.now()/1000) + ")");
+  state['show_insertion_size_whiskers'] = !state['show_insertion_size_whiskers'];
   createCharts(state);
 }
 
@@ -1525,9 +1609,11 @@ function processState(state_name, state) {
     redrawArrows();
 
     if(state['show_indels']) {
-      if(!state.hasOwnProperty('large-indel')) state['large-indel'] = 10;
-      if(!state.hasOwnProperty('min-indel-coverage')) state['large-indel'] = 0;
-      $('#largeIndelInput').val(20);
+      if(!state.hasOwnProperty('min-indel-coverage')) state['min-indel-coverage'] = 0;
+      if(!state.hasOwnProperty('show_insertion_size_whiskers')) state['show_insertion_size_whiskers'] = true;
+      if(!state.hasOwnProperty('min-insertion-length-whisker')) state['min-insertion-length-whisker'] = 50;
+      $('#toggle_insertion_size_whiskers_box').attr("checked", state['show_insertion_size_whiskers']);
+      $('#minInsertionLengthWhiskerInput').val(state['min-insertion-length-whisker']);
       //$('#minIndelInput').val(0);
     }
 
@@ -1569,7 +1655,8 @@ function serializeSettings() {
       });
     }
 
-    state['large-indel'] = $("#largeIndelInput").val();
+    state['show_insertion_size_whiskers'] = $("#toggle_insertion_size_whiskers_box").is(":checked");
+    state['min-insertion-length-whisker'] = $("#minInsertionLengthWhiskerInput").val();
     //state['min-indel-coverage'] = $("#minIndelInput").val();
 
     return state;
@@ -1579,6 +1666,8 @@ function createCharts(state){
     /* Adapted from Tyler Craft's Multiple area charts with D3.js article:
     http://tympanus.net/codrops/2012/08/29/multiple-area-charts-with-d3-js/  */
     $('#chart-container, #context-container, #highlight-boxes, #sample-titles').empty();
+    indel_sequences = {};
+    indel_sequence_counter = 0;
 
     if (state['current-view'] == "single"){
         // if we are working with a non-merged single profile, we need to do some ugly hacks here,
@@ -1931,9 +2020,12 @@ function Chart(options){
 
     var xS = this.xScale;
     var yS = this.yScale;
+    var chart_width = this.width;
     var ySL_SNV = state['snv_scale_bottom'] ?  this.yScaleLine : yScaleLineReverse;
     var ySL_indel = state['snv_scale_bottom'] ? yScaleLineReverse : this.yScaleLine;
+    var ySL_axis = (state['show_indels'] && !state['show_snvs']) ? ySL_indel : (state['snv_scale_dir_up'] ? this.yScaleLine : yScaleLineReverse);
     var yGC = this.yScaleGC;
+    this.ySL_indel = ySL_indel;
 
     this.area = d3.svg.area()
                             .x(function(d, i) { return xS(1+i); })
@@ -1972,6 +2064,10 @@ function Chart(options){
     this.textContainer = this.snv_svg.append("g")
                         .attr('class',this.name.toLowerCase())
                         .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
+
+    this.insertionWhiskerContainer = this.snv_svg.append("g")
+                              .attr('class',this.name.toLowerCase())
+                              .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
 
     this.textContainerIndels = this.snv_svg.append("g")
                               .attr('class',this.name.toLowerCase())
@@ -2100,21 +2196,7 @@ function Chart(options){
         if(this.indel_coverage[obj.value['pos']] != 0) {
           this.indel_coverage[obj.value['pos']] += (obj.value['count']/obj.value['coverage']);
 
-          var new_table = '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span> \
-                  <h3>' + ((obj.value['type'] == 'INS') ? 'Insertion' : 'Deletion') + '</h3> \
-                  <table class="table table-striped" style="width: 100%; text-align: center; font-size: 12px;"> \
-                      <tr><td>Position in split</td><td>' + obj.value['pos'] +'</td></tr> \
-                      <tr><td>Position in contig</td><td>' + obj.value['pos_in_contig'] +'</td></tr> \
-                      <tr><td>Reference</td><td>' + obj.value['reference'] +'</td></tr> \
-                      <tr><td>Sequence</td><td>' + obj.value['sequence'] +'</td></tr> \
-                      <tr><td>Type</td><td>' + ((obj.value['type'] == 'INS') ? 'Insertion' : 'Deletion') +'</td></tr> \
-                      <tr><td>Length</td><td>' + obj.value['length'] +'</td></tr> \
-                      <tr><td>Count</td><td>' + obj.value['count'] +'</td></tr> \
-                      <tr><td>Corresponding gene call</td><td>' + ((obj.value['corresponding_gene_call'] == -1) ? 'No gene or in partial gene': obj.value['corresponding_gene_call']) +'</td></tr> \
-                      <tr><td>Codon order in gene</td><td>' + ((obj.value['codon_order_in_gene'] == -1) ? 'No gene or in noncoding gene': obj.value['codon_order_in_gene']) +'</td></tr> \
-                      <tr><td>Base position in codon</td><td>' + ((obj.value['base_pos_in_codon'] == 0) ? 'No gene or in noncoding gene': obj.value['base_pos_in_codon']) +'</td></tr> \
-                      <tr><td>Coverage</td><td>' + obj.value['coverage'] +'</td></tr> \
-                  </table>';
+          var new_table = get_indel_popover_html(obj.value);
 
           if(mult_indels[obj.value['pos']]) {
             mult_indels[obj.value['pos']][0]++;
@@ -2123,21 +2205,7 @@ function Chart(options){
           } else {
             var initialKey = Object.keys(this.indels).find(key => this.indels[key]['pos'] === obj.value['pos']);
             var init_indel = this.indels[initialKey];
-            init_table = '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span> \
-                    <h3>' + ((init_indel['type'] == 'INS') ? 'Insertion' : 'Deletion') + '</h3> \
-                    <table class="table table-striped" style="width: 100%; text-align: center; font-size: 12px;"> \
-                        <tr><td>Position in split</td><td>' + init_indel['pos'] +'</td></tr> \
-                        <tr><td>Position in contig</td><td>' + init_indel['pos_in_contig'] +'</td></tr> \
-                        <tr><td>Reference</td><td>' + init_indel['reference'] +'</td></tr> \
-                        <tr><td>Sequence</td><td>' + init_indel['sequence'] +'</td></tr> \
-                        <tr><td>Type</td><td>' + ((init_indel['type'] == 'INS') ? 'Insertion' : 'Deletion') +'</td></tr> \
-                        <tr><td>Length</td><td>' + init_indel['length'] +'</td></tr> \
-                        <tr><td>Count</td><td>' + init_indel['count'] +'</td></tr> \
-                        <tr><td>Corresponding gene call</td><td>' + ((init_indel['corresponding_gene_call'] == -1) ? 'No gene or in partial gene': init_indel['corresponding_gene_call']) +'</td></tr> \
-                        <tr><td>Codon order in gene</td><td>' + ((init_indel['codon_order_in_gene'] == -1) ? 'No gene or in noncoding gene': init_indel['codon_order_in_gene']) +'</td></tr> \
-                        <tr><td>Base position in codon</td><td>' + ((init_indel['base_pos_in_codon'] == 0) ? 'No gene or in noncoding gene': init_indel['base_pos_in_codon']) +'</td></tr> \
-                        <tr><td>Coverage</td><td>' + init_indel['coverage'] +'</td></tr> \
-                    </table>';
+            init_table = get_indel_popover_html(init_indel);
 
             mult_indels[obj.value['pos']] = [];
             mult_indels[obj.value['pos']][0] = 2;
@@ -2154,12 +2222,44 @@ function Chart(options){
         this.indel_coverage[pos] = this.indel_coverage[pos] / mult_indels[pos][0];
       }
 
-      this.lineContainer.append("path")
-          .data([this.indel_coverage])
-          .attr("class", "reverseLine")
-          .attr("name", "indel_1")
-          .style("fill", '#800080')
-          .attr("d", this.line);
+      var indel_stems = d3.entries(this.indels);
+
+      this.insertionWhiskerContainer.selectAll(".insertion_size_whisker_stem")
+                                .data(indel_stems)
+                                .enter()
+                                .append("line")
+                                .attr("class", "insertion_size_whisker_stem")
+                                .attr("x1", function (d) { return xS(0.5+d.value['pos']); })
+                                .attr("x2", function (d) { return xS(0.5+d.value['pos']); })
+                                .attr("y1", function (d) { return ySL_indel(0); })
+                                .attr("y2", function (d) { return ySL_indel(Math.min(d.value['count']/d.value['coverage'], 1)); })
+                                .attr("stroke", "#4b0055")
+                                .attr("stroke-width", "1")
+                                .attr("stroke-opacity", "0.85")
+                                .attr("pointer-events", "none");
+
+      if(state['show_insertion_size_whiskers']) {
+        var min_insertion_length_whisker = parseInt(state['min-insertion-length-whisker']);
+        if(isNaN(min_insertion_length_whisker) || min_insertion_length_whisker < 0) min_insertion_length_whisker = 50;
+
+        var insertion_size_whiskers = d3.entries(this.indels).filter(function(d) {
+          return d.value['type'] == 'INS' && d.value['length'] >= min_insertion_length_whisker;
+        });
+
+        this.insertionWhiskerContainer.selectAll(".insertion_size_whisker_cap")
+                                  .data(insertion_size_whiskers)
+                                  .enter()
+                                  .append("line")
+                                  .attr("class", "insertion_size_whisker_cap")
+                                  .attr("x1", function (d) { return Math.max(0, Math.min(chart_width, xS(0.5+d.value['pos']-(d.value['length']/2)))); })
+                                  .attr("x2", function (d) { return Math.max(0, Math.min(chart_width, xS(0.5+d.value['pos']+(d.value['length']/2)))); })
+                                  .attr("y1", function (d) { return ySL_indel(Math.min(d.value['count']/d.value['coverage'], 1)); })
+                                  .attr("y2", function (d) { return ySL_indel(Math.min(d.value['count']/d.value['coverage'], 1)); })
+                                  .attr("stroke", "#4b0055")
+                                  .attr("stroke-width", "1")
+                                  .attr("stroke-opacity", "0.85")
+                                  .attr("pointer-events", "none");
+      }
 
       // add text to text container based on type, and data-content based on other variables
       info("Drawing indel markers");
@@ -2173,27 +2273,13 @@ function Chart(options){
                               .attr("y", function (d) { return ySL_indel(0); })
                               .attr("font-size", "14px")
                               .attr("style", "cursor:pointer;")
-                              .attr("fill", function(d) { return (((d.value['pos'] in mult_indels ? mult_indels[d.value['pos']][2] : d.value['length']) > state['large-indel']) ? 'red' : '#CCCC00'); })
+                              .attr("fill", "#CCCC00")
                               .attr('data-content', function(d) {
                                   if(d.value['pos'] in mult_indels) {
                                     return mult_indels[d.value['pos']][1];
                                   }
 
-                                  return '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span> \
-                                          <h3>' + ((d.value['type'] == 'INS') ? 'Insertion' : 'Deletion') + '</h3> \
-                                          <table class="table table-striped" style="width: 100%; text-align: center; font-size: 12px;"> \
-                                              <tr><td>Position in split</td><td>' + d.value['pos'] +'</td></tr> \
-                                              <tr><td>Position in contig</td><td>' + d.value['pos_in_contig'] +'</td></tr> \
-                                              <tr><td>Reference</td><td>' + d.value['reference'] +'</td></tr> \
-                                              <tr><td>Sequence</td><td>' + d.value['sequence'] +'</td></tr> \
-                                              <tr><td>Type</td><td>' + ((d.value['type'] == 'INS') ? 'Insertion' : 'Deletion') +'</td></tr> \
-                                              <tr><td>Length</td><td>' + d.value['length'] +'</td></tr> \
-                                              <tr><td>Count</td><td>' + d.value['count'] +'</td></tr> \
-                                              <tr><td>Corresponding gene call</td><td>' + ((d.value['corresponding_gene_call'] == -1) ? 'No gene or in partial gene': d.value['corresponding_gene_call']) +'</td></tr> \
-                                              <tr><td>Codon order in gene</td><td>' + ((d.value['codon_order_in_gene'] == -1) ? 'No gene or in noncoding gene': d.value['codon_order_in_gene']) +'</td></tr> \
-                                              <tr><td>Base position in codon</td><td>' + ((d.value['base_pos_in_codon'] == 0) ? 'No gene or in noncoding gene': d.value['base_pos_in_codon']) +'</td></tr> \
-                                              <tr><td>Coverage</td><td>' + d.value['coverage'] +'</td></tr> \
-                                          </table>';
+                                  return get_indel_popover_html(d.value);
                               })
                               .attr('data-toggle', 'popover')
                               .text(function (d) {
@@ -2215,7 +2301,7 @@ function Chart(options){
 
 
     this.yAxis = d3.svg.axis().scale(this.yScale).orient("left").ticks(5);
-    this.yAxisLine = d3.svg.axis().scale(state['snv_scale_dir_up'] ? this.yScaleLine : yScaleLineReverse).orient("right").ticks(5);
+    this.yAxisLine = d3.svg.axis().scale(ySL_axis).orient("right").ticks(5);
 
     this.chartContainer.append("g")
                    .attr("class", "y axis noselect")
@@ -2237,15 +2323,26 @@ function Chart(options){
 
 Chart.prototype.showOnly = function(b){
     this.xScale.domain(b); var xS = this.xScale;
+    var chart_width = this.width;
+    var ySL_indel = this.ySL_indel;
     this.chartContainer.selectAll("path").data([this.coverage]).attr("d", this.area);
     this.gcContainer.selectAll("path").data([this.gc_content]).attr("d", this.gc_line);
     this.lineContainer.select("[name=outside_gene]").data([this.variability_a]).attr("d", this.reverseLine);
     this.lineContainer.select("[name=first_pos]").data([this.variability_b]).attr("d", this.reverseLine);
     this.lineContainer.select("[name=second_pos]").data([this.variability_c]).attr("d", this.reverseLine);
     this.lineContainer.select("[name=third_pos]").data([this.variability_d]).attr("d", this.reverseLine);
-    if(indels_enabled) this.lineContainer.select("[name=indel_1]").data([this.indel_coverage]).attr("d", this.line);
     this.textContainer.selectAll(".SNV_text").data(d3.entries(this.competing_nucleotides)).attr("x", function (d) { return xS(0.5+parseInt(d.key)); });
     this.textContainerIndels.selectAll(".indels_text").data(d3.entries(this.indels)).attr("x", function (d) { return xS(0.5+d.value['pos']); });
+    this.insertionWhiskerContainer.selectAll(".insertion_size_whisker_stem")
+                                  .attr("x1", function (d) { return xS(0.5+d.value['pos']); })
+                                  .attr("x2", function (d) { return xS(0.5+d.value['pos']); })
+                                  .attr("y1", function (d) { return ySL_indel(0); })
+                                  .attr("y2", function (d) { return ySL_indel(Math.min(d.value['count']/d.value['coverage'], 1)); });
+    this.insertionWhiskerContainer.selectAll(".insertion_size_whisker_cap")
+                                  .attr("x1", function (d) { return Math.max(0, Math.min(chart_width, xS(0.5+d.value['pos']-(d.value['length']/2)))); })
+                                  .attr("x2", function (d) { return Math.max(0, Math.min(chart_width, xS(0.5+d.value['pos']+(d.value['length']/2)))); })
+                                  .attr("y1", function (d) { return ySL_indel(Math.min(d.value['count']/d.value['coverage'], 1)); })
+                                  .attr("y2", function (d) { return ySL_indel(Math.min(d.value['count']/d.value['coverage'], 1)); });
 
     let numNucl = $('#brush_end').val()-$('#brush_start').val();
     let mk_font_size = 2000/numNucl;

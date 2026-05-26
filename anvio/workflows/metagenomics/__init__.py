@@ -53,15 +53,15 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         # initialize the base class
         ContigsDBWorkflow.__init__(self)
 
-        self.rules.extend(['iu_gen_configs', 'iu_filter_quality_minoche', 'gen_qc_report', 'gzip_fastqs',\
-                     'merge_fastqs_for_co_assembly', 'megahit', 'merge_fastas_for_co_assembly',\
-                     'bowtie_build', 'bowtie', 'samtools_view', 'anvi_init_bam', 'idba_ud',\
-                     'anvi_profile', 'anvi_merge', 'import_percent_of_reads_mapped', 'anvi_cluster_contigs',\
-                     'krakenuniq', 'krakenuniq_mpa_report', 'import_krakenuniq_taxonomy', 'metaspades',\
-                     'flye', 'minimap2_index', 'minimap2',\
+        self.rules.extend(['iu_gen_configs', 'iu_filter_quality_minoche', 'gen_qc_report', 'gzip_fastqs',
+                     'merge_fastqs_for_co_assembly', 'megahit', 'merge_fastas_for_co_assembly',
+                     'bowtie_build', 'bowtie', 'samtools_view', 'anvi_init_bam', 'idba_ud',
+                     'anvi_profile', 'anvi_merge', 'import_percent_of_reads_mapped', 'anvi_cluster_contigs',
+                     'krakenuniq', 'krakenuniq_mpa_report', 'import_krakenuniq_taxonomy', 'metaspades',
+                     'flye', 'minimap2_index', 'minimap2',
                      'remove_short_reads_based_on_references', 'anvi_summarize', 'anvi_split'])
 
-        self.general_params.extend(['samples_txt', "references_mode", "all_against_all",\
+        self.general_params.extend(['samples_txt', "references_mode", "all_against_all",
                                     "kraken_txt", "collections_txt", "read_type_suffix"])
 
         rule_acceptable_params_dict = {}
@@ -119,8 +119,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         rule_acceptable_params_dict['import_percent_of_reads_mapped'] = ["run"]
         rule_acceptable_params_dict['krakenuniq'] = ["additional_params", "run", "--db", "--gzip-compressed"]
         rule_acceptable_params_dict['import_krakenuniq_taxonomy'] = ["--min-abundance"]
-        rule_acceptable_params_dict['remove_short_reads_based_on_references'] = ["dont_remove_just_map", \
-                                                                                 "references_for_removal_txt", \
+        rule_acceptable_params_dict['remove_short_reads_based_on_references'] = ["dont_remove_just_map",
+                                                                                 "references_for_removal_txt",
                                                                                  "delimiter-for-iu-remove-ids-from-fastq"]
 
         self.rule_acceptable_params_dict.update(rule_acceptable_params_dict)
@@ -236,7 +236,7 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         if len(self.sample_names) < 1:
             raise ConfigError("No samples found in samples.txt")
 
-        self.references_for_removal_txt = self.get_param_value_from_config(['remove_short_reads_based_on_references',\
+        self.references_for_removal_txt = self.get_param_value_from_config(['remove_short_reads_based_on_references',
                                                                             'references_for_removal_txt'])
         if self.references_for_removal_txt:
             self.load_references_for_removal()
@@ -284,12 +284,12 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
         target_files.extend(list(self.profile_databases.values()))
 
         # for groups of size 1 we create a message file
-        message_file_for_groups_of_size_1 = [os.path.join(self.dirs_dict["MERGE_DIR"], g, "README.txt") \
+        message_file_for_groups_of_size_1 = [os.path.join(self.dirs_dict["MERGE_DIR"], g, "README.txt")
                             for g in self.group_names if self.group_sizes[g] == 1]
         target_files.extend(message_file_for_groups_of_size_1)
 
 
-        contigs_annotated = [os.path.join(self.dirs_dict["CONTIGS_DIR"],\
+        contigs_annotated = [os.path.join(self.dirs_dict["CONTIGS_DIR"],
                              g + "-steps", "annotate_contigs_database.done") for g in self.group_names]
         target_files.extend(contigs_annotated)
 
@@ -310,8 +310,8 @@ class MetagenomicsWorkflow(ContigsDBWorkflow, WorkflowSuperClass):
             target_files.extend(summary)
 
         if self.run_split:
-            split = [os.path.join(self.dirs_dict["SPLIT_PROFILES_DIR"],\
-                                  g + "-split.done")\
+            split = [os.path.join(self.dirs_dict["SPLIT_PROFILES_DIR"],
+                                  g + "-split.done")
                                   for g in self.collections.keys() if not 'default_collection' in self.collections[g]]
             target_files.extend(split)
 

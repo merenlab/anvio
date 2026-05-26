@@ -53,7 +53,7 @@ class TablesForCollections(Table):
             database._exec('''DELETE FROM %s WHERE collection_name = "%s" AND \
                                                    bin_name = "%s"''' % (table_name, collection_name, bin_name))
 
-        self.run.warning('All previous entries for "%s" of "%s" is being removed from "%s"'\
+        self.run.warning('All previous entries for "%s" of "%s" is being removed from "%s"'
                     % (bin_name,collection_name, ', '.join(tables_to_clear)))
 
         database.disconnect()
@@ -94,9 +94,9 @@ class TablesForCollections(Table):
 
         if bins_info_dict:
             if set(collection_dict.keys()) - set(bins_info_dict.keys()):
-                raise ConfigError(f"Bins in the collection dict do not match to the ones in the bins info dict. "
-                                  f"They do not have to be identical, but for each bin id, there must be a unique "
-                                  f"entry in the bins informaiton dict. There is something wrong with your input :/")
+                raise ConfigError("Bins in the collection dict do not match to the ones in the bins info dict. "
+                                  "They do not have to be identical, but for each bin id, there must be a unique "
+                                  "entry in the bins informaiton dict. There is something wrong with your input :/")
 
         if drop_collection:
             # remove any pre-existing information for 'collection_name'
@@ -152,7 +152,7 @@ class TablesForCollections(Table):
 
             if len(splits_only_in_db):
                 self.run.warning('%d of %d items found in the database were missing from the "%s" results. If this '
-                                         'does not make any sense, please make sure you know why before going any further.'\
+                                         'does not make any sense, please make sure you know why before going any further.'
                                                 % (len(splits_only_in_db), len(self.splits_info), collection_name))
 
             # then populate contigs table.
@@ -219,7 +219,7 @@ class TablesForCollections(Table):
                         "item in your database. This is likely a very bad idea, but anvi'o trusts that you know what you are "
                         "doing.")
 
-        utils.is_pan_or_profile_db(self.db_path)
+        utils.is_pan_or_profile_db(self.db_path, pan_graph_db_is_also_accepted=True)
 
         if utils.get_db_type(self.db_path) == 'profile' and utils.is_blank_profile(self.db_path):
             if not contigs_db_path:

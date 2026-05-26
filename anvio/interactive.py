@@ -33,7 +33,8 @@ from anvio.tables.collections import TablesForCollections
 from anvio.metabolism.estimate import KeggMetabolismEstimator
 from anvio.errors import ConfigError, RefineError, GenesDBError
 from anvio.clusteringconfuguration import ClusteringConfiguration
-from anvio.dbops import ProfileSuperclass, ContigsSuperclass, PanSuperclass, TablesForStates, ProfileDatabase
+
+from anvio.dbops import ProfileSuperclass, ContigsSuperclass, PanSuperclass, PanGraphSuperclass, TablesForStates, ProfileDatabase
 from anvio.tables.miscdata import TableForItemAdditionalData, TableForLayerAdditionalData
 from anvio.tables.miscdata import TableForLayerOrders, TableForAminoAcidAdditionalData
 
@@ -535,8 +536,8 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         contig_name_to_splits_dict = utils.get_contig_name_to_splits_dict(self.contigs_db_path)
 
         # get a list of contig names based on their lengths
-        contig_names_sorted_by_length = [tpl[0] \
-                for tpl in sorted([(k, self.contigs_basic_info[k]['length']) \
+        contig_names_sorted_by_length = [tpl[0]
+                for tpl in sorted([(k, self.contigs_basic_info[k]['length'])
                 for k in self.contigs_basic_info], key = lambda x: x[1], reverse=True)]
 
         split_names = set(self.displayed_item_names_ordered)
@@ -951,7 +952,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
         # do a good old args switcheroo from the old hacker's guide to the galaxy, and prevent any
         # unexpected outcomes for young padawans.
         args_without_profile_db = copy.deepcopy(self.args); args_without_profile_db.profile_db = None
-        single_genome_codon_usage = codonusage.SingleGenomeCodonUsage(args_without_profile_db, run=terminal.Run(verbose=False))
+        single_genome_codon_usage = codonusage.SingleGenomeCodonUsage(args_without_profile_db, r=terminal.Run(verbose=False))
 
         ###################################################################
         # collecting some key data to build our interactive objects
@@ -1762,7 +1763,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
                              "this step. Another way to do it is the good ol' way of ignoring these warnings as you usually "
                              "do. If you do the latter, you will probably be fine. But we wanted to keep you in the loop "
                              "just in case you are not fine and the code does not realize that yet. The sources for gene "
-                             "calls that will not be included in your gene view include these ones: '%s'." % \
+                             "calls that will not be included in your gene view include these ones: '%s'." %
                                     (len(gene_caller_ids_missing_in_gene_level_cov_stats_dict),
                                      ', '.join(gene_caller_sources_for_missing_gene_caller_ids_in_gene_level_cov_stats_dict)))
 
@@ -1922,7 +1923,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
             raise ConfigError("There are some split names in your additional view data file ('%s') that are missing from "
                                "split names characterized in the database. There are in fact %d of them. For instance, "
                                "here is a random split name that is in your additional view data, yet not in the database: "
-                               "'%s'. This is not going to work for anvi'o :/" \
+                               "'%s'. This is not going to work for anvi'o :/"
                                     % (self.additional_view_path, len(splits_in_additional_view_but_not_in_tree), splits_in_additional_view_but_not_in_tree.pop()))
 
         if splits_in_tree_but_not_in_view_data:
@@ -1935,7 +1936,7 @@ class Interactive(ProfileSuperclass, PanSuperclass, ContigsSuperclass):
 
         if splits_in_tree_but_not_in_database:
             raise ConfigError('Some split names found in your tree are missing from your database. Hard to '
-                               'know why is this the case, but here is a couple of them: %s'\
+                               'know why is this the case, but here is a couple of them: %s'
                                     % ', '.join(list(splits_in_tree_but_not_in_database)[0:5]))
 
         if self.additional_layers_path:
@@ -3295,6 +3296,31 @@ class MetabolismInteractive():
 
     def get_metabolism_data(self):
         return self.estimator.get_metabolism_data_for_visualization()
+
+
+class PangraphInteractive(PanGraphSuperclass):
+    def __init__(self, args, run=run, progress=progress):
+        self.mode = "pangraph"
+
+        self.args = args
+        self.run = run
+        self.progress = progress
+
+        A = lambda x: self.args.__dict__[x] if x in self.args.__dict__ else None
+        self.pan_graph_db_path = A('pan_graph_db')
+
+        if not self.pan_graph_db_path:
+            raise ConfigError("Unfortunately you can only use this program with a pangenome graph database.")
+
+        PanGraphSuperclass.__init__(self, self.args)
+
+        self.collections = ccollections.Collections()
+        self.collections.populate_collections_dict(self.pan_graph_db_path)
+
+        self.init_pangenome_graph()
+        self.init_synteny_gene_clusters()
+        self.init_synteny_gene_clusters_functions()
+        self.init_synteny_gene_clusters_functions_summary_dict()
 
 
 class ContigsInteractive():

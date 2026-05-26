@@ -61,7 +61,7 @@ def get_functions_dict(args):
     if args.parser not in parser_modules['functions']:
         raise ConfigError("Anvi'o does not know what to do with '%s'. You must use one of the available parsers "
                            "to make sense of genes (well, open reading frames) found in your contigs (please see "
-                           "the documentation for a more detailed explanation): %s"\
+                           "the documentation for a more detailed explanation): %s"
                                                  % (args.parser, ', '.join(parser_modules['functions'])))
     if not args.input_files:
         raise ConfigError("You need to use '--input-files' parameter to list file(s) that is/are required the "
@@ -92,7 +92,7 @@ def get_args():
                                 %d parsers readily available: %s. IT IS OK if you do not select a parser if you\
                                 have a standard, TAB-delimited input file for funcitonal annotation of genes. If\
                                 this is not like 2018 and everything is already outdated, you should be able to\
-                                go to this address and learn everything you need like a boss: http://merenlab.org/2016/06/18/importing-functions/"\
+                                go to this address and learn everything you need like a boss: http://merenlab.org/2016/06/18/importing-functions/"
                                             % (len(parser_modules['functions']), list(parser_modules['functions'].keys())))
     parser.add_argument('-i', '--input-files', metavar = 'FILE(S)', nargs='+', default = None, required = True,
                         help = 'One or more input files should follow this parameter. The way these files will be handled\

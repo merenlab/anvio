@@ -127,6 +127,7 @@ class WorkflowSuperClass:
                               "flag." % (self.name))
 
         self.dirs_dict.update(self.config.get("output_dirs", ''))
+        self.dirs_dict["LOGS_DIR"] = self.get_workflow_logs_dir()
 
         # create log dir if it doesn't exist
         os.makedirs(self.dirs_dict["LOGS_DIR"], exist_ok=True)
@@ -144,6 +145,12 @@ class WorkflowSuperClass:
     def get_global_general_params(self):
         ''' Return a list of the general parameters that are always acceptable.'''
         return ['output_dirs', 'max_threads', 'config_version', 'workflow_name']
+
+
+    def get_workflow_logs_dir(self):
+        from anvio.workflows.scripts.manifest import get_workflow_logs_dir
+
+        return get_workflow_logs_dir(self.dirs_dict["LOGS_DIR"], self.config.get('workflow_name', self.name))
 
 
     def sanity_checks(self):
@@ -270,6 +277,17 @@ class WorkflowSuperClass:
         if self.dry_run_only:
             return
 
+        workflow_manifest_path = None
+        original_manifest_env_var = os.environ.get('ANVIO_WORKFLOW_MANIFEST_PATH')
+        workflow_name = getattr(self.args, 'workflow', self.name)
+        if not self.list_dependencies:
+            from anvio.workflows.scripts.manifest import initialize_manifest
+
+            workflow_manifest_path = os.path.join(self.dirs_dict["LOGS_DIR"], f"{workflow_name}-workflow-manifest.tsv")
+            initialize_manifest(workflow_manifest_path)
+            os.environ['ANVIO_WORKFLOW_MANIFEST_PATH'] = workflow_manifest_path
+            self.run.info('Workflow manifest', workflow_manifest_path)
+
         # snakemake.main() accepts an `argv` parameter, but then the code has mixed responses to
         # that, and at places continues to read from sys.argv in a hardcoded manner. so we have to
         # overwrite our argv here.
@@ -280,6 +298,10 @@ class WorkflowSuperClass:
                     get_workflow_snake_file_path(self.args.workflow),
                     '--configfile',
                     self.args.config_file]
+
+        if workflow_manifest_path:
+            sys.argv.extend(['--log-handler-script',
+                             os.path.join(get_path_to_workflows_dir(), 'scripts', 'snakemake_log_handler.py')])
 
         # if any conda yaml is provided for a rule, then add '--use-conda' to the snakemake command:
         if any(isinstance(v, dict) and v.get('conda_yaml') for v in (self.config or {}).values()):
@@ -293,18 +315,27 @@ class WorkflowSuperClass:
                 sys.argv.extend(['--dryrun', '--printshellcmds', '--cores', f'{max_num_cpus_requested_by_the_workflow}'])
             else:
                 sys.argv.extend(['--dryrun', '--printshellcmds'])
-            snakemake.main()
-            sys.exit(0)
+            try:
+                snakemake.main()
+                sys.exit(0)
+            finally:
+                sys.argv = original_sys_argv
         else:
             if max_num_cpus_requested_by_the_workflow:
                 sys.argv.extend(['-p', '--cores', f'{max_num_cpus_requested_by_the_workflow}'])
             else:
                 sys.argv.extend(['-p'])
-            snakemake.main()
+            try:
+                snakemake.main()
+            finally:
+                # restore the `sys.argv` to the original for the sake of sakity (totally made up word,
+                # but you already know what it means. you're welcome.)
+                sys.argv = original_sys_argv
 
-        # restore the `sys.argv` to the original for the sake of sakity (totally made up word,
-        # but you already know what it means. you're welcome.)
-        sys.argv = original_sys_argv
+                if original_manifest_env_var is None:
+                    os.environ.pop('ANVIO_WORKFLOW_MANIFEST_PATH', None)
+                else:
+                    os.environ['ANVIO_WORKFLOW_MANIFEST_PATH'] = original_manifest_env_var
 
 
     def dry_run(self, workflow_graph_output_file_path_prefix='workflow'):
@@ -321,7 +352,7 @@ class WorkflowSuperClass:
 
         self.progress.new('Bleep bloop')
         self.progress.update('Quick dry run for an initial sanity check ...')
-        args = ['snakemake', '--snakefile', get_workflow_snake_file_path(self.name), \
+        args = ['snakemake', '--snakefile', get_workflow_snake_file_path(self.name),
                 '--configfile', self.config_file, '--dryrun', '--quiet']
 
         # if any conda yaml is provided for a rule, then add '--use-conda' to the snakemake command:
@@ -657,15 +688,15 @@ class WorkflowSuperClass:
 
 # The config file contains many essential configurations for the workflow
 # Setting the names of all directories
-dirs_dict = {"LOGS_DIR"     : "00_LOGS"         ,\
-             "QC_DIR"       : "01_QC"           ,\
-             "FASTA_DIR"    : "02_FASTA"     ,\
-             "CONTIGS_DIR"  : "03_CONTIGS"      ,\
-             "MAPPING_DIR"  : "04_MAPPING"      ,\
-             "PROFILE_DIR"  : "05_ANVIO_PROFILE",\
-             "MERGE_DIR"    : "06_MERGED"       ,\
-             "PAN_DIR"      : "07_PAN"          ,\
-             "LOCI_DIR"     : "04_LOCI_FASTAS"   \
+dirs_dict = {"LOGS_DIR"     : "00_LOGS"         ,
+             "QC_DIR"       : "01_QC"           ,
+             "FASTA_DIR"    : "02_FASTA"     ,
+             "CONTIGS_DIR"  : "03_CONTIGS"      ,
+             "MAPPING_DIR"  : "04_MAPPING"      ,
+             "PROFILE_DIR"  : "05_ANVIO_PROFILE",
+             "MERGE_DIR"    : "06_MERGED"       ,
+             "PAN_DIR"      : "07_PAN"          ,
+             "LOCI_DIR"     : "04_LOCI_FASTAS"
 }
 
 
@@ -726,8 +757,8 @@ def get_dir_names(config, dont_raise=False):
         # renaming folders according to the config file, if the user specified.
         if d not in DICT and not dont_raise:
             # making sure the user is asking to rename an existing folder.
-            raise ConfigError("You define a name for the directory '%s' in your "\
-                              "config file, but the only available folders are: "\
+            raise ConfigError("You define a name for the directory '%s' in your "
+                              "config file, but the only available folders are: "
                               "%s" % (d, DICT))
 
         DICT[d] = A(d,config["output_dirs"])

@@ -174,7 +174,7 @@ def is_output_file_writable(file_path, ok_if_exists=True):
         raise FilesNPathsError(f"The path you have provided for your output file ('{os.path.abspath(file_path)}') "
                                f"already is used by a directory :/")
     if not os.access(os.path.dirname(os.path.abspath(file_path)), os.W_OK):
-        raise FilesNPathsError(f"It seems you are not autorhized to create an output file at '{file_path}' (lol).")
+        raise FilesNPathsError(f"It seems you are not authorized to create an output file at '{file_path}' (lol).")
     if os.path.exists(file_path) and not os.access(file_path, os.W_OK):
         raise FilesNPathsError(f"You do not have write access to the file at '{file_path}' :/")
     if os.path.exists(file_path) and not ok_if_exists:
@@ -277,14 +277,22 @@ def is_file_json_formatted(file_path):
     return True
 
 
-def is_file_fasta_formatted(file_path):
+def is_file_fasta_formatted(file_path, dont_raise=False):
     is_file_exists(file_path)
 
     try:
         f = u.SequenceSource(file_path)
     except u.FastaLibError as e:
-        raise FilesNPathsError("Someone is not happy with your FASTA file '%s' (this is "
-                           "what the lib says: '%s'." % (file_path, e))
+        if dont_raise:
+            return False
+        else:
+            raise FilesNPathsError("Someone is not happy with your FASTA file '%s' (this is "
+                               "what the lib says: '%s'." % (file_path, e))
+    except UnicodeDecodeError:
+        if dont_raise:
+            return False
+        else:
+            raise FilesNPathsError(f"The file at '{file_path}' does not seem to be a FASTA-formatted text file (it may be a binary file).")
 
     f.close()
 
@@ -413,6 +421,13 @@ def get_num_lines_in_file(file_path):
 
 
 def check_output_directory(output_directory, ok_if_exists=False):
+    """Validates and returns the absolute path for an output directory.
+
+    The function checks permissions and so on, and ensures that the output
+    directory can be created. But no directories are created here.
+    The actual creation is done by `gen_output_directory`.
+    """
+
     if not output_directory:
         raise FilesNPathsError("Sorry. You must declare an output directory path.")
 
@@ -491,7 +506,7 @@ def gen_output_directory(output_directory, progress=Progress(verbose=False), run
             os.makedirs(output_directory)
         except:
             progress.end()
-            raise FilesNPathsError("Output directory does not exist (attempt to create one failed as well): '%s'" % \
+            raise FilesNPathsError("Output directory does not exist (attempt to create one failed as well): '%s'" %
                                                             (output_directory))
     if not os.access(output_directory, os.W_OK):
         progress.end()
@@ -631,10 +646,10 @@ class AppendableFile:
 
         import anvio.utils as utils
         if is_file_empty(self.path):
-            utils.store_dict_as_TAB_delimited_file(dict_to_append, None, headers=self.headers, file_obj=file_handle, \
-                                                    key_header=self.key_header, keys_order=self.keys_order, \
-                                                    header_item_conversion_dict=self.header_item_conversion_dict, \
-                                                    do_not_close_file_obj=True, do_not_write_key_column=self.do_not_write_key_column, \
+            utils.store_dict_as_TAB_delimited_file(dict_to_append, None, headers=self.headers, file_obj=file_handle,
+                                                    key_header=self.key_header, keys_order=self.keys_order,
+                                                    header_item_conversion_dict=self.header_item_conversion_dict,
+                                                    do_not_close_file_obj=True, do_not_write_key_column=self.do_not_write_key_column,
                                                     none_value=self.none_value)
         else:
             # if dictionary is empty, just return

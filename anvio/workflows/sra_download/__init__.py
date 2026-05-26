@@ -109,14 +109,14 @@ class SRADownloadWorkflow(WorkflowSuperClass):
     def get_target_files(self):
         """Get list of target files for snakemake target rule"""
 
-        target_files = [os.path.join(self.dirs_dict['FASTAS'], f"generate_samples_txt.done")]
+        target_files = [os.path.join(self.dirs_dict['FASTAS'], "generate_samples_txt.done")]
 
         return target_files
 
 
     def calculate_md5(self, file_path):
         """Calculate the md5sum of a file"""
-        hash_md5 = hashlib.md5()
+        hash_md5 = hashlib.md5(usedforsecurity=False)
         with open(file_path, "rb") as f:
             for chunk in iter(lambda: f.read(65536), b""):
                 hash_md5.update(chunk)

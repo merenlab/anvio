@@ -32,7 +32,7 @@ def get(engine, run=run):
         if sorted(matrix_columns) != sorted(matrix_rows):
             raise ConfigError("Anvi'o found a substitution scoring matrix named '%s'. However, it doesn't look like "
                               "a nicely done matrix. Substitution scoring matrices must contain the same row and column "
-                              "names (i.e., a square matrix that is equal to its transpose). Well. This one does not :/" \
+                              "names (i.e., a square matrix that is equal to its transpose). Well. This one does not :/"
                                                     % (os.path.basename(matrix_path)))
 
         if engine == 'AA':
@@ -46,7 +46,7 @@ def get(engine, run=run):
         if len(unexpected_items_in_matrix):
             raise ConfigError("It seems you have a poorly done substitution scoring matrix named '%s' in the data directory. "
                               "Anvi'o expects an %s substitution matrix to describe one or more of these %d guys: '%s'. But "
-                              "the matrix %s had stuff anvi'o is not familiar with: '%s'." % \
+                              "the matrix %s had stuff anvi'o is not familiar with: '%s'." %
                                             (matrix_id, engine, len(expected_items), ', '.join(expected_items),
                                              matrix_id, ', '.join(unexpected_items_in_matrix)))
 
@@ -54,7 +54,7 @@ def get(engine, run=run):
         data[matrix_id] = matrix_data
 
     if len(data):
-        run.warning('%d matri%s been loaded: "%s".' % \
+        run.warning('%d matri%s been loaded: "%s".' %
                                     (len(data),
                                      'ces have' if len(data) > 1 else 'x has',
                                      ', '.join(list(data.keys()))),
