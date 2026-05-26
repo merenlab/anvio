@@ -12,3 +12,13 @@ You can also get annotations for only a specific list of sources. For example:
 anvi-export-functions -c %(contigs-db)s \
                       --annotation-sources source_1,source_2,source_3
 {{ codestop }}
+
+To include positional and contig-level context for each gene in the output, use `--include-contig-info`. This extends the long-format output with seven additional columns: the contig name, gene start and stop coordinates, strand direction, whether the gene call is partial, contig length, and contig GC content:
+
+{{ codestart }}
+anvi-export-functions -c %(contigs-db)s \
+                      --include-contig-info \
+                      -o output.txt
+{{ codestop }}
+
+Note: `--include-contig-info` has no effect when used together with `--matrix-format`.

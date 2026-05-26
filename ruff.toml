@@ -7,4 +7,6 @@ select = [
     "UP009",
     # https://docs.astral.sh/ruff/rules/trailing-whitespace/
     "W291",
+    # https://docs.astral.sh/ruff/rules/f-string-missing-placeholders/
+    "F541",
 ]

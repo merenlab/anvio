@@ -10,6 +10,7 @@ known_tests = {'mini'                  : ['run_component_tests_for_minimal_metag
                'display-functions'     : ['run_component_tests_for_display_functions.sh'],
                'trnaseq'               : ['run_component_tests_for_trnaseq.sh'],
                'inversions'            : ['run_component_tests_for_inversions.sh'],
+               'process-genbank'       : ['run_component_tests_for_process_genbank.sh'],
                'workflow-contigs'      : ['run_workflow_tests_for_contigs.sh'],
                'workflow-metagenomics' : ['run_workflow_tests_for_metagenomics.sh'],
                'workflow-pangenomics'  : ['run_workflow_tests_for_pangenomics.sh'],
