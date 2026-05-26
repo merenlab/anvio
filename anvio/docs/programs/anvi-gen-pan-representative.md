@@ -2,9 +2,21 @@
 
 ![](../../images/anvi-gen-pan-representative.png)
 
-By doing so, %(anvi-gen-pan-representative)s offers a tractable solution to a fundamental problem in comparative genomics and genome-resolved metagenomics: selecting a single representative for a set of closely related genomes that does not represent the entirety of the gene pool. Selecting representatives is a necessary step for a broad range of analyses in microbiology, typically performed by (1) clustering all genomes using an arbitrary similarity threshold (such as 95%), or by identifying a clade of very closely related organisms after a phylogenomic analysis, and then (2) choosing a representative genome to stand in for the entire group in downstream analyses.
+By doing so, %(anvi-gen-pan-representative)s offers a tractable solution to a fundamental problem in comparative genomics and genome-resolved metagenomics: selecting a single representative for a set of closely related genomes that does not represent the entirety of the gene pool. Selecting representatives is a necessary step for a broad range of analyses in microbiology, typically performed by (1) clustering all genomes using an arbitrary similarity threshold (such as 95%%), or by identifying a clade of very closely related organisms after a phylogenomic analysis, and then (2) choosing a representative genome to stand in for the entire group in downstream analyses.
 
 The problem %(anvi-gen-pan-representative)s solves arises from the fact that pangenomes almost always contain genes distributed unevenly across member genomes, making it extremely unlikely for any single genome to carry all the genes present in the group. The program addresses this by supplementing the chosen representative with a single additional contig (so called 'the supplementary contig') that carries one representative gene sequence per missing gene cluster. The result is a %(contigs-db)s that retains the full genomic integrity of the representative while extending its gene content to cover the entire pangenome, enabling downstream analyses (read recruitment, functional annotation, phylogenomics, and more) that would otherwise miss genes present in the group but absent from the representative.
+
+## A real example
+
+Here is an example using a *Mycobacterium tuberculosis* pangenome (which is an extremely closed pangenome, as expected from the lifestyle of this particular organism):
+
+![TB pangenome](../../images/anvi-gen-pan-representative-tb-pangenome.png)
+
+The green layer in this anvi'o visualization marks the representative genome, and red selections mark the gene clusters (which contain one or more genes from one or more genomes in the collectoin of all *M. tuberculosis* genomes) that are *absent* in the representative. Running %(anvi-gen-pan-representative)s on this pangenome results in a single %(contigs-db)s, visualization of which shows two contigs:
+
+![TB representative genome](../../images/anvi-gen-pan-representative-tb-pan-contigs-db.png)
+
+While the genome is intact, representative genes from each gene cluster marked red in the previous figure now represented in a single contig where genes can be traced back to the original genome they were encoded. Using %(anvi-export-contigs)s, one can generate a %(fasta)s file for this representative genome with pangenome supplemented contig of missing genes for a comprehensive, but not inflated representatiion of the gene pool of the *Mycobacterium tuberculosis* pangenome considered here.
 
 ## Prerequisites
 
