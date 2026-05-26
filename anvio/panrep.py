@@ -27,6 +27,7 @@ class PanRepresenter:
         self.rq = terminal.Run(verbose=False)
         self.pq = terminal.Progress(verbose=False)
 
+        # figuring out the args
         A = lambda x: args.__dict__[x] if x in args.__dict__ else None
         self.output_file = A('output_file')
         self.keep_promoter = A('keep_promoter')
@@ -50,10 +51,15 @@ class PanRepresenter:
         self.project_name = A('project_name') or self.pan.p_meta.get('project_name')
 
         self.progress.end()
+
+        # SANITY CHECK
         self.sanity_check()
+
         self.external_genomes = GenomeDescriptions(self.args)
         self.external_genomes.load_genomes_descriptions()
         self.genome_to_clusters = self.pan.get_gene_clusters_in_genomes_dict(self.pan.gene_clusters)
+
+        # some default variables that will be filled in by the class methods
         self.first_iteration = True
         self.current_id = 0
         self.current_pos = 0
