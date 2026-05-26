@@ -4826,19 +4826,25 @@ class DGR_Finder:
                 VR_frame = vr_data['VR_frame']
 
                 # decide where initial primer comes from
-                skip_initial_primer = False
-                initial_primer_right = False
+                # check each side independently: left needs vr_start >= primer_length bases of
+                # upstream flank; right needs primer_length bases of downstream flank.
+                left_ok = vr_start >= self.initial_primer_length
+                right_ok = (vr_end + self.initial_primer_length) <= contig_length
 
-                # sanity check that the VR is short enough to have an initial primer
-                if (len(VR_sequence) + self.initial_primer_length) > contig_length:
-                    skip_initial_primer = True
+                skip_initial_primer = not left_ok and not right_ok
+                if skip_initial_primer:
                     self.run.warning(
-                        f"The VR is too close to the start and the end of the contig {vr_contig} "
-                        f"for DGR {dgr_id} VR {vr_id}. The initial primer will therefore be non-existent.")
+                        f"There is not enough flanking sequence on either side of VR {vr_id} "
+                        f"in contig {vr_contig} for DGR {dgr_id} to build an initial primer. "
+                        f"The primer will consist only of the masked VR pattern, which is riskier.")
 
-                # which way do we get the primer or skip an initial primer if VR at start/end
-                if (vr_start < self.initial_primer_length and VR_frame == 1) or (VR_frame == -1 and not vr_end > (contig_length - self.initial_primer_length)):
-                    initial_primer_right = True
+                # direction: for forward VRs prefer the left flank (anchor before VR in the read);
+                # for reverse VRs prefer the right flank (which is 5' of the VR on its own strand).
+                # Fall back to the other side if the preferred side is unavailable.
+                if VR_frame == 1:
+                    initial_primer_right = not left_ok
+                else:
+                    initial_primer_right = right_ok
 
                 # store the flag in vr_data so we can reuse it later
                 vr_data['initial_primer_right'] = initial_primer_right
