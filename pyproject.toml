@@ -62,6 +62,7 @@ dependencies = [
     "illumina-utils",
     "tabulate",
     "rich-argparse",
+    "numba",
     "paste",
     "pyani",
     "psutil",

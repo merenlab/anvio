@@ -17,7 +17,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren', 'ivagljiva']
-__requires__ = ['contigs-db', 'genomes-storage-db']
+__requires__ = ['contigs-db']
+__can_use__ = ['genomes-storage-db']
 __provides__ = ['functions-txt']
 __description__ = ("Search functions in an anvi'o contigs database or genomes storage. Basically, this program "
                    "searches for one or more search terms you define in functional annotations of "

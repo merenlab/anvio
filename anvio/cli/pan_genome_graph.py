@@ -16,7 +16,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['ahenoch', 'meren']
-__requires__ = ['pan-db', 'genomes-storage-db', 'external-genomes']
+__requires__ = ['pan-db']
+__can_use__ = ['genomes-storage-db', 'external-genomes']
 __provides__ = ['pan-graph-db']
 __description__ = ("An anvi'o program to compute a graph representation of pangenomes. It will do its magic, and store it into your "
                    "pan-db, or report a JSON formatted graph file, for downstream visualization and analyses with `anvi-display-pan-graph`")
