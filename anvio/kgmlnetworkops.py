@@ -855,16 +855,34 @@ class KGMLNetworkWalker:
 
         self.collapsed_compound_id_to_edges = dict(self.collapsed_compound_id_to_edges)
 
+    def _expand_compound_id_chains(
+        self,
+        compound_id_chains: dict[str, list[Chain]]
+    ) -> dict[str, list[Chain]]:
+        """
+        Expand the collapsed chains in each value list of a compound-ID-keyed dict (see
+        expand_chain).
+        """
+        return {
+            compound_id: expand_chains(chains)
+            for compound_id, chains in compound_id_chains.items()
+        }
+
     def get_chains(
         self,
         keggcpd_ids: Union[str, list[str]] = None,
-        modelseed_compound_ids: Union[str, list[str]] = None
+        modelseed_compound_ids: Union[str, list[str]] = None,
+        expand: bool = False
     ) -> dict[str, list[Chain]]:
         """
         Get chains in the pathway starting from compounds. Select compounds can be requested. If
         none are requested and a reaction network is available, chains are sought from all compounds
         in the network and pathway; if no network is available, chains are sought for all compounds
         in the pathway.
+
+        Chains are walked over collapsed reaction edges (see build_collapsed_edges), which avoids a
+        combinatorial explosion of chains in maps with many parallel KGML reaction elements. By
+        default, collapsed chains are returned, with CollapsedReaction objects in kgml_reactions.
 
         Parameters
         ==========
@@ -874,6 +892,11 @@ class KGMLNetworkWalker:
         modelseed_compound_ids : Union[str, list[str]], None
             ModelSEED compound ID(s), which are mapped to KEGG compound IDs via a reaction
             network.
+
+        expand : bool, False
+            If True, expand each collapsed chain into the element-level chains it represents (see
+            expand_chain), so that kgml_reactions contain individual KGML reaction elements. This
+            can return a very large number of chains in maps with many parallel reaction elements.
 
         Returns
         =======
@@ -898,6 +921,8 @@ class KGMLNetworkWalker:
             keggcpd_ids = [keggcpd_ids]
         if isinstance(keggcpd_ids, list):
             compound_id_chains = self._get_chains_from_kegg_compound_ids(keggcpd_ids)
+            if expand:
+                compound_id_chains = self._expand_compound_id_chains(compound_id_chains)
             return compound_id_chains
 
         if modelseed_compound_ids is not None and self.network is None:
@@ -917,6 +942,8 @@ class KGMLNetworkWalker:
             compound_id_chains = self._get_chains_from_modelseed_compound_ids(modelseed_compound_ids)
             self.run.verbose = run_verbosity
 
+        if expand:
+            compound_id_chains = self._expand_compound_id_chains(compound_id_chains)
         return compound_id_chains
 
     def _get_chains_from_kegg_compound_ids(self, keggcpd_ids: list[str]) -> dict[str, list[Chain]]:
@@ -1103,9 +1130,7 @@ class KGMLNetworkWalker:
         # Check that the target compound KGML ID is involved in any reactions at all in the
         # pathway.
         try:
-            kgml_reactions = self.rn_pathway_kgml_compound_id_to_kgml_reactions[
-                kgml_compound_entry.id
-            ]
+            kgml_reactions = self.collapsed_compound_id_to_edges[kgml_compound_entry.id]
         except KeyError:
             if terminal_chains:
                 raise AssertionError(
@@ -1191,24 +1216,12 @@ class KGMLNetworkWalker:
                     kgml_reaction_info.append((kgml_reaction, None, None))
                     continue
 
-                if kgml_reaction.id in self.pathway_nonenzymatic_kgml_reaction_ids:
-                    kgml_reaction_info.append((kgml_reaction, False, []))
-                    continue
+                # The gap status and network KOs are precomputed per collapsed edge.
+                is_gap = kgml_reaction.is_gap
+                network_kos: list[rn.KO] = list(kgml_reaction.network_kos)
 
-                try:
-                    ko_ids = self.rn_pathway_kgml_reaction_id_to_ko_ids[kgml_reaction.id]
-                except KeyError:
-                    ko_ids = []
-
-                network_kos: list[rn.KO] = []
-                for ko_id in ko_ids:
-                    try:
-                        network_kos.append(self.network.kos[ko_id])
-                    except KeyError:
-                        pass
-
-                if network_kos:
-                    # The reaction is associated with one or more KOs in the reaction network.
+                if not is_gap:
+                    # The edge is nonenzymatic or associated with KO(s) in the reaction network.
                     kgml_reaction_info.append((kgml_reaction, False, network_kos))
                     continue
 
@@ -1321,29 +1334,10 @@ class KGMLNetworkWalker:
                     continue
 
                 if self.network:
-                    # Get the ModelSEED reactions aliasing the KEGG reactions underlying the KGML
-                    # reaction.
+                    # The network KOs and aliased ModelSEED reactions are precomputed per collapsed
+                    # edge, as unions over the edge's constituent reaction elements.
                     network_kos = tuple(sorted(network_kos, key=lambda ko: ko.id))
-
-                    modelseed_reaction_dict: dict[str, rn.ModelSEEDReaction] = {}
-                    for candidate_keggrn_id in kgml_reaction.name.split():
-                        if candidate_keggrn_id[:3] != 'rn:':
-                            continue
-                        keggrn_id = candidate_keggrn_id[3:]
-                        try:
-                            modelseed_reactions = self.network_keggrn_id_to_modelseed_reactions[
-                                keggrn_id
-                            ]
-                        except KeyError:
-                            continue
-                        for modelseed_reaction in modelseed_reactions:
-                            modelseed_reaction_dict[
-                                modelseed_reaction.modelseed_id
-                            ] = modelseed_reaction
-                    modelseed_reactions = [
-                        modelseed_reaction_dict[modelseed_reaction_id]
-                        for modelseed_reaction_id in sorted(modelseed_reaction_dict)
-                    ]
+                    modelseed_reactions = list(kgml_reaction.aliased_modelseed_reactions)
 
                 # Recurse on each KGML compound on the other side of the reaction.
                 for next_kgml_compound_id in next_kgml_compound_ids:
@@ -2583,13 +2577,15 @@ class GapFiller:
             {'knum': 'accession', 'definition': 'function'}, axis=1
         )
 
-        # Find chains in the pathway with zero gaps and up to one gap.
+        # Find chains in the pathway with zero gaps and up to one gap. Expand collapsed chains to
+        # element-level chains, as the gap filler currently operates on individual KGML reaction
+        # elements. (A future revision will consume collapsed chains directly.)
         self.ungapped_chains: list[Chain] = []
-        for chains in self.walker.get_chains().values():
+        for chains in self.walker.get_chains(expand=True).values():
             self.ungapped_chains += chains
         self.walker.max_gaps = 1
         self.gapped_chains: list[Chain] = []
-        for chains in self.walker.get_chains().values():
+        for chains in self.walker.get_chains(expand=True).values():
             self.gapped_chains += chains
 
         # Compare gapped to ungapped chains. Rank gaps to prioritize for gap filling.
