@@ -1,18 +1,20 @@
 import os
+import itertools
 import pandas as pd
 
 from copy import deepcopy
-from argparse import Namespace
 from typing import Any, Union
+from argparse import Namespace
+from collections import defaultdict
 from dataclasses import dataclass, field
 
-import anvio.metabolism.context as kcontext
 import anvio.kgml as kgml
 import anvio.terminal as terminal
 import anvio.reactionnetwork as rn
+import anvio.metabolism.context as kcontext
 
-from anvio.dbops import ContigsDatabase
 from anvio.errors import ConfigError
+from anvio.dbops import ContigsDatabase
 
 @dataclass
 class Chain:
@@ -107,6 +109,163 @@ class Chain:
     consumption_reversibility_range: tuple[int, int] = None
     production_reversibility_range: tuple[int, int] = None
     cyclic_branch_index: int = None
+
+@dataclass
+class ConstituentReaction:
+    """
+    A single KGML reaction element folded into a CollapsedReaction. Constituents are retained so
+    that collapsed edges are mappable to specific KGML reaction elements and collapsed chains can be
+    expanded back to element-level chains at any time.
+
+    Attributes
+    ==========
+    kgml_reaction : kgml.Reaction
+        The KGML reaction element represented.
+
+    ko_ids : list[str], []
+        All KEGG ortholog IDs annotating the element in the KO type KGML pathway.
+
+    network_kos : tuple[rn.KO], ()
+        The subset of the element's KOs that are present in the reaction network.
+
+    aliased_modelseed_reactions : tuple[rn.ModelSEEDReaction], ()
+        ModelSEED reactions aliasing the element's KEGG reaction in the network.
+
+    orientation_matches_canonical : bool, True
+        True if the element's substrate and product entries match those of its CollapsedReaction's
+        canonical representative. False only for a 'reversible' element whose substrates and
+        products are swapped relative to the canonical orientation, in which case its reaction
+        direction is the negation of the collapsed chain's recorded direction.
+    """
+    kgml_reaction: kgml.Reaction
+    ko_ids: list[str] = field(default_factory=list)
+    network_kos: tuple[rn.KO] = ()
+    aliased_modelseed_reactions: tuple[rn.ModelSEEDReaction] = ()
+    orientation_matches_canonical: bool = True
+
+@dataclass
+class CollapsedReaction:
+    """
+    A stand-in for a set of parallel KGML reaction elements that are equivalent for walking chains:
+    identical KEGG reaction name, identical compound endpoints (orientation-agnostic for
+    'reversible' reactions), identical type, and identical gap status in the reaction network.
+
+    Collapsing parallel elements before the walk prevents a combinatorial explosion of element-level
+    chains in maps with many alternative KOs per reaction (e.g., fatty acid biosynthesis, 00061),
+    while the retained 'constituents' allow a collapsed chain to be expanded back to all traversing
+    element-level chains. A CollapsedReaction exposes the same 'id', 'name', 'type', and 'children'
+    interface as a kgml.Reaction so that the walker and downstream consumers can treat it as one.
+
+    Attributes
+    ==========
+    id : str
+        Synthetic edge ID, deterministically derived from the constituent KGML reaction IDs and
+        prefixed so as not to collide with any real KGML reaction ID.
+
+    name : str
+        KEGG reaction ID(s) shared by all constituents (their common 'name' attribute).
+
+    type : str
+        'reversible' or 'irreversible', shared by all constituents.
+
+    children : dict[str, list[str]]
+        The 'substrate' and 'product' child UUIDs of the canonical representative element, so that
+        substrate and product entries resolve against the KGML pathway exactly as for a real
+        reaction. For a 'reversible' edge, the canonical orientation is arbitrary.
+
+    is_gap : bool, None
+        True if every constituent is a gap (no constituent KO is in the reaction network), False if
+        not, None if there is no network.
+
+    network_kos : tuple[rn.KO], ()
+        Union of constituents' reaction network KOs, sorted by ID. Empty for a gap edge.
+        Semantically, any of these KOs realizes the edge.
+
+    aliased_modelseed_reactions : tuple[rn.ModelSEEDReaction], ()
+        Constituents' aliased ModelSEED reactions, sorted by ID. Because all constituents share the
+        same KEGG reaction name, this equals each constituent's set.
+
+    constituents : list[ConstituentReaction], []
+        The KGML reaction elements collapsed into this edge.
+    """
+    id: str
+    name: str
+    type: str
+    children: dict[str, list[str]]
+    is_gap: bool = None
+    network_kos: tuple[rn.KO] = ()
+    aliased_modelseed_reactions: tuple[rn.ModelSEEDReaction] = ()
+    constituents: list[ConstituentReaction] = field(default_factory=list)
+
+def expand_chain(chain: Chain) -> list[Chain]:
+    """
+    Expand a collapsed chain into all of the element-level chains it represents.
+
+    A collapsed chain has CollapsedReaction objects in its kgml_reactions, each standing for a set
+    of parallel KGML reaction elements (its constituents). The expansion is the Cartesian product of
+    constituent choices across reaction positions: each combination yields a Chain traversing
+    specific KGML reaction elements, exactly as the walker would have produced without collapsing.
+
+    Topological attributes (compound entries, consumption direction, gaps, termini, and reversibility
+    ranges) are identical across an expansion and are copied. Per-element attributes (the reaction
+    elements, their network KOs, and aliased ModelSEED reactions) are taken from each constituent. A
+    constituent's reaction direction is the collapsed direction, negated for a 'reversible' element
+    whose substrate and product entries are swapped relative to the canonical orientation. The cyclic
+    branch index is recomputed for each element-level chain.
+
+    Parameters
+    ==========
+    chain : Chain
+        A collapsed chain, i.e., one whose kgml_reactions are CollapsedReaction objects. A chain that
+        is not collapsed is returned unchanged in a singleton list.
+
+    Returns
+    =======
+    list[Chain]
+        Element-level chains.
+    """
+    if not chain.kgml_reactions or not all(
+        isinstance(kgml_reaction, CollapsedReaction) for kgml_reaction in chain.kgml_reactions
+    ):
+        return [chain]
+
+    constituent_options = [kgml_reaction.constituents for kgml_reaction in chain.kgml_reactions]
+
+    expanded_chains: list[Chain] = []
+    for combination in itertools.product(*constituent_options):
+        expanded_chain = Chain(
+            kgml_compound_entries=chain.kgml_compound_entries.copy(),
+            is_consumed=chain.is_consumed,
+            kgml_reactions=[constituent.kgml_reaction for constituent in combination],
+            kgml_reaction_directions=[
+                direction if constituent.orientation_matches_canonical else
+                not direction for direction, constituent in
+                zip(chain.kgml_reaction_directions, combination)
+            ],
+            gaps=chain.gaps.copy(),
+            aliased_modelseed_compounds=chain.aliased_modelseed_compounds.copy(),
+            aliased_modelseed_reactions=[
+                constituent.aliased_modelseed_reactions for constituent in combination
+            ],
+            network_kos=[constituent.network_kos for constituent in combination],
+            is_consumption_terminus=chain.is_consumption_terminus,
+            is_production_terminus=chain.is_production_terminus,
+            consumption_reversibility_range=chain.consumption_reversibility_range,
+            production_reversibility_range=chain.production_reversibility_range
+        )
+        expanded_chain.cyclic_branch_index = KGMLNetworkWalker.get_cyclic_branch_index(
+            expanded_chain
+        )
+        expanded_chains.append(expanded_chain)
+
+    return expanded_chains
+
+def expand_chains(chains: list[Chain]) -> list[Chain]:
+    """Expand each collapsed chain in a list (see expand_chain), returning the flattened result."""
+    expanded_chains: list[Chain] = []
+    for chain in chains:
+        expanded_chains += expand_chain(chain)
+    return expanded_chains
 
 class KGMLNetworkWalker:
     """
@@ -398,6 +557,10 @@ class KGMLNetworkWalker:
             self.network_keggcpd_id_to_modelseed_compounds = None
             self.network_keggcpd_ids_in_pathway = None
 
+        # Build the collapsed reaction adjacency for walking chains without enumerating parallel
+        # KGML reaction elements. Constituent elements are retained for later expansion.
+        self.build_collapsed_edges()
+
     @staticmethod
     def check_pathway_number(kegg_pathway_number: str, kegg_context: kcontext.KeggContext) -> bool:
         """
@@ -503,6 +666,194 @@ class KGMLNetworkWalker:
         keggcpd_ids = sorted(set(keggcpd_ids))
 
         return keggcpd_ids
+
+    def _get_kgml_reaction_compound_ids(
+        self,
+        kgml_reaction: kgml.Reaction
+    ) -> tuple[frozenset, frozenset]:
+        """
+        Get the substrate and product KGML compound entry IDs of a KGML reaction.
+
+        Parameters
+        ==========
+        kgml_reaction : kgml.Reaction
+            Reaction whose substrate and product compound entry IDs are sought.
+
+        Returns
+        =======
+        tuple[frozenset, frozenset]
+            Substrate compound entry IDs and product compound entry IDs.
+        """
+        substrate_ids = frozenset(
+            self.kgml_rn_pathway.uuid_element_lookup[uuid].id
+            for uuid in kgml_reaction.children['substrate']
+        )
+        product_ids = frozenset(
+            self.kgml_rn_pathway.uuid_element_lookup[uuid].id
+            for uuid in kgml_reaction.children['product']
+        )
+        return substrate_ids, product_ids
+
+    def _classify_kgml_reaction(self, kgml_reaction: kgml.Reaction) -> tuple[bool, list]:
+        """
+        Classify a KGML reaction against the reaction network, independently of any chain context.
+
+        This is the network-dependent but chain-independent part of the gap determination made
+        during the walk (see _get_chains_from_kgml_compound_entry). A reaction is not a gap if it is
+        nonenzymatic or if any of its KOs is in the network; otherwise it is a gap. The contextual
+        gap criteria (gap budget, terminal gaps, alternative reaction gaps) are applied separately
+        during the walk.
+
+        Parameters
+        ==========
+        kgml_reaction : kgml.Reaction
+            Reaction to classify. A reaction network is assumed to be available.
+
+        Returns
+        =======
+        tuple[bool, list[rn.KO]]
+            Whether the reaction is a gap, and the network KOs encoding it (empty if a gap or
+            nonenzymatic).
+        """
+        if kgml_reaction.id in self.pathway_nonenzymatic_kgml_reaction_ids:
+            return False, []
+
+        network_kos: list[rn.KO] = []
+        for ko_id in self.rn_pathway_kgml_reaction_id_to_ko_ids.get(kgml_reaction.id, []):
+            try:
+                network_kos.append(self.network.kos[ko_id])
+            except KeyError:
+                pass
+
+        return (not network_kos), network_kos
+
+    def _get_kgml_reaction_modelseed_reactions(self, kgml_reaction: kgml.Reaction) -> list:
+        """
+        Get the ModelSEED reactions aliasing a KGML reaction's KEGG reaction IDs in the network.
+
+        Parameters
+        ==========
+        kgml_reaction : kgml.Reaction
+            Reaction whose aliased ModelSEED reactions are sought. A reaction network is assumed to
+            be available.
+
+        Returns
+        =======
+        list[rn.ModelSEEDReaction]
+            ModelSEED reactions, sorted by ModelSEED ID.
+        """
+        modelseed_reaction_dict: dict[str, rn.ModelSEEDReaction] = {}
+        for candidate_keggrn_id in kgml_reaction.name.split():
+            if candidate_keggrn_id[:3] != 'rn:':
+                continue
+            keggrn_id = candidate_keggrn_id[3:]
+            try:
+                modelseed_reactions = self.network_keggrn_id_to_modelseed_reactions[keggrn_id]
+            except KeyError:
+                continue
+            for modelseed_reaction in modelseed_reactions:
+                modelseed_reaction_dict[modelseed_reaction.modelseed_id] = modelseed_reaction
+        return [modelseed_reaction_dict[msid] for msid in sorted(modelseed_reaction_dict)]
+
+    def build_collapsed_edges(self) -> None:
+        """
+        Build the collapsed reaction adjacency used to walk chains without enumerating every
+        parallel KGML reaction element.
+
+        Parallel reaction elements that are equivalent for walking are grouped into a single
+        CollapsedReaction. Two elements are equivalent when they share a KEGG reaction name, a
+        reaction type, the same gap status in the reaction network (None if no network), and the
+        same compound endpoints. Endpoints are compared orientation-agnostically for 'reversible'
+        reactions, so an element drawn substrate->product and one drawn product->substrate for the
+        same reversible reaction collapse together.
+
+        Populates
+        =========
+        self.collapsed_edge_lookup : dict[str, CollapsedReaction]
+            Maps synthetic edge IDs to collapsed reactions.
+
+        self.collapsed_compound_id_to_edges : dict[str, list[CollapsedReaction]]
+            Maps KGML compound entry IDs to the collapsed edges they participate in as a substrate
+            or product of the canonical representative, mirroring
+            rn_pathway_kgml_compound_id_to_kgml_reactions over collapsed edges.
+        """
+        # Group reaction elements by collapse key.
+        groups: dict[tuple, list[tuple]] = defaultdict(list)
+        for reaction_uuid in self.kgml_rn_pathway.children['reaction']:
+            kgml_reaction: kgml.Reaction = self.kgml_rn_pathway.uuid_element_lookup[reaction_uuid]
+            substrate_ids, product_ids = self._get_kgml_reaction_compound_ids(kgml_reaction)
+
+            if self.network:
+                is_gap, network_kos = self._classify_kgml_reaction(kgml_reaction)
+            else:
+                is_gap, network_kos = None, []
+
+            if kgml_reaction.type == 'reversible':
+                # Orientation-agnostic: the unordered pair of substrate and product side-sets.
+                endpoints = frozenset((substrate_ids, product_ids))
+            else:
+                endpoints = (substrate_ids, product_ids)
+            key = (kgml_reaction.name, endpoints, kgml_reaction.type, is_gap)
+            groups[key].append((kgml_reaction, network_kos))
+
+        self.collapsed_edge_lookup: dict[str, CollapsedReaction] = {}
+        self.collapsed_compound_id_to_edges: dict[str, list[CollapsedReaction]] = defaultdict(list)
+
+        for (name, _endpoints, rxn_type, is_gap), members in groups.items():
+            # The canonical representative (lowest KGML reaction ID) fixes the orientation and the
+            # substrate/product children of the collapsed edge.
+            canonical_kgml_reaction = min(members, key=lambda m: int(m[0].id))[0]
+            canonical_substrate_ids, canonical_product_ids = self._get_kgml_reaction_compound_ids(
+                canonical_kgml_reaction
+            )
+
+            constituents: list[ConstituentReaction] = []
+            network_kos_union: dict[str, rn.KO] = {}
+            modelseed_reactions_union: dict[str, rn.ModelSEEDReaction] = {}
+            for kgml_reaction, network_kos in members:
+                substrate_ids, _ = self._get_kgml_reaction_compound_ids(kgml_reaction)
+                orientation_matches = substrate_ids == canonical_substrate_ids
+
+                if self.network:
+                    ko_ids = list(
+                        self.rn_pathway_kgml_reaction_id_to_ko_ids.get(kgml_reaction.id, [])
+                    )
+                    modelseed_reactions = self._get_kgml_reaction_modelseed_reactions(kgml_reaction)
+                else:
+                    ko_ids = []
+                    modelseed_reactions = []
+
+                constituents.append(ConstituentReaction(
+                    kgml_reaction=kgml_reaction,
+                    ko_ids=ko_ids,
+                    network_kos=tuple(sorted(network_kos, key=lambda ko: ko.id)),
+                    aliased_modelseed_reactions=tuple(modelseed_reactions),
+                    orientation_matches_canonical=orientation_matches
+                ))
+                for ko in network_kos:
+                    network_kos_union[ko.id] = ko
+                for modelseed_reaction in modelseed_reactions:
+                    modelseed_reactions_union[modelseed_reaction.modelseed_id] = modelseed_reaction
+
+            edge_id = 'e:' + '+'.join(sorted((c.kgml_reaction.id for c in constituents), key=int))
+            collapsed_reaction = CollapsedReaction(
+                id=edge_id,
+                name=name,
+                type=rxn_type,
+                children=canonical_kgml_reaction.children,
+                is_gap=is_gap,
+                network_kos=tuple(network_kos_union[ko_id] for ko_id in sorted(network_kos_union)),
+                aliased_modelseed_reactions=tuple(
+                    modelseed_reactions_union[msid] for msid in sorted(modelseed_reactions_union)
+                ),
+                constituents=constituents
+            )
+
+            self.collapsed_edge_lookup[edge_id] = collapsed_reaction
+            for compound_id in canonical_substrate_ids | canonical_product_ids:
+                self.collapsed_compound_id_to_edges[compound_id].append(collapsed_reaction)
+
+        self.collapsed_compound_id_to_edges = dict(self.collapsed_compound_id_to_edges)
 
     def get_chains(
         self,
