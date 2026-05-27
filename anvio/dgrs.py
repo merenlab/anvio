@@ -4795,11 +4795,11 @@ class DGR_Finder:
         self.init_vr_contigs()
         sample_names = set(self.samples_artifact.samples())
 
-        if self.pre_computed_dgrs_path:
+        if self.pre_computed_dgrs_path and self.profile_db_path:
             self.init_snv_access()
 
         # Sanity check for samples (move this outside the main loops)
-        sample_names_in_snv_table = set(self.sample_id_list)
+        sample_names_in_snv_table = set(getattr(self, 'sample_id_list', []))
         samples_missing_in_snv_table = sample_names.difference(sample_names_in_snv_table)
 
         if anvio.DEBUG:
