@@ -1039,8 +1039,15 @@ class KGMLNetworkWalker:
                                 continue
 
                     # A subchain to each compound in a terminal chain is also generated as a
-                    # "candidate terminal chain" and is ignored.
-                    if terminal_chains:
+                    # "candidate terminal chain" and is ignored. The candidate is only a subchain of
+                    # the last terminal chain if the two run in the same direction: with a
+                    # compound_fate of 'both', a chain of reversible reactions is found in both
+                    # directions traversing identical compounds and reactions, and these are
+                    # distinct chains rather than subchains of one another.
+                    if (
+                        terminal_chains and
+                        terminal_chains[-1].is_consumed == candidate_terminal_chain.is_consumed
+                    ):
                         candidate_kgml_compound_ids = [
                             c.id for c in candidate_terminal_chain.kgml_compound_entries
                         ]
