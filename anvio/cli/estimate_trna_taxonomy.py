@@ -16,8 +16,10 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
-__requires__ = ['profile-db', 'contigs-db', 'trna-taxonomy', 'collection', 'bin', 'metagenomes', 'dna-sequence']
-__provides__ = ['genome-taxonomy', 'genome-taxonomy-txt']
+__requires__ = ['contigs-db', 'trna-taxonomy']
+__can_use__ = ['profile-db', 'collection', 'bin', 'metagenomes', 'dna-sequence']
+__provides__ = ['genome-taxonomy']
+__can_provide__ = ['genome-taxonomy-txt']
 __resources__ = []
 __description__ = ("Estimates taxonomy at genome and metagenome level using tRNA sequences.")
 

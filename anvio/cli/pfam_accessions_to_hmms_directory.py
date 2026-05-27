@@ -15,7 +15,7 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren', 'ge0rges']
-__requires__ = ["pfam-accession"]
+__requires__ = ["pfam-accession", "pfams-data"]
 __provides__ = ["hmm-source"]
 __description__ = ("You give this program one or more PFAM accession ids, and it generates "
                    "an anvi'o compatible HMM directory to be used with `anvi-run-hmms`")

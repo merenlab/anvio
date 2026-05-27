@@ -18,7 +18,8 @@ __version__ = anvio.__version__
 __authors__ = ['ivagljiva', 'adw96']
 __resources__ = [("A description of the enrichment script run by this program can be found in Shaiber et al 2020", "https://genomebiology.biomedcentral.com/articles/10.1186/s13059-020-02195-w")]
 __tags__ = ["functions"]
-__requires__ = [ 'groups-txt', 'genomes-storage-db', 'external-genomes', 'internal-genomes', 'functions']
+__requires__ = ['groups-txt', 'external-genomes', 'functions']
+__can_use__ = ['internal-genomes', 'genomes-storage-db']
 __provides__ = ['functional-enrichment-txt']
 __description__ = ("A program that computes functional enrichment across groups of genomes.")
 
