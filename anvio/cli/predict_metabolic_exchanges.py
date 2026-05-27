@@ -88,6 +88,7 @@ def get_args():
                                                             "number of genome pairs to process in parallel (but each comparison will get just 1 thread)."}))
     groupE.add_argument(*anvio.A('no-pathway-walk'), **anvio.K('no-pathway-walk'))
     groupE.add_argument(*anvio.A('pathway-walk-only'), **anvio.K('pathway-walk-only'))
+    groupE.add_argument(*anvio.A('max-reactions-for-pathway-map-walk'), **anvio.K('max-reactions-for-pathway-map-walk'))
 
     return parser.get_args(parser)
 

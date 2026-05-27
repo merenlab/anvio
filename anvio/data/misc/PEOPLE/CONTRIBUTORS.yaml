@@ -327,7 +327,7 @@
     - title: Postdoctoral researcher
       inst: GLOBE Institute, University of Copenhagen
       current: true
-      
+
 - github: elxerone
   name: Eeva Eronen-Rasimus
   email: eeva.eronen@gmail.com
@@ -345,25 +345,7 @@
     - title: Associate professor in Microbial Ecology
       inst: Department of Microbiology, University of Helsinki
       inst_link: https://www.helsinki.fi/en/faculty-agriculture-and-forestry/research/disciplines/microbiology
-      current: true    
-
-- github: igorspp
-  name: Igor S. Pessi
-  email: igor.pessi@gmail.com
-  web: http://igorpessi.com
-  git_records:
-    - igor.pessi@gmail.com
-  bluesky: igorspp.bsky.social
-  avatar: igorspp.jpg
-  bio: "Microbiologist specialized in the study of polar microbial communities, with a focus on the use of molecular ecology methods such as metagenomics and metatranscriptomics."
-  affiliations:
-    - title: Researcher
-      inst: Finnish Environment Institute
-      inst_link: http://environment.fi
       current: true
-    - title: Visiting Researcher
-      inst: University of Helsinki
-      inst_link: http://helsinki.fi
 
 - github: AviHuene
   name: Avril Hoyningen-Huene

@@ -55,7 +55,7 @@ except ModuleNotFoundError as e:
           f"properly initialized since Python complains that it cannot\n"
           f"import '{module_name}'. Are you sure you have initialized\n"
           f"the anvi'o environment properly?\n\n")
-    sys.exit()
+    sys.exit(1)
 
 # psutil is causing lots of problems for lots of people :/
 with SuppressAllOutput():

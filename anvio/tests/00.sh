@@ -82,5 +82,9 @@ SETUP_WITH_OUTPUT_DIR() {
 
 SHOW_FILE() {
     OUTPUT $1
-    head -n 10 $1 | anvi-script-tabulate
+    if [[ "$2" == "--tail" ]]; then
+        tail -n 10 $1 | anvi-script-tabulate
+    else
+        head -n 10 $1 | anvi-script-tabulate
+    fi
 }

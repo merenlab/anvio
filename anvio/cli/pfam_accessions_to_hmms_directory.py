@@ -56,7 +56,7 @@ def run_program():
 
     utils.sanity_check_pfam_accessions(pfam_accession_ids)
 
-    output_directory_path = A('output_directory') or os.path.abspath('./UNKNOWN_HMMS_FROM_PFAM')
+    output_directory_path = A('output_dir') or os.path.abspath('./UNKNOWN_HMMS_FROM_PFAM')
 
     pfam_accession_ids = [e.strip() for e in set(pfam_accession_ids)]
     failed_accession_ids = set([])
@@ -168,11 +168,11 @@ def get_args():
     parser.add_argument('--pfam-accessions-file', help="A single column text file where each column "
                 "is a single PFAM accession ID (such as PF14437). You may have as many accession "
                 "ids as you like in this file.", metavar='FILE')
-    parser.add_argument('-O', '--output-directory', metavar='PATH', help="Output directory for the "
+    parser.add_argument(*anvio.A('output-dir'), **anvio.K('output-dir', {'help': "Output directory for the "
                 "anvi'o-formatted HMMs. Choose the name wisely as this will be the name that will "
-                "appear in the contigs database after you provide it with `-H` flag to `anvi-run-hmms`. "
+                "appear in the contigs database after you provide it with the `-H` flag to `anvi-run-hmms`. "
                 "We suggest you use a name that does not include any of those millenial characters "
-                "(like space, question mark, comma, and such, you know).")
+                "(like space, question mark, comma, and such, you know)."}))
 
     return parser.get_args(parser)
 
