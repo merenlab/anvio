@@ -4679,7 +4679,7 @@ class DGR_Finder:
 
 
     @staticmethod
-    def compute_dgr_variability_profiling_per_vr(input_queue, output_queue, samples_artifact, primers_dict, output_directory_path, run=run_quiet, progress=progress_quiet, sample_primers_dict=None, use_sample_primers=False):
+    def compute_dgr_variability_profiling_per_vr(input_queue, output_queue, samples_artifact, primers_dict, output_directory_path, run=run_quiet, progress=progress_quiet):
         """
         Go back to the raw metagenomic reads to compute the variability profiles of the variable regions for each single Sample.
 
@@ -4838,26 +4838,7 @@ class DGR_Finder:
                         f"in contig {vr_contig} for DGR {dgr_id} to build an initial primer. "
                         f"The primer will consist only of the masked VR pattern, which is riskier.")
 
-                # direction: for forward VRs prefer the left flank (anchor before VR in the read);
-                # for reverse VRs prefer the right flank (which is 5' of the VR on its own strand).
-                # Fall back to the other side if the preferred side is unavailable.
-                if VR_frame == 1:
-                    initial_primer_right = not left_ok
-                else:
-                    initial_primer_right = right_ok
-
-                # store the flag in vr_data so we can reuse it later
-                vr_data['initial_primer_right'] = initial_primer_right
-
-                # get initial primer region if allowed
-                vr_initial_primer_region = None
-                if not skip_initial_primer:
-                    if initial_primer_right:
-                        vr_initial_primer_region = contig_sequence[vr_end : vr_end + self.initial_primer_length]
-                    else:
-                        vr_initial_primer_region = contig_sequence[vr_start - self.initial_primer_length : vr_start]
-
-                # base primer based on TR VR mismatches and mutagenesis base in the TR sequence
+                # build the base masked primer once — shared across all sides and samples
                 base_vr_masked_primer_list = []
                 for i, (tr_base, vr_base) in enumerate(zip(TR_sequence, VR_sequence)):
                     if tr_base == dgr_data['base']:
@@ -4869,96 +4850,115 @@ class DGR_Finder:
 
                 base_vr_masked_primer = ''.join(base_vr_masked_primer_list)
 
-                # initialize dict entry for this VR
-                dgr_vr_key = f"{dgr_id}_{vr_id}_Primer"
-                primers_dict[dgr_vr_key] = {}
-
-                # track if we warned about missing initial primer (warn only once)
-                warned_about_initial_primer = False
-
-                # metadata that is constant across samples for this VR — stored in every
-                # per-sample entry so downstream oligotyping plots can reconstruct which
-                # portion of the VR each read set covers and group L/R primers per VR.
                 vr_group = f"{dgr_id}_{vr_id}"
-                primer_side = 'R' if initial_primer_right else 'L'
 
-                # how many VR bases fit in the primer after reserving space for the flank
-                vr_portion_length = min(
-                    self.whole_primer_length - (0 if skip_initial_primer else self.initial_primer_length),
-                    len(VR_sequence)
-                )
-                if initial_primer_right:
-                    vr_coverage_start = len(VR_sequence) - vr_portion_length
-                    vr_coverage_end   = len(VR_sequence) - 1
-                else:
-                    vr_coverage_start = 0
-                    vr_coverage_end   = vr_portion_length - 1
+                if skip_initial_primer:
+                    # no flanking sequence on either side — one primer, just the masked VR
+                    dgr_vr_key = f"{dgr_id}_{vr_id}_Primer"
+                    primers_dict[dgr_vr_key] = {}
+                    warned_no_flank = False
+                    no_flank_coverage_end = min(self.whole_primer_length, len(VR_sequence)) - 1
 
-                # now create sample-specific primers if we have SNV info
-                for sample_name in sample_names:
-                    if anvio.DEBUG:
-                        self.run.info_single(f"Processing sample {sample_name} for DGR {dgr_id} VR {vr_id}", nl_before=1)
+                    for sample_name in sample_names:
+                        sample_snvs = self.snv.get_snvs_for_region(
+                            vr_contig, vr_start, vr_end - 1, sample_id=sample_name)
+                        snv_positions = set(sample_snvs['pos_in_contig'].tolist())
 
-                    # get SNVs for this sample in the VR region (vr_end is
-                    # exclusive in the original mask, so subtract 1 to keep the
-                    # half-open interval semantics).
-                    sample_snvs = self.snv.get_snvs_for_region(
-                        vr_contig, vr_start, vr_end - 1, sample_id=sample_name)
-                    snv_positions = set(sample_snvs['pos_in_contig'].tolist())
+                        sample_primer_list = list(base_vr_masked_primer)
+                        for pos in snv_positions:
+                            idx = (vr_end - 1 - pos) if VR_frame == -1 else (pos - vr_start)
+                            if 0 <= idx < len(sample_primer_list):
+                                sample_primer_list[idx] = '.'
 
-                    # apply SNV-based masking
-                    # For frame=-1 the primer list is in minus-strand orientation: position i
-                    # corresponds to genomic coordinate vr_end-1-i, so SNV genomic positions
-                    # must be mapped accordingly before they are used as list indices.
-                    sample_primer_list = list(base_vr_masked_primer)
-                    for pos in snv_positions:
-                        idx = (vr_end - 1 - pos) if VR_frame == -1 else (pos - vr_start)
-                        if 0 <= idx < len(sample_primer_list):
-                            sample_primer_list[idx] = '.'
+                        vr_masked_primer = ''.join(sample_primer_list)
+                        used_original_primer = (len(snv_positions) == 0)
 
-                    vr_masked_primer = ''.join(sample_primer_list)
+                        if VR_frame == -1:
+                            vr_masked_primer = utils.rev_comp(vr_masked_primer)
 
-                    # determine if this sample used the original (no-SNV) primer
-                    used_original_primer = (len(snv_positions) == 0)
+                        primer_sequence = vr_masked_primer[:self.whole_primer_length]
 
-                    # reverse complement the masked primer if the VR is in reverse frame
-                    if VR_frame == -1:
-                        vr_masked_primer = utils.rev_comp(vr_masked_primer)
-
-                    # combine initial + masked primer
-                    if not skip_initial_primer:
-                        if initial_primer_right:
-                            primer_sequence = vr_masked_primer + vr_initial_primer_region
-                        else:
-                            primer_sequence = vr_initial_primer_region + vr_masked_primer
-                    else:
-                        primer_sequence = vr_masked_primer
-                        if not warned_about_initial_primer:
+                        if not warned_no_flank:
                             self.run.warning(
-                                f"Creating primer for DGR {dgr_id} VR {vr_id} without an initial primer region. "
-                                f"Only a masked primer is present, more risky."
-                            )
-                            warned_about_initial_primer = True
+                                f"Creating primer for DGR {dgr_id} VR {vr_id} without any flanking "
+                                f"sequence. Only the masked VR pattern is used, which is riskier.")
+                            warned_no_flank = True
 
-                    # cut to correct total length
-                    if initial_primer_right:
-                        # cut from the LEFT (keep the right side)
-                        primer_sequence = primer_sequence[-self.whole_primer_length:]
-                    else:
-                        # cut from the RIGHT (keep the left side)
-                        primer_sequence = primer_sequence[:self.whole_primer_length]
+                        primers_dict[dgr_vr_key][sample_name] = {
+                            'primer_side':             'NA',
+                            'vr_group':                vr_group,
+                            'vr_coverage_start':       0,
+                            'vr_coverage_end':         no_flank_coverage_end,
+                            'used_original_primer':    used_original_primer,
+                            'initial_primer_sequence': 'N/A',
+                            'vr_masked_primer':        vr_masked_primer,
+                            'primer_sequence':         primer_sequence
+                        }
 
-                    # store sample-specific primer data
-                    primers_dict[dgr_vr_key][sample_name] = {
-                        'primer_side':             primer_side,
-                        'vr_group':                vr_group,
-                        'vr_coverage_start':       vr_coverage_start,
-                        'vr_coverage_end':         vr_coverage_end,
-                        'used_original_primer':    used_original_primer,
-                        'initial_primer_sequence': vr_initial_primer_region if not skip_initial_primer else 'N/A',
-                        'vr_masked_primer':        vr_masked_primer,
-                        'primer_sequence':         primer_sequence
-                    }
+                else:
+                    # generate one primer per available flank side (L and/or R)
+                    sides = (['L'] if left_ok else []) + (['R'] if right_ok else [])
+
+                    for side in sides:
+                        is_right = (side == 'R')
+
+                        if is_right:
+                            vr_initial_primer_region = contig_sequence[vr_end : vr_end + self.initial_primer_length]
+                        else:
+                            vr_initial_primer_region = contig_sequence[vr_start - self.initial_primer_length : vr_start]
+
+                        vr_portion_length = min(self.whole_primer_length - self.initial_primer_length, len(VR_sequence))
+                        # For frame=-1 the per-sample rev_comp flips which end of VR_sequence is
+                        # covered: the L primer (genomic left flank) ends up covering the tail of
+                        # VR_sequence and the R primer covers the head.
+                        coverage_is_tail = is_right if VR_frame == 1 else not is_right
+                        if coverage_is_tail:
+                            vr_coverage_start = len(VR_sequence) - vr_portion_length
+                            vr_coverage_end   = len(VR_sequence) - 1
+                        else:
+                            vr_coverage_start = 0
+                            vr_coverage_end   = vr_portion_length - 1
+
+                        dgr_vr_key = f"{dgr_id}_{vr_id}_Primer_{side}"
+                        primers_dict[dgr_vr_key] = {}
+
+                        for sample_name in sample_names:
+                            if anvio.DEBUG:
+                                self.run.info_single(f"Processing sample {sample_name} for DGR {dgr_id} VR {vr_id} side {side}", nl_before=1)
+
+                            sample_snvs = self.snv.get_snvs_for_region(
+                                vr_contig, vr_start, vr_end - 1, sample_id=sample_name)
+                            snv_positions = set(sample_snvs['pos_in_contig'].tolist())
+
+                            # For frame=-1 the primer list is in minus-strand orientation: position i
+                            # corresponds to genomic coordinate vr_end-1-i.
+                            sample_primer_list = list(base_vr_masked_primer)
+                            for pos in snv_positions:
+                                idx = (vr_end - 1 - pos) if VR_frame == -1 else (pos - vr_start)
+                                if 0 <= idx < len(sample_primer_list):
+                                    sample_primer_list[idx] = '.'
+
+                            vr_masked_primer = ''.join(sample_primer_list)
+                            used_original_primer = (len(snv_positions) == 0)
+
+                            if VR_frame == -1:
+                                vr_masked_primer = utils.rev_comp(vr_masked_primer)
+
+                            if is_right:
+                                primer_sequence = (vr_masked_primer + vr_initial_primer_region)[-self.whole_primer_length:]
+                            else:
+                                primer_sequence = (vr_initial_primer_region + vr_masked_primer)[:self.whole_primer_length]
+
+                            primers_dict[dgr_vr_key][sample_name] = {
+                                'primer_side':             side,
+                                'vr_group':                vr_group,
+                                'vr_coverage_start':       vr_coverage_start,
+                                'vr_coverage_end':         vr_coverage_end,
+                                'used_original_primer':    used_original_primer,
+                                'initial_primer_sequence': vr_initial_primer_region,
+                                'vr_masked_primer':        vr_masked_primer,
+                                'primer_sequence':         primer_sequence
+                            }
 
         return primers_dict
 
