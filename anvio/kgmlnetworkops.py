@@ -2,6 +2,7 @@ import os
 import pandas as pd
 
 from copy import deepcopy
+from collections import defaultdict
 from argparse import Namespace
 from typing import Any, Union
 from dataclasses import dataclass, field
@@ -1397,92 +1398,99 @@ class KGMLNetworkWalker:
 
             return shifted_kgml_ids
 
-        # Determine whether each chain is a subchain.
-        derep_compound_id_chains: dict[str, list[Chain]] = {}
+        # Precompute, once per chain, the data used to compare it against other chains. Each record
+        # is a tuple of (compound_id, chain, kgml_compound_ids, kgml_reaction_ids, is_cyclic_chain,
+        # shifted_kgml_ids).
+        records: list[tuple] = []
         for compound_id, chains in compound_id_chains.items():
-            derep_chains: list[Chain] = []
-
             for chain in chains:
-                kgml_compound_ids: list[str] = [c.id for c in chain.kgml_compound_entries]
-                kgml_reaction_ids: list[str] = [r.id for r in chain.kgml_reactions]
-
+                kgml_compound_ids = [c.id for c in chain.kgml_compound_entries]
+                kgml_reaction_ids = [r.id for r in chain.kgml_reactions]
                 if kgml_compound_ids[0] == kgml_compound_ids[-1]:
                     shifted_kgml_ids = shift_cyclic_chain(kgml_compound_ids, kgml_reaction_ids)
                     is_cyclic_chain = True
                 else:
                     shifted_kgml_ids = [(kgml_compound_ids, kgml_reaction_ids)]
                     is_cyclic_chain = False
+                records.append((
+                    compound_id, chain, kgml_compound_ids, kgml_reaction_ids, is_cyclic_chain,
+                    shifted_kgml_ids
+                ))
 
-                for other_compound_id, other_chains in compound_id_chains.items():
-                    if compound_id == other_compound_id:
-                        # Assume that there are no subchains starting from the same compound as
-                        # other chains.
+        # Index candidate "superchains" by consumption direction and the compound IDs they contain.
+        # A chain can only be a subchain of another chain that contains the subchain's first
+        # compound: the match is anchored at the first occurrence of that compound, and for a cyclic
+        # chain the first rotation is checked first and anchored there too, so a candidate lacking
+        # the first compound is rejected before any other rotation is considered. Restricting
+        # comparisons to chains satisfying this requirement is faster than an all-pairs scan.
+        superchains_by_first_compound: dict[tuple, list[tuple]] = defaultdict(list)
+        for record in records:
+            chain = record[1]
+            kgml_compound_ids = record[2]
+            for kgml_compound_id in set(kgml_compound_ids):
+                superchains_by_first_compound[
+                    (chain.is_consumed, kgml_compound_id)
+                ].append(record)
+
+        # A chain is kept unless it is a subchain of a chain that starts from a different compound,
+        # runs in the same direction, and is longer.
+        derep_compound_id_chains: dict[str, list[Chain]] = {}
+        for (
+            compound_id, chain, kgml_compound_ids, kgml_reaction_ids, is_cyclic_chain,
+            shifted_kgml_ids
+        ) in records:
+            is_subchain = False
+            for (
+                other_compound_id, other_chain, other_kgml_compound_ids, other_kgml_reaction_ids,
+                _other_is_cyclic_chain, _other_shifted_kgml_ids
+            ) in superchains_by_first_compound[(chain.is_consumed, kgml_compound_ids[0])]:
+                if other_compound_id == compound_id:
+                    # Assume that there are no subchains starting from the same compound as other
+                    # chains.
+                    continue
+                if len(other_kgml_compound_ids) - len(kgml_compound_ids) < 1:
+                    # Subchains must be shorter than the other chain.
+                    continue
+                if is_cyclic_chain and other_chain.cyclic_branch_index == -1:
+                    # Cyclic chains can only be subchains of partly cyclic chains.
+                    continue
+
+                start_index = -1
+                for (
+                    shifted_kgml_compound_ids, shifted_kgml_reaction_ids
+                ) in shifted_kgml_ids:
+                    if start_index == -2:
+                        continue
+                    try:
+                        # The start index of a cyclic chain's first compound in a partly cyclic
+                        # chain is the index of the first occurrence of the compound, and not the
+                        # second cycle-closing and chain-ending occurrence of the compound.
+                        start_index = other_kgml_compound_ids.index(
+                            shifted_kgml_compound_ids[0]
+                        )
+                    except ValueError:
+                        # The first compound of the chain is not in the other chain, so the chain
+                        # can't be a subchain of the other chain.
+                        start_index = -2
                         continue
 
-                    for other_chain in other_chains:
-                        if chain.is_consumed != other_chain.is_consumed:
-                            # Subchains run in the same direction as the other chain.
-                            continue
-
-                        other_kgml_compound_ids: list[str] = [
-                            c.id for c in other_chain.kgml_compound_entries
+                    if (
+                        shifted_kgml_compound_ids == other_kgml_compound_ids[
+                            start_index: start_index + len(kgml_compound_ids)
+                        ] and shifted_kgml_reaction_ids == other_kgml_reaction_ids[
+                            start_index: start_index + len(kgml_reaction_ids)
                         ]
-                        delta_length = len(other_kgml_compound_ids) - len(kgml_compound_ids)
-                        if delta_length < 1:
-                            # Subchains must be shorter than the other chain.
-                            continue
-
-                        if is_cyclic_chain and other_chain.cyclic_branch_index == -1:
-                            # Cyclic chains can only be subchains of partly cyclic chains.
-                            continue
-
-                        start_index = -1
-                        other_kgml_reaction_ids: list[str] = [
-                            r.id for r in other_chain.kgml_reactions
-                        ]
-                        for (
-                            shifted_kgml_compound_ids, shifted_kgml_reaction_ids
-                        ) in shifted_kgml_ids:
-                            if start_index == -2:
-                                continue
-                            try:
-                                # The start index of a cyclic chain's first compound in a partly
-                                # cyclic chain is the index of first occurrence of the compound in
-                                # the partly cyclic chain, and not the second cycle-closing and
-                                # chain-ending occurrence of the compound.
-                                start_index = other_kgml_compound_ids.index(
-                                    shifted_kgml_compound_ids[0]
-                                )
-                            except ValueError:
-                                # The first compound of the chain is not in the other chain, so the
-                                # chain can't be a subchain of the other chain.
-                                start_index = -2
-                                continue
-
-                            if (
-                                shifted_kgml_compound_ids == other_kgml_compound_ids[
-                                    start_index: start_index + len(kgml_compound_ids)
-                                ] and shifted_kgml_reaction_ids == other_kgml_reaction_ids[
-                                    start_index: start_index + len(kgml_reaction_ids)
-                                ]
-                            ):
-                                # The chain is a subchain because it shares the same compounds and
-                                # reactions in the same order as the other chain.
-                                break
-                        else:
-                            continue
-                        # Subchain was found.
+                    ):
+                        # The chain is a subchain because it shares the same compounds and reactions
+                        # in the same order as the other chain.
+                        is_subchain = True
                         break
-                    else:
-                        continue
-                    # Subchain was found.
+                if is_subchain:
                     break
-                else:
-                    # The chain was not a subchain, so record it.
-                    derep_chains.append(chain)
 
-            if derep_chains:
-                derep_compound_id_chains[compound_id] = derep_chains
+            if not is_subchain:
+                derep_compound_id_chains.setdefault(compound_id, []).append(chain)
+
         return derep_compound_id_chains
 
 @dataclass
