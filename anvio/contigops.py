@@ -3,6 +3,7 @@
    contig data such as GenbankToAnvio."""
 
 import os
+import re
 import io
 import gzip
 import numpy as np
@@ -19,7 +20,7 @@ import anvio.constants as constants
 import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
-from anvio.variability import VariablityTestFactory, ProcessNucleotideCounts, ProcessCodonCounts, ProcessIndelCounts
+from anvio.variability import VariablityTestFactory, ProcessNucleotideCounts, ProcessCodonCounts, ProcessIndelCounts, ProcessClipCounts
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -159,10 +160,12 @@ class Split:
         self.auxiliary = None
         self.num_SNV_entries = 0
         self.num_INDEL_entries = 0
+        self.num_CLIP_entries = 0
         self.num_SCV_entries = {}
         self.SNV_profiles = {}
         self.SCV_profiles = {}
         self.INDEL_profiles = {}
+        self.CLIP_profiles = {}
         self.per_position_info = {} # stores per nt info that is not coverage
 
 
@@ -180,6 +183,7 @@ class Split:
 class Auxiliary:
     def __init__(self, split, min_coverage_for_variability=10, report_variability_full=False,
                  profile_SCVs=False, skip_INDEL_profiling=False, skip_SNV_profiling=False,
+                 skip_clip_profiling=False, min_clip_length=5,
                  min_percent_identity=None, skip_edges=0):
 
         if anvio.DEBUG:
@@ -192,6 +196,8 @@ class Auxiliary:
         self.skip_SNV_profiling = skip_SNV_profiling
         self.profile_SCVs = profile_SCVs
         self.skip_INDEL_profiling = skip_INDEL_profiling
+        self.skip_clip_profiling = skip_clip_profiling
+        self.min_clip_length = min_clip_length
         self.report_variability_full = report_variability_full
         self.skip_edges = skip_edges
 
@@ -469,6 +475,122 @@ class Auxiliary:
                 ('count', 1),
             ])
 
+        if not self.skip_clip_profiling:
+            clips = {}
+            get_clip_entry = lambda clip_type, side, state, seq, pos, length, partner_contig, partner_junction_pos, partner_strand: OrderedDict([
+                ('split_name', self.split.name),
+                ('pos', pos),
+                ('pos_in_contig', pos + self.split.start),
+                ('corresponding_gene_call', additional_per_position_data['corresponding_gene_call'][pos]),
+                ('in_noncoding_gene_call', additional_per_position_data['in_noncoding_gene_call'][pos]),
+                ('in_coding_gene_call', additional_per_position_data['in_coding_gene_call'][pos]),
+                ('base_pos_in_codon', additional_per_position_data['base_pos_in_codon'][pos]),
+                ('codon_order_in_gene', additional_per_position_data['codon_order_in_gene'][pos]),
+                ('cov_outlier_in_split', additional_per_position_data['cov_outlier_in_split'][pos]),
+                ('cov_outlier_in_contig', additional_per_position_data['cov_outlier_in_contig'][pos]),
+                ('reference', self.split.sequence[pos]),
+                ('type', clip_type),
+                ('side', side),
+                ('state', state),
+                ('sequence', seq),
+                ('length', length),
+                ('count', 1),
+                # `coverage` is filled in by ProcessClipCounts after the read loop. The placeholder
+                # exists here to lock its position in the OrderedDict; without it, the late
+                # assignment would append `coverage` to the end and the per-row values would
+                # land in the wrong columns at INSERT time.
+                ('coverage', 0),
+                ('partner_contig', partner_contig),
+                ('partner_junction_pos', partner_junction_pos),
+                ('partner_strand', partner_strand),
+            ])
+
+            # SA tag parser: returns a list of dicts {contig, pos, strand, cigar} for all
+            # sibling alignments listed in the read's SA tag, or [] if no tag / unparseable.
+            # SAM stores positions 1-based; we convert to 0-based here.
+            def parse_sa_entries(sa_tag):
+                if not sa_tag:
+                    return []
+                entries = []
+                for entry_str in sa_tag.rstrip(';').split(';'):
+                    if not entry_str:
+                        continue
+                    fields = entry_str.split(',')
+                    if len(fields) < 4:
+                        continue
+                    try:
+                        entries.append({
+                            'contig': fields[0],
+                            'pos': int(fields[1]) - 1,
+                            'strand': fields[2],
+                            'cigar': fields[3],
+                        })
+                    except (ValueError, IndexError):
+                        continue
+                return entries
+
+            # CIGAR string parser → (read offset of aligned region, aligned span in read coords)
+            # Aligned ops are M/I/=/X (consume read AND are part of the alignment). Leading
+            # H/S contribute to offset; trailing clips are ignored (they're at the end).
+            cigar_re = re.compile(r'(\d+)([MIDNSHP=X])')
+            def cigar_aligned_read_range_from_string(cigar_str):
+                offset = 0
+                span = 0
+                in_alignment = False
+                for m in cigar_re.finditer(cigar_str):
+                    length = int(m.group(1))
+                    op = m.group(2)
+                    if op in ('M', 'I', '=', 'X'):
+                        span += length
+                        in_alignment = True
+                    elif op in ('H', 'S') and not in_alignment:
+                        offset += length
+                return offset, span
+
+            # Reference-coordinate length of a CIGAR string — number of reference positions
+            # this alignment spans (M + D + = + X + N). Used to convert the SA tag's
+            # leftmost-position into the partner's RIGHT edge when the junction sits there.
+            def cigar_ref_length_from_string(cigar_str):
+                total = 0
+                for m in cigar_re.finditer(cigar_str):
+                    if m.group(2) in ('M', 'D', '=', 'X', 'N'):
+                        total += int(m.group(1))
+                return total
+
+            # Same thing for cigartuples (numpy array of (op_int, length) rows).
+            # pysam op codes: 0=M, 1=I, 4=S, 5=H, 7==, 8=X (the read-consuming or hard).
+            def cigar_aligned_read_range_from_tuples(cigartuples):
+                offset = 0
+                span = 0
+                in_alignment = False
+                for op, length in cigartuples:
+                    if op in (0, 1, 7, 8):  # M, I, =, X
+                        span += length
+                        in_alignment = True
+                    elif op in (4, 5) and not in_alignment:  # S, H before alignment
+                        offset += length
+                return offset, span
+
+            # Total read length from cigartuples — sum of all ops that exist in the original
+            # read (M, I, S, H, =, X). Used to flip read coords when the strands differ.
+            def total_read_length_from_tuples(cigartuples):
+                total = 0
+                for op, length in cigartuples:
+                    if op in (0, 1, 4, 5, 7, 8):
+                        total += length
+                return total
+
+            # h_left for a cigartuples list: leading H length if first op is H, else 0.
+            def leading_hard_clip_length(cigartuples):
+                if len(cigartuples) and cigartuples[0][0] == 5:
+                    return int(cigartuples[0][1])
+                return 0
+
+            # Reverse-complement a string of nucleotides (case-preserving for ACGTN only).
+            rc_table = str.maketrans('ACGTNacgtn', 'TGCANtgcan')
+            def rc(s):
+                return s.translate(rc_table)[::-1]
+
         # make an array with as many rows as there are nucleotides in the split, and as many rows as
         # there are nucleotide types. Each nucleotide (A, C, T, G, N) gets its own row which is
         # defined by the self.nt_to_array_index dictionary
@@ -534,6 +656,227 @@ class Auxiliary:
                             length=del_len,
                         )
 
+            if not self.skip_clip_profiling and not read.is_secondary:
+                # Secondaries are alternate mappings (not split-alignment pieces) and their
+                # CIGAR clips don't represent real chimeric junctions, so we skip them.
+                # For every other record, scan cigartuples[0] and cigartuples[-1] for S (4)
+                # or H (5) ops. We use cigartuples directly because we only care about the
+                # first and last CIGAR ops; the vectorized form would require finding the
+                # right segments by mapping type. Left-trim by fetch_and_trim already strips
+                # clips that fall outside the split.
+                cigartuples = read.cigartuples
+
+                # Compute per-SA read-coordinate intervals AND keep them addressable
+                # individually so we can attribute the partner per clip event. Also keep
+                # the merged map (union of own M and all SA Ms) for bounding the unmapped
+                # run during sequence extraction.
+                own_offset, own_span = cigar_aligned_read_range_from_tuples(cigartuples)
+                own_read_length = total_read_length_from_tuples(cigartuples)
+                own_strand_char = '-' if read.is_reverse else '+'
+
+                sa_entries = parse_sa_entries(read.sa_tag)
+
+                # Per-SA intervals (with strand-flipping) — for nearest-SA partner picks.
+                sa_entries_with_intervals = []
+                for sa in sa_entries:
+                    sa_offset, sa_span = cigar_aligned_read_range_from_string(sa['cigar'])
+                    if sa['strand'] != own_strand_char:
+                        sa_start = own_read_length - (sa_offset + sa_span)
+                        sa_end = own_read_length - sa_offset
+                    else:
+                        sa_start = sa_offset
+                        sa_end = sa_offset + sa_span
+                    sa_entries_with_intervals.append({
+                        'sa': sa, 'read_start': sa_start, 'read_end': sa_end,
+                    })
+
+                # Merged map (own + every SA) — used to bound the unmapped run.
+                coverage_intervals = [(own_offset, own_offset + own_span)]
+                for item in sa_entries_with_intervals:
+                    coverage_intervals.append((item['read_start'], item['read_end']))
+                coverage_intervals.sort()
+                merged_intervals = []
+                for s, e in coverage_intervals:
+                    if merged_intervals and s <= merged_intervals[-1][1]:
+                        merged_intervals[-1] = (merged_intervals[-1][0], max(merged_intervals[-1][1], e))
+                    else:
+                        merged_intervals.append((s, e))
+
+                # Bound the unmapped run extending from a position outward to the
+                # next merged interval edge (or read end / start). Used in the
+                # UNMAPPED state branch.
+                def unmapped_run_around(p, direction):
+                    if direction == 'right':
+                        start = p
+                        end = own_read_length
+                        for s, _ in merged_intervals:
+                            if s > p:
+                                end = s
+                                break
+                        return (start, end)
+                    else:  # 'left'
+                        start = 0
+                        end = p + 1
+                        for _, e in merged_intervals:
+                            if e <= p + 1:
+                                start = max(start, e)
+                        return (start, end)
+
+                # Find the SA entry whose M region COVERS or EXTENDS INTO the clip's
+                # outside in the appropriate direction. minimap2 often emits split
+                # alignments with a small overlap at the junction (e.g., primary's M
+                # extends a few bp past the canonical junction and supp's M starts a
+                # few bp before it) — for our purposes such an SA still counts as the
+                # partner, and the gap clamps to 0.
+                #
+                # For R-clip: clip's outside region is [immediate_outside, read_length).
+                #   "SA reaches the outside" iff sa.read_end > immediate_outside.
+                #   Gap = max(0, sa.read_start - immediate_outside).
+                # For L-clip: clip's outside region is [0, immediate_outside + 1).
+                #   "SA reaches the outside" iff sa.read_start <= immediate_outside.
+                #   Gap = max(0, (immediate_outside + 1) - sa.read_end).
+                #
+                # When several SAs match, the nearest (smallest gap) wins; ties go to
+                # the first-listed SA (matches the original sa_entries[0] preference).
+                def find_nearest_sa_in_outside(side, immediate_outside):
+                    candidates = []
+                    for item in sa_entries_with_intervals:
+                        if side == 'R' and item['read_end'] > immediate_outside:
+                            gap = max(0, item['read_start'] - immediate_outside)
+                            candidates.append((gap, item))
+                        elif side == 'L' and item['read_start'] <= immediate_outside:
+                            gap = max(0, (immediate_outside + 1) - item['read_end'])
+                            candidates.append((gap, item))
+                    if not candidates:
+                        return None, 0
+                    candidates.sort(key=lambda x: x[0])
+                    return candidates[0][1], candidates[0][0]
+
+                own_h_left = leading_hard_clip_length(cigartuples)
+
+                # Extract the unmapped bases at read positions [u_start, u_end) in the
+                # current record's read frame. For SOFT clips the bases are in the current
+                # record's SEQ; for HARD clips they live in the primary record, which we
+                # fetch by query_name (small indexed lookup). Returns '' on any failure
+                # so the row still lands with the state set, just without sequence.
+                def extract_unmapped_bases(is_soft, u_start, u_end):
+                    if is_soft:
+                        seq_start = u_start - own_h_left
+                        seq_end = u_end - own_h_left
+                        if seq_start < 0 or seq_end > len(read.query_sequence):
+                            return ''
+                        return ''.join([chr(x) for x in read.query_sequence[seq_start:seq_end]])
+
+                    # HARD: bases are in the primary. The first SA entry of a supplementary
+                    # is the primary by SAM convention.
+                    if not sa_entries:
+                        return ''
+                    primary_sa = sa_entries[0]
+                    for prim in bam.fetch(primary_sa['contig'], primary_sa['pos'], primary_sa['pos'] + 1):
+                        if prim.query_name != read.query_name:
+                            continue
+                        if prim.is_supplementary or prim.is_secondary:
+                            continue
+                        if prim.query_sequence is None or prim.cigartuples is None:
+                            continue
+                        prim_strand_char = '-' if prim.is_reverse else '+'
+                        if prim_strand_char == own_strand_char:
+                            p_start_in_prim = u_start
+                            p_end_in_prim = u_end
+                        else:
+                            p_start_in_prim = own_read_length - u_end
+                            p_end_in_prim = own_read_length - u_start
+                        prim_h_left = int(prim.cigartuples[0][1]) if prim.cigartuples[0][0] == 5 else 0
+                        seq_start = p_start_in_prim - prim_h_left
+                        seq_end = p_end_in_prim - prim_h_left
+                        if seq_start < 0 or seq_end > len(prim.query_sequence):
+                            return ''
+                        bases = prim.query_sequence[seq_start:seq_end]
+                        if prim_strand_char != own_strand_char:
+                            bases = rc(bases)
+                        return bases
+                    return ''
+
+                # Decide the state + partner + sequence for one clip event using the
+                # nearest-SA-in-outside-direction rule. Returns
+                # (state, partner_contig, partner_junction_pos, partner_strand, sequence).
+                # Three branches:
+                #   - No nearest SA → UNMAPPED, partner empty, sequence = unmapped run.
+                #   - Nearest SA, gap == 0 → JUNCTION, partner set, sequence empty.
+                #   - Nearest SA, gap > 0 → JUNCTION_WITH_GAP, partner set,
+                #     sequence = the gap bases between us and the partner.
+                def compute_clip_metadata(side, immediate_outside, is_soft):
+                    nearest, gap = find_nearest_sa_in_outside(side, immediate_outside)
+                    if nearest is None:
+                        # UNMAPPED branch
+                        direction = 'right' if side == 'R' else 'left'
+                        u_start, u_end = unmapped_run_around(immediate_outside, direction)
+                        seq = extract_unmapped_bases(is_soft, u_start, u_end)
+                        return ('UNMAPPED', '', -1, '', seq)
+
+                    sa = nearest['sa']
+                    p_contig = sa['contig']
+                    p_strand_char = sa['strand']
+                    p_strand = 'f' if p_strand_char == '+' else 'r'
+                    sa_pos = sa['pos']
+                    sa_ref_len = cigar_ref_length_from_string(sa['cigar'])
+                    sa_ref_end = sa_pos + max(sa_ref_len - 1, 0)
+                    strands_same = (p_strand_char == own_strand_char)
+                    p_junction = sa_pos if (side == 'R') == strands_same else sa_ref_end
+
+                    if gap == 0:
+                        return ('JUNCTION', p_contig, p_junction, p_strand, '')
+
+                    # JUNCTION_WITH_GAP branch — extract gap bases between us and the
+                    # partner's nearest read-coord edge.
+                    if side == 'R':
+                        gap_start, gap_end = immediate_outside, immediate_outside + gap
+                    else:
+                        gap_start, gap_end = immediate_outside + 1 - gap, immediate_outside + 1
+                    seq = extract_unmapped_bases(is_soft, gap_start, gap_end)
+                    return ('JUNCTION_WITH_GAP', p_contig, p_junction, p_strand, seq)
+
+                # Left clip: first cigar op is S or H. Breakpoint at read.reference_start.
+                left_op, left_len = cigartuples[0]
+                if left_op == 4 or left_op == 5:
+                    clip_type = 'SOFT' if left_op == 4 else 'HARD'
+                    clip_pos = read.reference_start - self.split.start
+                    immediate_outside = own_offset - 1
+                    state, p_contig, p_junction_pos, p_strand, clip_seq = compute_clip_metadata(
+                        'L', immediate_outside, left_op == 4
+                    )
+                    clip_hash = hash((clip_pos, 'L', clip_type, state, clip_seq, int(left_len), p_contig, p_junction_pos, p_strand))
+                    if clip_hash in clips:
+                        clips[clip_hash]['count'] += 1
+                    else:
+                        clips[clip_hash] = get_clip_entry(
+                            clip_type=clip_type, side='L', state=state, seq=clip_seq,
+                            pos=clip_pos, length=int(left_len),
+                            partner_contig=p_contig, partner_junction_pos=p_junction_pos, partner_strand=p_strand,
+                        )
+
+                # Right clip: last cigar op is S or H. Breakpoint at reference_end - 1.
+                # Guard against single-op CIGARs (impossible for a clipped record, but
+                # cheap to be safe).
+                if len(cigartuples) > 1:
+                    right_op, right_len = cigartuples[-1]
+                    if right_op == 4 or right_op == 5:
+                        clip_type = 'SOFT' if right_op == 4 else 'HARD'
+                        clip_pos = (read.reference_end - 1) - self.split.start
+                        immediate_outside = own_offset + own_span
+                        state, p_contig, p_junction_pos, p_strand, clip_seq = compute_clip_metadata(
+                            'R', immediate_outside, right_op == 4
+                        )
+                        clip_hash = hash((clip_pos, 'R', clip_type, state, clip_seq, int(right_len), p_contig, p_junction_pos, p_strand))
+                        if clip_hash in clips:
+                            clips[clip_hash]['count'] += 1
+                        else:
+                            clips[clip_hash] = get_clip_entry(
+                                clip_type=clip_type, side='R', state=state, seq=clip_seq,
+                                pos=clip_pos, length=int(right_len),
+                                partner_contig=p_contig, partner_junction_pos=p_junction_pos, partner_strand=p_strand,
+                            )
+
             read_count += 1
 
         if anvio.DEBUG:
@@ -562,13 +905,26 @@ class Auxiliary:
             indel_profile.process()
             self.split.INDEL_profiles = indel_profile.indels
 
+        if not self.skip_clip_profiling:
+            clip_profile = ProcessClipCounts(
+                clips=clips,
+                coverage=allele_counts_array.sum(axis=0),
+                min_clip_length=self.min_clip_length,
+                test_class=variability_test_class_null if self.report_variability_full else variability_test_class_default,
+                min_coverage_for_variability=self.min_coverage_for_variability if not self.report_variability_full else 1,
+            )
+            clip_profile.process()
+            self.split.CLIP_profiles = clip_profile.clips
+
         self.split.num_SNV_entries = len(nt_profile.d['coverage'])
         self.split.num_INDEL_entries = len(self.split.INDEL_profiles)
+        self.split.num_CLIP_entries = len(self.split.CLIP_profiles)
         self.variation_density = self.split.num_SNV_entries * 1000.0 / self.split.length
 
         if anvio.DEBUG:
             self.run.info_single('%d SNVs to report' % (self.split.num_SNV_entries), nl_before=0, nl_after=0, level=2)
             self.run.info_single('%d INDELs to report' % (self.split.num_INDEL_entries), nl_before=0, nl_after=0, level=2)
+            self.run.info_single('%d CLIPs to report' % (self.split.num_CLIP_entries), nl_before=0, nl_after=0, level=2)
 
 
 class GenbankToAnvioWrapper:

@@ -32,6 +32,8 @@ var variability;
 var maxVariability = 0;
 var maxCountOverCoverage = 0;
 var indels;
+var clippings;
+var maxClippingCountOverCoverage = 0;
 var geneParser;
 var contextSvg;
 var state;
@@ -47,6 +49,7 @@ var brush;
 var inspect_mode;
 var highlightBoxes;
 var indels_enabled;
+var clippings_enabled;
 var show_nucleotides = true;
 var maxNucleotidesInWindow = 300;
 var minNucleotidesInWindow = 30;
@@ -99,6 +102,171 @@ function get_indel_sequence_cell_html(indel) {
   return '<a href="#" onclick="show_indel_sequence(\'' + sequence_key + '\'); return false;">' +
          '<code style="white-space: normal; word-break: break-all; color: inherit;">' + escape_html(sequence.substring(0, indel_sequence_preview_length)) + '[...]</code>' +
          '</a>';
+}
+
+
+// Resolve a partner (contig, pos) to its enclosing split via the backend's
+// /data/split_for_position endpoint and open the partner's inspect page in a new
+// tab. Called from the clip popover's partner cell. Falls back gracefully when
+// the resolution fails (e.g., partner contig not in this profile).
+function open_partner_inspect(contig_name, pos_in_contig) {
+  $.get('/data/split_for_position/' + encodeURIComponent(contig_name) + '/' + encodeURIComponent(pos_in_contig))
+   .done(function(data) {
+     var payload;
+     try { payload = (typeof data === 'string') ? JSON.parse(data) : data; }
+     catch (e) { alert('Could not parse split lookup response for ' + contig_name + ':' + pos_in_contig); return; }
+     if (payload['error']) {
+       alert(payload['error']);
+       return;
+     }
+     var split_name = payload['split_name'];
+     // Open the partner split in a new tab. The ?partner_pos=<n> query param
+     // is read by createCharts on the destination page, which auto-opens the
+     // clip popover at that split-relative position once the chart finishes
+     // rendering.
+     var url = 'charts.html?id=' + encodeURIComponent(split_name) +
+               '&show_snvs=true&partner_pos=' + encodeURIComponent(payload['pos_in_split']);
+     window.open(url, '_blank');
+   })
+   .fail(function() {
+     alert('Could not reach the split lookup endpoint for ' + contig_name + ':' + pos_in_contig);
+   });
+  return false;
+}
+
+
+function get_clip_sequence_cell_html(clip) {
+  var sequence = clip['sequence'] || '';
+
+  if (sequence.length === 0) {
+    return '<i style="color: #777;">empty (bases live in the partner alignment)</i>';
+  }
+
+  if (sequence.length <= indel_sequence_preview_length) {
+    return '<code style="white-space: normal; word-break: break-all; color: inherit;">' + escape_html(sequence) + '</code>';
+  }
+
+  // Reuse the indel sequence modal machinery — the data shape is similar.
+  var sequence_key = get_indel_sequence_key(clip);
+  var sequence_header = '>' + clip['type'] + '_' + clip['side'] + '_' + clip['state'] +
+                        '_pos_' + clip['pos'] + '_contig_pos_' + clip['pos_in_contig'] +
+                        '_length_' + clip['length'];
+  indel_sequences[sequence_key] = sequence_header + '\n' + sequence;
+
+  return '<a href="#" onclick="show_indel_sequence(\'' + sequence_key + '\'); return false;">' +
+         '<code style="white-space: normal; word-break: break-all; color: inherit;">' +
+         escape_html(sequence.substring(0, indel_sequence_preview_length)) + '[...]</code>' +
+         '</a>';
+}
+
+
+function get_clip_popover_html(clipsAtPos) {
+  // clipsAtPos is an array of clip row objects all sharing the same `pos`.
+  if (!clipsAtPos || clipsAtPos.length === 0) return '';
+
+  var first = clipsAtPos[0];
+  var totalCount = clipsAtPos.reduce(function(s, c) { return s + (c['count'] || 0); }, 0);
+  var coverage = first['coverage'];
+  var ratio = coverage > 0 ? Math.min(totalCount / coverage, 1) : 0;
+
+  // Breakdown by (side, type, state)
+  var bucket = {};
+  clipsAtPos.forEach(function(c) {
+    var key = c['side'] + ' / ' + c['type'] + ' / ' + c['state'];
+    bucket[key] = (bucket[key] || 0) + c['count'];
+  });
+
+  // Per-row table: side, type, state, len, count, partner, sequence. Rows are
+  // tinted by state for quick visual scanning:
+  //   JUNCTION          → light green (the read continues cleanly into a partner)
+  //   JUNCTION_WITH_GAP → light yellow (partner exists, but with unmapped gap bases)
+  //   UNMAPPED          → light red   (no partner; bases don't map anywhere)
+  var STATE_BG = {
+    'JUNCTION':          '#e8f5e9',
+    'JUNCTION_WITH_GAP': '#fff8e1',
+    'UNMAPPED':          '#ffebee',
+  };
+  var rowsHtml = '';
+  clipsAtPos.forEach(function(c) {
+    // partner shows the partner-contig coordinate ADJACENT to the junction (the partner
+    // edge meeting our clip) — not the partner alignment's leftmost-position. Clicking
+    // resolves the partner contig+pos to a split and opens that split's inspect page in
+    // a new tab.
+    var partner;
+    if (c['partner_contig'] && c['partner_contig'].length) {
+      var partner_label = escape_html(c['partner_contig']) + ':' + c['partner_junction_pos'] + ' (' + c['partner_strand'] + ')';
+      partner = '<a href="#" title="Open the partner split in a new tab" ' +
+                'onclick="return open_partner_inspect(\'' + c['partner_contig'].replace(/'/g, "\\'") + '\', ' +
+                c['partner_junction_pos'] + ');">' + partner_label + '</a>';
+    } else {
+      partner = '<i style="color:#999;">none</i>';
+    }
+    var row_bg = STATE_BG[c['state']] || '';
+    rowsHtml += '<tr style="background-color:' + row_bg + ';">' +
+                '<td>' + c['side'] + '</td>' +
+                '<td>' + c['type'] + '</td>' +
+                '<td>' + c['state'] + '</td>' +
+                '<td>' + c['length'] + '</td>' +
+                '<td>' + c['count'] + '</td>' +
+                '<td>' + partner + '</td>' +
+                '<td>' + get_clip_sequence_cell_html(c) + '</td>' +
+                '</tr>';
+  });
+
+  var breakdownHtml = '';
+  Object.keys(bucket).sort().forEach(function(k) {
+    breakdownHtml += '<tr><td>' + escape_html(k) + '</td><td>' + bucket[k] + '</td></tr>';
+  });
+
+  return '<span class="popover-close-button" onclick="$(this).closest(\'.popover\').popover(\'hide\');"></span> \
+          <h3>Read-edge clipping</h3> \
+          <table class="table table-striped clip-popover-table" style="width: 100%; text-align: left; font-size: 12px;"> \
+              <tr><td>Position in split</td><td>' + first['pos'] + '</td></tr> \
+              <tr><td>Position in contig</td><td>' + first['pos_in_contig'] + '</td></tr> \
+              <tr><td>Reference</td><td>' + escape_html(first['reference']) + '</td></tr> \
+              <tr><td>Coverage</td><td>' + coverage + '</td></tr> \
+              <tr><td>Total clipping count</td><td>' + totalCount + ' (' + (ratio * 100).toFixed(1) + '%)</td></tr> \
+              <tr><td>Corresponding gene call</td><td>' + ((first["corresponding_gene_call"] == -1) ? "No gene or in partial gene" : first["corresponding_gene_call"]) + '</td></tr> \
+          </table> \
+          <h3>Breakdown</h3> \
+          <table class="table table-striped clip-popover-table" style="width: 100%; text-align: left; font-size: 12px;"> \
+              <tr><th>Side / Type / State</th><th>Count</th></tr> \
+              ' + breakdownHtml + ' \
+          </table> \
+          <style> \
+              .clip-popover-table td, .clip-popover-table th { vertical-align: middle !important; } \
+              details.clip_details > summary { \
+                  cursor: pointer; \
+                  padding: 6px 10px; \
+                  background: #f5f5f5; \
+                  border: 1px solid #ccc; \
+                  border-radius: 4px; \
+                  font-weight: bold; \
+                  list-style: none; \
+                  user-select: none; \
+                  display: flex; \
+                  align-items: center; \
+                  line-height: 1.2; \
+              } \
+              details.clip_details > summary::-webkit-details-marker { display: none; } \
+              details.clip_details > summary::marker { display: none; } \
+              details.clip_details > summary:hover { background: #e8e8e8; } \
+              details.clip_details > summary::before { \
+                  content: "\\25B6"; \
+                  display: inline-block; \
+                  margin-right: 8px; \
+                  transition: transform 0.15s ease; \
+                  flex-shrink: 0; \
+              } \
+              details.clip_details[open] > summary::before { transform: rotate(90deg); } \
+          </style> \
+          <details class="clip_details" style="margin-top: 6px;"> \
+              <summary>Click to show / hide ' + clipsAtPos.length + ' event' + (clipsAtPos.length === 1 ? '' : 's') + ' at this position</summary> \
+              <table class="table clip-popover-table" style="width: 100%; text-align: left; font-size: 11px; margin-top: 4px;"> \
+                  <tr style="background-color: #eee;"><th>Side</th><th>Type</th><th>State</th><th>Length</th><th>Count</th><th>Partner</th><th>Sequence</th></tr> \
+                  ' + rowsHtml + ' \
+              </table> \
+          </details>';
 }
 
 
@@ -193,6 +361,7 @@ function loadAll() {
                 sequence = response.sequence;
                 variability = [];
                 indels = [];
+                clippings = [];
 
                 info("Building variability table");
                 for (var i=0; i<coverage.length; i++) {
@@ -225,6 +394,34 @@ function loadAll() {
                     if(maxCountOverCoverage >= 1) {
                       maxCountOverCoverage = 1;
                       i = indels.length;
+                      break;
+                    }
+                  }
+                }
+
+                clippings = response.clippings;
+
+                info("Building clippings table");
+                // The clip bar at a position represents (sum of counts at this pos) / coverage.
+                // Multiple clip rows can hit the same position (different sides / types /
+                // sequences / partners), so we sum them per-position before comparing to the
+                // global max — this matches what the renderer will draw.
+                for(var i=0; i<clippings.length; i++) {
+                  let perPos = {};
+                  let ckeys = Object.keys(clippings[i]);
+                  for(var j=0; j<ckeys.length; j++) {
+                    let entry = clippings[i][ckeys[j]];
+                    let pos = entry["pos"];
+                    if(!perPos[pos]) perPos[pos] = { count: 0, coverage: entry["coverage"] };
+                    perPos[pos].count += entry["count"];
+                  }
+                  for(let pos in perPos) {
+                    if(perPos[pos].coverage <= 0) continue;
+                    let ccVal = perPos[pos].count / perPos[pos].coverage;
+                    if(ccVal > maxClippingCountOverCoverage) maxClippingCountOverCoverage = ccVal;
+                    if(maxClippingCountOverCoverage >= 1) {
+                      maxClippingCountOverCoverage = 1;
+                      i = clippings.length;
                       break;
                     }
                   }
@@ -307,11 +504,18 @@ function loadAll() {
                 }
                 indels_enabled = maxCountOverCoverage != 0;
                 if(!indels_enabled || state['show_indels'] == null) state['show_indels'] = indels_enabled;
+                clippings_enabled = maxClippingCountOverCoverage != 0;
+                if(!clippings_enabled || state['show_clips'] == null) state['show_clips'] = clippings_enabled;
                 state['snv_scale_bottom'] = state['snv_scale_dir_up'] = state['snvs_enabled'] || indels_enabled;
                 if(state['fixed-y-scale'] == null) state['fixed-y-scale'] = false;
 
                 // adjust menu options
                 manageSNVsState(state, maxVariability);
+
+                // hide the clippings toggle when this split has no clip events to show
+                if (!clippings_enabled) {
+                    $('#clippings_picker').hide();
+                }
 
                 if (!indels_enabled && (!state['snvs_enabled'] || maxVariability == 0)) {
                     console.log("Hiding SNVs and indels due to the condition being met.");
@@ -368,12 +572,29 @@ function loadAll() {
                     $("div.indels-disabled").fadeIn(300);
                   }
                 }
+                if(clippings_enabled) {
+                  let numClips = 0;
+                  for(var i = 0; i < clippings.length; i++) {
+                    for(var key in clippings[i]) {
+                      if(clippings[i].hasOwnProperty(key)) numClips++;
+                    }
+                  }
+                  if(state['show_clips'] && numClips > 1000) {
+                    state['show_clips'] = false;
+                    $("div.clippings-disabled").append("WARNING: A total of " + numClips + " clip events were detected on this page and are not shown to optimize performance. Use the settings panel to show them.");
+                    $("div.clippings-disabled").fadeIn(300);
+                  }
+                }
                 if(state.hasOwnProperty('show_snvs')){
                   $('#toggle_snv_box').attr("checked", state['show_snvs']);
                 }
 
                 if(state.hasOwnProperty('show_indels')){
                   $('#toggle_indel_box').attr("checked", state['show_indels']);
+                }
+
+                if(state.hasOwnProperty('show_clips')){
+                  $('#toggle_clip_box').attr("checked", state['show_clips']);
                 }
 
                 if(state.hasOwnProperty('snv_scale_bottom')){
@@ -550,6 +771,17 @@ function loadAll() {
                           },
                       });
                   if($('div.indels-disabled').length > 0) $('div.indels-disabled').remove();
+                });
+                $('#toggle_clip_box').on('change', function() {
+                  waitingDialog.show('Drawing ...',
+                      {
+                          dialogSize: 'sm',
+                          onShow: function() {
+                              toggleClippings();
+                              waitingDialog.hide();
+                          },
+                      });
+                  if($('div.clippings-disabled').length > 0) $('div.clippings-disabled').remove();
                 });
                 $('#toggle_insertion_size_whiskers_box').on('change', function() {
                   waitingDialog.show('Drawing ...',
@@ -798,6 +1030,12 @@ function toggleSNVs() {
 function toggleIndels() {
   console.log("Toggling indel markers (" + Math.round(Date.now()/1000) + ")");
   state['show_indels'] = !state['show_indels'];
+  createCharts(state);
+}
+
+function toggleClippings() {
+  console.log("Toggling clipping markers (" + Math.round(Date.now()/1000) + ")");
+  state['show_clips'] = !state['show_clips'];
   createCharts(state);
 }
 
@@ -1625,6 +1863,10 @@ function processState(state_name, state) {
       $('#toggle_indel_box').attr("checked", state['show_indels']);
     }
 
+    if(state.hasOwnProperty('show_clips')){
+      $('#toggle_clip_box').attr("checked", state['show_clips']);
+    }
+
     if(state.hasOwnProperty('snv_scale_bottom')){
       $("#snv_scale_box").attr("checked", state['snv_scale_bottom']);
     }
@@ -1783,6 +2025,7 @@ function createCharts(state){
                         variability_d: variability[layer_index][3],
                         competing_nucleotides: competing_nucleotides[layer_index],
                         indels: indels[layer_index],
+                        clippings: clippings[layer_index],
                         gc_content: gc_content_array,
                         'gc_content_window_size': gc_content_window_size,
                         'gc_content_step_size': gc_content_step_size,
@@ -1792,6 +2035,7 @@ function createCharts(state){
                         height: chartHeight,
                         maxVariability: maxVariability,
                         maxCountOverCoverage: maxCountOverCoverage,
+                        maxClippingCountOverCoverage: maxClippingCountOverCoverage,
                         svg: svg,
                         snv_svg: snvBoxesSvg,
                         samples_svg: samplesSvg,
@@ -1909,6 +2153,24 @@ function createCharts(state){
     }
 
     drawArrows(0, charts[0].xScale.domain()[1], $('#gene_color_order').val(), gene_offset_y, Object.keys(state['highlight-genes']));
+
+    // If we arrived here via a partner-clip click in another tab's inspect view,
+    // the URL carries ?partner_pos=<split-relative position>. Find the clip
+    // hitbox at that position and trigger its Bootstrap popover. drawArrows
+    // just initialized .popover() on every [data-toggle="popover"] element
+    // above, so by this point the hitbox is a fully-wired popover anchor.
+    // Multiple layers may have clips at the same position (one per sample) —
+    // we show only the first to avoid stacked popovers.
+    var partnerPos = getParameterByName('partner_pos');
+    if (partnerPos !== null && partnerPos !== '') {
+        var targetPos = parseInt(partnerPos, 10);
+        if (!isNaN(targetPos)) {
+            var hits = d3.selectAll('.clip_bar_hitbox').filter(function(d) { return d && d.pos === targetPos; });
+            if (!hits.empty()) {
+                $(hits.node()).popover('show');
+            }
+        }
+    }
 }
 
 
@@ -1921,6 +2183,7 @@ function Chart(options){
     this.variability_d = options.variability_d;
     this.competing_nucleotides = options.competing_nucleotides;
     this.indels = options.indels;
+    this.clippings = options.clippings;
     this.gc_content = options.gc_content;
     this.gc_content_window_size = options.gc_content_window_size;
     this.gc_content_step_size = options.gc_content_step_size;
@@ -1929,6 +2192,7 @@ function Chart(options){
     this.height = options.height;
     this.maxVariability = options.maxVariability;
     this.maxCountOverCoverage = options.maxCountOverCoverage;
+    this.maxClippingCountOverCoverage = options.maxClippingCountOverCoverage;
     this.svg = options.svg;
     this.snv_svg = options.snv_svg;
     this.samples_svg = options.samples_svg;
@@ -1999,7 +2263,7 @@ function Chart(options){
     this.maxGCContent = gc_min_max['Min'];
     this.minGCContent = gc_min_max['Max'];
 
-    let yScaleMax = state['fixed-y-scale'] ? 1 : Math.max(this.maxVariability, this.maxCountOverCoverage);
+    let yScaleMax = state['fixed-y-scale'] ? 1 : Math.max(this.maxVariability, this.maxCountOverCoverage, this.maxClippingCountOverCoverage || 0);
 
     this.yScale = d3.scale.linear()
                             .range([this.height,0])
@@ -2070,6 +2334,10 @@ function Chart(options){
                               .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
 
     this.textContainerIndels = this.snv_svg.append("g")
+                              .attr('class',this.name.toLowerCase())
+                              .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
+
+    this.clipBarContainer = this.snv_svg.append("g")
                               .attr('class',this.name.toLowerCase())
                               .attr("transform", "translate(" + this.margin.left + "," + (this.margin.top + (this.height * this.id) + (10 * this.id)) + ")");
 
@@ -2288,6 +2556,101 @@ function Chart(options){
                               });
     }
 
+    if(state['show_clips']) {
+      // Group clip rows by their position. Each group represents one breakpoint vantage
+      // that may contain multiple events (different sides, types, sequences, partners).
+      // The bar height is (sum of counts at this pos) / coverage, mirroring how indels
+      // are drawn at line 2306 below.
+      var clipsByPos = {};
+      d3.entries(this.clippings).forEach(function(obj) {
+        var p = obj.value['pos'];
+        if (!clipsByPos[p]) clipsByPos[p] = [];
+        clipsByPos[p].push(obj.value);
+      });
+
+      // Build the per-position aggregate that the bar uses. Also compute the
+      // dominant state per position so the glyph above the bar conveys it at a
+      // glance — priority UNMAPPED > JUNCTION_WITH_GAP > JUNCTION (most
+      // actionable signal first).
+      var STATE_GLYPHS = { 'UNMAPPED': 'U', 'JUNCTION_WITH_GAP': 'G', 'JUNCTION': 'J' };
+      var STATE_PRIORITY = { 'UNMAPPED': 3, 'JUNCTION_WITH_GAP': 2, 'JUNCTION': 1 };
+      var clipBarData = Object.keys(clipsByPos).map(function(p) {
+        var rows = clipsByPos[p];
+        var totalCount = rows.reduce(function(s, r) { return s + r['count']; }, 0);
+        var cov = rows[0]['coverage'];
+        var dominantState = rows.reduce(function(acc, r) {
+          return (STATE_PRIORITY[r['state']] || 0) > (STATE_PRIORITY[acc] || 0) ? r['state'] : acc;
+        }, 'JUNCTION');
+        return {
+          pos: +p,
+          totalCount: totalCount,
+          coverage: cov,
+          ratio: cov > 0 ? Math.min(totalCount / cov, 1) : 0,
+          state: dominantState,
+          glyph: STATE_GLYPHS[dominantState] || 'C',
+          rows: rows,
+        };
+      });
+
+      // Visible bar at each position (decorative). 1px stroke matches indels'
+      // insertion_size_whisker_stem for visual consistency; pointer-events
+      // disabled so clicks pass through to the hitbox <rect> below.
+      info("Drawing clip markers");
+      this.clipBarContainer.selectAll(".clip_bar_stem")
+                          .data(clipBarData)
+                          .enter()
+                          .append("line")
+                          .attr("class", "clip_bar_stem")
+                          .attr("x1", function (d) { return xS(0.5 + d.pos); })
+                          .attr("x2", function (d) { return xS(0.5 + d.pos); })
+                          .attr("y1", function (d) { return ySL_indel(0); })
+                          .attr("y2", function (d) { return ySL_indel(d.ratio); })
+                          .attr("stroke", "#e67e22")
+                          .attr("stroke-width", "1")
+                          .attr("stroke-opacity", "0.85")
+                          .attr("pointer-events", "none");
+
+      // Letter glyph at the BASE of each bar, matching the indel '+'/'-'/'x'
+      // convention (placed at ySL_indel(0), font-size 14px, scaled by zoom in
+      // showOnly). The letter reflects the per-position dominant state
+      // (J / G / U for JUNCTION / JUNCTION_WITH_GAP / UNMAPPED).
+      this.clipBarContainer.selectAll(".clip_glyph")
+                          .data(clipBarData)
+                          .enter()
+                          .append("text")
+                          .attr("class", "clip_glyph")
+                          .attr("x", function (d) { return xS(0.5 + d.pos); })
+                          .attr("y", function (d) { return ySL_indel(0); })
+                          .attr("text-anchor", "middle")
+                          .attr("font-size", "14px")
+                          .attr("fill", "#d35400")
+                          .attr("pointer-events", "none")
+                          .text(function (d) { return d.glyph; });
+
+      // Invisible <rect> hitbox over each bar. Wider than the visible bar (12 px) so
+      // the click target is comfortable regardless of bar height; a few px taller than
+      // the bar on each side so very short bars are still hittable. The rect uses
+      // pointer-events="all" as an inline attribute (in addition to the CSS allow-list
+      // at charts.css line 74) — both are needed because the #SNV-boxes container has
+      // pointer-events: none and SVG element CSS class matching can be inconsistent.
+      // Math.min / Math.abs handle either orientation of the indel y-scale (the scale
+      // flips when snv_scale_bottom is true; SVG <rect> rejects negative height).
+      this.clipBarContainer.selectAll(".clip_bar_hitbox")
+                          .data(clipBarData)
+                          .enter()
+                          .append("rect")
+                          .attr("class", "clip_bar_hitbox")
+                          .attr("x", function (d) { return xS(0.5 + d.pos) - 6; })
+                          .attr("y", function (d) { return Math.min(ySL_indel(0), ySL_indel(d.ratio)) - 4; })
+                          .attr("width", 12)
+                          .attr("height", function (d) { return Math.abs(ySL_indel(0) - ySL_indel(d.ratio)) + 8; })
+                          .attr("fill", "transparent")
+                          .attr("pointer-events", "all")
+                          .attr("style", "cursor:pointer;")
+                          .attr('data-content', function(d) { return get_clip_popover_html(d.rows); })
+                          .attr('data-toggle', 'popover');
+    }
+
 
 
     this.xAxisTop = d3.svg.axis().scale(this.xScale).orient("top");
@@ -2308,7 +2671,7 @@ function Chart(options){
                    .attr("transform", "translate(-10,0)")
                    .call(this.yAxis);
 
-    if(state['show_snvs'] || state['show_indels']) {
+    if(state['show_snvs'] || state['show_indels'] || state['show_clips']) {
       this.lineContainer.append("g")
                      .attr("class", "y axis noselect")
                      .attr("transform", "translate(" + (this.width + 15) + ",0)")
@@ -2350,6 +2713,23 @@ Chart.prototype.showOnly = function(b){
     if(mk_font_size > 10) mk_font_size = 10;
     this.textContainer.selectAll(".SNV_text").data(d3.entries(this.competing_nucleotides)).attr("font-size", mk_font_size+"px");
     this.textContainerIndels.selectAll(".indels_text").data(d3.entries(this.indels)).attr("font-size", 2*mk_font_size+"px");
+
+    // Re-position clip bars + hitboxes on zoom. They're keyed by (pos, totalCount,
+    // coverage) in clipBarData; we just need to refresh x and y against the new xS /
+    // ySL_indel.
+    this.clipBarContainer.selectAll(".clip_bar_stem")
+                         .attr("x1", function (d) { return xS(0.5 + d.pos); })
+                         .attr("x2", function (d) { return xS(0.5 + d.pos); })
+                         .attr("y1", function (d) { return ySL_indel(0); })
+                         .attr("y2", function (d) { return ySL_indel(d.ratio); });
+    this.clipBarContainer.selectAll(".clip_bar_hitbox")
+                         .attr("x", function (d) { return xS(0.5 + d.pos) - 6; })
+                         .attr("y", function (d) { return Math.min(ySL_indel(0), ySL_indel(d.ratio)) - 4; })
+                         .attr("height", function (d) { return Math.abs(ySL_indel(0) - ySL_indel(d.ratio)) + 8; });
+    this.clipBarContainer.selectAll(".clip_glyph")
+                         .attr("x", function (d) { return xS(0.5 + d.pos); })
+                         .attr("y", function (d) { return ySL_indel(0); })
+                         .attr("font-size", 2*mk_font_size+"px");
 
     this.chartContainer.select(".x.axis.top").call(this.xAxisTop);
 }

@@ -465,3 +465,89 @@ class ProcessIndelCounts(object):
             self.indels[indel_hash]['coverage'] = cov
 
         self.indels = {k: v for k, v in self.indels.items() if k not in indel_hashes_to_remove}
+
+
+class ProcessClipCounts(object):
+    def __init__(self, clips, coverage, min_clip_length=5, test_class=None, min_coverage_for_variability=1):
+        """A class to process raw read-edge clip events from BAM profiling.
+
+        Parameters
+        ==========
+        clips : dictionary
+            A dictionary keyed by a unique hash. Each value is an OrderedDict with at minimum the keys
+            `pos` (int, position relative to the split), `length` (int, number of clipped bases) and
+            `count` (int, number of reads contributing to this exact (pos, side, sequence-or-length)
+            signature).
+
+        coverage : array
+            Per-position coverage for the split (typically `allele_counts_array.sum(axis=0)`). The
+            length must equal the split length. Coverage at a clip's breakpoint position is taken
+            directly (no averaging) since a clip occurs at a single reference position.
+
+        min_clip_length : int, 5
+            Clip events shorter than this length are filtered out. Short clips are typically quality-
+            trim residue or aligner edge noise rather than meaningful breakpoint signal.
+
+        test_class : VariablityTestFactory, None
+            If not None, clip events will be filtered if `count/coverage` is below the threshold
+            returned by `get_min_acceptable_departure_from_reference(coverage)`. Mirrors the indel
+            filter logic (see `ProcessIndelCounts`).
+
+        min_coverage_for_variability : int, 1
+            Clip events at positions with coverage below this value are filtered out.
+        """
+
+        self.clips = clips
+        self.coverage = coverage
+        self.min_clip_length = min_clip_length
+        self.test_class = test_class if test_class is not None else VariablityTestFactory(params=None)
+        self.min_coverage_for_variability = min_coverage_for_variability
+
+
+    def process(self):
+        """Modify self.clips in place: drop short, low-coverage, or low-fraction clip events.
+
+        The variability test is applied at the (pos, side) breakpoint level, not per individual
+        (pos, side, sequence, length) tuple. Real breakpoints often produce many distinct
+        clip-tail variants — each ending up as its own event with count=1 — so a per-event
+        filter would discard real hotspots whenever the tails diversify. We instead sum counts
+        across all tail variants at the same breakpoint and test that aggregate against the
+        threshold. Individual per-variant rows are preserved in storage so downstream consumers
+        can inspect tail diversity.
+        """
+
+        # Step 1: drop clips below the minimum length threshold.
+        self.clips = {h: c for h, c in self.clips.items() if c['length'] >= self.min_clip_length}
+        if not self.clips:
+            return
+
+        # Step 2: stamp per-event breakpoint coverage. A clip is a single-position event so
+        # no flanking averaging is needed.
+        for clip in self.clips.values():
+            clip['coverage'] = self.coverage[clip['pos']]
+
+        # Step 3: drop clips at low-coverage breakpoints.
+        self.clips = {h: c for h, c in self.clips.items()
+                      if c['coverage'] >= self.min_coverage_for_variability}
+        if not self.clips:
+            return
+
+        # Step 4: aggregate clip counts per (pos, side) breakpoint.
+        bucket_total_count = {}
+        bucket_coverage = {}
+        for clip in self.clips.values():
+            key = (clip['pos'], clip['side'])
+            bucket_total_count[key] = bucket_total_count.get(key, 0) + clip['count']
+            bucket_coverage[key] = clip['coverage']
+
+        # Step 5: keep events whose breakpoint passes the variability test (same caveat as
+        # ProcessIndelCounts: get_min_acceptable_departure_from_reference is being compared to
+        # total_clip_count / coverage, since "departure from reference" does not apply here).
+        passing_buckets = set()
+        for key, total in bucket_total_count.items():
+            cov = bucket_coverage[key]
+            if total / cov >= self.test_class.get_min_acceptable_departure_from_reference(cov):
+                passing_buckets.add(key)
+
+        self.clips = {h: c for h, c in self.clips.items()
+                      if (c['pos'], c['side']) in passing_buckets}

@@ -578,6 +578,38 @@ D = {
                      "having this information, you can skip storing this information by providing this flag. Note: If "
                      "--skip-SNV-profiling is provided, --skip-INDEL-profiling will automatically be enforced."}
                 ),
+    'skip-clip-profiling': (
+            ['--skip-clip-profiling'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Read-edge clipping (soft and hard CIGAR clips) is a useful breakpoint signal: pile-ups of "
+                     "reads clipping at the same reference position can mark structural-variant breakpoints, mobile "
+                     "element insertion sites, or strain junctions in metagenomes. By default anvi'o stores each "
+                     "clip event in the `clippings` table of the profile database. Use this flag to skip that step "
+                     "if you do not need the data. Note: if --skip-SNV-profiling is provided, --skip-clip-profiling "
+                     "will automatically be enforced (the clip detector runs inside the SNV/indel pass)."}
+                ),
+    'min-clip-length': (
+            ['--min-clip-length'],
+            {'default': 5,
+             'type': int,
+             'metavar': 'INT',
+             'help': "Minimum length, in nucleotides, of a clip event for it to be reported. Clips shorter than this "
+                     "are usually quality-trim residue or aligner edge noise rather than real breakpoint signal. "
+                     "The default is %(default)d. Use 0 to report clips of any length. Ignored when "
+                     "--skip-clip-profiling is set."}
+                ),
+    'force-clip-profiling': (
+            ['--force-clip-profiling'],
+            {'default': False,
+             'action': 'store_true',
+             'help': "Before profiling clips, anvi'o inspects the @PG records in the BAM header to confirm the aligner "
+                     "is one that emits soft/hard CIGAR clips. If it cannot tell (no @PG records, or no recognized "
+                     "aligner) OR the aligner is known not to emit clips (e.g. bowtie2 in default end-to-end mode), "
+                     "anvi'o auto-skips clip profiling and warns you, so you don't end up with a silently empty "
+                     "clippings table. Use this flag to force clip profiling anyway. If your aligner truly does not "
+                     "emit clips, the clippings table will simply be empty."}
+                ),
     'return-AA-frequencies-instead': (
             ['--return-AA-frequencies-instead'],
             {'default': False,

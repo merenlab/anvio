@@ -71,7 +71,7 @@
   pointer-events: all;
 }
 
-.SNV_text, .indels_text {
+.SNV_text, .indels_text, .clip_bar_hitbox {
   pointer-events: all;
 }
 

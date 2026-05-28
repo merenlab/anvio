@@ -383,6 +383,108 @@ class BAMFileObject(pysam.AlignmentFile):
         return require(has_MD)
 
 
+    def check_aligner_supports_clipping(self):
+        """Inspect the BAM's @PG records to determine whether the aligner that produced
+        this file would have emitted soft- or hard-clip CIGAR ops.
+
+        This is a defensive check for `anvi-profile`'s clip-profiling step: if the user
+        asked for clip profiling on a BAM whose aligner doesn't emit clips, the resulting
+        empty clippings table is misleading silence. By inspecting the @PG header here we
+        can catch that case and let the caller decide whether to skip with a warning.
+
+        Returns
+        =======
+        status, reason : (str, str)
+            status is one of:
+              - 'allows'    : a recognized aligner that emits clips by default
+              - 'disallows' : a recognized aligner that does NOT emit clips in this mode
+              - 'unknown'   : no recognized aligner in @PG (or no @PG records at all)
+            reason is a short human-readable explanation suitable for a run.warning.
+
+        Notes
+        =====
+        - We walk all @PG records and look for any known aligner. Post-processing tools
+          (`samtools sort/view`, etc.) also leave @PG entries; we ignore those.
+        - When multiple aligners are present (rare), an 'allows' verdict wins — assume the
+          user knows which @PG matters and that the clip-emitting tool was the final
+          step on the read path.
+        """
+        try:
+            pg_records = self.header.to_dict().get('PG', [])
+        except Exception:
+            return ('unknown', 'could not parse the BAM header @PG records')
+
+        if not pg_records:
+            return ('unknown', 'the BAM file has no @PG records, so anvi\'o cannot tell '
+                               'which aligner produced it')
+
+        detected = []
+        for pg in pg_records:
+            program = pg.get('PN', '').strip().lower()
+            cmdline = pg.get('CL', '').strip()
+            cmdline_lc = cmdline.lower()
+
+            # minimap2 — always emits clips by default. -Y just toggles supplementary
+            # alignments from H to S clips, never disables clipping.
+            if program == 'minimap2' or 'minimap2' in cmdline_lc.split() or cmdline_lc.startswith('minimap2 '):
+                detected.append(('minimap2', 'allows', 'minimap2 emits soft/hard clips by default'))
+                continue
+
+            # bwa — depends on the subcommand. bwa mem and bwa bwasw both do local
+            # alignment with soft clipping; bwa aln/samse/sampe are end-to-end.
+            if program == 'bwa' or program.startswith('bwa-') or cmdline_lc.startswith('bwa '):
+                if ' mem' in cmdline_lc or cmdline_lc.startswith('bwa mem '):
+                    detected.append(('bwa-mem', 'allows', 'bwa mem emits soft clips by default'))
+                elif ' bwasw' in cmdline_lc or cmdline_lc.startswith('bwa bwasw '):
+                    detected.append(('bwa-bwasw', 'allows', 'bwa bwasw (BWA-SW) performs local alignment and emits soft clips'))
+                elif ' aln' in cmdline_lc or ' samse' in cmdline_lc or ' sampe' in cmdline_lc:
+                    detected.append(('bwa-aln', 'disallows',
+                                     'bwa aln/samse/sampe perform end-to-end alignment and do not emit soft clips'))
+                else:
+                    detected.append(('bwa-other', 'unknown',
+                                     f'bwa subcommand could not be inferred from the @PG CL field'))
+                continue
+
+            # bowtie2 — end-to-end by default; --local enables soft clipping.
+            if program == 'bowtie2' or 'bowtie2' in cmdline_lc.split() or cmdline_lc.startswith('bowtie2 '):
+                if '--local' in cmdline_lc.split() or ' --local' in cmdline_lc:
+                    detected.append(('bowtie2-local', 'allows', 'bowtie2 --local emits soft clips'))
+                else:
+                    detected.append(('bowtie2-end-to-end', 'disallows',
+                                     'bowtie2 in default end-to-end mode does not emit soft clips '
+                                     '(only --local mode does)'))
+                continue
+
+            # bowtie (v1) — never soft-clips.
+            if program == 'bowtie' or cmdline_lc.startswith('bowtie '):
+                detected.append(('bowtie', 'disallows', 'bowtie (v1) does not emit soft clips'))
+                continue
+
+            # HISAT2 / STAR — clip-aware by default.
+            if program == 'hisat2' or 'hisat2' in cmdline_lc.split():
+                detected.append(('hisat2', 'allows', 'HISAT2 emits soft clips by default'))
+                continue
+            if program == 'star' or 'STAR' in cmdline:
+                detected.append(('star', 'allows', 'STAR emits soft clips by default'))
+                continue
+
+        if not detected:
+            return ('unknown', f'no recognized aligner among {len(pg_records)} @PG record(s) in the BAM '
+                               f'header; anvi\'o knows about minimap2, bwa, bowtie2, bowtie, HISAT2, STAR')
+
+        # If any recognized aligner allows clipping, the answer is 'allows'.
+        for name, status, reason in detected:
+            if status == 'allows':
+                return ('allows', f'{name}: {reason}')
+        # Otherwise, prefer 'disallows' over 'unknown' for the final verdict.
+        for name, status, reason in detected:
+            if status == 'disallows':
+                return ('disallows', f'{name}: {reason}')
+        # Fallback
+        name, status, reason = detected[0]
+        return ('unknown', f'{name}: {reason}')
+
+
 class Read:
     def __init__(self, read):
         """Class for manipulating reads
@@ -412,6 +514,23 @@ class Read:
                     ref_seq_length -= length
             self.reference_sequence = np.array([ord('N')] * ref_seq_length)
 
+        # SA tag — the sibling alignment(s) for split-aligned reads. Carried verbatim from
+        # the BAM and parsed downstream by the clip detector to fill the `partner_*` columns
+        # of the clippings table.
+        self.sa_tag = read.get_tag('SA') if read.has_tag('SA') else None
+
+        # Read-level metadata the clip detector needs in addition to alignment data:
+        # - query_name: identifier used to look up the primary record when we need to
+        #   recover hard-clipped bases (which live only in the primary's SEQ).
+        # - is_reverse: this alignment's strand, for interpreting SA-tag read coordinates
+        #   relative to the current record's orientation.
+        # - is_supplementary / is_secondary: lets the detector skip records that shouldn't
+        #   contribute clip events (secondaries) and identify the primary among fetches.
+        self.query_name = read.query_name
+        self.is_reverse = read.is_reverse
+        self.is_supplementary = read.is_supplementary
+        self.is_secondary = read.is_secondary
+
         # See self.vectorize
         self.v = None
 
@@ -421,7 +540,13 @@ class Read:
 
         0th column = reference position
         1st column = query sequence
-        2nd column = mapping type (0=mapped, 1=read insertion, or 2=read deletion)
+        2nd column = mapping type:
+                     0 = mapped (CIGAR M / = / X)
+                     1 = read insertion (CIGAR I)
+                     2 = read deletion (CIGAR D)
+                     3 = reference skip (CIGAR N)
+                     4 = soft clip (CIGAR S)
+                     -1 = gap in read and reference (e.g. pad / hard clip)
         3rd column = reference sequence
         """
 
@@ -440,8 +565,9 @@ class Read:
         Parameters
         ==========
         mapping_type : int
-            Any of 0, 1, 2, or -1. 0 = mapping segment, 1 = read insertion segment, 2 = read
-            deletion segment, -1 = gap in read and reference
+            Any of 0, 1, 2, 3, 4, or -1. 0 = mapped, 1 = read insertion (CIGAR I), 2 = read
+            deletion (CIGAR D), 3 = reference skip (CIGAR N), 4 = soft clip (CIGAR S),
+            -1 = gap in read and reference
 
         array : numpy array, None
             If None, self.v will be used
@@ -2161,19 +2287,29 @@ def _vectorize_read(cigartuples, query_sequence, reference_sequence, reference_s
         elif consumes_read:
             v[count:(count + length), 0] = ref_pos + reference_start - 1
             v[count:(count + length), 1] = query_sequence[read_consumed:(read_consumed + length)]
-            v[count:(count + length), 2] = 1
+            # CIGAR op 1 (I, insertion) and op 4 (S, soft clip) both consume the read but not
+            # the reference; without this discriminator they would both end up as
+            # mapping_type=1 and downstream consumers (e.g. run_SNVs_and_indels) would record
+            # soft clips as if they were insertions in the indels table.
+            if operation == 1:
+                v[count:(count + length), 2] = 1
+            else:  # operation == 4 (soft clip)
+                v[count:(count + length), 2] = 4
 
             read_consumed += length
 
         elif consumes_ref:
             v[count:(count + length), 0] = np.arange(ref_pos + reference_start, ref_pos + reference_start + length)
-            v[count:(count + length), 2] = 2
-
-            # Only fetch reference bases for deletions (op=2), not skips (op=3)
-            if operation == 2:  # Deletion
+            # CIGAR op 2 (D, deletion) and op 3 (N, reference skip) both consume the
+            # reference but not the read; tag them distinctly so downstream consumers don't
+            # conflate reference skips with deletions.
+            if operation == 2:
+                v[count:(count + length), 2] = 2
                 v[count:(count + length), 3] = reference_sequence[ref_seq_idx:(ref_seq_idx + length)]
                 ref_seq_idx += length
-            # For N (op=3), leave column 3 as -1 (already initialized)
+            else:  # operation == 3 (ref skip)
+                v[count:(count + length), 2] = 3
+                # leave column 3 as -1 (already initialized) — no reference bases stored
 
             ref_pos += length
 

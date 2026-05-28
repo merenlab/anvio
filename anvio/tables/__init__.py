@@ -214,6 +214,26 @@ indels_table_name                    = 'indels'
 indels_table_structure               = ['sample_id', 'split_name', 'pos'    , 'pos_in_contig', 'corresponding_gene_call', 'in_noncoding_gene_call', 'in_coding_gene_call' , 'base_pos_in_codon', 'codon_order_in_gene', 'cov_outlier_in_split', 'cov_outlier_in_contig', 'reference', 'type', 'sequence', 'length' , 'count'  , 'coverage']
 indels_table_types                   = ['text'     , 'text'      , 'integer', 'integer'      , 'integer'                , 'integer'               , 'integer'             , 'integer'          , 'integer'            , 'integer'             , 'integer'              , 'text'     , 'text', 'text'    , 'integer', 'integer', 'integer']
 
+# `clippings` stores read-edge soft- and hard-clip events detected during BAM profiling.
+# Unlike INS/DEL, a clip happens at a single breakpoint (the read's first or last aligned
+# base), so `side` ('L' or 'R') is required to interpret `pos`. `type` is 'SOFT' or 'HARD'.
+# `state` is 'EXPLAINED' (the bases immediately outside the clip — in the read's 5'→3'
+# direction away from the M region — are aligned in some other record of the same read,
+# typically a supplementary listed in the SA tag) or 'UNEXPLAINED' (those bases are not
+# aligned anywhere). `sequence` carries the contiguous unmapped bases for UNEXPLAINED rows
+# and is empty for EXPLAINED rows. `length` is the original CIGAR clip length; for the
+# partial case len(sequence) ≤ length (the rest is covered by another alignment). The
+# `partner_*` columns describe the sibling alignment listed in the read's SA tag (where
+# the rest of the read goes); empty when the read has no SA tag. partner_junction_pos is
+# the partner's reference coordinate ADJACENT to the junction with us (not the SAM-tag
+# leftmost-position) — i.e. the partner's L edge for a current R-clip on same strand,
+# the partner's R edge for a current L-clip on same strand, and flipped when the strands
+# differ. This is the position where the read continues to (R-clip) or comes from
+# (L-clip) on the partner contig.
+clippings_table_name                 = 'clippings'
+clippings_table_structure            = ['sample_id', 'split_name', 'pos'    , 'pos_in_contig', 'corresponding_gene_call', 'in_noncoding_gene_call', 'in_coding_gene_call' , 'base_pos_in_codon', 'codon_order_in_gene', 'cov_outlier_in_split', 'cov_outlier_in_contig', 'reference', 'type', 'side', 'state', 'sequence', 'length' , 'count'  , 'coverage', 'partner_contig', 'partner_junction_pos', 'partner_strand']
+clippings_table_types                = ['text'     , 'text'      , 'integer', 'integer'      , 'integer'                , 'integer'               , 'integer'             , 'integer'          , 'integer'            , 'integer'             , 'integer'              , 'text'     , 'text', 'text', 'text' , 'text'    , 'integer', 'integer', 'integer' , 'text'          , 'integer'             , 'text'          ]
+
 views_table_name                     = 'views'
 views_table_structure                = ['view_id', 'target_table']
 views_table_types                    = [  'str'  ,      'str'    ]
@@ -453,6 +473,7 @@ table_requires_unique_entry_id = {'self': False,
                                   variable_codons_table_name: True,
                                   variable_nts_table_name: True,
                                   indels_table_name: True,
+                                  clippings_table_name: True,
                                   collections_bins_info_table_name: True,
                                   collections_contigs_table_name: True,
                                   collections_splits_table_name: True,

@@ -8,7 +8,7 @@ Here, the term "population" describes an assemblage of co-existing microbial gen
 
 The variability profile of a metagenome enables studies of [microbial population genetics with anvi'o](http://merenlab.org/2015/07/20/analyzing-variability/).
 
-There are two types of variability the program %(anvi-profile)s can characterize and store: substitutions and indels.
+There are three types of variability the program %(anvi-profile)s can characterize and store: substitutions, indels, and read-edge clipping events.
 
 ### Substitutions: SNVs, SCVs, SAAVs
 
@@ -46,3 +46,36 @@ python -c 'import anvio.tables as t; print(t.indels_table_name)'
 In this case, the start position of the insertion in the contig is 6. The insertion _follows_ the position it is defined by. This is opposite to IGV, in which the insertion _precedes_ the position it is defined by.
 
 For deletions, there is no such ambiguity in the start position, since the deletion starts on a reference position, not in between two reference positions.
+
+### Clip events: soft and hard CIGAR clips at read edges
+
+Soft (CIGAR `S`) and hard (CIGAR `H`) clips appear at the start or end of a read's alignment when the aligner could not extend the alignment further. They are not random sequencing artifacts; pile-ups of clips at the same reference position are strong evidence of structural-variant breakpoints, mobile-element insertion sites, junctions between divergent strains in metagenomes, and other recombination-like events. Anvi'o stores each clip event in the following table:
+
+``` bash
+python -c 'import anvio.tables as t; print(t.clippings_table_name)'
+```
+
+The structure:
+
+``` bash
+python -c 'import anvio.tables as t; print(t.clippings_table_structure)'
+```
+
+Each row represents one clip event with a single signature `(pos, side, type, sequence, length, partner_*)`. Multiple reads with the same signature collapse into one row whose `count` reflects the number of supporting reads. The columns are:
+
+* `pos` / `pos_in_contig` — the breakpoint position (i.e. the read's first or last aligned reference base, depending on `side`).
+* `side` — `L` if the clip is on the 5' end of this record's alignment, `R` if on the 3' end.
+* `type` — `SOFT` (CIGAR `S`; bases are kept in this record's SEQ) or `HARD` (CIGAR `H`; bases live in a sibling record's SEQ, typically the primary alignment).
+* `state` — one of three values that describes what the bases on the *outside* of the clip do in the read:
+    * `JUNCTION` — the read continues immediately into a sibling alignment listed in the SAM `SA` tag. `sequence` is empty (the bases are in the sibling alignment, already in the contigs database). `partner_*` is populated.
+    * `JUNCTION_WITH_GAP` — there is a sibling alignment in the outside direction, but with some unmapped bases between this clip and the sibling's nearest edge. `sequence` carries those gap bases. `partner_*` is populated.
+    * `UNMAPPED` — there is no sibling alignment in the outside direction. The clip's outside bases simply do not map anywhere in the reference. `sequence` carries those bases. `partner_*` is empty.
+* `length` — the original CIGAR clip length (independent of the gap size; `len(sequence)` can be smaller).
+* `count` / `coverage` — number of reads supporting this exact event, and the per-position coverage at the breakpoint.
+* `partner_contig` / `partner_junction_pos` / `partner_strand` — describe the sibling alignment that this clip joins (if any). `partner_junction_pos` is the partner's reference coordinate *adjacent to the junction* (i.e. the partner edge facing us, where the read continues to / comes from), not the SAM `SA`-tag leftmost-position. Concretely: for a same-strand sibling, an `R` clip lands at the partner's L edge and an `L` clip lands at the partner's R edge; for an opposite-strand sibling the choice flips. The recipe is "the partner edge that meets the read going forward across the junction."
+
+**A note on what `sequence` carries.** With the three-state model above, a non-empty `sequence` always carries bases the aligner did not place against the reference. For `UNMAPPED` clips this is the unmapped tail; for `JUNCTION_WITH_GAP` clips it is the gap between us and the partner. For clean `JUNCTION` clips the column is empty by design (the bases live in the partner alignment, already recorded in the contigs db). This makes the column a direct entry point for exploring microdiversity at clip events.
+
+**A note on what's NOT stored.** Hard-clipped bases (`type='HARD'`) do not appear in the supplementary record's BAM `SEQ`. When the state requires the actual bases (e.g., `UNMAPPED` on a HARD clip), anvi'o fetches the primary alignment record by query name during profiling, extracts the bases from there, and reverse-complements them if the strands differ. Secondary alignments (BAM flag `0x100`) are not used at all for clip profiling — only primary and supplementary records contribute.
+
+**A note on the BAM aligner.** Whether your BAM contains clip information at all depends on which aligner produced it. minimap2 (any mode), `bwa mem`, `bwa bwasw` (BWA-SW), `bowtie2 --local`, HISAT2, and STAR all emit clips by default. `bowtie2` in its default end-to-end mode and `bwa aln`/`samse`/`sampe` do not. %(anvi-profile)s inspects the `@PG` records of the BAM header and auto-skips clip profiling — with a warning — when the aligner is recognized as non-clip-emitting, so that an empty `clippings` table is never silently misleading.

@@ -288,7 +288,8 @@ class MultipleRuns:
                      ('report_variability_full', 'Whether to report full variability (--report-variability-full) flags'),
                      ('SCVs_profiled', 'Profile SCVs flags (--profile-SCVs)'),
                      ('SNVs_profiled', 'SNV profiling flags (--skip-SNV-profiling)'),
-                     ('INDELs_profiled', 'Profile indels flags (--profile-indels)')]:
+                     ('INDELs_profiled', 'Profile indels flags (--profile-indels)'),
+                     ('clips_profiled', 'Clip profiling flags (--skip-clip-profiling)')]:
             v = set([r[k] for r in list(self.profile_dbs_info_dict.values())])
             if len(v) > 1:
                 if anvio.FORCE:
@@ -382,12 +383,13 @@ class MultipleRuns:
 
 
     def merge_variant_tables(self, table_name):
-        """For merging variable_nts_table_name, variable_codons_table_name, and indels_table_name tables"""
+        """For merging variable_nts_table_name, variable_codons_table_name, indels_table_name, and clippings_table_name tables"""
 
         accepted_input = [
             tables.variable_nts_table_name,
             tables.variable_codons_table_name,
-            tables.indels_table_name
+            tables.indels_table_name,
+            tables.clippings_table_name,
         ]
 
         if table_name not in accepted_input:
@@ -447,6 +449,7 @@ class MultipleRuns:
         self.SCVs_profiled = C('SCVs_profiled')
         self.SNVs_profiled = C('SNVs_profiled')
         self.INDELs_profiled = int(C('INDELs_profiled'))
+        self.clips_profiled = int(C('clips_profiled'))
         self.total_length = C('total_length')
 
         if self.num_splits > self.max_num_splits_for_hierarchical_clustering and not self.enforce_hierarchical_clustering:
@@ -488,6 +491,7 @@ class MultipleRuns:
                        'SNVs_profiled': self.SNVs_profiled,
                        'SCVs_profiled': self.SCVs_profiled,
                        'INDELs_profiled': self.INDELs_profiled,
+                       'clips_profiled': self.clips_profiled,
                        'num_contigs': self.num_contigs,
                        'num_splits': self.num_splits,
                        'total_length': self.total_length,
@@ -531,6 +535,11 @@ class MultipleRuns:
             self.merge_variant_tables(tables.indels_table_name)
         else:
             self.run.warning("Indels were not profiled, hence, these tables will be empty in the merged profile database.")
+
+        if self.clips_profiled:
+            self.merge_variant_tables(tables.clippings_table_name)
+        else:
+            self.run.warning("Read-edge clippings were not profiled, hence, the clippings table will be empty in the merged profile database.")
 
         # if SNVs are not profiled, we don't have any variability table.
         if self.SNVs_profiled:

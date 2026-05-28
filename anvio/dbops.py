@@ -4597,6 +4597,16 @@ class ProfileSuperclass(object):
         return d
 
 
+    def get_blank_clippings_dict(self):
+        """Returns an empty clippings dictionary to be filled elsewhere"""
+        d = {}
+
+        for sample_name in self.p_meta['samples']:
+            d[sample_name] = {'clippings': {}}
+
+        return d
+
+
     def get_variability_information_for_split(self, split_name, skip_outlier_SNVs=False, return_raw_results=False):
         if not split_name in self.split_names:
             raise ConfigError("get_variability_information_for_split: The split name '%s' does not seem to be "
@@ -4630,11 +4640,43 @@ class ProfileSuperclass(object):
 
         return d
 
+    def _maybe_warn_about_indel_clip_conflation(self):
+        """Warn once per instance when reading indels from a profile-db that may
+        contain soft-clip-derived phantom insertions.
+
+        Fresh profile-dbs profiled with the fix set the sentinel meta key
+        ``indels_table_clean_of_clip_conflation = True``. Pre-fix dbs (including
+        v42 dbs migrated to v43 by the additive migration) lack the key.
+        """
+        if getattr(self, '_warned_about_indel_clip_conflation', False):
+            return
+        self._warned_about_indel_clip_conflation = True
+
+        if self.p_meta.get('indels_table_clean_of_clip_conflation'):
+            return
+
+        self.run.warning(
+            "Older versions of `anvi-profile` recorded soft-clipped read regions as if "
+            "they were insertions in the profile-db indels table. That behavior has "
+            "since been fixed, but the profile-db at "
+            f"'{self.profile_db_path}' was generated before the fix (or migrated from "
+            "an older version), so its indels table may still carry those soft-clip "
+            "artifacts -- typically INS rows whose `length` does not correspond to any "
+            "real insertion event in your data. Your profile-db is otherwise fine to "
+            "use, but for the cleanest indels data consider re-profiling your BAM "
+            "files with the current `anvi-profile`.",
+            header="HEADS UP: SOFT-CLIP ARTIFACTS IN OLDER PROFILE-DB",
+            lc="yellow",
+        )
+
+
     def get_indels_information_for_split(self, split_name):
         if not split_name in self.split_names:
             raise ConfigError("get_indels_information_for_split: The split name '%s' does not seem to be "
                                "represented in this profile database. Are you sure you are looking for it "
                                "in the right database?" % split_name)
+
+        self._maybe_warn_about_indel_clip_conflation()
 
         self.progress.new('Recovering indels information for split', discard_previous_if_exists=True)
         self.progress.update('...')
@@ -4647,6 +4689,29 @@ class ProfileSuperclass(object):
 
         for i, e in enumerate(split_indels_information):
             d[e['sample_id']]['indels'][i] = e
+
+        self.progress.end()
+
+        return d
+
+
+    def get_clippings_information_for_split(self, split_name):
+        if not split_name in self.split_names:
+            raise ConfigError("get_clippings_information_for_split: The split name '%s' does not seem to be "
+                               "represented in this profile database. Are you sure you are looking for it "
+                               "in the right database?" % split_name)
+
+        self.progress.new('Recovering clippings information for split', discard_previous_if_exists=True)
+        self.progress.update('...')
+
+        profile_db = ProfileDatabase(self.profile_db_path)
+        split_clippings_information = list(profile_db.db.get_some_rows_from_table_as_dict(t.clippings_table_name, '''split_name = "%s"''' % split_name, error_if_no_data=False).values())
+        profile_db.disconnect()
+
+        d = self.get_blank_clippings_dict()
+
+        for i, e in enumerate(split_clippings_information):
+            d[e['sample_id']]['clippings'][i] = e
 
         self.progress.end()
 
@@ -4939,6 +5004,7 @@ class ProfileDatabase:
         self.db.create_table(t.variable_nts_table_name, t.variable_nts_table_structure, t.variable_nts_table_types)
         self.db.create_table(t.variable_codons_table_name, t.variable_codons_table_structure, t.variable_codons_table_types)
         self.db.create_table(t.indels_table_name, t.indels_table_structure, t.indels_table_types)
+        self.db.create_table(t.clippings_table_name, t.clippings_table_structure, t.clippings_table_types)
         self.db.create_table(t.views_table_name, t.views_table_structure, t.views_table_types)
         self.db.create_table(t.collections_info_table_name, t.collections_info_table_structure, t.collections_info_table_types)
         self.db.create_table(t.collections_bins_info_table_name, t.collections_bins_info_table_structure, t.collections_bins_info_table_types)
