@@ -690,6 +690,41 @@
       inst_link: https://cemist.dtu.dk/
       current: true
 
+- github: Med1Bel
+  name: Ahmed Belfaqih
+  avatar: medbel.jpg
+  email: mr.medbel@gmail.com
+  git_records:
+    - mr.medbel@gmail.com
+  linkedin: www.linkedin.com/in/med1bel
+  bio: "Microbiology master's student with a growing focus on bioinformatics"
+  affiliations:
+    - title: Master's Student
+      inst: Institute for Chemistry and Biology of the Marine Environment, University of Oldenburg
+      inst_link: https://uol.de/icbm
+      current: true
+
+- github: sarilog
+  name: Sarahi L. Garcia
+  web: http://miint.org
+  avatar: sarilog.jpg
+  email: sarilog@gmail.com
+  git_records:
+    - sarilog@gmail.com
+  linkedin: sarilog
+  orcid: 0000-0002-8622-0308
+  bio: "Microbial ecologist studying interactions at different levels of microbial organization."
+  affiliations:
+    - title: Professor
+      inst: Institute for Chemistry and Biology of the Marine Environment, University of Oldenburg
+      inst_link: https://uol.de/icbm
+      current: true
+    - title: Scientific Member
+      inst: Helmholtz Institute for Functional Marine Biodiversity
+      inst_link: https://hifmb.de
+      current: true
+
+
 - github: btrouche
   name: Blandine Trouche
   avatar: btrouche.png
@@ -703,6 +738,7 @@
     - title: Post-doctoral scientist
       inst: University of Southern Denmark
       inst_link: https://www.sdu.dk/en/forskning/hadal
+      current: true
 
 - github: dspeth
   name: Daan R. Speth

@@ -12,10 +12,10 @@ __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['ivagljiva']
-__requires__ = ["contigs-db", "kegg-data", "kegg-functions", "profile-db", "collection", "bin",
-                "external-genomes", "internal-genomes", "metagenomes", "user-modules-data",
-                "enzymes-txt", "pan-db", "genomes-storage-db"]
-__provides__ = ["kegg-metabolism","user-metabolism"]
+__requires__ = ["contigs-db", "kegg-data", "kegg-functions"]
+__can_use__ = ["profile-db", "collection", "bin", "external-genomes", "internal-genomes",
+               "metagenomes", "user-modules-data", "enzymes-txt", "pan-db", "genomes-storage-db"]
+__provides__ = ["kegg-metabolism", "user-metabolism"]
 __description__ = "Reconstructs metabolic pathways and estimates pathway completeness for a given set of contigs"
 
 

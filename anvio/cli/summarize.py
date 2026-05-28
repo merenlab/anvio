@@ -17,7 +17,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
-__requires__ = ['profile-db', 'contigs-db', 'collection', 'pan-db', 'pan-graph-db', 'genomes-storage-db',]
+__requires__ = ['collection', 'profile-db']
+__can_use__ = ['contigs-db', 'pan-db', 'pan-graph-db', 'genomes-storage-db']
 __provides__ = ['pan-summary', 'pan-graph-summary', 'profile-summary']
 __description__ = ("Summarizer for anvi'o pan, pan-graph, or profile databases. Depending on the input, the program produces a "
                    "output directory that contaisn flat files for rigorous downstream analyses by humans 🧠 or LLMs 🤖.")
