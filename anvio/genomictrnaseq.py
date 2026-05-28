@@ -6,10 +6,11 @@ import argparse
 import tempfile
 import numpy as np
 import pandas as pd
+import numpy.typing as npt
 
-from typing import Union
 from itertools import combinations, product
 from scipy.stats import pearsonr, spearmanr
+from typing import Union, Iterable, Annotated, TypedDict
 
 import anvio
 import anvio.utils as utils
@@ -34,6 +35,56 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __maintainer__ = "Samuel Miller"
 __email__ = "samuelmiller10@gmail.com"
+
+
+# `Annotated` carries dimensionality metadata that documents the expected array shape but is not
+# enforced by type checkers under numpy 1.24 (numpy 2.x adds first-class shape generics). The
+# aliases keep TypedDict field declarations compact.
+Float1D = Annotated[npt.NDArray[np.float64], '1-D']
+Float2D = Annotated[npt.NDArray[np.float64], '2-D']
+
+
+class _OLSClosedFormResults(TypedDict):
+    """
+    Return value of `Affinitizer._ols_closed_form`. Holds the slope, intercept, residuals, and the
+    leave-one-out intermediates of a vectorized OLS regression of every row of a (G, n) response
+    matrix on a shared (n,) predictor vector.
+
+    Shape symbols: `n` is the predictor length; `G` is the number of response rows.
+    """
+    beta: Float1D       # (G,); slope per row of Y
+    alpha: Float1D      # (G,); intercept per row
+    residuals: Float2D  # (G, n); e_{g, i} = y_{g, i} − (α_g + β_g · x_i)
+    x_mean: float       # mean of x
+    x_centered: Float1D # (n,); x − x̄
+    Sxx: float          # Σ(x − x̄)²; 0.0 when x is degenerate
+    h_diag: Float1D     # (n,); 1/n + (x − x̄)² / Sxx (NaN when Sxx == 0)
+    n: int              # len(x)
+    sse: Float1D        # (G,); Σ_i residuals_{g, i}²
+    se: Float1D         # (G,); standard error of beta; NaN when n ≤ 2 or Sxx == 0
+
+
+class AffinityRegressionIntermediates(TypedDict):
+    """
+    Per-(genome, sample) regression intermediates exposed by
+    `Affinitizer.get_affinities(..., return_intermediates=True)`.
+
+    Used downstream by `Affinitizer.get_isoacceptor_contributions` to avoid re-fitting the OLS
+    regression when computing leave-one-out Δ. Shape symbols: `n` is the number of isoacceptors
+    surviving `Affinitizer.get_isoacceptors`' filters for this (genome, sample); `G` is the
+    number of gene/function rows in the genome (the row count of the codon-weights table).
+    """
+    # Column order shared by `x`, `x_centered`, `h_diag`, and the columns of `residuals`.
+    anticodons: list        # length n
+    x: Float1D              # (n,); log2 abundance ratios -- the supply vector
+    x_mean: float           # mean of x
+    x_centered: Float1D     # (n,); x − x̄
+    Sxx: float              # Σ(x − x̄)²; 0.0 when x is fully degenerate
+    h_diag: Float1D         # (n,); 1/n + (x − x̄)² / Sxx (NaN when Sxx == 0)
+    n: int                  # number of isoacceptors
+    beta: pd.Series         # length G; slopes indexed by the genome's gene/function rows
+    se: pd.Series           # length G; slope standard errors, indexed like beta
+    residuals: pd.DataFrame # (G, n); rows like beta, columns in `anticodons` order
 
 
 run = terminal.Run()
@@ -1410,6 +1461,19 @@ class Affinitizer:
         'spearman': lambda x, y: spearmanr(x, y)[0],
         'dot': np.dot}
 
+    # Parameters for quantification of isoacceptor contribution to affinity.
+    contribution_variants = ('raw', 'norm')
+    contribution_aggregations = ('long', 'per_sample', 'per_gene', 'global')
+    contribution_statistics = ('mean', 'abs_mean', 'std')
+    default_contribution_variants = ('raw', 'norm')
+    default_contribution_aggregations = ('long', 'per_sample', 'per_gene', 'global')
+    default_contribution_statistics = ('mean', 'abs_mean')
+    # Per-isoacceptor (1 - h_ii) values below contribution_leverage_floor are treated as numerically
+    # singular, forcing the corresponding leave-one-out Δ to NaN rather than letting the closed-form
+    # formula blow up. With n ≥ 5 (the affinity-side `min_isoacceptors` filter) and well-spread
+    # supply values, h_ii stays comfortably below 1; this floor catches degenerate samples where one
+    # isoacceptor's log-ratio is far from all others.
+    contribution_leverage_floor = 1e-8
 
     def __init__(self, args={}, r=run, rq=run_quiet, p=progress, do_sanity_check=True):
         self.args = args
@@ -2666,7 +2730,10 @@ class Affinitizer:
         isoacceptor_abund_ratios_df: pd.DataFrame,
         isoacceptor_codon_weights_df: pd.DataFrame,
         return_intermediates: bool = False
-    ) -> Union[tuple[pd.DataFrame, pd.DataFrame], tuple[pd.DataFrame, pd.DataFrame, dict]]:
+    ) -> Union[
+        tuple[pd.DataFrame, pd.DataFrame],
+        tuple[pd.DataFrame, pd.DataFrame, dict[tuple[str, str], AffinityRegressionIntermediates]]
+    ]:
         """
         Calculate affinities of tRNA isoacceptors for functions or genes in each genome, along with
         standard errors of the regression slope used as the affinity.
@@ -2710,62 +2777,55 @@ class Affinitizer:
 
         intermediates : dict, optional
             Only returned when `return_intermediates` is True. Keyed by
-            (genome_name, trnaseq_sample_name). Each value is a dict with:
-                'anticodons'  : list of anticodons in the column order used internally,
-                'x'           : log2 abundance ratios, shape (n,),
-                'x_mean'      : scalar mean of `x`,
-                'x_centered'  : (x - x̄), shape (n,),
-                'Sxx'         : Σ(x - x̄)²,
-                'h_diag'      : hat-matrix diagonal 1/n + (x - x̄)² / Sxx, shape (n,),
-                'n'           : number of isoacceptors,
-                'beta'        : pandas.Series of slopes indexed like the genome's gene/function
-                                rows,
-                'se'          : pandas.Series of slope standard errors, same index as `beta`,
-                'residuals'   : pandas.DataFrame of residuals e_{g,i}, rows like `beta`, columns
-                                the same anticodons as `anticodons`
+            (genome_name, trnaseq_sample_name); each value conforms to the
+            `AffinityRegressionIntermediates` TypedDict defined at module level (which documents the
+            per-field shapes and dtypes).
         """
         isoacceptor_abund_ratios_gb = isoacceptor_abund_ratios_df.groupby('genome_name')
-        relative_isoacceptor_codon_weights_df = isoacceptor_codon_weights_df.div(
+        relative_isoacceptor_codon_weights_df: pd.DataFrame = isoacceptor_codon_weights_df.div(
             isoacceptor_codon_weights_df.sum(axis=1), axis=0)
         relative_isoacceptor_codon_weights_gb = \
             relative_isoacceptor_codon_weights_df.groupby('genome_name')
 
-        filtered_genome_names = []
-        genome_affinities_dfs = []
-        genome_stderrs_dfs = []
-        intermediates = {}
+        filtered_genome_names: list[str] = []
+        genome_affinities_dfs: list[pd.DataFrame] = []
+        genome_stderrs_dfs: list[pd.DataFrame] = []
+        intermediates: dict[tuple[str, str], AffinityRegressionIntermediates] = {}
         for genome_name in self.genome_info_dict:
+            genome_name: str
             try:
-                genome_isoacceptor_abund_ratios_df = isoacceptor_abund_ratios_gb.get_group(
-                    genome_name)
+                genome_isoacceptor_abund_ratios_df: pd.DataFrame = \
+                    isoacceptor_abund_ratios_gb.get_group(genome_name)
             except KeyError:
                 filtered_genome_names.append(genome_name)
                 continue
             try:
-                genome_relative_isoacceptor_codon_weights_df = \
+                genome_relative_isoacceptor_codon_weights_df: pd.DataFrame = \
                     relative_isoacceptor_codon_weights_gb.get_group(genome_name)
             except KeyError:
                 filtered_genome_names.append(genome_name)
                 continue
 
-            sample_affinities_dict = {}
-            sample_stderrs_dict = {}
+            sample_affinities_dict: dict[str, pd.Series] = {}
+            sample_stderrs_dict: dict[str, pd.Series] = {}
             for trnaseq_sample_name, sample_isoacceptor_abund_ratios_df in \
                 genome_isoacceptor_abund_ratios_df.groupby('trnaseq_sample_name'):
+                trnaseq_sample_name: str
+                sample_isoacceptor_abund_ratios_df: pd.DataFrame
                 # For each function or gene in the genome, regress its relative isoacceptor codon
                 # weights on the log isoacceptor abundance ratios for the sample (ratios are
                 # non-reference/reference in sample mode and sample/geometric-mean in mean mode).
                 # The slope is the affinity; the slope's standard error is also retained.
 
-                initiation_filter = sample_isoacceptor_abund_ratios_df['decoded_amino_acid'].isin(
-                    ['iMet', 'fMet'])
+                initiation_filter: pd.Series = sample_isoacceptor_abund_ratios_df[
+                    'decoded_amino_acid'].isin(['iMet', 'fMet'])
                 # `get_isoacceptor_codon_weights` should ensure that every anticodon (including
                 # modified wobble nucleotide, if applicable) from the tRNA-seq data is represented
                 # in a column of the weighted codon frequencies table.
-                abund_ratios = sample_isoacceptor_abund_ratios_df.loc[~initiation_filter][
+                abund_ratios: pd.Series = sample_isoacceptor_abund_ratios_df.loc[~initiation_filter][
                     ['anticodon', 'abundance_ratio']].set_index('anticodon')['abundance_ratio']
 
-                missing_anticodons = list(abund_ratios.index.difference(
+                missing_anticodons: list[str] = list(abund_ratios.index.difference(
                     genome_relative_isoacceptor_codon_weights_df.columns))
                 abund_ratios = abund_ratios.drop(missing_anticodons)
                 if missing_anticodons:
@@ -2776,12 +2836,13 @@ class Affinitizer:
                         f"affinity: {', '.join(missing_anticodons)}")
 
                 # Linearize abundance ratios -- the supply vector x.
-                log_abund_ratios = np.log2(abund_ratios.values)
-                Y_df = genome_relative_isoacceptor_codon_weights_df[abund_ratios.index]
+                log_abund_ratios: Float1D = np.log2(abund_ratios.values)
+                Y_df: pd.DataFrame = genome_relative_isoacceptor_codon_weights_df[
+                    abund_ratios.index]
                 ols = self._ols_closed_form(log_abund_ratios, Y_df.values)
 
-                beta_series = pd.Series(ols['beta'], index=Y_df.index)
-                se_series = pd.Series(ols['se'], index=Y_df.index)
+                beta_series: pd.Series = pd.Series(ols['beta'], index=Y_df.index)
+                se_series: pd.Series = pd.Series(ols['se'], index=Y_df.index)
                 sample_affinities_dict[trnaseq_sample_name] = beta_series
                 sample_stderrs_dict[trnaseq_sample_name] = se_series
 
@@ -2801,8 +2862,8 @@ class Affinitizer:
                         ),
                     }
 
-            genome_affinities_df = pd.DataFrame.from_dict(sample_affinities_dict)
-            genome_stderrs_df = pd.DataFrame.from_dict(sample_stderrs_dict)
+            genome_affinities_df: pd.DataFrame = pd.DataFrame.from_dict(sample_affinities_dict)
+            genome_stderrs_df: pd.DataFrame = pd.DataFrame.from_dict(sample_stderrs_dict)
             genome_affinities_dfs.append(genome_affinities_df)
             genome_stderrs_dfs.append(genome_stderrs_df)
 
@@ -2811,6 +2872,8 @@ class Affinitizer:
                 "The following genomes did not pass the filters for affinity calculation: "
                 f"{', '.join(filtered_genome_names)}")
 
+        affinities_df: pd.DataFrame
+        stderrs_df: pd.DataFrame
         if genome_affinities_dfs:
             affinities_df = pd.concat(genome_affinities_dfs, axis=0)
             stderrs_df = pd.concat(genome_stderrs_dfs, axis=0)
@@ -2824,7 +2887,7 @@ class Affinitizer:
 
 
     @staticmethod
-    def _ols_closed_form(x: np.ndarray, Y: np.ndarray) -> dict:
+    def _ols_closed_form(x: Float1D, Y: Float2D) -> _OLSClosedFormResults:
         """
         Vectorized closed-form OLS regression of every row of `Y` on the shared predictor `x`.
 
@@ -2842,43 +2905,38 @@ class Affinitizer:
 
         Returns
         =======
-        dict
-            beta       : numpy.ndarray, shape (G,)   -- slope per row of Y
-            alpha      : numpy.ndarray, shape (G,)   -- intercept per row
-            residuals  : numpy.ndarray, shape (G, n) -- e_{g,i} = y_{g,i} - (α_g + β_g · x_i)
-            x_mean     : float                       -- mean of x
-            x_centered : numpy.ndarray, shape (n,)   -- (x - x̄)
-            Sxx        : float                       -- Σ(x - x̄)²; 0.0 when x is degenerate
-            h_diag     : numpy.ndarray, shape (n,)   -- 1/n + (x - x̄)² / Sxx; NaN when Sxx == 0
-            n          : int                         -- len(x)
-            sse        : numpy.ndarray, shape (G,)   -- Σ_i residuals_{g,i}²
-            se         : numpy.ndarray, shape (G,)   -- standard error of `beta`; NaN when
-                                                        n ≤ 2 or Sxx == 0
+        _OLSClosedFormResults
+            A TypedDict defined at module level whose fields document the per-element dtype,
+            shape, and meaning of each component (beta, alpha, residuals, x_mean, x_centered,
+            Sxx, h_diag, n, sse, se).
         """
-        n = len(x)
-        x_mean = float(x.mean()) if n else float('nan')
-        x_centered = x - x_mean
-        Sxx = float((x_centered ** 2).sum())
+        n: int = len(x)
+        x_mean: float = float(x.mean()) if n else float('nan')
+        x_centered: Float1D = x - x_mean
+        Sxx: float = float((x_centered ** 2).sum())
 
+        h_diag: Float1D
         if Sxx > 0:
             h_diag = 1.0 / n + (x_centered ** 2) / Sxx
         else:
             h_diag = np.full(n, np.nan)
 
-        G = Y.shape[0]
-        y_mean: np.ndarray = Y.mean(axis=1)
-        Y_centered = Y - y_mean[:, np.newaxis]
+        G: int = Y.shape[0]
+        y_mean: Float1D = Y.mean(axis=1)
+        Y_centered: Float2D = Y - y_mean[:, np.newaxis]
 
+        beta: Float1D
         if Sxx > 0:
             beta = (Y_centered @ x_centered) / Sxx
         else:
             beta = np.full(G, np.nan)
-        alpha = y_mean - beta * x_mean
+        alpha: Float1D = y_mean - beta * x_mean
 
-        y_hat = alpha[:, np.newaxis] + beta[:, np.newaxis] * x[np.newaxis, :]
-        residuals = Y - y_hat
-        sse: np.ndarray = (residuals ** 2).sum(axis=1)
+        y_hat: Float2D = alpha[:, np.newaxis] + beta[:, np.newaxis] * x[np.newaxis, :]
+        residuals: Float2D = Y - y_hat
+        sse: Float1D = (residuals ** 2).sum(axis=1)
 
+        se: Float1D
         if n > 2 and Sxx > 0:
             se = np.sqrt(sse / ((n - 2) * Sxx))
         else:
@@ -2896,6 +2954,506 @@ class Affinitizer:
             'sse': sse,
             'se': se,
         }
+
+
+    def get_isoacceptor_contributions(
+        self,
+        intermediates: dict[tuple[str, str], AffinityRegressionIntermediates],
+        variants: Iterable[str] = None,
+        aggregations: Iterable[str] = None,
+        statistics: Iterable[str] = None,
+        leverage_floor: float = None
+    ):
+        """
+        Compute leave-one-out isoacceptor contributions to each (gene, sample) affinity.
+
+        For each isoacceptor `i` contributing to the affinity β(g, s) of gene `g` in sample `s`, the
+        contribution is
+
+            Δ(g, s, i) = β(g, s) - β₋ᵢ(g, s)
+
+        where β₋ᵢ is the slope refitted with `i` removed. The closed-form deletion identity
+
+            Δ(g, s, i) = (x_i - x̄) · e_{g, i} / [(1 - h_{ii}) · Σ_j (x_j - x̄)²]
+
+        avoids the n refits per (g, s). A standard-error-normalized variant
+
+            Δ_norm(g, s, i) = Δ(g, s, i) / SE(β(g, s))
+
+        downweights weakly-determined regressions so a unit of Δ_norm is comparable across (g, s)
+        pairs. All of `x`, `(x - x̄)`, `Σ(x - x̄)²`, and `h_{ii}` are taken from the per-(genome,
+        sample) intermediates produced by `get_affinities(return_intermediates=True)` and are not
+        recomputed here.
+
+        Parameters
+        ==========
+        intermediates : dict
+            Per-(genome, sample) regression intermediates as returned by
+            `get_affinities(return_intermediates=True)`.
+
+        variants : Iterable[str], None
+            Subset of {'raw', 'norm'} selecting which base contribution quantities to compute.
+            Defaults to `Affinitizer.default_contribution_variants`.
+
+        aggregations : Iterable[str], None
+            Subset of {'long', 'per_sample', 'per_gene', 'global'} selecting which output tables to
+            produce. 'long' yields the full 3-D table indexed by (g, s, i); the others collapse one
+            or both of `g` and `s` and produce wide tables of statistics across the collapsed
+            dimension(s). Defaults to `Affinitizer.default_contribution_aggregations`.
+
+        statistics : Iterable[str], None
+            Subset of {'mean', 'abs_mean', 'std'} selecting which statistics to compute for the
+            aggregated levels. Ignored for 'long'. Defaults to
+            `Affinitizer.default_contribution_statistics`.
+
+        leverage_floor : float, None
+            Minimum value of (1 - h_{ii}) treated as numerically well-conditioned; smaller values
+            produce NaN Δ for that isoacceptor. Defaults to
+            `Affinitizer.contribution_leverage_floor`.
+
+        Returns
+        =======
+        contributions_dict : dict
+            Nested dict `contributions_dict[genome_name][source][output_key] = pd.DataFrame`, where
+            `source` matches the existing affinity-output organization ('genes' in gene-affinity
+            mode, the function source name otherwise) and `output_key` is a composite tag such as
+            'LONG-RAW', 'PER_SAMPLE-NORM-MEAN', 'GLOBAL-RAW-ABS_MEAN'.
+
+            Long-format tables (`'LONG-{RAW,NORM}'`) have one row per (g, s, i) with columns:
+            the gene/function index levels, `trnaseq_sample_name`, `anticodon`, and a single
+            value column (`delta_raw` or `delta_norm`).
+
+            Aggregated tables (`'{LEVEL}-{VARIANT}-{STATISTIC}'`) are wide with anticodon columns:
+                per_sample : rows indexed by (genome_name, trnaseq_sample_name)
+                per_gene   : rows indexed by the genome's gene/function multi-index
+                global     : rows indexed by genome_name (single row per genome)
+
+        sanity_data : list[dict]
+            One entry per (genome, sample) with keys 'genome', 'sample', 'n_isoacceptors',
+            'n_genes', and 'corr_sum_delta_with_beta', which is the Pearson correlation across genes
+            of Σ_i Δ(g, s, i) and β(g, s). Intended for downstream runtime reporting; not written to
+            output files here.
+        """
+        if variants is None:
+            variants = self.default_contribution_variants
+        if aggregations is None:
+            aggregations = self.default_contribution_aggregations
+        if statistics is None:
+            statistics = self.default_contribution_statistics
+        if leverage_floor is None:
+            leverage_floor = self.contribution_leverage_floor
+
+        valid_variants = set(self.contribution_variants)
+        valid_aggregations = set(self.contribution_aggregations)
+        valid_statistics = set(self.contribution_statistics)
+
+        variants = list(variants)
+        aggregations = list(aggregations)
+        statistics = list(statistics)
+
+        if not variants:
+            raise ConfigError(
+                "get_isoacceptor_contributions :: at least one contribution variant must be "
+                "requested."
+            )
+        if not aggregations:
+            raise ConfigError(
+                "get_isoacceptor_contributions :: at least one aggregation level must be "
+                "requested."
+            )
+        unknown_variants = [v for v in variants if v not in valid_variants]
+        if unknown_variants:
+            raise ConfigError(
+                f"get_isoacceptor_contributions :: unknown contribution variant(s): "
+                f"{', '.join(unknown_variants)}. Valid choices: "
+                f"{', '.join(sorted(valid_variants))}."
+            )
+        unknown_aggregations = [a for a in aggregations if a not in valid_aggregations]
+        if unknown_aggregations:
+            raise ConfigError(
+                f"get_isoacceptor_contributions :: unknown aggregation level(s): "
+                f"{', '.join(unknown_aggregations)}. Valid choices: "
+                f"{', '.join(sorted(valid_aggregations))}."
+            )
+        aggregated_levels = [a for a in aggregations if a != 'long']
+        if aggregated_levels and not statistics:
+            raise ConfigError(
+                "get_isoacceptor_contributions :: at least one statistic must be requested when an "
+                "aggregated level ('per_sample', 'per_gene', or 'global') is requested."
+            )
+        unknown_statistics = [s for s in statistics if s not in valid_statistics]
+        if unknown_statistics:
+            raise ConfigError(
+                f"get_isoacceptor_contributions :: unknown contribution statistic(s): "
+                f"{', '.join(unknown_statistics)}. Valid choices: "
+                f"{', '.join(sorted(valid_statistics))}."
+            )
+
+        contributions_dict = {}
+        sanity_data = []
+        if not intermediates:
+            return contributions_dict, sanity_data
+
+        # Restructure intermediates from (genome, sample) keys to {genome: {sample: inter}} so each
+        # genome's samples can be processed together. Genomes' genes/functions must obviously be
+        # processed apart from other genomes.
+        by_genome: dict[str, dict[str, AffinityRegressionIntermediates]] = {}
+        for (genome_name, sample_name), inter in intermediates.items():
+            by_genome.setdefault(genome_name, {})[sample_name] = inter
+
+        for genome_name, sample_inters in by_genome.items():
+            # Accumulate per-sample long-format chunks for this genome, one list per variant. Chunks
+            # are concatenated below into per-genome long tables, then split by function source, or
+            # put into a single 'genes' bucket in gene-affinity mode.
+            long_pieces = {'raw': [], 'norm': []}
+
+            for sample_name, inter in sample_inters.items():
+                # All subscripts here are typed via the `AffinityRegressionIntermediates`
+                # TypedDict on `inter` (propagated from `by_genome`'s declaration above).
+                x_centered = inter['x_centered']
+                h_diag = inter['h_diag']
+                Sxx = inter['Sxx']
+                n = inter['n']
+                residuals = inter['residuals']
+                se = inter['se']
+                beta = inter['beta']
+                anticodons = inter['anticodons']
+
+                # The closed-form leave-one-out identity decomposes Δ into a sample-only factor and
+                # a gene-specific residual:
+                #    Δ(g, s, i) = [(x_i − x̄) / ((1 − h_{ii}) · Sxx)] · e_{g, i}
+                # `per_iso_weight` is the bracketed sample-only factor, computed once and broadcast
+                # across all genes. (1 − h_{ii}) approaches 0 only if isoacceptor i has near-maximal
+                # leverage (one outlier log-ratio carrying most of Sxx); the leverage floor forces
+                # NaN there rather than letting the division explode.
+                if Sxx > 0:
+                    one_minus_h = 1.0 - h_diag
+                    with np.errstate(divide='ignore', invalid='ignore'):
+                        per_iso_weight = x_centered / (one_minus_h * Sxx)
+                    per_iso_weight = np.where(one_minus_h < leverage_floor, np.nan, per_iso_weight)
+                else:
+                    # Sxx == 0 means a fully degenerate supply vector (every log-ratio equal), so β
+                    # is undefined; `get_affinities` already set β and SE to NaN, and we propagate
+                    # that to Δ here.
+                    per_iso_weight = np.full(n, np.nan)
+
+                # Broadcast (G, n) residuals × (n,) sample factor → (G, n) raw Δ. Each row is
+                # one gene's contribution profile across this sample's isoacceptors.
+                delta_raw_df = residuals * per_iso_weight
+                delta_raw_df.columns = pd.Index(anticodons, name='anticodon')
+
+                # Sanity diagnostic: across genes within this (genome, sample), how strongly does
+                # Σ_i Δ(g, s, i) co-vary with β(g, s)? This is NOT a clean OLS identity --
+                # the (1 − h_{ii}) factor breaks the residual-orthogonality identity
+                # Σ_i (x_i − x̄)·e_i = 0, so Σ_i Δ_i = n·β − Σ_i β₋ᵢ measures total leverage rather
+                # than reproducing β. In practice it tracks β when no single isoacceptor dominates
+                # the fit; it can diverge sharply on outlier-driven (g, s) pairs. Reported per
+                # (genome, sample) as a runtime info line by the caller -- not used here to
+                # threshold or reject anything.
+                sum_delta = delta_raw_df.sum(axis=1, skipna=False)
+                mask = beta.notna() & sum_delta.notna()
+                if mask.sum() > 1:
+                    a = beta[mask].values
+                    b = sum_delta[mask].values
+                    if np.std(a) > 0 and np.std(b) > 0:
+                        corr = float(np.corrcoef(a, b)[0, 1])
+                    else:
+                        corr = float('nan')
+                else:
+                    corr = float('nan')
+                sanity_data.append({
+                    'genome': genome_name,
+                    'sample': sample_name,
+                    'n_isoacceptors': n,
+                    'n_genes': int(len(beta)),
+                    'corr_sum_delta_with_beta': corr,
+                })
+
+                # Stack each wide (G, n) Δ matrix to long format and tag with the sample name. Both
+                # variants share the Δ_raw computation above -- the norm variant just divides each
+                # row by its SE_g afterwards.
+                if 'raw' in variants:
+                    long_pieces['raw'].append(self._stack_to_long(
+                        delta_raw_df, sample_name, value_col='delta_raw'))
+                if 'norm' in variants:
+                    # SE_g == 0 (perfect fit) or NaN (n ≤ 2, or β undefined) produces ±inf or NaN
+                    # through pandas division; the replace below normalizes ±inf to NaN so Δ_norm is
+                    # consistently NaN whenever it's not well-defined.
+                    with np.errstate(divide='ignore', invalid='ignore'):
+                        delta_norm_df = delta_raw_df.div(se, axis=0)
+                    delta_norm_df = delta_norm_df.replace([np.inf, -np.inf], np.nan)
+                    long_pieces['norm'].append(self._stack_to_long(
+                        delta_norm_df, sample_name, value_col='delta_norm'))
+
+            # Concatenate per-sample chunks into one long table per variant for this genome.
+            # Variants that were not requested are kept as empty DataFrames so downstream lookups by
+            # variant key don't have to special-case missing entries.
+            genome_long = {}
+            for variant in variants:
+                pieces = long_pieces[variant]
+                if pieces:
+                    genome_long[variant] = pd.concat(pieces, axis=0, ignore_index=True)
+                else:
+                    genome_long[variant] = pd.DataFrame()
+
+            # Determine sources for splitting outputs. Function mode has a 'function_source' index
+            # level on the residuals (preserved into the stacked long table); gene mode does not, in
+            # which case we put everything under a single 'genes' source key to match the existing
+            # affinity-output organization.
+            if self.gene_affinity:
+                source_groups = [('genes', genome_long)]
+            else:
+                source_groups = []
+                # Use whichever variant DataFrame is non-empty to enumerate sources.
+                source_enum_df = next(
+                    (df for df in genome_long.values() if not df.empty), pd.DataFrame())
+                if source_enum_df.empty or 'function_source' not in source_enum_df.columns:
+                    # No function-source level for some reason; fall back to a single bucket.
+                    source_groups = [('all_functions', genome_long)]
+                else:
+                    for source in source_enum_df['function_source'].unique():
+                        source_dict = {}
+                        for variant, df in genome_long.items():
+                            if df.empty:
+                                source_dict[variant] = df
+                            else:
+                                source_dict[variant] = df[df['function_source'] == source]
+                        source_groups.append((source, source_dict))
+
+            genome_outputs = {}
+            for source, source_long in source_groups:
+                source_outputs = self._build_contribution_tables(
+                    source_long, genome_name, source, variants, aggregations, statistics)
+                if source_outputs:
+                    genome_outputs[source] = source_outputs
+
+            if genome_outputs:
+                contributions_dict[genome_name] = genome_outputs
+
+        return contributions_dict, sanity_data
+
+
+    @staticmethod
+    def _stack_to_long(wide_df: pd.DataFrame, sample_name: str, value_col: str) -> pd.DataFrame:
+        """
+        Stack a (G, n) per-(genome, sample) Δ table to long format with a sample column.
+
+        Parameters
+        ==========
+        wide_df : pandas.core.frame.DataFrame
+            A (G, n) Δ matrix for a single (genome, sample). `wide_df.index` carries the
+            gene/function multi-index from the original codon-weights table (`genome_name`,
+            optionally `function_source`/`function_accession`/`function_name` in function mode,
+            or `gene_callers_id` in gene mode); `wide_df.columns` is the anticodons used by the
+            regression for this (genome, sample), in the order they appear in `x`.
+
+        sample_name : str
+            The tRNA-seq sample name to tag every emitted row with.
+
+        value_col : str
+            Name of the Δ-value column in the returned long table ('delta_raw' or 'delta_norm').
+
+        Returns
+        =======
+        pandas.core.frame.DataFrame
+            Long-format table with one row per (gene/function row x anticodon). The index is reset;
+            the gene/function row index levels become regular columns, plus an `anticodon` column
+            from the stacked column index, a `trnaseq_sample_name` column equal to `sample_name`,
+            and the `value_col` column holding the Δ values. NaN entries are preserved (not dropped)
+            so the output shape is deterministic across (g, s) pairs that share an isoacceptor set.
+        """
+        wide_df.columns.name = 'anticodon'
+        stacked: pd.DataFrame = wide_df.stack(dropna=False).rename(value_col).reset_index()
+        stacked['trnaseq_sample_name'] = sample_name
+        return stacked
+
+
+    def _build_contribution_tables(
+        self,
+        source_long: dict[str, pd.DataFrame],
+        genome_name: str,
+        source: str,
+        variants: Iterable[str],
+        aggregations: Iterable[str],
+        statistics: Iterable[str]
+    ) -> dict[str, pd.DataFrame]:
+        """
+        Produce the final {output_key: DataFrame} dict for a single (genome, source) bucket.
+
+        Long-format outputs (`LONG-RAW`, `LONG-NORM`) are the input long table verbatim; aggregated
+        outputs are groupby-aggregations of the long table over either genes, samples, or both,
+        pivoted to wide tables with anticodon columns.
+
+        Parameters
+        ==========
+        source_long : dict[str, pandas.core.frame.DataFrame]
+            Per-variant long tables already filtered to this source. Keys are variant names
+            ('raw' and/or 'norm'); each value is the variant's long table (one row per
+            (gene/function row x sample x anticodon)) or an empty DataFrame if the variant was not
+            requested. Built upstream by `get_isoacceptor_contributions`.
+
+        genome_name : str
+            The genome these tables belong to, used to tag global aggregations whose pivot index
+            would otherwise collapse to a length-1 row index without a label.
+
+        source : str
+            The function source ('genes' in gene-affinity mode, the function source name otherwise).
+            Currently informational; it is the dict key under which the returned dict is stored by
+            the caller.
+
+        variants : Iterable[str]
+            Variants to emit, in the same allowed set as `Affinitizer.contribution_variants`.
+
+        aggregations : Iterable[str]
+            Aggregation levels to emit, in the same allowed set as
+            `Affinitizer.contribution_aggregations`.
+
+        statistics : Iterable[str]
+            Statistics to compute on the aggregated levels, in the same allowed set as
+            `Affinitizer.contribution_statistics`. Ignored for the 'long' level.
+
+        Returns
+        =======
+        dict[str, pandas.core.frame.DataFrame]
+            Mapping from output identifier (e.g. 'LONG-RAW', 'PER_SAMPLE-NORM-MEAN',
+            'GLOBAL-RAW-ABS_MEAN') to the corresponding DataFrame. Empty if every requested variant
+            had an empty long table.
+        """
+        outputs: dict[str, pd.DataFrame] = {}
+
+        is_function_mode = not self.gene_affinity
+
+        # Anticodon column ordering: use the union of anticodons across all long pieces, sorted for
+        # deterministic column order in wide outputs.
+        anticodon_universe: set = set()
+        for df in source_long.values():
+            if not df.empty:
+                anticodon_universe.update(df['anticodon'].unique().tolist())
+        anticodon_universe: list[str] = sorted(anticodon_universe)
+
+        for variant in variants:
+            df_long = source_long[variant]
+            if df_long.empty:
+                continue
+            value_col = 'delta_raw' if variant == 'raw' else 'delta_norm'
+
+            if 'long' in aggregations:
+                outputs[f'LONG-{variant.upper()}'] = df_long.reset_index(drop=True)
+
+            for level in aggregations:
+                if level == 'long':
+                    continue
+                wide_template = self._aggregate_and_pivot(
+                    df_long, value_col, level, statistics,
+                    is_function_mode, anticodon_universe, genome_name)
+                for stat, wide in wide_template.items():
+                    outputs[f'{level.upper()}-{variant.upper()}-{stat.upper()}'] = wide
+
+        return outputs
+
+
+    @staticmethod
+    def _aggregate_and_pivot(
+        df_long: pd.DataFrame,
+        value_col: str,
+        level: str,
+        statistics: Iterable[str],
+        is_function_mode: bool,
+        anticodon_universe: list[str],
+        genome_name: str
+    ) -> dict[str, pd.DataFrame]:
+        """
+        For one aggregation level, return a dict mapping each requested statistic to its wide
+        (rows x anticodons) DataFrame.
+
+        Parameters
+        ==========
+        df_long : pandas.core.frame.DataFrame
+            Long-format Δ table for one (genome, source, variant). Must contain `value_col`, an
+            `anticodon` column, and the level-specific grouping columns enumerated below.
+
+        value_col : str
+            Name of the Δ-value column in `df_long` ('delta_raw' or 'delta_norm').
+
+        level : str
+            Aggregation level: 'per_sample' (collapse over genes), 'per_gene' (collapse over
+            samples), or 'global' (collapse over both). Any other value -- including 'long' --
+            returns an empty dict.
+
+        statistics : Iterable[str]
+            Statistics to compute. Recognized values are 'mean', 'abs_mean', and 'std'; any others
+            are silently skipped.
+
+        is_function_mode : bool
+            True when affinity was computed for functions (per-gene grouping then carries the
+            full `function_source`/`function_accession`/`function_name` triple); False for gene mode
+            (per-gene grouping uses `gene_callers_id`).
+
+        anticodon_universe : list[str]
+            Sorted union of anticodons across all variants in this (genome, source) bucket. Used to
+            reindex the columns of every wide output so column order is consistent across statistics
+            and aggregations.
+
+        genome_name : str
+            The genome these aggregations belong to. Used to label the single-row 'global' output
+            whose pivot index would otherwise be unlabelled.
+
+        Returns
+        =======
+        dict[str, pandas.core.frame.DataFrame]
+            Mapping from statistic name to wide DataFrame (rows = pivot index for the level,
+            columns = `anticodon_universe`). Empty if `level` is not one of the recognized
+            aggregation labels or if `df_long` is missing a required grouping column.
+        """
+        if level == 'per_sample':
+            group_keys = ['genome_name', 'trnaseq_sample_name', 'anticodon']
+            pivot_index = ['genome_name', 'trnaseq_sample_name']
+        elif level == 'per_gene':
+            if is_function_mode:
+                group_keys = [
+                    'genome_name', 'function_source', 'function_accession',
+                    'function_name', 'anticodon']
+                pivot_index = [
+                    'genome_name', 'function_source', 'function_accession', 'function_name']
+            else:
+                group_keys = ['genome_name', 'gene_callers_id', 'anticodon']
+                pivot_index = ['genome_name', 'gene_callers_id']
+        elif level == 'global':
+            group_keys = ['genome_name', 'anticodon']
+            pivot_index = ['genome_name']
+        else:
+            return {}
+
+        # Pre-strip rows lacking required keys (defensive; shouldn't happen in practice).
+        missing_cols = [c for c in group_keys if c not in df_long.columns]
+        if missing_cols:
+            return {}
+
+        result: dict[str, pd.DataFrame] = {}
+        grouped = df_long.groupby(group_keys, dropna=False)[value_col]
+        for stat in statistics:
+            if stat == 'mean':
+                agg = grouped.mean()
+            elif stat == 'abs_mean':
+                agg = grouped.apply(lambda v: v.abs().mean())
+            elif stat == 'std':
+                agg = grouped.std()
+            else:
+                continue
+            # `agg` has the full group_keys as its index; the last level is 'anticodon'.
+            wide: pd.DataFrame = agg.unstack('anticodon')
+            # Ensure consistent anticodon column ordering across statistics and aggregations.
+            wide = wide.reindex(columns=anticodon_universe)
+            # Set genome_name explicitly for global (single-row) tables to keep the row index
+            # informative even when there's just one row per genome.
+            if level == 'global' and not isinstance(wide.index, pd.MultiIndex):
+                wide.index = pd.Index([genome_name], name='genome_name')
+            else:
+                if pivot_index and list(wide.index.names) != pivot_index:
+                    # If a singleton level got dropped, restore the expected names.
+                    wide.index = wide.index.rename(pivot_index[:wide.index.nlevels])
+            result[stat] = wide
+        return result
 
 
     @staticmethod
