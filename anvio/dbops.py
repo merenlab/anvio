@@ -4937,6 +4937,11 @@ class ProfileDatabase:
         self.db.create_table(t.layer_additional_data_table_name, t.layer_additional_data_table_structure, t.layer_additional_data_table_types)
         self.db.create_table(t.layer_orders_table_name, t.layer_orders_table_structure, t.layer_orders_table_types)
         self.db.create_table(t.variable_nts_table_name, t.variable_nts_table_structure, t.variable_nts_table_types)
+        # Index keeps `WHERE split_name = ...` / `IN (...)` queries fast on
+        # read-recruitment-scale tables. Mirrors the index built by the
+        # v42->v43 migration for existing databases.
+        self.db._exec('CREATE INDEX IF NOT EXISTS variable_nucleotides_split_name_idx '
+                      'ON "%s"(split_name)' % t.variable_nts_table_name)
         self.db.create_table(t.variable_codons_table_name, t.variable_codons_table_structure, t.variable_codons_table_types)
         self.db.create_table(t.indels_table_name, t.indels_table_structure, t.indels_table_types)
         self.db.create_table(t.views_table_name, t.views_table_structure, t.views_table_types)
