@@ -2741,7 +2741,7 @@ class Affinitizer:
 
                 missing_anticodons = list(abund_ratios.index.difference(
                     genome_relative_isoacceptor_codon_weights_df.columns))
-                abund_ratios.drop(missing_anticodons)
+                abund_ratios = abund_ratios.drop(missing_anticodons)
                 if missing_anticodons:
                     self.run.warning(
                         "tRNA isoacceptors with the following anticodons do not have any codons to "
