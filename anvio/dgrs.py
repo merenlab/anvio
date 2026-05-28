@@ -10,7 +10,6 @@ import argparse
 import copy
 import bisect
 import numpy as np
-import pandas as pd
 import pytantan
 
 import anvio
@@ -29,6 +28,7 @@ from anvio.drivers.blast import BLAST
 from anvio.summaryhtml import SummaryHTMLOutput
 from anvio.sequencefeatures import PrimerSearch
 from anvio.constants import nucleotides
+from anvio.snvops import SNVAccessor
 from anvio.artifacts.samples_txt import SamplesTxt
 
 from Bio.Seq import Seq # type: ignore
@@ -494,8 +494,8 @@ class DGR_Finder:
             If no SNV windows are found that meet the filtering criteria.
         """
 
-        # initialise the SNV table
-        self.init_snv_table()
+        # initialise lazy SNV access
+        self.init_snv_access()
 
         if self.collections_mode:
             self.run.info_single("Collections mode activated. Get ready to see as many BLASTn as bins in your collection. Big things be happenin'.", nl_before=1)
@@ -534,74 +534,45 @@ class DGR_Finder:
             self.split_names_unique = utils.get_all_item_names_from_the_database(self.profile_db_path)
         contigs_db.disconnect()
 
-        sample_id_list = self.snv_panda.sample_id.unique().tolist()
+        sample_id_list = list(self.sample_id_list)
 
         return sample_id_list, contig_sequences
 
 
 
-    def init_snv_table(self):
+    def init_snv_access(self):
         """
-        Load the SNV table using chunked SQL reads to avoid a single large memory allocation.
+        Set up lazy SQL-backed access to the SNV table.
 
-        The departure_from_reference filter is applied at the SQL level so only qualifying
-        rows are transferred from SQLite to Python.  Each chunk is immediately downcast to
-        compact dtypes (int32/int8/float32/category) before being appended, keeping peak
-        memory to O(one_chunk + accumulated_filtered_rows) rather than O(full_table).
+        Constructs an `SNVAccessor` against the profile.db with the configured
+        `departure_from_reference_percentage` threshold and pre-caches the three
+        cheap `SELECT DISTINCT` queries (sample IDs, splits with SNVs, and the
+        contig->splits map) used by downstream code. No SNV rows are loaded; per
+        downstream consumer fetches its own slice on demand via `self.snv`.
 
-        Returns
-        =======
-        self.snv_panda : pandas.DataFrame
-            Per-sample SNV records that pass the departure threshold, sorted by
-            split_name then pos_in_contig.
+        Idempotent -- safe to call from every entry point that needs SNV access
+        (activity-mode detection, the pre-computed-dgrs shortcut's variability
+        phase, etc.).
+
+        Sets
+        ====
+        self.snv : SNVAccessor
+            Lazy accessor used for per-split / per-region SNV queries.
+        self.sample_id_list : list[str]
+            Sorted sample IDs with at least one qualifying SNV.
+        self.splits_with_snvs : set[str]
+            Splits that carry at least one qualifying SNV.
+        self.contig_to_splits : dict[str, set[str]]
+            Map from contig name to the set of its splits that carry SNVs.
         """
+        if getattr(self, 'snv', None) is not None:
+            return
 
-        columns_of_interest = [
-            'sample_id', 'split_name', 'pos_in_contig', 'base_pos_in_codon',
-            'departure_from_reference', 'reference'
-        ] + nucleotides
-
-        col_list = ', '.join(f'"{c}"' for c in columns_of_interest)
-        query = (f'SELECT {col_list} FROM "{t.variable_nts_table_name}" '
-                f'WHERE departure_from_reference >= ? '
-                f'ORDER BY split_name, pos_in_contig')
-
-        # 5 M rows per chunk: each raw chunk is ~400 MB; after downcasting ~120 MB.
-        CHUNK_SIZE = 5_000_000
-
-        profile_db = dbops.ProfileDatabase(self.profile_db_path)
-        self.run.info_single("Loading SNV table in chunks (this may take a few minutes for large datasets)...", nl_before=1)
-
-        chunks = []
-        for chunk in pd.read_sql_query(query, profile_db.db.conn,
-                                        params=(self.departure_from_reference_percentage,),
-                                        chunksize=CHUNK_SIZE):
-            # Derive contig_name while split_name is still a plain string column.
-            chunk['contig_name'] = chunk['split_name'].str.split('_split_').str[0]
-
-            # Downcast numerics to halve memory versus the default int64/float64.
-            chunk['pos_in_contig'] = chunk['pos_in_contig'].astype(np.int32)
-            chunk['base_pos_in_codon'] = chunk['base_pos_in_codon'].astype(np.int8)
-            chunk['departure_from_reference'] = chunk['departure_from_reference'].astype(np.float32)
-            for col in nucleotides:
-                chunk[col] = chunk[col].astype(np.int32)
-
-            # String columns as categories: one shared dictionary of unique values
-            # replaces per-row string objects (large saving for sample_id / split_name).
-            for col in ('sample_id', 'split_name', 'contig_name', 'reference'):
-                chunk[col] = chunk[col].astype('category')
-
-            chunks.append(chunk)
-
-        profile_db.disconnect()
-
-        if not chunks:
-            self.snv_panda = pd.DataFrame(columns=columns_of_interest + ['contig_name'])
-        else:
-            # concat with ignore_index=True; ORDER BY in SQL ensures the result is
-            # sorted by split_name then pos_in_contig across chunks.
-            self.snv_panda = pd.concat(chunks, ignore_index=True)
-            del chunks
+        self.snv = SNVAccessor(self.profile_db_path,
+                               self.departure_from_reference_percentage)
+        self.sample_id_list = self.snv.get_sample_ids()
+        self.splits_with_snvs = self.snv.get_splits_with_snvs()
+        self.contig_to_splits = self.snv.get_contig_to_splits_map()
 
         if self.discovery_mode:
             self.run.info_single("Running discovery mode. Search for SNVs in all possible locations. You go Dora the explorer!")
@@ -760,37 +731,35 @@ class DGR_Finder:
         """
         Fetch all SNVs (including 3rd codon position) for a specific genomic region.
 
-        This is called only for candidate DGRs that pass initial filtering,
-        so it's called ~10-50 times, not millions.
+        Two backing strategies depending on the caller's context:
 
-        Parameters
-        ==========
-        contig_name : str
-            Name of the contig
-        start_pos : int
-            Start position in contig (inclusive)
-        end_pos : int
-            End position in contig (inclusive)
+        - **Collections-mode BLAST parsing**: `parse_and_process_blast_results`
+          pre-fetches the current bin's SNVs once into `self._current_snv_scope`,
+          and this method does an in-memory filter on that small DataFrame.
+          Thousands of HSPs reuse the same in-memory frame.
+
+        - **Standard-mode BLAST parsing** (and any caller outside a per-bin
+          scope): `self._current_snv_scope` is None and we go through the lazy
+          accessor with the new `variable_nucleotides(split_name)` index, which
+          keeps each call to a single sub-millisecond range query.
 
         Returns
         =======
         dict or None
-            Dictionary with numpy arrays:
-                'positions': np.array of pos_in_contig
-                'codon_pos': np.array of base_pos_in_codon
-                'reference': np.array of reference base
-                'sample_ids': np.array of sample_id
-                'A', 'C', 'G', 'T': np.array of nucleotide coverage counts
-            Returns None if no SNVs found.
+            Dictionary with numpy arrays of `positions`, `codon_pos`,
+            `reference`, `sample_ids`, `A`, `C`, `G`, `T`. None if no SNVs.
         """
 
-        # filter self.snv_panda in memory instead of querying the profile DB
-        # (self.snv_panda already has all codon positions and departure_from_reference
-        # filtered — see init_snv_table)
-        mask = ((self.snv_panda['contig_name'] == contig_name) &
-                (self.snv_panda['pos_in_contig'] >= start_pos) &
-                (self.snv_panda['pos_in_contig'] <= end_pos))
-        region_df = self.snv_panda.loc[mask].sort_values('pos_in_contig')
+        scope = getattr(self, '_current_snv_scope', None)
+        if scope is not None:
+            mask = ((scope['contig_name'] == contig_name) &
+                    (scope['pos_in_contig'] >= start_pos) &
+                    (scope['pos_in_contig'] <= end_pos))
+            region_df = scope.loc[mask].sort_values('pos_in_contig')
+        else:
+            region_df = self.snv.get_snvs_for_region(contig_name, start_pos, end_pos)
+            if not region_df.empty:
+                region_df = region_df.sort_values('pos_in_contig')
 
         if region_df.empty:
             return None
@@ -1201,28 +1170,39 @@ class DGR_Finder:
         self.all_possible_windows = {}
 
         # For VR candidate detection: keep SNVs at codon positions 1+2 with >= 3
-        # distinct nucleotides. Combined mask avoids creating intermediate copies.
+        # distinct nucleotides.
         min_diverse_bases = 3
-        diverse_mask = (self.snv_panda[nucleotides] > 0).sum(axis=1) >= min_diverse_bases
-        codon_mask = self.snv_panda['base_pos_in_codon'].isin([1, 2]) if not self.discovery_mode else True
-        snv_panda_for_windows = self.snv_panda.loc[diverse_mask & codon_mask]
 
-        # group the DataFrame by 'split_name' and 'sample_id' upfront
-        grouped = snv_panda_for_windows.groupby(['split_name', 'sample_id'])
+        # Iterate per-split rather than loading all SNVs at once. Each split's
+        # window scan is independent (no cross-split state), so we fetch one
+        # split's SNVs at a time via the lazy accessor and let the per-split
+        # frame go out of scope between iterations.
+        active_splits = set(self.split_names_unique) & self.splits_with_snvs
+        sample_id_set = set(sample_id_list)
 
-        # now iterate over the grouped data
-        for (split, sample), group in grouped:
-            # only process groups that match the desired split and sample
-            if split in self.split_names_unique and sample in sample_id_list:
-                if group.shape[0] == 0:
+        for split_name in active_splits:
+            split_df = self.snv.get_snvs_for_splits([split_name])
+            if split_df.empty:
+                continue
+
+            diverse_mask = (split_df[nucleotides] > 0).sum(axis=1) >= min_diverse_bases
+            codon_mask = (split_df['base_pos_in_codon'].isin([1, 2])
+                          if not self.discovery_mode else True)
+            split_df_for_windows = split_df.loc[diverse_mask & codon_mask]
+
+            if split_df_for_windows.empty:
+                continue
+
+            # group by sample only -- we're already inside a single split
+            for sample, group in split_df_for_windows.groupby('sample_id', observed=True):
+                if sample not in sample_id_set or group.shape[0] == 0:
                     continue
 
                 # extract the contig name and positions for the group
-                contig_name = group.contig_name.unique()[0]
+                contig_name = str(group.contig_name.iloc[0])
                 pos_list = group.pos_in_contig.to_list()
 
                 if contig_name not in self.all_possible_windows:
-                    # if not, initialize it with an empty list
                     self.all_possible_windows[contig_name] = []
 
                 # Sort positions for efficient binary search when counting SNVs in windows
@@ -1397,130 +1377,138 @@ class DGR_Finder:
         Worker function for parallel bin processing. Processes bins from input_queue
         and puts results in output_queue.
 
-        This is a static method to work with multiprocessing - all needed data is passed
-        explicitly rather than through self. Each work item from the queue contains the
-        bin's pre-partitioned SNV records and contig sequences, so the worker never needs
-        to access any database file.
+        This is a static method so it works with multiprocessing.spawn. The worker
+        constructs its own SNVAccessor (from `profile_db_path` and the SNV filter
+        threshold in `config`) and fetches each bin's SNVs directly from SQLite on
+        demand, so the parent process never has to materialize or ship the bin's
+        SNV frame through the queue. Queue items only carry bin metadata + the
+        bin's contig sequences.
         """
 
         import bisect
 
-        while True:
-            item = input_queue.get(True)
+        accessor = SNVAccessor(config['profile_db_path'],
+                               config['departure_from_reference'])
+        try:
+            while True:
+                item = input_queue.get(True)
 
-            if item is None:
-                break
+                if item is None:
+                    break
 
-            bin_name, bin_splits_list, bin_snv_df, bin_contig_sequences = item
+                bin_name, bin_splits_list, bin_contig_sequences = item
 
-            try:
-                if bin_snv_df is None or bin_snv_df.empty:
-                    output_queue.put((bin_name, False, None, "No SNVs in bin"))
-                    continue
+                try:
+                    bin_snv_df = accessor.get_snvs_for_splits(bin_splits_list)
+                    if bin_snv_df is None or bin_snv_df.empty:
+                        output_queue.put((bin_name, False, None, "No SNVs in bin"))
+                        continue
 
-                snv_panda = bin_snv_df
-                del bin_snv_df
+                    snv_panda = bin_snv_df
+                    del bin_snv_df
 
-                split_names_unique = set(bin_splits_list)
-                sample_id_list = list(set(snv_panda.sample_id.unique()))
+                    split_names_unique = set(bin_splits_list)
+                    sample_id_list = list(set(snv_panda.sample_id.unique()))
 
-                # === find_snv_clusters logic ===
-                min_diverse_bases = 3
-                diverse_mask = (snv_panda[nucleotides] > 0).sum(axis=1) >= min_diverse_bases
-                codon_mask = snv_panda['base_pos_in_codon'].isin([1, 2]) if not config.get('discovery_mode') else True
-                snv_panda_for_windows = snv_panda.loc[diverse_mask & codon_mask]
-                all_possible_windows = {}
-                grouped = snv_panda_for_windows.groupby(['split_name', 'sample_id'])
+                    # === find_snv_clusters logic ===
+                    min_diverse_bases = 3
+                    diverse_mask = (snv_panda[nucleotides] > 0).sum(axis=1) >= min_diverse_bases
+                    codon_mask = snv_panda['base_pos_in_codon'].isin([1, 2]) if not config.get('discovery_mode') else True
+                    snv_panda_for_windows = snv_panda.loc[diverse_mask & codon_mask]
+                    all_possible_windows = {}
+                    grouped = snv_panda_for_windows.groupby(['split_name', 'sample_id'], observed=True)
 
-                for (split, sample), group in grouped:
-                    if split in split_names_unique and sample in sample_id_list:
-                        if group.shape[0] == 0:
-                            continue
+                    for (split, sample), group in grouped:
+                        if split in split_names_unique and sample in sample_id_list:
+                            if group.shape[0] == 0:
+                                continue
 
-                        contig_name = group.contig_name.unique()[0]
-                        pos_list = group.pos_in_contig.to_list()
+                            contig_name = str(group.contig_name.iloc[0])
+                            pos_list = group.pos_in_contig.to_list()
 
-                        if contig_name not in all_possible_windows:
-                            all_possible_windows[contig_name] = []
+                            if contig_name not in all_possible_windows:
+                                all_possible_windows[contig_name] = []
 
-                        # Sort positions for efficient binary search
-                        sorted_pos = sorted(pos_list)
+                            # Sort positions for efficient binary search
+                            sorted_pos = sorted(pos_list)
 
-                        if not sorted_pos:
-                            continue
+                            if not sorted_pos:
+                                continue
 
-                        # Determine the range to scan with sliding windows
-                        min_pos = sorted_pos[0]
-                        max_pos = sorted_pos[-1]
-                        contig_len = len(bin_contig_sequences[contig_name]['sequence'])
+                            # Determine the range to scan with sliding windows
+                            min_pos = sorted_pos[0]
+                            max_pos = sorted_pos[-1]
+                            contig_len = len(bin_contig_sequences[contig_name]['sequence'])
 
-                        window_start_range = max(0, min_pos - config['snv_window_size'])
-                        window_end_range = min(max_pos, contig_len - config['snv_window_size'])
+                            window_start_range = max(0, min_pos - config['snv_window_size'])
+                            window_end_range = min(max_pos, contig_len - config['snv_window_size'])
 
-                        # Slide the window across the region
-                        window_pos = window_start_range
-                        while window_pos <= window_end_range:
-                            window_end = window_pos + config['snv_window_size']
+                            # Slide the window across the region
+                            window_pos = window_start_range
+                            while window_pos <= window_end_range:
+                                window_end = window_pos + config['snv_window_size']
 
-                            # Use binary search to count SNVs in window
-                            left_idx = bisect.bisect_left(sorted_pos, window_pos)
-                            right_idx = bisect.bisect_left(sorted_pos, window_end)
-                            snv_count = right_idx - left_idx
+                                # Use binary search to count SNVs in window
+                                left_idx = bisect.bisect_left(sorted_pos, window_pos)
+                                right_idx = bisect.bisect_left(sorted_pos, window_end)
+                                snv_count = right_idx - left_idx
 
-                            # Calculate density
-                            snv_density = snv_count / config['snv_window_size']
+                                # Calculate density
+                                snv_density = snv_count / config['snv_window_size']
 
-                            if snv_density >= config['minimum_snv_density']:
-                                buffered_start = max(0, window_pos - config['variable_buffer_length'])
-                                buffered_end = min(contig_len, window_end + config['variable_buffer_length'])
-                                all_possible_windows[contig_name].append((buffered_start, buffered_end))
+                                if snv_density >= config['minimum_snv_density']:
+                                    buffered_start = max(0, window_pos - config['variable_buffer_length'])
+                                    buffered_end = min(contig_len, window_end + config['variable_buffer_length'])
+                                    all_possible_windows[contig_name].append((buffered_start, buffered_end))
 
-                            window_pos += config['snv_window_step']
+                                window_pos += config['snv_window_step']
 
-                # merge overlapping windows
-                all_merged_snv_windows = {}
-                for contig_name, window_list in all_possible_windows.items():
-                    sorted_windows = sorted(window_list, key=lambda x: x[0])
-                    merged_windows = []
+                    # merge overlapping windows
+                    all_merged_snv_windows = {}
+                    for contig_name, window_list in all_possible_windows.items():
+                        sorted_windows = sorted(window_list, key=lambda x: x[0])
+                        merged_windows = []
 
-                    for window in sorted_windows:
-                        if merged_windows and window[0] <= merged_windows[-1][1]:
-                            merged_windows[-1] = (merged_windows[-1][0], max(merged_windows[-1][1], window[1]))
-                        else:
-                            merged_windows.append(window)
+                        for window in sorted_windows:
+                            if merged_windows and window[0] <= merged_windows[-1][1]:
+                                merged_windows[-1] = (merged_windows[-1][0], max(merged_windows[-1][1], window[1]))
+                            else:
+                                merged_windows.append(window)
 
-                    all_merged_snv_windows[contig_name] = merged_windows
+                        all_merged_snv_windows[contig_name] = merged_windows
 
-                # extract subsequences
-                contig_records = {}
-                for contig_name in all_merged_snv_windows.keys():
-                    contig_sequence = bin_contig_sequences[contig_name]['sequence']
-                    for i, (start, end) in enumerate(all_merged_snv_windows[contig_name]):
-                        section_sequence = contig_sequence[start:end]
-                        section_name = f"{contig_name}_section_{i}_start_bp{start}_end_bp{end}"
-                        contig_records[section_name] = section_sequence
+                    # extract subsequences
+                    contig_records = {}
+                    for contig_name in all_merged_snv_windows.keys():
+                        contig_sequence = bin_contig_sequences[contig_name]['sequence']
+                        for i, (start, end) in enumerate(all_merged_snv_windows[contig_name]):
+                            section_sequence = contig_sequence[start:end]
+                            section_name = f"{contig_name}_section_{i}_start_bp{start}_end_bp{end}"
+                            contig_records[section_name] = section_sequence
 
-                if not contig_records:
-                    output_queue.put((bin_name, False, None, "No SNV clusters found"))
-                    continue
+                    if not contig_records:
+                        output_queue.put((bin_name, False, None, "No SNV clusters found"))
+                        continue
 
-                # === run_blast logic ===
-                # Use the standalone execute_blast() function to avoid code duplication
-                blast_output_path = execute_blast(
-                    query_records=contig_records,
-                    target_sequences=bin_contig_sequences,
-                    temp_dir=config['temp_dir'],
-                    word_size=config['word_size'],
-                    num_threads=1,
-                    query_fasta_filename=f"bin_{bin_name}_subsequences.fasta",
-                    target_fasta_filename=f"bin_{bin_name}_reference_sequences.fasta",
-                    blast_output_filename=f"blast_output_activity_for_bin_{bin_name}_wordsize_{config['word_size']}.xml"
-                )
+                    # === run_blast logic ===
+                    # Use the standalone execute_blast() function to avoid code duplication
+                    blast_output_path = execute_blast(
+                        query_records=contig_records,
+                        target_sequences=bin_contig_sequences,
+                        temp_dir=config['temp_dir'],
+                        word_size=config['word_size'],
+                        num_threads=1,
+                        query_fasta_filename=f"bin_{bin_name}_subsequences.fasta",
+                        target_fasta_filename=f"bin_{bin_name}_reference_sequences.fasta",
+                        blast_output_filename=f"blast_output_activity_for_bin_{bin_name}_wordsize_{config['word_size']}.xml"
+                    )
 
-                output_queue.put((bin_name, True, blast_output_path, None))
+                    output_queue.put((bin_name, True, blast_output_path, None))
 
-            except Exception as e:
-                output_queue.put((bin_name, False, None, str(e)))
+                except Exception as e:
+                    output_queue.put((bin_name, False, None, str(e)))
+        finally:
+            accessor.disconnect()
 
 
     @staticmethod
@@ -1639,11 +1627,11 @@ class DGR_Finder:
         successful_bins = []
         skipped_bins = {}  # bin_name -> error message
 
-        # Pre-filter: only process bins that have at least one split with SNVs
-        splits_with_snvs = set(self.snv_panda['split_name'].unique())
+        # Pre-filter: only process bins that have at least one split with SNVs.
+        # Uses the cached set populated by init_snv_access -- no table scan.
         bins_with_data = {}
         for bin_name, bin_splits_list in bin_splits_dict.items():
-            if splits_with_snvs.intersection(set(bin_splits_list)):
+            if self.splits_with_snvs.intersection(set(bin_splits_list)):
                 bins_with_data[bin_name] = bin_splits_list
             else:
                 skipped_bins[bin_name] = "No SNVs in bin"
@@ -1654,6 +1642,9 @@ class DGR_Finder:
                                 f"Processing {len(bins_with_data)} bins with SNV data.", nl_before=1)
 
         bin_splits_dict = bins_with_data
+        # Make the bin->splits map available to parse_and_process_blast_results so
+        # the per-bin BLAST parse can pre-fetch only that bin's SNVs via the accessor.
+        self.bin_splits_dict = bin_splits_dict
         num_bins = len(bin_splits_dict)
 
         if num_bins == 0:
@@ -1679,6 +1670,11 @@ class DGR_Finder:
                 'minimum_snv_density': self.minimum_snv_density,
                 'variable_buffer_length': self.variable_buffer_length,
                 'discovery_mode': self.discovery_mode,
+                # Profile DB path + filter threshold let each worker construct
+                # its own SNVAccessor and pull only its bin's SNVs on demand,
+                # so we don't have to partition + ship the full table here.
+                'profile_db_path': self.profile_db_path,
+                'departure_from_reference': self.departure_from_reference_percentage,
             }
 
             # pre-load contig sequences for all bins in one DB read (avoids 62
@@ -1694,8 +1690,12 @@ class DGR_Finder:
                 all_contig_sequences = contigs_db.db.smart_get(t.contig_sequences_table_name, 'contig', all_bin_contigs, string_the_key=True, error_if_no_data=False)
             contigs_db.disconnect()
 
-            # partition SNV records by bin
-            snv_by_split = dict(list(self.snv_panda.groupby('split_name')))
+            # Worker queue used to carry per-bin SNV slices. We no longer
+            # partition the full SNV table here: each worker constructs its
+            # own SNVAccessor (from `profile_db_path` in `config`) and fetches
+            # just its bin's SNVs from SQLite, which removes the parent-side
+            # `snv_by_split` materialization (previously the main RSS hog and
+            # source of the 1500-2000s queue serialization step).
 
             # use 'spawn' context so child processes start with a clean address
             # space instead of inheriting the parent's memory via fork()
@@ -1719,25 +1719,21 @@ class DGR_Finder:
                 worker.start()
 
             # Fill the bounded queue (blocks when full, naturally throttling
-            # memory to ~num_threads * 2 bins in flight at any time).
+            # memory to ~num_threads * 2 bins in flight at any time). Each
+            # payload is now tiny -- just bin metadata plus the bin's contig
+            # sequences -- so this fills quickly and the queue holds at most
+            # a few MB at a time.
             for bin_name, bin_splits_list in bin_splits_dict.items():
-                bin_splits_set = set(bin_splits_list)
-                bin_snv_frames = [snv_by_split[s] for s in bin_splits_set if s in snv_by_split]
-                bin_snv_df = pd.concat(bin_snv_frames) if bin_snv_frames else None
-                if bin_snv_df is not None:
-                    for col in ('split_name', 'sample_id', 'contig_name', 'reference'):
-                        if col in bin_snv_df.columns and hasattr(bin_snv_df[col], 'cat'):
-                            bin_snv_df[col] = bin_snv_df[col].cat.remove_unused_categories()
                 bin_contigs_set = set(s.split('_split_')[0] for s in bin_splits_list)
                 bin_contig_seqs = {c: all_contig_sequences[c] for c in bin_contigs_set if c in all_contig_sequences}
-                input_queue.put((bin_name, bin_splits_list, bin_snv_df, bin_contig_seqs))
+                input_queue.put((bin_name, bin_splits_list, bin_contig_seqs))
 
             # add one sentinel per worker so they exit gracefully
             for _ in range(self.num_threads):
                 input_queue.put(None)
 
             # free intermediate data
-            del snv_by_split, all_contig_sequences
+            del all_contig_sequences
 
             # monitor progress
             try:
@@ -2485,15 +2481,27 @@ class DGR_Finder:
                         "python wrapped tantan repeat finder. DOI: https://doi.org/10.1093/nar/gkq1212",
                         lc='green', header="CITATION")
 
-        # === PRE-INDEX SNV DATA BY CONTIG AS SORTED NUMPY ARRAYS ===
-        # Only needed for activity-based detection (when apply_snv_filters=True)
+        # === SET UP SNV SCOPE FOR THIS CALL ===
+        # In collections mode, pre-fetch only this bin's SNVs once and reuse
+        # the small in-memory frame for the (potentially thousands of) HSP
+        # lookups below -- this avoids per-HSP SQL while keeping memory bounded
+        # by the bin size. In standard mode, leave the scope unset and rely on
+        # per-HSP accessor queries via the v43 split_name index.
+        self._current_snv_scope = None
+        if apply_snv_filters and bin_name is not None:
+            bin_splits = self.bin_splits_dict.get(bin_name, []) if hasattr(self, 'bin_splits_dict') else []
+            if bin_splits:
+                self._current_snv_scope = self.snv.get_snvs_for_splits(bin_splits)
+
+        # === PRE-INDEX SNV POSITIONS BY CONTIG (collections mode only) ===
+        # Sorted-array index supports O(log n) bisect lookups during the HSP
+        # loop. In standard mode this dict stays empty; the HSP loop falls back
+        # to a per-HSP accessor query.
         snv_index = {}
-        if apply_snv_filters and hasattr(self, 'snv_panda') and self.snv_panda is not None:
-            # Using sorted arrays enables O(log n) binary search for range queries
-            # instead of O(n) pandas filtering per HSP
-            for contig, group in self.snv_panda.groupby('contig_name'):
+        if apply_snv_filters and self._current_snv_scope is not None and not self._current_snv_scope.empty:
+            for contig, group in self._current_snv_scope.groupby('contig_name', observed=True):
                 sorted_group = group.sort_values('pos_in_contig')
-                snv_index[contig] = {
+                snv_index[str(contig)] = {
                     'positions': sorted_group['pos_in_contig'].values,
                     'codon_pos': sorted_group['base_pos_in_codon'].values,
                     'reference': sorted_group['reference'].values
@@ -2801,14 +2809,23 @@ class DGR_Finder:
 
                         # ========== SNV ANALYSIS (only for activity mode) ==========
                         if apply_snv_filters:
-                            # Activity mode: perform full SNV analysis
-                            # subset snv by VR contig and VR range using binary search
+                            # Activity mode: perform full SNV analysis.
+                            # In collections mode the per-bin snv_index gives an
+                            # O(log n) in-memory range lookup; in standard mode
+                            # the index is empty and we fall through to a per-HSP
+                            # accessor query (one indexed SQL range query, sub-ms).
                             contig_data = snv_index.get(vr_contig)
                             if contig_data is not None:
                                 positions = contig_data['positions']
                                 left_idx = bisect.bisect_left(positions, vr_start)
                                 right_idx = bisect.bisect_right(positions, vr_end)
                                 snv_positions = positions[left_idx:right_idx]
+                            elif self._current_snv_scope is None:
+                                region_df = self.snv.get_snvs_for_region(vr_contig, vr_start, vr_end)
+                                if not region_df.empty:
+                                    snv_positions = np.sort(region_df['pos_in_contig'].unique())
+                                else:
+                                    snv_positions = np.array([], dtype=int)
                             else:
                                 snv_positions = np.array([], dtype=int)
 
@@ -2967,6 +2984,9 @@ class DGR_Finder:
         finally:
             # ensure cleanup
             del context
+            # drop the bin-scoped SNV frame so the next call (or any other code
+            # path that goes through get_snvs_for_region) doesn't see stale data
+            self._current_snv_scope = None
 
         if tr_rt_overlap_count > 0:
             self.run.info_single(f"Filtered out {tr_rt_overlap_count} hit(s) where the TR overlapped an RT gene.", nl_before=1)
@@ -4776,10 +4796,10 @@ class DGR_Finder:
         sample_names = set(self.samples_artifact.samples())
 
         if self.pre_computed_dgrs_path:
-            self.init_snv_table()
+            self.init_snv_access()
 
         # Sanity check for samples (move this outside the main loops)
-        sample_names_in_snv_table = set(self.snv_panda['sample_id'])
+        sample_names_in_snv_table = set(self.sample_id_list)
         samples_missing_in_snv_table = sample_names.difference(sample_names_in_snv_table)
 
         if anvio.DEBUG:
@@ -4855,14 +4875,12 @@ class DGR_Finder:
                     if anvio.DEBUG:
                         self.run.info_single(f"Processing sample {sample_name} for DGR {dgr_id} VR {vr_id}", nl_before=1)
 
-                    # get SNVs for this sample in the VR region
-                    sample_snvs = self.snv_panda[
-                        (self.snv_panda['sample_id'] == sample_name) &
-                        (self.snv_panda['contig_name'] == vr_contig) &
-                        (self.snv_panda['pos_in_contig'] >= vr_start) &
-                        (self.snv_panda['pos_in_contig'] < vr_end)
-                    ]
-                    snv_positions = set(sample_snvs['pos_in_contig'])
+                    # get SNVs for this sample in the VR region (vr_end is
+                    # exclusive in the original mask, so subtract 1 to keep the
+                    # half-open interval semantics).
+                    sample_snvs = self.snv.get_snvs_for_region(
+                        vr_contig, vr_start, vr_end - 1, sample_id=sample_name)
+                    snv_positions = set(sample_snvs['pos_in_contig'].tolist())
 
                     # apply SNV-based masking
                     sample_primer_list = list(base_vr_masked_primer)
