@@ -5179,7 +5179,12 @@ class DGR_Finder:
                                         output_dir=primer_folder,
                                         only_report_primer_matches=True)
 
-                s = PrimerSearch(args, run=run_quiet, progress=self.progress)
+                # Use a fresh quiet progress for PrimerSearch so it doesn't try
+                # to `progress.new("Tick tock")` on top of our already-active
+                # 'DGR variability profile' bar (terminal.Progress.new raises
+                # when a previous pid is still open). The outer progress keeps
+                # ticking via the surrounding progress.update / increment calls.
+                s = PrimerSearch(args, run=run_quiet, progress=progress_quiet)
                 s.process(return_dicts=True)
 
                 self.progress.increment()
