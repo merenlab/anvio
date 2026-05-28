@@ -15,7 +15,8 @@ __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren', 'ekiefl']
-__requires__ = ["dna-sequence", "fasta", "contigs-db"]
+__requires__ = ["contigs-db"]
+__can_use__ = ["dna-sequence", "fasta"]
 __provides__ = ['palindromes-txt']
 __description__ = "A program to find palindromes in sequences"
 

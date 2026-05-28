@@ -14,7 +14,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren', 'ahenoch']
-__requires__ = ['external-genomes', 'pan-graph-db']
+__requires__ = ['pan-graph-db']
+__can_use__ = ['external-genomes']
 __provides__ = ['contigs-db']
 __description__ = "Export genomic loci that is in between two nodes in a given pangenome graph."
 

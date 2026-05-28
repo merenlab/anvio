@@ -16,7 +16,8 @@ __credits__ = []
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
-__requires__ = ['pan-db', 'profile-db', 'state-json']
+__requires__ = ['state-json', 'profile-db']
+__can_use__ = ['pan-db']
 __provides__ = ['state']
 __description__ = "Import an anvi'o state into a profile database"
 

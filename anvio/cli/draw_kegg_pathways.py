@@ -23,8 +23,9 @@ __authors__ = ["semiller10"]
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
 __version__ = VERSION
-__requires__ = ["contigs-db", "external-genomes", "pan-db", "genomes-storage-db", "kegg-data"]
-__provides__ = ["kegg-pathway-map"]
+__requires__ = ['kegg-data']
+__can_use__ = ['contigs-db', 'external-genomes', 'pan-db', 'genomes-storage-db']
+__provides__ = ['kegg-pathway-map']
 __description__ = DESCRIPTION
 
 

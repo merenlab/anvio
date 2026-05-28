@@ -227,7 +227,7 @@ for run_type, default_config in [('single', single_default),
               f"       If you are a developer and getting this error, please make sure the file \n"
               f"       is in anvi'o distribution. If you are a user and getting this error, it \n"
               f"       something went terribly wrong with your installation :(\n")
-        sys.exit()
+        sys.exit(1)
 
 for dir in [d.strip('/').split('/')[-1] for d in glob.glob(os.path.join(clustering_configs_dir, '*/'))]:
     clustering_configs[dir] = {}
