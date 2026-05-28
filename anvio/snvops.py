@@ -25,14 +25,12 @@ the accessor without changes.
 import numpy as np
 import pandas as pd
 
-import anvio.db as db
 import anvio.tables as t
 import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.filesnpaths as filesnpaths
 
 from anvio.constants import nucleotides
-from anvio.errors import ConfigError
 
 
 # Default columns returned by SNV queries. Mirrors what the historical
