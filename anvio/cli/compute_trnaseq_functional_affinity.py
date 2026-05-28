@@ -81,12 +81,13 @@ def main():
     # Add an argument the opposite of `no_codon_dendrogram`.
     args.plot_codon_dendrogram = True if args.plot and not args.no_codon_dendrogram else False
 
-    (affinities_dict, stderrs_dict,
-     isoacceptor_abund_ratios_dict, isoacceptor_codon_weights_dict) = get_affinities(args)
+    affinities_dict, stderrs_dict, isoacceptor_abund_ratios_dict, isoacceptor_codon_weights_dict, \
+        contributions_dict = get_affinities(args)
     write_affinity_tables(args, affinities_dict)
     write_affinity_stderr_tables(args, stderrs_dict)
     write_isoacceptor_abundance_ratio_tables(args, isoacceptor_abund_ratios_dict)
     write_isoacceptor_codon_weights_tables(args, isoacceptor_codon_weights_dict)
+    write_isoacceptor_contribution_tables(args, contributions_dict)
 
     codon_frequency_dict = get_general_codon_frequencies(args, affinities_dict)
     write_general_codon_frequency_tables(args, codon_frequency_dict)
@@ -308,6 +309,49 @@ def get_args():
              "before the extension. The tables have the same row indices of genome, function, and "
              "gene information as the corresponding affinity tables. In plot output, these codon "
              "frequency data underlie the x-axis dendrograms of functions or genes.")
+    group1E.add_argument(
+        '--save-isoacceptor-contributions', default=False, action='store_true',
+        help="Write tables of per-isoacceptor leave-one-out contributions to affinity. For each "
+             "(gene, sample, isoacceptor) triple, the raw contribution Δ is the change in affinity "
+             "β when that isoacceptor is removed from the regression, computed in closed form. The "
+             "SE-normalized variant Δ_norm = Δ / SE(β) makes a unit of contribution comparable "
+             "across (gene, sample) pairs by downweighting weakly-determined regressions. Which "
+             "variants, aggregations, and statistics are produced is controlled by "
+             "`--contribution-variants`, `--contribution-aggregations`, and "
+             "`--contribution-statistics`. Output paths follow the same `--separate-genomes` / "
+             "`--separate-function-sources` conventions as the other tables, with '-CONTRIBUTIONS-"
+             "<KEY>' inserted before the extension where <KEY> identifies the (aggregation, "
+             "variant, statistic) combination, e.g. 'LONG-RAW', 'PER_SAMPLE-NORM-MEAN', "
+             "'GLOBAL-RAW-ABS_MEAN'.")
+    group1E.add_argument(
+        '--contribution-variants',
+        nargs='+', type=str,
+        choices=list(genomictrnaseq.Affinitizer.contribution_variants),
+        default=None,
+        help="Which contribution variants to compute: 'raw' for Δ and/or 'norm' for the "
+             "SE-normalized Δ_norm. Requires `--save-isoacceptor-contributions`. Default when "
+             f"omitted: {' '.join(genomictrnaseq.Affinitizer.default_contribution_variants)}.")
+    group1E.add_argument(
+        '--contribution-aggregations',
+        nargs='+', type=str,
+        choices=list(genomictrnaseq.Affinitizer.contribution_aggregations),
+        default=None,
+        help="Which contribution aggregation levels to write: 'long' (the full 3-D table with "
+             "one row per (gene, sample, isoacceptor)), 'per_sample' (aggregate over genes), "
+             "'per_gene' (aggregate over samples), 'global' (aggregate over both). Requires "
+             "`--save-isoacceptor-contributions`. Default when omitted: "
+             f"{' '.join(genomictrnaseq.Affinitizer.default_contribution_aggregations)}.")
+    group1E.add_argument(
+        '--contribution-statistics',
+        nargs='+', type=str,
+        choices=list(genomictrnaseq.Affinitizer.contribution_statistics),
+        default=None,
+        help="Which statistics to compute for the aggregated contribution levels (ignored by the "
+             "'long' aggregation, which preserves raw values): 'mean' (mean of signed values), "
+             "'abs_mean' (mean of absolute values, useful for ranking isoacceptors by total "
+             "influence), 'std' (standard deviation of signed values). Requires "
+             "`--save-isoacceptor-contributions`. Default when omitted: "
+             f"{' '.join(genomictrnaseq.Affinitizer.default_contribution_statistics)}.")
 
     group1F = parser.add_argument_group(
         'CLUSTERING',
@@ -831,6 +875,11 @@ def sanity_check(args):
             "`--function-blacklist-txt`.")
 
     if args.plot_affinity_file:
+        if args.save_isoacceptor_contributions:
+            raise ConfigError(
+                "`--save-isoacceptor-contributions` requires the regression to be fitted from "
+                "scratch, but `--plot-affinity-file` loads precomputed affinities. Drop one of "
+                "the two flags.")
         sanity_check_plot_affinity_file(args)
         return
 
@@ -998,6 +1047,7 @@ def get_affinities(args):
 
         The values of the innermost dictionary are affinity tables with rows representing functions
         or genes and columns representing tRNA-seq samples.
+
     stderrs_dict : dict or None
         This nested dictionary is structured as follows: genome name -> function or gene source ->
         stderr table. Each stderr table is aligned 1:1 with the corresponding raw affinity table
@@ -1005,14 +1055,23 @@ def get_affinities(args):
         errors are only meaningful for raw affinities and are not propagated through normalization.
         `None` is returned in `--plot-affinity-file` mode, where affinities are loaded rather than
         recomputed.
+
     isoacceptor_abund_ratios_dict : dict
         This dictionary is keyed by genome name and contains tables of isoacceptor abundance ratios.
         Affinities are calculated from isoacceptor abundance ratios in conjunction with isoacceptor
         codon weights.
+
     isoacceptor_codon_weights_dict : dict
         This nested dictionary is structured as follows: genome name -> function or gene source ->
         isoacceptor codon weights table. Affinities are calculated from isoacceptor codon weights in
         conjunction with isoacceptor abundance ratios.
+
+    contributions_dict : dict or None
+        When `--save-isoacceptor-contributions` is set: a nested dict
+        `{genome_name: {source: {output_key: pd.DataFrame}}}` of leave-one-out isoacceptor
+        contribution tables, with `output_key` strings like 'LONG-RAW' or 'PER_SAMPLE-NORM-MEAN'
+        identifying each (aggregation, variant, statistic) combination. None when the feature is
+        disabled or when affinities are being loaded for plotting (`--plot-affinity-file`).
     """
     if args.plot_affinity_file:
         # Affinities are being plotted for a single genome but not computed anew.
@@ -1020,13 +1079,14 @@ def get_affinities(args):
         stderrs_dict = None
         isoacceptor_abund_ratios_dict = None
         isoacceptor_codon_weights_dict = None
+        contributions_dict = None
     else:
         # Compute affinities anew.
-        (affinities_dict, stderrs_dict,
-         isoacceptor_abund_ratios_dict, isoacceptor_codon_weights_dict) = generate_affinities(args)
+        affinities_dict, stderrs_dict, isoacceptor_abund_ratios_dict, \
+            isoacceptor_codon_weights_dict, contributions_dict = generate_affinities(args)
 
-    return (affinities_dict, stderrs_dict,
-            isoacceptor_abund_ratios_dict, isoacceptor_codon_weights_dict)
+    return affinities_dict, stderrs_dict, isoacceptor_abund_ratios_dict, \
+        isoacceptor_codon_weights_dict, contributions_dict
 
 
 def load_affinities(args):
@@ -1117,13 +1177,17 @@ def load_affinities(args):
 
 
 def generate_affinities(args):
-    """Generate affinities anew given one or more genomes. Also return per-genome/source standard
+    """
+    Generate affinities anew given one or more genomes. Also return per-genome/source standard
     errors of the regression slopes used as affinities, plus the isoacceptor abundance ratios and
-    isoacceptor codon weights from which affinities are derived."""
+    isoacceptor codon weights from which affinities are derived. When
+    `args.save_isoacceptor_contributions` is set, a contributions dict is also returned (None
+    otherwise).
+    """
     args.decoding_weights = parse_decoding_weights_table(args.decoding_weights_txt)
     affinitizer = genomictrnaseq.Affinitizer(args)
-    affinities_df, stderrs_df, isoacceptor_abund_ratios_df, isoacceptor_codon_weights_df = \
-        affinitizer.go(return_component_tables=True)
+    affinities_df, stderrs_df, isoacceptor_abund_ratios_df, isoacceptor_codon_weights_df, \
+        contributions_dict, _contribution_sanity = affinitizer.go(return_component_tables=True)
 
     if len(affinities_df) == 0:
         raise ConfigError(
@@ -1226,8 +1290,8 @@ def generate_affinities(args):
             for source, source_df in genome_df.groupby('function_source'):
                 source_dict[source] = source_df
 
-    return (affinities_dict, stderrs_dict,
-            isoacceptor_abund_ratios_dict, isoacceptor_codon_weights_dict)
+    return affinities_dict, stderrs_dict, isoacceptor_abund_ratios_dict, \
+        isoacceptor_codon_weights_dict, contributions_dict
 
 
 def normalize_affinities_table(affinities_df, normalization_method):
@@ -1797,6 +1861,93 @@ def write_isoacceptor_codon_weights_tables(args, isoacceptor_codon_weights_dict)
     run.info_single("Saved isoacceptor codon weights")
     for valid_derived_output_path in sorted(valid_derived_output_paths, key=len):
         run.info_single(valid_derived_output_path, level=2)
+
+
+def write_isoacceptor_contribution_tables(args, contributions_dict):
+    """
+    Write per-isoacceptor leave-one-out contribution tables.
+
+    `contributions_dict` is the nested {genome: {source: {output_key: DataFrame}}} structure
+    produced by `Affinitizer.get_isoacceptor_contributions`. Output paths follow the same
+    `--separate-genomes` / `--separate-function-sources` conventions as the affinity tables;
+    the suffix scheme is `-CONTRIBUTIONS-<OUTPUT_KEY>` (e.g. `-CONTRIBUTIONS-LONG-RAW`,
+    `-CONTRIBUTIONS-PER_SAMPLE-NORM-MEAN`). One file is written per (path, output_key) tuple.
+    """
+    if not args.save_isoacceptor_contributions:
+        return
+    if not contributions_dict:
+        return
+
+    output_root, output_extension = os.path.splitext(args.output_file)
+    valid_derived_output_paths = []
+    invalid_derived_output_paths = []
+
+    # Every (genome, source) bucket produced by `_build_contribution_tables` carries the same
+    # set of output keys for a given request, so we can read them from any bucket.
+    sample_bucket = next(iter(next(iter(contributions_dict.values())).values()))
+    output_keys = sorted(sample_bucket.keys())
+
+    def _try_write(df, path):
+        try:
+            filesnpaths.is_output_file_writable(path)
+        except FilesNPathsError:
+            invalid_derived_output_paths.append(path)
+            return
+        df.to_csv(path, sep='\t')
+        valid_derived_output_paths.append(path)
+
+    for output_key in output_keys:
+        if args.separate_genomes and args.separate_function_sources:
+            # One file per (genome, source, output_key).
+            for genome_name, source_dict in contributions_dict.items():
+                for source, src_outputs in source_dict.items():
+                    derived_output_path = (
+                        f"{output_root}-{genome_name.replace(' ', '_')}-{source}-"
+                        f"CONTRIBUTIONS-{output_key}{output_extension}")
+                    _try_write(src_outputs[output_key], derived_output_path)
+        elif args.separate_genomes:
+            # One file per (genome, output_key); upstream sanity checks ensure there's a single
+            # source bucket per genome ('genes' or 'all_functions') in this mode.
+            for genome_name, source_dict in contributions_dict.items():
+                src_outputs = next(iter(source_dict.values()))
+                derived_output_path = (
+                    f"{output_root}-{genome_name.replace(' ', '_')}-CONTRIBUTIONS-"
+                    f"{output_key}{output_extension}")
+                _try_write(src_outputs[output_key], derived_output_path)
+        elif args.separate_function_sources:
+            # One file per (source, output_key); concatenate per-genome tables for the source.
+            source_tables = {}
+            for source_dict in contributions_dict.values():
+                for source, src_outputs in source_dict.items():
+                    source_tables.setdefault(source, []).append(src_outputs[output_key])
+            for source, dfs in source_tables.items():
+                derived_output_path = (
+                    f"{output_root}-{source}-CONTRIBUTIONS-{output_key}{output_extension}")
+                _try_write(pd.concat(dfs, axis=0), derived_output_path)
+        else:
+            # One combined file per output_key; concat across (genome, source). Function mode's
+            # `function_source` pivot level ensures cross-source rows don't collide.
+            all_dfs = [
+                src_outputs[output_key] for source_dict in contributions_dict.values()
+                for src_outputs in source_dict.values()]
+            derived_output_path = (
+                f"{output_root}-CONTRIBUTIONS-{output_key}{output_extension}")
+            _try_write(pd.concat(all_dfs, axis=0), derived_output_path)
+
+    # Report invalid output paths and, if some paths were invalid, also remove files written to
+    # valid paths.
+    if invalid_derived_output_paths:
+        for valid_path in valid_derived_output_paths:
+            os.remove(valid_path)
+        paths_string = ', '.join(["'" + p + "'" for p in invalid_derived_output_paths])
+        raise ConfigError(
+            "The following isoacceptor contribution tables could not be written to the following "
+            f"derived target paths: {paths_string}")
+
+    if valid_derived_output_paths:
+        run.info_single("Saved isoacceptor contribution tables")
+        for valid_path in sorted(valid_derived_output_paths, key=len):
+            run.info_single(valid_path, level=2)
 
 
 def get_general_codon_frequencies(args, affinities_dict):
