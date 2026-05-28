@@ -7,8 +7,9 @@ import tempfile
 import numpy as np
 import pandas as pd
 
+from typing import Union
 from itertools import combinations, product
-from scipy.stats import pearsonr, spearmanr, linregress
+from scipy.stats import pearsonr, spearmanr
 
 import anvio
 import anvio.utils as utils
@@ -2660,20 +2661,38 @@ class Affinitizer:
         return isoacceptor_codon_weights_df
 
 
-    def get_affinities(self, isoacceptor_abund_ratios_df, isoacceptor_codon_weights_df):
+    def get_affinities(
+        self,
+        isoacceptor_abund_ratios_df: pd.DataFrame,
+        isoacceptor_codon_weights_df: pd.DataFrame,
+        return_intermediates: bool = False
+    ) -> Union[tuple[pd.DataFrame, pd.DataFrame], tuple[pd.DataFrame, pd.DataFrame, dict]]:
         """
         Calculate affinities of tRNA isoacceptors for functions or genes in each genome, along with
         standard errors of the regression slope used as the affinity.
+
+        For each (genome, sample) pair the regression is fitted in closed form, vectorized across
+        all functions or genes of the genome. The slope and its standard error replicate the values
+        a per-row `scipy.stats.linregress` call would return, but the precomputed intermediates --
+        residuals, the centered supply vector, the hat-matrix diagonal, and Σ(x - x̄)² -- are also
+        the quantities needed for the leave-one-out isoacceptor contribution analysis, and they can
+        be returned alongside the public outputs to avoid recomputing them downstream.
 
         Parameters
         ==========
         isoacceptor_abund_ratios_df : pandas.core.frame.DataFrame
             Each row of this table, returned by `get_isoacceptors`, contains genome and isoacceptor
             information identifying non-reference/reference abundance ratios.
+
         isoacceptor_codon_weights_df : pandas.core.frame.DataFrame
             This table of isoacceptor codon weights has rows representing functions (or genes) in
             input genomes and columns representing each isoacceptor identified in the tRNA-seq data
             regardless of genome source.
+
+        return_intermediates : bool, False
+            If True, also return a dictionary keyed by (genome_name, trnaseq_sample_name) holding
+            the per-(genome, sample) regression intermediates needed by
+            `get_isoacceptor_contributions`. Default False.
 
         Returns
         =======
@@ -2682,11 +2701,28 @@ class Affinitizer:
             function accession, function name -- or, if genes are analyzed, there are no function
             indices, but a gene callers ID index column. Columns are isoacceptor anticodons, with
             modified wobble nucleotide if applicable (e.g., ICG, LAT).
+
         stderrs_df : pandas.core.frame.DataFrame
             Standard errors of the regression slope, aligned 1:1 with `affinities_df` (same row
             index and column structure). When the number of isoacceptors used in a regression is
             two or fewer, the standard error is reported as NaN, since the slope has zero or
             undefined residual degrees of freedom.
+
+        intermediates : dict, optional
+            Only returned when `return_intermediates` is True. Keyed by
+            (genome_name, trnaseq_sample_name). Each value is a dict with:
+                'anticodons'  : list of anticodons in the column order used internally,
+                'x'           : log2 abundance ratios, shape (n,),
+                'x_mean'      : scalar mean of `x`,
+                'x_centered'  : (x - x̄), shape (n,),
+                'Sxx'         : Σ(x - x̄)²,
+                'h_diag'      : hat-matrix diagonal 1/n + (x - x̄)² / Sxx, shape (n,),
+                'n'           : number of isoacceptors,
+                'beta'        : pandas.Series of slopes indexed like the genome's gene/function
+                                rows,
+                'se'          : pandas.Series of slope standard errors, same index as `beta`,
+                'residuals'   : pandas.DataFrame of residuals e_{g,i}, rows like `beta`, columns
+                                the same anticodons as `anticodons`
         """
         isoacceptor_abund_ratios_gb = isoacceptor_abund_ratios_df.groupby('genome_name')
         relative_isoacceptor_codon_weights_df = isoacceptor_codon_weights_df.div(
@@ -2697,6 +2733,7 @@ class Affinitizer:
         filtered_genome_names = []
         genome_affinities_dfs = []
         genome_stderrs_dfs = []
+        intermediates = {}
         for genome_name in self.genome_info_dict:
             try:
                 genome_isoacceptor_abund_ratios_df = isoacceptor_abund_ratios_gb.get_group(
@@ -2738,31 +2775,31 @@ class Affinitizer:
                         f"the genome, '{genome_name}', and therefore do not contribute to "
                         f"affinity: {', '.join(missing_anticodons)}")
 
-                # Linearize abundance ratios.
+                # Linearize abundance ratios -- the supply vector x.
                 log_abund_ratios = np.log2(abund_ratios.values)
-                # Standard error of the slope is undefined when residual degrees of freedom <= 0.
-                insufficient_dof = len(log_abund_ratios) <= 2
+                Y_df = genome_relative_isoacceptor_codon_weights_df[abund_ratios.index]
+                ols = self._ols_closed_form(log_abund_ratios, Y_df.values)
 
-                regression_results = \
-                    genome_relative_isoacceptor_codon_weights_df[abund_ratios.index].apply(
-                        lambda relative_isoacceptor_codon_weights:
-                            linregress(log_abund_ratios, relative_isoacceptor_codon_weights),
-                        axis=1)
+                beta_series = pd.Series(ols['beta'], index=Y_df.index)
+                se_series = pd.Series(ols['se'], index=Y_df.index)
+                sample_affinities_dict[trnaseq_sample_name] = beta_series
+                sample_stderrs_dict[trnaseq_sample_name] = se_series
 
-                sample_affinities_dict[trnaseq_sample_name] = regression_results.apply(
-                    lambda r: r.slope)
-                if insufficient_dof:
-                    sample_stderrs_dict[trnaseq_sample_name] = regression_results.apply(
-                        lambda r: np.nan)
-                else:
-                    sample_stderrs_dict[trnaseq_sample_name] = regression_results.apply(
-                        lambda r: r.stderr)
-
-                # The old mistaken affinity was the correlation coefficient when it should have been the slope
-                # sample_affinities_dict[trnaseq_sample_name] = \
-                #     genome_relative_isoacceptor_codon_weights_df[abund_ratios.index].apply(
-                #         lambda relative_isoacceptor_codon_weights: self.affinity_function(
-                #             log_abund_ratios, relative_isoacceptor_codon_weights), axis=1)
+                if return_intermediates:
+                    intermediates[(genome_name, trnaseq_sample_name)] = {
+                        'anticodons': list(Y_df.columns),
+                        'x': log_abund_ratios,
+                        'x_mean': ols['x_mean'],
+                        'x_centered': ols['x_centered'],
+                        'Sxx': ols['Sxx'],
+                        'h_diag': ols['h_diag'],
+                        'n': ols['n'],
+                        'beta': beta_series,
+                        'se': se_series,
+                        'residuals': pd.DataFrame(
+                            ols['residuals'], index=Y_df.index, columns=Y_df.columns
+                        ),
+                    }
 
             genome_affinities_df = pd.DataFrame.from_dict(sample_affinities_dict)
             genome_stderrs_df = pd.DataFrame.from_dict(sample_stderrs_dict)
@@ -2781,7 +2818,84 @@ class Affinitizer:
             affinities_df = pd.DataFrame()
             stderrs_df = pd.DataFrame()
 
+        if return_intermediates:
+            return affinities_df, stderrs_df, intermediates
         return affinities_df, stderrs_df
+
+
+    @staticmethod
+    def _ols_closed_form(x: np.ndarray, Y: np.ndarray) -> dict:
+        """
+        Vectorized closed-form OLS regression of every row of `Y` on the shared predictor `x`.
+
+        Computes slope, intercept, residuals, and the leave-one-out intermediates (centered `x`,
+        Σ(x - x̄)², hat-matrix diagonal) in a single pass. Results are numerically equivalent to
+        running `scipy.stats.linregress(x, y)` on each row of `Y` independently.
+
+        Parameters
+        ==========
+        x : numpy.ndarray
+            One-dimensional predictor vector, shape (n,).
+
+        Y : numpy.ndarray
+            Two-dimensional response matrix, shape (G, n). Each row is regressed on `x`.
+
+        Returns
+        =======
+        dict
+            beta       : numpy.ndarray, shape (G,)   -- slope per row of Y
+            alpha      : numpy.ndarray, shape (G,)   -- intercept per row
+            residuals  : numpy.ndarray, shape (G, n) -- e_{g,i} = y_{g,i} - (α_g + β_g · x_i)
+            x_mean     : float                       -- mean of x
+            x_centered : numpy.ndarray, shape (n,)   -- (x - x̄)
+            Sxx        : float                       -- Σ(x - x̄)²; 0.0 when x is degenerate
+            h_diag     : numpy.ndarray, shape (n,)   -- 1/n + (x - x̄)² / Sxx; NaN when Sxx == 0
+            n          : int                         -- len(x)
+            sse        : numpy.ndarray, shape (G,)   -- Σ_i residuals_{g,i}²
+            se         : numpy.ndarray, shape (G,)   -- standard error of `beta`; NaN when
+                                                        n ≤ 2 or Sxx == 0
+        """
+        n = len(x)
+        x_mean = float(x.mean()) if n else float('nan')
+        x_centered = x - x_mean
+        Sxx = float((x_centered ** 2).sum())
+
+        if Sxx > 0:
+            h_diag = 1.0 / n + (x_centered ** 2) / Sxx
+        else:
+            h_diag = np.full(n, np.nan)
+
+        G = Y.shape[0]
+        y_mean: np.ndarray = Y.mean(axis=1)
+        Y_centered = Y - y_mean[:, np.newaxis]
+
+        if Sxx > 0:
+            beta = (Y_centered @ x_centered) / Sxx
+        else:
+            beta = np.full(G, np.nan)
+        alpha = y_mean - beta * x_mean
+
+        y_hat = alpha[:, np.newaxis] + beta[:, np.newaxis] * x[np.newaxis, :]
+        residuals = Y - y_hat
+        sse: np.ndarray = (residuals ** 2).sum(axis=1)
+
+        if n > 2 and Sxx > 0:
+            se = np.sqrt(sse / ((n - 2) * Sxx))
+        else:
+            se = np.full(G, np.nan)
+
+        return {
+            'beta': beta,
+            'alpha': alpha,
+            'residuals': residuals,
+            'x_mean': x_mean,
+            'x_centered': x_centered,
+            'Sxx': Sxx,
+            'h_diag': h_diag,
+            'n': n,
+            'sse': sse,
+            'se': se,
+        }
 
 
     @staticmethod
