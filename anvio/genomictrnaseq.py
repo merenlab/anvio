@@ -9,7 +9,6 @@ import pandas as pd
 import numpy.typing as npt
 
 from itertools import combinations, product
-from scipy.stats import pearsonr, spearmanr
 from typing import Union, Iterable, Annotated, TypedDict
 
 import anvio
@@ -1474,11 +1473,6 @@ class Affinitizer:
         ]
     }
 
-    affinity_metric_dict = {
-        'pearson': lambda x, y: pearsonr(x, y)[0],
-        'spearman': lambda x, y: spearmanr(x, y)[0],
-        'dot': np.dot}
-
     # Parameters for quantification of isoacceptor contribution to affinity.
     contribution_variants = ('raw', 'norm')
     contribution_aggregations = ('long', 'per_sample', 'per_gene', 'global')
@@ -1520,9 +1514,6 @@ class Affinitizer:
 
         self.internal_genomes_path = A('internal_genomes')
         self.external_genomes_path = A('external_genomes')
-
-        self.affinity_type = A('affinity_type')
-        self.affinity_function = Affinitizer.affinity_metric_dict.get(self.affinity_type)
 
         self.seed_assignment = A('seed_assignment')
         self.min_coverage_ratio = A('min_coverage_ratio')
@@ -2165,11 +2156,6 @@ class Affinitizer:
             raise ConfigError(
                 "Unrecognized amino acids were provided to `exclude_amino_acids`: "
                 f"{', '.join(unrecognized_amino_acids)}")
-
-        if self.affinity_type not in Affinitizer.affinity_metric_dict:
-            raise ConfigError(
-                f"An unrecognized value of `affinity_type` was provided, '{self.affinity_type}'. "
-                f"Valid affinity types are: {', '.join(Affinitizer.affinity_metric_dict)}")
 
         # Reject contribution sub-options passed without `save_isoacceptor_contributions`, so
         # the user isn't silently told their request was ignored. Argparse's `nargs='+'` and

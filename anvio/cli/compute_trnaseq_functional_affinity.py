@@ -196,23 +196,6 @@ def get_args():
     group1C.add_argument(*anvio.A('external-genomes'), **anvio.K('external-genomes'))
 
     group1D = parser.add_argument_group(
-        'AFFINITY METRIC',
-        "Affinity measures the relationship between the log isoacceptor abundance ratios from "
-        "the tRNA-seq data (non-reference/reference in `--reference-sample` mode, "
-        "sample/geometric-mean in `--reference-mean` mode) and the relative isoacceptor codon "
-        "weights from the function/gene codon frequency data.")
-    group1D.add_argument( # TODO: allow multiple affinity types, producing multiple output files
-        '--affinity-type', type=str, choices=['pearson', 'spearman', 'dot'], default='pearson',
-        help="Affinity can be calculated using the Pearson correlation coefficient, the Spearman "
-             "rank correlation coefficient, or the dot product. Correlation coefficients are "
-             "normalized to the range, [-1, 1], allowing direct comparison of affinities between "
-             "(non-reference) tRNA-seq samples. Spearman is better than Pearson at measuring "
-             "non-linear relationships between the two variables. Unlike correlation coefficients, "
-             "the dot product is not normalized and so cannot be directly compared between "
-             "samples. It scales with the magnitude of the change in the tRNA pool between the "
-             "reference and non-reference samples.")
-
-    group1E = parser.add_argument_group(
         'OUTPUT',
         "This program requires an output file argument. The output path is a template. Depending "
         "on the arguments, an affinity table can be written there and/or files can be written to "
@@ -224,17 +207,17 @@ def get_args():
         "their paths are likewise derived from the template path. If this program is only run to "
         "generate plots from existing data files rather than to write new files, then a plot can "
         "be stored at the output path, or plots are stored at paths derived from this template.")
-    group1E.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
-    group1E.add_argument(
+    group1D.add_argument(*anvio.A('output-file'), **anvio.K('output-file'))
+    group1D.add_argument(
         '--separate-genomes', default=False, action='store_true',
         help="Write separate affinity output files for each genome. The name of each genome/bin "
              "is inserted into the output path after a hyphen and before the extension, replacing "
              "any spaces in the name with underscores.")
-    group1E.add_argument(
+    group1D.add_argument(
         '--separate-function-sources', default=False, action='store_true',
         help="Write separate output files for each function source. The name of each source is "
              "inserted into the output path before the extension following a hyphen.")
-    group1E.add_argument(
+    group1D.add_argument(
         '--normalize-affinity',
         nargs='+', choices=['min_max', 'min_max_mean', 'magnitude_min_max'], type=str,
         help="Output normalized affinity data. Normalized affinity data is useful for comparing "
@@ -260,20 +243,20 @@ def get_args():
              "min-max normalization to yield values that indicate the magnitude of the change in "
              "favorability of the tRNA pool towards functions, disregarding the direction of "
              "change.")
-    group1E.add_argument(
+    group1D.add_argument(
         '--compare-all-function-sources', default=False, action='store_true',
         help="When affinities are calculated for multiple function sources, lump together all "
              "sources in the outputs and apply normalization to all sources. For example, KOfam "
              "and Pfam function affinities could be normalized to each other, written to the same "
              "tables, and shown in the same plots. This flag cannot be used along with "
              "`--separate-function-sources`.")
-    group1E.add_argument(
+    group1D.add_argument(
         '--no-raw-affinity', default=False, action='store_true',
         help="Do not store tables of raw affinity data. By default, sister tables of regression "
              "slope standard errors are also written alongside the raw affinity tables, with "
              "'-STDERR' inserted before the extension. This flag suppresses both the raw affinity "
              "tables and their stderr companions.")
-    group1E.add_argument(
+    group1D.add_argument(
         '--save-isoacceptor-abundance-ratios', default=False, action='store_true',
         help="Write a table of tRNA isoacceptor abundance ratios. Affinities are derived in part "
              "from these ratios: non-reference/reference in `--reference-sample` mode, "
@@ -286,7 +269,7 @@ def get_args():
              "and anticodon (including modified wobble nucleotide, if applicable). The column "
              "headers are tRNA-seq sample names (the analyzed non-reference samples in "
              "`--reference-sample` mode; every analyzed sample in `--reference-mean` mode).")
-    group1E.add_argument(
+    group1D.add_argument(
         '--save-isoacceptor-codon-weights', default=False, action='store_true',
         help="Write a table of tRNA isoacceptor codon weights, calculated for each isoacceptor "
              "from relative codon frequencies and decoding weights. Affinities are derived in part "
@@ -300,7 +283,7 @@ def get_args():
              "function, and gene information as the corresponding affinity tables. The column "
              "headers are tRNA isoacceptor anticodons (including modified wobble nucleotide, if "
              "applicable).")
-    group1E.add_argument(
+    group1D.add_argument(
         '--save-codon-frequencies', default=False, action='store_true',
         help="Write a table of function or gene codon frequencies. If `--separate-genomes` and/or "
              "`--separate-function-sources` are used, then multiple files are written for each "
@@ -309,7 +292,7 @@ def get_args():
              "before the extension. The tables have the same row indices of genome, function, and "
              "gene information as the corresponding affinity tables. In plot output, these codon "
              "frequency data underlie the x-axis dendrograms of functions or genes.")
-    group1E.add_argument(
+    group1D.add_argument(
         '--save-isoacceptor-contributions', default=False, action='store_true',
         help="Write tables of per-isoacceptor leave-one-out contributions to affinity. For each "
              "(gene, sample, isoacceptor) triple, the raw contribution Δ is the change in affinity "
@@ -323,7 +306,7 @@ def get_args():
              "<KEY>' inserted before the extension where <KEY> identifies the (aggregation, "
              "variant, statistic) combination, e.g. 'LONG-RAW', 'PER_SAMPLE-NORM-MEAN', "
              "'GLOBAL-RAW-ABS_MEAN'.")
-    group1E.add_argument(
+    group1D.add_argument(
         '--contribution-variants',
         nargs='+', type=str,
         choices=list(genomictrnaseq.Affinitizer.contribution_variants),
@@ -331,7 +314,7 @@ def get_args():
         help="Which contribution variants to compute: 'raw' for Δ and/or 'norm' for the "
              "SE-normalized Δ_norm. Requires `--save-isoacceptor-contributions`. Default when "
              f"omitted: {' '.join(genomictrnaseq.Affinitizer.default_contribution_variants)}.")
-    group1E.add_argument(
+    group1D.add_argument(
         '--contribution-aggregations',
         nargs='+', type=str,
         choices=list(genomictrnaseq.Affinitizer.contribution_aggregations),
@@ -341,7 +324,7 @@ def get_args():
              "'per_gene' (aggregate over samples), 'global' (aggregate over both). Requires "
              "`--save-isoacceptor-contributions`. Default when omitted: "
              f"{' '.join(genomictrnaseq.Affinitizer.default_contribution_aggregations)}.")
-    group1E.add_argument(
+    group1D.add_argument(
         '--contribution-statistics',
         nargs='+', type=str,
         choices=list(genomictrnaseq.Affinitizer.contribution_statistics),
@@ -353,7 +336,7 @@ def get_args():
              "`--save-isoacceptor-contributions`. Default when omitted: "
              f"{' '.join(genomictrnaseq.Affinitizer.default_contribution_statistics)}.")
 
-    group1F = parser.add_argument_group(
+    group1E = parser.add_argument_group(
         'CLUSTERING',
         "The following arguments control hierarchical clustering and can be supplied for the "
         "production of Newick trees and plots. For both codon frequency and tRNA-seq sample "
@@ -362,17 +345,17 @@ def get_args():
         "distance metrics are listed in the help menu of the hierarchy.distance.pdist function in "
         "the scipy.cluster module. All available linkage methods are listed in the help menu of "
         "the hierarchy.linkage function in the scipy.cluster module.")
-    group1F.add_argument(
+    group1E.add_argument(
         '--codon-distance-metric', metavar='DISTANCE_METRIC', type=str,
         default=constants.distance_metric_default,
         help="The distance metric for the hierarchical clustering of functions or genes by their "
              "codon frequencies.")
-    group1F.add_argument(
+    group1E.add_argument(
         '--codon-linkage-method', metavar='LINKAGE_METHOD', type=str,
         default=constants.linkage_method_default,
         help="The linkage method for the hierarchical clustering of functions or genes by their "
              "codon frequencies.")
-    group1F.add_argument(
+    group1E.add_argument(
         '--save-codon-trees', default=False, action='store_true',
         help="Write Newick-formatted trees of hierarchically clustered codon frequencies. If "
              "functional affinities are calculated, trees are generated per combination of genome "
@@ -383,17 +366,17 @@ def get_args():
              "extension is replaced by '-CODONS.nwk', and the genome name and function source, if "
              "applicable, are added before the extension following hyphens. In plot output, these "
              "trees are displayed as y-axis dendrograms of functions or genes.")
-    group1F.add_argument(
+    group1E.add_argument(
         '--sample-distance-metric', metavar='DISTANCE_METRIC', type=str,
         default=constants.distance_metric_default,
         help="The distance metric for the hierarchical clustering of tRNA-seq samples by their "
              "affinities.")
-    group1F.add_argument(
+    group1E.add_argument(
         '--sample-linkage-method', metavar='LINKAGE_METHOD', type=str,
         default=constants.linkage_method_default,
         help="The linkage method for the hierarchical clustering of tRNA-seq samples by their "
              "affinities.")
-    group1F.add_argument(
+    group1E.add_argument(
         '--save-sample-trees', default=False, action='store_true',
         help="Write Newick-formatted trees of hierarchically clustered tRNA-seq sample affinities. "
              "Trees are generated per combination of genome, function source (unless using either "
@@ -409,7 +392,7 @@ def get_args():
              "select functions or genes, including those filtered for plotting by "
              "`--n-highest-affinity` and `--n-lowest-affinity`.")
 
-    group1G = parser.add_argument_group(
+    group1F = parser.add_argument_group(
         'PLOTS',
         "Static plots can be generated for each genome showing heatmaps of function (or gene) "
         "affinities, with each row being a function and each column being a tRNA-seq sample. A "
@@ -427,7 +410,7 @@ def get_args():
         "https://merenlab.org/tutorials/interactive-interface/ and "
         "https://anvio.org/help/7/programs/anvi-interactive/"
         "#running-anvi-interactive-in-manual-mode)")
-    group1G.add_argument(
+    group1F.add_argument(
         '--plot', default=False, action='store_true',
         help="Store static plots of function (or gene) affinity. Plots for each combination of "
              "genome, function annotation source (if `--separate-function-sources` is used), and "
@@ -441,14 +424,14 @@ def get_args():
              "scale bar of the heatmap will be adjusted accordingly, with 'min-max' and "
              "'magnitude-min-max' being on a scale of 0 to 1 and 'min-max-mean' being on a scale "
              "of -1 to 1.")
-    group1G.add_argument(
+    group1F.add_argument(
         '--n-highest-affinity', default=25, type=int,
         help="Plot this number of functions (or genes) with the highest affinities in the genome "
              "averaged across samples. Set this argument and `--n-lowest-affinity` to -1 to plot "
              "all functions. Set this argument to 0 and `--n-lowest-affinity` to a positive "
              "integer to only plot the lowest-affinity functions. In plots of normalized affinity, "
              "the functions with the highest and lowest unnormalized affinities are displayed.")
-    group1G.add_argument(
+    group1F.add_argument(
         '--n-lowest-affinity', default=25, type=int,
         help="Plot this number of functions (or genes) with the lowest affinities in the genome "
              "averaged across samples. Set this argument and `--n-highest-affinity` to -1 to plot "
@@ -456,20 +439,20 @@ def get_args():
              "integer to only plot the highest-affinity functions. In plots of normalized "
              "affinity, the functions with the highest and lowest unnormalized affinities are "
              "displayed.")
-    group1G.add_argument(
+    group1F.add_argument(
         '--unlabel-function-accession-source', default=False, action='store_true',
         help="Do not include function accessions or annotation source in the y-axis labels. These "
              "will still be included in Newick tree outputs.")
-    group1G.add_argument(
+    group1F.add_argument(
         '--label-brite-hierarchy', default=False, action='store_true',
         help="When using KEGG BRITE as a function annotation source, display BRITE hierarchies "
              "containing each category rather than the category alone as the y-axis labels. "
              "Regardless, BRITE hierarchies constitute the labels in Newick tree outputs.")
-    group1G.add_argument(
+    group1F.add_argument(
         '--no-codon-dendrogram', default=False, action='store_true',
         help="Remove the y-axis dendrogram clustering functions or genes by their general codon "
              "composition.")
-    group1G.add_argument(
+    group1F.add_argument(
         '--plot-sample-dendrogram', default=False, action='store_true',
         help="This flag adds a dendrogram clustering tRNA-seq samples. Without this flag, samples "
              "are ordered by how they are input to the program or, with `--plot-affinity-file`, "
@@ -479,22 +462,22 @@ def get_args():
              "supplied as a Newick-formatted file by `--plot-sample-tree-file`. Clustering "
              "parameters can be altered with `--sample-distance-metric` and "
              "`--sample-linkage-method`.")
-    group1G.add_argument(
+    group1F.add_argument(
         '--plot-affinity-file', metavar='FILE_PATH', type=str,
         help="An affinity table is needed if running the program only to generate plots.")
-    group1G.add_argument(
+    group1F.add_argument(
         '--select-samples-txt', metavar='FILE_PATH', type=str,
         help="Select a subset tRNA-seq samples in the loaded affinity table for plotting. The "
              "input file should have a single column of sample names. Available sample names in an "
              "affinity table can be printed to the terminal by running this program with the flag, "
              "`--list-samples`.")
-    group1G.add_argument(
+    group1F.add_argument(
         '--plot-codon-file', metavar='FILE_PATH', type=str,
         help="A codon frequency table (see `--save-codon-frequencies` for the proper format) can "
              "be provided if running the program only to generate plots. The table must contain "
              "entries for the displayed functions or genes. Clustering parameters can be altered "
              "with `--sample-distance-metric` and `--sample-linkage-method`.")
-    group1G.add_argument(
+    group1F.add_argument(
         '--plot-codon-tree-file', metavar='NEWICK', type=str,
         help="A Newick-formatted tree of functions or genes from a single genome can be provided "
              "if running the program only to generate plots. `--plot-affinity-file` should be "
@@ -502,13 +485,13 @@ def get_args():
              "annotation source, or functions from multiple sources can be lumped together using "
              "`--compare-all-function-sources`; this program will not split the tree apart into "
              "multiple trees per function source.")
-    group1G.add_argument(
+    group1F.add_argument(
         '--plot-sample-tree-file', metavar='NEWICK', type=str,
         help="A Newick-formatted tree of the tRNA-seq samples can be provided if running the "
              "program only to generate plots. `--plot-affinity-file` should be provided a table "
              "for the corresponding genome.")
 
-    group1H = parser.add_argument_group(
+    group1G = parser.add_argument_group(
         'FUNCTIONS',
         "Functional affinity can be computed for functions from any source, or, indeed, for genes, "
         "in which case, the term \"gene affinity\" should be used instead. By default, functional "
@@ -520,7 +503,7 @@ def get_args():
         "This program makes no effort to avoid redundancy in the genes or functions that are "
         "analyzed. Genes can occur in multiple KEGG KOfams, KEGG BRITE categories, or independent "
         "sources, such as Pfam.")
-    group1H.add_argument(
+    group1G.add_argument(
         '-f', '--function-sources', nargs='*', type=str,
         help="Calculate affinity for functions annotated by these sources, e.g., 'KOfam', "
              "'KEGG_BRITE', 'COG20_FUNCTION'. If `--function-sources` is used as a flag without "
@@ -528,7 +511,7 @@ def get_args():
              "function options or `--gene-affinity`, affinity will be calculated for functions "
              "from the following sources: "
              f"{', '.join(genomictrnaseq.Affinitizer.default_function_sources)}.")
-    group1H.add_argument(
+    group1G.add_argument(
         '--all-brite-categories', default=False, action='store_true',
         help="If using KEGG BRITE as a function source, treat every hierarchy level as a separate "
              "function. For example, \"KEGG Orthology (KO)>>>09100 Metabolism>>>09101 Carbohydrate "
@@ -537,12 +520,12 @@ def get_args():
              "of the hierarchy are ignored. With this flag, higher categories are also reported as "
              "functions: \"09101 Carbohydrate metabolism\", \"09100 Metabolism\", and \"KEGG "
              "Orthology (KO)\".")
-    group1H.add_argument(
+    group1G.add_argument(
         '--function-accessions', nargs='+', type=str,
         help="Calculate affinity for select functions with these accessions from the source "
              "provided in `--function-sources`. To get accessions from multiple sources, instead "
              "use `--select-functions-txt`.")
-    group1H.add_argument(
+    group1G.add_argument(
         '--function-names', nargs='+', type=str,
         help="Calculate affinity for select functions with these names from the source provided in "
              "`--function-sources`. To get function names from multiple sources, instead use "
@@ -551,7 +534,7 @@ def get_args():
              "(KO)>>>09100 Metabolism\" includes and selects \"KEGG Orthology (KO)>>>09100 "
              "Metabolism>>>09101 Carbohydrate metabolism>>>00010 Glycolysis / Gluconeogenesis "
              "[PATH:ko00010]\".")
-    group1H.add_argument(
+    group1G.add_argument(
         '--select-functions-txt', metavar='FILE_PATH', type=str,
         help="Selected functions can be listed in this tab-delimited file of three columns. The "
              "first column should contain function annotation sources, the second column "
@@ -562,12 +545,12 @@ def get_args():
              "\"KEGG Orthology (KO)>>>09100 Metabolism\" includes and selects \"KEGG Orthology "
              "(KO)>>>09100 Metabolism>>>09101 Carbohydrate metabolism>>>00010 Glycolysis / "
              "Gluconeogenesis [PATH:ko00010]\".")
-    group1H.add_argument(
+    group1G.add_argument(
         '--lax-function-sources', default=False, action='store_true',
         help="By default, without this flag, requested function annotation sources must have been "
              "run on every input (meta)genome. With this flag, it doesn't matter if any number of "
              "sources was not run on any number of input (meta)genomes.")
-    group1H.add_argument(
+    group1G.add_argument(
         '--function-blacklist-txt', metavar='FILE_PATH', type=str,
         help="A single-column file of regular expressions that exclude functions from affinity "
              "calculations when patterns occur in function annotation strings. Built-in blacklists "
@@ -576,15 +559,15 @@ def get_args():
              "be provided with this argument. For example, if the file contains the regex, "
              "'[aA]rchaea', then functional annotations containing the substrings, 'archaea' or "
              "'Archaea', are disregarded.")
-    group1H.add_argument(
+    group1G.add_argument(
         '--gene-affinity', default=False, action='store_true',
         help="Compute affinity for genes rather than functions.")
-    group1H.add_argument(
+    group1G.add_argument(
         '--gene-caller-ids', nargs='+', type=int,
         help="Select genes by ID, space-separated, if using `--gene-affinity`, and genomic input "
              "from a single contigs database (not `--internal-genomes` or `--external-genomes`).")
 
-    group1I = parser.add_argument_group(
+    group1H = parser.add_argument_group(
         'SEED ASSIGNMENT',
         "It may not be possible to resolve tRNA transcripts to individual populations or genomes. "
         "tRNAs have relatively short sequences (~70-100 nt) that are often conserved across deep "
@@ -595,7 +578,7 @@ def get_args():
         "`anvi-integrate-trnaseq` cannot have been run with the flag, "
         "`--unambiguous-genome-assignment`, as is the case by default, for the issue of seed "
         "ambiguity to factor into affinity calculations.")
-    group1I.add_argument(
+    group1H.add_argument(
         '--seed-assignment',
         choices=['unambiguous_genome', 'unambiguous_db', 'ambiguous_all', 'ambiguous_choose'],
         type=str, default='unambiguous_genome',
@@ -628,7 +611,7 @@ def get_args():
              "coverage. Therefore, with a `--min-coverage-ratio` ≤5, the ambiguous seed would be "
              "assigned to genome A for affinity calculations. With a `--min-coverage-ratio` >5, "
              "the ambiguous seed would be excluded from affinity calculations.")
-    group1I.add_argument(
+    group1H.add_argument(
         '--min-coverage-ratio', metavar='FLOAT', type=float,
         default=genomictrnaseq.Affinitizer.default_min_coverage_ratio,
         help="This argument only applies to `--seed-assignment ambiguous_choose` and not any other "
@@ -640,11 +623,11 @@ def get_args():
              "greater summed coverage of unambiguous seeds than any of the other genomes in every "
              "tRNA-seq sample.")
 
-    group1J = parser.add_argument_group(
+    group1I = parser.add_argument_group(
         'ISOACCEPTOR PARAMETERS',
         "The calculation of affinity relies upon the abundances of tRNA isoacceptors, or groups of "
         "seeds with the same anticodon.")
-    group1J.add_argument(
+    group1I.add_argument(
         '--min-coverage', metavar='INT', type=int,
         default=genomictrnaseq.Affinitizer.default_min_coverage,
         help="The coverage threshold for detection of a tRNA isoacceptor. Coverage is measured at "
@@ -656,7 +639,7 @@ def get_args():
              "without a row as zero) must clear the threshold; per-sample rows below the "
              "threshold are again dropped orthogonally. The flag `--shared-isoacceptors` "
              "tightens this to 'every analyzed sample must clear the threshold' in both modes.")
-    group1J.add_argument(
+    group1I.add_argument(
         '--exclude-unmodified-anticodons', nargs='+', type=str,
         help="Remove tRNA isoacceptors with the given unmodified anticodons from calculation of "
              "affinity. Note that this argument only handles unmodified anticodons. For example, "
@@ -665,7 +648,7 @@ def get_args():
              "modification and tRNA-Ile2, instead use the option `--exclude-modified-anticodons` "
              "with the value, 'ICG LAT'. Exclusion of tRNAs by anticodon occurs before, and "
              "thereby affects, the `--min-isoacceptors` filter.")
-    group1J.add_argument(
+    group1I.add_argument(
         '--exclude-modified-anticodons', nargs='+', type=str,
         help="Remove tRNA isoacceptors with the given modified anticodons from calculation of "
              "anticodon. Recognized modifications are wobble nucleotide I (inosine) (anticodons "
@@ -673,7 +656,7 @@ def get_args():
              "agmatidine, with the only anticodon recognized with this modification being 'LAT'). "
              "Exclusion of tRNAs by anticodon occurs before, and thereby affects, the "
              "`--min-isoacceptors` filter.")
-    group1J.add_argument(
+    group1I.add_argument(
         '--min-isoacceptors', metavar='INT', type=int,
         default=genomictrnaseq.Affinitizer.default_min_isoacceptors,
         help="The minimum number of tRNA isoacceptors that need to be detected in a (meta)genomic "
@@ -681,7 +664,7 @@ def get_args():
              "isoacceptors is 5, there are two internal genomes, A and B, and 10 isoacceptors pass "
              "the minimum coverage threshold in A whereas 4 isoacceptors pass the threshold in B. "
              "Affinity will be calculated for genome A but not B.")
-    group1J.add_argument(
+    group1I.add_argument(
         '--shared-isoacceptors', default=False, action='store_true',
         help="Retain only isoacceptors that pass `--min-coverage` in EVERY analyzed sample (and "
              "that also pass the other isoacceptor filters). In `--reference-sample` mode 'every "
@@ -689,7 +672,7 @@ def get_args():
              "`--reference-mean` mode it means every `--nonreference-samples` entry. This "
              "facilitates the comparison of raw affinity data between samples, because the same "
              "set of isoacceptors contributes to each sample's regression.")
-    group1J.add_argument(
+    group1I.add_argument(
         '--decoding-weights-txt', metavar='FILE_PATH', type=str,
         help="A tab-delimited file of decoding weights, formatted identically to the file of "
              "default weights generated by running this program with the single option, "
