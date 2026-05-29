@@ -9,6 +9,7 @@ import scipy.cluster.hierarchy as hierarchy
 
 from argparse import Namespace
 from functools import partial
+from typing import Union
 
 import anvio
 import anvio.terminal as terminal
@@ -1845,15 +1846,139 @@ def write_isoacceptor_codon_weights_tables(args, isoacceptor_codon_weights_dict)
         run.info_single(valid_derived_output_path, level=2)
 
 
-def write_isoacceptor_contribution_tables(args, contributions_dict):
+def _split_contribution_output_key(output_key: str) -> tuple[str, str, Union[str, None]]:
     """
-    Write per-isoacceptor leave-one-out contribution tables.
+    Split a contribution `output_key` into (level, variant, stat) components.
 
-    `contributions_dict` is the nested {genome: {source: {output_key: DataFrame}}} structure
-    produced by `Affinitizer.get_isoacceptor_contributions`. Output paths follow the same
-    `--separate-genomes` / `--separate-function-sources` conventions as the affinity tables;
-    the suffix scheme is `-CONTRIBUTIONS-<OUTPUT_KEY>` (e.g. `-CONTRIBUTIONS-LONG-RAW`,
-    `-CONTRIBUTIONS-PER_SAMPLE-NORM-MEAN`). One file is written per (path, output_key) tuple.
+    The output keys produced by `Affinitizer._build_contribution_tables` are uppercase
+    composites like 'LONG-RAW' (level + variant, no statistic axis) or 'PER_SAMPLE-NORM-MEAN'
+    (level + variant + statistic). This helper splits them and returns the components
+    lowercased so they can drop straight into filesystem paths and filenames produced by
+    `_contribution_path`.
+
+    Parameters
+    ==========
+    output_key : str
+        A composite output key such as 'LONG-RAW' or 'PER_SAMPLE-NORM-MEAN'.
+
+    Returns
+    =======
+    tuple[str, str, str | None]
+        `(level, variant, stat)`, all lowercased. `level` is one of 'long', 'per_sample',
+        'per_gene', 'global'. `variant` is 'raw' or 'norm'. `stat` is 'mean', 'abs_mean', or
+        'std' for the aggregated levels; `None` for the 'long' level, which has no statistic
+        axis.
+    """
+    level, _, rest = output_key.partition('-')
+    parts = rest.split('-')
+    variant = parts[0]
+    stat = parts[1] if len(parts) > 1 else None
+    return level.lower(), variant.lower(), (stat.lower() if stat else None)
+
+
+def _contribution_path(
+    output_root: str,
+    output_extension: str,
+    output_key: str,
+    genome: str = None,
+    source: str = None
+) -> str:
+    """
+    Compose a filesystem path for one contribution output file under the nested layout.
+
+    The top-level directory is `<output_root>-CONTRIBUTIONS/`, with one subdirectory per
+    aggregation level (`long`, `per_sample`, `per_gene`, `global`) directly inside it. When
+    `--separate-genomes` is in effect (a `genome` is given), files for that genome live
+    under a `<genome>/` subdirectory inside the level dir; otherwise they sit directly in
+    the level dir. The leaf filename encodes the remaining axes -- source (when
+    `--separate-function-sources` is in effect, given via `source`), variant, and statistic.
+
+    Parameters
+    ==========
+    output_root : str
+        `args.output_file` with its extension stripped. Used as a prefix for the top-level
+        `-CONTRIBUTIONS` directory.
+
+    output_extension : str
+        The extension from `args.output_file` (typically '.tsv'). Applied to the leaf filename.
+
+    output_key : str
+        A composite output key like 'LONG-RAW' or 'PER_SAMPLE-NORM-MEAN'; split internally by
+        `_split_contribution_output_key`.
+
+    genome : str, None
+        Genome name to place files under (`--separate-genomes` mode). Spaces in the name are
+        replaced with underscores to keep the path portable. Default `None` means no per-genome
+        subdir; files sit directly in the level dir.
+
+    source : str, None
+        Function source name to prefix the filename with (`--separate-function-sources` mode).
+        Default `None` means no source prefix; sources are concatenated upstream before this
+        function is called.
+
+    Returns
+    =======
+    str
+        The relative path for the output file, e.g. 'out-CONTRIBUTIONS/per_sample/raw-mean.tsv' for
+        a default run, or 'out-CONTRIBUTIONS/per_sample/HIMB59/KOfam-raw-mean.tsv' with both
+        separators in effect.
+    """
+    level, variant, stat = _split_contribution_output_key(output_key)
+    name_parts = []
+    if source is not None:
+        name_parts.append(source)
+    name_parts.append(variant)
+    if stat is not None:
+        name_parts.append(stat)
+    filename = '-'.join(name_parts) + output_extension
+
+    top = f"{output_root}-CONTRIBUTIONS"
+    if genome is not None:
+        return os.path.join(top, level, genome.replace(' ', '_'), filename)
+    return os.path.join(top, level, filename)
+
+
+def write_isoacceptor_contribution_tables(
+    args: Namespace,
+    contributions_dict: Union[genomictrnaseq.IsoacceptorContributionTables, None],
+) -> None:
+    """
+    Write per-isoacceptor leave-one-out contribution tables under a nested directory.
+
+    Output files are placed under `<output_root>-CONTRIBUTIONS/`, where `<output_root>` is
+    `args.output_file` with its extension stripped. The primary classifier is the aggregation
+    level:
+
+        <output_root>-CONTRIBUTIONS/
+            <level>/                                    (long, per_sample, per_gene, global)
+                [<genome>/]                                   (only when --separate-genomes)
+                [<source>-]<variant>[-<stat>]<extension>
+
+    Without `--separate-genomes` the level directory holds files concatenated across genomes;
+    with `--separate-genomes` each genome's files live in its own `<genome>/` subdirectory.
+    Source filename prefix appears only when `--separate-function-sources` is set; otherwise
+    tables are concatenated across sources within each (genome, level) bucket.
+    `function_source` is already a row-index level in function mode, so concatenation across
+    sources doesn't collide.
+
+    Parameters
+    ==========
+    args : argparse.Namespace
+        The CLI namespace. Consulted fields: `save_isoacceptor_contributions` (boolean gate),
+        `output_file` (path template; the basename is stripped to compose the contribution
+        directory), `separate_genomes`, `separate_function_sources`.
+
+    contributions_dict : Union[IsoacceptorContributionTables, None]
+        Nested dict `{genome: {source: {output_key: DataFrame}}}` produced by
+        `Affinitizer.get_isoacceptor_contributions`. `None` (or an empty dict) is a no-op.
+
+    Returns
+    =======
+    None
+        Files are written to disk as a side effect. Paths actually written are reported through the
+        module-level `run` object. If any target path fails the writability check, every file
+        already written by this call is removed and a `ConfigError` is raised listing offending
+        paths.
     """
     if not args.save_isoacceptor_contributions:
         return
@@ -1861,15 +1986,35 @@ def write_isoacceptor_contribution_tables(args, contributions_dict):
         return
 
     output_root, output_extension = os.path.splitext(args.output_file)
-    valid_derived_output_paths = []
-    invalid_derived_output_paths = []
+    valid_derived_output_paths: list[str] = []
+    invalid_derived_output_paths: list[str] = []
 
-    # Every (genome, source) bucket produced by `_build_contribution_tables` carries the same
-    # set of output keys for a given request, so we can read them from any bucket.
+    # Every (genome, source) bucket carries the same set of output keys for a given request.
     sample_bucket = next(iter(next(iter(contributions_dict.values())).values()))
     output_keys = sorted(sample_bucket.keys())
 
-    def _try_write(df, path):
+    def _try_write(df: pd.DataFrame, path: str) -> None:
+        """
+        Write `df` to `path` as TSV, creating parent directories on demand and recording the
+        path in the appropriate enclosing list.
+
+        Parameters
+        ==========
+        df : pandas.core.frame.DataFrame
+            The DataFrame to write. Saved with `sep='\\t'` and the default index/header behavior of
+            `DataFrame.to_csv`.
+
+        path : str
+            Target file path. Its parent directory is created via `filesnpaths.gen_output_directory`
+            if it does not already exist.
+
+        Returns
+        =======
+        None
+            Side effects only: appends to the enclosing `valid_derived_output_paths` list on
+            success, or to `invalid_derived_output_paths` if the path is not writable.
+        """
+        filesnpaths.gen_output_directory(os.path.dirname(path))
         try:
             filesnpaths.is_output_file_writable(path)
         except FilesNPathsError:
@@ -1880,44 +2025,38 @@ def write_isoacceptor_contribution_tables(args, contributions_dict):
 
     for output_key in output_keys:
         if args.separate_genomes and args.separate_function_sources:
-            # One file per (genome, source, output_key).
+            # One file per (genome, source, output_key) under genomes/.
             for genome_name, source_dict in contributions_dict.items():
                 for source, src_outputs in source_dict.items():
-                    derived_output_path = (
-                        f"{output_root}-{genome_name.replace(' ', '_')}-{source}-"
-                        f"CONTRIBUTIONS-{output_key}{output_extension}")
-                    _try_write(src_outputs[output_key], derived_output_path)
+                    path = _contribution_path(
+                        output_root, output_extension, output_key,
+                        genome=genome_name, source=source)
+                    _try_write(src_outputs[output_key], path)
         elif args.separate_genomes:
-            # One file per (genome, output_key); concat across the genome's source buckets so
-            # multi-source runs produce one combined per-genome file (single-source runs are a
-            # one-element concat). function_source is already an index level (function mode) so
-            # rows don't collide; in gene-affinity mode there's only ever one bucket anyway.
+            # One file per (genome, output_key) under genomes/; sources concatenated.
             for genome_name, source_dict in contributions_dict.items():
                 combined_df = pd.concat(
                     [src_outputs[output_key] for src_outputs in source_dict.values()], axis=0)
-                derived_output_path = (
-                    f"{output_root}-{genome_name.replace(' ', '_')}-CONTRIBUTIONS-"
-                    f"{output_key}{output_extension}")
-                _try_write(combined_df, derived_output_path)
+                path = _contribution_path(
+                    output_root, output_extension, output_key, genome=genome_name)
+                _try_write(combined_df, path)
         elif args.separate_function_sources:
-            # One file per (source, output_key); concatenate per-genome tables for the source.
+            # One file per (source, output_key) under aggregation/; genomes concatenated.
             source_tables = {}
             for source_dict in contributions_dict.values():
                 for source, src_outputs in source_dict.items():
                     source_tables.setdefault(source, []).append(src_outputs[output_key])
             for source, dfs in source_tables.items():
-                derived_output_path = (
-                    f"{output_root}-{source}-CONTRIBUTIONS-{output_key}{output_extension}")
-                _try_write(pd.concat(dfs, axis=0), derived_output_path)
+                path = _contribution_path(
+                    output_root, output_extension, output_key, source=source)
+                _try_write(pd.concat(dfs, axis=0), path)
         else:
-            # One combined file per output_key; concat across (genome, source). Function mode's
-            # `function_source` pivot level ensures cross-source rows don't collide.
+            # One combined file per output_key under aggregation/; everything concatenated.
             all_dfs = [
                 src_outputs[output_key] for source_dict in contributions_dict.values()
                 for src_outputs in source_dict.values()]
-            derived_output_path = (
-                f"{output_root}-CONTRIBUTIONS-{output_key}{output_extension}")
-            _try_write(pd.concat(all_dfs, axis=0), derived_output_path)
+            path = _contribution_path(output_root, output_extension, output_key)
+            _try_write(pd.concat(all_dfs, axis=0), path)
 
     # Report invalid output paths and, if some paths were invalid, also remove files written to
     # valid paths.
