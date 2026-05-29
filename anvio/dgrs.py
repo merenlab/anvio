@@ -4717,10 +4717,12 @@ class DGR_Finder:
                                       output_dir=output_directory_path,
                                       only_report_primer_matches=True)
 
-            s = PrimerSearch(args, run=run, progress=progress)
-            sample_dict, primer_hits = s.process(return_dicts=True)
-
-            output_queue.put(sample_name)
+            try:
+                s = PrimerSearch(args, run=run, progress=progress)
+                sample_dict, primer_hits = s.process(return_dicts=True)
+                output_queue.put((sample_name, None))
+            except Exception as e:
+                output_queue.put((sample_name, e))
 
 
 
@@ -5409,13 +5411,16 @@ class DGR_Finder:
                     try:
                         # use timeout so we can detect dead workers instead of blocking forever
                         try:
-                            sample_finished_processing = output_queue.get(timeout=10)
+                            sample_finished_processing, worker_error = output_queue.get(timeout=10)
                         except queue.Empty:
                             if not any(w.is_alive() for w in workers):
                                 self.progress.end()
                                 raise ConfigError(f"All worker processes died unexpectedly after processing "
                                                 f"{num_samples_processed}/{num_samples} samples.")
                             continue
+
+                        if worker_error is not None:
+                            self.run.warning(f"PrimerSearch failed for sample '{sample_finished_processing}': {worker_error}")
 
                         if anvio.DEBUG:
                             self.progress.reset()
