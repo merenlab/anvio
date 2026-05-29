@@ -5124,14 +5124,20 @@ class DGR_Finder:
             A self.DGRs_found_dict that has all the information associated with the DGRs
         """
 
-        dgrs_dict = utils.get_TAB_delimited_file_as_dictionary(
-            self.pre_computed_dgrs_path,
-            ignore_duplicated_keys=True
-        )
+        # csv.DictReader preserves every row — get_TAB_delimited_file_as_dictionary
+        # with ignore_duplicated_keys=True would silently drop all but the last VR
+        # for any DGR that has multiple VRs (same DGR ID appears on multiple rows).
+        dgrs_rows = []
+        with open(self.pre_computed_dgrs_path) as fh:
+            reader = csv.DictReader(fh, delimiter='\t')
+            first_col = reader.fieldnames[0]
+            for r in reader:
+                dgr_id = r[first_col]
+                dgrs_rows.append((dgr_id, {k: v for k, v in r.items() if k != first_col}))
 
         self.DGRs_found_dict = {}
 
-        for dgr_id, row in dgrs_dict.items():
+        for dgr_id, row in dgrs_rows:
 
             # skip empty rows
             if all(v in [None, '', 'N/A'] for v in row.values()):
