@@ -4683,55 +4683,30 @@ class DGR_Finder:
 
 
     @staticmethod
-    def compute_dgr_variability_profiling_per_vr(input_queue, output_queue, samples_artifact, primers_dict, output_directory_path, run=run_quiet, progress=progress_quiet):
-        """
-        Go back to the raw metagenomic reads to compute the variability profiles of the variable regions for each single Sample.
+    def compute_dgr_variability_profiling_per_vr(input_queue, output_queue, samples_artifact, output_directory_path, run=run_quiet, progress=progress_quiet):
+        """Worker: run PrimerSearch for one sample at a time using the pre-filtered flat primer dict.
 
-        Parameters
-        ==========
-        DGRs_found_dict : dict
-            A dictionary containing the template and variable regions
-        Reads_1 : fasta file
-            A fasta file containing the forward reads used to create the merged PROFILE.db
-        Reads_2 : fasta file
-            A fasta file containing the reverse reads used to create the merged PROFILE.db
-        Samples.txt : txt file
-            Contains sample information and the path to both of the read files
-        Sample_primers_dict : dict, optional
-            Dictionary of sample-specific primers.
-        Use_sample_primers : bool, optional
-            Whether to use sample-specific primers.
-
-        Returns
-        =======
+        Queue items are (sample_name, primers_for_sample) tuples; None is the sentinel.
         """
 
         while True:
-            sample_name = input_queue.get(True)
-            if sample_name is None:
+            item = input_queue.get(True)
+            if item is None:
                 break
 
-            # extract sample-specific primers from the nested structure
-            # convert from {primer_name: {sample_name: {data}}}
-            # to {primer_name: {data}} for this specific sample
-            primers_for_sample = {}
-            for primer_name, samples_data in primers_dict.items():
-                if sample_name in samples_data:
-                    primers_for_sample[primer_name] = samples_data[sample_name]
+            sample_name, primers_for_sample = item
 
             samples_dict = samples_artifact.as_dict()
             samples_dict_for_sample = {sample_name: samples_dict[sample_name]}
             sample_artifact = SamplesTxt.from_dict(samples_dict_for_sample)
 
-            # setup the args object
-            args = argparse.Namespace(samples_artifact= sample_artifact,
-                                    primers_dict= primers_for_sample,
-                                    output_dir=output_directory_path,
-                                    only_report_primer_matches = True
-                                    )
+            args = argparse.Namespace(samples_artifact=sample_artifact,
+                                      primers_dict=primers_for_sample,
+                                      output_dir=output_directory_path,
+                                      only_report_primer_matches=True)
 
             s = PrimerSearch(args, run=run, progress=progress)
-            sample_dict, primer_hits = s.process(return_dicts = True)
+            sample_dict, primer_hits = s.process(return_dicts=True)
 
             output_queue.put(sample_name)
 
