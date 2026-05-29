@@ -206,6 +206,8 @@ class DGR_Finder:
         self.high_conf_max_pct_snv_codon_3 = 10  # percent
         self.high_conf_min_pct_snvs_explained = 90  # percent (i.e., < 10% unexplained)
 
+        self._pytantan_citation_shown = False
+
         # performance
         self.num_threads = int(A('num_threads')) if A('num_threads') else 1
 
@@ -2477,9 +2479,11 @@ class DGR_Finder:
             self.mismatch_hits = defaultdict(lambda: defaultdict(dict))
 
         # Show pytantan citation once before processing
-        self.run.warning("Anvi'o will now review the candidate DGRs for repeated sequences with the "
-                        "python wrapped tantan repeat finder. DOI: https://doi.org/10.1093/nar/gkq1212",
-                        lc='green', header="CITATION")
+        if not self._pytantan_citation_shown:
+            self.run.warning("Anvi'o will now review the candidate DGRs for repeated sequences with the "
+                            "python wrapped tantan repeat finder. DOI: https://doi.org/10.1093/nar/gkq1212",
+                            lc='green', header="CITATION")
+            self._pytantan_citation_shown = True
 
         # === SET UP SNV SCOPE FOR THIS CALL ===
         # In collections mode, pre-fetch only this bin's SNVs once and reuse
