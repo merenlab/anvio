@@ -448,7 +448,7 @@ class DGR_Finder:
         if html_files_exist:
             raise ConfigError("Files with .html suffix exist in the directory. Please delete them before rerunning and we will keep calm and carry on. (later this will delete them for you)")
 
-        if self.initial_primer_length <  0:
+        if self.initial_primer_length <= 0:
             raise ConfigError("The initial primer length is set to a negative value or zero. This is not allowed. Please set the initial primer length to a positive value.")
 
         if self.whole_primer_length <= 0:
