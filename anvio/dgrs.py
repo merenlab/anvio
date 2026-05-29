@@ -4346,7 +4346,7 @@ class DGR_Finder:
                 for gene_callers_id, gene_call in gene_calls_in_TR_contig.items():
                     # cache distance calculations to avoid redundant abs() calls
                     dist_to_start = abs(gene_call['start'] - TR_start)
-                    dist_to_end = abs(gene_call['start'] - TR_end)
+                    dist_to_end = abs(gene_call['stop'] - TR_end)
 
                     if dist_to_start < min_distance_to_TR_start:
                         closest_gene_call_to_TR_start = gene_callers_id
@@ -4434,7 +4434,7 @@ class DGR_Finder:
                 closest_gene_call_to_VR_start, closest_gene_call_to_VR_end = None, None
                 for gene_callers_id, gene_call in gene_calls_in_VR_contig.items():
                     dist_to_start = abs(gene_call['start'] - VR_start)
-                    dist_to_end = abs(gene_call['start'] - VR_end)
+                    dist_to_end = abs(gene_call['stop'] - VR_end)
 
                     if dist_to_start < min_distance_to_VR_start:
                         closest_gene_call_to_VR_start = gene_callers_id
