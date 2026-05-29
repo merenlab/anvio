@@ -3644,11 +3644,11 @@ class DGR_Finder:
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
         hmm_hits_dict = contigs_db.db.get_table_as_dict(t.hmm_hits_table_name)
         genes_in_contigs = contigs_db.db.get_table_as_dict(t.genes_in_contigs_table_name)
-        contig_sequences = contigs_db.db.get_table_as_dict(t.contig_sequences_table_name)
+        # Use SQL to get lengths only — avoids loading all sequence text into memory
+        contig_lengths = {row[0]: row[1] for row in contigs_db.db.conn.execute(
+            f'SELECT contig, length(sequence) FROM "{t.contig_sequences_table_name}"'
+        )}
         contigs_db.disconnect()
-
-        # Build contig length lookup
-        contig_lengths = {contig: len(data['sequence']) for contig, data in contig_sequences.items()}
 
         # Find all RT HMM hits matching specified sources
         # For each gene_callers_id, keep the hit with lowest e-value
