@@ -379,22 +379,20 @@ function drawArrows(_start, _stop, colortype, gene_offset_y, color_genes=null) {
                         (gene.direction == 'f' && gene.stop_in_split  < _stop);
         var left_pad  = offset + ((has_arrow && gene.direction == 'r') ? arrow_overhang : 0);
         var right_pad = offset + ((has_arrow && gene.direction == 'f') ? arrow_overhang : 0);
-        var box = paths.append('svg:rect')
+        // soft solid pale-amber "pill" behind highlighted genes — both the gene being inspected
+        // (gene/context mode) and genes that matched a function search. opaque on purpose: the
+        // inspect-page background is a translucent grey band, so a semi-transparent fill would
+        // blend into it and read as muddy. see gene_highlight_demo.html.
+        paths.append('svg:rect')
            .attr('x', start - left_pad)
            .attr('width', stop + left_pad + right_pad)
            .attr('y', y - offset)
            .attr('height', 2 * offset)
-           .attr('stroke-width', 0);
-
-        if (is_inspected_gene) {
-          // the inspected gene (gene/context mode) keeps its solid yellow box, and wins when both apply.
-          box.attr('fill', 'yellow').attr('fill-opacity', 1);
-        } else {
-          // soft solid pale-amber "pill" behind genes that matched a function search. opaque on
-          // purpose: the inspect-page background is a translucent grey band, so a semi-transparent
-          // fill would blend into it and read as muddy. see gene_highlight_demo.html.
-          box.attr('fill', search_highlight_color).attr('fill-opacity', 1).attr('rx', 5).attr('ry', 5);
-        }
+           .attr('stroke-width', 0)
+           .attr('fill', search_highlight_color)
+           .attr('fill-opacity', 1)
+           .attr('rx', 5)
+           .attr('ry', 5);
       }
 
       // M10 15 l20 0
