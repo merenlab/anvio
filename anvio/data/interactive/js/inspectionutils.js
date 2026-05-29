@@ -382,7 +382,7 @@ function drawArrows(_start, _stop, colortype, gene_offset_y, color_genes=null) {
         // soft solid pale-amber "pill" behind highlighted genes — both the gene being inspected
         // (gene/context mode) and genes that matched a function search. opaque on purpose: the
         // inspect-page background is a translucent grey band, so a semi-transparent fill would
-        // blend into it and read as muddy. see gene_highlight_demo.html.
+        // blend into it and read as muddy.
         paths.append('svg:rect')
            .attr('x', start - left_pad)
            .attr('width', stop + left_pad + right_pad)
