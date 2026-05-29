@@ -188,6 +188,17 @@ def get_args():
                     "will skip computing DGR variability profiling, which is an extremely costly step. It may be a good idea "
                     "to first run the workflow without computing activity, take a look at the output files to make sure "
                     "everything looks alright, and then run the workflow without this flag.")
+    groupI.add_argument('--min-detection-for-vr-profiling', default=0.25, type=float, metavar='FLOAT',
+                    help="Minimum detection (fraction of positions covered, 0.0–1.0) required for a contig in a sample "
+                    "before its VR primers are searched in that sample's reads. When a profile.db is provided and sample "
+                    "names overlap between the profile.db and samples-txt, anvi'o will skip PrimerSearch for any "
+                    "sample-VR pair where the VR's contig falls below this threshold. Samples not found in the "
+                    "profile.db are always searched. Default: 0.5")
+    groupI.add_argument('--min-coverage-for-vr-profiling', default=10, type=int, metavar='INT',
+                    help="Minimum mean coverage depth (reads per position) required for a contig in a sample "
+                    "before its VR primers are searched in that sample's reads. Works together with "
+                    "--min-detection-for-vr-profiling. Both thresholds must be met for a sample-VR pair to be "
+                    "included in the primer search. Default: 10")
 
     groupK = parser.add_argument_group('CALCULATE ACTIVITY FROM KNOWN DGRS?', "This input option is ONLY relevant to those who have "
                     "already run the entire workflow and have their dgrs output file (i.e., 'DGRs_found.tsv'). This input option will "
