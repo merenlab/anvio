@@ -3107,7 +3107,7 @@ class DGR_Finder:
 
                 # unpack dict
                 query_section = best_hit['query_section']
-                bin = best_hit['bin']
+                bin_name = best_hit['bin']
                 subject_genome_start_position = best_hit['subject_genome_start_position']
                 subject_genome_end_position = best_hit['subject_genome_end_position']
                 TR_sequence = Seq(best_hit['hit_seq'])
@@ -3154,9 +3154,9 @@ class DGR_Finder:
                     # add first DGR
                     num_DGR += 1
                     if anvio.DEBUG:
-                        self.run.warning(f"Adding new DGR {num_DGR} in the bin: {bin}, the VR is on this contig: {query_contig}", header="NEW DGR", lc='yellow')
-                    bins_with_dgrs.add(bin)
-                    self.add_new_DGR(num_DGR, bin, TR_sequence, query_genome_start_position, query_genome_end_position, query_contig,
+                        self.run.warning(f"Adding new DGR {num_DGR} in the bin: {bin_name}, the VR is on this contig: {query_contig}", header="NEW DGR", lc='yellow')
+                    bins_with_dgrs.add(bin_name)
+                    self.add_new_DGR(num_DGR, bin_name, TR_sequence, query_genome_start_position, query_genome_end_position, query_contig,
                                 base, is_reverse_complement, TR_frame, VR_sequence, VR_frame, subject_genome_start_position, subject_genome_end_position,
                                 subject_contig, midline, percentage_of_mismatches, DGR_looks_snv_false, snv_at_3_codon_over_a_third, mismatch_pos_contig_relative,
                                 snv_VR_positions, numb_of_snv_in_matches_not_mutagen_base, numb_of_mismatches, numb_of_SNVs, best_amongst_multiple_TRs_for_one_VR,
@@ -3173,7 +3173,7 @@ class DGR_Finder:
                                                                                                         self.DGRs_found_dict[dgr]['TR_end_position']):
                             was_added = True
                             #TODO can rename consensus_TR
-                            self.update_existing_DGR(dgr, bin, TR_frame, VR_sequence, VR_frame, TR_sequence, midline, percentage_of_mismatches, is_reverse_complement, query_genome_start_position,
+                            self.update_existing_DGR(dgr, bin_name, TR_frame, VR_sequence, VR_frame, TR_sequence, midline, percentage_of_mismatches, is_reverse_complement, query_genome_start_position,
                                             query_genome_end_position, query_contig, subject_genome_start_position, subject_genome_end_position,
                                             subject_contig, DGR_looks_snv_false, snv_at_3_codon_over_a_third, mismatch_pos_contig_relative, snv_VR_positions,
                                             numb_of_snv_in_matches_not_mutagen_base, numb_of_mismatches, numb_of_SNVs, best_amongst_multiple_TRs_for_one_VR,
@@ -3186,10 +3186,10 @@ class DGR_Finder:
                         # add new TR and its first VR
                         num_DGR += 1
                         if anvio.DEBUG:
-                            self.run.warning(f"Adding new DGR {num_DGR} in the bin: {bin}, the VR is on this contig: {query_contig}", header="NEW DGR", lc='yellow')
-                        bins_with_dgrs.add(bin)
+                            self.run.warning(f"Adding new DGR {num_DGR} in the bin: {bin_name}, the VR is on this contig: {query_contig}", header="NEW DGR", lc='yellow')
+                        bins_with_dgrs.add(bin_name)
                         self.add_new_DGR(num_DGR,
-                                        bin,
+                                        bin_name,
                                         TR_sequence,
                                         query_genome_start_position,
                                         query_genome_end_position,
