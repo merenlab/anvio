@@ -45,3 +45,37 @@ To estimate the robustness of affinity to tRNA pool incompleteness, the metric c
 ### Standardization
 
 It is useful to compare translational affinities across genes (or functional groups) to understand which genes are most favored or disfavored for translation given the change in the tRNA pool (relative to the reference sample). Sample A may have a similar or different ordering of genes by affinity than Sample B. It can be more informative to standardize affinities within a sample before comparing to another sample: the affinity metric, for example, is affected by the set of isoacceptors measured for a given sample, and so the magnitude of affinities may be generally greater or lesser for one sample than another though the order of genes by affinity is similar. Standardization of affinity on a scale of zero to one highlights differences between genes and between samples. We call standardized affinity **S** = (**A** - **A(min gene or function)**) / (**A(max gene or function)** - **A(min gene or function)**).
+
+## Isoacceptor contribution analysis
+
+Each affinity value β(g, s) is the slope of an OLS regression across the isoacceptors of a (genome, sample). When you want to know *which isoacceptor* drove that affinity for a given gene and sample, the program can compute the per-isoacceptor leave-one-out contribution
+
+**Δ(g, s, i) = β(g, s) − β₋ᵢ(g, s)**
+
+where β₋ᵢ is the slope refit with isoacceptor `i` removed. Positive Δ means dropping isoacceptor `i` would reduce β — `i` was pulling the affinity upward; negative Δ means `i` was pulling it down. Internally the contribution is computed in closed form (the standard OLS deletion identity), so n re-fits per (g, s) are not needed, and the per-(genome, sample) `x`-side intermediates (Σ(x − x̄)², the hat-matrix diagonal) are reused across all genes in the genome. The implementation is numerically equivalent to brute-force refitting `scipy.stats.linregress` with one isoacceptor removed.
+
+A standard-error-normalized variant **Δ_norm(g, s, i) = Δ(g, s, i) / SE(β(g, s))** is also available. Δ_norm downweights contributions from weakly-determined regressions (high residual variance, low spread in the supply vector), so a unit of Δ_norm is comparable across (g, s) pairs in a way the raw Δ is not. Δ_norm is reported as NaN where SE(β) is undefined: when the regression has two or fewer isoacceptors, when the supply vector is fully degenerate, or, in rare cases of a perfect fit, when SE(β) is exactly 0. A safety floor on (1 − h_{ii}) likewise sets Δ to NaN for isoacceptors with near-maximal leverage (one outlier log-ratio carrying nearly all of Σ(x − x̄)²), where the deletion formula would otherwise blow up.
+
+### Outputs
+
+Activate the analysis with `--save-isoacceptor-contributions`. By default the program writes 14 tables per (genome, function source) bucket: the full long-format Δ tables and four collapse views, each in both raw and SE-normalized variants.
+
+The full table comes in two flavors:
+
+  - `LONG-RAW` and `LONG-NORM` — one row per (gene, sample, isoacceptor) triple, with the gene/function index columns, `trnaseq_sample_name`, `anticodon`, and a `delta_raw` or `delta_norm` value column. NaN entries are preserved (not dropped) so the table shape is deterministic across (g, s) pairs that share an isoacceptor set.
+
+Three aggregated views collapse one or both of the gene and sample dimensions, and produce wide tables with anticodons as columns and one of `mean` (mean of signed values), `abs_mean` (mean of absolute values, useful for ranking isoacceptors by total influence regardless of sign), or `std` (standard deviation of signed values) as the per-anticodon statistic:
+
+  - `PER_SAMPLE-{RAW,NORM}-{MEAN,ABS_MEAN,STD}` — aggregate over genes. Rows are (genome, [function_source,] sample).
+  - `PER_GENE-{RAW,NORM}-{MEAN,ABS_MEAN,STD}` — aggregate over samples. Rows are the genome's gene/function index.
+  - `GLOBAL-{RAW,NORM}-{MEAN,ABS_MEAN,STD}` — aggregate over both. One row per (genome, [function_source]).
+
+The default statistic set is `mean` and `abs_mean`; opt into `std` with `--contribution-statistics`. The default variant set is both `raw` and `norm`, and the default aggregation set includes all four levels (`long`, `per_sample`, `per_gene`, `global`); trim any of these with the corresponding `--contribution-{variants,aggregations,statistics}` flag.
+
+In function mode (the default), per_sample / per_gene / global aggregations stratify by `function_source` *as well as* by genome. A `PER_SAMPLE-RAW-MEAN` table from a run with both KEGG and Pfam annotations contains separate rows for the KEGG and Pfam means within the same (genome, sample) -- they are *not* combined into a single cross-source mean. If you want one cross-source aggregate per (genome, sample), use `--compare-all-function-sources` so the contributions are computed against a single lumped source.
+
+Output paths follow the same `--separate-genomes` / `--separate-function-sources` conventions as the other tables. The suffix scheme is `-CONTRIBUTIONS-<OUTPUT_KEY>` inserted before the extension. For example, a default run with no separators writes files like `<output_root>-CONTRIBUTIONS-LONG-RAW.tsv` and `<output_root>-CONTRIBUTIONS-PER_SAMPLE-NORM-MEAN.tsv`; with both `--separate-genomes` and `--separate-function-sources` set, the paths become `<output_root>-<genome_name>-<source>-CONTRIBUTIONS-<OUTPUT_KEY>.tsv`.
+
+### Sanity diagnostic
+
+At the end of a run that produced contributions, the program reports one informational line giving the median Pearson correlation of Σ_i Δ(g, s, i) with β(g, s) across genes, taken over all (genome, sample) regressions, plus a count of regressions where the correlation was undefined. This is *informational only*. The (1 − h_{ii}) factor in the deletion formula breaks the residual-orthogonality identity Σ_i (x_i − x̄)·e_i = 0, so Σ_i Δ_i = n·β − Σ_i β₋ᵢ measures total leverage rather than reproducing β; in practice the sum tracks β closely when no single isoacceptor dominates the fit, and diverges from it on outlier-driven regressions. A low median correlation across a dataset isn't a red flag by itself, but a near-zero or strongly negative median paired with a few isoacceptors having extreme leverage is worth inspecting in the long-format tables.
