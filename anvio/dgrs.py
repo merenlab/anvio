@@ -4887,6 +4887,7 @@ class DGR_Finder:
                         primers_dict[dgr_vr_key][sample_name] = {
                             'primer_side':             'NA',
                             'vr_group':                vr_group,
+                            'vr_contig':               vr_contig,
                             'vr_coverage_start':       0,
                             'vr_coverage_end':         no_flank_coverage_end,
                             'used_original_primer':    used_original_primer,
@@ -4956,6 +4957,7 @@ class DGR_Finder:
                         primers_dict[dgr_vr_key][sample_name] = {
                             'primer_side':             side,
                             'vr_group':                vr_group,
+                            'vr_contig':               vr_contig,
                             'vr_coverage_start':       vr_coverage_start,
                             'vr_coverage_end':         vr_coverage_end,
                             'used_original_primer':    used_original_primer,
