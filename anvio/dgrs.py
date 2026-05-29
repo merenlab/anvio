@@ -1965,22 +1965,12 @@ class DGR_Finder:
             # use 'spawn' context so child processes start with a clean address
             # space instead of inheriting the parent's memory via fork()
             ctx = multiprocessing.get_context('spawn')
-            input_queue = ctx.Queue()
+            # bounded queue: at most num_threads * 2 items in memory at once so
+            # contig sequences are not all buffered before workers start consuming
+            input_queue = ctx.Queue(maxsize=self.num_threads * 2)
             output_queue = ctx.Queue()
 
-            # enqueue per-bin work items with pre-loaded contig sequences (zero DB access)
-            for bin_name, bin_contigs_list in bin_contigs_dict.items():
-                bin_contig_seqs = {c: all_contig_sequences[c] for c in bin_contigs_list if c in all_contig_sequences}
-                input_queue.put((bin_name, bin_contigs_list, bin_contig_seqs))
-
-            # add one sentinel per worker so they exit gracefully
-            for _ in range(self.num_threads):
-                input_queue.put(None)
-
-            # free intermediate data
-            del all_contig_sequences
-
-            # Start workers
+            # Start workers first so they begin consuming as soon as items arrive
             workers = []
             for i in range(self.num_threads):
                 worker = ctx.Process(
@@ -1988,6 +1978,19 @@ class DGR_Finder:
                     args=(input_queue, output_queue, config, rt_windows_list))
                 workers.append(worker)
                 worker.start()
+
+            # enqueue per-bin work items — will block when queue is full, giving
+            # workers time to drain it and keeping peak memory bounded
+            for bin_name, bin_contigs_list in bin_contigs_dict.items():
+                bin_contig_seqs = {c: all_contig_sequences[c] for c in bin_contigs_list if c in all_contig_sequences}
+                input_queue.put((bin_name, bin_contigs_list, bin_contig_seqs))
+
+            # free the source dict now that all items are queued or being processed
+            del all_contig_sequences
+
+            # add one sentinel per worker so they exit gracefully
+            for _ in range(self.num_threads):
+                input_queue.put(None)
 
             # Monitor progress
             try:
