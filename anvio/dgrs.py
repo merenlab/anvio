@@ -187,6 +187,8 @@ class DGR_Finder:
         self.skip_compute_DGR_variability_profiling = A('skip_compute_DGR_variability_profiling')
         self.pre_computed_dgrs_path = A('pre_computed_dgrs')
         self.initial_primer_length = A('initial_variable_primer_length') or  12 #TODO test different values for this. If Illumina reads are 250 bases then depends on length of VR
+        self.min_detection_for_vr_profiling = A('min_detection_for_vr_profiling') if A('min_detection_for_vr_profiling') is not None else 0.25
+        self.min_coverage_for_vr_profiling  = A('min_coverage_for_vr_profiling')  if A('min_coverage_for_vr_profiling')  is not None else 10
         self.numb_imperfect_tandem_repeats = A('numb_imperfect_tandem_repeats') or 10
         self.repeat_motif_coverage = A('repeat_motif_coverage') or 0.8
         self.snv_matching_proportion = A('snv_matching_proportion') or None
@@ -258,6 +260,8 @@ class DGR_Finder:
             self.run.info('Samples.txt', self.samples_txt)
             self.run.info('Initial Primer Length', self.initial_primer_length)
             self.run.info('Variable Region Primer Length', self.whole_primer_length)
+            self.run.info('Min detection for VR profiling', self.min_detection_for_vr_profiling)
+            self.run.info('Min coverage for VR profiling', self.min_coverage_for_vr_profiling)
 
         # these are the keys we are interested in finding in input files offered to reconstruct
         # DGR profiles via the --pre-computed-dgrs flag. NOTE that these keys are not ALL
@@ -4952,6 +4956,145 @@ class DGR_Finder:
         return primers_dict
 
 
+    def get_sample_to_primers_dict(self, primers_dict):
+        """Invert primers_dict and apply coverage/detection filtering per sample.
+
+        Takes the nested {primer_key → {sample → primer_data}} structure from
+        generate_primers_for_vrs() and produces a flat {sample → {primer_key → primer_data}}
+        dict. When a profile.db is available and sample names overlap with the samples-txt,
+        only sample-VR pairs where the VR's contig meets --min-detection-for-vr-profiling
+        and --min-coverage-for-vr-profiling thresholds are included. Samples absent from
+        the profile.db are always searched against all VR primers.
+
+        Note: profile.db view tables store split names as items (e.g. 'contig_split_00001'),
+        not bare contig names. This method resolves VR contig names to their split names via
+        splits_basic_info in the contigs.db, queries by split, then aggregates (mean) back
+        to contig-level values for threshold comparison.
+        """
+
+        samples_txt_samples = set(self.samples_artifact.samples())
+        filtering_active = False
+        detection_by_contig = {}
+        coverage_by_contig  = {}
+        overlap             = set()
+
+        if self.profile_db_path:
+            contigs_of_interest = {d['vr_contig']
+                                   for sd in primers_dict.values()
+                                   for d in sd.values()}
+
+            # profile.db detection_contigs may use bare contig names (merged profiles) or
+            # split names (single-sample or older profiles). Query with both to cover either.
+            contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
+            where_clause = 'parent IN (%s)' % ', '.join([f'"{c}"' for c in contigs_of_interest])
+            splits_rows = contigs_db.db.get_some_rows_from_table_as_dict(
+                t.splits_info_table_name, where_clause=where_clause, error_if_no_data=False)
+            contigs_db.disconnect()
+
+            # maps split_name → contig_name; also used to normalise hits from split-name tables
+            split_to_contig = {split: row['parent'] for split, row in splits_rows.items()}
+            splits_of_interest = set(split_to_contig.keys())
+            items_of_interest = contigs_of_interest | splits_of_interest
+
+            profile_db = dbops.ProfileDatabase(self.profile_db_path, quiet=True)
+            table_names = profile_db.db.get_table_names()
+
+            if 'detection_contigs' in table_names and 'mean_coverage_contigs' in table_names:
+                det_raw, _ = profile_db.db.get_view_data(
+                    'detection_contigs',
+                    split_names_of_interest=items_of_interest,
+                    expand_to_splits=False)
+                cov_raw, _ = profile_db.db.get_view_data(
+                    'mean_coverage_contigs',
+                    split_names_of_interest=items_of_interest,
+                    expand_to_splits=False)
+
+                # normalise: if item is a split name, map to its parent contig
+                from collections import defaultdict
+                det_sum = defaultdict(lambda: defaultdict(float))
+                det_cnt = defaultdict(lambda: defaultdict(int))
+                cov_sum = defaultdict(lambda: defaultdict(float))
+                cov_cnt = defaultdict(lambda: defaultdict(int))
+
+                for item, sample_vals in det_raw.items():
+                    contig = split_to_contig.get(item, item)  # bare contig names pass through
+                    if contig in contigs_of_interest:
+                        for sample, val in sample_vals.items():
+                            det_sum[contig][sample] += val
+                            det_cnt[contig][sample] += 1
+                for item, sample_vals in cov_raw.items():
+                    contig = split_to_contig.get(item, item)
+                    if contig in contigs_of_interest:
+                        for sample, val in sample_vals.items():
+                            cov_sum[contig][sample] += val
+                            cov_cnt[contig][sample] += 1
+
+                for contig in contigs_of_interest:
+                    if det_cnt[contig]:
+                        detection_by_contig[contig] = {
+                            s: det_sum[contig][s] / det_cnt[contig][s]
+                            for s in det_cnt[contig]}
+                    if cov_cnt[contig]:
+                        coverage_by_contig[contig] = {
+                            s: cov_sum[contig][s] / cov_cnt[contig][s]
+                            for s in cov_cnt[contig]}
+
+                profile_db_samples = profile_db.samples
+                overlap = profile_db_samples & samples_txt_samples
+
+                if not overlap:
+                    self.run.warning("anvi'o found a profile.db but none of its sample names match "
+                                     "the samples in your samples-txt file. Coverage/detection "
+                                     "filtering will be skipped and all samples will be searched "
+                                     "for all VR primers.")
+                else:
+                    filtering_active = True
+                    self.run.info('Samples in samples-txt', len(samples_txt_samples))
+                    self.run.info('Samples in profile.db', len(profile_db_samples))
+                    self.run.info('Overlapping samples (filtering will apply)', len(overlap))
+                    self.run.info_single(
+                        f"anvi'o found {len(overlap)} sample(s) present in both the profile.db "
+                        f"and samples-txt. Coverage/detection filtering will be applied to those "
+                        f"samples (detection >= {self.min_detection_for_vr_profiling}, coverage >= "
+                        f"{self.min_coverage_for_vr_profiling}); the remaining "
+                        f"{len(samples_txt_samples) - len(overlap)} sample(s) not in the "
+                        f"profile.db will be searched for all VR primers.")
+            else:
+                self.run.warning("The profile.db does not contain 'detection_contigs' or "
+                                 "'mean_coverage_contigs' tables. Coverage/detection filtering "
+                                 "will be skipped and all samples will be searched for all VR "
+                                 "primers.")
+            profile_db.disconnect()
+        else:
+            if anvio.DEBUG:
+                self.run.info_single("No profile.db provided; skipping coverage/detection filtering.")
+
+        sample_to_primers = {}
+        for primer_key, samples_data in primers_dict.items():
+            for sample_name, primer_data in samples_data.items():
+                vr_contig = primer_data['vr_contig']
+
+                if filtering_active and sample_name in overlap:
+                    det = detection_by_contig.get(vr_contig, {}).get(sample_name)
+                    cov = coverage_by_contig.get(vr_contig, {}).get(sample_name)
+                    if det is None or cov is None:
+                        # no coverage data for this contig-sample pair → conservative: include
+                        passes = True
+                    else:
+                        passes = (det >= self.min_detection_for_vr_profiling and
+                                  cov >= self.min_coverage_for_vr_profiling)
+                else:
+                    passes = True
+
+                if passes:
+                    sample_to_primers.setdefault(sample_name, {})[primer_key] = primer_data
+
+        self.run.info('Samples with ≥1 relevant VR after filtering', len(sample_to_primers))
+        self.run.info('Total search pairs (sample × primer)',
+                      sum(len(v) for v in sample_to_primers.values()))
+
+        return sample_to_primers
+
 
     def populate_dgrs_dict_from_input_file(self):
         """
@@ -5174,6 +5317,10 @@ class DGR_Finder:
         self.run.info_single("Computing the Variable Regions Primers and creating a 'DGR_Primers_used_for_VR_diversity.tsv' file.", nl_before=1)
         self.print_primers_dict_to_csv(primers_dict)
 
+        # build per-sample filtered primer lookup (filters by contig coverage/detection)
+        sample_to_primers = self.get_sample_to_primers_dict(primers_dict)
+        num_samples = len(sample_to_primers)
+
         self.dgr_activity = []
         # create directory for Primer matches
         primer_folder= os.path.join(self.output_directory, "PRIMER_MATCHES")
@@ -5181,14 +5328,8 @@ class DGR_Finder:
         if self.num_threads <= 1:
             # === SINGLE-THREAD: run inline without spawning a subprocess ===
             self.progress.new('DGR variability profile', progress_total_items=num_samples)
-            for sample_name in sample_names:
+            for sample_name, primers_for_sample in sample_to_primers.items():
                 self.progress.update(f"Processing sample {sample_name}...")
-
-                # extract sample-specific primers
-                primers_for_sample = {}
-                for primer_name, samples_data in primers_dict.items():
-                    if sample_name in samples_data:
-                        primers_for_sample[primer_name] = samples_data[sample_name]
 
                 samples_dict = self.samples_artifact.as_dict()
                 samples_dict_for_sample = {sample_name: samples_dict[sample_name]}
@@ -5220,8 +5361,8 @@ class DGR_Finder:
             input_queue = ctx.Queue()
             output_queue = ctx.Queue()
 
-            for sample_name in sample_names:
-                input_queue.put(sample_name)
+            for sample_name, primers_for_sample in sample_to_primers.items():
+                input_queue.put((sample_name, primers_for_sample))
 
             # add one sentinel per worker so they exit gracefully
             for _ in range(self.num_threads):
@@ -5233,7 +5374,6 @@ class DGR_Finder:
                                                 args=(input_queue,
                                                     output_queue,
                                                     self.samples_artifact,
-                                                    primers_dict,
                                                     primer_folder),
                                                 kwargs=({'progress': progress_quiet
                                                     }))
