@@ -4845,6 +4845,15 @@ class DGR_Finder:
 
                 vr_group = f"{dgr_id}_{vr_id}"
 
+                # one SQL query per VR (not per sample) — fetch all samples at once
+                if hasattr(self, 'snv'):
+                    region_snvs = self.snv.get_snvs_for_region(vr_contig, vr_start, vr_end - 1)
+                    snvs_by_sample = {}
+                    for row in region_snvs.itertuples(index=False):
+                        snvs_by_sample.setdefault(row.sample_id, set()).add(row.pos_in_contig)
+                else:
+                    snvs_by_sample = {}
+
                 if skip_initial_primer:
                     # no flanking sequence on either side — one primer, just the masked VR
                     dgr_vr_key = f"{dgr_id}_{vr_id}_Primer"
@@ -4853,12 +4862,7 @@ class DGR_Finder:
                     no_flank_coverage_end = min(self.whole_primer_length, len(VR_sequence)) - 1
 
                     for sample_name in sample_names:
-                        if hasattr(self, 'snv'):
-                            sample_snvs = self.snv.get_snvs_for_region(
-                                vr_contig, vr_start, vr_end - 1, sample_id=sample_name)
-                            snv_positions = set(sample_snvs['pos_in_contig'].tolist())
-                        else:
-                            snv_positions = set()
+                        snv_positions = snvs_by_sample.get(sample_name, set())
 
                         sample_primer_list = list(base_vr_masked_primer)
                         for pos in snv_positions:
@@ -4927,12 +4931,7 @@ class DGR_Finder:
                         if anvio.DEBUG:
                             self.run.info_single(f"Processing sample {sample_name} for DGR {dgr_id} VR {vr_id} side {side}", nl_before=1)
 
-                        if hasattr(self, 'snv'):
-                            sample_snvs = self.snv.get_snvs_for_region(
-                                vr_contig, vr_start, vr_end - 1, sample_id=sample_name)
-                            snv_positions = set(sample_snvs['pos_in_contig'].tolist())
-                        else:
-                            snv_positions = set()
+                        snv_positions = snvs_by_sample.get(sample_name, set())
 
                         # For frame=-1 the primer list is in minus-strand orientation: position i
                         # corresponds to genomic coordinate vr_end-1-i.
