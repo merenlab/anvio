@@ -2311,8 +2311,7 @@ class DGR_Finder:
 
         for seq_to_check in [seq, seq_rc]:
             masked_seq = pytantan.mask_repeats(seq_to_check)
-            # Count lowercase (masked) characters - str.count() is C-optimized
-            num_masked = sum(masked_seq.count(c) for c in 'acgtn')
+            num_masked = sum(1 for c in masked_seq if c.islower())
             frac_masked = num_masked / len(masked_seq)
             if frac_masked > self.repeat_threshold:
                 if anvio.DEBUG and self.verbose:
