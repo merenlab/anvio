@@ -1442,9 +1442,12 @@ def write_affinity_tables(args, affinities_dict):
                 raw_source_df = normalization_dict['raw']
                 raw_source_df.to_csv(derived_output_path, sep='\t')
     elif args.separate_genomes:
-        # Split written affinity data by genome and not by function source.
+        # Split written affinity data by genome and not by function source. Multiple sources
+        # within a genome are concatenated along rows; `function_source` is already a row-index
+        # level on each per-source table, so the combined table is unambiguous. Symmetric with
+        # the `--separate-function-sources`-only branch, which concatenates across genomes for
+        # each source.
         for genome_name, source_dict in affinities_dict.items():
-            normalization_dict = source_dict['all_functions']
             for normalization_method in args.normalization_methods:
                 # Write a table for the genome/normalization method.
                 derived_output_path = (
@@ -1457,7 +1460,8 @@ def write_affinity_tables(args, affinities_dict):
                 if invalid_derived_output_paths:
                     continue
                 valid_derived_output_paths.append(derived_output_path)
-                normalized_genome_df = normalization_dict[normalization_method]
+                normalized_genome_df = pd.concat(
+                    [source_dict[src][normalization_method] for src in source_dict], axis=0)
                 if args.plot_codon_dendrogram:
                     normalized_genome_df.index = normalized_genome_df.index.droplevel('label')
                 normalized_genome_df.to_csv(derived_output_path, sep='\t')
@@ -1472,7 +1476,8 @@ def write_affinity_tables(args, affinities_dict):
             if invalid_derived_output_paths:
                 continue
             valid_derived_output_paths.append(derived_output_path)
-            raw_genome_df = normalization_dict['raw']
+            raw_genome_df = pd.concat(
+                [source_dict[src]['raw'] for src in source_dict], axis=0)
             raw_genome_df.to_csv(derived_output_path, sep='\t')
     elif args.separate_function_sources:
         # Split written affinity data by function source and not by genome. Due to the order of
@@ -1643,10 +1648,7 @@ def write_affinity_stderr_tables(args, stderrs_dict):
             if invalid_derived_output_paths:
                 continue
             valid_derived_output_paths.append(derived_output_path)
-            if args.gene_affinity:
-                stderrs_df = source_dict['genes']
-            else:
-                stderrs_df = source_dict['all_functions']
+            stderrs_df = pd.concat(list(source_dict.values()), axis=0)
             stderrs_df.to_csv(derived_output_path, sep='\t')
     elif args.separate_function_sources:
         # Split written stderr data by function source and not by genome.
@@ -1806,10 +1808,7 @@ def write_isoacceptor_codon_weights_tables(args, isoacceptor_codon_weights_dict)
             if invalid_derived_output_paths:
                 continue
             valid_derived_output_paths.append(derived_output_path)
-            if args.gene_affinity:
-                isoacceptor_codon_weights_df = source_dict['genes']
-            else:
-                isoacceptor_codon_weights_df = source_dict['all_functions']
+            isoacceptor_codon_weights_df = pd.concat(list(source_dict.values()), axis=0)
             isoacceptor_codon_weights_df.to_csv(derived_output_path, sep='\t')
     elif args.separate_function_sources:
         # Split written isoacceptor codon weight data by function source and not by genome. Due to
@@ -1906,14 +1905,17 @@ def write_isoacceptor_contribution_tables(args, contributions_dict):
                         f"CONTRIBUTIONS-{output_key}{output_extension}")
                     _try_write(src_outputs[output_key], derived_output_path)
         elif args.separate_genomes:
-            # One file per (genome, output_key); upstream sanity checks ensure there's a single
-            # source bucket per genome ('genes' or 'all_functions') in this mode.
+            # One file per (genome, output_key); concat across the genome's source buckets so
+            # multi-source runs produce one combined per-genome file (single-source runs are a
+            # one-element concat). function_source is already an index level (function mode) so
+            # rows don't collide; in gene-affinity mode there's only ever one bucket anyway.
             for genome_name, source_dict in contributions_dict.items():
-                src_outputs = next(iter(source_dict.values()))
+                combined_df = pd.concat(
+                    [src_outputs[output_key] for src_outputs in source_dict.values()], axis=0)
                 derived_output_path = (
                     f"{output_root}-{genome_name.replace(' ', '_')}-CONTRIBUTIONS-"
                     f"{output_key}{output_extension}")
-                _try_write(src_outputs[output_key], derived_output_path)
+                _try_write(combined_df, derived_output_path)
         elif args.separate_function_sources:
             # One file per (source, output_key); concatenate per-genome tables for the source.
             source_tables = {}
@@ -2197,10 +2199,7 @@ def write_general_codon_frequency_tables(args, codon_frequency_dict):
             if invalid_derived_output_paths:
                 continue
             valid_derived_output_paths.append(derived_output_path)
-            if args.gene_affinity:
-                codon_frequency_df = source_dict['genes']
-            else:
-                codon_frequency_df = source_dict['all_functions']
+            codon_frequency_df = pd.concat(list(source_dict.values()), axis=0)
             if args.plot_codon_dendrogram or args.save_codon_trees:
                 codon_frequency_df.index = codon_frequency_df.index.droplevel('label')
             codon_frequency_df.to_csv(derived_output_path, sep='\t')
