@@ -891,7 +891,13 @@ class DGR_Finder:
                 counts['codon_unknown'] += 1
             else:
                 gene_start, gene_stop, direction, gid = gene_info
-                gene_id = gid  # Store last found gene
+                if gene_id is not None and gene_id != gid:
+                    self.run.warning(f"Mismatch positions for a VR on contig '{query_contig}' span "
+                                     f"more than one gene call (genes {gene_id} and {gid}). This is "
+                                     f"unusual — it may indicate a split gene call. The last gene "
+                                     f"({gid}) will be used for codon position reporting. Please "
+                                     f"inspect this VR manually.")
+                gene_id = gid
                 codon_pos = self.get_codon_position(pos, gene_start, gene_stop, direction)
                 counts[f'codon_{codon_pos}'] += 1
 
