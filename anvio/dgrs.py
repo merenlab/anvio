@@ -4746,11 +4746,10 @@ class DGR_Finder:
             disconnecting from the contigs database.
         """
 
-        vr_contigs = ()
+        vr_contigs = set()
         for dgr_id, dgr_data in self.DGRs_found_dict.items():
             for vr_id, vr_data in dgr_data['VRs'].items():
-                vr_contig = vr_data['VR_contig']
-                vr_contigs += (vr_contig,)
+                vr_contigs.add(vr_data['VR_contig'])
 
         contigs_db = dbops.ContigsDatabase(self.contigs_db_path, run=run_quiet, progress=progress_quiet)
         where_clause = '''contig IN (%s)''' % (', '.join([f'"{str(g)}"' for g in vr_contigs]))
