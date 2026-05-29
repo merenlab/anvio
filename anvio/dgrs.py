@@ -4811,7 +4811,11 @@ class DGR_Finder:
             self.run.info("Samples in profile.db's nucleotide variability table", ", ".join(list(sample_names_in_snv_table)))
             self.run.info("Missing samples from profile.db's nucleotide variability table", ", ".join(list(samples_missing_in_snv_table)))
 
-        if sample_names == samples_missing_in_snv_table:
+        if not self.profile_db_path:
+            self.run.warning("No profile.db was provided, so per-sample SNV masking of VR primers "
+                             "will be skipped. All primers will use the base masked pattern derived "
+                             "from the TR sequence. This is expected in homology-only mode.")
+        elif sample_names == samples_missing_in_snv_table:
             raise ConfigError(f"Anvi'o is not angry, just disappointed :/ You gave 'anvi-report-dgrs' these samples ({list(sample_names)}), but you have none of them in your profile.db.")
 
         for dgr_id, dgr_data in dgrs_dict.items():
