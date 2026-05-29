@@ -283,3 +283,33 @@ anvi-report-dgrs -c CONTIGS.db \
                 --parameter-output \
                 --samples-txt samples.txt \
                 $thread_controller
+
+INFO "Running variability profiling with an impossible detection threshold (>1.0) to test that all overlapping samples are excluded and the run completes gracefully with 0 search pairs"
+anvi-report-dgrs -c CONTIGS.db \
+                -p MERGED_PROFILE/PROFILE.db \
+                -I Reverse_Transcriptase \
+                -o DGRS_ACTIVITY_VARIABLE_PRIMERS_EXCLUDED \
+                --parameter-output \
+                --samples-txt samples.txt \
+                --min-detection-for-vr-profiling 1.1 \
+                --min-coverage-for-vr-profiling 100000 \
+                $thread_controller
+
+INFO "Running variability profiling in homology mode WITHOUT a profile.db to test the no-coverage-data fallback (all samples searched conservatively)"
+anvi-report-dgrs -c CONTIGS.db \
+                -I Reverse_Transcriptase \
+                -o DGRS_HOMOLOGY_VARIABLE_PRIMERS_NO_PROFILE \
+                --detection-mode homology \
+                --parameter-output \
+                --samples-txt samples.txt \
+                $thread_controller
+
+INFO "Running variability profiling with multiple threads to test the parallel worker tuple-unpacking"
+anvi-report-dgrs -c CONTIGS.db \
+                -p MERGED_PROFILE/PROFILE.db \
+                -I Reverse_Transcriptase \
+                -o DGRS_ACTIVITY_VARIABLE_PRIMERS_PARALLEL \
+                --parameter-output \
+                --samples-txt samples.txt \
+                --num-threads 3 \
+                $thread_controller
