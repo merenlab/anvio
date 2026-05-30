@@ -147,7 +147,7 @@ def is_proper_external_gene_calls_file(file_path):
                 raise FilesNPathsError("Each call type in an external gene calls file must have a value of either "
                                        "of these: '%s'." % (', '.join([str(e) for e in sorted(list(call_types_allowed))])))
 
-            if call_type != constants.gene_call_types["CODING"] and has_aa_sequences and len(fields[9].strip()) > 0:
+            if call_type is not constants.gene_call_types["CODING"] and has_aa_sequences and len(fields[9].strip()) > 0:
                 raise FilesNPathsError("At least one gene call in your external gene calls file ('%s') has amino acid "
                                        "sequence listed despite the fact that it is not marked as 'coding' (1) in `call_type` "
                                        "column. Not OK." % fields[0])
