@@ -1821,128 +1821,167 @@ class PangenomeGraph():
 
 
     def get_default_state(self):
-        """Calculates a default state for the pangenome graph"""
+            """Calculates a default state for the pangenome graph"""
 
-        x_max = max([data['position'][0] for node, data in self.pangenome_graph.graph.nodes(data=True)])
-        y_max = max([data['position'][1] for node, data in self.pangenome_graph.graph.nodes(data=True)])
-        for i, j, data in self.pangenome_graph.graph.edges(data=True):
-            if data['route']:
-                for x, y in data['route']:
-                    y_max = y if y > y_max else y_max
+            num_core_nodes = sum(1 for node, data in self.pangenome_graph.graph.nodes(data=True) 
+                     if data.get('type') == 'core')
+            num_genomes = len(self.genome_names)
 
-        distx = 45
-        full_radius = int(180 * (distx * x_max) / (math.pi * 270))
-        tracks_radius = int((2 * full_radius / 3))
-        inner = int((1 * full_radius / 3))
-        tracks_layer = int(tracks_radius / (3/2 * len(self.genome_names) + (5/2)))
+            print(f"Debug: Number of core nodes: {num_core_nodes}")
 
-        inner_margin = int(tracks_layer / 2)
-        backbone = int(tracks_layer / 2)
-        arrow = int(tracks_layer / 2)
-        search = int(tracks_layer / 2)
+            # 1. Dynamically adjust the default graph type by the number of core nodes
+            drawing_type = 'linear' if num_core_nodes < 30 else 'circular'
 
-        label = int(arrow * 0.25)
+            # 2. Dynamically adjust default visual parameters by the number of core nodes
 
-        state = {
-            'drawing': {
-                'type': 'circular',
-                'inner_radius': inner,
-                'start_angle': 0,
-                'end_angle': 270,
-                'node_x_spacing': distx,
-                'node_y_spacing': 120
-            },
-            'nodes': {
-                'radius': 15,
-                'outline_width': 5,
-                'fade_by_prevalence': True,
-                'type_colors': {
-                    'core': '#BCBCBC',
-                    'rearrangement': '#8FF0A4',
-                    'accessory': '#DC8ADD',
-                    'multi_copy': '#FFA348',
-                    'singleton': '#99C1F1',
-                    'trna': '#F66151'
-                }
-            },
-            'edges': {
-                'width': 5
-            },
-            'graph_layout': {
-                'grouping_enabled': self.gene_cluster_grouping_threshold != -1,
-                'grouping_threshold': self.gene_cluster_grouping_threshold,
-                'max_edge_length_enabled': True,
-                'max_edge_length': self.max_edge_length_filter if self.max_edge_length_filter != -1 else 1000,
-                'group_compression_enabled': self.groupcompress != 1.0,
-                'group_compression': self.groupcompress
-            },
-            'layers': {
-                'backbone': {
-                    'visible': True,
-                    'height': backbone,
-                    'backbone_color': '#3D70A0',
-                    'variable_region_color': '#F8E45C'
+            # Using a soft asymptotic curve preserves visual scale consistency across all datasets.
+            # At 5 nodes    -> ~0.73x scale
+            # At 50 nodes   -> 1.00x scale (standard baseline)
+            # At 1000 nodes -> ~1.25x scale
+            node_scale = 1.3 - (0.6 * 50.0 / (50.0 + max(1, num_core_nodes)))
+
+            # Adjust node size
+            node_radius = max(3, int(15 * node_scale))
+            # Adjust node border width
+            outline_width = max(1, int(5 * node_scale))
+            # Adjust width of node-connecting edges
+            edge_width = max(1, int(5 * node_scale))
+            # Adjust genome track line width
+            track_line_width = max(2, int(3.5 * node_scale))
+            # Adjust node x-distance and y-distance
+            distx = max(10, int(45 * node_scale))
+            disty = max(30, int(60 * node_scale))
+
+            # Handle max geometry, safely falling back to 1 if the graph is somehow empty
+            x_max = max([data['position'][0] for node, data in self.pangenome_graph.graph.nodes(data=True)]) if num_core_nodes else 1
+            y_max = max([data['position'][1] for node, data in self.pangenome_graph.graph.nodes(data=True)]) if num_core_nodes else 1
+            for i, j, data in self.pangenome_graph.graph.edges(data=True):
+                if data['route']:
+                    for x, y in data['route']:
+                        y_max = y if y > y_max else y_max
+
+            # Calculate graph radius for circular layout based on the dynamic node x-distance
+            full_radius = int(180 * (distx * x_max) / (math.pi * 270))
+            tracks_radius = int((2 * full_radius / 3))
+            inner = int((1 * full_radius / 3))
+
+            if drawing_type == 'linear':
+                tracks_layer = int(max(1, int(40 * node_scale))) # Linear layout: more track space for fewer nodes
+                tracks_layer = max(16, tracks_layer - num_genomes + 3) # Linear layout: less track space for more genomes (penalty starting from 3)
+            else:
+                tracks_layer = int(tracks_radius / (3/2 * len(self.genome_names) + (5/2))) # Circular layout: following previous method using the radium ratio
+                
+            inner_margin = int(tracks_layer / 2)
+            backbone = int(tracks_layer / 2)    
+            arrow = int(tracks_layer / 2)
+            search = int(tracks_layer / 2)
+            label = int(arrow * 1.2)
+
+            # For genomes with few nodes: avoid node position ticks appearing beyond the actual range of the graph
+            position_tick_count = num_core_nodes // 2 if num_core_nodes < 40 else 20
+            position_tick_font_size = int(0.8 * arrow)
+
+            state = {
+                'drawing': {
+                    'type': drawing_type,
+                    'inner_radius': inner,
+                    'start_angle': 0,
+                    'end_angle': 270,
+                    'node_x_spacing': distx,
+                    'node_y_spacing': disty
                 },
-                'orientation_arrow': {
-                    'visible': True,
-                    'height': arrow
+                'nodes': {
+                    'radius': node_radius,
+                    'outline_width': outline_width,
+                    'fade_by_prevalence': True,
+                    'type_colors': {
+                        'core': '#BCBCBC',
+                        'rearrangement': '#8FF0A4',
+                        'accessory': '#DC8ADD',
+                        'multi_copy': '#FFA348',
+                        'singleton': '#99C1F1',
+                        'trna': '#F66151'
+                    }
                 },
-                'search': {
-                    'hit_height': search
+                'edges': {
+                    'width': edge_width
+                },
+                'graph_layout': {
+                    'grouping_enabled': self.gene_cluster_grouping_threshold != -1,
+                    'grouping_threshold': self.gene_cluster_grouping_threshold,
+                    'max_edge_length_enabled': True,
+                    'max_edge_length': self.max_edge_length_filter if self.max_edge_length_filter != -1 else 1000,
+                    'group_compression_enabled': self.groupcompress != 1.0,
+                    'group_compression': self.groupcompress
+                },
+                'layers': {
+                    'backbone': {
+                        'visible': True,
+                        'height': backbone,
+                        'backbone_color': '#3D70A0',
+                        'variable_region_color': '#F8E45C'
+                    },
+                    'orientation_arrow': {
+                        'visible': True,
+                        'height': arrow
+                    },
+                    'search': {
+                        'hit_height': search
+                    }
+                },
+                'layers_tree': {
+                    'visible': True,
+                    'height': tracks_layer,
+                    'offset': int(inner_margin / 2),
+                    'line_width': track_line_width
+                },
+                'genome_tracks': {
+                    'line_width': track_line_width,
+                    'background_color': '#F5F5F5',
+                    'genomes': {
+                        genome: {
+                            'color': '#000000',
+                            'show': True,
+                            'track_height': tracks_layer,
+                            'show_track': True
+                        } for genome in self.genome_names
+                    }
+                },
+                'imported_layers': {
+                    layer: {
+                        'visible': False,
+                        'height': 0
+                    } for layer in self.import_values
+                },
+                'labels': {
+                    'font_size': label,
+                    'offset': int(inner_margin / 2),
+                    'position_tick_count': position_tick_count,
+                    'position_tick_font_size': position_tick_font_size
+                },
+                'margins': {
+                    'inner': inner_margin,
+                    'outer': 0
+                },
+                'region_labels': {
+                    'font_size': 13,
+                    'min_width_px': 80,
+                    'distance': 2
+                },
+                'bins': {
+                    'show_labels': True,
+                    'label_orientation': 'natural',
+                    'label_font_size': 19.5,
+                    'ring_height': 4,
+                    'ring_opacity': 0.8,
+                    'show_edges': True,
+                    'edge_thickness': 4,
+                    'edge_color': '#FFFFFF',
+                    'edge_opacity': 1.0
                 }
-            },
-            'layers_tree': {
-                'visible': True,
-                'height': tracks_layer,
-                'offset': int(inner_margin / 2),
-                'line_width': 10
-            },
-            'genome_tracks': {
-                'line_width': 5,
-                'background_color': '#F5F5F5',
-                'genomes': {
-                    genome: {
-                        'color': '#000000',
-                        'show': True,
-                        'track_height': tracks_layer,
-                        'show_track': True
-                    } for genome in self.genome_names
-                }
-            },
-            'imported_layers': {
-                layer: {
-                    'visible': False,
-                    'height': 0
-                } for layer in self.import_values
-            },
-            'labels': {
-                'font_size': label,
-                'offset': int(inner_margin / 2),
-                'position_tick_count': 20
-            },
-            'margins': {
-                'inner': inner_margin,
-                'outer': 0
-            },
-            'region_labels': {
-                'font_size': 13,
-                'min_width_px': 80,
-                'distance': 2
-            },
-            'bins': {
-                'show_labels': True,
-                'label_orientation': 'natural',
-                'label_font_size': 19.5,
-                'ring_height': 4,
-                'ring_opacity': 0.8,
-                'show_edges': True,
-                'edge_thickness': 4,
-                'edge_color': '#FFFFFF',
-                'edge_opacity': 1.0
             }
-        }
 
-        return state
+            return state
 
 
     def generate_pan_graph_db(self):
@@ -2117,7 +2156,7 @@ class PangenomeGraph():
         table_for_nodes.store()
 
         pan_graph_db = dbops.PanGraphDatabase(self.pan_graph_db_path, run=self.run, progress=self.progress, quiet=True,)
-        pan_graph_db.db.set_meta_value('num_nodes', len(self.pangenome_graph.graph.nodes()))
+        pan_graph_db.db.set_meta_value('num_core_nodes', len(self.pangenome_graph.graph.nodes()))
         pan_graph_db.disconnect()
 
 
@@ -2497,7 +2536,7 @@ class PangenomeGraph():
                          header="REMERGING SENSITIVE NODES", lc="green")
 
         gene_cluster_to_synteny_gene_cluster = {}
-        original_num_nodes = len(self.pangenome_graph.graph.nodes())
+        original_num_core_nodes = len(self.pangenome_graph.graph.nodes())
         new_core_num = 0
         new_accessory_num = 0
 
@@ -2561,7 +2600,7 @@ class PangenomeGraph():
                                     new_accessory_num += 1
 
         self.run.info_single("Successfully remerged nodes.")
-        self.run.info_single(f"{original_num_nodes - len(self.pangenome_graph.graph.nodes())} nodes were removed in the process.")
+        self.run.info_single(f"{original_num_core_nodes - len(self.pangenome_graph.graph.nodes())} nodes were removed in the process.")
         self.run.info_single(f"{new_core_num} nodes changed from type 'rearrangement' to 'core'.")
         self.run.info_single(f"{new_accessory_num} nodes changed from type 'rearrangement' to 'accessory'.")
 
