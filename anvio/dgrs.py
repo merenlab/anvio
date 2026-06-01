@@ -576,6 +576,13 @@ class DGR_Finder:
 
         self.snv = SNVAccessor(self.profile_db_path,
                                self.departure_from_reference_percentage)
+
+        # Decide up front whether to proceed without the variable_nucleotides(split_name)
+        # index. On a large profile db this raises and points the user at `anvi-index-table`;
+        # on a small one it warns and continues. Done before the cache-priming queries below
+        # so we don't eat three full table scans on a huge unindexed db just to then bail.
+        self.snv.warn_or_raise_on_missing_index(run=self.run)
+
         self.sample_id_list = self.snv.get_sample_ids()
         self.splits_with_snvs = self.snv.get_splits_with_snvs()
         self.contig_to_splits = self.snv.get_contig_to_splits_map()
