@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>anvi'o Workflow Builder</title>
+    <link rel="icon" type="image/svg+xml" href="https://anvio.org/images/favicon.svg">
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="menubar" role="banner">
+        <div class="brand">
+          <img class="brand-icon" src="https://anvio.org/images/favicon.svg" alt="" aria-hidden="true">
+          <strong>anvi'o Workflow Builder</strong>
+        </div>
+
+        <div class="toolbar" aria-label="Workflow tools">
+          <button class="icon-button" type="button" data-action="undo" title="Undo" aria-label="Undo">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7H4v5"></path><path d="M4 12c2.5-4.5 8.5-6 13-2.8 2.2 1.6 3.3 4 3.1 6.8"></path></svg>
+          </button>
+          <button class="icon-button" type="button" data-action="redo" title="Redo" aria-label="Redo">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 7h5v5"></path><path d="M20 12c-2.5-4.5-8.5-6-13-2.8-2.2 1.6-3.3 4-3.1 6.8"></path></svg>
+          </button>
+          <button class="icon-button" type="button" data-action="font-down" title="Smaller font" aria-label="Smaller font">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><text x="12" y="16" font-size="8" text-anchor="middle" fill="currentColor">A</text></svg>
+          </button>
+          <button class="icon-button" type="button" data-action="font-up" title="Larger font" aria-label="Larger font">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><text x="12" y="17" font-size="14" text-anchor="middle" fill="currentColor">A</text></svg>
+          </button>
+          <label class="theme-switch" title="Day / night mode" aria-label="Day / night mode">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="M4.9 4.9 6.3 6.3"></path><path d="m17.7 17.7 1.4 1.4"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m4.9 19.1 1.4-1.4"></path><path d="m17.7 6.3 1.4-1.4"></path></svg>
+            <input type="checkbox" data-theme-switch>
+            <span class="switch-track" aria-hidden="true"></span>
+          </label>
+          <button class="tool-button" type="button" data-action="import-workflow">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H6v18h12V7z"></path><path d="M14 3v4h4"></path><path d="M8 13h8"></path><path d="m13 10 3 3-3 3"></path></svg>
+            Import
+          </button>
+          <button class="tool-button" type="button" data-action="export-open">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12"></path><path d="m7 10 5 5 5-5"></path><path d="M5 21h14"></path></svg>
+            Export
+          </button>
+          <button class="tool-button" type="button" data-action="validate">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg>
+            Validate
+          </button>
+          <button class="tool-button" type="button" data-action="help">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"></circle><path d="M9.5 9a2.7 2.7 0 0 1 5.1 1.2c0 1.9-2.1 2.2-2.5 3.8"></path><path d="M12 18h.01"></path></svg>
+            Help
+          </button>
+        </div>
+      </header>
+
+      <main class="workspace" id="workspace">
+        <aside class="library-panel" id="libraryPanel" aria-label="Search documentation blocks">
+          <div class="version-status" id="sourceStatus"></div>
+          <button class="panel-toggle library-panel-toggle" type="button" data-action="toggle-library-panel" title="Collapse search panel" aria-label="Collapse search panel">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6 9 12l6 6"></path></svg>
+          </button>
+          <div class="panel-content library-panel-content">
+            <div class="field-stack">
+            <label for="searchInput">Search programs and data blocks</label>
+            <div class="search-input-row">
+              <input id="searchInput" type="search" placeholder="contigs database, profile, FASTA...">
+              <button class="icon-button pipeline-button" type="button" data-action="show-workflow-concepts" title="Search workflow concepts" aria-label="Search workflow concepts">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h5"></path><path d="M15 6h5"></path><path d="M9 6a3 3 0 0 0 6 0"></path><path d="M4 18h5"></path><path d="M15 18h5"></path><path d="M9 18a3 3 0 0 1 6 0"></path><path d="M12 9v6"></path></svg>
+              </button>
+            </div>
+            </div>
+            <div class="segmented" aria-label="Search kind">
+            <button type="button" class="active" data-kind="all">All</button>
+            <button type="button" data-kind="program">Programs</button>
+            <button type="button" data-kind="data">Data</button>
+            </div>
+            <div class="library-meta" id="libraryMeta"></div>
+            <div class="result-list" id="resultList" aria-live="polite"></div>
+            <div class="library-actions" aria-label="Workspace and help actions">
+            <button class="icon-button" type="button" data-action="save-workspace" title="Save workspace JSON" aria-label="Save workspace JSON">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h12l2 2v16H5z"></path><path d="M8 3v6h8V3"></path><path d="M8 21v-7h8v7"></path></svg>
+            </button>
+            <button class="icon-button" type="button" data-action="load-workspace" title="Load workspace JSON" aria-label="Load workspace JSON">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h6l2 2h8v10a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3z"></path><path d="M12 12v6"></path><path d="m9 15 3 3 3-3"></path></svg>
+            </button>
+            <button class="icon-button" type="button" data-action="citation" title="Citation" aria-label="Citation">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v16H7z"></path><path d="M9 8h6"></path><path d="M9 12h6"></path><path d="M9 16h4"></path></svg>
+            </button>
+            <button class="icon-button" type="button" data-action="github" title="GitHub" aria-label="GitHub">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 0 0-3 19c.5.1.7-.2.7-.5v-2c-2.9.6-3.5-1.2-3.5-1.2-.5-1.1-1.1-1.4-1.1-1.4-.9-.6.1-.6.1-.6 1 0 1.6 1 1.6 1 .9 1.5 2.3 1.1 2.9.9.1-.7.4-1.1.7-1.4-2.3-.3-4.7-1.1-4.7-5A3.9 3.9 0 0 1 6.7 7c-.1-.3-.5-1.4.1-2.8 0 0 .9-.3 2.9 1.1A10 10 0 0 1 15 5.3c2-1.4 2.9-1.1 2.9-1.1.6 1.4.2 2.5.1 2.8a3.9 3.9 0 0 1 1 2.8c0 3.9-2.4 4.7-4.7 5 .4.3.7 1 .7 2v3.7c0 .3.2.6.7.5A10 10 0 0 0 12 2z"></path></svg>
+            </button>
+            </div>
+          </div>
+        </aside>
+
+        <section class="editor-panel">
+          <div class="tabbar">
+            <div class="tabs" id="tabs"></div>
+            <button class="tab-action" type="button" data-action="new-tab" title="New canvas">+</button>
+            <button class="tab-action" type="button" data-action="remove-tab" title="Remove canvas" aria-label="Remove canvas">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 15H6L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path></svg>
+            </button>
+          </div>
+          <div class="canvas-controls" aria-label="Canvas view controls">
+            <button class="icon-button" type="button" data-action="zoom-out" title="Zoom out" aria-label="Zoom out">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M8 11h6"></path><path d="m16 16 5 5"></path></svg>
+            </button>
+            <span class="zoom-label" id="zoomLabel">100%</span>
+            <button class="icon-button" type="button" data-action="zoom-in" title="Zoom in" aria-label="Zoom in">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M8 11h6"></path><path d="M11 8v6"></path><path d="m16 16 5 5"></path></svg>
+            </button>
+            <button class="icon-button" type="button" data-action="center-canvas" title="Center canvas" aria-label="Center canvas">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v4"></path><path d="M12 17v4"></path><path d="M3 12h4"></path><path d="M17 12h4"></path><circle cx="12" cy="12" r="3"></circle></svg>
+            </button>
+            <button class="icon-button" type="button" data-action="optimize-layout" title="Optimize placement" aria-label="Optimize placement">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="6" height="5" rx="1"></rect><rect x="15" y="4" width="6" height="5" rx="1"></rect><rect x="9" y="15" width="6" height="5" rx="1"></rect><path d="M9 6.5h6"></path><path d="M12 9v6"></path></svg>
+            </button>
+            <button class="icon-button" type="button" data-action="toggle-intent-builder" title="Build from intent" aria-label="Build from intent">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"></path><path d="M19 14l.8 2.2L22 17l-2.2.8L19 20l-.8-2.2L16 17l2.2-.8L19 14z"></path><path d="M5 15l.7 1.8L7.5 17.5l-1.8.7L5 20l-.7-1.8-1.8-.7 1.8-.7L5 15z"></path></svg>
+            </button>
+          </div>
+          <div class="intent-builder" id="intentBuilder" hidden>
+            <div class="intent-builder-row">
+              <input id="intentBuilderInput" type="text" autocomplete="off" placeholder="Describe the workflow you want to build..." aria-label="Describe the workflow you want to build">
+              <button class="primary small" type="button" data-action="run-intent-builder">Build</button>
+              <button class="icon-button ghost" type="button" data-action="close-intent-builder" title="Close" aria-label="Close intent builder">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
+              </button>
+            </div>
+            <div class="intent-builder-preview" id="intentBuilderPreview"></div>
+          </div>
+          <div class="canvas-frame" id="canvasFrame">
+            <div class="canvas-world" id="canvasWorld">
+              <svg id="edgeLayer" class="edge-layer" width="3200" height="2200" viewBox="0 0 3200 2200" aria-hidden="true">
+                <defs>
+                  <marker id="arrowhead" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth">
+                    <path d="M0,0 L10,4 L0,8 z"></path>
+                  </marker>
+                </defs>
+              </svg>
+              <div id="nodeLayer" class="node-layer"></div>
+            </div>
+          </div>
+        </section>
+
+        <aside class="inspector-panel" id="inspectorPanel" aria-label="Selected block details">
+          <button class="panel-toggle inspector-panel-toggle" type="button" data-action="toggle-inspector-panel" title="Collapse inspector panel" aria-label="Collapse inspector panel">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"></path></svg>
+          </button>
+          <div class="inspector-content-host" id="inspector"></div>
+        </aside>
+      </main>
+    </div>
+
+    <input id="workspaceFileInput" type="file" accept="application/json,.json" hidden>
+    <input id="workflowFileInput" type="file" accept=".sh,.bash,.smk,.snakefile,.txt" hidden>
+
+    <dialog id="modal">
+      <form method="dialog">
+        <button class="dialog-close" value="close" aria-label="Close">x</button>
+        <div id="modalContent"></div>
+      </form>
+    </dialog>
+
+    <script src="data/anvio-workflow-db.js"></script>
+    <script src="data/anvio-preloaded-workflows.js"></script>
+    <script src="data/workflow-concepts.js"></script>
+    <script src="data/anvio-parameter-relations-runtime.js"></script>
+    <script src="data/anvio-local-runtime.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
