@@ -1203,8 +1203,13 @@ class KGMLNetworkWalker:
             kgml_reaction_info: list[tuple[kgml.Reaction, bool, list[rn.KO]]] = []
             for kgml_reaction in kgml_reactions:
                 if current_chain.kgml_reactions:
-                    if kgml_reaction.id == current_chain.kgml_reactions[-1].id:
-                        # Do not record the same reaction as the previous one in the chain.
+                    if (
+                        self._get_kgml_reaction_compound_ids(kgml_reaction) ==
+                        self._get_kgml_reaction_compound_ids(current_chain.kgml_reactions[-1])
+                    ):
+                        # Do not record the same reaction edge as the previous one in the chain,
+                        # matched by substrate and product compound entries rather than element
+                        # identity (consistent with get_cyclic_branch_index).
                         continue
 
                 if not self.network:
