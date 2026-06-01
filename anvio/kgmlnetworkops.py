@@ -1276,7 +1276,7 @@ class KGMLNetworkWalker:
         """
         To identify a "partly cyclic" chain looping a cycle via the entry or exit of an uncycled
         compound through a reaction in the cycle, check if the last reaction in the chain is
-        traversed earler in the chain.
+        traversed earlier in the chain.
 
         This method distinguishes partly cyclic chains from purely cyclic chains, which do not
         branch off and only include cycled compounds.
