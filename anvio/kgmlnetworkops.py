@@ -216,8 +216,8 @@ def expand_chain(chain: Chain) -> list[Chain]:
     Parameters
     ==========
     chain : Chain
-        A collapsed chain, i.e., one whose kgml_reactions are CollapsedReaction objects. A chain that
-        is not collapsed is returned unchanged in a singleton list.
+        A collapsed chain, i.e., one whose kgml_reactions are CollapsedReaction objects. A chain
+        that is not collapsed is returned unchanged in a singleton list.
 
     Returns
     =======
@@ -1214,7 +1214,7 @@ class KGMLNetworkWalker:
                 ):
                     # Do not record the same reaction edge as the previous one in the chain,
                     # matched by substrate and product compound entries rather than element
-                    # identity (consistent with get_cyclic_branch_index).
+                    # identity.
                     continue
 
                 if not self.network:
@@ -1246,8 +1246,7 @@ class KGMLNetworkWalker:
                 if not self.allow_alternative_reaction_gaps and is_gap:
                     # Ignore gap reactions that have a non-gap "parallel" reaction in the network --
                     # one that connects the same substrate and product compound entries, regardless
-                    # of element identity (consistent with the same-reaction comparison used in the
-                    # adjacent-reaction guard and in get_cyclic_branch_index).
+                    # of element identity.
                     compound_ids = self._get_kgml_reaction_compound_ids(kgml_reaction)
                     for other_kgml_reaction, other_is_gap, _ in kgml_reaction_info:
                         if kgml_reaction.id == other_kgml_reaction.id:
