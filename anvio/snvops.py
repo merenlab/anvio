@@ -15,12 +15,18 @@ hit filtering needs a single (contig, position-range); variability profiling
 needs (sample, contig, position-range). None of these need the full table at
 once.
 
-`SNVAccessor` exposes exactly those three patterns, backed by the
-`variable_nucleotides(split_name)` index introduced in profile-db v43 (see
-`migrations/profile/v42_to_v43.py`). Returned DataFrames use the same downcast
-dtypes that the prior eager-load code produced, so downstream code can adopt
-the accessor without changes.
+`SNVAccessor` exposes exactly those three patterns. They are fast only when the
+`variable_nucleotides(split_name)` index exists; that index is created on demand
+via the `anvi-index-table` program rather than by default (building it on every
+profile db would force an expensive migration nobody asked for). Without the
+index the same queries still return correct results, but degrade to full table
+scans -- so `warn_or_raise_on_missing_index()` lets a consumer decide, based on
+db size, whether to proceed or to stop and point the user at `anvi-index-table`.
+Returned DataFrames use the same downcast dtypes that the prior eager-load code
+produced, so downstream code can adopt the accessor without changes.
 """
+
+import os
 
 import numpy as np
 import pandas as pd
@@ -30,6 +36,7 @@ import anvio.utils as utils
 import anvio.dbops as dbops
 import anvio.filesnpaths as filesnpaths
 
+from anvio.errors import ConfigError
 from anvio.constants import nucleotides
 
 
@@ -121,6 +128,60 @@ class SNVAccessor:
     @property
     def _threshold_clause(self):
         return f"departure_from_reference >= {self.threshold}"
+
+
+    def is_indexed(self):
+        """Whether the `variable_nucleotides(split_name)` index exists in this profile db.
+
+        The index is created on demand via the `anvi-index-table` program. Without it, the
+        per-split and per-region queries below still work but fall back to full table scans.
+        """
+        index_name = t.index_name_for(t.variable_nts_table_name, ['split_name'])
+        db_ = self._get_db()
+        response = db_.db._exec("SELECT name FROM sqlite_master WHERE type='index' AND name=?", (index_name,))
+        return len(response.fetchall()) > 0
+
+
+    def warn_or_raise_on_missing_index(self, run=None, size_threshold_gb=10):
+        """Decide, based on profile-db size, whether a missing index is fatal or merely slow.
+
+        If the `variable_nucleotides(split_name)` index is present, this is a no-op. If it is
+        missing, the cost of the full table scans the queries fall back to scales with the
+        table size, so:
+
+          - On a profile db larger than `size_threshold_gb`, raise a `ConfigError` telling the
+            user exactly how to build the index with `anvi-index-table` and re-run. Scanning a
+            table this large on every query would take tens of minutes.
+          - On a smaller profile db, emit a warning (if `run` is given) and return, letting the
+            caller proceed: at this scale the full scans are cheap enough.
+
+        The decision stays with the caller: it chooses whether to call this and with what
+        threshold. `anvi-report-dgrs` is the intended first consumer.
+        """
+        if self.is_indexed():
+            return
+
+        db_size = os.path.getsize(self.profile_db_path)
+        human_size = utils.human_readable_file_size(db_size)
+        command = (f"anvi-index-table {self.profile_db_path} "
+                   f"--table {t.variable_nts_table_name} --column split_name")
+
+        if db_size > size_threshold_gb * 1e9:
+            raise ConfigError(
+                f"The profile database at '{self.profile_db_path}' is large ({human_size}) and the "
+                f"'{t.variable_nts_table_name}(split_name)' index it needs for fast per-split SNV access does "
+                f"not exist. Without it, each query would do a full table scan that can take tens of minutes. "
+                f"Please build the index once, and then re-run this program:\n\n"
+                f"    {command}\n\n"
+                f"You can reclaim the disk space later by running the same command with the `--drop-index` flag.")
+
+        if run:
+            run.warning(
+                f"The '{t.variable_nts_table_name}(split_name)' index does not exist in this profile database, so "
+                f"SNV queries will fall back to full table scans. This profile db is small enough ({human_size}) "
+                f"that anvi'o will just go ahead. If you find this step slow, you can build the index with: "
+                f"{command}",
+                header="NO SNV INDEX -- PROCEEDING ANYWAY", lc='yellow')
 
 
     def get_sample_ids(self):

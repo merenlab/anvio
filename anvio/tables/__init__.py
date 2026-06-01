@@ -516,3 +516,45 @@ def is_table_requires_unique_entry_id(table_name):
         raise Exception(f"You and your table '{table_name}' are lost :(")
 
     return table_requires_unique_entry_id[table_name]
+
+
+# A curated registry of (table, columns) combinations that are worth indexing, keyed by db
+# type. Anvi'o does NOT create these indexes by default: most databases are small enough that
+# a column index would only add disk and offer no benefit, and a mandatory index would force
+# every user through an expensive migration. Instead, the `anvi-index-table` program lets a
+# user opt into any of these on demand (and drop them again with `--drop-index`), and consumer
+# code that benefits from an index (e.g. SNVAccessor in snvops.py) checks for its presence and
+# points the user here. The list is deliberately conservative: only tables that grow to
+# millions of rows AND are routinely filtered on a non-key column are included. Tables that
+# already ship with an index (split_coverages, genomestorage gene_function_calls) are omitted.
+# Adding a new entry here is all that is needed to make a column indexable via the program.
+indexable_table_columns = {
+    'profile': [
+        (variable_nts_table_name,    ['split_name']),               # the motivating case: per-split/region SNV access at 100M-800M rows
+        (indels_table_name,          ['split_name']),               # same query shape as variable_nucleotides
+        (variable_codons_table_name, ['corresponding_gene_call']),  # per-gene SCV access
+    ],
+    'contigs': [
+        (genes_in_contigs_table_name,          ['contig']),
+        (genes_in_splits_table_name,           ['split']),
+        (gene_function_calls_table_name,       ['gene_callers_id']),
+        (gene_amino_acid_sequences_table_name, ['gene_callers_id']),
+        (hmm_hits_table_name,                  ['source']),
+        (hmm_hits_splits_table_name,           ['split']),
+    ],
+    'pan': [
+        (pan_gene_clusters_table_name, ['gene_cluster_id']),
+    ],
+    'genes': [
+        (gene_level_coverage_stats_table_name, ['gene_callers_id']),
+    ],
+}
+
+
+def index_name_for(table_name, columns):
+    """Deterministic name of the index on `table_name(columns)`.
+
+    Shared by `anvi-index-table` (which creates/drops the index) and by any consumer that
+    needs to check whether the index exists, so the two never disagree on the name.
+    """
+    return f"{table_name}__{'_'.join(columns)}__idx"
