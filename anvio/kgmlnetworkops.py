@@ -505,6 +505,30 @@ class KGMLNetworkWalker:
 
         return keggcpd_ids
 
+    def _get_kgml_reaction_compound_ids(self, kgml_reaction: kgml.Reaction) -> tuple[frozenset, frozenset]:
+        """
+        Get the substrate and product KGML compound entry IDs of a KGML reaction.
+
+        Parameters
+        ==========
+        kgml_reaction : kgml.Reaction
+            Reaction whose substrate and product compound entry IDs are sought.
+
+        Returns
+        =======
+        tuple[frozenset, frozenset]
+            Substrate compound entry IDs and product compound entry IDs.
+        """
+        substrate_ids = frozenset(
+            self.kgml_rn_pathway.uuid_element_lookup[uuid].id
+            for uuid in kgml_reaction.children['substrate']
+        )
+        product_ids = frozenset(
+            self.kgml_rn_pathway.uuid_element_lookup[uuid].id
+            for uuid in kgml_reaction.children['product']
+        )
+        return substrate_ids, product_ids
+
     def get_chains(
         self,
         keggcpd_ids: Union[str, list[str]] = None,
@@ -1271,20 +1295,24 @@ class KGMLNetworkWalker:
 
         return True
 
-    @staticmethod
-    def get_cyclic_branch_index(chain: Chain) -> int:
+    def get_cyclic_branch_index(self, chain: Chain) -> int:
         """
-        To identify a "partly cyclic" chain looping a cycle via the entry or exit of an uncycled
-        compound through a reaction in the cycle, check if the last reaction in the chain is
-        traversed earlier in the chain.
+        Check whether a chain is "partly cyclic" and, if so, return the chain index of the
+        branching reaction's first occurrence.
 
-        This method distinguishes partly cyclic chains from purely cyclic chains, which do not
-        branch off and only include cycled compounds.
+        A partly cyclic chain has a linear segment that enters or exits a cycle through a single
+        "branching reaction" -- one reaction in the cycle that appears in the chain twice: once
+        where the linear segment joins the cycle, and once as the chain's last reaction, closing
+        the cycle by re-traversing the same edge. Purely cyclic chains, in contrast, visit only
+        the cycle's compounds and reactions.
 
-        Stringent criteria are imposed in the identification of a partly cyclic chain beyond the
-        last KGML reaction occurring a second time in the chain, although that might be sufficient
-        given experience. The branch KGML reaction must occur in the same direction and produce or
-        consume the same KGML compound, which is the cycle-closing compound last in the chain.
+        A reaction is identified by its endpoints in the pathway -- its set of substrate compound
+        entries and its set of product compound entries -- not by KGML element identity. Two
+        reaction elements therefore count as the same branching reaction when they connect the
+        same compound entries, even if they are distinct elements (such as alternative KOs for
+        the same reaction). The earlier occurrence must also produce or consume the chain's last
+        compound -- the cycle-closing compound -- so the edge is traversed the same way at both
+        positions.
 
         Parameters
         ==========
@@ -1294,36 +1322,29 @@ class KGMLNetworkWalker:
         Returns
         =======
         int
-            If the chain is partly cyclic, a non-negative int representing the index of the first
-            occurrence of the branching KGML reaction that also ends the chain. -1 if the chain is
-            not partly cyclic.
+            The chain index of the branching reaction's first occurrence, if the chain is partly
+            cyclic. -1 if not.
         """
-        last_kgml_reaction_id = chain.kgml_reactions[-1].id
-        last_direction = chain.kgml_reaction_directions[-1]
+        last_compound_ids = self._get_kgml_reaction_compound_ids(chain.kgml_reactions[-1])
         candidate_cycled_kgml_compound_id = chain.kgml_compound_entries[-1].id
 
-        for i, (kgml_reaction, direction) in enumerate(zip(
-            chain.kgml_reactions[: -1], chain.kgml_reaction_directions[: -1]
-        )):
-            if kgml_reaction.id == last_kgml_reaction_id and direction == last_direction:
-                break
-        else:
-            return -1
-
-        if (
-            chain.is_consumed and
-            candidate_cycled_kgml_compound_id == chain.kgml_compound_entries[i + 1].id
-        ):
-            # The partly cyclic consumption chain traversed the same KGML reaction in the same
-            # direction producing the same compound as before.
-            return i
-        elif (
-            not chain.is_consumed and
-            candidate_cycled_kgml_compound_id == chain.kgml_compound_entries[i].id
-        ):
-            # The partly cyclic production chain traversed the same KGML reaction in the same
-            # direction consuming the same reactant as before.
-            return i
+        for i, kgml_reaction in enumerate(chain.kgml_reactions[: -1]):
+            if self._get_kgml_reaction_compound_ids(kgml_reaction) != last_compound_ids:
+                continue
+            if (
+                chain.is_consumed and
+                candidate_cycled_kgml_compound_id == chain.kgml_compound_entries[i + 1].id
+            ):
+                # The partly cyclic consumption chain traversed the same reaction edge producing
+                # the same compound as before.
+                return i
+            if (
+                not chain.is_consumed and
+                candidate_cycled_kgml_compound_id == chain.kgml_compound_entries[i].id
+            ):
+                # The partly cyclic production chain traversed the same reaction edge consuming
+                # the same reactant as before.
+                return i
 
         return -1
 
