@@ -1876,8 +1876,8 @@ class PangenomeGraph():
                 # Large genomes scale track height based on the radius ratio
                 tracks_layer = int(tracks_radius / (1.5 * num_genomes + 2.5))
                 
-            # Prevent node overlap for small genomes; maintain minimum distance for large ones
-            disty = max(int(node_radius * 2.5), int(tracks_layer / 2))
+            # Prevent node overlap for small genomes; prevent from invisible for large ones
+            disty = max(int(node_radius * 2.5), int(tracks_layer / 2) if y_max > 10 else tracks_layer)
             
             # Thicken connecting edges for high node counts to maintain visibility
             edge_width = node_border_width if num_backbone_nodes < 100 else node_border_width * 5
