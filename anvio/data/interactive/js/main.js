@@ -60,6 +60,9 @@ var last_settings;
 
 var search_column;
 var search_results = [];
+// map of split_name -> [gene_callers_id, ...] populated only by a function (annotation) search,
+// so the inspect page can highlight the matching genes for a highlighted split. see search.js.
+var genes_per_split_from_function_search = {};
 
 var views = {};
 var layers = {};
