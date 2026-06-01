@@ -3,6 +3,7 @@
 import contextlib
 import importlib
 import importlib.metadata
+import importlib.util
 import io
 import json
 import pkgutil
@@ -76,15 +77,44 @@ def local_program_metadata(command, module_name):
     }
 
 
+def installed_console_script_paths():
+    """Return installed anvi'o console scripts and their module paths."""
+    scripts = {}
+    entry_points = importlib.metadata.entry_points()
+    selected = entry_points.select(group='console_scripts') if hasattr(entry_points, 'select') else entry_points.get('console_scripts', [])
+    for entry in selected:
+        if not entry.name.startswith('anvi-') or not entry.value.startswith('anvio.cli.'):
+            continue
+
+        module_name = entry.value.split(':', 1)[0]
+        module_spec = importlib.util.find_spec(module_name)
+        if module_spec and module_spec.origin:
+            scripts[entry.name] = module_spec.origin
+
+    if not scripts:
+        raise ConfigError("The workflow builder could not find installed anvi'o console scripts. "
+                          "Please reinstall this package and try again.")
+
+    return scripts
+
+
 def local_program_network():
     """Use anvi'o's ProgramsNetwork implementation to build the graph."""
     try:
         import anvio.programs as programs
 
+        class InstalledProgramsNetwork(programs.ProgramsNetwork):
+            """Build a programs network from installed entry points."""
+
+            def get_anvio_program_names_and_their_paths(self):
+                return installed_console_script_paths()
+
         output_path = Path(tempfile.gettempdir()) / f"anvio-programs-network-{datetime.now(timezone.utc).timestamp()}.json"
         args = Namespace(output_file=str(output_path), program_names_to_focus=None)
+        source_manifest = Path(anvio.__file__).resolve().parent.parent / 'pyproject.toml'
+        network_class = programs.ProgramsNetwork if source_manifest.exists() else InstalledProgramsNetwork
         with quiet_anvio_imports():
-            programs.ProgramsNetwork(args, r=terminal.Run(verbose=False), p=terminal.Progress()).generate()
+            network_class(args, r=terminal.Run(verbose=False), p=terminal.Progress()).generate()
         try:
             return json.loads(output_path.read_text(encoding='utf-8'))
         finally:

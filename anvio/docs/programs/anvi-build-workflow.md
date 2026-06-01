@@ -4,6 +4,16 @@ The workflow builder reads the programs and artifacts available in your local an
 
 The interface is served locally. It does not send your workflow or your parameter values to a remote service.
 
+### Standalone installation
+
+Install this package from any clone or source archive:
+
+{{ codestart }}
+pip install .
+{{ codestop }}
+
+The installation copies the workflow builder and its metadata into the active Python environment. After installation, `anvi-build-workflow` does not depend on the location of the source directory. You can move or remove the clone without breaking the command.
+
 ### Launching the workflow builder
 
 Run the program without parameters:
