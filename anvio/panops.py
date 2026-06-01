@@ -1823,37 +1823,31 @@ class PangenomeGraph():
     def get_default_state(self):
         """Calculates and returns a dynamically scaled default state for the pangenome graph."""
 
+        # Determines the maximum spatial dimensions of a pangenome graph layout.
+        x_max = max([data['position'][0] for node, data in self.pangenome_graph.graph.nodes(data=True)])
+        y_max = max([data['position'][1] for node, data in self.pangenome_graph.graph.nodes(data=True)])
+        for i, j, data in self.pangenome_graph.graph.edges(data=True):
+            if data['route']:
+                for x, y in data['route']:
+                    y_max = y if y > y_max else y_max
+        
         # --- 1. Base Graph Metrics ---
-        num_core_nodes = sum(
-            1 for _, data in self.pangenome_graph.graph.nodes(data=True) 
-            if data.get('type') == 'core'
-        )
+        num_backbone_nodes = x_max + 1
         num_genomes = len(self.genome_names)
         
-        # Safe fallback to prevent division by zero in subsequent scaling equations
-        safe_core_nodes = max(1, num_core_nodes) 
-
         # Use a linear layout for small graphs; default to circular for everything else
-        drawing_type = 'linear' if num_core_nodes < 30 and num_genomes < 6 else 'circular'
+        drawing_type = 'linear' if num_backbone_nodes < 30 and num_genomes < 6 else 'circular'
 
         # --- 2. Dynamic Scaling Factor ---
-        # Scaling increases with num_core_nodes at a decelerating rate:
+        # Scaling increases with num_backbone_nodes at a decelerating rate:
         # ~0.7x at 5 nodes -> 1.0x at 50 nodes -> 3.0x at 1000 nodes.
         # This anchor factor maintains visual consistency across tracks and spacing.
-        node_scale = 1.0 + 3.0 * (safe_core_nodes - 50.0) / (safe_core_nodes + 400.0)
+        node_scale = 1.0 + 3.0 * (num_backbone_nodes - 50.0) / (num_backbone_nodes + 400.0)
 
         # --- 3. Node Geometry & Spacing ---
         distx = max(10, int(45 * node_scale))
         node_radius = int(distx / 3)
         node_border_width = int(node_radius / 3)
-
-        # Calculate max graph boundaries, defaulting to 1 if the graph is empty
-        if num_core_nodes:
-            # Using generators inside max() is more memory-efficient than list comprehensions
-            x_max = max(data['position'][0] for _, data in self.pangenome_graph.graph.nodes(data=True))
-            y_max = max(data['position'][1] for _, data in self.pangenome_graph.graph.nodes(data=True))
-        else:
-            x_max, y_max = 1, 1
 
         # Expand y_max based on edge routing paths
         for _, _, data in self.pangenome_graph.graph.edges(data=True):
@@ -1874,7 +1868,7 @@ class PangenomeGraph():
             disty = int(tracks_layer * 2) 
             edge_width = node_border_width
         else:
-            if num_core_nodes < 30:
+            if num_backbone_nodes < 30:
                 # Small genomes in circular layout mirror the linear layout logic
                 base_layer = max(1, int(40 * node_scale))
                 tracks_layer = max(16, base_layer - num_genomes + 3)
@@ -1886,7 +1880,7 @@ class PangenomeGraph():
             disty = max(int(node_radius * 2.5), int(tracks_layer / 2))
             
             # Thicken connecting edges for high node counts to maintain visibility
-            edge_width = node_border_width if num_core_nodes < 100 else node_border_width * 5
+            edge_width = node_border_width if num_backbone_nodes < 100 else node_border_width * 5
 
         # --- 5. Dependent Visual Parameters ---
         # Tie UI elements to the calculated track height (tracks_layer) for visual harmony
@@ -1899,7 +1893,7 @@ class PangenomeGraph():
         label = int(arrow * 1.2)
 
         # Prevent position ticks from bleeding past the graph range on small node sets
-        position_tick_count = num_core_nodes // 2 if num_core_nodes < 40 else 20
+        position_tick_count = num_backbone_nodes // 2 if num_backbone_nodes < 40 else 20
         position_tick_font_size = int(0.5 * arrow)
 
         # --- 6. State Assembly ---
@@ -2177,7 +2171,7 @@ class PangenomeGraph():
         table_for_nodes.store()
 
         pan_graph_db = dbops.PanGraphDatabase(self.pan_graph_db_path, run=self.run, progress=self.progress, quiet=True,)
-        pan_graph_db.db.set_meta_value('num_core_nodes', len(self.pangenome_graph.graph.nodes()))
+        pan_graph_db.db.set_meta_value('num_nodes', len(self.pangenome_graph.graph.nodes()))
         pan_graph_db.disconnect()
 
 
@@ -2557,7 +2551,7 @@ class PangenomeGraph():
                          header="REMERGING SENSITIVE NODES", lc="green")
 
         gene_cluster_to_synteny_gene_cluster = {}
-        original_num_core_nodes = len(self.pangenome_graph.graph.nodes())
+        original_num_nodes = len(self.pangenome_graph.graph.nodes())
         new_core_num = 0
         new_accessory_num = 0
 
@@ -2621,7 +2615,7 @@ class PangenomeGraph():
                                     new_accessory_num += 1
 
         self.run.info_single("Successfully remerged nodes.")
-        self.run.info_single(f"{original_num_core_nodes - len(self.pangenome_graph.graph.nodes())} nodes were removed in the process.")
+        self.run.info_single(f"{original_num_nodes - len(self.pangenome_graph.graph.nodes())} nodes were removed in the process.")
         self.run.info_single(f"{new_core_num} nodes changed from type 'rearrangement' to 'core'.")
         self.run.info_single(f"{new_accessory_num} nodes changed from type 'rearrangement' to 'accessory'.")
 
