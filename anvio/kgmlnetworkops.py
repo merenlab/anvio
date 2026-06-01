@@ -94,7 +94,7 @@ class Chain:
         cycle, such as acetyl-CoA entering the Krebs cycle by combining with oxaloacetate to form
         citrate using citrate synthase. The branching reaction occurs twice in the partly cyclic
         chain, once at the end. The non-negative integer is the index of the first occurrence of the
-        branching KGML reaction that also ends the chain. -1 if the chain is not partly cyclic.
+        branching reaction that also ends the chain. -1 if the chain is not partly cyclic.
     """
     kgml_compound_entries: list[kgml.Entry] = field(default_factory=list)
     is_consumed: bool = None
@@ -1200,17 +1200,22 @@ class KGMLNetworkWalker:
             # Record each KGML reaction involving the compound that is to be explored. If comparing
             # to a reaction network, also record whether the reaction represents a gap (if not in
             # the network), and the network KOs encoding the reaction.
-            kgml_reaction_info: list[tuple[kgml.Reaction, bool, list[rn.KO]]] = []
+            kgml_reaction_info: list[
+                tuple[Union[kgml.Reaction, CollapsedReaction], bool, list[rn.KO]]
+            ] = []
+            previous_compound_ids = (
+                self._get_kgml_reaction_compound_ids(current_chain.kgml_reactions[-1])
+                if current_chain.kgml_reactions else None
+            )
             for kgml_reaction in kgml_reactions:
-                if current_chain.kgml_reactions:
-                    if (
-                        self._get_kgml_reaction_compound_ids(kgml_reaction) ==
-                        self._get_kgml_reaction_compound_ids(current_chain.kgml_reactions[-1])
-                    ):
-                        # Do not record the same reaction edge as the previous one in the chain,
-                        # matched by substrate and product compound entries rather than element
-                        # identity (consistent with get_cyclic_branch_index).
-                        continue
+                if (
+                    previous_compound_ids is not None and
+                    self._get_kgml_reaction_compound_ids(kgml_reaction) == previous_compound_ids
+                ):
+                    # Do not record the same reaction edge as the previous one in the chain,
+                    # matched by substrate and product compound entries rather than element
+                    # identity (consistent with get_cyclic_branch_index).
+                    continue
 
                 if not self.network:
                     kgml_reaction_info.append((kgml_reaction, None, None))
@@ -1239,31 +1244,18 @@ class KGMLNetworkWalker:
 
             for kgml_reaction, is_gap, network_kos in kgml_reaction_info:
                 if not self.allow_alternative_reaction_gaps and is_gap:
-                    # Ignore KGML reaction gaps that transform the same KGML compounds as other
-                    # "parallel" KGML reactions that are in the reaction network.
-                    substrate_ids: list[str] = []
-                    for uuid in kgml_reaction.children['substrate']:
-                        substrate: kgml.Substrate = self.kgml_rn_pathway.uuid_element_lookup[uuid]
-                        substrate_ids.append(substrate.id)
-                    product_ids: list[str] = []
-                    for uuid in kgml_reaction.children['product']:
-                        product: kgml.Product = self.kgml_rn_pathway.uuid_element_lookup[uuid]
-                        product_ids.append(product.id)
-
+                    # Ignore gap reactions that have a non-gap "parallel" reaction in the network --
+                    # one that connects the same substrate and product compound entries, regardless
+                    # of element identity (consistent with the same-reaction comparison used in the
+                    # adjacent-reaction guard and in get_cyclic_branch_index).
+                    compound_ids = self._get_kgml_reaction_compound_ids(kgml_reaction)
                     for other_kgml_reaction, other_is_gap, _ in kgml_reaction_info:
                         if kgml_reaction.id == other_kgml_reaction.id:
                             continue
                         if other_is_gap:
                             continue
-                        other_substrate_ids: list[str] = []
-                        for uuid in other_kgml_reaction.children['substrate']:
-                            substrate: kgml.Substrate = self.kgml_rn_pathway.uuid_element_lookup[uuid]
-                            other_substrate_ids.append(substrate.id)
-                        other_product_ids: list[str] = []
-                        for uuid in other_kgml_reaction.children['product']:
-                            product: kgml.Product = self.kgml_rn_pathway.uuid_element_lookup[uuid]
-                            other_product_ids.append(product.id)
-                        if substrate_ids == other_substrate_ids and product_ids == other_product_ids:
+                        if self._get_kgml_reaction_compound_ids(other_kgml_reaction) == \
+                            compound_ids:
                             is_alternative_reaction = True
                             break
                     else:
