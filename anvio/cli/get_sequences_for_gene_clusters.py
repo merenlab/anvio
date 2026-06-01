@@ -21,7 +21,8 @@ __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
 __requires__ = ['pan-db', 'genomes-storage-db']
-__provides__ = ['genes-fasta', 'concatenated-gene-alignment-fasta', 'misc-data-items']
+__provides__ = ['genes-fasta']
+__can_provide__ = ['concatenated-gene-alignment-fasta', 'misc-data-items']
 __resources__ = [("In action in the Anvi'o pangenomics tutorial", "http://merenlab.org/2016/11/08/pangenomics-v2/#scrutinizing-phylogenomics")]
 __description__ = "Do cool stuff with gene clusters in anvi'o pan genomes"
 

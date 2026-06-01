@@ -439,6 +439,14 @@ class Program:
                 'object_name': '__provides__',
                 'null_object': []
             },
+            'can_use': {
+                'object_name': '__can_use__',
+                'null_object': []
+            },
+            'can_provide': {
+                'object_name': '__can_provide__',
+                'null_object': []
+            },
             'tags': {
                 'object_name': '__tags__',
                 'null_object': []
@@ -516,7 +524,7 @@ class Program:
             except AttributeError:
                 info = self.meta_info[info_type]['null_object']
 
-            if info_type == 'requires' or info_type == 'provides':
+            if info_type in ('requires', 'provides', 'can_use', 'can_provide'):
                 # these info_types have their items cast as Artifact types
                 info = [Artifact(artifact_name) for artifact_name in info]
 
@@ -574,11 +582,12 @@ class Artifact:
     def __init__(self, artifact_id, provided_by_anvio=True, optional=True, single=True):
         if artifact_id not in ANVIO_ARTIFACTS:
             progress.reset()
-            raise ConfigError("Ehem. Anvi'o does not know about artifact '%s'. There are two was this could happen: "
-                              "one, you've made a typo (easy to fix), two, you've just updated __provides__ or __requires__ "
-                              "statement in an anvi'o program with an artifact that does not exist and have not yet updated "
-                              "`anvio/docs/__init__.py` (which is also easy to fix). Please consider also adding a description of "
-                              "this artifact under anvio/docs/artifacts while you are at it :)" % artifact_id)
+            raise ConfigError("Ehem. Anvi'o does not know about artifact '%s'. There are two ways this could happen: "
+                              "one, you've made a typo (easy to fix), two, you've just updated __provides__, __requires__, "
+                              "__can_use__, or __can_provide__ in an anvi'o program with an artifact that does not exist "
+                              "and have not yet updated `anvio/docs/__init__.py` (which is also easy to fix). Please "
+                              "consider also adding a description of this artifact under anvio/docs/artifacts while you "
+                              "are at it :)" % artifact_id)
 
         artifact = ANVIO_ARTIFACTS[artifact_id]
         self.id = artifact_id
@@ -763,7 +772,7 @@ class AnvioArtifacts:
         artifacts_without_descriptions = set([])
 
         for artifact in ANVIO_ARTIFACTS:
-            self.artifacts_info[artifact] = {'required_by': [], 'provided_by': [], 'description': None, 'type': ANVIO_ARTIFACTS[artifact]['type']}
+            self.artifacts_info[artifact] = {'required_by': [], 'provided_by': [], 'can_used_by': [], 'can_provided_by': [], 'description': None, 'type': ANVIO_ARTIFACTS[artifact]['type']}
 
             # learn about the description of the artifact
             artifact_description_path = os.path.join(anvio.DOCS_PATH, 'artifacts/%s.md' % (artifact))
@@ -780,6 +789,12 @@ class AnvioArtifacts:
 
                 if artifact in [a.id for a in program.meta_info['provides']['value']]:
                     self.artifacts_info[artifact]['provided_by'].append(program.name)
+
+                if artifact in [a.id for a in program.meta_info['can_use']['value']]:
+                    self.artifacts_info[artifact]['can_used_by'].append(program.name)
+
+                if artifact in [a.id for a in program.meta_info['can_provide']['value']]:
+                    self.artifacts_info[artifact]['can_provided_by'].append(program.name)
 
             # register artifact type
             artifact_type = self.artifacts_info[artifact]['type']
@@ -965,6 +980,8 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
             program = self.programs[program_name]
             d[program_name]['requires'] = [(r.id, '%sartifacts/%s' % (prefix, r.id)) for r in program.meta_info['requires']['value']]
             d[program_name]['provides'] = [(r.id, '%sartifacts/%s' % (prefix, r.id)) for r in program.meta_info['provides']['value']]
+            d[program_name]['can_use'] = [(r.id, '%sartifacts/%s' % (prefix, r.id)) for r in program.meta_info['can_use']['value']]
+            d[program_name]['can_provide'] = [(r.id, '%sartifacts/%s' % (prefix, r.id)) for r in program.meta_info['can_provide']['value']]
             d[program_name]['anvio_workflows'] = [(w, '%sworkflows/%s' % (prefix, w)) for w in program.meta_info['anvio_workflows']['value']]
 
         return d
@@ -997,6 +1014,8 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
             d['artifact']['name'] = artifact
             d['artifact']['required_by'] = [(r, '../../programs/%s' % r) for r in self.artifacts_info[artifact]['required_by']]
             d['artifact']['provided_by'] = [(r, '../../programs/%s' % r) for r in self.artifacts_info[artifact]['provided_by']]
+            d['artifact']['can_used_by'] = [(r, '../../programs/%s' % r) for r in self.artifacts_info[artifact]['can_used_by']]
+            d['artifact']['can_provided_by'] = [(r, '../../programs/%s' % r) for r in self.artifacts_info[artifact]['can_provided_by']]
             d['artifact']['description'] = self.artifacts_info[artifact]['description']
             d['artifact']['icon'] = '../../images/icons/%s.png' % ANVIO_ARTIFACTS[artifact]['type']
 
@@ -1139,6 +1158,8 @@ class AnvioDocs(AnvioPrograms, AnvioArtifacts, AnvioWorkflows):
             d['program']['resources_example_source_path'] = resources_example_path or program_source_path
             d['program']['requires'] = program_provides_requires_dict[program_name]['requires']
             d['program']['provides'] = program_provides_requires_dict[program_name]['provides']
+            d['program']['can_use'] = program_provides_requires_dict[program_name]['can_use']
+            d['program']['can_provide'] = program_provides_requires_dict[program_name]['can_provide']
             d['program']['icon'] = '../../images/icons/%s.png' % 'PROGRAM'
             d['program']['authors'] = self.get_HTML_formatted_authors_data(program.meta_info['authors']['value'])
             d['artifacts'] = self.artifacts_info
@@ -1234,7 +1255,11 @@ class ProgramsNetwork(AnvioPrograms):
         artifacts_seen = Counter({})
         all_artifacts = []
         for program in self.programs.values():
-            for artifact in program.meta_info['provides']['value'] + program.meta_info['requires']['value']:
+            all_program_artifacts = (program.meta_info['provides']['value'] +
+                                     program.meta_info['requires']['value'] +
+                                     program.meta_info['can_use']['value'] +
+                                     program.meta_info['can_provide']['value'])
+            for artifact in all_program_artifacts:
                 artifacts_seen[artifact.id] += 1
                 if not artifact.id in artifact_names_seen:
                     all_artifacts.append(artifact)
@@ -1243,7 +1268,11 @@ class ProgramsNetwork(AnvioPrograms):
         programs_seen = Counter({})
         for artifact in all_artifacts:
             for program in self.programs.values():
-                for program_artifact in program.meta_info['provides']['value'] + program.meta_info['requires']['value']:
+                all_program_artifacts = (program.meta_info['provides']['value'] +
+                                         program.meta_info['requires']['value'] +
+                                         program.meta_info['can_use']['value'] +
+                                         program.meta_info['can_provide']['value'])
+                for program_artifact in all_program_artifacts:
                     if artifact.name == program_artifact.name:
                         programs_seen[program.name] += 1
 
@@ -1279,10 +1308,16 @@ class ProgramsNetwork(AnvioPrograms):
             for program in self.programs.values():
                 for artifact_provided in program.meta_info['provides']['value']:
                     if artifact_provided.id == artifact.id:
-                        network_dict["links"].append({"source": node_indices[program.name], "target": node_indices[artifact.id]})
+                        network_dict["links"].append({"source": node_indices[program.name], "target": node_indices[artifact.id], "type": "provides"})
                 for artifact_needed in program.meta_info['requires']['value']:
                     if artifact_needed.id == artifact.id:
-                        network_dict["links"].append({"target": node_indices[program.name], "source": node_indices[artifact.id]})
+                        network_dict["links"].append({"target": node_indices[program.name], "source": node_indices[artifact.id], "type": "requires"})
+                for artifact_can_use in program.meta_info['can_use']['value']:
+                    if artifact_can_use.id == artifact.id:
+                        network_dict["links"].append({"target": node_indices[program.name], "source": node_indices[artifact.id], "type": "can_use"})
+                for artifact_can_provide in program.meta_info['can_provide']['value']:
+                    if artifact_can_provide.id == artifact.id:
+                        network_dict["links"].append({"source": node_indices[program.name], "target": node_indices[artifact.id], "type": "can_provide"})
 
         open(self.output_file_path, 'w').write(json.dumps(network_dict, indent=2))
 
