@@ -16,7 +16,8 @@ __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
-__requires__ = ["external-genomes", "internal-genomes", "hmm-source", "hmm-hits"]
+__requires__ = ["external-genomes"]
+__can_use__ = ["internal-genomes", "hmm-source", "hmm-hits"]
 __provides__ = ["hmm-hits-across-genomes-txt"]
 __description__ = ("A simple script to generate a TAB-delimited file that reports the frequency "
                    "of HMM hits for a given HMM source across contigs databases")

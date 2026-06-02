@@ -87,7 +87,7 @@ if '--tmp-dir' in sys.argv:
         os.environ['TMPDIR'] = TMP_DIR
     except Exception as e:
         print("OSError: ", e)
-        sys.exit()
+        sys.exit(1)
 
 def P(d, dont_exit=False):
     """Poor man's debug output printer during debugging."""
@@ -3525,6 +3525,22 @@ D = {
                      "metabolite to help rank the output by likelihood of the interaction. This parameter allows "
                      "you to choose how many gaps there can be in the chain on either side of the metabolite in "
                      "the network. Very conservatively set to 0, as in no gaps allowed."}
+                ),
+    'max-reactions-for-pathway-map-walk': (
+            ['--max-reactions-for-pathway-map-walk'],
+            {'default': None,
+             'type': int,
+             'metavar': 'INT',
+             'required': False,
+             'help': "Truncate pathway map walks at this number of reactions. By default there is no limit, "
+                     "but with certain inputs some pathway maps yield very long walks (sometimes even to "
+                     "the point of causing memory issues). Note that setting this parameter bounds the walk length "
+                     "for all pathway maps, so it may be a good idea to first identify problematic maps using the "
+                     "`--debug` flag, run the program once while excluding those problematic maps with `--exclude-pathway-maps`, "
+                     "and THEN run the program again using this flag to bound the pathway map walk only for those maps "
+                     "with `--include-pathway-maps`. It's likely that if you need this flag, something is wrong (like an infinite "
+                     "cycle in the walk), so check the Pathway Map walk evidence carefully to make sure results are biologically "
+                     "meaningful."}
                 ),
     'add-reactions-to-output': (
             ['--add-reactions-to-output'],

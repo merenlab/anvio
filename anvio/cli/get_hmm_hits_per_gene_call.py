@@ -17,7 +17,8 @@ __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
 __license__ = "GPL 3.0"
 __version__ = anvio.__version__
 __authors__ = ['meren']
-__requires__ = ["contigs-db", "hmm-source", "hmm-hits"]
+__requires__ = ["contigs-db"]
+__can_use__ = ["hmm-source", "hmm-hits"]
 __provides__ = ["functions-txt"]
 __description__ = ("A simple script to generate a TAB-delimited file gene caller IDs and their "
                    "HMM hits for a given HMM source")
