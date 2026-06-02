@@ -1847,7 +1847,9 @@ class PangenomeGraph():
         # --- 3. Node Geometry & Spacing ---
         distx = max(10, int(45 * node_scale))
         node_radius = int(distx / 3)
+        disty = int(node_radius * 2.5) if num_backbone_nodes < 200 else int(node_radius * 5)
         node_border_width = int(node_radius / 3)
+        edge_width = node_border_width
 
         # Expand y_max based on edge routing paths
         for _, _, data in self.pangenome_graph.graph.edges(data=True):
@@ -1866,7 +1868,6 @@ class PangenomeGraph():
             base_layer = max(1, int(40 * node_scale))
             tracks_layer = max(16, base_layer - num_genomes + 3)
             disty = int(tracks_layer * 2) 
-            edge_width = node_border_width
         else:
             if num_backbone_nodes < 30:
                 # Small genomes in circular layout mirror the linear layout logic
@@ -1875,12 +1876,8 @@ class PangenomeGraph():
             else:
                 # Large genomes scale track height based on the radius ratio
                 tracks_layer = int(tracks_radius / (1.5 * num_genomes + 2.5))
-                
-            # Prevent node overlap for small genomes; prevent from invisible for large ones
-            disty = max(int(node_radius * 2.5), int(tracks_layer / 2) if y_max > 10 else tracks_layer)
-            
-            # Thicken connecting edges for high node counts to maintain visibility
-            edge_width = node_border_width if num_backbone_nodes < 100 else node_border_width * 5
+
+        track_line_width = max(1, min(int(tracks_layer / 20), edge_width * 3))
 
         # --- 5. Dependent Visual Parameters ---
         # Tie UI elements to the calculated track height (tracks_layer) for visual harmony
@@ -1889,12 +1886,11 @@ class PangenomeGraph():
         backbone = anchor_size
         arrow = anchor_size
         search = anchor_size
-        track_line_width = max(1, int(tracks_layer / 20))
         label = int(arrow * 1.2)
 
         # Prevent position ticks from bleeding past the graph range on small node sets
         position_tick_count = num_backbone_nodes // 2 if num_backbone_nodes < 40 else 20
-        position_tick_font_size = int(0.5 * arrow)
+        position_tick_font_size = int(0.3 * arrow)
 
         # --- 6. State Assembly ---
         state = {
