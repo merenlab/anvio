@@ -1830,11 +1830,11 @@ class PangenomeGraph():
             if data['route']:
                 for x, y in data['route']:
                     y_max = y if y > y_max else y_max
-        
+
         # --- 1. Base Graph Metrics ---
         num_backbone_nodes = x_max + 1
         num_genomes = len(self.genome_names)
-        
+
         # Use a linear layout for small graphs; default to circular for everything else
         drawing_type = 'linear' if num_backbone_nodes < 30 and num_genomes < 6 else 'circular'
 
@@ -1867,7 +1867,7 @@ class PangenomeGraph():
             # Increase track height for small genomes; apply a height penalty as genome count increases
             base_layer = max(1, int(40 * node_scale))
             tracks_layer = max(16, base_layer - num_genomes + 3)
-            disty = int(tracks_layer * 2) 
+            disty = int(tracks_layer * 2)
         else:
             if num_backbone_nodes < 30:
                 # Small genomes in circular layout mirror the linear layout logic
