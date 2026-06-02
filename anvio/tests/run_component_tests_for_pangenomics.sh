@@ -205,10 +205,11 @@ anvi-compute-gene-cluster-homogeneity -p TEST-PAN.db \
 SHOW_FILE gene_cluster_homogeneity_results.txt
 
 INFO "Generating a pangenome-informed representative genome"
-anvi-gen-pan-genome-representative-genome -p TEST-PAN.db \
-                                          -g TEST-GENOMES.db \
-                                          -o REPRESENTATIVE_GENOME_FOR_PAN.db \
-                                          --no-progress
+anvi-gen-pan-representative -p TEST-PAN.db \
+                            -g TEST-GENOMES.db \
+                            -e external-genomes.txt \
+                            -o REPRESENTATIVE_GENOME_FOR_PAN.db \
+                            --no-progress
 
 INFO "Exporting PanRepresentative annotations for the representative genome"
 anvi-export-functions -c REPRESENTATIVE_GENOME_FOR_PAN.db \
