@@ -1696,8 +1696,9 @@ class BottleApplication(Bottle):
             max_edge_length_filter = payload['maxlength']
             gene_cluster_grouping_threshold = payload['condtr']
             groupcompress = payload['groupcompress']
+            component = payload.get('component', 0)
 
-            self.interactive.rerun_state(gene_cluster_grouping_threshold, groupcompress, max_edge_length_filter)
+            self.interactive.rerun_state(gene_cluster_grouping_threshold, groupcompress, max_edge_length_filter, component=component)
             return(json.dumps({'status': 0}))
         except:
             return(json.dumps({'status': 1}))
