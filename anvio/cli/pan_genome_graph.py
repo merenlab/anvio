@@ -59,56 +59,40 @@ def get_args():
                                 'help': "Output file path for the pan-graph-db this program will generate."}))
     groupB.add_argument(*anvio.A('tables-dir'), **anvio.K('tables-dir'))
 
-    groupC = parser.add_argument_group('GRAPH BUILDING & SPLITTING', "Controls how SynGC are generated and filtered.")
+    groupC = parser.add_argument_group('GRAPH BUILDING', "Controls how the gene-order graph is constructed from genome inputs.")
 
-    groupC.add_argument('--circularize', default=False, action="store_true", help = "Connect contig ends back to starts "
-                    "(only sensible for single-contig/circular genomes); can add cycles otherwise.")
-    groupC.add_argument('--min-contig-chain', default=5, type=int, help = "Skip contigs with fewer than this many SynGCs "
+    groupC.add_argument('--min-contig-chain', default=5, type=int, help = "Skip contigs with fewer than this many genes "
                     "(filters very short/fragmented contigs).")
-    groupC.add_argument('--min-k', default=1, type=int, help = "Minimum k-mer window size around each gene before splitting multi-copy genes "
-                    "(will auto-increase until each k-mer is genome-unique; raise to demand more context).")
-    groupC.add_argument('--alpha', default=0.5, type=float, help = "Global context similarity cutoff (single-copy-core flank similarity "
-                    "must be >= alpha to be considered same context; lower alpha merges more, higher splits more).")
-    groupC.add_argument('--n', default=50, type=int, help = "Max number of single-copy-core neighbors to scan on each side when scoring "
-                    "context similarity (0 disables global-context filtering).")
-    groupC.add_argument('--beta', default=0.5, type=float, help = "Penalty weight for orientation mismatches in local k-mer comparisons "
-                    "(higher beta penalizes strand flips more).")
-    groupC.add_argument('--gamma', default=0.25, type=float, help = "Penalty weight for gaps/contig-edge markers in local k-mer comparisons "
-                    "(higher gamma penalizes contig ends/missing neighbors more).")
-    groupC.add_argument('--delta', default=0.75, type=float, help = "Maximum allowed distance for k-mer similarity "
-                    "(values above delta are treated as mismatches; raise to be more permissive).")
-    groupC.add_argument('--inversion-aware', default=False, action="store_true", help = "Also compare reversed k-mers, allowing inverted "
-                    "contexts to cluster together (helps when inversions are common 🤞).")
-    groupC.add_argument('--skip-remerge', default=False, action="store_true", help = "Skip remerging nodes that may have been splitted in "
-                    "highly sensitive runs. Trying to remerge nodes is the default behavior.")
 
-    groupC2 = parser.add_argument_group('EMERGENCY MULTI-COPY GENE REMOVAL', "Use these parameters as a last resort when your pangenome graph "
-                    "has too many cycles or becomes uninterpretable due to multi-copy genes (such as transposons, repeats, or tandem "
-                    "duplications). Setting either parameter to a non-default value triggers a special two-phase processing: first, the "
-                    "algorithm establishes stable genomic contexts using only single-copy gene clusters, then attempts to place multi-copy "
-                    "genes into the graph if they meet the thresholds below. Multi-copy genes exceeding these limits will be completely "
-                    "excluded from the final graph.")
-    groupC2.add_argument('--max-num-multi-copy-genes', default=-1, type=int, help = "Filter gene clusters with more than this many TOTAL "
-                    "occurrences across all genomes (-1 disables filtering; useful for removing transposons/repeats "
-                    "that appear many times across the pangenome and cause cycles).")
-    groupC2.add_argument('--max-num-multi-copy-genes-per-genome', default=-1, type=int, help = "Filter gene clusters where ANY single "
-                    "genome has more than this many copies (-1 disables filtering; useful for removing within-genome "
-                    "duplications like tandem repeats).")
+    groupD = parser.add_argument_group('AAI ENGINE PARAMETERS', "Parameters controlling the AAI-based gene-endpoint fusion engine. "
+                    "These rarely need tuning; defaults work well for most datasets.")
 
-    groupD = parser.add_argument_group('ANCHORING & PRIORITY', "Choose a reference genome or anchor gene for layout.")
-
-    groupD.add_argument('--priority-genome', default='', type=str, help = "Genome name to prioritize when building edges "
-                    "(its path gets extra weight so layout favors its ordering).")
-    groupD.add_argument('--start-gene', default=None, type=str, help = "Regex/text to pick a SynGC as the "
-                    "starting node for layout (looked up in --start-column; helpful to anchor the graph). "
-                    "If not specified, anvi'o will use the synteny cluster with the smallest avg. gene caller ID "
-                    "across all genomes to serve as the starting node automatically. If you have reoriented your "
-                    "genomes, this should give you best results where the graph starts at the SynGC that describes "
-                    "the first genes in your genomes.")
-    groupD.add_argument('--start-column', default='COG24_FUNCTION_TEXT', type=str, help = "Annotation column to search for --start-gene.")
+    groupD.add_argument('--locality-window', default=10, type=int, help = "Flanking window size (in genes) on each side of a candidate "
+                    "line pair, used to decide whether two contigs are co-oriented or flipped.")
+    groupD.add_argument('--min-line-pair-hits', default=100, type=int, help = "Minimum number of DIAMOND hits between two contig lines "
+                    "required to consider them for orientation scoring.")
+    groupD.add_argument('--orientation-tie-threshold', default=0.2, type=float, help = "Score margin under which a line-pair orientation "
+                    "call is considered a tie and demoted (see --orientation-demotion-strategy).")
+    groupD.add_argument('--min-orientation-score', default=0.7, type=float, help = "Minimum orientation score for a line pair to be "
+                    "accepted; pairs below this are dropped.")
+    groupD.add_argument('--orientation-demotion-strategy', default='slimmest-margin',
+                    choices=['slimmest-margin', 'fewest-edges'], help = "How to break ties when committing line-pair "
+                    "orientations during the spanning-tree walk.")
+    groupD.add_argument('--ranking-components', default='minbit,decision,support', type=str, help = "Comma-separated list "
+                    "of components used to rank AAI edges before fusion (any subset of minbit, decision, support).")
+    groupD.add_argument('--ranking-mean', default='geometric', choices=['geometric', 'arithmetic'], help = "Mean used to "
+                    "combine ranking components into a single score per edge.")
+    groupD.add_argument('--minbit-floor', default=0.0, type=float, help = "Edges with AAI minbit below this value are dropped "
+                    "before ranking.")
+    groupD.add_argument('--fusion-top-bucket-k', default=5, type=int, help = "Number of top-ranked edges sampled per fusion step "
+                    "(Prim-style frontier growth with stochastic top-K bucketing).")
+    groupD.add_argument('--fusion-seed', default=42, type=int, help = "Random seed for the stochastic top-K fusion sampler.")
 
     groupE = parser.add_argument_group('LAYOUT & SIMPLIFICATION', "Controls how the graph is compressed and long edges are filtered.")
 
+    groupE.add_argument('--component', default=0, type=int, help = "Which weakly connected component to lay out and summarize. "
+                    "Components are indexed largest-first; the default (0) selects the largest. All components are still persisted "
+                    "in the pan-graph-db.")
     groupE.add_argument('--gene-cluster-grouping-threshold', default=-1, type=int, help = "Compress linear chains of nodes of "
                     "this length or longer into groups (-1 disables grouping; useful to simplify long conserved runs).")
     groupE.add_argument('--grouping-compression', default=1.0, type=float, help = "Compression factor for grouped chains "
