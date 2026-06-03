@@ -410,54 +410,37 @@ class PangenomeGraphUserInterface {
 
             var edge = this.data['edges'][i];
             // console.log(edge)
-            var edge_genomes = Object.keys(edge['directions'])
-            
+            var edge_genomes = edge['genomes']
+
             var intersection = edge_genomes.filter(x => enabled.includes(x));
             if (intersection.length > 0) {
                 var edge_genomes_length = edge_genomes.length;
-                var color = this.pickcolor(edgecoloring, Object.keys(edge['directions']))
-        
+                var color = this.pickcolor(edgecoloring, edge_genomes)
+
                 if (saturation == 1){
                     var pick = this.lighter_color('#ffffff', color, edge_genomes_length / genome_size);
                 } else {
                     var pick = color;
                 }
-            
+
                 var source = edge['source']
                 var target = edge['target']
-                
+
                 if (source != 'start' && target != 'stop' && edge['active'] == true){
-            
+
                     var i_x = this.nodes[source]['position'][0]
                     var i_y = this.nodes[source]['position'][1]
                     var j_x = this.nodes[target]['position'][0]
                     var j_y = this.nodes[target]['position'][1]
-                    
-                    var dir_set = Object.values(edge['directions'])
-    
-                    if (dir_set.includes('L') && dir_set.includes('R')) {
-                        var stroke = ' stroke-dasharray="' + edge_thickness * 4 + ' ' + edge_thickness + '" '
-                    } else if (dir_set.includes('L')) {
-                        var stroke = ' stroke-dasharray="' + edge_thickness + '" '
+
+                    var stroke = ''
+
+                    if (source in edge_synteny) {
                     } else {
-                        var stroke = ''
+                        edge_synteny[source] = {}
                     }
 
-                    if (dir_set.includes('R')) {
-                        if (source in edge_synteny) {
-                        } else {
-                            edge_synteny[source] = {}
-                        }
-    
-                        edge_synteny[source][target] = edge['route']
-                    } else {
-                        if (target in edge_synteny) {
-                        } else {
-                            edge_synteny[target] = {}
-                        }
-
-                        edge_synteny[target][source] = [...edge['route']].reverse()
-                    }
+                    edge_synteny[source][target] = edge['route']
     
                     var [graph_size, graph_start, graph_stop] = outer_layers['graph']
                     var i_y_size = sum_middle_layer + graph_start + graph_size * 0.5 + i_y * node_distance_y
