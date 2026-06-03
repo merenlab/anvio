@@ -208,6 +208,7 @@ class BottleApplication(Bottle):
         self.route('/pangraph/get_pangraph_synteny_gene_cluster_search_result',   callback=self.get_pangraph_synteny_gene_cluster_search_result, method="POST")
         self.route('/pangraph/get_pangraph_synteny_gc_functions_and_metabolism',  callback=self.get_pangraph_synteny_gc_functions_and_metabolism, method="POST")
         self.route('/pangraph/session_id',                                        callback=self.get_pangraph_session_id)
+        self.route('/pangraph/store_description',                                 callback=self.store_pangraph_description, method='POST')
 
 
     def run_application(self, ip, port):
@@ -1679,6 +1680,16 @@ class BottleApplication(Bottle):
 
     def get_pangraph_session_id(self):
         return json.dumps(self.session_id)
+
+
+    def store_pangraph_description(self):
+        if self.read_only:
+            return json.dumps({'status': 1, 'message': 'Server is in read-only mode.'})
+
+        description = request.forms.get('description')
+        dbops.update_description_in_db(self.interactive.pan_graph_db_path, description)
+        self.interactive.p_meta['description'] = description
+        return json.dumps({'status': 0})
 
 
     def initial_pangraph_json_data(self):
