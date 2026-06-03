@@ -36,7 +36,6 @@
     <script type="text/javascript" src="./node_modules/svg-pan-zoom/dist/svg-pan-zoom.min.js" onerror='alertDependencyError("svg-pan-zoom")'></script>
     <script type="text/javascript" src="./node_modules/sortable-tablesort/sortable.min.js" onerror='alertDependencyError("table-sorter")'></script>
     <script type="text/javascript" src="js/color-coding.js"></script>
-    <script type="text/javascript" src='js/pangenome-graph.js' type="module"></script>
     <script type="text/javascript" src="js/animations.js"></script>
     <script type="text/javascript" src="js/context-menu.js"></script>
     <script type="text/javascript" src="js/tree.js"></script>
@@ -45,6 +44,7 @@
     <script type="text/javascript" src="lib/colpick/colpick.js" onerror='alertDependencyError("colpick")'></script>
     <script type="text/javascript" src="./node_modules/marked/marked.min.js" onerror='alertDependencyError("marked")'></script>
     <script type="text/javascript" src="js/utils.js"></script>
+    <script type="text/javascript" src='js/pangenome-graph.js'></script>
     <script type="text/javascript" src="js/constants.js"></script>
     <script type="text/javascript" src="js/dialogs/store-collection.js"></script>
     <script type="text/javascript" src="js/dialogs/load-collection.js"></script>
@@ -107,7 +107,7 @@
                           </a>
                       </li>
                       <li id="description_panel_tab" role="presentation" class="nav-item">
-                          <a href="#" class="nav-link navbar-btn d-block" id="description_toggle_btn" onclick="pgui.toggle_description_panel(); return false;">
+                          <a href="#" class="nav-link navbar-btn d-block" id="description_toggle_btn" onclick="description_panel.toggle(); return false;">
                               <i class="nav-icon fs-2x bi bi-file-richtext"></i><i class="nav-icon-fill fs-2x bi bi-file-richtext-fill"></i><span class="d-block">Notes</span>
                           </a>
                       </li>
@@ -1009,16 +1009,16 @@
           <i class="bi bi-file-richtext me-2"></i>Notes
         </span>
         <div class="description-panel-actions">
-          <button id="description-edit-btn" class="description-action-btn" title="Edit" onclick="pgui.edit_description()">
+          <button id="description-edit-btn" class="description-action-btn" title="Edit" onclick="description_panel.edit()">
             <i class="bi bi-pencil"></i>
           </button>
-          <button id="description-save-btn" class="description-action-btn description-save-hidden" title="Save" onclick="pgui.save_description()">
+          <button id="description-save-btn" class="description-action-btn description-save-hidden" title="Save" onclick="description_panel.save()">
             <i class="bi bi-floppy"></i>
           </button>
-          <button id="description-cancel-btn" class="description-action-btn description-save-hidden" title="Cancel edit" onclick="pgui.cancel_description_edit()">
+          <button id="description-cancel-btn" class="description-action-btn description-save-hidden" title="Cancel edit" onclick="description_panel.cancel_edit()">
             <i class="bi bi-x-circle"></i>
           </button>
-          <button class="description-action-btn description-close-btn" title="Close" onclick="pgui.hide_description_panel()">
+          <button class="description-action-btn description-close-btn" title="Close" onclick="description_panel.hide()">
             <i class="bi bi-x-lg"></i>
           </button>
         </div>
