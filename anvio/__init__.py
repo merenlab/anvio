@@ -2251,6 +2251,27 @@ D = {
              'required': True,
              'help': "Anvi'o pangenome graph database."}
                 ),
+    'diamond-search-results': (
+            ['-d', '--diamond-search-results'],
+            {'metavar': 'TSV',
+             'type': str,
+             'help': "Path to anvi-pan-genome's diamond-search-results.txt "
+                     "(the fully-expanded, 12-column DIAMOND fmt 6 file; NOT "
+                     "the .unique version). The pan-graph engine consumes "
+                     "this to build cross-genome AAI edges."}
+                ),
+    'tables-dir': (
+            ['--tables-dir'],
+            {'metavar': 'DIR',
+             'default': None,
+             'type': str,
+             'help': "Optional directory to dump intermediate tables "
+                     "(lines.txt, edges.tsv, genome_map.tsv, "
+                     "orientation.tsv, ranking.tsv) produced by the pan-graph "
+                     "engine. These artifacts are not required by anvi'o "
+                     "downstream consumers; they are for inspection only. If "
+                     "unset, no tables are written."}
+                ),
     'graph-nodes': (
             ['--graph-nodes'],
             {'metavar': "NODE_1,NODE_2",
