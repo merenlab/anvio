@@ -1004,6 +1004,14 @@
       </div>
     </div>
 
+    <!-- LIGHTWEIGHT FETCH OVERLAY (avoids Bootstrap modal backdrop issues) -->
+    <div id="fetch-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.35); z-index:2000; align-items:center; justify-content:center;">
+      <div style="background:#fff; padding:18px 28px; border-radius:8px; box-shadow:0 4px 24px rgba(0,0,0,0.22); display:flex; align-items:center; gap:14px;">
+        <div class="spinner-border text-secondary" role="status" style="width:1.4rem; height:1.4rem; flex-shrink:0;"></div>
+        <span id="fetch-overlay-message" style="font-size:14px; color:#333;"></span>
+      </div>
+    </div>
+
     <!-- FLOATING DESCRIPTION PANEL -->
     <div id="description-panel">
       <div class="description-panel-header">
