@@ -1031,14 +1031,14 @@ class BottleApplication(Bottle):
 
     def store_description(self):
         if self.read_only:
-            return
+            return json.dumps({'status': 1, 'message': 'Server is in read-only mode.'})
 
         description = request.forms.get('description')
 
         db_path = self.interactive.pan_db_path or self.interactive.profile_db_path
         dbops.update_description_in_db(db_path, description)
         self.interactive.p_meta['description'] = description
-        return json.dumps("")
+        return json.dumps({'status': 0})
 
 
     def get_sequence_for_split(self, split_name):
