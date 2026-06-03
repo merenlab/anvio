@@ -2350,8 +2350,8 @@ class PangenomeGraphUserInterface {
                 this.initialize_user_interface();
                 this.set_UI_settings();
                 description_panel.setup(this.data['meta']['description']);
-                this.start_draw();
                 toggleLeftPanel();
+                setTimeout(() => this.start_draw(), 320);
             },
             error: (err) => {
                 toastr.error('Could not reach the server during initialization.', 'Initialization error', { 'timeOut': '0', 'extendedTimeOut': '0' });
