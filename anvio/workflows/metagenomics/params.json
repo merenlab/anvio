@@ -22,7 +22,7 @@
             "--print-qual-scores":          {"type": "bool", "default": null},
             "--store-read-fate":            {"type": "bool", "default": null}
         },
-        "gen_qc_report": {
+        "metagenomics_gen_qc_report": {
             "threads": {"type": "int", "default": 1}
         },
         "gzip_fastqs": {
