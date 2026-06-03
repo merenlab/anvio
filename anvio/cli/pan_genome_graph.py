@@ -116,6 +116,7 @@ def get_args():
 
     groupF = parser.add_argument_group('METADATA & LAYERS', "Display and metadata options for the resulting pan-graph.")
 
+    groupF.add_argument(*anvio.A('description'), **anvio.K('description'))
     groupF.add_argument('--project-name', default=None, help = "Optional name stored in the pan-graph-db metadata (for display/export).")
     groupF.add_argument('--load-state', default='default', type=str, help="Initial display state name to store/use in the pan-graph-db.")
     groupF.add_argument('--import-values', default='start,stop,partial,call_type', type=str, help = "Comma-separated "
