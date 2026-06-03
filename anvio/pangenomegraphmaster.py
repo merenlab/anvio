@@ -65,6 +65,7 @@ class PangenomeGraphManager():
         position: ------> (x,y)
         gene_calls: ----> {G1: 0, G2: 5}
         group: ---------> 'GCG3'
+        component_id: --> 0
 
     Definition of PangenomeGraphManager object edges:
     i: syn_cluster ----> 'GC1_1'
@@ -72,7 +73,7 @@ class PangenomeGraphManager():
     attributes:
         weight: --------> 2
         active: --------> True
-        directions: ----> {G1: 'R', G2: 'R'}
+        genomes: -------> ['G1', 'G2']
         route: --------> [(0,1), (0,2)]
     """
     def __init__(self, run=run, progress=progress):
@@ -88,15 +89,16 @@ class PangenomeGraphManager():
             'type': '',
             'group': '',
             'layer': {},
-            'alignment': ''
+            'alignment': '',
+            'component_id': 0,
         }
         self.edge_standard_attributes = {
             'name': '',
             'weight': 0.0,
             'active': True,
-            'directions': {},
+            'genomes': [],
             'route': [],
-            'length': 0
+            'length': 0,
         }
         self.graph = nx.DiGraph()
 
@@ -149,8 +151,10 @@ class PangenomeGraphManager():
         if not self.graph.has_edge(*(syn_cluster_i, syn_cluster_j)):
             self.graph.add_edge(*(syn_cluster_i, syn_cluster_j), **attributes)
         else:
-            self.graph[syn_cluster_i][syn_cluster_j]['weight'] += attributes['weight']
-            self.graph[syn_cluster_i][syn_cluster_j]['directions'].update(attributes['directions'])
+            merged_genomes = sorted(set(self.graph[syn_cluster_i][syn_cluster_j]['genomes'])
+                                    | set(attributes['genomes']))
+            self.graph[syn_cluster_i][syn_cluster_j]['genomes'] = merged_genomes
+            self.graph[syn_cluster_i][syn_cluster_j]['weight'] = float(len(merged_genomes))
 
 
     def run_connectivity_check(self):
@@ -566,26 +570,6 @@ class PangenomeGraphManager():
     #     return(func)
 
 
-    def reverse_edges(self, changed_edges):
-        for (edge_i, edge_j) in changed_edges:
-            directions = {genome:'L' for genome, direction in self.graph[edge_i][edge_j]['directions'].items()}
-            # weight = self.graph[edge_i][edge_j]['weight']
-
-            edge_attributes_ij = self.graph[edge_i][edge_j]
-            edge_attributes_ij['directions'] = directions
-
-            if self.graph.has_edge(edge_j, edge_i):
-                edge_attributes_ji = self.graph[edge_j][edge_i]
-
-                edge_attributes_ji['weight'] += edge_attributes_ij['weight']
-                edge_attributes_ji['directions'].update(edge_attributes_ij['directions'])
-
-                self.graph.remove_edge(edge_i, edge_j)
-            else:
-                self.add_edge_to_graph(edge_j, edge_i, edge_attributes_ij)
-                self.graph.remove_edge(edge_i, edge_j)
-
-
     def set_node_positions(self, node_positions):
         for node in self.graph.nodes():
             self.graph.nodes()[node]['position'] = node_positions[node]
@@ -645,9 +629,10 @@ class PangenomeGraphManager():
                 elif genome_i in data['gene_calls'].keys() or genome_j in data['gene_calls'].keys():
                     nodes_unsimilar += 1
             for _, _, data in self.graph.edges(data=True):
-                if genome_i in data['directions'].keys() and genome_j in data['directions'].keys():
+                edge_genomes = set(data.get('genomes', []))
+                if genome_i in edge_genomes and genome_j in edge_genomes:
                     edges_similar += 1
-                elif genome_i in data['directions'].keys() or genome_j in data['directions'].keys():
+                elif genome_i in edge_genomes or genome_j in edge_genomes:
                     edges_unsimilar += 1
 
             i = genome_names.index(genome_i)
