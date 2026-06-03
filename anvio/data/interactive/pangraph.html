@@ -43,6 +43,7 @@
     <script type="text/javascript" src="./node_modules/toastr/build/toastr.min.js" onerror='alertDependencyError("toastr")'></script>
     <script type="text/javascript" src="./node_modules/bootstrap-waitingfor/build/bootstrap-waitingfor.js" onerror='alertDependencyError("bootstrap-waitingfor")'></script>
     <script type="text/javascript" src="lib/colpick/colpick.js" onerror='alertDependencyError("colpick")'></script>
+    <script type="text/javascript" src="./node_modules/marked/marked.min.js" onerror='alertDependencyError("marked")'></script>
     <script type="text/javascript" src="js/utils.js"></script>
     <script type="text/javascript" src="js/constants.js"></script>
     <script type="text/javascript" src="js/dialogs/store-collection.js"></script>
@@ -103,6 +104,11 @@
                       <li id="search_panel_tab" role="presentation" class="nav-item">
                           <a href="#search_tab" aria-controls="search_tab" role="tab" data-toggle="tab" class="nav-link navbar-btn d-block">
                               <i class="nav-icon fs-2x bi bi-search"></i><i class="nav-icon-fill fs-2x bi bi-search"></i><span class="d-block">Search</span>
+                          </a>
+                      </li>
+                      <li id="description_panel_tab" role="presentation" class="nav-item">
+                          <a href="#" class="nav-link navbar-btn d-block" id="description_toggle_btn" onclick="pgui.toggle_description_panel(); return false;">
+                              <i class="nav-icon fs-2x bi bi-file-richtext"></i><i class="nav-icon-fill fs-2x bi bi-file-richtext-fill"></i><span class="d-block">Notes</span>
                           </a>
                       </li>
                       <li id="detail_tab" role="presentation" class="nav-item">
@@ -996,6 +1002,32 @@
       </div>
     </div>
 
+    <!-- FLOATING DESCRIPTION PANEL -->
+    <div id="description-panel">
+      <div class="description-panel-header">
+        <span class="description-panel-title">
+          <i class="bi bi-file-richtext me-2"></i>Notes
+        </span>
+        <div class="description-panel-actions">
+          <button id="description-edit-btn" class="description-action-btn" title="Edit" onclick="pgui.edit_description()">
+            <i class="bi bi-pencil"></i>
+          </button>
+          <button id="description-save-btn" class="description-action-btn description-save-hidden" title="Save" onclick="pgui.save_description()">
+            <i class="bi bi-floppy"></i>
+          </button>
+          <button id="description-cancel-btn" class="description-action-btn description-save-hidden" title="Cancel edit" onclick="pgui.cancel_description_edit()">
+            <i class="bi bi-x-circle"></i>
+          </button>
+          <button class="description-action-btn description-close-btn" title="Close" onclick="pgui.hide_description_panel()">
+            <i class="bi bi-x-lg"></i>
+          </button>
+        </div>
+      </div>
+      <div class="description-panel-body">
+        <div id="description-view-content" class="description-markdown-content"></div>
+        <textarea id="description-edit-content" class="description-textarea description-save-hidden" placeholder="Write notes in Markdown format..."></textarea>
+      </div>
+    </div>
 
   </body>
 </html>
