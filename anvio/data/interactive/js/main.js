@@ -386,7 +386,7 @@ function initData() {
                         bins.ImportCollection(response.collection);
                     }
 
-                    if ($('#panel-left').is(':visible')) {
+                    if (is_panel_open) {
                         setTimeout(toggleLeftPanel, 500);
                     }
                  });

@@ -156,11 +156,33 @@
 
   #panel-left {
     z-index: 2;
-    will-change: auto;
+    transition: left 0.3s ease-out;
+  }
+
+  #panel-left.panel-closed {
+    left: -490px;
+  }
+
+  /* Override main.css fixed positioning so #sidebar moves with the panel during animation */
+  #sidebar {
+    position: relative !important;
+    min-width: unset !important;
+    width: 490px !important;
+    height: 100vh !important;
+  }
+
+  /* Keep nav icons visible while settings content scrolls, without fixing to viewport */
+  .tab-elements {
+    position: sticky !important;
+    top: 0;
   }
 
   #toggle-panel-left{
     z-index: 10 !important;
+  }
+
+  .toggle-panel-left-pos {
+    left: 490px;
   }
 
   #toggle-panel-top{
