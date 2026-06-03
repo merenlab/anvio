@@ -41,6 +41,40 @@ additional_param_sets_for_sequence_search = {'diamond'   : '--masking 0',
                                              'ncbi_blast': ''}
 
 
+def composite_variability_score(df):
+    """Min-max-scale the four variability components of a region summary
+    DataFrame and combine them into a composite score per region.
+
+    ``df`` must contain ``complexity_normalized``, ``diversity_normalized``,
+    ``max_expansion``, and ``weight_normalized``. Each is min-max scaled
+    across the rows of ``df`` (constant columns collapse to 0). The
+    composite score is the geometric mean of the four scaled components.
+
+    Returns a DataFrame indexed like ``df`` with five new columns:
+    ``composite_variability_score``, ``complexity_mm_scaled``,
+    ``diversity_mm_scaled``, ``expansion_mm_scaled``, ``weight_mm_scaled``.
+    """
+    def _minmax(series):
+        s_min, s_max = series.min(), series.max()
+        if s_min == s_max:
+            return pd.Series(0.0, index=series.index)
+        return (series - s_min) / (s_max - s_min)
+
+    c_mm = _minmax(df['complexity_normalized'])
+    d_mm = _minmax(df['diversity_normalized'])
+    e_mm = _minmax(df['max_expansion'])
+    w_mm = _minmax(df['weight_normalized'])
+    cvs = (c_mm * d_mm * e_mm * w_mm) ** (1 / 4)
+
+    return pd.DataFrame({
+        'composite_variability_score': cvs,
+        'complexity_mm_scaled': c_mm,
+        'diversity_mm_scaled': d_mm,
+        'expansion_mm_scaled': e_mm,
+        'weight_mm_scaled': w_mm,
+    }, index=df.index)
+
+
 # ANCHOR - PangenomeGraphManager
 class PangenomeGraphManager():
     """All in one pangenome graph object.
@@ -263,258 +297,241 @@ class PangenomeGraphManager():
         return(merged_dict)
 
 
-    def summarize(self):
-        """This is the main summary function for pangenome graphs. Input is the self
+    def summarize(self, component_id=0):
+        """Compute region-level summaries for one weakly connected component.
 
-        Parameters
-        ==========
-        self.graph
+        The component is selected by the ``component_id`` attribute set on
+        every node (see Task 3 in HANDOFF.md): ``component_id=0`` is the
+        largest. ``region_id`` is prefixed with the component for
+        cross-component uniqueness, so it is a string ``"<component_id>_N"``.
 
-        Returns
-        =======
-        pd.DataFrame
+        Returns ``(region_sides_df, nodes_df, gene_calls_df)``. All three may
+        be empty DataFrames if the requested component is empty or contains
+        no nodes whose x-position falls inside any region span.
         """
+        nodes_in_component = [n for n, d in self.graph.nodes(data=True)
+                              if d.get('component_id', 0) == component_id]
+        if not nodes_in_component:
+            self.run.info_single(f"Component {component_id} is empty — nothing to summarize.")
+            return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
-        genome_names = set(it.chain(*[list(d.keys()) for node, d in self.graph.nodes(data='gene_calls')]))
+        G = self.graph.subgraph(nodes_in_component)
 
-        if not nx.is_directed_acyclic_graph(self.graph):
-            raise ConfigError("Cyclic graphs, are not implemented.")
+        if not nx.is_directed_acyclic_graph(G):
+            raise ConfigError("Cyclic graphs are not implemented.")
 
-        all_positions = sorted(set([data['position'][0] for node, data in self.graph.nodes(data=True)]))
-        all_positions_min = min(all_positions)
-        all_positions_max = max(all_positions)
-
-        regions_dict = {}
-        edge_pos_dict = {}
-        core_pos_num_y = {}
-        for edge_i, edge_j, data in self.graph.edges(data=True):
-
-            position_tuples = []
-            edge_i_x, edge_i_y = self.graph.nodes[edge_i]['position']
-            edge_j_x, edge_j_y = self.graph.nodes[edge_j]['position']
-
-            position_tuples += [(edge_i_x, edge_i_y)]
-            position_tuples += [(edge_j_x, edge_j_y)]
-
-            for route_x, route_y in data['route']:
-                position_tuples += [(route_x, route_y)]
-
-            for pos_x, pos_y in position_tuples:
-                if pos_x not in edge_pos_dict:
-                    edge_pos_dict[pos_x] = set([pos_y])
-                else:
-                    edge_pos_dict[pos_x].add(pos_y)
-
-        core_positions = sorted(set([data['position'][0] for node, data in self.graph.nodes(data=True) if len(data['gene_calls'].keys()) == len(genome_names)]))
-
-        for core_position in core_positions:
-            core_pos_num_y[core_position] = len(edge_pos_dict[core_position])
-
-        core_pos_num_y_values = list(core_pos_num_y.values())
-
-        if core_pos_num_y_values:
-            mode_position = max(set(core_pos_num_y_values), key=core_pos_num_y_values.count)
-        else:
-            mode_position = 0
-
-        for core_position, num_y_positions in core_pos_num_y.items():
-            if num_y_positions > mode_position:
-                if core_position in core_positions:
-                    core_positions.remove(core_position)
-                    self.run.info_single(f"Position {core_position} is probably falsely annotated as core and might be a rearranged synteny gene cluster")
-
-        if core_positions:
-            core_position_min = min(core_positions)
-            core_position_max = max(core_positions)
-
-            overlap = [i for i in range(all_positions_min, core_position_min)] + [i for i in range(core_position_max+1, all_positions_max+1)]
-            regions_dict |= {pos: 0 for pos in overlap}
-            regions_id = 1
-
-            core_positions_pairs = map(tuple, zip(core_positions, core_positions[1:]))
-        else:
-            regions_id = 0
-            core_positions_pairs = [(all_positions_min, all_positions_max)]
-
-        core_chain = []
-        for (i, j) in core_positions_pairs:
-            if i != j-1:
-
-                core_chain += [i]
-                regions_dict |= {m: regions_id for m in core_chain}
-                regions_id += 1
-
-                regions_dict |= {k: regions_id for k in range(i+1, j)}
-                regions_id += 1
-
-                if j == core_positions[-1]:
-                    core_chain = [j]
-                else:
-                    core_chain = []
-            else:
-                core_chain += [i]
-
-                if j == core_positions[-1]:
-                    core_chain += [j]
-
-        regions_dict |= {n: regions_id for n in core_chain}
-
-        regions_info_dict = {}
-        node_regions_dict = {}
-        i = 0
-        for node, data in self.graph.nodes(data=True):
-            node_x_position = data['position'][0]
-            node_y_position = data['position'][1]
-            genomes = list(data['gene_calls'].keys())
-            if node_x_position in regions_dict.keys():
-                region_id = regions_dict[node_x_position]
-                node_regions_dict[i] = {
-                    'syn_cluster': node,
-                    'x': node_x_position,
-                    'y': node_y_position,
-                    'region_id': region_id
-                }
-                i += 1
-
-                self.graph.nodes[node]['region_id'] = region_id
-
-                if region_id not in regions_info_dict:
-                    regions_info_dict[region_id] = [(node_x_position, node_y_position, node, genomes)]
-                else:
-                    regions_info_dict[region_id] += [(node_x_position, node_y_position, node, genomes)]
-
-        i = 0
-        regions_summary_dict = {}
+        genome_names = set(it.chain(*[list(d.keys())
+                                      for _, d in G.nodes(data='gene_calls')]))
         num_genomes = len(genome_names)
 
-        for region_id, values_list in dict(sorted(regions_info_dict.items())).items():
+        all_positions = sorted({d['position'][0] for _, d in G.nodes(data=True)})
+        edge_pos_dict = self._collect_edge_positions(G)
+        core_positions = self._filter_false_cores(G, edge_pos_dict, num_genomes)
+        regions_dict = self._assign_region_ids(core_positions, all_positions, component_id)
 
-            genomes_sets = [item[3] for item in values_list]
-            genomes_involved = set(it.chain(*genomes_sets))
+        nodes_df, regions_info_dict = self._attach_node_regions(G, regions_dict)
 
-            weight = len(genomes_involved)
+        regions_summary_rows = []
+        for region_id, values_list in sorted(regions_info_dict.items()):
+            regions_summary_rows.append(
+                self._summarize_one_region(region_id, values_list, num_genomes))
 
-            nodes_sets = [item[2] for item in values_list]
+        region_sides_df = pd.DataFrame(regions_summary_rows).set_index('region_id') \
+                          if regions_summary_rows else pd.DataFrame()
 
-            num_gene_clusters = len(set([item.rsplit('_', 1)[0] for item in nodes_sets]))
+        if not region_sides_df.empty:
+            cvs_cols = composite_variability_score(region_sides_df)
+            region_sides_df = pd.concat([region_sides_df, cvs_cols], axis=1)
 
-            region_x_positions = [item[0] for item in values_list]
+        gene_calls_df = self._build_gene_calls_df(G)
 
-            region_x_positions_min = min(region_x_positions)
-            region_x_positions_max = max(region_x_positions)
-
-            genome_occurences = list(it.chain(*genomes_sets))
-            counts = Counter(genome_occurences)
-
-            # Num synteny gene clusters
-            K = len(nodes_sets)
-            T = len(genome_occurences)
+        return region_sides_df, nodes_df, gene_calls_df
 
 
-            genome_counts = {item: counts.get(item, 0) for item in genomes_involved}
-            values = list(genome_counts.values())
-            max_expansion = max(values)
+    def _collect_edge_positions(self, G):
+        """For each x column, accumulate the set of y rows touched by any
+        edge endpoint or route cell. Used to detect core x-columns whose
+        node stacks are wider than the typical core stack."""
+        edge_pos_dict = {}
+        for edge_i, edge_j, data in G.edges(data=True):
+            cells = [G.nodes[edge_i]['position'], G.nodes[edge_j]['position']]
+            cells.extend(data.get('route', []))
+            for x, y in cells:
+                edge_pos_dict.setdefault(x, set()).add(y)
+        return edge_pos_dict
 
-            min_expansion = 0 if len(genomes_involved) != len(genome_names) else min(values)
 
-            sum_of_genomes = set()
-            complexity = -1
-            for genome_set in sorted(genomes_sets, key=len, reverse=False):
-                if set(genome_set).issubset(sum_of_genomes):
-                    continue
-                else:
-                    complexity += 1
-                    sum_of_genomes |= set(genome_set)
+    def _filter_false_cores(self, G, edge_pos_dict, num_genomes):
+        """Find core x-positions (where a node touches every genome) and
+        drop those whose stack is taller than the modal core stack — those
+        are likely rearrangement clusters that just happen to span all
+        genomes."""
+        core_positions = sorted({d['position'][0]
+                                 for _, d in G.nodes(data=True)
+                                 if len(d['gene_calls'].keys()) == num_genomes})
 
-            complexity_scaled = complexity / num_genomes
+        core_pos_num_y = {p: len(edge_pos_dict.get(p, ())) for p in core_positions}
+        values = list(core_pos_num_y.values())
+        mode_position = max(set(values), key=values.count) if values else 0
 
-            if len(genomes_sets) > 1:
-                diversity = stat.pvariance([1, num_genomes]) - stat.pvariance([len(genome_set) for genome_set in genomes_sets])
-                diversity_scaled = stat.pvariance([1/num_genomes, 1]) - stat.pvariance([len(genome_set)/num_genomes for genome_set in genomes_sets])
+        for core_position, num_y in list(core_pos_num_y.items()):
+            if num_y > mode_position and core_position in core_positions:
+                core_positions.remove(core_position)
+                self.run.info_single(f"Position {core_position} is probably falsely annotated "
+                                     f"as core and might be a rearranged synteny gene cluster")
+
+        return core_positions
+
+
+    def _assign_region_ids(self, core_positions, all_positions, component_id):
+        """Map every x position to a region id (``"<component_id>_N"``).
+
+        Region 0 covers the pre-/post-core overlap. The interior alternates
+        between backbone regions (uninterrupted core chains) and variable
+        regions (gaps between consecutive cores). Faithfully preserves the
+        legacy single-core latent behavior (single core gets no region).
+        """
+        def key(rid):
+            return f"{component_id}_{rid}"
+
+        if not all_positions:
+            return {}
+
+        if not core_positions:
+            # No cores in this component — treat everything as region 0.
+            return {pos: key(0) for pos in all_positions}
+
+        all_min, all_max = min(all_positions), max(all_positions)
+        core_min, core_max = min(core_positions), max(core_positions)
+
+        regions_dict = {}
+        overlap = list(range(all_min, core_min)) + list(range(core_max + 1, all_max + 1))
+        regions_dict.update({pos: key(0) for pos in overlap})
+
+        regions_id = 1
+        core_chain = []
+        for i, j in zip(core_positions, core_positions[1:]):
+            if i != j - 1:
+                core_chain.append(i)
+                regions_dict.update({m: key(regions_id) for m in core_chain})
+                regions_id += 1
+                regions_dict.update({k: key(regions_id) for k in range(i + 1, j)})
+                regions_id += 1
+                core_chain = [j] if j == core_positions[-1] else []
             else:
-                diversity = 0
-                diversity_scaled = 0
+                core_chain.append(i)
+                if j == core_positions[-1]:
+                    core_chain.append(j)
 
-            if complexity == 0 and min_expansion != 0:
-                region = 'BR'
-                max_expansion = 0
-                min_expansion = 0
-                diversity = 0
-                diversity_scaled = 0
-            else:
-                region = 'VR'
-
-            regions_summary_dict[i] = {
-                'region_id': region_id,
-                'region': region,
-                'x_min': region_x_positions_min,
-                'x_max': region_x_positions_max,
-                'num_synteny_gene_clusters': K,
-                'num_gene_clusters': num_gene_clusters,
-                'num_gene_calls': T,
-                'max_expansion': max_expansion,
-                'min_expansion': min_expansion,
-                'complexity': complexity,
-                'complexity_normalized': complexity_scaled,
-                'diversity': diversity,
-                'diversity_normalized': diversity_scaled,
-                'weight': weight,
-                'weight_normalized': weight/num_genomes
-            }
-            i += 1
-
-        i = 0
-        gene_calls_dict = {}
-        for node, data in self.graph.nodes(data='gene_calls'):
-            for genome, gene_call in data.items():
-                gene_calls_dict[i] = {'syn_cluster': node, 'genome': genome, 'gene_caller_id': gene_call}
-                i += 1
-
-        gene_calls_df = pd.DataFrame.from_dict(gene_calls_dict, orient='index').set_index(['genome', 'gene_caller_id'])
-        nodes_df = pd.DataFrame.from_dict(node_regions_dict, orient='index').set_index('syn_cluster')
-        region_sides_df = pd.DataFrame.from_dict(regions_summary_dict, orient='index').set_index('region_id')
-
-        region_sides_df[['composite_variability_score', 'complexity_mm_scaled', 'diversity_mm_scaled', 'expansion_mm_scaled', 'weight_mm_scaled']] = region_sides_df.apply(PangenomeGraphManager.composite_variability_score(region_sides_df), axis=1, result_type='expand')
-
-        return(region_sides_df, nodes_df, gene_calls_df)
+        regions_dict.update({n: key(regions_id) for n in core_chain})
+        return regions_dict
 
 
-    @staticmethod
-    def composite_variability_score(df):
-        C_max = df['complexity_normalized'].max()
-        D_max = df['diversity_normalized'].max()
-        E_max = df['max_expansion'].max()
-        W_max = df['weight_normalized'].max()
+    def _attach_node_regions(self, G, regions_dict):
+        """Set ``region_id`` on every node whose x falls in a known region
+        and return ``(nodes_df, regions_info_dict)``.
 
-        C_min = df['complexity_normalized'].min()
-        D_min = df['diversity_normalized'].min()
-        E_min = df['max_expansion'].min()
-        W_min = df['weight_normalized'].min()
+        ``regions_info_dict`` is keyed by region_id and holds the
+        ``(x, y, node, genomes)`` tuples used by ``_summarize_one_region``.
+        """
+        regions_info_dict = {}
+        node_rows = []
+        for node, data in G.nodes(data=True):
+            x = data['position'][0]
+            y = data['position'][1]
+            if x not in regions_dict:
+                continue
+            region_id = regions_dict[x]
+            genomes = list(data['gene_calls'].keys())
 
-        def minmax_scale(X, X_min, X_max):
-            if X_min == X_max:
-                return(0.0)
-            else:
-                X_norm = (X - X_min) / (X_max - X_min)
-                return(X_norm)
+            node_rows.append({'syn_cluster': node, 'x': x, 'y': y, 'region_id': region_id})
+            G.nodes[node]['region_id'] = region_id
+            regions_info_dict.setdefault(region_id, []).append((x, y, node, genomes))
 
-        def func(row):
+        nodes_df = (pd.DataFrame(node_rows).set_index('syn_cluster')
+                    if node_rows else pd.DataFrame())
+        return nodes_df, regions_info_dict
 
-            C = row['complexity_normalized']
-            D = row['diversity_normalized']
-            E = row['max_expansion']
-            W = row['weight_normalized']
 
-            C_norm = minmax_scale(C, C_min, C_max)
-            D_norm = minmax_scale(D, D_min, D_max)
-            E_norm = minmax_scale(E, E_min, E_max)
-            W_norm = minmax_scale(W, W_min, W_max)
+    def _summarize_one_region(self, region_id, values_list, num_genomes):
+        """Compute one row of the region summary table (BR / VR + the
+        complexity / diversity / expansion / weight metrics)."""
+        genomes_sets = [item[3] for item in values_list]
+        genomes_involved = set(it.chain(*genomes_sets))
+        nodes_sets = [item[2] for item in values_list]
+        region_x = [item[0] for item in values_list]
 
-            CVS = (C_norm * D_norm * E_norm * W_norm)**(1/4)
+        weight = len(genomes_involved)
+        num_gene_clusters = len({n.rsplit('_', 1)[0] for n in nodes_sets})
+        K = len(nodes_sets)
+        genome_occurences = list(it.chain(*genomes_sets))
+        T = len(genome_occurences)
 
-            return([CVS, C_norm, D_norm, E_norm, W_norm])
+        counts = Counter(genome_occurences)
+        values = [counts.get(g, 0) for g in genomes_involved]
+        max_expansion = max(values)
+        min_expansion = min(values) if len(genomes_involved) == num_genomes else 0
 
-        return(func)
+        # Complexity = number of genome-sets needed to cover all genomes_involved
+        # when consumed smallest-first (proxy for structural variation).
+        sum_of_genomes = set()
+        complexity = -1
+        for genome_set in sorted(genomes_sets, key=len):
+            if set(genome_set).issubset(sum_of_genomes):
+                continue
+            complexity += 1
+            sum_of_genomes |= set(genome_set)
+
+        if len(genomes_sets) > 1:
+            diversity = (stat.pvariance([1, num_genomes])
+                         - stat.pvariance([len(s) for s in genomes_sets]))
+            diversity_scaled = (stat.pvariance([1 / num_genomes, 1])
+                                - stat.pvariance([len(s) / num_genomes for s in genomes_sets]))
+        else:
+            diversity = 0
+            diversity_scaled = 0
+
+        if complexity == 0 and min_expansion != 0:
+            region = 'BR'
+            # BR rows zero out the variability metrics by convention.
+            max_expansion = 0
+            min_expansion = 0
+            diversity = 0
+            diversity_scaled = 0
+        else:
+            region = 'VR'
+
+        return {
+            'region_id': region_id,
+            'region': region,
+            'x_min': min(region_x),
+            'x_max': max(region_x),
+            'num_synteny_gene_clusters': K,
+            'num_gene_clusters': num_gene_clusters,
+            'num_gene_calls': T,
+            'max_expansion': max_expansion,
+            'min_expansion': min_expansion,
+            'complexity': complexity,
+            'complexity_normalized': complexity / num_genomes,
+            'diversity': diversity,
+            'diversity_normalized': diversity_scaled,
+            'weight': weight,
+            'weight_normalized': weight / num_genomes,
+        }
+
+
+    def _build_gene_calls_df(self, G):
+        """Flatten ``{node -> {genome -> gene_caller_id}}`` into a long
+        DataFrame indexed by (genome, gene_caller_id)."""
+        rows = []
+        for node, gene_calls in G.nodes(data='gene_calls'):
+            if not gene_calls:
+                continue
+            for genome, gid in gene_calls.items():
+                rows.append({'syn_cluster': node, 'genome': genome, 'gene_caller_id': gid})
+        if not rows:
+            return pd.DataFrame()
+        return pd.DataFrame(rows).set_index(['genome', 'gene_caller_id'])
 
     # @staticmethod
     # def composite_variability_score(df, N):

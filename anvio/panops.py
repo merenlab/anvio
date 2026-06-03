@@ -1615,7 +1615,7 @@ class PangenomeGraph():
         self.pangenome_graph.set_node_positions(node_positions)
         self.pangenome_graph.set_edge_positions(edge_positions)
 
-        region_sides_df, nodes_df, gene_calls_df = self.pangenome_graph.summarize()
+        region_sides_df, nodes_df, gene_calls_df = self.pangenome_graph.summarize(component_id=self.component)
 
         additional_info = pd.merge(region_sides_df.reset_index(drop=False), nodes_df.reset_index(drop=False), how="left", on="region_id").set_index('syn_cluster')
 
@@ -2026,7 +2026,7 @@ class PangenomeGraph():
             node_entry = {
                 'node_id': node,
                 'node_type': data['type'],
-                'region_id': int(data['region_id']) if data.get('region_id') is not None else -1,
+                'region_id': data.get('region_id') if data.get('region_id') is not None else '',
                 'gene_cluster_id': data['gene_cluster'],
                 'synteny_position_json': json.dumps(data['synteny']),
                 'gene_calls_json': json.dumps(data['gene_calls']),
