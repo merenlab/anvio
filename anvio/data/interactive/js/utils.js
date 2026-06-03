@@ -1582,3 +1582,186 @@ function setupItemTableFiltering(gene_clusters) {
 
     applyFilters();
 }
+
+
+// ============================================================================
+// Description Panel
+// ============================================================================
+
+class DescriptionPanel {
+    constructor(store_url) {
+        this.store_url = store_url;
+        this.description = '';
+    }
+
+    setup(description) {
+        this.description = (description || '').trim();
+        this._render();
+        this._make_draggable();
+        this._make_resizable();
+    }
+
+    _render() {
+        $('#description-view-content').html(
+            this.description
+                ? renderMarkdown(this.description)
+                : '<em style="color:#999;">No notes for this database yet. Click the pencil icon to add some.</em>'
+        );
+        $('#description-edit-content').val(this.description);
+    }
+
+    show() {
+        $('#description-panel').addClass('description-panel-visible');
+    }
+
+    hide() {
+        $('#description-panel').removeClass('description-panel-visible');
+        this.cancel_edit();
+    }
+
+    toggle() {
+        if ($('#description-panel').hasClass('description-panel-visible')) {
+            this.hide();
+        } else {
+            this.show();
+        }
+    }
+
+    edit() {
+        $('#description-view-content').addClass('description-save-hidden');
+        $('#description-edit-content').removeClass('description-save-hidden').focus();
+        $('#description-edit-btn').addClass('description-save-hidden');
+        $('#description-save-btn, #description-cancel-btn').removeClass('description-save-hidden');
+    }
+
+    cancel_edit() {
+        $('#description-edit-content').val(this.description).addClass('description-save-hidden');
+        $('#description-view-content').removeClass('description-save-hidden');
+        $('#description-save-btn, #description-cancel-btn').addClass('description-save-hidden');
+        $('#description-edit-btn').removeClass('description-save-hidden');
+    }
+
+    save() {
+        const new_description = $('#description-edit-content').val();
+        $.ajax({
+            type: 'POST',
+            url: this.store_url,
+            data: { description: new_description },
+            success: (response) => {
+                const result = typeof response === 'string' ? JSON.parse(response) : response;
+                if (result['status'] === 0) {
+                    this.description = new_description;
+                    this._render();
+                    $('#description-edit-content').addClass('description-save-hidden');
+                    $('#description-view-content').removeClass('description-save-hidden');
+                    $('#description-save-btn, #description-cancel-btn').addClass('description-save-hidden');
+                    $('#description-edit-btn').removeClass('description-save-hidden');
+                    toastr.success('Notes saved to database.', 'Saved');
+                } else {
+                    toastr.error(result['message'] || 'Failed to save notes.', 'Error');
+                }
+            },
+            error: () => {
+                toastr.error('Could not reach the server.', 'Error');
+            }
+        });
+    }
+
+    _make_draggable() {
+        const panel = document.getElementById('description-panel');
+        const header = panel.querySelector('.description-panel-header');
+        let startX, startY, startRight, startTop;
+
+        header.addEventListener('mousedown', (e) => {
+            if (e.target.closest('.description-action-btn')) return;
+            const rect = panel.getBoundingClientRect();
+            startX = e.clientX;
+            startY = e.clientY;
+            startRight = window.innerWidth - rect.right;
+            startTop = rect.top;
+            panel.style.transition = 'none';
+
+            const onMove = (e) => {
+                const dx = startX - e.clientX;
+                const dy = e.clientY - startY;
+                panel.style.right = Math.max(0, startRight + dx) + 'px';
+                panel.style.top = Math.max(0, startTop + dy) + 'px';
+            };
+
+            const onUp = () => {
+                document.removeEventListener('mousemove', onMove);
+                document.removeEventListener('mouseup', onUp);
+            };
+
+            document.addEventListener('mousemove', onMove);
+            document.addEventListener('mouseup', onUp);
+        });
+    }
+
+    _make_resizable() {
+        const panel = document.getElementById('description-panel');
+        const MIN_W = 280, MIN_H = 160;
+
+        const handles = [
+            { dirs: ['n'],     style: 'top:0;left:6px;right:6px;height:6px;cursor:ns-resize;'    },
+            { dirs: ['s'],     style: 'bottom:0;left:6px;right:6px;height:6px;cursor:ns-resize;'  },
+            { dirs: ['e'],     style: 'top:6px;right:0;bottom:6px;width:6px;cursor:ew-resize;'    },
+            { dirs: ['w'],     style: 'top:6px;left:0;bottom:6px;width:6px;cursor:ew-resize;'     },
+            { dirs: ['n','e'], style: 'top:0;right:0;width:10px;height:10px;cursor:ne-resize;'    },
+            { dirs: ['n','w'], style: 'top:0;left:0;width:10px;height:10px;cursor:nw-resize;'     },
+            { dirs: ['s','e'], style: 'bottom:0;right:0;width:10px;height:10px;cursor:se-resize;' },
+            { dirs: ['s','w'], style: 'bottom:0;left:0;width:10px;height:10px;cursor:sw-resize;'  },
+        ];
+
+        handles.forEach(({ dirs, style }) => {
+            const el = document.createElement('div');
+            el.className = 'description-resize-handle';
+            el.style.cssText = 'position:absolute;z-index:10;' + style;
+
+            el.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+
+                const rect       = panel.getBoundingClientRect();
+                const startX     = e.clientX;
+                const startY     = e.clientY;
+                const startW     = rect.width;
+                const startH     = rect.height;
+                const startTop   = rect.top;
+                const startRight = window.innerWidth - rect.right;
+
+                const onMove = (ev) => {
+                    const dx = ev.clientX - startX;
+                    const dy = ev.clientY - startY;
+
+                    if (dirs.includes('e')) {
+                        const newW = Math.max(MIN_W, startW + dx);
+                        panel.style.width = newW + 'px';
+                        panel.style.right = (startRight + startW - newW) + 'px';
+                    }
+                    if (dirs.includes('w')) {
+                        panel.style.width = Math.max(MIN_W, startW - dx) + 'px';
+                    }
+                    if (dirs.includes('s')) {
+                        panel.style.height = Math.max(MIN_H, startH + dy) + 'px';
+                    }
+                    if (dirs.includes('n')) {
+                        const newH = Math.max(MIN_H, startH - dy);
+                        panel.style.height = newH + 'px';
+                        panel.style.top = (startTop + startH - newH) + 'px';
+                    }
+                };
+
+                const onUp = () => {
+                    document.removeEventListener('mousemove', onMove);
+                    document.removeEventListener('mouseup', onUp);
+                };
+
+                document.addEventListener('mousemove', onMove);
+                document.addEventListener('mouseup', onUp);
+            });
+
+            panel.appendChild(el);
+        });
+    }
+}
