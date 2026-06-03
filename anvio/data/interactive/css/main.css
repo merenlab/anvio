@@ -201,20 +201,24 @@ html, body, #wrapper {
     min-width: 320px;
     height: 90vh;
     min-height: 160px;
-    background: rgba(255, 245, 232, 0.8);
+    background: rgba(255, 245, 232, 0.5);
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
     border: 1px solid rgba(0, 0, 0, 0.12);
     border-radius: 10px;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18), 0 2px 8px rgba(0, 0, 0, 0.10);
     z-index: 1050;
-    display: none;
+    display: flex;
     flex-direction: column;
     overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
 }
 
 #description-panel.description-panel-visible {
-    display: flex;
+    opacity: 1;
+    pointer-events: auto;
 }
 
 .description-panel-header {
