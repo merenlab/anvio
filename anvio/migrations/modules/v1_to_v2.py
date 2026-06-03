@@ -39,7 +39,7 @@ def migrate(db_path):
     for mod, orth, kos, definition, line in bad_rows:
         if orth != "ORTHOLOGY":
             raise ConfigError("Serious SQL error here. We asked for ORTHOLOGY but we got %s" % orth)
-        split_kos = re.split('\+|\-', kos)
+        split_kos = re.split(r'\+|\-', kos)
         for ko in split_kos:
             if len(ko) != 6 or ko[0] != 'K':
                 raise ConfigError("Uh oh. We split a KO that doesn't seem to have the right format. It looks like this: %s, "

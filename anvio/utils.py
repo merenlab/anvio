@@ -914,10 +914,12 @@ def store_dict_as_TAB_delimited_file(d, output_path, headers=None, file_obj=None
 
 
 def convert_numpy_array_to_binary_blob(array, compress=True):
+    array = np.ascontiguousarray(array)
+
     if compress:
-        return gzip.compress(memoryview(array), compresslevel=1)
+        return gzip.compress(memoryview(array).cast('B'), compresslevel=1)
     else:
-        return memoryview(array)
+        return memoryview(array).cast('B')
 
 
 def convert_binary_blob_to_numpy_array(blob, dtype, decompress=True):
@@ -1695,6 +1697,8 @@ def get_list_of_outliers(values, threshold=None, zeros_are_outliers=False, media
 
     if threshold is None:
         threshold = 1.5
+
+    values = np.asarray(values)
 
     if len(values.shape) == 1:
         values = values[:, None]

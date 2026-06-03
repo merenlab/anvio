@@ -162,11 +162,12 @@ class TableForGeneLevelCoverages(Table):
             if sample_name not in data[gene_callers_id]:
                 data[gene_callers_id][sample_name] = entry
 
-            g, n = data[gene_callers_id][sample_name]['gene_coverage_values_per_nt'], data[gene_callers_id][sample_name]['gene_coverage_values_per_nt']
+            g = data[gene_callers_id][sample_name]['gene_coverage_values_per_nt']
+            n = data[gene_callers_id][sample_name]['non_outlier_positions']
             data[gene_callers_id][sample_name]['gene_coverage_values_per_nt'] = utils.convert_binary_blob_to_numpy_array(g, 'uint16')
 
             if n:
-                data[gene_callers_id][sample_name]['non_outlier_positions'] = utils.convert_binary_blob_to_numpy_array(n, 'uint16')
+                data[gene_callers_id][sample_name]['non_outlier_positions'] = utils.convert_binary_blob_to_numpy_array(n, bool)
             else:
                 data[gene_callers_id][sample_name]['non_outlier_positions'] = None
 
@@ -192,8 +193,10 @@ class TableForGeneLevelCoverages(Table):
 
                 d = []
                 for h in self.table_structure:
-                    if h in ['gene_coverage_values_per_nt', 'non_outlier_positions']:
-                        d.append(utils.convert_numpy_array_to_binary_blob(np.array(entry[h]), 'uint16'))
+                    if h == 'gene_coverage_values_per_nt':
+                        d.append(utils.convert_numpy_array_to_binary_blob(np.array(entry[h], dtype='uint16')))
+                    elif h == 'non_outlier_positions':
+                        d.append(utils.convert_numpy_array_to_binary_blob(np.array(entry[h], dtype=bool)))
                     else:
                         d.append(entry[h])
 

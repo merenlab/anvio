@@ -115,7 +115,7 @@ import pickle as pkl
 import matplotlib.pyplot as plt
 
 # multiprocess is a fork of multiprocessing that uses the dill serializer instead of pickle
-# using the multiprocessing module directly results in a pickling error in Python 3.10 which
+# using the multiprocessing module directly results in a pickling error in Python 3.13 which
 # goes like this:
 #
 #   >>> AttributeError: Can't pickle local object 'SOMEFUNCTION.<locals>.<lambda>' multiprocessing
@@ -5570,7 +5570,7 @@ class DatabaseMerger(object):
             summary_N.spec_covs = np.fromiter(map(int, info_N.specific_coverages.split(',')[: -1]), int)
             summary_N.nonspec_covs = np.fromiter(map(int, info_N.nonspecific_coverages.split(',')[: -1]), int)
             summary_N.string = info_N.sequence
-            summary_N.anticodon_string = info_N.anticodon_sequence if info_N.anticodon_sequence else ''
+            summary_N.anticodon_string = info_N.anticodon_sequence if pd.notnull(info_N.anticodon_sequence) else ''
             length_N = len(summary_N.string)
             summary_N.spec_nt_covs_dict = spec_nt_covs_dict = {nt: np.zeros(length_N, dtype=int) for nt in UNAMBIG_NTS}
             summary_N.nonspec_nt_covs_dict = nonspec_nt_covs_dict = {nt: np.zeros(length_N, dtype=int) for nt in UNAMBIG_NTS}

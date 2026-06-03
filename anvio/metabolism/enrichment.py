@@ -96,7 +96,7 @@ class KeggModuleEnrichment(KeggContext):
         filesnpaths.is_output_file_writable(output_file_path)
 
         # read the files into dataframes
-        modules_df = pd.read_csv(self.modules_txt, sep='\t')
+        modules_df = pd.read_csv(self.modules_txt, sep='\t', keep_default_na=False, dtype={self.sample_header_in_modules_txt: str})
 
         completeness_header = 'pathwise_module_completeness'
         if self.use_stepwise_completeness:
@@ -117,6 +117,8 @@ class KeggModuleEnrichment(KeggContext):
                               "modules mode output, but unfortunately the modules-txt input does not contain "
                               f"the following required headers: {missing_string}   Please re-generate your "
                               "modules-txt to include these before trying again.")
+
+        modules_df[completeness_header] = pd.to_numeric(modules_df[completeness_header], errors='coerce')
 
         if 'unique_id' in modules_df.columns:
             modules_df = modules_df.drop(columns=['unique_id'])
@@ -244,7 +246,7 @@ class KeggModuleEnrichment(KeggContext):
             if len(samples_with_mod_list) == 0:
                 continue
 
-            mod_name = samples_with_mod_df['module_name'][0]
+            mod_name = samples_with_mod_df['module_name'].iloc[0]
             output_dict[mod_name] = {}
             output_dict[mod_name]['MODULE'] = mod_name
             output_dict[mod_name]['accession'] = mod_num

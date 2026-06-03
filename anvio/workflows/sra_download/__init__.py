@@ -85,7 +85,7 @@ class SRADownloadWorkflow(WorkflowSuperClass):
         if self.SRA_accession_list:
             filesnpaths.is_file_exists(self.SRA_accession_list)
             try:
-                self.SRA_accession_list_df = pd.read_csv(self.SRA_accession_list, sep='\t', index_col=False, header=None, names=['accessions'])
+                self.SRA_accession_list_df = pd.read_csv(self.SRA_accession_list, sep='\t', index_col=False, header=None, names=['accessions'], keep_default_na=False, dtype=str)
                 self.accessions_list = self.SRA_accession_list_df['accessions'].tolist()
             except IndexError as e:
                 raise ConfigError(f"Looks like your SRA accession list file, {self.SRA_accession_list}, is not properly formatted. "

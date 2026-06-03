@@ -20,7 +20,7 @@ from itertools import chain, combinations
 from scipy.optimize import curve_fit
 
 # multiprocess is a fork of multiprocessing that uses the dill serializer instead of pickle
-# using the multiprocessing module directly results in a pickling error in Python 3.10 which
+# using the multiprocessing module directly results in a pickling error in Python 3.13 which
 # goes like this:
 #
 #   >>> AttributeError: Can't pickle local object 'SOMEFUNCTION.<locals>.<lambda>' multiprocessing
@@ -1525,7 +1525,7 @@ class PangenomeGraph():
                 self.genome_names = [g.strip() for g in A('genome_names').split(',')]
         elif self.external_genomes_txt:
             filesnpaths.is_file_tab_delimited(self.external_genomes_txt, expected_number_of_fields=2)
-            self.genome_names = pd.read_csv(self.external_genomes_txt, header=0, sep="\t")['name'].to_list()
+            self.genome_names = pd.read_csv(self.external_genomes_txt, header=0, sep="\t", keep_default_na=False, dtype={"name": str})['name'].to_list()
         elif self.pan_graph_yaml:
             self.genome_names = list(self.yaml_file.keys())
         else:
@@ -2200,7 +2200,7 @@ class PangenomeGraph():
         self.import_values = import_values_found
 
         number_gene_calls = {}
-        for genome, genome_group in self.pangenome_data_df.groupby(["genome"]):
+        for genome, genome_group in self.pangenome_data_df.groupby("genome"):
             extra_connections = []
 
             for contig, group in genome_group.groupby(["contig"]):

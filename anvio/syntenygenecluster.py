@@ -85,7 +85,7 @@ class SyntenyGeneCluster():
             else:
                 self.genome_names = [g.strip() for g in A('genome_names').split(',')]
         elif self.external_genomes:
-            self.genome_names = pd.read_csv(self.external_genomes, header=0, sep="\t")['name'].to_list()
+            self.genome_names = pd.read_csv(self.external_genomes, header=0, sep="\t", keep_default_na=False, dtype={"name": str})['name'].to_list()
         elif self.pan_graph_yaml:
             self.genome_names = list(self.yaml_file.keys())
         else:
@@ -215,7 +215,7 @@ class SyntenyGeneCluster():
         gene_cluster_dict = pan_db.gene_callers_id_to_gene_cluster
         additional_info_cluster = pan_db.items_additional_data_dict
 
-        external_genomes = pd.read_csv(self.external_genomes, header=0, sep="\t", names=["name","contigs_db_path"])
+        external_genomes = pd.read_csv(self.external_genomes, header=0, sep="\t", names=["name","contigs_db_path"], keep_default_na=False, dtype={"name": str, "contigs_db_path": str})
         external_genomes.set_index("name", inplace=True)
 
         # TODO trna and rrna gene cluster update also include more types and split trna and rrna in individual sets. Instead of GC_00000000 add the two at the end.
@@ -244,7 +244,12 @@ class SyntenyGeneCluster():
 
                 joined_contigs_df = caller_id_cluster_df.merge(genes_in_contigs_df, on="gene_caller_id", how="left").merge(gene_function_calls_df, on="gene_caller_id", how="left").merge(additional_info_df, on="gene_cluster", how="left")
 
-                joined_contigs_df.fillna("None", inplace=True)
+                columns_for_none_sentinel = [
+                    column for column in joined_contigs_df.columns
+                    if joined_contigs_df[column].dtype == object or column in self.functional_annotation_sources_available
+                ]
+                for column in columns_for_none_sentinel:
+                    joined_contigs_df[column] = joined_contigs_df[column].where(pd.notnull(joined_contigs_df[column]), "None")
                 joined_contigs_df['genome'] = genome
                 joined_contigs_df.set_index(["genome", "gene_caller_id"], inplace=True)
 

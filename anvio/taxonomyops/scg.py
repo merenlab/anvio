@@ -811,7 +811,7 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
             # to `df`. And at the very end, we will replace it with `times_observed`.
             df["coverage"] = 1
 
-        DFx = pd.DataFrame(columns=['metagenome_name', 'taxon', 'coverage', 'taxonomic_level'])
+        taxonomic_level_dataframes = []
         for taxonomic_level in taxonomic_levels:
             x = df.fillna(constants.levels_of_taxonomy_unknown).groupby(['metagenome_name', taxonomic_level])['coverage'].sum().reset_index()
             x.columns = ['metagenome_name', 'taxon', 'coverage']
@@ -819,20 +819,23 @@ class SCGTaxonomyEstimatorMulti(SCGTaxonomyArgs, SanityCheck):
 
             # adding for each metagenome the missing taxon names
             list_of_unique_taxon_names = x['taxon'].unique()
+            missing_taxon_rows = []
             for metagenome_name in x['metagenome_name'].unique():
                 known_taxa = set(x[x['metagenome_name'] == metagenome_name]['taxon'])
                 missing_taxa = [taxon for taxon in list_of_unique_taxon_names if taxon not in known_taxa]
                 for taxon in missing_taxa:
-                    row = {'metagenome_name': metagenome_name, 'taxon': taxon, 'coverage': 0.0, 'taxonomic_level': taxonomic_level}
-                    x = x.append(row, ignore_index=True)
+                    missing_taxon_rows.append({'metagenome_name': metagenome_name, 'taxon': taxon, 'coverage': 0.0, 'taxonomic_level': taxonomic_level})
 
-            DFx = DFx.append(x, ignore_index=True)
+            if missing_taxon_rows:
+                x = pd.concat([x, pd.DataFrame.from_records(missing_taxon_rows)], ignore_index=True)
+
+            taxonomic_level_dataframes.append(x)
+
+        DFx = pd.concat(taxonomic_level_dataframes, ignore_index=True)
 
         DFx.sort_values(by=['metagenome_name', 'taxonomic_level', 'coverage'], ascending=[True, True, False], inplace=True)
 
-        DF = pd.DataFrame(columns=['metagenome_name', 'taxon', 'coverage', 'taxonomic_level'])
-        for taxonomic_level in constants.levels_of_taxonomy:
-            DF = DF.append(DFx[DFx['taxonomic_level'] == taxonomic_level], ignore_index=True)
+        DF = pd.concat([DFx[DFx['taxonomic_level'] == taxonomic_level] for taxonomic_level in constants.levels_of_taxonomy], ignore_index=True)
 
         del DFx
 

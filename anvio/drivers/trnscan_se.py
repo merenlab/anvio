@@ -53,11 +53,11 @@ class tRNAScanSE:
 
         Parameters
         ==========
-        N\A
+        N/A
 
         Returns
         =======
-        N\A
+        N/A
         """
 
         self.check_programs()
@@ -109,7 +109,7 @@ class tRNAScanSE:
 
         Parameters
         ==========
-        N\A
+        N/A
 
         Returns
         =======
@@ -182,7 +182,7 @@ class tRNAScanSE:
 
         Parameters
         ==========
-        N\A
+        N/A
 
         Returns
         =======

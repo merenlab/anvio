@@ -19,7 +19,8 @@ __email__ = "alon.shaiber@gmail.com"
 
 run = terminal.Run()
 
-this_workflow_is_inherited_by_another= False if 'anvio/workflows/pangenomics' in str(workflow.included[0].abspath()) else True
+entry_snakefile_path = w.get_entry_snakefile_path(workflow)
+this_workflow_is_inherited_by_another= False if 'anvio/workflows/pangenomics' in entry_snakefile_path else True
 
 if not this_workflow_is_inherited_by_another:
     M = PangenomicsWorkflow(argparse.Namespace(config=config))
@@ -45,7 +46,6 @@ rule pangenomics_target_rule:
 
 # run pangenome
 rule anvi_pan_genome:
-    version: anvio.__pan__version__
     log: rule_log("anvi_pan_genome", M.project_name)
     threads: M.T("anvi_pan_genome")
     resources: nodes = M.T("anvi_pan_genome")
@@ -101,12 +101,11 @@ rule anvi_gen_genomes_storage:
                                      {params.gene_caller} >> {log} 2>&1
         """
 
-if 'anvio/workflows/pangenomics' in str(workflow.included[0].abspath()):
+if 'anvio/workflows/pangenomics' in entry_snakefile_path:
     M.check_workflow_program_dependencies(workflow)
 
 
 rule anvi_get_sequences_for_gene_clusters:
-    version: 1.0
     log: rule_log("anvi_get_sequences_for_gene_clusters", M.project_name)
     input:
         genomes_storage = os.path.join(dirs_dict["PAN_DIR"], M.project_name + "-GENOMES.db"),
@@ -149,7 +148,6 @@ rule anvi_get_sequences_for_gene_clusters:
 
 
 rule import_phylogenetic_tree_to_pangenome:
-    version: 1.0
     log: rule_log("import_phylogenetic_tree_to_pangenome", M.pan_project_name)
     input:
         pan_db = M.pan_db_path,
@@ -175,7 +173,6 @@ rule import_phylogenetic_tree_to_pangenome:
 
 
 rule anvi_compute_genome_similarity:
-    version: 1.0
     log: rule_log("anvi_compute_genome_similarity", M.pan_project_name)
     input: unpack(lambda wildcards: M.input_for_anvi_compute_genome_similarity)
     output:

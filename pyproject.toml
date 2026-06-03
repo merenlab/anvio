@@ -39,24 +39,28 @@ classifiers = [
     "Operating System :: MacOS",
     "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering :: Bio-Informatics"
 ]
-requires-python = "==3.10.*"
+requires-python = "==3.13.*"
 dynamic = ["version"]
 
 dependencies = [
-    "numpy==1.24.1",
+    "numpy>=2.1",
+    "numba",
     "scipy",
     "bottle",
     "pysam",
     "ete3",
-    "scikit-learn==1.2.2",
+    "legacy-cgi",
+    "scikit-learn>=1.8,<1.9",
     "django",
     "requests",
     "mistune",
+    "PyYAML",
     "six",
-    "matplotlib==3.5.1",
+    "matplotlib>=3.9",
+    "seaborn",
     "statsmodels",
     "colored",
     "illumina-utils",
@@ -64,10 +68,9 @@ dependencies = [
     "rich-argparse",
     "numba",
     "paste",
-    "pyani",
     "psutil",
-    "pandas==1.4.4",
-    "snakemake",
+    "pandas>=3,<4",
+    "snakemake>=9,<10",
     "multiprocess",
     "plotext",
     "networkx==3.1",

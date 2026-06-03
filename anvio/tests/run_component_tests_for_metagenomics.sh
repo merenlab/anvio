@@ -1038,11 +1038,13 @@ cp $files/example_description.md $output_dir/
 INFO "Migrating mock external genome data"
 anvi-migrate --migrate-safely $output_dir/*.db
 
-INFO "Dereplicating genomes using pyANI"
+INFO "Dereplicating genomes using fastANI"
 anvi-dereplicate-genomes -o $output_dir/DEREPLICATION_FROM_SCRATCH \
                          -e $output_dir/external-genomes.txt \
                          --similarity 0.99 \
-                         --program pyANI \
+                         --program fastANI \
+                         --fragment-length 250 \
+                         --min-fraction 0 \
                          --no-progress \
                          $thread_controller
 SHOW_FILE $output_dir/DEREPLICATION_FROM_SCRATCH/CLUSTER_REPORT.txt
@@ -1052,16 +1054,16 @@ anvi-compute-genome-similarity -e $output_dir/external-genomes.txt \
                                -o $output_dir/GENOME_SIMILARITY_OUTPUT \
                                --fragment-length 250 \
                                --min-num-fragments 1 \
-                               --program pyANI \
+                               --program fastANI \
                                --no-progress \
                                $thread_controller
-SHOW_FILE $output_dir/GENOME_SIMILARITY_OUTPUT/ANIb_percentage_identity.txt
+SHOW_FILE $output_dir/GENOME_SIMILARITY_OUTPUT/fastANI_ani.txt
 
 INFO "Dereplicating genomes using an existing genome similarity analysis directory"
 anvi-dereplicate-genomes --ani-dir $output_dir/GENOME_SIMILARITY_OUTPUT \
                          -o $output_dir/DEREPLICATION_FROM_PREVIOUS_RESULTS \
                          --similarity 0.99 \
-                         --program pyANI \
+                         --program fastANI \
                          --no-progress \
                          $thread_controller
 SHOW_FILE $output_dir/DEREPLICATION_FROM_PREVIOUS_RESULTS/CLUSTER_REPORT.txt
@@ -1176,8 +1178,29 @@ anvi-refine -p $output_dir/SAMPLES-MERGED/PROFILE.db \
 
 
 INFO "Importing items and layers additional data into the genes database for CONCOCT::Bin_1"
+python - <<PY
+import sqlite3
+from pathlib import Path
+
+genes_db_path = Path("$output_dir/SAMPLES-MERGED/GENES/CONCOCT-Bin_1.db")
+output_path = Path("$output_dir/items_addtl_data_gene_mode.txt")
+
+with sqlite3.connect(genes_db_path) as db:
+    gene_callers_ids = [
+        str(row[0])
+        for row in db.execute("SELECT DISTINCT gene_callers_id FROM gene_level_coverage_stats ORDER BY gene_callers_id LIMIT 5")
+    ]
+
+if len(gene_callers_ids) < 5:
+    raise SystemExit(f"Expected at least 5 genes in {genes_db_path}, found {len(gene_callers_ids)}.")
+
+with open(output_path, "w") as output:
+    output.write("gene_caller_ids\tNUMERICAL_LAYER\tCATEGORICAL_LAYER\n")
+    for index, gene_callers_id in enumerate(gene_callers_ids, 1):
+        output.write(f"{gene_callers_id}\t{index}\t{chr(96 + index)}\n")
+PY
 anvi-import-misc-data -p $output_dir/SAMPLES-MERGED/GENES/CONCOCT-Bin_1.db \
-                     $files/items_addtl_data_gene_mode.txt \
+                     $output_dir/items_addtl_data_gene_mode.txt \
                      -t items \
                      --no-progress
 anvi-import-misc-data -p $output_dir/SAMPLES-MERGED/GENES/CONCOCT-Bin_1.db \

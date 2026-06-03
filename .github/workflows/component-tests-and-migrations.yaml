@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 env:
-  MINICONDA_VERSION: "py310_26.1.1-1"
+  MINICONDA_VERSION: "py313_26.1.1-1"
 
 jobs:
   build:
@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ["3.10"]
+        python-version: ["3.13"]
       fail-fast: false
 
     steps:

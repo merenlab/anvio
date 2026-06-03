@@ -1,8 +1,6 @@
 
 rule make_anvio_state_file_tree:
     """Make a state file customized for EcoPhylo workflow interactive interface - TREE MODE"""
-
-    version: 1.0
     log: rule_log("make_anvio_state_file_tree", "{group}")
     input:
         M.get_target_files_make_anvio_state_file()
@@ -143,8 +141,6 @@ rule anvi_import_everything_tree:
     """Import state file, phylogenetic tree, AND misc data to interactive interface
     If samples.txt is NOT provided then we will make an Ad Hoc profileDB for the tree to import misc data
     """
-
-    version: 1.0
     log: rule_log("anvi_import_everything_tree", "{group}")
     input:
         tree = rules.rename_tree_tips.output.tree,

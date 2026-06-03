@@ -4,7 +4,6 @@ import os
 import sys
 import json
 import copy
-import snakemake
 
 import anvio
 import anvio.utils as u
@@ -14,6 +13,7 @@ import anvio.filesnpaths as filesnpaths
 
 from anvio.errors import ConfigError
 from anvio.version import versions_for_db_types
+from snakemake.cli import main as snakemake_main
 
 
 __copyright__ = "Copyleft 2015-2024, The Anvi'o Project (http://anvio.org/)"
@@ -30,6 +30,12 @@ progress = terminal.Progress()
 r = errors.remove_spaces
 
 workflow_config_version = versions_for_db_types['config']
+
+
+def get_entry_snakefile_path(workflow):
+    """Return the entry Snakefile path from Snakemake 9's included-file iterator."""
+    return str(next(iter(workflow.included)).abspath())
+
 
 class WorkflowSuperClass:
     def __init__(self):
@@ -277,18 +283,7 @@ class WorkflowSuperClass:
         if self.dry_run_only:
             return
 
-        workflow_manifest_path = None
-        original_manifest_env_var = os.environ.get('ANVIO_WORKFLOW_MANIFEST_PATH')
-        workflow_name = getattr(self.args, 'workflow', self.name)
-        if not self.list_dependencies:
-            from anvio.workflows.scripts.manifest import initialize_manifest
-
-            workflow_manifest_path = os.path.join(self.dirs_dict["LOGS_DIR"], f"{workflow_name}-workflow-manifest.tsv")
-            initialize_manifest(workflow_manifest_path)
-            os.environ['ANVIO_WORKFLOW_MANIFEST_PATH'] = workflow_manifest_path
-            self.run.info('Workflow manifest', workflow_manifest_path)
-
-        # snakemake.main() accepts an `argv` parameter, but then the code has mixed responses to
+        # snakemake's CLI main accepts an `argv` parameter, but then the code has mixed responses to
         # that, and at places continues to read from sys.argv in a hardcoded manner. so we have to
         # overwrite our argv here.
         original_sys_argv = copy.deepcopy(sys.argv)
@@ -298,10 +293,6 @@ class WorkflowSuperClass:
                     get_workflow_snake_file_path(self.args.workflow),
                     '--configfile',
                     self.args.config_file]
-
-        if workflow_manifest_path:
-            sys.argv.extend(['--log-handler-script',
-                             os.path.join(get_path_to_workflows_dir(), 'scripts', 'snakemake_log_handler.py')])
 
         # if any conda yaml is provided for a rule, then add '--use-conda' to the snakemake command:
         if any(isinstance(v, dict) and v.get('conda_yaml') for v in (self.config or {}).values()):
@@ -316,7 +307,7 @@ class WorkflowSuperClass:
             else:
                 sys.argv.extend(['--dryrun', '--printshellcmds'])
             try:
-                snakemake.main()
+                snakemake_main()
                 sys.exit(0)
             finally:
                 sys.argv = original_sys_argv
@@ -326,16 +317,11 @@ class WorkflowSuperClass:
             else:
                 sys.argv.extend(['-p'])
             try:
-                snakemake.main()
+                snakemake_main()
             finally:
                 # restore the `sys.argv` to the original for the sake of sakity (totally made up word,
                 # but you already know what it means. you're welcome.)
                 sys.argv = original_sys_argv
-
-                if original_manifest_env_var is None:
-                    os.environ.pop('ANVIO_WORKFLOW_MANIFEST_PATH', None)
-                else:
-                    os.environ['ANVIO_WORKFLOW_MANIFEST_PATH'] = original_manifest_env_var
 
 
     def dry_run(self, workflow_graph_output_file_path_prefix='workflow'):

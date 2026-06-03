@@ -5621,7 +5621,7 @@ class KEGGData:
             columns_of_interest=['module', 'data_value', 'data_definition']
         ).rename({'module': 'module_id', 'data_value': 'ko_id'}, axis=1)
 
-        ko_id_pattern = re.compile('K\d{5}')
+        ko_id_pattern = re.compile(r'K\d{5}')
         for orthology_entry, ko_modules_table in kos_modules_table.groupby('ko_id'):
             if not re.match(ko_id_pattern, orthology_entry):
                 # Screen for "orthology" entries that are validly formatted KO IDs. There are also
@@ -5966,7 +5966,7 @@ class KODatabase:
                     # The name value follows 'NAME' at the beginning of the line.
                     ko_data['name'] = line[4:].strip()
                     # EC numbers associated with the KO are recorded at the end of the name value.
-                    ec_string = re.search('\[EC:.*\]', line)
+                    ec_string = re.search(r'\[EC:.*\]', line)
                     if ec_string:
                         ko_data['ec_numbers'] = ec_string[0][4:-1]
                 elif section == 'DBLINKS':
@@ -6494,7 +6494,7 @@ class Constructor:
 
         # Identify KOs present in the reaction network as it was stored that have disappeared from
         # among the gene-KO annotations.
-        ko_id_pattern = re.compile('K\d{5}')
+        ko_id_pattern = re.compile(r'K\d{5}')
         reaction_network_ko_ids: Set[str] = set([
             kegg_id for kegg_id in
             set(cdb_db.get_single_column_from_table(
@@ -6517,7 +6517,7 @@ class Constructor:
         # Make objects representing genes with KO annotations in the stored reaction network. Make
         # objects representing the KOs, initially only assigning their ID attribute.
         gene_ko_hits_table: pd.DataFrame = gene_ko_hits_table.set_index('accession').loc[
-            reaction_network_ko_ids.intersection(contigs_db_ko_ids)
+            sorted(reaction_network_ko_ids.intersection(contigs_db_ko_ids))
         ]
         gene_ko_hits_table = gene_ko_hits_table.reset_index().set_index('gene_callers_id')
         for row in gene_ko_hits_table.itertuples():
@@ -6651,7 +6651,7 @@ class Constructor:
                 "data. Unfortunately, multiple protein products are not currently allowed in "
                 "anvi'o, so the protein abundance data must be edited down in the profile database "
                 "to permit use with the reaction network. These are as follows, with the gene "
-                f"callers ID separated by a comma-separated\ list of protein IDs. {msg}"
+                f"callers ID separated by a comma-separated list of protein IDs. {msg}"
             )
 
     def _load_metabolite_abundances(
@@ -6805,7 +6805,7 @@ class Constructor:
 
         pdb = PanDatabase(pan_db)
         pdb_db: DB = pdb.db
-        ko_id_pattern = re.compile('K\d{5}')
+        ko_id_pattern = re.compile(r'K\d{5}')
         reaction_network_ko_ids: List[str] = [
             kegg_id for kegg_id in
             set(pdb_db.get_single_column_from_table(
@@ -7185,19 +7185,19 @@ class Constructor:
 
         # Create a separate table for each type of KEGG information.
         kegg_table = kegg_table.fillna('')
-        ko_id_pattern = re.compile('K\d{5}')
+        ko_id_pattern = re.compile(r'K\d{5}')
         kos_table = kegg_table[kegg_table['kegg_id'].apply(
             lambda ko_id: True if re.fullmatch(ko_id_pattern, ko_id) else False
         )]
-        module_id_pattern = re.compile('M\d{5}')
+        module_id_pattern = re.compile(r'M\d{5}')
         modules_table = kegg_table[kegg_table['kegg_id'].apply(
             lambda module_id: True if re.fullmatch(module_id_pattern, module_id) else False
         )]
-        pathway_id_pattern = re.compile('map\d{5}')
+        pathway_id_pattern = re.compile(r'map\d{5}')
         pathways_table = kegg_table[kegg_table['kegg_id'].apply(
             lambda pathway_id: True if re.fullmatch(pathway_id_pattern, pathway_id) else False
         )]
-        hierarchy_id_pattern = re.compile('ko\d{5}')
+        hierarchy_id_pattern = re.compile(r'ko\d{5}')
         hierarchies_table = kegg_table[kegg_table['kegg_id'].apply(
             lambda hierarchy_id: True if re.fullmatch(hierarchy_id_pattern, hierarchy_id) else False
         )]
@@ -7207,7 +7207,7 @@ class Constructor:
         # that the KOs no longer are consensus annotations of gene clusters from the pan database.)
         reaction_network_ko_ids: Set[str] = set(kos_table['kegg_id'])
         kos_table: pd.DataFrame = kos_table.set_index('kegg_id').loc[
-            set(network.kos).intersection(reaction_network_ko_ids)
+            sorted(set(network.kos).intersection(reaction_network_ko_ids))
         ]
 
         # Fill out KEGG classification attributes of KO objects in the loaded network.
@@ -9366,7 +9366,7 @@ class Constructor:
         kegg_data = {}
 
         # The first rows in the table are for KOs.
-        ko_id_pattern = re.compile('K\d{5}')
+        ko_id_pattern = re.compile(r'K\d{5}')
         for ko_id, ko in network.kos.items():
             ko_data = {}
             assert re.fullmatch(ko_id_pattern, ko_id)
@@ -9384,7 +9384,7 @@ class Constructor:
             kegg_data[f'1{ko_id}'] = ko_data
 
         # Modules are second in the table.
-        module_id_pattern = re.compile('M\d{5}')
+        module_id_pattern = re.compile(r'M\d{5}')
         for module_id, module in network.modules.items():
             module_data = {}
             assert re.fullmatch(module_id_pattern, module_id)
@@ -9396,7 +9396,7 @@ class Constructor:
             kegg_data[f'2{module_id}'] = module_data
 
         # Pathways are third in the table.
-        pathway_id_pattern = re.compile('map\d{5}')
+        pathway_id_pattern = re.compile(r'map\d{5}')
         for pathway_id, pathway in network.pathways.items():
             pathway_data = {}
             assert re.fullmatch(pathway_id_pattern, pathway_id)
@@ -9410,7 +9410,7 @@ class Constructor:
             kegg_data[f'3{pathway_id}'] = pathway_data
 
         # Hierarchies are fourth in the table.
-        hierarchy_id_pattern = re.compile('ko\d{5}')
+        hierarchy_id_pattern = re.compile(r'ko\d{5}')
         for hierarchy_id, hierarchy in network.hierarchies.items():
             hierarchy_data = {}
             # Only hierarchies of KOs should be in consideration. Hierarchies of other KEGG items
@@ -10240,7 +10240,7 @@ class Tester:
         )
         # Reformat the category IDs into an argument for pruning and subsetting.
         category_sample_dict: Dict[str, List[Tuple[str]]] = {}
-        hierarchy_id_pattern = re.compile('ko\d{5}')
+        hierarchy_id_pattern = re.compile(r'ko\d{5}')
         for category_id in category_sample:
             hierarchy_id = category_id.split(':')[0]
             assert re.fullmatch(hierarchy_id_pattern, hierarchy_id)

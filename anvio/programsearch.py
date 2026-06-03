@@ -125,6 +125,7 @@ class ProgramSearch:
 
 
     def populate_table(self):
+        rows = []
         for program in self.programs.values():
             tags = program.meta_info['tags']['value']
             provides = [item.id for item in program.meta_info['provides']['value']]
@@ -148,9 +149,9 @@ class ProgramSearch:
 
             row_info = [program.name, description, tags, provides, requires, can_use, can_provide]
             row = dict(zip(self.headers, row_info))
-            self.table = self.table.append(row, ignore_index = True)
+            rows.append(row)
 
-        self.table.sort_values(by = 'Program').reset_index(inplace = True)
+        self.table = pd.DataFrame.from_records(rows, columns=self.headers)
 
 
     def search_table(self):
@@ -253,7 +254,7 @@ class ProgramSearch:
 
 
     def make_row_printable(self, row, description_width=None):
-        for header, info in row.iteritems():
+        for header, info in row.items():
             if header == 'Program':
                 formatted_info = F(info) # never linebreaks the program name
 

@@ -191,7 +191,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
         if self.metagenomes:
             filesnpaths.is_file_exists(self.metagenomes)
-            self.metagenomes_df = pd.read_csv(self.metagenomes, sep='\t', index_col=False)
+            self.metagenomes_df = pd.read_csv(self.metagenomes, sep='\t', index_col=False, keep_default_na=False, dtype=str)
 
             if self.run_genomes_sanity_check:
                 if not os.path.exists(sanity_checked_metagenomes_file):
@@ -226,7 +226,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
 
         if self.external_genomes:
             filesnpaths.is_file_exists(self.external_genomes)
-            self.external_genomes_df = pd.read_csv(self.external_genomes, sep='\t', index_col=False)
+            self.external_genomes_df = pd.read_csv(self.external_genomes, sep='\t', index_col=False, keep_default_na=False, dtype=str)
 
             if self.run_genomes_sanity_check:
                 if not os.path.exists(sanity_checked_genomes_file):
@@ -457,7 +457,7 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         filesnpaths.is_file_tab_delimited(self.hmm_list_path)
 
         try:
-            hmm_df = pd.read_csv(self.hmm_list_path, sep='\t', index_col=False)
+            hmm_df = pd.read_csv(self.hmm_list_path, sep='\t', index_col=False, keep_default_na=False)
         except AttributeError as e:
             raise ConfigError(f"The hmm_list.txt file, {self.hmm_list_path}, does not appear to be properly formatted. "
                               f"This is the error from trying to load it: {self.hmm_list_path}")
@@ -484,6 +484,8 @@ class EcoPhyloWorkflow(WorkflowSuperClass):
         # This "group" will be the main hmm wildcards, similarly to the metagenomics workflow
         if 'group' not in hmm_df:
             hmm_df['group'] = hmm_df['id']
+        else:
+            hmm_df['group'] = hmm_df['group'].where(hmm_df['group'].astype(str).str.strip() != '', hmm_df['id'])
 
         # to dict
         self.hmm_dict = hmm_df.set_index('id').to_dict('index')

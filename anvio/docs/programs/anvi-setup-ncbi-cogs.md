@@ -130,7 +130,7 @@ If you have tried re-running `anvi-setup-ncbi-cogs` multiple times but are alway
 First, you will need to move to the directory where anvi'o expects to find the COG files. This location will depend on where conda and anvi'o are installed on your computer, but if you have the anvi'o environment loaded in your terminal, you can easily get there by running the following:
 
 ```
-cd $CONDA_PREFIX/lib/python3.10/site-packages/anvio/data/misc/COG/COG20/RAW_DATA_FROM_NCBI/
+cd $CONDA_PREFIX/lib/python3.13/site-packages/anvio/data/misc/COG/COG20/RAW_DATA_FROM_NCBI/
 ```
 
 {:.warning}

@@ -19,7 +19,7 @@ import scipy.signal
 import pandas as pd
 
 # multiprocess is a fork of multiprocessing that uses the dill serializer instead of pickle
-# using the multiprocessing module directly results in a pickling error in Python 3.10 which
+# using the multiprocessing module directly results in a pickling error in Python 3.13 which
 # goes like this:
 #
 #   >>> AttributeError: Can't pickle local object 'SOMEFUNCTION.<locals>.<lambda>' multiprocessing
@@ -5285,7 +5285,7 @@ class ContigsDatabase:
 
         # set a project name for the contigs database without any funny
         # characters to make sure it can be used programmatically later.
-        self.meta['project_name_str'] = self.meta['project_name'].strip().translate({ord(c): "_" for c in "\"'!@#$%^&*()[]{};:,./<>?\|`~-=_+ "}).replace('__', '_').strip('_') \
+        self.meta['project_name_str'] = self.meta['project_name'].strip().translate({ord(c): "_" for c in "\"'!@#$%^&*()[]{};:,./<>?\\|`~-=_+ "}).replace('__', '_').strip('_') \
                                 if self.meta['project_name'] else '___'.join(['UNKNOWN', self.meta['contigs_db_hash']])
 
         if 'creation_date' not in self.meta:
@@ -5503,7 +5503,7 @@ class ContigsDatabase:
 
         if not project_name:
             project_name = '.'.join(os.path.basename(os.path.abspath(contigs_fasta)).split('.')[:-1])
-            project_name = project_name.translate({ord(c): "_" for c in "\"'!@#$%^&*()[]{};:,./<>?\|`~-=_+ "}).replace('__', '_')
+            project_name = project_name.translate({ord(c): "_" for c in "\"'!@#$%^&*()[]{};:,./<>?\\|`~-=_+ "}).replace('__', '_')
 
             if project_name:
                 self.run.warning(f"You are generating a new anvi'o contigs database, but you are not specifying a "

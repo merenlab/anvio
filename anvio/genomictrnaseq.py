@@ -1983,6 +1983,7 @@ class Affinitizer:
                 select_functions_df = pd.read_csv(
                     self.select_functions_txt, sep='\t', header=None,
                     names=['function_source', 'function_accession', 'function_name'])
+                select_functions_df = select_functions_df.fillna('')
                 function_sources += select_functions_df['function_source'].unique().tolist()
         else:
             function_sources = self.function_sources

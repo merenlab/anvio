@@ -6,13 +6,16 @@ import pandas as pd
 # Import tables
 #--------------
 external_gene_calls_all = pd.read_csv(snakemake.params.external_gene_calls_all,
-                                      delim_whitespace=True,
-                                      index_col=False)
+                                      sep=r'\s+',
+                                      index_col=False,
+                                      converters={'contig': str, 'source': str, 'version': str})
 
 headers = pd.read_csv(snakemake.input.headers,
                       sep="\t",
                       index_col=False,
-                      names=["contig"])
+                      names=["contig"],
+                      keep_default_na=False,
+                      dtype=str)
 
 # Make new columns
 #-----------------

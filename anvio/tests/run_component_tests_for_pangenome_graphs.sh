@@ -35,7 +35,9 @@ anvi-pan-genome -g TEST-GENOMES.db \
 
 INFO "Running ANI on genomes and storing results in the PAN database"
 anvi-compute-genome-similarity -e external-genomes.txt \
-                               --program pyANI \
+                               --program fastANI \
+                               --fragment-length 250 \
+                               --min-num-fragments 1 \
                                -o ANI_TEST \
                                --log-file ANI_LOG.txt \
                                -p TEST-PAN.db \
@@ -50,8 +52,7 @@ INFO "Generating a pangenome graph from a pan-db"
 anvi-pan-genome-graph -p TEST-PAN.db \
                       -g TEST-GENOMES.db \
                       --project-name TEST \
-                      -e external-genomes.txt \
-                      $thread_controller
+                      -e external-genomes.txt
 
 INFO "Generating a summary output for the pangenome graph"
 anvi-summarize -p TEST-PAN-GRAPH.db \
@@ -66,4 +67,5 @@ anvi-display-pan-graph -p TEST-PAN-GRAPH.db \
                        $dry_run_controller
 
 INFO "Displaying pangenome graph from a YAML file"
-anvi-display-pan-graph -p FROM-YAML-PAN-GRAPH.db
+anvi-display-pan-graph -p FROM-YAML-PAN-GRAPH.db \
+                       $dry_run_controller
