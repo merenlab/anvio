@@ -1,6 +1,7 @@
 {
     "general_params": {
-        "samples_txt": {"type": "str", "default": "samples.txt"}
+        "samples_txt": {"type": "str", "default": "samples.txt"},
+        "max_threads": {"type": "int", "default": 1}
     },
     "rules": {
         "iu_merge_pairs": {
