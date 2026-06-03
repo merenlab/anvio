@@ -3641,11 +3641,13 @@ class PanGraphSuperclass(PanSuperclass):
         gene_cluster_grouping_threshold = state_dict['graph_layout']['grouping_threshold']
         max_edge_length_filter = state_dict['graph_layout']['max_edge_length']
         groupcompress = state_dict['graph_layout']['group_compression']
+        component = state_dict['graph_layout'].get('component', 0)
 
         node_positions, edge_positions, node_groups = TopologicalLayout().run_synteny_layout_algorithm(
             F=self.pangenome_graph.graph,
             gene_cluster_grouping_threshold=gene_cluster_grouping_threshold,
             groupcompress=groupcompress,
+            component=component,
         )
 
         self.pangenome_graph.set_edge_positions(edge_positions)
@@ -3653,12 +3655,12 @@ class PanGraphSuperclass(PanSuperclass):
         self.pangenome_graph.set_node_groups(node_groups)
         self.pangenome_graph.cut_edges(max_edge_length_filter)
 
-        region_sides_df, nodes_df, gene_calls_df = self.pangenome_graph.summarize()
+        region_sides_df, nodes_df, gene_calls_df = self.pangenome_graph.summarize(component_id=component)
         self.synteny_gene_cluster_summary_info = pd.merge(nodes_df.reset_index(drop=False), region_sides_df.reset_index(drop=False), how="left", on="region_id").set_index('syn_cluster').to_dict(orient='index')
         self.region_sides_info = region_sides_df.reset_index()[['region_id', 'x_min', 'x_max', 'num_synteny_gene_clusters', 'region']].set_index('region_id').to_dict(orient='index')
 
 
-    def rerun_state(self, gene_cluster_grouping_threshold, groupcompress, max_edge_length_filter):
+    def rerun_state(self, gene_cluster_grouping_threshold, groupcompress, max_edge_length_filter, component=0):
 
         args = argparse.Namespace(pan_or_profile_db=self.pan_graph_db_path, target_data_table="layer_orders")
         items_layer_order = TableForLayerOrders(args)
@@ -3679,6 +3681,7 @@ class PanGraphSuperclass(PanSuperclass):
             F=self.pangenome_graph.graph,
             gene_cluster_grouping_threshold=gene_cluster_grouping_threshold,
             groupcompress=groupcompress,
+            component=component,
         )
 
         self.pangenome_graph.set_edge_positions(edge_positions)
@@ -3686,7 +3689,7 @@ class PanGraphSuperclass(PanSuperclass):
         self.pangenome_graph.set_node_groups(node_groups)
         self.pangenome_graph.cut_edges(max_edge_length_filter)
 
-        region_sides_df, nodes_df, gene_calls_df = self.pangenome_graph.summarize()
+        region_sides_df, nodes_df, gene_calls_df = self.pangenome_graph.summarize(component_id=component)
         self.synteny_gene_cluster_summary_info = pd.merge(nodes_df.reset_index(drop=False), region_sides_df.reset_index(drop=False), how="left", on="region_id").set_index('syn_cluster').to_dict(orient='index')
         self.region_sides_info = region_sides_df.reset_index()[['region_id', 'x_min', 'x_max', 'num_synteny_gene_clusters', 'region']].set_index('region_id').to_dict(orient='index')
 
@@ -3714,14 +3717,15 @@ class PanGraphSuperclass(PanSuperclass):
                 'layer': self.items_additional_data_dict[node],
                 'position': (0, 0),
                 'group': '',
-                'alignment': json.loads(data['alignment_summary'])
+                'alignment': json.loads(data['alignment_summary']),
+                'component_id': int(data['component_id']),
             }
             self.pangenome_graph.graph.add_node(node, **graph_data)
 
         for edge, data in self.edges.items():
             graph_data = {
                 'weight': data['weight'],
-                'directions': json.loads(data['directions']),
+                'genomes': json.loads(data['genomes_json']),
                 'name': edge,
                 'active': True,
                 'route': [],
