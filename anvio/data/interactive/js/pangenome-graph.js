@@ -1449,7 +1449,7 @@ class PangenomeGraphUserInterface {
         return(result)
     }
     
-    start_draw() {
+    start_draw(on_complete) {
         var new_settings_dict = {};
         
         new_settings_dict['condtr'] = parseInt($('#condtr')[0].value);
@@ -1474,6 +1474,7 @@ class PangenomeGraphUserInterface {
                 this.settings_dict = JSON.parse(JSON.stringify(new_settings_dict));
                 this.main_draw();
                 $('#svgbox').css('opacity', '');
+                if (on_complete) requestAnimationFrame(() => requestAnimationFrame(on_complete));
                 if (!this._description_panel_shown && description_panel.description) {
                     this._description_panel_shown = true;
                     description_panel.show();
@@ -2359,8 +2360,7 @@ class PangenomeGraphUserInterface {
                 this.initialize_user_interface();
                 this.set_UI_settings();
                 description_panel.setup(this.data['meta']['description']);
-                toggleLeftPanel();
-                setTimeout(() => this.start_draw(), 320);
+                this.start_draw(toggleLeftPanel);
             },
             error: (err) => {
                 toastr.error('Could not reach the server during initialization.', 'Initialization error', { 'timeOut': '0', 'extendedTimeOut': '0' });
