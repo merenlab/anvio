@@ -3554,6 +3554,8 @@ class PanGraphSuperclass(PanSuperclass):
         self.p_meta['creation_date'] = utils.get_time_to_date(self.p_meta['creation_date']) if 'creation_date' in self.p_meta else 'unknown'
         self.p_meta['genome_names'] = self.p_meta['genome_names'].split(',')
         self.p_meta['gene_function_sources'] = self.p_meta['gene_function_sources'].split(',')
+        if 'description' not in self.p_meta or self.p_meta['description'] is None:
+            self.p_meta['description'] = ''
 
         self.gene_function_sources = self.p_meta['gene_function_sources']
         self.genome_names = self.p_meta['genome_names']
