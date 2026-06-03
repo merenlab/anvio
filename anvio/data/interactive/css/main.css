@@ -197,11 +197,11 @@ html, body, #wrapper {
     position: fixed;
     top: 5vh;
     right: 20px;
-    width: 30%;
+    width: 20%;
     min-width: 320px;
     height: 90vh;
     min-height: 160px;
-    background: rgba(255, 255, 255, 0.92);
+    background: rgba(255, 245, 232, 0.8);
     backdrop-filter: blur(6px);
     -webkit-backdrop-filter: blur(6px);
     border: 1px solid rgba(0, 0, 0, 0.12);
@@ -267,7 +267,7 @@ html, body, #wrapper {
 }
 
 .description-panel-body {
-    padding: 18px 20px;
+    padding: 0px 15px;
     overflow-y: auto;
     flex: 1;
     min-height: 0;
