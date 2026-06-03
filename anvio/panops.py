@@ -1636,6 +1636,7 @@ class PangenomeGraph():
             F=self.pangenome_graph.graph,
             gene_cluster_grouping_threshold=self.gene_cluster_grouping_threshold,
             groupcompress=self.groupcompress,
+            component=self.component,
         )
 
         x_max = max([x for x,y in node_positions.values()])
@@ -1789,9 +1790,9 @@ class PangenomeGraph():
                     'core': '#BCBCBC',
                     'rearrangement': '#8FF0A4',
                     'accessory': '#DC8ADD',
-                    'multi_copy': '#FFA348',
+                    'duplication': '#FFA348',
                     'singleton': '#99C1F1',
-                    'trna': '#F66151'
+                    'rna': '#F66151'
                 }
             },
             'edges': {
@@ -1803,7 +1804,8 @@ class PangenomeGraph():
                 'max_edge_length_enabled': True,
                 'max_edge_length': self.max_edge_length_filter if self.max_edge_length_filter != -1 else 1000,
                 'group_compression_enabled': self.groupcompress != 1.0,
-                'group_compression': self.groupcompress
+                'group_compression': self.groupcompress,
+                'component': self.component
             },
             'layers': {
                 'backbone': {
@@ -2033,6 +2035,7 @@ class PangenomeGraph():
                 'alignment_summary': json.dumps(data['alignment']),
                 'node_x': data['position'][0],
                 'node_y': data['position'][1],
+                'component_id': int(data.get('component_id', 0)),
             }
 
             table_for_nodes.add(node_entry)
@@ -2059,7 +2062,7 @@ class PangenomeGraph():
                 'source': edge_i,
                 'target': edge_j,
                 'weight': data['weight'],
-                'directions': json.dumps(data['directions'])
+                'genomes_json': json.dumps(data['genomes']),
             }
             table_for_edges.add(edge_entry)
 
